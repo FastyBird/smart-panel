@@ -17,7 +17,7 @@ class StatusChannelPropertyView extends ChannelPropertyView {
     super.invalid,
     super.step,
     super.defaultValue,
-    super.value,
+    super.valueState,
   });
 
   /// Returns true if the value is boolean.

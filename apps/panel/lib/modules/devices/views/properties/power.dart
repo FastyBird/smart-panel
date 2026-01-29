@@ -15,7 +15,7 @@ class PowerChannelPropertyView extends ChannelPropertyView {
     super.invalid,
     super.step,
     super.defaultValue,
-    super.value,
+    super.valueState,
   });
 
   num? get power => value is NumberValueType ? (value as NumberValueType).value : null;

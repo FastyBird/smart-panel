@@ -1,9 +1,9 @@
-import { Expose, Type, instanceToPlain } from 'class-transformer';
+import { Expose, Transform, Type, instanceToPlain } from 'class-transformer';
 
 import { ApiExtraModels, ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
 import { BaseSuccessResponseModel } from '../../api/models/api-response.model';
-import { ChannelCategory, DeviceCategory } from '../../devices/devices.constants';
+import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
 import { SpaceClimateRoleEntity } from '../entities/space-climate-role.entity';
 import { SpaceCoversRoleEntity } from '../entities/space-covers-role.entity';
 import { SpaceLightingRoleEntity } from '../entities/space-lighting-role.entity';
@@ -3377,6 +3377,72 @@ export class LightingStateResponseModel extends BaseSuccessResponseModel<Lightin
 // ================================
 
 /**
+ * Additional reading from a multi-property sensor channel
+ */
+@ApiSchema({ name: 'SpacesModuleDataSensorAdditionalReading' })
+export class SensorAdditionalReadingDataModel {
+	@ApiProperty({
+		name: 'property_id',
+		description: 'ID of the property',
+		type: 'string',
+		format: 'uuid',
+		example: 'e5f41ad6-854b-7a0e-e6cb-f0a8d1e8e2ba',
+	})
+	@Expose({ name: 'property_id' })
+	propertyId: string;
+
+	@ApiProperty({
+		name: 'property_category',
+		description: 'Category of the property',
+		enum: PropertyCategory,
+		example: 'level',
+	})
+	@Expose({ name: 'property_category' })
+	propertyCategory: PropertyCategory;
+
+	@ApiPropertyOptional({
+		description: 'Current property value (type depends on property)',
+		oneOf: [{ type: 'string' }, { type: 'number' }, { type: 'boolean' }],
+		nullable: true,
+		example: 'moderate',
+	})
+	@Expose()
+	value: number | boolean | string | null;
+
+	@ApiPropertyOptional({
+		description: 'Unit of the property value',
+		type: 'string',
+		nullable: true,
+		example: 'lux',
+	})
+	@Expose()
+	unit: string | null;
+
+	@ApiPropertyOptional({
+		name: 'updated_at',
+		description: 'Timestamp of the last property value update',
+		type: 'string',
+		format: 'date-time',
+		nullable: true,
+		example: '2025-01-25T12:00:00Z',
+	})
+	@Expose({ name: 'updated_at' })
+	@Transform(({ value }: { value: unknown }) => (value instanceof Date ? value.toISOString() : value), {
+		toPlainOnly: true,
+	})
+	updatedAt: Date | string | null;
+
+	@ApiPropertyOptional({
+		description: 'Value trend direction computed from recent data points',
+		enum: ['rising', 'falling', 'stable'],
+		nullable: true,
+		example: 'stable',
+	})
+	@Expose()
+	trend: 'rising' | 'falling' | 'stable' | null;
+}
+
+/**
  * Individual sensor reading data model
  */
 @ApiSchema({ name: 'SpacesModuleDataSensorReading' })
@@ -3429,6 +3495,17 @@ export class SensorReadingDataModel {
 	channelCategory: ChannelCategory;
 
 	@ApiPropertyOptional({
+		name: 'property_id',
+		description: 'ID of the primary property (for time series queries)',
+		type: 'string',
+		format: 'uuid',
+		nullable: true,
+		example: 'd4e30fc5-743a-6f9d-d5ba-efe9c0f7d1a9',
+	})
+	@Expose({ name: 'property_id' })
+	propertyId: string | null;
+
+	@ApiPropertyOptional({
 		description: 'Current sensor value (type depends on sensor)',
 		oneOf: [{ type: 'string' }, { type: 'number' }, { type: 'boolean' }],
 		nullable: true,
@@ -3454,6 +3531,39 @@ export class SensorReadingDataModel {
 	})
 	@Expose()
 	role: SensorRole | null;
+
+	@ApiPropertyOptional({
+		name: 'updated_at',
+		description: 'Timestamp of the last property value update',
+		type: 'string',
+		format: 'date-time',
+		nullable: true,
+		example: '2025-01-25T12:00:00Z',
+	})
+	@Expose({ name: 'updated_at' })
+	@Transform(({ value }: { value: unknown }) => (value instanceof Date ? value.toISOString() : value), {
+		toPlainOnly: true,
+	})
+	updatedAt: Date | string | null;
+
+	@ApiPropertyOptional({
+		description: 'Value trend direction computed from recent data points',
+		enum: ['rising', 'falling', 'stable'],
+		nullable: true,
+		example: 'stable',
+	})
+	@Expose()
+	trend: 'rising' | 'falling' | 'stable' | null;
+
+	@ApiPropertyOptional({
+		name: 'additional_readings',
+		description: 'Additional displayable property readings from multi-property channels',
+		type: () => [SensorAdditionalReadingDataModel],
+		nullable: true,
+	})
+	@Expose({ name: 'additional_readings' })
+	@Type(() => SensorAdditionalReadingDataModel)
+	additionalReadings: SensorAdditionalReadingDataModel[] | null;
 }
 
 /**

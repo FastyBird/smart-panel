@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:fastybird_smart_panel/modules/config/repositories/module_config_repository.dart';
 import 'package:fastybird_smart_panel/modules/weather/models/location.dart';
 import 'package:fastybird_smart_panel/modules/weather/models/weather.dart';
@@ -18,6 +20,8 @@ class WeatherService extends ChangeNotifier {
 
   List<ForecastDayView> _forecast = [];
 
+  Timer? _updateDebounce;
+
   WeatherService({
     required CurrentWeatherRepository currentDayRepository,
     required ForecastWeatherRepository forecastRepository,
@@ -29,10 +33,10 @@ class WeatherService extends ChangeNotifier {
         _configurationRepository = configurationRepository;
 
   Future<void> initialize() async {
-    _currentDayRepository.addListener(_updateData);
-    _forecastRepository.addListener(_updateData);
-    _locationsRepository.addListener(_updateData);
-    _configurationRepository.addListener(_updateData);
+    _currentDayRepository.addListener(_scheduleUpdate);
+    _forecastRepository.addListener(_scheduleUpdate);
+    _locationsRepository.addListener(_scheduleUpdate);
+    _configurationRepository.addListener(_scheduleUpdate);
 
     _updateData();
   }
@@ -113,6 +117,11 @@ class WeatherService extends ChangeNotifier {
   /// Check if there are multiple locations
   bool get hasMultipleLocations => _locationsRepository.locations.length > 1;
 
+  void _scheduleUpdate() {
+    _updateDebounce?.cancel();
+    _updateDebounce = Timer(const Duration(milliseconds: 50), _updateData);
+  }
+
   void _updateData() {
     final currentDay = _currentDayRepository.data;
     final forecast = _forecastRepository.getItem();
@@ -159,11 +168,13 @@ class WeatherService extends ChangeNotifier {
 
   @override
   void dispose() {
-    super.dispose();
+    _updateDebounce?.cancel();
 
-    _currentDayRepository.removeListener(_updateData);
-    _forecastRepository.removeListener(_updateData);
-    _locationsRepository.removeListener(_updateData);
-    _configurationRepository.removeListener(_updateData);
+    _currentDayRepository.removeListener(_scheduleUpdate);
+    _forecastRepository.removeListener(_scheduleUpdate);
+    _locationsRepository.removeListener(_scheduleUpdate);
+    _configurationRepository.removeListener(_scheduleUpdate);
+
+    super.dispose();
   }
 }

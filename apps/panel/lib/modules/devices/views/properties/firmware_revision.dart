@@ -15,7 +15,7 @@ class FirmwareRevisionChannelPropertyView extends ChannelPropertyView {
     super.invalid,
     super.step,
     super.defaultValue,
-    super.value,
+    super.valueState,
   });
 
   String? get firmwareRevision => value is StringValueType ? (value as StringValueType).value : null;

@@ -15,7 +15,7 @@ class LevelChannelPropertyView extends ChannelPropertyView {
     super.invalid,
     super.step,
     super.defaultValue,
-    super.value,
+    super.valueState,
   });
 
   String? get level => value is StringValueType ? (value as StringValueType).value : null;

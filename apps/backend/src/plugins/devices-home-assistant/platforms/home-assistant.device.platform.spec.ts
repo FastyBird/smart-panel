@@ -4,6 +4,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { PropertyCategory } from '../../../modules/devices/devices.constants';
+import { PropertyValueState } from '../../../modules/devices/models/property-value-state.model';
 import {
 	HomeAssistantChannelEntity,
 	HomeAssistantChannelPropertyEntity,
@@ -79,7 +80,7 @@ describe('HomeAssistantDevicePlatform', () => {
 		property.category = PropertyCategory.BRIGHTNESS;
 		property.haEntityId = 'light.kitchen_led';
 		property.haAttribute = 'brightness';
-		property.value = 100;
+		property.value = new PropertyValueState(100);
 
 		channel.properties.push(property);
 
@@ -115,7 +116,7 @@ describe('HomeAssistantDevicePlatform', () => {
 		property.category = PropertyCategory.ON;
 		property.haEntityId = 'light.kitchen_led';
 		property.haAttribute = 'on';
-		property.value = true;
+		property.value = new PropertyValueState(true);
 
 		channel.properties.push(property);
 

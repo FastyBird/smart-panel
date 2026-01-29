@@ -386,7 +386,7 @@ export class SpaceContextSnapshotService {
 			return false;
 		}
 
-		const value = property.value;
+		const value = property.value?.value;
 
 		if (typeof value === 'boolean') {
 			return value;
@@ -407,7 +407,7 @@ export class SpaceContextSnapshotService {
 			return null;
 		}
 
-		const value = property.value;
+		const value = property.value?.value;
 
 		if (typeof value === 'number') {
 			return value;
@@ -430,7 +430,7 @@ export class SpaceContextSnapshotService {
 			return null;
 		}
 
-		const value = property.value;
+		const value = property.value?.value;
 
 		if (typeof value === 'string') {
 			return value;

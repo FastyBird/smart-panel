@@ -15,7 +15,7 @@ class PanChannelPropertyView extends ChannelPropertyView {
     super.invalid,
     super.step,
     super.defaultValue,
-    super.value,
+    super.valueState,
   });
 
   num? get pan => value is NumberValueType ? (value as NumberValueType).value : null;

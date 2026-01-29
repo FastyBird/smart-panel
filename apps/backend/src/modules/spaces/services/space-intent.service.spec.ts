@@ -8,6 +8,7 @@ handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
+import { PropertyValueState } from '../../devices/models/property-value-state.model';
 import { ClimateIntentDto } from '../dto/climate-intent.dto';
 import { LightingIntentDto } from '../dto/lighting-intent.dto';
 import {
@@ -297,14 +298,14 @@ describe('SpaceIntentService', () => {
 			const onProperty = {
 				id: `${input.deviceId}-on-prop`,
 				category: PropertyCategory.ON,
-				value: true,
+				value: new PropertyValueState(true),
 			} as ChannelPropertyEntity;
 
 			const brightnessProperty = input.hasBrightness
 				? ({
 						id: `${input.deviceId}-brightness-prop`,
 						category: PropertyCategory.BRIGHTNESS,
-						value: 50,
+						value: new PropertyValueState(50),
 					} as ChannelPropertyEntity)
 				: null;
 

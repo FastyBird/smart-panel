@@ -14,6 +14,7 @@ import 'package:fastybird_smart_panel/modules/devices/views/properties/timer.dar
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:fastybird_smart_panel/modules/devices/types/value_state.dart';
 
 class MockDeviceControlStateService extends Mock
     implements DeviceControlStateService {}
@@ -51,14 +52,14 @@ void main() {
             type: 'on',
             channel: channelId,
             category: DevicesModulePropertyCategory.valueOn,
-            value: BooleanValueType(true),
+            valueState: PropertyValueState(value: BooleanValueType(true)),
           ),
           HumidityChannelPropertyView(
             id: humidityPropId,
             type: 'humidity',
             channel: channelId,
             category: DevicesModulePropertyCategory.humidity,
-            value: NumberValueType(50),
+            valueState: PropertyValueState(value: NumberValueType(50)),
             format: NumberListFormatType([30, 80]),
           ),
           ModeChannelPropertyView(
@@ -66,7 +67,7 @@ void main() {
             type: 'mode',
             channel: channelId,
             category: DevicesModulePropertyCategory.mode,
-            value: StringValueType('auto'),
+            valueState: PropertyValueState(value: StringValueType('auto')),
             format: StringListFormatType(['auto', 'continuous', 'laundry']),
           ),
           LockedChannelPropertyView(
@@ -74,14 +75,14 @@ void main() {
             type: 'locked',
             channel: channelId,
             category: DevicesModulePropertyCategory.locked,
-            value: BooleanValueType(false),
+            valueState: PropertyValueState(value: BooleanValueType(false)),
           ),
           TimerChannelPropertyView(
             id: timerPropId,
             type: 'timer',
             channel: channelId,
             category: DevicesModulePropertyCategory.timer,
-            value: NumberValueType(0),
+            valueState: PropertyValueState(value: NumberValueType(0)),
             format: NumberListFormatType([0, 86400]),
           ),
         ],
@@ -554,13 +555,13 @@ void main() {
               id: onPropId,
               type: 'on',
               channel: channelId,
-              value: BooleanValueType(true),
+              valueState: PropertyValueState(value: BooleanValueType(true)),
             ),
             HumidityChannelPropertyView(
               id: humidityPropId,
               type: 'humidity',
               channel: channelId,
-              value: NumberValueType(50),
+              valueState: PropertyValueState(value: NumberValueType(50)),
             ),
           ],
         );
@@ -589,13 +590,13 @@ void main() {
               id: onPropId,
               type: 'on',
               channel: channelId,
-              value: BooleanValueType(true),
+              valueState: PropertyValueState(value: BooleanValueType(true)),
             ),
             HumidityChannelPropertyView(
               id: humidityPropId,
               type: 'humidity',
               channel: channelId,
-              value: NumberValueType(50),
+              valueState: PropertyValueState(value: NumberValueType(50)),
             ),
           ],
         );
@@ -624,13 +625,13 @@ void main() {
               id: onPropId,
               type: 'on',
               channel: channelId,
-              value: BooleanValueType(true),
+              valueState: PropertyValueState(value: BooleanValueType(true)),
             ),
             HumidityChannelPropertyView(
               id: humidityPropId,
               type: 'humidity',
               channel: channelId,
-              value: NumberValueType(50),
+              valueState: PropertyValueState(value: NumberValueType(50)),
             ),
           ],
         );

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:fastybird_smart_panel/modules/devices/export.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/channel.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
@@ -16,6 +18,8 @@ class DevicesService extends ChangeNotifier {
   Map<String, DeviceView> _devices = {};
   Map<String, ChannelView> _channels = {};
   Map<String, ChannelPropertyView> _properties = {};
+
+  Timer? _updateDebounce;
 
   DevicesService({
     required DevicesRepository devicesRepository,
@@ -47,10 +51,10 @@ class DevicesService extends ChangeNotifier {
 
     await _validationRepository.fetchAll();
 
-    _devicesRepository.addListener(_updateData);
-    _channelsRepository.addListener(_updateData);
-    _channelPropertiesRepository.addListener(_updateData);
-    _validationRepository.addListener(_updateData);
+    _devicesRepository.addListener(_scheduleUpdate);
+    _channelsRepository.addListener(_scheduleUpdate);
+    _channelPropertiesRepository.addListener(_scheduleUpdate);
+    _validationRepository.addListener(_scheduleUpdate);
 
     _updateData();
   }
@@ -185,6 +189,11 @@ class DevicesService extends ChangeNotifier {
       properties: properties,
       context: context,
     );
+  }
+
+  void _scheduleUpdate() {
+    _updateDebounce?.cancel();
+    _updateDebounce = Timer(const Duration(milliseconds: 50), _updateData);
   }
 
   void _updateData() {
@@ -323,11 +332,13 @@ class DevicesService extends ChangeNotifier {
 
   @override
   void dispose() {
-    super.dispose();
+    _updateDebounce?.cancel();
 
-    _devicesRepository.removeListener(_updateData);
-    _channelsRepository.removeListener(_updateData);
-    _channelPropertiesRepository.removeListener(_updateData);
-    _validationRepository.removeListener(_updateData);
+    _devicesRepository.removeListener(_scheduleUpdate);
+    _channelsRepository.removeListener(_scheduleUpdate);
+    _channelPropertiesRepository.removeListener(_scheduleUpdate);
+    _validationRepository.removeListener(_scheduleUpdate);
+
+    super.dispose();
   }
 }

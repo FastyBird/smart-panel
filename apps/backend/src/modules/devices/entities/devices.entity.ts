@@ -28,6 +28,7 @@ import {
 	PermissionType,
 	PropertyCategory,
 } from '../devices.constants';
+import { PropertyValueState } from '../models/property-value-state.model';
 
 @ApiSchema({ name: 'DevicesModuleDataDeviceConnectionStatus' })
 export class DeviceConnectionStatus {
@@ -484,14 +485,15 @@ export class ChannelPropertyEntity extends BaseEntity {
 	step: number | null;
 
 	@ApiPropertyOptional({
-		description: 'Property current value',
-		oneOf: [{ type: 'string' }, { type: 'number' }, { type: 'boolean' }],
+		description: 'Property current value state',
+		type: () => PropertyValueState,
 		nullable: true,
-		example: 25.5,
 	})
 	@Expose()
 	@IsOptional()
-	value: string | boolean | number | null;
+	@ValidateNested()
+	@Type(() => PropertyValueState)
+	value: PropertyValueState | null;
 
 	@ApiProperty({
 		description: 'Channel identifier',

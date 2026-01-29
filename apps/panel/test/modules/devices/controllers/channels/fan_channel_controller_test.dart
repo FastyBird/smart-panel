@@ -14,6 +14,7 @@ import 'package:fastybird_smart_panel/modules/devices/views/properties/swing.dar
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:fastybird_smart_panel/modules/devices/types/value_state.dart';
 
 class MockDeviceControlStateService extends Mock
     implements DeviceControlStateService {}
@@ -51,21 +52,21 @@ void main() {
             type: 'on',
             channel: channelId,
             category: DevicesModulePropertyCategory.valueOn,
-            value: BooleanValueType(true),
+            valueState: PropertyValueState(value: BooleanValueType(true)),
           ),
           SwingChannelPropertyView(
             id: swingPropId,
             type: 'swing',
             channel: channelId,
             category: DevicesModulePropertyCategory.swing,
-            value: BooleanValueType(false),
+            valueState: PropertyValueState(value: BooleanValueType(false)),
           ),
           SpeedChannelPropertyView(
             id: speedPropId,
             type: 'speed',
             channel: channelId,
             category: DevicesModulePropertyCategory.speed,
-            value: NumberValueType(50),
+            valueState: PropertyValueState(value: NumberValueType(50)),
             format: NumberListFormatType([0, 100]),
           ),
           ModeChannelPropertyView(
@@ -73,7 +74,7 @@ void main() {
             type: 'mode',
             channel: channelId,
             category: DevicesModulePropertyCategory.mode,
-            value: StringValueType('auto'),
+            valueState: PropertyValueState(value: StringValueType('auto')),
             format: StringListFormatType(['auto', 'sleep', 'turbo']),
           ),
           LockedChannelPropertyView(
@@ -81,7 +82,7 @@ void main() {
             type: 'locked',
             channel: channelId,
             category: DevicesModulePropertyCategory.locked,
-            value: BooleanValueType(false),
+            valueState: PropertyValueState(value: BooleanValueType(false)),
           ),
         ],
       );
@@ -676,7 +677,7 @@ void main() {
               id: onPropId,
               type: 'on',
               channel: channelId,
-              value: BooleanValueType(true),
+              valueState: PropertyValueState(value: BooleanValueType(true)),
             ),
           ],
         );
@@ -704,7 +705,7 @@ void main() {
               id: onPropId,
               type: 'on',
               channel: channelId,
-              value: BooleanValueType(true),
+              valueState: PropertyValueState(value: BooleanValueType(true)),
             ),
           ],
         );
@@ -732,7 +733,7 @@ void main() {
               id: onPropId,
               type: 'on',
               channel: channelId,
-              value: BooleanValueType(true),
+              valueState: PropertyValueState(value: BooleanValueType(true)),
             ),
           ],
         );
@@ -760,7 +761,7 @@ void main() {
               id: onPropId,
               type: 'on',
               channel: channelId,
-              value: BooleanValueType(true),
+              valueState: PropertyValueState(value: BooleanValueType(true)),
             ),
           ],
         );

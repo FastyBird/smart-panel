@@ -15,7 +15,7 @@ class PeakLevelChannelPropertyView extends ChannelPropertyView {
     super.invalid,
     super.step,
     super.defaultValue,
-    super.value,
+    super.valueState,
   });
 
   num? get peakLevel => value is NumberValueType ? (value as NumberValueType).value : null;

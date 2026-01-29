@@ -10,6 +10,8 @@ export 'package:fastybird_smart_panel/modules/spaces/models/media_targets/media_
 export 'package:fastybird_smart_panel/modules/spaces/models/lighting_state/lighting_state.dart';
 export 'package:fastybird_smart_panel/modules/spaces/models/climate_state/climate_state.dart';
 export 'package:fastybird_smart_panel/modules/spaces/models/media_state/media_state.dart';
+export 'package:fastybird_smart_panel/modules/spaces/models/covers_state/covers_state.dart';
+export 'package:fastybird_smart_panel/modules/spaces/models/sensor_state/sensor_state.dart';
 export 'package:fastybird_smart_panel/modules/spaces/models/suggestion/suggestion.dart';
 export 'package:fastybird_smart_panel/modules/spaces/models/undo/undo_state.dart';
 export 'package:fastybird_smart_panel/modules/spaces/models/intent_result/intent_result.dart';

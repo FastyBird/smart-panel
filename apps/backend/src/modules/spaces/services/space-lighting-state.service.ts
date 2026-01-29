@@ -1084,7 +1084,7 @@ export class SpaceLightingStateService {
 			return false;
 		}
 
-		const value = property.value;
+		const value = property.value?.value;
 
 		if (typeof value === 'boolean') {
 			return value;
@@ -1105,7 +1105,7 @@ export class SpaceLightingStateService {
 			return null;
 		}
 
-		const value = property.value;
+		const value = property.value?.value;
 
 		if (typeof value === 'number') {
 			return value;

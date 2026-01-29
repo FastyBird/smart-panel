@@ -3,6 +3,7 @@ import 'package:fastybird_smart_panel/api/models/devices_module_permission_type.
 import 'package:fastybird_smart_panel/api/models/devices_module_property_category.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/properties/properties.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/formats.dart';
+import 'package:fastybird_smart_panel/modules/devices/types/value_state.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/plugins/devices-shelly-ng/constants.dart';
 
@@ -19,7 +20,7 @@ class ShellyNgChannelPropertyModel extends ChannelPropertyModel {
     super.invalid,
     super.step,
     super.defaultValue,
-    super.value,
+    super.valueState,
     super.createdAt,
     super.updatedAt,
   }) : super(
@@ -27,6 +28,11 @@ class ShellyNgChannelPropertyModel extends ChannelPropertyModel {
         );
 
   factory ShellyNgChannelPropertyModel.fromJson(Map<String, dynamic> json) {
+    final rawValue = json['value'];
+    final PropertyValueState? valueState = rawValue is Map<String, dynamic>
+        ? PropertyValueState.fromJson(rawValue)
+        : null;
+
     return ShellyNgChannelPropertyModel(
       channel: json['channel'],
       id: json['id'],
@@ -47,7 +53,7 @@ class ShellyNgChannelPropertyModel extends ChannelPropertyModel {
       defaultValue: json['default_value'] != null
           ? ValueType.fromJson(json['default_value'])
           : null,
-      value: json['value'] != null ? ValueType.fromJson(json['value']) : null,
+      valueState: valueState,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'])
           : null,
@@ -59,13 +65,17 @@ class ShellyNgChannelPropertyModel extends ChannelPropertyModel {
 
   @override
   ShellyNgChannelPropertyModel copyWith({
-    ValueType? value,
+    PropertyValueState? valueState,
     bool? clearValue,
   }) {
-    ValueType? setValue = value ?? value;
+    PropertyValueState? setValueState;
 
-    if (clearValue != null) {
-      setValue = null;
+    if (clearValue == true) {
+      setValueState = null;
+    } else if (valueState != null) {
+      setValueState = valueState;
+    } else {
+      setValueState = this.valueState;
     }
 
     return ShellyNgChannelPropertyModel(
@@ -80,7 +90,7 @@ class ShellyNgChannelPropertyModel extends ChannelPropertyModel {
       invalid: invalid,
       step: step,
       defaultValue: defaultValue,
-      value: setValue,
+      valueState: setValueState,
       createdAt: createdAt,
       updatedAt: updatedAt,
     );

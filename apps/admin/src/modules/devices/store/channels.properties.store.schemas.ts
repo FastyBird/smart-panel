@@ -10,6 +10,7 @@ import {
 	DevicesModuleChannelPropertyCategory,
 	DevicesModuleChannelPropertyDataType,
 	DevicesModuleChannelPropertyPermissions,
+	SpacesModuleDataSensorReadingTrend,
 } from '../../../openapi.constants';
 
 import { ItemIdSchema } from './types';
@@ -35,7 +36,22 @@ export const ChannelPropertySchema = z.object({
 	format: z.array(z.union([z.string(), z.union([z.number(), z.null()])])).nullable(),
 	invalid: z.union([z.string(), z.number(), z.boolean()]).nullable(),
 	step: z.number().nullable(),
-	value: z.union([z.string(), z.number(), z.boolean()]).nullable().default(null),
+	value: z
+		.preprocess(
+			(val) => {
+				if (val === null || val === undefined) return null;
+				if (typeof val === 'object' && val !== null && 'value' in val) return val;
+				return { value: val, lastUpdated: null, trend: null };
+			},
+			z
+				.object({
+					value: z.union([z.string(), z.number(), z.boolean()]).nullable().default(null),
+					lastUpdated: z.string().nullable().optional().default(null),
+					trend: z.nativeEnum(SpacesModuleDataSensorReadingTrend).nullable().optional().default(null),
+				})
+				.nullable(),
+		)
+		.default(null),
 	createdAt: z.union([z.string().datetime({ offset: true }), z.date()]).transform((date) => (date instanceof Date ? date : new Date(date))),
 	updatedAt: z
 		.union([z.string().datetime({ offset: true }), z.date()])
@@ -77,7 +93,13 @@ export const ChannelsPropertiesSetActionPayloadSchema = z.object({
 		format: z.array(z.union([z.string(), z.union([z.number(), z.null()])])).nullable(),
 		invalid: z.union([z.string(), z.number(), z.boolean()]).nullable(),
 		step: z.number().nullable(),
-		value: z.union([z.string(), z.number(), z.boolean()]).nullable(),
+		value: z
+			.object({
+				value: z.union([z.string(), z.number(), z.boolean()]).nullable().default(null),
+				lastUpdated: z.string().nullable().optional().default(null),
+				trend: z.nativeEnum(SpacesModuleDataSensorReadingTrend).nullable().optional().default(null),
+			})
+			.nullable(),
 	}),
 });
 
@@ -181,7 +203,7 @@ export const ChannelPropertyUpdateReqSchema: ZodType<ApiUpdateChannelProperty> =
 	value: z.union([z.string(), z.number(), z.boolean()]).nullable().optional(),
 });
 
-export const ChannelPropertyResSchema: ZodType<ApiChannelProperty> = z.object({
+const _ChannelPropertyResSchema = z.object({
 	id: z.string().uuid(),
 	type: z.string().trim().nonempty(),
 	channel: z.string().uuid(),
@@ -194,7 +216,18 @@ export const ChannelPropertyResSchema: ZodType<ApiChannelProperty> = z.object({
 	format: z.array(z.union([z.string(), z.union([z.number(), z.null()])])).nullable(),
 	invalid: z.union([z.string(), z.number(), z.boolean()]).nullable(),
 	step: z.number().nullable(),
-	value: z.union([z.string(), z.number(), z.boolean(), z.null()]).nullable(),
+	value: z
+		.object({
+			value: z.union([z.string(), z.number(), z.boolean()]).nullable().optional(),
+			last_updated: z.string().nullable().optional(),
+			trend: z.nativeEnum(SpacesModuleDataSensorReadingTrend).nullable().optional(),
+		})
+		.nullable()
+		.optional(),
 	created_at: z.string().date(),
 	updated_at: z.string().date().nullable(),
 });
+
+// Cast needed: backend may send value: null, but OpenAPI type only allows undefined.
+// The schema accepts both null and undefined at runtime; the cast aligns the output type.
+export const ChannelPropertyResSchema = _ChannelPropertyResSchema as unknown as ZodType<ApiChannelProperty>;

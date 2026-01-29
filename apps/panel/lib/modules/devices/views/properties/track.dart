@@ -15,7 +15,7 @@ class TrackChannelPropertyView extends ChannelPropertyView {
     super.invalid,
     super.step,
     super.defaultValue,
-    super.value,
+    super.valueState,
   });
 
   String? get track => value is StringValueType ? (value as StringValueType).value : null;

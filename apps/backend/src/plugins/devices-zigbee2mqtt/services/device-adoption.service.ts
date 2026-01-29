@@ -108,7 +108,7 @@ export class Z2mDeviceAdoptionService {
 			if (infoChannel) {
 				const properties = await this.channelsPropertiesService.findAll(infoChannel.id, DEVICES_ZIGBEE2MQTT_TYPE);
 				const serialProp = properties.find((p) => p.category === PropertyCategory.SERIAL_NUMBER);
-				if (serialProp?.value === request.ieeeAddress) {
+				if (serialProp?.value?.value === request.ieeeAddress) {
 					await this.devicesService.remove(device.id);
 					break; // Only one device should match
 				}

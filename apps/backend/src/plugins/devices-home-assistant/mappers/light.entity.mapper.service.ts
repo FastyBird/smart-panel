@@ -315,9 +315,9 @@ export class LightEntityMapperService extends EntityMapper {
 		);
 
 		if (hueProp && saturationProp && (values.has(hueProp.id) || values.has(saturationProp.id))) {
-			const hue = this.toNumber(values.has(hueProp.id) ? values.get(hueProp.id) : hueProp.value);
+			const hue = this.toNumber(values.has(hueProp.id) ? values.get(hueProp.id) : hueProp.value?.value);
 			const saturation = this.toNumber(
-				values.has(saturationProp.id) ? values.get(saturationProp.id) : saturationProp.value,
+				values.has(saturationProp.id) ? values.get(saturationProp.id) : saturationProp.value?.value,
 			);
 
 			if (hue !== null && saturation !== null) {
@@ -350,9 +350,9 @@ export class LightEntityMapperService extends EntityMapper {
 			rgbBProp &&
 			(values.has(rgbRProp.id) || values.has(rgbGProp.id) || values.has(rgbBProp.id))
 		) {
-			const rgbR = this.toNumber(values.has(rgbRProp.id) ? values.get(rgbRProp.id) : rgbRProp.value);
-			const rgbG = this.toNumber(values.has(rgbGProp.id) ? values.get(rgbGProp.id) : rgbGProp.value);
-			const rgbB = this.toNumber(values.has(rgbBProp.id) ? values.get(rgbBProp.id) : rgbBProp.value);
+			const rgbR = this.toNumber(values.has(rgbRProp.id) ? values.get(rgbRProp.id) : rgbRProp.value?.value);
+			const rgbG = this.toNumber(values.has(rgbGProp.id) ? values.get(rgbGProp.id) : rgbGProp.value?.value);
+			const rgbB = this.toNumber(values.has(rgbBProp.id) ? values.get(rgbBProp.id) : rgbBProp.value?.value);
 
 			if (rgbR !== null && rgbG !== null && rgbB !== null) {
 				attributes.set(LightEntityAttribute.RGB_COLOR, [rgbR, rgbG, rgbB]);
@@ -391,10 +391,10 @@ export class LightEntityMapperService extends EntityMapper {
 			rgbwWProp &&
 			(values.has(rgbwRProp.id) || values.has(rgbwGProp.id) || values.has(rgbwBProp.id) || values.has(rgbwWProp.id))
 		) {
-			const rgbwR = this.toNumber(values.has(rgbwRProp.id) ? values.get(rgbwRProp.id) : rgbwRProp.value);
-			const rgbwG = this.toNumber(values.has(rgbwGProp.id) ? values.get(rgbwGProp.id) : rgbwGProp.value);
-			const rgbwB = this.toNumber(values.has(rgbwBProp.id) ? values.get(rgbwBProp.id) : rgbwBProp.value);
-			const rgbwW = this.toNumber(values.has(rgbwWProp.id) ? values.get(rgbwWProp.id) : rgbwWProp.value);
+			const rgbwR = this.toNumber(values.has(rgbwRProp.id) ? values.get(rgbwRProp.id) : rgbwRProp.value?.value);
+			const rgbwG = this.toNumber(values.has(rgbwGProp.id) ? values.get(rgbwGProp.id) : rgbwGProp.value?.value);
+			const rgbwB = this.toNumber(values.has(rgbwBProp.id) ? values.get(rgbwBProp.id) : rgbwBProp.value?.value);
+			const rgbwW = this.toNumber(values.has(rgbwWProp.id) ? values.get(rgbwWProp.id) : rgbwWProp.value?.value);
 
 			if (rgbwR !== null && rgbwG !== null && rgbwB !== null && rgbwW !== null) {
 				attributes.set(LightEntityAttribute.RGBW_COLOR, [rgbwR, rgbwG, rgbwB, rgbwW]);

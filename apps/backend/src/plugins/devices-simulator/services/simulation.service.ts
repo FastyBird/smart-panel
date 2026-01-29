@@ -520,9 +520,9 @@ export class SimulationService implements OnModuleInit, OnModuleDestroy, IManage
 
 		for (const channel of device.channels ?? []) {
 			for (const property of channel.properties ?? []) {
-				if (property.value !== null && property.value !== undefined) {
+				if (property.value?.value !== null && property.value?.value !== undefined) {
 					const key = `${channel.category}:${property.category}`;
-					values.set(key, property.value);
+					values.set(key, property.value.value);
 				}
 			}
 		}

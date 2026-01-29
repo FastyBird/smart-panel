@@ -8,6 +8,7 @@ import 'package:fastybird_smart_panel/modules/devices/views/channels/thermostat.
 import 'package:fastybird_smart_panel/modules/devices/views/properties/locked.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:fastybird_smart_panel/modules/devices/types/value_state.dart';
 
 class MockDeviceControlStateService extends Mock
     implements DeviceControlStateService {}
@@ -41,7 +42,7 @@ void main() {
             type: 'locked',
             channel: channelId,
             category: DevicesModulePropertyCategory.locked,
-            value: BooleanValueType(false),
+            valueState: PropertyValueState(value: BooleanValueType(false)),
           ),
         ],
       );

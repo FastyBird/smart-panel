@@ -15,7 +15,7 @@ class FrequencyChannelPropertyView extends ChannelPropertyView {
     super.invalid,
     super.step,
     super.defaultValue,
-    super.value,
+    super.valueState,
   });
 
   num? get frequency => value is NumberValueType ? (value as NumberValueType).value : null;

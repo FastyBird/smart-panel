@@ -17,7 +17,7 @@ class DurationChannelPropertyView extends ChannelPropertyView {
     super.invalid,
     super.step,
     super.defaultValue,
-    super.value,
+    super.valueState,
   });
 
   /// Returns the duration value in the specified unit.

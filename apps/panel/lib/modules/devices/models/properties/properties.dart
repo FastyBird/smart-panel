@@ -3,6 +3,7 @@ import 'package:fastybird_smart_panel/api/models/devices_module_permission_type.
 import 'package:fastybird_smart_panel/api/models/devices_module_property_category.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/model.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/formats.dart';
+import 'package:fastybird_smart_panel/modules/devices/types/value_state.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 
 abstract class ChannelPropertyModel extends Model {
@@ -22,7 +23,7 @@ abstract class ChannelPropertyModel extends Model {
   final InvalidValueType? _invalid;
   final double? _step;
   final ValueType? _defaultValue;
-  final ValueType? _value;
+  final PropertyValueState? _valueState;
 
   ChannelPropertyModel({
     required super.id,
@@ -37,7 +38,7 @@ abstract class ChannelPropertyModel extends Model {
     InvalidValueType? invalid,
     double? step,
     ValueType? defaultValue,
-    ValueType? value,
+    PropertyValueState? valueState,
     super.createdAt,
     super.updatedAt,
   })  : _type = type,
@@ -51,7 +52,7 @@ abstract class ChannelPropertyModel extends Model {
         _invalid = invalid,
         _step = step,
         _defaultValue = defaultValue,
-        _value = value;
+        _valueState = valueState;
 
   String get type => _type;
 
@@ -75,7 +76,11 @@ abstract class ChannelPropertyModel extends Model {
 
   ValueType? get defaultValue => _defaultValue;
 
-  ValueType? get value => _value;
+  /// The raw value extracted from the value state.
+  ValueType? get value => _valueState?.value;
+
+  /// The full value state including lastUpdated and trend.
+  PropertyValueState? get valueState => _valueState;
 
   bool get isReadable {
     return _permission.any(
@@ -94,7 +99,7 @@ abstract class ChannelPropertyModel extends Model {
   }
 
   ChannelPropertyModel copyWith({
-    ValueType? value,
+    PropertyValueState? valueState,
     bool? clearValue,
   });
 }

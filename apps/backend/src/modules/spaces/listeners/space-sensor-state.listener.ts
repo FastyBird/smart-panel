@@ -64,6 +64,19 @@ export class SpaceSensorStateListener implements OnModuleInit, OnModuleDestroy {
 		this.debounceTimers.clear();
 	}
 
+	@OnEvent(EventType.SENSOR_TARGET_CREATED)
+	@OnEvent(EventType.SENSOR_TARGET_UPDATED)
+	@OnEvent(EventType.SENSOR_TARGET_DELETED)
+	handleSensorRoleChanged(payload: { space_id: string }): void {
+		const spaceId = payload?.space_id;
+
+		if (!spaceId) {
+			return;
+		}
+
+		this.scheduleSensorStateEmit(spaceId);
+	}
+
 	@OnEvent(DevicesEventType.CHANNEL_PROPERTY_VALUE_SET)
 	@OnEvent(DevicesEventType.CHANNEL_PROPERTY_UPDATED)
 	async handlePropertyChanged(property: ChannelPropertyEntity): Promise<void> {

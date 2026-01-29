@@ -49,6 +49,38 @@ class SensorSafetyAlertModel {
   }
 }
 
+/// Additional reading from a multi-property sensor channel
+class SensorAdditionalReadingModel {
+  final String propertyId;
+  final String propertyCategory;
+  final dynamic value;
+  final String? unit;
+  final DateTime? updatedAt;
+  final String? trend;
+
+  SensorAdditionalReadingModel({
+    required this.propertyId,
+    required this.propertyCategory,
+    this.value,
+    this.unit,
+    this.updatedAt,
+    this.trend,
+  });
+
+  factory SensorAdditionalReadingModel.fromJson(Map<String, dynamic> json) {
+    return SensorAdditionalReadingModel(
+      propertyId: json['property_id'] as String? ?? '',
+      propertyCategory: json['property_category'] as String? ?? '',
+      value: json['value'],
+      unit: json['unit'] as String?,
+      updatedAt: json['updated_at'] != null
+          ? DateTime.tryParse(json['updated_at'] as String)
+          : null,
+      trend: json['trend'] as String?,
+    );
+  }
+}
+
 /// Individual sensor reading
 class SensorReadingModel {
   final String deviceId;
@@ -56,9 +88,13 @@ class SensorReadingModel {
   final String channelId;
   final String channelName;
   final String channelCategory;
+  final String? propertyId;
   final dynamic value;
   final String? unit;
   final String? role;
+  final DateTime? updatedAt;
+  final String? trend;
+  final List<SensorAdditionalReadingModel> additionalReadings;
 
   SensorReadingModel({
     required this.deviceId,
@@ -66,21 +102,34 @@ class SensorReadingModel {
     required this.channelId,
     required this.channelName,
     required this.channelCategory,
+    this.propertyId,
     this.value,
     this.unit,
     this.role,
+    this.updatedAt,
+    this.trend,
+    this.additionalReadings = const [],
   });
 
   factory SensorReadingModel.fromJson(Map<String, dynamic> json) {
+    final additionalJson = json['additional_readings'] as List<dynamic>? ?? [];
     return SensorReadingModel(
       deviceId: json['device_id'] as String? ?? '',
       deviceName: json['device_name'] as String? ?? '',
       channelId: json['channel_id'] as String? ?? '',
       channelName: json['channel_name'] as String? ?? '',
       channelCategory: json['channel_category'] as String? ?? '',
+      propertyId: json['property_id'] as String?,
       value: json['value'],
       unit: json['unit'] as String?,
       role: json['role'] as String?,
+      updatedAt: json['updated_at'] != null
+          ? DateTime.tryParse(json['updated_at'] as String)
+          : null,
+      trend: json['trend'] as String?,
+      additionalReadings: additionalJson
+          .map((item) => SensorAdditionalReadingModel.fromJson(item as Map<String, dynamic>))
+          .toList(),
     );
   }
 }

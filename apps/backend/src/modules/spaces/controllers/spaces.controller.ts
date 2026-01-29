@@ -94,6 +94,7 @@ import {
 	RoleLastIntentDataModel,
 	RolesStateMapDataModel,
 	SafetyAlertDataModel,
+	SensorAdditionalReadingDataModel,
 	SensorReadingDataModel,
 	SensorRoleReadingsDataModel,
 	SensorRoleResponseModel,
@@ -151,6 +152,7 @@ import { IntentSpecLoaderService } from '../spec';
 	OtherLightsStateDataModel,
 	SensorStateResponseModel,
 	SensorStateDataModel,
+	SensorAdditionalReadingDataModel,
 	SensorReadingDataModel,
 	SensorRoleReadingsDataModel,
 	EnvironmentSummaryDataModel,
@@ -1531,9 +1533,22 @@ export class SpacesController {
 				readingData.channelId = reading.channelId;
 				readingData.channelName = reading.channelName;
 				readingData.channelCategory = reading.channelCategory;
+				readingData.propertyId = reading.propertyId;
 				readingData.value = reading.value;
 				readingData.unit = reading.unit;
 				readingData.role = reading.role;
+				readingData.updatedAt = reading.updatedAt;
+				readingData.trend = reading.trend;
+				readingData.additionalReadings = reading.additionalReadings.map((ar) => {
+					const arData = new SensorAdditionalReadingDataModel();
+					arData.propertyId = ar.propertyId;
+					arData.propertyCategory = ar.propertyCategory;
+					arData.value = ar.value;
+					arData.unit = ar.unit;
+					arData.updatedAt = ar.updatedAt;
+					arData.trend = ar.trend;
+					return arData;
+				});
 				return readingData;
 			});
 			return roleData;

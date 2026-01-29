@@ -12,6 +12,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { InfluxDbService } from '../../influxdb/services/influxdb.service';
 import { DataTypeType } from '../devices.constants';
 import { ChannelPropertyEntity } from '../entities/devices.entity';
+import { PropertyValueState } from '../models/property-value-state.model';
 
 import { PropertyValueService } from './property-value.service';
 
@@ -89,11 +90,11 @@ describe('PropertyValueService', () => {
 				dataType: DataTypeType.INT,
 			} as ChannelPropertyEntity;
 
-			service['valuesMap'].set('test-property-id', 42);
+			service['valuesMap'].set('test-property-id', new PropertyValueState(42));
 
 			const result = await service.readLatest(property);
 
-			expect(result).toBe(42);
+			expect(result?.value).toBe(42);
 			expect(influxDbService.query).not.toHaveBeenCalled();
 		});
 
@@ -108,7 +109,7 @@ describe('PropertyValueService', () => {
 
 			const result = await service.readLatest(property);
 
-			expect(result).toBe(100);
+			expect(result?.value).toBe(100);
 			expect(influxDbService.query).toHaveBeenCalledWith(expect.stringContaining('SELECT * FROM property_value'));
 		});
 

@@ -185,6 +185,116 @@ class AppLocalizationsCs extends AppLocalizations {
   }
 
   @override
+  String time_ago_medium_minutes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'před $count minutami',
+      few: 'před $count minutami',
+      one: 'před 1 minutou',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String time_ago_medium_hours(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'před $count hodinami',
+      few: 'před $count hodinami',
+      one: 'před 1 hodinou',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String time_ago_medium_days(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'před $count dny',
+      few: 'před $count dny',
+      one: 'před 1 dnem',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String time_ago_full_minutes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'před $count minutami',
+      few: 'před $count minutami',
+      one: 'před 1 minutou',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String time_ago_full_hours_minutes(int hours, int minutes) {
+    String _temp0 = intl.Intl.pluralLogic(
+      hours,
+      locale: localeName,
+      other: '$hours hodinami',
+      few: '$hours hodinami',
+      one: '1 hodinou',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      minutes,
+      locale: localeName,
+      other: '$minutes minutami',
+      few: '$minutes minutami',
+      one: '1 minutou',
+    );
+    return 'před $_temp0 $_temp1';
+  }
+
+  @override
+  String time_ago_full_hours(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'před $count hodinami',
+      few: 'před $count hodinami',
+      one: 'před 1 hodinou',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String time_ago_full_days_hours(int days, int hours) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days dny',
+      few: '$days dny',
+      one: '1 dnem',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      hours,
+      locale: localeName,
+      other: '$hours hodinami',
+      few: '$hours hodinami',
+      one: '1 hodinou',
+    );
+    return 'před $_temp0 $_temp1';
+  }
+
+  @override
+  String time_ago_full_days(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'před $count dny',
+      few: 'před $count dny',
+      one: 'před 1 dnem',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get device_config_issue => 'Problém s konfigurací';
 
   @override
@@ -1932,4 +2042,103 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get connection_server_error_button_retry => 'Zkusit znovu';
+
+  @override
+  String get sensor_enum_illuminance_dark => 'Tma';
+
+  @override
+  String get sensor_enum_illuminance_dim => 'Šero';
+
+  @override
+  String get sensor_enum_illuminance_light => 'Světlo';
+
+  @override
+  String get sensor_enum_illuminance_bright => 'Jasno';
+
+  @override
+  String get sensor_enum_illuminance_dark_long => 'Tma';
+
+  @override
+  String get sensor_enum_illuminance_dim_long => 'Šero';
+
+  @override
+  String get sensor_enum_illuminance_light_long => 'Světlo';
+
+  @override
+  String get sensor_enum_illuminance_bright_long => 'Jasno';
+
+  @override
+  String get sensor_enum_gas_status_normal => 'OK';
+
+  @override
+  String get sensor_enum_gas_status_testing => 'Test';
+
+  @override
+  String get sensor_enum_gas_status_detected => 'Plyn!';
+
+  @override
+  String get sensor_enum_gas_status_normal_long => 'Normální';
+
+  @override
+  String get sensor_enum_gas_status_testing_long => 'Testování';
+
+  @override
+  String get sensor_enum_gas_status_detected_long => 'Plyn detekován';
+
+  @override
+  String get sensor_enum_leak_none => 'Sucho';
+
+  @override
+  String get sensor_enum_leak_detected => 'Únik!';
+
+  @override
+  String get sensor_enum_leak_none_long => 'Žádný únik';
+
+  @override
+  String get sensor_enum_leak_detected_long => 'Únik detekován';
+
+  @override
+  String get sensor_enum_battery_level_normal => 'OK';
+
+  @override
+  String get sensor_enum_battery_level_low => 'Nízká';
+
+  @override
+  String get sensor_enum_battery_level_normal_long => 'Normální';
+
+  @override
+  String get sensor_enum_battery_level_low_long => 'Nízká baterie';
+
+  @override
+  String get sensor_enum_battery_status_normal => 'OK';
+
+  @override
+  String get sensor_enum_battery_status_charging => 'Nabíjí';
+
+  @override
+  String get sensor_enum_battery_status_not_charging => 'Nečinná';
+
+  @override
+  String get sensor_enum_battery_status_not_chargeable => 'N/A';
+
+  @override
+  String get sensor_enum_battery_status_normal_long => 'Normální';
+
+  @override
+  String get sensor_enum_battery_status_charging_long => 'Nabíjení';
+
+  @override
+  String get sensor_enum_battery_status_not_charging_long => 'Nenabíjí se';
+
+  @override
+  String get sensor_enum_battery_status_not_chargeable_long => 'Nelze nabíjet';
+
+  @override
+  String get sensor_freshness_live => 'Živě';
+
+  @override
+  String get sensor_freshness_stale => 'Zastaralé';
+
+  @override
+  String get sensor_freshness_offline => 'Offline';
 }

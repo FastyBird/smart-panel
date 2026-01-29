@@ -500,13 +500,13 @@ export class DeviceManagerService {
 										chan.id,
 									);
 
-									if (sourceProp && sourceProp.value !== null && sourceProp.value !== undefined) {
+									if (sourceProp && sourceProp.value?.value !== null && sourceProp.value?.value !== undefined) {
 										// Apply derivation rule
 										const derivedValue = this.applyDerivation(
 											derivedProp.derivationName
 												? this.mappingLoaderService.getDerivation(derivedProp.derivationName)?.rule
 												: derivedProp.inlineDerivation,
-											sourceProp.value,
+											sourceProp.value?.value,
 										);
 
 										if (derivedValue !== undefined) {
@@ -1475,13 +1475,13 @@ export class DeviceManagerService {
 										battery.id,
 									);
 
-									if (sourceProp && sourceProp.value !== null && sourceProp.value !== undefined) {
+									if (sourceProp && sourceProp.value?.value !== null && sourceProp.value?.value !== undefined) {
 										// Apply derivation rule
 										const derivedValue = this.applyDerivation(
 											derivedProp.derivationName
 												? this.mappingLoaderService.getDerivation(derivedProp.derivationName)?.rule
 												: derivedProp.inlineDerivation,
-											sourceProp.value,
+											sourceProp.value?.value,
 										);
 
 										if (derivedValue !== undefined) {

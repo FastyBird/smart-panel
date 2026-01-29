@@ -13,6 +13,7 @@ import { v4 as uuid } from 'uuid';
 import { Logger } from '@nestjs/common';
 
 import { ChannelCategory, ConnectionState, PropertyCategory } from '../../../modules/devices/devices.constants';
+import { PropertyValueState } from '../../../modules/devices/models/property-value-state.model';
 import { CreateShellyNgDeviceDto } from '../dto/create-device.dto';
 import {
 	ShellyNgChannelEntity,
@@ -155,14 +156,14 @@ describe('DelegatesManagerService', () => {
 			channel: deviceInfoCh.id,
 			category: PropertyCategory.STATUS,
 			identifier: 'status',
-			value: ConnectionState.UNKNOWN,
+			value: new PropertyValueState(ConnectionState.UNKNOWN),
 		} as ShellyNgChannelPropertyEntity;
 
 		const linkQProp = {
 			channel: deviceInfoCh.id,
 			category: PropertyCategory.LINK_QUALITY,
 			identifier: 'link_quality',
-			value: 0,
+			value: new PropertyValueState(0),
 		} as ShellyNgChannelPropertyEntity;
 
 		const switchCh = {
@@ -176,7 +177,7 @@ describe('DelegatesManagerService', () => {
 			channel: switchCh.id,
 			category: PropertyCategory.ON,
 			identifier: 'output',
-			value: false,
+			value: new PropertyValueState(false),
 		} as ShellyNgChannelPropertyEntity;
 
 		// devicesService mocks
@@ -236,12 +237,12 @@ describe('DelegatesManagerService', () => {
 
 		expect(
 			updates.some(
-				(p) =>
+				(p: any) =>
 					p && p.identifier === linkQProp.identifier && typeof p.value === 'number' && p.value > 0 && p.value <= 100,
 			),
 		).toBe(true);
 
-		expect(updates.some((p) => p && p.identifier === switchOn.identifier && p.value === true)).toBe(true);
+		expect(updates.some((p: any) => p && p.identifier === switchOn.identifier && p.value === true)).toBe(true);
 
 		expect(updateCalls.map(([id]: [string]) => id)).toEqual(expect.arrayContaining([linkQProp.id, switchOn.id]));
 

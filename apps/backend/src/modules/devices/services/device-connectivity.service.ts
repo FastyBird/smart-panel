@@ -56,7 +56,7 @@ export class DeviceConnectivityService {
 			return;
 		}
 
-		const last = property.value;
+		const last = property.value?.value;
 
 		let changed = false;
 

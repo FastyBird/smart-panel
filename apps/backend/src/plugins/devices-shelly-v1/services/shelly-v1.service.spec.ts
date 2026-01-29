@@ -11,6 +11,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { ConnectionState } from '../../../modules/devices/devices.constants';
+import { PropertyValueState } from '../../../modules/devices/models/property-value-state.model';
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { ChannelsService } from '../../../modules/devices/services/channels.service';
 import { DeviceConnectivityService } from '../../../modules/devices/services/device-connectivity.service';
@@ -73,7 +74,7 @@ describe('ShellyV1Service', () => {
 		get type() {
 			return DEVICES_SHELLY_V1_TYPE;
 		},
-		value: false,
+		value: new PropertyValueState(false),
 	} as ShellyV1ChannelPropertyEntity;
 
 	const mockModelProperty = {
@@ -82,7 +83,7 @@ describe('ShellyV1Service', () => {
 		get type() {
 			return DEVICES_SHELLY_V1_TYPE;
 		},
-		value: 'SHSW-PM',
+		value: new PropertyValueState('SHSW-PM'),
 	} as ShellyV1ChannelPropertyEntity;
 
 	beforeEach(async () => {
@@ -189,7 +190,7 @@ describe('ShellyV1Service', () => {
 				.mockResolvedValueOnce(mockProperty); // Second call for state property
 			channelsPropertiesService.update.mockResolvedValue({
 				...mockProperty,
-				value: true,
+				value: new PropertyValueState(true),
 				get type() {
 					return DEVICES_SHELLY_V1_TYPE;
 				},

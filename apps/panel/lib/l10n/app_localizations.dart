@@ -413,6 +413,54 @@ abstract class AppLocalizations {
   /// **'{count} d ago'**
   String time_ago_days(int count);
 
+  /// Medium time ago label for minutes
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 minute ago} other{{count} minutes ago}}'**
+  String time_ago_medium_minutes(int count);
+
+  /// Medium time ago label for hours
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 hour ago} other{{count} hours ago}}'**
+  String time_ago_medium_hours(int count);
+
+  /// Medium time ago label for days
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 day ago} other{{count} days ago}}'**
+  String time_ago_medium_days(int count);
+
+  /// Full time ago label for minutes (same as medium, no sub-unit)
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 minute ago} other{{count} minutes ago}}'**
+  String time_ago_full_minutes(int count);
+
+  /// Full time ago label for hours and minutes
+  ///
+  /// In en, this message translates to:
+  /// **'{hours, plural, =1{1 hour} other{{hours} hours}} {minutes, plural, =1{1 minute} other{{minutes} minutes}} ago'**
+  String time_ago_full_hours_minutes(int hours, int minutes);
+
+  /// Full time ago label for hours only (no remaining minutes)
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 hour ago} other{{count} hours ago}}'**
+  String time_ago_full_hours(int count);
+
+  /// Full time ago label for days and hours
+  ///
+  /// In en, this message translates to:
+  /// **'{days, plural, =1{1 day} other{{days} days}} {hours, plural, =1{1 hour} other{{hours} hours}} ago'**
+  String time_ago_full_days_hours(int days, int hours);
+
+  /// Full time ago label for days only (no remaining hours)
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 day ago} other{{count} days ago}}'**
+  String time_ago_full_days(int count);
+
   /// Message shown when a device has configuration problems
   ///
   /// In en, this message translates to:
@@ -3814,6 +3862,204 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Try Again'**
   String get connection_server_error_button_retry;
+
+  /// No description provided for @sensor_enum_illuminance_dark.
+  ///
+  /// In en, this message translates to:
+  /// **'Dark'**
+  String get sensor_enum_illuminance_dark;
+
+  /// No description provided for @sensor_enum_illuminance_dim.
+  ///
+  /// In en, this message translates to:
+  /// **'Dim'**
+  String get sensor_enum_illuminance_dim;
+
+  /// No description provided for @sensor_enum_illuminance_light.
+  ///
+  /// In en, this message translates to:
+  /// **'Light'**
+  String get sensor_enum_illuminance_light;
+
+  /// No description provided for @sensor_enum_illuminance_bright.
+  ///
+  /// In en, this message translates to:
+  /// **'Bright'**
+  String get sensor_enum_illuminance_bright;
+
+  /// No description provided for @sensor_enum_illuminance_dark_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Dark'**
+  String get sensor_enum_illuminance_dark_long;
+
+  /// No description provided for @sensor_enum_illuminance_dim_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Dim'**
+  String get sensor_enum_illuminance_dim_long;
+
+  /// No description provided for @sensor_enum_illuminance_light_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Light'**
+  String get sensor_enum_illuminance_light_long;
+
+  /// No description provided for @sensor_enum_illuminance_bright_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Bright'**
+  String get sensor_enum_illuminance_bright_long;
+
+  /// No description provided for @sensor_enum_gas_status_normal.
+  ///
+  /// In en, this message translates to:
+  /// **'OK'**
+  String get sensor_enum_gas_status_normal;
+
+  /// No description provided for @sensor_enum_gas_status_testing.
+  ///
+  /// In en, this message translates to:
+  /// **'Test'**
+  String get sensor_enum_gas_status_testing;
+
+  /// No description provided for @sensor_enum_gas_status_detected.
+  ///
+  /// In en, this message translates to:
+  /// **'Gas!'**
+  String get sensor_enum_gas_status_detected;
+
+  /// No description provided for @sensor_enum_gas_status_normal_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Normal'**
+  String get sensor_enum_gas_status_normal_long;
+
+  /// No description provided for @sensor_enum_gas_status_testing_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Testing'**
+  String get sensor_enum_gas_status_testing_long;
+
+  /// No description provided for @sensor_enum_gas_status_detected_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Gas Detected'**
+  String get sensor_enum_gas_status_detected_long;
+
+  /// No description provided for @sensor_enum_leak_none.
+  ///
+  /// In en, this message translates to:
+  /// **'Dry'**
+  String get sensor_enum_leak_none;
+
+  /// No description provided for @sensor_enum_leak_detected.
+  ///
+  /// In en, this message translates to:
+  /// **'Leak!'**
+  String get sensor_enum_leak_detected;
+
+  /// No description provided for @sensor_enum_leak_none_long.
+  ///
+  /// In en, this message translates to:
+  /// **'No Leak'**
+  String get sensor_enum_leak_none_long;
+
+  /// No description provided for @sensor_enum_leak_detected_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Leak Detected'**
+  String get sensor_enum_leak_detected_long;
+
+  /// No description provided for @sensor_enum_battery_level_normal.
+  ///
+  /// In en, this message translates to:
+  /// **'OK'**
+  String get sensor_enum_battery_level_normal;
+
+  /// No description provided for @sensor_enum_battery_level_low.
+  ///
+  /// In en, this message translates to:
+  /// **'Low'**
+  String get sensor_enum_battery_level_low;
+
+  /// No description provided for @sensor_enum_battery_level_normal_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Normal'**
+  String get sensor_enum_battery_level_normal_long;
+
+  /// No description provided for @sensor_enum_battery_level_low_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Low Battery'**
+  String get sensor_enum_battery_level_low_long;
+
+  /// No description provided for @sensor_enum_battery_status_normal.
+  ///
+  /// In en, this message translates to:
+  /// **'OK'**
+  String get sensor_enum_battery_status_normal;
+
+  /// No description provided for @sensor_enum_battery_status_charging.
+  ///
+  /// In en, this message translates to:
+  /// **'Chrg'**
+  String get sensor_enum_battery_status_charging;
+
+  /// No description provided for @sensor_enum_battery_status_not_charging.
+  ///
+  /// In en, this message translates to:
+  /// **'Idle'**
+  String get sensor_enum_battery_status_not_charging;
+
+  /// No description provided for @sensor_enum_battery_status_not_chargeable.
+  ///
+  /// In en, this message translates to:
+  /// **'N/A'**
+  String get sensor_enum_battery_status_not_chargeable;
+
+  /// No description provided for @sensor_enum_battery_status_normal_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Normal'**
+  String get sensor_enum_battery_status_normal_long;
+
+  /// No description provided for @sensor_enum_battery_status_charging_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Charging'**
+  String get sensor_enum_battery_status_charging_long;
+
+  /// No description provided for @sensor_enum_battery_status_not_charging_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Not Charging'**
+  String get sensor_enum_battery_status_not_charging_long;
+
+  /// No description provided for @sensor_enum_battery_status_not_chargeable_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Not Chargeable'**
+  String get sensor_enum_battery_status_not_chargeable_long;
+
+  /// Label shown when sensor data is fresh/live
+  ///
+  /// In en, this message translates to:
+  /// **'Live'**
+  String get sensor_freshness_live;
+
+  /// Label prefix shown when sensor data is stale
+  ///
+  /// In en, this message translates to:
+  /// **'Stale'**
+  String get sensor_freshness_stale;
+
+  /// Label shown when sensor device is offline
+  ///
+  /// In en, this message translates to:
+  /// **'Offline'**
+  String get sensor_freshness_offline;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
