@@ -78,7 +78,6 @@
 					</template>
 
 					<el-form
-						ref="formRef"
 						label-position="top"
 						class="flex flex-col gap-2"
 					>
@@ -328,7 +327,6 @@ const form = reactive<{
 	audioVolumePreset: 30,
 });
 
-const formRef = ref();
 const lastLoadedForm = ref<typeof form | null>(null);
 
 const initialLoading = computed(() => fetchingEndpoints.value || fetchingBindings.value);
@@ -424,7 +422,7 @@ const onSave = async (): Promise<void> => {
 		audioEndpointId: form.audioEndpointId || null,
 		sourceEndpointId: form.sourceEndpointId || null,
 		remoteEndpointId: form.remoteEndpointId || null,
-		displayInputId: form.displayInputId || null,
+		displayInputId: selectedDisplayHasInputSelect.value ? form.displayInputId || null : null,
 		audioVolumePreset: selectedAudioHasVolume.value ? form.audioVolumePreset : null,
 	};
 
