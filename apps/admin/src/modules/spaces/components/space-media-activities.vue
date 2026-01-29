@@ -512,7 +512,6 @@ import { Icon } from '@iconify/vue';
 
 import { useFlashMessage } from '../../../common';
 import {
-	type IMediaActiveState,
 	type IMediaActivityBinding,
 	type MediaActivationState,
 	MediaActivityKey,

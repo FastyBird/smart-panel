@@ -352,7 +352,6 @@ describe('useSpaceMedia', () => {
 		});
 
 		it('should set optimistic activating state before API call', async () => {
-			let capturedState: string | undefined;
 			mockPost.mockImplementation(async () => {
 				// Capture state during the POST call - it won't be 'activating' since we
 				// set it before the call, but we test the final state
