@@ -104,11 +104,11 @@ describe('useSpaceMedia', () => {
 				expect.objectContaining({ params: { path: { id: 'space-1' } } }),
 			);
 			expect(endpoints.value).toHaveLength(2);
-			expect(endpoints.value[0].endpointId).toBe('space-1:display:dev-1');
-			expect(endpoints.value[0].name).toBe('Living Room TV');
-			expect(endpoints.value[0].capabilities.power).toBe(true);
-			expect(endpoints.value[0].capabilities.inputSelect).toBe(true);
-			expect(endpoints.value[0].capabilities.volume).toBe(false);
+			expect(endpoints.value[0]!.endpointId).toBe('space-1:display:dev-1');
+			expect(endpoints.value[0]!.name).toBe('Living Room TV');
+			expect(endpoints.value[0]!.capabilities.power).toBe(true);
+			expect(endpoints.value[0]!.capabilities.inputSelect).toBe(true);
+			expect(endpoints.value[0]!.capabilities.volume).toBe(false);
 		});
 
 		it('should not fetch when spaceId is undefined', async () => {
@@ -142,9 +142,9 @@ describe('useSpaceMedia', () => {
 			await fetchBindings();
 
 			expect(bindings.value).toHaveLength(1);
-			expect(bindings.value[0].activityKey).toBe('watch');
-			expect(bindings.value[0].displayEndpointId).toBe('space-1:display:dev-1');
-			expect(bindings.value[0].audioVolumePreset).toBe(30);
+			expect(bindings.value[0]!.activityKey).toBe('watch');
+			expect(bindings.value[0]!.displayEndpointId).toBe('space-1:display:dev-1');
+			expect(bindings.value[0]!.audioVolumePreset).toBe(30);
 		});
 	});
 
@@ -229,7 +229,7 @@ describe('useSpaceMedia', () => {
 
 			const displays = endpointsByType(MediaEndpointType.display);
 			expect(displays.value).toHaveLength(1);
-			expect(displays.value[0].type).toBe('display');
+			expect(displays.value[0]!.type).toBe('display');
 
 			const sources = endpointsByType(MediaEndpointType.source);
 			expect(sources.value).toHaveLength(0);

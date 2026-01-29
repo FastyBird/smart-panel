@@ -192,10 +192,10 @@ const getTypeIcon = (type: string): string => {
 	}
 };
 
-const getTypeBadgeType = (type: string): '' | 'success' | 'warning' | 'info' | 'danger' => {
+const getTypeBadgeType = (type: string): 'primary' | 'success' | 'warning' | 'info' | 'danger' => {
 	switch (type) {
 		case MediaEndpointType.display:
-			return '';
+			return 'primary';
 		case MediaEndpointType.audio_output:
 			return 'success';
 		case MediaEndpointType.source:

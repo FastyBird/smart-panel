@@ -380,7 +380,7 @@ const getActivityIcon = (key: string): string => {
 	}
 };
 
-const getActivityStatusType = (key: MediaActivityKey): '' | 'success' | 'warning' | 'info' | 'danger' => {
+const getActivityStatusType = (key: MediaActivityKey): 'primary' | 'success' | 'warning' | 'info' | 'danger' => {
 	const binding = findBindingByActivity(key);
 	if (!binding) return 'info';
 
