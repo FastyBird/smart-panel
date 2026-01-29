@@ -626,6 +626,22 @@
 			"deactivateSuccess": "Activity deactivated.",
 			"deactivateFailed": "Failed to deactivate activity.",
 			"fetchFailed": "Failed to refresh activity status.",
+			"preview": "Preview",
+			"previewFailed": "Failed to preview activity.",
+			"previewDialog": {
+				"title": "Execution Plan Preview",
+				"resolvedDevices": "Resolved devices",
+				"executionPlan": "Execution plan",
+				"step": "#",
+				"action": "Action",
+				"device": "Device",
+				"critical": "Critical",
+				"criticalYes": "Critical",
+				"criticalNo": "Optional",
+				"warnings": "Warnings & skipped steps",
+				"noSteps": "No execution steps in plan.",
+				"close": "Close"
+			},
 			"activePanel": {
 				"title": "Active State",
 				"currentActivity": "Current activity",

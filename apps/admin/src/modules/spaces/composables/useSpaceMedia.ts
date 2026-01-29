@@ -95,6 +95,29 @@ export interface IMediaActiveState {
 	updatedAt?: string | null;
 }
 
+export interface IMediaExecutionStep {
+	targetDeviceId: string;
+	action: {
+		kind: string;
+		propertyId?: string;
+		value?: unknown;
+	};
+	critical: boolean;
+	label?: string;
+}
+
+export interface IMediaDryRunWarning {
+	label: string;
+}
+
+export interface IMediaDryRunPreview {
+	spaceId: string;
+	activityKey: string;
+	resolved: IMediaResolvedDevices;
+	plan: IMediaExecutionStep[];
+	warnings: IMediaDryRunWarning[];
+}
+
 export interface IUseSpaceMedia {
 	endpoints: ComputedRef<IDerivedMediaEndpoint[]>;
 	bindings: ComputedRef<IMediaActivityBinding[]>;
@@ -114,9 +137,14 @@ export interface IUseSpaceMedia {
 	fetchEndpoints: () => Promise<void>;
 	fetchBindings: () => Promise<void>;
 	fetchActiveState: () => Promise<void>;
+	previewing: Ref<boolean>;
+	previewError: Ref<string | null>;
 	activate: (
 		activityKey: PathsModulesSpacesSpacesIdMediaActivitiesActivityKeyActivatePostParametersPathActivityKey,
 	) => Promise<IMediaActiveState>;
+	preview: (
+		activityKey: PathsModulesSpacesSpacesIdMediaActivitiesActivityKeyActivatePostParametersPathActivityKey,
+	) => Promise<IMediaDryRunPreview>;
 	deactivate: () => Promise<IMediaActiveState>;
 	saveBinding: (bindingId: string, payload: IBindingSavePayload) => Promise<IMediaActivityBinding>;
 	createBinding: (
@@ -206,6 +234,38 @@ const transformSummary = (data: Record<string, unknown>): IMediaActivationSummar
 	errorCount: (data.error_count as number) ?? (data.errorCount as number) ?? 0,
 });
 
+const transformExecutionStep = (raw: Record<string, unknown>): IMediaExecutionStep => {
+	const action = (raw.action as Record<string, unknown>) ?? {};
+
+	return {
+		targetDeviceId:
+			(raw.target_device_id as string) ?? (raw.targetDeviceId as string) ?? '',
+		action: {
+			kind: (action.kind as string) ?? 'unknown',
+			propertyId: (action.property_id as string | undefined) ?? (action.propertyId as string | undefined),
+			value: action.value,
+		},
+		critical: (raw.critical as boolean) ?? false,
+		label: (raw.label as string | undefined),
+	};
+};
+
+const transformDryRunPreview = (raw: Record<string, unknown>): IMediaDryRunPreview => {
+	const resolved = raw.resolved as Record<string, unknown> | undefined;
+	const plan = (raw.plan as Record<string, unknown>[]) ?? [];
+	const warnings = (raw.warnings as Record<string, unknown>[]) ?? [];
+
+	return {
+		spaceId: (raw.space_id as string) ?? (raw.spaceId as string) ?? '',
+		activityKey: (raw.activity_key as string) ?? (raw.activityKey as string) ?? '',
+		resolved: resolved ? transformResolvedDevices(resolved) : {},
+		plan: plan.map(transformExecutionStep),
+		warnings: warnings.map((w) => ({
+			label: (w.label as string) ?? '',
+		})),
+	};
+};
+
 const transformActivationResult = (raw: Record<string, unknown>): IMediaActiveState => {
 	const resolved = raw.resolved as Record<string, unknown> | undefined;
 	const summary = raw.summary as Record<string, unknown> | undefined;
@@ -272,6 +332,8 @@ export const useSpaceMedia = (spaceId: Ref<string | undefined>): IUseSpaceMedia 
 	const endpointsError = ref<string | null>(null);
 	const bindingsError = ref<string | null>(null);
 	const saveError = ref<string | null>(null);
+	const previewing = ref<boolean>(false);
+	const previewError = ref<string | null>(null);
 	const activationError = ref<string | null>(null);
 	const activationErrorSource = ref<'activate' | 'deactivate' | 'fetch' | null>(null);
 
@@ -484,6 +546,40 @@ export const useSpaceMedia = (spaceId: Ref<string | undefined>): IUseSpaceMedia 
 		}
 	};
 
+	const preview = async (
+		activityKey: PathsModulesSpacesSpacesIdMediaActivitiesActivityKeyActivatePostParametersPathActivityKey,
+	): Promise<IMediaDryRunPreview> => {
+		if (!spaceId.value) throw new Error('Space ID is required');
+
+		previewing.value = true;
+		previewError.value = null;
+
+		try {
+			const { data: responseData, error } = await backend.client.POST(
+				`/${MODULES_PREFIX}/${SPACES_MODULE_PREFIX}/spaces/{id}/media/activities/{activityKey}/activate`,
+				{
+					params: {
+						path: { id: spaceId.value, activityKey },
+						query: { dryRun: 'true' } as Record<string, string>,
+					},
+				},
+			);
+
+			if (error || !responseData || !responseData.data) {
+				const errBody = error as Record<string, unknown> | undefined;
+				const message = (errBody?.message as string) ?? 'Failed to preview activity';
+				throw new Error(message);
+			}
+
+			return transformDryRunPreview(responseData.data as unknown as Record<string, unknown>);
+		} catch (e: unknown) {
+			previewError.value = e instanceof Error ? e.message : 'Unknown error';
+			throw e;
+		} finally {
+			previewing.value = false;
+		}
+	};
+
 	const activate = async (
 		activityKey: PathsModulesSpacesSpacesIdMediaActivitiesActivityKeyActivatePostParametersPathActivityKey,
 	): Promise<IMediaActiveState> => {
@@ -590,6 +686,8 @@ export const useSpaceMedia = (spaceId: Ref<string | undefined>): IUseSpaceMedia 
 		fetchingActiveState,
 		activating,
 		deactivating,
+		previewing,
+		previewError,
 		savingBinding,
 		applyingDefaults,
 		endpointsError,
@@ -601,6 +699,7 @@ export const useSpaceMedia = (spaceId: Ref<string | undefined>): IUseSpaceMedia 
 		fetchBindings,
 		fetchActiveState,
 		activate,
+		preview,
 		deactivate,
 		saveBinding,
 		createBinding,

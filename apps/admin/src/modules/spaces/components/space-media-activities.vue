@@ -346,6 +346,18 @@
 							</el-tag>
 							<el-button
 								size="small"
+								circle
+								:loading="previewing && previewingKey === activity"
+								:disabled="activating || deactivating || previewing || activity === MediaActivityKey.off"
+								:title="t('spacesModule.media.activities.preview')"
+								@click.stop="onPreview(activity)"
+							>
+								<template #icon>
+									<icon icon="mdi:eye-outline" />
+								</template>
+							</el-button>
+							<el-button
+								size="small"
 								type="success"
 								circle
 								:loading="activating && activatingKey === activity"
@@ -547,6 +559,123 @@
 				</el-result>
 			</div>
 		</div>
+
+		<!-- Preview Dialog -->
+		<el-dialog
+			v-model="previewDialogVisible"
+			:title="t('spacesModule.media.activities.previewDialog.title')"
+			width="680px"
+			destroy-on-close
+		>
+			<div
+				v-if="previewData"
+				class="flex flex-col gap-4"
+			>
+				<!-- Resolved composition -->
+				<div>
+					<div class="text-sm font-medium mb-2">{{ t('spacesModule.media.activities.previewDialog.resolvedDevices') }}</div>
+					<div class="grid grid-cols-2 gap-2 text-sm">
+						<div v-if="previewData.resolved.displayDeviceId">
+							<span class="text-gray-400">{{ t('spacesModule.media.activities.activePanel.display') }}:</span>
+							<span class="ml-1">{{ resolveDeviceName(previewData.resolved.displayDeviceId) }}</span>
+						</div>
+						<div v-if="previewData.resolved.audioDeviceId">
+							<span class="text-gray-400">{{ t('spacesModule.media.activities.activePanel.audio') }}:</span>
+							<span class="ml-1">{{ resolveDeviceName(previewData.resolved.audioDeviceId) }}</span>
+						</div>
+						<div v-if="previewData.resolved.sourceDeviceId">
+							<span class="text-gray-400">{{ t('spacesModule.media.activities.activePanel.source') }}:</span>
+							<span class="ml-1">{{ resolveDeviceName(previewData.resolved.sourceDeviceId) }}</span>
+						</div>
+						<div v-if="previewData.resolved.remoteDeviceId">
+							<span class="text-gray-400">{{ t('spacesModule.media.activities.activePanel.remote') }}:</span>
+							<span class="ml-1">{{ resolveDeviceName(previewData.resolved.remoteDeviceId) }}</span>
+						</div>
+					</div>
+				</div>
+
+				<!-- Execution plan steps -->
+				<div>
+					<div class="text-sm font-medium mb-2">{{ t('spacesModule.media.activities.previewDialog.executionPlan') }}</div>
+					<el-table
+						v-if="previewData.plan.length"
+						:data="previewData.plan"
+						size="small"
+						border
+					>
+						<el-table-column
+							:label="t('spacesModule.media.activities.previewDialog.step')"
+							width="60"
+						>
+							<template #default="{ $index }">
+								{{ $index }}
+							</template>
+						</el-table-column>
+						<el-table-column
+							:label="t('spacesModule.media.activities.previewDialog.action')"
+							min-width="200"
+						>
+							<template #default="{ row }">
+								<div class="flex items-center gap-2">
+									<icon
+										:icon="getStepKindIcon(row.action.kind)"
+										class="w[16px] h[16px] shrink-0"
+									/>
+									<span>{{ row.label }}</span>
+								</div>
+							</template>
+						</el-table-column>
+						<el-table-column
+							:label="t('spacesModule.media.activities.previewDialog.device')"
+							min-width="140"
+						>
+							<template #default="{ row }">
+								{{ resolveDeviceName(row.targetDeviceId) }}
+							</template>
+						</el-table-column>
+						<el-table-column
+							:label="t('spacesModule.media.activities.previewDialog.critical')"
+							width="100"
+						>
+							<template #default="{ row }">
+								<el-tag
+									:type="row.critical ? 'danger' : 'info'"
+									size="small"
+								>
+									{{ row.critical ? t('spacesModule.media.activities.previewDialog.criticalYes') : t('spacesModule.media.activities.previewDialog.criticalNo') }}
+								</el-tag>
+							</template>
+						</el-table-column>
+					</el-table>
+					<div
+						v-else
+						class="text-sm text-gray-400"
+					>
+						{{ t('spacesModule.media.activities.previewDialog.noSteps') }}
+					</div>
+				</div>
+
+				<!-- Warnings -->
+				<div v-if="previewData.warnings.length">
+					<div class="text-sm font-medium mb-2">{{ t('spacesModule.media.activities.previewDialog.warnings') }}</div>
+					<el-alert
+						v-for="(warning, idx) in previewData.warnings"
+						:key="idx"
+						type="warning"
+						:title="warning.label"
+						show-icon
+						:closable="false"
+						class="mb-1"
+					/>
+				</div>
+			</div>
+
+			<template #footer>
+				<el-button @click="previewDialogVisible = false">
+					{{ t('spacesModule.media.activities.previewDialog.close') }}
+				</el-button>
+			</template>
+		</el-dialog>
 	</div>
 </template>
 
@@ -558,6 +687,7 @@ import {
 	ElAlert,
 	ElButton,
 	ElCard,
+	ElDialog,
 	ElForm,
 	ElFormItem,
 	ElInput,
@@ -575,6 +705,7 @@ import { Icon } from '@iconify/vue';
 import { useFlashMessage } from '../../../common';
 import {
 	type IMediaActivityBinding,
+	type IMediaDryRunPreview,
 	type IMediaStepFailure,
 	type MediaActivationState,
 	MediaActivityKey,
@@ -602,6 +733,8 @@ const {
 	fetchingActiveState,
 	activating,
 	deactivating,
+	previewing,
+	previewError,
 	savingBinding,
 	applyingDefaults,
 	saveError,
@@ -611,6 +744,7 @@ const {
 	fetchBindings,
 	fetchActiveState,
 	activate,
+	preview,
 	deactivate,
 	saveBinding,
 	createBinding,
@@ -629,6 +763,9 @@ const activityKeys = [
 
 const selectedActivity = ref<MediaActivityKey | null>(null);
 const activatingKey = ref<MediaActivityKey | null>(null);
+const previewingKey = ref<MediaActivityKey | null>(null);
+const previewDialogVisible = ref(false);
+const previewData = ref<IMediaDryRunPreview | null>(null);
 
 const form = reactive<{
 	displayEndpointId: string;
@@ -906,6 +1043,30 @@ const onCopyDebugJson = async (): Promise<void> => {
 		flashMessage.success(t('spacesModule.media.activities.copiedToClipboard'));
 	} catch {
 		// Clipboard API may fail in non-secure contexts; silently ignore
+	}
+};
+
+const onPreview = async (key: MediaActivityKey): Promise<void> => {
+	previewingKey.value = key;
+	try {
+		const result = await preview(key);
+		previewData.value = result;
+		previewDialogVisible.value = true;
+	} catch {
+		flashMessage.error(t('spacesModule.media.activities.previewFailed'));
+	} finally {
+		previewingKey.value = null;
+	}
+};
+
+const getStepKindIcon = (kind: string): string => {
+	switch (kind) {
+		case 'setProperty':
+			return 'mdi:tune';
+		case 'sendCommand':
+			return 'mdi:send';
+		default:
+			return 'mdi:help-circle';
 	}
 };
 

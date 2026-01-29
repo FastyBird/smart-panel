@@ -487,6 +487,85 @@ class MediaActiveStateModel {
 	}
 }
 
+/// A single execution step in a dry-run preview plan.
+class MediaExecutionStepModel {
+	final String targetDeviceId;
+	final String kind;
+	final String? propertyId;
+	final dynamic value;
+	final bool critical;
+	final String? label;
+
+	const MediaExecutionStepModel({
+		required this.targetDeviceId,
+		required this.kind,
+		this.propertyId,
+		this.value,
+		this.critical = false,
+		this.label,
+	});
+
+	factory MediaExecutionStepModel.fromJson(Map<String, dynamic> json) {
+		final action = json['action'] as Map<String, dynamic>? ?? {};
+		return MediaExecutionStepModel(
+			targetDeviceId: json['target_device_id'] as String? ?? '',
+			kind: action['kind'] as String? ?? 'unknown',
+			propertyId: action['property_id'] as String?,
+			value: action['value'],
+			critical: json['critical'] as bool? ?? false,
+			label: json['label'] as String?,
+		);
+	}
+}
+
+/// A warning from a dry-run preview.
+class MediaDryRunWarningModel {
+	final String label;
+
+	const MediaDryRunWarningModel({required this.label});
+
+	factory MediaDryRunWarningModel.fromJson(Map<String, dynamic> json) {
+		return MediaDryRunWarningModel(
+			label: json['label'] as String? ?? '',
+		);
+	}
+}
+
+/// Result of a dry-run preview API call.
+class MediaDryRunPreviewModel {
+	final String spaceId;
+	final String activityKey;
+	final MediaActivityResolvedModel resolved;
+	final List<MediaExecutionStepModel> plan;
+	final List<MediaDryRunWarningModel> warnings;
+
+	const MediaDryRunPreviewModel({
+		required this.spaceId,
+		required this.activityKey,
+		required this.resolved,
+		this.plan = const [],
+		this.warnings = const [],
+	});
+
+	factory MediaDryRunPreviewModel.fromJson(Map<String, dynamic> json) {
+		return MediaDryRunPreviewModel(
+			spaceId: json['space_id'] as String? ?? '',
+			activityKey: json['activity_key'] as String? ?? '',
+			resolved: json['resolved'] != null
+					? MediaActivityResolvedModel.fromJson(json['resolved'] as Map<String, dynamic>)
+					: const MediaActivityResolvedModel(),
+			plan: (json['plan'] as List<dynamic>?)
+							?.map((e) => MediaExecutionStepModel.fromJson(e as Map<String, dynamic>))
+							.toList() ??
+					[],
+			warnings: (json['warnings'] as List<dynamic>?)
+							?.map((e) => MediaDryRunWarningModel.fromJson(e as Map<String, dynamic>))
+							.toList() ??
+					[],
+		);
+	}
+}
+
 /// Result of an activate/deactivate API call.
 class MediaActivationResultModel {
 	final MediaActivityKey? activityKey;

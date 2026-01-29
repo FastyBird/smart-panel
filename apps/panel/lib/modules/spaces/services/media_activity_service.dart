@@ -243,6 +243,11 @@ class MediaActivityService extends ChangeNotifier {
 		MediaActivityKey activityKey,
 	) => _repository.activateActivity(spaceId, activityKey);
 
+	Future<MediaDryRunPreviewModel?> previewActivity(
+		String spaceId,
+		MediaActivityKey activityKey,
+	) => _repository.previewActivity(spaceId, activityKey);
+
 	Future<MediaActivationResultModel?> deactivateActivity(String spaceId) =>
 			_repository.deactivateActivity(spaceId);
 

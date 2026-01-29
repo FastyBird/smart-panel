@@ -378,6 +378,71 @@ export class MediaActivityActivationResultModel {
 }
 
 // ========================
+// Dry-Run Warning Model
+// ========================
+
+@ApiSchema({ name: 'SpacesModuleDataMediaActivityDryRunWarning' })
+export class MediaActivityDryRunWarningModel {
+	@ApiProperty({
+		description: 'Human-readable warning label',
+		type: 'string',
+	})
+	@Expose()
+	label: string;
+}
+
+// ========================
+// Dry-Run Preview Model
+// ========================
+
+@ApiSchema({ name: 'SpacesModuleDataMediaActivityDryRunPreview' })
+@ApiExtraModels(MediaActivityExecutionStepModel, MediaActivityDryRunWarningModel)
+export class MediaActivityDryRunPreviewModel {
+	@ApiProperty({
+		name: 'space_id',
+		description: 'ID of the space',
+		type: 'string',
+		format: 'uuid',
+	})
+	@Expose({ name: 'space_id' })
+	spaceId: string;
+
+	@ApiProperty({
+		name: 'activity_key',
+		description: 'Activity being previewed',
+		enum: MediaActivityKey,
+	})
+	@Expose({ name: 'activity_key' })
+	activityKey: MediaActivityKey;
+
+	@ApiProperty({
+		description: 'Resolved device IDs per slot',
+		type: () => MediaActivityResolvedModel,
+	})
+	@Expose()
+	@Type(() => MediaActivityResolvedModel)
+	resolved: MediaActivityResolvedModel;
+
+	@ApiProperty({
+		description: 'Ordered execution plan steps',
+		type: 'array',
+		items: { $ref: getSchemaPath(MediaActivityExecutionStepModel) },
+	})
+	@Expose()
+	@Type(() => MediaActivityExecutionStepModel)
+	plan: MediaActivityExecutionStepModel[];
+
+	@ApiProperty({
+		description: 'Warnings for skipped or missing steps',
+		type: 'array',
+		items: { $ref: getSchemaPath(MediaActivityDryRunWarningModel) },
+	})
+	@Expose()
+	@Type(() => MediaActivityDryRunWarningModel)
+	warnings: MediaActivityDryRunWarningModel[];
+}
+
+// ========================
 // Response Models
 // ========================
 
@@ -390,6 +455,17 @@ export class MediaActivityActivationResponseModel extends BaseSuccessResponseMod
 	@Expose()
 	@Type(() => MediaActivityActivationResultModel)
 	declare data: MediaActivityActivationResultModel;
+}
+
+@ApiSchema({ name: 'SpacesModuleResMediaActivityDryRunPreview' })
+export class MediaActivityDryRunPreviewResponseModel extends BaseSuccessResponseModel<MediaActivityDryRunPreviewModel> {
+	@ApiProperty({
+		description: 'The dry-run preview result data',
+		type: () => MediaActivityDryRunPreviewModel,
+	})
+	@Expose()
+	@Type(() => MediaActivityDryRunPreviewModel)
+	declare data: MediaActivityDryRunPreviewModel;
 }
 
 @ApiSchema({ name: 'SpacesModuleResActiveMediaActivity' })
