@@ -248,13 +248,13 @@ export const useSpaceMedia = (spaceId: Ref<string | undefined>): IUseSpaceMedia 
 					body: {
 						data: {
 							activity_key: activityKey,
-							display_endpoint_id: payload.displayEndpointId,
-							audio_endpoint_id: payload.audioEndpointId,
-							source_endpoint_id: payload.sourceEndpointId,
-							remote_endpoint_id: payload.remoteEndpointId,
-							display_input_id: payload.displayInputId,
-							audio_volume_preset: payload.audioVolumePreset,
-						} as Record<string, string | number | null | undefined>,
+							display_endpoint_id: payload.displayEndpointId ?? undefined,
+							audio_endpoint_id: payload.audioEndpointId ?? undefined,
+							source_endpoint_id: payload.sourceEndpointId ?? undefined,
+							remote_endpoint_id: payload.remoteEndpointId ?? undefined,
+							display_input_id: payload.displayInputId ?? undefined,
+							audio_volume_preset: payload.audioVolumePreset ?? undefined,
+						},
 					},
 				},
 			);
