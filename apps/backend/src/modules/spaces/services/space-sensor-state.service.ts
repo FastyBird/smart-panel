@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { ChannelCategory, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
+import { SpaceSensorRoleEntity } from '../entities/space-sensor-role.entity';
 import {
 	SAFETY_SENSOR_THRESHOLDS,
 	SENSOR_CHANNEL_CATEGORIES,
@@ -171,6 +172,11 @@ export class SpaceSensorStateService extends SpaceIntentBaseService {
 					continue;
 				}
 
+				// Skip sensors with no assigned role
+				if (role === null) {
+					continue;
+				}
+
 				// Get the primary property value
 				const { propertyId, value, unit, updatedAt, trend } = this.extractChannelValue(channel);
 
@@ -219,7 +225,7 @@ export class SpaceSensorStateService extends SpaceIntentBaseService {
 		}
 
 		// Group readings by role
-		const readingsByRole = this.groupReadingsByRole(allReadings);
+		const readingsByRole = this.groupReadingsByRole(allReadings, roleMap);
 
 		// Build environment summary
 		const environment: EnvironmentSummary = {
@@ -463,7 +469,10 @@ export class SpaceSensorStateService extends SpaceIntentBaseService {
 	/**
 	 * Group readings by role
 	 */
-	private groupReadingsByRole(readings: SensorReading[]): SensorRoleReadings[] {
+	private groupReadingsByRole(
+		readings: SensorReading[],
+		roleMap: Map<string, SpaceSensorRoleEntity>,
+	): SensorRoleReadings[] {
 		const byRole = new Map<SensorRole, SensorReading[]>();
 
 		for (const reading of readings) {
@@ -489,6 +498,15 @@ export class SpaceSensorStateService extends SpaceIntentBaseService {
 		for (const role of roleOrder) {
 			const roleReadings = byRole.get(role);
 			if (roleReadings && roleReadings.length > 0) {
+				// Sort by configured priority within each role group
+				roleReadings.sort((a, b) => {
+					const keyA = `${a.deviceId}:${a.channelId}`;
+					const keyB = `${b.deviceId}:${b.channelId}`;
+					const prioA = roleMap.get(keyA)?.priority ?? Infinity;
+					const prioB = roleMap.get(keyB)?.priority ?? Infinity;
+					return prioA - prioB;
+				});
+
 				result.push({
 					role,
 					sensorsCount: roleReadings.length,

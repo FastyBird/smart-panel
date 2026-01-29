@@ -1223,8 +1223,6 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isAlert = sensor.status == SensorStatus.alert && !sensor.isOffline;
     final dangerColor = isDark ? AppColorsDark.danger : AppColorsLight.danger;
-    final freshness = sensor.freshness;
-
     final categoryColor = _getCategoryColor(context, sensor.category);
     final categoryBgColor = _getCategoryLightColor(context, sensor.category);
 
