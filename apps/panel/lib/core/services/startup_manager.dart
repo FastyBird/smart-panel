@@ -737,6 +737,7 @@ class StartupManagerService {
     var spacesModuleService = SpacesModuleService(
       apiClient: _apiClient,
       socketService: _socketClient,
+      dio: _apiIoService,
     );
 
     locator.registerSingleton(configModuleService);

@@ -8,10 +8,13 @@ import 'package:fastybird_smart_panel/modules/spaces/constants.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/climate_targets.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/covers_targets.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/light_targets.dart';
+import 'package:fastybird_smart_panel/modules/spaces/repositories/media_activity.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/media_targets.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/space_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/spaces.dart';
 import 'package:fastybird_smart_panel/modules/spaces/service.dart';
+import 'package:fastybird_smart_panel/modules/spaces/services/media_activity_service.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
 class SpacesModuleService {
@@ -23,6 +26,8 @@ class SpacesModuleService {
   late MediaTargetsRepository _mediaTargetsRepository;
   late CoversTargetsRepository _coversTargetsRepository;
   late SpaceStateRepository _spaceStateRepository;
+  late MediaActivityRepository _mediaActivityRepository;
+  late MediaActivityService _mediaActivityService;
   late SpacesService _spacesService;
 
   bool _isLoading = true;
@@ -30,6 +35,7 @@ class SpacesModuleService {
   SpacesModuleService({
     required ApiClient apiClient,
     required SocketService socketService,
+    required Dio dio,
   }) : _socketService = socketService {
     _spacesRepository = SpacesRepository(
       apiClient: apiClient.spacesModule,
@@ -57,6 +63,14 @@ class SpacesModuleService {
       commandDispatch: CommandDispatchService(socketService: socketService),
     );
 
+    _mediaActivityRepository = MediaActivityRepository(
+      dio: dio,
+    );
+
+    _mediaActivityService = MediaActivityService(
+      repository: _mediaActivityRepository,
+    );
+
     _spacesService = SpacesService(
       spacesRepository: _spacesRepository,
       lightTargetsRepository: _lightTargetsRepository,
@@ -72,6 +86,8 @@ class SpacesModuleService {
     locator.registerSingleton(_mediaTargetsRepository);
     locator.registerSingleton(_coversTargetsRepository);
     locator.registerSingleton(_spaceStateRepository);
+    locator.registerSingleton(_mediaActivityRepository);
+    locator.registerSingleton(_mediaActivityService);
     locator.registerSingleton(_spacesService);
   }
 
@@ -120,8 +136,9 @@ class SpacesModuleService {
       _deviceSocketEventHandler,
     );
 
-    // Dispose service first to remove its repository listeners
+    // Dispose services first to remove their repository listeners
     _spacesService.dispose();
+    _mediaActivityService.dispose();
 
     // Clear all repository data to prevent memory leaks
     _spacesRepository.clearAll();
@@ -130,6 +147,7 @@ class SpacesModuleService {
     _mediaTargetsRepository.clearAll();
     _coversTargetsRepository.clearAll();
     _spaceStateRepository.clearAll();
+    _mediaActivityRepository.clearAll();
   }
 
   /// ////////////////
@@ -230,6 +248,16 @@ class SpacesModuleService {
       final stateData = payload['state'] as Map<String, dynamic>?;
       if (spaceId != null && stateData != null) {
         _spaceStateRepository.updateSensorState(spaceId, stateData);
+      }
+
+      /// Media Activity lifecycle events (V2)
+    } else if (event == SpacesModuleConstants.mediaActivityActivatingEvent ||
+        event == SpacesModuleConstants.mediaActivityActivatedEvent ||
+        event == SpacesModuleConstants.mediaActivityFailedEvent ||
+        event == SpacesModuleConstants.mediaActivityDeactivatedEvent) {
+      final spaceId = payload['space_id'] as String?;
+      if (spaceId != null) {
+        _mediaActivityRepository.updateActiveState(spaceId, payload);
       }
     }
   }
