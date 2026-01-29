@@ -44,7 +44,8 @@ export class PropertyValueService {
 
 		const cached = this.valuesMap.get(property.id);
 		if (cached && cached.value === value) {
-			// no change → skip Influx write
+			// no change → skip Influx write, but refresh lastUpdated so freshness stays accurate
+			cached.lastUpdated = new Date().toISOString();
 			return false;
 		}
 
