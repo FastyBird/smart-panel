@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { ref } from 'vue';
 
-import { useSpaceMedia } from './useSpaceMedia';
+import { MediaActivityKey, MediaEndpointType, useSpaceMedia } from './useSpaceMedia';
 
 const mockGet = vi.fn();
 const mockPatch = vi.fn();
@@ -157,7 +157,7 @@ describe('useSpaceMedia', () => {
 
 			await fetchBindings();
 
-			const binding = findBindingByActivity('watch' as any);
+			const binding = findBindingByActivity(MediaActivityKey.watch);
 			expect(binding).toBeDefined();
 			expect(binding?.activityKey).toBe('watch');
 		});
@@ -170,7 +170,7 @@ describe('useSpaceMedia', () => {
 
 			await fetchBindings();
 
-			const binding = findBindingByActivity('gaming' as any);
+			const binding = findBindingByActivity(MediaActivityKey.gaming);
 			expect(binding).toBeUndefined();
 		});
 	});
@@ -227,11 +227,11 @@ describe('useSpaceMedia', () => {
 
 			await fetchEndpoints();
 
-			const displays = endpointsByType('display' as any);
+			const displays = endpointsByType(MediaEndpointType.display);
 			expect(displays.value).toHaveLength(1);
 			expect(displays.value[0].type).toBe('display');
 
-			const sources = endpointsByType('source' as any);
+			const sources = endpointsByType(MediaEndpointType.source);
 			expect(sources.value).toHaveLength(0);
 		});
 	});
