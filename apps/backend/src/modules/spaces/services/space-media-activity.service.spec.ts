@@ -166,6 +166,25 @@ describe('SpaceMediaActivityService', () => {
 			expect(mockEventEmitter.emit).not.toHaveBeenCalledWith(EventType.MEDIA_ACTIVITY_ACTIVATING, expect.anything());
 		});
 
+		it('should return current state if same activity is already activating (idempotent)', async () => {
+			const existingRecord = {
+				id: uuid(),
+				spaceId,
+				activityKey: MediaActivityKey.WATCH,
+				state: MediaActivationState.ACTIVATING,
+				resolved: JSON.stringify({ displayDeviceId: deviceTvId }),
+				lastResult: null,
+			};
+
+			mockActiveRepository.findOne.mockResolvedValue(existingRecord);
+
+			const result = await service.activate(spaceId, MediaActivityKey.WATCH);
+
+			expect(result.state).toBe(MediaActivationState.ACTIVATING);
+			expect(result.activityKey).toBe(MediaActivityKey.WATCH);
+			expect(mockEventEmitter.emit).not.toHaveBeenCalledWith(EventType.MEDIA_ACTIVITY_ACTIVATING, expect.anything());
+		});
+
 		it('should treat "off" activity as deactivation', async () => {
 			const result = await service.activate(spaceId, MediaActivityKey.OFF);
 
@@ -332,6 +351,44 @@ describe('SpaceMediaActivityService', () => {
 			expect(result.summary?.stepsSucceeded).toBe(1);
 			expect(result.summary?.stepsFailed).toBe(1);
 			expect(result.warnings).toBeDefined();
+		});
+
+		it('should set FAILED state and emit event when executePlan throws unexpected error', async () => {
+			const displayEndpointId = `${spaceId}:display:${deviceTvId}`;
+			const binding = buildBinding(MediaActivityKey.WATCH, { displayEndpointId });
+
+			mockBindingService.findBySpace.mockResolvedValue([binding]);
+
+			const displayEndpoint = buildEndpoint(
+				MediaEndpointType.DISPLAY,
+				deviceTvId,
+				{ power: true },
+				{ power: { propertyId: powerPropertyId } },
+			);
+
+			mockDerivedEndpointService.buildEndpointsForSpace.mockResolvedValue({
+				spaceId,
+				endpoints: [displayEndpoint],
+			});
+
+			// Simulate unexpected error (e.g. database failure) during plan execution
+			mockSpacesService.findDevicesByIds.mockRejectedValue(new Error('Database connection lost'));
+
+			const result = await service.activate(spaceId, MediaActivityKey.WATCH);
+
+			expect(result.state).toBe(MediaActivationState.FAILED);
+			expect(result.summary?.failures?.[0].reason).toContain('Database connection lost');
+
+			// Verify FAILED event was emitted (not stuck in ACTIVATING)
+			expect(mockEventEmitter.emit).toHaveBeenCalledWith(
+				EventType.MEDIA_ACTIVITY_FAILED,
+				expect.objectContaining({ space_id: spaceId }),
+			);
+
+			// Verify record was persisted with FAILED state
+			expect(mockActiveRepository.save).toHaveBeenCalledWith(
+				expect.objectContaining({ state: MediaActivationState.FAILED }),
+			);
 		});
 	});
 

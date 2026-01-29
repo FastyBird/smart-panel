@@ -90,7 +90,7 @@ export class SpaceMediaActivityService {
 		if (
 			existingRecord &&
 			existingRecord.activityKey === activityKey &&
-			existingRecord.state === MediaActivationState.ACTIVE
+			(existingRecord.state === MediaActivationState.ACTIVE || existingRecord.state === MediaActivationState.ACTIVATING)
 		) {
 			this.logger.debug(`Activity ${activityKey} already active for space=${spaceId}, returning current state`);
 
@@ -144,55 +144,89 @@ export class SpaceMediaActivityService {
 		// Emit activating event
 		this.emitEvent(EventType.MEDIA_ACTIVITY_ACTIVATING, spaceId, activityKey, plan.resolved);
 
-		// Execute plan
-		const executionResult = await this.executePlan(plan);
+		// Execute plan — wrapped in try-catch to ensure state is updated to FAILED on unexpected errors
+		try {
+			const executionResult = await this.executePlan(plan);
 
-		// Determine final state
-		const hasCriticalFailure = executionResult.failures.some((f) => f.critical);
-		const finalState = hasCriticalFailure ? MediaActivationState.FAILED : MediaActivationState.ACTIVE;
+			// Determine final state
+			const hasCriticalFailure = executionResult.failures.some((f) => f.critical);
+			const finalState = hasCriticalFailure ? MediaActivationState.FAILED : MediaActivationState.ACTIVE;
 
-		// Build last result
-		const lastResult: MediaActivityLastResultModel = {
-			stepsTotal: plan.steps.length,
-			stepsSucceeded: executionResult.succeeded,
-			stepsFailed: executionResult.failures.length,
-			failures:
-				executionResult.failures.length > 0
-					? executionResult.failures.map((f) => ({
-							stepIndex: f.stepIndex,
-							reason: f.reason,
-							targetDeviceId: f.targetDeviceId,
-							propertyId: f.propertyId,
-						}))
-					: undefined,
-		};
+			// Build last result
+			const lastResult: MediaActivityLastResultModel = {
+				stepsTotal: plan.steps.length,
+				stepsSucceeded: executionResult.succeeded,
+				stepsFailed: executionResult.failures.length,
+				failures:
+					executionResult.failures.length > 0
+						? executionResult.failures.map((f) => ({
+								stepIndex: f.stepIndex,
+								reason: f.reason,
+								targetDeviceId: f.targetDeviceId,
+								propertyId: f.propertyId,
+							}))
+						: undefined,
+			};
 
-		// Persist final state
-		record.state = finalState;
-		record.lastResult = JSON.stringify(lastResult);
-		await this.activeRepository.save(record);
+			// Persist final state
+			record.state = finalState;
+			record.lastResult = JSON.stringify(lastResult);
+			await this.activeRepository.save(record);
 
-		// Emit appropriate event
-		const warnings = executionResult.failures.filter((f) => !f.critical).map((f) => `Step ${f.stepIndex}: ${f.reason}`);
+			// Emit appropriate event
+			const warnings = executionResult.failures
+				.filter((f) => !f.critical)
+				.map((f) => `Step ${f.stepIndex}: ${f.reason}`);
 
-		if (finalState === MediaActivationState.ACTIVE) {
-			this.emitEvent(EventType.MEDIA_ACTIVITY_ACTIVATED, spaceId, activityKey, plan.resolved, lastResult, warnings);
-		} else {
+			if (finalState === MediaActivationState.ACTIVE) {
+				this.emitEvent(EventType.MEDIA_ACTIVITY_ACTIVATED, spaceId, activityKey, plan.resolved, lastResult, warnings);
+			} else {
+				this.emitEvent(EventType.MEDIA_ACTIVITY_FAILED, spaceId, activityKey, plan.resolved, lastResult);
+			}
+
+			this.logger.debug(
+				`Activity activation complete: space=${spaceId} activity=${activityKey} state=${finalState} ` +
+					`succeeded=${executionResult.succeeded} failed=${executionResult.failures.length}`,
+			);
+
+			return {
+				activityKey,
+				state: finalState,
+				resolved: plan.resolved,
+				summary: lastResult,
+				warnings: warnings.length > 0 ? warnings : undefined,
+			};
+		} catch (error) {
+			this.logger.error(
+				`Unexpected error during activity activation: space=${spaceId} activity=${activityKey}`,
+				error instanceof Error ? error.stack : String(error),
+			);
+
+			const lastResult: MediaActivityLastResultModel = {
+				stepsTotal: plan.steps.length,
+				stepsSucceeded: 0,
+				stepsFailed: plan.steps.length,
+				failures: [
+					{
+						stepIndex: 0,
+						reason: `Unexpected error: ${error instanceof Error ? error.message : String(error)}`,
+					},
+				],
+			};
+
+			record.state = MediaActivationState.FAILED;
+			record.lastResult = JSON.stringify(lastResult);
+			await this.activeRepository.save(record);
+
 			this.emitEvent(EventType.MEDIA_ACTIVITY_FAILED, spaceId, activityKey, plan.resolved, lastResult);
+
+			return {
+				activityKey,
+				state: MediaActivationState.FAILED,
+				resolved: plan.resolved,
+				summary: lastResult,
+			};
 		}
-
-		this.logger.debug(
-			`Activity activation complete: space=${spaceId} activity=${activityKey} state=${finalState} ` +
-				`succeeded=${executionResult.succeeded} failed=${executionResult.failures.length}`,
-		);
-
-		return {
-			activityKey,
-			state: finalState,
-			resolved: plan.resolved,
-			summary: lastResult,
-			warnings: warnings.length > 0 ? warnings : undefined,
-		};
 	}
 
 	/**
