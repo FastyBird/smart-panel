@@ -260,7 +260,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 		final localizations = AppLocalizations.of(context)!;
 		final currentKey = activeState?.activityKey;
-		final isDeactivated = activeState == null || activeState.isDeactivated;
+		final isDeactivated = activeState == null || activeState.isDeactivated || activeState.isDeactivating;
 		final availableKeys = _mediaService?.getAvailableActivities(_roomId) ?? MediaActivityKey.values;
 
 		return Card(
