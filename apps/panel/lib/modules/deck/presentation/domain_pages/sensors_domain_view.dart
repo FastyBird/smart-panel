@@ -355,14 +355,14 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     return value.toString();
   }
 
-  /// Check if a property has boolean data type
-  bool _isBinaryProperty(String? propertyId) {
+  /// Check if a property has a discrete (non-numeric) data type — bool or enum
+  bool _isDiscreteProperty(String? propertyId) {
     if (propertyId == null) return false;
     try {
       final repo = locator<ChannelPropertiesRepository>();
       final property = repo.getItem(propertyId);
       if (property == null) return false;
-      return property.dataType.json == 'bool';
+      return property.dataType.json == 'bool' || property.dataType.json == 'enum';
     } catch (_) {
       return false;
     }
@@ -424,7 +424,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
           status: status,
           trend: _parseTrend(reading.trend),
           lastUpdated: reading.updatedAt ?? DateTime.now(),
-          isBinary: _isBinaryProperty(reading.propertyId),
+          isBinary: _isDiscreteProperty(reading.propertyId),
           channelCategory: reading.channelCategory,
           additionalReadings: reading.additionalReadings,
         ));
