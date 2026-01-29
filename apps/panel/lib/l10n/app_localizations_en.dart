@@ -2119,4 +2119,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sensor_enum_battery_status_not_chargeable_long => 'Not Chargeable';
+
+  @override
+  String get sensor_freshness_live => 'Live';
+
+  @override
+  String get sensor_freshness_stale => 'Stale';
+
+  @override
+  String get sensor_freshness_offline => 'Offline';
 }

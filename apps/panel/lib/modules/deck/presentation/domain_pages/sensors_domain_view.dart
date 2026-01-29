@@ -26,21 +26,12 @@ import 'package:provider/provider.dart';
 
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/utils/sensor_enum_utils.dart';
+import 'package:fastybird_smart_panel/modules/deck/types/sensor_category.dart';
 import 'package:fastybird_smart_panel/modules/deck/utils/sensor_freshness.dart';
 
 // ============================================================================
 // DATA MODELS
 // ============================================================================
-
-enum SensorCategory {
-  temperature,
-  humidity,
-  airQuality,
-  motion,
-  safety,
-  light,
-  energy,
-}
 
 enum SensorStatus {
   normal,
@@ -1927,6 +1918,7 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
                 : SensorFreshnessUtils.label(
                     _sensor.freshness,
                     DateTime.now().difference(_sensor.lastUpdated),
+                    AppLocalizations.of(context)!,
                   ),
             style: TextStyle(
               color: _sensor.isOffline

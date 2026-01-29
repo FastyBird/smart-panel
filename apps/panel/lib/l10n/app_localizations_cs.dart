@@ -2132,4 +2132,13 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get sensor_enum_battery_status_not_chargeable_long => 'Nelze nabíjet';
+
+  @override
+  String get sensor_freshness_live => 'Živě';
+
+  @override
+  String get sensor_freshness_stale => 'Zastaralé';
+
+  @override
+  String get sensor_freshness_offline => 'Offline';
 }

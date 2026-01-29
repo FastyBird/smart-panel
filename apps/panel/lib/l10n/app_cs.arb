@@ -694,5 +694,9 @@
   "sensor_enum_battery_status_normal_long": "Normální",
   "sensor_enum_battery_status_charging_long": "Nabíjení",
   "sensor_enum_battery_status_not_charging_long": "Nenabíjí se",
-  "sensor_enum_battery_status_not_chargeable_long": "Nelze nabíjet"
+  "sensor_enum_battery_status_not_chargeable_long": "Nelze nabíjet",
+
+  "sensor_freshness_live": "Živě",
+  "sensor_freshness_stale": "Zastaralé",
+  "sensor_freshness_offline": "Offline"
 }

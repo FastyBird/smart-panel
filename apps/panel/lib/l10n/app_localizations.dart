@@ -4042,6 +4042,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Not Chargeable'**
   String get sensor_enum_battery_status_not_chargeable_long;
+
+  /// Label shown when sensor data is fresh/live
+  ///
+  /// In en, this message translates to:
+  /// **'Live'**
+  String get sensor_freshness_live;
+
+  /// Label prefix shown when sensor data is stale
+  ///
+  /// In en, this message translates to:
+  /// **'Stale'**
+  String get sensor_freshness_stale;
+
+  /// Label shown when sensor device is offline
+  ///
+  /// In en, this message translates to:
+  /// **'Offline'**
+  String get sensor_freshness_offline;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

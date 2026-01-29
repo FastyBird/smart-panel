@@ -2742,5 +2742,18 @@
   "sensor_enum_battery_status_normal_long": "Normal",
   "sensor_enum_battery_status_charging_long": "Charging",
   "sensor_enum_battery_status_not_charging_long": "Not Charging",
-  "sensor_enum_battery_status_not_chargeable_long": "Not Chargeable"
+  "sensor_enum_battery_status_not_chargeable_long": "Not Chargeable",
+
+  "sensor_freshness_live": "Live",
+  "@sensor_freshness_live": {
+    "description": "Label shown when sensor data is fresh/live"
+  },
+  "sensor_freshness_stale": "Stale",
+  "@sensor_freshness_stale": {
+    "description": "Label prefix shown when sensor data is stale"
+  },
+  "sensor_freshness_offline": "Offline",
+  "@sensor_freshness_offline": {
+    "description": "Label shown when sensor device is offline"
+  }
 }

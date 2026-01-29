@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/sensors_domain_view.dart';
+import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/deck/types/sensor_category.dart';
 
 // ============================================================================
 // FRESHNESS ENUM & THRESHOLDS
@@ -77,16 +78,17 @@ class FreshnessThresholds {
 class SensorFreshnessUtils {
   SensorFreshnessUtils._();
 
+  /// Evaluate data age freshness (fresh/recent/stale).
+  /// Does NOT return offline — offline is determined by device connectivity.
   static SensorFreshness evaluate(DateTime? lastUpdated, SensorCategory category) {
-    if (lastUpdated == null) return SensorFreshness.offline;
+    if (lastUpdated == null) return SensorFreshness.stale;
 
     final age = DateTime.now().difference(lastUpdated);
     final thresholds = FreshnessThresholds.forCategory(category);
 
     if (age <= thresholds.fresh) return SensorFreshness.fresh;
     if (age <= thresholds.recent) return SensorFreshness.recent;
-    if (age <= thresholds.stale) return SensorFreshness.stale;
-    return SensorFreshness.offline;
+    return SensorFreshness.stale;
   }
 
   static Color color(SensorFreshness freshness, bool isDark) {
@@ -105,23 +107,23 @@ class SensorFreshnessUtils {
     }
   }
 
-  static String label(SensorFreshness freshness, Duration age) {
+  static String label(SensorFreshness freshness, Duration age, AppLocalizations l) {
     switch (freshness) {
       case SensorFreshness.fresh:
-        return 'Live';
+        return l.sensor_freshness_live;
       case SensorFreshness.recent:
-        return _formatAge(age);
+        return _formatAge(age, l);
       case SensorFreshness.stale:
-        return 'Stale · ${_formatAge(age)}';
+        return '${l.sensor_freshness_stale} · ${_formatAge(age, l)}';
       case SensorFreshness.offline:
-        return 'Offline';
+        return l.sensor_freshness_offline;
     }
   }
 
-  static String _formatAge(Duration age) {
-    if (age.inMinutes < 1) return 'just now';
-    if (age.inMinutes < 60) return '${age.inMinutes} min ago';
-    if (age.inHours < 24) return '${age.inHours}h ago';
-    return '${age.inDays}d ago';
+  static String _formatAge(Duration age, AppLocalizations l) {
+    if (age.inMinutes < 1) return l.time_ago_just_now;
+    if (age.inMinutes < 60) return l.time_ago_minutes(age.inMinutes);
+    if (age.inHours < 24) return l.time_ago_hours(age.inHours);
+    return l.time_ago_days(age.inDays);
   }
 }
