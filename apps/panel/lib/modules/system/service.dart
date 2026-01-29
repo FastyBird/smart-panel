@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:fastybird_smart_panel/modules/system/export.dart';
 import 'package:fastybird_smart_panel/modules/system/views/system_info/view.dart';
 import 'package:fastybird_smart_panel/modules/system/views/throttle_status/view.dart';
@@ -9,6 +11,8 @@ class SystemService extends ChangeNotifier {
 
   SystemInfoView? _systemInfo;
   ThrottleStatusView? _throttleStatus;
+
+  Timer? _updateDebounce;
 
   SystemService({
     required SystemInfoRepository systemInfoRepository,
@@ -25,8 +29,8 @@ class SystemService extends ChangeNotifier {
       // This error could be ignored
     }
 
-    _systemInfoRepository.addListener(_updateData);
-    _throttleStatusRepository.addListener(_updateData);
+    _systemInfoRepository.addListener(_scheduleUpdate);
+    _throttleStatusRepository.addListener(_scheduleUpdate);
 
     _updateData();
   }
@@ -41,6 +45,11 @@ class SystemService extends ChangeNotifier {
 
   ThrottleStatusView? getThrottleStatus() {
     return _throttleStatus;
+  }
+
+  void _scheduleUpdate() {
+    _updateDebounce?.cancel();
+    _updateDebounce = Timer(const Duration(milliseconds: 50), _updateData);
   }
 
   void _updateData() {
@@ -74,9 +83,11 @@ class SystemService extends ChangeNotifier {
 
   @override
   void dispose() {
-    super.dispose();
+    _updateDebounce?.cancel();
 
-    _systemInfoRepository.removeListener(_updateData);
-    _throttleStatusRepository.removeListener(_updateData);
+    _systemInfoRepository.removeListener(_scheduleUpdate);
+    _throttleStatusRepository.removeListener(_scheduleUpdate);
+
+    super.dispose();
   }
 }

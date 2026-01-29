@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:fastybird_smart_panel/api/models/scenes_module_data_scene_category.dart';
 import 'package:fastybird_smart_panel/modules/scenes/mappers/action.dart';
 import 'package:fastybird_smart_panel/modules/scenes/mappers/scene.dart';
@@ -14,6 +16,8 @@ class ScenesService extends ChangeNotifier {
   Map<String, SceneView> _scenes = {};
   Map<String, ActionView> _actions = {};
 
+  Timer? _updateDebounce;
+
   ScenesService({
     required ScenesRepository scenesRepository,
     required ActionsRepository actionsRepository,
@@ -24,8 +28,8 @@ class ScenesService extends ChangeNotifier {
     // Fetch scenes - actions are automatically inserted by ScenesRepository
     await _scenesRepository.fetchAll();
 
-    _scenesRepository.addListener(_updateData);
-    _actionsRepository.addListener(_updateData);
+    _scenesRepository.addListener(_scheduleUpdate);
+    _actionsRepository.addListener(_scheduleUpdate);
 
     _updateData();
   }
@@ -94,6 +98,11 @@ class ScenesService extends ChangeNotifier {
     return _scenesRepository.triggerScene(sceneId);
   }
 
+  void _scheduleUpdate() {
+    _updateDebounce?.cancel();
+    _updateDebounce = Timer(const Duration(milliseconds: 50), _updateData);
+  }
+
   void _updateData() {
     final sceneModels = _scenesRepository.scenes;
     final actionModels = _actionsRepository.actions;
@@ -147,8 +156,11 @@ class ScenesService extends ChangeNotifier {
 
   @override
   void dispose() {
-    _scenesRepository.removeListener(_updateData);
-    _actionsRepository.removeListener(_updateData);
+    _updateDebounce?.cancel();
+
+    _scenesRepository.removeListener(_scheduleUpdate);
+    _actionsRepository.removeListener(_scheduleUpdate);
+
     super.dispose();
   }
 }
