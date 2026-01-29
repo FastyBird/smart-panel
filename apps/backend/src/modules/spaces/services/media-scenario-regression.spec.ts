@@ -26,13 +26,7 @@ import { SpaceActiveMediaActivityEntity } from '../entities/space-active-media-a
 import { SpaceMediaActivityBindingEntity } from '../entities/space-media-activity-binding.entity';
 import { DerivedMediaEndpointModel } from '../models/derived-media-endpoint.model';
 import { MediaCapabilitySummaryModel } from '../models/media-routing.model';
-import {
-	EventType,
-	MediaActivationState,
-	MediaActivityKey,
-	MediaCapabilityPermission,
-	MediaEndpointType,
-} from '../spaces.constants';
+import { EventType, MediaActivationState, MediaActivityKey, MediaEndpointType } from '../spaces.constants';
 
 import {
 	DEVICE_AVR,
@@ -43,12 +37,12 @@ import {
 	DEVICE_TV,
 	MediaScenario,
 	SPACE_ID,
+	ScenarioDevice,
 	mediaMultiOutput,
 	mediaSpeakerOnly,
 	mediaTvAvrConsoleStreamer,
 	mediaTvOnly,
 	resetIds,
-	ScenarioDevice,
 } from './__fixtures__/media-scenario-templates';
 import { MediaTestHarness } from './__fixtures__/media-test-harness';
 import { DerivedMediaEndpointService } from './derived-media-endpoint.service';
@@ -60,14 +54,6 @@ import { SpacesService } from './spaces.service';
 // ==========================================================================
 // Shared helpers
 // ==========================================================================
-
-function capMapping(propertyId?: string) {
-	return {
-		propertyId: propertyId ?? uuid(),
-		channelId: uuid(),
-		permission: MediaCapabilityPermission.READ_WRITE,
-	};
-}
 
 function buildSummaryFromDevice(d: ScenarioDevice): Record<string, unknown> {
 	return {
@@ -232,9 +218,7 @@ describe('Media Regression – Endpoints Derivation', () => {
 
 			const audioOutputs = result.endpoints.filter((e) => e.type === MediaEndpointType.AUDIO_OUTPUT);
 			expect(audioOutputs.length).toBe(2);
-			expect(audioOutputs.map((a) => a.deviceId)).toEqual(
-				expect.arrayContaining([DEVICE_AVR, DEVICE_SPEAKER]),
-			);
+			expect(audioOutputs.map((a) => a.deviceId)).toEqual(expect.arrayContaining([DEVICE_AVR, DEVICE_SPEAKER]));
 		});
 
 		it('endpoint IDs should be stable across invocations', async () => {
@@ -283,11 +267,6 @@ describe('Media Regression – Default Bindings Quality', () => {
 		});
 	}
 
-	function loadWithEndpoints(scenario: MediaScenario, endpoints: DerivedMediaEndpointModel[]) {
-		loadScenarioOnly(scenario);
-		setEndpoints(scenario, endpoints);
-	}
-
 	describe('media_tv_only', () => {
 		it('Watch: display + audio should use TV', async () => {
 			const scenario = mediaTvOnly({ tvVolume: true });
@@ -315,13 +294,28 @@ describe('Media Regression – Default Bindings Quality', () => {
 			loadScenarioOnly(scenario);
 			endpoints = [
 				harness.buildEndpoint(MediaEndpointType.DISPLAY, DEVICE_TV, 'TV (Display)', { power: true, inputSelect: true }),
-				harness.buildEndpoint(MediaEndpointType.REMOTE_TARGET, DEVICE_TV, 'TV (Remote)', { remoteCommands: true, power: true }),
-				harness.buildEndpoint(MediaEndpointType.AUDIO_OUTPUT, DEVICE_AVR, 'AVR (Audio)', { power: true, volume: true, mute: true }),
+				harness.buildEndpoint(MediaEndpointType.REMOTE_TARGET, DEVICE_TV, 'TV (Remote)', {
+					remoteCommands: true,
+					power: true,
+				}),
+				harness.buildEndpoint(MediaEndpointType.AUDIO_OUTPUT, DEVICE_AVR, 'AVR (Audio)', {
+					power: true,
+					volume: true,
+					mute: true,
+				}),
 				harness.buildEndpoint(MediaEndpointType.SOURCE, DEVICE_AVR, 'AVR (Source)', { inputSelect: true }),
-				harness.buildEndpoint(MediaEndpointType.SOURCE, DEVICE_STREAMER, 'Streamer (Source)', { playback: true, track: true, power: true }),
-				harness.buildEndpoint(MediaEndpointType.REMOTE_TARGET, DEVICE_STREAMER, 'Streamer (Remote)', { remoteCommands: true }),
+				harness.buildEndpoint(MediaEndpointType.SOURCE, DEVICE_STREAMER, 'Streamer (Source)', {
+					playback: true,
+					track: true,
+					power: true,
+				}),
+				harness.buildEndpoint(MediaEndpointType.REMOTE_TARGET, DEVICE_STREAMER, 'Streamer (Remote)', {
+					remoteCommands: true,
+				}),
 				harness.buildEndpoint(MediaEndpointType.SOURCE, DEVICE_CONSOLE, 'Console (Source)', { power: true }),
-				harness.buildEndpoint(MediaEndpointType.REMOTE_TARGET, DEVICE_CONSOLE, 'Console (Remote)', { remoteCommands: true }),
+				harness.buildEndpoint(MediaEndpointType.REMOTE_TARGET, DEVICE_CONSOLE, 'Console (Remote)', {
+					remoteCommands: true,
+				}),
 			];
 			setEndpoints(scenario, endpoints);
 			harness.mockMediaEndpointService.getMediaCapabilitiesInSpace.mockResolvedValue(
@@ -404,8 +398,15 @@ describe('Media Regression – Default Bindings Quality', () => {
 			const scenario = mediaSpeakerOnly();
 			loadScenarioOnly(scenario);
 			setEndpoints(scenario, [
-				harness.buildEndpoint(MediaEndpointType.AUDIO_OUTPUT, DEVICE_SPEAKER, 'Speaker (Audio)', { power: true, volume: true, playback: true }),
-				harness.buildEndpoint(MediaEndpointType.SOURCE, DEVICE_SPEAKER, 'Speaker (Source)', { playback: true, track: true }),
+				harness.buildEndpoint(MediaEndpointType.AUDIO_OUTPUT, DEVICE_SPEAKER, 'Speaker (Audio)', {
+					power: true,
+					volume: true,
+					playback: true,
+				}),
+				harness.buildEndpoint(MediaEndpointType.SOURCE, DEVICE_SPEAKER, 'Speaker (Source)', {
+					playback: true,
+					track: true,
+				}),
 			]);
 			harness.mockMediaEndpointService.getMediaCapabilitiesInSpace.mockResolvedValue([
 				(() => {
@@ -433,11 +434,25 @@ describe('Media Regression – Default Bindings Quality', () => {
 			loadScenarioOnly(scenario);
 			const eps = [
 				harness.buildEndpoint(MediaEndpointType.DISPLAY, DEVICE_TV, 'TV (Display)', { power: true, inputSelect: true }),
-				harness.buildEndpoint(MediaEndpointType.DISPLAY, DEVICE_PROJECTOR, 'Projector (Display)', { power: true, inputSelect: true }),
-				harness.buildEndpoint(MediaEndpointType.AUDIO_OUTPUT, DEVICE_AVR, 'AVR (Audio)', { power: true, volume: true, mute: true }),
-				harness.buildEndpoint(MediaEndpointType.AUDIO_OUTPUT, DEVICE_SPEAKER, 'Speaker (Audio)', { power: true, volume: true, playback: true }),
+				harness.buildEndpoint(MediaEndpointType.DISPLAY, DEVICE_PROJECTOR, 'Projector (Display)', {
+					power: true,
+					inputSelect: true,
+				}),
+				harness.buildEndpoint(MediaEndpointType.AUDIO_OUTPUT, DEVICE_AVR, 'AVR (Audio)', {
+					power: true,
+					volume: true,
+					mute: true,
+				}),
+				harness.buildEndpoint(MediaEndpointType.AUDIO_OUTPUT, DEVICE_SPEAKER, 'Speaker (Audio)', {
+					power: true,
+					volume: true,
+					playback: true,
+				}),
 				harness.buildEndpoint(MediaEndpointType.REMOTE_TARGET, DEVICE_TV, 'TV (Remote)', { remoteCommands: true }),
-				harness.buildEndpoint(MediaEndpointType.SOURCE, DEVICE_SPEAKER, 'Speaker (Source)', { playback: true, track: true }),
+				harness.buildEndpoint(MediaEndpointType.SOURCE, DEVICE_SPEAKER, 'Speaker (Source)', {
+					playback: true,
+					track: true,
+				}),
 			];
 			setEndpoints(scenario, eps);
 			harness.mockMediaEndpointService.getMediaCapabilitiesInSpace.mockResolvedValue(
@@ -463,7 +478,13 @@ describe('Media Regression – Default Bindings Quality', () => {
 			const secondRun = [...harness.savedBindings];
 
 			// Compare bindings for each activity key
-			for (const key of [MediaActivityKey.WATCH, MediaActivityKey.LISTEN, MediaActivityKey.GAMING, MediaActivityKey.BACKGROUND, MediaActivityKey.OFF]) {
+			for (const key of [
+				MediaActivityKey.WATCH,
+				MediaActivityKey.LISTEN,
+				MediaActivityKey.GAMING,
+				MediaActivityKey.BACKGROUND,
+				MediaActivityKey.OFF,
+			]) {
 				const first = firstRun.find((b) => b.activityKey === key);
 				const second = secondRun.find((b) => b.activityKey === key);
 				expect(first?.displayEndpointId).toBe(second?.displayEndpointId);
@@ -506,9 +527,9 @@ describe('Media Regression – Activation Behavior', () => {
 			const scenario = mediaTvOnly({ tvVolume: true });
 			harness.loadScenario(scenario);
 
-			const powerPropId = scenario.devices[0].power!.propertyId;
-			const inputPropId = scenario.devices[0].input!.propertyId;
-			const volumePropId = scenario.devices[0].volume!.propertyId;
+			const powerPropId = scenario.devices[0].power.propertyId;
+			const inputPropId = scenario.devices[0].input.propertyId;
+			const volumePropId = scenario.devices[0].volume.propertyId;
 
 			const displayEndpointId = `${SPACE_ID}:display:${DEVICE_TV}`;
 			const audioEndpointId = `${SPACE_ID}:audio_output:${DEVICE_TV}`;
@@ -567,8 +588,8 @@ describe('Media Regression – Activation Behavior', () => {
 			const scenario = mediaSpeakerOnly();
 			harness.loadScenario(scenario);
 
-			const powerPropId = scenario.devices[0].power!.propertyId;
-			const volumePropId = scenario.devices[0].volume!.propertyId;
+			const powerPropId = scenario.devices[0].power.propertyId;
+			const volumePropId = scenario.devices[0].volume.propertyId;
 
 			const audioEndpointId = `${SPACE_ID}:audio_output:${DEVICE_SPEAKER}`;
 			const sourceEndpointId = `${SPACE_ID}:source:${DEVICE_SPEAKER}`;
@@ -590,12 +611,10 @@ describe('Media Regression – Activation Behavior', () => {
 						{ power: true, volume: true, playback: true },
 						{ power: { propertyId: powerPropId }, volume: { propertyId: volumePropId } },
 					),
-					harness.buildEndpoint(
-						MediaEndpointType.SOURCE,
-						DEVICE_SPEAKER,
-						'Speaker (Source)',
-						{ playback: true, track: true },
-					),
+					harness.buildEndpoint(MediaEndpointType.SOURCE, DEVICE_SPEAKER, 'Speaker (Source)', {
+						playback: true,
+						track: true,
+					}),
 				],
 			});
 
@@ -622,12 +641,12 @@ describe('Media Regression – Activation Behavior', () => {
 			const scenario = mediaTvAvrConsoleStreamer();
 			harness.loadScenario(scenario);
 
-			const tvPowerPropId = scenario.devices[0].power!.propertyId;
-			const tvInputPropId = scenario.devices[0].input!.propertyId;
-			const avrPowerPropId = scenario.devices[1].power!.propertyId;
-			const avrVolumePropId = scenario.devices[1].volume!.propertyId;
-			const avrInputPropId = scenario.devices[1].input!.propertyId;
-			const conPowerPropId = scenario.devices[3].power!.propertyId;
+			const tvPowerPropId = scenario.devices[0].power.propertyId;
+			const tvInputPropId = scenario.devices[0].input.propertyId;
+			const avrPowerPropId = scenario.devices[1].power.propertyId;
+			const avrVolumePropId = scenario.devices[1].volume.propertyId;
+			const avrInputPropId = scenario.devices[1].input.propertyId;
+			const conPowerPropId = scenario.devices[3].power.propertyId;
 
 			const binding = harness.buildBinding(MediaActivityKey.GAMING, {
 				displayEndpointId: `${SPACE_ID}:display:${DEVICE_TV}`,
@@ -652,14 +671,13 @@ describe('Media Regression – Activation Behavior', () => {
 						DEVICE_AVR,
 						'AVR (Audio)',
 						{ power: true, volume: true, mute: true, inputSelect: true },
-						{ power: { propertyId: avrPowerPropId }, volume: { propertyId: avrVolumePropId }, inputSelect: { propertyId: avrInputPropId } },
+						{
+							power: { propertyId: avrPowerPropId },
+							volume: { propertyId: avrVolumePropId },
+							inputSelect: { propertyId: avrInputPropId },
+						},
 					),
-					harness.buildEndpoint(
-						MediaEndpointType.SOURCE,
-						DEVICE_CONSOLE,
-						'Console (Source)',
-						{ power: true },
-					),
+					harness.buildEndpoint(MediaEndpointType.SOURCE, DEVICE_CONSOLE, 'Console (Source)', { power: true }),
 				],
 			});
 
@@ -673,9 +691,7 @@ describe('Media Regression – Activation Behavior', () => {
 					{ id: avrVolumePropId, value: 30 },
 					{ id: avrInputPropId, value: 'CD' },
 				]),
-				harness.buildMockDevice(DEVICE_CONSOLE, [
-					{ id: conPowerPropId, value: false },
-				]),
+				harness.buildMockDevice(DEVICE_CONSOLE, [{ id: conPowerPropId, value: false }]),
 			]);
 
 			const mockPlatform = { processBatch: jest.fn().mockResolvedValue(true) };
@@ -722,8 +738,8 @@ describe('Media Regression – Failure Model', () => {
 		const scenario = mediaSpeakerOnly();
 		harness.loadScenario(scenario);
 
-		const powerPropId = scenario.devices[0].power!.propertyId;
-		const volumePropId = scenario.devices[0].volume!.propertyId;
+		const powerPropId = scenario.devices[0].power.propertyId;
+		const volumePropId = scenario.devices[0].volume.propertyId;
 
 		const binding = harness.buildBinding(MediaActivityKey.LISTEN, {
 			audioEndpointId: `${SPACE_ID}:audio_output:${DEVICE_SPEAKER}`,
@@ -752,9 +768,10 @@ describe('Media Regression – Failure Model', () => {
 		]);
 
 		const mockPlatform = {
-			processBatch: jest.fn()
-				.mockResolvedValueOnce(true)   // power succeeds
-				.mockResolvedValueOnce(false),  // volume fails
+			processBatch: jest
+				.fn()
+				.mockResolvedValueOnce(true) // power succeeds
+				.mockResolvedValueOnce(false), // volume fails
 		};
 		harness.mockPlatformRegistry.get.mockReturnValue(mockPlatform);
 
@@ -769,7 +786,7 @@ describe('Media Regression – Failure Model', () => {
 		const scenario = mediaTvOnly();
 		harness.loadScenario(scenario);
 
-		const powerPropId = scenario.devices[0].power!.propertyId;
+		const powerPropId = scenario.devices[0].power.propertyId;
 
 		const binding = harness.buildBinding(MediaActivityKey.WATCH, {
 			displayEndpointId: `${SPACE_ID}:display:${DEVICE_TV}`,
@@ -831,8 +848,8 @@ describe('Media Regression – WS Events', () => {
 		const scenario = mediaTvOnly({ tvVolume: true });
 		harness.loadScenario(scenario);
 
-		const powerPropId = scenario.devices[0].power!.propertyId;
-		const inputPropId = scenario.devices[0].input!.propertyId;
+		const powerPropId = scenario.devices[0].power.propertyId;
+		const inputPropId = scenario.devices[0].input.propertyId;
 
 		const binding = harness.buildBinding(MediaActivityKey.WATCH, {
 			displayEndpointId: `${SPACE_ID}:display:${DEVICE_TV}`,
@@ -884,7 +901,7 @@ describe('Media Regression – WS Events', () => {
 		const scenario = mediaTvOnly();
 		harness.loadScenario(scenario);
 
-		const powerPropId = scenario.devices[0].power!.propertyId;
+		const powerPropId = scenario.devices[0].power.propertyId;
 
 		const binding = harness.buildBinding(MediaActivityKey.WATCH, {
 			displayEndpointId: `${SPACE_ID}:display:${DEVICE_TV}`,
@@ -916,9 +933,7 @@ describe('Media Regression – WS Events', () => {
 		// Verify failed event (not activated)
 		const failedEvents = harness.getEmittedEvents(EventType.MEDIA_ACTIVITY_FAILED);
 		expect(failedEvents.length).toBe(1);
-		expect(failedEvents[0]).toEqual(
-			expect.objectContaining({ space_id: SPACE_ID }),
-		);
+		expect(failedEvents[0]).toEqual(expect.objectContaining({ space_id: SPACE_ID }));
 
 		// No activated event
 		const activatedEvents = harness.getEmittedEvents(EventType.MEDIA_ACTIVITY_ACTIVATED);
@@ -940,17 +955,15 @@ describe('Media Regression – WS Events', () => {
 
 		const deactivatedEvents = harness.getEmittedEvents(EventType.MEDIA_ACTIVITY_DEACTIVATED);
 		expect(deactivatedEvents.length).toBe(1);
-		expect(deactivatedEvents[0]).toEqual(
-			expect.objectContaining({ space_id: SPACE_ID, activity_key: null }),
-		);
+		expect(deactivatedEvents[0]).toEqual(expect.objectContaining({ space_id: SPACE_ID, activity_key: null }));
 	});
 
 	it('full lifecycle: activating → activated → deactivated', async () => {
 		const scenario = mediaTvOnly({ tvVolume: true });
 		harness.loadScenario(scenario);
 
-		const powerPropId = scenario.devices[0].power!.propertyId;
-		const inputPropId = scenario.devices[0].input!.propertyId;
+		const powerPropId = scenario.devices[0].power.propertyId;
+		const inputPropId = scenario.devices[0].input.propertyId;
 
 		const binding = harness.buildBinding(MediaActivityKey.WATCH, {
 			displayEndpointId: `${SPACE_ID}:display:${DEVICE_TV}`,
