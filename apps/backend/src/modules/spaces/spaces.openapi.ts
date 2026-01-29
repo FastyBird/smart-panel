@@ -24,6 +24,17 @@ import {
 	ReqSetLightingRoleDto,
 	SetLightingRoleDto,
 } from './dto/lighting-role.dto';
+import { SpaceActiveMediaActivityEntity } from './entities/space-active-media-activity.entity';
+import {
+	ActiveMediaActivityResponseModel,
+	MediaActivityActivationResponseModel,
+	MediaActivityActivationResultModel,
+	MediaActivityExecutionPlanModel,
+	MediaActivityExecutionStepModel,
+	MediaActivityLastResultModel,
+	MediaActivityResolvedModel,
+	MediaActivityStepFailureModel,
+} from './models/media-activity.model';
 import {
 	CreateMediaActivityBindingDto,
 	ReqCreateMediaActivityBindingDto,
@@ -278,6 +289,16 @@ export const SPACES_SWAGGER_EXTRA_MODELS = [
 	// Media activity binding response models
 	MediaActivityBindingResponseModel,
 	MediaActivityBindingsResponseModel,
+	// Media activity activation models
+	SpaceActiveMediaActivityEntity,
+	MediaActivityResolvedModel,
+	MediaActivityStepFailureModel,
+	MediaActivityLastResultModel,
+	MediaActivityExecutionStepModel,
+	MediaActivityExecutionPlanModel,
+	MediaActivityActivationResultModel,
+	MediaActivityActivationResponseModel,
+	ActiveMediaActivityResponseModel,
 	// Derived media endpoint models
 	DerivedMediaPropertyLinkModel,
 	DerivedRemoteLinksModel,

@@ -27,6 +27,10 @@ import { ReqSuggestionFeedbackDto } from '../dto/suggestion.dto';
 import { ReqUpdateSpaceDto } from '../dto/update-space.dto';
 import { DerivedMediaEndpointsResponseModel } from '../models/derived-media-endpoint.model';
 import {
+	ActiveMediaActivityResponseModel,
+	MediaActivityActivationResponseModel,
+} from '../models/media-activity.model';
+import {
 	MediaActivityBindingResponseModel,
 	MediaActivityBindingsResponseModel,
 } from '../models/media-activity-binding.model';
@@ -119,6 +123,7 @@ import { SpaceIntentService } from '../services/space-intent.service';
 import { SpaceLightingRoleService } from '../services/space-lighting-role.service';
 import { SpaceLightingStateService } from '../services/space-lighting-state.service';
 import { SpaceMediaActivityBindingService } from '../services/space-media-activity-binding.service';
+import { SpaceMediaActivityService } from '../services/space-media-activity.service';
 import { SpaceSensorRoleService } from '../services/space-sensor-role.service';
 import { SpaceSensorStateService } from '../services/space-sensor-state.service';
 import { SpaceSuggestionService } from '../services/space-suggestion.service';
@@ -129,6 +134,7 @@ import {
 	IntentCategory,
 	LightingMode,
 	LightingRole,
+	MediaActivityKey,
 	QUICK_ACTION_CATALOG,
 	SPACES_MODULE_API_TAG_NAME,
 	SPACES_MODULE_NAME,
@@ -178,6 +184,7 @@ export class SpacesController {
 		private readonly intentSpecLoaderService: IntentSpecLoaderService,
 		private readonly derivedMediaEndpointService: DerivedMediaEndpointService,
 		private readonly spaceMediaActivityBindingService: SpaceMediaActivityBindingService,
+		private readonly spaceMediaActivityService: SpaceMediaActivityService,
 	) {}
 
 	@Get()
@@ -2132,5 +2139,87 @@ export class SpacesController {
 		this.logger.debug(`Deleting media activity binding id=${bindingId} for space=${id}`);
 
 		await this.spaceMediaActivityBindingService.deleteForSpace(id, bindingId);
+	}
+
+	// ===========================
+	// Media Activity Activation
+	// ===========================
+
+	@Get(':id/media/activities/active')
+	@ApiOperation({
+		operationId: 'get-spaces-module-space-active-media-activity',
+		summary: 'Get active media activity',
+		description: 'Returns the currently active media activity for a space, or null if no activity is active.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(ActiveMediaActivityResponseModel, 'Active media activity state')
+	@ApiNotFoundResponse('Space not found')
+	async getActiveMediaActivity(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+	): Promise<ActiveMediaActivityResponseModel> {
+		this.logger.debug(`Fetching active media activity for space=${id}`);
+
+		const record = await this.spaceMediaActivityService.getActive(id);
+
+		const response = new ActiveMediaActivityResponseModel();
+		response.data = record;
+
+		return response;
+	}
+
+	@Post(':id/media/activities/:activityKey/activate')
+	@ApiOperation({
+		operationId: 'activate-spaces-module-space-media-activity',
+		summary: 'Activate a media activity',
+		description:
+			'Activates a media activity for a space. Resolves the binding into an execution plan, ' +
+			'executes device commands (power, input, volume), and persists the active state. ' +
+			'Returns 409 if no binding exists for the activity key.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiParam({
+		name: 'activityKey',
+		type: 'string',
+		enum: Object.values(MediaActivityKey),
+		description: 'Activity key to activate',
+	})
+	@ApiSuccessResponse(MediaActivityActivationResponseModel, 'Activity activation result')
+	@ApiBadRequestResponse('Invalid activity key')
+	@ApiUnprocessableEntityResponse('Binding missing or validation failed')
+	@ApiNotFoundResponse('Space not found')
+	async activateMediaActivity(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Param('activityKey') activityKey: string,
+	): Promise<MediaActivityActivationResponseModel> {
+		this.logger.debug(`Activating media activity=${activityKey} for space=${id}`);
+
+		const result = await this.spaceMediaActivityService.activate(id, activityKey as MediaActivityKey);
+
+		const response = new MediaActivityActivationResponseModel();
+		response.data = result;
+
+		return response;
+	}
+
+	@Post(':id/media/activities/deactivate')
+	@ApiOperation({
+		operationId: 'deactivate-spaces-module-space-media-activity',
+		summary: 'Deactivate media activity',
+		description: 'Deactivates the current media activity for a space, resetting the active state.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiSuccessResponse(MediaActivityActivationResponseModel, 'Activity deactivated')
+	@ApiNotFoundResponse('Space not found')
+	async deactivateMediaActivity(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+	): Promise<MediaActivityActivationResponseModel> {
+		this.logger.debug(`Deactivating media activity for space=${id}`);
+
+		const result = await this.spaceMediaActivityService.deactivate(id);
+
+		const response = new MediaActivityActivationResponseModel();
+		response.data = result;
+
+		return response;
 	}
 }
