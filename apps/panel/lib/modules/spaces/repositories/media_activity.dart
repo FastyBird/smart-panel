@@ -36,7 +36,7 @@ class MediaActivityRepository extends ChangeNotifier {
 
 	Future<List<MediaEndpointModel>> fetchEndpoints(String spaceId) async {
 		try {
-			final response = await _dio.get('/spaces/$spaceId/media/endpoints');
+			final response = await _dio.get('/modules/spaces/spaces/$spaceId/media/endpoints');
 
 			if (response.statusCode == 200) {
 				final data = response.data['data'] as Map<String, dynamic>;
@@ -81,7 +81,7 @@ class MediaActivityRepository extends ChangeNotifier {
 
 	Future<List<MediaActivityBindingModel>> fetchBindings(String spaceId) async {
 		try {
-			final response = await _dio.get('/spaces/$spaceId/media/bindings');
+			final response = await _dio.get('/modules/spaces/spaces/$spaceId/media/bindings');
 
 			if (response.statusCode == 200) {
 				final data = response.data['data'] as List<dynamic>;
@@ -118,7 +118,7 @@ class MediaActivityRepository extends ChangeNotifier {
 
 	Future<MediaActiveStateModel?> fetchActiveState(String spaceId) async {
 		try {
-			final response = await _dio.get('/spaces/$spaceId/media/activities/active');
+			final response = await _dio.get('/modules/spaces/spaces/$spaceId/media/activities/active');
 
 			if (response.statusCode == 200) {
 				final data = response.data['data'];
@@ -190,7 +190,7 @@ class MediaActivityRepository extends ChangeNotifier {
 
 		try {
 			final keyStr = mediaActivityKeyToString(activityKey);
-			final response = await _dio.post('/spaces/$spaceId/media/activities/$keyStr/activate');
+			final response = await _dio.post('/modules/spaces/spaces/$spaceId/media/activities/$keyStr/activate');
 
 			final statusCode = response.statusCode ?? 0;
 			if (statusCode >= 200 && statusCode < 300) {
@@ -256,7 +256,7 @@ class MediaActivityRepository extends ChangeNotifier {
 		notifyListeners();
 
 		try {
-			final response = await _dio.post('/spaces/$spaceId/media/activities/deactivate');
+			final response = await _dio.post('/modules/spaces/spaces/$spaceId/media/activities/deactivate');
 
 			final statusCode = response.statusCode ?? 0;
 			if (statusCode >= 200 && statusCode < 300) {
