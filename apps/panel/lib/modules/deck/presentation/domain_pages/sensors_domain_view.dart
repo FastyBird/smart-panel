@@ -84,8 +84,10 @@ class SensorData {
     this.channelCategory,
   });
 
-  SensorFreshness get freshness =>
-      SensorFreshnessUtils.evaluate(lastUpdated, category);
+  SensorFreshness get freshness {
+    if (value == '--') return SensorFreshness.offline;
+    return SensorFreshnessUtils.evaluate(lastUpdated, category);
+  }
 
   bool get isStaleOrOffline =>
       freshness == SensorFreshness.stale || freshness == SensorFreshness.offline;
