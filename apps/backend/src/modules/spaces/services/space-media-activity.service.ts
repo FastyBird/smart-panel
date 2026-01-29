@@ -16,12 +16,7 @@ import {
 	MediaActivityLastResultModel,
 	MediaActivityResolvedModel,
 } from '../models/media-activity.model';
-import {
-	EventType,
-	MediaActivationState,
-	MediaActivityKey,
-	SPACES_MODULE_NAME,
-} from '../spaces.constants';
+import { EventType, MediaActivationState, MediaActivityKey, SPACES_MODULE_NAME } from '../spaces.constants';
 import { SpacesValidationException } from '../spaces.exceptions';
 
 import { DerivedMediaEndpointService } from './derived-media-endpoint.service';
@@ -280,7 +275,7 @@ export class SpaceMediaActivityService {
 				targetDeviceId: ep.deviceId,
 				action: {
 					kind: 'setProperty',
-					propertyId: ep.links.power!.propertyId,
+					propertyId: ep.links.power.propertyId,
 					value: true,
 				},
 				critical: activityKey === MediaActivityKey.WATCH || activityKey === MediaActivityKey.GAMING,
@@ -446,9 +441,7 @@ export class SpaceMediaActivityService {
 
 				const result = await Promise.race([
 					platform.processBatch([command]),
-					new Promise<boolean>((_, reject) =>
-						setTimeout(() => reject(new Error('Step timeout')), STEP_TIMEOUT_MS),
-					),
+					new Promise<boolean>((_, reject) => setTimeout(() => reject(new Error('Step timeout')), STEP_TIMEOUT_MS)),
 				]);
 
 				if (result) {
@@ -492,12 +485,8 @@ export class SpaceMediaActivityService {
 	 * Build an activation result from an existing record
 	 */
 	private buildResultFromRecord(record: SpaceActiveMediaActivityEntity): MediaActivityActivationResultModel {
-		const resolved = record.resolved
-			? (JSON.parse(record.resolved) as MediaActivityResolvedModel)
-			: undefined;
-		const summary = record.lastResult
-			? (JSON.parse(record.lastResult) as MediaActivityLastResultModel)
-			: undefined;
+		const resolved = record.resolved ? (JSON.parse(record.resolved) as MediaActivityResolvedModel) : undefined;
+		const summary = record.lastResult ? (JSON.parse(record.lastResult) as MediaActivityLastResultModel) : undefined;
 
 		return {
 			activityKey: record.activityKey,
