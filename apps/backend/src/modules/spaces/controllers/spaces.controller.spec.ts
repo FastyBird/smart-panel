@@ -21,6 +21,7 @@ import { SpaceIntentService } from '../services/space-intent.service';
 import { SpaceLightingRoleService } from '../services/space-lighting-role.service';
 import { SpaceLightingStateService } from '../services/space-lighting-state.service';
 import { SpaceMediaActivityBindingService } from '../services/space-media-activity-binding.service';
+import { SpaceMediaActivityService } from '../services/space-media-activity.service';
 import { SpaceSensorRoleService } from '../services/space-sensor-role.service';
 import { SpaceSensorStateService } from '../services/space-sensor-state.service';
 import { SpaceSuggestionService } from '../services/space-suggestion.service';
@@ -470,6 +471,14 @@ describe('SpacesController', () => {
 						delete: jest.fn().mockResolvedValue(undefined),
 						deleteForSpace: jest.fn().mockResolvedValue(undefined),
 						applyDefaults: jest.fn().mockResolvedValue([]),
+					},
+				},
+				{
+					provide: SpaceMediaActivityService,
+					useValue: {
+						getActive: jest.fn().mockResolvedValue(null),
+						activate: jest.fn().mockResolvedValue({ activityKey: null, state: 'deactivated' }),
+						deactivate: jest.fn().mockResolvedValue({ activityKey: null, state: 'deactivated' }),
 					},
 				},
 			],
