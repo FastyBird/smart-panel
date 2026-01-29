@@ -86,9 +86,7 @@ export class SpaceMediaActivityBindingService {
 		const binding = await this.getOneOrThrow(bindingId);
 
 		if (binding.spaceId !== spaceId) {
-			throw new SpacesValidationException(
-				`Activity binding with id=${bindingId} does not belong to space ${spaceId}`,
-			);
+			throw new SpacesValidationException(`Activity binding with id=${bindingId} does not belong to space ${spaceId}`);
 		}
 
 		return binding;
@@ -216,7 +214,7 @@ export class SpaceMediaActivityBindingService {
 				audioEndpointId: audioOutputs[0]?.endpointId ?? null,
 				sourceEndpointId: sources[0]?.endpointId ?? null,
 				remoteEndpointId:
-					remotes[0]?.endpointId ?? (displays[0] ? this.findRemoteForDevice(displays[0], remotes) : null),
+					(displays[0] ? this.findRemoteForDevice(displays[0], remotes) : null) ?? remotes[0]?.endpointId ?? null,
 			},
 			[MediaActivityKey.LISTEN]: {
 				displayEndpointId: null,
@@ -228,9 +226,7 @@ export class SpaceMediaActivityBindingService {
 				displayEndpointId: displays[0]?.endpointId ?? null,
 				audioEndpointId: audioOutputs[0]?.endpointId ?? null,
 				sourceEndpointId:
-					sources.find((s) => s.name.toLowerCase().includes('game'))?.endpointId ??
-					sources[0]?.endpointId ??
-					null,
+					sources.find((s) => s.name.toLowerCase().includes('game'))?.endpointId ?? sources[0]?.endpointId ?? null,
 				remoteEndpointId: remotes[0]?.endpointId ?? null,
 			},
 			[MediaActivityKey.BACKGROUND]: {
@@ -448,10 +444,7 @@ export class SpaceMediaActivityBindingService {
 	/**
 	 * Find a remote endpoint for the same device as a given display
 	 */
-	private findRemoteForDevice(
-		display: DerivedMediaEndpointModel,
-		remotes: DerivedMediaEndpointModel[],
-	): string | null {
+	private findRemoteForDevice(display: DerivedMediaEndpointModel, remotes: DerivedMediaEndpointModel[]): string | null {
 		const match = remotes.find((r) => r.deviceId === display.deviceId);
 
 		return match?.endpointId ?? null;

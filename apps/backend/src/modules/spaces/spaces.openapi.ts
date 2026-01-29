@@ -25,6 +25,12 @@ import {
 	SetLightingRoleDto,
 } from './dto/lighting-role.dto';
 import {
+	CreateMediaActivityBindingDto,
+	ReqCreateMediaActivityBindingDto,
+	ReqUpdateMediaActivityBindingDto,
+	UpdateMediaActivityBindingDto,
+} from './dto/media-activity-binding.dto';
+import {
 	BulkCreateMediaEndpointsDto,
 	CreateMediaEndpointDto,
 	ReqBulkCreateMediaEndpointsDto,
@@ -46,12 +52,6 @@ import {
 	ReqSetSensorRoleDto,
 	SetSensorRoleDto,
 } from './dto/sensor-role.dto';
-import {
-	CreateMediaActivityBindingDto,
-	ReqCreateMediaActivityBindingDto,
-	ReqUpdateMediaActivityBindingDto,
-	UpdateMediaActivityBindingDto,
-} from './dto/media-activity-binding.dto';
 import { ReqSuggestionFeedbackDto, SuggestionFeedbackDto } from './dto/suggestion.dto';
 import { ReqUpdateSpaceDto, UpdateSpaceDto } from './dto/update-space.dto';
 import { SpaceActiveMediaRoutingEntity } from './entities/space-active-media-routing.entity';

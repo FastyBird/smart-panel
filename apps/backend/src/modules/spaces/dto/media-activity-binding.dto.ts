@@ -1,5 +1,5 @@
 import { Expose, Transform, Type } from 'class-transformer';
-import { IsEnum, IsInt, IsOptional, IsString, Max, MaxLength, Min, ValidateNested } from 'class-validator';
+import { IsEnum, IsInt, IsOptional, IsString, Max, MaxLength, Min, ValidateIf, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -18,7 +18,8 @@ export class CreateMediaActivityBindingDto {
 	})
 	@Expose({ name: 'activity_key' })
 	@IsEnum(MediaActivityKey, {
-		message: '[{"field":"activity_key","reason":"Activity key must be one of: watch, listen, gaming, background, off."}]',
+		message:
+			'[{"field":"activity_key","reason":"Activity key must be one of: watch, listen, gaming, background, off."}]',
 	})
 	@Transform(
 		({ obj }: { obj: { activity_key?: string; activityKey?: string } }) => obj.activity_key ?? obj.activityKey,
@@ -185,6 +186,7 @@ export class UpdateMediaActivityBindingDto {
 	})
 	@Expose({ name: 'display_endpoint_id' })
 	@IsOptional()
+	@ValidateIf((_, value) => value !== null)
 	@IsString({
 		message: '[{"field":"display_endpoint_id","reason":"Display endpoint ID must be a string."}]',
 	})
@@ -206,6 +208,7 @@ export class UpdateMediaActivityBindingDto {
 	})
 	@Expose({ name: 'audio_endpoint_id' })
 	@IsOptional()
+	@ValidateIf((_, value) => value !== null)
 	@IsString({
 		message: '[{"field":"audio_endpoint_id","reason":"Audio endpoint ID must be a string."}]',
 	})
@@ -227,6 +230,7 @@ export class UpdateMediaActivityBindingDto {
 	})
 	@Expose({ name: 'source_endpoint_id' })
 	@IsOptional()
+	@ValidateIf((_, value) => value !== null)
 	@IsString({
 		message: '[{"field":"source_endpoint_id","reason":"Source endpoint ID must be a string."}]',
 	})
@@ -248,6 +252,7 @@ export class UpdateMediaActivityBindingDto {
 	})
 	@Expose({ name: 'remote_endpoint_id' })
 	@IsOptional()
+	@ValidateIf((_, value) => value !== null)
 	@IsString({
 		message: '[{"field":"remote_endpoint_id","reason":"Remote endpoint ID must be a string."}]',
 	})
@@ -269,6 +274,7 @@ export class UpdateMediaActivityBindingDto {
 	})
 	@Expose({ name: 'display_input_id' })
 	@IsOptional()
+	@ValidateIf((_, value) => value !== null)
 	@IsString({
 		message: '[{"field":"display_input_id","reason":"Display input ID must be a string."}]',
 	})
@@ -291,6 +297,7 @@ export class UpdateMediaActivityBindingDto {
 	})
 	@Expose({ name: 'audio_volume_preset' })
 	@IsOptional()
+	@ValidateIf((_, value) => value !== null)
 	@IsInt({
 		message: '[{"field":"audio_volume_preset","reason":"Audio volume preset must be an integer."}]',
 	})

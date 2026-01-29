@@ -20,8 +20,8 @@ import { ReqCoversIntentDto } from '../dto/covers-intent.dto';
 import { ReqBulkSetCoversRolesDto, ReqSetCoversRoleDto } from '../dto/covers-role.dto';
 import { ReqCreateSpaceDto } from '../dto/create-space.dto';
 import { ReqLightingIntentDto } from '../dto/lighting-intent.dto';
-import { ReqCreateMediaActivityBindingDto, ReqUpdateMediaActivityBindingDto } from '../dto/media-activity-binding.dto';
 import { ReqBulkSetLightingRolesDto, ReqSetLightingRoleDto } from '../dto/lighting-role.dto';
+import { ReqCreateMediaActivityBindingDto, ReqUpdateMediaActivityBindingDto } from '../dto/media-activity-binding.dto';
 import { ReqBulkSetSensorRolesDto, ReqSetSensorRoleDto } from '../dto/sensor-role.dto';
 import { ReqSuggestionFeedbackDto } from '../dto/suggestion.dto';
 import { ReqUpdateSpaceDto } from '../dto/update-space.dto';
@@ -112,13 +112,13 @@ import {
 	UndoStateResponseModel,
 } from '../models/spaces-response.model';
 import { DerivedMediaEndpointService } from '../services/derived-media-endpoint.service';
-import { SpaceMediaActivityBindingService } from '../services/space-media-activity-binding.service';
 import { SpaceClimateRoleService } from '../services/space-climate-role.service';
 import { SpaceContextSnapshotService } from '../services/space-context-snapshot.service';
 import { SpaceCoversRoleService } from '../services/space-covers-role.service';
 import { SpaceIntentService } from '../services/space-intent.service';
 import { SpaceLightingRoleService } from '../services/space-lighting-role.service';
 import { SpaceLightingStateService } from '../services/space-lighting-state.service';
+import { SpaceMediaActivityBindingService } from '../services/space-media-activity-binding.service';
 import { SpaceSensorRoleService } from '../services/space-sensor-role.service';
 import { SpaceSensorStateService } from '../services/space-sensor-state.service';
 import { SpaceSuggestionService } from '../services/space-suggestion.service';
