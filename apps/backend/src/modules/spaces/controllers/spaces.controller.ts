@@ -166,6 +166,7 @@ import { IntentSpecLoaderService } from '../spec';
 	BulkSensorRolesResponseModel,
 	BulkSensorRolesResultDataModel,
 	BulkSensorRoleResultItemModel,
+	BindingValidationResponseModel,
 	BindingValidationReportModel,
 	BindingValidationIssueModel,
 )
