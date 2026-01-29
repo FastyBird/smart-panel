@@ -17,7 +17,13 @@ import {
 	MediaActivityLastResultModel,
 	MediaActivityResolvedModel,
 } from '../models/media-activity.model';
-import { EventType, MediaActivationState, MediaActivityKey, MediaEndpointType, SPACES_MODULE_NAME } from '../spaces.constants';
+import {
+	EventType,
+	MediaActivationState,
+	MediaActivityKey,
+	MediaEndpointType,
+	SPACES_MODULE_NAME,
+} from '../spaces.constants';
 import { SpacesValidationException } from '../spaces.exceptions';
 
 import { DerivedMediaEndpointService } from './derived-media-endpoint.service';
@@ -180,9 +186,7 @@ export class SpaceMediaActivityService {
 			// Emit appropriate event
 			const warnings = [
 				...conflictWarnings,
-				...executionResult.failures
-					.filter((f) => !f.critical)
-					.map((f) => `Step ${f.stepIndex}: ${f.reason}`),
+				...executionResult.failures.filter((f) => !f.critical).map((f) => `Step ${f.stepIndex}: ${f.reason}`),
 			];
 
 			if (finalState === MediaActivationState.ACTIVE) {
@@ -552,9 +556,7 @@ export class SpaceMediaActivityService {
 		} else if (displayEndpoint?.capabilities.volume) {
 			targets.volumeTargetDeviceId = displayEndpoint.deviceId;
 		} else {
-			const fallback = allEndpoints.find(
-				(e) => e.type === MediaEndpointType.AUDIO_OUTPUT && e.capabilities.volume,
-			);
+			const fallback = allEndpoints.find((e) => e.type === MediaEndpointType.AUDIO_OUTPUT && e.capabilities.volume);
 
 			if (fallback) {
 				targets.volumeTargetDeviceId = fallback.deviceId;
@@ -565,9 +567,7 @@ export class SpaceMediaActivityService {
 		if (displayEndpoint?.capabilities.inputSelect) {
 			targets.inputTargetDeviceId = displayEndpoint.deviceId;
 		} else {
-			const fallback = allEndpoints.find(
-				(e) => e.type === MediaEndpointType.DISPLAY && e.capabilities.inputSelect,
-			);
+			const fallback = allEndpoints.find((e) => e.type === MediaEndpointType.DISPLAY && e.capabilities.inputSelect);
 
 			if (fallback) {
 				targets.inputTargetDeviceId = fallback.deviceId;
@@ -643,9 +643,7 @@ export class SpaceMediaActivityService {
 			return warnings;
 		}
 
-		this.logger.debug(
-			`Conflict detected: activating ${activityKey} while ${currentKey} is active in space=${spaceId}`,
-		);
+		this.logger.debug(`Conflict detected: activating ${activityKey} while ${currentKey} is active in space=${spaceId}`);
 
 		// Try to pause playback on any playing endpoints
 		const allEndpoints = Array.from(endpointMap.values());
@@ -672,7 +670,7 @@ export class SpaceMediaActivityService {
 
 				for (const channel of device.channels ?? []) {
 					for (const property of channel.properties ?? []) {
-						if (property.id === ep.links.playback!.propertyId) {
+						if (property.id === ep.links.playback.propertyId) {
 							foundChannel = channel;
 							foundProperty = property;
 							break;
@@ -694,7 +692,9 @@ export class SpaceMediaActivityService {
 
 					await Promise.race([
 						platform.processBatch([command]),
-						new Promise<boolean>((_, reject) => setTimeout(() => reject(new Error('Conflict step timeout')), STEP_TIMEOUT_MS)),
+						new Promise<boolean>((_, reject) =>
+							setTimeout(() => reject(new Error('Conflict step timeout')), STEP_TIMEOUT_MS),
+						),
 					]);
 
 					warnings.push(`Paused playback on ${ep.name} (conflict with ${currentKey})`);

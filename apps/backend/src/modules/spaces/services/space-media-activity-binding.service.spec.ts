@@ -150,9 +150,9 @@ describe('SpaceMediaActivityBindingService', () => {
 				const watchBinding = savedBindings.find((b) => b.activityKey === MediaActivityKey.WATCH);
 
 				expect(watchBinding).toBeDefined();
-				expect(watchBinding!.displayEndpointId).toBe(`${spaceId}:display:${tvDeviceId}`);
-				expect(watchBinding!.audioEndpointId).toBe(`${spaceId}:audio_output:${tvDeviceId}`);
-				expect(watchBinding!.remoteEndpointId).toBe(`${spaceId}:remote_target:${tvDeviceId}`);
+				expect(watchBinding.displayEndpointId).toBe(`${spaceId}:display:${tvDeviceId}`);
+				expect(watchBinding.audioEndpointId).toBe(`${spaceId}:audio_output:${tvDeviceId}`);
+				expect(watchBinding.remoteEndpointId).toBe(`${spaceId}:remote_target:${tvDeviceId}`);
 			});
 
 			it('should leave Listen without display', async () => {
@@ -161,8 +161,8 @@ describe('SpaceMediaActivityBindingService', () => {
 				const listenBinding = savedBindings.find((b) => b.activityKey === MediaActivityKey.LISTEN);
 
 				expect(listenBinding).toBeDefined();
-				expect(listenBinding!.displayEndpointId).toBeNull();
-				expect(listenBinding!.audioEndpointId).toBe(`${spaceId}:audio_output:${tvDeviceId}`);
+				expect(listenBinding.displayEndpointId).toBeNull();
+				expect(listenBinding.audioEndpointId).toBe(`${spaceId}:audio_output:${tvDeviceId}`);
 			});
 
 			it('should create empty Off binding', async () => {
@@ -171,10 +171,10 @@ describe('SpaceMediaActivityBindingService', () => {
 				const offBinding = savedBindings.find((b) => b.activityKey === MediaActivityKey.OFF);
 
 				expect(offBinding).toBeDefined();
-				expect(offBinding!.displayEndpointId).toBeNull();
-				expect(offBinding!.audioEndpointId).toBeNull();
-				expect(offBinding!.sourceEndpointId).toBeNull();
-				expect(offBinding!.remoteEndpointId).toBeNull();
+				expect(offBinding.displayEndpointId).toBeNull();
+				expect(offBinding.audioEndpointId).toBeNull();
+				expect(offBinding.sourceEndpointId).toBeNull();
+				expect(offBinding.remoteEndpointId).toBeNull();
 			});
 		});
 
@@ -203,8 +203,8 @@ describe('SpaceMediaActivityBindingService', () => {
 
 				const listenBinding = savedBindings.find((b) => b.activityKey === MediaActivityKey.LISTEN);
 
-				expect(listenBinding!.audioEndpointId).toBe(`${spaceId}:audio_output:${speakerDeviceId}`);
-				expect(listenBinding!.sourceEndpointId).toBe(`${spaceId}:source:${speakerDeviceId}`);
+				expect(listenBinding.audioEndpointId).toBe(`${spaceId}:audio_output:${speakerDeviceId}`);
+				expect(listenBinding.sourceEndpointId).toBe(`${spaceId}:source:${speakerDeviceId}`);
 			});
 
 			it('should set volume preset 20 for Background', async () => {
@@ -212,8 +212,8 @@ describe('SpaceMediaActivityBindingService', () => {
 
 				const bgBinding = savedBindings.find((b) => b.activityKey === MediaActivityKey.BACKGROUND);
 
-				expect(bgBinding!.audioEndpointId).toBe(`${spaceId}:audio_output:${speakerDeviceId}`);
-				expect(bgBinding!.audioVolumePreset).toBe(20);
+				expect(bgBinding.audioEndpointId).toBe(`${spaceId}:audio_output:${speakerDeviceId}`);
+				expect(bgBinding.audioVolumePreset).toBe(20);
 			});
 
 			it('should have no display for any activity', async () => {
@@ -293,8 +293,8 @@ describe('SpaceMediaActivityBindingService', () => {
 
 				const watchBinding = savedBindings.find((b) => b.activityKey === MediaActivityKey.WATCH);
 
-				expect(watchBinding!.displayEndpointId).toBe(`${spaceId}:display:${tvDeviceId}`);
-				expect(watchBinding!.audioEndpointId).toBe(`${spaceId}:audio_output:${avrDeviceId}`);
+				expect(watchBinding.displayEndpointId).toBe(`${spaceId}:display:${tvDeviceId}`);
+				expect(watchBinding.audioEndpointId).toBe(`${spaceId}:audio_output:${avrDeviceId}`);
 			});
 
 			it('Watch: should prefer streamer as source', async () => {
@@ -302,7 +302,7 @@ describe('SpaceMediaActivityBindingService', () => {
 
 				const watchBinding = savedBindings.find((b) => b.activityKey === MediaActivityKey.WATCH);
 
-				expect(watchBinding!.sourceEndpointId).toBe(`${spaceId}:source:${streamerDeviceId}`);
+				expect(watchBinding.sourceEndpointId).toBe(`${spaceId}:source:${streamerDeviceId}`);
 			});
 
 			it('Watch: should use TV remote target', async () => {
@@ -310,7 +310,7 @@ describe('SpaceMediaActivityBindingService', () => {
 
 				const watchBinding = savedBindings.find((b) => b.activityKey === MediaActivityKey.WATCH);
 
-				expect(watchBinding!.remoteEndpointId).toBe(`${spaceId}:remote_target:${tvDeviceId}`);
+				expect(watchBinding.remoteEndpointId).toBe(`${spaceId}:remote_target:${tvDeviceId}`);
 			});
 
 			it('Listen: should prefer speaker (playback-capable) over AVR', async () => {
@@ -318,7 +318,7 @@ describe('SpaceMediaActivityBindingService', () => {
 
 				const listenBinding = savedBindings.find((b) => b.activityKey === MediaActivityKey.LISTEN);
 
-				expect(listenBinding!.audioEndpointId).toBe(`${spaceId}:audio_output:${speakerDeviceId}`);
+				expect(listenBinding.audioEndpointId).toBe(`${spaceId}:audio_output:${speakerDeviceId}`);
 			});
 
 			it('Listen: should pick playback-capable source', async () => {
@@ -327,7 +327,7 @@ describe('SpaceMediaActivityBindingService', () => {
 				const listenBinding = savedBindings.find((b) => b.activityKey === MediaActivityKey.LISTEN);
 
 				// Speaker source or streamer source (both have playback)
-				expect(listenBinding!.sourceEndpointId).toBeTruthy();
+				expect(listenBinding.sourceEndpointId).toBeTruthy();
 			});
 
 			it('Gaming: should prefer console as source', async () => {
@@ -335,7 +335,7 @@ describe('SpaceMediaActivityBindingService', () => {
 
 				const gamingBinding = savedBindings.find((b) => b.activityKey === MediaActivityKey.GAMING);
 
-				expect(gamingBinding!.sourceEndpointId).toBe(`${spaceId}:source:${consoleDeviceId}`);
+				expect(gamingBinding.sourceEndpointId).toBe(`${spaceId}:source:${consoleDeviceId}`);
 			});
 
 			it('Gaming: should prefer AVR audio', async () => {
@@ -343,7 +343,7 @@ describe('SpaceMediaActivityBindingService', () => {
 
 				const gamingBinding = savedBindings.find((b) => b.activityKey === MediaActivityKey.GAMING);
 
-				expect(gamingBinding!.audioEndpointId).toBe(`${spaceId}:audio_output:${avrDeviceId}`);
+				expect(gamingBinding.audioEndpointId).toBe(`${spaceId}:audio_output:${avrDeviceId}`);
 			});
 
 			it('Gaming: should use TV display and remote', async () => {
@@ -351,8 +351,8 @@ describe('SpaceMediaActivityBindingService', () => {
 
 				const gamingBinding = savedBindings.find((b) => b.activityKey === MediaActivityKey.GAMING);
 
-				expect(gamingBinding!.displayEndpointId).toBe(`${spaceId}:display:${tvDeviceId}`);
-				expect(gamingBinding!.remoteEndpointId).toBe(`${spaceId}:remote_target:${tvDeviceId}`);
+				expect(gamingBinding.displayEndpointId).toBe(`${spaceId}:display:${tvDeviceId}`);
+				expect(gamingBinding.remoteEndpointId).toBe(`${spaceId}:remote_target:${tvDeviceId}`);
 			});
 
 			it('Background: should prefer playback speaker with volume preset 20', async () => {
@@ -360,10 +360,10 @@ describe('SpaceMediaActivityBindingService', () => {
 
 				const bgBinding = savedBindings.find((b) => b.activityKey === MediaActivityKey.BACKGROUND);
 
-				expect(bgBinding!.audioEndpointId).toBe(`${spaceId}:audio_output:${speakerDeviceId}`);
-				expect(bgBinding!.audioVolumePreset).toBe(20);
-				expect(bgBinding!.displayEndpointId).toBeNull();
-				expect(bgBinding!.sourceEndpointId).toBeNull();
+				expect(bgBinding.audioEndpointId).toBe(`${spaceId}:audio_output:${speakerDeviceId}`);
+				expect(bgBinding.audioVolumePreset).toBe(20);
+				expect(bgBinding.displayEndpointId).toBeNull();
+				expect(bgBinding.sourceEndpointId).toBeNull();
 			});
 		});
 
@@ -383,9 +383,7 @@ describe('SpaceMediaActivityBindingService', () => {
 			savedBindings = [existingBinding];
 			mockRepository.find.mockResolvedValue([existingBinding]);
 
-			const endpoints = [
-				buildEndpoint(MediaEndpointType.DISPLAY, tvDeviceId, 'TV', { power: true }),
-			];
+			const endpoints = [buildEndpoint(MediaEndpointType.DISPLAY, tvDeviceId, 'TV', { power: true })];
 
 			mockDerivedEndpointService.buildEndpointsForSpace.mockResolvedValue({ spaceId, endpoints });
 			mockMediaEndpointService.getMediaCapabilitiesInSpace.mockResolvedValue([
@@ -438,8 +436,8 @@ describe('SpaceMediaActivityBindingService', () => {
 
 			const watchReport = reports.find((r) => r.activityKey === MediaActivityKey.WATCH);
 
-			expect(watchReport!.valid).toBe(false);
-			expect(watchReport!.issues.some((i) => i.severity === 'error' && i.message.includes('not found'))).toBe(true);
+			expect(watchReport.valid).toBe(false);
+			expect(watchReport.issues.some((i) => i.severity === 'error' && i.message.includes('not found'))).toBe(true);
 		});
 
 		it('should report missing slots as warnings for video activities', async () => {
@@ -462,7 +460,7 @@ describe('SpaceMediaActivityBindingService', () => {
 
 			const watchReport = reports.find((r) => r.activityKey === MediaActivityKey.WATCH);
 
-			expect(watchReport!.issues.filter((i) => i.severity === 'warning')).toHaveLength(2); // display + audio
+			expect(watchReport.issues.filter((i) => i.severity === 'warning')).toHaveLength(2); // display + audio
 		});
 	});
 });

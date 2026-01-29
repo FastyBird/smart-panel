@@ -8,7 +8,6 @@ import { DeviceCategory } from '../../devices/devices.constants';
 import { CreateMediaActivityBindingDto, UpdateMediaActivityBindingDto } from '../dto/media-activity-binding.dto';
 import { SpaceMediaActivityBindingEntity } from '../entities/space-media-activity-binding.entity';
 import { DerivedMediaEndpointModel } from '../models/derived-media-endpoint.model';
-import { MediaCapabilitySummaryModel } from '../models/media-routing.model';
 import { MediaActivityKey, MediaEndpointType, SPACES_MODULE_NAME } from '../spaces.constants';
 import { SpacesValidationException } from '../spaces.exceptions';
 
@@ -213,10 +212,10 @@ export class SpaceMediaActivityBindingService {
 
 		// Load capability summaries for device category awareness
 		const summaries = await this.mediaEndpointService.getMediaCapabilitiesInSpace(spaceId);
-		const categoryMap = new Map<string, string>();
+		const categoryMap = new Map<string, DeviceCategory>();
 
 		for (const s of summaries) {
-			categoryMap.set(s.deviceId, s.deviceCategory);
+			categoryMap.set(s.deviceId, s.deviceCategory as DeviceCategory);
 		}
 
 		const displays = endpointList.filter((e) => e.type === MediaEndpointType.DISPLAY);
@@ -250,7 +249,9 @@ export class SpaceMediaActivityBindingService {
 		};
 
 		// Best audio for video activities (volume-capable, prefer AVR > TV > speaker)
-		const videoAudio = [...audioOutputs].filter((e) => e.capabilities.volume).sort((a, b) => audioRank(b) - audioRank(a));
+		const videoAudio = [...audioOutputs]
+			.filter((e) => e.capabilities.volume)
+			.sort((a, b) => audioRank(b) - audioRank(a));
 		const bestVideoAudio = videoAudio[0] ?? audioOutputs[0];
 
 		// Best audio for listen/background (prefer playback/track capable, then speaker-like)
@@ -260,7 +261,7 @@ export class SpaceMediaActivityBindingService {
 			const aSpeaker = categoryMap.get(a.deviceId) === DeviceCategory.SPEAKER ? 1 : 0;
 			const bSpeaker = categoryMap.get(b.deviceId) === DeviceCategory.SPEAKER ? 1 : 0;
 
-			return (bPlay + bSpeaker) - (aPlay + aSpeaker);
+			return bPlay + bSpeaker - (aPlay + aSpeaker);
 		});
 		const bestListenAudio = playbackAudioSorted[0] ?? audioOutputs[0];
 
@@ -280,7 +281,10 @@ export class SpaceMediaActivityBindingService {
 
 		const bestDisplay = sortedDisplays[0];
 
-		const defaults: Record<MediaActivityKey, Partial<SpaceMediaActivityBindingEntity> & { audioVolumePreset?: number | null }> = {
+		const defaults: Record<
+			MediaActivityKey,
+			Partial<SpaceMediaActivityBindingEntity> & { audioVolumePreset?: number | null }
+		> = {
 			[MediaActivityKey.WATCH]: {
 				displayEndpointId: bestDisplay?.endpointId ?? null,
 				audioEndpointId: bestVideoAudio?.endpointId ?? null,
@@ -357,9 +361,7 @@ export class SpaceMediaActivityBindingService {
 	/**
 	 * Validate all bindings for a space and return a diagnostic report.
 	 */
-	async validateBindings(
-		spaceId: string,
-	): Promise<BindingValidationReport[]> {
+	async validateBindings(spaceId: string): Promise<BindingValidationReport[]> {
 		await this.spacesService.getOneOrThrow(spaceId);
 
 		const bindings = await this.findBySpace(spaceId);
@@ -370,24 +372,60 @@ export class SpaceMediaActivityBindingService {
 			const issues: BindingValidationIssue[] = [];
 
 			// Check each slot
-			this.validateSlotForReport(binding.displayEndpointId, 'displayEndpointId', MediaEndpointType.DISPLAY, endpoints, issues);
-			this.validateSlotForReport(binding.audioEndpointId, 'audioEndpointId', MediaEndpointType.AUDIO_OUTPUT, endpoints, issues);
-			this.validateSlotForReport(binding.sourceEndpointId, 'sourceEndpointId', MediaEndpointType.SOURCE, endpoints, issues);
-			this.validateSlotForReport(binding.remoteEndpointId, 'remoteEndpointId', MediaEndpointType.REMOTE_TARGET, endpoints, issues);
+			this.validateSlotForReport(
+				binding.displayEndpointId,
+				'displayEndpointId',
+				MediaEndpointType.DISPLAY,
+				endpoints,
+				issues,
+			);
+			this.validateSlotForReport(
+				binding.audioEndpointId,
+				'audioEndpointId',
+				MediaEndpointType.AUDIO_OUTPUT,
+				endpoints,
+				issues,
+			);
+			this.validateSlotForReport(
+				binding.sourceEndpointId,
+				'sourceEndpointId',
+				MediaEndpointType.SOURCE,
+				endpoints,
+				issues,
+			);
+			this.validateSlotForReport(
+				binding.remoteEndpointId,
+				'remoteEndpointId',
+				MediaEndpointType.REMOTE_TARGET,
+				endpoints,
+				issues,
+			);
 
 			// Check missing slots that are typically expected
 			if (binding.activityKey === MediaActivityKey.WATCH || binding.activityKey === MediaActivityKey.GAMING) {
 				if (!binding.displayEndpointId) {
-					issues.push({ slot: 'displayEndpointId', severity: 'warning', message: 'Missing display endpoint for video activity' });
+					issues.push({
+						slot: 'displayEndpointId',
+						severity: 'warning',
+						message: 'Missing display endpoint for video activity',
+					});
 				}
 				if (!binding.audioEndpointId) {
-					issues.push({ slot: 'audioEndpointId', severity: 'warning', message: 'Missing audio endpoint for video activity' });
+					issues.push({
+						slot: 'audioEndpointId',
+						severity: 'warning',
+						message: 'Missing audio endpoint for video activity',
+					});
 				}
 			}
 
 			if (binding.activityKey === MediaActivityKey.LISTEN || binding.activityKey === MediaActivityKey.BACKGROUND) {
 				if (!binding.audioEndpointId) {
-					issues.push({ slot: 'audioEndpointId', severity: 'warning', message: 'Missing audio endpoint for audio activity' });
+					issues.push({
+						slot: 'audioEndpointId',
+						severity: 'warning',
+						message: 'Missing audio endpoint for audio activity',
+					});
 				}
 			}
 
@@ -396,7 +434,11 @@ export class SpaceMediaActivityBindingService {
 				const ep = endpoints.get(binding.displayEndpointId);
 
 				if (ep && !ep.capabilities.inputSelect) {
-					issues.push({ slot: 'displayInputId', severity: 'error', message: 'Display endpoint does not support input selection' });
+					issues.push({
+						slot: 'displayInputId',
+						severity: 'error',
+						message: 'Display endpoint does not support input selection',
+					});
 				}
 			}
 
@@ -404,7 +446,11 @@ export class SpaceMediaActivityBindingService {
 				const ep = endpoints.get(binding.audioEndpointId);
 
 				if (ep && !ep.capabilities.volume) {
-					issues.push({ slot: 'audioVolumePreset', severity: 'error', message: 'Audio endpoint does not support volume control' });
+					issues.push({
+						slot: 'audioVolumePreset',
+						severity: 'error',
+						message: 'Audio endpoint does not support volume control',
+					});
 				}
 			}
 
