@@ -16,6 +16,7 @@ class WaterTankEmptyChannelPropertyView extends ChannelPropertyView {
     super.step,
     super.defaultValue,
     super.value,
+    super.valueState,
   });
 
   bool? get isWaterTankEmpty => value is BooleanValueType ? (value as BooleanValueType).value : null;

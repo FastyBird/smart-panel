@@ -4,6 +4,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
+import { PropertyValueState } from '../../devices/models/property-value-state.model';
 import { SpaceLightingRoleEntity } from '../entities/space-lighting-role.entity';
 import { SpaceEntity } from '../entities/space.entity';
 import { ClimateMode, LightingRole, SpaceType } from '../spaces.constants';
@@ -54,7 +55,7 @@ describe('SpaceContextSnapshotService', () => {
 				category: PropertyCategory.ON,
 				name: 'On',
 				dataType: 'boolean',
-				value: isOn,
+				value: new PropertyValueState(isOn),
 			} as unknown as ChannelPropertyEntity,
 		];
 
@@ -64,7 +65,7 @@ describe('SpaceContextSnapshotService', () => {
 				category: PropertyCategory.BRIGHTNESS,
 				name: 'Brightness',
 				dataType: 'number',
-				value: brightness,
+				value: new PropertyValueState(brightness),
 			} as unknown as ChannelPropertyEntity);
 		}
 
@@ -74,7 +75,7 @@ describe('SpaceContextSnapshotService', () => {
 				category: PropertyCategory.COLOR_TEMPERATURE,
 				name: 'Color Temperature',
 				dataType: 'number',
-				value: colorTemp,
+				value: new PropertyValueState(colorTemp),
 			} as unknown as ChannelPropertyEntity);
 		}
 
@@ -92,21 +93,21 @@ describe('SpaceContextSnapshotService', () => {
 					category: PropertyCategory.COLOR_RED,
 					name: 'Color Red',
 					dataType: 'number',
-					value: r,
+					value: new PropertyValueState(r),
 				} as unknown as ChannelPropertyEntity,
 				{
 					id: uuid(),
 					category: PropertyCategory.COLOR_GREEN,
 					name: 'Color Green',
 					dataType: 'number',
-					value: g,
+					value: new PropertyValueState(g),
 				} as unknown as ChannelPropertyEntity,
 				{
 					id: uuid(),
 					category: PropertyCategory.COLOR_BLUE,
 					name: 'Color Blue',
 					dataType: 'number',
-					value: b,
+					value: new PropertyValueState(b),
 				} as unknown as ChannelPropertyEntity,
 			);
 		}
@@ -435,7 +436,7 @@ describe('SpaceContextSnapshotService', () => {
 						category: PropertyCategory.ON,
 						name: 'On',
 						dataType: 'boolean',
-						value: 'true', // String instead of boolean
+						value: new PropertyValueState('true'), // String instead of boolean
 					} as unknown as ChannelPropertyEntity,
 				],
 			} as unknown as ChannelEntity;
@@ -475,14 +476,14 @@ describe('SpaceContextSnapshotService', () => {
 						category: PropertyCategory.ON,
 						name: 'On',
 						dataType: 'boolean',
-						value: true,
+						value: new PropertyValueState(true),
 					} as unknown as ChannelPropertyEntity,
 					{
 						id: uuid(),
 						category: PropertyCategory.BRIGHTNESS,
 						name: 'Brightness',
 						dataType: 'number',
-						value: '75', // String instead of number
+						value: new PropertyValueState('75'), // String instead of number
 					} as unknown as ChannelPropertyEntity,
 				],
 			} as unknown as ChannelEntity;
@@ -523,14 +524,14 @@ describe('SpaceContextSnapshotService', () => {
 						category: PropertyCategory.ON,
 						name: 'On',
 						dataType: 'boolean',
-						value: true,
+						value: new PropertyValueState(true),
 					} as unknown as ChannelPropertyEntity,
 					{
 						id: uuid(),
 						category: PropertyCategory.BRIGHTNESS,
 						name: 'Brightness',
 						dataType: 'number',
-						value: 100,
+						value: new PropertyValueState(100),
 					} as unknown as ChannelPropertyEntity,
 				],
 			} as unknown as ChannelEntity;
@@ -545,14 +546,14 @@ describe('SpaceContextSnapshotService', () => {
 						category: PropertyCategory.ON,
 						name: 'On',
 						dataType: 'boolean',
-						value: true,
+						value: new PropertyValueState(true),
 					} as unknown as ChannelPropertyEntity,
 					{
 						id: uuid(),
 						category: PropertyCategory.BRIGHTNESS,
 						name: 'Brightness',
 						dataType: 'number',
-						value: 50,
+						value: new PropertyValueState(50),
 					} as unknown as ChannelPropertyEntity,
 				],
 			} as unknown as ChannelEntity;

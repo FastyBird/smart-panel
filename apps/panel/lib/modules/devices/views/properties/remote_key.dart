@@ -16,6 +16,7 @@ class RemoteKeyChannelPropertyView extends ChannelPropertyView {
     super.step,
     super.defaultValue,
     super.value,
+    super.valueState,
   });
 
   String? get remoteKey => value is StringValueType ? (value as StringValueType).value : null;

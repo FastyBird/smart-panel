@@ -640,7 +640,7 @@ export class SpaceMediaRoutingService {
 						const currentChannel = currentDevice?.channels?.find((ch) => ch.id === step.channelId);
 						const currentProperty = currentChannel?.properties?.find((p) => p.id === step.propertyId);
 
-						if (currentProperty?.value !== undefined && currentProperty.value === step.value) {
+						if (currentProperty?.value?.value !== undefined && currentProperty.value.value === step.value) {
 							stepsSkipped++;
 							stepResults.push({
 								order: step.order,
@@ -924,7 +924,7 @@ export class SpaceMediaRoutingService {
 					for (const property of channel.properties ?? []) {
 						if (
 							(property.category === PropertyCategory.ON || property.category === PropertyCategory.ACTIVE) &&
-							property.value === true
+							property.value?.value === true
 						) {
 							anyOn = true;
 						}
@@ -945,11 +945,11 @@ export class SpaceMediaRoutingService {
 				// Find volume and mute properties
 				for (const channel of audioDevice.channels ?? []) {
 					for (const property of channel.properties ?? []) {
-						if (property.category === PropertyCategory.VOLUME && property.value !== undefined) {
-							currentVolume = Number(property.value);
+						if (property.category === PropertyCategory.VOLUME && property.value?.value !== undefined) {
+							currentVolume = Number(property.value.value);
 						}
-						if (property.category === PropertyCategory.MUTE && property.value !== undefined) {
-							isMuted = Boolean(property.value);
+						if (property.category === PropertyCategory.MUTE && property.value?.value !== undefined) {
+							isMuted = Boolean(property.value.value);
 						}
 					}
 				}

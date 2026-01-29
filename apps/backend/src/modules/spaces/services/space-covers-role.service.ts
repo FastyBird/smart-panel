@@ -318,7 +318,7 @@ export class SpaceCoversRoleService {
 
 				// Get cover type if available (with runtime type validation)
 				const typeProperty = properties.find((p) => p.category === PropertyCategory.TYPE);
-				const typeValue = typeProperty?.value;
+				const typeValue = typeProperty?.value?.value;
 				const coverType = typeof typeValue === 'string' ? typeValue : null;
 
 				// Must have at least position or command to be controllable
@@ -451,7 +451,7 @@ export class SpaceCoversRoleService {
 		const hasCommand = properties.some((p) => p.category === PropertyCategory.COMMAND);
 		const hasTilt = properties.some((p) => p.category === PropertyCategory.TILT);
 		const typeProperty = properties.find((p) => p.category === PropertyCategory.TYPE);
-		const typeValue = typeProperty?.value;
+		const typeValue = typeProperty?.value?.value;
 		const coverType = typeof typeValue === 'string' ? typeValue : null;
 
 		return {

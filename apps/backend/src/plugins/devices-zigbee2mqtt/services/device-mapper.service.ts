@@ -684,7 +684,7 @@ export class Z2mDeviceMapperService {
 
 			// Fall back to stored property value if not in state
 			if (sourceValue === undefined) {
-				sourceValue = sourceProp.value;
+				sourceValue = sourceProp.value?.value;
 			}
 
 			// Skip if no source value available

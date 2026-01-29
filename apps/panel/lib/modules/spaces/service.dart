@@ -76,6 +76,7 @@ class SpacesService extends ChangeNotifier {
   Map<String, CoversTargetView> _coversTargets = {};
 
   Timer? _updateDebounce;
+  Timer? _stateDebounce;
 
   /// Creates a new [SpacesService] with the required repositories.
   SpacesService({
@@ -114,8 +115,8 @@ class SpacesService extends ChangeNotifier {
   }
 
   void _scheduleStateChanged() {
-    _updateDebounce?.cancel();
-    _updateDebounce = Timer(const Duration(milliseconds: 50), _onStateChanged);
+    _stateDebounce?.cancel();
+    _stateDebounce = Timer(const Duration(milliseconds: 50), _onStateChanged);
   }
 
   void _onStateChanged() {
@@ -809,6 +810,7 @@ class SpacesService extends ChangeNotifier {
   @override
   void dispose() {
     _updateDebounce?.cancel();
+    _stateDebounce?.cancel();
 
     _spacesRepository.removeListener(_scheduleUpdate);
     _lightTargetsRepository.removeListener(_scheduleUpdate);

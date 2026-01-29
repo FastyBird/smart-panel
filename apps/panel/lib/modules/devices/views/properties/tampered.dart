@@ -16,6 +16,7 @@ class TamperedChannelPropertyView extends ChannelPropertyView {
     super.step,
     super.defaultValue,
     super.value,
+    super.valueState,
   });
 
   bool? get isTampered => value is BooleanValueType ? (value as BooleanValueType).value : null;

@@ -16,6 +16,7 @@ class ColorWhiteChannelPropertyView extends ChannelPropertyView {
     super.step,
     super.defaultValue,
     super.value,
+    super.valueState,
   });
 
   int? get white => value is NumberValueType ? (value as NumberValueType).value.toInt() : null;

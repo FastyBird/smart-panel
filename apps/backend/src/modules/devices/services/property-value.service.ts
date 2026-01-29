@@ -4,12 +4,24 @@ import { createExtensionLogger } from '../../../common/logger/extension-logger.s
 import { InfluxDbService } from '../../influxdb/services/influxdb.service';
 import { DEVICES_MODULE_NAME, DataTypeType } from '../devices.constants';
 import { ChannelPropertyEntity } from '../entities/devices.entity';
+import { PropertyValueState, type PropertyValueTrend } from '../models/property-value-state.model';
+
+/**
+ * Number of recent data points used for trend computation.
+ */
+const TREND_POINTS_COUNT = 5;
 
 @Injectable()
 export class PropertyValueService {
 	private readonly logger = createExtensionLogger(DEVICES_MODULE_NAME, 'PropertyValueService');
 
-	private valuesMap: Map<ChannelPropertyEntity['id'], string | boolean | number | null> = new Map();
+	private valuesMap: Map<ChannelPropertyEntity['id'], PropertyValueState> = new Map();
+
+	/**
+	 * Cache of recent values for trend computation.
+	 * Stores last N numeric values per property.
+	 */
+	private recentValuesMap: Map<ChannelPropertyEntity['id'], number[]> = new Map();
 
 	constructor(private readonly influxDbService: InfluxDbService) {}
 
@@ -30,7 +42,8 @@ export class PropertyValueService {
 			return false;
 		}
 
-		if (this.valuesMap.has(property.id) && this.valuesMap.get(property.id) === value) {
+		const cached = this.valuesMap.get(property.id);
+		if (cached && cached.value === value) {
 			// no change → skip Influx write
 			return false;
 		}
@@ -72,8 +85,27 @@ export class PropertyValueService {
 				return false;
 		}
 
+		const now = new Date().toISOString();
+
+		// Update recent values cache for trend computation
+		if (
+			typeof value === 'number' ||
+			(typeof value === 'string' && !isNaN(Number(value)) && this.isNumericDataType(property.dataType))
+		) {
+			const numValue = Number(value);
+			const recent = this.recentValuesMap.get(property.id) ?? [];
+			recent.push(numValue);
+			if (recent.length > TREND_POINTS_COUNT) {
+				recent.shift();
+			}
+			this.recentValuesMap.set(property.id, recent);
+		}
+
+		const trend = this.computeTrend(property);
+		const state = new PropertyValueState(value, now, trend);
+
 		// Update local cache regardless of InfluxDB availability
-		this.valuesMap.set(property.id, value);
+		this.valuesMap.set(property.id, state);
 
 		if (!this.influxDbService.isConnected()) {
 			return true; // Value changed in cache
@@ -102,12 +134,13 @@ export class PropertyValueService {
 		return true; // Value changed
 	}
 
-	async readLatest(property: ChannelPropertyEntity): Promise<string | number | boolean | null> {
+	async readLatest(property: ChannelPropertyEntity): Promise<PropertyValueState | null> {
 		// Check local cache first
-		if (this.valuesMap.has(property.id)) {
-			this.logger.debug(`Loaded cached value for property id=${property.id}, value=${this.valuesMap.get(property.id)}`);
+		const cached = this.valuesMap.get(property.id);
+		if (cached) {
+			this.logger.debug(`Loaded cached value for property id=${property.id}, value=${cached.value}`);
 
-			return this.valuesMap.get(property.id);
+			return cached;
 		}
 
 		// Return null if InfluxDB not connected
@@ -120,12 +153,13 @@ export class PropertyValueService {
         SELECT * FROM property_value
         WHERE propertyId = '${property.id}'
         ORDER BY time DESC
-        LIMIT 1
+        LIMIT ${TREND_POINTS_COUNT}
       `;
 
 			this.logger.debug(`Fetching latest value id=${property.id}`);
 
 			const result = await this.influxDbService.query<{
+				time: Date | string;
 				stringValue?: string;
 				numberValue?: number;
 				propertyId: ChannelPropertyEntity['id'];
@@ -137,6 +171,7 @@ export class PropertyValueService {
 				return null;
 			}
 
+			// Results are ordered DESC, so first = latest
 			const latest = result[0];
 
 			let parsedValue: string | number | boolean | null = null;
@@ -168,11 +203,34 @@ export class PropertyValueService {
 					parsedValue = null;
 			}
 
+			// Extract timestamp from InfluxDB result
+			const lastUpdated = latest.time
+				? latest.time instanceof Date
+					? latest.time.toISOString()
+					: String(latest.time)
+				: null;
+
+			// Build recent values cache from query results (for trend computation)
+			if (this.isNumericDataType(property.dataType) && result.length > 1) {
+				// Results are DESC, reverse to get ASC order for trend
+				const recentValues: number[] = [];
+				for (let i = result.length - 1; i >= 0; i--) {
+					const val = result[i].numberValue;
+					if (val != null) {
+						recentValues.push(val);
+					}
+				}
+				this.recentValuesMap.set(property.id, recentValues);
+			}
+
+			const trend = this.computeTrend(property);
+			const state = new PropertyValueState(parsedValue, lastUpdated, trend);
+
 			this.logger.debug(`Read latest value id=${property.id} dataType=${property.dataType} value=${parsedValue}`);
 
-			this.valuesMap.set(property.id, parsedValue);
+			this.valuesMap.set(property.id, state);
 
-			return parsedValue;
+			return state;
 		} catch (error) {
 			const err = error as Error;
 
@@ -185,6 +243,7 @@ export class PropertyValueService {
 	async delete(property: ChannelPropertyEntity): Promise<void> {
 		// Always clear local cache
 		this.valuesMap.delete(property.id);
+		this.recentValuesMap.delete(property.id);
 
 		if (!this.influxDbService.isConnected()) {
 			return;
@@ -204,6 +263,58 @@ export class PropertyValueService {
 				err.stack,
 			);
 		}
+	}
+
+	/**
+	 * Compute trend direction from recent cached values.
+	 * Returns null for non-numeric types or insufficient data.
+	 */
+	private computeTrend(property: ChannelPropertyEntity): PropertyValueTrend | null {
+		if (!this.isNumericDataType(property.dataType)) {
+			return null;
+		}
+
+		const recent = this.recentValuesMap.get(property.id);
+		if (!recent || recent.length < 2) {
+			return null;
+		}
+
+		const first = recent[0];
+		const last = recent[recent.length - 1];
+		const delta = last - first;
+
+		// Compute threshold: 0.5% of range if format provides min/max, else absolute 0.01
+		let threshold = 0.01;
+		if (property.format && property.format.length >= 2) {
+			const min = typeof property.format[0] === 'number' ? property.format[0] : null;
+			const max = typeof property.format[1] === 'number' ? property.format[1] : null;
+			if (min !== null && max !== null && max > min) {
+				threshold = (max - min) * 0.005;
+			}
+		}
+
+		if (delta > threshold) {
+			return 'rising';
+		}
+		if (delta < -threshold) {
+			return 'falling';
+		}
+		return 'stable';
+	}
+
+	/**
+	 * Check if a data type is numeric
+	 */
+	private isNumericDataType(dataType: DataTypeType): boolean {
+		return [
+			DataTypeType.CHAR,
+			DataTypeType.UCHAR,
+			DataTypeType.SHORT,
+			DataTypeType.USHORT,
+			DataTypeType.INT,
+			DataTypeType.UINT,
+			DataTypeType.FLOAT,
+		].includes(dataType);
 	}
 
 	/**

@@ -21,6 +21,7 @@ import { DevicesException } from '../devices.exceptions';
 import { CreateChannelPropertyDto } from '../dto/create-channel-property.dto';
 import { UpdateChannelPropertyDto } from '../dto/update-channel-property.dto';
 import { ChannelEntity, ChannelPropertyEntity } from '../entities/devices.entity';
+import { PropertyValueState } from '../models/property-value-state.model';
 
 import { ChannelsPropertiesTypeMapperService } from './channels.properties-type-mapper.service';
 import { ChannelsPropertiesService } from './channels.properties.service';
@@ -106,7 +107,7 @@ describe('ChannelsPropertiesService', () => {
 		format: null,
 		invalid: null,
 		step: 0.5,
-		value: '22.5',
+		value: new PropertyValueState('22.5'),
 		channel: mockChannel.id,
 		createdAt: new Date(),
 		updatedAt: new Date(),

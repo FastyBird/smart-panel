@@ -4,6 +4,7 @@ import 'package:fastybird_smart_panel/api/models/devices_module_property_categor
 import 'package:fastybird_smart_panel/modules/devices/models/properties/generic_properties.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/properties/properties.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/formats.dart';
+import 'package:fastybird_smart_panel/modules/devices/types/value_state.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/active.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/angle.dart';
@@ -130,6 +131,7 @@ T _createPropertyView<T extends ChannelPropertyView>(
     double? step,
     ValueType? defaultValue,
     ValueType? value,
+    PropertyValueState? valueState,
   }) constructor,
 ) {
   return constructor(
@@ -146,6 +148,7 @@ T _createPropertyView<T extends ChannelPropertyView>(
     step: model.step,
     defaultValue: model.defaultValue,
     value: model.value,
+    valueState: model.valueState,
   );
 }
 

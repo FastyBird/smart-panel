@@ -16,6 +16,7 @@ class HumidityChannelPropertyView extends ChannelPropertyView {
     super.step,
     super.defaultValue,
     super.value,
+    super.valueState,
   });
 
   num? get humidity => value is NumberValueType ? (value as NumberValueType).value : null;

@@ -16,6 +16,7 @@ class HueChannelPropertyView extends ChannelPropertyView {
     super.step,
     super.defaultValue,
     super.value,
+    super.valueState,
   });
 
   int? get hue => value is NumberValueType ? (value as NumberValueType).value.toInt() : null;

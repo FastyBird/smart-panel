@@ -16,6 +16,7 @@ class SirenChannelPropertyView extends ChannelPropertyView {
     super.step,
     super.defaultValue,
     super.value,
+    super.valueState,
   });
 
   bool? get isSirenOn => value is BooleanValueType ? (value as BooleanValueType).value : null;

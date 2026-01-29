@@ -16,6 +16,7 @@ class ConnectionTypeChannelPropertyView extends ChannelPropertyView {
     super.step,
     super.defaultValue,
     super.value,
+    super.valueState,
   });
 
   String? get connectionType => value is StringValueType ? (value as StringValueType).value : null;

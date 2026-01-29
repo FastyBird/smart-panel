@@ -15,5 +15,6 @@ class UnitsChannelPropertyView extends ChannelPropertyView {
     super.step,
     super.defaultValue,
     super.value,
+    super.valueState,
   });
 }

@@ -3,6 +3,7 @@ import 'package:fastybird_smart_panel/api/models/devices_module_permission_type.
 import 'package:fastybird_smart_panel/api/models/devices_module_property_category.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/properties/properties.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/formats.dart';
+import 'package:fastybird_smart_panel/modules/devices/types/value_state.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 
 /// Generic channel property model for unknown or unregistered device types.
@@ -24,6 +25,7 @@ class GenericChannelPropertyModel extends ChannelPropertyModel {
     super.step,
     super.defaultValue,
     super.value,
+    super.valueState,
     super.createdAt,
     super.updatedAt,
     Map<String, dynamic>? configuration,
@@ -33,6 +35,18 @@ class GenericChannelPropertyModel extends ChannelPropertyModel {
   Map<String, dynamic> get configuration => _configuration;
 
   factory GenericChannelPropertyModel.fromJson(Map<String, dynamic> json) {
+    // Parse value state object (new format) or fall back to primitive (legacy)
+    PropertyValueState? valueState;
+    ValueType? legacyValue;
+
+    final rawValue = json['value'];
+    if (rawValue is Map<String, dynamic>) {
+      valueState = PropertyValueState.fromJson(rawValue);
+    } else if (rawValue != null) {
+      // Legacy primitive value
+      legacyValue = ValueType.fromJson(rawValue);
+    }
+
     return GenericChannelPropertyModel(
       id: json['id'],
       type: json['type'] ?? 'unknown',
@@ -54,7 +68,8 @@ class GenericChannelPropertyModel extends ChannelPropertyModel {
       defaultValue: json['default_value'] != null
           ? ValueType.fromJson(json['default_value'])
           : null,
-      value: json['value'] != null ? ValueType.fromJson(json['value']) : null,
+      value: legacyValue,
+      valueState: valueState,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'])
           : null,

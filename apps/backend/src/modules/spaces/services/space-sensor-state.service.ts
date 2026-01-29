@@ -29,6 +29,7 @@ export interface SensorReading {
 	unit: string | null;
 	role: SensorRole | null;
 	updatedAt: Date | string | null;
+	trend: 'rising' | 'falling' | 'stable' | null;
 }
 
 /**
@@ -157,7 +158,7 @@ export class SpaceSensorStateService extends SpaceIntentBaseService {
 				}
 
 				// Get the primary property value
-				const { propertyId, value, unit, updatedAt } = this.extractChannelValue(channel);
+				const { propertyId, value, unit, updatedAt, trend } = this.extractChannelValue(channel);
 
 				const reading: SensorReading = {
 					deviceId: device.id,
@@ -170,6 +171,7 @@ export class SpaceSensorStateService extends SpaceIntentBaseService {
 					unit,
 					role,
 					updatedAt,
+					trend,
 				};
 
 				allReadings.push(reading);
@@ -236,6 +238,7 @@ export class SpaceSensorStateService extends SpaceIntentBaseService {
 		value: number | boolean | string | null;
 		unit: string | null;
 		updatedAt: Date | string | null;
+		trend: 'rising' | 'falling' | 'stable' | null;
 	} {
 		const properties = channel.properties ?? [];
 
@@ -317,30 +320,33 @@ export class SpaceSensorStateService extends SpaceIntentBaseService {
 		}
 
 		if (!primaryProperty) {
-			return { propertyId: null, value: null, unit: null, updatedAt: null };
+			return { propertyId: null, value: null, unit: null, updatedAt: null, trend: null };
 		}
 
 		const propertyId = primaryProperty.id;
-		const value = primaryProperty.value;
-		const updatedAt = primaryProperty.updatedAt ?? primaryProperty.createdAt ?? null;
+		const value = primaryProperty.value?.value ?? null;
+		const updatedAt = primaryProperty.value?.lastUpdated
+			? new Date(primaryProperty.value.lastUpdated)
+			: (primaryProperty.updatedAt ?? primaryProperty.createdAt ?? null);
+		const trend = primaryProperty.value?.trend ?? null;
 
 		if (typeof value === 'boolean') {
-			return { propertyId, value, unit: null, updatedAt };
+			return { propertyId, value, unit: null, updatedAt, trend };
 		}
 
 		if (typeof value === 'number') {
-			return { propertyId, value, unit, updatedAt };
+			return { propertyId, value, unit, updatedAt, trend };
 		}
 
 		if (typeof value === 'string') {
 			const parsed = parseFloat(value);
 			if (!isNaN(parsed)) {
-				return { propertyId, value: parsed, unit, updatedAt };
+				return { propertyId, value: parsed, unit, updatedAt, trend };
 			}
-			return { propertyId, value, unit: null, updatedAt };
+			return { propertyId, value, unit: null, updatedAt, trend };
 		}
 
-		return { propertyId, value: null, unit, updatedAt };
+		return { propertyId, value: null, unit, updatedAt, trend };
 	}
 
 	/**

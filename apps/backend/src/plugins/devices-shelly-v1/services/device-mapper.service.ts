@@ -666,7 +666,10 @@ export class DeviceMapperService {
 			);
 
 			// Derive the synthetic value from the source property (passing existing value to preserve if needed)
-			const syntheticValue = syntheticProp.deriveValue(sourceProperty.value, existingSyntheticProperty?.value ?? null);
+			const syntheticValue = syntheticProp.deriveValue(
+				sourceProperty.value?.value ?? null,
+				existingSyntheticProperty?.value?.value ?? null,
+			);
 
 			// Get property metadata from schema
 			const propertyMetadata = getPropertyMetadata(channel.category, syntheticProp.propertyCategory);

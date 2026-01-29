@@ -16,6 +16,7 @@ class WarmMistChannelPropertyView extends ChannelPropertyView {
     super.step,
     super.defaultValue,
     super.value,
+    super.valueState,
   });
 
   bool? get isWarmMistEnabled => value is BooleanValueType ? (value as BooleanValueType).value : null;

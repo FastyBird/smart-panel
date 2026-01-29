@@ -16,6 +16,7 @@ class ActiveChannelPropertyView extends ChannelPropertyView {
     super.step,
     super.defaultValue,
     super.value,
+    super.valueState,
   });
 
   bool? get isActive => value is BooleanValueType ? (value as BooleanValueType).value : null;

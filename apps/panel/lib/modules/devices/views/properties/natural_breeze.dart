@@ -16,6 +16,7 @@ class NaturalBreezeChannelPropertyView extends ChannelPropertyView {
     super.step,
     super.defaultValue,
     super.value,
+    super.valueState,
   });
 
   bool? get isNaturalBreezeEnabled => value is BooleanValueType ? (value as BooleanValueType).value : null;

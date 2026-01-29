@@ -16,6 +16,7 @@ class OnChannelPropertyView extends ChannelPropertyView {
     super.step,
     super.defaultValue,
     super.value,
+    super.valueState,
   });
 
   bool? get isOn => value is BooleanValueType ? (value as BooleanValueType).value : null;

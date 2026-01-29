@@ -16,6 +16,7 @@ class TriggeredChannelPropertyView extends ChannelPropertyView {
     super.step,
     super.defaultValue,
     super.value,
+    super.valueState,
   });
 
   bool? get isTriggered => value is BooleanValueType ? (value as BooleanValueType).value : null;

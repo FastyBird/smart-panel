@@ -16,6 +16,7 @@ class WaterTankLevelChannelPropertyView extends ChannelPropertyView {
     super.step,
     super.defaultValue,
     super.value,
+    super.valueState,
   });
 
   int? get waterTankLevel => value is NumberValueType ? (value as NumberValueType).value.toInt() : null;

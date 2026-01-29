@@ -16,6 +16,7 @@ class OverCurrentChannelPropertyView extends ChannelPropertyView {
     super.step,
     super.defaultValue,
     super.value,
+    super.valueState,
   });
 
   bool? get isOverCurrent => value is BooleanValueType ? (value as BooleanValueType).value : null;

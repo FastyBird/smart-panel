@@ -549,7 +549,7 @@ export class ShellyV1Service implements IManagedPluginService {
 			return null;
 		}
 
-		const deviceModel = String(modelProperty.value).toUpperCase();
+		const deviceModel = String(modelProperty.value.value).toUpperCase();
 
 		// Try to find by exact device model match first
 		for (const descriptor of Object.values(DESCRIPTORS)) {

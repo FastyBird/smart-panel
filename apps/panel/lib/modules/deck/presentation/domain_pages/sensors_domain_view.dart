@@ -103,6 +103,20 @@ class SensorData {
   }
 }
 
+/// Parse trend string from API into TrendDirection enum
+TrendDirection _parseTrend(String? trend) {
+  switch (trend) {
+    case 'rising':
+      return TrendDirection.up;
+    case 'falling':
+      return TrendDirection.down;
+    case 'stable':
+      return TrendDirection.stable;
+    default:
+      return TrendDirection.stable;
+  }
+}
+
 // ============================================================================
 // SENSORS DOMAIN VIEW PAGE
 // ============================================================================
@@ -386,7 +400,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
           value: value,
           unit: reading.unit ?? '',
           status: status,
-          trend: TrendDirection.stable, // Trend data not available from API yet
+          trend: _parseTrend(reading.trend),
           lastUpdated: reading.updatedAt ?? DateTime.now(),
           isBinary: _isBinaryProperty(reading.propertyId),
           channelCategory: reading.channelCategory,
@@ -1481,6 +1495,7 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
               value: _formatReadingValue(reading.value, reading.channelCategory),
               unit: reading.unit ?? '',
               status: _sensor.status,
+              trend: _parseTrend(reading.trend),
               lastUpdated: reading.updatedAt ?? DateTime.now(),
               isBinary: _sensor.isBinary,
               channelCategory: _sensor.channelCategory,
@@ -2447,7 +2462,7 @@ class _ChartPainter extends CustomPainter {
       if (v == 0) return [-1, -0.5, 0, 0.5, 1];
       final offset = v.abs() * 0.1;
       final step = _niceStep(offset * 2 / (targetTicks - 1));
-      final nMin = (v - offset / step).floor() * step;
+      final nMin = ((v - offset) / step).floor() * step;
       return List.generate(targetTicks, (i) => _roundToStep(nMin + i * step, step));
     }
 

@@ -35,7 +35,17 @@ export const ChannelPropertySchema = z.object({
 	format: z.array(z.union([z.string(), z.union([z.number(), z.null()])])).nullable(),
 	invalid: z.union([z.string(), z.number(), z.boolean()]).nullable(),
 	step: z.number().nullable(),
-	value: z.union([z.string(), z.number(), z.boolean()]).nullable().default(null),
+	value: z
+		.union([
+			z.object({
+				value: z.union([z.string(), z.number(), z.boolean()]).nullable(),
+				lastUpdated: z.string().nullable().optional().default(null),
+				trend: z.enum(['rising', 'falling', 'stable']).nullable().optional().default(null),
+			}),
+			z.union([z.string(), z.number(), z.boolean()]).nullable(),
+		])
+		.nullable()
+		.default(null),
 	createdAt: z.union([z.string().datetime({ offset: true }), z.date()]).transform((date) => (date instanceof Date ? date : new Date(date))),
 	updatedAt: z
 		.union([z.string().datetime({ offset: true }), z.date()])
@@ -77,7 +87,16 @@ export const ChannelsPropertiesSetActionPayloadSchema = z.object({
 		format: z.array(z.union([z.string(), z.union([z.number(), z.null()])])).nullable(),
 		invalid: z.union([z.string(), z.number(), z.boolean()]).nullable(),
 		step: z.number().nullable(),
-		value: z.union([z.string(), z.number(), z.boolean()]).nullable(),
+		value: z
+			.union([
+				z.object({
+					value: z.union([z.string(), z.number(), z.boolean()]).nullable(),
+					lastUpdated: z.string().nullable().optional().default(null),
+					trend: z.enum(['rising', 'falling', 'stable']).nullable().optional().default(null),
+				}),
+				z.union([z.string(), z.number(), z.boolean()]).nullable(),
+			])
+			.nullable(),
 	}),
 });
 
@@ -194,7 +213,16 @@ export const ChannelPropertyResSchema: ZodType<ApiChannelProperty> = z.object({
 	format: z.array(z.union([z.string(), z.union([z.number(), z.null()])])).nullable(),
 	invalid: z.union([z.string(), z.number(), z.boolean()]).nullable(),
 	step: z.number().nullable(),
-	value: z.union([z.string(), z.number(), z.boolean(), z.null()]).nullable(),
+	value: z
+		.union([
+			z.object({
+				value: z.union([z.string(), z.number(), z.boolean()]).nullable(),
+				last_updated: z.string().nullable().optional().default(null),
+				trend: z.enum(['rising', 'falling', 'stable']).nullable().optional().default(null),
+			}),
+			z.union([z.string(), z.number(), z.boolean(), z.null()]).nullable(),
+		])
+		.nullable(),
 	created_at: z.string().date(),
 	updated_at: z.string().date().nullable(),
 });

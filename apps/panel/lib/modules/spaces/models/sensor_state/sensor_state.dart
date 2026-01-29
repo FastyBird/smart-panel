@@ -61,6 +61,7 @@ class SensorReadingModel {
   final String? unit;
   final String? role;
   final DateTime? updatedAt;
+  final String? trend;
 
   SensorReadingModel({
     required this.deviceId,
@@ -73,6 +74,7 @@ class SensorReadingModel {
     this.unit,
     this.role,
     this.updatedAt,
+    this.trend,
   });
 
   factory SensorReadingModel.fromJson(Map<String, dynamic> json) {
@@ -89,6 +91,7 @@ class SensorReadingModel {
       updatedAt: json['updated_at'] != null
           ? DateTime.tryParse(json['updated_at'] as String)
           : null,
+      trend: json['trend'] as String?,
     );
   }
 }

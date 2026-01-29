@@ -17,6 +17,7 @@ class PressureChannelPropertyView extends ChannelPropertyView {
     super.step,
     super.defaultValue,
     super.value,
+    super.valueState,
   });
 
   /// Returns the pressure value.

@@ -3479,6 +3479,15 @@ export class SensorReadingDataModel {
 		toPlainOnly: true,
 	})
 	updatedAt: Date | string | null;
+
+	@ApiPropertyOptional({
+		description: 'Value trend direction computed from recent data points',
+		enum: ['rising', 'falling', 'stable'],
+		nullable: true,
+		example: 'stable',
+	})
+	@Expose()
+	trend: 'rising' | 'falling' | 'stable' | null;
 }
 
 /**

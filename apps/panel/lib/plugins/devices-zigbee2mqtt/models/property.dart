@@ -3,6 +3,7 @@ import 'package:fastybird_smart_panel/api/models/devices_module_permission_type.
 import 'package:fastybird_smart_panel/api/models/devices_module_property_category.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/properties/properties.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/formats.dart';
+import 'package:fastybird_smart_panel/modules/devices/types/value_state.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/plugins/devices-zigbee2mqtt/constants.dart';
 
@@ -20,6 +21,7 @@ class Zigbee2mqttChannelPropertyModel extends ChannelPropertyModel {
     super.step,
     super.defaultValue,
     super.value,
+    super.valueState,
     super.createdAt,
     super.updatedAt,
   }) : super(
@@ -27,6 +29,15 @@ class Zigbee2mqttChannelPropertyModel extends ChannelPropertyModel {
         );
 
   factory Zigbee2mqttChannelPropertyModel.fromJson(Map<String, dynamic> json) {
+    PropertyValueState? valueState;
+    ValueType? legacyValue;
+    final rawValue = json['value'];
+    if (rawValue is Map<String, dynamic>) {
+      valueState = PropertyValueState.fromJson(rawValue);
+    } else if (rawValue != null) {
+      legacyValue = ValueType.fromJson(rawValue);
+    }
+
     return Zigbee2mqttChannelPropertyModel(
       channel: json['channel'],
       id: json['id'],
@@ -47,7 +58,8 @@ class Zigbee2mqttChannelPropertyModel extends ChannelPropertyModel {
       defaultValue: json['default_value'] != null
           ? ValueType.fromJson(json['default_value'])
           : null,
-      value: json['value'] != null ? ValueType.fromJson(json['value']) : null,
+      value: legacyValue,
+      valueState: valueState,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'])
           : null,

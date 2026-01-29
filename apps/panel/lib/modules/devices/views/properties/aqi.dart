@@ -16,6 +16,7 @@ class AqiChannelPropertyView extends ChannelPropertyView {
     super.step,
     super.defaultValue,
     super.value,
+    super.valueState,
   });
 
   int? get aqi => value is NumberValueType ? (value as NumberValueType).value.toInt() : null;

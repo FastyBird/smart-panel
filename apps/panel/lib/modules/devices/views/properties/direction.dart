@@ -16,6 +16,7 @@ class DirectionChannelPropertyView extends ChannelPropertyView {
     super.step,
     super.defaultValue,
     super.value,
+    super.valueState,
   });
 
   String? get direction => value is StringValueType ? (value as StringValueType).value : null;

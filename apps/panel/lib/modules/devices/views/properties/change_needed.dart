@@ -16,6 +16,7 @@ class ChangeNeededChannelPropertyView extends ChannelPropertyView {
     super.step,
     super.defaultValue,
     super.value,
+    super.valueState,
   });
 
   bool? get isChangeNeeded => value is BooleanValueType ? (value as BooleanValueType).value : null;

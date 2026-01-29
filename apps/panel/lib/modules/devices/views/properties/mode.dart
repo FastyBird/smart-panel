@@ -16,6 +16,7 @@ class ModeChannelPropertyView extends ChannelPropertyView {
     super.step,
     super.defaultValue,
     super.value,
+    super.valueState,
   });
 
   String? get mode => value is StringValueType ? (value as StringValueType).value : null;
