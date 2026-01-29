@@ -628,7 +628,10 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
 	// ============================================
 
 	Widget _buildOfflineOverlay(BuildContext context) {
-		return Container(
+		return GestureDetector(
+			behavior: HitTestBehavior.opaque,
+			onTap: () {},
+			child: Container(
 			color: Colors.black.withValues(alpha: 0.7),
 			child: Center(
 				child: Card(
@@ -661,6 +664,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
 					),
 				),
 			),
+		),
 		);
 	}
 

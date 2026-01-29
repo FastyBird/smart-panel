@@ -365,6 +365,15 @@ class MediaActiveStateModel {
 		final lastResultRaw = json['last_result'];
 		if (lastResultRaw is Map<String, dynamic>) {
 			lastResult = MediaActivityLastResultModel.fromJson(lastResultRaw);
+		} else if (lastResultRaw is String && lastResultRaw.isNotEmpty) {
+			try {
+				final decoded = jsonDecode(lastResultRaw);
+				if (decoded is Map<String, dynamic>) {
+					lastResult = MediaActivityLastResultModel.fromJson(decoded);
+				}
+			} catch (_) {
+				lastResult = null;
+			}
 		}
 
 		return MediaActiveStateModel(
