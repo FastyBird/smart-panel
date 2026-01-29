@@ -326,13 +326,6 @@ export class SpaceMediaActivityBindingService {
 		this.validateOverrides(effective, endpoints);
 
 		// Apply updates — normalize empty strings
-		// Auto-clear dependent overrides when parent endpoint is cleared
-		if (dto.displayEndpointId !== undefined && normalizeEndpointId(dto.displayEndpointId) === null) {
-			binding.displayInputId = null;
-		}
-		if (dto.audioEndpointId !== undefined && normalizeEndpointId(dto.audioEndpointId) === null) {
-			binding.audioVolumePreset = null;
-		}
 		if (dto.displayEndpointId !== undefined) {
 			binding.displayEndpointId = normalizeEndpointId(dto.displayEndpointId);
 		}
@@ -345,10 +338,16 @@ export class SpaceMediaActivityBindingService {
 		if (dto.remoteEndpointId !== undefined) {
 			binding.remoteEndpointId = normalizeEndpointId(dto.remoteEndpointId);
 		}
-		if (dto.displayInputId !== undefined) {
+		// Apply dependent override from dto only if parent endpoint is not being cleared;
+		// otherwise force-clear the override to maintain the invariant
+		if (effective.displayEndpointId === null) {
+			binding.displayInputId = null;
+		} else if (dto.displayInputId !== undefined) {
 			binding.displayInputId = normalizeEndpointId(dto.displayInputId);
 		}
-		if (dto.audioVolumePreset !== undefined) {
+		if (effective.audioEndpointId === null) {
+			binding.audioVolumePreset = null;
+		} else if (dto.audioVolumePreset !== undefined) {
 			binding.audioVolumePreset = dto.audioVolumePreset ?? null;
 		}
 
