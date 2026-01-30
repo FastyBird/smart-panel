@@ -524,7 +524,8 @@ alarm:
           different modes like armed_home, armed_away, and armed_night.
       - title: Alert Management
         description: >-
-          Monitor triggered state and control the siren for audible alerts.
+          Monitor alarm state and control the siren for audible alerts. Use alarm_state
+          to distinguish idle, pending, triggered, and silenced states when available.
       - title: Status Monitoring
         description: >-
           Track alarm system health, fault conditions, and tampering detection.
@@ -533,13 +534,15 @@ alarm:
       - The alarm channel is required for core security functionality.
       - Battery channel is important for wireless alarm systems.
       - Tampered property helps detect physical interference with the device.
+      - alarm_state is recommended for richer UI and integrations; triggered remains for backward compatibility.
+      - last_event can be provided by integrations or derived by the backend from state changes.
   channels:
     alarm:
       category: alarm
       required: true
       multiple: false
       description:
-        en: Provides arm/disarm control, siren activation, and alarm status.
+        en: Provides arm/disarm control, siren activation, alarm status, and health indicators.
     device_information:
       category: device_information
       required: true

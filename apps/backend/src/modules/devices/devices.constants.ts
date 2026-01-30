@@ -125,6 +125,7 @@ export enum ChannelCategory {
 export enum PropertyCategory {
 	GENERIC = 'generic',
 	ACTIVE = 'active',
+	ALARM_STATE = 'alarm_state',
 	ALBUM = 'album',
 	ANGLE = 'angle',
 	ARTIST = 'artist',
@@ -152,6 +153,7 @@ export enum PropertyCategory {
 	DURATION = 'duration',
 	EVENT = 'event',
 	FAULT = 'fault',
+	FAULT_DESCRIPTION = 'fault_description',
 	FIRMWARE_REVISION = 'firmware_revision',
 	FREQUENCY = 'frequency',
 	HARDWARE_REVISION = 'hardware_revision',
@@ -159,6 +161,7 @@ export enum PropertyCategory {
 	HUMIDITY = 'humidity',
 	IN_USE = 'in_use',
 	INFRARED = 'infrared',
+	LAST_EVENT = 'last_event',
 	LEVEL = 'level',
 	LIFE_REMAINING = 'life_remaining',
 	LINK_QUALITY = 'link_quality',
