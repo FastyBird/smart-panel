@@ -36,7 +36,9 @@ import {
 import {
 	ActiveMediaActivityResponseModel,
 	MediaActivityActivationResponseModel,
+	MediaActivityDryRunPreviewModel,
 	MediaActivityDryRunPreviewResponseModel,
+	MediaActivityDryRunWarningModel,
 } from '../models/media-activity.model';
 import {
 	BulkAssignmentResponseModel,
@@ -173,6 +175,9 @@ import { IntentSpecLoaderService } from '../spec';
 	BindingValidationResponseModel,
 	BindingValidationReportModel,
 	BindingValidationIssueModel,
+	MediaActivityDryRunPreviewResponseModel,
+	MediaActivityDryRunPreviewModel,
+	MediaActivityDryRunWarningModel,
 )
 @Controller('spaces')
 export class SpacesController {
