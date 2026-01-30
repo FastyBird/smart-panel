@@ -888,7 +888,7 @@ const getActivityIcon = (key: string): string => {
 };
 
 const getActivityContext = (key: MediaActivityKey): { isActive: boolean; state?: MediaActivationState; binding?: IMediaActivityBinding; hasSlots: boolean } => {
-	const isActive = activeState.value?.activityKey === key && activeState.value.state !== 'deactivated';
+	const isActive = activeState.value?.activityKey === key && activeState.value?.state !== 'deactivated';
 	const state = isActive ? (activeState.value!.state as MediaActivationState) : undefined;
 	const binding = findBindingByActivity(key);
 	const hasSlots = !!(binding?.displayEndpointId || binding?.audioEndpointId || binding?.sourceEndpointId || binding?.remoteEndpointId);

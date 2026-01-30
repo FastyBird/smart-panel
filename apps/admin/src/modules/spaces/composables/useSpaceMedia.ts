@@ -1,7 +1,7 @@
 import { computed, ref, type ComputedRef, type Ref } from 'vue';
 
 import {
-	type PathsModulesSpacesSpacesIdMediaActivitiesActivityKeyActivatePostParametersPathActivityKey,
+	type PathsModulesSpacesSpacesIdMediaActivitiesActivityKeyPreviewPostParametersPathActivityKey,
 	type SpacesModuleCreateMediaEndpointType,
 } from '../../../openapi';
 import { useBackend } from '../../../common';
@@ -9,7 +9,7 @@ import { MODULES_PREFIX } from '../../../app.constants';
 import { SPACES_MODULE_PREFIX } from '../spaces.constants';
 
 export { SpacesModuleCreateMediaEndpointType as MediaEndpointType } from '../../../openapi';
-export { PathsModulesSpacesSpacesIdMediaActivitiesActivityKeyActivatePostParametersPathActivityKey as MediaActivityKey } from '../../../openapi';
+export { PathsModulesSpacesSpacesIdMediaActivitiesActivityKeyPreviewPostParametersPathActivityKey as MediaActivityKey } from '../../../openapi';
 
 export interface IDerivedMediaCapabilities {
 	power: boolean;
@@ -33,7 +33,7 @@ export interface IDerivedMediaEndpoint {
 export interface IMediaActivityBinding {
 	id: string;
 	spaceId: string;
-	activityKey: PathsModulesSpacesSpacesIdMediaActivitiesActivityKeyActivatePostParametersPathActivityKey;
+	activityKey: PathsModulesSpacesSpacesIdMediaActivitiesActivityKeyPreviewPostParametersPathActivityKey;
 	displayEndpointId: string | null;
 	audioEndpointId: string | null;
 	sourceEndpointId: string | null;
@@ -86,7 +86,7 @@ export interface IMediaResolvedDevices {
 export type MediaActivationState = 'activating' | 'active' | 'failed' | 'deactivated';
 
 export interface IMediaActiveState {
-	activityKey: PathsModulesSpacesSpacesIdMediaActivitiesActivityKeyActivatePostParametersPathActivityKey | null;
+	activityKey: PathsModulesSpacesSpacesIdMediaActivitiesActivityKeyPreviewPostParametersPathActivityKey | null;
 	state: MediaActivationState;
 	resolved?: IMediaResolvedDevices;
 	summary?: IMediaActivationSummary;
@@ -139,15 +139,15 @@ export interface IUseSpaceMedia {
 	fetchActiveState: () => Promise<void>;
 	previewing: Ref<boolean>;
 	activate: (
-		activityKey: PathsModulesSpacesSpacesIdMediaActivitiesActivityKeyActivatePostParametersPathActivityKey,
+		activityKey: PathsModulesSpacesSpacesIdMediaActivitiesActivityKeyPreviewPostParametersPathActivityKey,
 	) => Promise<IMediaActiveState>;
 	preview: (
-		activityKey: PathsModulesSpacesSpacesIdMediaActivitiesActivityKeyActivatePostParametersPathActivityKey,
+		activityKey: PathsModulesSpacesSpacesIdMediaActivitiesActivityKeyPreviewPostParametersPathActivityKey,
 	) => Promise<IMediaDryRunPreview>;
 	deactivate: () => Promise<IMediaActiveState>;
 	saveBinding: (bindingId: string, payload: IBindingSavePayload) => Promise<IMediaActivityBinding>;
 	createBinding: (
-		activityKey: PathsModulesSpacesSpacesIdMediaActivitiesActivityKeyActivatePostParametersPathActivityKey,
+		activityKey: PathsModulesSpacesSpacesIdMediaActivitiesActivityKeyPreviewPostParametersPathActivityKey,
 		payload: IBindingSavePayload,
 	) => Promise<IMediaActivityBinding>;
 	applyDefaults: () => Promise<void>;
@@ -155,7 +155,7 @@ export interface IUseSpaceMedia {
 		type: SpacesModuleCreateMediaEndpointType,
 	) => ComputedRef<IDerivedMediaEndpoint[]>;
 	findBindingByActivity: (
-		activityKey: PathsModulesSpacesSpacesIdMediaActivitiesActivityKeyActivatePostParametersPathActivityKey,
+		activityKey: PathsModulesSpacesSpacesIdMediaActivitiesActivityKeyPreviewPostParametersPathActivityKey,
 	) => IMediaActivityBinding | undefined;
 }
 
@@ -185,7 +185,7 @@ const transformBinding = (raw: Record<string, unknown>): IMediaActivityBinding =
 		id: raw.id as string,
 		spaceId: raw.space_id as string,
 		activityKey:
-			raw.activity_key as PathsModulesSpacesSpacesIdMediaActivitiesActivityKeyActivatePostParametersPathActivityKey,
+			raw.activity_key as PathsModulesSpacesSpacesIdMediaActivitiesActivityKeyPreviewPostParametersPathActivityKey,
 		displayEndpointId: (raw.display_endpoint_id as string) ?? null,
 		audioEndpointId: (raw.audio_endpoint_id as string) ?? null,
 		sourceEndpointId: (raw.source_endpoint_id as string) ?? null,
@@ -271,7 +271,7 @@ const transformActivationResult = (raw: Record<string, unknown>): IMediaActiveSt
 
 	return {
 		activityKey:
-			(raw.activity_key as PathsModulesSpacesSpacesIdMediaActivitiesActivityKeyActivatePostParametersPathActivityKey) ??
+			(raw.activity_key as PathsModulesSpacesSpacesIdMediaActivitiesActivityKeyPreviewPostParametersPathActivityKey) ??
 			null,
 		state: (raw.state as MediaActivationState) ?? 'deactivated',
 		resolved: resolved ? transformResolvedDevices(resolved) : undefined,
@@ -304,7 +304,7 @@ const transformActiveEntity = (raw: Record<string, unknown>): IMediaActiveState 
 
 	return {
 		activityKey:
-			(raw.activity_key as PathsModulesSpacesSpacesIdMediaActivitiesActivityKeyActivatePostParametersPathActivityKey) ??
+			(raw.activity_key as PathsModulesSpacesSpacesIdMediaActivitiesActivityKeyPreviewPostParametersPathActivityKey) ??
 			null,
 		state: (raw.state as MediaActivationState) ?? 'deactivated',
 		resolved,
@@ -437,7 +437,7 @@ export const useSpaceMedia = (spaceId: Ref<string | undefined>): IUseSpaceMedia 
 	};
 
 	const createBinding = async (
-		activityKey: PathsModulesSpacesSpacesIdMediaActivitiesActivityKeyActivatePostParametersPathActivityKey,
+		activityKey: PathsModulesSpacesSpacesIdMediaActivitiesActivityKeyPreviewPostParametersPathActivityKey,
 		payload: IBindingSavePayload,
 	): Promise<IMediaActivityBinding> => {
 		if (!spaceId.value) throw new Error('Space ID is required');
@@ -545,7 +545,7 @@ export const useSpaceMedia = (spaceId: Ref<string | undefined>): IUseSpaceMedia 
 	};
 
 	const preview = async (
-		activityKey: PathsModulesSpacesSpacesIdMediaActivitiesActivityKeyActivatePostParametersPathActivityKey,
+		activityKey: PathsModulesSpacesSpacesIdMediaActivitiesActivityKeyPreviewPostParametersPathActivityKey,
 	): Promise<IMediaDryRunPreview> => {
 		if (!spaceId.value) throw new Error('Space ID is required');
 
@@ -575,7 +575,7 @@ export const useSpaceMedia = (spaceId: Ref<string | undefined>): IUseSpaceMedia 
 	};
 
 	const activate = async (
-		activityKey: PathsModulesSpacesSpacesIdMediaActivitiesActivityKeyActivatePostParametersPathActivityKey,
+		activityKey: PathsModulesSpacesSpacesIdMediaActivitiesActivityKeyPreviewPostParametersPathActivityKey,
 	): Promise<IMediaActiveState> => {
 		if (!spaceId.value) throw new Error('Space ID is required');
 
@@ -666,7 +666,7 @@ export const useSpaceMedia = (spaceId: Ref<string | undefined>): IUseSpaceMedia 
 	};
 
 	const findBindingByActivity = (
-		activityKey: PathsModulesSpacesSpacesIdMediaActivitiesActivityKeyActivatePostParametersPathActivityKey,
+		activityKey: PathsModulesSpacesSpacesIdMediaActivitiesActivityKeyPreviewPostParametersPathActivityKey,
 	): IMediaActivityBinding | undefined => {
 		return bindingsData.value.find((b) => b.activityKey === activityKey);
 	};
