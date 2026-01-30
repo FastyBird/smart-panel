@@ -122,6 +122,30 @@ void main() {
 			expect(result, true);
 		});
 
+		test('returns true when hasCriticalAlert is true but no alert entries', () {
+			final result = shouldShowSecurityOverlay(
+				status: _makeStatus(
+					hasCriticalAlert: true,
+				),
+				acknowledgedAlertIds: {},
+				isConnectionOffline: false,
+				isOnSecurityScreen: false,
+			);
+			expect(result, true);
+		});
+
+		test('returns true when highestSeverity is critical but no alert entries', () {
+			final result = shouldShowSecurityOverlay(
+				status: _makeStatus(
+					highestSeverity: Severity.critical,
+				),
+				acknowledgedAlertIds: {},
+				isConnectionOffline: false,
+				isOnSecurityScreen: false,
+			);
+			expect(result, true);
+		});
+
 		test('returns false when connection is offline', () {
 			final result = shouldShowSecurityOverlay(
 				status: _makeStatus(

@@ -11,6 +11,12 @@ class SecurityStatusRepository extends ChangeNotifier {
 
 	SecurityStatusModel get status => _status;
 
+	Map<String, dynamic> _unwrapPayload(Map<String, dynamic> json) {
+		return json.containsKey('data') && json['data'] is Map<String, dynamic>
+			? json['data'] as Map<String, dynamic>
+			: json;
+	}
+
 	Future<void> fetchStatus() async {
 		try {
 			final response = await _dio.get('/modules/security/status');
@@ -20,12 +26,7 @@ class SecurityStatusRepository extends ChangeNotifier {
 					? response.data as Map<String, dynamic>
 					: <String, dynamic>{};
 
-				// Handle wrapped response (data.data pattern)
-				final statusData = data.containsKey('data')
-					? data['data'] as Map<String, dynamic>
-					: data;
-
-				_status = SecurityStatusModel.fromJson(statusData);
+				_status = SecurityStatusModel.fromJson(_unwrapPayload(data));
 				notifyListeners();
 			}
 		} catch (e) {
@@ -37,7 +38,7 @@ class SecurityStatusRepository extends ChangeNotifier {
 
 	void updateFromJson(Map<String, dynamic> json) {
 		try {
-			_status = SecurityStatusModel.fromJson(json);
+			_status = SecurityStatusModel.fromJson(_unwrapPayload(json));
 			notifyListeners();
 		} catch (e) {
 			if (kDebugMode) {

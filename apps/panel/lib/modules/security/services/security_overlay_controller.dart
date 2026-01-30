@@ -34,14 +34,14 @@ bool shouldShowSecurityOverlay({
 	if (!_hasCriticalCondition(status)) return false;
 
 	// Check if there are unacknowledged critical alerts
-	final criticalAlertIds = _getCriticalAlertIds(status);
+	final criticalAlertIds = getCriticalAlertIds(status);
 	final unacknowledged = criticalAlertIds.difference(acknowledgedAlertIds);
 
 	return unacknowledged.isNotEmpty;
 }
 
 /// Pure function: get the set of alert IDs that contribute to critical condition.
-Set<String> _getCriticalAlertIds(SecurityStatusModel status) {
+Set<String> getCriticalAlertIds(SecurityStatusModel status) {
 	final ids = <String>{};
 
 	for (final alert in status.activeAlerts) {
@@ -53,6 +53,12 @@ Set<String> _getCriticalAlertIds(SecurityStatusModel status) {
 	// If alarm triggered, add a synthetic id
 	if (status.alarmState == AlarmState.triggered) {
 		ids.add('__alarm_triggered__');
+	}
+
+	// If backend reports critical condition but no matching alerts/alarm,
+	// add a synthetic id so the overlay can still show and be acknowledged
+	if (ids.isEmpty && (status.hasCriticalAlert || status.highestSeverity == Severity.critical)) {
+		ids.add('__critical_status__');
 	}
 
 	return ids;
@@ -81,6 +87,8 @@ class SecurityOverlayController extends ChangeNotifier {
 	bool _isConnectionOffline = false;
 	bool _isOnSecurityScreen = false;
 
+	List<SecurityAlertModel>? _cachedSortedAlerts;
+
 	SecurityStatusModel get status => _status;
 
 	bool get shouldShowOverlay => shouldShowSecurityOverlay(
@@ -91,7 +99,10 @@ class SecurityOverlayController extends ChangeNotifier {
 	);
 
 	/// Sorted alerts (critical first, then by timestamp desc, then id asc).
-	List<SecurityAlertModel> get sortedAlerts => sortAlerts(_status.activeAlerts);
+	/// Cached and invalidated when status changes.
+	List<SecurityAlertModel> get sortedAlerts {
+		return _cachedSortedAlerts ??= sortAlerts(_status.activeAlerts);
+	}
 
 	/// Top alert after sorting (first item), or null if no alerts.
 	SecurityAlertModel? get topAlert {
@@ -114,8 +125,8 @@ class SecurityOverlayController extends ChangeNotifier {
 	}
 
 	void updateStatus(SecurityStatusModel newStatus) {
-		final oldCriticalIds = _getCriticalAlertIds(_status);
-		final newCriticalIds = _getCriticalAlertIds(newStatus);
+		final oldCriticalIds = getCriticalAlertIds(_status);
+		final newCriticalIds = getCriticalAlertIds(newStatus);
 
 		// If new critical alerts appeared, clear acknowledgements for them
 		// so the overlay re-shows
@@ -125,6 +136,7 @@ class SecurityOverlayController extends ChangeNotifier {
 		}
 
 		_status = newStatus;
+		_cachedSortedAlerts = null;
 		notifyListeners();
 	}
 
@@ -142,7 +154,7 @@ class SecurityOverlayController extends ChangeNotifier {
 
 	/// Acknowledge current critical alerts (dismiss overlay for current session).
 	void acknowledgeCurrentAlerts() {
-		final criticalIds = _getCriticalAlertIds(_status);
+		final criticalIds = getCriticalAlertIds(_status);
 		_acknowledgedAlertIds.addAll(criticalIds);
 		notifyListeners();
 	}

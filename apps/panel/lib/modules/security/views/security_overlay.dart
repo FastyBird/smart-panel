@@ -32,6 +32,10 @@ class SecurityOverlay extends StatelessWidget {
 					return const SizedBox.shrink();
 				}
 
+				final allSorted = controller.sortedAlerts;
+				final displayAlerts = allSorted.length <= 3 ? allSorted : allSorted.sublist(0, 3);
+				final totalCount = allSorted.length;
+
 				return Material(
 					type: MaterialType.transparency,
 					child: Container(
@@ -71,14 +75,14 @@ class SecurityOverlay extends StatelessWidget {
 											textAlign: TextAlign.center,
 										),
 										SizedBox(height: AppSpacings.pMd),
-										...controller.overlayAlerts.map(
+										...displayAlerts.map(
 											(alert) => _buildAlertRow(alert, isDark, screenService, context),
 										),
-										if (controller.sortedAlerts.length > 3)
+										if (totalCount > 3)
 											Padding(
 												padding: EdgeInsets.only(top: AppSpacings.pSm),
 												child: Text(
-													'+${controller.sortedAlerts.length - 3} more alerts',
+													'+${totalCount - 3} more alerts',
 													style: TextStyle(
 														color: SystemPagesTheme.textMuted(isDark),
 														fontSize: AppFontSize.small,
