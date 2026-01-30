@@ -734,7 +734,6 @@ const {
 	activating,
 	deactivating,
 	previewing,
-	previewError,
 	savingBinding,
 	applyingDefaults,
 	saveError,
