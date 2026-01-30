@@ -152,6 +152,21 @@ describe('AlarmSecurityProvider', () => {
 		expect(signal.activeAlertsCount).toBe(1);
 	});
 
+	it('should compute severity critical when triggered property is true even if alarm_state is pending', async () => {
+		devicesService.findAll.mockResolvedValue([
+			makeAlarmDevice('dev-1', [
+				makeProperty(PropertyCategory.ALARM_STATE, 'pending'),
+				makeProperty(PropertyCategory.TRIGGERED, true),
+			]),
+		]);
+
+		const signal = await provider.getSignals();
+
+		expect(signal.alarmState).toBe(AlarmState.PENDING);
+		expect(signal.highestSeverity).toBe(Severity.CRITICAL);
+		expect(signal.hasCriticalAlert).toBe(true);
+	});
+
 	it('should compute severity warning when active is false', async () => {
 		devicesService.findAll.mockResolvedValue([
 			makeAlarmDevice('dev-1', [makeProperty(PropertyCategory.ACTIVE, false)]),

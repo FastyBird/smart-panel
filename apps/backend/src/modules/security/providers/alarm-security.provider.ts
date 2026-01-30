@@ -17,6 +17,7 @@ const ALARM_STATE_RANK: Record<AlarmState, number> = {
 interface AlarmDeviceState {
 	armedState: ArmedState | null;
 	alarmState: AlarmState | null;
+	triggered: boolean;
 	tampered: boolean;
 	active: boolean | null;
 	fault: number;
@@ -89,6 +90,9 @@ export class AlarmSecurityProvider implements SecurityStateProviderInterface {
 			alarmState = AlarmState.IDLE;
 		}
 
+		// triggered (raw property, independent of alarmState derivation)
+		const triggered = triggeredValue === true || triggeredValue === 'true';
+
 		// tampered
 		const tampered = tamperedValue === true || tamperedValue === 'true';
 
@@ -117,7 +121,7 @@ export class AlarmSecurityProvider implements SecurityStateProviderInterface {
 			lastEvent = this.parseLastEvent(lastEventValue, device.id);
 		}
 
-		return { armedState, alarmState, tampered, active, fault, lastEvent };
+		return { armedState, alarmState, triggered, tampered, active, fault, lastEvent };
 	}
 
 	private aggregateStates(states: AlarmDeviceState[]): SecuritySignal {
@@ -191,7 +195,7 @@ export class AlarmSecurityProvider implements SecurityStateProviderInterface {
 	}
 
 	private computeSeverity(state: AlarmDeviceState): Severity {
-		if (state.alarmState === AlarmState.TRIGGERED || state.tampered) {
+		if (state.alarmState === AlarmState.TRIGGERED || state.triggered || state.tampered) {
 			return Severity.CRITICAL;
 		}
 
@@ -272,6 +276,8 @@ export class AlarmSecurityProvider implements SecurityStateProviderInterface {
 				const obj = parsed as Record<string, unknown>;
 
 				if (typeof obj.type === 'string' && (typeof obj.timestamp === 'string' || typeof obj.timestamp === 'number')) {
+					// Heuristic: values < 1e12 (~Sep 2001 in ms) are treated as Unix seconds.
+					// Safe for current alarm events; pre-2001 ms timestamps would be misinterpreted.
 					const ts = typeof obj.timestamp === 'number' && obj.timestamp < 1e12 ? obj.timestamp * 1000 : obj.timestamp;
 
 					return {
