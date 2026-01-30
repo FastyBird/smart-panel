@@ -267,6 +267,34 @@ describe('AlarmSecurityProvider', () => {
 			expect(signal.lastEvent).toBeUndefined();
 		});
 
+		it('should handle numeric timestamp in seconds (Unix epoch)', async () => {
+			// 1718449200 seconds = 2024-06-15T11:00:00.000Z
+			const event = JSON.stringify({ type: 'intrusion', timestamp: 1718449200 });
+
+			devicesService.findAll.mockResolvedValue([
+				makeAlarmDevice('dev-1', [makeProperty(PropertyCategory.LAST_EVENT, event)]),
+			]);
+
+			const signal = await provider.getSignals();
+
+			expect(signal.lastEvent).toBeDefined();
+			expect(signal.lastEvent?.timestamp).toBe('2024-06-15T11:00:00.000Z');
+		});
+
+		it('should handle numeric timestamp in milliseconds', async () => {
+			// 1718449200000 ms = 2024-06-15T11:00:00.000Z
+			const event = JSON.stringify({ type: 'intrusion', timestamp: 1718449200000 });
+
+			devicesService.findAll.mockResolvedValue([
+				makeAlarmDevice('dev-1', [makeProperty(PropertyCategory.LAST_EVENT, event)]),
+			]);
+
+			const signal = await provider.getSignals();
+
+			expect(signal.lastEvent).toBeDefined();
+			expect(signal.lastEvent?.timestamp).toBe('2024-06-15T11:00:00.000Z');
+		});
+
 		it('should discard invalid severity in last_event', async () => {
 			const event = JSON.stringify({
 				type: 'intrusion',
