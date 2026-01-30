@@ -4,7 +4,7 @@ Type: feature
 Scope: panel
 Size: medium
 Parent: EPIC-EXPAND-SMART-PANEL-DOMAINS
-Status: in-progress
+Status: done
 
 ## 1. Business goal
 
