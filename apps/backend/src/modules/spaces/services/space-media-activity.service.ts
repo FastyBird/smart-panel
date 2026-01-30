@@ -71,34 +71,24 @@ function diagnoseBinding(
 	const sourceEndpoint = binding.sourceEndpointId ? endpointMap.get(binding.sourceEndpointId) : undefined;
 
 	if (audioEndpoint && binding.audioVolumePreset !== null && !audioEndpoint.capabilities.volume) {
-		diagnostics.push(
-			`Volume preset skipped (${audioEndpoint.name} has no volume capability)`,
-		);
+		diagnostics.push(`Volume preset skipped (${audioEndpoint.name} has no volume capability)`);
 	}
 
 	if (displayEndpoint && binding.displayInputId && !displayEndpoint.capabilities.inputSelect) {
-		diagnostics.push(
-			`Display input preset skipped (${displayEndpoint.name} has no input select capability)`,
-		);
+		diagnostics.push(`Display input preset skipped (${displayEndpoint.name} has no input select capability)`);
 	}
 
 	// Missing power capabilities
 	if (displayEndpoint && !displayEndpoint.capabilities.power) {
-		diagnostics.push(
-			`Display power-on skipped (${displayEndpoint.name} has no power capability)`,
-		);
+		diagnostics.push(`Display power-on skipped (${displayEndpoint.name} has no power capability)`);
 	}
 
 	if (audioEndpoint && !audioEndpoint.capabilities.power) {
-		diagnostics.push(
-			`Audio power-on skipped (${audioEndpoint.name} has no power capability)`,
-		);
+		diagnostics.push(`Audio power-on skipped (${audioEndpoint.name} has no power capability)`);
 	}
 
 	if (sourceEndpoint && !sourceEndpoint.capabilities.power) {
-		diagnostics.push(
-			`Source power-on skipped (${sourceEndpoint.name} has no power capability)`,
-		);
+		diagnostics.push(`Source power-on skipped (${sourceEndpoint.name} has no power capability)`);
 	}
 
 	return diagnostics;
