@@ -4,7 +4,7 @@ import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { PropertyValueState } from '../../devices/models/property-value-state.model';
 import { DevicesService } from '../../devices/services/devices.service';
-import { Severity } from '../security.constants';
+import { SecurityAlertType, Severity } from '../security.constants';
 
 import { SecuritySensorsProvider } from './security-sensors.provider';
 
@@ -58,6 +58,7 @@ describe('SecuritySensorsProvider', () => {
 		expect(signal.highestSeverity).toBe(Severity.INFO);
 		expect(signal.hasCriticalAlert).toBe(false);
 		expect(signal.lastEvent).toBeUndefined();
+		expect(signal.activeAlerts).toEqual([]);
 	});
 
 	it('should return empty signal when no sensors are triggered', async () => {
@@ -67,6 +68,7 @@ describe('SecuritySensorsProvider', () => {
 
 		expect(signal.activeAlertsCount).toBe(0);
 		expect(signal.hasCriticalAlert).toBe(false);
+		expect(signal.activeAlerts).toEqual([]);
 	});
 
 	it('should map smoke sensor to critical severity', async () => {
@@ -190,7 +192,7 @@ describe('SecuritySensorsProvider', () => {
 
 		const signal = await provider.getSignals();
 
-		// Both critical, d1 comes first alphabetically
+		// Both critical, d1 comes first alphabetically by id
 		expect(signal.lastEvent?.sourceDeviceId).toBe('d1');
 	});
 
@@ -253,6 +255,7 @@ describe('SecuritySensorsProvider', () => {
 		expect(signal.activeAlertsCount).toBe(0);
 		expect(signal.highestSeverity).toBe(Severity.INFO);
 		expect(signal.hasCriticalAlert).toBe(false);
+		expect(signal.activeAlerts).toEqual([]);
 	});
 
 	it('should ignore non-security channel categories', async () => {
@@ -265,5 +268,67 @@ describe('SecuritySensorsProvider', () => {
 		const signal = await provider.getSignals();
 
 		expect(signal.activeAlertsCount).toBe(0);
+	});
+
+	// --- activeAlerts specific tests ---
+
+	it('should emit activeAlerts with deterministic IDs', async () => {
+		devicesService.findAll.mockResolvedValue([
+			createSensorDevice('d1', [createChannel(ChannelCategory.SMOKE, true)]),
+			createSensorDevice('d2', [createChannel(ChannelCategory.LEAK, true)]),
+		]);
+
+		const signal = await provider.getSignals();
+
+		expect(signal.activeAlerts).toHaveLength(2);
+
+		const ids = signal.activeAlerts!.map((a) => a.id);
+		expect(ids).toContain(`sensor:d1:${SecurityAlertType.SMOKE}`);
+		expect(ids).toContain(`sensor:d2:${SecurityAlertType.WATER_LEAK}`);
+	});
+
+	it('should set acknowledged=false on all alerts', async () => {
+		devicesService.findAll.mockResolvedValue([
+			createSensorDevice('d1', [createChannel(ChannelCategory.SMOKE, true)]),
+		]);
+
+		const signal = await provider.getSignals();
+
+		for (const alert of signal.activeAlerts!) {
+			expect(alert.acknowledged).toBe(false);
+		}
+	});
+
+	it('should produce stable alert IDs across calls', async () => {
+		devicesService.findAll.mockResolvedValue([
+			createSensorDevice('d1', [createChannel(ChannelCategory.SMOKE, true)]),
+		]);
+
+		const signal1 = await provider.getSignals();
+		const signal2 = await provider.getSignals();
+
+		expect(signal1.activeAlerts![0].id).toBe(signal2.activeAlerts![0].id);
+	});
+
+	it('should include sourceDeviceId in alerts', async () => {
+		devicesService.findAll.mockResolvedValue([
+			createSensorDevice('dev-abc', [createChannel(ChannelCategory.SMOKE, true)]),
+		]);
+
+		const signal = await provider.getSignals();
+
+		expect(signal.activeAlerts![0].sourceDeviceId).toBe('dev-abc');
+	});
+
+	it('should match activeAlertsCount to activeAlerts.length', async () => {
+		devicesService.findAll.mockResolvedValue([
+			createSensorDevice('d1', [createChannel(ChannelCategory.SMOKE, true)]),
+			createSensorDevice('d2', [createChannel(ChannelCategory.MOTION, true)]),
+			createSensorDevice('d3', [createChannel(ChannelCategory.CONTACT, true)]),
+		]);
+
+		const signal = await provider.getSignals();
+
+		expect(signal.activeAlertsCount).toBe(signal.activeAlerts!.length);
 	});
 });

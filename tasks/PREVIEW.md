@@ -6,10 +6,10 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 
 | Status | Count |
 |--------|-------|
-| Done | 90 |
+| Done | 91 |
 | In Progress | 8 |
 | Planned | 27 |
-| **Total** | **125** |
+| **Total** | **126** |
 
 ---
 
@@ -88,6 +88,7 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | FEATURE-SCENES-PANEL-QUICK-ACTIONS | Panel – show room scenes as quick actions | panel | medium |
 | FEATURE-SCENES-PANEL-ROOM-ACTIONS | Panel UI — Room quick actions for Scenes | panel | medium |
 | FEATURE-SCENES-PLUGIN-SIMPLE | Simple Scene type plugin (apply via Devices) | backend | medium |
+| FEATURE-SECURITY-ACTIVE-ALERTS | Security Domain – Expose activeAlerts[] in DTO + endpoint | backend | medium |
 | FEATURE-SECURITY-ALARM-PROVIDER | Security Domain – Alarm Provider | backend | medium |
 | FEATURE-SECURITY-DOMAIN-BACKEND | Security Domain – Backend Core | backend | small |
 | FEATURE-SPACE-CLIMATE-MVP | MVP Climate controls for Space pages | backend, panel, admin | medium |
@@ -321,7 +322,8 @@ EPIC-EXPAND-SMART-PANEL-DOMAINS (planned)
 │   ├── FEATURE-SPACE-SECURITY-DOMAIN (planned)
 │   ├── FEATURE-SECURITY-DOMAIN-BACKEND (done)
 │   ├── FEATURE-SECURITY-PROVIDER-REGISTRY (done)
-│   └── FEATURE-SECURITY-ALARM-PROVIDER (done)
+│   ├── FEATURE-SECURITY-ALARM-PROVIDER (done)
+│   └── FEATURE-SECURITY-ACTIVE-ALERTS (done)
 ├── Phase 2: Unified Room Modes
 │   ├── FEATURE-SPACE-ACTIVITY-MODES (planned)
 │   ├── FEATURE-SPACE-MODE-ADMIN-UI (planned)
@@ -424,6 +426,7 @@ tasks/
 │   ├── FEATURE-SCENES-PANEL-QUICK-ACTIONS.md
 │   ├── FEATURE-SCENES-PANEL-ROOM-ACTIONS.md
 │   ├── FEATURE-SCENES-PLUGIN-SIMPLE.md
+│   ├── FEATURE-SECURITY-ACTIVE-ALERTS.md
 │   ├── FEATURE-SECURITY-ALARM-PROVIDER.md
 │   ├── FEATURE-SECURITY-DOMAIN-BACKEND.md
 │   ├── FEATURE-SECURITY-PROVIDER-REGISTRY.md

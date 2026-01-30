@@ -3,9 +3,9 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { DevicesService } from '../../devices/services/devices.service';
-import { SecuritySignal } from '../contracts/security-signal.type';
+import { SecurityAlert, SecuritySignal } from '../contracts/security-signal.type';
 import { SecurityStateProviderInterface } from '../contracts/security-state-provider.interface';
-import { AlarmState, ArmedState, SEVERITY_RANK, Severity } from '../security.constants';
+import { AlarmState, ArmedState, SEVERITY_RANK, SecurityAlertType, Severity } from '../security.constants';
 import { pickNewestEvent } from '../security.utils';
 
 const ALARM_STATE_RANK: Record<AlarmState, number> = {
@@ -16,6 +16,7 @@ const ALARM_STATE_RANK: Record<AlarmState, number> = {
 };
 
 interface AlarmDeviceState {
+	deviceId: string;
 	armedState: ArmedState | null;
 	alarmState: AlarmState | null;
 	triggered: boolean;
@@ -122,7 +123,7 @@ export class AlarmSecurityProvider implements SecurityStateProviderInterface {
 			lastEvent = this.parseLastEvent(lastEventValue, device.id);
 		}
 
-		return { armedState, alarmState, triggered, tampered, active, fault, lastEvent };
+		return { deviceId: device.id, armedState, alarmState, triggered, tampered, active, fault, lastEvent };
 	}
 
 	private aggregateStates(states: AlarmDeviceState[]): SecuritySignal {
@@ -141,6 +142,45 @@ export class AlarmSecurityProvider implements SecurityStateProviderInterface {
 					maxAlarmRank = rank;
 					alarmState = s.alarmState;
 				}
+			}
+		}
+
+		// Build alerts for exception states
+		const activeAlerts: SecurityAlert[] = [];
+		const now = new Date().toISOString();
+
+		for (const s of states) {
+			if (s.alarmState === AlarmState.TRIGGERED || s.triggered) {
+				activeAlerts.push({
+					id: `alarm:${s.deviceId}:${SecurityAlertType.INTRUSION}`,
+					type: SecurityAlertType.INTRUSION,
+					severity: Severity.CRITICAL,
+					timestamp: s.lastEvent?.timestamp ?? now,
+					acknowledged: false,
+					sourceDeviceId: s.deviceId,
+				});
+			}
+
+			if (s.tampered) {
+				activeAlerts.push({
+					id: `alarm:${s.deviceId}:${SecurityAlertType.TAMPER}`,
+					type: SecurityAlertType.TAMPER,
+					severity: Severity.CRITICAL,
+					timestamp: s.lastEvent?.timestamp ?? now,
+					acknowledged: false,
+					sourceDeviceId: s.deviceId,
+				});
+			}
+
+			if (s.active === false || s.fault > 0) {
+				activeAlerts.push({
+					id: `alarm:${s.deviceId}:${SecurityAlertType.FAULT}`,
+					type: SecurityAlertType.FAULT,
+					severity: Severity.WARNING,
+					timestamp: s.lastEvent?.timestamp ?? now,
+					acknowledged: false,
+					sourceDeviceId: s.deviceId,
+				});
 			}
 		}
 
@@ -177,6 +217,7 @@ export class AlarmSecurityProvider implements SecurityStateProviderInterface {
 			highestSeverity: maxSeverity,
 			hasCriticalAlert,
 			activeAlertsCount,
+			activeAlerts,
 		};
 
 		if (newestEvent != null) {

@@ -1,8 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { SecuritySignal } from '../contracts/security-signal.type';
+import { SecurityAlert, SecuritySignal } from '../contracts/security-signal.type';
 import { SecurityStateProviderInterface } from '../contracts/security-state-provider.interface';
-import { AlarmState, ArmedState, SECURITY_STATE_PROVIDERS, Severity } from '../security.constants';
+import { AlarmState, ArmedState, SECURITY_STATE_PROVIDERS, SecurityAlertType, Severity } from '../security.constants';
 
 import { SecurityAggregatorService } from './security-aggregator.service';
 
@@ -19,6 +19,16 @@ class FakeProvider implements SecurityStateProviderInterface {
 	getSignals(): SecuritySignal {
 		return this.signal;
 	}
+}
+
+function makeAlert(overrides: Partial<SecurityAlert> & { id: string }): SecurityAlert {
+	return {
+		type: SecurityAlertType.SMOKE,
+		severity: Severity.CRITICAL,
+		timestamp: '2025-06-15T12:00:00Z',
+		acknowledged: false,
+		...overrides,
+	};
 }
 
 describe('SecurityAggregatorService', () => {
@@ -60,6 +70,7 @@ describe('SecurityAggregatorService', () => {
 		expect(result.activeAlertsCount).toBe(0);
 		expect(result.hasCriticalAlert).toBe(false);
 		expect(result.lastEvent).toBeUndefined();
+		expect(result.activeAlerts).toEqual([]);
 	});
 
 	it('should return defaults with dummy provider', async () => {
@@ -78,9 +89,10 @@ describe('SecurityAggregatorService', () => {
 		expect(result.highestSeverity).toBe(Severity.INFO);
 		expect(result.activeAlertsCount).toBe(0);
 		expect(result.hasCriticalAlert).toBe(false);
+		expect(result.activeAlerts).toEqual([]);
 	});
 
-	it('should pick max severity across providers', async () => {
+	it('should pick max severity across providers (no alerts fallback)', async () => {
 		const aggregator = await createAggregator([
 			new FakeProvider('a', { highestSeverity: Severity.INFO }),
 			new FakeProvider('b', { highestSeverity: Severity.CRITICAL }),
@@ -92,7 +104,7 @@ describe('SecurityAggregatorService', () => {
 		expect(result.highestSeverity).toBe(Severity.CRITICAL);
 	});
 
-	it('should sum activeAlertsCount across providers', async () => {
+	it('should sum activeAlertsCount across providers (no alerts fallback)', async () => {
 		const aggregator = await createAggregator([
 			new FakeProvider('a', { activeAlertsCount: 3 }),
 			new FakeProvider('b', { activeAlertsCount: 5 }),
@@ -103,7 +115,7 @@ describe('SecurityAggregatorService', () => {
 		expect(result.activeAlertsCount).toBe(8);
 	});
 
-	it('should set hasCriticalAlert true if any provider reports true', async () => {
+	it('should set hasCriticalAlert true if any provider reports true (no alerts fallback)', async () => {
 		const aggregator = await createAggregator([
 			new FakeProvider('a', { hasCriticalAlert: false }),
 			new FakeProvider('b', { hasCriticalAlert: true }),
@@ -114,7 +126,7 @@ describe('SecurityAggregatorService', () => {
 		expect(result.hasCriticalAlert).toBe(true);
 	});
 
-	it('should set hasCriticalAlert true if computed severity is critical', async () => {
+	it('should set hasCriticalAlert true if computed severity is critical (no alerts fallback)', async () => {
 		const aggregator = await createAggregator([
 			new FakeProvider('a', { highestSeverity: Severity.CRITICAL, hasCriticalAlert: false }),
 		]);
@@ -148,7 +160,7 @@ describe('SecurityAggregatorService', () => {
 		expect(result.alarmState).toBe(AlarmState.TRIGGERED);
 	});
 
-	it('should select newest lastEvent by timestamp', async () => {
+	it('should select newest lastEvent by timestamp (no alerts fallback)', async () => {
 		const aggregator = await createAggregator([
 			new FakeProvider('a', {
 				lastEvent: { type: 'old', timestamp: '2025-01-01T00:00:00Z' },
@@ -273,5 +285,243 @@ describe('SecurityAggregatorService', () => {
 		const result = await aggregator.aggregate();
 
 		expect(result.activeAlertsCount).toBe(4);
+	});
+
+	// --- activeAlerts tests ---
+
+	describe('activeAlerts merging', () => {
+		it('should return activeAlerts from providers', async () => {
+			const alerts: SecurityAlert[] = [
+				makeAlert({ id: 'sensor:d1:smoke', sourceDeviceId: 'd1' }),
+			];
+
+			const aggregator = await createAggregator([
+				new FakeProvider('sensors', { activeAlerts: alerts }),
+			]);
+
+			const result = await aggregator.aggregate();
+
+			expect(result.activeAlerts).toHaveLength(1);
+			expect(result.activeAlerts[0].id).toBe('sensor:d1:smoke');
+		});
+
+		it('should concatenate alerts from multiple providers', async () => {
+			const aggregator = await createAggregator([
+				new FakeProvider('sensors', {
+					activeAlerts: [makeAlert({ id: 'sensor:d1:smoke' })],
+				}),
+				new FakeProvider('alarm', {
+					activeAlerts: [makeAlert({ id: 'alarm:d2:intrusion' })],
+				}),
+			]);
+
+			const result = await aggregator.aggregate();
+
+			expect(result.activeAlerts).toHaveLength(2);
+		});
+
+		it('should de-duplicate alerts by id (newest timestamp wins)', async () => {
+			const aggregator = await createAggregator([
+				new FakeProvider('a', {
+					activeAlerts: [makeAlert({ id: 'sensor:d1:smoke', timestamp: '2025-01-01T00:00:00Z' })],
+				}),
+				new FakeProvider('b', {
+					activeAlerts: [makeAlert({ id: 'sensor:d1:smoke', timestamp: '2025-06-15T12:00:00Z' })],
+				}),
+			]);
+
+			const result = await aggregator.aggregate();
+
+			expect(result.activeAlerts).toHaveLength(1);
+			expect(result.activeAlerts[0].timestamp).toBe('2025-06-15T12:00:00Z');
+		});
+
+		it('should compute activeAlertsCount from merged alerts', async () => {
+			const aggregator = await createAggregator([
+				new FakeProvider('a', {
+					activeAlerts: [
+						makeAlert({ id: 'sensor:d1:smoke' }),
+						makeAlert({ id: 'sensor:d2:co', type: SecurityAlertType.CO }),
+					],
+				}),
+			]);
+
+			const result = await aggregator.aggregate();
+
+			expect(result.activeAlertsCount).toBe(2);
+			expect(result.activeAlertsCount).toBe(result.activeAlerts.length);
+		});
+
+		it('should compute highestSeverity from alerts', async () => {
+			const aggregator = await createAggregator([
+				new FakeProvider('a', {
+					activeAlerts: [
+						makeAlert({ id: 'a1', severity: Severity.INFO }),
+						makeAlert({ id: 'a2', severity: Severity.WARNING }),
+					],
+				}),
+			]);
+
+			const result = await aggregator.aggregate();
+
+			expect(result.highestSeverity).toBe(Severity.WARNING);
+		});
+
+		it('should compute hasCriticalAlert from alerts', async () => {
+			const aggregator = await createAggregator([
+				new FakeProvider('a', {
+					activeAlerts: [
+						makeAlert({ id: 'a1', severity: Severity.WARNING }),
+						makeAlert({ id: 'a2', severity: Severity.CRITICAL }),
+					],
+				}),
+			]);
+
+			const result = await aggregator.aggregate();
+
+			expect(result.hasCriticalAlert).toBe(true);
+		});
+
+		it('should set hasCriticalAlert false when no critical alerts', async () => {
+			const aggregator = await createAggregator([
+				new FakeProvider('a', {
+					activeAlerts: [makeAlert({ id: 'a1', severity: Severity.WARNING })],
+				}),
+			]);
+
+			const result = await aggregator.aggregate();
+
+			expect(result.hasCriticalAlert).toBe(false);
+		});
+
+		it('should derive lastEvent from newest alert', async () => {
+			const aggregator = await createAggregator([
+				new FakeProvider('a', {
+					activeAlerts: [
+						makeAlert({ id: 'a1', timestamp: '2025-01-01T00:00:00Z', type: SecurityAlertType.SMOKE }),
+						makeAlert({ id: 'a2', timestamp: '2025-06-15T12:00:00Z', type: SecurityAlertType.CO }),
+					],
+				}),
+			]);
+
+			const result = await aggregator.aggregate();
+
+			expect(result.lastEvent).toBeDefined();
+			expect(result.lastEvent?.type).toBe(SecurityAlertType.CO);
+			expect(result.lastEvent?.timestamp).toBe('2025-06-15T12:00:00Z');
+		});
+
+		it('should use severity tie-breaker for lastEvent when timestamps equal', async () => {
+			const aggregator = await createAggregator([
+				new FakeProvider('a', {
+					activeAlerts: [
+						makeAlert({ id: 'a1', timestamp: '2025-06-15T12:00:00Z', severity: Severity.WARNING, type: SecurityAlertType.FAULT }),
+						makeAlert({ id: 'a2', timestamp: '2025-06-15T12:00:00Z', severity: Severity.CRITICAL, type: SecurityAlertType.SMOKE }),
+					],
+				}),
+			]);
+
+			const result = await aggregator.aggregate();
+
+			expect(result.lastEvent?.type).toBe(SecurityAlertType.SMOKE);
+		});
+
+		it('should use id tie-breaker for lastEvent when timestamps and severity equal', async () => {
+			const aggregator = await createAggregator([
+				new FakeProvider('a', {
+					activeAlerts: [
+						makeAlert({ id: 'b-alert', timestamp: '2025-06-15T12:00:00Z', severity: Severity.CRITICAL }),
+						makeAlert({ id: 'a-alert', timestamp: '2025-06-15T12:00:00Z', severity: Severity.CRITICAL }),
+					],
+				}),
+			]);
+
+			const result = await aggregator.aggregate();
+
+			expect(result.lastEvent?.timestamp).toBe('2025-06-15T12:00:00Z');
+			// a-alert < b-alert lexicographically, so a-alert wins
+		});
+
+		it('should sort alerts by severity desc, timestamp desc, id asc', async () => {
+			const aggregator = await createAggregator([
+				new FakeProvider('a', {
+					activeAlerts: [
+						makeAlert({ id: 'a1', severity: Severity.INFO, timestamp: '2025-06-15T12:00:00Z' }),
+						makeAlert({ id: 'a2', severity: Severity.CRITICAL, timestamp: '2025-01-01T00:00:00Z' }),
+						makeAlert({ id: 'a3', severity: Severity.WARNING, timestamp: '2025-03-01T00:00:00Z' }),
+					],
+				}),
+			]);
+
+			const result = await aggregator.aggregate();
+
+			expect(result.activeAlerts[0].id).toBe('a2');
+			expect(result.activeAlerts[1].id).toBe('a3');
+			expect(result.activeAlerts[2].id).toBe('a1');
+		});
+
+		it('should ignore providers without activeAlerts and still use provider-level fields', async () => {
+			const aggregator = await createAggregator([
+				new FakeProvider('a', { highestSeverity: Severity.WARNING, activeAlertsCount: 2, hasCriticalAlert: false }),
+				new FakeProvider('b', { highestSeverity: Severity.INFO }),
+			]);
+
+			const result = await aggregator.aggregate();
+
+			// No activeAlerts from any provider, so fallback to provider-level fields
+			expect(result.activeAlerts).toEqual([]);
+			expect(result.activeAlertsCount).toBe(2);
+			expect(result.highestSeverity).toBe(Severity.WARNING);
+		});
+
+		it('should prefer alert-derived fields over provider-level fields when alerts exist', async () => {
+			const aggregator = await createAggregator([
+				new FakeProvider('a', {
+					highestSeverity: Severity.INFO,
+					activeAlertsCount: 0,
+					hasCriticalAlert: false,
+					activeAlerts: [makeAlert({ id: 'a1', severity: Severity.CRITICAL })],
+				}),
+			]);
+
+			const result = await aggregator.aggregate();
+
+			expect(result.activeAlertsCount).toBe(1);
+			expect(result.highestSeverity).toBe(Severity.CRITICAL);
+			expect(result.hasCriticalAlert).toBe(true);
+		});
+
+		it('should set acknowledged=false on all alerts', async () => {
+			const aggregator = await createAggregator([
+				new FakeProvider('a', {
+					activeAlerts: [
+						makeAlert({ id: 'a1', acknowledged: false }),
+						makeAlert({ id: 'a2', acknowledged: false }),
+					],
+				}),
+			]);
+
+			const result = await aggregator.aggregate();
+
+			for (const alert of result.activeAlerts) {
+				expect(alert.acknowledged).toBe(false);
+			}
+		});
+
+		it('should preserve alert IDs deterministically across calls', async () => {
+			const alerts = [
+				makeAlert({ id: 'sensor:d1:smoke' }),
+				makeAlert({ id: 'alarm:d2:intrusion' }),
+			];
+
+			const aggregator = await createAggregator([
+				new FakeProvider('a', { activeAlerts: alerts }),
+			]);
+
+			const result1 = await aggregator.aggregate();
+			const result2 = await aggregator.aggregate();
+
+			expect(result1.activeAlerts.map((a) => a.id)).toEqual(result2.activeAlerts.map((a) => a.id));
+		});
 	});
 });
