@@ -7,9 +7,9 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | Status | Count |
 |--------|-------|
 | Done | 92 |
-| In Progress | 8 |
+| In Progress | 9 |
 | Planned | 27 |
-| **Total** | **127** |
+| **Total** | **128** |
 
 ---
 
@@ -124,6 +124,7 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | FEATURE-MEDIA-SIMULATOR-REGRESSION | Media Simulator Regression Suite | backend | large | FEATURE-SPACE-MEDIA-DOMAIN-V2 |
 | FEATURE-MEDIA-UX-POLISH | Media UX Polish | backend, admin, panel | large | FEATURE-SPACE-MEDIA-DOMAIN-V2 |
 | FEATURE-PANEL-MEDIA-DOMAIN-MVP | Panel Media Domain MVP | panel | large | FEATURE-SPACE-MEDIA-DOMAIN-V2 |
+| FEATURE-PANEL-SECURITY-SCREEN | Panel app – Security screen UI (status + active alerts list) | panel | medium | EPIC-EXPAND-SMART-PANEL-DOMAINS |
 | FEATURE-SPACE-COVERS-DOMAIN | Add covers domain intents for spaces | backend, admin, panel | medium | EPIC-EXPAND-SMART-PANEL-DOMAINS |
 | FEATURE-SPACE-MEDIA-DOMAIN-V2 | Media domain intents for spaces v2 | backend, admin, panel | large | EPIC-EXPAND-SMART-PANEL-DOMAINS |
 
@@ -321,6 +322,7 @@ EPIC-EXPAND-SMART-PANEL-DOMAINS (planned)
 │   │   ├── FEATURE-MEDIA-DOMAIN-PANEL-MVP (in-progress)
 │   │   └── FEATURE-PANEL-MEDIA-DOMAIN-MVP (in-progress)
 │   ├── FEATURE-PANEL-SECURITY-OVERLAY (done)
+│   ├── FEATURE-PANEL-SECURITY-SCREEN (in-progress)
 │   ├── FEATURE-SPACE-SECURITY-DOMAIN (planned)
 │   ├── FEATURE-SECURITY-DOMAIN-BACKEND (done)
 │   ├── FEATURE-SECURITY-PROVIDER-REGISTRY (done)
@@ -412,6 +414,7 @@ tasks/
 │   ├── FEATURE-PANEL-IDLE-MODE-SPACE-AWARE.md
 │   ├── FEATURE-PANEL-MEDIA-DOMAIN-MVP.md
 │   ├── FEATURE-PANEL-SECURITY-OVERLAY.md
+│   ├── FEATURE-PANEL-SECURITY-SCREEN.md
 │   ├── FEATURE-PANEL-SENSOR-DEVICE-PAGE.md
 │   ├── FEATURE-PLUGIN-HA-ADOPTION-IMPROVEMENTS.md
 │   ├── FEATURE-PLUGIN-HA-AUTO-MAP.md

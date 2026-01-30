@@ -1,7 +1,9 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
+import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/system_pages/export.dart';
+import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/security/models/security_alert.dart';
 import 'package:fastybird_smart_panel/modules/security/models/security_status.dart';
 import 'package:fastybird_smart_panel/modules/security/services/security_overlay_controller.dart';
@@ -18,6 +20,7 @@ class SecurityScreen extends StatelessWidget {
 	Widget build(BuildContext context) {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 		final screenService = locator<ScreenService>();
+		final localizations = AppLocalizations.of(context)!;
 
 		return Consumer<SecurityOverlayController>(
 			builder: (context, controller, _) {
@@ -50,26 +53,7 @@ class SecurityScreen extends StatelessWidget {
 								SizedBox(height: AppSpacings.pMd),
 								Expanded(
 									child: alerts.isEmpty
-										? Center(
-											child: Column(
-												mainAxisSize: MainAxisSize.min,
-												children: [
-													Icon(
-														MdiIcons.shieldCheck,
-														size: screenService.scale(48),
-														color: SystemPagesTheme.success(isDark),
-													),
-													SizedBox(height: AppSpacings.pMd),
-													Text(
-														'No active alerts',
-														style: TextStyle(
-															color: SystemPagesTheme.textMuted(isDark),
-															fontSize: AppFontSize.base,
-														),
-													),
-												],
-											),
-										)
+										? _buildEmptyState(isDark, screenService)
 										: ListView.separated(
 											itemCount: alerts.length,
 											separatorBuilder: (_, __) =>
@@ -79,6 +63,8 @@ class SecurityScreen extends StatelessWidget {
 													alerts[index],
 													isDark,
 													screenService,
+													localizations,
+													key: ValueKey(alerts[index].id),
 												),
 										),
 								),
@@ -90,28 +76,46 @@ class SecurityScreen extends StatelessWidget {
 		);
 	}
 
+	Widget _buildEmptyState(bool isDark, ScreenService screenService) {
+		return Center(
+			child: Column(
+				mainAxisSize: MainAxisSize.min,
+				children: [
+					Icon(
+						MdiIcons.shieldCheck,
+						size: screenService.scale(48),
+						color: SystemPagesTheme.success(isDark),
+					),
+					SizedBox(height: AppSpacings.pMd),
+					Text(
+						'No active alerts',
+						style: TextStyle(
+							color: SystemPagesTheme.textPrimary(isDark),
+							fontSize: AppFontSize.large,
+							fontWeight: FontWeight.w500,
+						),
+					),
+					SizedBox(height: AppSpacings.pXs),
+					Text(
+						'Your home is secure.',
+						style: TextStyle(
+							color: SystemPagesTheme.textMuted(isDark),
+							fontSize: AppFontSize.base,
+						),
+					),
+				],
+			),
+		);
+	}
+
 	Widget _buildStatusCard(
 		SecurityStatusModel status,
 		bool isDark,
 		ScreenService screenService,
 	) {
-		final armedLabel = switch (status.armedState) {
-			ArmedState.disarmed => 'Disarmed',
-			ArmedState.armedHome => 'Armed Home',
-			ArmedState.armedAway => 'Armed Away',
-			ArmedState.armedNight => 'Armed Night',
-			_ => 'Unknown',
-		};
-
-		final alarmLabel = switch (status.alarmState) {
-			AlarmState.idle => 'Idle',
-			AlarmState.pending => 'Pending',
-			AlarmState.triggered => 'Triggered',
-			AlarmState.silenced => 'Silenced',
-			_ => 'Unknown',
-		};
-
 		final isTriggered = status.alarmState == AlarmState.triggered;
+		final headerSeverityColor = _overallSeverityColor(status, isDark);
+		final headerSeverityIcon = _overallSeverityIcon(status);
 
 		return Container(
 			width: double.infinity,
@@ -126,42 +130,125 @@ class SecurityScreen extends StatelessWidget {
 					)
 					: null,
 			),
-			child: Row(
+			child: Column(
+				crossAxisAlignment: CrossAxisAlignment.start,
 				children: [
-					Icon(
-						isTriggered ? MdiIcons.shieldAlert : MdiIcons.shield,
-						size: screenService.scale(32),
-						color: isTriggered
-							? SystemPagesTheme.error(isDark)
-							: SystemPagesTheme.textSecondary(isDark),
-					),
-					SizedBox(width: AppSpacings.pMd),
-					Expanded(
-						child: Column(
-							crossAxisAlignment: CrossAxisAlignment.start,
-							children: [
-								Text(
-									armedLabel,
+					Row(
+						children: [
+							Icon(
+								headerSeverityIcon,
+								size: screenService.scale(28),
+								color: headerSeverityColor,
+							),
+							SizedBox(width: AppSpacings.pMd),
+							Expanded(
+								child: Text(
+									'Security',
 									style: TextStyle(
 										color: SystemPagesTheme.textPrimary(isDark),
 										fontSize: AppFontSize.large,
 										fontWeight: FontWeight.w600,
 									),
 								),
-								SizedBox(height: AppSpacings.pXs),
-								Text(
-									'Alarm: $alarmLabel',
-									style: TextStyle(
-										color: isTriggered
-											? SystemPagesTheme.error(isDark)
-											: SystemPagesTheme.textMuted(isDark),
-										fontSize: AppFontSize.small,
-									),
-								),
-							],
+							),
+							if (status.hasCriticalAlert || status.highestSeverity != Severity.info)
+								_buildSeverityIndicator(status.highestSeverity, isDark),
+						],
+					),
+					SizedBox(height: AppSpacings.pMd),
+					Wrap(
+						spacing: AppSpacings.pSm,
+						runSpacing: AppSpacings.pSm,
+						children: [
+							_buildStatusChip(
+								label: _armedLabel(status.armedState),
+								icon: _armedIcon(status.armedState),
+								isDark: isDark,
+								screenService: screenService,
+							),
+							_buildStatusChip(
+								label: _alarmLabel(status.alarmState),
+								icon: _alarmIcon(status.alarmState),
+								isDark: isDark,
+								screenService: screenService,
+								isAlert: status.alarmState == AlarmState.triggered ||
+									status.alarmState == AlarmState.pending,
+							),
+						],
+					),
+				],
+			),
+		);
+	}
+
+	Widget _buildStatusChip({
+		required String label,
+		required IconData icon,
+		required bool isDark,
+		required ScreenService screenService,
+		bool isAlert = false,
+	}) {
+		final bgColor = isAlert
+			? SystemPagesTheme.errorLight(isDark)
+			: SystemPagesTheme.cardSecondary(isDark);
+		final fgColor = isAlert
+			? SystemPagesTheme.error(isDark)
+			: SystemPagesTheme.textSecondary(isDark);
+
+		return Container(
+			padding: EdgeInsets.symmetric(
+				horizontal: AppSpacings.pMd,
+				vertical: AppSpacings.pXs,
+			),
+			decoration: BoxDecoration(
+				color: bgColor,
+				borderRadius: BorderRadius.circular(AppBorderRadius.small),
+			),
+			child: Row(
+				mainAxisSize: MainAxisSize.min,
+				children: [
+					Icon(
+						icon,
+						size: screenService.scale(14),
+						color: fgColor,
+					),
+					SizedBox(width: AppSpacings.pXs),
+					Text(
+						label,
+						style: TextStyle(
+							color: fgColor,
+							fontSize: AppFontSize.small,
+							fontWeight: FontWeight.w500,
 						),
 					),
 				],
+			),
+		);
+	}
+
+	Widget _buildSeverityIndicator(Severity severity, bool isDark) {
+		final label = switch (severity) {
+			Severity.critical => 'CRITICAL',
+			Severity.warning => 'WARNING',
+			Severity.info => 'OK',
+		};
+
+		return Container(
+			padding: EdgeInsets.symmetric(
+				horizontal: AppSpacings.pSm,
+				vertical: AppSpacings.pXs,
+			),
+			decoration: BoxDecoration(
+				color: severityBgColor(severity, isDark),
+				borderRadius: BorderRadius.circular(AppBorderRadius.small),
+			),
+			child: Text(
+				label,
+				style: TextStyle(
+					color: severityColor(severity, isDark),
+					fontSize: AppFontSize.extraSmall,
+					fontWeight: FontWeight.w700,
+				),
 			),
 		);
 	}
@@ -170,8 +257,11 @@ class SecurityScreen extends StatelessWidget {
 		SecurityAlertModel alert,
 		bool isDark,
 		ScreenService screenService,
-	) {
+		AppLocalizations localizations, {
+		Key? key,
+	}) {
 		return Container(
+			key: key,
 			padding: EdgeInsets.all(AppSpacings.pMd),
 			decoration: BoxDecoration(
 				color: SystemPagesTheme.card(isDark),
@@ -210,7 +300,7 @@ class SecurityScreen extends StatelessWidget {
 											color: SystemPagesTheme.textMuted(isDark),
 											fontSize: AppFontSize.small,
 										),
-										maxLines: 2,
+										maxLines: 1,
 										overflow: TextOverflow.ellipsis,
 									),
 								],
@@ -218,16 +308,26 @@ class SecurityScreen extends StatelessWidget {
 						),
 					),
 					SizedBox(width: AppSpacings.pSm),
-					_buildSeverityBadge(alert.severity, isDark),
+					Column(
+						crossAxisAlignment: CrossAxisAlignment.end,
+						children: [
+							_buildAlertSeverityBadge(alert.severity, isDark),
+							SizedBox(height: AppSpacings.pXs),
+							Text(
+								DatetimeUtils.formatTimeAgo(alert.timestamp, localizations),
+								style: TextStyle(
+									color: SystemPagesTheme.textMuted(isDark),
+									fontSize: AppFontSize.extraSmall,
+								),
+							),
+						],
+					),
 				],
 			),
 		);
 	}
 
-	Widget _buildSeverityBadge(
-		Severity severity,
-		bool isDark,
-	) {
+	Widget _buildAlertSeverityBadge(Severity severity, bool isDark) {
 		final label = switch (severity) {
 			Severity.critical => 'CRITICAL',
 			Severity.warning => 'WARNING',
@@ -252,5 +352,74 @@ class SecurityScreen extends StatelessWidget {
 				),
 			),
 		);
+	}
+
+	String _armedLabel(ArmedState? state) {
+		return switch (state) {
+			ArmedState.disarmed => 'Disarmed',
+			ArmedState.armedHome => 'Armed Home',
+			ArmedState.armedAway => 'Armed Away',
+			ArmedState.armedNight => 'Armed Night',
+			_ => 'Unknown',
+		};
+	}
+
+	IconData _armedIcon(ArmedState? state) {
+		return switch (state) {
+			ArmedState.disarmed => MdiIcons.shieldOff,
+			ArmedState.armedHome => MdiIcons.shieldHome,
+			ArmedState.armedAway => MdiIcons.shieldLock,
+			ArmedState.armedNight => MdiIcons.shieldMoon,
+			_ => MdiIcons.shieldOutline,
+		};
+	}
+
+	String _alarmLabel(AlarmState? state) {
+		return switch (state) {
+			AlarmState.idle => 'Idle',
+			AlarmState.pending => 'Pending',
+			AlarmState.triggered => 'Triggered',
+			AlarmState.silenced => 'Silenced',
+			_ => 'Unknown',
+		};
+	}
+
+	IconData _alarmIcon(AlarmState? state) {
+		return switch (state) {
+			AlarmState.triggered => MdiIcons.alarmLight,
+			AlarmState.pending => MdiIcons.alarmLight,
+			AlarmState.silenced => MdiIcons.volumeOff,
+			AlarmState.idle => MdiIcons.bellOutline,
+			_ => MdiIcons.bellOutline,
+		};
+	}
+
+	Color _overallSeverityColor(SecurityStatusModel status, bool isDark) {
+		if (status.alarmState == AlarmState.triggered || status.hasCriticalAlert) {
+			return SystemPagesTheme.error(isDark);
+		}
+		if (status.highestSeverity == Severity.critical) {
+			return SystemPagesTheme.error(isDark);
+		}
+		if (status.highestSeverity == Severity.warning) {
+			return SystemPagesTheme.warning(isDark);
+		}
+		return SystemPagesTheme.success(isDark);
+	}
+
+	IconData _overallSeverityIcon(SecurityStatusModel status) {
+		if (status.alarmState == AlarmState.triggered) {
+			return MdiIcons.alarmLight;
+		}
+		if (status.hasCriticalAlert || status.highestSeverity == Severity.critical) {
+			return MdiIcons.shieldAlert;
+		}
+		if (status.highestSeverity == Severity.warning) {
+			return MdiIcons.shieldAlert;
+		}
+		if (status.armedState == ArmedState.disarmed || status.armedState == null) {
+			return MdiIcons.shieldOff;
+		}
+		return MdiIcons.shieldCheck;
 	}
 }
