@@ -20,7 +20,6 @@ import 'package:fastybird_smart_panel/modules/config/repositories/module_config_
 import 'package:fastybird_smart_panel/modules/security/services/security_overlay_controller.dart';
 import 'package:fastybird_smart_panel/modules/security/repositories/security_status.dart';
 import 'package:fastybird_smart_panel/modules/security/views/security_overlay.dart';
-import 'package:fastybird_smart_panel/modules/security/presentation/security_screen.dart';
 import 'package:fastybird_smart_panel/modules/system/models/system.dart';
 import 'package:fastybird_smart_panel/modules/system/types/configuration.dart';
 import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
@@ -414,15 +413,10 @@ class _AppBodyState extends State<AppBody> {
                 },
                 onOpenSecurity: () {
                   _securityOverlayController.acknowledgeCurrentAlerts();
-                  final navigatorState = _navigator.navigatorKey.currentState;
-                  if (navigatorState == null) return;
+                  final future = _navigator.navigateTo(AppRouteNames.security);
+                  if (future == null) return;
                   _securityOverlayController.setOnSecurityScreen(true);
-                  navigatorState.push(
-                    MaterialPageRoute(
-                      builder: (context) => const SecurityScreen(),
-                      settings: const RouteSettings(name: 'security'),
-                    ),
-                  ).then((_) {
+                  future.then((_) {
                     _securityOverlayController.setOnSecurityScreen(false);
                   });
                 },
