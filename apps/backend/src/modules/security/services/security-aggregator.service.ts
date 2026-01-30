@@ -187,10 +187,22 @@ export class SecurityAggregatorService implements SecurityAggregatorInterface {
 				return severityDiff;
 			}
 
-			const timeDiff = new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+			const aTime = new Date(a.timestamp).getTime();
+			const bTime = new Date(b.timestamp).getTime();
+			const aValid = !Number.isNaN(aTime);
+			const bValid = !Number.isNaN(bTime);
 
-			if (timeDiff !== 0) {
-				return timeDiff;
+			// Push invalid timestamps to the end
+			if (aValid && !bValid) {
+				return -1;
+			}
+
+			if (!aValid && bValid) {
+				return 1;
+			}
+
+			if (aValid && bValid && bTime !== aTime) {
+				return bTime - aTime;
 			}
 
 			return a.id.localeCompare(b.id);
@@ -208,6 +220,19 @@ export class SecurityAggregatorService implements SecurityAggregatorInterface {
 			const alert = alerts[i];
 			const newestTime = new Date(newest.timestamp).getTime();
 			const alertTime = new Date(alert.timestamp).getTime();
+			const newestValid = !Number.isNaN(newestTime);
+			const alertValid = !Number.isNaN(alertTime);
+
+			// Prefer valid timestamps over invalid ones
+			if (!newestValid && alertValid) {
+				newest = alert;
+
+				continue;
+			}
+
+			if (!alertValid) {
+				continue;
+			}
 
 			if (alertTime > newestTime) {
 				newest = alert;

@@ -511,6 +511,38 @@ describe('SecurityAggregatorService', () => {
 			}
 		});
 
+		it('should handle alerts with invalid timestamps in sort (push to end)', async () => {
+			const aggregator = await createAggregator([
+				new FakeProvider('a', {
+					activeAlerts: [
+						makeAlert({ id: 'a1', severity: Severity.WARNING, timestamp: 'not-a-date' }),
+						makeAlert({ id: 'a2', severity: Severity.WARNING, timestamp: '2025-06-15T12:00:00Z' }),
+					],
+				}),
+			]);
+
+			const result = await aggregator.aggregate();
+
+			// Valid timestamp should sort before invalid
+			expect(result.activeAlerts[0].id).toBe('a2');
+			expect(result.activeAlerts[1].id).toBe('a1');
+		});
+
+		it('should derive lastEvent from valid-timestamp alert when others have invalid timestamps', async () => {
+			const aggregator = await createAggregator([
+				new FakeProvider('a', {
+					activeAlerts: [
+						makeAlert({ id: 'a1', timestamp: 'invalid' }),
+						makeAlert({ id: 'a2', timestamp: '2025-06-15T12:00:00Z' }),
+					],
+				}),
+			]);
+
+			const result = await aggregator.aggregate();
+
+			expect(result.lastEvent?.timestamp).toBe('2025-06-15T12:00:00Z');
+		});
+
 		it('should preserve alert IDs deterministically across calls', async () => {
 			const alerts = [makeAlert({ id: 'sensor:d1:smoke' }), makeAlert({ id: 'alarm:d2:intrusion' })];
 

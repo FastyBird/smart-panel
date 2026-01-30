@@ -184,22 +184,16 @@ export class AlarmSecurityProvider implements SecurityStateProviderInterface {
 			}
 		}
 
-		// severity per device, then take max; count devices with non-info severity
+		// Compute severity from alerts
 		let maxSeverity = Severity.INFO;
-		let activeAlertsCount = 0;
 
-		for (const s of states) {
-			const severity = this.computeSeverity(s);
-
-			if (SEVERITY_RANK[severity] > SEVERITY_RANK[maxSeverity]) {
-				maxSeverity = severity;
-			}
-
-			if (severity !== Severity.INFO) {
-				activeAlertsCount++;
+		for (const alert of activeAlerts) {
+			if (SEVERITY_RANK[alert.severity] > SEVERITY_RANK[maxSeverity]) {
+				maxSeverity = alert.severity;
 			}
 		}
 
+		const activeAlertsCount = activeAlerts.length;
 		const hasCriticalAlert = maxSeverity === Severity.CRITICAL;
 
 		// lastEvent: newest
