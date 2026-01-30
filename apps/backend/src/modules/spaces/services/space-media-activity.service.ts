@@ -34,11 +34,6 @@ import { SpacesService } from './spaces.service';
 
 const STEP_TIMEOUT_MS = 5000;
 
-interface BindingDiagnostic {
-	slot: string;
-	label: string;
-}
-
 /**
  * Shared diagnostic checks for a binding against a set of derived endpoints.
  * Returns issues for missing endpoint references and capability mismatches.
@@ -53,20 +48,20 @@ function diagnoseBinding(
 		audioVolumePreset: number | null;
 	},
 	endpointMap: Map<string, DerivedMediaEndpointModel>,
-): BindingDiagnostic[] {
-	const diagnostics: BindingDiagnostic[] = [];
+): string[] {
+	const diagnostics: string[] = [];
 
 	// Missing endpoint references
-	const slots: { id: string | null; slot: string; name: string }[] = [
-		{ id: binding.displayEndpointId, slot: 'display', name: 'Display' },
-		{ id: binding.audioEndpointId, slot: 'audio', name: 'Audio' },
-		{ id: binding.sourceEndpointId, slot: 'source', name: 'Source' },
-		{ id: binding.remoteEndpointId, slot: 'remote', name: 'Remote' },
+	const slots: { id: string | null; name: string }[] = [
+		{ id: binding.displayEndpointId, name: 'Display' },
+		{ id: binding.audioEndpointId, name: 'Audio' },
+		{ id: binding.sourceEndpointId, name: 'Source' },
+		{ id: binding.remoteEndpointId, name: 'Remote' },
 	];
 
-	for (const { id, slot, name } of slots) {
+	for (const { id, name } of slots) {
 		if (id && !endpointMap.has(id)) {
-			diagnostics.push({ slot, label: `${name} endpoint not found (${id})` });
+			diagnostics.push(`${name} endpoint not found (${id})`);
 		}
 	}
 
@@ -76,24 +71,34 @@ function diagnoseBinding(
 	const sourceEndpoint = binding.sourceEndpointId ? endpointMap.get(binding.sourceEndpointId) : undefined;
 
 	if (audioEndpoint && binding.audioVolumePreset !== null && !audioEndpoint.capabilities.volume) {
-		diagnostics.push({ slot: 'audioVolumePreset', label: `Volume preset skipped (${audioEndpoint.name} has no volume capability)` });
+		diagnostics.push(
+			`Volume preset skipped (${audioEndpoint.name} has no volume capability)`,
+		);
 	}
 
 	if (displayEndpoint && binding.displayInputId && !displayEndpoint.capabilities.inputSelect) {
-		diagnostics.push({ slot: 'displayInputId', label: `Display input preset skipped (${displayEndpoint.name} has no input select capability)` });
+		diagnostics.push(
+			`Display input preset skipped (${displayEndpoint.name} has no input select capability)`,
+		);
 	}
 
 	// Missing power capabilities
 	if (displayEndpoint && !displayEndpoint.capabilities.power) {
-		diagnostics.push({ slot: 'displayPower', label: `Display power-on skipped (${displayEndpoint.name} has no power capability)` });
+		diagnostics.push(
+			`Display power-on skipped (${displayEndpoint.name} has no power capability)`,
+		);
 	}
 
 	if (audioEndpoint && !audioEndpoint.capabilities.power) {
-		diagnostics.push({ slot: 'audioPower', label: `Audio power-on skipped (${audioEndpoint.name} has no power capability)` });
+		diagnostics.push(
+			`Audio power-on skipped (${audioEndpoint.name} has no power capability)`,
+		);
 	}
 
 	if (sourceEndpoint && !sourceEndpoint.capabilities.power) {
-		diagnostics.push({ slot: 'sourcePower', label: `Source power-on skipped (${sourceEndpoint.name} has no power capability)` });
+		diagnostics.push(
+			`Source power-on skipped (${sourceEndpoint.name} has no power capability)`,
+		);
 	}
 
 	return diagnostics;
@@ -363,7 +368,7 @@ export class SpaceMediaActivityService {
 
 		// Compute skip warnings from shared diagnostic helper
 		const diagnostics = diagnoseBinding(binding, endpointMap);
-		const warnings: MediaActivityDryRunWarningModel[] = diagnostics.map((d) => ({ label: d.label }));
+		const warnings: MediaActivityDryRunWarningModel[] = diagnostics.map((label) => ({ label }));
 
 		// Add step indices to plan steps for display
 		const indexedPlan = plan.steps.map((step, index) => ({
@@ -584,8 +589,8 @@ export class SpaceMediaActivityService {
 		const diagnostics = diagnoseBinding(binding, endpointMap);
 		const ctx = `space=${spaceId} activity=${activityKey}`;
 
-		for (const d of diagnostics) {
-			this.logger.warn(`${d.label} (${ctx})`);
+		for (const label of diagnostics) {
+			this.logger.warn(`${label} (${ctx})`);
 		}
 	}
 
