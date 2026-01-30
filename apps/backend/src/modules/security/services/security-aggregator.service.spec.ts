@@ -186,6 +186,63 @@ describe('SecurityAggregatorService', () => {
 		expect(result.lastEvent?.type).toBe('newest');
 	});
 
+	it('should handle provider that returns null', async () => {
+		const nullProvider: SecurityStateProviderInterface = {
+			getKey: () => 'null',
+			getSignals: () => null as unknown as SecuritySignal,
+		};
+
+		const aggregator = await createAggregator([nullProvider, new FakeProvider('good', { activeAlertsCount: 3 })]);
+
+		const result = await aggregator.aggregate();
+
+		expect(result.activeAlertsCount).toBe(3);
+	});
+
+	it('should handle provider that returns undefined', async () => {
+		const undefProvider: SecurityStateProviderInterface = {
+			getKey: () => 'undef',
+			getSignals: () => undefined as unknown as SecuritySignal,
+		};
+
+		const aggregator = await createAggregator([undefProvider, new FakeProvider('good', { activeAlertsCount: 1 })]);
+
+		const result = await aggregator.aggregate();
+
+		expect(result.activeAlertsCount).toBe(1);
+	});
+
+	it('should skip lastEvent with invalid timestamp and prefer valid one', async () => {
+		const aggregator = await createAggregator([
+			new FakeProvider('a', {
+				lastEvent: { type: 'invalid', timestamp: 'not-a-date' },
+			}),
+			new FakeProvider('b', {
+				lastEvent: { type: 'valid', timestamp: '2025-06-15T12:00:00Z' },
+			}),
+		]);
+
+		const result = await aggregator.aggregate();
+
+		expect(result.lastEvent).toBeDefined();
+		expect(result.lastEvent?.type).toBe('valid');
+	});
+
+	it('should replace invalid-timestamp lastEvent with valid one from later provider', async () => {
+		const aggregator = await createAggregator([
+			new FakeProvider('a', {
+				lastEvent: { type: 'bad-first', timestamp: 'garbage' },
+			}),
+			new FakeProvider('b', {
+				lastEvent: { type: 'good-second', timestamp: '2025-01-01T00:00:00Z' },
+			}),
+		]);
+
+		const result = await aggregator.aggregate();
+
+		expect(result.lastEvent?.type).toBe('good-second');
+	});
+
 	it('should handle provider that throws', async () => {
 		const badProvider: SecurityStateProviderInterface = {
 			getKey: () => 'bad',

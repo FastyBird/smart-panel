@@ -27,7 +27,10 @@ export class SecurityAggregatorService implements SecurityAggregatorInterface {
 		for (const provider of this.providers) {
 			try {
 				const signal = await provider.getSignals();
-				signals.push(signal);
+
+				if (signal != null) {
+					signals.push(signal);
+				}
 			} catch (error) {
 				this.logger.warn(`Security state provider "${provider.getKey()}" threw an error: ${error}`);
 			}
@@ -81,11 +84,14 @@ export class SecurityAggregatorService implements SecurityAggregatorInterface {
 
 			// lastEvent: newest timestamp
 			if (signal.lastEvent != null) {
-				if (
-					newestEvent == null ||
-					new Date(signal.lastEvent.timestamp).getTime() > new Date(newestEvent.timestamp).getTime()
-				) {
-					newestEvent = signal.lastEvent;
+				const candidateTime = new Date(signal.lastEvent.timestamp).getTime();
+
+				if (!Number.isNaN(candidateTime)) {
+					const currentTime = newestEvent != null ? new Date(newestEvent.timestamp).getTime() : NaN;
+
+					if (newestEvent == null || Number.isNaN(currentTime) || candidateTime > currentTime) {
+						newestEvent = signal.lastEvent;
+					}
 				}
 			}
 		}
