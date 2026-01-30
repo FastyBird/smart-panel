@@ -385,10 +385,13 @@ class MediaActivityLastResultModel {
 			return [];
 		}
 
+		final legacySuccess = json['success_count'] as int? ?? 0;
+		final legacyFailure = json['failure_count'] as int? ?? 0;
+
 		return MediaActivityLastResultModel(
-			stepsTotal: json['steps_total'] as int? ?? json['success_count'] as int? ?? 0,
-			stepsSucceeded: json['steps_succeeded'] as int? ?? json['success_count'] as int? ?? 0,
-			stepsFailed: json['steps_failed'] as int? ?? json['failure_count'] as int? ?? 0,
+			stepsTotal: json['steps_total'] as int? ?? (legacySuccess + legacyFailure),
+			stepsSucceeded: json['steps_succeeded'] as int? ?? legacySuccess,
+			stepsFailed: json['steps_failed'] as int? ?? legacyFailure,
 			failures: parseFailures(json['failures']),
 			warnings: parseFailures(json['warnings']),
 			errors: parseFailures(json['errors']),

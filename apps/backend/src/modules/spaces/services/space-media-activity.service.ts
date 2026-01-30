@@ -166,17 +166,7 @@ export class SpaceMediaActivityService {
 			const finalState = hasCriticalFailure ? MediaActivationState.FAILED : MediaActivationState.ACTIVE;
 
 			// Build last result with structured warnings/errors
-			const allFailures = executionResult.failures.map((f) => ({
-				stepIndex: f.stepIndex,
-				critical: f.critical,
-				reason: f.reason,
-				targetDeviceId: f.targetDeviceId,
-				kind: f.kind,
-				propertyId: f.propertyId,
-				label: f.label,
-				timestamp: f.timestamp,
-			}));
-
+			const allFailures = executionResult.failures;
 			const warningItems = allFailures.filter((f) => !f.critical);
 			const errorItems = allFailures.filter((f) => f.critical);
 

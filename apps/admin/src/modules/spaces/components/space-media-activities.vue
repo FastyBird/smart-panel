@@ -178,52 +178,17 @@
 					</span>
 				</div>
 
-				<!-- Errors table (critical failures) -->
-				<template v-if="activeState.summary.errors?.length">
-					<div class="text-xs font-semibold text-red-600 mb-1">Critical Errors</div>
+				<!-- Structured failure tables (errors + warnings) -->
+				<template
+					v-for="section in failureSections"
+					:key="section.key"
+				>
+					<div :class="['text-xs font-semibold mb-1', section.headerClass]">{{ section.label }}</div>
 					<el-table
-						:data="activeState.summary.errors"
+						:data="section.items"
 						size="small"
 						border
-						class="mb-3"
-					>
-						<el-table-column
-							:label="t('spacesModule.media.activities.failures.stepIndex')"
-							prop="stepIndex"
-							width="80"
-						/>
-						<el-table-column
-							label="Label"
-							min-width="120"
-						>
-							<template #default="{ row }">
-								{{ row.label ?? '-' }}
-							</template>
-						</el-table-column>
-						<el-table-column
-							:label="t('spacesModule.media.activities.failures.device')"
-							min-width="140"
-						>
-							<template #default="{ row }">
-								{{ row.targetDeviceId ? resolveDeviceName(row.targetDeviceId) : '-' }}
-							</template>
-						</el-table-column>
-						<el-table-column
-							:label="t('spacesModule.media.activities.failures.reason')"
-							prop="reason"
-							min-width="200"
-						/>
-					</el-table>
-				</template>
-
-				<!-- Warnings table (non-critical failures) -->
-				<template v-if="activeState.summary.warnings?.length">
-					<div class="text-xs font-semibold text-orange-500 mb-1">Warnings (non-critical)</div>
-					<el-table
-						:data="activeState.summary.warnings"
-						size="small"
-						border
-						class="mb-2"
+						:class="section.key === 'errors' ? 'mb-3' : 'mb-2'"
 					>
 						<el-table-column
 							:label="t('spacesModule.media.activities.failures.stepIndex')"
@@ -610,6 +575,7 @@ import { Icon } from '@iconify/vue';
 import { useFlashMessage } from '../../../common';
 import {
 	type IMediaActivityBinding,
+	type IMediaStepFailure,
 	type MediaActivationState,
 	MediaActivityKey,
 	MediaEndpointType,
@@ -683,6 +649,23 @@ const form = reactive<{
 const lastLoadedForm = ref<typeof form | null>(null);
 
 const initialLoading = computed(() => fetchingEndpoints.value || fetchingBindings.value);
+
+// Structured failure sections for the template loop
+const failureSections = computed(() => {
+	const summary = activeState.value?.summary;
+	if (!summary) return [];
+
+	const sections: { key: string; label: string; headerClass: string; items: IMediaStepFailure[] }[] = [];
+
+	if (summary.errors?.length) {
+		sections.push({ key: 'errors', label: 'Critical Errors', headerClass: 'text-red-600', items: summary.errors });
+	}
+	if (summary.warnings?.length) {
+		sections.push({ key: 'warnings', label: 'Warnings (non-critical)', headerClass: 'text-orange-500', items: summary.warnings });
+	}
+
+	return sections;
+});
 
 // Filtered endpoints by type
 const displayEndpoints = endpointsByType(MediaEndpointType.display);

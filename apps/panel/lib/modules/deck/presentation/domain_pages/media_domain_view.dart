@@ -560,17 +560,13 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
 							OutlinedButton.icon(
 								icon: const Icon(Icons.refresh, size: 16),
 								label: const Text('Retry'),
-								onPressed: () {
-									if (state.activityKey != null) {
-										_onActivitySelected(state.activityKey!);
-									}
-								},
+								onPressed: () => _retryActivity(state),
 							),
 							const SizedBox(width: 8),
 							OutlinedButton.icon(
 								icon: const Icon(Icons.stop, size: 16),
 								label: const Text('Deactivate'),
-								onPressed: () => _onActivitySelected(MediaActivityKey.off),
+								onPressed: _deactivateActivity,
 							),
 							const Spacer(),
 							TextButton(
@@ -586,9 +582,14 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
 
 	Widget _buildWarningBanner(BuildContext context, MediaActiveStateModel state) {
 		final warningCount = state.lastResult?.warningCount ?? state.warnings.length;
-		final label = warningCount > 0
-				? 'Some steps failed ($warningCount warning${warningCount != 1 ? 's' : ''})'
-				: state.warnings.first;
+		final String label;
+		if (warningCount > 0) {
+			label = 'Some steps failed ($warningCount warning${warningCount != 1 ? 's' : ''})';
+		} else if (state.warnings.isNotEmpty) {
+			label = state.warnings.first;
+		} else {
+			label = 'Some steps had issues';
+		}
 
 		return GestureDetector(
 			onTap: () => _showFailureDetailsSheet(context, state),
@@ -731,7 +732,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
 														label: const Text('Retry activity'),
 														onPressed: () {
 															Navigator.pop(ctx);
-															_onActivitySelected(state.activityKey!);
+															_retryActivity(state);
 														},
 													),
 												),
@@ -742,7 +743,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
 													label: const Text('Deactivate'),
 													onPressed: () {
 														Navigator.pop(ctx);
-														_onActivitySelected(MediaActivityKey.off);
+														_deactivateActivity();
 													},
 												),
 											),
@@ -809,6 +810,16 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
 				),
 			),
 		);
+	}
+
+	void _retryActivity(MediaActiveStateModel state) {
+		if (state.activityKey != null) {
+			_onActivitySelected(state.activityKey!);
+		}
+	}
+
+	void _deactivateActivity() {
+		_onActivitySelected(MediaActivityKey.off);
 	}
 
 	Future<void> _copyDebugJson(MediaActiveStateModel state) async {
