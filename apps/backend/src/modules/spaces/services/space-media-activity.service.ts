@@ -757,7 +757,7 @@ export class SpaceMediaActivityService {
 
 				for (const channel of device.channels ?? []) {
 					for (const property of channel.properties ?? []) {
-						if (property.id === ep.links.playback!.propertyId) {
+						if (property.id === ep.links.playback.propertyId) {
 							foundChannel = channel;
 							foundProperty = property;
 							break;
