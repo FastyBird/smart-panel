@@ -4,10 +4,12 @@ import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/system_pages/export.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/devices/export.dart';
 import 'package:fastybird_smart_panel/modules/security/models/security_alert.dart';
 import 'package:fastybird_smart_panel/modules/security/models/security_status.dart';
 import 'package:fastybird_smart_panel/modules/security/services/security_overlay_controller.dart';
 import 'package:fastybird_smart_panel/modules/security/types/security.dart';
+import 'package:fastybird_smart_panel/modules/security/utils/entry_points.dart';
 import 'package:fastybird_smart_panel/modules/security/utils/security_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -22,10 +24,11 @@ class SecurityScreen extends StatelessWidget {
 		final screenService = locator<ScreenService>();
 		final localizations = AppLocalizations.of(context)!;
 
-		return Consumer<SecurityOverlayController>(
-			builder: (context, controller, _) {
+		return Consumer2<SecurityOverlayController, DevicesService>(
+			builder: (context, controller, devicesService, _) {
 				final status = controller.status;
 				final alerts = controller.sortedAlerts;
+				final entryPoints = buildEntryPointsSummary(devicesService);
 
 				return Scaffold(
 					backgroundColor: SystemPagesTheme.background(isDark),
@@ -41,6 +44,8 @@ class SecurityScreen extends StatelessWidget {
 							crossAxisAlignment: CrossAxisAlignment.start,
 							children: [
 								_buildStatusCard(status, isDark, screenService),
+								SizedBox(height: AppSpacings.pLg),
+								_buildEntryPointsCard(entryPoints, isDark, screenService),
 								SizedBox(height: AppSpacings.pLg),
 								Text(
 									'Active Alerts (${alerts.length})',
@@ -73,6 +78,193 @@ class SecurityScreen extends StatelessWidget {
 					),
 				);
 			},
+		);
+	}
+
+	Widget _buildEntryPointsCard(
+		EntryPointsSummary summary,
+		bool isDark,
+		ScreenService screenService,
+	) {
+		return Container(
+			width: double.infinity,
+			padding: EdgeInsets.all(AppSpacings.pLg),
+			decoration: BoxDecoration(
+				color: SystemPagesTheme.card(isDark),
+				borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+			),
+			child: Column(
+				crossAxisAlignment: CrossAxisAlignment.start,
+				children: [
+					Row(
+						children: [
+							Icon(
+								MdiIcons.doorOpen,
+								size: screenService.scale(22),
+								color: SystemPagesTheme.textSecondary(isDark),
+							),
+							SizedBox(width: AppSpacings.pMd),
+							Expanded(
+								child: Text(
+									'Entry Points',
+									style: TextStyle(
+										color: SystemPagesTheme.textPrimary(isDark),
+										fontSize: AppFontSize.large,
+										fontWeight: FontWeight.w600,
+									),
+								),
+							),
+						],
+					),
+					SizedBox(height: AppSpacings.pMd),
+					if (summary.isEmpty)
+						Text(
+							'No entry sensors configured',
+							style: TextStyle(
+								color: SystemPagesTheme.textMuted(isDark),
+								fontSize: AppFontSize.small,
+							),
+						)
+					else ...[
+						_buildEntryPointsCounters(summary, isDark),
+						SizedBox(height: AppSpacings.pMd),
+						if (summary.openCount > 0)
+							...summary.openItems.map(
+								(ep) => Padding(
+									key: ValueKey('ep-${ep.deviceId}'),
+									padding: EdgeInsets.only(bottom: AppSpacings.pSm),
+									child: _buildEntryPointRow(ep, isDark, screenService),
+								),
+							)
+						else
+							Row(
+								children: [
+									Icon(
+										MdiIcons.checkCircle,
+										size: screenService.scale(16),
+										color: SystemPagesTheme.success(isDark),
+									),
+									SizedBox(width: AppSpacings.pSm),
+									Text(
+										'All entry points closed',
+										style: TextStyle(
+											color: SystemPagesTheme.success(isDark),
+											fontSize: AppFontSize.small,
+											fontWeight: FontWeight.w500,
+										),
+									),
+								],
+							),
+					],
+				],
+			),
+		);
+	}
+
+	Widget _buildEntryPointsCounters(
+		EntryPointsSummary summary,
+		bool isDark,
+	) {
+		return Wrap(
+			spacing: AppSpacings.pMd,
+			runSpacing: AppSpacings.pSm,
+			children: [
+				if (summary.openCount > 0)
+					_buildCounterChip(
+						'Open: ${summary.openCount}',
+						SystemPagesTheme.error(isDark),
+						SystemPagesTheme.errorLight(isDark),
+					),
+				_buildCounterChip(
+					'Closed: ${summary.closedCount}',
+					SystemPagesTheme.success(isDark),
+					SystemPagesTheme.successLight(isDark),
+				),
+				if (summary.unknownCount > 0)
+					_buildCounterChip(
+						'Unknown: ${summary.unknownCount}',
+						SystemPagesTheme.textMuted(isDark),
+						SystemPagesTheme.cardSecondary(isDark),
+					),
+			],
+		);
+	}
+
+	Widget _buildCounterChip(String label, Color fgColor, Color bgColor) {
+		return Container(
+			padding: EdgeInsets.symmetric(
+				horizontal: AppSpacings.pSm,
+				vertical: AppSpacings.pXs,
+			),
+			decoration: BoxDecoration(
+				color: bgColor,
+				borderRadius: BorderRadius.circular(AppBorderRadius.small),
+			),
+			child: Text(
+				label,
+				style: TextStyle(
+					color: fgColor,
+					fontSize: AppFontSize.extraSmall,
+					fontWeight: FontWeight.w600,
+				),
+			),
+		);
+	}
+
+	Widget _buildEntryPointRow(
+		EntryPointData ep,
+		bool isDark,
+		ScreenService screenService,
+	) {
+		return Container(
+			padding: EdgeInsets.symmetric(
+				horizontal: AppSpacings.pMd,
+				vertical: AppSpacings.pSm,
+			),
+			decoration: BoxDecoration(
+				color: SystemPagesTheme.errorLight(isDark),
+				borderRadius: BorderRadius.circular(AppBorderRadius.small),
+			),
+			child: Row(
+				children: [
+					Icon(
+						ep.isDoor ? MdiIcons.doorOpen : MdiIcons.windowOpenVariant,
+						size: screenService.scale(16),
+						color: SystemPagesTheme.error(isDark),
+					),
+					SizedBox(width: AppSpacings.pSm),
+					Expanded(
+						child: Text(
+							ep.room != null ? '${ep.name} (${ep.room})' : ep.name,
+							style: TextStyle(
+								color: SystemPagesTheme.textPrimary(isDark),
+								fontSize: AppFontSize.small,
+								fontWeight: FontWeight.w500,
+							),
+							maxLines: 1,
+							overflow: TextOverflow.ellipsis,
+						),
+					),
+					Container(
+						padding: EdgeInsets.symmetric(
+							horizontal: AppSpacings.pXs,
+							vertical: 2,
+						),
+						decoration: BoxDecoration(
+							color: SystemPagesTheme.error(isDark).withValues(alpha: 0.15),
+							borderRadius: BorderRadius.circular(AppBorderRadius.small),
+						),
+						child: Text(
+							'Open',
+							style: TextStyle(
+								color: SystemPagesTheme.error(isDark),
+								fontSize: AppFontSize.extraSmall,
+								fontWeight: FontWeight.w600,
+							),
+						),
+					),
+				],
+			),
 		);
 	}
 
