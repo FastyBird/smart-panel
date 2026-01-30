@@ -32,7 +32,11 @@ export class SecurityAggregatorService implements SecurityAggregatorInterface {
 					signals.push(signal);
 				}
 			} catch (error) {
-				this.logger.warn(`Security state provider "${provider.getKey()}" threw an error: ${error}`);
+				try {
+					this.logger.warn(`Security state provider "${provider.getKey()}" threw an error: ${error}`);
+				} catch {
+					this.logger.warn(`Security state provider threw an error: ${error}`);
+				}
 			}
 		}
 

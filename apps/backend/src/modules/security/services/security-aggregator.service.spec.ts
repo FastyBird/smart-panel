@@ -257,4 +257,24 @@ describe('SecurityAggregatorService', () => {
 
 		expect(result.activeAlertsCount).toBe(2);
 	});
+
+	it('should handle provider where both getSignals and getKey throw', async () => {
+		const malformedProvider: SecurityStateProviderInterface = {
+			getKey: () => {
+				throw new Error('getKey boom');
+			},
+			getSignals: () => {
+				throw new Error('getSignals boom');
+			},
+		};
+
+		const aggregator = await createAggregator([
+			malformedProvider,
+			new FakeProvider('good', { activeAlertsCount: 4 }),
+		]);
+
+		const result = await aggregator.aggregate();
+
+		expect(result.activeAlertsCount).toBe(4);
+	});
 });
