@@ -27,7 +27,8 @@ class SecurityScreen extends StatelessWidget {
 		return Consumer2<SecurityOverlayController, DevicesService>(
 			builder: (context, controller, devicesService, _) {
 				final status = controller.status;
-				final alerts = controller.sortedAlerts;
+				final groupedAlerts = controller.groupedAlerts;
+				final totalAlerts = status.activeAlerts.length;
 				final entryPoints = buildEntryPointsSummary(devicesService);
 
 				return Scaffold(
@@ -47,30 +48,63 @@ class SecurityScreen extends StatelessWidget {
 								SizedBox(height: AppSpacings.pLg),
 								_buildEntryPointsCard(entryPoints, isDark, screenService),
 								SizedBox(height: AppSpacings.pLg),
-								Text(
-									'Active Alerts (${alerts.length})',
-									style: TextStyle(
-										color: SystemPagesTheme.textPrimary(isDark),
-										fontSize: AppFontSize.large,
-										fontWeight: FontWeight.w600,
-									),
+								Row(
+									children: [
+										Expanded(
+											child: Text(
+												'Active Alerts ($totalAlerts)',
+												style: TextStyle(
+													color: SystemPagesTheme.textPrimary(isDark),
+													fontSize: AppFontSize.large,
+													fontWeight: FontWeight.w600,
+												),
+											),
+										),
+										if (totalAlerts > 0)
+											GestureDetector(
+												onTap: () => controller.acknowledgeAllAlerts(),
+												child: Container(
+													padding: EdgeInsets.symmetric(
+														horizontal: AppSpacings.pSm,
+														vertical: AppSpacings.pXs,
+													),
+													decoration: BoxDecoration(
+														color: SystemPagesTheme.cardSecondary(isDark),
+														borderRadius: BorderRadius.circular(AppBorderRadius.small),
+													),
+													child: Row(
+														mainAxisSize: MainAxisSize.min,
+														children: [
+															Icon(
+																MdiIcons.checkAll,
+																size: screenService.scale(14),
+																color: SystemPagesTheme.textSecondary(isDark),
+															),
+															SizedBox(width: AppSpacings.pXs),
+															Text(
+																'Acknowledge all',
+																style: TextStyle(
+																	color: SystemPagesTheme.textSecondary(isDark),
+																	fontSize: AppFontSize.extraSmall,
+																	fontWeight: FontWeight.w500,
+																),
+															),
+														],
+													),
+												),
+											),
+									],
 								),
 								SizedBox(height: AppSpacings.pMd),
 								Expanded(
-									child: alerts.isEmpty
+									child: totalAlerts == 0
 										? _buildEmptyState(isDark, screenService)
-										: ListView.separated(
-											itemCount: alerts.length,
-											separatorBuilder: (_, __) =>
-												SizedBox(height: AppSpacings.pSm),
-											itemBuilder: (context, index) =>
-												_buildAlertCard(
-													alerts[index],
-													isDark,
-													screenService,
-													localizations,
-													key: ValueKey(alerts[index].id),
-												),
+										: _buildGroupedAlertsList(
+											groupedAlerts,
+											controller,
+											isDark,
+											screenService,
+											localizations,
 										),
 								),
 							],
@@ -79,6 +113,128 @@ class SecurityScreen extends StatelessWidget {
 				);
 			},
 		);
+	}
+
+	Widget _buildGroupedAlertsList(
+		Map<Severity, List<SecurityAlertModel>> groupedAlerts,
+		SecurityOverlayController controller,
+		bool isDark,
+		ScreenService screenService,
+		AppLocalizations localizations,
+	) {
+		final sections = <Widget>[];
+
+		for (final entry in groupedAlerts.entries) {
+			final severity = entry.key;
+			final alerts = entry.value;
+
+			sections.add(
+				Padding(
+					padding: EdgeInsets.only(
+						top: sections.isEmpty ? 0 : AppSpacings.pMd,
+						bottom: AppSpacings.pSm,
+					),
+					child: Row(
+						children: [
+							Icon(
+								_severitySectionIcon(severity),
+								size: screenService.scale(16),
+								color: severityColor(severity, isDark),
+							),
+							SizedBox(width: AppSpacings.pSm),
+							Text(
+								_severitySectionTitle(severity),
+								style: TextStyle(
+									color: severityColor(severity, isDark),
+									fontSize: AppFontSize.base,
+									fontWeight: FontWeight.w600,
+								),
+							),
+							SizedBox(width: AppSpacings.pSm),
+							Text(
+								'(${alerts.length})',
+								style: TextStyle(
+									color: SystemPagesTheme.textMuted(isDark),
+									fontSize: AppFontSize.small,
+								),
+							),
+						],
+					),
+				),
+			);
+
+			for (final alert in alerts) {
+				final isAcked = controller.isAlertAcknowledged(alert.id);
+				sections.add(
+					Padding(
+						padding: EdgeInsets.only(bottom: AppSpacings.pSm),
+						child: _buildAlertCard(
+							alert,
+							isDark,
+							screenService,
+							localizations,
+							isAcknowledged: isAcked,
+							onAcknowledge: () => controller.acknowledgeAlert(alert.id),
+							key: ValueKey(alert.id),
+						),
+					),
+				);
+			}
+		}
+
+		// "All alerts acknowledged" banner
+		if (controller.allAlertsAcknowledged) {
+			sections.add(
+				Padding(
+					padding: EdgeInsets.only(top: AppSpacings.pMd),
+					child: Container(
+						width: double.infinity,
+						padding: EdgeInsets.all(AppSpacings.pMd),
+						decoration: BoxDecoration(
+							color: SystemPagesTheme.successLight(isDark),
+							borderRadius: BorderRadius.circular(AppBorderRadius.small),
+						),
+						child: Row(
+							mainAxisAlignment: MainAxisAlignment.center,
+							children: [
+								Icon(
+									MdiIcons.checkCircle,
+									size: screenService.scale(16),
+									color: SystemPagesTheme.success(isDark),
+								),
+								SizedBox(width: AppSpacings.pSm),
+								Text(
+									'All alerts acknowledged',
+									style: TextStyle(
+										color: SystemPagesTheme.success(isDark),
+										fontSize: AppFontSize.small,
+										fontWeight: FontWeight.w500,
+									),
+								),
+							],
+						),
+					),
+				),
+			);
+		}
+
+		return ListView(children: sections);
+	}
+
+	String _severitySectionTitle(Severity severity) {
+		return switch (severity) {
+			Severity.critical => 'Critical',
+			Severity.warning => 'Warnings',
+			Severity.info => 'Info',
+		};
+	}
+
+	IconData _severitySectionIcon(Severity severity) {
+		return switch (severity) {
+			Severity.critical => MdiIcons.alertCircle,
+			Severity.warning => MdiIcons.alert,
+			Severity.info => MdiIcons.informationOutline,
+		};
 	}
 
 	Widget _buildEntryPointsCard(
@@ -456,71 +612,100 @@ class SecurityScreen extends StatelessWidget {
 		bool isDark,
 		ScreenService screenService,
 		AppLocalizations localizations, {
+		bool isAcknowledged = false,
+		VoidCallback? onAcknowledge,
 		Key? key,
 	}) {
-		return Container(
-			key: key,
-			padding: EdgeInsets.all(AppSpacings.pMd),
-			decoration: BoxDecoration(
-				color: SystemPagesTheme.card(isDark),
-				borderRadius: BorderRadius.circular(AppBorderRadius.small),
-				border: alert.severity == Severity.critical
-					? Border.all(
-						color: SystemPagesTheme.error(isDark).withValues(alpha: 0.5),
-					)
-					: null,
-			),
-			child: Row(
-				children: [
-					Icon(
-						alertTypeIcon(alert.type),
-						size: screenService.scale(20),
-						color: severityColor(alert.severity, isDark),
-					),
-					SizedBox(width: AppSpacings.pMd),
-					Expanded(
-						child: Column(
-							crossAxisAlignment: CrossAxisAlignment.start,
+		return Opacity(
+			opacity: isAcknowledged ? 0.5 : 1.0,
+			child: Container(
+				key: key,
+				padding: EdgeInsets.all(AppSpacings.pMd),
+				decoration: BoxDecoration(
+					color: SystemPagesTheme.card(isDark),
+					borderRadius: BorderRadius.circular(AppBorderRadius.small),
+					border: alert.severity == Severity.critical && !isAcknowledged
+						? Border.all(
+							color: SystemPagesTheme.error(isDark).withValues(alpha: 0.5),
+						)
+						: null,
+				),
+				child: Row(
+					children: [
+						Icon(
+							isAcknowledged ? MdiIcons.checkCircle : alertTypeIcon(alert.type),
+							size: screenService.scale(20),
+							color: isAcknowledged
+								? SystemPagesTheme.success(isDark)
+								: severityColor(alert.severity, isDark),
+						),
+						SizedBox(width: AppSpacings.pMd),
+						Expanded(
+							child: Column(
+								crossAxisAlignment: CrossAxisAlignment.start,
+								children: [
+									Text(
+										alert.type.displayTitle,
+										style: TextStyle(
+											color: SystemPagesTheme.textPrimary(isDark),
+											fontSize: AppFontSize.base,
+											fontWeight: FontWeight.w500,
+										),
+									),
+									if (alert.message != null) ...[
+										SizedBox(height: AppSpacings.pXs),
+										Text(
+											alert.message!,
+											style: TextStyle(
+												color: SystemPagesTheme.textMuted(isDark),
+												fontSize: AppFontSize.small,
+											),
+											maxLines: 1,
+											overflow: TextOverflow.ellipsis,
+										),
+									],
+									if (isAcknowledged) ...[
+										SizedBox(height: AppSpacings.pXs),
+										Text(
+											'Acknowledged',
+											style: TextStyle(
+												color: SystemPagesTheme.success(isDark),
+												fontSize: AppFontSize.extraSmall,
+												fontWeight: FontWeight.w500,
+											),
+										),
+									],
+								],
+							),
+						),
+						SizedBox(width: AppSpacings.pSm),
+						Column(
+							crossAxisAlignment: CrossAxisAlignment.end,
 							children: [
+								_buildSeverityBadge(alert.severity, isDark),
+								SizedBox(height: AppSpacings.pXs),
 								Text(
-									alert.type.displayTitle,
+									DatetimeUtils.formatTimeAgo(alert.timestamp, localizations),
 									style: TextStyle(
-										color: SystemPagesTheme.textPrimary(isDark),
-										fontSize: AppFontSize.base,
-										fontWeight: FontWeight.w500,
+										color: SystemPagesTheme.textMuted(isDark),
+										fontSize: AppFontSize.extraSmall,
 									),
 								),
-								if (alert.message != null) ...[
-									SizedBox(height: AppSpacings.pXs),
-									Text(
-										alert.message!,
-										style: TextStyle(
-											color: SystemPagesTheme.textMuted(isDark),
-											fontSize: AppFontSize.small,
-										),
-										maxLines: 1,
-										overflow: TextOverflow.ellipsis,
-									),
-								],
 							],
 						),
-					),
-					SizedBox(width: AppSpacings.pSm),
-					Column(
-						crossAxisAlignment: CrossAxisAlignment.end,
-						children: [
-							_buildSeverityBadge(alert.severity, isDark),
-							SizedBox(height: AppSpacings.pXs),
-							Text(
-								DatetimeUtils.formatTimeAgo(alert.timestamp, localizations),
-								style: TextStyle(
-									color: SystemPagesTheme.textMuted(isDark),
-									fontSize: AppFontSize.extraSmall,
+						if (!isAcknowledged && onAcknowledge != null) ...[
+							SizedBox(width: AppSpacings.pSm),
+							GestureDetector(
+								onTap: onAcknowledge,
+								child: Icon(
+									MdiIcons.check,
+									size: screenService.scale(20),
+									color: SystemPagesTheme.textSecondary(isDark),
 								),
 							),
 						],
-					),
-				],
+					],
+				),
 			),
 		);
 	}
