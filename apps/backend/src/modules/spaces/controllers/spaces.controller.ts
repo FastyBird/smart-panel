@@ -1,14 +1,5 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
-import {
-	ApiExtraModels,
-	ApiNoContentResponse,
-	ApiOperation,
-	ApiParam,
-	ApiQuery,
-	ApiResponse,
-	ApiTags,
-	getSchemaPath,
-} from '@nestjs/swagger';
+import { ApiExtraModels, ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { DevicesResponseModel } from '../../devices/models/devices-response.model';
@@ -2232,14 +2223,46 @@ export class SpacesController {
 		return response;
 	}
 
+	@Post(':id/media/activities/:activityKey/preview')
+	@ApiOperation({
+		operationId: 'preview-spaces-module-space-media-activity',
+		summary: 'Preview a media activity execution plan (dry-run)',
+		description:
+			'Returns the resolved execution plan for a media activity without executing any commands, ' +
+			'changing state, or emitting WebSocket events. Useful for debugging bindings and endpoints.',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
+	@ApiParam({
+		name: 'activityKey',
+		type: 'string',
+		enum: Object.values(MediaActivityKey),
+		description: 'Activity key to preview',
+	})
+	@ApiSuccessResponse(MediaActivityDryRunPreviewResponseModel, 'Dry-run execution plan preview')
+	@ApiBadRequestResponse('Invalid activity key')
+	@ApiUnprocessableEntityResponse('Binding missing or validation failed')
+	@ApiNotFoundResponse('Space not found')
+	async previewMediaActivity(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Param('activityKey') activityKey: string,
+	): Promise<MediaActivityDryRunPreviewResponseModel> {
+		this.logger.debug(`Dry-run preview media activity=${activityKey} for space=${id}`);
+
+		const preview = await this.spaceMediaActivityService.preview(id, activityKey as MediaActivityKey);
+
+		const response = new MediaActivityDryRunPreviewResponseModel();
+		response.data = preview;
+
+		return response;
+	}
+
 	@Post(':id/media/activities/:activityKey/activate')
 	@ApiOperation({
 		operationId: 'activate-spaces-module-space-media-activity',
 		summary: 'Activate a media activity',
 		description:
 			'Activates a media activity for a space. Resolves the binding into an execution plan, ' +
-			'executes device commands (power, input, volume), and persists the active state. ' +
-			'Pass dryRun=true to preview the execution plan without side effects.',
+			'executes device commands (power, input, volume), and persists the active state.',
 	})
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Space ID' })
 	@ApiParam({
@@ -2248,44 +2271,14 @@ export class SpacesController {
 		enum: Object.values(MediaActivityKey),
 		description: 'Activity key to activate',
 	})
-	@ApiQuery({
-		name: 'dryRun',
-		required: false,
-		type: 'boolean',
-		description: 'If true, returns the execution plan without executing any commands or changing state.',
-	})
-	@ApiExtraModels(MediaActivityActivationResponseModel, MediaActivityDryRunPreviewResponseModel)
-	@ApiResponse({
-		status: 200,
-		description: 'Activity activation result or dry-run preview',
-		schema: {
-			oneOf: [
-				{ $ref: getSchemaPath(MediaActivityActivationResponseModel) },
-				{ $ref: getSchemaPath(MediaActivityDryRunPreviewResponseModel) },
-			],
-		},
-	})
+	@ApiSuccessResponse(MediaActivityActivationResponseModel, 'Activity activation result')
 	@ApiBadRequestResponse('Invalid activity key')
 	@ApiUnprocessableEntityResponse('Binding missing or validation failed')
 	@ApiNotFoundResponse('Space not found')
 	async activateMediaActivity(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Param('activityKey') activityKey: string,
-		@Query('dryRun') dryRun?: string,
-	): Promise<MediaActivityActivationResponseModel | MediaActivityDryRunPreviewResponseModel> {
-		const isDryRun = dryRun === 'true' || dryRun === '1';
-
-		if (isDryRun) {
-			this.logger.debug(`Dry-run preview media activity=${activityKey} for space=${id}`);
-
-			const preview = await this.spaceMediaActivityService.preview(id, activityKey as MediaActivityKey);
-
-			const response = new MediaActivityDryRunPreviewResponseModel();
-			response.data = preview;
-
-			return response;
-		}
-
+	): Promise<MediaActivityActivationResponseModel> {
 		this.logger.debug(`Activating media activity=${activityKey} for space=${id}`);
 
 		const result = await this.spaceMediaActivityService.activate(id, activityKey as MediaActivityKey);

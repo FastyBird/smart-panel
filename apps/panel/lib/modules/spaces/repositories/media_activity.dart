@@ -253,8 +253,7 @@ class MediaActivityRepository extends ChangeNotifier {
 		try {
 			final keyStr = mediaActivityKeyToString(activityKey);
 			final response = await _dio.post(
-				'/modules/spaces/spaces/$spaceId/media/activities/$keyStr/activate',
-				queryParameters: {'dryRun': 'true'},
+				'/modules/spaces/spaces/$spaceId/media/activities/$keyStr/preview',
 			);
 
 			final statusCode = response.statusCode ?? 0;

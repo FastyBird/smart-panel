@@ -553,11 +553,10 @@ export const useSpaceMedia = (spaceId: Ref<string | undefined>): IUseSpaceMedia 
 
 		try {
 			const { data: responseData, error } = await backend.client.POST(
-				`/${MODULES_PREFIX}/${SPACES_MODULE_PREFIX}/spaces/{id}/media/activities/{activityKey}/activate`,
+				`/${MODULES_PREFIX}/${SPACES_MODULE_PREFIX}/spaces/{id}/media/activities/{activityKey}/preview` as any,
 				{
 					params: {
 						path: { id: spaceId.value, activityKey },
-						query: { dryRun: 'true' } as Record<string, string>,
 					},
 				},
 			);
