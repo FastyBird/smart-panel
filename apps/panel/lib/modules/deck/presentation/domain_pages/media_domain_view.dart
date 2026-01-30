@@ -406,7 +406,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		return Container(
 			width: double.infinity,
 			padding: EdgeInsets.symmetric(
-				horizontal: AppSpacings.pMd,
+				horizontal: AppSpacings.pLg,
 				vertical: verticalPadding,
 			),
 			decoration: BoxDecoration(
@@ -875,12 +875,13 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		final warningColor = isDark ? AppColorsDark.warning : AppColorsLight.warning;
 
 		return Container(
-			padding: AppSpacings.paddingMd,
+			padding: AppSpacings.paddingLg,
 			decoration: BoxDecoration(
 				color: isDark ? AppFillColorDark.base : AppFillColorLight.base,
 				borderRadius: BorderRadius.circular(AppBorderRadius.medium),
 			),
 			child: Column(
+				spacing: AppSpacings.pMd,
 				children: items.map((item) {
 					final icon = _roleIcon(item.role);
 					final nameText = item.isOnline ? item.displayName : '${item.displayName} (offline)';
@@ -888,51 +889,48 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 							? (isLight ? AppTextColorLight.primary : AppTextColorDark.primary)
 							: warningColor;
 
-					return Padding(
-						padding: EdgeInsets.symmetric(vertical: AppSpacings.pSm),
-						child: Row(
-							children: [
-								Container(
-									width: _screenService.scale(32, density: density),
-									height: _screenService.scale(32, density: density),
-									decoration: BoxDecoration(
-										color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
-										borderRadius: BorderRadius.circular(AppBorderRadius.base),
-									),
-									child: Icon(
-										icon,
-										size: _screenService.scale(16, density: density),
-										color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
-									),
+					return Row(
+						children: [
+							Container(
+								width: _screenService.scale(32, density: density),
+								height: _screenService.scale(32, density: density),
+								decoration: BoxDecoration(
+									color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
+									borderRadius: BorderRadius.circular(AppBorderRadius.base),
 								),
-								AppSpacings.spacingMdHorizontal,
-								Expanded(
-									child: Column(
-										crossAxisAlignment: CrossAxisAlignment.start,
-										children: [
-											if (item.role.isNotEmpty)
-												Text(
-													item.role.toUpperCase(),
-													style: TextStyle(
-														fontSize: AppFontSize.extraSmall,
-														fontWeight: FontWeight.w500,
-														color: isLight ? AppTextColorLight.placeholder : AppTextColorDark.placeholder,
-														letterSpacing: 0.5,
-													),
-												),
+								child: Icon(
+									icon,
+									size: _screenService.scale(16, density: density),
+									color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
+								),
+							),
+							AppSpacings.spacingMdHorizontal,
+							Expanded(
+								child: Column(
+									crossAxisAlignment: CrossAxisAlignment.start,
+									children: [
+										if (item.role.isNotEmpty)
 											Text(
-												nameText,
+												item.role.toUpperCase(),
 												style: TextStyle(
-													fontSize: AppFontSize.small,
+													fontSize: AppFontSize.extraSmall,
 													fontWeight: FontWeight.w500,
-													color: nameColor,
+													color: isLight ? AppTextColorLight.placeholder : AppTextColorDark.placeholder,
+													letterSpacing: 0.5,
 												),
 											),
-										],
-									),
+										Text(
+											nameText,
+											style: TextStyle(
+												fontSize: AppFontSize.small,
+												fontWeight: FontWeight.w500,
+												color: nameColor,
+											),
+										),
+									],
 								),
-							],
-						),
+							),
+						],
 					);
 				}).toList(),
 			),
