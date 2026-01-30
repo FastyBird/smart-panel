@@ -1,12 +1,18 @@
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
+import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
+import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
+import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
-import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
+import 'package:fastybird_smart_panel/core/widgets/tile_wrappers.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/deck_service.dart';
@@ -31,7 +37,11 @@ class MediaDomainViewPage extends StatefulWidget {
 	State<MediaDomainViewPage> createState() => _MediaDomainViewPageState();
 }
 
-class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
+class _MediaDomainViewPageState extends State<MediaDomainViewPage>
+		with SingleTickerProviderStateMixin {
+	final ScreenService _screenService = locator<ScreenService>();
+	final VisualDensityService _visualDensityService = locator<VisualDensityService>();
+
 	MediaActivityService? _mediaService;
 	SpacesService? _spacesService;
 	SpaceStateRepository? _spaceStateRepo;
@@ -43,11 +53,18 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
 	bool _isSending = false;
 	bool _wsConnected = false;
 
+	late AnimationController _pulseController;
+
 	String get _roomId => widget.viewItem.roomId;
 
 	@override
 	void initState() {
 		super.initState();
+
+		_pulseController = AnimationController(
+			vsync: this,
+			duration: const Duration(milliseconds: 1500),
+		)..repeat();
 
 		try {
 			_mediaService = locator<MediaActivityService>();
@@ -100,7 +117,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
 			}
 		}
 
-		_prefetch();
+		WidgetsBinding.instance.addPostFrameCallback((_) => _prefetch());
 	}
 
 	Future<void> _prefetch() async {
@@ -120,6 +137,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
 
 	@override
 	void dispose() {
+		_pulseController.dispose();
 		_mediaService?.removeListener(_onDataChanged);
 		_socketService?.removeConnectionListener(_onConnectionChanged);
 		super.dispose();
@@ -227,6 +245,10 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
 					);
 				}
 
+				final isOff = activeState == null || activeState.isDeactivated;
+				final isActivating = activeState != null && activeState.isActivating;
+				final isFailed = activeState != null && activeState.isFailed;
+
 				return Scaffold(
 					backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
 					body: SafeArea(
@@ -236,20 +258,15 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
 									children: [
 										_buildHeader(context, roomName, activeState),
 										Expanded(
-											child: RefreshIndicator(
-												onRefresh: _refresh,
-												child: ListView(
-													padding: const EdgeInsets.all(16),
-													children: [
-														_buildActivitySelector(context, activeState),
-														const SizedBox(height: 12),
-														if (activeState != null && !activeState.isDeactivated)
-															_buildActiveCard(context, activeState),
-														if (activeState != null && !activeState.isDeactivated)
-															const SizedBox(height: 16),
-														_buildDevicesList(context, deviceGroups),
-													],
-												),
+											child: OrientationBuilder(
+												builder: (context, orientation) {
+													final isLandscape = orientation == Orientation.landscape;
+													return isLandscape
+															? _buildLandscapeLayout(
+																	context, activeState, deviceGroups, isOff, isActivating, isFailed)
+															: _buildPortraitLayout(
+																	context, activeState, deviceGroups, isOff, isActivating, isFailed);
+												},
 											),
 										),
 									],
@@ -294,63 +311,345 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
 						? (isDark ? AppColorsDark.primary : AppColorsLight.primary)
 						: (isDark ? AppTextColorDark.secondary : AppTextColorLight.primary),
 			),
-			onBack: _navigateToHome,
+			trailing: HeaderHomeButton(
+				onTap: _navigateToHome,
+			),
 		);
 	}
 
 	// ============================================
-	// ACTIVITY SELECTOR
+	// PORTRAIT LAYOUT
 	// ============================================
 
-	Widget _buildActivitySelector(
+	Widget _buildPortraitLayout(
 		BuildContext context,
 		MediaActiveStateModel? activeState,
+		List<MediaDeviceGroup> deviceGroups,
+		bool isOff,
+		bool isActivating,
+		bool isFailed,
 	) {
-		final isDark = Theme.of(context).brightness == Brightness.dark;
-		final localizations = AppLocalizations.of(context)!;
-		final currentKey = activeState?.activityKey;
-		final isDeactivated = activeState == null || activeState.isDeactivated || activeState.isDeactivating;
-		final availableKeys = _mediaService?.getAvailableActivities(_roomId) ?? MediaActivityKey.values;
+		return PortraitViewLayout(
+			content: Column(
+				crossAxisAlignment: CrossAxisAlignment.start,
+				children: [
+					_buildActivityContent(context, activeState, isOff, isActivating, isFailed),
+					AppSpacings.spacingLgVertical,
+					_buildDevicesList(context, deviceGroups),
+				],
+			),
+			modeSelector: _buildModeSelector(context, activeState),
+		);
+	}
 
-		return Card(
-			shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-			child: Padding(
-				padding: const EdgeInsets.all(16),
-				child: Column(
-					crossAxisAlignment: CrossAxisAlignment.start,
-					children: [
-						SectionTitle(
-							title: localizations.media_modes_title,
-							icon: MdiIcons.tuneVariant,
-						),
-						const SizedBox(height: 12),
-						Wrap(
-							spacing: 8,
-							runSpacing: 8,
-							children: availableKeys.map((key) {
-								final isSelected = key == MediaActivityKey.off
-										? isDeactivated
-										: currentKey == key;
-								return ChoiceChip(
-									label: Text(_activityLabel(key)),
-									selected: isSelected,
-									onSelected: (!_wsConnected || _isSending)
-											? null
-											: (_) => _onActivitySelected(key),
-									avatar: Icon(
-										_activityIcon(key),
-										size: 18,
-									),
-									backgroundColor: isDark ? AppFillColorDark.light : AppFillColorLight.light,
-									selectedColor: isDark
-											? AppColorsDark.primaryLight5
-											: AppColorsLight.primaryLight5,
-								);
-							}).toList(),
-						),
-					],
+	// ============================================
+	// LANDSCAPE LAYOUT
+	// ============================================
+
+	Widget _buildLandscapeLayout(
+		BuildContext context,
+		MediaActiveStateModel? activeState,
+		List<MediaDeviceGroup> deviceGroups,
+		bool isOff,
+		bool isActivating,
+		bool isFailed,
+	) {
+		return LandscapeViewLayout(
+			mainContent: _buildActivityContent(context, activeState, isOff, isActivating, isFailed),
+			mainContentScrollable: true,
+			modeSelector: _buildLandscapeModeSelector(context, activeState),
+			additionalContent: _buildDevicesList(context, deviceGroups),
+		);
+	}
+
+	// ============================================
+	// ACTIVITY CONTENT (state-dependent)
+	// ============================================
+
+	Widget _buildActivityContent(
+		BuildContext context,
+		MediaActiveStateModel? activeState,
+		bool isOff,
+		bool isActivating,
+		bool isFailed,
+	) {
+		// Off state: no card, no border, no background
+		if (isOff) return _buildOffStateContent(context);
+
+		final isLight = Theme.of(context).brightness == Brightness.light;
+
+		Widget content;
+		if (isActivating) {
+			content = _buildActivatingContent(context, activeState!);
+		} else if (isFailed) {
+			content = _buildFailedContent(context, activeState!);
+		} else if (activeState != null && (activeState.isActive || activeState.isActiveWithWarnings)) {
+			content = _buildActiveCard(context, activeState);
+		} else {
+			return _buildOffStateContent(context);
+		}
+
+		final isCompact = activeState.isActive || activeState.isActiveWithWarnings;
+		final verticalPadding = isCompact ? AppSpacings.pLg : AppSpacings.pXl * 3;
+
+		return Container(
+			width: double.infinity,
+			padding: EdgeInsets.symmetric(
+				horizontal: AppSpacings.pMd,
+				vertical: verticalPadding,
+			),
+			decoration: BoxDecoration(
+				color: isLight ? AppFillColorLight.light : AppFillColorDark.light,
+				borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+				border: isLight
+						? Border.all(color: AppBorderColorLight.base)
+						: null,
+			),
+			child: content,
+		);
+	}
+
+	// ============================================
+	// MODE SELECTOR (using core ModeSelector widget)
+	// ============================================
+
+	List<ModeOption<MediaActivityKey>> _getActivityModeOptions() {
+		final availableKeys = _mediaService?.getAvailableActivities(_roomId) ?? MediaActivityKey.values;
+		return availableKeys.map((key) => ModeOption<MediaActivityKey>(
+			value: key,
+			icon: _activityIcon(key),
+			label: _activityLabel(key),
+		)).toList();
+	}
+
+	MediaActivityKey? _getSelectedActivityKey(MediaActiveStateModel? activeState) {
+		if (activeState == null || activeState.isDeactivated || activeState.isDeactivating) {
+			return MediaActivityKey.off;
+		}
+		return activeState.activityKey ?? MediaActivityKey.off;
+	}
+
+	Widget _buildModeSelector(BuildContext context, MediaActiveStateModel? activeState) {
+		final isDark = Theme.of(context).brightness == Brightness.dark;
+
+		return Container(
+			padding: AppSpacings.paddingMd,
+			decoration: BoxDecoration(
+				color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
+				borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+				border: Border.all(
+					color: isDark ? AppFillColorDark.light : AppBorderColorLight.light,
+					width: 1,
 				),
 			),
+			child: IgnorePointer(
+				ignoring: !_wsConnected || _isSending,
+				child: ModeSelector<MediaActivityKey>(
+					modes: _getActivityModeOptions(),
+					selectedValue: _getSelectedActivityKey(activeState),
+					onChanged: _onActivitySelected,
+					orientation: ModeSelectorOrientation.horizontal,
+					iconPlacement: ModeSelectorIconPlacement.top,
+				),
+			),
+		);
+	}
+
+	Widget _buildLandscapeModeSelector(BuildContext context, MediaActiveStateModel? activeState) {
+		return IgnorePointer(
+			ignoring: !_wsConnected || _isSending,
+			child: ModeSelector<MediaActivityKey>(
+				modes: _getActivityModeOptions(),
+				selectedValue: _getSelectedActivityKey(activeState),
+				onChanged: _onActivitySelected,
+				orientation: ModeSelectorOrientation.vertical,
+				iconPlacement: ModeSelectorIconPlacement.top,
+			),
+		);
+	}
+
+	// ============================================
+	// OFF STATE CONTENT
+	// ============================================
+
+	Widget _buildOffStateContent(BuildContext context) {
+		final isDark = Theme.of(context).brightness == Brightness.dark;
+
+		return Container(
+			width: double.infinity,
+			padding: EdgeInsets.symmetric(vertical: AppSpacings.pXl * 3),
+			child: Column(
+				mainAxisAlignment: MainAxisAlignment.center,
+				crossAxisAlignment: CrossAxisAlignment.center,
+				children: [
+					Container(
+						width: 148,
+						height: 148,
+						decoration: BoxDecoration(
+							color: isDark ? AppFillColorDark.base : AppFillColorLight.base,
+							shape: BoxShape.circle,
+						),
+						child: Icon(
+							MdiIcons.television,
+							size: 76,
+							color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
+						),
+					),
+					AppSpacings.spacingLgVertical,
+					Text(
+						'Media Off',
+						style: TextStyle(
+							fontSize: AppFontSize.extraLarge,
+							fontWeight: FontWeight.w600,
+							color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
+						),
+					),
+					AppSpacings.spacingSmVertical,
+					Text(
+						'Select an activity above to begin',
+						style: TextStyle(
+							fontSize: AppFontSize.base,
+							color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
+						),
+					),
+				],
+			),
+		);
+	}
+
+	// ============================================
+	// ACTIVATING STATE CONTENT
+	// ============================================
+
+	Widget _buildActivatingContent(BuildContext context, MediaActiveStateModel activeState) {
+		final isDark = Theme.of(context).brightness == Brightness.dark;
+		final accentColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
+		final activityName = _activityLabel(activeState.activityKey);
+
+		return Column(
+			mainAxisAlignment: MainAxisAlignment.center,
+			children: [
+					AnimatedBuilder(
+						animation: _pulseController,
+						builder: (context, child) {
+							return Transform.rotate(
+								angle: _pulseController.value * 2 * math.pi,
+								child: Container(
+									width: 56,
+									height: 56,
+									decoration: BoxDecoration(
+										shape: BoxShape.circle,
+										border: Border.all(
+											color: accentColor.withValues(alpha: 0.2),
+											width: 3,
+										),
+									),
+									child: CustomPaint(
+										painter: _SpinnerArcPainter(
+											color: accentColor,
+											progress: _pulseController.value,
+										),
+									),
+								),
+							);
+						},
+					),
+					const SizedBox(height: 20),
+					Text(
+						'Starting $activityName...',
+						style: TextStyle(
+							fontSize: 16,
+							fontWeight: FontWeight.w600,
+							color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
+						),
+					),
+			],
+		);
+	}
+
+	// ============================================
+	// FAILED STATE CONTENT
+	// ============================================
+
+	Widget _buildFailedContent(BuildContext context, MediaActiveStateModel activeState) {
+		final isDark = Theme.of(context).brightness == Brightness.dark;
+		final accentColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
+		final errorColor = isDark ? AppColorsDark.error : AppColorsLight.error;
+		final errorBg = isDark ? AppColorsDark.errorLight9 : AppColorsLight.errorLight9;
+		final activityName = _activityLabel(activeState.activityKey);
+
+		return Column(
+			mainAxisAlignment: MainAxisAlignment.center,
+			children: [
+					Container(
+						width: 72,
+						height: 72,
+						decoration: BoxDecoration(
+							color: errorBg,
+							shape: BoxShape.circle,
+						),
+						child: Icon(
+							Icons.close,
+							size: 36,
+							color: errorColor,
+						),
+					),
+					const SizedBox(height: 16),
+					Text(
+						'$activityName Failed',
+						style: TextStyle(
+							fontSize: 18,
+							fontWeight: FontWeight.w600,
+							color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
+						),
+					),
+					const SizedBox(height: 8),
+					Text(
+						'Activity failed to apply. Check device connectivity.',
+						style: TextStyle(
+							fontSize: 13,
+							color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
+						),
+						textAlign: TextAlign.center,
+					),
+					const SizedBox(height: 20),
+					Row(
+						mainAxisAlignment: MainAxisAlignment.center,
+						children: [
+							ElevatedButton(
+								onPressed: () => _retryActivity(activeState),
+								style: ElevatedButton.styleFrom(
+									backgroundColor: accentColor,
+									foregroundColor: Colors.white,
+									padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+									shape: RoundedRectangleBorder(
+										borderRadius: BorderRadius.circular(12),
+									),
+									elevation: 0,
+								),
+								child: const Text('Retry'),
+							),
+							const SizedBox(width: 12),
+							OutlinedButton(
+								onPressed: _deactivateActivity,
+								style: OutlinedButton.styleFrom(
+									foregroundColor: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
+									padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+									side: BorderSide(color: isDark ? AppBorderColorDark.base : AppBorderColorLight.base),
+									shape: RoundedRectangleBorder(
+										borderRadius: BorderRadius.circular(12),
+									),
+								),
+								child: const Text('Turn Off'),
+							),
+						],
+					),
+					const SizedBox(height: 12),
+					TextButton(
+						onPressed: () => _showFailureDetailsSheet(context, activeState),
+						child: const Text('View Details'),
+					),
+			],
 		);
 	}
 
@@ -365,216 +664,477 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 		final targets = _mediaService?.resolveControlTargets(_roomId) ?? const ActiveControlTargets();
 		final compositionLabels = _mediaService?.getActiveCompositionLabels(_roomId) ?? [];
+		final accentColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
+		final accentBg = isDark ? AppColorsDark.primaryLight5 : AppColorsLight.primaryLight9;
 
-		return Card(
-			shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-			child: Padding(
-				padding: const EdgeInsets.all(16),
-				child: Column(
-					crossAxisAlignment: CrossAxisAlignment.start,
+		return Column(
+			crossAxisAlignment: CrossAxisAlignment.start,
+			children: [
+				// Activity header with icon + name + status
+				Row(
 					children: [
-						// Activity label + state badge
-						Row(
-							children: [
-								Icon(
-									_activityIcon(activeState.activityKey),
-									color: isDark ? AppColorsDark.primary : AppColorsLight.primary,
-								),
-								const SizedBox(width: 8),
-								Expanded(
-									child: Text(
+						Container(
+							width: _screenService.scale(48, density: _visualDensityService.density),
+							height: _screenService.scale(48, density: _visualDensityService.density),
+							decoration: BoxDecoration(
+								color: accentBg,
+								borderRadius: BorderRadius.circular(AppBorderRadius.base),
+							),
+							child: Icon(
+								_activityIcon(activeState.activityKey),
+								size: _screenService.scale(24, density: _visualDensityService.density),
+								color: accentColor,
+							),
+						),
+						AppSpacings.spacingMdHorizontal,
+						Expanded(
+							child: Column(
+								crossAxisAlignment: CrossAxisAlignment.start,
+								children: [
+									Text(
 										_activityLabel(activeState.activityKey),
-										style: Theme.of(context).textTheme.titleMedium?.copyWith(
-											fontWeight: FontWeight.bold,
+										style: TextStyle(
+											fontSize: AppFontSize.large,
+											fontWeight: FontWeight.w600,
+											color: isDark ? AppTextColorDark.regular : AppTextColorLight.regular,
 										),
 									),
-								),
-								_buildStateBadge(context, activeState),
-							],
-						),
-						const SizedBox(height: 8),
-						// Composition chips
-						if (compositionLabels.isNotEmpty) ...[
-							Wrap(
-								spacing: 6,
-								runSpacing: 4,
-								children: compositionLabels
-										.map((label) => Chip(
-											label: Text(label, style: const TextStyle(fontSize: 12)),
-											visualDensity: VisualDensity.compact,
-											materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-										))
-										.toList(),
+									Text(
+										activeState.hasWarnings ? 'Active with issues' : 'Active',
+										style: TextStyle(
+											fontSize: AppFontSize.small,
+											color: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
+										),
+									),
+								],
 							),
-							const SizedBox(height: 12),
-						],
-						// Capability-driven controls
-						if (targets.hasVolume) _buildVolumeControl(context),
-						if (targets.hasInput) ...[
-							const SizedBox(height: 8),
-							_buildInputControl(context),
-						],
-						if (targets.hasPlayback) ...[
-							const SizedBox(height: 8),
-							_buildPlaybackControl(context),
-						],
-						if (targets.hasRemote) ...[
-							const SizedBox(height: 8),
-							_buildRemoteButton(context),
-						],
-						// Failure details
-						if (activeState.isFailed) ...[
-							const SizedBox(height: 12),
-							_buildFailureDetails(context, activeState),
-						],
-						if (activeState.hasWarnings && !activeState.isFailed) ...[
-							const SizedBox(height: 8),
-							_buildWarningBanner(context, activeState),
-						],
+						),
+					],
+				),
+
+					// Warning banner
+					if (activeState.hasWarnings && !activeState.isFailed) ...[
+						const SizedBox(height: 16),
+						_buildWarningBanner(context, activeState),
+					],
+
+					// Composition preview
+					if (compositionLabels.isNotEmpty) ...[
+						const SizedBox(height: 16),
+						_buildCompositionPreview(context, compositionLabels),
+					],
+
+					// Capability-driven controls
+					if (targets.hasVolume) ...[
+						const SizedBox(height: 16),
+						_buildVolumeControl(context),
+					],
+					if (targets.hasPlayback) ...[
+						const SizedBox(height: 16),
+						_buildPlaybackControl(context),
+					],
+					if (targets.hasInput) ...[
+						const SizedBox(height: 16),
+						_buildInputControl(context),
+					],
+					if (targets.hasRemote) ...[
+						const SizedBox(height: 16),
+						_buildRemoteButton(context),
+					],
+
+					// Failure details
+				if (activeState.isFailed) ...[
+					const SizedBox(height: 12),
+					_buildFailureDetails(context, activeState),
+				],
+			],
+		);
+	}
+
+	Widget _buildWarningBanner(BuildContext context, MediaActiveStateModel state) {
+		final isDark = Theme.of(context).brightness == Brightness.dark;
+		final warningColor = isDark ? AppColorsDark.warning : AppColorsLight.warning;
+		final warningBg = isDark ? AppColorsDark.warningLight9 : AppColorsLight.warningLight9;
+		final warningCount = state.lastResult?.warningCount ?? state.warnings.length;
+		final String label;
+		if (warningCount > 0) {
+			label = 'Some steps failed ($warningCount warning${warningCount != 1 ? 's' : ''})';
+		} else if (state.warnings.isNotEmpty) {
+			label = state.warnings.first;
+		} else {
+			label = 'Some steps had issues';
+		}
+
+		return GestureDetector(
+			onTap: () => _showFailureDetailsSheet(context, state),
+			child: Container(
+				width: double.infinity,
+				padding: const EdgeInsets.all(12),
+				decoration: BoxDecoration(
+					color: warningBg,
+					borderRadius: BorderRadius.circular(12),
+				),
+				child: Row(
+					children: [
+						Icon(Icons.warning_amber_rounded, color: warningColor, size: 18),
+						const SizedBox(width: 10),
+						Expanded(
+							child: Text(
+								label,
+								style: TextStyle(
+									fontSize: 12,
+									color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
+								),
+							),
+						),
+						Icon(Icons.chevron_right, color: warningColor, size: 18),
 					],
 				),
 			),
 		);
 	}
 
-	Widget _buildStateBadge(BuildContext context, MediaActiveStateModel state) {
-		Color badgeColor;
-		String label;
-		IconData? badgeIcon;
+	Widget _buildCompositionPreview(BuildContext context, List<String> labels) {
+		final isDark = Theme.of(context).brightness == Brightness.dark;
 
-		if (state.isActivating) {
-			badgeColor = Colors.orange;
-			label = 'Activating...';
-		} else if (state.isDeactivating) {
-			badgeColor = Colors.orange;
-			label = 'Deactivating...';
-		} else if (state.isFailed) {
-			badgeColor = Colors.red;
-			label = 'Failed';
-			badgeIcon = Icons.error_outline;
-		} else if (state.isActiveWithWarnings) {
-			badgeColor = Colors.orange;
-			label = 'Active';
-			badgeIcon = Icons.warning_amber;
-		} else if (state.isActive) {
-			badgeColor = Colors.green;
-			label = 'Active';
-		} else {
-			badgeColor = Colors.grey;
-			label = 'Off';
-		}
+		return Container(
+			padding: const EdgeInsets.all(12),
+			decoration: BoxDecoration(
+				color: isDark ? AppFillColorDark.base : AppFillColorLight.base,
+				borderRadius: BorderRadius.circular(16),
+			),
+			child: Column(
+				children: labels.map((label) {
+					// Parse role from label if available (e.g. "Display: Samsung TV")
+					final parts = label.split(':');
+					final role = parts.length > 1 ? parts[0].trim() : '';
+					final name = parts.length > 1 ? parts[1].trim() : label;
+					final icon = _roleIcon(role);
 
-		return GestureDetector(
-			onTap: (state.isFailed || state.hasWarnings)
-					? () => _showFailureDetailsSheet(context, state)
-					: null,
-			child: Container(
-				padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-				decoration: BoxDecoration(
-					color: badgeColor.withValues(alpha: 0.15),
-					borderRadius: BorderRadius.circular(8),
-				),
-				child: Row(
-					mainAxisSize: MainAxisSize.min,
-					children: [
-						if (badgeIcon != null) ...[
-							Icon(badgeIcon, size: 14, color: badgeColor),
-							const SizedBox(width: 4),
-						],
-						Text(
-							label,
-							style: TextStyle(
-								fontSize: 12,
-								fontWeight: FontWeight.w600,
-								color: badgeColor,
-							),
+					return Padding(
+						padding: const EdgeInsets.symmetric(vertical: 4),
+						child: Row(
+							children: [
+								Container(
+									width: 32,
+									height: 32,
+									decoration: BoxDecoration(
+										color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
+										borderRadius: BorderRadius.circular(8),
+									),
+									child: Icon(
+										icon,
+										size: 16,
+										color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
+									),
+								),
+								const SizedBox(width: 10),
+								Expanded(
+									child: Column(
+										crossAxisAlignment: CrossAxisAlignment.start,
+										children: [
+											if (role.isNotEmpty)
+												Text(
+													role.toUpperCase(),
+													style: TextStyle(
+														fontSize: 10,
+														fontWeight: FontWeight.w500,
+														color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
+														letterSpacing: 0.5,
+													),
+												),
+											Text(
+												name,
+												style: TextStyle(
+													fontSize: 13,
+													fontWeight: FontWeight.w500,
+													color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
+												),
+											),
+										],
+									),
+								),
+							],
 						),
-					],
-				),
+					);
+				}).toList(),
 			),
 		);
 	}
 
 	Widget _buildVolumeControl(BuildContext context) {
-		final localizations = AppLocalizations.of(context)!;
+		final isDark = Theme.of(context).brightness == Brightness.dark;
+		final accentColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
+		final mediaState = _spaceStateRepo?.getMediaState(_roomId);
+		final volume = mediaState?.averageVolume ?? 0;
+		final isMuted = mediaState?.anyMuted ?? false;
 
 		return Row(
 			children: [
-				Icon(MdiIcons.volumeHigh, size: 20),
-				const SizedBox(width: 8),
-				Text(localizations.media_volume),
-				const Spacer(),
-				IconButton(
-					icon: Icon(MdiIcons.volumeMinus),
-					iconSize: 20,
-					onPressed: _isSending ? null : () => _adjustVolume(false),
+				GestureDetector(
+					onTap: _isSending ? null : () => _toggleMute(),
+					child: Container(
+						width: 36,
+						height: 36,
+						decoration: BoxDecoration(
+							color: isDark ? AppFillColorDark.base : AppFillColorLight.base,
+							border: Border.all(color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light),
+							borderRadius: BorderRadius.circular(12),
+						),
+						child: Icon(
+							isMuted ? MdiIcons.volumeOff : MdiIcons.volumeHigh,
+							size: 18,
+							color: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
+						),
+					),
 				),
-				IconButton(
-					icon: Icon(MdiIcons.volumePlus),
-					iconSize: 20,
-					onPressed: _isSending ? null : () => _adjustVolume(true),
+				const SizedBox(width: 12),
+				Expanded(
+					child: Container(
+						height: 8,
+						decoration: BoxDecoration(
+							color: isDark ? AppFillColorDark.base : AppFillColorLight.base,
+							borderRadius: BorderRadius.circular(4),
+						),
+						child: FractionallySizedBox(
+							alignment: Alignment.centerLeft,
+							widthFactor: volume / 100,
+							child: Container(
+								decoration: BoxDecoration(
+									color: accentColor,
+									borderRadius: BorderRadius.circular(4),
+								),
+							),
+						),
+					),
 				),
-				IconButton(
-					icon: Icon(MdiIcons.volumeMute),
-					iconSize: 20,
-					onPressed: _isSending ? null : () => _toggleMute(),
+				const SizedBox(width: 12),
+				SizedBox(
+					width: 36,
+					child: Text(
+						'$volume%',
+						style: TextStyle(
+							fontSize: 13,
+							fontWeight: FontWeight.w600,
+							color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
+						),
+						textAlign: TextAlign.right,
+					),
 				),
 			],
 		);
 	}
 
 	Widget _buildInputControl(BuildContext context) {
-		return Row(
-			children: [
-				Icon(MdiIcons.audioInputStereoMinijack, size: 20),
-				const SizedBox(width: 8),
-				const Text('Input'),
-				const Spacer(),
-				TextButton(
-					onPressed: _isSending ? null : () => _showInputSelector(),
-					child: const Text('Select'),
+		final isDark = Theme.of(context).brightness == Brightness.dark;
+		final accentColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
+		// TODO: Replace with real input sources when API is available
+		return GestureDetector(
+			onTap: _isSending ? null : () => _showInputSelector(),
+			child: Container(
+				padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+				decoration: BoxDecoration(
+					color: isDark ? AppFillColorDark.base : AppFillColorLight.base,
+					border: Border.all(color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light),
+					borderRadius: BorderRadius.circular(12),
 				),
-			],
+				child: Row(
+					children: [
+						Icon(MdiIcons.audioInputStereoMinijack, size: 18,
+							color: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary),
+						const SizedBox(width: 8),
+						Text(
+							'Input',
+							style: TextStyle(
+								fontSize: 13,
+								fontWeight: FontWeight.w500,
+								color: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
+							),
+						),
+						const Spacer(),
+						Text(
+							'Select',
+							style: TextStyle(
+								fontSize: 12,
+								color: accentColor,
+							),
+						),
+						const SizedBox(width: 4),
+						Icon(Icons.chevron_right, size: 16, color: accentColor),
+					],
+				),
+			),
 		);
 	}
 
 	Widget _buildPlaybackControl(BuildContext context) {
-		return Row(
-			mainAxisAlignment: MainAxisAlignment.center,
+		final isDark = Theme.of(context).brightness == Brightness.dark;
+		final accentColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
+		// TODO: Replace with real playback state when API is available
+		const title = 'No track';
+		const artist = '';
+		const position = Duration.zero;
+		const duration = Duration.zero;
+		const progress = 0.0;
+
+		return Column(
 			children: [
-				IconButton(
-					icon: Icon(MdiIcons.skipPrevious),
-					onPressed: _isSending ? null : () => _sendPlaybackCommand('previous'),
+				// Now playing info
+				Text(
+					title,
+					style: TextStyle(
+						fontSize: 15,
+						fontWeight: FontWeight.w600,
+						color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
+					),
+					textAlign: TextAlign.center,
 				),
-				IconButton(
-					icon: Icon(MdiIcons.play),
-					iconSize: 32,
-					onPressed: _isSending ? null : () => _sendPlaybackCommand('play'),
+				if (artist.isNotEmpty)
+					Text(
+						artist,
+						style: TextStyle(
+							fontSize: 12,
+							color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
+						),
+						textAlign: TextAlign.center,
+					),
+				const SizedBox(height: 12),
+				// Transport buttons (circular)
+				Row(
+					mainAxisAlignment: MainAxisAlignment.center,
+					children: [
+						_buildTransportButton(
+							context,
+							icon: MdiIcons.skipPrevious,
+							onTap: _isSending ? null : () => _sendPlaybackCommand('previous'),
+						),
+						const SizedBox(width: 16),
+						_buildTransportButton(
+							context,
+							icon: MdiIcons.play,
+							isMain: true,
+							onTap: _isSending ? null : () => _sendPlaybackCommand('play'),
+						),
+						const SizedBox(width: 16),
+						_buildTransportButton(
+							context,
+							icon: MdiIcons.skipNext,
+							onTap: _isSending ? null : () => _sendPlaybackCommand('next'),
+						),
+					],
 				),
-				IconButton(
-					icon: Icon(MdiIcons.pause),
-					iconSize: 32,
-					onPressed: _isSending ? null : () => _sendPlaybackCommand('pause'),
-				),
-				IconButton(
-					icon: Icon(MdiIcons.skipNext),
-					onPressed: _isSending ? null : () => _sendPlaybackCommand('next'),
+				const SizedBox(height: 12),
+				// Progress bar with timestamps
+				Row(
+					children: [
+						Text(
+							_formatDuration(position),
+							style: TextStyle(
+								fontSize: 11,
+								color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
+							),
+						),
+						const SizedBox(width: 8),
+						Expanded(
+							child: Container(
+								height: 4,
+								decoration: BoxDecoration(
+									color: isDark ? AppFillColorDark.base : AppFillColorLight.base,
+									borderRadius: BorderRadius.circular(2),
+								),
+								child: FractionallySizedBox(
+									alignment: Alignment.centerLeft,
+									widthFactor: progress.clamp(0.0, 1.0),
+									child: Container(
+										decoration: BoxDecoration(
+											color: accentColor,
+											borderRadius: BorderRadius.circular(2),
+										),
+									),
+								),
+							),
+						),
+						const SizedBox(width: 8),
+						Text(
+							_formatDuration(duration),
+							style: TextStyle(
+								fontSize: 11,
+								color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
+							),
+						),
+					],
 				),
 			],
 		);
 	}
 
+	Widget _buildTransportButton(
+		BuildContext context, {
+		required IconData icon,
+		bool isMain = false,
+		VoidCallback? onTap,
+	}) {
+		final isDark = Theme.of(context).brightness == Brightness.dark;
+		final accentColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
+
+		return GestureDetector(
+			onTap: onTap,
+			child: Container(
+				width: isMain ? 56 : 44,
+				height: isMain ? 56 : 44,
+				decoration: BoxDecoration(
+					color: isMain ? accentColor : (isDark ? AppFillColorDark.base : AppFillColorLight.base),
+					border: isMain ? null : Border.all(color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light),
+					shape: BoxShape.circle,
+				),
+				child: Icon(
+					icon,
+					size: isMain ? 28 : 20,
+					color: isMain ? Colors.white : (isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary),
+				),
+			),
+		);
+	}
+
 	Widget _buildRemoteButton(BuildContext context) {
-		return Center(
-			child: OutlinedButton.icon(
-				icon: Icon(MdiIcons.remote),
-				label: const Text('Remote'),
-				onPressed: _isSending ? null : () => _showRemote(),
+		final isDark = Theme.of(context).brightness == Brightness.dark;
+
+		return GestureDetector(
+			onTap: _isSending ? null : () => _showRemote(),
+			child: Container(
+				padding: const EdgeInsets.all(12),
+				decoration: BoxDecoration(
+					color: isDark ? AppFillColorDark.base : AppFillColorLight.base,
+					border: Border.all(color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light),
+					borderRadius: BorderRadius.circular(16),
+				),
+				child: Row(
+					mainAxisAlignment: MainAxisAlignment.center,
+					children: [
+						Icon(
+							MdiIcons.remote,
+							size: 20,
+							color: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
+						),
+						const SizedBox(width: 8),
+						Text(
+							'Remote Control',
+							style: TextStyle(
+								fontSize: 13,
+								fontWeight: FontWeight.w500,
+								color: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
+							),
+						),
+					],
+				),
 			),
 		);
 	}
 
 	Widget _buildFailureDetails(BuildContext context, MediaActiveStateModel state) {
+		final isDark = Theme.of(context).brightness == Brightness.dark;
+		final errorColor = isDark ? AppColorsDark.error : AppColorsLight.error;
+		final errorBg = isDark ? AppColorsDark.errorLight9 : AppColorsLight.errorLight9;
 		final errorCount = state.lastResult?.errorCount ?? 0;
 		final warningCount = state.lastResult?.warningCount ?? 0;
 
@@ -582,20 +1142,20 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
 			width: double.infinity,
 			padding: const EdgeInsets.all(12),
 			decoration: BoxDecoration(
-				color: Colors.red.withValues(alpha: 0.1),
-				borderRadius: BorderRadius.circular(8),
+				color: errorBg,
+				borderRadius: BorderRadius.circular(12),
 			),
 			child: Column(
 				crossAxisAlignment: CrossAxisAlignment.start,
 				children: [
 					Row(
 						children: [
-							const Icon(Icons.error_outline, color: Colors.red, size: 18),
+							Icon(Icons.error_outline, color: errorColor, size: 18),
 							const SizedBox(width: 6),
 							Expanded(
 								child: Text(
 									'Activity failed to apply ($errorCount error${errorCount != 1 ? 's' : ''}, $warningCount warning${warningCount != 1 ? 's' : ''})',
-									style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.red, fontSize: 13),
+									style: TextStyle(fontWeight: FontWeight.w600, color: errorColor, fontSize: 13),
 								),
 							),
 						],
@@ -622,43 +1182,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
 						],
 					),
 				],
-			),
-		);
-	}
-
-	Widget _buildWarningBanner(BuildContext context, MediaActiveStateModel state) {
-		final warningCount = state.lastResult?.warningCount ?? state.warnings.length;
-		final String label;
-		if (warningCount > 0) {
-			label = 'Some steps failed ($warningCount warning${warningCount != 1 ? 's' : ''})';
-		} else if (state.warnings.isNotEmpty) {
-			label = state.warnings.first;
-		} else {
-			label = 'Some steps had issues';
-		}
-
-		return GestureDetector(
-			onTap: () => _showFailureDetailsSheet(context, state),
-			child: Container(
-				width: double.infinity,
-				padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-				decoration: BoxDecoration(
-					color: Colors.orange.withValues(alpha: 0.1),
-					borderRadius: BorderRadius.circular(8),
-				),
-				child: Row(
-					children: [
-						const Icon(Icons.warning_amber, color: Colors.orange, size: 18),
-						const SizedBox(width: 6),
-						Expanded(
-							child: Text(
-								label,
-								style: const TextStyle(fontSize: 12, color: Colors.orange),
-							),
-						),
-						const Icon(Icons.chevron_right, color: Colors.orange, size: 18),
-					],
-				),
 			),
 		);
 	}
@@ -900,7 +1423,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
 	}
 
 	// ============================================
-	// DEVICES LIST
+	// DEVICES LIST (restyled)
 	// ============================================
 
 	Widget _buildDevicesList(
@@ -908,6 +1431,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
 		List<MediaDeviceGroup> deviceGroups,
 	) {
 		final localizations = AppLocalizations.of(context)!;
+		final activeState = _mediaService?.getActiveState(_roomId);
 
 		return Column(
 			crossAxisAlignment: CrossAxisAlignment.start,
@@ -916,7 +1440,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
 					title: localizations.media_targets_title,
 					icon: MdiIcons.monitorSpeaker,
 				),
-				const SizedBox(height: 8),
+				AppSpacings.spacingMdVertical,
 				if (deviceGroups.isEmpty)
 					Text(
 						localizations.media_no_bindings_description,
@@ -926,72 +1450,182 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
 					...deviceGroups.map(
 						(group) => Padding(
 							padding: const EdgeInsets.only(bottom: 8),
-							child: GestureDetector(
-								onTap: () => _navigateToDeviceDetail(group),
-								child: UniversalTile(
-									layout: TileLayout.horizontal,
-									icon: _deviceGroupIcon(group),
-									name: group.deviceName,
-									status: _deviceGroupBadges(group),
-									showGlow: false,
-									showWarningBadge: false,
-									statusFontSize: AppFontSize.small,
-								),
-							),
+							child: _buildDeviceTile(context, group, activeState),
 						),
 					),
 			],
 		);
 	}
 
+	String _deviceStatus(MediaDeviceGroup group, MediaActiveStateModel? activeState) {
+		if (activeState == null || activeState.isDeactivated) return 'Standby';
+
+		final resolved = activeState.resolved;
+		if (resolved == null) return 'Standby';
+
+		final deviceId = group.deviceId;
+		final isResolved = resolved.displayDeviceId == deviceId ||
+				resolved.audioDeviceId == deviceId ||
+				resolved.sourceDeviceId == deviceId ||
+				resolved.remoteDeviceId == deviceId;
+
+		if (!isResolved) return 'Standby';
+
+		if (activeState.isActivating) return 'Activating...';
+		if (activeState.isFailed) return 'Failed';
+		if (activeState.isDeactivating) return 'Stopping...';
+		if (activeState.isActiveWithWarnings) return 'Active with issues';
+		if (activeState.isActive) return 'Active';
+
+		return 'Ready';
+	}
+
+	Widget _buildDeviceTile(BuildContext context, MediaDeviceGroup group, MediaActiveStateModel? activeState) {
+		final isDark = Theme.of(context).brightness == Brightness.dark;
+
+		final accessories = Row(
+			mainAxisSize: MainAxisSize.min,
+			children: [
+				..._deviceCapabilityIcons(group).take(3).map((capIcon) {
+					return Padding(
+						padding: const EdgeInsets.only(left: 4),
+						child: Container(
+							width: 48,
+							height: 48,
+							decoration: BoxDecoration(
+								color: isDark ? AppFillColorDark.base : AppFillColorLight.base,
+								borderRadius: BorderRadius.circular(12),
+							),
+							child: Icon(
+								capIcon,
+								size: 28,
+								color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
+							),
+						),
+					);
+				}),
+				AppSpacings.spacingMdHorizontal,
+				Icon(
+					Icons.chevron_right,
+					size: 28,
+					color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
+				),
+			],
+		);
+
+		final status = _deviceStatus(group, activeState);
+
+		return OrientationBuilder(
+			builder: (context, orientation) {
+				if (orientation == Orientation.landscape) {
+					return DeviceTileLandscape(
+						icon: _deviceGroupIcon(group),
+						name: group.deviceName,
+						status: status,
+						onTileTap: () => _navigateToDeviceDetail(group),
+						accessories: accessories,
+					);
+				}
+				return DeviceTilePortrait(
+					icon: _deviceGroupIcon(group),
+					name: group.deviceName,
+					status: status,
+					onTileTap: () => _navigateToDeviceDetail(group),
+					accessories: accessories,
+				);
+			},
+		);
+	}
+
+	List<IconData> _deviceCapabilityIcons(MediaDeviceGroup group) {
+		final icons = <IconData>[];
+		if (group.hasDisplay) icons.add(MdiIcons.television);
+		if (group.hasAudio) icons.add(MdiIcons.volumeHigh);
+		if (group.hasSource) icons.add(MdiIcons.playCircle);
+		if (group.hasRemote) icons.add(MdiIcons.remote);
+		return icons;
+	}
+
 	// ============================================
-	// OFFLINE OVERLAY
+	// OFFLINE OVERLAY (restyled)
 	// ============================================
 
 	Widget _buildOfflineOverlay(BuildContext context) {
+		final isDark = Theme.of(context).brightness == Brightness.dark;
+		final accentColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
+
 		return GestureDetector(
 			behavior: HitTestBehavior.opaque,
 			onTap: () {},
 			child: Container(
-				color: Colors.black.withValues(alpha: 0.7),
+				color: Colors.black.withValues(alpha: 0.85),
 				child: Center(
-					child: Card(
-						margin: const EdgeInsets.all(32),
-						child: Padding(
-							padding: const EdgeInsets.all(24),
-							child: Column(
-								mainAxisSize: MainAxisSize.min,
-								children: [
-									const Icon(Icons.wifi_off, size: 48, color: Colors.grey),
-									const SizedBox(height: 16),
-									Text(
-										AppLocalizations.of(context)!.media_ws_offline_title,
-										style: Theme.of(context).textTheme.titleMedium?.copyWith(
-											fontWeight: FontWeight.bold,
+					child: Padding(
+						padding: const EdgeInsets.all(40),
+						child: Column(
+							mainAxisAlignment: MainAxisAlignment.center,
+							children: [
+								Container(
+									width: 72,
+									height: 72,
+									decoration: BoxDecoration(
+										color: Colors.white.withValues(alpha: 0.1),
+										shape: BoxShape.circle,
+									),
+									child: Icon(
+										Icons.wifi_off,
+										size: 36,
+										color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
+									),
+								),
+								const SizedBox(height: 20),
+								Text(
+									AppLocalizations.of(context)!.media_ws_offline_title,
+									style: const TextStyle(
+										fontSize: 18,
+										fontWeight: FontWeight.w600,
+										color: Colors.white,
+									),
+									textAlign: TextAlign.center,
+								),
+								const SizedBox(height: 8),
+								Text(
+									AppLocalizations.of(context)!.media_ws_offline_description,
+									style: TextStyle(
+										fontSize: 13,
+										color: Colors.white.withValues(alpha: 0.6),
+									),
+									textAlign: TextAlign.center,
+								),
+								const SizedBox(height: 24),
+								ElevatedButton(
+									onPressed: () {
+										_socketService?.reconnect();
+									},
+									style: ElevatedButton.styleFrom(
+										backgroundColor: accentColor,
+										foregroundColor: Colors.white,
+										padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+										shape: RoundedRectangleBorder(
+											borderRadius: BorderRadius.circular(12),
 										),
-										textAlign: TextAlign.center,
+										elevation: 0,
 									),
-									const SizedBox(height: 8),
-									Text(
-										AppLocalizations.of(context)!.media_ws_offline_description,
-										style: Theme.of(context).textTheme.bodySmall,
-										textAlign: TextAlign.center,
+									child: const Text('Retry Connection'),
+								),
+								const SizedBox(height: 12),
+								OutlinedButton(
+									onPressed: _navigateToHome,
+									style: OutlinedButton.styleFrom(
+										foregroundColor: Colors.white.withValues(alpha: 0.8),
+										side: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+										shape: RoundedRectangleBorder(
+											borderRadius: BorderRadius.circular(12),
+										),
 									),
-									const SizedBox(height: 20),
-									FilledButton.icon(
-										icon: const Icon(Icons.refresh, size: 18),
-										label: const Text('Retry connection'),
-										onPressed: () {
-											_socketService?.reconnect();
-										},
-									),
-									const SizedBox(height: 8),
-									OutlinedButton(
-										onPressed: _navigateToHome,
-										child: const Text('Back to Home'),
-									),
-								],
-							),
+									child: const Text('Back to Home'),
+								),
+							],
 						),
 					),
 				),
@@ -1012,7 +1646,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
 			case MediaActivityKey.gaming:
 				return 'Gaming';
 			case MediaActivityKey.background:
-				return 'Background';
+				return 'Bgnd';
 			case MediaActivityKey.off:
 			case null:
 				return 'Off';
@@ -1043,13 +1677,23 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
 		return MdiIcons.devices;
 	}
 
-	String _deviceGroupBadges(MediaDeviceGroup group) {
-		final badges = <String>[];
-		if (group.hasDisplay) badges.add('Display');
-		if (group.hasAudio) badges.add('Audio');
-		if (group.hasSource) badges.add('Source');
-		if (group.hasRemote) badges.add('Remote');
-		return badges.join(' \u2022 ');
+	IconData _roleIcon(String role) {
+		switch (role.toLowerCase()) {
+			case 'display':
+				return MdiIcons.television;
+			case 'audio':
+				return MdiIcons.volumeHigh;
+			case 'source':
+				return MdiIcons.playCircle;
+			default:
+				return MdiIcons.devices;
+		}
+	}
+
+	String _formatDuration(Duration duration) {
+		final minutes = duration.inMinutes;
+		final seconds = duration.inSeconds % 60;
+		return '$minutes:${seconds.toString().padLeft(2, '0')}';
 	}
 
 	void _navigateToDeviceDetail(MediaDeviceGroup group) {
@@ -1065,20 +1709,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
 	}
 
 	// Actions dispatching media intents via SpaceStateRepository
-	Future<void> _adjustVolume(bool increase) async {
-		if (_spaceStateRepo == null) return;
-		setState(() => _isSending = true);
-		try {
-			await _spaceStateRepo!.adjustMediaVolume(
-				_roomId,
-				delta: VolumeDelta.small,
-				increase: increase,
-			);
-		} finally {
-			if (mounted) setState(() => _isSending = false);
-		}
-	}
-
 	Future<void> _toggleMute() async {
 		if (_spaceStateRepo == null) return;
 		setState(() => _isSending = true);
@@ -1135,6 +1765,34 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
 		ScaffoldMessenger.of(context).showSnackBar(
 			const SnackBar(content: Text('Remote control coming soon')),
 		);
+	}
+}
+
+// ============================================================================
+// SPINNER ARC PAINTER
+// ============================================================================
+
+class _SpinnerArcPainter extends CustomPainter {
+	final Color color;
+	final double progress;
+
+	_SpinnerArcPainter({required this.color, required this.progress});
+
+	@override
+	void paint(Canvas canvas, Size size) {
+		final paint = Paint()
+			..color = color
+			..style = PaintingStyle.stroke
+			..strokeWidth = 3
+			..strokeCap = StrokeCap.round;
+
+		final rect = Rect.fromLTWH(0, 0, size.width, size.height);
+		canvas.drawArc(rect, -math.pi / 2, math.pi / 2, false, paint);
+	}
+
+	@override
+	bool shouldRepaint(covariant _SpinnerArcPainter oldDelegate) {
+		return oldDelegate.progress != progress;
 	}
 }
 

@@ -4,6 +4,8 @@ import { Column, Entity, JoinColumn, ManyToOne, Unique } from 'typeorm';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
+import { toSnakeCaseKeys } from '../../../common/utils/transform.utils';
+
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { MediaActivationState, MediaActivityKey } from '../spaces.constants';
 
@@ -87,6 +89,10 @@ export class SpaceActiveMediaActivityEntity extends BaseEntity {
 	@Expose()
 	@IsOptional()
 	@IsString()
+	@Transform(({ value }: { value: string | null }) => {
+		if (!value) return null;
+		try { return toSnakeCaseKeys(JSON.parse(value)); } catch { return null; }
+	}, { toPlainOnly: true })
 	@Column({ type: 'text', nullable: true })
 	resolved: string | null;
 
@@ -102,6 +108,10 @@ export class SpaceActiveMediaActivityEntity extends BaseEntity {
 	@Transform(({ obj }: { obj: { last_result?: string; lastResult?: string } }) => obj.last_result ?? obj.lastResult, {
 		toClassOnly: true,
 	})
+	@Transform(({ value }: { value: string | null }) => {
+		if (!value) return null;
+		try { return toSnakeCaseKeys(JSON.parse(value)); } catch { return null; }
+	}, { toPlainOnly: true })
 	@Column({ type: 'text', nullable: true })
 	lastResult: string | null;
 }
