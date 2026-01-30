@@ -413,8 +413,10 @@ class _AppBodyState extends State<AppBody> {
                 },
                 onOpenSecurity: () {
                   _securityOverlayController.acknowledgeCurrentAlerts();
+                  final future = _navigator.navigateTo(AppRouteNames.security);
+                  if (future == null) return;
                   _securityOverlayController.setOnSecurityScreen(true);
-                  _navigator.navigateTo(AppRouteNames.security)?.then((_) {
+                  future.then((_) {
                     _securityOverlayController.setOnSecurityScreen(false);
                   });
                 },

@@ -152,7 +152,7 @@ class SecurityScreen extends StatelessWidget {
 								),
 							),
 							if (status.hasCriticalAlert || status.highestSeverity != Severity.info)
-								_buildSeverityIndicator(status.highestSeverity, isDark),
+								_buildSeverityBadge(status.highestSeverity, isDark, infoLabel: 'OK', fontWeight: FontWeight.w700),
 						],
 					),
 					SizedBox(height: AppSpacings.pMd),
@@ -226,11 +226,16 @@ class SecurityScreen extends StatelessWidget {
 		);
 	}
 
-	Widget _buildSeverityIndicator(Severity severity, bool isDark) {
+	Widget _buildSeverityBadge(
+		Severity severity,
+		bool isDark, {
+		String? infoLabel,
+		FontWeight fontWeight = FontWeight.w600,
+	}) {
 		final label = switch (severity) {
 			Severity.critical => 'CRITICAL',
 			Severity.warning => 'WARNING',
-			Severity.info => 'OK',
+			Severity.info => infoLabel ?? 'INFO',
 		};
 
 		return Container(
@@ -247,7 +252,7 @@ class SecurityScreen extends StatelessWidget {
 				style: TextStyle(
 					color: severityColor(severity, isDark),
 					fontSize: AppFontSize.extraSmall,
-					fontWeight: FontWeight.w700,
+					fontWeight: fontWeight,
 				),
 			),
 		);
@@ -311,7 +316,7 @@ class SecurityScreen extends StatelessWidget {
 					Column(
 						crossAxisAlignment: CrossAxisAlignment.end,
 						children: [
-							_buildAlertSeverityBadge(alert.severity, isDark),
+							_buildSeverityBadge(alert.severity, isDark),
 							SizedBox(height: AppSpacings.pXs),
 							Text(
 								DatetimeUtils.formatTimeAgo(alert.timestamp, localizations),
@@ -323,33 +328,6 @@ class SecurityScreen extends StatelessWidget {
 						],
 					),
 				],
-			),
-		);
-	}
-
-	Widget _buildAlertSeverityBadge(Severity severity, bool isDark) {
-		final label = switch (severity) {
-			Severity.critical => 'CRITICAL',
-			Severity.warning => 'WARNING',
-			Severity.info => 'INFO',
-		};
-
-		return Container(
-			padding: EdgeInsets.symmetric(
-				horizontal: AppSpacings.pSm,
-				vertical: AppSpacings.pXs,
-			),
-			decoration: BoxDecoration(
-				color: severityBgColor(severity, isDark),
-				borderRadius: BorderRadius.circular(AppBorderRadius.small),
-			),
-			child: Text(
-				label,
-				style: TextStyle(
-					color: severityColor(severity, isDark),
-					fontSize: AppFontSize.extraSmall,
-					fontWeight: FontWeight.w600,
-				),
 			),
 		);
 	}
