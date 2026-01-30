@@ -4,13 +4,7 @@ import { SecurityAggregatorInterface } from '../contracts/security-aggregator.in
 import { SecuritySignal } from '../contracts/security-signal.type';
 import { SecurityStateProviderInterface } from '../contracts/security-state-provider.interface';
 import { SecurityLastEventModel, SecurityStatusModel } from '../models/security-status.model';
-import { SECURITY_STATE_PROVIDERS, Severity } from '../security.constants';
-
-const SEVERITY_RANK: Record<Severity, number> = {
-	[Severity.INFO]: 0,
-	[Severity.WARNING]: 1,
-	[Severity.CRITICAL]: 2,
-};
+import { SECURITY_STATE_PROVIDERS, SEVERITY_RANK, Severity } from '../security.constants';
 
 @Injectable()
 export class SecurityAggregatorService implements SecurityAggregatorInterface {

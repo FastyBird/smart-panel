@@ -293,4 +293,27 @@ describe('AlarmSecurityProvider', () => {
 
 		expect(signal.armedState).toBeNull();
 	});
+
+	it('should fall back to triggered when alarm_state has invalid value', async () => {
+		devicesService.findAll.mockResolvedValue([
+			makeAlarmDevice('dev-1', [
+				makeProperty(PropertyCategory.ALARM_STATE, 'bogus_value'),
+				makeProperty(PropertyCategory.TRIGGERED, true),
+			]),
+		]);
+
+		const signal = await provider.getSignals();
+
+		expect(signal.alarmState).toBe(AlarmState.TRIGGERED);
+	});
+
+	it('should fall back to idle when alarm_state has invalid value and not triggered', async () => {
+		devicesService.findAll.mockResolvedValue([
+			makeAlarmDevice('dev-1', [makeProperty(PropertyCategory.ALARM_STATE, 'bogus_value')]),
+		]);
+
+		const signal = await provider.getSignals();
+
+		expect(signal.alarmState).toBe(AlarmState.IDLE);
+	});
 });

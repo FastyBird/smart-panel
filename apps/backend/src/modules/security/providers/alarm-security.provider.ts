@@ -1,17 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
-import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
+import { ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { DevicesService } from '../../devices/services/devices.service';
 import { SecuritySignal } from '../contracts/security-signal.type';
 import { SecurityStateProviderInterface } from '../contracts/security-state-provider.interface';
-import { AlarmState, ArmedState, Severity } from '../security.constants';
-
-const SEVERITY_RANK: Record<Severity, number> = {
-	[Severity.INFO]: 0,
-	[Severity.WARNING]: 1,
-	[Severity.CRITICAL]: 2,
-};
+import { AlarmState, ArmedState, SEVERITY_RANK, Severity } from '../security.constants';
 
 interface AlarmDeviceState {
 	deviceId: string;
@@ -79,9 +73,13 @@ export class AlarmSecurityProvider implements SecurityStateProviderInterface {
 
 		if (alarmStateValue != null) {
 			alarmState = this.parseAlarmState(alarmStateValue);
-		} else if (triggeredValue === true || triggeredValue === 'true') {
+		}
+
+		if (alarmState == null && (triggeredValue === true || triggeredValue === 'true')) {
 			alarmState = AlarmState.TRIGGERED;
-		} else {
+		}
+
+		if (alarmState == null) {
 			alarmState = AlarmState.IDLE;
 		}
 
@@ -250,11 +248,11 @@ export class AlarmSecurityProvider implements SecurityStateProviderInterface {
 			if (typeof parsed === 'object' && parsed != null) {
 				const obj = parsed as Record<string, unknown>;
 
-				if (obj.type && obj.timestamp) {
+				if (typeof obj.type === 'string' && (typeof obj.timestamp === 'string' || typeof obj.timestamp === 'number')) {
 					return {
-						type: String(obj.type),
-						timestamp: new Date(String(obj.timestamp)).toISOString(),
-						sourceDeviceId: obj.sourceDeviceId ? String(obj.sourceDeviceId) : deviceId,
+						type: obj.type,
+						timestamp: new Date(obj.timestamp).toISOString(),
+						sourceDeviceId: typeof obj.sourceDeviceId === 'string' ? obj.sourceDeviceId : deviceId,
 						severity: obj.severity as Severity | undefined,
 					};
 				}
