@@ -1,5 +1,14 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
-import { ApiExtraModels, ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags, getSchemaPath } from '@nestjs/swagger';
+import {
+	ApiExtraModels,
+	ApiNoContentResponse,
+	ApiOperation,
+	ApiParam,
+	ApiQuery,
+	ApiResponse,
+	ApiTags,
+	getSchemaPath,
+} from '@nestjs/swagger';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { DevicesResponseModel } from '../../devices/models/devices-response.model';
