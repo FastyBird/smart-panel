@@ -144,7 +144,7 @@ export class SecuritySensorsProvider implements SecurityStateProviderInterface {
 			}
 
 			const actual = valueState instanceof PropertyValueState ? valueState.value : valueState;
-			const lastUpdated = valueState instanceof PropertyValueState ? valueState.lastUpdated ?? null : null;
+			const lastUpdated = valueState instanceof PropertyValueState ? (valueState.lastUpdated ?? null) : null;
 
 			if (actual === true || actual === 'true' || actual === 1 || actual === '1') {
 				return { triggered: true, lastUpdated };

@@ -8,7 +8,7 @@ import { Severity } from '../security.constants';
 
 import { SecuritySensorsProvider } from './security-sensors.provider';
 
-function createProperty(category: PropertyCategory, value: any): ChannelPropertyEntity {
+function createProperty(category: PropertyCategory, value: string | number | boolean | null): ChannelPropertyEntity {
 	const prop = new ChannelPropertyEntity();
 	prop.category = category;
 	prop.value = value != null ? new PropertyValueState(value) : null;
@@ -16,7 +16,7 @@ function createProperty(category: PropertyCategory, value: any): ChannelProperty
 	return prop;
 }
 
-function createChannel(category: ChannelCategory, detected: any): ChannelEntity {
+function createChannel(category: ChannelCategory, detected: string | number | boolean | null): ChannelEntity {
 	const channel = new ChannelEntity();
 	channel.category = category;
 	channel.properties = [createProperty(PropertyCategory.DETECTED, detected)];
@@ -41,10 +41,7 @@ describe('SecuritySensorsProvider', () => {
 		devicesService = { findAll: jest.fn().mockResolvedValue([]) };
 
 		const module: TestingModule = await Test.createTestingModule({
-			providers: [
-				SecuritySensorsProvider,
-				{ provide: DevicesService, useValue: devicesService },
-			],
+			providers: [SecuritySensorsProvider, { provide: DevicesService, useValue: devicesService }],
 		}).compile();
 
 		provider = module.get<SecuritySensorsProvider>(SecuritySensorsProvider);
@@ -64,9 +61,7 @@ describe('SecuritySensorsProvider', () => {
 	});
 
 	it('should return empty signal when no sensors are triggered', async () => {
-		devicesService.findAll.mockResolvedValue([
-			createSensorDevice('d1', [createChannel(ChannelCategory.SMOKE, false)]),
-		]);
+		devicesService.findAll.mockResolvedValue([createSensorDevice('d1', [createChannel(ChannelCategory.SMOKE, false)])]);
 
 		const signal = await provider.getSignals();
 
@@ -75,9 +70,7 @@ describe('SecuritySensorsProvider', () => {
 	});
 
 	it('should map smoke sensor to critical severity', async () => {
-		devicesService.findAll.mockResolvedValue([
-			createSensorDevice('d1', [createChannel(ChannelCategory.SMOKE, true)]),
-		]);
+		devicesService.findAll.mockResolvedValue([createSensorDevice('d1', [createChannel(ChannelCategory.SMOKE, true)])]);
 
 		const signal = await provider.getSignals();
 
@@ -90,9 +83,7 @@ describe('SecuritySensorsProvider', () => {
 	});
 
 	it('should map CO sensor to critical severity', async () => {
-		devicesService.findAll.mockResolvedValue([
-			createSensorDevice('d1', [createChannel(ChannelCategory.CARBON_MONOXIDE, true)]),
-		]);
+		devicesService.findAll.mockResolvedValue([createSensorDevice('d1', [createChannel(ChannelCategory.CARBON_MONOXIDE, true)])]);
 
 		const signal = await provider.getSignals();
 
@@ -103,9 +94,7 @@ describe('SecuritySensorsProvider', () => {
 	});
 
 	it('should map leak sensor to critical severity', async () => {
-		devicesService.findAll.mockResolvedValue([
-			createSensorDevice('d1', [createChannel(ChannelCategory.LEAK, true)]),
-		]);
+		devicesService.findAll.mockResolvedValue([createSensorDevice('d1', [createChannel(ChannelCategory.LEAK, true)])]);
 
 		const signal = await provider.getSignals();
 
@@ -116,9 +105,7 @@ describe('SecuritySensorsProvider', () => {
 	});
 
 	it('should map gas sensor to critical severity', async () => {
-		devicesService.findAll.mockResolvedValue([
-			createSensorDevice('d1', [createChannel(ChannelCategory.GAS, true)]),
-		]);
+		devicesService.findAll.mockResolvedValue([createSensorDevice('d1', [createChannel(ChannelCategory.GAS, true)])]);
 
 		const signal = await provider.getSignals();
 
@@ -129,9 +116,7 @@ describe('SecuritySensorsProvider', () => {
 	});
 
 	it('should map motion sensor to warning severity', async () => {
-		devicesService.findAll.mockResolvedValue([
-			createSensorDevice('d1', [createChannel(ChannelCategory.MOTION, true)]),
-		]);
+		devicesService.findAll.mockResolvedValue([createSensorDevice('d1', [createChannel(ChannelCategory.MOTION, true)])]);
 
 		const signal = await provider.getSignals();
 
@@ -233,9 +218,7 @@ describe('SecuritySensorsProvider', () => {
 	});
 
 	it('should ignore channels with null property value', async () => {
-		devicesService.findAll.mockResolvedValue([
-			createSensorDevice('d1', [createChannel(ChannelCategory.SMOKE, null)]),
-		]);
+		devicesService.findAll.mockResolvedValue([createSensorDevice('d1', [createChannel(ChannelCategory.SMOKE, null)])]);
 
 		const signal = await provider.getSignals();
 
@@ -243,9 +226,7 @@ describe('SecuritySensorsProvider', () => {
 	});
 
 	it('should handle string "true" as detected', async () => {
-		devicesService.findAll.mockResolvedValue([
-			createSensorDevice('d1', [createChannel(ChannelCategory.SMOKE, 'true')]),
-		]);
+		devicesService.findAll.mockResolvedValue([createSensorDevice('d1', [createChannel(ChannelCategory.SMOKE, 'true')])]);
 
 		const signal = await provider.getSignals();
 
@@ -253,9 +234,7 @@ describe('SecuritySensorsProvider', () => {
 	});
 
 	it('should handle numeric 1 as detected', async () => {
-		devicesService.findAll.mockResolvedValue([
-			createSensorDevice('d1', [createChannel(ChannelCategory.SMOKE, 1)]),
-		]);
+		devicesService.findAll.mockResolvedValue([createSensorDevice('d1', [createChannel(ChannelCategory.SMOKE, 1)])]);
 
 		const signal = await provider.getSignals();
 
