@@ -83,7 +83,9 @@ describe('SecuritySensorsProvider', () => {
 	});
 
 	it('should map CO sensor to critical severity', async () => {
-		devicesService.findAll.mockResolvedValue([createSensorDevice('d1', [createChannel(ChannelCategory.CARBON_MONOXIDE, true)])]);
+		devicesService.findAll.mockResolvedValue([
+			createSensorDevice('d1', [createChannel(ChannelCategory.CARBON_MONOXIDE, true)]),
+		]);
 
 		const signal = await provider.getSignals();
 
@@ -226,7 +228,9 @@ describe('SecuritySensorsProvider', () => {
 	});
 
 	it('should handle string "true" as detected', async () => {
-		devicesService.findAll.mockResolvedValue([createSensorDevice('d1', [createChannel(ChannelCategory.SMOKE, 'true')])]);
+		devicesService.findAll.mockResolvedValue([
+			createSensorDevice('d1', [createChannel(ChannelCategory.SMOKE, 'true')]),
+		]);
 
 		const signal = await provider.getSignals();
 
