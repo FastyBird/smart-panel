@@ -268,10 +268,7 @@ describe('SecurityAggregatorService', () => {
 			},
 		};
 
-		const aggregator = await createAggregator([
-			malformedProvider,
-			new FakeProvider('good', { activeAlertsCount: 4 }),
-		]);
+		const aggregator = await createAggregator([malformedProvider, new FakeProvider('good', { activeAlertsCount: 4 })]);
 
 		const result = await aggregator.aggregate();
 
