@@ -48,6 +48,9 @@ import 'package:fastybird_smart_panel/modules/weather/repositories/current.dart'
 import 'package:fastybird_smart_panel/modules/weather/repositories/forecast.dart';
 import 'package:fastybird_smart_panel/modules/weather/repositories/locations.dart';
 import 'package:fastybird_smart_panel/modules/weather/service.dart';
+import 'package:fastybird_smart_panel/modules/security/module.dart';
+import 'package:fastybird_smart_panel/modules/security/repositories/security_status.dart';
+import 'package:fastybird_smart_panel/modules/security/services/security_overlay_controller.dart';
 import 'package:fastybird_smart_panel/modules/intents/export.dart';
 import 'package:fastybird_smart_panel/modules/scenes/export.dart';
 import 'package:fastybird_smart_panel/modules/spaces/export.dart';
@@ -300,6 +303,7 @@ class StartupManagerService {
       await Future.wait([
         locator.get<ConfigModuleService>().initialize(),
         locator.get<SystemModuleService>().initialize(appUid),
+        locator.get<SecurityModuleService>().initialize(),
         locator.get<WeatherModuleService>().initialize(),
         locator.get<DevicesModuleService>().initialize(),
         locator.get<SpacesModuleService>().initialize(),
@@ -382,6 +386,25 @@ class StartupManagerService {
         final module = locator<SystemModuleService>();
         module.dispose();
         locator.unregister<SystemModuleService>();
+      } catch (_) {}
+    }
+    if (locator.isRegistered<SecurityModuleService>()) {
+      try {
+        final module = locator<SecurityModuleService>();
+        module.dispose();
+        locator.unregister<SecurityModuleService>();
+      } catch (_) {}
+    }
+    if (locator.isRegistered<SecurityStatusRepository>()) {
+      try {
+        locator<SecurityStatusRepository>().dispose();
+        locator.unregister<SecurityStatusRepository>();
+      } catch (_) {}
+    }
+    if (locator.isRegistered<SecurityOverlayController>()) {
+      try {
+        locator<SecurityOverlayController>().dispose();
+        locator.unregister<SecurityOverlayController>();
       } catch (_) {}
     }
     if (locator.isRegistered<WeatherModuleService>()) {
@@ -725,6 +748,11 @@ class StartupManagerService {
       socketService: _socketClient,
       eventBus: _eventBus,
     );
+    var securityModuleService = SecurityModuleService(
+      dio: _apiIoService,
+      socketService: _socketClient,
+    );
+    var securityOverlayController = SecurityOverlayController();
     var weatherModuleService = WeatherModuleService(
       apiClient: _apiClient,
       socketService: _socketClient,
@@ -755,6 +783,9 @@ class StartupManagerService {
     locator.registerSingleton(configModuleService);
     locator.registerSingleton(displaysModuleService);
     locator.registerSingleton(systemModuleService);
+    locator.registerSingleton(securityModuleService);
+    locator.registerSingleton(securityModuleService.statusRepository);
+    locator.registerSingleton(securityOverlayController);
     locator.registerSingleton(weatherModuleService);
     locator.registerSingleton(devicesModuleService);
     locator.registerSingleton(dashboardModuleService);
