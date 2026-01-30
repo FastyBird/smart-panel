@@ -4,7 +4,7 @@ Type: feature
 Scope: backend, admin, panel
 Size: medium
 Parent: EPIC-EXPAND-SMART-PANEL-DOMAINS
-Status: completed
+Status: done
 
 ## 1. Business goal
 

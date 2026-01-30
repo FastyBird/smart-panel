@@ -1,8 +1,10 @@
 # Implementation Plan: Spaces-first UX Epic
-
-**Epic ID**: EPIC-SPACES-FIRST-UX
-**Branch**: `claude/spaces-first-ux-KrGEe`
-**Status**: Planning
+ID: PLAN-SPACES-FIRST-UX
+Type: chore
+Scope: backend, admin, panel
+Size: large
+Parent: EPIC-SPACES-FIRST-UX
+Status: done
 
 ---
 

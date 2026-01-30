@@ -1,4 +1,10 @@
 # Task: Media Domain – Backend MVP #1 (Endpoints Read Model + API)
+ID: FEATURE-MEDIA-DOMAIN-BACKEND-MVP-1
+Type: feature
+Scope: backend
+Size: medium
+Parent: FEATURE-SPACE-MEDIA-DOMAIN-V2
+Status: done
 
 ## Purpose
 

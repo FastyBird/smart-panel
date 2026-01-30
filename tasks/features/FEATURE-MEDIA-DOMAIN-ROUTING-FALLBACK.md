@@ -1,4 +1,10 @@
 # Task: Media Domain – Default Routings/Bindings Quality + Fallback Heuristics (Backend)
+ID: FEATURE-MEDIA-DOMAIN-ROUTING-FALLBACK
+Type: feature
+Scope: backend
+Size: medium
+Parent: FEATURE-SPACE-MEDIA-DOMAIN-V2
+Status: done
 
 ## Purpose
 

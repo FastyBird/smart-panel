@@ -6,9 +6,10 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 
 | Status | Count |
 |--------|-------|
-| Done | 81 |
-| Planned | 33 |
-| **Total** | **114** |
+| Done | 90 |
+| In Progress | 8 |
+| Planned | 27 |
+| **Total** | **125** |
 
 ---
 
@@ -20,7 +21,7 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 |----|-------|-------|------|
 | EPIC-DISPLAY-ROLES-HOUSE-CONTROL | Display roles & House control | backend, admin, panel | large |
 | EPIC-DISPLAY-ROLES-HOUSE-CONTROL-V2 | Display roles & House control v2 (refined specification) | backend, admin, panel | large |
-| EPIC-INTENTS-ORCHESTRATION | Backend Intent Orchestration + Panel Anti-Jitter | backend, admin, panel | large |
+| EPIC-INTENTS-ORCHESTRATION | Backend Intent Orchestration + Panel Anti-Jitter | backend, panel | large |
 | EPIC-PANEL-SPACES-DECK-INTENTS | Panel App Spaces + Deck + Intents architecture | panel | large |
 | EPIC-SCENES-MVP | Scenes module MVP (room-scoped scenes) | backend, admin, panel | large |
 | EPIC-SCENES-PLUGIN-MVP | Scenes module (plugin-based) MVP | backend, admin, panel | large |
@@ -53,6 +54,11 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | FEATURE-HOUSE-OVERVIEW-PAGE-V2 | House Overview v2 (refined specification) | backend, admin, panel | medium |
 | FEATURE-LINUX-DEVICE-INSTALLATION | Linux Device Installation | backend, admin | large |
 | FEATURE-MDNS-BACKEND-DISCOVERY | mDNS Backend Discovery | backend, panel | medium |
+| FEATURE-MEDIA-DOMAIN-BACKEND-MVP-1 | Media Domain – Backend MVP #1 (Endpoints Read Model + API) | backend | medium |
+| FEATURE-MEDIA-DOMAIN-BACKEND-REFACTOR | Media Domain – Backend Refactor & Runtime Specification | backend | large |
+| FEATURE-MEDIA-DOMAIN-CONVERGENCE | Media Domain – Convergence Phase | backend | medium |
+| FEATURE-MEDIA-DOMAIN-ROUTING-FALLBACK | Media Domain – Default Routings/Bindings Quality + Fallback Heuristics | backend | medium |
+| FEATURE-MEDIA-FINALIZATION | Media Domain – Finalization (Docs, Onboarding, Guardrails) | backend, admin, panel | medium |
 | FEATURE-MODULE-CONFIG | Module Configuration Support | backend, admin | large |
 | FEATURE-MULTI-LOCATION-WEATHER | Multi-Location Weather Support | backend, admin, panel | large |
 | FEATURE-PANEL-DASHBOARD-PAGES-AS-DECKITEM | Dashboard page rendering via DeckItem abstraction | panel | medium |
@@ -74,7 +80,6 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | FEATURE-PLUGIN-SHELLY-V1-UI | Shelly Gen 1 Plugin UI | admin, panel | medium |
 | FEATURE-PLUGIN-WLED | WLED Plugin (superseded) | backend | medium |
 | FEATURE-PLUGIN-ZIGBEE2MQTT | Zigbee2MQTT Plugin | backend, admin | large |
-| FEATURE-Z2M-CONVERTER-ARCHITECTURE | Zigbee2MQTT Modular Converter Architecture | backend | large |
 | FEATURE-PROPERTY-TIMESERIES | Property Timeseries Endpoint | backend | medium |
 | FEATURE-SCENES-ADMIN-ROOM | Admin UI — Room scenes list + create/edit/apply | admin | medium |
 | FEATURE-SCENES-ADMIN-UI | Scenes Admin UI (CRUD + action editor) | admin | medium |
@@ -83,27 +88,49 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | FEATURE-SCENES-PANEL-QUICK-ACTIONS | Panel – show room scenes as quick actions | panel | medium |
 | FEATURE-SCENES-PANEL-ROOM-ACTIONS | Panel UI — Room quick actions for Scenes | panel | medium |
 | FEATURE-SCENES-PLUGIN-SIMPLE | Simple Scene type plugin (apply via Devices) | backend | medium |
-| FEATURE-SPACE-CLIMATE-MVP | MVP Climate controls for Space pages | backend, panel | medium |
+| FEATURE-SECURITY-ALARM-PROVIDER | Security Domain – Alarm Provider | backend | medium |
+| FEATURE-SECURITY-DOMAIN-BACKEND | Security Domain – Backend Core | backend | small |
+| FEATURE-SPACE-CLIMATE-MVP | MVP Climate controls for Space pages | backend, panel, admin | medium |
 | FEATURE-SPACE-INTENTS-LIGHTING-MVP | MVP intent-based lighting for Space pages | backend, panel | medium |
 | FEATURE-SPACE-INTENTS-LIGHTING-ROLES | Intent-based lighting with roles | backend, panel | medium |
-| FEATURE-SPACE-LIGHTING-ROLES | Lighting roles for Space intents | backend | medium |
-| FEATURE-SPACE-SUGGESTIONS-MVP | Space suggestions based on device names | backend, admin | small |
-| FEATURE-SPACE-TEMPLATES | Space templates for quick setup | backend, admin | small |
+| FEATURE-SPACE-LIGHTING-ROLES | Lighting roles for Space intents | backend, admin | medium |
+| FEATURE-SPACE-MEDIA-DOMAIN | Add media domain intents for spaces | backend, admin, panel | medium |
+| FEATURE-SPACE-SUGGESTIONS-MVP | Space suggestions based on device names | backend, panel, admin | medium |
+| FEATURE-SPACE-TEMPLATES | Space templates for quick setup | backend, admin | medium |
 | FEATURE-SPACE-UNDO-HISTORY | Lightweight undo for Space intents | backend, panel | medium |
-| FEATURE-SPACEPAGE-EMPTY-STATES | Empty states for SpacePage sections | panel | small |
+| FEATURE-SPACEPAGE-EMPTY-STATES | Empty states for SpacePage sections | panel, backend | tiny |
 | FEATURE-SPACEPAGE-QUICK-ACTIONS | SpacePage quick actions (pinned intents) | backend, admin, panel | small |
 | FEATURE-SPACEPAGE-STATUS-BADGES | Status badges for SpacePage header | panel | small |
 | FEATURE-SPACES-MODULE | Introduce Spaces module (rooms/zones) as first-class domain | backend, admin | medium |
 | FEATURE-UNIFIED-EXTENSION-LOGS | Unified Extension Logs | backend, admin | medium |
-| FEATURE-WLED-PLUGIN | WLED Device Plugin | backend, admin, panel | large |
 | FEATURE-WINDOW-COVERING-DEVICE-PAGE | Window Covering Device Page | panel | medium |
+| FEATURE-WLED-PLUGIN | WLED Device Plugin | backend, admin, panel | large |
+| FEATURE-Z2M-CONVERTER-ARCHITECTURE | Zigbee2MQTT Modular Converter Architecture | backend | large |
 | FEATURE-PANEL-DOMAIN-LIGHTS-PAGE | Lights domain page MVP | panel | medium |
+| FEATURE-PANEL-ROOM-SYSTEM-PAGES | Panel system pages for Room role | panel | large |
+
+### In Progress
+
+| ID | Title | Scope | Size | Parent |
+|----|-------|-------|------|--------|
+| FEATURE-MEDIA-ACTIVITY-ACTIVATION | Media Activity Activation | backend | large | FEATURE-SPACE-MEDIA-DOMAIN-V2 |
+| FEATURE-MEDIA-ACTIVITY-BINDINGS-CRUD | Media Activity Bindings CRUD | backend | medium | FEATURE-SPACE-MEDIA-DOMAIN-V2 |
+| FEATURE-MEDIA-ADMIN-UI-MVP-1 | Media Admin UI MVP #1 | admin | large | - |
+| FEATURE-MEDIA-ADMIN-UI-MVP-2 | Media Admin UI MVP #2 | admin | large | FEATURE-MEDIA-ADMIN-UI-MVP-1 |
+| FEATURE-MEDIA-DOMAIN-PANEL-MVP | Panel App – Media Domain MVP (Portrait UI) | panel | large | FEATURE-SPACE-MEDIA-DOMAIN-V2 |
+| FEATURE-MEDIA-DRY-RUN-PREVIEW | Media Dry-Run Preview | backend, admin, panel | medium | - |
+| FEATURE-MEDIA-SIMULATOR-REGRESSION | Media Simulator Regression Suite | backend | large | FEATURE-SPACE-MEDIA-DOMAIN-V2 |
+| FEATURE-MEDIA-UX-POLISH | Media UX Polish | backend, admin, panel | large | FEATURE-SPACE-MEDIA-DOMAIN-V2 |
+| FEATURE-PANEL-MEDIA-DOMAIN-MVP | Panel Media Domain MVP | panel | large | FEATURE-SPACE-MEDIA-DOMAIN-V2 |
+| FEATURE-SPACE-COVERS-DOMAIN | Add covers domain intents for spaces | backend, admin, panel | medium | EPIC-EXPAND-SMART-PANEL-DOMAINS |
+| FEATURE-SPACE-MEDIA-DOMAIN-V2 | Media domain intents for spaces v2 | backend, admin, panel | large | EPIC-EXPAND-SMART-PANEL-DOMAINS |
 
 ### Planned
 
 | ID | Title | Scope | Size | Parent |
 |----|-------|-------|------|--------|
 | FEATURE-APP-UPDATES | Application Updates Mechanism | backend, admin | large | FEATURE-LINUX-DEVICE-INSTALLATION |
+| FEATURE-EXTENSION-LOGS-FILTERS | Level and time range filters for extension logs | admin | small | FEATURE-UNIFIED-EXTENSION-LOGS |
 | FEATURE-LINUX-INSTALL-ENHANCEMENTS | Linux Installation Enhancements | backend, admin | medium | FEATURE-LINUX-DEVICE-INSTALLATION |
 | FEATURE-ONBOARDING-BACKEND | Onboarding status backend API | backend | small | EPIC-APP-ONBOARDING |
 | FEATURE-ONBOARDING-INTEGRATIONS | Integrations discovery step | backend, admin | medium | EPIC-APP-ONBOARDING |
@@ -111,25 +138,15 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | FEATURE-PANEL-SENSOR-DEVICE-PAGE | Sensor Device Detail Page | panel | large | - |
 | FEATURE-PLUGIN-MATTER | Matter Plugin | backend | large | - |
 | FEATURE-PLUGIN-Z2M-ADOPTION-IMPROVEMENTS | Zigbee2MQTT Adoption Improvements | backend, admin | large | FEATURE-PLUGIN-ZIGBEE2MQTT |
-| FEATURE-PANEL-ROOM-SYSTEM-PAGES | Panel system pages for Room role | panel | large | - |
-| FEATURE-PANEL-ROOM-CONTEXT | RoomContext loader and aggregation | panel | medium | FEATURE-PANEL-ROOM-SYSTEM-PAGES |
-| FEATURE-PANEL-DECK-ROOM-BUILDER | Deterministic system deck for Room role | panel | medium | FEATURE-PANEL-ROOM-SYSTEM-PAGES |
-| FEATURE-PANEL-ROOM-OVERVIEW-UI | Room Overview UI | panel | large | FEATURE-PANEL-ROOM-SYSTEM-PAGES |
-| FEATURE-PANEL-DOMAIN-CLIMATE-PAGE | Climate domain page MVP | panel | medium | FEATURE-PANEL-ROOM-SYSTEM-PAGES |
-| FEATURE-PANEL-DOMAIN-SENSORS-PAGE | Sensors domain page MVP | panel | medium | FEATURE-PANEL-ROOM-SYSTEM-PAGES |
-| FEATURE-PANEL-QUICK-SCENES-FEEDBACK | Quick Scenes execution feedback | panel | small | FEATURE-PANEL-ROOM-SYSTEM-PAGES |
-| FEATURE-EXTENSION-LOGS-FILTERS | Level and time range filters for extension logs | admin | small | FEATURE-UNIFIED-EXTENSION-LOGS |
-| FEATURE-WEATHER-PANEL-ENHANCEMENTS | Weather dashboard tile and location switching | panel | medium | FEATURE-MULTI-LOCATION-WEATHER |
-| FEATURE-SPACEPAGE-CLIMATE-SECTION | Climate section for SpacePage | backend, panel | medium | FEATURE-DASHBOARD-SPACE-PAGE |
-| FEATURE-SPACE-COVERS-DOMAIN | Add covers domain intents for spaces | backend, admin, panel | medium | EPIC-EXPAND-SMART-PANEL-DOMAINS |
-| FEATURE-SPACE-MEDIA-DOMAIN | Add media domain intents for spaces | backend, admin, panel | medium | EPIC-EXPAND-SMART-PANEL-DOMAINS |
-| FEATURE-SPACE-SECURITY-DOMAIN | Add security domain intents for spaces | backend, admin, panel | medium | EPIC-EXPAND-SMART-PANEL-DOMAINS |
 | FEATURE-SPACE-ACTIVITY-MODES | Add activity-based room modes | backend, admin, panel | large | EPIC-EXPAND-SMART-PANEL-DOMAINS |
 | FEATURE-SPACE-MODE-ADMIN-UI | Admin UI for configuring space modes | admin | medium | EPIC-EXPAND-SMART-PANEL-DOMAINS |
 | FEATURE-SPACE-MODE-PANEL-UI | Panel UI for activating space modes | panel | medium | EPIC-EXPAND-SMART-PANEL-DOMAINS |
-| FEATURE-SPACE-TIME-SCHEDULING | Time-based mode scheduling | backend, admin | medium | EPIC-EXPAND-SMART-PANEL-DOMAINS |
 | FEATURE-SPACE-OCCUPANCY-MODES | Occupancy-based mode triggers | backend, admin, panel | medium | EPIC-EXPAND-SMART-PANEL-DOMAINS |
 | FEATURE-SPACE-SEASONAL-DEFAULTS | Seasonal baseline adjustments | backend, admin | small | EPIC-EXPAND-SMART-PANEL-DOMAINS |
+| FEATURE-SPACE-SECURITY-DOMAIN | Add security domain intents for spaces | backend, admin, panel | medium | EPIC-EXPAND-SMART-PANEL-DOMAINS |
+| FEATURE-SPACE-TIME-SCHEDULING | Time-based mode scheduling | backend, admin, panel | medium | EPIC-EXPAND-SMART-PANEL-DOMAINS |
+| FEATURE-SPACEPAGE-CLIMATE-SECTION | Climate section for SpacePage | backend, panel | medium | FEATURE-DASHBOARD-SPACE-PAGE |
+| FEATURE-WEATHER-PANEL-ENHANCEMENTS | Weather dashboard tile and location switching | panel | medium | FEATURE-MULTI-LOCATION-WEATHER |
 
 ---
 
@@ -139,29 +156,30 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 
 | ID | Title | Scope | Size |
 |----|-------|-------|------|
+| FEATURE-SECURITY-PROVIDER-REGISTRY | Security domain – provider registry + aggregation contract | backend | small |
 | TECH-ADMIN-SPACE-OVERVIEW | Admin Space overview enhancements | admin | small |
-| TECH-DISPLAY-HOME-RESOLUTION | Display home page resolution logic | backend, panel | small |
-| TECH-HOUSE-CONTROL-SMOKE-TESTS | Smoke tests for home resolution and house modes | backend, panel | small |
+| TECH-DISPLAY-HOME-RESOLUTION | Display home page resolution logic | backend, panel, admin | small |
+| TECH-EPIC-HOUSE-CONTROL-ALIGNMENT | Align implementation to v2 specification | backend, admin, panel | small |
+| TECH-HOUSE-CONTROL-SMOKE-TESTS | Smoke tests for home resolution and house modes | backend | small |
 | TECH-INTENT-CATALOG | Central intent catalog | backend | small |
+| TECH-PANEL-REMOVE-LEGACY-NAV | Remove legacy "first page" navigation assumptions | panel | medium |
+| TECH-SCENES-OPENAPI-SYNC | Scenes — OpenAPI models + client sync tests | backend, admin, panel | small |
 | TECH-SPACE-CONTEXT-SNAPSHOT | Capture Space context snapshots | backend | medium |
 | TECH-SPACE-LAST-ACTIVITY-TRACKING | Track last activity per Space | backend | small |
 | TECH-SPACES-ONBOARDING-WIZARD | Spaces onboarding and assignment wizard | admin, backend | medium |
-| TECHNICAL-OPENAPI-SPECIFICATION | Backend as Source of Truth for OpenAPI | backend | large |
 | TECHNICAL-DISPLAY-TOKEN-REVOCATION-MULTI-BACKEND | Display Token Revocation & Multi-Backend | backend, admin, panel | large |
+| TECHNICAL-OPENAPI-SPECIFICATION | Backend as Source of Truth for OpenAPI | backend | large |
 | TECHNICAL-SCENES-ACTION-VALIDATION | Scene action validation & typing | backend | small |
-| TECH-EPIC-HOUSE-CONTROL-ALIGNMENT | Align implementation to v2 specification | backend, admin, panel | small |
-| TECH-PANEL-REMOVE-LEGACY-NAV | Remove legacy "first page" navigation assumptions | panel | medium |
-| TECH-SCENES-OPENAPI-SYNC | Scenes — OpenAPI models + client sync tests | backend, admin, panel | small |
 | TEST-PANEL-DECK-STARTUP-MATRIX | Integration tests for deck startup matrix | panel | medium |
 
 ### Planned
 
 | ID | Title | Scope | Size | Parent |
 |----|-------|-------|------|--------|
-| TECH-ONBOARDING-ROUTER-GUARDS | Router guards for onboarding flow | admin | small | EPIC-APP-ONBOARDING |
 | TECH-ADMIN-MODULE-CONFIG-TESTS | Admin unit tests for module configuration | admin | small | FEATURE-MODULE-CONFIG |
-| TECH-PROPERTY-TIMESERIES-E2E | E2E test for property timeseries endpoint | backend | tiny | FEATURE-PROPERTY-TIMESERIES |
 | TECH-EXTENSIONS-CAN-REMOVE-OPENAPI | Add canRemove field to OpenAPI spec | backend | tiny | CHORE-EXTENSIONS-CORE-CONTROL |
+| TECH-ONBOARDING-ROUTER-GUARDS | Router guards for onboarding flow | admin | small | EPIC-APP-ONBOARDING |
+| TECH-PROPERTY-TIMESERIES-E2E | E2E test for property timeseries endpoint | backend | tiny | FEATURE-PROPERTY-TIMESERIES |
 
 ---
 
@@ -175,6 +193,7 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | CHORE-EXTENSIONS-CORE-CONTROL | Extensions Core Control Implementation | backend, admin |
 | CHORE-PANEL-DOCS-SPACES-DECK-INTENTS | Panel App documentation for Spaces + Deck + System Views + Intents | panel |
 | CHORE-SCENES-APPLY-FEEDBACK | Apply scene feedback & idempotency | backend, panel |
+| PLAN-SPACES-FIRST-UX | Implementation Plan: Spaces-first UX Epic | backend, admin, panel |
 
 ### Planned
 
@@ -185,221 +204,6 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 ## Bugs
 
 *No bugs currently tracked.*
-
----
-
-## By Scope
-
-### Backend
-
-| ID | Type | Status |
-|----|------|--------|
-| EPIC-DISPLAY-ROLES-HOUSE-CONTROL | epic | done |
-| EPIC-INTENTS-ORCHESTRATION | epic | done |
-| EPIC-SCENES-MVP | epic | done |
-| EPIC-SCENES-PLUGIN-MVP | epic | done |
-| EPIC-SPACES-FIRST-UX | epic | done |
-| FEATURE-CONFIG-CONSOLIDATION | feature | done |
-| FEATURE-DASHBOARD-SPACE-PAGE | feature | done |
-| FEATURE-DEVICE-VALIDATION-CONSTRAINTS | feature | done |
-| FEATURE-DISPLAY-ROLES-MVP | feature | done |
-| FEATURE-HOUSE-MODES-MVP | feature | done |
-| FEATURE-HOUSE-OVERVIEW-PAGE | feature | done |
-| FEATURE-LINUX-DEVICE-INSTALLATION | feature | done |
-| FEATURE-MDNS-BACKEND-DISCOVERY | feature | done |
-| FEATURE-MODULE-CONFIG | feature | done |
-| FEATURE-MULTI-LOCATION-WEATHER | feature | done |
-| FEATURE-PLUGIN-HA-ADOPTION-IMPROVEMENTS | feature | done |
-| FEATURE-PLUGIN-HA-AUTO-MAP | feature | done |
-| FEATURE-PLUGIN-SHELLY-V1 | feature | done |
-| FEATURE-PLUGIN-ZIGBEE2MQTT | feature | done |
-| FEATURE-Z2M-CONVERTER-ARCHITECTURE | feature | done |
-| FEATURE-PROPERTY-TIMESERIES | feature | done |
-| FEATURE-SCENES-BACKEND-CORE | feature | done |
-| FEATURE-SCENES-CORE-REGISTRY | feature | done |
-| FEATURE-SCENES-PLUGIN-SIMPLE | feature | done |
-| FEATURE-SPACE-CLIMATE-MVP | feature | done |
-| FEATURE-SPACE-INTENTS-LIGHTING-MVP | feature | done |
-| FEATURE-SPACE-INTENTS-LIGHTING-ROLES | feature | done |
-| FEATURE-SPACE-LIGHTING-ROLES | feature | done |
-| FEATURE-SPACE-SUGGESTIONS-MVP | feature | done |
-| FEATURE-SPACE-TEMPLATES | feature | done |
-| FEATURE-SPACE-UNDO-HISTORY | feature | done |
-| FEATURE-SPACEPAGE-QUICK-ACTIONS | feature | done |
-| FEATURE-SPACES-MODULE | feature | done |
-| FEATURE-UNIFIED-EXTENSION-LOGS | feature | done |
-| FEATURE-WLED-PLUGIN | feature | done |
-| TECH-DISPLAY-HOME-RESOLUTION | technical | done |
-| TECH-INTENT-CATALOG | technical | done |
-| TECH-SPACE-CONTEXT-SNAPSHOT | technical | done |
-| TECH-SPACE-LAST-ACTIVITY-TRACKING | technical | done |
-| TECH-SPACES-ONBOARDING-WIZARD | technical | done |
-| TECHNICAL-OPENAPI-SPECIFICATION | technical | done |
-| TECHNICAL-DISPLAY-TOKEN-REVOCATION-MULTI-BACKEND | technical | done |
-| CHORE-CODEBASE-TODO-CLEANUP | chore | done |
-| CHORE-EXTENSIONS-CORE-CONTROL | chore | done |
-| CHORE-SCENES-APPLY-FEEDBACK | chore | done |
-| TECH-HOUSE-CONTROL-SMOKE-TESTS | technical | done |
-| TECH-SCENES-OPENAPI-SYNC | technical | done |
-| TECH-EPIC-HOUSE-CONTROL-ALIGNMENT | technical | done |
-| TECHNICAL-SCENES-ACTION-VALIDATION | technical | done |
-| EPIC-DISPLAY-ROLES-HOUSE-CONTROL-V2 | epic | done |
-| FEATURE-DISPLAY-ROLES-MVP-V2 | feature | done |
-| FEATURE-HOUSE-MODES-MVP-V2 | feature | done |
-| FEATURE-HOUSE-OVERVIEW-PAGE-V2 | feature | done |
-| FEATURE-APP-UPDATES | feature | planned |
-| FEATURE-LINUX-INSTALL-ENHANCEMENTS | feature | planned |
-| FEATURE-ONBOARDING-BACKEND | feature | planned |
-| FEATURE-ONBOARDING-INTEGRATIONS | feature | planned |
-| FEATURE-PLUGIN-MATTER | feature | planned |
-| FEATURE-PLUGIN-Z2M-ADOPTION-IMPROVEMENTS | feature | planned |
-| EPIC-APP-ONBOARDING | epic | planned |
-| FEATURE-SPACEPAGE-CLIMATE-SECTION | feature | planned |
-| TECH-PROPERTY-TIMESERIES-E2E | technical | planned |
-| TECH-EXTENSIONS-CAN-REMOVE-OPENAPI | technical | planned |
-| EPIC-EXPAND-SMART-PANEL-DOMAINS | epic | planned |
-| FEATURE-SPACE-COVERS-DOMAIN | feature | planned |
-| FEATURE-SPACE-MEDIA-DOMAIN | feature | planned |
-| FEATURE-SPACE-SECURITY-DOMAIN | feature | planned |
-| FEATURE-SPACE-ACTIVITY-MODES | feature | planned |
-| FEATURE-SPACE-TIME-SCHEDULING | feature | planned |
-| FEATURE-SPACE-OCCUPANCY-MODES | feature | planned |
-| FEATURE-SPACE-SEASONAL-DEFAULTS | feature | planned |
-
-### Admin
-
-| ID | Type | Status |
-|----|------|--------|
-| EPIC-DISPLAY-ROLES-HOUSE-CONTROL | epic | done |
-| EPIC-INTENTS-ORCHESTRATION | epic | done |
-| EPIC-SCENES-MVP | epic | done |
-| EPIC-SCENES-PLUGIN-MVP | epic | done |
-| EPIC-SPACES-FIRST-UX | epic | done |
-| FEATURE-ADMIN-PLUGIN-SERVICES | feature | done |
-| FEATURE-SCENES-ADMIN-ROOM | feature | done |
-| FEATURE-SCENES-ADMIN-UI | feature | done |
-| FEATURE-CONFIG-CONSOLIDATION | feature | done |
-| FEATURE-DASHBOARD-SPACE-PAGE | feature | done |
-| FEATURE-DEVICE-VALIDATION-CONSTRAINTS | feature | done |
-| FEATURE-DISPLAY-ROLES-MVP | feature | done |
-| FEATURE-HOUSE-MODES-MVP | feature | done |
-| FEATURE-HOUSE-OVERVIEW-PAGE | feature | done |
-| FEATURE-LINUX-DEVICE-INSTALLATION | feature | done |
-| FEATURE-MODULE-CONFIG | feature | done |
-| FEATURE-MULTI-LOCATION-WEATHER | feature | done |
-| FEATURE-PLUGIN-SHELLY-V1-UI | feature | done |
-| FEATURE-PLUGIN-ZIGBEE2MQTT | feature | done |
-| FEATURE-SPACE-SUGGESTIONS-MVP | feature | done |
-| FEATURE-SPACE-TEMPLATES | feature | done |
-| FEATURE-SPACEPAGE-QUICK-ACTIONS | feature | done |
-| FEATURE-SPACES-MODULE | feature | done |
-| FEATURE-UNIFIED-EXTENSION-LOGS | feature | done |
-| FEATURE-WLED-PLUGIN | feature | done |
-| TECH-ADMIN-SPACE-OVERVIEW | technical | done |
-| TECH-SPACES-ONBOARDING-WIZARD | technical | done |
-| TECHNICAL-DISPLAY-TOKEN-REVOCATION-MULTI-BACKEND | technical | done |
-| CHORE-CODEBASE-TODO-CLEANUP | chore | done |
-| CHORE-EXTENSIONS-CORE-CONTROL | chore | done |
-| TECH-EPIC-HOUSE-CONTROL-ALIGNMENT | technical | done |
-| EPIC-DISPLAY-ROLES-HOUSE-CONTROL-V2 | epic | done |
-| FEATURE-DISPLAY-ROLES-MVP-V2 | feature | done |
-| FEATURE-HOUSE-MODES-MVP-V2 | feature | done |
-| FEATURE-HOUSE-OVERVIEW-PAGE-V2 | feature | done |
-| TECH-SCENES-OPENAPI-SYNC | technical | done |
-| FEATURE-APP-UPDATES | feature | planned |
-| FEATURE-LINUX-INSTALL-ENHANCEMENTS | feature | planned |
-| FEATURE-ONBOARDING-INTEGRATIONS | feature | planned |
-| FEATURE-ONBOARDING-WIZARD | feature | planned |
-| FEATURE-PLUGIN-Z2M-ADOPTION-IMPROVEMENTS | feature | planned |
-| TECH-ONBOARDING-ROUTER-GUARDS | technical | planned |
-| EPIC-APP-ONBOARDING | epic | planned |
-| FEATURE-EXTENSION-LOGS-FILTERS | feature | planned |
-| TECH-ADMIN-MODULE-CONFIG-TESTS | technical | planned |
-| EPIC-EXPAND-SMART-PANEL-DOMAINS | epic | planned |
-| FEATURE-SPACE-COVERS-DOMAIN | feature | planned |
-| FEATURE-SPACE-MEDIA-DOMAIN | feature | planned |
-| FEATURE-SPACE-SECURITY-DOMAIN | feature | planned |
-| FEATURE-SPACE-ACTIVITY-MODES | feature | planned |
-| FEATURE-SPACE-MODE-ADMIN-UI | feature | planned |
-| FEATURE-SPACE-TIME-SCHEDULING | feature | planned |
-| FEATURE-SPACE-OCCUPANCY-MODES | feature | planned |
-| FEATURE-SPACE-SEASONAL-DEFAULTS | feature | planned |
-
-### Panel
-
-| ID | Type | Status |
-|----|------|--------|
-| EPIC-DISPLAY-ROLES-HOUSE-CONTROL | epic | done |
-| EPIC-INTENTS-ORCHESTRATION | epic | done |
-| EPIC-SCENES-MVP | epic | done |
-| EPIC-SCENES-PLUGIN-MVP | epic | done |
-| EPIC-SPACES-FIRST-UX | epic | done |
-| FEATURE-CONFIG-CONSOLIDATION | feature | done |
-| FEATURE-DASHBOARD-SPACE-PAGE | feature | done |
-| FEATURE-DEVICE-VALIDATION-CONSTRAINTS | feature | done |
-| FEATURE-DISPLAY-ROLES-MVP | feature | done |
-| FEATURE-HOUSE-MODES-MVP | feature | done |
-| FEATURE-HOUSE-OVERVIEW-PAGE | feature | done |
-| FEATURE-MDNS-BACKEND-DISCOVERY | feature | done |
-| FEATURE-MULTI-LOCATION-WEATHER | feature | done |
-| FEATURE-PANEL-IDLE-MODE-SPACE-AWARE | feature | done |
-| FEATURE-PLUGIN-SHELLY-V1-UI | feature | done |
-| FEATURE-SCENES-PANEL-QUICK-ACTIONS | feature | done |
-| FEATURE-SCENES-PANEL-ROOM-ACTIONS | feature | done |
-| FEATURE-SPACE-CLIMATE-MVP | feature | done |
-| FEATURE-SPACE-INTENTS-LIGHTING-MVP | feature | done |
-| FEATURE-SPACE-INTENTS-LIGHTING-ROLES | feature | done |
-| FEATURE-SPACE-UNDO-HISTORY | feature | done |
-| FEATURE-SPACEPAGE-EMPTY-STATES | feature | done |
-| FEATURE-SPACEPAGE-QUICK-ACTIONS | feature | done |
-| FEATURE-SPACEPAGE-STATUS-BADGES | feature | done |
-| FEATURE-WLED-PLUGIN | feature | done |
-| TECH-DISPLAY-HOME-RESOLUTION | technical | done |
-| TECHNICAL-DISPLAY-TOKEN-REVOCATION-MULTI-BACKEND | technical | done |
-| TECH-HOUSE-CONTROL-SMOKE-TESTS | technical | done |
-| TECH-SCENES-OPENAPI-SYNC | technical | done |
-| CHORE-CODEBASE-TODO-CLEANUP | chore | done |
-| CHORE-PANEL-DOCS-SPACES-DECK-INTENTS | chore | done |
-| CHORE-SCENES-APPLY-FEEDBACK | chore | done |
-| TECH-EPIC-HOUSE-CONTROL-ALIGNMENT | technical | done |
-| TECH-PANEL-REMOVE-LEGACY-NAV | technical | done |
-| TEST-PANEL-DECK-STARTUP-MATRIX | technical | done |
-| EPIC-PANEL-SPACES-DECK-INTENTS | epic | done |
-| EPIC-DISPLAY-ROLES-HOUSE-CONTROL-V2 | epic | done |
-| FEATURE-PANEL-DASHBOARD-PAGES-AS-DECKITEM | feature | done |
-| FEATURE-PANEL-DECK-BUILDER | feature | done |
-| FEATURE-PANEL-DECK-DOMAIN-MODELS | feature | done |
-| FEATURE-PANEL-DECK-NAVIGATION-UI | feature | done |
-| FEATURE-PANEL-DISPLAY-CONFIG-VALIDATION | feature | done |
-| FEATURE-PANEL-HYDRATION-PIPELINE | feature | done |
-| FEATURE-PANEL-INTENTS-CORE | feature | done |
-| FEATURE-PANEL-REALTIME-SYSTEMVIEWS | feature | done |
-| FEATURE-PANEL-SCENES-INTEGRATION | feature | done |
-| FEATURE-PANEL-SYSTEMVIEW-ENTRY | feature | done |
-| FEATURE-PANEL-SYSTEMVIEW-MASTER | feature | done |
-| FEATURE-PANEL-SYSTEMVIEW-ROOM | feature | done |
-| FEATURE-DISPLAY-ROLES-MVP-V2 | feature | done |
-| FEATURE-HOUSE-MODES-MVP-V2 | feature | done |
-| FEATURE-HOUSE-OVERVIEW-PAGE-V2 | feature | done |
-| FEATURE-WINDOW-COVERING-DEVICE-PAGE | feature | done |
-| FEATURE-PANEL-DOMAIN-LIGHTS-PAGE | feature | done |
-| FEATURE-PANEL-SENSOR-DEVICE-PAGE | feature | planned |
-| FEATURE-PANEL-ROOM-SYSTEM-PAGES | feature | planned |
-| FEATURE-PANEL-ROOM-CONTEXT | technical | planned |
-| FEATURE-PANEL-DECK-ROOM-BUILDER | technical | planned |
-| FEATURE-PANEL-ROOM-OVERVIEW-UI | feature | planned |
-| FEATURE-PANEL-DOMAIN-CLIMATE-PAGE | feature | planned |
-| FEATURE-PANEL-DOMAIN-SENSORS-PAGE | feature | planned |
-| FEATURE-PANEL-QUICK-SCENES-FEEDBACK | technical | planned |
-| FEATURE-WEATHER-PANEL-ENHANCEMENTS | feature | planned |
-| FEATURE-SPACEPAGE-CLIMATE-SECTION | feature | planned |
-| EPIC-EXPAND-SMART-PANEL-DOMAINS | epic | planned |
-| FEATURE-SPACE-COVERS-DOMAIN | feature | planned |
-| FEATURE-SPACE-MEDIA-DOMAIN | feature | planned |
-| FEATURE-SPACE-SECURITY-DOMAIN | feature | planned |
-| FEATURE-SPACE-ACTIVITY-MODES | feature | planned |
-| FEATURE-SPACE-MODE-PANEL-UI | feature | planned |
-| FEATURE-SPACE-OCCUPANCY-MODES | feature | planned |
 
 ---
 
@@ -419,6 +223,8 @@ EPIC-DISPLAY-ROLES-HOUSE-CONTROL-V2 (done)
 ├── TECH-HOUSE-CONTROL-SMOKE-TESTS (done)
 └── TECH-EPIC-HOUSE-CONTROL-ALIGNMENT (done)
 
+EPIC-INTENTS-ORCHESTRATION (done)
+
 EPIC-SPACES-FIRST-UX (done)
 ├── FEATURE-SPACES-MODULE (done)
 ├── TECH-SPACES-ONBOARDING-WIZARD (done)
@@ -437,7 +243,8 @@ EPIC-SPACES-FIRST-UX (done)
 ├── TECH-SPACE-LAST-ACTIVITY-TRACKING (done)
 ├── TECH-SPACE-CONTEXT-SNAPSHOT (done)
 ├── TECH-INTENT-CATALOG (done)
-└── TECH-ADMIN-SPACE-OVERVIEW (done)
+├── TECH-ADMIN-SPACE-OVERVIEW (done)
+└── PLAN-SPACES-FIRST-UX (done)
 
 FEATURE-LINUX-DEVICE-INSTALLATION (done)
 ├── FEATURE-APP-UPDATES (planned)
@@ -490,10 +297,7 @@ EPIC-PANEL-SPACES-DECK-INTENTS (done)
 ├── TEST-PANEL-DECK-STARTUP-MATRIX (done)
 └── CHORE-PANEL-DOCS-SPACES-DECK-INTENTS (done)
 
-FEATURE-PANEL-ROOM-SYSTEM-PAGES (planned)
-├── FEATURE-PANEL-ROOM-CONTEXT (planned)
-├── FEATURE-PANEL-DECK-ROOM-BUILDER (planned)
-├── FEATURE-PANEL-ROOM-OVERVIEW-UI (planned)
+FEATURE-PANEL-ROOM-SYSTEM-PAGES (done)
 ├── FEATURE-PANEL-DOMAIN-LIGHTS-PAGE (done)
 ├── FEATURE-PANEL-DOMAIN-CLIMATE-PAGE (planned)
 ├── FEATURE-PANEL-DOMAIN-SENSORS-PAGE (planned)
@@ -501,9 +305,23 @@ FEATURE-PANEL-ROOM-SYSTEM-PAGES (planned)
 
 EPIC-EXPAND-SMART-PANEL-DOMAINS (planned)
 ├── Phase 1: Domain Completion
-│   ├── FEATURE-SPACE-COVERS-DOMAIN (planned)
-│   ├── FEATURE-SPACE-MEDIA-DOMAIN (planned)
-│   └── FEATURE-SPACE-SECURITY-DOMAIN (planned)
+│   ├── FEATURE-SPACE-COVERS-DOMAIN (in-progress)
+│   ├── FEATURE-SPACE-MEDIA-DOMAIN (done)
+│   ├── FEATURE-SPACE-MEDIA-DOMAIN-V2 (in-progress)
+│   │   ├── FEATURE-MEDIA-DOMAIN-BACKEND-MVP-1 (done)
+│   │   ├── FEATURE-MEDIA-DOMAIN-BACKEND-REFACTOR (done)
+│   │   ├── FEATURE-MEDIA-DOMAIN-CONVERGENCE (done)
+│   │   ├── FEATURE-MEDIA-DOMAIN-ROUTING-FALLBACK (done)
+│   │   ├── FEATURE-MEDIA-ACTIVITY-ACTIVATION (in-progress)
+│   │   ├── FEATURE-MEDIA-ACTIVITY-BINDINGS-CRUD (in-progress)
+│   │   ├── FEATURE-MEDIA-SIMULATOR-REGRESSION (in-progress)
+│   │   ├── FEATURE-MEDIA-UX-POLISH (in-progress)
+│   │   ├── FEATURE-MEDIA-DOMAIN-PANEL-MVP (in-progress)
+│   │   └── FEATURE-PANEL-MEDIA-DOMAIN-MVP (in-progress)
+│   ├── FEATURE-SPACE-SECURITY-DOMAIN (planned)
+│   ├── FEATURE-SECURITY-DOMAIN-BACKEND (done)
+│   ├── FEATURE-SECURITY-PROVIDER-REGISTRY (done)
+│   └── FEATURE-SECURITY-ALARM-PROVIDER (done)
 ├── Phase 2: Unified Room Modes
 │   ├── FEATURE-SPACE-ACTIVITY-MODES (planned)
 │   ├── FEATURE-SPACE-MODE-ADMIN-UI (planned)
@@ -512,6 +330,25 @@ EPIC-EXPAND-SMART-PANEL-DOMAINS (planned)
     ├── FEATURE-SPACE-TIME-SCHEDULING (planned)
     ├── FEATURE-SPACE-OCCUPANCY-MODES (planned)
     └── FEATURE-SPACE-SEASONAL-DEFAULTS (planned)
+
+FEATURE-MEDIA-ADMIN-UI-MVP-1 (in-progress)
+└── FEATURE-MEDIA-ADMIN-UI-MVP-2 (in-progress)
+
+Standalone
+├── FEATURE-MEDIA-FINALIZATION (done)
+├── FEATURE-MEDIA-DRY-RUN-PREVIEW (in-progress)
+├── FEATURE-MULTI-LOCATION-WEATHER (done)
+│   └── FEATURE-WEATHER-PANEL-ENHANCEMENTS (planned)
+├── FEATURE-UNIFIED-EXTENSION-LOGS (done)
+│   └── FEATURE-EXTENSION-LOGS-FILTERS (planned)
+├── FEATURE-DASHBOARD-SPACE-PAGE (done)
+│   └── FEATURE-SPACEPAGE-CLIMATE-SECTION (planned)
+├── FEATURE-MODULE-CONFIG (done)
+│   └── TECH-ADMIN-MODULE-CONFIG-TESTS (planned)
+├── FEATURE-PROPERTY-TIMESERIES (done)
+│   └── TECH-PROPERTY-TIMESERIES-E2E (planned)
+└── CHORE-EXTENSIONS-CORE-CONTROL (done)
+    └── TECH-EXTENSIONS-CAN-REMOVE-OPENAPI (planned)
 ```
 
 ---
@@ -524,14 +361,13 @@ tasks/
 ├── README.md               # Task format documentation
 ├── _template.md            # Template for new tasks
 ├── bugs/                   # Bug reports
-├── chores/                 # Maintenance tasks
-│   ├── CHORE-CODEBASE-TODO-CLEANUP.md
-│   └── CHORE-EXTENSIONS-CORE-CONTROL.md
 ├── features/               # Feature implementations
 │   ├── CHORE-SCENES-APPLY-FEEDBACK.md
 │   ├── EPIC-APP-ONBOARDING.md
 │   ├── EPIC-DISPLAY-ROLES-HOUSE-CONTROL.md
 │   ├── EPIC-DISPLAY-ROLES-HOUSE-CONTROL-V2.md
+│   ├── EPIC-EXPAND-SMART-PANEL-DOMAINS.md
+│   ├── EPIC-INTENTS-BACKEND-PANEL-TASKS.md
 │   ├── EPIC-SCENES-MVP.md
 │   ├── EPIC-SCENES-PLUGIN-MVP.md
 │   ├── EPIC-SPACES-FIRST-UX.md
@@ -543,6 +379,7 @@ tasks/
 │   ├── FEATURE-DEVICE-VALIDATION-CONSTRAINTS.md
 │   ├── FEATURE-DISPLAY-ROLES-MVP.md
 │   ├── FEATURE-DISPLAY-ROLES-MVP-V2.md
+│   ├── FEATURE-EXTENSION-LOGS-FILTERS.md
 │   ├── FEATURE-HOUSE-MODES-MVP.md
 │   ├── FEATURE-HOUSE-MODES-MVP-V2.md
 │   ├── FEATURE-HOUSE-OVERVIEW-PAGE.md
@@ -550,23 +387,35 @@ tasks/
 │   ├── FEATURE-LINUX-DEVICE-INSTALLATION.md
 │   ├── FEATURE-LINUX-INSTALL-ENHANCEMENTS.md
 │   ├── FEATURE-MDNS-BACKEND-DISCOVERY.md
+│   ├── FEATURE-MEDIA-ACTIVITY-ACTIVATION.md
+│   ├── FEATURE-MEDIA-ACTIVITY-BINDINGS-CRUD.md
+│   ├── FEATURE-MEDIA-ADMIN-UI-MVP-1.md
+│   ├── FEATURE-MEDIA-ADMIN-UI-MVP-2.md
+│   ├── FEATURE-MEDIA-DOMAIN-BACKEND-MVP-1.md
+│   ├── FEATURE-MEDIA-DOMAIN-BACKEND-REFACTOR.md
+│   ├── FEATURE-MEDIA-DOMAIN-CONVERGENCE.md
+│   ├── FEATURE-MEDIA-DOMAIN-PANEL-MVP.md
+│   ├── FEATURE-MEDIA-DOMAIN-ROUTING-FALLBACK.md
+│   ├── FEATURE-MEDIA-DRY-RUN-PREVIEW.md
+│   ├── FEATURE-MEDIA-FINALIZATION.md
+│   ├── FEATURE-MEDIA-SIMULATOR-REGRESSION.md
+│   ├── FEATURE-MEDIA-UX-POLISH.md
 │   ├── FEATURE-MODULE-CONFIG.md
 │   ├── FEATURE-MULTI-LOCATION-WEATHER.md
 │   ├── FEATURE-ONBOARDING-BACKEND.md
 │   ├── FEATURE-ONBOARDING-INTEGRATIONS.md
 │   ├── FEATURE-ONBOARDING-WIZARD.md
 │   ├── FEATURE-PANEL-IDLE-MODE-SPACE-AWARE.md
+│   ├── FEATURE-PANEL-MEDIA-DOMAIN-MVP.md
 │   ├── FEATURE-PANEL-SENSOR-DEVICE-PAGE.md
-│   ├── PANEL-ROOM-SYSTEM-PAGES-EPIC-AND-TASKS.md
 │   ├── FEATURE-PLUGIN-HA-ADOPTION-IMPROVEMENTS.md
 │   ├── FEATURE-PLUGIN-HA-AUTO-MAP.md
 │   ├── FEATURE-PLUGIN-MATTER.md
-│   ├── FEATURE-PLUGIN-SHELLY-V1-UI.md
 │   ├── FEATURE-PLUGIN-SHELLY-V1.md
+│   ├── FEATURE-PLUGIN-SHELLY-V1-UI.md
 │   ├── FEATURE-PLUGIN-WLED.md
 │   ├── FEATURE-PLUGIN-Z2M-ADOPTION-IMPROVEMENTS.md
 │   ├── FEATURE-PLUGIN-ZIGBEE2MQTT.md
-│   ├── FEATURE-Z2M-CONVERTER-ARCHITECTURE.md
 │   ├── FEATURE-PROPERTY-TIMESERIES.md
 │   ├── FEATURE-SCENES-ADMIN-ROOM.md
 │   ├── FEATURE-SCENES-ADMIN-UI.md
@@ -575,20 +424,37 @@ tasks/
 │   ├── FEATURE-SCENES-PANEL-QUICK-ACTIONS.md
 │   ├── FEATURE-SCENES-PANEL-ROOM-ACTIONS.md
 │   ├── FEATURE-SCENES-PLUGIN-SIMPLE.md
+│   ├── FEATURE-SECURITY-ALARM-PROVIDER.md
+│   ├── FEATURE-SECURITY-DOMAIN-BACKEND.md
+│   ├── FEATURE-SECURITY-PROVIDER-REGISTRY.md
+│   ├── FEATURE-SPACE-ACTIVITY-MODES.md
 │   ├── FEATURE-SPACE-CLIMATE-MVP.md
+│   ├── FEATURE-SPACE-COVERS-DOMAIN.md
 │   ├── FEATURE-SPACE-INTENTS-LIGHTING-MVP.md
 │   ├── FEATURE-SPACE-INTENTS-LIGHTING-ROLES.md
 │   ├── FEATURE-SPACE-LIGHTING-ROLES.md
+│   ├── FEATURE-SPACE-MEDIA-DOMAIN.md
+│   ├── FEATURE-SPACE-MEDIA-DOMAIN-V2.md
+│   ├── FEATURE-SPACE-MODE-ADMIN-UI.md
+│   ├── FEATURE-SPACE-MODE-PANEL-UI.md
+│   ├── FEATURE-SPACE-OCCUPANCY-MODES.md
+│   ├── FEATURE-SPACE-SEASONAL-DEFAULTS.md
+│   ├── FEATURE-SPACE-SECURITY-DOMAIN.md
 │   ├── FEATURE-SPACE-SUGGESTIONS-MVP.md
 │   ├── FEATURE-SPACE-TEMPLATES.md
+│   ├── FEATURE-SPACE-TIME-SCHEDULING.md
 │   ├── FEATURE-SPACE-UNDO-HISTORY.md
+│   ├── FEATURE-SPACEPAGE-CLIMATE-SECTION.md
 │   ├── FEATURE-SPACEPAGE-EMPTY-STATES.md
 │   ├── FEATURE-SPACEPAGE-QUICK-ACTIONS.md
 │   ├── FEATURE-SPACEPAGE-STATUS-BADGES.md
 │   ├── FEATURE-SPACES-MODULE.md
 │   ├── FEATURE-UNIFIED-EXTENSION-LOGS.md
+│   ├── FEATURE-WEATHER-PANEL-ENHANCEMENTS.md
 │   ├── FEATURE-WINDOW-COVERING-DEVICE-PAGE.md
 │   ├── FEATURE-WLED-PLUGIN.md
+│   ├── FEATURE-Z2M-CONVERTER-ARCHITECTURE.md
+│   ├── PANEL-ROOM-SYSTEM-PAGES-EPIC-AND-TASKS.md
 │   ├── PLAN-SPACES-FIRST-UX.md
 │   ├── TECH-ADMIN-SPACE-OVERVIEW.md
 │   ├── TECH-DISPLAY-HOME-RESOLUTION.md
@@ -599,29 +465,16 @@ tasks/
 │   ├── TECH-SCENES-OPENAPI-SYNC.md
 │   ├── TECH-SPACE-CONTEXT-SNAPSHOT.md
 │   ├── TECH-SPACE-LAST-ACTIVITY-TRACKING.md
-│   ├── TECH-SPACES-ONBOARDING-WIZARD.md
-│   ├── FEATURE-EXTENSION-LOGS-FILTERS.md
-│   ├── FEATURE-WEATHER-PANEL-ENHANCEMENTS.md
-│   ├── FEATURE-SPACEPAGE-CLIMATE-SECTION.md
-│   ├── EPIC-EXPAND-SMART-PANEL-DOMAINS.md
-│   ├── FEATURE-SPACE-COVERS-DOMAIN.md
-│   ├── FEATURE-SPACE-MEDIA-DOMAIN.md
-│   ├── FEATURE-SPACE-SECURITY-DOMAIN.md
-│   ├── FEATURE-SPACE-ACTIVITY-MODES.md
-│   ├── FEATURE-SPACE-MODE-ADMIN-UI.md
-│   ├── FEATURE-SPACE-MODE-PANEL-UI.md
-│   ├── FEATURE-SPACE-TIME-SCHEDULING.md
-│   ├── FEATURE-SPACE-OCCUPANCY-MODES.md
-│   └── FEATURE-SPACE-SEASONAL-DEFAULTS.md
+│   └── TECH-SPACES-ONBOARDING-WIZARD.md
 └── technical/              # Technical refactors
+    ├── TECH-ADMIN-MODULE-CONFIG-TESTS.md
+    ├── TECH-EXTENSIONS-CAN-REMOVE-OPENAPI.md
+    ├── TECH-PROPERTY-TIMESERIES-E2E.md
     ├── TECHNICAL-DISPLAY-TOKEN-REVOCATION-MULTI-BACKEND.md
     ├── TECHNICAL-OPENAPI-SPECIFICATION.md
-    ├── TECHNICAL-SCENES-ACTION-VALIDATION.md
-    ├── TECH-ADMIN-MODULE-CONFIG-TESTS.md
-    ├── TECH-PROPERTY-TIMESERIES-E2E.md
-    └── TECH-EXTENSIONS-CAN-REMOVE-OPENAPI.md
+    └── TECHNICAL-SCENES-ACTION-VALIDATION.md
 ```
 
 ---
 
-*Last updated: 2026-01-16*
+*Last updated: 2026-01-30*

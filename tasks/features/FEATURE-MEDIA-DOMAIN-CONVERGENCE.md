@@ -1,4 +1,10 @@
 # Task: Media Domain – Convergence Phase (Contracts, Stability, UX Readiness)
+ID: FEATURE-MEDIA-DOMAIN-CONVERGENCE
+Type: feature
+Scope: backend
+Size: medium
+Parent: FEATURE-SPACE-MEDIA-DOMAIN-V2
+Status: done
 
 ## Purpose
 

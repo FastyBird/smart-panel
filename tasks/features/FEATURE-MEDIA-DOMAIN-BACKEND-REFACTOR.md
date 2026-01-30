@@ -1,4 +1,10 @@
 # Task: Media Domain – Backend Refactor & Runtime Specification
+ID: FEATURE-MEDIA-DOMAIN-BACKEND-REFACTOR
+Type: feature
+Scope: backend
+Size: large
+Parent: FEATURE-SPACE-MEDIA-DOMAIN-V2
+Status: done
 
 ## Scope
 This task follows the Media Domain redesign (routing-based, activity-first).

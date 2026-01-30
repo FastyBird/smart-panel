@@ -4,7 +4,7 @@ Type: technical
 Scope: backend
 Size: small
 Parent: (none)
-Status: in-progress
+Status: done
 
 ## 1. Business goal
 In order to allow multiple sources (alarm devices, sensors, connectivity) to contribute security signals
