@@ -172,12 +172,58 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
 				final isDark = Theme.of(context).brightness == Brightness.dark;
 				final activeState = mediaService.getActiveState(_roomId);
 				final deviceGroups = mediaService.getDeviceGroups(_roomId);
+				final endpoints = mediaService.getEndpoints(_roomId);
 				final roomName = _spacesService?.getSpace(_roomId)?.name ?? '';
+				final hasEndpoints = endpoints.isNotEmpty;
 
 				if (_isLoading) {
 					return Scaffold(
 						backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
 						body: const Center(child: CircularProgressIndicator()),
+					);
+				}
+
+				// No media-capable devices in this space
+				if (!hasEndpoints) {
+					return Scaffold(
+						backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
+						body: SafeArea(
+							child: Column(
+								children: [
+									_buildHeader(context, roomName, activeState),
+									Expanded(
+										child: RefreshIndicator(
+											onRefresh: _refresh,
+											child: ListView(
+												padding: const EdgeInsets.all(32),
+												children: [
+													const SizedBox(height: 48),
+													Icon(
+														MdiIcons.monitorOff,
+														size: 64,
+														color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
+													),
+													const SizedBox(height: 16),
+													Text(
+														AppLocalizations.of(context)!.media_no_endpoints_title,
+														textAlign: TextAlign.center,
+														style: Theme.of(context).textTheme.titleMedium,
+													),
+													const SizedBox(height: 8),
+													Text(
+														AppLocalizations.of(context)!.media_no_endpoints_description,
+														textAlign: TextAlign.center,
+														style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+															color: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
+														),
+													),
+												],
+											),
+										),
+									),
+								],
+							),
+						),
 					);
 				}
 
@@ -873,7 +919,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
 				const SizedBox(height: 8),
 				if (deviceGroups.isEmpty)
 					Text(
-						localizations.space_empty_state_description,
+						localizations.media_no_bindings_description,
 						style: Theme.of(context).textTheme.bodyMedium,
 					)
 				else
@@ -919,7 +965,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
 									const Icon(Icons.wifi_off, size: 48, color: Colors.grey),
 									const SizedBox(height: 16),
 									Text(
-										'Realtime connection required',
+										AppLocalizations.of(context)!.media_ws_offline_title,
 										style: Theme.of(context).textTheme.titleMedium?.copyWith(
 											fontWeight: FontWeight.bold,
 										),
@@ -927,7 +973,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
 									),
 									const SizedBox(height: 8),
 									Text(
-										'Media controls need a live connection to stay in sync.',
+										AppLocalizations.of(context)!.media_ws_offline_description,
 										style: Theme.of(context).textTheme.bodySmall,
 										textAlign: TextAlign.center,
 									),

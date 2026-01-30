@@ -1412,6 +1412,21 @@ class AppLocalizationsCs extends AppLocalizations {
   String get media_capability_none => 'Bez schopností';
 
   @override
+  String get media_no_endpoints_title => 'Žádná mediální zařízení';
+
+  @override
+  String get media_no_endpoints_description => 'Tato místnost nemá žádná mediální zařízení. Přidejte TV, reproduktor nebo streamer.';
+
+  @override
+  String get media_no_bindings_description => 'Mediální aktivity se konfigurují. Potáhněte pro obnovení.';
+
+  @override
+  String get media_ws_offline_title => 'Spojení ztraceno';
+
+  @override
+  String get media_ws_offline_description => 'Mediální ovládání vyžaduje aktivní připojení. Připojování...';
+
+  @override
   String get domain_sensors => 'Senzory';
 
   @override
