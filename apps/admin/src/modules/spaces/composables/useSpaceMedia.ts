@@ -552,8 +552,8 @@ export const useSpaceMedia = (spaceId: Ref<string | undefined>): IUseSpaceMedia 
 		previewing.value = true;
 
 		try {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			const { data: responseData, error } = await backend.client.POST(
+				// eslint-disable-next-line @typescript-eslint/no-explicit-any
 				`/${MODULES_PREFIX}/${SPACES_MODULE_PREFIX}/spaces/{id}/media/activities/{activityKey}/preview` as any,
 				{
 					params: {
