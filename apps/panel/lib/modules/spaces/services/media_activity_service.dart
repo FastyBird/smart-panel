@@ -2,6 +2,19 @@ import 'package:fastybird_smart_panel/modules/spaces/models/media_activity/media
 import 'package:fastybird_smart_panel/modules/spaces/repositories/media_activity.dart';
 import 'package:flutter/foundation.dart';
 
+/// Structured entry for a composition preview row.
+class MediaCompositionEntry {
+	final String role;
+	final String deviceId;
+	final String endpointName;
+
+	const MediaCompositionEntry({
+		required this.role,
+		required this.deviceId,
+		required this.endpointName,
+	});
+}
+
 /// Grouped endpoints for a single device.
 class MediaDeviceGroup {
 	final String deviceId;
@@ -230,6 +243,34 @@ class MediaActivityService extends ChangeNotifier {
 		if (targets.hasPlayback) labels.add('Source: ${targets.playbackTarget!.name}');
 		if (targets.hasRemote) labels.add('Remote: ${targets.remoteTarget!.name}');
 		return labels;
+	}
+
+	/// Get structured composition entries for the active card.
+	List<MediaCompositionEntry> getActiveCompositionEntries(String spaceId) {
+		final targets = resolveControlTargets(spaceId);
+		final entries = <MediaCompositionEntry>[];
+		if (targets.hasDisplay) {
+			entries.add(MediaCompositionEntry(
+				role: 'Display',
+				deviceId: targets.displayTarget!.deviceId,
+				endpointName: targets.displayTarget!.name,
+			));
+		}
+		if (targets.hasVolume) {
+			entries.add(MediaCompositionEntry(
+				role: 'Audio',
+				deviceId: targets.volumeTarget!.deviceId,
+				endpointName: targets.volumeTarget!.name,
+			));
+		}
+		if (targets.hasPlayback) {
+			entries.add(MediaCompositionEntry(
+				role: 'Source',
+				deviceId: targets.playbackTarget!.deviceId,
+				endpointName: targets.playbackTarget!.name,
+			));
+		}
+		return entries;
 	}
 
 	// ============================================

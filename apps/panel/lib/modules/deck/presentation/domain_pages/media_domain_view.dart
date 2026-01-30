@@ -15,6 +15,8 @@ import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
 import 'package:fastybird_smart_panel/core/widgets/tile_wrappers.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
+import 'package:fastybird_smart_panel/modules/deck/utils/lighting.dart';
+import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/deck_service.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/navigate_event.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/media_activity/media_activity.dart';
@@ -48,6 +50,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	DeckService? _deckService;
 	EventBus? _eventBus;
 	SocketService? _socketService;
+	DevicesService? _devicesService;
 
 	bool _isLoading = true;
 	bool _isSending = false;
@@ -114,6 +117,14 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		} catch (e) {
 			if (kDebugMode) {
 				debugPrint('[MediaDomainViewPage] Failed to get SocketService: $e');
+			}
+		}
+
+		try {
+			_devicesService = locator<DevicesService>();
+		} catch (e) {
+			if (kDebugMode) {
+				debugPrint('[MediaDomainViewPage] Failed to get DevicesService: $e');
 			}
 		}
 
@@ -663,9 +674,29 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	) {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 		final targets = _mediaService?.resolveControlTargets(_roomId) ?? const ActiveControlTargets();
-		final compositionLabels = _mediaService?.getActiveCompositionLabels(_roomId) ?? [];
+		final compositionEntries = _mediaService?.getActiveCompositionEntries(_roomId) ?? [];
 		final accentColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
 		final accentBg = isDark ? AppColorsDark.primaryLight5 : AppColorsLight.primaryLight9;
+
+		// Resolve display names and online status for composition entries
+		final roomName = _spacesService?.getSpace(_roomId)?.name ?? '';
+		final displayItems = <_CompositionDisplayItem>[];
+		final offlineRoles = <String>[];
+
+		for (final entry in compositionEntries) {
+			final device = _devicesService?.getDevice(entry.deviceId);
+			var name = device?.name ?? entry.endpointName;
+			name = stripRoomNameFromDevice(name, roomName);
+			// Strip endpoint type suffix like "(Display)", "(Audio Output)", "(Source)", "(Remote Target)"
+			name = name.replaceFirst(RegExp(r'\s*\((Display|Audio Output|Source|Remote Target)\)\s*$'), '');
+			final isOnline = device?.isOnline ?? true;
+			displayItems.add(_CompositionDisplayItem(
+				role: entry.role,
+				displayName: name,
+				isOnline: isOnline,
+			));
+			if (!isOnline) offlineRoles.add(entry.role);
+		}
 
 		return Column(
 			crossAxisAlignment: CrossAxisAlignment.start,
@@ -718,10 +749,16 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 						_buildWarningBanner(context, activeState),
 					],
 
-					// Composition preview
-					if (compositionLabels.isNotEmpty) ...[
+					// Offline device banner
+					if (offlineRoles.isNotEmpty && !activeState.hasWarnings) ...[
 						const SizedBox(height: 16),
-						_buildCompositionPreview(context, compositionLabels),
+						_buildOfflineDeviceBanner(context, offlineRoles),
+					],
+
+					// Composition preview
+					if (displayItems.isNotEmpty) ...[
+						const SizedBox(height: 16),
+						_buildCompositionPreview(context, displayItems),
 					],
 
 					// Capability-driven controls
@@ -794,10 +831,48 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		);
 	}
 
-	Widget _buildCompositionPreview(BuildContext context, List<String> labels) {
+	Widget _buildOfflineDeviceBanner(BuildContext context, List<String> offlineRoles) {
+		final isDark = Theme.of(context).brightness == Brightness.dark;
+		final warningColor = isDark ? AppColorsDark.warning : AppColorsLight.warning;
+		final warningBg = isDark ? AppColorsDark.warningLight9 : AppColorsLight.warningLight9;
+
+		final String label;
+		if (offlineRoles.length == 1 && offlineRoles.first == 'Audio') {
+			label = 'Audio output offline – using display speakers';
+		} else {
+			label = 'Some devices offline';
+		}
+
+		return Container(
+			width: double.infinity,
+			padding: const EdgeInsets.all(12),
+			decoration: BoxDecoration(
+				color: warningBg,
+				borderRadius: BorderRadius.circular(12),
+			),
+			child: Row(
+				children: [
+					Icon(Icons.warning_amber_rounded, color: warningColor, size: 18),
+					const SizedBox(width: 10),
+					Expanded(
+						child: Text(
+							label,
+							style: TextStyle(
+								fontSize: 12,
+								color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
+							),
+						),
+					),
+				],
+			),
+		);
+	}
+
+	Widget _buildCompositionPreview(BuildContext context, List<_CompositionDisplayItem> items) {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 		final isLight = !isDark;
 		final density = _visualDensityService.density;
+		final warningColor = isDark ? AppColorsDark.warning : AppColorsLight.warning;
 
 		return Container(
 			padding: AppSpacings.paddingMd,
@@ -806,12 +881,12 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 				borderRadius: BorderRadius.circular(AppBorderRadius.medium),
 			),
 			child: Column(
-				children: labels.map((label) {
-					// Parse role from label if available (e.g. "Display: Samsung TV")
-					final parts = label.split(':');
-					final role = parts.length > 1 ? parts[0].trim() : '';
-					final name = parts.length > 1 ? parts[1].trim() : label;
-					final icon = _roleIcon(role);
+				children: items.map((item) {
+					final icon = _roleIcon(item.role);
+					final nameText = item.isOnline ? item.displayName : '${item.displayName} (offline)';
+					final nameColor = item.isOnline
+							? (isLight ? AppTextColorLight.primary : AppTextColorDark.primary)
+							: warningColor;
 
 					return Padding(
 						padding: EdgeInsets.symmetric(vertical: AppSpacings.pSm),
@@ -835,9 +910,9 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 									child: Column(
 										crossAxisAlignment: CrossAxisAlignment.start,
 										children: [
-											if (role.isNotEmpty)
+											if (item.role.isNotEmpty)
 												Text(
-													role.toUpperCase(),
+													item.role.toUpperCase(),
 													style: TextStyle(
 														fontSize: AppFontSize.extraSmall,
 														fontWeight: FontWeight.w500,
@@ -846,11 +921,11 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 													),
 												),
 											Text(
-												name,
+												nameText,
 												style: TextStyle(
 													fontSize: AppFontSize.small,
 													fontWeight: FontWeight.w500,
-													color: isLight ? AppTextColorLight.primary : AppTextColorDark.primary,
+													color: nameColor,
 												),
 											),
 										],
@@ -1768,6 +1843,22 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			const SnackBar(content: Text('Remote control coming soon')),
 		);
 	}
+}
+
+// ============================================================================
+// COMPOSITION DISPLAY ITEM
+// ============================================================================
+
+class _CompositionDisplayItem {
+	final String role;
+	final String displayName;
+	final bool isOnline;
+
+	const _CompositionDisplayItem({
+		required this.role,
+		required this.displayName,
+		required this.isOnline,
+	});
 }
 
 // ============================================================================
