@@ -795,11 +795,11 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
 						if (failure.label != null)
 							Text(
 								failure.label!,
-								style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: color.shade700),
+								style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: color),
 							),
 						Text(
 							failure.reason,
-							style: TextStyle(fontSize: 11, color: color.shade600),
+							style: TextStyle(fontSize: 11, color: color.withValues(alpha: 0.8)),
 						),
 						if (failure.targetDeviceId != null)
 							Text(
