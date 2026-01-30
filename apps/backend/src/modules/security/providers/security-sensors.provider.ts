@@ -6,7 +6,7 @@ import { PropertyValueState } from '../../devices/models/property-value-state.mo
 import { DevicesService } from '../../devices/services/devices.service';
 import { SecuritySignal } from '../contracts/security-signal.type';
 import { SecurityStateProviderInterface } from '../contracts/security-state-provider.interface';
-import { Severity } from '../security.constants';
+import { SEVERITY_RANK, Severity } from '../security.constants';
 
 interface SensorAlert {
 	type: string;
@@ -15,17 +15,11 @@ interface SensorAlert {
 	timestamp: string;
 }
 
-const SEVERITY_RANK: Record<Severity, number> = {
-	[Severity.INFO]: 0,
-	[Severity.WARNING]: 1,
-	[Severity.CRITICAL]: 2,
-};
-
 const CHANNEL_ALERT_MAP: Partial<Record<ChannelCategory, { type: string; severity: Severity }>> = {
 	[ChannelCategory.SMOKE]: { type: 'smoke', severity: Severity.CRITICAL },
 	[ChannelCategory.CARBON_MONOXIDE]: { type: 'co', severity: Severity.CRITICAL },
 	[ChannelCategory.LEAK]: { type: 'water_leak', severity: Severity.CRITICAL },
-	[ChannelCategory.GAS]: { type: 'co', severity: Severity.CRITICAL },
+	[ChannelCategory.GAS]: { type: 'gas', severity: Severity.CRITICAL },
 	[ChannelCategory.MOTION]: { type: 'intrusion', severity: Severity.WARNING },
 	[ChannelCategory.OCCUPANCY]: { type: 'intrusion', severity: Severity.WARNING },
 	[ChannelCategory.CONTACT]: { type: 'entry_open', severity: Severity.INFO },

@@ -114,7 +114,7 @@ describe('SecuritySensorsProvider', () => {
 		expect(signal.activeAlertsCount).toBe(1);
 		expect(signal.highestSeverity).toBe(Severity.CRITICAL);
 		expect(signal.hasCriticalAlert).toBe(true);
-		expect(signal.lastEvent?.type).toBe('co');
+		expect(signal.lastEvent?.type).toBe('gas');
 	});
 
 	it('should map motion sensor to warning severity', async () => {
