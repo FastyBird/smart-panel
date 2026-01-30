@@ -34,3 +34,15 @@ export const SEVERITY_RANK: Record<Severity, number> = {
 	[Severity.WARNING]: 1,
 	[Severity.CRITICAL]: 2,
 };
+
+export enum SecurityAlertType {
+	INTRUSION = 'intrusion',
+	ENTRY_OPEN = 'entry_open',
+	SMOKE = 'smoke',
+	CO = 'co',
+	WATER_LEAK = 'water_leak',
+	GAS = 'gas',
+	TAMPER = 'tamper',
+	FAULT = 'fault',
+	DEVICE_OFFLINE = 'device_offline',
+}

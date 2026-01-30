@@ -4,25 +4,18 @@ import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices
 import { ChannelEntity, ChannelPropertyEntity } from '../../devices/entities/devices.entity';
 import { PropertyValueState } from '../../devices/models/property-value-state.model';
 import { DevicesService } from '../../devices/services/devices.service';
-import { SecuritySignal } from '../contracts/security-signal.type';
+import { SecurityAlert, SecuritySignal } from '../contracts/security-signal.type';
 import { SecurityStateProviderInterface } from '../contracts/security-state-provider.interface';
-import { SEVERITY_RANK, Severity } from '../security.constants';
+import { SEVERITY_RANK, SecurityAlertType, Severity } from '../security.constants';
 
-interface SensorAlert {
-	type: string;
-	severity: Severity;
-	sourceDeviceId: string;
-	timestamp: string;
-}
-
-const CHANNEL_ALERT_MAP: Partial<Record<ChannelCategory, { type: string; severity: Severity }>> = {
-	[ChannelCategory.SMOKE]: { type: 'smoke', severity: Severity.CRITICAL },
-	[ChannelCategory.CARBON_MONOXIDE]: { type: 'co', severity: Severity.CRITICAL },
-	[ChannelCategory.LEAK]: { type: 'water_leak', severity: Severity.CRITICAL },
-	[ChannelCategory.GAS]: { type: 'gas', severity: Severity.CRITICAL },
-	[ChannelCategory.MOTION]: { type: 'intrusion', severity: Severity.WARNING },
-	[ChannelCategory.OCCUPANCY]: { type: 'intrusion', severity: Severity.WARNING },
-	[ChannelCategory.CONTACT]: { type: 'entry_open', severity: Severity.INFO },
+const CHANNEL_ALERT_MAP: Partial<Record<ChannelCategory, { type: SecurityAlertType; severity: Severity }>> = {
+	[ChannelCategory.SMOKE]: { type: SecurityAlertType.SMOKE, severity: Severity.CRITICAL },
+	[ChannelCategory.CARBON_MONOXIDE]: { type: SecurityAlertType.CO, severity: Severity.CRITICAL },
+	[ChannelCategory.LEAK]: { type: SecurityAlertType.WATER_LEAK, severity: Severity.CRITICAL },
+	[ChannelCategory.GAS]: { type: SecurityAlertType.GAS, severity: Severity.CRITICAL },
+	[ChannelCategory.MOTION]: { type: SecurityAlertType.INTRUSION, severity: Severity.WARNING },
+	[ChannelCategory.OCCUPANCY]: { type: SecurityAlertType.INTRUSION, severity: Severity.WARNING },
+	[ChannelCategory.CONTACT]: { type: SecurityAlertType.ENTRY_OPEN, severity: Severity.INFO },
 };
 
 @Injectable()
@@ -45,6 +38,7 @@ export class SecuritySensorsProvider implements SecurityStateProviderInterface {
 				highestSeverity: Severity.INFO,
 				activeAlertsCount: 0,
 				hasCriticalAlert: false,
+				activeAlerts: [],
 			};
 		}
 	}
@@ -54,7 +48,7 @@ export class SecuritySensorsProvider implements SecurityStateProviderInterface {
 
 		const sensorDevices = devices.filter((device) => device.category === DeviceCategory.SENSOR);
 
-		const alerts: SensorAlert[] = [];
+		const alerts: SecurityAlert[] = [];
 
 		for (const device of sensorDevices) {
 			const channels = device.channels ?? [];
@@ -74,10 +68,12 @@ export class SecuritySensorsProvider implements SecurityStateProviderInterface {
 
 				if (detectedResult.triggered) {
 					alerts.push({
+						id: `sensor:${device.id}:${alertDef.type}`,
 						type: alertDef.type,
 						severity: alertDef.severity,
 						sourceDeviceId: device.id,
 						timestamp: detectedResult.lastUpdated ?? new Date().toISOString(),
+						acknowledged: false,
 					});
 				}
 			}
@@ -88,6 +84,7 @@ export class SecuritySensorsProvider implements SecurityStateProviderInterface {
 				highestSeverity: Severity.INFO,
 				activeAlertsCount: 0,
 				hasCriticalAlert: false,
+				activeAlerts: [],
 			};
 		}
 
@@ -99,7 +96,7 @@ export class SecuritySensorsProvider implements SecurityStateProviderInterface {
 				return severityDiff;
 			}
 
-			return a.sourceDeviceId.localeCompare(b.sourceDeviceId);
+			return a.id.localeCompare(b.id);
 		});
 
 		const highestSeverity = alerts[0].severity;
@@ -110,6 +107,7 @@ export class SecuritySensorsProvider implements SecurityStateProviderInterface {
 			highestSeverity,
 			activeAlertsCount: alerts.length,
 			hasCriticalAlert,
+			activeAlerts: alerts,
 			lastEvent: {
 				type: lastAlert.type,
 				timestamp: lastAlert.timestamp,

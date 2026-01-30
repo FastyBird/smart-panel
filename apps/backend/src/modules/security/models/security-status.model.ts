@@ -2,7 +2,7 @@ import { Expose, Type } from 'class-transformer';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import { AlarmState, ArmedState, Severity } from '../security.constants';
+import { AlarmState, ArmedState, SecurityAlertType, Severity } from '../security.constants';
 
 @ApiSchema({ name: 'SecurityModuleDataLastEvent' })
 export class SecurityLastEventModel {
@@ -38,6 +38,81 @@ export class SecurityLastEventModel {
 	})
 	@Expose()
 	severity?: Severity;
+}
+
+@ApiSchema({ name: 'SecurityModuleDataAlert' })
+export class SecurityAlertModel {
+	@ApiProperty({
+		description: 'Stable unique identifier for the alert',
+		type: 'string',
+		example: 'sensor:dev_123:smoke',
+	})
+	@Expose()
+	id: string;
+
+	@ApiProperty({
+		description: 'Type of the security alert',
+		enum: SecurityAlertType,
+		example: SecurityAlertType.SMOKE,
+	})
+	@Expose()
+	type: SecurityAlertType;
+
+	@ApiProperty({
+		description: 'Severity of the alert',
+		enum: Severity,
+		example: Severity.CRITICAL,
+	})
+	@Expose()
+	severity: Severity;
+
+	@ApiProperty({
+		description: 'ISO 8601 timestamp when the alert was detected',
+		type: 'string',
+		format: 'date-time',
+		example: '2025-01-18T12:00:00Z',
+	})
+	@Expose()
+	timestamp: string;
+
+	@ApiProperty({
+		description: 'Whether the alert has been acknowledged',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose()
+	acknowledged: boolean;
+
+	@ApiPropertyOptional({
+		description: 'ID of the source device',
+		type: 'string',
+		name: 'source_device_id',
+	})
+	@Expose({ name: 'source_device_id' })
+	sourceDeviceId?: string;
+
+	@ApiPropertyOptional({
+		description: 'ID of the source channel',
+		type: 'string',
+		name: 'source_channel_id',
+	})
+	@Expose({ name: 'source_channel_id' })
+	sourceChannelId?: string;
+
+	@ApiPropertyOptional({
+		description: 'ID of the source property',
+		type: 'string',
+		name: 'source_property_id',
+	})
+	@Expose({ name: 'source_property_id' })
+	sourcePropertyId?: string;
+
+	@ApiPropertyOptional({
+		description: 'Human-readable summary of the alert',
+		type: 'string',
+	})
+	@Expose()
+	message?: string;
 }
 
 @ApiSchema({ name: 'SecurityModuleDataStatus' })
@@ -88,6 +163,15 @@ export class SecurityStatusModel {
 	})
 	@Expose({ name: 'has_critical_alert' })
 	hasCriticalAlert: boolean;
+
+	@ApiProperty({
+		description: 'List of currently active security alerts',
+		type: () => [SecurityAlertModel],
+		name: 'active_alerts',
+	})
+	@Expose({ name: 'active_alerts' })
+	@Type(() => SecurityAlertModel)
+	activeAlerts: SecurityAlertModel[];
 
 	@ApiPropertyOptional({
 		description: 'Most recent security event',

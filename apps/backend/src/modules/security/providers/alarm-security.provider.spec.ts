@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
 import { DevicesService } from '../../devices/services/devices.service';
-import { AlarmState, ArmedState, Severity } from '../security.constants';
+import { AlarmState, ArmedState, SecurityAlertType, Severity } from '../security.constants';
 
 import { AlarmSecurityProvider } from './alarm-security.provider';
 
@@ -398,5 +398,114 @@ describe('AlarmSecurityProvider', () => {
 		const signal = await provider.getSignals();
 
 		expect(signal.alarmState).toBe(AlarmState.IDLE);
+	});
+
+	// --- activeAlerts specific tests ---
+
+	describe('activeAlerts', () => {
+		it('should emit intrusion alert when triggered', async () => {
+			devicesService.findAll.mockResolvedValue([
+				makeAlarmDevice('dev-1', [makeProperty(PropertyCategory.ALARM_STATE, 'triggered')]),
+			]);
+
+			const signal = await provider.getSignals();
+
+			expect(signal.activeAlerts).toBeDefined();
+			expect(signal.activeAlerts).toHaveLength(1);
+
+			const alert = signal.activeAlerts?.[0];
+			expect(alert?.id).toBe(`alarm:dev-1:${SecurityAlertType.INTRUSION}`);
+			expect(alert?.type).toBe(SecurityAlertType.INTRUSION);
+			expect(alert?.severity).toBe(Severity.CRITICAL);
+			expect(alert?.acknowledged).toBe(false);
+		});
+
+		it('should emit tamper alert when tampered', async () => {
+			devicesService.findAll.mockResolvedValue([
+				makeAlarmDevice('dev-1', [makeProperty(PropertyCategory.TAMPERED, true)]),
+			]);
+
+			const signal = await provider.getSignals();
+
+			const tamperAlerts = (signal.activeAlerts ?? []).filter((a) => a.type === SecurityAlertType.TAMPER);
+			expect(tamperAlerts).toHaveLength(1);
+			expect(tamperAlerts[0].id).toBe(`alarm:dev-1:${SecurityAlertType.TAMPER}`);
+			expect(tamperAlerts[0].severity).toBe(Severity.CRITICAL);
+		});
+
+		it('should emit fault alert when fault > 0', async () => {
+			devicesService.findAll.mockResolvedValue([makeAlarmDevice('dev-1', [makeProperty(PropertyCategory.FAULT, 3)])]);
+
+			const signal = await provider.getSignals();
+
+			const faultAlerts = (signal.activeAlerts ?? []).filter((a) => a.type === SecurityAlertType.FAULT);
+			expect(faultAlerts).toHaveLength(1);
+			expect(faultAlerts[0].id).toBe(`alarm:dev-1:${SecurityAlertType.FAULT}`);
+			expect(faultAlerts[0].severity).toBe(Severity.WARNING);
+		});
+
+		it('should emit fault alert when active is false', async () => {
+			devicesService.findAll.mockResolvedValue([
+				makeAlarmDevice('dev-1', [makeProperty(PropertyCategory.ACTIVE, false)]),
+			]);
+
+			const signal = await provider.getSignals();
+
+			const faultAlerts = (signal.activeAlerts ?? []).filter((a) => a.type === SecurityAlertType.FAULT);
+			expect(faultAlerts).toHaveLength(1);
+		});
+
+		it('should emit no alerts when all normal', async () => {
+			devicesService.findAll.mockResolvedValue([
+				makeAlarmDevice('dev-1', [
+					makeProperty(PropertyCategory.STATE, 'disarmed'),
+					makeProperty(PropertyCategory.ALARM_STATE, 'idle'),
+					makeProperty(PropertyCategory.ACTIVE, true),
+					makeProperty(PropertyCategory.FAULT, 0),
+				]),
+			]);
+
+			const signal = await provider.getSignals();
+
+			expect(signal.activeAlerts).toEqual([]);
+		});
+
+		it('should emit multiple alerts for multiple exception states on same device', async () => {
+			devicesService.findAll.mockResolvedValue([
+				makeAlarmDevice('dev-1', [
+					makeProperty(PropertyCategory.ALARM_STATE, 'triggered'),
+					makeProperty(PropertyCategory.TAMPERED, true),
+				]),
+			]);
+
+			const signal = await provider.getSignals();
+
+			expect(signal.activeAlerts?.length).toBeGreaterThanOrEqual(2);
+
+			const types = (signal.activeAlerts ?? []).map((a) => a.type);
+			expect(types).toContain(SecurityAlertType.INTRUSION);
+			expect(types).toContain(SecurityAlertType.TAMPER);
+		});
+
+		it('should produce deterministic alert IDs', async () => {
+			devicesService.findAll.mockResolvedValue([
+				makeAlarmDevice('dev-1', [makeProperty(PropertyCategory.ALARM_STATE, 'triggered')]),
+			]);
+
+			const signal1 = await provider.getSignals();
+			const signal2 = await provider.getSignals();
+
+			expect(signal1.activeAlerts?.[0].id).toBe(signal2.activeAlerts?.[0].id);
+		});
+
+		it('should include sourceDeviceId in alerts', async () => {
+			devicesService.findAll.mockResolvedValue([
+				makeAlarmDevice('dev-abc', [makeProperty(PropertyCategory.TAMPERED, true)]),
+			]);
+
+			const signal = await provider.getSignals();
+
+			expect(signal.activeAlerts?.[0].sourceDeviceId).toBe('dev-abc');
+		});
 	});
 });
