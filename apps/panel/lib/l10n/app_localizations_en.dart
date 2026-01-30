@@ -1400,6 +1400,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get media_capability_none => 'No capabilities';
 
   @override
+  String get media_no_endpoints_title => 'No Media Devices';
+
+  @override
+  String get media_no_endpoints_description => 'This room has no media-capable devices. Add a TV, speaker, or streamer to get started.';
+
+  @override
+  String get media_no_bindings_description => 'Media activities are being configured. Pull to refresh.';
+
+  @override
+  String get media_ws_offline_title => 'Connection Lost';
+
+  @override
+  String get media_ws_offline_description => 'Media controls require a live connection. Reconnecting...';
+
+  @override
   String get domain_sensors => 'Sensors';
 
   @override

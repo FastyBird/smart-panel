@@ -128,6 +128,9 @@ export class SpaceMediaActivityService {
 			endpointMap.set(ep.endpointId, ep);
 		}
 
+		// Guardrails: warn when bindings reference missing endpoints or capabilities
+		this.logBindingGuardrails(spaceId, activityKey, binding, endpointMap);
+
 		// Build execution plan
 		const plan = this.buildExecutionPlan(spaceId, activityKey, binding, endpointMap);
 
@@ -144,6 +147,12 @@ export class SpaceMediaActivityService {
 				lastResult: null,
 			});
 		} else {
+			if (record.activityKey && record.activityKey !== activityKey) {
+				this.logger.debug(
+					`Switching activity: ${record.activityKey} → ${activityKey} for space=${spaceId} (previous state=${record.state})`,
+				);
+			}
+
 			record.activityKey = activityKey;
 			record.state = MediaActivationState.ACTIVATING;
 			record.activatedAt = new Date();
@@ -529,6 +538,56 @@ export class SpaceMediaActivityService {
 			resolved,
 			steps,
 		};
+	}
+
+	/**
+	 * Log warn-level messages when bindings reference missing endpoints or
+	 * when overrides will be ignored due to missing capabilities.
+	 */
+	private logBindingGuardrails(
+		spaceId: string,
+		activityKey: MediaActivityKey,
+		binding: {
+			displayEndpointId: string | null;
+			audioEndpointId: string | null;
+			sourceEndpointId: string | null;
+			remoteEndpointId: string | null;
+			displayInputId: string | null;
+			audioVolumePreset: number | null;
+		},
+		endpointMap: Map<string, DerivedMediaEndpointModel>,
+	): void {
+		const ctx = `space=${spaceId} activity=${activityKey}`;
+
+		// Warn about missing endpoint references
+		if (binding.displayEndpointId && !endpointMap.has(binding.displayEndpointId)) {
+			this.logger.warn(`Binding references missing display endpoint=${binding.displayEndpointId} (${ctx})`);
+		}
+		if (binding.audioEndpointId && !endpointMap.has(binding.audioEndpointId)) {
+			this.logger.warn(`Binding references missing audio endpoint=${binding.audioEndpointId} (${ctx})`);
+		}
+		if (binding.sourceEndpointId && !endpointMap.has(binding.sourceEndpointId)) {
+			this.logger.warn(`Binding references missing source endpoint=${binding.sourceEndpointId} (${ctx})`);
+		}
+		if (binding.remoteEndpointId && !endpointMap.has(binding.remoteEndpointId)) {
+			this.logger.warn(`Binding references missing remote endpoint=${binding.remoteEndpointId} (${ctx})`);
+		}
+
+		// Warn about overrides that will be ignored due to missing capabilities
+		const audioEndpoint = binding.audioEndpointId ? endpointMap.get(binding.audioEndpointId) : undefined;
+		const displayEndpoint = binding.displayEndpointId ? endpointMap.get(binding.displayEndpointId) : undefined;
+
+		if (audioEndpoint && binding.audioVolumePreset !== null && !audioEndpoint.capabilities.volume) {
+			this.logger.warn(
+				`Volume preset=${binding.audioVolumePreset} ignored: ${audioEndpoint.name} has no volume capability (${ctx})`,
+			);
+		}
+
+		if (displayEndpoint && binding.displayInputId && !displayEndpoint.capabilities.inputSelect) {
+			this.logger.warn(
+				`Display input="${binding.displayInputId}" ignored: ${displayEndpoint.name} has no inputSelect capability (${ctx})`,
+			);
+		}
 	}
 
 	/**

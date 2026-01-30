@@ -1832,6 +1832,26 @@
   "@media_capability_none": {
     "description": "Shown when device has no media capabilities"
   },
+  "media_no_endpoints_title": "No Media Devices",
+  "@media_no_endpoints_title": {
+    "description": "Title shown when space has no media-capable devices"
+  },
+  "media_no_endpoints_description": "This room has no media-capable devices. Add a TV, speaker, or streamer to get started.",
+  "@media_no_endpoints_description": {
+    "description": "Description shown when space has no media-capable devices"
+  },
+  "media_no_bindings_description": "Media activities are being configured. Pull to refresh.",
+  "@media_no_bindings_description": {
+    "description": "Description shown when endpoints exist but no bindings are configured yet"
+  },
+  "media_ws_offline_title": "Connection Lost",
+  "@media_ws_offline_title": {
+    "description": "Title shown when WebSocket connection is unavailable"
+  },
+  "media_ws_offline_description": "Media controls require a live connection. Reconnecting...",
+  "@media_ws_offline_description": {
+    "description": "Description shown when WebSocket connection is unavailable"
+  },
   "domain_sensors": "Sensors",
   "@domain_sensors": {
     "description": "Title for sensors domain view in room navigation"

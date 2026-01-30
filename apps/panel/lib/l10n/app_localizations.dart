@@ -2633,6 +2633,36 @@ abstract class AppLocalizations {
   /// **'No capabilities'**
   String get media_capability_none;
 
+  /// Title shown when space has no media-capable devices
+  ///
+  /// In en, this message translates to:
+  /// **'No Media Devices'**
+  String get media_no_endpoints_title;
+
+  /// Description shown when space has no media-capable devices
+  ///
+  /// In en, this message translates to:
+  /// **'This room has no media-capable devices. Add a TV, speaker, or streamer to get started.'**
+  String get media_no_endpoints_description;
+
+  /// Description shown when endpoints exist but no bindings are configured yet
+  ///
+  /// In en, this message translates to:
+  /// **'Media activities are being configured. Pull to refresh.'**
+  String get media_no_bindings_description;
+
+  /// Title shown when WebSocket connection is unavailable
+  ///
+  /// In en, this message translates to:
+  /// **'Connection Lost'**
+  String get media_ws_offline_title;
+
+  /// Description shown when WebSocket connection is unavailable
+  ///
+  /// In en, this message translates to:
+  /// **'Media controls require a live connection. Reconnecting...'**
+  String get media_ws_offline_description;
+
   /// Title for sensors domain view in room navigation
   ///
   /// In en, this message translates to:

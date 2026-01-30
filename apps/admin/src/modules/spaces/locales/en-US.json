@@ -562,8 +562,8 @@
 				"capabilities": "Capabilities"
 			},
 			"empty": {
-				"title": "No media endpoints found",
-				"subtitle": "Check device capabilities or integration configuration."
+				"title": "No media endpoints detected",
+				"subtitle": "This space has no media-capable devices. Add a TV, speaker, receiver, or streamer to enable the Media domain."
 			}
 		},
 		"endpointTypes": {
