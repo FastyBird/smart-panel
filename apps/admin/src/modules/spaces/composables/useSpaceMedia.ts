@@ -569,8 +569,6 @@ export const useSpaceMedia = (spaceId: Ref<string | undefined>): IUseSpaceMedia 
 			}
 
 			return transformDryRunPreview(responseData.data as unknown as Record<string, unknown>);
-		} catch (e: unknown) {
-			throw e;
 		} finally {
 			previewing.value = false;
 		}
