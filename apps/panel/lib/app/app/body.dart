@@ -77,6 +77,7 @@ class _AppBodyState extends State<AppBody> {
     _systemConfigRepository.addListener(_syncStateWithRepository);
 
     // Wire security status to overlay controller
+    _onSecurityStatusChanged();
     _securityStatusRepository.addListener(_onSecurityStatusChanged);
 
     // Listen for socket connection changes

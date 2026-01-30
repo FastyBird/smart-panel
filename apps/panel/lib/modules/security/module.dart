@@ -14,7 +14,6 @@ class SecurityModuleService {
 		required SocketService socketService,
 	}) : _socketService = socketService {
 		_statusRepository = SecurityStatusRepository(dio: dio);
-		locator.registerSingleton(_statusRepository);
 	}
 
 	SecurityStatusRepository get statusRepository => _statusRepository;

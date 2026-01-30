@@ -5,6 +5,7 @@ import 'package:fastybird_smart_panel/core/widgets/system_pages/export.dart';
 import 'package:fastybird_smart_panel/modules/security/models/security_alert.dart';
 import 'package:fastybird_smart_panel/modules/security/services/security_overlay_controller.dart';
 import 'package:fastybird_smart_panel/modules/security/types/security.dart';
+import 'package:fastybird_smart_panel/modules/security/utils/security_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 import 'package:provider/provider.dart';
@@ -183,9 +184,9 @@ class SecurityScreen extends StatelessWidget {
 			child: Row(
 				children: [
 					Icon(
-						_alertTypeIcon(alert.type),
+						alertTypeIcon(alert.type),
 						size: screenService.scale(20),
-						color: _severityColor(alert.severity, isDark),
+						color: severityColor(alert.severity, isDark),
 					),
 					SizedBox(width: AppSpacings.pMd),
 					Expanded(
@@ -239,47 +240,17 @@ class SecurityScreen extends StatelessWidget {
 				vertical: AppSpacings.pXs,
 			),
 			decoration: BoxDecoration(
-				color: _severityBgColor(severity, isDark),
+				color: severityBgColor(severity, isDark),
 				borderRadius: BorderRadius.circular(AppBorderRadius.small),
 			),
 			child: Text(
 				label,
 				style: TextStyle(
-					color: _severityColor(severity, isDark),
+					color: severityColor(severity, isDark),
 					fontSize: AppFontSize.extraSmall,
 					fontWeight: FontWeight.w600,
 				),
 			),
 		);
-	}
-
-	IconData _alertTypeIcon(SecurityAlertType type) {
-		return switch (type) {
-			SecurityAlertType.smoke => MdiIcons.smokingOff,
-			SecurityAlertType.co => MdiIcons.moleculeCo,
-			SecurityAlertType.waterLeak => MdiIcons.waterAlert,
-			SecurityAlertType.intrusion => MdiIcons.doorOpen,
-			SecurityAlertType.entryOpen => MdiIcons.doorOpen,
-			SecurityAlertType.gas => MdiIcons.gasCylinder,
-			SecurityAlertType.tamper => MdiIcons.alertCircle,
-			SecurityAlertType.fault => MdiIcons.alertOctagon,
-			SecurityAlertType.deviceOffline => MdiIcons.lanDisconnect,
-		};
-	}
-
-	Color _severityColor(Severity severity, bool isDark) {
-		return switch (severity) {
-			Severity.critical => SystemPagesTheme.error(isDark),
-			Severity.warning => SystemPagesTheme.warning(isDark),
-			Severity.info => SystemPagesTheme.info(isDark),
-		};
-	}
-
-	Color _severityBgColor(Severity severity, bool isDark) {
-		return switch (severity) {
-			Severity.critical => SystemPagesTheme.errorLight(isDark),
-			Severity.warning => SystemPagesTheme.warningLight(isDark),
-			Severity.info => SystemPagesTheme.infoLight(isDark),
-		};
 	}
 }

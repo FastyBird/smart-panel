@@ -13,7 +13,7 @@ class SecurityStatusRepository extends ChangeNotifier {
 
 	Future<void> fetchStatus() async {
 		try {
-			final response = await _dio.get('/v1/modules/security/status');
+			final response = await _dio.get('/modules/security/status');
 
 			if (response.statusCode == 200 && response.data != null) {
 				final data = response.data is Map<String, dynamic>
