@@ -12,6 +12,8 @@ import { DerivedMediaEndpointModel } from '../models/derived-media-endpoint.mode
 import {
 	MediaActivityActivationResultModel,
 	MediaActivityControlTargetsModel,
+	MediaActivityDryRunPreviewModel,
+	MediaActivityDryRunWarningModel,
 	MediaActivityExecutionPlanModel,
 	MediaActivityExecutionStepModel,
 	MediaActivityLastResultModel,
@@ -246,6 +248,107 @@ export class SpaceMediaActivityService {
 				summary: lastResult,
 			};
 		}
+	}
+
+	/**
+	 * Preview (dry-run) a media activity activation without executing any commands.
+	 * Returns the resolved execution plan, step labels, and skip warnings.
+	 */
+	async preview(spaceId: string, activityKey: MediaActivityKey): Promise<MediaActivityDryRunPreviewModel> {
+		await this.spacesService.getOneOrThrow(spaceId);
+
+		if (!Object.values(MediaActivityKey).includes(activityKey)) {
+			throw new SpacesValidationException(`Invalid activity key: ${activityKey}`);
+		}
+
+		if (activityKey === MediaActivityKey.OFF) {
+			throw new SpacesValidationException('Cannot preview the "off" activity');
+		}
+
+		// Load binding for activity key
+		const bindings = await this.bindingService.findBySpace(spaceId);
+		const binding = bindings.find((b) => b.activityKey === activityKey);
+
+		if (!binding) {
+			throw new SpacesValidationException(
+				`No binding found for activity "${activityKey}" in space ${spaceId}. ` +
+					`Please call POST /spaces/${spaceId}/media/bindings/apply-defaults first.`,
+			);
+		}
+
+		// Load derived endpoints
+		const endpointsResult = await this.derivedEndpointService.buildEndpointsForSpace(spaceId);
+		const endpointMap = new Map<string, DerivedMediaEndpointModel>();
+
+		for (const ep of endpointsResult.endpoints) {
+			endpointMap.set(ep.endpointId, ep);
+		}
+
+		// Build execution plan (same logic as real activation)
+		const plan = this.buildExecutionPlan(spaceId, activityKey, binding, endpointMap);
+
+		// Compute skip warnings
+		const warnings: MediaActivityDryRunWarningModel[] = [];
+
+		// Check for missing capabilities
+		const displayEndpoint = binding.displayEndpointId ? endpointMap.get(binding.displayEndpointId) : undefined;
+		const audioEndpoint = binding.audioEndpointId ? endpointMap.get(binding.audioEndpointId) : undefined;
+		const sourceEndpoint = binding.sourceEndpointId ? endpointMap.get(binding.sourceEndpointId) : undefined;
+
+		if (binding.displayEndpointId && !displayEndpoint) {
+			warnings.push({ label: `Display endpoint not found (${binding.displayEndpointId})` });
+		}
+
+		if (binding.audioEndpointId && !audioEndpoint) {
+			warnings.push({ label: `Audio endpoint not found (${binding.audioEndpointId})` });
+		}
+
+		if (binding.sourceEndpointId && !sourceEndpoint) {
+			warnings.push({ label: `Source endpoint not found (${binding.sourceEndpointId})` });
+		}
+
+		if (binding.remoteEndpointId && !endpointMap.get(binding.remoteEndpointId)) {
+			warnings.push({ label: `Remote endpoint not found (${binding.remoteEndpointId})` });
+		}
+
+		// Check for missing capabilities on existing endpoints
+		if (audioEndpoint && binding.audioVolumePreset !== null && !audioEndpoint.capabilities.volume) {
+			warnings.push({ label: `Volume preset skipped (${audioEndpoint.name} has no volume capability)` });
+		}
+
+		if (displayEndpoint && binding.displayInputId && !displayEndpoint.capabilities.inputSelect) {
+			warnings.push({ label: `Display input preset skipped (${displayEndpoint.name} has no input select capability)` });
+		}
+
+		if (displayEndpoint && !displayEndpoint.capabilities.power) {
+			warnings.push({ label: `Display power-on skipped (${displayEndpoint.name} has no power capability)` });
+		}
+
+		if (audioEndpoint && !audioEndpoint.capabilities.power) {
+			warnings.push({ label: `Audio power-on skipped (${audioEndpoint.name} has no power capability)` });
+		}
+
+		if (sourceEndpoint && !sourceEndpoint.capabilities.power) {
+			warnings.push({ label: `Source power-on skipped (${sourceEndpoint.name} has no power capability)` });
+		}
+
+		// Add step indices to plan steps for display
+		const indexedPlan = plan.steps.map((step, index) => ({
+			...step,
+			label: step.label ?? `Step ${index + 1}: ${step.action.kind} on ${step.targetDeviceId}`,
+		}));
+
+		this.logger.debug(
+			`Dry-run preview: space=${spaceId} activity=${activityKey} steps=${indexedPlan.length} warnings=${warnings.length}`,
+		);
+
+		return {
+			spaceId,
+			activityKey,
+			resolved: plan.resolved,
+			plan: indexedPlan,
+			warnings,
+		};
 	}
 
 	/**

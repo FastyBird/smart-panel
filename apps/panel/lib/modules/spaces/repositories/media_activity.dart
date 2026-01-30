@@ -246,6 +246,37 @@ class MediaActivityRepository extends ChangeNotifier {
 		return null;
 	}
 
+	Future<MediaDryRunPreviewModel?> previewActivity(
+		String spaceId,
+		MediaActivityKey activityKey,
+	) async {
+		try {
+			final keyStr = mediaActivityKeyToString(activityKey);
+			final response = await _dio.post(
+				'/modules/spaces/spaces/$spaceId/media/activities/$keyStr/preview',
+			);
+
+			final statusCode = response.statusCode ?? 0;
+			if (statusCode >= 200 && statusCode < 300) {
+				final data = response.data['data'] as Map<String, dynamic>;
+				return MediaDryRunPreviewModel.fromJson(data);
+			}
+		} on DioException catch (e) {
+			if (kDebugMode) {
+				debugPrint(
+					'[MEDIA ACTIVITY] API error previewing $activityKey for $spaceId: ${e.response?.statusCode}',
+				);
+			}
+		} catch (e) {
+			if (kDebugMode) {
+				debugPrint(
+					'[MEDIA ACTIVITY] Error previewing $activityKey for $spaceId: $e',
+				);
+			}
+		}
+		return null;
+	}
+
 	Future<MediaActivationResultModel?> deactivateActivity(String spaceId) async {
 		// Optimistic update
 		_activeStates[spaceId] = MediaActiveStateModel(
