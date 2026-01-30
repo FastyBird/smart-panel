@@ -40,14 +40,14 @@ describe('SecurityAggregatorService', () => {
 		const provider1 = new FakeProvider('a', {});
 		const provider2 = new FakeProvider('b', {});
 
-		jest.spyOn(provider1, 'getSignals');
-		jest.spyOn(provider2, 'getSignals');
+		const spy1 = jest.spyOn(provider1, 'getSignals');
+		const spy2 = jest.spyOn(provider2, 'getSignals');
 
 		const aggregator = await createAggregator([provider1, provider2]);
 		await aggregator.aggregate();
 
-		expect(provider1.getSignals).toHaveBeenCalled();
-		expect(provider2.getSignals).toHaveBeenCalled();
+		expect(spy1).toHaveBeenCalled();
+		expect(spy2).toHaveBeenCalled();
 	});
 
 	it('should return defaults with empty providers', async () => {
@@ -164,8 +164,8 @@ describe('SecurityAggregatorService', () => {
 		const result = await aggregator.aggregate();
 
 		expect(result.lastEvent).toBeDefined();
-		expect(result.lastEvent!.type).toBe('new');
-		expect(result.lastEvent!.timestamp).toBe('2025-06-15T12:00:00Z');
+		expect(result.lastEvent?.type).toBe('new');
+		expect(result.lastEvent?.timestamp).toBe('2025-06-15T12:00:00Z');
 	});
 
 	it('should handle provider that throws', async () => {
@@ -176,10 +176,7 @@ describe('SecurityAggregatorService', () => {
 			},
 		};
 
-		const aggregator = await createAggregator([
-			badProvider,
-			new FakeProvider('good', { activeAlertsCount: 2 }),
-		]);
+		const aggregator = await createAggregator([badProvider, new FakeProvider('good', { activeAlertsCount: 2 })]);
 
 		const result = await aggregator.aggregate();
 
