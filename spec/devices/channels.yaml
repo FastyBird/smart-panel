@@ -888,7 +888,7 @@ alarm:
           by the integration or derived by the backend from state changes.
       permissions:
         - ro
-      data_type: object
+      data_type: string
       unit: null
       format: null
 
