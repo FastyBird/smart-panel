@@ -34,6 +34,71 @@ import { SpacesService } from './spaces.service';
 
 const STEP_TIMEOUT_MS = 5000;
 
+interface BindingDiagnostic {
+	slot: string;
+	label: string;
+}
+
+/**
+ * Shared diagnostic checks for a binding against a set of derived endpoints.
+ * Returns issues for missing endpoint references and capability mismatches.
+ */
+function diagnoseBinding(
+	binding: {
+		displayEndpointId: string | null;
+		audioEndpointId: string | null;
+		sourceEndpointId: string | null;
+		remoteEndpointId: string | null;
+		displayInputId: string | null;
+		audioVolumePreset: number | null;
+	},
+	endpointMap: Map<string, DerivedMediaEndpointModel>,
+): BindingDiagnostic[] {
+	const diagnostics: BindingDiagnostic[] = [];
+
+	// Missing endpoint references
+	const slots: { id: string | null; slot: string; name: string }[] = [
+		{ id: binding.displayEndpointId, slot: 'display', name: 'Display' },
+		{ id: binding.audioEndpointId, slot: 'audio', name: 'Audio' },
+		{ id: binding.sourceEndpointId, slot: 'source', name: 'Source' },
+		{ id: binding.remoteEndpointId, slot: 'remote', name: 'Remote' },
+	];
+
+	for (const { id, slot, name } of slots) {
+		if (id && !endpointMap.has(id)) {
+			diagnostics.push({ slot, label: `${name} endpoint not found (${id})` });
+		}
+	}
+
+	// Capability mismatches on existing endpoints
+	const audioEndpoint = binding.audioEndpointId ? endpointMap.get(binding.audioEndpointId) : undefined;
+	const displayEndpoint = binding.displayEndpointId ? endpointMap.get(binding.displayEndpointId) : undefined;
+	const sourceEndpoint = binding.sourceEndpointId ? endpointMap.get(binding.sourceEndpointId) : undefined;
+
+	if (audioEndpoint && binding.audioVolumePreset !== null && !audioEndpoint.capabilities.volume) {
+		diagnostics.push({ slot: 'audioVolumePreset', label: `Volume preset skipped (${audioEndpoint.name} has no volume capability)` });
+	}
+
+	if (displayEndpoint && binding.displayInputId && !displayEndpoint.capabilities.inputSelect) {
+		diagnostics.push({ slot: 'displayInputId', label: `Display input preset skipped (${displayEndpoint.name} has no input select capability)` });
+	}
+
+	// Missing power capabilities
+	if (displayEndpoint && !displayEndpoint.capabilities.power) {
+		diagnostics.push({ slot: 'displayPower', label: `Display power-on skipped (${displayEndpoint.name} has no power capability)` });
+	}
+
+	if (audioEndpoint && !audioEndpoint.capabilities.power) {
+		diagnostics.push({ slot: 'audioPower', label: `Audio power-on skipped (${audioEndpoint.name} has no power capability)` });
+	}
+
+	if (sourceEndpoint && !sourceEndpoint.capabilities.power) {
+		diagnostics.push({ slot: 'sourcePower', label: `Source power-on skipped (${sourceEndpoint.name} has no power capability)` });
+	}
+
+	return diagnostics;
+}
+
 interface ExecutionFailure {
 	stepIndex: number;
 	reason: string;
@@ -296,50 +361,9 @@ export class SpaceMediaActivityService {
 		// Build execution plan (same logic as real activation)
 		const plan = this.buildExecutionPlan(spaceId, activityKey, binding, endpointMap);
 
-		// Compute skip warnings
-		const warnings: MediaActivityDryRunWarningModel[] = [];
-
-		// Check for missing capabilities
-		const displayEndpoint = binding.displayEndpointId ? endpointMap.get(binding.displayEndpointId) : undefined;
-		const audioEndpoint = binding.audioEndpointId ? endpointMap.get(binding.audioEndpointId) : undefined;
-		const sourceEndpoint = binding.sourceEndpointId ? endpointMap.get(binding.sourceEndpointId) : undefined;
-
-		if (binding.displayEndpointId && !displayEndpoint) {
-			warnings.push({ label: `Display endpoint not found (${binding.displayEndpointId})` });
-		}
-
-		if (binding.audioEndpointId && !audioEndpoint) {
-			warnings.push({ label: `Audio endpoint not found (${binding.audioEndpointId})` });
-		}
-
-		if (binding.sourceEndpointId && !sourceEndpoint) {
-			warnings.push({ label: `Source endpoint not found (${binding.sourceEndpointId})` });
-		}
-
-		if (binding.remoteEndpointId && !endpointMap.get(binding.remoteEndpointId)) {
-			warnings.push({ label: `Remote endpoint not found (${binding.remoteEndpointId})` });
-		}
-
-		// Check for missing capabilities on existing endpoints
-		if (audioEndpoint && binding.audioVolumePreset !== null && !audioEndpoint.capabilities.volume) {
-			warnings.push({ label: `Volume preset skipped (${audioEndpoint.name} has no volume capability)` });
-		}
-
-		if (displayEndpoint && binding.displayInputId && !displayEndpoint.capabilities.inputSelect) {
-			warnings.push({ label: `Display input preset skipped (${displayEndpoint.name} has no input select capability)` });
-		}
-
-		if (displayEndpoint && !displayEndpoint.capabilities.power) {
-			warnings.push({ label: `Display power-on skipped (${displayEndpoint.name} has no power capability)` });
-		}
-
-		if (audioEndpoint && !audioEndpoint.capabilities.power) {
-			warnings.push({ label: `Audio power-on skipped (${audioEndpoint.name} has no power capability)` });
-		}
-
-		if (sourceEndpoint && !sourceEndpoint.capabilities.power) {
-			warnings.push({ label: `Source power-on skipped (${sourceEndpoint.name} has no power capability)` });
-		}
+		// Compute skip warnings from shared diagnostic helper
+		const diagnostics = diagnoseBinding(binding, endpointMap);
+		const warnings: MediaActivityDryRunWarningModel[] = diagnostics.map((d) => ({ label: d.label }));
 
 		// Add step indices to plan steps for display
 		const indexedPlan = plan.steps.map((step, index) => ({
@@ -557,36 +581,11 @@ export class SpaceMediaActivityService {
 		},
 		endpointMap: Map<string, DerivedMediaEndpointModel>,
 	): void {
+		const diagnostics = diagnoseBinding(binding, endpointMap);
 		const ctx = `space=${spaceId} activity=${activityKey}`;
 
-		// Warn about missing endpoint references
-		if (binding.displayEndpointId && !endpointMap.has(binding.displayEndpointId)) {
-			this.logger.warn(`Binding references missing display endpoint=${binding.displayEndpointId} (${ctx})`);
-		}
-		if (binding.audioEndpointId && !endpointMap.has(binding.audioEndpointId)) {
-			this.logger.warn(`Binding references missing audio endpoint=${binding.audioEndpointId} (${ctx})`);
-		}
-		if (binding.sourceEndpointId && !endpointMap.has(binding.sourceEndpointId)) {
-			this.logger.warn(`Binding references missing source endpoint=${binding.sourceEndpointId} (${ctx})`);
-		}
-		if (binding.remoteEndpointId && !endpointMap.has(binding.remoteEndpointId)) {
-			this.logger.warn(`Binding references missing remote endpoint=${binding.remoteEndpointId} (${ctx})`);
-		}
-
-		// Warn about overrides that will be ignored due to missing capabilities
-		const audioEndpoint = binding.audioEndpointId ? endpointMap.get(binding.audioEndpointId) : undefined;
-		const displayEndpoint = binding.displayEndpointId ? endpointMap.get(binding.displayEndpointId) : undefined;
-
-		if (audioEndpoint && binding.audioVolumePreset !== null && !audioEndpoint.capabilities.volume) {
-			this.logger.warn(
-				`Volume preset=${binding.audioVolumePreset} ignored: ${audioEndpoint.name} has no volume capability (${ctx})`,
-			);
-		}
-
-		if (displayEndpoint && binding.displayInputId && !displayEndpoint.capabilities.inputSelect) {
-			this.logger.warn(
-				`Display input="${binding.displayInputId}" ignored: ${displayEndpoint.name} has no inputSelect capability (${ctx})`,
-			);
+		for (const d of diagnostics) {
+			this.logger.warn(`${d.label} (${ctx})`);
 		}
 	}
 
