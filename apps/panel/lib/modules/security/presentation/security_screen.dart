@@ -175,11 +175,12 @@ class SecurityScreen extends StatelessWidget {
 						SystemPagesTheme.error(isDark),
 						SystemPagesTheme.errorLight(isDark),
 					),
-				_buildCounterChip(
-					'Closed: ${summary.closedCount}',
-					SystemPagesTheme.success(isDark),
-					SystemPagesTheme.successLight(isDark),
-				),
+				if (summary.closedCount > 0)
+					_buildCounterChip(
+						'Closed: ${summary.closedCount}',
+						SystemPagesTheme.success(isDark),
+						SystemPagesTheme.successLight(isDark),
+					),
 				if (summary.unknownCount > 0)
 					_buildCounterChip(
 						'Unknown: ${summary.unknownCount}',
