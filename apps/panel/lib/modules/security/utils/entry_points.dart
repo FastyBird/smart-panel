@@ -48,8 +48,7 @@ EntryPointData? extractEntryPoint(DeviceView device) {
 	if (!contactChannel.hasDetected) {
 		isOpen = null;
 	} else {
-		final detected = contactChannel.detectedProp;
-		isOpen = detected.isDetected;
+		isOpen = contactChannel.detected;
 	}
 
 	return EntryPointData(
