@@ -80,7 +80,10 @@ export class SecurityAggregatorService implements SecurityAggregatorInterface {
 
 			// lastEvent: newest timestamp
 			if (signal.lastEvent != null) {
-				if (newestEvent == null || signal.lastEvent.timestamp > newestEvent.timestamp) {
+				if (
+					newestEvent == null ||
+					new Date(signal.lastEvent.timestamp).getTime() > new Date(newestEvent.timestamp).getTime()
+				) {
 					newestEvent = signal.lastEvent;
 				}
 			}

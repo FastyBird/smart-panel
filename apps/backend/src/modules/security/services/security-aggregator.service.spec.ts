@@ -168,6 +168,24 @@ describe('SecurityAggregatorService', () => {
 		expect(result.lastEvent?.timestamp).toBe('2025-06-15T12:00:00Z');
 	});
 
+	it('should select newest lastEvent with different timezone formats', async () => {
+		const aggregator = await createAggregator([
+			new FakeProvider('a', {
+				// This is actually the newest instant (2025-06-15T17:00:00Z)
+				lastEvent: { type: 'newest', timestamp: '2025-06-15T12:00:00-05:00' },
+			}),
+			new FakeProvider('b', {
+				// 2025-06-15T12:00:00Z — earlier than provider a despite higher lexicographic value for the date part
+				lastEvent: { type: 'older', timestamp: '2025-06-15T12:00:00+00:00' },
+			}),
+		]);
+
+		const result = await aggregator.aggregate();
+
+		expect(result.lastEvent).toBeDefined();
+		expect(result.lastEvent?.type).toBe('newest');
+	});
+
 	it('should handle provider that throws', async () => {
 		const badProvider: SecurityStateProviderInterface = {
 			getKey: () => 'bad',
