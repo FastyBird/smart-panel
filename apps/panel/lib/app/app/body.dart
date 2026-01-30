@@ -414,8 +414,10 @@ class _AppBodyState extends State<AppBody> {
                 },
                 onOpenSecurity: () {
                   _securityOverlayController.acknowledgeCurrentAlerts();
+                  final navigatorState = _navigator.navigatorKey.currentState;
+                  if (navigatorState == null) return;
                   _securityOverlayController.setOnSecurityScreen(true);
-                  _navigator.navigatorKey.currentState?.push(
+                  navigatorState.push(
                     MaterialPageRoute(
                       builder: (context) => const SecurityScreen(),
                       settings: const RouteSettings(name: 'security'),

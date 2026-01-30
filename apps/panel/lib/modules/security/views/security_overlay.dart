@@ -1,7 +1,9 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
+import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/system_pages/export.dart';
+import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/security/models/security_alert.dart';
 import 'package:fastybird_smart_panel/modules/security/services/security_overlay_controller.dart';
 import 'package:fastybird_smart_panel/modules/security/utils/security_ui.dart';
@@ -70,7 +72,7 @@ class SecurityOverlay extends StatelessWidget {
 										),
 										SizedBox(height: AppSpacings.pMd),
 										...controller.overlayAlerts.map(
-											(alert) => _buildAlertRow(alert, isDark, screenService),
+											(alert) => _buildAlertRow(alert, isDark, screenService, context),
 										),
 										if (controller.sortedAlerts.length > 3)
 											Padding(
@@ -133,7 +135,10 @@ class SecurityOverlay extends StatelessWidget {
 		SecurityAlertModel alert,
 		bool isDark,
 		ScreenService screenService,
+		BuildContext context,
 	) {
+		final localizations = AppLocalizations.of(context)!;
+
 		return Padding(
 			padding: EdgeInsets.symmetric(vertical: AppSpacings.pXs),
 			child: Row(
@@ -157,7 +162,7 @@ class SecurityOverlay extends StatelessWidget {
 					),
 					SizedBox(width: AppSpacings.pSm),
 					Text(
-						_formatTime(alert.timestamp),
+						DatetimeUtils.formatTimeAgo(alert.timestamp, localizations),
 						style: TextStyle(
 							color: SystemPagesTheme.textMuted(isDark),
 							fontSize: AppFontSize.extraSmall,
@@ -166,14 +171,5 @@ class SecurityOverlay extends StatelessWidget {
 				],
 			),
 		);
-	}
-
-	String _formatTime(DateTime timestamp) {
-		final now = DateTime.now();
-		final diff = now.difference(timestamp);
-		if (diff.inSeconds < 60) return 'just now';
-		if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-		if (diff.inHours < 24) return '${diff.inHours}h ago';
-		return '${diff.inDays}d ago';
 	}
 }

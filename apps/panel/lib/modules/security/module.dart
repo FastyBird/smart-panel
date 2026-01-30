@@ -1,5 +1,4 @@
 import 'package:dio/dio.dart';
-import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/modules/security/constants.dart';
 import 'package:fastybird_smart_panel/modules/security/repositories/security_status.dart';
