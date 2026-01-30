@@ -5,6 +5,7 @@ import { SecuritySignal } from '../contracts/security-signal.type';
 import { SecurityStateProviderInterface } from '../contracts/security-state-provider.interface';
 import { SecurityLastEventModel, SecurityStatusModel } from '../models/security-status.model';
 import { SECURITY_STATE_PROVIDERS, SEVERITY_RANK, Severity } from '../security.constants';
+import { pickNewestEvent } from '../security.utils';
 
 @Injectable()
 export class SecurityAggregatorService implements SecurityAggregatorInterface {
@@ -82,15 +83,7 @@ export class SecurityAggregatorService implements SecurityAggregatorInterface {
 
 			// lastEvent: newest timestamp
 			if (signal.lastEvent != null) {
-				const candidateTime = new Date(signal.lastEvent.timestamp).getTime();
-
-				if (!Number.isNaN(candidateTime)) {
-					const currentTime = newestEvent != null ? new Date(newestEvent.timestamp).getTime() : NaN;
-
-					if (newestEvent == null || Number.isNaN(currentTime) || candidateTime > currentTime) {
-						newestEvent = signal.lastEvent;
-					}
-				}
+				newestEvent = pickNewestEvent(newestEvent, signal.lastEvent);
 			}
 		}
 

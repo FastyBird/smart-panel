@@ -6,6 +6,7 @@ import { DevicesService } from '../../devices/services/devices.service';
 import { SecuritySignal } from '../contracts/security-signal.type';
 import { SecurityStateProviderInterface } from '../contracts/security-state-provider.interface';
 import { AlarmState, ArmedState, SEVERITY_RANK, Severity } from '../security.constants';
+import { pickNewestEvent } from '../security.utils';
 
 const ALARM_STATE_RANK: Record<AlarmState, number> = {
 	[AlarmState.IDLE]: 0,
@@ -166,16 +167,7 @@ export class AlarmSecurityProvider implements SecurityStateProviderInterface {
 
 		for (const s of states) {
 			if (s.lastEvent != null) {
-				if (newestEvent == null) {
-					newestEvent = s.lastEvent;
-				} else {
-					const candidateTime = new Date(s.lastEvent.timestamp).getTime();
-					const currentTime = new Date(newestEvent.timestamp).getTime();
-
-					if (!Number.isNaN(candidateTime) && (Number.isNaN(currentTime) || candidateTime > currentTime)) {
-						newestEvent = s.lastEvent;
-					}
-				}
+				newestEvent = pickNewestEvent(newestEvent, s.lastEvent);
 			}
 		}
 
