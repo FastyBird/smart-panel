@@ -46,7 +46,7 @@ export class SecurityStatusModel {
 		description: 'Current armed state of the security system',
 		enum: ArmedState,
 		nullable: true,
-		example: null,
+		example: ArmedState.DISARMED,
 		name: 'armed_state',
 	})
 	@Expose({ name: 'armed_state' })
@@ -56,7 +56,7 @@ export class SecurityStatusModel {
 		description: 'Current alarm state',
 		enum: AlarmState,
 		nullable: true,
-		example: null,
+		example: AlarmState.IDLE,
 		name: 'alarm_state',
 	})
 	@Expose({ name: 'alarm_state' })
