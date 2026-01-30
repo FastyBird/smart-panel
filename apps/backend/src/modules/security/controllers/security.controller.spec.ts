@@ -1,6 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 
-import { Severity } from '../security.constants';
+import { DefaultSecurityProvider } from '../providers/default-security.provider';
+import { SECURITY_STATE_PROVIDERS, Severity } from '../security.constants';
+import { SecurityAggregatorService } from '../services/security-aggregator.service';
 import { SecurityService } from '../services/security.service';
 
 import { SecurityController } from './security.controller';
@@ -10,9 +12,18 @@ describe('SecurityController', () => {
 	let service: SecurityService;
 
 	beforeEach(async () => {
+		const defaultProvider = new DefaultSecurityProvider();
+
 		const module: TestingModule = await Test.createTestingModule({
 			controllers: [SecurityController],
-			providers: [SecurityService],
+			providers: [
+				{
+					provide: SECURITY_STATE_PROVIDERS,
+					useValue: [defaultProvider],
+				},
+				SecurityAggregatorService,
+				SecurityService,
+			],
 		}).compile();
 
 		controller = module.get<SecurityController>(SecurityController);
@@ -25,8 +36,8 @@ describe('SecurityController', () => {
 	});
 
 	describe('getStatus', () => {
-		it('should return default security status', () => {
-			const result = controller.getStatus();
+		it('should return default security status', async () => {
+			const result = await controller.getStatus();
 
 			expect(result.data).toBeDefined();
 			expect(result.data.armedState).toBeNull();
