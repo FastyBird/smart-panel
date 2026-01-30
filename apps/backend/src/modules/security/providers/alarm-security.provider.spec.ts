@@ -267,6 +267,23 @@ describe('AlarmSecurityProvider', () => {
 			expect(signal.lastEvent).toBeUndefined();
 		});
 
+		it('should discard invalid severity in last_event', async () => {
+			const event = JSON.stringify({
+				type: 'intrusion',
+				timestamp: '2025-06-15T12:00:00Z',
+				severity: 'banana',
+			});
+
+			devicesService.findAll.mockResolvedValue([
+				makeAlarmDevice('dev-1', [makeProperty(PropertyCategory.LAST_EVENT, event)]),
+			]);
+
+			const signal = await provider.getSignals();
+
+			expect(signal.lastEvent).toBeDefined();
+			expect(signal.lastEvent?.severity).toBeUndefined();
+		});
+
 		it('should pick newest lastEvent across devices', async () => {
 			devicesService.findAll.mockResolvedValue([
 				makeAlarmDevice('dev-1', [

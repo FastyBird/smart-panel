@@ -243,6 +243,20 @@ export class AlarmSecurityProvider implements SecurityStateProviderInterface {
 		return valid[str] ?? null;
 	}
 
+	private parseSeverity(value: unknown): Severity | undefined {
+		if (typeof value !== 'string') {
+			return undefined;
+		}
+
+		const valid: Record<string, Severity> = {
+			info: Severity.INFO,
+			warning: Severity.WARNING,
+			critical: Severity.CRITICAL,
+		};
+
+		return valid[value];
+	}
+
 	private parseLastEvent(
 		value: string | number | boolean | null,
 		deviceId: string,
@@ -262,7 +276,7 @@ export class AlarmSecurityProvider implements SecurityStateProviderInterface {
 						type: obj.type,
 						timestamp: new Date(obj.timestamp).toISOString(),
 						sourceDeviceId: typeof obj.sourceDeviceId === 'string' ? obj.sourceDeviceId : deviceId,
-						severity: obj.severity as Severity | undefined,
+						severity: this.parseSeverity(obj.severity),
 					};
 				}
 			}
