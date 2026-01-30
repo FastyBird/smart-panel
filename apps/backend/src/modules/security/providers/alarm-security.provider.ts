@@ -272,10 +272,7 @@ export class AlarmSecurityProvider implements SecurityStateProviderInterface {
 				const obj = parsed as Record<string, unknown>;
 
 				if (typeof obj.type === 'string' && (typeof obj.timestamp === 'string' || typeof obj.timestamp === 'number')) {
-					const ts =
-						typeof obj.timestamp === 'number' && obj.timestamp < 1e12
-							? obj.timestamp * 1000
-							: obj.timestamp;
+					const ts = typeof obj.timestamp === 'number' && obj.timestamp < 1e12 ? obj.timestamp * 1000 : obj.timestamp;
 
 					return {
 						type: obj.type,
