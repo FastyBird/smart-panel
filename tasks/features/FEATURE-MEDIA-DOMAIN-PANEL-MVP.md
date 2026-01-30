@@ -1,4 +1,10 @@
-# Panel App – Media Domain MVP (Portrait UI)
+# Task: Panel App – Media Domain MVP (Portrait UI)
+ID: FEATURE-MEDIA-DOMAIN-PANEL-MVP
+Type: feature
+Scope: panel
+Size: large
+Parent: FEATURE-SPACE-MEDIA-DOMAIN-V2
+Status: in-progress
 
 ## Purpose
 
