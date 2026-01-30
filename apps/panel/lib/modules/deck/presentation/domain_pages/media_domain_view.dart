@@ -175,7 +175,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
 				final endpoints = mediaService.getEndpoints(_roomId);
 				final roomName = _spacesService?.getSpace(_roomId)?.name ?? '';
 				final hasEndpoints = endpoints.isNotEmpty;
-				final hasBindings = mediaService.getBindings(_roomId).isNotEmpty;
 
 				if (_isLoading) {
 					return Scaffold(
@@ -202,7 +201,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
 													Icon(
 														MdiIcons.monitorOff,
 														size: 64,
-														color: isDark ? AppTextColorDark.tertiary : AppTextColorLight.tertiary,
+														color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
 													),
 													const SizedBox(height: 16),
 													Text(
