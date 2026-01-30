@@ -1,5 +1,6 @@
 import { Module, OnModuleInit } from '@nestjs/common';
 
+import { DevicesModule } from '../devices/devices.module';
 import { ExtensionsModule } from '../extensions/extensions.module';
 import { ExtensionsService } from '../extensions/services/extensions.service';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
@@ -7,6 +8,7 @@ import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models
 import { SwaggerModule } from '../swagger/swagger.module';
 
 import { SecurityController } from './controllers/security.controller';
+import { AlarmSecurityProvider } from './providers/alarm-security.provider';
 import { DefaultSecurityProvider } from './providers/default-security.provider';
 import {
 	SECURITY_MODULE_API_TAG_DESCRIPTION,
@@ -24,14 +26,18 @@ import { SecurityService } from './services/security.service';
 	description: SECURITY_MODULE_API_TAG_DESCRIPTION,
 })
 @Module({
-	imports: [SwaggerModule, ExtensionsModule],
+	imports: [SwaggerModule, ExtensionsModule, DevicesModule],
 	controllers: [SecurityController],
 	providers: [
 		DefaultSecurityProvider,
+		AlarmSecurityProvider,
 		{
 			provide: SECURITY_STATE_PROVIDERS,
-			useFactory: (defaultProvider: DefaultSecurityProvider) => [defaultProvider],
-			inject: [DefaultSecurityProvider],
+			useFactory: (alarmProvider: AlarmSecurityProvider, defaultProvider: DefaultSecurityProvider) => [
+				alarmProvider,
+				defaultProvider,
+			],
+			inject: [AlarmSecurityProvider, DefaultSecurityProvider],
 		},
 		SecurityAggregatorService,
 		SecurityService,
