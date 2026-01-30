@@ -136,7 +136,7 @@ class SecurityScreen extends StatelessWidget {
 									child: _buildEntryPointRow(ep, isDark, screenService),
 								),
 							)
-						else
+						else if (summary.allClosed)
 							Row(
 								children: [
 									Icon(
