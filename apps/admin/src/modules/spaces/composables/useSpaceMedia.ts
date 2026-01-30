@@ -138,7 +138,6 @@ export interface IUseSpaceMedia {
 	fetchBindings: () => Promise<void>;
 	fetchActiveState: () => Promise<void>;
 	previewing: Ref<boolean>;
-	previewError: Ref<string | null>;
 	activate: (
 		activityKey: PathsModulesSpacesSpacesIdMediaActivitiesActivityKeyActivatePostParametersPathActivityKey,
 	) => Promise<IMediaActiveState>;
@@ -333,7 +332,6 @@ export const useSpaceMedia = (spaceId: Ref<string | undefined>): IUseSpaceMedia 
 	const bindingsError = ref<string | null>(null);
 	const saveError = ref<string | null>(null);
 	const previewing = ref<boolean>(false);
-	const previewError = ref<string | null>(null);
 	const activationError = ref<string | null>(null);
 	const activationErrorSource = ref<'activate' | 'deactivate' | 'fetch' | null>(null);
 
@@ -552,7 +550,6 @@ export const useSpaceMedia = (spaceId: Ref<string | undefined>): IUseSpaceMedia 
 		if (!spaceId.value) throw new Error('Space ID is required');
 
 		previewing.value = true;
-		previewError.value = null;
 
 		try {
 			const { data: responseData, error } = await backend.client.POST(
@@ -573,7 +570,6 @@ export const useSpaceMedia = (spaceId: Ref<string | undefined>): IUseSpaceMedia 
 
 			return transformDryRunPreview(responseData.data as unknown as Record<string, unknown>);
 		} catch (e: unknown) {
-			previewError.value = e instanceof Error ? e.message : 'Unknown error';
 			throw e;
 		} finally {
 			previewing.value = false;
@@ -687,7 +683,7 @@ export const useSpaceMedia = (spaceId: Ref<string | undefined>): IUseSpaceMedia 
 		activating,
 		deactivating,
 		previewing,
-		previewError,
+
 		savingBinding,
 		applyingDefaults,
 		endpointsError,

@@ -335,7 +335,7 @@ export class SpaceMediaActivityService {
 		// Add step indices to plan steps for display
 		const indexedPlan = plan.steps.map((step, index) => ({
 			...step,
-			label: step.label ?? `Step ${index}: ${step.action.kind} on ${step.targetDeviceId}`,
+			label: step.label ?? `Step ${index + 1}: ${step.action.kind} on ${step.targetDeviceId}`,
 		}));
 
 		this.logger.debug(

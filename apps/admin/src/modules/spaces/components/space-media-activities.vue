@@ -608,7 +608,7 @@
 							width="60"
 						>
 							<template #default="{ $index }">
-								{{ $index }}
+								{{ $index + 1 }}
 							</template>
 						</el-table-column>
 						<el-table-column

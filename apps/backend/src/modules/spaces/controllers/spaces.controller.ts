@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Patch, Post, Query } from '@nestjs/common';
-import { ApiExtraModels, ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ApiExtraModels, ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags, getSchemaPath } from '@nestjs/swagger';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { DevicesResponseModel } from '../../devices/models/devices-response.model';
@@ -2245,7 +2245,17 @@ export class SpacesController {
 		type: 'boolean',
 		description: 'If true, returns the execution plan without executing any commands or changing state.',
 	})
-	@ApiSuccessResponse(MediaActivityActivationResponseModel, 'Activity activation result')
+	@ApiExtraModels(MediaActivityActivationResponseModel, MediaActivityDryRunPreviewResponseModel)
+	@ApiResponse({
+		status: 200,
+		description: 'Activity activation result or dry-run preview',
+		schema: {
+			oneOf: [
+				{ $ref: getSchemaPath(MediaActivityActivationResponseModel) },
+				{ $ref: getSchemaPath(MediaActivityDryRunPreviewResponseModel) },
+			],
+		},
+	})
 	@ApiBadRequestResponse('Invalid activity key')
 	@ApiUnprocessableEntityResponse('Binding missing or validation failed')
 	@ApiNotFoundResponse('Space not found')
