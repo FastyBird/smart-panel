@@ -1,11 +1,10 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 
 import { SecurityAggregatorInterface } from '../contracts/security-aggregator.interface';
 import { SecuritySignal } from '../contracts/security-signal.type';
 import { SecurityStateProviderInterface } from '../contracts/security-state-provider.interface';
 import { SecurityLastEventModel, SecurityStatusModel } from '../models/security-status.model';
-import { SECURITY_STATE_PROVIDERS } from '../security.constants';
-import { Severity } from '../security.constants';
+import { SECURITY_STATE_PROVIDERS, Severity } from '../security.constants';
 
 const SEVERITY_RANK: Record<Severity, number> = {
 	[Severity.INFO]: 0,
@@ -15,6 +14,8 @@ const SEVERITY_RANK: Record<Severity, number> = {
 
 @Injectable()
 export class SecurityAggregatorService implements SecurityAggregatorInterface {
+	private readonly logger = new Logger(SecurityAggregatorService.name);
+
 	constructor(
 		@Inject(SECURITY_STATE_PROVIDERS)
 		private readonly providers: SecurityStateProviderInterface[],
@@ -27,8 +28,8 @@ export class SecurityAggregatorService implements SecurityAggregatorInterface {
 			try {
 				const signal = await provider.getSignals();
 				signals.push(signal);
-			} catch {
-				// Providers should never throw, but guard anyway
+			} catch (error) {
+				this.logger.warn(`Security state provider "${provider.getKey()}" threw an error: ${error}`);
 			}
 		}
 
