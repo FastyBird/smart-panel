@@ -796,12 +796,14 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 
 	Widget _buildCompositionPreview(BuildContext context, List<String> labels) {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
+		final isLight = !isDark;
+		final density = _visualDensityService.density;
 
 		return Container(
-			padding: const EdgeInsets.all(12),
+			padding: AppSpacings.paddingMd,
 			decoration: BoxDecoration(
 				color: isDark ? AppFillColorDark.base : AppFillColorLight.base,
-				borderRadius: BorderRadius.circular(16),
+				borderRadius: BorderRadius.circular(AppBorderRadius.medium),
 			),
 			child: Column(
 				children: labels.map((label) {
@@ -812,23 +814,23 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 					final icon = _roleIcon(role);
 
 					return Padding(
-						padding: const EdgeInsets.symmetric(vertical: 4),
+						padding: EdgeInsets.symmetric(vertical: AppSpacings.pSm),
 						child: Row(
 							children: [
 								Container(
-									width: 32,
-									height: 32,
+									width: _screenService.scale(32, density: density),
+									height: _screenService.scale(32, density: density),
 									decoration: BoxDecoration(
 										color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
-										borderRadius: BorderRadius.circular(8),
+										borderRadius: BorderRadius.circular(AppBorderRadius.base),
 									),
 									child: Icon(
 										icon,
-										size: 16,
+										size: _screenService.scale(16, density: density),
 										color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
 									),
 								),
-								const SizedBox(width: 10),
+								AppSpacings.spacingMdHorizontal,
 								Expanded(
 									child: Column(
 										crossAxisAlignment: CrossAxisAlignment.start,
@@ -837,18 +839,18 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 												Text(
 													role.toUpperCase(),
 													style: TextStyle(
-														fontSize: 10,
+														fontSize: AppFontSize.extraSmall,
 														fontWeight: FontWeight.w500,
-														color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
+														color: isLight ? AppTextColorLight.placeholder : AppTextColorDark.placeholder,
 														letterSpacing: 0.5,
 													),
 												),
 											Text(
 												name,
 												style: TextStyle(
-													fontSize: 13,
+													fontSize: AppFontSize.small,
 													fontWeight: FontWeight.w500,
-													color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
+													color: isLight ? AppTextColorLight.primary : AppTextColorDark.primary,
 												),
 											),
 										],
