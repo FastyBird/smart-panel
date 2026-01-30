@@ -807,6 +807,18 @@ alarm:
       data_type: enum
       unit: null
       format: ["disarmed","armed_home","armed_away","armed_night"]
+    alarm_state:
+      category: alarm_state
+      required: false
+      description:
+        en: >-
+          Current alarm lifecycle state. Prefer this over triggered when available,
+          as it can represent pending and silenced states.
+      permissions:
+        - ro
+      data_type: enum
+      unit: null
+      format: ["idle","pending","triggered","silenced"]
     triggered:
       category: triggered
       required: false
@@ -847,6 +859,16 @@ alarm:
       data_type: uchar
       unit: null
       format: [0,255]
+    fault_description:
+      category: fault_description
+      required: false
+      description:
+        en: Human-readable fault description, if provided by the integration.
+      permissions:
+        - ro
+      data_type: string
+      unit: null
+      format: null
     tampered:
       category: tampered
       required: false
@@ -855,6 +877,18 @@ alarm:
       permissions:
         - ro
       data_type: bool
+      unit: null
+      format: null
+    last_event:
+      category: last_event
+      required: false
+      description:
+        en: >-
+          The last known security-relevant event for this alarm device. Can be provided
+          by the integration or derived by the backend from state changes.
+      permissions:
+        - ro
+      data_type: string
       unit: null
       format: null
 

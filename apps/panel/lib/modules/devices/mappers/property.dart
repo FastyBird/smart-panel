@@ -7,6 +7,7 @@ import 'package:fastybird_smart_panel/modules/devices/types/formats.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/value_state.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/active.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/alarm_state.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/angle.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/aqi.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/change_needed.dart';
@@ -29,6 +30,7 @@ import 'package:fastybird_smart_panel/modules/devices/views/properties/distance.
 import 'package:fastybird_smart_panel/modules/devices/views/properties/duration.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/event.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/fault.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/fault_description.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/firmware_revision.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/frequency.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/generic.dart';
@@ -37,6 +39,7 @@ import 'package:fastybird_smart_panel/modules/devices/views/properties/hue.dart'
 import 'package:fastybird_smart_panel/modules/devices/views/properties/humidity.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/in_use.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/infrared.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/last_event.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/illuminance.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/level.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/life_remaining.dart';
@@ -155,6 +158,8 @@ ChannelPropertyView buildChannelPropertyView(ChannelPropertyModel property) {
   switch (property.category) {
     case DevicesModulePropertyCategory.active:
       return _createPropertyView(property, ActiveChannelPropertyView.new);
+    case DevicesModulePropertyCategory.alarmState:
+      return _createPropertyView(property, AlarmStateChannelPropertyView.new);
     case DevicesModulePropertyCategory.angle:
       return _createPropertyView(property, AngleChannelPropertyView.new);
     case DevicesModulePropertyCategory.aqi:
@@ -201,6 +206,8 @@ ChannelPropertyView buildChannelPropertyView(ChannelPropertyModel property) {
       return _createPropertyView(property, EventChannelPropertyView.new);
     case DevicesModulePropertyCategory.fault:
       return _createPropertyView(property, FaultChannelPropertyView.new);
+    case DevicesModulePropertyCategory.faultDescription:
+      return _createPropertyView(property, FaultDescriptionChannelPropertyView.new);
     case DevicesModulePropertyCategory.firmwareRevision:
       return _createPropertyView(
           property, FirmwareRevisionChannelPropertyView.new);
@@ -219,6 +226,8 @@ ChannelPropertyView buildChannelPropertyView(ChannelPropertyModel property) {
       return _createPropertyView(property, IlluminanceChannelPropertyView.new);
     case DevicesModulePropertyCategory.infrared:
       return _createPropertyView(property, InfraredChannelPropertyView.new);
+    case DevicesModulePropertyCategory.lastEvent:
+      return _createPropertyView(property, LastEventChannelPropertyView.new);
     case DevicesModulePropertyCategory.level:
       return _createPropertyView(property, LevelChannelPropertyView.new);
     case DevicesModulePropertyCategory.lifeRemaining:
@@ -320,6 +329,7 @@ Map<DevicesModulePropertyCategory, IconData Function()>
     channelPropertyIconMappers = {
   DevicesModulePropertyCategory.generic: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.active: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.alarmState: () => MdiIcons.shieldAlertOutline,
   DevicesModulePropertyCategory.angle: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.aqi: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.brightness: () => MdiIcons.weatherSunny,
@@ -342,6 +352,7 @@ Map<DevicesModulePropertyCategory, IconData Function()>
   DevicesModulePropertyCategory.duration: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.event: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.fault: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.faultDescription: () => MdiIcons.alertCircleOutline,
   DevicesModulePropertyCategory.firmwareRevision: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.frequency: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.hardwareRevision: () => MdiIcons.databaseCog,
@@ -350,6 +361,7 @@ Map<DevicesModulePropertyCategory, IconData Function()>
   DevicesModulePropertyCategory.illuminance: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.inUse: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.infrared: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.lastEvent: () => MdiIcons.calendarClock,
   DevicesModulePropertyCategory.level: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.lifeRemaining: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.linkQuality: () => MdiIcons.databaseCog,

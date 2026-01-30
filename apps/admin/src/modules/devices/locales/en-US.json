@@ -781,6 +781,7 @@
     "channelsProperties": {
       "generic": "Generic",
       "active": "Active",
+      "alarm_state": "Alarm state",
       "album": "Album",
       "angle": "Angle",
       "aqi": "AQI",
@@ -808,6 +809,7 @@
       "duration": "Duration",
       "event": "Event",
       "fault": "Fault",
+      "fault_description": "Fault description",
       "firmware_revision": "Firmware revision",
       "frequency": "Frequency",
       "hardware_revision": "Hardware revision",
@@ -816,6 +818,7 @@
       "illuminance": "Illuminance",
       "in_use": "In Use",
       "infrared": "Infrared",
+      "last_event": "Last event",
       "level": "Level",
       "life_remaining": "Life remaining",
       "link_quality": "Link quality",

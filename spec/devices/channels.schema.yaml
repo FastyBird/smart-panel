@@ -102,6 +102,7 @@ definitions:
     enum:
       - generic
       - active
+      - alarm_state
       - album
       - angle
       - artist
@@ -129,6 +130,7 @@ definitions:
       - duration
       - event
       - fault
+      - fault_description
       - firmware_revision
       - frequency
       - hardware_revision
@@ -137,6 +139,7 @@ definitions:
       - illuminance
       - in_use
       - infrared
+      - last_event
       - level
       - life_remaining
       - link_quality
