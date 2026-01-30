@@ -8,6 +8,7 @@ import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
+import 'package:fastybird_smart_panel/core/widgets/slider_with_steps.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
@@ -944,52 +945,54 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		final volume = mediaState?.averageVolume ?? 0;
 		final isMuted = mediaState?.anyMuted ?? false;
 
+		final columnWidth = _screenService.scale(40, density: _visualDensityService.density);
+
 		return Row(
 			children: [
-				GestureDetector(
-					onTap: _isSending ? null : () => _toggleMute(),
-					child: Container(
-						width: 36,
-						height: 36,
-						decoration: BoxDecoration(
-							color: isDark ? AppFillColorDark.base : AppFillColorLight.base,
-							border: Border.all(color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light),
-							borderRadius: BorderRadius.circular(12),
-						),
-						child: Icon(
-							isMuted ? MdiIcons.volumeOff : MdiIcons.volumeHigh,
-							size: 18,
-							color: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
-						),
-					),
-				),
-				const SizedBox(width: 12),
-				Expanded(
-					child: Container(
-						height: 8,
-						decoration: BoxDecoration(
-							color: isDark ? AppFillColorDark.base : AppFillColorLight.base,
-							borderRadius: BorderRadius.circular(4),
-						),
-						child: FractionallySizedBox(
-							alignment: Alignment.centerLeft,
-							widthFactor: volume / 100,
-							child: Container(
-								decoration: BoxDecoration(
-									color: accentColor,
-									borderRadius: BorderRadius.circular(4),
+				SizedBox(
+					width: columnWidth,
+					child: GestureDetector(
+						onTap: _isSending ? null : () => _toggleMute(),
+						child: Container(
+							padding: EdgeInsets.all(AppSpacings.pMd),
+							decoration: BoxDecoration(
+								color: isMuted
+										? (isDark ? AppColorsDark.primaryLight5 : AppColorsLight.primaryLight9)
+										: (isDark ? AppFillColorDark.base : AppFillColorLight.base),
+								border: Border.all(
+									color: isMuted
+											? (isDark ? AppColorsDark.primary : AppColorsLight.primary)
+											: (isDark ? AppBorderColorDark.light : AppBorderColorLight.light),
 								),
+								borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+							),
+							child: Icon(
+								isMuted ? MdiIcons.volumeOff : MdiIcons.volumeHigh,
+								size: AppFontSize.large,
+								color: isMuted
+										? (isDark ? AppColorsDark.primary : AppColorsLight.primary)
+										: (isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary),
 							),
 						),
 					),
 				),
-				const SizedBox(width: 12),
+				AppSpacings.spacingMdHorizontal,
+				Expanded(
+					child: SliderWithSteps(
+						value: volume / 100,
+						activeColor: accentColor,
+						showSteps: false,
+						enabled: !_isSending,
+						onChanged: (val) => _setVolume((val * 100).round()),
+					),
+				),
+				AppSpacings.spacingMdHorizontal,
 				SizedBox(
-					width: 36,
+					width: columnWidth,
 					child: Text(
 						'$volume%',
 						style: TextStyle(
-							fontSize: 13,
+							fontSize: AppFontSize.small,
 							fontWeight: FontWeight.w600,
 							color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
 						),
@@ -1784,6 +1787,16 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	}
 
 	// Actions dispatching media intents via SpaceStateRepository
+	Future<void> _setVolume(int volume) async {
+		if (_spaceStateRepo == null) return;
+		setState(() => _isSending = true);
+		try {
+			await _spaceStateRepo!.setMediaVolume(_roomId, volume);
+		} finally {
+			if (mounted) setState(() => _isSending = false);
+		}
+	}
+
 	Future<void> _toggleMute() async {
 		if (_spaceStateRepo == null) return;
 		setState(() => _isSending = true);
