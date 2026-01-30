@@ -32,9 +32,8 @@ class SecurityOverlay extends StatelessWidget {
 					return const SizedBox.shrink();
 				}
 
-				final allSorted = controller.sortedAlerts;
-				final displayAlerts = allSorted.length <= 3 ? allSorted : allSorted.sublist(0, 3);
-				final totalCount = allSorted.length;
+				final displayAlerts = controller.overlayAlerts;
+				final totalCount = controller.sortedAlerts.length;
 
 				return Material(
 					type: MaterialType.transparency,

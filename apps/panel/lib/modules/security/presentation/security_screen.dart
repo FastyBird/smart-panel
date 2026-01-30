@@ -3,6 +3,7 @@ import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/system_pages/export.dart';
 import 'package:fastybird_smart_panel/modules/security/models/security_alert.dart';
+import 'package:fastybird_smart_panel/modules/security/models/security_status.dart';
 import 'package:fastybird_smart_panel/modules/security/services/security_overlay_controller.dart';
 import 'package:fastybird_smart_panel/modules/security/types/security.dart';
 import 'package:fastybird_smart_panel/modules/security/utils/security_ui.dart';
@@ -90,7 +91,7 @@ class SecurityScreen extends StatelessWidget {
 	}
 
 	Widget _buildStatusCard(
-		dynamic status,
+		SecurityStatusModel status,
 		bool isDark,
 		ScreenService screenService,
 	) {
