@@ -218,7 +218,7 @@ class SecurityScreen extends StatelessWidget {
 						),
 					),
 					SizedBox(width: AppSpacings.pSm),
-					_buildSeverityBadge(alert.severity, isDark, screenService),
+					_buildSeverityBadge(alert.severity, isDark),
 				],
 			),
 		);
@@ -227,7 +227,6 @@ class SecurityScreen extends StatelessWidget {
 	Widget _buildSeverityBadge(
 		Severity severity,
 		bool isDark,
-		ScreenService screenService,
 	) {
 		final label = switch (severity) {
 			Severity.critical => 'CRITICAL',
