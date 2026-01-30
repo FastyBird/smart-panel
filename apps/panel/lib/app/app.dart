@@ -16,6 +16,8 @@ import 'package:fastybird_smart_panel/modules/dashboard/export.dart'
     as dashboard_module;
 import 'package:fastybird_smart_panel/modules/deck/export.dart'
     as deck_module;
+import 'package:fastybird_smart_panel/modules/security/export.dart'
+    as security_module;
 import 'package:fastybird_smart_panel/modules/devices/export.dart'
     as devices_module;
 import 'package:fastybird_smart_panel/modules/displays/export.dart'
@@ -415,6 +417,12 @@ class _MyAppState extends State<MyApp> {
         ),
         ChangeNotifierProvider.value(
           value: locator<spaces_module.MediaActivityRepository>(),
+        ),
+        ChangeNotifierProvider.value(
+          value: locator<security_module.SecurityStatusRepository>(),
+        ),
+        ChangeNotifierProvider.value(
+          value: locator<security_module.SecurityOverlayController>(),
         ),
         ChangeNotifierProvider.value(
           value: locator<spaces_module.MediaActivityService>(),

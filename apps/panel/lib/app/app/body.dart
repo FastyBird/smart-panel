@@ -17,6 +17,10 @@ import 'package:fastybird_smart_panel/features/overlay/presentation/screen_saver
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/config/module.dart';
 import 'package:fastybird_smart_panel/modules/config/repositories/module_config_repository.dart';
+import 'package:fastybird_smart_panel/modules/security/services/security_overlay_controller.dart';
+import 'package:fastybird_smart_panel/modules/security/repositories/security_status.dart';
+import 'package:fastybird_smart_panel/modules/security/views/security_overlay.dart';
+import 'package:fastybird_smart_panel/modules/security/presentation/security_screen.dart';
 import 'package:fastybird_smart_panel/modules/system/models/system.dart';
 import 'package:fastybird_smart_panel/modules/system/types/configuration.dart';
 import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
@@ -40,6 +44,8 @@ class _AppBodyState extends State<AppBody> {
   final NavigationService _navigator = locator<NavigationService>();
   final DeckService _deckService = locator<DeckService>();
   final SocketService _socketService = locator<SocketService>();
+  final SecurityOverlayController _securityOverlayController = locator<SecurityOverlayController>();
+  final SecurityStatusRepository _securityStatusRepository = locator<SecurityStatusRepository>();
 
   bool _hasDarkMode = false;
   Language _language = Language.english;
@@ -70,6 +76,9 @@ class _AppBodyState extends State<AppBody> {
     _displayRepository.addListener(_onDisplayChanged);
     _systemConfigRepository.addListener(_syncStateWithRepository);
 
+    // Wire security status to overlay controller
+    _securityStatusRepository.addListener(_onSecurityStatusChanged);
+
     // Listen for socket connection changes
     _socketService.addConnectionListener(_onSocketConnectionChanged);
     _socketService.addErrorTypeListener(_onSocketErrorType);
@@ -83,6 +92,10 @@ class _AppBodyState extends State<AppBody> {
     }
 
     locator<SystemActionsService>().init();
+  }
+
+  void _onSecurityStatusChanged() {
+    _securityOverlayController.updateStatus(_securityStatusRepository.status);
   }
 
   void _onSocketConnectionChanged(bool isConnected) {
@@ -133,6 +146,12 @@ class _AppBodyState extends State<AppBody> {
         _showRecoveryToast = false;
       });
     }
+
+    // Sync offline state to security overlay controller
+    _securityOverlayController.setConnectionOffline(
+      severity == ConnectionUISeverity.fullScreen ||
+      severity == ConnectionUISeverity.overlay,
+    );
 
     _previousSocketConnectionState = currentState;
     setState(() {});
@@ -193,6 +212,7 @@ class _AppBodyState extends State<AppBody> {
     _displayRepository.removeListener(_syncStateWithRepository);
     _displayRepository.removeListener(_onDisplayChanged);
     _systemConfigRepository.removeListener(_syncStateWithRepository);
+    _securityStatusRepository.removeListener(_onSecurityStatusChanged);
     _socketService.removeConnectionListener(_onSocketConnectionChanged);
     _socketService.removeErrorTypeListener(_onSocketErrorType);
     _connectionManager.removeListener(_onSocketConnectionStateChanged);
@@ -384,6 +404,26 @@ class _AppBodyState extends State<AppBody> {
                 _swipeActionTriggered = false;
               },
               child: child,
+            ),
+            // Security overlay (below connection UI in precedence)
+            Positioned.fill(
+              child: SecurityOverlay(
+                onAcknowledge: () {
+                  _securityOverlayController.acknowledgeCurrentAlerts();
+                },
+                onOpenSecurity: () {
+                  _securityOverlayController.acknowledgeCurrentAlerts();
+                  _securityOverlayController.setOnSecurityScreen(true);
+                  _navigator.navigatorKey.currentState?.push(
+                    MaterialPageRoute(
+                      builder: (context) => const SecurityScreen(),
+                      settings: const RouteSettings(name: 'security'),
+                    ),
+                  ).then((_) {
+                    _securityOverlayController.setOnSecurityScreen(false);
+                  });
+                },
+              ),
             ),
             // Connection UI layer (banner, overlay, or full-screen error)
             ..._buildConnectionUI(),

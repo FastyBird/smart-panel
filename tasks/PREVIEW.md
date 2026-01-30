@@ -6,10 +6,10 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 
 | Status | Count |
 |--------|-------|
-| Done | 91 |
+| Done | 92 |
 | In Progress | 8 |
 | Planned | 27 |
-| **Total** | **126** |
+| **Total** | **127** |
 
 ---
 
@@ -109,6 +109,7 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | FEATURE-Z2M-CONVERTER-ARCHITECTURE | Zigbee2MQTT Modular Converter Architecture | backend | large |
 | FEATURE-PANEL-DOMAIN-LIGHTS-PAGE | Lights domain page MVP | panel | medium |
 | FEATURE-PANEL-ROOM-SYSTEM-PAGES | Panel system pages for Room role | panel | large |
+| FEATURE-PANEL-SECURITY-OVERLAY | Panel app – Security overlay & intent rules (forced alerts UX) | panel | medium |
 
 ### In Progress
 
@@ -319,6 +320,7 @@ EPIC-EXPAND-SMART-PANEL-DOMAINS (planned)
 │   │   ├── FEATURE-MEDIA-UX-POLISH (in-progress)
 │   │   ├── FEATURE-MEDIA-DOMAIN-PANEL-MVP (in-progress)
 │   │   └── FEATURE-PANEL-MEDIA-DOMAIN-MVP (in-progress)
+│   ├── FEATURE-PANEL-SECURITY-OVERLAY (done)
 │   ├── FEATURE-SPACE-SECURITY-DOMAIN (planned)
 │   ├── FEATURE-SECURITY-DOMAIN-BACKEND (done)
 │   ├── FEATURE-SECURITY-PROVIDER-REGISTRY (done)
@@ -409,6 +411,7 @@ tasks/
 │   ├── FEATURE-ONBOARDING-WIZARD.md
 │   ├── FEATURE-PANEL-IDLE-MODE-SPACE-AWARE.md
 │   ├── FEATURE-PANEL-MEDIA-DOMAIN-MVP.md
+│   ├── FEATURE-PANEL-SECURITY-OVERLAY.md
 │   ├── FEATURE-PANEL-SENSOR-DEVICE-PAGE.md
 │   ├── FEATURE-PLUGIN-HA-ADOPTION-IMPROVEMENTS.md
 │   ├── FEATURE-PLUGIN-HA-AUTO-MAP.md
