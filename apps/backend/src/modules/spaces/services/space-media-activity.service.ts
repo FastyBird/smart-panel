@@ -295,7 +295,6 @@ export class SpaceMediaActivityService {
 	 * Returns warning messages for any failures (never throws).
 	 */
 	private async bestEffortStopPlayback(spaceId: string, resolved: MediaActivityResolvedModel): Promise<string[]> {
-		const warnings: string[] = [];
 		const endpointsResult = await this.derivedEndpointService.buildEndpointsForSpace(spaceId);
 
 		const playbackEndpoints = endpointsResult.endpoints.filter((e) => e.capabilities.playback && e.links.playback);
@@ -307,64 +306,9 @@ export class SpaceMediaActivityService {
 			),
 		);
 
-		for (const ep of playbackEndpoints) {
-			if (!resolvedDeviceIds.has(ep.deviceId)) {
-				continue;
-			}
+		const targetEndpoints = playbackEndpoints.filter((ep) => resolvedDeviceIds.has(ep.deviceId));
 
-			try {
-				const devices = await this.spacesService.findDevicesByIds([ep.deviceId]);
-				const device = devices[0];
-
-				if (!device) {
-					continue;
-				}
-
-				const platform = this.platformRegistryService.get(device);
-
-				if (!platform) {
-					continue;
-				}
-
-				let foundChannel: (typeof device.channels extends (infer U)[] | undefined ? U : never) | null = null;
-				let foundProperty: unknown = null;
-
-				for (const channel of device.channels ?? []) {
-					for (const property of channel.properties ?? []) {
-						if (property.id === ep.links.playback.propertyId) {
-							foundChannel = channel;
-							foundProperty = property;
-							break;
-						}
-					}
-
-					if (foundProperty) {
-						break;
-					}
-				}
-
-				if (foundChannel && foundProperty) {
-					const command = {
-						device,
-						channel: foundChannel,
-						property: foundProperty,
-						value: 'pause',
-					} as IDevicePropertyData;
-
-					await Promise.race([
-						platform.processBatch([command]),
-						new Promise<boolean>((_, reject) =>
-							setTimeout(() => reject(new Error('Stop playback timeout')), STEP_TIMEOUT_MS),
-						),
-					]);
-				}
-			} catch (error) {
-				const err = error as Error;
-				warnings.push(`Failed to stop playback on ${ep.name}: ${err.message}`);
-			}
-		}
-
-		return warnings;
+		return this.pausePlaybackOnEndpoints(targetEndpoints, (ep) => `Failed to stop playback on ${ep.name}`);
 	}
 
 	/**
@@ -771,7 +715,29 @@ export class SpaceMediaActivityService {
 		const allEndpoints = Array.from(endpointMap.values());
 		const playbackEndpoints = allEndpoints.filter((e) => e.capabilities.playback && e.links.playback);
 
-		for (const ep of playbackEndpoints) {
+		const pauseWarnings = await this.pausePlaybackOnEndpoints(
+			playbackEndpoints,
+			(ep) => `Failed to pause ${ep.name} (non-critical)`,
+			(ep) => `Paused playback on ${ep.name} (conflict with ${currentKey})`,
+		);
+
+		warnings.push(...pauseWarnings);
+
+		return warnings;
+	}
+
+	/**
+	 * Pause playback on a list of endpoints (best-effort).
+	 * Returns warning/info messages. Never throws.
+	 */
+	private async pausePlaybackOnEndpoints(
+		endpoints: DerivedMediaEndpointModel[],
+		failureMessage: (ep: DerivedMediaEndpointModel) => string,
+		successMessage?: (ep: DerivedMediaEndpointModel) => string,
+	): Promise<string[]> {
+		const messages: string[] = [];
+
+		for (const ep of endpoints) {
 			try {
 				const devices = await this.spacesService.findDevicesByIds([ep.deviceId]);
 				const device = devices[0];
@@ -786,13 +752,12 @@ export class SpaceMediaActivityService {
 					continue;
 				}
 
-				// Find the playback property
 				let foundChannel: (typeof device.channels extends (infer U)[] | undefined ? U : never) | null = null;
 				let foundProperty: unknown = null;
 
 				for (const channel of device.channels ?? []) {
 					for (const property of channel.properties ?? []) {
-						if (property.id === ep.links.playback.propertyId) {
+						if (property.id === ep.links.playback!.propertyId) {
 							foundChannel = channel;
 							foundProperty = property;
 							break;
@@ -815,20 +780,22 @@ export class SpaceMediaActivityService {
 					await Promise.race([
 						platform.processBatch([command]),
 						new Promise<boolean>((_, reject) =>
-							setTimeout(() => reject(new Error('Conflict step timeout')), STEP_TIMEOUT_MS),
+							setTimeout(() => reject(new Error('Pause playback timeout')), STEP_TIMEOUT_MS),
 						),
 					]);
 
-					warnings.push(`Paused playback on ${ep.name} (conflict with ${currentKey})`);
+					if (successMessage) {
+						messages.push(successMessage(ep));
+					}
 				}
 			} catch (error) {
 				const err = error as Error;
-				warnings.push(`Failed to pause ${ep.name}: ${err.message} (non-critical)`);
-				this.logger.warn(`Conflict handling failed for endpoint ${ep.endpointId}: ${err.message}`);
+				messages.push(`${failureMessage(ep)}: ${err.message}`);
+				this.logger.warn(`Pause playback failed for endpoint ${ep.endpointId}: ${err.message}`);
 			}
 		}
 
-		return warnings;
+		return messages;
 	}
 
 	/**

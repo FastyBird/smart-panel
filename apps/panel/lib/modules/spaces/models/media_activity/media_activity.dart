@@ -494,7 +494,6 @@ class MediaActivationResultModel {
 	final MediaActivityResolvedModel? resolved;
 	final MediaActivityLastResultModel? summary;
 	final List<String> warnings;
-	final bool requiresRealtime;
 
 	const MediaActivationResultModel({
 		this.activityKey,
@@ -502,7 +501,6 @@ class MediaActivationResultModel {
 		this.resolved,
 		this.summary,
 		this.warnings = const [],
-		this.requiresRealtime = true,
 	});
 
 	factory MediaActivationResultModel.fromJson(Map<String, dynamic> json) {
@@ -516,7 +514,6 @@ class MediaActivationResultModel {
 					? MediaActivityLastResultModel.fromJson(json['summary'] as Map<String, dynamic>)
 					: null,
 			warnings: (json['warnings'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
-			requiresRealtime: json['requires_realtime'] as bool? ?? true,
 		);
 	}
 }
