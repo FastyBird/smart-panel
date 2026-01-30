@@ -292,6 +292,113 @@ describe('SpaceMediaActivityService', () => {
 			);
 		});
 
+		it('should categorize failures into warnings and errors', async () => {
+			const displayEndpointId = `${spaceId}:display:${deviceTvId}`;
+			const audioEndpointId = `${spaceId}:audio_output:${deviceSpeakerId}`;
+			const binding = buildBinding(MediaActivityKey.WATCH, {
+				displayEndpointId,
+				audioEndpointId,
+				audioVolumePreset: 30,
+			});
+
+			mockBindingService.findBySpace.mockResolvedValue([binding]);
+
+			const displayEndpoint = buildEndpoint(
+				MediaEndpointType.DISPLAY,
+				deviceTvId,
+				{ power: true },
+				{ power: { propertyId: powerPropertyId } },
+			);
+
+			const audioEndpoint = buildEndpoint(
+				MediaEndpointType.AUDIO_OUTPUT,
+				deviceSpeakerId,
+				{ volume: true },
+				{ volume: { propertyId: volumePropertyId } },
+			);
+
+			mockDerivedEndpointService.buildEndpointsForSpace.mockResolvedValue({
+				spaceId,
+				endpoints: [displayEndpoint, audioEndpoint],
+			});
+
+			const mockTv = {
+				id: deviceTvId,
+				type: 'test-platform',
+				channels: [{ id: uuid(), properties: [{ id: powerPropertyId, value: false }] }],
+			};
+
+			const mockSpeaker = {
+				id: deviceSpeakerId,
+				type: 'test-platform',
+				channels: [{ id: uuid(), properties: [{ id: volumePropertyId, value: 50 }] }],
+			};
+
+			mockSpacesService.findDevicesByIds.mockResolvedValue([mockTv, mockSpeaker]);
+
+			const mockPlatform = {
+				processBatch: jest
+					.fn()
+					// Power on TV: succeeds
+					.mockResolvedValueOnce(true)
+					// Volume set: fails (non-critical)
+					.mockResolvedValueOnce(false),
+			};
+
+			mockPlatformRegistry.get.mockReturnValue(mockPlatform);
+
+			const result = await service.activate(spaceId, MediaActivityKey.WATCH);
+
+			// Volume failure is non-critical so state should be ACTIVE
+			expect(result.state).toBe(MediaActivationState.ACTIVE);
+
+			// Verify structured warnings/errors
+			expect(result.summary?.warnings).toBeDefined();
+			expect(result.summary?.warnings?.length).toBeGreaterThan(0);
+			expect(result.summary?.errors).toBeUndefined();
+			expect(result.summary?.warningCount).toBeGreaterThan(0);
+			expect(result.summary?.errorCount).toBe(0);
+
+			// Verify warning items have the new structured fields
+			const warning = result.summary?.warnings?.[0];
+			expect(warning?.critical).toBe(false);
+			expect(warning?.timestamp).toBeDefined();
+		});
+
+		it('should populate errors[] when critical step fails', async () => {
+			const displayEndpointId = `${spaceId}:display:${deviceTvId}`;
+			const binding = buildBinding(MediaActivityKey.WATCH, { displayEndpointId });
+
+			mockBindingService.findBySpace.mockResolvedValue([binding]);
+
+			const displayEndpoint = buildEndpoint(
+				MediaEndpointType.DISPLAY,
+				deviceTvId,
+				{ power: true },
+				{ power: { propertyId: powerPropertyId } },
+			);
+
+			mockDerivedEndpointService.buildEndpointsForSpace.mockResolvedValue({
+				spaceId,
+				endpoints: [displayEndpoint],
+			});
+
+			// Device not found → critical failure
+			mockSpacesService.findDevicesByIds.mockResolvedValue([]);
+
+			const result = await service.activate(spaceId, MediaActivityKey.WATCH);
+
+			expect(result.state).toBe(MediaActivationState.FAILED);
+			expect(result.summary?.errors).toBeDefined();
+			expect(result.summary?.errors?.length).toBeGreaterThan(0);
+			expect(result.summary?.errorCount).toBeGreaterThan(0);
+
+			const error = result.summary?.errors?.[0];
+			expect(error?.critical).toBe(true);
+			expect(error?.reason).toContain('not found');
+			expect(error?.timestamp).toBeDefined();
+		});
+
 		it('should allow partial success for non-critical step failure', async () => {
 			const audioEndpointId = `${spaceId}:audio_output:${deviceSpeakerId}`;
 			const binding = buildBinding(MediaActivityKey.LISTEN, {
@@ -423,6 +530,29 @@ describe('SpaceMediaActivityService', () => {
 			const result = await service.deactivate(spaceId);
 
 			expect(result.state).toBe(MediaActivationState.DEACTIVATED);
+		});
+
+		it('should always result in deactivated state even when stop playback fails', async () => {
+			const existingRecord = {
+				id: uuid(),
+				spaceId,
+				activityKey: MediaActivityKey.WATCH,
+				state: MediaActivationState.FAILED,
+				resolved: JSON.stringify({ displayDeviceId: deviceTvId }),
+				lastResult: JSON.stringify({ stepsTotal: 1, stepsSucceeded: 0, stepsFailed: 1 }),
+			};
+
+			mockActiveRepository.findOne.mockResolvedValue(existingRecord);
+
+			// Even if best-effort stop playback fails, deactivation should succeed
+			mockDerivedEndpointService.buildEndpointsForSpace.mockRejectedValue(new Error('Endpoint service down'));
+
+			const result = await service.deactivate(spaceId);
+
+			expect(result.state).toBe(MediaActivationState.DEACTIVATED);
+			expect(mockActiveRepository.save).toHaveBeenCalledWith(
+				expect.objectContaining({ state: MediaActivationState.DEACTIVATED }),
+			);
 		});
 	});
 });

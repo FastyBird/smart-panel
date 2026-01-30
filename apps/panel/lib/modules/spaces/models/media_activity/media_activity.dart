@@ -292,23 +292,111 @@ class MediaActivityResolvedModel {
 	}
 }
 
-/// Summary of the last activation result (successes/failures).
-class MediaActivityLastResultModel {
-	final int successCount;
-	final int failureCount;
-	final List<String> failures;
+/// A single step failure from activation execution.
+class MediaStepFailureModel {
+	final int stepIndex;
+	final bool critical;
+	final String reason;
+	final String? targetDeviceId;
+	final String? kind;
+	final String? propertyId;
+	final String? commandId;
+	final String? label;
+	final String? timestamp;
 
-	const MediaActivityLastResultModel({
-		this.successCount = 0,
-		this.failureCount = 0,
-		this.failures = const [],
+	const MediaStepFailureModel({
+		required this.stepIndex,
+		required this.critical,
+		required this.reason,
+		this.targetDeviceId,
+		this.kind,
+		this.propertyId,
+		this.commandId,
+		this.label,
+		this.timestamp,
 	});
 
+	factory MediaStepFailureModel.fromJson(Map<String, dynamic> json) {
+		return MediaStepFailureModel(
+			stepIndex: json['step_index'] as int? ?? 0,
+			critical: json['critical'] as bool? ?? false,
+			reason: json['reason'] as String? ?? 'Unknown',
+			targetDeviceId: json['target_device_id'] as String?,
+			kind: json['kind'] as String?,
+			propertyId: json['property_id'] as String?,
+			commandId: json['command_id'] as String?,
+			label: json['label'] as String?,
+			timestamp: json['timestamp'] as String?,
+		);
+	}
+
+	Map<String, dynamic> toJson() => {
+		'step_index': stepIndex,
+		'critical': critical,
+		'reason': reason,
+		if (targetDeviceId != null) 'target_device_id': targetDeviceId,
+		if (kind != null) 'kind': kind,
+		if (propertyId != null) 'property_id': propertyId,
+		if (commandId != null) 'command_id': commandId,
+		if (label != null) 'label': label,
+		if (timestamp != null) 'timestamp': timestamp,
+	};
+}
+
+/// Summary of the last activation result (successes/failures).
+class MediaActivityLastResultModel {
+	final int stepsTotal;
+	final int stepsSucceeded;
+	final int stepsFailed;
+	final List<MediaStepFailureModel> failures;
+	final List<MediaStepFailureModel> warnings;
+	final List<MediaStepFailureModel> errors;
+	final int warningCount;
+	final int errorCount;
+
+	const MediaActivityLastResultModel({
+		this.stepsTotal = 0,
+		this.stepsSucceeded = 0,
+		this.stepsFailed = 0,
+		this.failures = const [],
+		this.warnings = const [],
+		this.errors = const [],
+		this.warningCount = 0,
+		this.errorCount = 0,
+	});
+
+	/// Legacy compat getters
+	int get successCount => stepsSucceeded;
+	int get failureCount => stepsFailed;
+
+	bool get hasWarnings => warnings.isNotEmpty;
+	bool get hasErrors => errors.isNotEmpty;
+
 	factory MediaActivityLastResultModel.fromJson(Map<String, dynamic> json) {
+		List<MediaStepFailureModel> parseFailures(dynamic raw) {
+			if (raw is List) {
+				return raw.map((e) {
+					if (e is Map<String, dynamic>) {
+						return MediaStepFailureModel.fromJson(e);
+					}
+					return MediaStepFailureModel(stepIndex: 0, critical: false, reason: e.toString());
+				}).toList();
+			}
+			return [];
+		}
+
+		final legacySuccess = json['success_count'] as int? ?? 0;
+		final legacyFailure = json['failure_count'] as int? ?? 0;
+
 		return MediaActivityLastResultModel(
-			successCount: json['success_count'] as int? ?? 0,
-			failureCount: json['failure_count'] as int? ?? 0,
-			failures: (json['failures'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+			stepsTotal: json['steps_total'] as int? ?? (legacySuccess + legacyFailure),
+			stepsSucceeded: json['steps_succeeded'] as int? ?? legacySuccess,
+			stepsFailed: json['steps_failed'] as int? ?? legacyFailure,
+			failures: parseFailures(json['failures']),
+			warnings: parseFailures(json['warnings']),
+			errors: parseFailures(json['errors']),
+			warningCount: json['warning_count'] as int? ?? 0,
+			errorCount: json['error_count'] as int? ?? 0,
 		);
 	}
 }
@@ -340,8 +428,10 @@ class MediaActiveStateModel {
 	bool get isDeactivating => state == MediaActivationState.deactivating;
 	bool get isFailed => state == MediaActivationState.failed;
 	bool get isDeactivated => state == MediaActivationState.deactivated;
-	bool get hasWarnings => warnings.isNotEmpty;
+	bool get hasWarnings => warnings.isNotEmpty || (lastResult?.hasWarnings ?? false);
+	bool get hasErrors => lastResult?.hasErrors ?? false;
 	bool get hasFailures => lastResult != null && lastResult!.failureCount > 0;
+	bool get isActiveWithWarnings => isActive && hasWarnings && !hasErrors;
 
 	factory MediaActiveStateModel.fromJson(Map<String, dynamic> json, {required String spaceId}) {
 		// Parse resolved - could be a JSON string or a map

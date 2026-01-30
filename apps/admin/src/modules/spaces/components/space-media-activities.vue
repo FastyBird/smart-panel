@@ -168,11 +168,60 @@
 						<span class="text-gray-500">{{ t('spacesModule.media.activities.failures.failed') }}:</span>
 						<span class="ml-1 font-medium text-red-600">{{ activeState.summary.stepsFailed }}</span>
 					</span>
+					<span v-if="activeState.summary.errorCount">
+						<span class="text-gray-500">Errors:</span>
+						<span class="ml-1 font-medium text-red-600">{{ activeState.summary.errorCount }}</span>
+					</span>
+					<span v-if="activeState.summary.warningCount">
+						<span class="text-gray-500">Warnings:</span>
+						<span class="ml-1 font-medium text-orange-500">{{ activeState.summary.warningCount }}</span>
+					</span>
 				</div>
 
-				<!-- Failed steps table -->
+				<!-- Structured failure tables (errors + warnings) -->
+				<template
+					v-for="section in failureSections"
+					:key="section.key"
+				>
+					<div :class="['text-xs font-semibold mb-1', section.headerClass]">{{ section.label }}</div>
+					<el-table
+						:data="section.items"
+						size="small"
+						border
+						:class="section.key === 'errors' ? 'mb-3' : 'mb-2'"
+					>
+						<el-table-column
+							:label="t('spacesModule.media.activities.failures.stepIndex')"
+							prop="stepIndex"
+							width="80"
+						/>
+						<el-table-column
+							label="Label"
+							min-width="120"
+						>
+							<template #default="{ row }">
+								{{ row.label ?? '-' }}
+							</template>
+						</el-table-column>
+						<el-table-column
+							:label="t('spacesModule.media.activities.failures.device')"
+							min-width="140"
+						>
+							<template #default="{ row }">
+								{{ row.targetDeviceId ? resolveDeviceName(row.targetDeviceId) : '-' }}
+							</template>
+						</el-table-column>
+						<el-table-column
+							:label="t('spacesModule.media.activities.failures.reason')"
+							prop="reason"
+							min-width="200"
+						/>
+					</el-table>
+				</template>
+
+				<!-- Legacy failures table (fallback if no structured warnings/errors) -->
 				<el-table
-					v-if="activeState.summary.failures?.length"
+					v-if="activeState.summary.failures?.length && !activeState.summary.errors?.length && !activeState.summary.warnings?.length"
 					:data="activeState.summary.failures"
 					size="small"
 					border
@@ -183,6 +232,19 @@
 						prop="stepIndex"
 						width="80"
 					/>
+					<el-table-column
+						label="Critical"
+						width="80"
+					>
+						<template #default="{ row }">
+							<el-tag
+								:type="row.critical ? 'danger' : 'warning'"
+								size="small"
+							>
+								{{ row.critical ? 'Error' : 'Warning' }}
+							</el-tag>
+						</template>
+					</el-table-column>
 					<el-table-column
 						:label="t('spacesModule.media.activities.failures.device')"
 						min-width="140"
@@ -287,7 +349,7 @@
 								type="success"
 								circle
 								:loading="activating && activatingKey === activity"
-								:disabled="activating || deactivating"
+								:disabled="activating || deactivating || (activeState?.state === 'activating')"
 								:title="t('spacesModule.media.activities.run')"
 								@click.stop="onActivate(activity)"
 							>
@@ -513,6 +575,7 @@ import { Icon } from '@iconify/vue';
 import { useFlashMessage } from '../../../common';
 import {
 	type IMediaActivityBinding,
+	type IMediaStepFailure,
 	type MediaActivationState,
 	MediaActivityKey,
 	MediaEndpointType,
@@ -586,6 +649,23 @@ const form = reactive<{
 const lastLoadedForm = ref<typeof form | null>(null);
 
 const initialLoading = computed(() => fetchingEndpoints.value || fetchingBindings.value);
+
+// Structured failure sections for the template loop
+const failureSections = computed(() => {
+	const summary = activeState.value?.summary;
+	if (!summary) return [];
+
+	const sections: { key: string; label: string; headerClass: string; items: IMediaStepFailure[] }[] = [];
+
+	if (summary.errors?.length) {
+		sections.push({ key: 'errors', label: 'Critical Errors', headerClass: 'text-red-600', items: summary.errors });
+	}
+	if (summary.warnings?.length) {
+		sections.push({ key: 'warnings', label: 'Warnings (non-critical)', headerClass: 'text-orange-500', items: summary.warnings });
+	}
+
+	return sections;
+});
 
 // Filtered endpoints by type
 const displayEndpoints = endpointsByType(MediaEndpointType.display);

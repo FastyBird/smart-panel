@@ -109,6 +109,13 @@ export class MediaActivityStepFailureModel {
 	stepIndex: number;
 
 	@ApiProperty({
+		description: 'Whether this failure is critical (causes activation to fail)',
+		type: 'boolean',
+	})
+	@Expose()
+	critical: boolean;
+
+	@ApiProperty({
 		description: 'Reason for the failure',
 		type: 'string',
 	})
@@ -124,12 +131,43 @@ export class MediaActivityStepFailureModel {
 	targetDeviceId?: string;
 
 	@ApiPropertyOptional({
+		description: 'Kind of action that failed',
+		enum: ['setProperty', 'sendCommand'],
+		type: 'string',
+	})
+	@Expose()
+	kind?: string;
+
+	@ApiPropertyOptional({
 		name: 'property_id',
 		description: 'Property ID that was targeted',
 		type: 'string',
 	})
 	@Expose({ name: 'property_id' })
 	propertyId?: string;
+
+	@ApiPropertyOptional({
+		name: 'command_id',
+		description: 'Command ID that was targeted',
+		type: 'string',
+	})
+	@Expose({ name: 'command_id' })
+	commandId?: string;
+
+	@ApiPropertyOptional({
+		description: 'Human-readable label for this step',
+		type: 'string',
+	})
+	@Expose()
+	label?: string;
+
+	@ApiPropertyOptional({
+		description: 'Timestamp when the failure occurred',
+		type: 'string',
+		format: 'date-time',
+	})
+	@Expose()
+	timestamp?: string;
 }
 
 // ========================
@@ -171,6 +209,40 @@ export class MediaActivityLastResultModel {
 	@Expose()
 	@Type(() => MediaActivityStepFailureModel)
 	failures?: MediaActivityStepFailureModel[];
+
+	@ApiPropertyOptional({
+		description: 'Non-critical step failures (warnings). These did not cause activation to fail.',
+		type: 'array',
+		items: { $ref: getSchemaPath(MediaActivityStepFailureModel) },
+	})
+	@Expose()
+	@Type(() => MediaActivityStepFailureModel)
+	warnings?: MediaActivityStepFailureModel[];
+
+	@ApiPropertyOptional({
+		description: 'Critical step failures (errors). These caused activation to fail.',
+		type: 'array',
+		items: { $ref: getSchemaPath(MediaActivityStepFailureModel) },
+	})
+	@Expose()
+	@Type(() => MediaActivityStepFailureModel)
+	errors?: MediaActivityStepFailureModel[];
+
+	@ApiPropertyOptional({
+		name: 'warning_count',
+		description: 'Number of non-critical failures',
+		type: 'integer',
+	})
+	@Expose({ name: 'warning_count' })
+	warningCount?: number;
+
+	@ApiPropertyOptional({
+		name: 'error_count',
+		description: 'Number of critical failures',
+		type: 'integer',
+	})
+	@Expose({ name: 'error_count' })
+	errorCount?: number;
 }
 
 // ========================

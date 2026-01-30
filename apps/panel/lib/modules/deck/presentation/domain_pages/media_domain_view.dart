@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
@@ -16,6 +18,7 @@ import 'package:fastybird_smart_panel/modules/spaces/service.dart';
 import 'package:fastybird_smart_panel/modules/spaces/services/media_activity_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 import 'package:provider/provider.dart';
 
@@ -391,6 +394,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
 	Widget _buildStateBadge(BuildContext context, MediaActiveStateModel state) {
 		Color badgeColor;
 		String label;
+		IconData? badgeIcon;
 
 		if (state.isActivating) {
 			badgeColor = Colors.orange;
@@ -398,29 +402,48 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
 		} else if (state.isDeactivating) {
 			badgeColor = Colors.orange;
 			label = 'Deactivating...';
-		} else if (state.isActive) {
-			badgeColor = Colors.green;
-			label = 'Active';
 		} else if (state.isFailed) {
 			badgeColor = Colors.red;
 			label = 'Failed';
+			badgeIcon = Icons.error_outline;
+		} else if (state.isActiveWithWarnings) {
+			badgeColor = Colors.orange;
+			label = 'Active';
+			badgeIcon = Icons.warning_amber;
+		} else if (state.isActive) {
+			badgeColor = Colors.green;
+			label = 'Active';
 		} else {
 			badgeColor = Colors.grey;
 			label = 'Off';
 		}
 
-		return Container(
-			padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-			decoration: BoxDecoration(
-				color: badgeColor.withValues(alpha: 0.15),
-				borderRadius: BorderRadius.circular(8),
-			),
-			child: Text(
-				label,
-				style: TextStyle(
-					fontSize: 12,
-					fontWeight: FontWeight.w600,
-					color: badgeColor,
+		return GestureDetector(
+			onTap: (state.isFailed || state.hasWarnings)
+					? () => _showFailureDetailsSheet(context, state)
+					: null,
+			child: Container(
+				padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+				decoration: BoxDecoration(
+					color: badgeColor.withValues(alpha: 0.15),
+					borderRadius: BorderRadius.circular(8),
+				),
+				child: Row(
+					mainAxisSize: MainAxisSize.min,
+					children: [
+						if (badgeIcon != null) ...[
+							Icon(badgeIcon, size: 14, color: badgeColor),
+							const SizedBox(width: 4),
+						],
+						Text(
+							label,
+							style: TextStyle(
+								fontSize: 12,
+								fontWeight: FontWeight.w600,
+								color: badgeColor,
+							),
+						),
+					],
 				),
 			),
 		);
@@ -506,7 +529,9 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
 	}
 
 	Widget _buildFailureDetails(BuildContext context, MediaActiveStateModel state) {
-		final failures = state.lastResult?.failures ?? [];
+		final errorCount = state.lastResult?.errorCount ?? 0;
+		final warningCount = state.lastResult?.warningCount ?? 0;
+
 		return Container(
 			width: double.infinity,
 			padding: const EdgeInsets.all(12),
@@ -521,61 +546,311 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
 						children: [
 							const Icon(Icons.error_outline, color: Colors.red, size: 18),
 							const SizedBox(width: 6),
-							const Text(
-								'Activation failed',
-								style: TextStyle(fontWeight: FontWeight.w600, color: Colors.red),
-							),
-							const Spacer(),
-							TextButton(
-								onPressed: () {
-									if (state.activityKey != null) {
-										_onActivitySelected(state.activityKey!);
-									}
-								},
-								child: const Text('Retry'),
+							Expanded(
+								child: Text(
+									'Activity failed to apply ($errorCount error${errorCount != 1 ? 's' : ''}, $warningCount warning${warningCount != 1 ? 's' : ''})',
+									style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.red, fontSize: 13),
+								),
 							),
 						],
 					),
-					if (failures.isNotEmpty) ...[
-						const SizedBox(height: 4),
-						...failures.take(3).map(
-							(f) => Text(
-								'- $f',
-								style: TextStyle(fontSize: 12, color: Colors.red.shade700),
+					const SizedBox(height: 8),
+					Row(
+						children: [
+							OutlinedButton.icon(
+								icon: const Icon(Icons.refresh, size: 16),
+								label: const Text('Retry'),
+								onPressed: () => _retryActivity(state),
 							),
-						),
-						if (failures.length > 3)
-							Text(
-								'...and ${failures.length - 3} more',
-								style: TextStyle(fontSize: 12, color: Colors.red.shade400),
+							const SizedBox(width: 8),
+							OutlinedButton.icon(
+								icon: const Icon(Icons.stop, size: 16),
+								label: const Text('Deactivate'),
+								onPressed: _deactivateActivity,
 							),
-					],
+							const Spacer(),
+							TextButton(
+								onPressed: () => _showFailureDetailsSheet(context, state),
+								child: const Text('Details'),
+							),
+						],
+					),
 				],
 			),
 		);
 	}
 
 	Widget _buildWarningBanner(BuildContext context, MediaActiveStateModel state) {
-		return Container(
-			width: double.infinity,
-			padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-			decoration: BoxDecoration(
-				color: Colors.orange.withValues(alpha: 0.1),
-				borderRadius: BorderRadius.circular(8),
-			),
-			child: Row(
-				children: [
-					const Icon(Icons.warning_amber, color: Colors.orange, size: 18),
-					const SizedBox(width: 6),
-					Expanded(
-						child: Text(
-							state.warnings.first,
-							style: const TextStyle(fontSize: 12, color: Colors.orange),
+		final warningCount = state.lastResult?.warningCount ?? state.warnings.length;
+		final String label;
+		if (warningCount > 0) {
+			label = 'Some steps failed ($warningCount warning${warningCount != 1 ? 's' : ''})';
+		} else if (state.warnings.isNotEmpty) {
+			label = state.warnings.first;
+		} else {
+			label = 'Some steps had issues';
+		}
+
+		return GestureDetector(
+			onTap: () => _showFailureDetailsSheet(context, state),
+			child: Container(
+				width: double.infinity,
+				padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+				decoration: BoxDecoration(
+					color: Colors.orange.withValues(alpha: 0.1),
+					borderRadius: BorderRadius.circular(8),
+				),
+				child: Row(
+					children: [
+						const Icon(Icons.warning_amber, color: Colors.orange, size: 18),
+						const SizedBox(width: 6),
+						Expanded(
+							child: Text(
+								label,
+								style: const TextStyle(fontSize: 12, color: Colors.orange),
+							),
 						),
-					),
-				],
+						const Icon(Icons.chevron_right, color: Colors.orange, size: 18),
+					],
+				),
 			),
 		);
+	}
+
+	void _showFailureDetailsSheet(BuildContext context, MediaActiveStateModel state) {
+		final lastResult = state.lastResult;
+
+		showModalBottomSheet(
+			context: context,
+			isScrollControlled: true,
+			shape: const RoundedRectangleBorder(
+				borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+			),
+			builder: (ctx) {
+				final errors = lastResult?.errors ?? [];
+				final warnings = lastResult?.warnings ?? [];
+
+				return DraggableScrollableSheet(
+					initialChildSize: 0.5,
+					minChildSize: 0.3,
+					maxChildSize: 0.85,
+					expand: false,
+					builder: (ctx, scrollController) {
+						return Padding(
+							padding: const EdgeInsets.all(16),
+							child: ListView(
+								controller: scrollController,
+								children: [
+									// Header
+									Row(
+										children: [
+											const Icon(Icons.info_outline, size: 24),
+											const SizedBox(width: 8),
+											Text(
+												'Activation Details',
+												style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+													fontWeight: FontWeight.bold,
+												),
+											),
+										],
+									),
+									const SizedBox(height: 12),
+
+									// Summary counts
+									if (lastResult != null) ...[
+										Row(
+											children: [
+												_summaryChip('Total', lastResult.stepsTotal, Colors.grey),
+												const SizedBox(width: 8),
+												_summaryChip('OK', lastResult.stepsSucceeded, Colors.green),
+												const SizedBox(width: 8),
+												_summaryChip('Errors', lastResult.errorCount, Colors.red),
+												const SizedBox(width: 8),
+												_summaryChip('Warnings', lastResult.warningCount, Colors.orange),
+											],
+										),
+										const SizedBox(height: 16),
+									],
+
+									// Errors
+									if (errors.isNotEmpty) ...[
+										Text(
+											'Errors (critical)',
+											style: TextStyle(
+												fontWeight: FontWeight.w600,
+												color: Colors.red.shade700,
+												fontSize: 13,
+											),
+										),
+										const SizedBox(height: 4),
+										...errors.map((f) => _failureRow(f, Colors.red)),
+										const SizedBox(height: 12),
+									],
+
+									// Warnings
+									if (warnings.isNotEmpty) ...[
+										Text(
+											'Warnings (non-critical)',
+											style: TextStyle(
+												fontWeight: FontWeight.w600,
+												color: Colors.orange.shade700,
+												fontSize: 13,
+											),
+										),
+										const SizedBox(height: 4),
+										...warnings.map((f) => _failureRow(f, Colors.orange)),
+										const SizedBox(height: 12),
+									],
+
+									// Legacy string warnings
+									if (state.warnings.isNotEmpty && warnings.isEmpty) ...[
+										Text(
+											'Warnings',
+											style: TextStyle(
+												fontWeight: FontWeight.w600,
+												color: Colors.orange.shade700,
+												fontSize: 13,
+											),
+										),
+										const SizedBox(height: 4),
+										...state.warnings.map((w) => Padding(
+											padding: const EdgeInsets.only(bottom: 4),
+											child: Text('- $w', style: const TextStyle(fontSize: 12)),
+										)),
+										const SizedBox(height: 12),
+									],
+
+									// Actions
+									const Divider(),
+									const SizedBox(height: 8),
+									Row(
+										children: [
+											if (state.isFailed && state.activityKey != null)
+												Expanded(
+													child: FilledButton.icon(
+														icon: const Icon(Icons.refresh, size: 16),
+														label: const Text('Retry activity'),
+														onPressed: () {
+															Navigator.pop(ctx);
+															_retryActivity(state);
+														},
+													),
+												),
+											if (state.isFailed) const SizedBox(width: 8),
+											Expanded(
+												child: OutlinedButton.icon(
+													icon: const Icon(Icons.stop, size: 16),
+													label: const Text('Deactivate'),
+													onPressed: () {
+														Navigator.pop(ctx);
+														_deactivateActivity();
+													},
+												),
+											),
+										],
+									),
+									const SizedBox(height: 8),
+									TextButton.icon(
+										icon: const Icon(Icons.copy, size: 16),
+										label: const Text('Copy debug JSON'),
+										onPressed: () => _copyDebugJson(state),
+									),
+								],
+							),
+						);
+					},
+				);
+			},
+		);
+	}
+
+	Widget _summaryChip(String label, int count, Color color) {
+		return Container(
+			padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+			decoration: BoxDecoration(
+				color: color.withValues(alpha: 0.1),
+				borderRadius: BorderRadius.circular(8),
+			),
+			child: Text(
+				'$label: $count',
+				style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color),
+			),
+		);
+	}
+
+	Widget _failureRow(MediaStepFailureModel failure, Color color) {
+		return Padding(
+			padding: const EdgeInsets.only(bottom: 6),
+			child: Container(
+				width: double.infinity,
+				padding: const EdgeInsets.all(8),
+				decoration: BoxDecoration(
+					color: color.withValues(alpha: 0.05),
+					borderRadius: BorderRadius.circular(6),
+					border: Border.all(color: color.withValues(alpha: 0.2)),
+				),
+				child: Column(
+					crossAxisAlignment: CrossAxisAlignment.start,
+					children: [
+						if (failure.label != null)
+							Text(
+								failure.label!,
+								style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: color),
+							),
+						Text(
+							failure.reason,
+							style: TextStyle(fontSize: 11, color: color.withValues(alpha: 0.8)),
+						),
+						if (failure.targetDeviceId != null)
+							Text(
+								'Device: ${failure.targetDeviceId}',
+								style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
+							),
+					],
+				),
+			),
+		);
+	}
+
+	void _retryActivity(MediaActiveStateModel state) {
+		if (state.activityKey != null) {
+			_onActivitySelected(state.activityKey!);
+		}
+	}
+
+	void _deactivateActivity() {
+		_onActivitySelected(MediaActivityKey.off);
+	}
+
+	Future<void> _copyDebugJson(MediaActiveStateModel state) async {
+		final data = {
+			'activityKey': state.activityKey?.name,
+			'state': state.state.name,
+			'warnings': state.warnings,
+			if (state.lastResult != null) 'lastResult': {
+				'stepsTotal': state.lastResult!.stepsTotal,
+				'stepsSucceeded': state.lastResult!.stepsSucceeded,
+				'stepsFailed': state.lastResult!.stepsFailed,
+				'warningCount': state.lastResult!.warningCount,
+				'errorCount': state.lastResult!.errorCount,
+				'errors': state.lastResult!.errors.map((e) => e.toJson()).toList(),
+				'warnings': state.lastResult!.warnings.map((e) => e.toJson()).toList(),
+			},
+		};
+		try {
+			await Clipboard.setData(ClipboardData(text: const JsonEncoder.withIndent('  ').convert(data)));
+			if (mounted) {
+				ScaffoldMessenger.of(context).showSnackBar(
+					const SnackBar(content: Text('Debug JSON copied to clipboard')),
+				);
+			}
+		} catch (_) {
+			if (mounted) {
+				ScaffoldMessenger.of(context).showSnackBar(
+					const SnackBar(content: Text('Failed to copy to clipboard')),
+				);
+			}
+		}
 	}
 
 	// ============================================
@@ -632,39 +907,49 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage> {
 			behavior: HitTestBehavior.opaque,
 			onTap: () {},
 			child: Container(
-			color: Colors.black.withValues(alpha: 0.7),
-			child: Center(
-				child: Card(
-					margin: const EdgeInsets.all(32),
-					child: Padding(
-						padding: const EdgeInsets.all(24),
-						child: Column(
-							mainAxisSize: MainAxisSize.min,
-							children: [
-								const Icon(Icons.wifi_off, size: 48, color: Colors.grey),
-								const SizedBox(height: 16),
-								Text(
-									'Realtime connection required',
-									style: Theme.of(context).textTheme.titleMedium,
-									textAlign: TextAlign.center,
-								),
-								const SizedBox(height: 8),
-								Text(
-									'Media controls require a live WebSocket connection to function.',
-									style: Theme.of(context).textTheme.bodySmall,
-									textAlign: TextAlign.center,
-								),
-								const SizedBox(height: 16),
-								OutlinedButton(
-									onPressed: _navigateToHome,
-									child: const Text('Go back'),
-								),
-							],
+				color: Colors.black.withValues(alpha: 0.7),
+				child: Center(
+					child: Card(
+						margin: const EdgeInsets.all(32),
+						child: Padding(
+							padding: const EdgeInsets.all(24),
+							child: Column(
+								mainAxisSize: MainAxisSize.min,
+								children: [
+									const Icon(Icons.wifi_off, size: 48, color: Colors.grey),
+									const SizedBox(height: 16),
+									Text(
+										'Realtime connection required',
+										style: Theme.of(context).textTheme.titleMedium?.copyWith(
+											fontWeight: FontWeight.bold,
+										),
+										textAlign: TextAlign.center,
+									),
+									const SizedBox(height: 8),
+									Text(
+										'Media controls need a live connection to stay in sync.',
+										style: Theme.of(context).textTheme.bodySmall,
+										textAlign: TextAlign.center,
+									),
+									const SizedBox(height: 20),
+									FilledButton.icon(
+										icon: const Icon(Icons.refresh, size: 18),
+										label: const Text('Retry connection'),
+										onPressed: () {
+											_socketService?.reconnect();
+										},
+									),
+									const SizedBox(height: 8),
+									OutlinedButton(
+										onPressed: _navigateToHome,
+										child: const Text('Back to Home'),
+									),
+								],
+							),
 						),
 					),
 				),
 			),
-		),
 		);
 	}
 

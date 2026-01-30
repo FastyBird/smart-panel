@@ -37,7 +37,10 @@ interface ExecutionFailure {
 	reason: string;
 	critical: boolean;
 	targetDeviceId?: string;
+	kind?: string;
 	propertyId?: string;
+	label?: string;
+	timestamp?: string;
 }
 
 interface ExecutionResult {
@@ -162,20 +165,20 @@ export class SpaceMediaActivityService {
 			const hasCriticalFailure = executionResult.failures.some((f) => f.critical);
 			const finalState = hasCriticalFailure ? MediaActivationState.FAILED : MediaActivationState.ACTIVE;
 
-			// Build last result
+			// Build last result with structured warnings/errors
+			const allFailures = executionResult.failures;
+			const warningItems = allFailures.filter((f) => !f.critical);
+			const errorItems = allFailures.filter((f) => f.critical);
+
 			const lastResult: MediaActivityLastResultModel = {
 				stepsTotal: plan.steps.length,
 				stepsSucceeded: executionResult.succeeded,
 				stepsFailed: executionResult.failures.length,
-				failures:
-					executionResult.failures.length > 0
-						? executionResult.failures.map((f) => ({
-								stepIndex: f.stepIndex,
-								reason: f.reason,
-								targetDeviceId: f.targetDeviceId,
-								propertyId: f.propertyId,
-							}))
-						: undefined,
+				failures: allFailures.length > 0 ? allFailures : undefined,
+				warnings: warningItems.length > 0 ? warningItems : undefined,
+				errors: errorItems.length > 0 ? errorItems : undefined,
+				warningCount: warningItems.length,
+				errorCount: errorItems.length,
 			};
 
 			// Persist final state
@@ -213,16 +216,21 @@ export class SpaceMediaActivityService {
 				error instanceof Error ? error.stack : String(error),
 			);
 
+			const unexpectedFailure = {
+				stepIndex: 0,
+				critical: true,
+				reason: `Unexpected error: ${error instanceof Error ? error.message : String(error)}`,
+				timestamp: new Date().toISOString(),
+			};
+
 			const lastResult: MediaActivityLastResultModel = {
 				stepsTotal: plan.steps.length,
 				stepsSucceeded: 0,
 				stepsFailed: plan.steps.length,
-				failures: [
-					{
-						stepIndex: 0,
-						reason: `Unexpected error: ${error instanceof Error ? error.message : String(error)}`,
-					},
-				],
+				failures: [unexpectedFailure],
+				errors: [unexpectedFailure],
+				warningCount: 0,
+				errorCount: 1,
 			};
 
 			record.state = MediaActivationState.FAILED;
@@ -247,8 +255,23 @@ export class SpaceMediaActivityService {
 		await this.spacesService.getOneOrThrow(spaceId);
 
 		const record = await this.getActiveRecord(spaceId);
+		const deactivationWarnings: string[] = [];
 
 		if (record) {
+			// Best-effort: try to stop playback on resolved devices before deactivating
+			if (record.resolved && record.state !== MediaActivationState.DEACTIVATED) {
+				try {
+					const resolved = JSON.parse(record.resolved) as MediaActivityResolvedModel;
+					const stopWarnings = await this.bestEffortStopPlayback(spaceId, resolved);
+					deactivationWarnings.push(...stopWarnings);
+				} catch (error) {
+					const err = error as Error;
+					deactivationWarnings.push(`Best-effort stop failed: ${err.message}`);
+					this.logger.warn(`Best-effort stop playback failed during deactivation: ${err.message}`);
+				}
+			}
+
+			// Always set to deactivated regardless of stop playback outcome
 			record.activityKey = null;
 			record.state = MediaActivationState.DEACTIVATED;
 			record.lastResult = null;
@@ -260,7 +283,29 @@ export class SpaceMediaActivityService {
 		return {
 			activityKey: null,
 			state: MediaActivationState.DEACTIVATED,
+			warnings: deactivationWarnings.length > 0 ? deactivationWarnings : undefined,
 		};
+	}
+
+	/**
+	 * Best-effort: try to stop/pause playback on resolved devices.
+	 * Returns warning messages for any failures (never throws).
+	 */
+	private async bestEffortStopPlayback(spaceId: string, resolved: MediaActivityResolvedModel): Promise<string[]> {
+		const endpointsResult = await this.derivedEndpointService.buildEndpointsForSpace(spaceId);
+
+		const playbackEndpoints = endpointsResult.endpoints.filter((e) => e.capabilities.playback && e.links.playback);
+
+		// Only target endpoints that are part of the resolved activity
+		const resolvedDeviceIds = new Set(
+			[resolved.displayDeviceId, resolved.audioDeviceId, resolved.sourceDeviceId, resolved.remoteDeviceId].filter(
+				Boolean,
+			),
+		);
+
+		const targetEndpoints = playbackEndpoints.filter((ep) => resolvedDeviceIds.has(ep.deviceId));
+
+		return this.pausePlaybackOnEndpoints(targetEndpoints, (ep) => `Failed to stop playback on ${ep.name}`);
 	}
 
 	/**
@@ -405,7 +450,10 @@ export class SpaceMediaActivityService {
 					reason: `Device ${step.targetDeviceId} not found`,
 					critical: step.critical,
 					targetDeviceId: step.targetDeviceId,
+					kind: step.action.kind,
 					propertyId: step.action.propertyId,
+					label: step.label,
+					timestamp: new Date().toISOString(),
 				});
 
 				if (step.critical) {
@@ -424,7 +472,10 @@ export class SpaceMediaActivityService {
 					reason: `No platform for device ${step.targetDeviceId}`,
 					critical: step.critical,
 					targetDeviceId: step.targetDeviceId,
+					kind: step.action.kind,
 					propertyId: step.action.propertyId,
+					label: step.label,
+					timestamp: new Date().toISOString(),
 				});
 
 				if (step.critical) {
@@ -441,6 +492,9 @@ export class SpaceMediaActivityService {
 					reason: `Unsupported action kind: ${step.action.kind}`,
 					critical: step.critical,
 					targetDeviceId: step.targetDeviceId,
+					kind: step.action.kind,
+					label: step.label,
+					timestamp: new Date().toISOString(),
 				});
 
 				if (step.critical) {
@@ -474,7 +528,10 @@ export class SpaceMediaActivityService {
 					reason: `Property ${step.action.propertyId} not found on device`,
 					critical: step.critical,
 					targetDeviceId: step.targetDeviceId,
+					kind: step.action.kind,
 					propertyId: step.action.propertyId,
+					label: step.label,
+					timestamp: new Date().toISOString(),
 				});
 
 				if (step.critical) {
@@ -506,7 +563,10 @@ export class SpaceMediaActivityService {
 						reason: 'Command execution returned false',
 						critical: step.critical,
 						targetDeviceId: step.targetDeviceId,
+						kind: step.action.kind,
 						propertyId: step.action.propertyId,
+						label: step.label,
+						timestamp: new Date().toISOString(),
 					});
 
 					if (step.critical) {
@@ -522,7 +582,10 @@ export class SpaceMediaActivityService {
 					reason: err.message,
 					critical: step.critical,
 					targetDeviceId: step.targetDeviceId,
+					kind: step.action.kind,
 					propertyId: step.action.propertyId,
+					label: step.label,
+					timestamp: new Date().toISOString(),
 				});
 
 				if (step.critical) {
@@ -649,7 +712,29 @@ export class SpaceMediaActivityService {
 		const allEndpoints = Array.from(endpointMap.values());
 		const playbackEndpoints = allEndpoints.filter((e) => e.capabilities.playback && e.links.playback);
 
-		for (const ep of playbackEndpoints) {
+		const pauseWarnings = await this.pausePlaybackOnEndpoints(
+			playbackEndpoints,
+			(ep) => `Failed to pause ${ep.name} (non-critical)`,
+			(ep) => `Paused playback on ${ep.name} (conflict with ${currentKey})`,
+		);
+
+		warnings.push(...pauseWarnings);
+
+		return warnings;
+	}
+
+	/**
+	 * Pause playback on a list of endpoints (best-effort).
+	 * Returns warning/info messages. Never throws.
+	 */
+	private async pausePlaybackOnEndpoints(
+		endpoints: DerivedMediaEndpointModel[],
+		failureMessage: (ep: DerivedMediaEndpointModel) => string,
+		successMessage?: (ep: DerivedMediaEndpointModel) => string,
+	): Promise<string[]> {
+		const messages: string[] = [];
+
+		for (const ep of endpoints) {
 			try {
 				const devices = await this.spacesService.findDevicesByIds([ep.deviceId]);
 				const device = devices[0];
@@ -664,7 +749,6 @@ export class SpaceMediaActivityService {
 					continue;
 				}
 
-				// Find the playback property
 				let foundChannel: (typeof device.channels extends (infer U)[] | undefined ? U : never) | null = null;
 				let foundProperty: unknown = null;
 
@@ -693,20 +777,22 @@ export class SpaceMediaActivityService {
 					await Promise.race([
 						platform.processBatch([command]),
 						new Promise<boolean>((_, reject) =>
-							setTimeout(() => reject(new Error('Conflict step timeout')), STEP_TIMEOUT_MS),
+							setTimeout(() => reject(new Error('Pause playback timeout')), STEP_TIMEOUT_MS),
 						),
 					]);
 
-					warnings.push(`Paused playback on ${ep.name} (conflict with ${currentKey})`);
+					if (successMessage) {
+						messages.push(successMessage(ep));
+					}
 				}
 			} catch (error) {
 				const err = error as Error;
-				warnings.push(`Failed to pause ${ep.name}: ${err.message} (non-critical)`);
-				this.logger.warn(`Conflict handling failed for endpoint ${ep.endpointId}: ${err.message}`);
+				messages.push(`${failureMessage(ep)}: ${err.message}`);
+				this.logger.warn(`Pause playback failed for endpoint ${ep.endpointId}: ${err.message}`);
 			}
 		}
 
-		return warnings;
+		return messages;
 	}
 
 	/**
