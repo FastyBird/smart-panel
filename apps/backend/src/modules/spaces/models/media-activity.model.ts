@@ -375,15 +375,6 @@ export class MediaActivityActivationResultModel {
 	})
 	@Expose()
 	warnings?: string[];
-
-	@ApiProperty({
-		name: 'requires_realtime',
-		description: 'Whether this media domain requires a live WebSocket connection for reliable control',
-		type: 'boolean',
-		default: true,
-	})
-	@Expose({ name: 'requires_realtime' })
-	requiresRealtime: boolean;
 }
 
 // ========================

@@ -399,31 +399,6 @@ describe('SpaceMediaActivityService', () => {
 			expect(error?.timestamp).toBeDefined();
 		});
 
-		it('should include requiresRealtime flag in activation result', async () => {
-			const displayEndpointId = `${spaceId}:display:${deviceTvId}`;
-			const binding = buildBinding(MediaActivityKey.WATCH, { displayEndpointId });
-
-			mockBindingService.findBySpace.mockResolvedValue([binding]);
-
-			const displayEndpoint = buildEndpoint(
-				MediaEndpointType.DISPLAY,
-				deviceTvId,
-				{ power: true },
-				{ power: { propertyId: powerPropertyId } },
-			);
-
-			mockDerivedEndpointService.buildEndpointsForSpace.mockResolvedValue({
-				spaceId,
-				endpoints: [displayEndpoint],
-			});
-
-			mockSpacesService.findDevicesByIds.mockResolvedValue([]);
-
-			const result = await service.activate(spaceId, MediaActivityKey.WATCH);
-
-			expect(result.requiresRealtime).toBe(true);
-		});
-
 		it('should allow partial success for non-critical step failure', async () => {
 			const audioEndpointId = `${spaceId}:audio_output:${deviceSpeakerId}`;
 			const binding = buildBinding(MediaActivityKey.LISTEN, {
@@ -557,7 +532,7 @@ describe('SpaceMediaActivityService', () => {
 			expect(result.state).toBe(MediaActivationState.DEACTIVATED);
 		});
 
-		it('should always result in deactivated state and include requiresRealtime', async () => {
+		it('should always result in deactivated state even when stop playback fails', async () => {
 			const existingRecord = {
 				id: uuid(),
 				spaceId,
@@ -575,7 +550,6 @@ describe('SpaceMediaActivityService', () => {
 			const result = await service.deactivate(spaceId);
 
 			expect(result.state).toBe(MediaActivationState.DEACTIVATED);
-			expect(result.requiresRealtime).toBe(true);
 			expect(mockActiveRepository.save).toHaveBeenCalledWith(
 				expect.objectContaining({ state: MediaActivationState.DEACTIVATED }),
 			);
