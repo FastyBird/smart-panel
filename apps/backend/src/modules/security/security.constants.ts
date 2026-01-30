@@ -28,3 +28,9 @@ export enum Severity {
 	WARNING = 'warning',
 	CRITICAL = 'critical',
 }
+
+export const SEVERITY_RANK: Record<Severity, number> = {
+	[Severity.INFO]: 0,
+	[Severity.WARNING]: 1,
+	[Severity.CRITICAL]: 2,
+};
