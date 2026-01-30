@@ -221,18 +221,6 @@ export class AlarmSecurityProvider implements SecurityStateProviderInterface {
 		return signal;
 	}
 
-	private computeSeverity(state: AlarmDeviceState): Severity {
-		if (state.alarmState === AlarmState.TRIGGERED || state.triggered || state.tampered) {
-			return Severity.CRITICAL;
-		}
-
-		if (state.active === false || state.fault > 0) {
-			return Severity.WARNING;
-		}
-
-		return Severity.INFO;
-	}
-
 	private getPropertyValue(
 		properties: ChannelPropertyEntity[],
 		category: PropertyCategory,
