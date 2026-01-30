@@ -212,6 +212,29 @@ describe('AlarmSecurityProvider', () => {
 
 			expect(signal.armedState).toBe(ArmedState.ARMED_AWAY);
 		});
+
+		it('should pick most urgent alarmState across devices (pending > idle)', async () => {
+			devicesService.findAll.mockResolvedValue([
+				makeAlarmDevice('dev-1', [makeProperty(PropertyCategory.ALARM_STATE, 'idle')]),
+				makeAlarmDevice('dev-2', [makeProperty(PropertyCategory.ALARM_STATE, 'pending')]),
+			]);
+
+			const signal = await provider.getSignals();
+
+			expect(signal.alarmState).toBe(AlarmState.PENDING);
+		});
+
+		it('should count activeAlertsCount per device with issues', async () => {
+			devicesService.findAll.mockResolvedValue([
+				makeAlarmDevice('dev-1', [makeProperty(PropertyCategory.FAULT, 1)]),
+				makeAlarmDevice('dev-2', [makeProperty(PropertyCategory.TAMPERED, true)]),
+				makeAlarmDevice('dev-3', [makeProperty(PropertyCategory.ALARM_STATE, 'idle')]),
+			]);
+
+			const signal = await provider.getSignals();
+
+			expect(signal.activeAlertsCount).toBe(2);
+		});
 	});
 
 	describe('lastEvent', () => {

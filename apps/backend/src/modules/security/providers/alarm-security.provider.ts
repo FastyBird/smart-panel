@@ -7,8 +7,14 @@ import { SecuritySignal } from '../contracts/security-signal.type';
 import { SecurityStateProviderInterface } from '../contracts/security-state-provider.interface';
 import { AlarmState, ArmedState, SEVERITY_RANK, Severity } from '../security.constants';
 
+const ALARM_STATE_RANK: Record<AlarmState, number> = {
+	[AlarmState.IDLE]: 0,
+	[AlarmState.SILENCED]: 1,
+	[AlarmState.PENDING]: 2,
+	[AlarmState.TRIGGERED]: 3,
+};
+
 interface AlarmDeviceState {
-	deviceId: string;
 	armedState: ArmedState | null;
 	alarmState: AlarmState | null;
 	tampered: boolean;
@@ -111,31 +117,31 @@ export class AlarmSecurityProvider implements SecurityStateProviderInterface {
 			lastEvent = this.parseLastEvent(lastEventValue, device.id);
 		}
 
-		return { deviceId: device.id, armedState, alarmState, tampered, active, fault, lastEvent };
+		return { armedState, alarmState, tampered, active, fault, lastEvent };
 	}
 
 	private aggregateStates(states: AlarmDeviceState[]): SecuritySignal {
 		// armedState: first device (deterministic by sorted id)
 		const armedState = states[0]?.armedState ?? null;
 
-		// alarmState: triggered dominates
+		// alarmState: most urgent state wins (triggered > pending > silenced > idle)
 		let alarmState: AlarmState | null = null;
-		const hasTriggered = states.some((s) => s.alarmState === AlarmState.TRIGGERED);
+		let maxAlarmRank = -1;
 
-		if (hasTriggered) {
-			alarmState = AlarmState.TRIGGERED;
-		} else {
-			// first non-null
-			for (const s of states) {
-				if (s.alarmState != null) {
+		for (const s of states) {
+			if (s.alarmState != null) {
+				const rank = ALARM_STATE_RANK[s.alarmState];
+
+				if (rank > maxAlarmRank) {
+					maxAlarmRank = rank;
 					alarmState = s.alarmState;
-					break;
 				}
 			}
 		}
 
-		// severity per device, then take max
+		// severity per device, then take max; count devices with non-info severity
 		let maxSeverity = Severity.INFO;
+		let activeAlertsCount = 0;
 
 		for (const s of states) {
 			const severity = this.computeSeverity(s);
@@ -143,10 +149,13 @@ export class AlarmSecurityProvider implements SecurityStateProviderInterface {
 			if (SEVERITY_RANK[severity] > SEVERITY_RANK[maxSeverity]) {
 				maxSeverity = severity;
 			}
+
+			if (severity !== Severity.INFO) {
+				activeAlertsCount++;
+			}
 		}
 
 		const hasCriticalAlert = maxSeverity === Severity.CRITICAL;
-		const activeAlertsCount = maxSeverity !== Severity.INFO ? 1 : 0;
 
 		// lastEvent: newest
 		let newestEvent: SecuritySignal['lastEvent'] | undefined;
