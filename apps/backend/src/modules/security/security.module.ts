@@ -10,6 +10,7 @@ import { SwaggerModule } from '../swagger/swagger.module';
 import { SecurityController } from './controllers/security.controller';
 import { AlarmSecurityProvider } from './providers/alarm-security.provider';
 import { DefaultSecurityProvider } from './providers/default-security.provider';
+import { SecuritySensorsProvider } from './providers/security-sensors.provider';
 import {
 	SECURITY_MODULE_API_TAG_DESCRIPTION,
 	SECURITY_MODULE_API_TAG_NAME,
@@ -31,13 +32,15 @@ import { SecurityService } from './services/security.service';
 	providers: [
 		DefaultSecurityProvider,
 		AlarmSecurityProvider,
+		SecuritySensorsProvider,
 		{
 			provide: SECURITY_STATE_PROVIDERS,
-			useFactory: (alarmProvider: AlarmSecurityProvider, defaultProvider: DefaultSecurityProvider) => [
-				alarmProvider,
-				defaultProvider,
-			],
-			inject: [AlarmSecurityProvider, DefaultSecurityProvider],
+			useFactory: (
+				alarmProvider: AlarmSecurityProvider,
+				defaultProvider: DefaultSecurityProvider,
+				sensorsProvider: SecuritySensorsProvider,
+			) => [alarmProvider, defaultProvider, sensorsProvider],
+			inject: [AlarmSecurityProvider, DefaultSecurityProvider, SecuritySensorsProvider],
 		},
 		SecurityAggregatorService,
 		SecurityService,
