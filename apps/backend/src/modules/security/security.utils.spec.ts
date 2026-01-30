@@ -1,5 +1,4 @@
 import { SecurityLastEvent } from './contracts/security-signal.type';
-
 import { pickNewestEvent } from './security.utils';
 
 describe('pickNewestEvent', () => {
