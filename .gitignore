@@ -39,6 +39,9 @@ var/db/database.sqlite
 var/db/database.sqlite-journal
 logs/smart-panel-*
 
+# pnpm store
+.pnpm-store/
+
 # Auto Claude data directory
 .auto-claude/
 .claude_settings.json

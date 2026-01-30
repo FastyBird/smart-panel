@@ -20,9 +20,20 @@ services:
       FB_INFLUXDB_PASSWORD: ${FB_INFLUXDB_PASSWORD:-admin}
     volumes:
       - ./:/app:delegated
-      - server_node_modules:/app/node_modules
+      # Named volumes for node_modules to isolate Linux binaries from host (macOS)
+      - node_modules:/app/node_modules
+      - backend_node_modules:/app/apps/backend/node_modules
+      - admin_node_modules:/app/apps/admin/node_modules
+      - extension_sdk_node_modules:/app/packages/extension-sdk/node_modules
+      - example_extension_node_modules:/app/packages/example-extension/node_modules
     ports:
       - "${BACKEND_PORT:-3000}:3000"
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:3000/api/system/health', r => r.statusCode === 200 ? process.exit(0) : process.exit(1)).on('error', () => process.exit(1))\""]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
     networks:
       - fastybird
     restart: unless-stopped
@@ -34,16 +45,25 @@ services:
       context: .
       dockerfile: .docker/dev/admin/Dockerfile
     depends_on:
-      - server
+      server:
+        condition: service_healthy
     environment:
       # Container specific environment variables
       TZ: ${FB_APP_TZ:-UTC}
       # Application specific environment variables
       NODE_ENV: development
       FB_CONFIG_PATH: ${FB_CONFIG_PATH:-/app/var/data}
+      FB_APP_HOST: http://server
+      FB_BACKEND_PORT: 3000
+      FB_ADMIN_PORT: 3003
     volumes:
       - ./:/app:delegated
-      - admin_node_modules:/app/node_modules
+      # Named volumes for node_modules to isolate Linux binaries from host (macOS)
+      - node_modules:/app/node_modules
+      - backend_node_modules:/app/apps/backend/node_modules
+      - admin_node_modules:/app/apps/admin/node_modules
+      - extension_sdk_node_modules:/app/packages/extension-sdk/node_modules
+      - example_extension_node_modules:/app/packages/example-extension/node_modules
     ports:
       - "${ADMIN_PORT:-3003}:3003"
     networks:
@@ -90,5 +110,8 @@ networks:
 volumes:
   influxdb-dev-data:
   chronograf-dev-data:
-  server_node_modules:
+  node_modules:
+  backend_node_modules:
   admin_node_modules:
+  extension_sdk_node_modules:
+  example_extension_node_modules:

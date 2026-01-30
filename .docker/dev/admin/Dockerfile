@@ -9,7 +9,11 @@ WORKDIR /app
 # Increase Node.js memory limit
 ENV NODE_OPTIONS="--max_old_space_size=4096"
 
+# Copy entrypoint script
+COPY .docker/dev/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
 EXPOSE 3003
 
-# Install dependencies and start the admin
-CMD ["sh", "-c", "pnpm install && pnpm --filter @fastybird/smart-panel-admin start:dev"]
+ENTRYPOINT ["entrypoint.sh"]
+CMD ["pnpm", "--filter", "@fastybird/smart-panel-admin", "start:dev"]
