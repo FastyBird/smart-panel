@@ -7,12 +7,15 @@ import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models
 import { SwaggerModule } from '../swagger/swagger.module';
 
 import { SecurityController } from './controllers/security.controller';
+import { DefaultSecurityProvider } from './providers/default-security.provider';
 import {
 	SECURITY_MODULE_API_TAG_DESCRIPTION,
 	SECURITY_MODULE_API_TAG_NAME,
 	SECURITY_MODULE_NAME,
+	SECURITY_STATE_PROVIDERS,
 } from './security.constants';
 import { SECURITY_SWAGGER_EXTRA_MODELS } from './security.openapi';
+import { SecurityAggregatorService } from './services/security-aggregator.service';
 import { SecurityService } from './services/security.service';
 
 @ApiTag({
@@ -23,8 +26,17 @@ import { SecurityService } from './services/security.service';
 @Module({
 	imports: [SwaggerModule, ExtensionsModule],
 	controllers: [SecurityController],
-	providers: [SecurityService],
-	exports: [SecurityService],
+	providers: [
+		DefaultSecurityProvider,
+		{
+			provide: SECURITY_STATE_PROVIDERS,
+			useFactory: (defaultProvider: DefaultSecurityProvider) => [defaultProvider],
+			inject: [DefaultSecurityProvider],
+		},
+		SecurityAggregatorService,
+		SecurityService,
+	],
+	exports: [SecurityService, SECURITY_STATE_PROVIDERS],
 })
 export class SecurityModule implements OnModuleInit {
 	constructor(

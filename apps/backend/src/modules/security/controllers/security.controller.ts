@@ -25,8 +25,8 @@ export class SecurityController {
 	@ApiBadRequestResponse('Invalid request parameters')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get()
-	getStatus(): SecurityStatusResponseModel {
-		const data = this.securityService.getStatus();
+	async getStatus(): Promise<SecurityStatusResponseModel> {
+		const data = await this.securityService.getStatus();
 
 		const response = new SecurityStatusResponseModel();
 		response.data = data;
