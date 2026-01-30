@@ -59,11 +59,9 @@ export class AlarmSecurityProvider implements SecurityStateProviderInterface {
 	}
 
 	private extractDeviceState(device: DeviceEntity): AlarmDeviceState {
-		const alarmChannel = (device.channels ?? []).find(
-			(ch) => (ch as ChannelEntity).category === ChannelCategory.ALARM,
-		) as ChannelEntity | undefined;
+		const alarmChannel = (device.channels ?? []).find((ch) => ch.category === ChannelCategory.ALARM);
 
-		const properties = (alarmChannel?.properties ?? []) as ChannelPropertyEntity[];
+		const properties = alarmChannel?.properties ?? [];
 
 		const stateValue = this.getPropertyValue(properties, PropertyCategory.STATE);
 		const alarmStateValue = this.getPropertyValue(properties, PropertyCategory.ALARM_STATE);
@@ -247,15 +245,19 @@ export class AlarmSecurityProvider implements SecurityStateProviderInterface {
 		}
 
 		try {
-			const parsed = typeof value === 'string' ? JSON.parse(value) : value;
+			const parsed: unknown = typeof value === 'string' ? JSON.parse(value) : value;
 
-			if (typeof parsed === 'object' && parsed != null && parsed.type && parsed.timestamp) {
-				return {
-					type: String(parsed.type),
-					timestamp: new Date(parsed.timestamp).toISOString(),
-					sourceDeviceId: parsed.sourceDeviceId ? String(parsed.sourceDeviceId) : deviceId,
-					severity: parsed.severity as Severity | undefined,
-				};
+			if (typeof parsed === 'object' && parsed != null) {
+				const obj = parsed as Record<string, unknown>;
+
+				if (obj.type && obj.timestamp) {
+					return {
+						type: String(obj.type),
+						timestamp: new Date(String(obj.timestamp)).toISOString(),
+						sourceDeviceId: obj.sourceDeviceId ? String(obj.sourceDeviceId) : deviceId,
+						severity: obj.severity as Severity | undefined,
+					};
+				}
 			}
 		} catch {
 			// Invalid JSON or format, skip

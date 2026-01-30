@@ -40,10 +40,7 @@ describe('AlarmSecurityProvider', () => {
 		devicesService = { findAll: jest.fn().mockResolvedValue([]) };
 
 		const module: TestingModule = await Test.createTestingModule({
-			providers: [
-				AlarmSecurityProvider,
-				{ provide: DevicesService, useValue: devicesService },
-			],
+			providers: [AlarmSecurityProvider, { provide: DevicesService, useValue: devicesService }],
 		}).compile();
 
 		provider = module.get<AlarmSecurityProvider>(AlarmSecurityProvider);
@@ -54,9 +51,7 @@ describe('AlarmSecurityProvider', () => {
 	});
 
 	it('should return empty signal when no alarm devices exist', async () => {
-		devicesService.findAll.mockResolvedValue([
-			{ id: 'dev-1', category: DeviceCategory.LIGHTING, channels: [] },
-		]);
+		devicesService.findAll.mockResolvedValue([{ id: 'dev-1', category: DeviceCategory.LIGHTING, channels: [] }]);
 
 		const signal = await provider.getSignals();
 
@@ -65,9 +60,7 @@ describe('AlarmSecurityProvider', () => {
 
 	it('should map armedState from state property', async () => {
 		devicesService.findAll.mockResolvedValue([
-			makeAlarmDevice('dev-1', [
-				makeProperty(PropertyCategory.STATE, 'armed_away'),
-			]),
+			makeAlarmDevice('dev-1', [makeProperty(PropertyCategory.STATE, 'armed_away')]),
 		]);
 
 		const signal = await provider.getSignals();
@@ -76,9 +69,7 @@ describe('AlarmSecurityProvider', () => {
 	});
 
 	it('should return armedState null when state property missing', async () => {
-		devicesService.findAll.mockResolvedValue([
-			makeAlarmDevice('dev-1', []),
-		]);
+		devicesService.findAll.mockResolvedValue([makeAlarmDevice('dev-1', [])]);
 
 		const signal = await provider.getSignals();
 
@@ -100,9 +91,7 @@ describe('AlarmSecurityProvider', () => {
 
 	it('should use triggered=true when alarm_state missing', async () => {
 		devicesService.findAll.mockResolvedValue([
-			makeAlarmDevice('dev-1', [
-				makeProperty(PropertyCategory.TRIGGERED, true),
-			]),
+			makeAlarmDevice('dev-1', [makeProperty(PropertyCategory.TRIGGERED, true)]),
 		]);
 
 		const signal = await provider.getSignals();
@@ -112,9 +101,7 @@ describe('AlarmSecurityProvider', () => {
 
 	it('should use triggered="true" string when alarm_state missing', async () => {
 		devicesService.findAll.mockResolvedValue([
-			makeAlarmDevice('dev-1', [
-				makeProperty(PropertyCategory.TRIGGERED, 'true'),
-			]),
+			makeAlarmDevice('dev-1', [makeProperty(PropertyCategory.TRIGGERED, 'true')]),
 		]);
 
 		const signal = await provider.getSignals();
@@ -124,9 +111,7 @@ describe('AlarmSecurityProvider', () => {
 
 	it('should default alarmState to idle when no alarm_state or triggered', async () => {
 		devicesService.findAll.mockResolvedValue([
-			makeAlarmDevice('dev-1', [
-				makeProperty(PropertyCategory.STATE, 'disarmed'),
-			]),
+			makeAlarmDevice('dev-1', [makeProperty(PropertyCategory.STATE, 'disarmed')]),
 		]);
 
 		const signal = await provider.getSignals();
@@ -136,9 +121,7 @@ describe('AlarmSecurityProvider', () => {
 
 	it('should compute severity critical when triggered', async () => {
 		devicesService.findAll.mockResolvedValue([
-			makeAlarmDevice('dev-1', [
-				makeProperty(PropertyCategory.ALARM_STATE, 'triggered'),
-			]),
+			makeAlarmDevice('dev-1', [makeProperty(PropertyCategory.ALARM_STATE, 'triggered')]),
 		]);
 
 		const signal = await provider.getSignals();
@@ -150,9 +133,7 @@ describe('AlarmSecurityProvider', () => {
 
 	it('should compute severity critical when tampered', async () => {
 		devicesService.findAll.mockResolvedValue([
-			makeAlarmDevice('dev-1', [
-				makeProperty(PropertyCategory.TAMPERED, true),
-			]),
+			makeAlarmDevice('dev-1', [makeProperty(PropertyCategory.TAMPERED, true)]),
 		]);
 
 		const signal = await provider.getSignals();
@@ -162,11 +143,7 @@ describe('AlarmSecurityProvider', () => {
 	});
 
 	it('should compute severity warning when fault > 0', async () => {
-		devicesService.findAll.mockResolvedValue([
-			makeAlarmDevice('dev-1', [
-				makeProperty(PropertyCategory.FAULT, 3),
-			]),
-		]);
+		devicesService.findAll.mockResolvedValue([makeAlarmDevice('dev-1', [makeProperty(PropertyCategory.FAULT, 3)])]);
 
 		const signal = await provider.getSignals();
 
@@ -177,9 +154,7 @@ describe('AlarmSecurityProvider', () => {
 
 	it('should compute severity warning when active is false', async () => {
 		devicesService.findAll.mockResolvedValue([
-			makeAlarmDevice('dev-1', [
-				makeProperty(PropertyCategory.ACTIVE, false),
-			]),
+			makeAlarmDevice('dev-1', [makeProperty(PropertyCategory.ACTIVE, false)]),
 		]);
 
 		const signal = await provider.getSignals();
@@ -207,12 +182,8 @@ describe('AlarmSecurityProvider', () => {
 	describe('multi-device behavior', () => {
 		it('should use triggered from any device as dominant alarmState', async () => {
 			devicesService.findAll.mockResolvedValue([
-				makeAlarmDevice('dev-1', [
-					makeProperty(PropertyCategory.ALARM_STATE, 'idle'),
-				]),
-				makeAlarmDevice('dev-2', [
-					makeProperty(PropertyCategory.ALARM_STATE, 'triggered'),
-				]),
+				makeAlarmDevice('dev-1', [makeProperty(PropertyCategory.ALARM_STATE, 'idle')]),
+				makeAlarmDevice('dev-2', [makeProperty(PropertyCategory.ALARM_STATE, 'triggered')]),
 			]);
 
 			const signal = await provider.getSignals();
@@ -222,12 +193,8 @@ describe('AlarmSecurityProvider', () => {
 
 		it('should take max severity across devices', async () => {
 			devicesService.findAll.mockResolvedValue([
-				makeAlarmDevice('dev-1', [
-					makeProperty(PropertyCategory.FAULT, 1),
-				]),
-				makeAlarmDevice('dev-2', [
-					makeProperty(PropertyCategory.TAMPERED, true),
-				]),
+				makeAlarmDevice('dev-1', [makeProperty(PropertyCategory.FAULT, 1)]),
+				makeAlarmDevice('dev-2', [makeProperty(PropertyCategory.TAMPERED, true)]),
 			]);
 
 			const signal = await provider.getSignals();
@@ -237,12 +204,8 @@ describe('AlarmSecurityProvider', () => {
 
 		it('should use armedState from first device by sorted id', async () => {
 			devicesService.findAll.mockResolvedValue([
-				makeAlarmDevice('dev-b', [
-					makeProperty(PropertyCategory.STATE, 'armed_home'),
-				]),
-				makeAlarmDevice('dev-a', [
-					makeProperty(PropertyCategory.STATE, 'armed_away'),
-				]),
+				makeAlarmDevice('dev-b', [makeProperty(PropertyCategory.STATE, 'armed_home')]),
+				makeAlarmDevice('dev-a', [makeProperty(PropertyCategory.STATE, 'armed_away')]),
 			]);
 
 			const signal = await provider.getSignals();
@@ -261,9 +224,7 @@ describe('AlarmSecurityProvider', () => {
 			});
 
 			devicesService.findAll.mockResolvedValue([
-				makeAlarmDevice('dev-1', [
-					makeProperty(PropertyCategory.LAST_EVENT, event),
-				]),
+				makeAlarmDevice('dev-1', [makeProperty(PropertyCategory.LAST_EVENT, event)]),
 			]);
 
 			const signal = await provider.getSignals();
@@ -275,9 +236,7 @@ describe('AlarmSecurityProvider', () => {
 
 		it('should ignore invalid last_event JSON', async () => {
 			devicesService.findAll.mockResolvedValue([
-				makeAlarmDevice('dev-1', [
-					makeProperty(PropertyCategory.LAST_EVENT, 'not-json'),
-				]),
+				makeAlarmDevice('dev-1', [makeProperty(PropertyCategory.LAST_EVENT, 'not-json')]),
 			]);
 
 			const signal = await provider.getSignals();
@@ -288,16 +247,10 @@ describe('AlarmSecurityProvider', () => {
 		it('should pick newest lastEvent across devices', async () => {
 			devicesService.findAll.mockResolvedValue([
 				makeAlarmDevice('dev-1', [
-					makeProperty(
-						PropertyCategory.LAST_EVENT,
-						JSON.stringify({ type: 'old', timestamp: '2025-01-01T00:00:00Z' }),
-					),
+					makeProperty(PropertyCategory.LAST_EVENT, JSON.stringify({ type: 'old', timestamp: '2025-01-01T00:00:00Z' })),
 				]),
 				makeAlarmDevice('dev-2', [
-					makeProperty(
-						PropertyCategory.LAST_EVENT,
-						JSON.stringify({ type: 'new', timestamp: '2025-06-15T12:00:00Z' }),
-					),
+					makeProperty(PropertyCategory.LAST_EVENT, JSON.stringify({ type: 'new', timestamp: '2025-06-15T12:00:00Z' })),
 				]),
 			]);
 
@@ -320,9 +273,7 @@ describe('AlarmSecurityProvider', () => {
 			{
 				id: 'dev-1',
 				category: DeviceCategory.ALARM,
-				channels: [
-					{ id: 'ch-1', category: ChannelCategory.GENERIC, properties: [] },
-				],
+				channels: [{ id: 'ch-1', category: ChannelCategory.GENERIC, properties: [] }],
 			},
 		]);
 
@@ -335,9 +286,7 @@ describe('AlarmSecurityProvider', () => {
 
 	it('should handle invalid armedState value gracefully', async () => {
 		devicesService.findAll.mockResolvedValue([
-			makeAlarmDevice('dev-1', [
-				makeProperty(PropertyCategory.STATE, 'unknown_state'),
-			]),
+			makeAlarmDevice('dev-1', [makeProperty(PropertyCategory.STATE, 'unknown_state')]),
 		]);
 
 		const signal = await provider.getSignals();
