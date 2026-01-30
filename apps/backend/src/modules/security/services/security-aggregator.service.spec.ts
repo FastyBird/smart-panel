@@ -291,13 +291,9 @@ describe('SecurityAggregatorService', () => {
 
 	describe('activeAlerts merging', () => {
 		it('should return activeAlerts from providers', async () => {
-			const alerts: SecurityAlert[] = [
-				makeAlert({ id: 'sensor:d1:smoke', sourceDeviceId: 'd1' }),
-			];
+			const alerts: SecurityAlert[] = [makeAlert({ id: 'sensor:d1:smoke', sourceDeviceId: 'd1' })];
 
-			const aggregator = await createAggregator([
-				new FakeProvider('sensors', { activeAlerts: alerts }),
-			]);
+			const aggregator = await createAggregator([new FakeProvider('sensors', { activeAlerts: alerts })]);
 
 			const result = await aggregator.aggregate();
 
@@ -415,8 +411,18 @@ describe('SecurityAggregatorService', () => {
 			const aggregator = await createAggregator([
 				new FakeProvider('a', {
 					activeAlerts: [
-						makeAlert({ id: 'a1', timestamp: '2025-06-15T12:00:00Z', severity: Severity.WARNING, type: SecurityAlertType.FAULT }),
-						makeAlert({ id: 'a2', timestamp: '2025-06-15T12:00:00Z', severity: Severity.CRITICAL, type: SecurityAlertType.SMOKE }),
+						makeAlert({
+							id: 'a1',
+							timestamp: '2025-06-15T12:00:00Z',
+							severity: Severity.WARNING,
+							type: SecurityAlertType.FAULT,
+						}),
+						makeAlert({
+							id: 'a2',
+							timestamp: '2025-06-15T12:00:00Z',
+							severity: Severity.CRITICAL,
+							type: SecurityAlertType.SMOKE,
+						}),
 					],
 				}),
 			]);
@@ -494,10 +500,7 @@ describe('SecurityAggregatorService', () => {
 		it('should set acknowledged=false on all alerts', async () => {
 			const aggregator = await createAggregator([
 				new FakeProvider('a', {
-					activeAlerts: [
-						makeAlert({ id: 'a1', acknowledged: false }),
-						makeAlert({ id: 'a2', acknowledged: false }),
-					],
+					activeAlerts: [makeAlert({ id: 'a1', acknowledged: false }), makeAlert({ id: 'a2', acknowledged: false })],
 				}),
 			]);
 
@@ -509,14 +512,9 @@ describe('SecurityAggregatorService', () => {
 		});
 
 		it('should preserve alert IDs deterministically across calls', async () => {
-			const alerts = [
-				makeAlert({ id: 'sensor:d1:smoke' }),
-				makeAlert({ id: 'alarm:d2:intrusion' }),
-			];
+			const alerts = [makeAlert({ id: 'sensor:d1:smoke' }), makeAlert({ id: 'alarm:d2:intrusion' })];
 
-			const aggregator = await createAggregator([
-				new FakeProvider('a', { activeAlerts: alerts }),
-			]);
+			const aggregator = await createAggregator([new FakeProvider('a', { activeAlerts: alerts })]);
 
 			const result1 = await aggregator.aggregate();
 			const result2 = await aggregator.aggregate();

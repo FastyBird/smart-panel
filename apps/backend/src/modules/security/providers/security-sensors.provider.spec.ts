@@ -282,32 +282,28 @@ describe('SecuritySensorsProvider', () => {
 
 		expect(signal.activeAlerts).toHaveLength(2);
 
-		const ids = signal.activeAlerts!.map((a) => a.id);
+		const ids = (signal.activeAlerts ?? []).map((a) => a.id);
 		expect(ids).toContain(`sensor:d1:${SecurityAlertType.SMOKE}`);
 		expect(ids).toContain(`sensor:d2:${SecurityAlertType.WATER_LEAK}`);
 	});
 
 	it('should set acknowledged=false on all alerts', async () => {
-		devicesService.findAll.mockResolvedValue([
-			createSensorDevice('d1', [createChannel(ChannelCategory.SMOKE, true)]),
-		]);
+		devicesService.findAll.mockResolvedValue([createSensorDevice('d1', [createChannel(ChannelCategory.SMOKE, true)])]);
 
 		const signal = await provider.getSignals();
 
-		for (const alert of signal.activeAlerts!) {
+		for (const alert of signal.activeAlerts ?? []) {
 			expect(alert.acknowledged).toBe(false);
 		}
 	});
 
 	it('should produce stable alert IDs across calls', async () => {
-		devicesService.findAll.mockResolvedValue([
-			createSensorDevice('d1', [createChannel(ChannelCategory.SMOKE, true)]),
-		]);
+		devicesService.findAll.mockResolvedValue([createSensorDevice('d1', [createChannel(ChannelCategory.SMOKE, true)])]);
 
 		const signal1 = await provider.getSignals();
 		const signal2 = await provider.getSignals();
 
-		expect(signal1.activeAlerts![0].id).toBe(signal2.activeAlerts![0].id);
+		expect(signal1.activeAlerts?.[0].id).toBe(signal2.activeAlerts?.[0].id);
 	});
 
 	it('should include sourceDeviceId in alerts', async () => {
@@ -317,7 +313,7 @@ describe('SecuritySensorsProvider', () => {
 
 		const signal = await provider.getSignals();
 
-		expect(signal.activeAlerts![0].sourceDeviceId).toBe('dev-abc');
+		expect(signal.activeAlerts?.[0].sourceDeviceId).toBe('dev-abc');
 	});
 
 	it('should match activeAlertsCount to activeAlerts.length', async () => {
@@ -329,6 +325,6 @@ describe('SecuritySensorsProvider', () => {
 
 		const signal = await provider.getSignals();
 
-		expect(signal.activeAlertsCount).toBe(signal.activeAlerts!.length);
+		expect(signal.activeAlertsCount).toBe(signal.activeAlerts?.length);
 	});
 });

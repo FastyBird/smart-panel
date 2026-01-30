@@ -412,10 +412,12 @@ describe('AlarmSecurityProvider', () => {
 
 			expect(signal.activeAlerts).toBeDefined();
 			expect(signal.activeAlerts).toHaveLength(1);
-			expect(signal.activeAlerts![0].id).toBe(`alarm:dev-1:${SecurityAlertType.INTRUSION}`);
-			expect(signal.activeAlerts![0].type).toBe(SecurityAlertType.INTRUSION);
-			expect(signal.activeAlerts![0].severity).toBe(Severity.CRITICAL);
-			expect(signal.activeAlerts![0].acknowledged).toBe(false);
+
+			const alert = signal.activeAlerts?.[0];
+			expect(alert?.id).toBe(`alarm:dev-1:${SecurityAlertType.INTRUSION}`);
+			expect(alert?.type).toBe(SecurityAlertType.INTRUSION);
+			expect(alert?.severity).toBe(Severity.CRITICAL);
+			expect(alert?.acknowledged).toBe(false);
 		});
 
 		it('should emit tamper alert when tampered', async () => {
@@ -425,20 +427,18 @@ describe('AlarmSecurityProvider', () => {
 
 			const signal = await provider.getSignals();
 
-			const tamperAlerts = signal.activeAlerts!.filter((a) => a.type === SecurityAlertType.TAMPER);
+			const tamperAlerts = (signal.activeAlerts ?? []).filter((a) => a.type === SecurityAlertType.TAMPER);
 			expect(tamperAlerts).toHaveLength(1);
 			expect(tamperAlerts[0].id).toBe(`alarm:dev-1:${SecurityAlertType.TAMPER}`);
 			expect(tamperAlerts[0].severity).toBe(Severity.CRITICAL);
 		});
 
 		it('should emit fault alert when fault > 0', async () => {
-			devicesService.findAll.mockResolvedValue([
-				makeAlarmDevice('dev-1', [makeProperty(PropertyCategory.FAULT, 3)]),
-			]);
+			devicesService.findAll.mockResolvedValue([makeAlarmDevice('dev-1', [makeProperty(PropertyCategory.FAULT, 3)])]);
 
 			const signal = await provider.getSignals();
 
-			const faultAlerts = signal.activeAlerts!.filter((a) => a.type === SecurityAlertType.FAULT);
+			const faultAlerts = (signal.activeAlerts ?? []).filter((a) => a.type === SecurityAlertType.FAULT);
 			expect(faultAlerts).toHaveLength(1);
 			expect(faultAlerts[0].id).toBe(`alarm:dev-1:${SecurityAlertType.FAULT}`);
 			expect(faultAlerts[0].severity).toBe(Severity.WARNING);
@@ -451,7 +451,7 @@ describe('AlarmSecurityProvider', () => {
 
 			const signal = await provider.getSignals();
 
-			const faultAlerts = signal.activeAlerts!.filter((a) => a.type === SecurityAlertType.FAULT);
+			const faultAlerts = (signal.activeAlerts ?? []).filter((a) => a.type === SecurityAlertType.FAULT);
 			expect(faultAlerts).toHaveLength(1);
 		});
 
@@ -480,9 +480,9 @@ describe('AlarmSecurityProvider', () => {
 
 			const signal = await provider.getSignals();
 
-			expect(signal.activeAlerts!.length).toBeGreaterThanOrEqual(2);
+			expect(signal.activeAlerts?.length).toBeGreaterThanOrEqual(2);
 
-			const types = signal.activeAlerts!.map((a) => a.type);
+			const types = (signal.activeAlerts ?? []).map((a) => a.type);
 			expect(types).toContain(SecurityAlertType.INTRUSION);
 			expect(types).toContain(SecurityAlertType.TAMPER);
 		});
@@ -495,7 +495,7 @@ describe('AlarmSecurityProvider', () => {
 			const signal1 = await provider.getSignals();
 			const signal2 = await provider.getSignals();
 
-			expect(signal1.activeAlerts![0].id).toBe(signal2.activeAlerts![0].id);
+			expect(signal1.activeAlerts?.[0].id).toBe(signal2.activeAlerts?.[0].id);
 		});
 
 		it('should include sourceDeviceId in alerts', async () => {
@@ -505,7 +505,7 @@ describe('AlarmSecurityProvider', () => {
 
 			const signal = await provider.getSignals();
 
-			expect(signal.activeAlerts![0].sourceDeviceId).toBe('dev-abc');
+			expect(signal.activeAlerts?.[0].sourceDeviceId).toBe('dev-abc');
 		});
 	});
 });
