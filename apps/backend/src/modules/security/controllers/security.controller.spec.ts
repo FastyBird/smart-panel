@@ -1,7 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { getRepositoryToken } from '@nestjs/typeorm';
 
+import { SecurityAlertAckEntity } from '../entities/security-alert-ack.entity';
 import { DefaultSecurityProvider } from '../providers/default-security.provider';
 import { SECURITY_STATE_PROVIDERS, Severity } from '../security.constants';
+import { SecurityAlertAckService } from '../services/security-alert-ack.service';
 import { SecurityAggregatorService } from '../services/security-aggregator.service';
 import { SecurityService } from '../services/security.service';
 
@@ -21,6 +24,18 @@ describe('SecurityController', () => {
 					provide: SECURITY_STATE_PROVIDERS,
 					useValue: [defaultProvider],
 				},
+				{
+					provide: getRepositoryToken(SecurityAlertAckEntity),
+					useValue: {
+						find: jest.fn().mockResolvedValue([]),
+						findOne: jest.fn().mockResolvedValue(null),
+						create: jest.fn(),
+						save: jest.fn(),
+						delete: jest.fn(),
+						clear: jest.fn(),
+					},
+				},
+				SecurityAlertAckService,
 				SecurityAggregatorService,
 				SecurityService,
 			],
