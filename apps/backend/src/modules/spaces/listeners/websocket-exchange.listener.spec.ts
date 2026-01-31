@@ -384,7 +384,7 @@ describe('WebsocketExchangeListener (Spaces)', () => {
 		});
 	});
 
-	// Note: Media domain now uses routing-based architecture via SpaceMediaRoutingService
+	// Note: Media domain uses activity-based architecture via SpaceMediaActivityService
 
 	describe('handleUndoIntent', () => {
 		let handleUndoIntent: (user: any, payload: any) => Promise<any>;

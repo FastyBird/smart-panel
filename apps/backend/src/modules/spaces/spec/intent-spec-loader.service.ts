@@ -52,7 +52,6 @@ export class IntentSpecLoaderService implements OnModuleInit {
 	// Delta step mappings (derived from enums)
 	private brightnessDeltas: Map<string, number> = new Map();
 	private setpointDeltas: Map<string, number> = new Map();
-	private volumeDeltas: Map<string, number> = new Map();
 
 	// Paths for spec files
 	private readonly builtinSpecPath = join(__dirname, 'definitions');
@@ -74,7 +73,6 @@ export class IntentSpecLoaderService implements OnModuleInit {
 		this.coversModes.clear();
 		this.brightnessDeltas.clear();
 		this.setpointDeltas.clear();
-		this.volumeDeltas.clear();
 
 		// Step 1: Load enums (required for other specs)
 		this.loadEnums();
@@ -139,9 +137,6 @@ export class IntentSpecLoaderService implements OnModuleInit {
 			'climate_roles',
 			'climate_modes',
 			'setpoint_deltas',
-			'media_roles',
-			'media_modes',
-			'volume_deltas',
 		];
 
 		for (const category of categories) {
@@ -171,13 +166,6 @@ export class IntentSpecLoaderService implements OnModuleInit {
 		for (const [key, meta] of Object.entries(this.enums.setpoint_deltas)) {
 			if (meta.step !== undefined) {
 				this.setpointDeltas.set(key, meta.step);
-			}
-		}
-
-		// Volume deltas
-		for (const [key, meta] of Object.entries(this.enums.volume_deltas)) {
-			if (meta.step !== undefined) {
-				this.volumeDeltas.set(key, meta.step);
 			}
 		}
 	}

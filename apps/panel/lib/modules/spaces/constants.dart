@@ -10,7 +10,6 @@ class SpacesModuleConstants {
   static const String lightingIntentEvent = 'SpacesModule.LightingIntent';
   static const String climateIntentEvent = 'SpacesModule.ClimateIntent';
   static const String coversIntentEvent = 'SpacesModule.CoversIntent';
-  static const String mediaIntentEvent = 'SpacesModule.MediaIntent';
   static const String undoIntentEvent = 'SpacesModule.UndoIntent';
 
   static const String lightTargetCreatedEvent =
@@ -60,6 +59,5 @@ class SpacesModuleEventHandlerName {
   static const String lightingIntent = 'SpacesModule.LightingIntentHandler';
   static const String climateIntent = 'SpacesModule.ClimateIntentHandler';
   static const String coversIntent = 'SpacesModule.CoversIntentHandler';
-  static const String mediaIntent = 'SpacesModule.MediaIntentHandler';
   static const String undoIntent = 'SpacesModule.UndoIntentHandler';
 }

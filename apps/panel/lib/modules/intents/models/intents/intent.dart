@@ -50,23 +50,6 @@ enum IntentType {
   spaceClimateSetpointDelta,
   spaceClimateSet,
 
-  // Space media operations
-  spaceMediaPowerOn,
-  spaceMediaPowerOff,
-  spaceMediaVolumeSet,
-  spaceMediaVolumeDelta,
-  spaceMediaMute,
-  spaceMediaUnmute,
-  spaceMediaRolePower,
-  spaceMediaRoleVolume,
-  spaceMediaPlay,
-  spaceMediaPause,
-  spaceMediaStop,
-  spaceMediaNext,
-  spaceMediaPrevious,
-  spaceMediaInputSet,
-  spaceMediaSetMode,
-
   // Space covers operations
   spaceCoversOpen,
   spaceCoversClose,
@@ -179,38 +162,6 @@ IntentType parseIntentType(String type) {
       return IntentType.spaceClimateSetpointDelta;
     case 'space.climate.set':
       return IntentType.spaceClimateSet;
-
-    // Space media operations
-    case 'space.media.powerOn':
-      return IntentType.spaceMediaPowerOn;
-    case 'space.media.powerOff':
-      return IntentType.spaceMediaPowerOff;
-    case 'space.media.volumeSet':
-      return IntentType.spaceMediaVolumeSet;
-    case 'space.media.volumeDelta':
-      return IntentType.spaceMediaVolumeDelta;
-    case 'space.media.mute':
-      return IntentType.spaceMediaMute;
-    case 'space.media.unmute':
-      return IntentType.spaceMediaUnmute;
-    case 'space.media.rolePower':
-      return IntentType.spaceMediaRolePower;
-    case 'space.media.roleVolume':
-      return IntentType.spaceMediaRoleVolume;
-    case 'space.media.play':
-      return IntentType.spaceMediaPlay;
-    case 'space.media.pause':
-      return IntentType.spaceMediaPause;
-    case 'space.media.stop':
-      return IntentType.spaceMediaStop;
-    case 'space.media.next':
-      return IntentType.spaceMediaNext;
-    case 'space.media.previous':
-      return IntentType.spaceMediaPrevious;
-    case 'space.media.inputSet':
-      return IntentType.spaceMediaInputSet;
-    case 'space.media.setMode':
-      return IntentType.spaceMediaSetMode;
 
     // Space covers operations
     case 'space.covers.open':

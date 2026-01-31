@@ -69,18 +69,9 @@ import {
 	MediaActivityStepFailureModel,
 } from './models/media-activity.model';
 import {
-	ActiveMediaRoutingStateModel,
-	ActiveMediaRoutingStateResponseModel,
 	MediaCapabilitiesResponseModel,
 	MediaCapabilityMappingModel,
 	MediaCapabilitySummaryModel,
-	MediaExecutionPlanModel,
-	MediaExecutionStepModel,
-	MediaExecutionStepResultModel,
-	MediaRoutingActivationResponseModel,
-	MediaRoutingActivationResultModel,
-	MediaStateV2Model,
-	MediaStateV2ResponseModel,
 } from './models/media-routing.model';
 import {
 	BulkAssignmentDataModel,
@@ -234,15 +225,6 @@ export const SPACES_SWAGGER_EXTRA_MODELS = [
 	MediaCapabilityMappingModel,
 	MediaCapabilitySummaryModel,
 	MediaCapabilitiesResponseModel,
-	MediaExecutionStepModel,
-	MediaExecutionPlanModel,
-	MediaExecutionStepResultModel,
-	MediaRoutingActivationResultModel,
-	MediaRoutingActivationResponseModel,
-	MediaStateV2Model,
-	MediaStateV2ResponseModel,
-	ActiveMediaRoutingStateModel,
-	ActiveMediaRoutingStateResponseModel,
 	// Media activity binding response models
 	MediaActivityBindingResponseModel,
 	MediaActivityBindingsResponseModel,
