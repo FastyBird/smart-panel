@@ -9,6 +9,10 @@ export const SECURITY_MODULE_API_TAG_DESCRIPTION =
 
 export const SECURITY_STATE_PROVIDERS = Symbol('SECURITY_STATE_PROVIDERS');
 
+export enum EventType {
+	SECURITY_STATUS = 'security:status',
+}
+
 export enum ArmedState {
 	DISARMED = 'disarmed',
 	ARMED_HOME = 'armed_home',
