@@ -103,18 +103,16 @@ class SecurityScreen extends StatelessWidget {
 								SizedBox(height: AppSpacings.pMd),
 								Expanded(
 									child: totalAlerts == 0
-										? Column(
+										? ListView(
 											children: [
 												_buildEmptyState(isDark, screenService),
 												SizedBox(height: AppSpacings.pLg),
-												Expanded(
-													child: _buildRecentEventsSection(
-														eventsRepo,
-														devicesService,
-														isDark,
-														screenService,
-														localizations,
-													),
+												_buildRecentEventsSection(
+													eventsRepo,
+													devicesService,
+													isDark,
+													screenService,
+													localizations,
 												),
 											],
 										)
