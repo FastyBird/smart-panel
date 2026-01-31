@@ -303,15 +303,19 @@ class SecurityOverlayController extends ChangeNotifier {
 
 		if (_repository == null) return true;
 
-		_pendingAckIds.addAll(idsToAck);
+		// Only real IDs are pending on the server
+		final realIds = idsToAck.where((id) => !id.startsWith('__')).toSet();
+		_pendingAckIds.addAll(realIds);
 
 		try {
 			await _repository.acknowledgeAllAlerts();
-			_pendingAckIds.removeAll(idsToAck);
-			_optimisticAckIds.removeAll(idsToAck);
+			_pendingAckIds.removeAll(realIds);
+			// Remove only real IDs; synthetic IDs stay in optimistic cache
+			// until the next updateStatus() clears them.
+			_optimisticAckIds.removeAll(realIds);
 			return true;
 		} catch (e) {
-			_pendingAckIds.removeAll(idsToAck);
+			_pendingAckIds.removeAll(realIds);
 			_optimisticAckIds.removeAll(idsToAck);
 			notifyListeners();
 
@@ -333,16 +337,19 @@ class SecurityOverlayController extends ChangeNotifier {
 
 		if (_repository == null) return true;
 
-		// Acknowledge all via API (covers all critical alerts)
-		_pendingAckIds.addAll(criticalIds);
+		// Only real IDs are pending on the server
+		final realIds = criticalIds.where((id) => !id.startsWith('__')).toSet();
+		_pendingAckIds.addAll(realIds);
 
 		try {
 			await _repository.acknowledgeAllAlerts();
-			_pendingAckIds.removeAll(criticalIds);
-			_optimisticAckIds.removeAll(criticalIds);
+			_pendingAckIds.removeAll(realIds);
+			// Remove only real IDs; synthetic IDs stay in optimistic cache
+			// until the next updateStatus() clears them.
+			_optimisticAckIds.removeAll(realIds);
 			return true;
 		} catch (e) {
-			_pendingAckIds.removeAll(criticalIds);
+			_pendingAckIds.removeAll(realIds);
 			_optimisticAckIds.removeAll(criticalIds);
 			notifyListeners();
 

@@ -369,6 +369,20 @@ void main() {
 			expect(controller.shouldShowOverlay, false);
 		});
 
+		test('alarm triggered ack with synthetic ID persists after API success', () async {
+			// When alarm is triggered with no real alerts, only a synthetic ID exists.
+			// After API call succeeds, the synthetic ID must remain in optimistic cache
+			// so the overlay stays suppressed until the next updateStatus().
+			controller.updateStatus(_makeStatus(
+				alarmState: AlarmState.triggered,
+			));
+			expect(controller.shouldShowOverlay, true);
+
+			await controller.acknowledgeCurrentAlerts();
+			// Overlay must stay hidden — synthetic ID kept in optimistic cache
+			expect(controller.shouldShowOverlay, false);
+		});
+
 		test('setConnectionOffline suppresses overlay', () {
 			controller.updateStatus(_makeStatus(
 				hasCriticalAlert: true,

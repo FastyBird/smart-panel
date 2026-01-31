@@ -39,7 +39,7 @@ class SecurityStatusRepository extends ChangeNotifier {
 	Future<void> acknowledgeAlert(String alertId) async {
 		final response = await _dio.patch('/modules/security/alerts/$alertId/ack');
 
-		if (response.statusCode == 200) {
+		if (response.statusCode != null && response.statusCode! >= 200 && response.statusCode! < 300) {
 			await fetchStatus();
 		}
 	}
@@ -47,7 +47,7 @@ class SecurityStatusRepository extends ChangeNotifier {
 	Future<void> acknowledgeAllAlerts() async {
 		final response = await _dio.patch('/modules/security/alerts/ack');
 
-		if (response.statusCode == 200) {
+		if (response.statusCode != null && response.statusCode! >= 200 && response.statusCode! < 300) {
 			await fetchStatus();
 		}
 	}
