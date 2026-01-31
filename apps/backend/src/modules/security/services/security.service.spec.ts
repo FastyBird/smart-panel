@@ -48,7 +48,6 @@ describe('SecurityService', () => {
 			findByIds: jest.fn().mockResolvedValue([]),
 			acknowledge: jest.fn(),
 			acknowledgeAll: jest.fn(),
-			resetAcknowledgement: jest.fn(),
 			updateLastEventAt: jest.fn(),
 			cleanupStale: jest.fn(),
 		} as any;
