@@ -9,8 +9,10 @@ import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models
 import { SwaggerModule } from '../swagger/swagger.module';
 
 import { SecurityAlertsController } from './controllers/security-alerts.controller';
+import { SecurityEventsController } from './controllers/security-events.controller';
 import { SecurityController } from './controllers/security.controller';
 import { SecurityAlertAckEntity } from './entities/security-alert-ack.entity';
+import { SecurityEventEntity } from './entities/security-event.entity';
 import { AlarmSecurityProvider } from './providers/alarm-security.provider';
 import { DefaultSecurityProvider } from './providers/default-security.provider';
 import { SecuritySensorsProvider } from './providers/security-sensors.provider';
@@ -23,6 +25,7 @@ import {
 import { SECURITY_SWAGGER_EXTRA_MODELS } from './security.openapi';
 import { SecurityAggregatorService } from './services/security-aggregator.service';
 import { SecurityAlertAckService } from './services/security-alert-ack.service';
+import { SecurityEventsService } from './services/security-events.service';
 import { SecurityService } from './services/security.service';
 
 @ApiTag({
@@ -31,8 +34,8 @@ import { SecurityService } from './services/security.service';
 	description: SECURITY_MODULE_API_TAG_DESCRIPTION,
 })
 @Module({
-	imports: [SwaggerModule, ExtensionsModule, DevicesModule, TypeOrmModule.forFeature([SecurityAlertAckEntity])],
-	controllers: [SecurityController, SecurityAlertsController],
+	imports: [SwaggerModule, ExtensionsModule, DevicesModule, TypeOrmModule.forFeature([SecurityAlertAckEntity, SecurityEventEntity])],
+	controllers: [SecurityController, SecurityAlertsController, SecurityEventsController],
 	providers: [
 		DefaultSecurityProvider,
 		AlarmSecurityProvider,
@@ -47,6 +50,7 @@ import { SecurityService } from './services/security.service';
 			inject: [AlarmSecurityProvider, DefaultSecurityProvider, SecuritySensorsProvider],
 		},
 		SecurityAlertAckService,
+		SecurityEventsService,
 		SecurityAggregatorService,
 		SecurityService,
 	],
@@ -85,6 +89,7 @@ The Security module provides security status information for the Smart Panel dis
 - \`GET /api/v1/modules/security/status\` - Current security status
 - \`PATCH /api/v1/modules/security/alerts/:id/ack\` - Acknowledge a single alert
 - \`PATCH /api/v1/modules/security/alerts/ack\` - Acknowledge all active alerts
+- \`GET /api/v1/modules/security/events\` - Recent security event timeline
 
 ## Architecture
 

@@ -39,6 +39,18 @@ export const SEVERITY_RANK: Record<Severity, number> = {
 	[Severity.CRITICAL]: 2,
 };
 
+export enum SecurityEventType {
+	ALERT_RAISED = 'alert_raised',
+	ALERT_RESOLVED = 'alert_resolved',
+	ALERT_ACKNOWLEDGED = 'alert_acknowledged',
+	ALARM_STATE_CHANGED = 'alarm_state_changed',
+	ARMED_STATE_CHANGED = 'armed_state_changed',
+}
+
+export const SECURITY_EVENTS_MAX_ROWS = 200;
+
+export const SECURITY_EVENTS_DEFAULT_LIMIT = 50;
+
 export enum SecurityAlertType {
 	INTRUSION = 'intrusion',
 	ENTRY_OPEN = 'entry_open',
