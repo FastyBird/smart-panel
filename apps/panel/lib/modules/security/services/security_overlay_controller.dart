@@ -249,8 +249,18 @@ class SecurityOverlayController extends ChangeNotifier {
 
 	void updateStatus(SecurityStatusModel newStatus) {
 		// Clear optimistic cache: server state is now the truth.
-		// Keep only IDs that are still pending (in-flight request).
-		_optimisticAckIds.retainWhere((id) => _pendingAckIds.contains(id));
+		// Keep IDs that are still pending (in-flight request) and synthetic IDs
+		// (which have no server-side equivalent). Synthetic IDs are cleared when
+		// the critical condition resolves, so they don't suppress future overlays.
+		_optimisticAckIds.retainWhere(
+			(id) => _pendingAckIds.contains(id) || id.startsWith('__'),
+		);
+
+		// Drop synthetic IDs when no critical condition exists (alarm cleared, etc.)
+		// so the overlay can reappear if the condition is re-triggered later.
+		if (!_hasCriticalCondition(newStatus)) {
+			_optimisticAckIds.removeWhere((id) => id.startsWith('__'));
+		}
 
 		_status = newStatus;
 		_cachedSortedAlerts = null;

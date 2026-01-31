@@ -791,6 +791,54 @@ void main() {
 		});
 	});
 
+	group('SecurityOverlayController - pure-synthetic ack after updateStatus', () {
+		late SecurityOverlayController controller;
+
+		setUp(() {
+			controller = SecurityOverlayController();
+		});
+
+		tearDown(() {
+			controller.dispose();
+		});
+
+		test('alarm-only ack stays hidden after updateStatus clears optimistic cache', () async {
+			// Alarm triggered with no real alerts — only synthetic __alarm_triggered__
+			controller.updateStatus(_makeStatus(
+				alarmState: AlarmState.triggered,
+			));
+			expect(controller.shouldShowOverlay, true);
+
+			await controller.acknowledgeCurrentAlerts();
+			expect(controller.shouldShowOverlay, false);
+
+			// Simulate server status arriving (fetchStatus or socket) which clears optimistic cache
+			controller.updateStatus(_makeStatus(
+				alarmState: AlarmState.triggered,
+			));
+
+			// Must stay hidden: no real critical alerts means synthetic IDs should auto-ack
+			expect(controller.shouldShowOverlay, false);
+		});
+
+		test('hasCriticalAlert flag without alerts stays hidden after updateStatus', () async {
+			controller.updateStatus(_makeStatus(
+				hasCriticalAlert: true,
+			));
+			expect(controller.shouldShowOverlay, true);
+
+			await controller.acknowledgeCurrentAlerts();
+			expect(controller.shouldShowOverlay, false);
+
+			// Server status arrives, clearing optimistic cache
+			controller.updateStatus(_makeStatus(
+				hasCriticalAlert: true,
+			));
+
+			expect(controller.shouldShowOverlay, false);
+		});
+	});
+
 	group('SecurityOverlayController - offline behavior', () {
 		late SecurityOverlayController controller;
 
