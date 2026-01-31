@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { SecurityAlertAckEntity } from '../entities/security-alert-ack.entity';
@@ -10,6 +10,8 @@ import { SecurityAlertAckService } from './security-alert-ack.service';
 
 @Injectable()
 export class SecurityService {
+	private readonly logger = new Logger(SecurityService.name);
+
 	constructor(
 		private readonly aggregator: SecurityAggregatorService,
 		private readonly ackService: SecurityAlertAckService,
@@ -21,8 +23,12 @@ export class SecurityService {
 
 		if (status.activeAlerts.length > 0) {
 			await this.applyAcknowledgements(status);
-			await this.cleanupStaleAcks(status);
 		}
+
+		// Always clean up stale ack records, including when all alerts have
+		// cleared. Otherwise old acknowledged records persist and silently
+		// suppress returning alerts with the same ID.
+		await this.cleanupStaleAcks(status);
 
 		return status;
 	}
@@ -96,8 +102,12 @@ export class SecurityService {
 	}
 
 	private async emitStatusUpdate(): Promise<void> {
-		const status = await this.getStatus();
-		this.eventEmitter.emit(EventType.SECURITY_STATUS, status);
+		try {
+			const status = await this.getStatus();
+			this.eventEmitter.emit(EventType.SECURITY_STATUS, status);
+		} catch (error) {
+			this.logger.warn(`Failed to emit security status update: ${error}`);
+		}
 	}
 
 	private async cleanupStaleAcks(status: SecurityStatusModel): Promise<void> {

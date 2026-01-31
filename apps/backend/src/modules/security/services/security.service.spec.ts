@@ -67,6 +67,7 @@ describe('SecurityService', () => {
 			const result = await service.getStatus();
 			expect(result.activeAlerts).toHaveLength(0);
 			expect(ackService.findByIds).not.toHaveBeenCalled();
+			expect(ackService.cleanupStale).toHaveBeenCalledWith([]);
 		});
 
 		it('should apply acknowledged=true from stored ack records', async () => {
