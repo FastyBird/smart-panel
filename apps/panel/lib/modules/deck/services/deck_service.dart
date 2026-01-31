@@ -353,23 +353,6 @@ class DeckService extends ChangeNotifier {
           }
           return null;
         }),
-        // Prefetch media data
-        spacesService.fetchMediaTargetsForSpace(roomId).catchError((e) {
-          if (kDebugMode) {
-            debugPrint(
-              '[DECK SERVICE] Failed to prefetch media targets: $e',
-            );
-          }
-          return;
-        }),
-        spacesService.fetchMediaState(roomId).catchError((e) {
-          if (kDebugMode) {
-            debugPrint(
-              '[DECK SERVICE] Failed to prefetch media state: $e',
-            );
-          }
-          return null;
-        }),
         // Prefetch sensor data
         spacesService.fetchSensorState(roomId).catchError((e) {
           if (kDebugMode) {

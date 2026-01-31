@@ -88,6 +88,17 @@ enum MediaIntentType {
   setMode,
 }
 
+/// Media modes for controlling the overall media environment.
+enum MediaMode {
+  off,
+  background,
+  focused,
+  party,
+}
+
+/// Media device roles within a space.
+enum MediaRole { primary, secondary, background, gaming, hidden }
+
 /// Size of volume adjustment for delta-based changes.
 enum VolumeDelta {
   small,
@@ -237,6 +248,36 @@ String volumeDeltaToString(VolumeDelta delta) {
       return 'medium';
     case VolumeDelta.large:
       return 'large';
+  }
+}
+
+/// Convert MediaMode to API string
+String mediaModeToString(MediaMode mode) {
+  switch (mode) {
+    case MediaMode.off:
+      return 'off';
+    case MediaMode.background:
+      return 'background';
+    case MediaMode.focused:
+      return 'focused';
+    case MediaMode.party:
+      return 'party';
+  }
+}
+
+/// Convert MediaRole to API string
+String mediaRoleToString(MediaRole role) {
+  switch (role) {
+    case MediaRole.primary:
+      return 'primary';
+    case MediaRole.secondary:
+      return 'secondary';
+    case MediaRole.background:
+      return 'background';
+    case MediaRole.gaming:
+      return 'gaming';
+    case MediaRole.hidden:
+      return 'hidden';
   }
 }
 

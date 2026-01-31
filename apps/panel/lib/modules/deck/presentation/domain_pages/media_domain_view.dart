@@ -967,9 +967,8 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	Widget _buildVolumeControl(BuildContext context) {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 		final accentColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
-		final mediaState = _spaceStateRepo?.getMediaState(_roomId);
-		final volume = mediaState?.averageVolume ?? 0;
-		final isMuted = mediaState?.anyMuted ?? false;
+		const volume = 0;
+		const isMuted = false;
 
 		final columnWidth = _scale(40);
 
@@ -1751,8 +1750,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		if (_spaceStateRepo == null) return;
 		setState(() => _isSending = true);
 		try {
-			final mediaState = _spaceStateRepo!.getMediaState(_roomId);
-			final isMuted = mediaState?.isMuted ?? false;
+			const isMuted = false;
 			if (isMuted) {
 				await _spaceStateRepo!.unmuteMedia(_roomId);
 			} else {

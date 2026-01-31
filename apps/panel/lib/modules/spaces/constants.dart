@@ -27,13 +27,6 @@ class SpacesModuleConstants {
   static const String climateTargetDeletedEvent =
       'SpacesModule.ClimateTarget.Deleted';
 
-  static const String mediaTargetCreatedEvent =
-      'SpacesModule.MediaTarget.Created';
-  static const String mediaTargetUpdatedEvent =
-      'SpacesModule.MediaTarget.Updated';
-  static const String mediaTargetDeletedEvent =
-      'SpacesModule.MediaTarget.Deleted';
-
   static const String coversTargetCreatedEvent =
       'SpacesModule.CoversTarget.Created';
   static const String coversTargetUpdatedEvent =
@@ -46,8 +39,6 @@ class SpacesModuleConstants {
       'SpacesModule.Space.LightingStateChanged';
   static const String climateStateChangedEvent =
       'SpacesModule.Space.ClimateStateChanged';
-  static const String mediaStateChangedEvent =
-      'SpacesModule.Space.MediaStateChanged';
   static const String coversStateChangedEvent =
       'SpacesModule.Space.CoversStateChanged';
   static const String sensorStateChangedEvent =

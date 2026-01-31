@@ -18,7 +18,6 @@ import 'package:fastybird_smart_panel/modules/spaces/models/climate_state/climat
 import 'package:fastybird_smart_panel/modules/spaces/models/covers_state/covers_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/intent_result/intent_result.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/lighting_state/lighting_state.dart';
-import 'package:fastybird_smart_panel/modules/spaces/models/media_state/media_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/sensor_state/sensor_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/suggestion/suggestion.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/undo/undo_state.dart';
@@ -65,9 +64,6 @@ class SpaceStateRepository extends ChangeNotifier {
 
   /// Cached climate states by space ID
   final Map<String, ClimateStateModel> _climateStates = {};
-
-  /// Cached media states by space ID
-  final Map<String, MediaStateModel> _mediaStates = {};
 
   /// Cached covers states by space ID
   final Map<String, CoversStateModel> _coversStates = {};
@@ -213,48 +209,6 @@ class SpaceStateRepository extends ChangeNotifier {
           '[SPACES MODULE][STATE] Error fetching climate state for $spaceId: $e',
         );
       }
-    }
-    return null;
-  }
-
-  // ============================================
-  // MEDIA STATE
-  // ============================================
-
-  /// Get cached media state for a space
-  MediaStateModel? getMediaState(String spaceId) {
-    return _mediaStates[spaceId];
-  }
-
-  /// Update media state from WebSocket event
-  void updateMediaState(String spaceId, Map<String, dynamic> json) {
-    try {
-      final state = MediaStateModel.fromJson(json, spaceId: spaceId);
-      _mediaStates[spaceId] = state;
-
-      if (kDebugMode) {
-        debugPrint(
-          '[SPACES MODULE][STATE] Updated media state for space: $spaceId',
-        );
-      }
-      notifyListeners();
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint(
-          '[SPACES MODULE][STATE] Failed to parse media state: $e',
-        );
-      }
-    }
-  }
-
-  /// Fetch media state from API
-  /// Stub - media state API no longer exists (V2 routing architecture)
-  Future<MediaStateModel?> fetchMediaState(String spaceId) async {
-    // API endpoint removed - media domain now uses routing-based architecture
-    if (kDebugMode) {
-      debugPrint(
-        '[SPACES MODULE][STATE] fetchMediaState stubbed - API removed',
-      );
     }
     return null;
   }
@@ -884,7 +838,7 @@ class SpaceStateRepository extends ChangeNotifier {
           'spaceId': spaceId,
           'intent': intentBody,
         },
-        apiFallback: () => _executeMediaIntentViaApi(spaceId, intentBody),
+        apiFallback: () async => null,
       );
 
       stopwatch.stop();
@@ -946,20 +900,6 @@ class SpaceStateRepository extends ChangeNotifier {
     return null;
   }
 
-  /// Execute media intent via API (used as fallback)
-  /// Stub - media intent API no longer exists (V2 routing architecture)
-  Future<Map<String, dynamic>?> _executeMediaIntentViaApi(
-    String spaceId,
-    Map<String, dynamic> intentBody,
-  ) async {
-    // API endpoint removed - media domain now uses routing-based architecture
-    if (kDebugMode) {
-      debugPrint(
-        '[SPACES MODULE][STATE] _executeMediaIntentViaApi stubbed - API removed',
-      );
-    }
-    return null;
-  }
 
   /// Set media mode (OFF/BACKGROUND/FOCUSED/PARTY)
   Future<MediaIntentResult?> setMediaMode(
@@ -1520,7 +1460,6 @@ class SpaceStateRepository extends ChangeNotifier {
       await Future.wait([
         fetchLightingState(spaceId),
         fetchClimateState(spaceId),
-        fetchMediaState(spaceId),
         fetchCoversState(spaceId),
         fetchSensorState(spaceId),
         fetchSuggestion(spaceId),
@@ -1539,7 +1478,6 @@ class SpaceStateRepository extends ChangeNotifier {
   void clearAll() {
     _lightingStates.clear();
     _climateStates.clear();
-    _mediaStates.clear();
     _coversStates.clear();
     _sensorStates.clear();
     _suggestions.clear();
@@ -1552,7 +1490,6 @@ class SpaceStateRepository extends ChangeNotifier {
   void clearForSpace(String spaceId) {
     _lightingStates.remove(spaceId);
     _climateStates.remove(spaceId);
-    _mediaStates.remove(spaceId);
     _coversStates.remove(spaceId);
     _sensorStates.remove(spaceId);
     _suggestions.remove(spaceId);

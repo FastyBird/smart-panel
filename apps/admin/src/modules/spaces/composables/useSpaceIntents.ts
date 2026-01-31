@@ -15,9 +15,6 @@ import {
 	SpacesModuleClimateIntentMode,
 } from '../../../openapi';
 
-// Note: Media domain now uses routing-based architecture (V2)
-// Old media intent types have been removed from the API
-
 type LightingIntentBody = components['schemas']['SpacesModuleLightingIntent'];
 type ClimateIntentBody = components['schemas']['SpacesModuleClimateIntent'];
 
@@ -77,8 +74,6 @@ export type ClimateIntentType = `${SpacesModuleClimateIntentType}`;
 // Note: The API uses the same delta values (small/medium/large) for both brightness and setpoint adjustments
 export type SetpointDelta = `${SpacesModuleLightingIntentDelta}`;
 export type ClimateMode = `${SpacesModuleClimateIntentMode}`;
-
-// Note: Media intent types removed - media domain now uses routing-based architecture (V2)
 
 /**
  * Request parameters for a climate intent.
@@ -150,8 +145,7 @@ export interface IUseSpaceIntents {
 	adjustSetpoint: (delta: SetpointDelta, increase: boolean) => Promise<IClimateIntentResult | null>;
 	setSetpoint: (value: number, mode?: ClimateMode) => Promise<IClimateIntentResult | null>;
 	setClimateMode: (mode: ClimateMode) => Promise<IClimateIntentResult | null>;
-	// Note: Media intents removed - media domain now uses routing-based architecture (V2)
-}
+	}
 
 /**
  * Composable for executing lighting and climate intents on a space.
@@ -348,8 +342,7 @@ export const useSpaceIntents = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpa
 	};
 	const setClimateMode = (mode: ClimateMode) => executeClimateIntent({ type: 'set_mode', mode });
 
-	// Note: Media intents removed - media domain now uses routing-based architecture (V2)
-
+	
 	// Clear state when space changes to prevent stale data from appearing in new space
 	watch(spaceId, () => {
 		// Increment generation to invalidate any in-flight requests
@@ -379,6 +372,5 @@ export const useSpaceIntents = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpa
 		adjustSetpoint,
 		setSetpoint,
 		setClimateMode,
-		// Note: Media intents removed - media domain now uses routing-based architecture (V2)
-	};
+			};
 };
