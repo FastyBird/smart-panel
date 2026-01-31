@@ -183,7 +183,8 @@ export class AirConditionerRealisticBehavior extends BaseDeviceBehavior {
 
 		// Fan speed affects rate (0-100 range, normalized)
 		const fanSpeedRaw = this.getStateValue(state, 'fanSpeed', 50);
-		const fanSpeed = Number(fanSpeedRaw) || 50;
+		const parsed = Number(fanSpeedRaw);
+		const fanSpeed = Number.isNaN(parsed) ? 50 : parsed;
 		const fanMultiplier = Math.max(0.5, fanSpeed / 50);
 		const ratePerMinute = baseRate * fanMultiplier;
 

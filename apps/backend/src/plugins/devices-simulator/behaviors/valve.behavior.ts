@@ -18,7 +18,7 @@ import {
  * - Flow rate changes based on valve position
  */
 export class ValveRealisticBehavior extends BaseDeviceBehavior {
-	private static readonly VALVE_TRAVEL_TIME_MS = 3000;
+	private static readonly FULL_TRAVEL_TIME_MS = 3000;
 
 	getType(): string {
 		return 'valve-realistic';
@@ -58,7 +58,7 @@ export class ValveRealisticBehavior extends BaseDeviceBehavior {
 					targetValue: targetPosition,
 					startValue: currentPosition,
 					delayMs: 0,
-					durationMs: ValveRealisticBehavior.VALVE_TRAVEL_TIME_MS,
+					durationMs: (Math.abs(targetPosition - currentPosition) / 100) * ValveRealisticBehavior.FULL_TRAVEL_TIME_MS,
 				});
 			}
 
@@ -83,7 +83,7 @@ export class ValveRealisticBehavior extends BaseDeviceBehavior {
 					targetValue: targetPosition,
 					startValue: currentPosition,
 					delayMs: 0,
-					durationMs: ValveRealisticBehavior.VALVE_TRAVEL_TIME_MS,
+					durationMs: (Math.abs(targetPosition - currentPosition) / 100) * ValveRealisticBehavior.FULL_TRAVEL_TIME_MS,
 				});
 			}
 		}
