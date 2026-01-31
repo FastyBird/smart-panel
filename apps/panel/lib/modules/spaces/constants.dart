@@ -44,7 +44,7 @@ class SpacesModuleConstants {
   static const String sensorStateChangedEvent =
       'SpacesModule.Space.SensorStateChanged';
 
-  // Media activity lifecycle events (V2)
+  // Media activity lifecycle events
   static const String mediaActivityActivatingEvent =
       'SpacesModule.MediaActivity.Activating';
   static const String mediaActivityActivatedEvent =

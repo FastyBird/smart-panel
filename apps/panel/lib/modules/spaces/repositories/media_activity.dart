@@ -2,7 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/media_activity/media_activity.dart';
 import 'package:flutter/foundation.dart';
 
-/// Repository for media activity domain V2 API calls.
+/// Repository for media activity domain API calls.
 ///
 /// Uses Dio directly since the generated API client does not yet include
 /// the new media activity endpoints.

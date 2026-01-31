@@ -5,7 +5,6 @@ import 'package:fastybird_smart_panel/api/models/spaces_module_lighting_intent.d
 import 'package:fastybird_smart_panel/api/models/spaces_module_req_climate_intent.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_req_covers_intent.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_req_lighting_intent.dart';
-// Note: Media intent imports removed - media domain now uses routing-based architecture (V2)
 import 'package:fastybird_smart_panel/api/models/spaces_module_req_suggestion_feedback.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_suggestion_feedback.dart';
 import 'package:fastybird_smart_panel/api/spaces_module/spaces_module_client.dart';

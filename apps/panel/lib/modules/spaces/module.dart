@@ -223,7 +223,7 @@ class SpacesModuleService {
         _spaceStateRepository.updateSensorState(spaceId, stateData);
       }
 
-      /// Media Activity lifecycle events (V2)
+      /// Media Activity lifecycle events
     } else if (event == SpacesModuleConstants.mediaActivityActivatingEvent ||
         event == SpacesModuleConstants.mediaActivityActivatedEvent ||
         event == SpacesModuleConstants.mediaActivityFailedEvent ||

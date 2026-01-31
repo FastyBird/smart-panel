@@ -1,4 +1,4 @@
-// Media activity domain models for the V2 activity-based media architecture.
+// Media activity domain models for the activity-based media architecture.
 
 import 'dart:convert';
 
