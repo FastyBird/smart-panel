@@ -51,6 +51,12 @@ export class LockRealisticBehavior extends BaseDeviceBehavior {
 
 				// Simulate battery drain on each action
 				if (this.hasChannel(device, ChannelCategory.BATTERY)) {
+					// Initialize battery from device's actual value if not yet tracked
+					if (!state.data.has('battery')) {
+						const actualBattery = this.getDeviceBatteryLevel(device);
+						this.setStateValue(state, 'battery', actualBattery);
+					}
+
 					const currentBattery = this.getStateValue(state, 'battery', 100) as number;
 					const newBattery = Math.max(0, currentBattery - LockRealisticBehavior.BATTERY_DRAIN_PER_ACTION);
 					this.setStateValue(state, 'battery', newBattery);
@@ -68,5 +74,26 @@ export class LockRealisticBehavior extends BaseDeviceBehavior {
 		}
 
 		return updates;
+	}
+
+	/**
+	 * Read the device's actual battery percentage from its channel properties
+	 */
+	private getDeviceBatteryLevel(device: SimulatorDeviceEntity): number {
+		const batteryChannel = device.channels?.find((ch) => ch.category === ChannelCategory.BATTERY);
+
+		if (batteryChannel) {
+			const percentProp = batteryChannel.properties?.find((p) => p.category === PropertyCategory.PERCENTAGE);
+
+			if (percentProp?.value?.value != null) {
+				const val = Number(percentProp.value.value);
+
+				if (!isNaN(val)) {
+					return val;
+				}
+			}
+		}
+
+		return 100;
 	}
 }

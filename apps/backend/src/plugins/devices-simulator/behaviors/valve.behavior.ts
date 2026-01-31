@@ -83,6 +83,7 @@ export class ValveRealisticBehavior extends BaseDeviceBehavior {
 		now: number,
 	): BehaviorTickResult[] {
 		const results = super.tick(device, state, now);
+		const additional: BehaviorTickResult[] = [];
 
 		// Track position in state and update flow rate
 		for (const result of results) {
@@ -96,7 +97,7 @@ export class ValveRealisticBehavior extends BaseDeviceBehavior {
 				if (this.hasChannel(device, ChannelCategory.FLOW)) {
 					const maxFlow = 5.0; // m³/h
 					const flowRate = Math.round(((result.value as number) / 100) * maxFlow * 10) / 10;
-					results.push({
+					additional.push({
 						channelCategory: ChannelCategory.FLOW,
 						propertyCategory: PropertyCategory.RATE,
 						value: flowRate,
@@ -105,6 +106,6 @@ export class ValveRealisticBehavior extends BaseDeviceBehavior {
 			}
 		}
 
-		return results;
+		return results.concat(additional);
 	}
 }

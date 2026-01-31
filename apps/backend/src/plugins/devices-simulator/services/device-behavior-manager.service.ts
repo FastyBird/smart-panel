@@ -225,6 +225,9 @@ export class DeviceBehaviorManagerService {
 				const behavior = this.getBehaviorForDevice(device);
 
 				if (!behavior) {
+					// Device no longer has an active behavior (e.g., mode changed to 'default')
+					// Clean up stale state to prevent tick timer from running indefinitely
+					this.deviceStates.delete(deviceId);
 					continue;
 				}
 

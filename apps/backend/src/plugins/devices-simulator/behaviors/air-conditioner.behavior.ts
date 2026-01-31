@@ -107,6 +107,13 @@ export class AirConditionerRealisticBehavior extends BaseDeviceBehavior {
 			this.cancelTransitions(state, ChannelCategory.TEMPERATURE, PropertyCategory.TEMPERATURE);
 			this.cancelTransitions(state, channelCategory, PropertyCategory.STATUS);
 
+			// Reset compressor state so next power-on gets startup delay
+			const otherMode = mode === 'cool' ? 'heat' : 'cool';
+			const otherOn = this.getStateValue(state, `${otherMode}On`, false) as boolean;
+			if (!otherOn) {
+				this.setStateValue(state, 'compressorRunning', false);
+			}
+
 			updates.push({
 				channelCategory,
 				propertyCategory: PropertyCategory.STATUS,
@@ -172,6 +179,12 @@ export class AirConditionerRealisticBehavior extends BaseDeviceBehavior {
 
 		const durationMs = Math.round((diff / ratePerMinute) * 60 * 1000);
 
+		// Only apply compressor startup delay when first turning on, not for
+		// subsequent temperature adjustments while already running
+		const compressorRunning = this.getStateValue(state, 'compressorRunning', false) as boolean;
+		const delayMs = compressorRunning ? 0 : AirConditionerRealisticBehavior.COMPRESSOR_STARTUP_DELAY_MS;
+		this.setStateValue(state, 'compressorRunning', true);
+
 		this.cancelTransitions(state, ChannelCategory.TEMPERATURE, PropertyCategory.TEMPERATURE);
 
 		if (this.hasChannel(device, ChannelCategory.TEMPERATURE)) {
@@ -180,7 +193,7 @@ export class AirConditionerRealisticBehavior extends BaseDeviceBehavior {
 				propertyCategory: PropertyCategory.TEMPERATURE,
 				targetValue: targetTemp,
 				startValue: currentTemp,
-				delayMs: AirConditionerRealisticBehavior.COMPRESSOR_STARTUP_DELAY_MS,
+				delayMs,
 				durationMs,
 			});
 		}

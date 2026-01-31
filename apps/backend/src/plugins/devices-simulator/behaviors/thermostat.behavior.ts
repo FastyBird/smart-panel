@@ -16,13 +16,11 @@ import {
  *
  * - Heating rate: ~0.5°C per minute (30s tick = ~0.25°C per tick)
  * - Cooling rate: ~0.3°C per minute
- * - Overshoots target slightly before settling
  * - Activates/deactivates heater/cooler status based on convergence
  */
 export class ThermostatRealisticBehavior extends BaseDeviceBehavior {
 	private static readonly HEAT_RATE_PER_MINUTE = 0.5;
 	private static readonly COOL_RATE_PER_MINUTE = 0.3;
-	private static readonly OVERSHOOT = 0.3;
 	private static readonly SETTLING_THRESHOLD = 0.2;
 
 	getType(): string {
