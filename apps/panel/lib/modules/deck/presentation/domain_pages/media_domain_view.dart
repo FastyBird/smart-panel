@@ -499,15 +499,15 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 				crossAxisAlignment: CrossAxisAlignment.center,
 				children: [
 					Container(
-						width: _scale(148),
-						height: _scale(148),
+						width: _scale(90),
+						height: _scale(90),
 						decoration: BoxDecoration(
-							color: isDark ? AppFillColorDark.base : AppFillColorLight.base,
+							color: isDark ? AppFillColorDark.darker : AppFillColorLight.darker,
 							shape: BoxShape.circle,
 						),
 						child: Icon(
-							MdiIcons.television,
-							size: _scale(76),
+							MdiIcons.televisionClassic,
+							size: _scale(56),
 							color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
 						),
 					),
@@ -596,19 +596,23 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		final activityName = _activityLabel(activeState.activityKey);
 
 
-		return Column(
-			mainAxisAlignment: MainAxisAlignment.center,
-			children: [
+		return Container(
+			width: double.infinity,
+			padding: EdgeInsets.symmetric(vertical: AppSpacings.pXl * 3),
+			child: Column(
+				mainAxisAlignment: MainAxisAlignment.center,
+				crossAxisAlignment: CrossAxisAlignment.center,
+				children: [
 					Container(
-						width: _scale(72),
-						height: _scale(72),
+						width: _scale(90),
+						height: _scale(90),
 						decoration: BoxDecoration(
 							color: errorBg,
 							shape: BoxShape.circle,
 						),
 						child: Icon(
-							Icons.close,
-							size: _scale(36),
+							MdiIcons.closeCircleOutline,
+							size: _scale(56),
 							color: errorColor,
 						),
 					),
@@ -621,14 +625,13 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 							color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
 						),
 					),
-					AppSpacings.spacingMdVertical,
+					AppSpacings.spacingSmVertical,
 					Text(
 						'Activity failed to apply. Check device connectivity.',
 						style: TextStyle(
 							fontSize: AppFontSize.base,
 							color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
 						),
-						textAlign: TextAlign.center,
 					),
 					AppSpacings.spacingLgVertical,
 					Row(
@@ -668,12 +671,8 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 							),
 						],
 					),
-					AppSpacings.spacingMdVertical,
-					TextButton(
-						onPressed: () => _showFailureDetailsSheet(context, activeState),
-						child: const Text('View Details'),
-					),
-			],
+				],
+			),
 		);
 	}
 
@@ -764,13 +763,13 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 
 					// Offline device banner
 					if (offlineRoles.isNotEmpty && !activeState.hasWarnings) ...[
-						AppSpacings.spacingLgVertical,
+						AppSpacings.spacingMdVertical,
 						_buildOfflineDeviceBanner(context, offlineRoles),
 					],
 
 					// Composition preview
 					if (displayItems.isNotEmpty) ...[
-						AppSpacings.spacingLgVertical,
+						AppSpacings.spacingMdVertical,
 						_buildCompositionPreview(context, displayItems),
 					],
 
@@ -949,7 +948,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 										Text(
 											nameText,
 											style: TextStyle(
-												fontSize: AppFontSize.small,
+												fontSize: AppFontSize.extraSmall,
 												fontWeight: FontWeight.w500,
 												color: nameColor,
 											),
@@ -1614,15 +1613,15 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 					return Padding(
 						padding: EdgeInsets.only(left: AppSpacings.pSm),
 						child: Container(
-							width: _scale(48),
-							height: _scale(48),
+							width: _scale(22),
+							height: _scale(22),
 							decoration: BoxDecoration(
 								color: isDark ? AppFillColorDark.base : AppFillColorLight.base,
-								borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+								borderRadius: BorderRadius.circular(AppBorderRadius.base),
 							),
 							child: Icon(
 								capIcon,
-								size: _scale(28),
+								size: _scale(12),
 								color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
 							),
 						),
