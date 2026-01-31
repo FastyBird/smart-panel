@@ -52,6 +52,7 @@ export class WaterHeaterRealisticBehavior extends BaseDeviceBehavior {
 				this.setStateValue(state, 'heaterOn', isOn);
 
 				if (!isOn) {
+					this.setStateValue(state, 'activelyHeating', false);
 					this.cancelTransitions(state, ChannelCategory.TEMPERATURE, PropertyCategory.TEMPERATURE);
 					this.cancelTransitions(state, ChannelCategory.HEATER, PropertyCategory.STATUS);
 

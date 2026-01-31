@@ -88,12 +88,12 @@ export class SimulatorDevicePlatform implements IDevicePlatform {
 
 				this.logger.debug(
 					`Simulated update: channel=${update.channel.id}, property=${update.property.id}, value=${update.value}`,
-					{ resource: device.id },
+					{ resource: update.device.id },
 				);
 
 				// Notify behavior manager about the property change
 				this.behaviorManager.handlePropertyChange(
-					device,
+					update.device,
 					update.channel.category,
 					update.property.category,
 					update.value,
@@ -104,7 +104,9 @@ export class SimulatorDevicePlatform implements IDevicePlatform {
 			} catch (error) {
 				const err = error as Error;
 
-				this.logger.error(`Failed to update property ${update.property.id}: ${err.message}`, { resource: device.id });
+				this.logger.error(`Failed to update property ${update.property.id}: ${err.message}`, {
+					resource: update.device.id,
+				});
 
 				results.push(false);
 			}
