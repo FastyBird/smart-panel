@@ -133,13 +133,14 @@ export class SecurityEventsService {
 			});
 		}
 
-		// Persist events, then update snapshot
+		// Always advance the snapshot so we never re-detect the same transitions,
+		// even if persistence fails (event recording is best-effort).
+		this.updateSnapshot(activeAlerts, armedState, alarmState);
+
 		if (events.length > 0) {
 			await this.repo.save(events.map((e) => this.repo.create(e)));
 			await this.enforceRetention();
 		}
-
-		this.updateSnapshot(activeAlerts, armedState, alarmState);
 	}
 
 	async recordAcknowledgement(
