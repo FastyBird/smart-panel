@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import { EventEmitter2 } from '@nestjs/event-emitter';
+
 import { SecurityAlertAckEntity } from '../entities/security-alert-ack.entity';
 import { SecurityAlertModel, SecurityStatusModel } from '../models/security-status.model';
 import { SecurityAlertType, Severity } from '../security.constants';
@@ -35,6 +37,7 @@ describe('SecurityService', () => {
 	let service: SecurityService;
 	let aggregator: jest.Mocked<SecurityAggregatorService>;
 	let ackService: jest.Mocked<SecurityAlertAckService>;
+	let eventEmitter: jest.Mocked<EventEmitter2>;
 
 	beforeEach(() => {
 		aggregator = {
@@ -45,12 +48,15 @@ describe('SecurityService', () => {
 			findByIds: jest.fn().mockResolvedValue([]),
 			acknowledge: jest.fn(),
 			acknowledgeAll: jest.fn(),
-			resetAcknowledgement: jest.fn(),
 			updateLastEventAt: jest.fn(),
 			cleanupStale: jest.fn(),
 		} as any;
 
-		service = new SecurityService(aggregator, ackService);
+		eventEmitter = {
+			emit: jest.fn(),
+		} as any;
+
+		service = new SecurityService(aggregator, ackService, eventEmitter);
 	});
 
 	describe('getStatus', () => {
@@ -60,6 +66,7 @@ describe('SecurityService', () => {
 			const result = await service.getStatus();
 			expect(result.activeAlerts).toHaveLength(0);
 			expect(ackService.findByIds).not.toHaveBeenCalled();
+			expect(ackService.cleanupStale).toHaveBeenCalledWith([]);
 		});
 
 		it('should apply acknowledged=true from stored ack records', async () => {
@@ -79,7 +86,7 @@ describe('SecurityService', () => {
 			expect(result.activeAlerts[0].acknowledged).toBe(true);
 		});
 
-		it('should reset ack when alert timestamp is newer than stored lastEventAt', async () => {
+		it('should preserve ack when alert timestamp is newer than stored lastEventAt', async () => {
 			const alert = makeAlert('sensor:dev1:smoke', '2025-01-02T00:00:00Z');
 			aggregator.aggregate.mockResolvedValue(makeStatus([alert]));
 
@@ -93,11 +100,8 @@ describe('SecurityService', () => {
 			ackService.findByIds.mockResolvedValue([ackRecord]);
 
 			const result = await service.getStatus();
-			expect(result.activeAlerts[0].acknowledged).toBe(false);
-			expect(ackService.resetAcknowledgement).toHaveBeenCalledWith(
-				'sensor:dev1:smoke',
-				new Date('2025-01-02T00:00:00Z'),
-			);
+			expect(result.activeAlerts[0].acknowledged).toBe(true);
+			expect(ackService.updateLastEventAt).toHaveBeenCalledWith('sensor:dev1:smoke', new Date('2025-01-02T00:00:00Z'));
 		});
 
 		it('should not call updateLastEventAt for alerts with invalid timestamps', async () => {

@@ -1,16 +1,21 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { SecurityAlertAckEntity } from '../entities/security-alert-ack.entity';
 import { SecurityStatusModel } from '../models/security-status.model';
+import { EventType } from '../security.constants';
 
 import { SecurityAggregatorService } from './security-aggregator.service';
 import { SecurityAlertAckService } from './security-alert-ack.service';
 
 @Injectable()
 export class SecurityService {
+	private readonly logger = new Logger(SecurityService.name);
+
 	constructor(
 		private readonly aggregator: SecurityAggregatorService,
 		private readonly ackService: SecurityAlertAckService,
+		private readonly eventEmitter: EventEmitter2,
 	) {}
 
 	async getStatus(): Promise<SecurityStatusModel> {
@@ -18,8 +23,12 @@ export class SecurityService {
 
 		if (status.activeAlerts.length > 0) {
 			await this.applyAcknowledgements(status);
-			await this.cleanupStaleAcks(status);
 		}
+
+		// Always clean up stale ack records, including when all alerts have
+		// cleared. Otherwise old acknowledged records persist and silently
+		// suppress returning alerts with the same ID.
+		await this.cleanupStaleAcks(status);
 
 		return status;
 	}
@@ -29,7 +38,11 @@ export class SecurityService {
 		const alert = status.activeAlerts.find((a) => a.id === id);
 		const lastEventAt = this.parseTimestamp(alert?.timestamp);
 
-		return this.ackService.acknowledge(id, lastEventAt ?? undefined);
+		const result = await this.ackService.acknowledge(id, lastEventAt ?? undefined);
+
+		await this.emitStatusUpdate();
+
+		return result;
 	}
 
 	async acknowledgeAllAlerts(): Promise<SecurityAlertAckEntity[]> {
@@ -43,8 +56,11 @@ export class SecurityService {
 		await this.ackService.acknowledgeAll(alerts);
 
 		const activeIds = alerts.map((a) => a.id);
+		const result = (await this.ackService.findByIds(activeIds)).filter((r) => r.acknowledged);
 
-		return (await this.ackService.findByIds(activeIds)).filter((r) => r.acknowledged);
+		await this.emitStatusUpdate();
+
+		return result;
 	}
 
 	private parseTimestamp(timestamp: string | undefined): Date | null {
@@ -74,18 +90,23 @@ export class SecurityService {
 			const alertTime = new Date(alert.timestamp);
 			const alertTimeValid = !Number.isNaN(alertTime.getTime());
 
-			if (record.lastEventAt != null && alertTimeValid && alertTime > record.lastEventAt) {
-				// New event instance — reset ack in DB and response
-				await this.ackService.resetAcknowledgement(alert.id, alertTime);
-				alert.acknowledged = false;
-			} else {
-				// Update lastEventAt if not yet stored, preserving existing acknowledged state
-				if (record.lastEventAt == null && alertTimeValid) {
-					await this.ackService.updateLastEventAt(alert.id, alertTime);
-				}
-
-				alert.acknowledged = record.acknowledged;
+			// Keep lastEventAt in sync — do NOT reset acknowledged based on timestamp
+			// changes. Stale ack records are cleaned up when alerts disappear, so a
+			// returning alert will naturally start as unacknowledged.
+			if (alertTimeValid) {
+				await this.ackService.updateLastEventAt(alert.id, alertTime);
 			}
+
+			alert.acknowledged = record.acknowledged;
+		}
+	}
+
+	private async emitStatusUpdate(): Promise<void> {
+		try {
+			const status = await this.getStatus();
+			this.eventEmitter.emit(EventType.SECURITY_STATUS, status);
+		} catch (error) {
+			this.logger.warn(`Failed to emit security status update: ${error}`);
 		}
 	}
 

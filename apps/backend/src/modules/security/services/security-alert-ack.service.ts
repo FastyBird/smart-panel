@@ -78,19 +78,6 @@ export class SecurityAlertAckService {
 		await this.repo.save([...records, ...newRecords]);
 	}
 
-	async resetAcknowledgement(id: string, lastEventAt: Date): Promise<void> {
-		const record = await this.repo.findOne({ where: { id } });
-
-		if (record == null) {
-			return;
-		}
-
-		record.acknowledged = false;
-		record.acknowledgedAt = null;
-		record.lastEventAt = lastEventAt;
-		await this.repo.save(record);
-	}
-
 	async updateLastEventAt(id: string, lastEventAt: Date): Promise<void> {
 		const record = await this.repo.findOne({ where: { id } });
 

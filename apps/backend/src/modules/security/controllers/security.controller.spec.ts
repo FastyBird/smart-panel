@@ -1,3 +1,4 @@
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
@@ -38,6 +39,10 @@ describe('SecurityController', () => {
 				SecurityAlertAckService,
 				SecurityAggregatorService,
 				SecurityService,
+				{
+					provide: EventEmitter2,
+					useValue: { emit: jest.fn() },
+				},
 			],
 		}).compile();
 
