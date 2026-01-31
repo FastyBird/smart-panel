@@ -11,14 +11,12 @@ import {
 /**
  * Realistic door behavior.
  *
- * Simulates motorized door/garage door:
- * - Open/close takes 3-8 seconds depending on type
+ * Simulates motorized door:
+ * - Open/close takes ~5 seconds
  * - Status transitions through opening/closing states
- * - Obstruction detection halts operation
  */
 export class DoorRealisticBehavior extends BaseDeviceBehavior {
-	private static readonly DOOR_TRAVEL_TIME_MS = 5000;
-	private static readonly GARAGE_TRAVEL_TIME_MS = 8000;
+	private static readonly TRAVEL_TIME_MS = 5000;
 
 	getType(): string {
 		return 'door-realistic';
@@ -39,7 +37,7 @@ export class DoorRealisticBehavior extends BaseDeviceBehavior {
 			if (event.propertyCategory === PropertyCategory.COMMAND) {
 				const command = event.value as string;
 				const isOpening = command === 'open';
-				const travelTime = this.getTravelTime(state);
+				const travelTime = DoorRealisticBehavior.TRAVEL_TIME_MS;
 
 				// Cancel existing transitions
 				this.cancelTransitions(state, ChannelCategory.DOOR, PropertyCategory.STATUS);
@@ -75,12 +73,5 @@ export class DoorRealisticBehavior extends BaseDeviceBehavior {
 		}
 
 		return updates;
-	}
-
-	private getTravelTime(state: DeviceBehaviorState): number {
-		const doorType = this.getStateValue(state, 'doorType', 'door') as string;
-		return doorType === 'garage'
-			? DoorRealisticBehavior.GARAGE_TRAVEL_TIME_MS
-			: DoorRealisticBehavior.DOOR_TRAVEL_TIME_MS;
 	}
 }
