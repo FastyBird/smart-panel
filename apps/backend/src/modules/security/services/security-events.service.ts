@@ -29,6 +29,7 @@ export class SecurityEventsService {
 	private lastKnownArmedState: ArmedState | null = null;
 	private lastKnownAlarmState: AlarmState | null = null;
 	private initialized = false;
+	private transitionLock: Promise<void> = Promise.resolve();
 
 	constructor(
 		@InjectRepository(SecurityEventEntity)
@@ -60,8 +61,25 @@ export class SecurityEventsService {
 		armedState: ArmedState | null,
 		alarmState: AlarmState | null,
 	): Promise<void> {
+		// Serialize concurrent calls to prevent duplicate event generation
+		const previous = this.transitionLock;
+		let resolve: () => void;
+		this.transitionLock = new Promise<void>((r) => (resolve = r));
+
+		try {
+			await previous;
+			await this.doRecordAlertTransitions(activeAlerts, armedState, alarmState);
+		} finally {
+			resolve!();
+		}
+	}
+
+	private async doRecordAlertTransitions(
+		activeAlerts: SecurityAlertModel[],
+		armedState: ArmedState | null,
+		alarmState: AlarmState | null,
+	): Promise<void> {
 		if (!this.initialized) {
-			// First call — seed snapshot, don't generate events
 			this.seedSnapshot(activeAlerts, armedState, alarmState);
 
 			return;
@@ -115,13 +133,12 @@ export class SecurityEventsService {
 			});
 		}
 
-		// Persist events
+		// Persist events, then update snapshot
 		if (events.length > 0) {
 			await this.repo.save(events.map((e) => this.repo.create(e)));
 			await this.enforceRetention();
 		}
 
-		// Update snapshot only after successful persistence
 		this.updateSnapshot(activeAlerts, armedState, alarmState);
 	}
 

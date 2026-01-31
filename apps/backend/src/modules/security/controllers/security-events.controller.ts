@@ -55,8 +55,18 @@ export class SecurityEventsController {
 			}
 		}
 
+		let parsedLimit: number | undefined;
+
+		if (limit != null) {
+			parsedLimit = parseInt(limit, 10);
+
+			if (Number.isNaN(parsedLimit)) {
+				throw new BadRequestException('Invalid "limit" parameter: must be a number');
+			}
+		}
+
 		const events = await this.eventsService.findRecent({
-			limit: limit != null ? parseInt(limit, 10) : undefined,
+			limit: parsedLimit,
 			since: sinceDate,
 			severity,
 			type,
