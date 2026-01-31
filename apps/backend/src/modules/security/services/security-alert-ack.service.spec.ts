@@ -103,17 +103,15 @@ describe('SecurityAlertAckService', () => {
 		});
 	});
 
-	describe('upsertLastEventAt', () => {
-		it('should create record if not found', async () => {
+	describe('updateLastEventAt', () => {
+		it('should do nothing if record not found', async () => {
 			repo.findOne.mockResolvedValue(null);
-			repo.create.mockReturnValue({ id: 'a' } as SecurityAlertAckEntity);
-			repo.save.mockImplementation((e) => Promise.resolve(e as SecurityAlertAckEntity));
 
-			await service.upsertLastEventAt('a', new Date('2025-01-01'));
-			expect(repo.save).toHaveBeenCalled();
+			await service.updateLastEventAt('a', new Date('2025-01-01'));
+			expect(repo.save).not.toHaveBeenCalled();
 		});
 
-		it('should reset ack when timestamp increases', async () => {
+		it('should update lastEventAt without changing acknowledged', async () => {
 			const existing = {
 				id: 'a',
 				acknowledged: true,
@@ -122,12 +120,26 @@ describe('SecurityAlertAckService', () => {
 			repo.findOne.mockResolvedValue(existing);
 			repo.save.mockImplementation((e) => Promise.resolve(e as SecurityAlertAckEntity));
 
-			await service.upsertLastEventAt('a', new Date('2025-01-02'));
-			expect(existing.acknowledged).toBe(false);
+			await service.updateLastEventAt('a', new Date('2025-01-02'));
+			expect(existing.acknowledged).toBe(true);
 			expect(existing.lastEventAt).toEqual(new Date('2025-01-02'));
 		});
 
-		it('should not reset ack when timestamp is same or older', async () => {
+		it('should set lastEventAt when previously null without changing acknowledged', async () => {
+			const existing = {
+				id: 'a',
+				acknowledged: true,
+				lastEventAt: null,
+			} as SecurityAlertAckEntity;
+			repo.findOne.mockResolvedValue(existing);
+			repo.save.mockImplementation((e) => Promise.resolve(e as SecurityAlertAckEntity));
+
+			await service.updateLastEventAt('a', new Date('2025-01-01'));
+			expect(existing.acknowledged).toBe(true);
+			expect(existing.lastEventAt).toEqual(new Date('2025-01-01'));
+		});
+
+		it('should not update when timestamp is same or older', async () => {
 			const existing = {
 				id: 'a',
 				acknowledged: true,
@@ -135,7 +147,7 @@ describe('SecurityAlertAckService', () => {
 			} as SecurityAlertAckEntity;
 			repo.findOne.mockResolvedValue(existing);
 
-			await service.upsertLastEventAt('a', new Date('2025-01-01'));
+			await service.updateLastEventAt('a', new Date('2025-01-01'));
 			expect(repo.save).not.toHaveBeenCalled();
 		});
 	});

@@ -63,23 +63,14 @@ export class SecurityAlertAckService {
 		await this.repo.save([...records, ...newRecords]);
 	}
 
-	async upsertLastEventAt(id: string, lastEventAt: Date): Promise<void> {
-		let record = await this.repo.findOne({ where: { id } });
+	async updateLastEventAt(id: string, lastEventAt: Date): Promise<void> {
+		const record = await this.repo.findOne({ where: { id } });
 
 		if (record == null) {
-			record = this.repo.create({
-				id,
-				acknowledged: false,
-				lastEventAt,
-			});
-
-			await this.repo.save(record);
-
 			return;
 		}
 
 		if (record.lastEventAt == null || lastEventAt > record.lastEventAt) {
-			record.acknowledged = false;
 			record.lastEventAt = lastEventAt;
 			await this.repo.save(record);
 		}

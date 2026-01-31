@@ -52,15 +52,16 @@ export class SecurityService {
 			}
 
 			const alertTime = new Date(alert.timestamp);
+			const alertTimeValid = !Number.isNaN(alertTime.getTime());
 
-			if (record.lastEventAt != null && alertTime > record.lastEventAt) {
+			if (record.lastEventAt != null && alertTimeValid && alertTime > record.lastEventAt) {
 				// New event instance — reset ack
-				await this.ackService.upsertLastEventAt(alert.id, alertTime);
+				await this.ackService.updateLastEventAt(alert.id, alertTime);
 				alert.acknowledged = false;
 			} else {
-				// Update lastEventAt if not yet stored
-				if (record.lastEventAt == null) {
-					await this.ackService.upsertLastEventAt(alert.id, alertTime);
+				// Update lastEventAt if not yet stored, preserving existing acknowledged state
+				if (record.lastEventAt == null && alertTimeValid) {
+					await this.ackService.updateLastEventAt(alert.id, alertTime);
 				}
 
 				alert.acknowledged = record.acknowledged;

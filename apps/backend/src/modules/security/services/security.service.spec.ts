@@ -45,7 +45,7 @@ describe('SecurityService', () => {
 			findByIds: jest.fn().mockResolvedValue([]),
 			acknowledge: jest.fn(),
 			acknowledgeAll: jest.fn(),
-			upsertLastEventAt: jest.fn(),
+			updateLastEventAt: jest.fn(),
 			cleanupStale: jest.fn(),
 		} as any;
 
@@ -93,7 +93,43 @@ describe('SecurityService', () => {
 
 			const result = await service.getStatus();
 			expect(result.activeAlerts[0].acknowledged).toBe(false);
-			expect(ackService.upsertLastEventAt).toHaveBeenCalledWith('sensor:dev1:smoke', new Date('2025-01-02T00:00:00Z'));
+			expect(ackService.updateLastEventAt).toHaveBeenCalledWith('sensor:dev1:smoke', new Date('2025-01-02T00:00:00Z'));
+		});
+
+		it('should not call updateLastEventAt for alerts with invalid timestamps', async () => {
+			const alert = makeAlert('sensor:dev1:smoke', 'not-a-date');
+			aggregator.aggregate.mockResolvedValue(makeStatus([alert]));
+
+			const ackRecord = {
+				id: 'sensor:dev1:smoke',
+				acknowledged: true,
+				acknowledgedAt: new Date('2025-01-01'),
+				lastEventAt: null,
+				updatedAt: new Date(),
+			} as SecurityAlertAckEntity;
+			ackService.findByIds.mockResolvedValue([ackRecord]);
+
+			const result = await service.getStatus();
+			expect(result.activeAlerts[0].acknowledged).toBe(true);
+			expect(ackService.updateLastEventAt).not.toHaveBeenCalled();
+		});
+
+		it('should preserve acknowledged state when initializing lastEventAt', async () => {
+			const alert = makeAlert('sensor:dev1:smoke', '2025-01-01T00:00:00Z');
+			aggregator.aggregate.mockResolvedValue(makeStatus([alert]));
+
+			const ackRecord = {
+				id: 'sensor:dev1:smoke',
+				acknowledged: true,
+				acknowledgedAt: new Date('2025-01-01'),
+				lastEventAt: null,
+				updatedAt: new Date(),
+			} as SecurityAlertAckEntity;
+			ackService.findByIds.mockResolvedValue([ackRecord]);
+
+			const result = await service.getStatus();
+			expect(result.activeAlerts[0].acknowledged).toBe(true);
+			expect(ackService.updateLastEventAt).toHaveBeenCalledWith('sensor:dev1:smoke', new Date('2025-01-01T00:00:00Z'));
 		});
 
 		it('should cleanup stale ack records', async () => {
