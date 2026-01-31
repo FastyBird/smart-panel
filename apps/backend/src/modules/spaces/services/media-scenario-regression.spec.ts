@@ -46,9 +46,9 @@ import {
 } from './__fixtures__/media-scenario-templates';
 import { MediaTestHarness } from './__fixtures__/media-test-harness';
 import { DerivedMediaEndpointService } from './derived-media-endpoint.service';
+import { MediaCapabilityService } from './media-capability.service';
 import { SpaceMediaActivityBindingService } from './space-media-activity-binding.service';
 import { SpaceMediaActivityService } from './space-media-activity.service';
-import { MediaCapabilityService } from './media-capability.service';
 import { SpacesService } from './spaces.service';
 
 // ==========================================================================

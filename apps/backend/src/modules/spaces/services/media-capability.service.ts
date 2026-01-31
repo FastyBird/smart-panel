@@ -157,7 +157,7 @@ export class MediaCapabilityService {
 		capabilities: Record<string, MediaCapabilityMappingModel>,
 	): MediaEndpointType[] {
 		const types: MediaEndpointType[] = [];
-		const category = device.category as DeviceCategory;
+		const category = device.category;
 
 		switch (category) {
 			case DeviceCategory.TELEVISION:
@@ -197,10 +197,8 @@ export class MediaCapabilityService {
 	}
 
 	private mapPermissions(permissions: PermissionType[]): MediaCapabilityPermission {
-		const hasRead =
-			permissions.includes(PermissionType.READ_ONLY) || permissions.includes(PermissionType.READ_WRITE);
-		const hasWrite =
-			permissions.includes(PermissionType.WRITE_ONLY) || permissions.includes(PermissionType.READ_WRITE);
+		const hasRead = permissions.includes(PermissionType.READ_ONLY) || permissions.includes(PermissionType.READ_WRITE);
+		const hasWrite = permissions.includes(PermissionType.WRITE_ONLY) || permissions.includes(PermissionType.READ_WRITE);
 
 		if (hasRead && hasWrite) return MediaCapabilityPermission.READ_WRITE;
 		if (hasWrite) return MediaCapabilityPermission.WRITE;

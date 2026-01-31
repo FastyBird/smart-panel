@@ -3,10 +3,7 @@ import { Expose, Type } from 'class-transformer';
 import { ApiExtraModels, ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
 import { BaseSuccessResponseModel } from '../../api/models/api-response.model';
-import {
-	MediaCapabilityPermission,
-	MediaEndpointType,
-} from '../spaces.constants';
+import { MediaCapabilityPermission, MediaEndpointType } from '../spaces.constants';
 
 // ========================
 // Capability Models
@@ -180,4 +177,3 @@ export class MediaCapabilitiesResponseModel extends BaseSuccessResponseModel<Med
 	@Type(() => MediaCapabilitySummaryModel)
 	declare data: MediaCapabilitySummaryModel[];
 }
-

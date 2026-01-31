@@ -10,8 +10,8 @@ import { MediaCapabilitySummaryModel } from '../models/media-routing.model';
 import { MediaActivityKey, MediaEndpointType } from '../spaces.constants';
 
 import { DerivedMediaEndpointService } from './derived-media-endpoint.service';
-import { SpaceMediaActivityBindingService } from './space-media-activity-binding.service';
 import { MediaCapabilityService } from './media-capability.service';
+import { SpaceMediaActivityBindingService } from './space-media-activity-binding.service';
 import { SpacesService } from './spaces.service';
 
 const spaceId = uuid();
