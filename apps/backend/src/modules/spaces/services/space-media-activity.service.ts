@@ -217,7 +217,7 @@ export class SpaceMediaActivityService {
 			record.activityKey = activityKey;
 			record.state = MediaActivationState.ACTIVATING;
 			record.activatedAt = new Date();
-			record.resolved = JSON.stringify(plan.resolved);
+			record.resolved = JSON.stringify(toSnakeCaseKeys(plan.resolved));
 			record.lastResult = null;
 		}
 

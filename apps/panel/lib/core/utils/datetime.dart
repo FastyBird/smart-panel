@@ -119,4 +119,11 @@ class DatetimeUtils {
   static String getShortMonthDay(DateTime dateTime) {
     return DateFormat.MMMd(Intl.getCurrentLocale()).format(dateTime);
   }
+
+  /// Format a [Duration] as `m:ss` (e.g., `3:05`, `12:00`).
+  static String formatDuration(Duration duration) {
+    final minutes = duration.inMinutes;
+    final seconds = duration.inSeconds % 60;
+    return '$minutes:${seconds.toString().padLeft(2, '0')}';
+  }
 }

@@ -5,6 +5,7 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
+import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/slider_with_steps.dart';
@@ -1142,7 +1143,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 				Row(
 					children: [
 						Text(
-							_formatDuration(position),
+							DatetimeUtils.formatDuration(position),
 							style: TextStyle(
 								fontSize: AppFontSize.extraSmall,
 								color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
@@ -1170,7 +1171,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 						),
 						AppSpacings.spacingMdHorizontal,
 						Text(
-							_formatDuration(duration),
+							DatetimeUtils.formatDuration(duration),
 							style: TextStyle(
 								fontSize: AppFontSize.extraSmall,
 								color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
@@ -1722,11 +1723,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		}
 	}
 
-	String _formatDuration(Duration duration) {
-		final minutes = duration.inMinutes;
-		final seconds = duration.inSeconds % 60;
-		return '$minutes:${seconds.toString().padLeft(2, '0')}';
-	}
 
 	void _navigateToDeviceDetail(MediaDeviceGroup group) {
 		Navigator.push(
