@@ -45,6 +45,9 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	final ScreenService _screenService = locator<ScreenService>();
 	final VisualDensityService _visualDensityService = locator<VisualDensityService>();
 
+	double _scale(double val) =>
+			_screenService.scale(val, density: _visualDensityService.density);
+
 	MediaActivityService? _mediaService;
 	SpacesService? _spacesService;
 	SpaceStateRepository? _spaceStateRepo;
@@ -225,21 +228,21 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 										child: RefreshIndicator(
 											onRefresh: _refresh,
 											child: ListView(
-												padding: const EdgeInsets.all(32),
+												padding: EdgeInsets.all(AppSpacings.pXl + AppSpacings.pMd),
 												children: [
-													const SizedBox(height: 48),
+													SizedBox(height: AppSpacings.pXl * 2),
 													Icon(
 														MdiIcons.monitorOff,
-														size: 64,
+														size: _scale(64),
 														color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
 													),
-													const SizedBox(height: 16),
+													AppSpacings.spacingLgVertical,
 													Text(
 														AppLocalizations.of(context)!.media_no_endpoints_title,
 														textAlign: TextAlign.center,
 														style: Theme.of(context).textTheme.titleMedium,
 													),
-													const SizedBox(height: 8),
+													AppSpacings.spacingMdVertical,
 													Text(
 														AppLocalizations.of(context)!.media_no_endpoints_description,
 														textAlign: TextAlign.center,
@@ -487,6 +490,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	Widget _buildOffStateContent(BuildContext context) {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 
+
 		return Container(
 			width: double.infinity,
 			padding: EdgeInsets.symmetric(vertical: AppSpacings.pXl * 3),
@@ -495,15 +499,15 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 				crossAxisAlignment: CrossAxisAlignment.center,
 				children: [
 					Container(
-						width: 148,
-						height: 148,
+						width: _scale(148),
+						height: _scale(148),
 						decoration: BoxDecoration(
 							color: isDark ? AppFillColorDark.base : AppFillColorLight.base,
 							shape: BoxShape.circle,
 						),
 						child: Icon(
 							MdiIcons.television,
-							size: 76,
+							size: _scale(76),
 							color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
 						),
 					),
@@ -538,6 +542,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		final accentColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
 		final activityName = _activityLabel(activeState.activityKey);
 
+
 		return Column(
 			mainAxisAlignment: MainAxisAlignment.center,
 			children: [
@@ -547,13 +552,13 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 							return Transform.rotate(
 								angle: _pulseController.value * 2 * math.pi,
 								child: Container(
-									width: 56,
-									height: 56,
+									width: _scale(56),
+									height: _scale(56),
 									decoration: BoxDecoration(
 										shape: BoxShape.circle,
 										border: Border.all(
 											color: accentColor.withValues(alpha: 0.2),
-											width: 3,
+											width: _scale(3),
 										),
 									),
 									child: CustomPaint(
@@ -566,11 +571,11 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 							);
 						},
 					),
-					const SizedBox(height: 20),
+					AppSpacings.spacingLgVertical,
 					Text(
 						'Starting $activityName...',
 						style: TextStyle(
-							fontSize: 16,
+							fontSize: AppFontSize.large,
 							fontWeight: FontWeight.w600,
 							color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
 						),
@@ -590,41 +595,42 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		final errorBg = isDark ? AppColorsDark.errorLight9 : AppColorsLight.errorLight9;
 		final activityName = _activityLabel(activeState.activityKey);
 
+
 		return Column(
 			mainAxisAlignment: MainAxisAlignment.center,
 			children: [
 					Container(
-						width: 72,
-						height: 72,
+						width: _scale(72),
+						height: _scale(72),
 						decoration: BoxDecoration(
 							color: errorBg,
 							shape: BoxShape.circle,
 						),
 						child: Icon(
 							Icons.close,
-							size: 36,
+							size: _scale(36),
 							color: errorColor,
 						),
 					),
-					const SizedBox(height: 16),
+					AppSpacings.spacingLgVertical,
 					Text(
 						'$activityName Failed',
 						style: TextStyle(
-							fontSize: 18,
+							fontSize: AppFontSize.extraLarge,
 							fontWeight: FontWeight.w600,
 							color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
 						),
 					),
-					const SizedBox(height: 8),
+					AppSpacings.spacingMdVertical,
 					Text(
 						'Activity failed to apply. Check device connectivity.',
 						style: TextStyle(
-							fontSize: 13,
+							fontSize: AppFontSize.base,
 							color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
 						),
 						textAlign: TextAlign.center,
 					),
-					const SizedBox(height: 20),
+					AppSpacings.spacingLgVertical,
 					Row(
 						mainAxisAlignment: MainAxisAlignment.center,
 						children: [
@@ -633,30 +639,36 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 								style: ElevatedButton.styleFrom(
 									backgroundColor: accentColor,
 									foregroundColor: Colors.white,
-									padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+									padding: EdgeInsets.symmetric(
+										horizontal: AppSpacings.pXl,
+										vertical: AppSpacings.pMd,
+									),
 									shape: RoundedRectangleBorder(
-										borderRadius: BorderRadius.circular(12),
+										borderRadius: BorderRadius.circular(AppBorderRadius.medium),
 									),
 									elevation: 0,
 								),
 								child: const Text('Retry'),
 							),
-							const SizedBox(width: 12),
+							AppSpacings.spacingMdHorizontal,
 							OutlinedButton(
 								onPressed: _deactivateActivity,
 								style: OutlinedButton.styleFrom(
 									foregroundColor: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
-									padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+									padding: EdgeInsets.symmetric(
+										horizontal: AppSpacings.pXl,
+										vertical: AppSpacings.pMd,
+									),
 									side: BorderSide(color: isDark ? AppBorderColorDark.base : AppBorderColorLight.base),
 									shape: RoundedRectangleBorder(
-										borderRadius: BorderRadius.circular(12),
+										borderRadius: BorderRadius.circular(AppBorderRadius.medium),
 									),
 								),
 								child: const Text('Turn Off'),
 							),
 						],
 					),
-					const SizedBox(height: 12),
+					AppSpacings.spacingMdVertical,
 					TextButton(
 						onPressed: () => _showFailureDetailsSheet(context, activeState),
 						child: const Text('View Details'),
@@ -706,15 +718,15 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 				Row(
 					children: [
 						Container(
-							width: _screenService.scale(48, density: _visualDensityService.density),
-							height: _screenService.scale(48, density: _visualDensityService.density),
+							width: _scale(48),
+							height: _scale(48),
 							decoration: BoxDecoration(
 								color: accentBg,
 								borderRadius: BorderRadius.circular(AppBorderRadius.base),
 							),
 							child: Icon(
 								_activityIcon(activeState.activityKey),
-								size: _screenService.scale(24, density: _visualDensityService.density),
+								size: _scale(24),
 								color: accentColor,
 							),
 						),
@@ -746,43 +758,43 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 
 					// Warning banner
 					if (activeState.hasWarnings && !activeState.isFailed) ...[
-						const SizedBox(height: 16),
+						AppSpacings.spacingLgVertical,
 						_buildWarningBanner(context, activeState),
 					],
 
 					// Offline device banner
 					if (offlineRoles.isNotEmpty && !activeState.hasWarnings) ...[
-						const SizedBox(height: 16),
+						AppSpacings.spacingLgVertical,
 						_buildOfflineDeviceBanner(context, offlineRoles),
 					],
 
 					// Composition preview
 					if (displayItems.isNotEmpty) ...[
-						const SizedBox(height: 16),
+						AppSpacings.spacingLgVertical,
 						_buildCompositionPreview(context, displayItems),
 					],
 
 					// Capability-driven controls
 					if (targets.hasPlayback) ...[
-						const SizedBox(height: 16),
+						AppSpacings.spacingLgVertical,
 						_buildPlaybackControl(context),
 					],
 					if (targets.hasVolume) ...[
-						const SizedBox(height: 16),
+						AppSpacings.spacingLgVertical,
 						_buildVolumeControl(context),
 					],
 					if (targets.hasInput) ...[
-						const SizedBox(height: 16),
+						AppSpacings.spacingLgVertical,
 						_buildInputControl(context),
 					],
 					if (targets.hasRemote) ...[
-						const SizedBox(height: 16),
+						AppSpacings.spacingLgVertical,
 						_buildRemoteButton(context),
 					],
 
 					// Failure details
 				if (activeState.isFailed) ...[
-					const SizedBox(height: 12),
+					AppSpacings.spacingMdVertical,
 					_buildFailureDetails(context, activeState),
 				],
 			],
@@ -793,6 +805,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 		final warningColor = isDark ? AppColorsDark.warning : AppColorsLight.warning;
 		final warningBg = isDark ? AppColorsDark.warningLight9 : AppColorsLight.warningLight9;
+
 		final warningCount = state.lastResult?.warningCount ?? state.warnings.length;
 		final String label;
 		if (warningCount > 0) {
@@ -807,25 +820,33 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			onTap: () => _showFailureDetailsSheet(context, state),
 			child: Container(
 				width: double.infinity,
-				padding: const EdgeInsets.all(12),
+				padding: AppSpacings.paddingMd,
 				decoration: BoxDecoration(
 					color: warningBg,
-					borderRadius: BorderRadius.circular(12),
+					borderRadius: BorderRadius.circular(AppBorderRadius.medium),
 				),
 				child: Row(
 					children: [
-						Icon(Icons.warning_amber_rounded, color: warningColor, size: 18),
-						const SizedBox(width: 10),
+						Icon(
+							Icons.warning_amber_rounded,
+							color: warningColor,
+							size: _scale(18),
+						),
+						AppSpacings.spacingMdHorizontal,
 						Expanded(
 							child: Text(
 								label,
 								style: TextStyle(
-									fontSize: 12,
+									fontSize: AppFontSize.small,
 									color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
 								),
 							),
 						),
-						Icon(Icons.chevron_right, color: warningColor, size: 18),
+						Icon(
+							Icons.chevron_right,
+							color: warningColor,
+							size: _scale(18),
+						),
 					],
 				),
 			),
@@ -837,6 +858,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		final warningColor = isDark ? AppColorsDark.warning : AppColorsLight.warning;
 		final warningBg = isDark ? AppColorsDark.warningLight9 : AppColorsLight.warningLight9;
 
+
 		final String label;
 		if (offlineRoles.length == 1 && offlineRoles.first == 'Audio') {
 			label = 'Audio output offline – using display speakers';
@@ -846,20 +868,24 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 
 		return Container(
 			width: double.infinity,
-			padding: const EdgeInsets.all(12),
+			padding: AppSpacings.paddingMd,
 			decoration: BoxDecoration(
 				color: warningBg,
-				borderRadius: BorderRadius.circular(12),
+				borderRadius: BorderRadius.circular(AppBorderRadius.medium),
 			),
 			child: Row(
 				children: [
-					Icon(Icons.warning_amber_rounded, color: warningColor, size: 18),
-					const SizedBox(width: 10),
+					Icon(
+						Icons.warning_amber_rounded,
+						color: warningColor,
+						size: _scale(18),
+					),
+					AppSpacings.spacingMdHorizontal,
 					Expanded(
 						child: Text(
 							label,
 							style: TextStyle(
-								fontSize: 12,
+								fontSize: AppFontSize.small,
 								color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
 							),
 						),
@@ -872,7 +898,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	Widget _buildCompositionPreview(BuildContext context, List<_CompositionDisplayItem> items) {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 		final isLight = !isDark;
-		final density = _visualDensityService.density;
+
 		final warningColor = isDark ? AppColorsDark.warning : AppColorsLight.warning;
 
 		return Container(
@@ -893,15 +919,15 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 					return Row(
 						children: [
 							Container(
-								width: _screenService.scale(32, density: density),
-								height: _screenService.scale(32, density: density),
+								width: _scale(32),
+								height: _scale(32),
 								decoration: BoxDecoration(
 									color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
 									borderRadius: BorderRadius.circular(AppBorderRadius.base),
 								),
 								child: Icon(
 									icon,
-									size: _screenService.scale(16, density: density),
+									size: _scale(16),
 									color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
 								),
 							),
@@ -945,7 +971,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		final volume = mediaState?.averageVolume ?? 0;
 		final isMuted = mediaState?.anyMuted ?? false;
 
-		final columnWidth = _screenService.scale(40, density: _visualDensityService.density);
+		final columnWidth = _scale(40);
 
 		return Row(
 			children: [
@@ -1006,25 +1032,29 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	Widget _buildInputControl(BuildContext context) {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 		final accentColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
+
 		// TODO: Replace with real input sources when API is available
 		return GestureDetector(
 			onTap: _isSending ? null : () => _showInputSelector(),
 			child: Container(
-				padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+				padding: AppSpacings.paddingMd,
 				decoration: BoxDecoration(
 					color: isDark ? AppFillColorDark.base : AppFillColorLight.base,
 					border: Border.all(color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light),
-					borderRadius: BorderRadius.circular(12),
+					borderRadius: BorderRadius.circular(AppBorderRadius.medium),
 				),
 				child: Row(
 					children: [
-						Icon(MdiIcons.audioInputStereoMinijack, size: 18,
-							color: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary),
-						const SizedBox(width: 8),
+						Icon(
+							MdiIcons.audioInputStereoMinijack,
+							size: _scale(18),
+							color: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
+						),
+						AppSpacings.spacingMdHorizontal,
 						Text(
 							'Input',
 							style: TextStyle(
-								fontSize: 13,
+								fontSize: AppFontSize.small,
 								fontWeight: FontWeight.w500,
 								color: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
 							),
@@ -1033,12 +1063,16 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 						Text(
 							'Select',
 							style: TextStyle(
-								fontSize: 12,
+								fontSize: AppFontSize.small,
 								color: accentColor,
 							),
 						),
-						const SizedBox(width: 4),
-						Icon(Icons.chevron_right, size: 16, color: accentColor),
+						AppSpacings.spacingXsHorizontal,
+						Icon(
+							Icons.chevron_right,
+							size: _scale(16),
+							color: accentColor,
+						),
 					],
 				),
 			),
@@ -1048,7 +1082,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	Widget _buildPlaybackControl(BuildContext context) {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 		final accentColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
-		final density = _visualDensityService.density;
+
 		// TODO: Replace with real playback state when API is available
 		const title = 'No track';
 		const artist = '';
@@ -1118,10 +1152,10 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 						AppSpacings.spacingMdHorizontal,
 						Expanded(
 							child: Container(
-								height: _screenService.scale(4, density: density),
+								height: _scale(4),
 								decoration: BoxDecoration(
 									color: isDark ? AppFillColorDark.base : AppFillColorLight.base,
-									borderRadius: BorderRadius.circular(_screenService.scale(2, density: density)),
+									borderRadius: BorderRadius.circular(_scale(2)),
 								),
 								child: FractionallySizedBox(
 									alignment: Alignment.centerLeft,
@@ -1129,7 +1163,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 									child: Container(
 										decoration: BoxDecoration(
 											color: accentColor,
-											borderRadius: BorderRadius.circular(_screenService.scale(2, density: density)),
+											borderRadius: BorderRadius.circular(_scale(2)),
 										),
 									),
 								),
@@ -1157,9 +1191,9 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	}) {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 		final accentColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
-		final density = _visualDensityService.density;
-		final size = _screenService.scale(isMain ? 56 : 44, density: density);
-		final iconSize = _screenService.scale(isMain ? 28 : 20, density: density);
+
+		final size = _scale(isMain ? 56 : 44);
+		final iconSize = _scale(isMain ? 28 : 20);
 
 		return GestureDetector(
 			onTap: onTap,
@@ -1197,7 +1231,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 					children: [
 						Icon(
 							MdiIcons.remote,
-							size: _screenService.scale(18, density: _visualDensityService.density),
+							size: _scale(18),
 							color: isLight ? AppTextColorLight.regular : AppTextColorDark.regular,
 						),
 						AppSpacings.spacingXsHorizontal,
@@ -1219,42 +1253,47 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 		final errorColor = isDark ? AppColorsDark.error : AppColorsLight.error;
 		final errorBg = isDark ? AppColorsDark.errorLight9 : AppColorsLight.errorLight9;
+
 		final errorCount = state.lastResult?.errorCount ?? 0;
 		final warningCount = state.lastResult?.warningCount ?? 0;
 
 		return Container(
 			width: double.infinity,
-			padding: const EdgeInsets.all(12),
+			padding: AppSpacings.paddingMd,
 			decoration: BoxDecoration(
 				color: errorBg,
-				borderRadius: BorderRadius.circular(12),
+				borderRadius: BorderRadius.circular(AppBorderRadius.medium),
 			),
 			child: Column(
 				crossAxisAlignment: CrossAxisAlignment.start,
 				children: [
 					Row(
 						children: [
-							Icon(Icons.error_outline, color: errorColor, size: 18),
-							const SizedBox(width: 6),
+							Icon(
+								Icons.error_outline,
+								color: errorColor,
+								size: _scale(18),
+							),
+							AppSpacings.spacingSmHorizontal,
 							Expanded(
 								child: Text(
 									'Activity failed to apply ($errorCount error${errorCount != 1 ? 's' : ''}, $warningCount warning${warningCount != 1 ? 's' : ''})',
-									style: TextStyle(fontWeight: FontWeight.w600, color: errorColor, fontSize: 13),
+									style: TextStyle(fontWeight: FontWeight.w600, color: errorColor, fontSize: AppFontSize.small),
 								),
 							),
 						],
 					),
-					const SizedBox(height: 8),
+					AppSpacings.spacingMdVertical,
 					Row(
 						children: [
 							OutlinedButton.icon(
-								icon: const Icon(Icons.refresh, size: 16),
+								icon: Icon(Icons.refresh, size: _scale(16)),
 								label: const Text('Retry'),
 								onPressed: () => _retryActivity(state),
 							),
-							const SizedBox(width: 8),
+							AppSpacings.spacingMdHorizontal,
 							OutlinedButton.icon(
-								icon: const Icon(Icons.stop, size: 16),
+								icon: Icon(Icons.stop, size: _scale(16)),
 								label: const Text('Deactivate'),
 								onPressed: _deactivateActivity,
 							),
@@ -1276,8 +1315,8 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		showModalBottomSheet(
 			context: context,
 			isScrollControlled: true,
-			shape: const RoundedRectangleBorder(
-				borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+			shape: RoundedRectangleBorder(
+				borderRadius: BorderRadius.vertical(top: Radius.circular(AppBorderRadius.round)),
 			),
 			builder: (ctx) {
 				final errors = lastResult?.errors ?? [];
@@ -1290,15 +1329,15 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 					expand: false,
 					builder: (ctx, scrollController) {
 						return Padding(
-							padding: const EdgeInsets.all(16),
+							padding: EdgeInsets.all(AppSpacings.pLg),
 							child: ListView(
 								controller: scrollController,
 								children: [
 									// Header
 									Row(
 										children: [
-											const Icon(Icons.info_outline, size: 24),
-											const SizedBox(width: 8),
+											Icon(Icons.info_outline, size: _scale(24)),
+											AppSpacings.spacingMdHorizontal,
 											Text(
 												'Activation Details',
 												style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
@@ -1307,22 +1346,22 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 											),
 										],
 									),
-									const SizedBox(height: 12),
+									AppSpacings.spacingMdVertical,
 
 									// Summary counts
 									if (lastResult != null) ...[
 										Row(
 											children: [
 												_summaryChip('Total', lastResult.stepsTotal, Colors.grey),
-												const SizedBox(width: 8),
+												AppSpacings.spacingMdHorizontal,
 												_summaryChip('OK', lastResult.stepsSucceeded, Colors.green),
-												const SizedBox(width: 8),
+												AppSpacings.spacingMdHorizontal,
 												_summaryChip('Errors', lastResult.errorCount, Colors.red),
-												const SizedBox(width: 8),
+												AppSpacings.spacingMdHorizontal,
 												_summaryChip('Warnings', lastResult.warningCount, Colors.orange),
 											],
 										),
-										const SizedBox(height: 16),
+										AppSpacings.spacingLgVertical,
 									],
 
 									// Errors
@@ -1332,12 +1371,12 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 											style: TextStyle(
 												fontWeight: FontWeight.w600,
 												color: Colors.red.shade700,
-												fontSize: 13,
+												fontSize: AppFontSize.small,
 											),
 										),
-										const SizedBox(height: 4),
+										AppSpacings.spacingSmVertical,
 										...errors.map((f) => _failureRow(f, Colors.red)),
-										const SizedBox(height: 12),
+										AppSpacings.spacingMdVertical,
 									],
 
 									// Warnings
@@ -1347,12 +1386,12 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 											style: TextStyle(
 												fontWeight: FontWeight.w600,
 												color: Colors.orange.shade700,
-												fontSize: 13,
+												fontSize: AppFontSize.small,
 											),
 										),
-										const SizedBox(height: 4),
+										AppSpacings.spacingSmVertical,
 										...warnings.map((f) => _failureRow(f, Colors.orange)),
-										const SizedBox(height: 12),
+										AppSpacings.spacingMdVertical,
 									],
 
 									// Legacy string warnings
@@ -1362,26 +1401,26 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 											style: TextStyle(
 												fontWeight: FontWeight.w600,
 												color: Colors.orange.shade700,
-												fontSize: 13,
+												fontSize: AppFontSize.small,
 											),
 										),
-										const SizedBox(height: 4),
+										AppSpacings.spacingSmVertical,
 										...state.warnings.map((w) => Padding(
-											padding: const EdgeInsets.only(bottom: 4),
-											child: Text('- $w', style: const TextStyle(fontSize: 12)),
+											padding: EdgeInsets.only(bottom: AppSpacings.pSm),
+											child: Text('- $w', style: TextStyle(fontSize: AppFontSize.small)),
 										)),
-										const SizedBox(height: 12),
+										AppSpacings.spacingMdVertical,
 									],
 
 									// Actions
 									const Divider(),
-									const SizedBox(height: 8),
+									AppSpacings.spacingMdVertical,
 									Row(
 										children: [
 											if (state.isFailed && state.activityKey != null)
 												Expanded(
 													child: FilledButton.icon(
-														icon: const Icon(Icons.refresh, size: 16),
+														icon: Icon(Icons.refresh, size: _scale(16)),
 														label: const Text('Retry activity'),
 														onPressed: () {
 															Navigator.pop(ctx);
@@ -1389,10 +1428,10 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 														},
 													),
 												),
-											if (state.isFailed) const SizedBox(width: 8),
+											if (state.isFailed) AppSpacings.spacingMdHorizontal,
 											Expanded(
 												child: OutlinedButton.icon(
-													icon: const Icon(Icons.stop, size: 16),
+													icon: Icon(Icons.stop, size: _scale(16)),
 													label: const Text('Deactivate'),
 													onPressed: () {
 														Navigator.pop(ctx);
@@ -1402,9 +1441,9 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 											),
 										],
 									),
-									const SizedBox(height: 8),
+									AppSpacings.spacingMdVertical,
 									TextButton.icon(
-										icon: const Icon(Icons.copy, size: 16),
+										icon: Icon(Icons.copy, size: _scale(16)),
 										label: const Text('Copy debug JSON'),
 										onPressed: () => _copyDebugJson(state),
 									),
@@ -1419,27 +1458,27 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 
 	Widget _summaryChip(String label, int count, Color color) {
 		return Container(
-			padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+			padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd, vertical: AppSpacings.pSm),
 			decoration: BoxDecoration(
 				color: color.withValues(alpha: 0.1),
-				borderRadius: BorderRadius.circular(8),
+				borderRadius: BorderRadius.circular(AppBorderRadius.medium),
 			),
 			child: Text(
 				'$label: $count',
-				style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color),
+				style: TextStyle(fontSize: AppFontSize.extraSmall, fontWeight: FontWeight.w600, color: color),
 			),
 		);
 	}
 
 	Widget _failureRow(MediaStepFailureModel failure, Color color) {
 		return Padding(
-			padding: const EdgeInsets.only(bottom: 6),
+			padding: EdgeInsets.only(bottom: AppSpacings.pSm),
 			child: Container(
 				width: double.infinity,
-				padding: const EdgeInsets.all(8),
+				padding: EdgeInsets.all(AppSpacings.pMd),
 				decoration: BoxDecoration(
 					color: color.withValues(alpha: 0.05),
-					borderRadius: BorderRadius.circular(6),
+					borderRadius: BorderRadius.circular(AppBorderRadius.base),
 					border: Border.all(color: color.withValues(alpha: 0.2)),
 				),
 				child: Column(
@@ -1448,16 +1487,16 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 						if (failure.label != null)
 							Text(
 								failure.label!,
-								style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: color),
+								style: TextStyle(fontSize: AppFontSize.small, fontWeight: FontWeight.w600, color: color),
 							),
 						Text(
 							failure.reason,
-							style: TextStyle(fontSize: 11, color: color.withValues(alpha: 0.8)),
+							style: TextStyle(fontSize: AppFontSize.extraSmall, color: color.withValues(alpha: 0.8)),
 						),
 						if (failure.targetDeviceId != null)
 							Text(
 								'Device: ${failure.targetDeviceId}',
-								style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
+								style: TextStyle(fontSize: AppFontSize.extraSmall, color: Colors.grey.shade600),
 							),
 					],
 				),
@@ -1533,7 +1572,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 				else
 					...deviceGroups.map(
 						(group) => Padding(
-							padding: const EdgeInsets.only(bottom: 8),
+							padding: EdgeInsets.only(bottom: AppSpacings.pMd),
 							child: _buildDeviceTile(context, group, activeState),
 						),
 					),
@@ -1567,22 +1606,23 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	Widget _buildDeviceTile(BuildContext context, MediaDeviceGroup group, MediaActiveStateModel? activeState) {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 
+
 		final accessories = Row(
 			mainAxisSize: MainAxisSize.min,
 			children: [
 				..._deviceCapabilityIcons(group).take(3).map((capIcon) {
 					return Padding(
-						padding: const EdgeInsets.only(left: 4),
+						padding: EdgeInsets.only(left: AppSpacings.pSm),
 						child: Container(
-							width: 48,
-							height: 48,
+							width: _scale(48),
+							height: _scale(48),
 							decoration: BoxDecoration(
 								color: isDark ? AppFillColorDark.base : AppFillColorLight.base,
-								borderRadius: BorderRadius.circular(12),
+								borderRadius: BorderRadius.circular(AppBorderRadius.medium),
 							),
 							child: Icon(
 								capIcon,
-								size: 28,
+								size: _scale(28),
 								color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
 							),
 						),
@@ -1591,7 +1631,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 				AppSpacings.spacingMdHorizontal,
 				Icon(
 					Icons.chevron_right,
-					size: 28,
+					size: _scale(28),
 					color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
 				),
 			],
@@ -1638,6 +1678,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 		final accentColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
 
+
 		return GestureDetector(
 			behavior: HitTestBehavior.opaque,
 			onTap: () {},
@@ -1645,43 +1686,43 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 				color: Colors.black.withValues(alpha: 0.85),
 				child: Center(
 					child: Padding(
-						padding: const EdgeInsets.all(40),
+						padding: EdgeInsets.all(AppSpacings.pXl * 2),
 						child: Column(
 							mainAxisAlignment: MainAxisAlignment.center,
 							children: [
 								Container(
-									width: 72,
-									height: 72,
+									width: _scale(72),
+									height: _scale(72),
 									decoration: BoxDecoration(
 										color: Colors.white.withValues(alpha: 0.1),
 										shape: BoxShape.circle,
 									),
 									child: Icon(
 										Icons.wifi_off,
-										size: 36,
+										size: _scale(36),
 										color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
 									),
 								),
-								const SizedBox(height: 20),
+								AppSpacings.spacingLgVertical,
 								Text(
 									AppLocalizations.of(context)!.media_ws_offline_title,
-									style: const TextStyle(
-										fontSize: 18,
+									style: TextStyle(
+										fontSize: AppFontSize.extraLarge,
 										fontWeight: FontWeight.w600,
 										color: Colors.white,
 									),
 									textAlign: TextAlign.center,
 								),
-								const SizedBox(height: 8),
+								AppSpacings.spacingMdVertical,
 								Text(
 									AppLocalizations.of(context)!.media_ws_offline_description,
 									style: TextStyle(
-										fontSize: 13,
+										fontSize: AppFontSize.base,
 										color: Colors.white.withValues(alpha: 0.6),
 									),
 									textAlign: TextAlign.center,
 								),
-								const SizedBox(height: 24),
+								AppSpacings.spacingXlVertical,
 								ElevatedButton(
 									onPressed: () {
 										_socketService?.reconnect();
@@ -1689,22 +1730,25 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 									style: ElevatedButton.styleFrom(
 										backgroundColor: accentColor,
 										foregroundColor: Colors.white,
-										padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+										padding: EdgeInsets.symmetric(
+											horizontal: AppSpacings.pXl,
+											vertical: AppSpacings.pMd,
+										),
 										shape: RoundedRectangleBorder(
-											borderRadius: BorderRadius.circular(12),
+											borderRadius: BorderRadius.circular(AppBorderRadius.medium),
 										),
 										elevation: 0,
 									),
 									child: const Text('Retry Connection'),
 								),
-								const SizedBox(height: 12),
+								AppSpacings.spacingMdVertical,
 								OutlinedButton(
 									onPressed: _navigateToHome,
 									style: OutlinedButton.styleFrom(
 										foregroundColor: Colors.white.withValues(alpha: 0.8),
 										side: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
 										shape: RoundedRectangleBorder(
-											borderRadius: BorderRadius.circular(12),
+											borderRadius: BorderRadius.circular(AppBorderRadius.medium),
 										),
 									),
 									child: const Text('Back to Home'),
@@ -1925,6 +1969,12 @@ class MediaDeviceDetailPage extends StatefulWidget {
 }
 
 class _MediaDeviceDetailPageState extends State<MediaDeviceDetailPage> {
+	final ScreenService _screenService = locator<ScreenService>();
+	final VisualDensityService _visualDensityService = locator<VisualDensityService>();
+
+	double _scale(double val) =>
+			_screenService.scale(val, density: _visualDensityService.density);
+
 	SpaceStateRepository? _spaceStateRepo;
 	SocketService? _socketService;
 	bool _isSending = false;
@@ -1979,7 +2029,7 @@ class _MediaDeviceDetailPageState extends State<MediaDeviceDetailPage> {
 			body: Stack(
 				children: [
 					ListView(
-						padding: const EdgeInsets.all(16),
+						padding: EdgeInsets.all(AppSpacings.pLg),
 						children: [
 							// Display controls
 							if (_group.hasDisplay) _buildDisplaySection(context, _group.displayEndpoint!),
@@ -2005,26 +2055,26 @@ class _MediaDeviceDetailPageState extends State<MediaDeviceDetailPage> {
 				color: Colors.black.withValues(alpha: 0.7),
 				child: Center(
 					child: Card(
-						margin: const EdgeInsets.all(32),
+						margin: EdgeInsets.all(AppSpacings.pXl + AppSpacings.pMd),
 						child: Padding(
-							padding: const EdgeInsets.all(24),
+							padding: EdgeInsets.all(AppSpacings.pXl),
 							child: Column(
 								mainAxisSize: MainAxisSize.min,
 								children: [
-									const Icon(Icons.wifi_off, size: 48, color: Colors.grey),
-									const SizedBox(height: 16),
+									Icon(Icons.wifi_off, size: _scale(48), color: Colors.grey),
+									AppSpacings.spacingLgVertical,
 									Text(
 										'Connection lost',
 										style: Theme.of(context).textTheme.titleMedium,
 										textAlign: TextAlign.center,
 									),
-									const SizedBox(height: 8),
+									AppSpacings.spacingMdVertical,
 									Text(
 										'Media controls require a live WebSocket connection.',
 										style: Theme.of(context).textTheme.bodySmall,
 										textAlign: TextAlign.center,
 									),
-									const SizedBox(height: 16),
+									AppSpacings.spacingLgVertical,
 									OutlinedButton(
 										onPressed: () => Navigator.of(context).pop(),
 										child: const Text('Go back'),
@@ -2040,22 +2090,22 @@ class _MediaDeviceDetailPageState extends State<MediaDeviceDetailPage> {
 
 	Widget _buildDisplaySection(BuildContext context, MediaEndpointModel endpoint) {
 		return Card(
-			shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+			shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppBorderRadius.round)),
 			child: Padding(
-				padding: const EdgeInsets.all(16),
+				padding: EdgeInsets.all(AppSpacings.pLg),
 				child: Column(
 					crossAxisAlignment: CrossAxisAlignment.start,
 					children: [
 						SectionTitle(title: 'Display', icon: MdiIcons.television),
-						const SizedBox(height: 12),
+						AppSpacings.spacingMdVertical,
 						if (endpoint.capabilities.power)
 							_buildPowerToggle(context),
 						if (endpoint.capabilities.input) ...[
-							const SizedBox(height: 8),
+							AppSpacings.spacingMdVertical,
 							_buildInputRow(context),
 						],
 						if (endpoint.capabilities.volume) ...[
-							const SizedBox(height: 8),
+							AppSpacings.spacingMdVertical,
 							_buildVolumeRow(context),
 						],
 					],
@@ -2066,27 +2116,27 @@ class _MediaDeviceDetailPageState extends State<MediaDeviceDetailPage> {
 
 	Widget _buildAudioSection(BuildContext context, MediaEndpointModel endpoint) {
 		return Card(
-			shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-			margin: const EdgeInsets.only(top: 12),
+			shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppBorderRadius.round)),
+			margin: EdgeInsets.only(top: AppSpacings.pMd),
 			child: Padding(
-				padding: const EdgeInsets.all(16),
+				padding: EdgeInsets.all(AppSpacings.pLg),
 				child: Column(
 					crossAxisAlignment: CrossAxisAlignment.start,
 					children: [
 						SectionTitle(title: 'Audio', icon: MdiIcons.speaker),
-						const SizedBox(height: 12),
+						AppSpacings.spacingMdVertical,
 						if (endpoint.capabilities.volume)
 							_buildVolumeRow(context),
 						if (endpoint.capabilities.mute) ...[
-							const SizedBox(height: 8),
+							AppSpacings.spacingMdVertical,
 							_buildMuteToggle(context),
 						],
 						if (endpoint.capabilities.playback) ...[
-							const SizedBox(height: 8),
+							AppSpacings.spacingMdVertical,
 							_buildPlaybackRow(context),
 						],
 						if (endpoint.capabilities.trackMetadata) ...[
-							const SizedBox(height: 8),
+							AppSpacings.spacingMdVertical,
 							_buildTrackInfo(context),
 						],
 					],
@@ -2097,19 +2147,19 @@ class _MediaDeviceDetailPageState extends State<MediaDeviceDetailPage> {
 
 	Widget _buildSourceSection(BuildContext context, MediaEndpointModel endpoint) {
 		return Card(
-			shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-			margin: const EdgeInsets.only(top: 12),
+			shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppBorderRadius.round)),
+			margin: EdgeInsets.only(top: AppSpacings.pMd),
 			child: Padding(
-				padding: const EdgeInsets.all(16),
+				padding: EdgeInsets.all(AppSpacings.pLg),
 				child: Column(
 					crossAxisAlignment: CrossAxisAlignment.start,
 					children: [
 						SectionTitle(title: 'Source', icon: MdiIcons.playCircle),
-						const SizedBox(height: 12),
+						AppSpacings.spacingMdVertical,
 						if (endpoint.capabilities.playback)
 							_buildPlaybackRow(context),
 						if (endpoint.capabilities.trackMetadata) ...[
-							const SizedBox(height: 8),
+							AppSpacings.spacingMdVertical,
 							_buildTrackInfo(context),
 						],
 					],
@@ -2120,47 +2170,47 @@ class _MediaDeviceDetailPageState extends State<MediaDeviceDetailPage> {
 
 	Widget _buildRemoteSection(BuildContext context) {
 		return Card(
-			shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-			margin: const EdgeInsets.only(top: 12),
+			shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppBorderRadius.round)),
+			margin: EdgeInsets.only(top: AppSpacings.pMd),
 			child: Padding(
-				padding: const EdgeInsets.all(16),
+				padding: EdgeInsets.all(AppSpacings.pLg),
 				child: Column(
 					crossAxisAlignment: CrossAxisAlignment.start,
 					children: [
 						SectionTitle(title: 'Remote', icon: MdiIcons.remote),
-						const SizedBox(height: 12),
+						AppSpacings.spacingMdVertical,
 						// D-pad style remote control
 						Center(
 							child: Column(
 								children: [
 									IconButton(
-										icon: Icon(MdiIcons.chevronUp, size: 32),
+										icon: Icon(MdiIcons.chevronUp, size: _scale(32)),
 										onPressed: _isSending ? null : () {},
 									),
 									Row(
 										mainAxisSize: MainAxisSize.min,
 										children: [
 											IconButton(
-												icon: Icon(MdiIcons.chevronLeft, size: 32),
+												icon: Icon(MdiIcons.chevronLeft, size: _scale(32)),
 												onPressed: _isSending ? null : () {},
 											),
-											const SizedBox(width: 8),
+											AppSpacings.spacingMdHorizontal,
 											FilledButton(
 												onPressed: _isSending ? null : () {},
 												child: const Text('OK'),
 											),
-											const SizedBox(width: 8),
+											AppSpacings.spacingMdHorizontal,
 											IconButton(
-												icon: Icon(MdiIcons.chevronRight, size: 32),
+												icon: Icon(MdiIcons.chevronRight, size: _scale(32)),
 												onPressed: _isSending ? null : () {},
 											),
 										],
 									),
 									IconButton(
-										icon: Icon(MdiIcons.chevronDown, size: 32),
+										icon: Icon(MdiIcons.chevronDown, size: _scale(32)),
 										onPressed: _isSending ? null : () {},
 									),
-									const SizedBox(height: 8),
+									AppSpacings.spacingMdVertical,
 									Row(
 										mainAxisAlignment: MainAxisAlignment.center,
 										children: [
@@ -2168,12 +2218,12 @@ class _MediaDeviceDetailPageState extends State<MediaDeviceDetailPage> {
 												onPressed: _isSending ? null : () {},
 												child: const Text('Back'),
 											),
-											const SizedBox(width: 16),
+											AppSpacings.spacingLgHorizontal,
 											TextButton(
 												onPressed: _isSending ? null : () {},
 												child: const Text('Home'),
 											),
-											const SizedBox(width: 16),
+											AppSpacings.spacingLgHorizontal,
 											TextButton(
 												onPressed: _isSending ? null : () {},
 												child: const Text('Menu'),
@@ -2193,8 +2243,8 @@ class _MediaDeviceDetailPageState extends State<MediaDeviceDetailPage> {
 		final localizations = AppLocalizations.of(context)!;
 		return Row(
 			children: [
-				Icon(MdiIcons.power, size: 20),
-				const SizedBox(width: 8),
+				Icon(MdiIcons.power, size: _scale(20)),
+				AppSpacings.spacingMdHorizontal,
 				Text(localizations.media_capability_power),
 				const Spacer(),
 				FilledButton(
@@ -2210,7 +2260,7 @@ class _MediaDeviceDetailPageState extends State<MediaDeviceDetailPage> {
 								},
 					child: Text(localizations.media_action_power_on),
 				),
-				const SizedBox(width: 8),
+				AppSpacings.spacingMdHorizontal,
 				OutlinedButton(
 					onPressed: _isSending
 							? null
@@ -2231,8 +2281,8 @@ class _MediaDeviceDetailPageState extends State<MediaDeviceDetailPage> {
 	Widget _buildInputRow(BuildContext context) {
 		return Row(
 			children: [
-				Icon(MdiIcons.audioInputStereoMinijack, size: 20),
-				const SizedBox(width: 8),
+				Icon(MdiIcons.audioInputStereoMinijack, size: _scale(20)),
+				AppSpacings.spacingMdHorizontal,
 				const Text('Input'),
 				const Spacer(),
 				TextButton(
@@ -2251,13 +2301,13 @@ class _MediaDeviceDetailPageState extends State<MediaDeviceDetailPage> {
 		final localizations = AppLocalizations.of(context)!;
 		return Row(
 			children: [
-				Icon(MdiIcons.volumeHigh, size: 20),
-				const SizedBox(width: 8),
+				Icon(MdiIcons.volumeHigh, size: _scale(20)),
+				AppSpacings.spacingMdHorizontal,
 				Text(localizations.media_volume),
 				const Spacer(),
 				IconButton(
 					icon: Icon(MdiIcons.volumeMinus),
-					iconSize: 20,
+					iconSize: _scale(20),
 					onPressed: _isSending
 							? null
 							: () async {
@@ -2275,7 +2325,7 @@ class _MediaDeviceDetailPageState extends State<MediaDeviceDetailPage> {
 				),
 				IconButton(
 					icon: Icon(MdiIcons.volumePlus),
-					iconSize: 20,
+					iconSize: _scale(20),
 					onPressed: _isSending
 							? null
 							: () async {
@@ -2299,8 +2349,8 @@ class _MediaDeviceDetailPageState extends State<MediaDeviceDetailPage> {
 		final localizations = AppLocalizations.of(context)!;
 		return Row(
 			children: [
-				Icon(MdiIcons.volumeMute, size: 20),
-				const SizedBox(width: 8),
+				Icon(MdiIcons.volumeMute, size: _scale(20)),
+				AppSpacings.spacingMdHorizontal,
 				Text(localizations.media_capability_mute),
 				const Spacer(),
 				TextButton(
@@ -2343,12 +2393,12 @@ class _MediaDeviceDetailPageState extends State<MediaDeviceDetailPage> {
 				),
 				IconButton(
 					icon: Icon(MdiIcons.play),
-					iconSize: 32,
+					iconSize: _scale(32),
 					onPressed: _isSending ? null : () => _playbackCmd(MediaIntentType.play),
 				),
 				IconButton(
 					icon: Icon(MdiIcons.pause),
-					iconSize: 32,
+					iconSize: _scale(32),
 					onPressed: _isSending ? null : () => _playbackCmd(MediaIntentType.pause),
 				),
 				IconButton(
@@ -2366,12 +2416,12 @@ class _MediaDeviceDetailPageState extends State<MediaDeviceDetailPage> {
 	Widget _buildTrackInfo(BuildContext context) {
 		return Container(
 			width: double.infinity,
-			padding: const EdgeInsets.all(12),
+			padding: EdgeInsets.all(AppSpacings.pMd),
 			decoration: BoxDecoration(
 				color: Theme.of(context).brightness == Brightness.dark
 						? AppFillColorDark.light
 						: AppFillColorLight.light,
-				borderRadius: BorderRadius.circular(8),
+				borderRadius: BorderRadius.circular(AppBorderRadius.medium),
 			),
 			child: Column(
 				crossAxisAlignment: CrossAxisAlignment.start,
@@ -2380,7 +2430,7 @@ class _MediaDeviceDetailPageState extends State<MediaDeviceDetailPage> {
 						'Now Playing',
 						style: Theme.of(context).textTheme.labelSmall,
 					),
-					const SizedBox(height: 4),
+					AppSpacings.spacingSmVertical,
 					Text(
 						'Track information will appear here',
 						style: Theme.of(context).textTheme.bodySmall,
