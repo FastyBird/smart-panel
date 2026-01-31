@@ -44,6 +44,7 @@ export class DeviceBehaviorManagerService implements OnModuleDestroy {
 
 	/** Tick timer */
 	private tickTimer: ReturnType<typeof setInterval> | null = null;
+	private tickInProgress = false;
 	private tickIntervalMs = 5000;
 
 	constructor(
@@ -205,48 +206,61 @@ export class DeviceBehaviorManagerService implements OnModuleDestroy {
 	 * Process all active behavior transitions. Called periodically by tick timer.
 	 */
 	async processTick(): Promise<{ devicesProcessed: number; propertiesUpdated: number }> {
+		if (this.tickInProgress) {
+			return { devicesProcessed: 0, propertiesUpdated: 0 };
+		}
+
+		this.tickInProgress = true;
+
 		const now = Date.now();
 		let devicesProcessed = 0;
 		let propertiesUpdated = 0;
 
-		for (const [deviceId, state] of this.deviceStates.entries()) {
-			if (state.activeUpdates.length === 0) {
-				continue;
-			}
-
-			try {
-				const device = await this.devicesService.findOne<SimulatorDeviceEntity>(deviceId, DEVICES_SIMULATOR_TYPE);
-
-				if (!device) {
-					this.deviceStates.delete(deviceId);
+		try {
+			for (const [deviceId, state] of this.deviceStates.entries()) {
+				if (state.activeUpdates.length === 0) {
 					continue;
 				}
 
-				const behavior = this.getBehaviorForDevice(device);
+				try {
+					const device = await this.devicesService.findOne<SimulatorDeviceEntity>(
+						deviceId,
+						DEVICES_SIMULATOR_TYPE,
+					);
 
-				if (!behavior) {
-					// Device no longer has an active behavior (e.g., mode changed to 'default')
-					// Clean up stale state to prevent tick timer from running indefinitely
-					this.deviceStates.delete(deviceId);
-					continue;
+					if (!device) {
+						this.deviceStates.delete(deviceId);
+						continue;
+					}
+
+					const behavior = this.getBehaviorForDevice(device);
+
+					if (!behavior) {
+						// Device no longer has an active behavior (e.g., mode changed to 'default')
+						// Clean up stale state to prevent tick timer from running indefinitely
+						this.deviceStates.delete(deviceId);
+						continue;
+					}
+
+					const results = behavior.tick(device, state, now);
+
+					if (results.length > 0) {
+						devicesProcessed++;
+						const updated = await this.applyBehaviorResults(device, results);
+						propertiesUpdated += updated;
+					}
+				} catch (error: unknown) {
+					const message = error instanceof Error ? error.message : 'Unknown error';
+					this.logger.error(`Error processing tick for device ${deviceId}: ${message}`);
 				}
-
-				const results = behavior.tick(device, state, now);
-
-				if (results.length > 0) {
-					devicesProcessed++;
-					const updated = await this.applyBehaviorResults(device, results);
-					propertiesUpdated += updated;
-				}
-			} catch (error: unknown) {
-				const message = error instanceof Error ? error.message : 'Unknown error';
-				this.logger.error(`Error processing tick for device ${deviceId}: ${message}`);
 			}
-		}
 
-		// Stop tick timer if no active transitions remain
-		if (!this.hasActiveTransitions()) {
-			this.stopTickTimer();
+			// Stop tick timer if no active transitions remain
+			if (!this.hasActiveTransitions()) {
+				this.stopTickTimer();
+			}
+		} finally {
+			this.tickInProgress = false;
 		}
 
 		return { devicesProcessed, propertiesUpdated };

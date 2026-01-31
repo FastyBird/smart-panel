@@ -99,7 +99,14 @@ export class HumidifierRealisticBehavior extends BaseDeviceBehavior {
 		// Simulate water tank depletion while running
 		const isOn = this.getStateValue(state, 'isOn', false);
 		if (isOn && state.activeUpdates.length > 0) {
-			const waterLevel = this.getStateValue(state, 'waterLevel', 100) as number;
+			const waterLevel = this.getOrInitStateFromDevice(
+				state,
+				'waterLevel',
+				device,
+				ChannelCategory.HUMIDIFIER,
+				PropertyCategory.WATER_TANK_LEVEL,
+				100,
+			);
 			const lastTick = this.getStateValue(state, 'lastWaterTick', now) as number;
 			const elapsedMinutes = (now - lastTick) / 60000;
 
