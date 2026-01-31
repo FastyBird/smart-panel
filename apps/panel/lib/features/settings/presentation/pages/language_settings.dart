@@ -144,8 +144,8 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
                         density: _visualDensityService.density,
                       ),
                     ),
-                    iconStyleData: const IconStyleData(
-                      openMenuIcon: Icon(Icons.arrow_drop_up),
+                    iconStyleData: IconStyleData(
+                      openMenuIcon: Icon(MdiIcons.menuUp),
                     ),
                   ),
                 ),
@@ -217,8 +217,8 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
                         density: _visualDensityService.density,
                       ),
                     ),
-                    iconStyleData: const IconStyleData(
-                      openMenuIcon: Icon(Icons.arrow_drop_up),
+                    iconStyleData: IconStyleData(
+                      openMenuIcon: Icon(MdiIcons.menuUp),
                     ),
                   ),
                 ),
@@ -269,8 +269,8 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
                         density: _visualDensityService.density,
                       ),
                     ),
-                    iconStyleData: const IconStyleData(
-                      openMenuIcon: Icon(Icons.arrow_drop_up),
+                    iconStyleData: IconStyleData(
+                      openMenuIcon: Icon(MdiIcons.menuUp),
                     ),
                   ),
                 ),

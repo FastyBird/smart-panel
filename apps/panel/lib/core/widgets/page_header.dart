@@ -3,6 +3,7 @@ import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:flutter/material.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 /// Flexible page header widget for detail pages
 ///
@@ -147,7 +148,7 @@ class PageHeader extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           _HeaderIconButton(
-            icon: Icons.arrow_back_ios_new,
+            icon: MdiIcons.arrowLeft,
             onTap: onBack,
             isDark: Theme.of(context).brightness == Brightness.dark,
           ),
@@ -352,7 +353,7 @@ class HeaderHomeButton extends StatelessWidget {
           shape: BoxShape.circle,
         ),
         child: Icon(
-          Icons.home_outlined,
+          MdiIcons.homeOutline,
           size: _scale(18),
           color: iconColor,
         ),

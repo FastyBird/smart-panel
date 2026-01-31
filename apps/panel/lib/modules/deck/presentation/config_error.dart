@@ -163,7 +163,7 @@ class ConfigErrorScreen extends StatelessWidget {
             ),
             SizedBox(width: AppSpacings.pMd + AppSpacings.pSm),
             Icon(
-              Icons.chevron_right,
+              MdiIcons.chevronRight,
               color: SystemPagesTheme.textMuted(isDark),
               size: AppSpacings.pLg + AppSpacings.pSm,
             ),

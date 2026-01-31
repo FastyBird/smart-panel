@@ -1,6 +1,7 @@
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 import 'package:flutter/material.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 /// Utility class for humidifier channel related label conversions and icons.
 class HumidifierUtils {
@@ -8,13 +9,13 @@ class HumidifierUtils {
   static IconData getModeIcon(HumidifierModeValue mode) {
     switch (mode) {
       case HumidifierModeValue.auto:
-        return Icons.auto_mode;
+        return MdiIcons.autoFix;
       case HumidifierModeValue.manual:
-        return Icons.tune;
+        return MdiIcons.tune;
       case HumidifierModeValue.sleep:
-        return Icons.bedtime;
+        return MdiIcons.weatherNight;
       case HumidifierModeValue.baby:
-        return Icons.child_care;
+        return MdiIcons.babyFaceOutline;
     }
   }
 
@@ -52,13 +53,13 @@ class HumidifierUtils {
   static IconData getMistLevelIcon(HumidifierMistLevelLevelValue level) {
     switch (level) {
       case HumidifierMistLevelLevelValue.off:
-        return Icons.water_drop_outlined;
+        return MdiIcons.waterOutline;
       case HumidifierMistLevelLevelValue.low:
-        return Icons.water_drop;
+        return MdiIcons.waterOutline;
       case HumidifierMistLevelLevelValue.medium:
-        return Icons.water;
+        return MdiIcons.water;
       case HumidifierMistLevelLevelValue.high:
-        return Icons.waves;
+        return MdiIcons.waves;
     }
   }
 

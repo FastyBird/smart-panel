@@ -848,7 +848,7 @@ class _AirConditionerDeviceDetailState
         mainAxisSize: MainAxisSize.min,
         children: [
           HeaderIconButton(
-            icon: Icons.arrow_back_ios_new,
+            icon: MdiIcons.arrowLeft,
             onTap: widget.onBack ?? () => Navigator.of(context).pop(),
           ),
           AppSpacings.spacingMdHorizontal,
@@ -1325,7 +1325,7 @@ class _AirConditionerDeviceDetailState
       final valueSelectorRow = ValueSelectorRow<FanModeValue>(
         currentValue: selectedMode,
         label: localizations.device_fan_mode,
-        icon: Icons.air,
+        icon: MdiIcons.airFilter,
         sheetTitle: localizations.device_fan_mode,
         activeColor: activeColor,
         options: options,
@@ -1405,7 +1405,7 @@ class _AirConditionerDeviceDetailState
           child: ValueSelectorRow<FanSpeedLevelValue>(
             currentValue: fanChannel.speedLevel,
             label: localizations.device_fan_speed,
-            icon: Icons.speed,
+            icon: MdiIcons.speedometer,
             sheetTitle: localizations.device_fan_speed,
             activeColor: modeColor,
             options: options,
@@ -1485,7 +1485,7 @@ class _AirConditionerDeviceDetailState
           child: ValueSelectorRow<double>(
             currentValue: _fanSpeed,
             label: localizations.device_fan_speed,
-            icon: Icons.speed,
+            icon: MdiIcons.speedometer,
             sheetTitle: localizations.device_fan_speed,
             activeColor: modeColor,
             options: _getFanSpeedOptions(localizations),
@@ -1572,7 +1572,7 @@ class _AirConditionerDeviceDetailState
     if (fanChannel.hasSwing) {
       options.add(wrapControl(UniversalTile(
         layout: TileLayout.horizontal,
-        icon: Icons.sync,
+        icon: MdiIcons.syncIcon,
         name: localizations.device_oscillation,
         status: fanChannel.swing
             ? localizations.on_state_on
@@ -1592,7 +1592,7 @@ class _AirConditionerDeviceDetailState
       final isReversed = fanChannel.direction == FanDirectionValue.counterClockwise;
       options.add(wrapControl(UniversalTile(
         layout: TileLayout.horizontal,
-        icon: Icons.swap_vert,
+        icon: MdiIcons.swapVertical,
         name: localizations.device_direction,
         status: fanChannel.direction != null
             ? FanUtils.getDirectionLabel(localizations, fanChannel.direction!)
@@ -1635,7 +1635,7 @@ class _AirConditionerDeviceDetailState
     if (fanChannel.hasLocked) {
       options.add(wrapControl(UniversalTile(
         layout: TileLayout.horizontal,
-        icon: Icons.lock,
+        icon: MdiIcons.lock,
         name: localizations.device_child_lock,
         status: fanChannel.locked
             ? localizations.thermostat_lock_locked
@@ -1681,7 +1681,7 @@ class _AirConditionerDeviceDetailState
         child: ValueSelectorRow<FanTimerPresetValue?>(
           currentValue: fanChannel.timerPreset,
           label: localizations.device_timer,
-          icon: Icons.timer_outlined,
+          icon: MdiIcons.timerOutline,
           sheetTitle: localizations.device_auto_off_timer,
           activeColor: modeColor,
           options: options,
@@ -1708,7 +1708,7 @@ class _AirConditionerDeviceDetailState
         child: ValueSelectorRow<int>(
           currentValue: fanChannel.timer,
           label: localizations.device_timer,
-          icon: Icons.timer_outlined,
+          icon: MdiIcons.timerOutline,
           sheetTitle: localizations.device_auto_off_timer,
           activeColor: modeColor,
           options: options,

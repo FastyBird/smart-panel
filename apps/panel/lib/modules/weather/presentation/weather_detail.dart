@@ -13,6 +13,7 @@ import 'package:fastybird_smart_panel/modules/weather/views/forecast_day.dart';
 import 'package:fastybird_smart_panel/modules/weather/views/view.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 import 'package:weather_icons/weather_icons.dart';
 
 class WeatherDetailPage extends StatelessWidget {
@@ -106,7 +107,7 @@ class WeatherDetailPage extends StatelessWidget {
             value: selectedLocation?.id,
             isExpanded: true,
             icon: Icon(
-              Icons.location_on,
+              MdiIcons.mapMarker,
               size: AppFontSize.small,
               color: Theme.of(context).brightness == Brightness.light
                   ? AppTextColorLight.secondary

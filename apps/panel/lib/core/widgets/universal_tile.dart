@@ -3,6 +3,7 @@ import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:flutter/material.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 /// Layout orientation for the tile.
 enum TileLayout {
@@ -225,7 +226,7 @@ class UniversalTile extends StatelessWidget {
                   top: _scale(4),
                   right: _scale(4),
                   child: Icon(
-                    Icons.check_circle,
+                    MdiIcons.checkCircle,
                     size: _scale(14),
                     color: isActive
                         ? colors.accentColor
@@ -329,7 +330,7 @@ class UniversalTile extends StatelessWidget {
               Padding(
                 padding: EdgeInsets.only(left: AppSpacings.pSm),
                 child: Icon(
-                  Icons.check_circle,
+                  MdiIcons.checkCircle,
                   size: _scale(16),
                   color: isActive
                       ? colors.accentColor
@@ -377,7 +378,7 @@ class UniversalTile extends StatelessWidget {
             right: -_scale(2),
             bottom: -_scale(2),
             child: Icon(
-              Icons.warning_rounded,
+              MdiIcons.alert,
               size: _scale(14),
               color: colors.warningColor,
             ),

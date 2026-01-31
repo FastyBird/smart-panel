@@ -712,7 +712,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
         mainAxisSize: MainAxisSize.min,
         children: [
           HeaderIconButton(
-            icon: Icons.arrow_back_ios_new,
+            icon: MdiIcons.arrowLeft,
             onTap: widget.onBack ?? () => Navigator.of(context).pop(),
           ),
           AppSpacings.spacingMdHorizontal,
@@ -898,7 +898,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
           width: double.infinity,
           child: UniversalTile(
             layout: TileLayout.horizontal,
-            icon: Icons.lock,
+            icon: MdiIcons.lock,
             name: localizations.device_child_lock,
             status: _device.isThermostatLocked
                 ? localizations.thermostat_lock_locked

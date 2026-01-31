@@ -1105,7 +1105,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             if (hasRoles) AppSpacings.spacingLgVertical,
             SectionTitle(
                 title: localizations.space_scenes_title,
-                icon: Icons.auto_awesome),
+                icon: MdiIcons.autoFix),
             AppSpacings.spacingMdVertical,
             // Use horizontal scroll when other lights present (less vertical space)
             if (hasOtherLights)
@@ -1348,7 +1348,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       children: [
         SectionTitle(
           title: localizations.space_scenes_title,
-          icon: Icons.auto_awesome,
+          icon: MdiIcons.autoFix,
         ),
         SizedBox(height: AppSpacings.pMd),
         _buildLandscapeScenesCard(context),
@@ -1640,7 +1640,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       icon: MdiIcons.lightbulbOutline,
       trailing: SectionTitleButton(
         label: buttonLabel,
-        icon: Icons.power_settings_new,
+        icon: MdiIcons.power,
         onTap: () => _toggleAllOtherLights(otherTargets, anyOn),
       ),
     );
@@ -1888,7 +1888,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       ),
       ModeOption(
         value: LightingModeUI.off,
-        icon: Icons.power_settings_new,
+        icon: MdiIcons.power,
         label: localizations.space_lighting_mode_off,
         color: ModeSelectorColor.neutral,
       ),
@@ -2042,8 +2042,8 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     // Build device tiles using DeviceTilePortrait wrapper
     final items = lights.map((light) {
       return DeviceTilePortrait(
-        icon: Icons.lightbulb_outline,
-        activeIcon: Icons.lightbulb,
+        icon: MdiIcons.lightbulbOutline,
+        activeIcon: MdiIcons.lightbulb,
         name: light.name,
         status: _getLightStatusText(light, localizations),
         isActive: light.isOn,
@@ -2356,8 +2356,8 @@ class _LightTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return UniversalTile(
       layout: isVertical ? TileLayout.vertical : TileLayout.horizontal,
-      icon: Icons.lightbulb_outline,
-      activeIcon: Icons.lightbulb,
+      icon: MdiIcons.lightbulbOutline,
+      activeIcon: MdiIcons.lightbulb,
       name: light.name,
       status: _localizedStatusText,
       isActive: light.isOn,

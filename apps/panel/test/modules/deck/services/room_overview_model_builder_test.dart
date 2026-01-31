@@ -9,7 +9,6 @@ import 'package:fastybird_smart_panel/modules/scenes/models/scenes/scene.dart';
 import 'package:fastybird_smart_panel/modules/scenes/views/scenes/view.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/spaces/space.dart';
 import 'package:fastybird_smart_panel/modules/spaces/views/spaces/view.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
@@ -412,7 +411,7 @@ void main() {
         final action = model.suggestedActions
             .firstWhere((a) => a.id == 'turn-off-lights');
         expect(action.actionType, SuggestedActionType.turnOffLights);
-        expect(action.icon, Icons.lightbulb_outline);
+        expect(action.icon, MdiIcons.lightbulbOutline);
       });
 
       test('should not suggest turning off lights when no lights are ON', () {
@@ -760,15 +759,15 @@ void main() {
 
   group('HeaderStatusChip', () {
     test('should have all required properties', () {
-      const chip = HeaderStatusChip(
+      final chip = HeaderStatusChip(
         domain: DomainType.lights,
-        icon: Icons.lightbulb,
+        icon: MdiIcons.lightbulb,
         text: '5',
         targetViewKey: 'domain:room-1:lights',
       );
 
       expect(chip.domain, DomainType.lights);
-      expect(chip.icon, Icons.lightbulb);
+      expect(chip.icon, MdiIcons.lightbulb);
       expect(chip.text, '5');
       expect(chip.targetViewKey, 'domain:room-1:lights');
     });
@@ -776,16 +775,16 @@ void main() {
 
   group('DomainTile', () {
     test('should have all required properties', () {
-      const tile = DomainTile(
+      final tile = DomainTile(
         domain: DomainType.climate,
-        icon: Icons.thermostat,
+        icon: MdiIcons.thermometer,
         label: 'Climate',
         count: 3,
         targetViewKey: 'domain:room-1:climate',
       );
 
       expect(tile.domain, DomainType.climate);
-      expect(tile.icon, Icons.thermostat);
+      expect(tile.icon, MdiIcons.thermometer);
       expect(tile.label, 'Climate');
       expect(tile.count, 3);
       expect(tile.targetViewKey, 'domain:room-1:climate');
@@ -810,10 +809,10 @@ void main() {
 
   group('SuggestedAction', () {
     test('should have scene type by default', () {
-      const action = SuggestedAction(
+      final action = SuggestedAction(
         id: 'action-1',
         label: 'Test',
-        icon: Icons.star,
+        icon: MdiIcons.star,
         sceneId: 'scene-1',
       );
 
@@ -821,10 +820,10 @@ void main() {
     });
 
     test('should support turnOffLights type', () {
-      const action = SuggestedAction(
+      final action = SuggestedAction(
         id: 'turn-off-lights',
         label: 'Turn off lights',
-        icon: Icons.lightbulb_outline,
+        icon: MdiIcons.lightbulbOutline,
         actionType: SuggestedActionType.turnOffLights,
       );
 

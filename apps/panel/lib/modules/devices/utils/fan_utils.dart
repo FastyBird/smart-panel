@@ -1,6 +1,7 @@
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 import 'package:flutter/material.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 /// Utility class for fan channel related label conversions and icons.
 /// Used by air purifier, fan, and other devices with fan control.
@@ -9,17 +10,17 @@ class FanUtils {
   static IconData getModeIcon(FanModeValue mode) {
     switch (mode) {
       case FanModeValue.auto:
-        return Icons.auto_mode;
+        return MdiIcons.autoFix;
       case FanModeValue.manual:
-        return Icons.tune;
+        return MdiIcons.tune;
       case FanModeValue.eco:
-        return Icons.eco;
+        return MdiIcons.leaf;
       case FanModeValue.sleep:
-        return Icons.bedtime;
+        return MdiIcons.weatherNight;
       case FanModeValue.natural:
-        return Icons.nature;
+        return MdiIcons.tree;
       case FanModeValue.turbo:
-        return Icons.bolt;
+        return MdiIcons.flashOutline;
     }
   }
 

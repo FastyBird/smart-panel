@@ -762,7 +762,7 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
         mainAxisSize: MainAxisSize.min,
         children: [
           HeaderIconButton(
-            icon: Icons.arrow_back_ios_new,
+            icon: MdiIcons.arrowLeft,
             onTap: () => Navigator.pop(context),
           ),
           AppSpacings.spacingMdHorizontal,
@@ -1092,7 +1092,7 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
     }
     modes.add(ModeOption(
       value: ClimateMode.off,
-      icon: Icons.power_settings_new,
+      icon: MdiIcons.power,
       label: localizations.thermostat_mode_off,
       color: ModeSelectorColor.neutral,
     ));

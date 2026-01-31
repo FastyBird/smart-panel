@@ -5,6 +5,7 @@ import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 /// Layout options for ValueSelectorRow
 enum ValueSelectorRowLayout {
@@ -217,7 +218,7 @@ class ValueSelectorRow<T> extends StatelessWidget {
               ],
               if (showChevron)
                 Icon(
-                  Icons.chevron_right,
+                  MdiIcons.chevronRight,
                   color: secondaryColor,
                   size: _scale(20),
                 ),
@@ -375,7 +376,7 @@ class _ValueSelectorSheetState<T> extends State<ValueSelectorSheet<T>> {
                         borderRadius: BorderRadius.circular(_scale(16)),
                       ),
                       child: Icon(
-                        Icons.close,
+                        MdiIcons.close,
                         color: secondaryColor,
                         size: _scale(18),
                       ),

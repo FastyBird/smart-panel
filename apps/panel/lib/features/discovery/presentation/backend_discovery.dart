@@ -424,7 +424,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
     return Center(
       child: SystemPageSecondaryButton(
         label: localizations.discovery_button_cancel,
-        icon: Icons.close,
+        icon: MdiIcons.close,
         onPressed: _cancelDiscovery,
         isDark: isDark,
       ),
@@ -515,7 +515,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
             width: double.infinity,
             child: SystemPagePrimaryButton(
               label: localizations.discovery_button_connect_selected,
-              icon: Icons.arrow_forward,
+              icon: MdiIcons.arrowRight,
               onPressed: _selectedBackend != null ? _confirmSelection : null,
               minWidth: double.infinity,
               isDark: isDark,
@@ -624,7 +624,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
                   width: double.infinity,
                   child: SystemPagePrimaryButton(
                     label: localizations.discovery_button_connect_selected,
-                    icon: Icons.arrow_forward,
+                    icon: MdiIcons.arrowRight,
                     onPressed:
                         _selectedBackend != null ? _confirmSelection : null,
                     minWidth: double.infinity,
@@ -952,14 +952,14 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
         children: [
           SystemPageSecondaryButton(
             label: localizations.discovery_button_back,
-            icon: Icons.arrow_back,
+            icon: MdiIcons.arrowLeft,
             onPressed: _backToDiscovery,
             isDark: isDark,
           ),
           SizedBox(width: AppSpacings.pLg),
           SystemPagePrimaryButton(
             label: localizations.discovery_button_connect,
-            icon: Icons.arrow_forward,
+            icon: MdiIcons.arrowRight,
             onPressed: hasText ? _submitManualUrl : null,
             isDark: isDark,
           ),
@@ -973,7 +973,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
           width: double.infinity,
           child: SystemPagePrimaryButton(
             label: localizations.discovery_button_connect,
-            icon: Icons.arrow_forward,
+            icon: MdiIcons.arrowRight,
             onPressed: hasText ? _submitManualUrl : null,
             minWidth: double.infinity,
             isDark: isDark,
@@ -984,7 +984,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
           width: double.infinity,
           child: SystemPageSecondaryButton(
             label: localizations.discovery_button_back,
-            icon: Icons.arrow_back,
+            icon: MdiIcons.arrowLeft,
             onPressed: _backToDiscovery,
             isDark: isDark,
             minWidth: double.infinity,

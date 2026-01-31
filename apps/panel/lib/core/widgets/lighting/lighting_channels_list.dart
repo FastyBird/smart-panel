@@ -86,9 +86,9 @@ class LightingChannelsList extends StatelessWidget {
     // Determine icon based on state
     IconData sectionIcon = MdiIcons.lightbulbGroup;
     if (state == LightingState.mixed) {
-      sectionIcon = Icons.tune;
+      sectionIcon = MdiIcons.tune;
     } else if (state == LightingState.unsynced) {
-      sectionIcon = Icons.warning_rounded;
+      sectionIcon = MdiIcons.alert;
     }
 
     // Large screens: 2 vertical tiles per row (square)
@@ -109,8 +109,8 @@ class LightingChannelsList extends StatelessWidget {
             physics: const NeverScrollableScrollPhysics(),
             children: channels.map((channel) {
               return VerticalTileLarge(
-                icon: Icons.lightbulb_outline,
-                activeIcon: Icons.lightbulb,
+                icon: MdiIcons.lightbulbOutline,
+                activeIcon: MdiIcons.lightbulb,
                 name: channel.name,
                 status: channel.getStatusText(localizations),
                 isActive: channel.isOn && channel.isOnline,
@@ -145,8 +145,8 @@ class LightingChannelsList extends StatelessWidget {
           return Padding(
             padding: EdgeInsets.only(bottom: isLast ? 0 : AppSpacings.pMd),
             child: HorizontalTileStretched(
-              icon: Icons.lightbulb_outline,
-              activeIcon: Icons.lightbulb,
+              icon: MdiIcons.lightbulbOutline,
+              activeIcon: MdiIcons.lightbulb,
               name: channel.name,
               status: channel.getStatusText(localizations),
               isActive: channel.isOn && channel.isOnline,
@@ -181,9 +181,9 @@ class LightingChannelsList extends StatelessWidget {
     // Determine icon based on state
     IconData sectionIcon = MdiIcons.lightbulbGroup;
     if (state == LightingState.mixed) {
-      sectionIcon = Icons.tune;
+      sectionIcon = MdiIcons.tune;
     } else if (state == LightingState.unsynced) {
-      sectionIcon = Icons.warning_rounded;
+      sectionIcon = MdiIcons.alert;
     }
 
     return Column(
@@ -223,8 +223,8 @@ class LightingChannelsList extends StatelessWidget {
               final channel = channels[index];
 
               return VerticalTileCompact(
-                icon: Icons.lightbulb_outline,
-                activeIcon: Icons.lightbulb,
+                icon: MdiIcons.lightbulbOutline,
+                activeIcon: MdiIcons.lightbulb,
                 name: channel.name,
                 status: channel.getStatusText(localizations),
                 isActive: channel.isOn && channel.isOnline,

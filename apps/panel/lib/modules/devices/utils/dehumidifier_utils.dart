@@ -1,6 +1,7 @@
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 import 'package:flutter/material.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 /// Utility class for dehumidifier channel related label conversions and icons.
 class DehumidifierUtils {
@@ -8,15 +9,15 @@ class DehumidifierUtils {
   static IconData getModeIcon(DehumidifierModeValue mode) {
     switch (mode) {
       case DehumidifierModeValue.auto:
-        return Icons.auto_mode;
+        return MdiIcons.autoFix;
       case DehumidifierModeValue.manual:
-        return Icons.tune;
+        return MdiIcons.tune;
       case DehumidifierModeValue.continuous:
-        return Icons.all_inclusive;
+        return MdiIcons.infinity;
       case DehumidifierModeValue.laundry:
-        return Icons.dry_cleaning;
+        return MdiIcons.tumbleDryer;
       case DehumidifierModeValue.quiet:
-        return Icons.volume_off;
+        return MdiIcons.volumeOff;
     }
   }
 

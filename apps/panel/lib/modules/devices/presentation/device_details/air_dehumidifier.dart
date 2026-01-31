@@ -468,7 +468,7 @@ class _AirDehumidifierDeviceDetailState
         mainAxisSize: MainAxisSize.min,
         children: [
           HeaderIconButton(
-            icon: Icons.arrow_back_ios_new,
+            icon: MdiIcons.arrowLeft,
             onTap: widget.onBack,
           ),
           AppSpacings.spacingMdHorizontal,
@@ -484,7 +484,7 @@ class _AirDehumidifierDeviceDetailState
               borderRadius: BorderRadius.circular(AppBorderRadius.medium),
             ),
             child: Icon(
-              Icons.water_drop_outlined,
+              MdiIcons.waterOutline,
               color: isOn ? humidityColor : mutedColor,
               size: _scale(24),
             ),
@@ -509,7 +509,7 @@ class _AirDehumidifierDeviceDetailState
                 : null,
           ),
           child: Icon(
-            Icons.power_settings_new,
+            MdiIcons.power,
             size: _scale(18),
             color: isOn
                 ? AppColors.white
@@ -1049,7 +1049,7 @@ class _AirDehumidifierDeviceDetailState
     if (fanChannel != null && fanChannel.hasSwing) {
       children.add(wrapControl(UniversalTile(
         layout: TileLayout.horizontal,
-        icon: Icons.sync,
+        icon: MdiIcons.syncIcon,
         name: localizations.device_oscillation,
         status: fanChannel.swing
             ? localizations.on_state_on
@@ -1068,7 +1068,7 @@ class _AirDehumidifierDeviceDetailState
     if (fanChannel != null && fanChannel.hasDirection) {
       children.add(wrapControl(UniversalTile(
         layout: TileLayout.horizontal,
-        icon: Icons.swap_vert,
+        icon: MdiIcons.swapVertical,
         name: localizations.device_direction,
         status: fanChannel.direction != null
             ? FanUtils.getDirectionLabel(localizations, fanChannel.direction!)
@@ -1094,7 +1094,7 @@ class _AirDehumidifierDeviceDetailState
     if (fanChannel != null && fanChannel.hasNaturalBreeze) {
       children.add(wrapControl(UniversalTile(
         layout: TileLayout.horizontal,
-        icon: Icons.air,
+        icon: MdiIcons.airFilter,
         name: localizations.device_natural_breeze,
         status: fanChannel.naturalBreeze
             ? localizations.on_state_on
@@ -1113,7 +1113,7 @@ class _AirDehumidifierDeviceDetailState
     if (channel != null && channel.hasLocked) {
       children.add(wrapControl(UniversalTile(
         layout: TileLayout.horizontal,
-        icon: Icons.lock,
+        icon: MdiIcons.lock,
         name: localizations.device_child_lock,
         status: channel.locked
             ? localizations.thermostat_lock_locked
@@ -1280,7 +1280,7 @@ class _AirDehumidifierDeviceDetailState
       final speedWidget = ValueSelectorRow<FanSpeedLevelValue>(
         currentValue: fanChannel.speedLevel,
         label: localizations.device_fan_speed,
-        icon: Icons.speed,
+        icon: MdiIcons.speedometer,
         sheetTitle: localizations.device_fan_speed,
         activeColor: humidityColor,
         options: options,
@@ -1317,7 +1317,7 @@ class _AirDehumidifierDeviceDetailState
       final speedWidget = ValueSelectorRow<double>(
         currentValue: _normalizedFanSpeed,
         label: localizations.device_fan_speed,
-        icon: Icons.speed,
+        icon: MdiIcons.speedometer,
         sheetTitle: localizations.device_fan_speed,
         activeColor: humidityColor,
         options: _getFanSpeedOptions(localizations),
@@ -1363,7 +1363,7 @@ class _AirDehumidifierDeviceDetailState
       final widget = ValueSelectorRow<FanModeValue>(
         currentValue: currentMode,
         label: localizations.device_fan_mode,
-        icon: Icons.tune,
+        icon: MdiIcons.tune,
         sheetTitle: localizations.device_fan_mode,
         activeColor: humidityColor,
         options: options,
@@ -1528,7 +1528,7 @@ class _AirDehumidifierDeviceDetailState
       final widget = ValueSelectorRow<DehumidifierTimerPresetValue?>(
         currentValue: channel.timerPreset,
         label: localizations.device_timer,
-        icon: Icons.timer_outlined,
+        icon: MdiIcons.timerOutline,
         sheetTitle: localizations.device_timer,
         activeColor: humidityColor,
         options: options,
@@ -1556,7 +1556,7 @@ class _AirDehumidifierDeviceDetailState
       final widget = ValueSelectorRow<int>(
         currentValue: channel.timer,
         label: localizations.device_timer,
-        icon: Icons.timer_outlined,
+        icon: MdiIcons.timerOutline,
         sheetTitle: localizations.device_timer,
         activeColor: humidityColor,
         options: options,

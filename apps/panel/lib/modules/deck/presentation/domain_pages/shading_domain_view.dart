@@ -804,7 +804,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
             ),
             AppSpacings.spacingXsHorizontal,
             Icon(
-              isExpanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+              isExpanded ? MdiIcons.chevronUp : MdiIcons.chevronDown,
               size: _screenService.scale(
                 16,
                 density: _visualDensityService.density,

@@ -74,13 +74,13 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   int? _selectedPresetIndex;
 
   // Presets configuration
-  static const _presets = [
-    _Preset(type: _PresetType.morning, icon: Icons.wb_sunny, position: 100, tiltAngle: 0),
-    _Preset(type: _PresetType.day, icon: Icons.light_mode, position: 75, tiltAngle: 30),
-    _Preset(type: _PresetType.evening, icon: Icons.nights_stay, position: 30, tiltAngle: 60),
-    _Preset(type: _PresetType.night, icon: Icons.bedtime, position: 0, tiltAngle: 90),
-    _Preset(type: _PresetType.privacy, icon: Icons.lock, position: 0, tiltAngle: 45),
-    _Preset(type: _PresetType.away, icon: Icons.home, position: 0, tiltAngle: 90),
+  static final _presets = [
+    _Preset(type: _PresetType.morning, icon: MdiIcons.weatherSunsetUp, position: 100, tiltAngle: 0),
+    _Preset(type: _PresetType.day, icon: MdiIcons.whiteBalanceSunny, position: 75, tiltAngle: 30),
+    _Preset(type: _PresetType.evening, icon: MdiIcons.weatherSunsetDown, position: 30, tiltAngle: 60),
+    _Preset(type: _PresetType.night, icon: MdiIcons.moonWaningCrescent, position: 0, tiltAngle: 90),
+    _Preset(type: _PresetType.privacy, icon: MdiIcons.lock, position: 0, tiltAngle: 45),
+    _Preset(type: _PresetType.away, icon: MdiIcons.home, position: 0, tiltAngle: 90),
   ];
 
   @override
@@ -345,7 +345,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
         mainAxisSize: MainAxisSize.min,
         children: [
           HeaderIconButton(
-            icon: Icons.arrow_back_ios_new,
+            icon: MdiIcons.arrowLeft,
             onTap: widget.onBack ?? () => Navigator.of(context).pop(),
           ),
           AppSpacings.spacingMdHorizontal,

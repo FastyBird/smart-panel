@@ -321,10 +321,10 @@ List<SuggestedAction> _buildSuggestedActions({
   if (domainCounts.hasDomain(DomainType.lights) &&
       lightsOnCount != null &&
       lightsOnCount > 0) {
-    suggestions.add(const SuggestedAction(
+    suggestions.add(SuggestedAction(
       id: 'turn-off-lights',
       label: 'Turn off lights',
-      icon: Icons.lightbulb_outline,
+      icon: MdiIcons.lightbulbOutline,
       actionType: SuggestedActionType.turnOffLights,
     ));
   }
@@ -337,7 +337,7 @@ List<SuggestedAction> _buildSuggestedActions({
       suggestions.add(SuggestedAction(
         id: 'movie-mode',
         label: 'Movie mode',
-        icon: Icons.movie_outlined,
+        icon: MdiIcons.movieOutline,
         sceneId: movieScene.id,
       ));
     }
@@ -352,7 +352,7 @@ List<SuggestedAction> _buildSuggestedActions({
       suggestions.add(SuggestedAction(
         id: 'night-mode',
         label: 'Night mode',
-        icon: Icons.bedtime_outlined,
+        icon: MdiIcons.weatherNight,
         sceneId: nightScene.id,
       ));
     }

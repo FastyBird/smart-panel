@@ -8,6 +8,7 @@ import 'package:fastybird_smart_panel/core/widgets/lighting/lighting_types.dart'
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 /// Main lighting control widget.
 ///
@@ -162,7 +163,7 @@ class LightingMainControl extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
-                    Icons.power_settings_new,
+                    MdiIcons.power,
                     size: _scale(44),
                     color: isOn ? primaryColor : inactiveColor,
                   ),
