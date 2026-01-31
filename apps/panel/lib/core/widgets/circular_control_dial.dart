@@ -11,6 +11,7 @@ import 'package:fastybird_smart_panel/modules/deck/types/swipe_event.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 /// Display format for the dial value
 enum DialDisplayFormat {
@@ -517,9 +518,9 @@ class _CircularControlDialState extends State<CircularControlDial>
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               _buildButton(
-                                  context, Icons.remove, _decrementValue),
+                                  context, MdiIcons.minus, _decrementValue),
                               SizedBox(width: widget.size * 0.08),
-                              _buildButton(context, Icons.add, _incrementValue),
+                              _buildButton(context, MdiIcons.plus, _incrementValue),
                             ],
                           ),
                         ],

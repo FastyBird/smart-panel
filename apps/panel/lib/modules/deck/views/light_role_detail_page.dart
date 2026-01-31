@@ -8,6 +8,7 @@ import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/lighting/export.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
@@ -2405,7 +2406,7 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
         mainAxisSize: MainAxisSize.min,
         children: [
           HeaderIconButton(
-            icon: Icons.arrow_back_ios_new,
+            icon: MdiIcons.arrowLeft,
             onTap: () => Navigator.pop(context),
           ),
           AppSpacings.spacingMdHorizontal,
@@ -2440,7 +2441,7 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
                 : null,
           ),
           child: Icon(
-            Icons.power_settings_new,
+            MdiIcons.power,
             size: _scale(18),
             color: isOn
                 ? AppColors.white

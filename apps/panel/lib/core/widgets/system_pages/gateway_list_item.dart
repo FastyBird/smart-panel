@@ -67,7 +67,7 @@ class GatewayListItem extends StatelessWidget {
                 borderRadius: BorderRadius.circular(AppBorderRadius.small),
               ),
               child: Icon(
-                isSelected ? Icons.check : MdiIcons.server,
+                isSelected ? MdiIcons.check : MdiIcons.server,
                 color: isSelected
                     ? AppColors.white
                     : SystemPagesTheme.textSecondary(isDark),

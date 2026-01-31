@@ -87,7 +87,7 @@ class SectionTitle extends StatelessWidget {
 /// ```dart
 /// SectionTitleButton(
 ///   label: 'All Off',
-///   icon: Icons.power_settings_new,
+///   icon: MdiIcons.power,
 ///   onTap: () => toggleAllLights(),
 /// )
 /// ```

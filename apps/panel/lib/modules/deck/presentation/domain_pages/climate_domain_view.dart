@@ -1967,7 +1967,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
                       ),
                       AppSpacings.spacingXsHorizontal,
                       Icon(
-                        Icons.chevron_right,
+                        MdiIcons.chevronRight,
                         color: isDark
                             ? AppTextColorDark.secondary
                             : AppTextColorLight.secondary,
@@ -2030,7 +2030,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     }
     modes.add(ModeOption(
       value: ClimateMode.off,
-      icon: Icons.power_settings_new,
+      icon: MdiIcons.power,
       label: localizations.thermostat_mode_off,
       color: ModeSelectorColor.neutral,
     ));
@@ -2103,7 +2103,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
                   ),
                   AppSpacings.spacingXsHorizontal,
                   Icon(
-                    Icons.chevron_right,
+                    MdiIcons.chevronRight,
                     color: isDark
                         ? AppTextColorDark.secondary
                         : AppTextColorLight.secondary,

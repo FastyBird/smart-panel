@@ -635,7 +635,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
       // "All" option first
       ModeOption<SensorCategory?>(
         value: null,
-        icon: Icons.grid_view,
+        icon: MdiIcons.viewGrid,
         label: 'All',
         color: ModeSelectorColor.neutral,
       ),
@@ -810,7 +810,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
       );
       if (hasAlert) {
         statusIcons[cat] = (
-          Icons.warning,
+          MdiIcons.alert,
           isDark ? AppColorsDark.danger : AppColorsLight.danger,
         );
       }
@@ -887,7 +887,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
       );
       if (hasAlert) {
         statusIcons[cat] = (
-          Icons.warning,
+          MdiIcons.alert,
           isDark ? AppColorsDark.danger : AppColorsLight.danger,
         );
       }
@@ -931,7 +931,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
               color: dangerColor.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(Icons.warning_amber, color: dangerColor, size: _scale(20)),
+            child: Icon(MdiIcons.alertOutline, color: dangerColor, size: _scale(20)),
           ),
           AppSpacings.spacingMdHorizontal,
           Expanded(
@@ -1159,7 +1159,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
         Row(
           children: [
             Icon(
-              Icons.grid_view,
+              MdiIcons.viewGrid,
               size: _scale(18),
               color: isDark
                   ? AppTextColorDark.secondary
@@ -1751,7 +1751,7 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
         mainAxisSize: MainAxisSize.min,
         children: [
           HeaderIconButton(
-            icon: Icons.arrow_back_ios_new,
+            icon: MdiIcons.arrowLeft,
             onTap: () => Navigator.pop(context),
           ),
           AppSpacings.spacingMdHorizontal,

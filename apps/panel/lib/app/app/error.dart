@@ -110,7 +110,7 @@ class AppError extends StatelessWidget {
                       // Restart button
                       SystemPagePrimaryButton(
                         label: 'Restart Application',
-                        icon: Icons.refresh,
+                        icon: MdiIcons.refresh,
                         onPressed: _onRestart,
                         isDark: isDark,
                       ),
@@ -152,7 +152,7 @@ class AppError extends StatelessWidget {
               borderRadius: BorderRadius.circular(AppBorderRadius.small),
             ),
             child: Icon(
-              Icons.info_outline,
+              MdiIcons.informationOutline,
               color: SystemPagesTheme.info(isDark),
               size: _screenService.scale(22),
             ),

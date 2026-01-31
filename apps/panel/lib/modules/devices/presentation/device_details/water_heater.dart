@@ -104,7 +104,7 @@ class _WaterHeaterDeviceDetailState extends State<WaterHeaterDeviceDetail> {
         mainAxisSize: MainAxisSize.min,
         children: [
           HeaderIconButton(
-            icon: Icons.arrow_back_ios_new,
+            icon: MdiIcons.arrowLeft,
             onTap: widget.onBack ?? () => Navigator.of(context).pop(),
           ),
           AppSpacings.spacingMdHorizontal,

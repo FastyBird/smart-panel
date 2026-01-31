@@ -729,7 +729,7 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
         mainAxisSize: MainAxisSize.min,
         children: [
           HeaderIconButton(
-            icon: Icons.arrow_back_ios_new,
+            icon: MdiIcons.arrowLeft,
             onTap: () => Navigator.of(context).pop(),
           ),
           AppSpacings.spacingMdHorizontal,
@@ -768,7 +768,7 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
                       : null,
                 ),
                 child: Icon(
-                  Icons.power_settings_new,
+                  MdiIcons.power,
                   size: _scale(18),
                   color: isOn
                       ? AppColors.white

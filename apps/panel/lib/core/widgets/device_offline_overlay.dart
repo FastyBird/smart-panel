@@ -3,6 +3,7 @@ import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 // Offline status colors
 const Color _offlineColor = Color(0xFF78909C);
@@ -122,7 +123,7 @@ class _DeviceOfflineBanner extends StatelessWidget {
               borderRadius: BorderRadius.circular(_scale(10)),
             ),
             child: Icon(
-              Icons.wifi_off,
+              MdiIcons.wifiOff,
               color: _offlineColor,
               size: _scale(22),
             ),

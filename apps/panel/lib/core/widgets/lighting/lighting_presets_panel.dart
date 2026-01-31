@@ -96,25 +96,25 @@ class LightingPresetsPanel extends StatelessWidget {
       case LightCapability.brightness:
         return [
           _LightPreset(
-            icon: Icons.brightness_low,
+            icon: MdiIcons.brightness5,
             label: '25%',
             value: 25,
             type: _PresetType.brightness,
           ),
           _LightPreset(
-            icon: Icons.brightness_medium,
+            icon: MdiIcons.brightness6,
             label: '50%',
             value: 50,
             type: _PresetType.brightness,
           ),
           _LightPreset(
-            icon: Icons.brightness_high,
+            icon: MdiIcons.brightness7,
             label: '75%',
             value: 75,
             type: _PresetType.brightness,
           ),
           _LightPreset(
-            icon: Icons.wb_sunny,
+            icon: MdiIcons.whiteBalanceSunny,
             label: '100%',
             value: 100,
             type: _PresetType.brightness,
@@ -123,25 +123,25 @@ class LightingPresetsPanel extends StatelessWidget {
       case LightCapability.colorTemp:
         return [
           _LightPreset(
-            icon: Icons.local_fire_department,
+            icon: MdiIcons.fire,
             label: localizations.light_preset_candle,
             value: 2700,
             type: _PresetType.colorTemp,
           ),
           _LightPreset(
-            icon: Icons.nights_stay,
+            icon: MdiIcons.weatherNight,
             label: localizations.light_preset_warm,
             value: 3200,
             type: _PresetType.colorTemp,
           ),
           _LightPreset(
-            icon: Icons.wb_sunny,
+            icon: MdiIcons.whiteBalanceSunny,
             label: localizations.light_preset_daylight,
             value: 5000,
             type: _PresetType.colorTemp,
           ),
           _LightPreset(
-            icon: Icons.ac_unit,
+            icon: MdiIcons.snowflake,
             label: localizations.light_preset_cool,
             value: 6500,
             type: _PresetType.colorTemp,
@@ -150,56 +150,56 @@ class LightingPresetsPanel extends StatelessWidget {
       case LightCapability.color:
         return [
           _LightPreset(
-            icon: Icons.circle,
+            icon: MdiIcons.circle,
             label: localizations.light_color_red,
             value: 0,
             type: _PresetType.color,
             color: Colors.red,
           ),
           _LightPreset(
-            icon: Icons.circle,
+            icon: MdiIcons.circle,
             label: localizations.light_color_orange,
             value: 30,
             type: _PresetType.color,
             color: Colors.orange,
           ),
           _LightPreset(
-            icon: Icons.circle,
+            icon: MdiIcons.circle,
             label: localizations.light_color_yellow,
             value: 60,
             type: _PresetType.color,
             color: Colors.yellow,
           ),
           _LightPreset(
-            icon: Icons.circle,
+            icon: MdiIcons.circle,
             label: localizations.light_color_green,
             value: 120,
             type: _PresetType.color,
             color: Colors.green,
           ),
           _LightPreset(
-            icon: Icons.circle,
+            icon: MdiIcons.circle,
             label: localizations.light_color_cyan,
             value: 180,
             type: _PresetType.color,
             color: Colors.cyan,
           ),
           _LightPreset(
-            icon: Icons.circle,
+            icon: MdiIcons.circle,
             label: localizations.light_color_blue,
             value: 240,
             type: _PresetType.color,
             color: Colors.blue,
           ),
           _LightPreset(
-            icon: Icons.circle,
+            icon: MdiIcons.circle,
             label: localizations.light_color_purple,
             value: 270,
             type: _PresetType.color,
             color: Colors.purple,
           ),
           _LightPreset(
-            icon: Icons.circle,
+            icon: MdiIcons.circle,
             label: localizations.light_color_pink,
             value: 330,
             type: _PresetType.color,
@@ -209,25 +209,25 @@ class LightingPresetsPanel extends StatelessWidget {
       case LightCapability.white:
         return [
           _LightPreset(
-            icon: Icons.brightness_low,
+            icon: MdiIcons.brightness5,
             label: '25%',
             value: 25,
             type: _PresetType.white,
           ),
           _LightPreset(
-            icon: Icons.brightness_medium,
+            icon: MdiIcons.brightness6,
             label: '50%',
             value: 50,
             type: _PresetType.white,
           ),
           _LightPreset(
-            icon: Icons.brightness_high,
+            icon: MdiIcons.brightness7,
             label: '75%',
             value: 75,
             type: _PresetType.white,
           ),
           _LightPreset(
-            icon: Icons.wb_sunny,
+            icon: MdiIcons.whiteBalanceSunny,
             label: '100%',
             value: 100,
             type: _PresetType.white,

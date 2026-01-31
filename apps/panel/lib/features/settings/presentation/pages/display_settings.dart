@@ -179,8 +179,8 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
                           density: _visualDensityService.density,
                         ),
                       ),
-                      iconStyleData: const IconStyleData(
-                        openMenuIcon: Icon(Icons.arrow_drop_up),
+                      iconStyleData: IconStyleData(
+                        openMenuIcon: Icon(MdiIcons.menuUp),
                       ),
                     ),
                   ),

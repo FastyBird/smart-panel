@@ -481,7 +481,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
         child: ValueSelectorRow<FanSpeedLevelValue>(
           currentValue: fanChannel.speedLevel,
           label: localizations.device_fan_speed,
-          icon: Icons.speed,
+          icon: MdiIcons.speedometer,
           sheetTitle: localizations.device_fan_speed,
           activeColor: airColor,
           options: options,
@@ -510,7 +510,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           child: ValueSelectorRow<double>(
             currentValue: _normalizedSpeed,
             label: localizations.device_fan_speed,
-            icon: Icons.speed,
+            icon: MdiIcons.speedometer,
             sheetTitle: localizations.device_fan_speed,
             activeColor: airColor,
             options: _getSpeedOptions(localizations),
@@ -613,7 +613,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
         mainAxisSize: MainAxisSize.min,
         children: [
           HeaderIconButton(
-            icon: Icons.arrow_back_ios_new,
+            icon: MdiIcons.arrowLeft,
             onTap: widget.onBack,
           ),
           AppSpacings.spacingMdHorizontal,
@@ -629,7 +629,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
               borderRadius: BorderRadius.circular(AppBorderRadius.medium),
             ),
             child: Icon(
-              Icons.air,
+              MdiIcons.airFilter,
               color: _device.isOn ? airColor : mutedColor,
               size: _scale(24),
             ),
@@ -881,7 +881,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
         child: ValueSelectorRow<FanTimerPresetValue?>(
           currentValue: fanChannel.timerPreset,
           label: localizations.device_timer,
-          icon: Icons.timer_outlined,
+          icon: MdiIcons.timerOutline,
           sheetTitle: localizations.device_auto_off_timer,
           activeColor: airColor,
           options: options,
@@ -909,7 +909,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
         child: ValueSelectorRow<int>(
           currentValue: fanChannel.timer,
           label: localizations.device_timer,
-          icon: Icons.timer_outlined,
+          icon: MdiIcons.timerOutline,
           sheetTitle: localizations.device_auto_off_timer,
           activeColor: airColor,
           options: options,
@@ -1576,7 +1576,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
     if (fanChannel.hasSwing) {
       children.add(wrapControl(UniversalTile(
         layout: TileLayout.horizontal,
-        icon: Icons.sync,
+        icon: MdiIcons.syncIcon,
         name: localizations.device_oscillation,
         status: fanChannel.swing
             ? localizations.on_state_on
@@ -1595,7 +1595,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
     if (fanChannel.hasDirection) {
       children.add(wrapControl(UniversalTile(
         layout: TileLayout.horizontal,
-        icon: Icons.swap_vert,
+        icon: MdiIcons.swapVertical,
         name: localizations.device_direction,
         status: fanChannel.direction != null
             ? FanUtils.getDirectionLabel(localizations, fanChannel.direction!)
@@ -1639,7 +1639,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
     if (fanChannel.hasLocked) {
       children.add(wrapControl(UniversalTile(
         layout: TileLayout.horizontal,
-        icon: Icons.lock,
+        icon: MdiIcons.lock,
         name: localizations.device_child_lock,
         status: _childLock
             ? localizations.thermostat_lock_locked

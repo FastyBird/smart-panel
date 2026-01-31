@@ -411,7 +411,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
         mainAxisSize: MainAxisSize.min,
         children: [
           HeaderIconButton(
-            icon: Icons.arrow_back_ios_new,
+            icon: MdiIcons.arrowLeft,
             onTap: widget.onBack,
           ),
           AppSpacings.spacingMdHorizontal,
@@ -427,7 +427,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
               borderRadius: BorderRadius.circular(AppBorderRadius.medium),
             ),
             child: Icon(
-              Icons.wind_power,
+              MdiIcons.weatherWindy,
               color: _device.isOn ? fanColor : mutedColor,
               size: _scale(24),
             ),
@@ -597,7 +597,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
           child: ValueSelectorRow<FanSpeedLevelValue>(
             currentValue: fanChannel.speedLevel,
             label: localizations.device_fan_speed,
-            icon: Icons.speed,
+            icon: MdiIcons.speedometer,
             sheetTitle: localizations.device_fan_speed,
             activeColor: fanColor,
             options: options,
@@ -659,7 +659,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
           child: ValueSelectorRow<double>(
             currentValue: _speed,
             label: localizations.device_fan_speed,
-            icon: Icons.speed,
+            icon: MdiIcons.speedometer,
             sheetTitle: localizations.device_fan_speed,
             activeColor: fanColor,
             options: _getSpeedOptions(localizations),
@@ -792,7 +792,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
     if (fanChannel.hasSwing) {
       options.add(wrapControl(UniversalTile(
         layout: TileLayout.horizontal,
-        icon: Icons.sync,
+        icon: MdiIcons.syncIcon,
         name: localizations.device_oscillation,
         status: fanChannel.swing
             ? localizations.on_state_on
@@ -812,7 +812,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
       final isReversed = fanChannel.direction == FanDirectionValue.counterClockwise;
       options.add(wrapControl(UniversalTile(
         layout: TileLayout.horizontal,
-        icon: Icons.swap_vert,
+        icon: MdiIcons.swapVertical,
         name: localizations.device_direction,
         status: fanChannel.direction != null
             ? FanUtils.getDirectionLabel(localizations, fanChannel.direction!)
@@ -836,7 +836,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
     if (fanChannel.hasLocked) {
       options.add(wrapControl(UniversalTile(
         layout: TileLayout.horizontal,
-        icon: Icons.lock,
+        icon: MdiIcons.lock,
         name: localizations.device_child_lock,
         status: fanChannel.locked
             ? localizations.thermostat_lock_locked
@@ -889,7 +889,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
         child: ValueSelectorRow<FanTimerPresetValue?>(
           currentValue: fanChannel.timerPreset,
           label: localizations.device_timer,
-          icon: Icons.timer_outlined,
+          icon: MdiIcons.timerOutline,
           sheetTitle: localizations.device_auto_off_timer,
           activeColor: fanColor,
           options: options,
@@ -916,7 +916,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
         child: ValueSelectorRow<int>(
           currentValue: fanChannel.timer,
           label: localizations.device_timer,
-          icon: Icons.timer_outlined,
+          icon: MdiIcons.timerOutline,
           sheetTitle: localizations.device_auto_off_timer,
           activeColor: fanColor,
           options: options,

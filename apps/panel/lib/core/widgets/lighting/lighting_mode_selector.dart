@@ -7,6 +7,7 @@ import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 /// Lighting mode/capability selector widget.
 ///
@@ -59,15 +60,15 @@ class LightingModeSelector extends StatelessWidget {
   IconData _getCapabilityIcon(LightCapability cap) {
     switch (cap) {
       case LightCapability.brightness:
-        return Icons.brightness_6;
+        return MdiIcons.brightness6;
       case LightCapability.colorTemp:
-        return Icons.thermostat;
+        return MdiIcons.thermometer;
       case LightCapability.color:
-        return Icons.palette;
+        return MdiIcons.palette;
       case LightCapability.white:
-        return Icons.wb_incandescent;
+        return MdiIcons.ceilingLight;
       default:
-        return Icons.lightbulb;
+        return MdiIcons.lightbulb;
     }
   }
 
