@@ -36,7 +36,7 @@ export class DoorRealisticBehavior extends BaseDeviceBehavior {
 		const updates: ScheduledPropertyUpdate[] = [];
 
 		if (event.channelCategory === ChannelCategory.DOOR) {
-			if (event.propertyCategory === PropertyCategory.POSITION) {
+			if (event.propertyCategory === PropertyCategory.COMMAND) {
 				const command = event.value as string;
 				const isOpening = command === 'open';
 				const travelTime = this.getTravelTime(state);

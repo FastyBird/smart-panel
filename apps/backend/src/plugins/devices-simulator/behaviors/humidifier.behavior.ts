@@ -48,6 +48,7 @@ export class HumidifierRealisticBehavior extends BaseDeviceBehavior {
 				if (!isOn) {
 					// Stop all humidity transitions
 					this.cancelTransitions(state, ChannelCategory.HUMIDITY, PropertyCategory.HUMIDITY);
+					this.cancelTransitions(state, ChannelCategory.HUMIDIFIER, PropertyCategory.STATUS);
 
 					updates.push({
 						channelCategory: ChannelCategory.HUMIDIFIER,
