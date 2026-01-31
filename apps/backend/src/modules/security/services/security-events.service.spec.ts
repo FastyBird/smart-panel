@@ -185,12 +185,13 @@ describe('SecurityEventsService', () => {
 
 	describe('recordAcknowledgement', () => {
 		it('should create alert_acknowledged event', async () => {
-			await service.recordAcknowledgement('sensor:dev1:smoke', 'smoke', 'dev1');
+			await service.recordAcknowledgement('sensor:dev1:smoke', 'smoke', 'dev1', Severity.CRITICAL);
 
 			expect(repo.save).toHaveBeenCalled();
 			expect(repo.save.mock.calls[0][0]).toEqual(
 				expect.objectContaining({
 					eventType: SecurityEventType.ALERT_ACKNOWLEDGED,
+					severity: Severity.CRITICAL,
 					alertId: 'sensor:dev1:smoke',
 					alertType: 'smoke',
 					sourceDeviceId: 'dev1',

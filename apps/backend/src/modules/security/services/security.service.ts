@@ -24,7 +24,15 @@ export class SecurityService {
 		const status = await this.aggregator.aggregate();
 
 		// Record transitions before applying ack state (so we detect raw transitions)
-		await this.eventsService.recordAlertTransitions(status.activeAlerts, status.armedState, status.alarmState);
+		try {
+			await this.eventsService.recordAlertTransitions(
+				status.activeAlerts,
+				status.armedState,
+				status.alarmState,
+			);
+		} catch (error) {
+			this.logger.warn(`Failed to record alert transitions: ${error}`);
+		}
 
 		if (status.activeAlerts.length > 0) {
 			await this.applyAcknowledgements(status);
@@ -45,7 +53,12 @@ export class SecurityService {
 
 		const result = await this.ackService.acknowledge(id, lastEventAt ?? undefined);
 
-		await this.eventsService.recordAcknowledgement(id, alert?.type, alert?.sourceDeviceId);
+		try {
+			await this.eventsService.recordAcknowledgement(id, alert?.type, alert?.sourceDeviceId, alert?.severity);
+		} catch (error) {
+			this.logger.warn(`Failed to record acknowledgement event: ${error}`);
+		}
+
 		await this.emitStatusUpdate();
 
 		return result;
@@ -61,8 +74,17 @@ export class SecurityService {
 
 		await this.ackService.acknowledgeAll(alerts);
 
-		for (const alert of status.activeAlerts) {
-			await this.eventsService.recordAcknowledgement(alert.id, alert.type, alert.sourceDeviceId);
+		try {
+			for (const alert of status.activeAlerts) {
+				await this.eventsService.recordAcknowledgement(
+					alert.id,
+					alert.type,
+					alert.sourceDeviceId,
+					alert.severity,
+				);
+			}
+		} catch (error) {
+			this.logger.warn(`Failed to record acknowledgement events: ${error}`);
 		}
 
 		const activeIds = alerts.map((a) => a.id);

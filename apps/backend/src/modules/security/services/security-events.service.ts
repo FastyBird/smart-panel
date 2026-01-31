@@ -142,9 +142,15 @@ export class SecurityEventsService {
 		this.updateSnapshot(activeAlerts, armedState, alarmState);
 	}
 
-	async recordAcknowledgement(alertId: string, alertType?: string, sourceDeviceId?: string): Promise<void> {
+	async recordAcknowledgement(
+		alertId: string,
+		alertType?: string,
+		sourceDeviceId?: string,
+		severity?: Severity,
+	): Promise<void> {
 		const event = this.repo.create({
 			eventType: SecurityEventType.ALERT_ACKNOWLEDGED,
+			severity: severity ?? null,
 			alertId,
 			alertType: alertType ?? null,
 			sourceDeviceId: sourceDeviceId ?? null,
