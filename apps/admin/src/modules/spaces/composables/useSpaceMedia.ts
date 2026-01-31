@@ -2,13 +2,13 @@ import { computed, ref, type ComputedRef, type Ref } from 'vue';
 
 import {
 	type PathsModulesSpacesSpacesIdMediaActivitiesActivityKeyPreviewPostParametersPathActivityKey,
-	type SpacesModuleCreateMediaEndpointType,
+	type SpacesModuleDataMediaCapabilitySummarySuggested_endpoint_types,
 } from '../../../openapi';
 import { useBackend } from '../../../common';
 import { MODULES_PREFIX } from '../../../app.constants';
 import { SPACES_MODULE_PREFIX } from '../spaces.constants';
 
-export { SpacesModuleCreateMediaEndpointType as MediaEndpointType } from '../../../openapi';
+export { SpacesModuleDataMediaCapabilitySummarySuggested_endpoint_types as MediaEndpointType } from '../../../openapi';
 export { PathsModulesSpacesSpacesIdMediaActivitiesActivityKeyPreviewPostParametersPathActivityKey as MediaActivityKey } from '../../../openapi';
 
 export interface IDerivedMediaCapabilities {
@@ -25,7 +25,7 @@ export interface IDerivedMediaEndpoint {
 	endpointId: string;
 	spaceId: string;
 	deviceId: string;
-	type: SpacesModuleCreateMediaEndpointType;
+	type: SpacesModuleDataMediaCapabilitySummarySuggested_endpoint_types;
 	name: string;
 	capabilities: IDerivedMediaCapabilities;
 }
@@ -152,7 +152,7 @@ export interface IUseSpaceMedia {
 	) => Promise<IMediaActivityBinding>;
 	applyDefaults: () => Promise<void>;
 	endpointsByType: (
-		type: SpacesModuleCreateMediaEndpointType,
+		type: SpacesModuleDataMediaCapabilitySummarySuggested_endpoint_types,
 	) => ComputedRef<IDerivedMediaEndpoint[]>;
 	findBindingByActivity: (
 		activityKey: PathsModulesSpacesSpacesIdMediaActivitiesActivityKeyPreviewPostParametersPathActivityKey,
@@ -166,7 +166,7 @@ const transformEndpoint = (raw: Record<string, unknown>): IDerivedMediaEndpoint 
 		endpointId: raw.endpoint_id as string,
 		spaceId: raw.space_id as string,
 		deviceId: raw.device_id as string,
-		type: raw.type as SpacesModuleCreateMediaEndpointType,
+		type: raw.type as SpacesModuleDataMediaCapabilitySummarySuggested_endpoint_types,
 		name: raw.name as string,
 		capabilities: {
 			power: caps.power ?? false,
@@ -660,7 +660,7 @@ export const useSpaceMedia = (spaceId: Ref<string | undefined>): IUseSpaceMedia 
 	};
 
 	const endpointsByType = (
-		type: SpacesModuleCreateMediaEndpointType,
+		type: SpacesModuleDataMediaCapabilitySummarySuggested_endpoint_types,
 	): ComputedRef<IDerivedMediaEndpoint[]> => {
 		return computed(() => endpointsData.value.filter((ep) => ep.type === type));
 	};
