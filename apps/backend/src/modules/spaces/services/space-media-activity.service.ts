@@ -1008,5 +1008,4 @@ export class SpaceMediaActivityService {
 
 		this.logger.debug(`Emitted ${eventType} for space=${spaceId} activity=${activityKey}`);
 	}
-
 }
