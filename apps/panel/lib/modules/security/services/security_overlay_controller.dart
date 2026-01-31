@@ -1,5 +1,6 @@
 import 'package:fastybird_smart_panel/modules/security/models/security_alert.dart';
 import 'package:fastybird_smart_panel/modules/security/models/security_status.dart';
+import 'package:fastybird_smart_panel/modules/security/repositories/security_status.dart';
 import 'package:fastybird_smart_panel/modules/security/types/security.dart';
 import 'package:flutter/foundation.dart';
 
@@ -114,29 +115,69 @@ bool _hasCriticalCondition(SecurityStatusModel status) {
 	return false;
 }
 
+/// Build the effective acknowledged set by combining server flags with optimistic cache.
+Set<String> buildEffectiveAcknowledgedIds(
+	SecurityStatusModel status,
+	Set<String> optimisticAckIds,
+) {
+	final ids = <String>{};
+
+	for (final alert in status.activeAlerts) {
+		if (alert.acknowledged || optimisticAckIds.contains(alert.id)) {
+			ids.add(alert.id);
+		}
+	}
+
+	// Carry over synthetic IDs from optimistic cache
+	for (final id in optimisticAckIds) {
+		if (id.startsWith('__')) {
+			ids.add(id);
+		}
+	}
+
+	return ids;
+}
+
 /// Controller managing security overlay visibility state.
 ///
 /// Combines security status, connection state, acknowledgement state,
 /// and navigation state to determine overlay visibility.
-/// Also manages per-alert acknowledgement with timestamp-based reset.
+/// Uses server `acknowledged` flags as source of truth, with an optimistic
+/// cache for in-flight requests.
 class SecurityOverlayController extends ChangeNotifier {
+	final SecurityStatusRepository? _repository;
+
 	SecurityStatusModel _status = SecurityStatusModel.empty;
-	final Set<String> _acknowledgedAlertIds = {};
-	final Map<String, DateTime> _lastSeenTimestamps = {};
+
+	/// Optimistic cache: IDs acknowledged locally but not yet confirmed by server.
+	/// Cleared when server status arrives.
+	final Set<String> _optimisticAckIds = {};
+
+	/// IDs currently being acknowledged (in-flight requests).
+	final Set<String> _pendingAckIds = {};
+
 	bool _isConnectionOffline = false;
 	bool _isOnSecurityScreen = false;
 
 	List<SecurityAlertModel>? _cachedSortedAlerts;
 	Map<Severity, List<SecurityAlertModel>>? _cachedGroupedAlerts;
 
+	SecurityOverlayController({SecurityStatusRepository? repository})
+		: _repository = repository;
+
 	SecurityStatusModel get status => _status;
+
+	bool get isConnectionOffline => _isConnectionOffline;
+
+	/// The effective set of acknowledged alert IDs (server + optimistic).
+	Set<String> get _acknowledgedAlertIds => buildEffectiveAcknowledgedIds(_status, _optimisticAckIds);
 
 	/// Whether all active alerts are acknowledged.
 	bool get allAlertsAcknowledged {
 		if (_status.activeAlerts.isEmpty) return false;
 
 		return _status.activeAlerts.every(
-			(alert) => _acknowledgedAlertIds.contains(alert.id),
+			(alert) => alert.acknowledged || _optimisticAckIds.contains(alert.id),
 		);
 	}
 
@@ -178,43 +219,21 @@ class SecurityOverlayController extends ChangeNotifier {
 		return topAlert?.type.displayTitle ?? 'Security alert';
 	}
 
-	/// Check if a specific alert is acknowledged.
+	/// Check if a specific alert is acknowledged (server or optimistic).
 	bool isAlertAcknowledged(String alertId) {
-		return _acknowledgedAlertIds.contains(alertId);
+		// Check server flag first
+		for (final alert in _status.activeAlerts) {
+			if (alert.id == alertId) {
+				return alert.acknowledged || _optimisticAckIds.contains(alertId);
+			}
+		}
+		return _optimisticAckIds.contains(alertId);
 	}
 
 	void updateStatus(SecurityStatusModel newStatus) {
-		final oldCriticalIds = getCriticalAlertIds(_status);
-		final newCriticalIds = getCriticalAlertIds(newStatus);
-
-		// Build set of current alert IDs for cleanup
-		final currentAlertIds = newStatus.activeAlerts.map((a) => a.id).toSet();
-
-		// Remove acknowledged IDs for alerts that no longer exist
-		_acknowledgedAlertIds.retainWhere(
-			(id) => currentAlertIds.contains(id) || id.startsWith('__'),
-		);
-
-		// Reset acknowledgement for alerts that reappeared with newer timestamp
-		for (final alert in newStatus.activeAlerts) {
-			final lastSeen = _lastSeenTimestamps[alert.id];
-			if (lastSeen != null && alert.timestamp.isAfter(lastSeen)) {
-				_acknowledgedAlertIds.remove(alert.id);
-			}
-		}
-
-		// Update last-seen timestamps
-		_lastSeenTimestamps.clear();
-		for (final alert in newStatus.activeAlerts) {
-			_lastSeenTimestamps[alert.id] = alert.timestamp;
-		}
-
-		// If new critical alerts appeared, clear acknowledgements for them
-		// so the overlay re-shows
-		final newUnseenCritical = newCriticalIds.difference(oldCriticalIds);
-		if (newUnseenCritical.isNotEmpty) {
-			_acknowledgedAlertIds.removeAll(newUnseenCritical);
-		}
+		// Clear optimistic cache: server state is now the truth.
+		// Keep only IDs that are still pending (in-flight request).
+		_optimisticAckIds.retainWhere((id) => _pendingAckIds.contains(id));
 
 		_status = newStatus;
 		_cachedSortedAlerts = null;
@@ -234,37 +253,103 @@ class SecurityOverlayController extends ChangeNotifier {
 		notifyListeners();
 	}
 
-	/// Acknowledge a single alert by ID.
-	void acknowledgeAlert(String alertId) {
-		if (_acknowledgedAlertIds.add(alertId)) {
+	/// Acknowledge a single alert by ID with optimistic update + API call.
+	/// Falls back to local-only if no repository is available.
+	Future<bool> acknowledgeAlert(String alertId) async {
+		if (_isConnectionOffline) return false;
+
+		// Optimistic update
+		_optimisticAckIds.add(alertId);
+		notifyListeners();
+
+		if (_repository == null) return true;
+
+		_pendingAckIds.add(alertId);
+
+		try {
+			await _repository.acknowledgeAlert(alertId);
+			_pendingAckIds.remove(alertId);
+			_optimisticAckIds.remove(alertId);
+			// fetchStatus in repository already updates, but we need to sync
+			return true;
+		} catch (e) {
+			_pendingAckIds.remove(alertId);
+			_optimisticAckIds.remove(alertId);
 			notifyListeners();
+
+			if (kDebugMode) {
+				debugPrint('[SECURITY MODULE] Error acknowledging alert $alertId: $e');
+			}
+			return false;
 		}
 	}
 
-	/// Acknowledge all currently active alerts.
-	void acknowledgeAllAlerts() {
-		bool changed = false;
+	/// Acknowledge all currently active alerts with optimistic update + API call.
+	/// Falls back to local-only if no repository is available.
+	Future<bool> acknowledgeAllAlerts() async {
+		if (_isConnectionOffline) return false;
+
+		// Optimistic update
+		final idsToAck = <String>{};
 		for (final alert in _status.activeAlerts) {
-			if (_acknowledgedAlertIds.add(alert.id)) {
-				changed = true;
-			}
+			idsToAck.add(alert.id);
 		}
 		// Also acknowledge synthetic critical IDs for overlay suppression
 		final criticalIds = getCriticalAlertIds(_status);
-		for (final id in criticalIds) {
-			if (_acknowledgedAlertIds.add(id)) {
-				changed = true;
-			}
-		}
-		if (changed) {
+		idsToAck.addAll(criticalIds);
+
+		_optimisticAckIds.addAll(idsToAck);
+		notifyListeners();
+
+		if (_repository == null) return true;
+
+		_pendingAckIds.addAll(idsToAck);
+
+		try {
+			await _repository.acknowledgeAllAlerts();
+			_pendingAckIds.removeAll(idsToAck);
+			_optimisticAckIds.removeAll(idsToAck);
+			return true;
+		} catch (e) {
+			_pendingAckIds.removeAll(idsToAck);
+			_optimisticAckIds.removeAll(idsToAck);
 			notifyListeners();
+
+			if (kDebugMode) {
+				debugPrint('[SECURITY MODULE] Error acknowledging all alerts: $e');
+			}
+			return false;
 		}
 	}
 
-	/// Acknowledge current critical alerts (dismiss overlay for current session).
-	void acknowledgeCurrentAlerts() {
+	/// Acknowledge current critical alerts for overlay dismissal.
+	/// Uses API if available, otherwise local optimistic only.
+	Future<bool> acknowledgeCurrentAlerts() async {
+		if (_isConnectionOffline) return false;
+
 		final criticalIds = getCriticalAlertIds(_status);
-		_acknowledgedAlertIds.addAll(criticalIds);
+		_optimisticAckIds.addAll(criticalIds);
 		notifyListeners();
+
+		if (_repository == null) return true;
+
+		// Acknowledge all via API (covers all critical alerts)
+		_pendingAckIds.addAll(criticalIds);
+
+		try {
+			await _repository.acknowledgeAllAlerts();
+			_pendingAckIds.removeAll(criticalIds);
+			_optimisticAckIds.removeAll(criticalIds);
+			return true;
+		} catch (e) {
+			_pendingAckIds.removeAll(criticalIds);
+			_optimisticAckIds.removeAll(criticalIds);
+			notifyListeners();
+
+			if (kDebugMode) {
+				debugPrint('[SECURITY MODULE] Error acknowledging current alerts: $e');
+			}
+			return false;
+		}
 	}
 }

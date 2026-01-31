@@ -60,7 +60,7 @@ class SecurityScreen extends StatelessWidget {
 												),
 											),
 										),
-										if (totalAlerts > 0)
+										if (totalAlerts > 0 && !controller.isConnectionOffline)
 											GestureDetector(
 												onTap: () => controller.acknowledgeAllAlerts(),
 												child: Container(
@@ -174,7 +174,9 @@ class SecurityScreen extends StatelessWidget {
 							screenService,
 							localizations,
 							isAcknowledged: isAcked,
-							onAcknowledge: () => controller.acknowledgeAlert(alert.id),
+							onAcknowledge: controller.isConnectionOffline
+								? null
+								: () => controller.acknowledgeAlert(alert.id),
 							key: ValueKey(alert.id),
 						),
 					),

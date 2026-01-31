@@ -36,6 +36,22 @@ class SecurityStatusRepository extends ChangeNotifier {
 		}
 	}
 
+	Future<void> acknowledgeAlert(String alertId) async {
+		final response = await _dio.patch('/modules/security/alerts/$alertId/ack');
+
+		if (response.statusCode == 200) {
+			await fetchStatus();
+		}
+	}
+
+	Future<void> acknowledgeAllAlerts() async {
+		final response = await _dio.patch('/modules/security/alerts/ack');
+
+		if (response.statusCode == 200) {
+			await fetchStatus();
+		}
+	}
+
 	void updateFromJson(Map<String, dynamic> json) {
 		try {
 			_status = SecurityStatusModel.fromJson(_unwrapPayload(json));
