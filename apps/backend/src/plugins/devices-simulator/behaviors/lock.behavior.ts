@@ -52,7 +52,12 @@ export class LockRealisticBehavior extends BaseDeviceBehavior {
 				// Simulate battery drain on each action
 				if (this.hasChannel(device, ChannelCategory.BATTERY)) {
 					const currentBattery = this.getOrInitStateFromDevice(
-						state, 'battery', device, ChannelCategory.BATTERY, PropertyCategory.PERCENTAGE, 100,
+						state,
+						'battery',
+						device,
+						ChannelCategory.BATTERY,
+						PropertyCategory.PERCENTAGE,
+						100,
 					);
 					const newBattery = Math.max(0, currentBattery - LockRealisticBehavior.BATTERY_DRAIN_PER_ACTION);
 					this.setStateValue(state, 'battery', newBattery);

@@ -48,13 +48,7 @@ export class SimulatorDevicePlatform implements IDevicePlatform {
 
 			// Notify behavior manager about the property change so it can schedule
 			// realistic follow-up updates (e.g., gradual temperature convergence)
-			this.behaviorManager.handlePropertyChange(
-				device,
-				channel.category,
-				property.category,
-				value,
-				previousValue,
-			);
+			this.behaviorManager.handlePropertyChange(device, channel.category, property.category, value, previousValue);
 
 			return true;
 		} catch (error) {

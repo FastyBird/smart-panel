@@ -196,8 +196,8 @@ export class DeviceBehaviorManagerService implements OnModuleDestroy {
 			// Ensure tick timer is running if we have active transitions
 			this.ensureTickTimer();
 		} catch (error: unknown) {
-			const err = error instanceof Error ? error : new Error(String(error));
-			this.logger.error(`Error in behavior ${behavior.getType()} for device ${device.id}: ${err.message}`);
+			const message = error instanceof Error ? error.message : 'Unknown error';
+			this.logger.error(`Error in behavior ${behavior.getType()} for device ${device.id}: ${message}`);
 		}
 	}
 
@@ -239,8 +239,8 @@ export class DeviceBehaviorManagerService implements OnModuleDestroy {
 					propertiesUpdated += updated;
 				}
 			} catch (error: unknown) {
-				const err = error instanceof Error ? error : new Error(String(error));
-				this.logger.error(`Error processing tick for device ${deviceId}: ${err.message}`);
+				const message = error instanceof Error ? error.message : 'Unknown error';
+				this.logger.error(`Error processing tick for device ${deviceId}: ${message}`);
 			}
 		}
 
@@ -278,8 +278,8 @@ export class DeviceBehaviorManagerService implements OnModuleDestroy {
 				});
 				updated++;
 			} catch (error: unknown) {
-				const err = error instanceof Error ? error : new Error(String(error));
-				this.logger.warn(`Failed to apply behavior result for property ${property.id}: ${err.message}`);
+				const message = error instanceof Error ? error.message : 'Unknown error';
+				this.logger.warn(`Failed to apply behavior result for property ${property.id}: ${message}`);
 			}
 		}
 

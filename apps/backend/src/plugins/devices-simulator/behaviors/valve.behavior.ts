@@ -39,7 +39,12 @@ export class ValveRealisticBehavior extends BaseDeviceBehavior {
 			if (event.propertyCategory === PropertyCategory.ON) {
 				const opening = event.value === true;
 				const currentPosition = this.getOrInitStateFromDevice(
-					state, 'position', device, ChannelCategory.VALVE, PropertyCategory.PERCENTAGE, opening ? 0 : 100,
+					state,
+					'position',
+					device,
+					ChannelCategory.VALVE,
+					PropertyCategory.PERCENTAGE,
+					opening ? 0 : 100,
 				);
 				const targetPosition = opening ? 100 : 0;
 
@@ -61,7 +66,12 @@ export class ValveRealisticBehavior extends BaseDeviceBehavior {
 			if (event.propertyCategory === PropertyCategory.PERCENTAGE) {
 				const targetPosition = event.value as number;
 				const currentPosition = this.getOrInitStateFromDevice(
-					state, 'position', device, ChannelCategory.VALVE, PropertyCategory.PERCENTAGE, 0,
+					state,
+					'position',
+					device,
+					ChannelCategory.VALVE,
+					PropertyCategory.PERCENTAGE,
+					0,
 				);
 
 				this.setStateValue(state, 'targetPosition', targetPosition);
@@ -81,20 +91,13 @@ export class ValveRealisticBehavior extends BaseDeviceBehavior {
 		return updates;
 	}
 
-	override tick(
-		device: SimulatorDeviceEntity,
-		state: DeviceBehaviorState,
-		now: number,
-	): BehaviorTickResult[] {
+	override tick(device: SimulatorDeviceEntity, state: DeviceBehaviorState, now: number): BehaviorTickResult[] {
 		const results = super.tick(device, state, now);
 		const additional: BehaviorTickResult[] = [];
 
 		// Track position in state and update flow rate
 		for (const result of results) {
-			if (
-				result.channelCategory === ChannelCategory.VALVE &&
-				result.propertyCategory === PropertyCategory.PERCENTAGE
-			) {
+			if (result.channelCategory === ChannelCategory.VALVE && result.propertyCategory === PropertyCategory.PERCENTAGE) {
 				this.setStateValue(state, 'position', result.value);
 
 				// Simulate flow rate proportional to valve position

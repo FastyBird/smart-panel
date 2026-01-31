@@ -39,7 +39,12 @@ export class WindowCoveringRealisticBehavior extends BaseDeviceBehavior {
 			if (event.propertyCategory === PropertyCategory.COMMAND) {
 				const command = event.value as string;
 				const currentPosition = this.getOrInitStateFromDevice(
-					state, 'position', device, ChannelCategory.WINDOW_COVERING, PropertyCategory.POSITION, 0,
+					state,
+					'position',
+					device,
+					ChannelCategory.WINDOW_COVERING,
+					PropertyCategory.POSITION,
+					0,
 				);
 
 				if (command === 'stop') {
@@ -57,9 +62,7 @@ export class WindowCoveringRealisticBehavior extends BaseDeviceBehavior {
 				} else {
 					const targetPosition = command === 'open' ? 100 : 0;
 					const distance = Math.abs(targetPosition - currentPosition);
-					const travelTime = Math.round(
-						(distance / 100) * WindowCoveringRealisticBehavior.FULL_TRAVEL_TIME_MS,
-					);
+					const travelTime = Math.round((distance / 100) * WindowCoveringRealisticBehavior.FULL_TRAVEL_TIME_MS);
 
 					this.scheduleTravel(state, updates, currentPosition, targetPosition, travelTime);
 				}
@@ -68,12 +71,15 @@ export class WindowCoveringRealisticBehavior extends BaseDeviceBehavior {
 			if (event.propertyCategory === PropertyCategory.POSITION) {
 				const targetPosition = event.value as number;
 				const currentPosition = this.getOrInitStateFromDevice(
-					state, 'position', device, ChannelCategory.WINDOW_COVERING, PropertyCategory.POSITION, 0,
+					state,
+					'position',
+					device,
+					ChannelCategory.WINDOW_COVERING,
+					PropertyCategory.POSITION,
+					0,
 				);
 				const distance = Math.abs(targetPosition - currentPosition);
-				const travelTime = Math.round(
-					(distance / 100) * WindowCoveringRealisticBehavior.FULL_TRAVEL_TIME_MS,
-				);
+				const travelTime = Math.round((distance / 100) * WindowCoveringRealisticBehavior.FULL_TRAVEL_TIME_MS);
 
 				this.scheduleTravel(state, updates, currentPosition, targetPosition, travelTime);
 			}
@@ -82,11 +88,7 @@ export class WindowCoveringRealisticBehavior extends BaseDeviceBehavior {
 		return updates;
 	}
 
-	override tick(
-		device: SimulatorDeviceEntity,
-		state: DeviceBehaviorState,
-		now: number,
-	): BehaviorTickResult[] {
+	override tick(device: SimulatorDeviceEntity, state: DeviceBehaviorState, now: number): BehaviorTickResult[] {
 		const results = super.tick(device, state, now);
 
 		for (const result of results) {

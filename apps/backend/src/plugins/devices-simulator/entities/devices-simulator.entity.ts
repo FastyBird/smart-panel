@@ -48,8 +48,7 @@ export class SimulatorDeviceEntity extends DeviceEntity {
 	})
 	@Expose({ name: 'behavior_mode' })
 	@Transform(
-		({ obj }: { obj: { behavior_mode?: string; behaviorMode?: string } }) =>
-			obj.behavior_mode ?? obj.behaviorMode,
+		({ obj }: { obj: { behavior_mode?: string; behaviorMode?: string } }) => obj.behavior_mode ?? obj.behaviorMode,
 		{ toClassOnly: true },
 	)
 	@Column({ default: 'default' })

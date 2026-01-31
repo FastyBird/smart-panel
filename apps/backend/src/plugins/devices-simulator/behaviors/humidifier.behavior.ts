@@ -82,11 +82,7 @@ export class HumidifierRealisticBehavior extends BaseDeviceBehavior {
 		return updates;
 	}
 
-	override tick(
-		device: SimulatorDeviceEntity,
-		state: DeviceBehaviorState,
-		now: number,
-	): BehaviorTickResult[] {
+	override tick(device: SimulatorDeviceEntity, state: DeviceBehaviorState, now: number): BehaviorTickResult[] {
 		const results = super.tick(device, state, now);
 
 		// Track current humidity in state
@@ -107,7 +103,10 @@ export class HumidifierRealisticBehavior extends BaseDeviceBehavior {
 			const elapsedMinutes = (now - lastTick) / 60000;
 
 			if (elapsedMinutes > 0) {
-				const newLevel = Math.max(0, waterLevel - elapsedMinutes * HumidifierRealisticBehavior.WATER_CONSUMPTION_PER_MINUTE);
+				const newLevel = Math.max(
+					0,
+					waterLevel - elapsedMinutes * HumidifierRealisticBehavior.WATER_CONSUMPTION_PER_MINUTE,
+				);
 				this.setStateValue(state, 'waterLevel', newLevel);
 				this.setStateValue(state, 'lastWaterTick', now);
 
@@ -144,7 +143,12 @@ export class HumidifierRealisticBehavior extends BaseDeviceBehavior {
 	): void {
 		const targetHumidity = this.getStateValue(state, 'targetHumidity', 50) as number;
 		const currentHumidity = this.getOrInitStateFromDevice(
-			state, 'currentHumidity', device, ChannelCategory.HUMIDITY, PropertyCategory.HUMIDITY, 40,
+			state,
+			'currentHumidity',
+			device,
+			ChannelCategory.HUMIDITY,
+			PropertyCategory.HUMIDITY,
+			40,
 		);
 		const diff = Math.abs(targetHumidity - currentHumidity);
 

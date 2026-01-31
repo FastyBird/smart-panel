@@ -24,6 +24,18 @@ import { ExtendedDiscriminatorService } from '../../modules/swagger/services/ext
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
 
+import {
+	AirConditionerRealisticBehavior,
+	DoorRealisticBehavior,
+	HumidifierRealisticBehavior,
+	LockRealisticBehavior,
+	SpeakerRealisticBehavior,
+	TelevisionDelayedBehavior,
+	ThermostatRealisticBehavior,
+	ValveRealisticBehavior,
+	WaterHeaterRealisticBehavior,
+	WindowCoveringRealisticBehavior,
+} from './behaviors';
 import { GenerateDeviceCommand } from './commands/generate-device.command';
 import { PopulateValuesCommand } from './commands/populate-values.command';
 import { ScenarioCommand } from './commands/scenario.command';
@@ -51,18 +63,6 @@ import {
 } from './entities/devices-simulator.entity';
 import { SimulatorConfigModel } from './models/config.model';
 import { SimulatorDevicePlatform } from './platforms/simulator-device.platform';
-import {
-	AirConditionerRealisticBehavior,
-	DoorRealisticBehavior,
-	HumidifierRealisticBehavior,
-	LockRealisticBehavior,
-	SpeakerRealisticBehavior,
-	TelevisionDelayedBehavior,
-	ThermostatRealisticBehavior,
-	ValveRealisticBehavior,
-	WaterHeaterRealisticBehavior,
-	WindowCoveringRealisticBehavior,
-} from './behaviors';
 import { DeviceBehaviorManagerService } from './services/device-behavior-manager.service';
 import { DeviceGeneratorService } from './services/device-generator.service';
 import { ScenarioExecutorService } from './services/scenario-executor.service';

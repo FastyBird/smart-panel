@@ -45,7 +45,12 @@ export class ThermostatRealisticBehavior extends BaseDeviceBehavior {
 		) {
 			const targetTemp = event.value as number;
 			const currentTemp = this.getOrInitStateFromDevice(
-				state, 'currentTemp', device, ChannelCategory.TEMPERATURE, PropertyCategory.TEMPERATURE, 20,
+				state,
+				'currentTemp',
+				device,
+				ChannelCategory.TEMPERATURE,
+				PropertyCategory.TEMPERATURE,
+				20,
 			);
 			const diff = Math.abs(targetTemp - currentTemp);
 
@@ -137,6 +142,60 @@ export class ThermostatRealisticBehavior extends BaseDeviceBehavior {
 					delayMs: 0,
 					durationMs: 0,
 				});
+			} else {
+				// Turned on - re-schedule temperature transition if we have a target
+				const targetTemp = this.getStateValue(state, 'targetTemp', null as unknown as number) as number | null;
+
+				if (targetTemp !== null) {
+					const currentTemp = this.getOrInitStateFromDevice(
+						state,
+						'currentTemp',
+						device,
+						ChannelCategory.TEMPERATURE,
+						PropertyCategory.TEMPERATURE,
+						20,
+					);
+					const diff = Math.abs(targetTemp - currentTemp);
+
+					if (diff >= ThermostatRealisticBehavior.SETTLING_THRESHOLD) {
+						const isHeating = targetTemp > currentTemp;
+						const ratePerMinute = isHeating
+							? ThermostatRealisticBehavior.HEAT_RATE_PER_MINUTE
+							: ThermostatRealisticBehavior.COOL_RATE_PER_MINUTE;
+						const durationMs = Math.round((diff / ratePerMinute) * 60 * 1000);
+
+						this.setStateValue(state, 'isHeating', isHeating);
+						this.cancelTransitions(state, ChannelCategory.TEMPERATURE, PropertyCategory.TEMPERATURE);
+
+						updates.push({
+							channelCategory: ChannelCategory.TEMPERATURE,
+							propertyCategory: PropertyCategory.TEMPERATURE,
+							targetValue: targetTemp,
+							startValue: currentTemp,
+							delayMs: 0,
+							durationMs,
+						});
+
+						// Activate heater/cooler status
+						this.cancelTransitions(state, event.channelCategory, PropertyCategory.STATUS);
+
+						updates.push({
+							channelCategory: event.channelCategory,
+							propertyCategory: PropertyCategory.STATUS,
+							targetValue: true,
+							delayMs: 0,
+							durationMs: 0,
+						});
+
+						updates.push({
+							channelCategory: event.channelCategory,
+							propertyCategory: PropertyCategory.STATUS,
+							targetValue: false,
+							delayMs: durationMs,
+							durationMs: 0,
+						});
+					}
+				}
 			}
 		}
 

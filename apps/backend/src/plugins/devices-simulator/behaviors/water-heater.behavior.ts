@@ -71,11 +71,7 @@ export class WaterHeaterRealisticBehavior extends BaseDeviceBehavior {
 		return updates;
 	}
 
-	override tick(
-		device: SimulatorDeviceEntity,
-		state: DeviceBehaviorState,
-		now: number,
-	): BehaviorTickResult[] {
+	override tick(device: SimulatorDeviceEntity, state: DeviceBehaviorState, now: number): BehaviorTickResult[] {
 		const results = super.tick(device, state, now);
 
 		for (const result of results) {
@@ -90,9 +86,7 @@ export class WaterHeaterRealisticBehavior extends BaseDeviceBehavior {
 		// Report power consumption only while actively heating (not during passive cooling)
 		const activelyHeating = this.getStateValue(state, 'activelyHeating', false) as boolean;
 		const hasTemperatureTransition = state.activeUpdates.some(
-			(u) =>
-				u.channelCategory === ChannelCategory.TEMPERATURE &&
-				u.propertyCategory === PropertyCategory.TEMPERATURE,
+			(u) => u.channelCategory === ChannelCategory.TEMPERATURE && u.propertyCategory === PropertyCategory.TEMPERATURE,
 		);
 
 		if (activelyHeating && hasTemperatureTransition && this.hasChannel(device, ChannelCategory.ELECTRICAL_POWER)) {
@@ -122,7 +116,12 @@ export class WaterHeaterRealisticBehavior extends BaseDeviceBehavior {
 
 		const targetTemp = this.getStateValue(state, 'targetTemp', 50) as number;
 		const currentTemp = this.getOrInitStateFromDevice(
-			state, 'currentTemp', device, ChannelCategory.TEMPERATURE, PropertyCategory.TEMPERATURE, 20,
+			state,
+			'currentTemp',
+			device,
+			ChannelCategory.TEMPERATURE,
+			PropertyCategory.TEMPERATURE,
+			20,
 		);
 		const diff = targetTemp - currentTemp;
 

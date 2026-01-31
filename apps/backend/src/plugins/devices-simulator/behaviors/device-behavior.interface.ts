@@ -91,11 +91,7 @@ export interface IDeviceBehavior {
 	 * Called on each simulation tick to compute current values for active transitions.
 	 * Returns property values that should be applied now.
 	 */
-	tick(
-		device: SimulatorDeviceEntity,
-		state: DeviceBehaviorState,
-		now: number,
-	): BehaviorTickResult[];
+	tick(device: SimulatorDeviceEntity, state: DeviceBehaviorState, now: number): BehaviorTickResult[];
 }
 
 /**
@@ -111,11 +107,7 @@ export abstract class BaseDeviceBehavior implements IDeviceBehavior {
 		state: DeviceBehaviorState,
 	): ScheduledPropertyUpdate[];
 
-	tick(
-		device: SimulatorDeviceEntity,
-		state: DeviceBehaviorState,
-		now: number,
-	): BehaviorTickResult[] {
+	tick(device: SimulatorDeviceEntity, state: DeviceBehaviorState, now: number): BehaviorTickResult[] {
 		const results: BehaviorTickResult[] = [];
 		const completed: number[] = [];
 

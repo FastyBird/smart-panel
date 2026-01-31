@@ -73,11 +73,7 @@ export class AirConditionerRealisticBehavior extends BaseDeviceBehavior {
 		return updates;
 	}
 
-	override tick(
-		device: SimulatorDeviceEntity,
-		state: DeviceBehaviorState,
-		now: number,
-	): BehaviorTickResult[] {
+	override tick(device: SimulatorDeviceEntity, state: DeviceBehaviorState, now: number): BehaviorTickResult[] {
 		const results = super.tick(device, state, now);
 
 		// Track current temperature in state
@@ -110,6 +106,7 @@ export class AirConditionerRealisticBehavior extends BaseDeviceBehavior {
 			// Reset compressor state so next power-on gets startup delay
 			const otherMode = mode === 'cool' ? 'heat' : 'cool';
 			const otherOn = this.getStateValue(state, `${otherMode}On`, false) as boolean;
+
 			if (!otherOn) {
 				this.setStateValue(state, 'compressorRunning', false);
 			}
@@ -121,6 +118,11 @@ export class AirConditionerRealisticBehavior extends BaseDeviceBehavior {
 				delayMs: 0,
 				durationMs: 0,
 			});
+
+			// If the other mode is still active, re-schedule its temperature transition
+			if (otherOn) {
+				this.scheduleTemperatureTransition(device, state, updates);
+			}
 		} else {
 			// Compressor startup delay
 			this.cancelTransitions(state, channelCategory, PropertyCategory.STATUS);
@@ -149,7 +151,12 @@ export class AirConditionerRealisticBehavior extends BaseDeviceBehavior {
 		}
 
 		const currentTemp = this.getOrInitStateFromDevice(
-			state, 'currentTemp', device, ChannelCategory.TEMPERATURE, PropertyCategory.TEMPERATURE, 22,
+			state,
+			'currentTemp',
+			device,
+			ChannelCategory.TEMPERATURE,
+			PropertyCategory.TEMPERATURE,
+			22,
 		);
 		let targetTemp: number;
 
