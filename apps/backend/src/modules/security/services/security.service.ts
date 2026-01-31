@@ -3,8 +3,8 @@ import { Injectable } from '@nestjs/common';
 import { SecurityAlertAckEntity } from '../entities/security-alert-ack.entity';
 import { SecurityStatusModel } from '../models/security-status.model';
 
-import { SecurityAlertAckService } from './security-alert-ack.service';
 import { SecurityAggregatorService } from './security-aggregator.service';
+import { SecurityAlertAckService } from './security-alert-ack.service';
 
 @Injectable()
 export class SecurityService {

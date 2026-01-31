@@ -4,8 +4,8 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { SecurityAlertAckEntity } from '../entities/security-alert-ack.entity';
 import { DefaultSecurityProvider } from '../providers/default-security.provider';
 import { SECURITY_STATE_PROVIDERS, Severity } from '../security.constants';
-import { SecurityAlertAckService } from '../services/security-alert-ack.service';
 import { SecurityAggregatorService } from '../services/security-aggregator.service';
+import { SecurityAlertAckService } from '../services/security-alert-ack.service';
 import { SecurityService } from '../services/security.service';
 
 import { SecurityController } from './security.controller';

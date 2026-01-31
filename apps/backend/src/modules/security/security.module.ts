@@ -21,8 +21,8 @@ import {
 	SECURITY_STATE_PROVIDERS,
 } from './security.constants';
 import { SECURITY_SWAGGER_EXTRA_MODELS } from './security.openapi';
-import { SecurityAlertAckService } from './services/security-alert-ack.service';
 import { SecurityAggregatorService } from './services/security-aggregator.service';
+import { SecurityAlertAckService } from './services/security-alert-ack.service';
 import { SecurityService } from './services/security.service';
 
 @ApiTag({

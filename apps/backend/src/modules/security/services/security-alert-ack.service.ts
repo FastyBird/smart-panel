@@ -1,6 +1,7 @@
+import { In, Not, Repository } from 'typeorm';
+
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Not, Repository } from 'typeorm';
 
 import { SecurityAlertAckEntity } from '../entities/security-alert-ack.entity';
 

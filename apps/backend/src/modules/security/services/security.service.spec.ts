@@ -1,9 +1,11 @@
+/* eslint-disable @typescript-eslint/unbound-method */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { SecurityAlertAckEntity } from '../entities/security-alert-ack.entity';
 import { SecurityAlertModel, SecurityStatusModel } from '../models/security-status.model';
 import { SecurityAlertType, Severity } from '../security.constants';
 
-import { SecurityAlertAckService } from './security-alert-ack.service';
 import { SecurityAggregatorService } from './security-aggregator.service';
+import { SecurityAlertAckService } from './security-alert-ack.service';
 import { SecurityService } from './security.service';
 
 function makeAlert(id: string, timestamp: string, severity: Severity = Severity.WARNING): SecurityAlertModel {
@@ -91,10 +93,7 @@ describe('SecurityService', () => {
 
 			const result = await service.getStatus();
 			expect(result.activeAlerts[0].acknowledged).toBe(false);
-			expect(ackService.upsertLastEventAt).toHaveBeenCalledWith(
-				'sensor:dev1:smoke',
-				new Date('2025-01-02T00:00:00Z'),
-			);
+			expect(ackService.upsertLastEventAt).toHaveBeenCalledWith('sensor:dev1:smoke', new Date('2025-01-02T00:00:00Z'));
 		});
 
 		it('should cleanup stale ack records', async () => {
@@ -118,10 +117,7 @@ describe('SecurityService', () => {
 
 	describe('acknowledgeAllAlerts', () => {
 		it('should acknowledge all active alert ids', async () => {
-			const alerts = [
-				makeAlert('a', '2025-01-01T00:00:00Z'),
-				makeAlert('b', '2025-01-01T00:00:00Z'),
-			];
+			const alerts = [makeAlert('a', '2025-01-01T00:00:00Z'), makeAlert('b', '2025-01-01T00:00:00Z')];
 			aggregator.aggregate.mockResolvedValue(makeStatus(alerts));
 			ackService.findByIds.mockResolvedValue([
 				{ id: 'a', acknowledged: true } as SecurityAlertAckEntity,

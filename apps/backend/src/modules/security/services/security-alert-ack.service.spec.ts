@@ -1,6 +1,8 @@
+/* eslint-disable @typescript-eslint/unbound-method */
+import { In, Not, Repository } from 'typeorm';
+
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { In, Not, Repository } from 'typeorm';
 
 import { SecurityAlertAckEntity } from '../entities/security-alert-ack.entity';
 
