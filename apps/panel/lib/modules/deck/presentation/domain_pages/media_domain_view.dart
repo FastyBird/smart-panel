@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:event_bus/event_bus.dart';
@@ -27,7 +26,6 @@ import 'package:fastybird_smart_panel/modules/spaces/service.dart';
 import 'package:fastybird_smart_panel/modules/spaces/services/media_activity_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 import 'package:provider/provider.dart';
 
@@ -1314,11 +1312,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 								label: const Text('Deactivate'),
 								onPressed: _deactivateActivity,
 							),
-							const Spacer(),
-							TextButton(
-								onPressed: () => _showFailureDetailsSheet(context, state),
-								child: const Text('Details'),
-							),
 						],
 					),
 				],
@@ -1328,53 +1321,92 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 
 	void _showFailureDetailsSheet(BuildContext context, MediaActiveStateModel state) {
 		final lastResult = state.lastResult;
+		final isDark = Theme.of(context).brightness == Brightness.dark;
+		final errors = lastResult?.errors ?? [];
+		final warnings = lastResult?.warnings ?? [];
+
+		final bgColor = isDark ? AppFillColorDark.base : AppFillColorLight.blank;
+		final handleColor = isDark ? AppFillColorDark.darker : AppFillColorLight.darker;
+		final textColor = isDark ? AppTextColorDark.primary : AppTextColorLight.primary;
+		final secondaryColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
 
 		showModalBottomSheet(
 			context: context,
 			isScrollControlled: true,
-			shape: RoundedRectangleBorder(
-				borderRadius: BorderRadius.vertical(top: Radius.circular(AppBorderRadius.round)),
-			),
+			backgroundColor: AppColors.blank,
 			builder: (ctx) {
-				final errors = lastResult?.errors ?? [];
-				final warnings = lastResult?.warnings ?? [];
-
-				return DraggableScrollableSheet(
-					initialChildSize: 0.5,
-					minChildSize: 0.3,
-					maxChildSize: 0.85,
-					expand: false,
-					builder: (ctx, scrollController) {
-						return Padding(
-							padding: EdgeInsets.all(AppSpacings.pLg),
-							child: ListView(
-								controller: scrollController,
+				return Container(
+					decoration: BoxDecoration(
+						color: bgColor,
+						borderRadius: BorderRadius.vertical(top: Radius.circular(_scale(24))),
+					),
+					child: SafeArea(
+						top: false,
+						child: Padding(
+							padding: EdgeInsets.fromLTRB(
+								AppSpacings.pLg,
+								_scale(12),
+								AppSpacings.pLg,
+								AppSpacings.pXl,
+							),
+							child: Column(
+								mainAxisSize: MainAxisSize.min,
+								crossAxisAlignment: CrossAxisAlignment.start,
 								children: [
-									// Header
+									// Handle
+									Center(
+										child: Container(
+											width: _scale(36),
+											height: _scale(4),
+											decoration: BoxDecoration(
+												color: handleColor,
+												borderRadius: BorderRadius.circular(AppBorderRadius.small),
+											),
+										),
+									),
+									AppSpacings.spacingMdVertical,
+
+									// Header with close button
 									Row(
+										mainAxisAlignment: MainAxisAlignment.spaceBetween,
 										children: [
-											Icon(MdiIcons.informationOutline, size: _scale(24)),
-											AppSpacings.spacingMdHorizontal,
 											Text(
 												'Activation Details',
-												style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
-													fontWeight: FontWeight.bold,
+												style: TextStyle(
+													color: textColor,
+													fontSize: AppFontSize.extraLarge,
+													fontWeight: FontWeight.w600,
+												),
+											),
+											GestureDetector(
+												onTap: () => Navigator.pop(ctx),
+												child: Container(
+													width: _scale(32),
+													height: _scale(32),
+													decoration: BoxDecoration(
+														color: handleColor,
+														borderRadius: BorderRadius.circular(_scale(16)),
+													),
+													child: Icon(
+														MdiIcons.close,
+														color: secondaryColor,
+														size: _scale(18),
+													),
 												),
 											),
 										],
 									),
-									AppSpacings.spacingMdVertical,
+									AppSpacings.spacingLgVertical,
 
 									// Summary counts
 									if (lastResult != null) ...[
-										Row(
+										Wrap(
+											spacing: AppSpacings.pMd,
+											runSpacing: AppSpacings.pSm,
 											children: [
 												_summaryChip('Total', lastResult.stepsTotal, Colors.grey),
-												AppSpacings.spacingMdHorizontal,
 												_summaryChip('OK', lastResult.stepsSucceeded, Colors.green),
-												AppSpacings.spacingMdHorizontal,
 												_summaryChip('Errors', lastResult.errorCount, Colors.red),
-												AppSpacings.spacingMdHorizontal,
 												_summaryChip('Warnings', lastResult.warningCount, Colors.orange),
 											],
 										),
@@ -1430,7 +1462,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 									],
 
 									// Actions
-									const Divider(),
 									AppSpacings.spacingMdVertical,
 									Row(
 										children: [
@@ -1458,16 +1489,10 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 											),
 										],
 									),
-									AppSpacings.spacingMdVertical,
-									TextButton.icon(
-										icon: Icon(MdiIcons.contentCopy, size: _scale(16)),
-										label: const Text('Copy debug JSON'),
-										onPressed: () => _copyDebugJson(state),
-									),
 								],
 							),
-						);
-					},
+						),
+					),
 				);
 			},
 		);
@@ -1529,37 +1554,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 
 	void _deactivateActivity() {
 		_onActivitySelected(MediaActivityKey.off);
-	}
-
-	Future<void> _copyDebugJson(MediaActiveStateModel state) async {
-		final data = {
-			'activityKey': state.activityKey?.name,
-			'state': state.state.name,
-			'warnings': state.warnings,
-			if (state.lastResult != null) 'lastResult': {
-				'stepsTotal': state.lastResult!.stepsTotal,
-				'stepsSucceeded': state.lastResult!.stepsSucceeded,
-				'stepsFailed': state.lastResult!.stepsFailed,
-				'warningCount': state.lastResult!.warningCount,
-				'errorCount': state.lastResult!.errorCount,
-				'errors': state.lastResult!.errors.map((e) => e.toJson()).toList(),
-				'warnings': state.lastResult!.warnings.map((e) => e.toJson()).toList(),
-			},
-		};
-		try {
-			await Clipboard.setData(ClipboardData(text: const JsonEncoder.withIndent('  ').convert(data)));
-			if (mounted) {
-				ScaffoldMessenger.of(context).showSnackBar(
-					const SnackBar(content: Text('Debug JSON copied to clipboard')),
-				);
-			}
-		} catch (_) {
-			if (mounted) {
-				ScaffoldMessenger.of(context).showSnackBar(
-					const SnackBar(content: Text('Failed to copy to clipboard')),
-				);
-			}
-		}
 	}
 
 	// ============================================
