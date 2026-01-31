@@ -6,10 +6,10 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 
 | Status | Count |
 |--------|-------|
-| Done | 94 |
+| Done | 95 |
 | In Progress | 8 |
 | Planned | 27 |
-| **Total** | **129** |
+| **Total** | **130** |
 
 ---
 
@@ -112,6 +112,7 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | FEATURE-PANEL-SECURITY-OVERLAY | Panel app – Security overlay & intent rules (forced alerts UX) | panel | medium |
 | FEATURE-PANEL-SECURITY-ENTRY-POINTS | Panel app – Entry points snapshot (doors/windows overview) | panel | medium |
 | FEATURE-PANEL-SECURITY-SCREEN | Panel app – Security screen UI (status + active alerts list) | panel | medium |
+| FEATURE-PANEL-SECURITY-ALERTS-GROUPING | Panel app – Alerts grouping + local acknowledge UX (session-only) | panel | medium |
 
 ### In Progress
 
@@ -325,6 +326,7 @@ EPIC-EXPAND-SMART-PANEL-DOMAINS (planned)
 │   ├── FEATURE-PANEL-SECURITY-OVERLAY (done)
 │   ├── FEATURE-PANEL-SECURITY-SCREEN (done)
 │   ├── FEATURE-PANEL-SECURITY-ENTRY-POINTS (done)
+│   ├── FEATURE-PANEL-SECURITY-ALERTS-GROUPING (done)
 │   ├── FEATURE-SPACE-SECURITY-DOMAIN (planned)
 │   ├── FEATURE-SECURITY-DOMAIN-BACKEND (done)
 │   ├── FEATURE-SECURITY-PROVIDER-REGISTRY (done)
@@ -415,6 +417,7 @@ tasks/
 │   ├── FEATURE-ONBOARDING-WIZARD.md
 │   ├── FEATURE-PANEL-IDLE-MODE-SPACE-AWARE.md
 │   ├── FEATURE-PANEL-MEDIA-DOMAIN-MVP.md
+│   ├── FEATURE-PANEL-SECURITY-ALERTS-GROUPING.md
 │   ├── FEATURE-PANEL-SECURITY-ENTRY-POINTS.md
 │   ├── FEATURE-PANEL-SECURITY-OVERLAY.md
 │   ├── FEATURE-PANEL-SECURITY-SCREEN.md

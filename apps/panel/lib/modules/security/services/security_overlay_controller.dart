@@ -3,6 +3,14 @@ import 'package:fastybird_smart_panel/modules/security/models/security_status.da
 import 'package:fastybird_smart_panel/modules/security/types/security.dart';
 import 'package:flutter/foundation.dart';
 
+/// Compare two alerts by timestamp desc, then id asc.
+int _compareByTimestampThenId(SecurityAlertModel a, SecurityAlertModel b) {
+	final timestampCompare = b.timestamp.compareTo(a.timestamp);
+	if (timestampCompare != 0) return timestampCompare;
+
+	return a.id.compareTo(b.id);
+}
+
 /// Pure function: sort alerts by severity desc, timestamp desc, id asc.
 List<SecurityAlertModel> sortAlerts(List<SecurityAlertModel> alerts) {
 	final sorted = List<SecurityAlertModel>.from(alerts);
@@ -10,12 +18,41 @@ List<SecurityAlertModel> sortAlerts(List<SecurityAlertModel> alerts) {
 		final severityCompare = b.severity.rank.compareTo(a.severity.rank);
 		if (severityCompare != 0) return severityCompare;
 
-		final timestampCompare = b.timestamp.compareTo(a.timestamp);
-		if (timestampCompare != 0) return timestampCompare;
-
-		return a.id.compareTo(b.id);
+		return _compareByTimestampThenId(a, b);
 	});
 	return sorted;
+}
+
+/// Sort alerts within a single severity group: timestamp desc, then id asc.
+List<SecurityAlertModel> sortAlertsWithinGroup(List<SecurityAlertModel> alerts) {
+	final sorted = List<SecurityAlertModel>.from(alerts);
+	sorted.sort(_compareByTimestampThenId);
+	return sorted;
+}
+
+/// Group alerts by severity into ordered sections: Critical, Warning, Info.
+/// Each group is sorted by timestamp desc, then id asc.
+/// Empty groups are excluded.
+Map<Severity, List<SecurityAlertModel>> groupAlertsBySeverity(
+	List<SecurityAlertModel> alerts,
+) {
+	final groups = <Severity, List<SecurityAlertModel>>{};
+
+	for (final alert in alerts) {
+		(groups[alert.severity] ??= []).add(alert);
+	}
+
+	final result = <Severity, List<SecurityAlertModel>>{};
+
+	// Ordered: critical, warning, info
+	for (final severity in [Severity.critical, Severity.warning, Severity.info]) {
+		final group = groups[severity];
+		if (group != null && group.isNotEmpty) {
+			result[severity] = sortAlertsWithinGroup(group);
+		}
+	}
+
+	return result;
 }
 
 /// Pure function: determine if overlay should be visible.
@@ -81,15 +118,27 @@ bool _hasCriticalCondition(SecurityStatusModel status) {
 ///
 /// Combines security status, connection state, acknowledgement state,
 /// and navigation state to determine overlay visibility.
+/// Also manages per-alert acknowledgement with timestamp-based reset.
 class SecurityOverlayController extends ChangeNotifier {
 	SecurityStatusModel _status = SecurityStatusModel.empty;
 	final Set<String> _acknowledgedAlertIds = {};
+	final Map<String, DateTime> _lastSeenTimestamps = {};
 	bool _isConnectionOffline = false;
 	bool _isOnSecurityScreen = false;
 
 	List<SecurityAlertModel>? _cachedSortedAlerts;
+	Map<Severity, List<SecurityAlertModel>>? _cachedGroupedAlerts;
 
 	SecurityStatusModel get status => _status;
+
+	/// Whether all active alerts are acknowledged.
+	bool get allAlertsAcknowledged {
+		if (_status.activeAlerts.isEmpty) return false;
+
+		return _status.activeAlerts.every(
+			(alert) => _acknowledgedAlertIds.contains(alert.id),
+		);
+	}
 
 	bool get shouldShowOverlay => shouldShowSecurityOverlay(
 		status: _status,
@@ -102,6 +151,11 @@ class SecurityOverlayController extends ChangeNotifier {
 	/// Cached and invalidated when status changes.
 	List<SecurityAlertModel> get sortedAlerts {
 		return _cachedSortedAlerts ??= sortAlerts(_status.activeAlerts);
+	}
+
+	/// Alerts grouped by severity. Cached and invalidated when status changes.
+	Map<Severity, List<SecurityAlertModel>> get groupedAlerts {
+		return _cachedGroupedAlerts ??= groupAlertsBySeverity(_status.activeAlerts);
 	}
 
 	/// Top alert after sorting (first item), or null if no alerts.
@@ -124,9 +178,36 @@ class SecurityOverlayController extends ChangeNotifier {
 		return topAlert?.type.displayTitle ?? 'Security alert';
 	}
 
+	/// Check if a specific alert is acknowledged.
+	bool isAlertAcknowledged(String alertId) {
+		return _acknowledgedAlertIds.contains(alertId);
+	}
+
 	void updateStatus(SecurityStatusModel newStatus) {
 		final oldCriticalIds = getCriticalAlertIds(_status);
 		final newCriticalIds = getCriticalAlertIds(newStatus);
+
+		// Build set of current alert IDs for cleanup
+		final currentAlertIds = newStatus.activeAlerts.map((a) => a.id).toSet();
+
+		// Remove acknowledged IDs for alerts that no longer exist
+		_acknowledgedAlertIds.retainWhere(
+			(id) => currentAlertIds.contains(id) || id.startsWith('__'),
+		);
+
+		// Reset acknowledgement for alerts that reappeared with newer timestamp
+		for (final alert in newStatus.activeAlerts) {
+			final lastSeen = _lastSeenTimestamps[alert.id];
+			if (lastSeen != null && alert.timestamp.isAfter(lastSeen)) {
+				_acknowledgedAlertIds.remove(alert.id);
+			}
+		}
+
+		// Update last-seen timestamps
+		_lastSeenTimestamps.clear();
+		for (final alert in newStatus.activeAlerts) {
+			_lastSeenTimestamps[alert.id] = alert.timestamp;
+		}
 
 		// If new critical alerts appeared, clear acknowledgements for them
 		// so the overlay re-shows
@@ -137,6 +218,7 @@ class SecurityOverlayController extends ChangeNotifier {
 
 		_status = newStatus;
 		_cachedSortedAlerts = null;
+		_cachedGroupedAlerts = null;
 		notifyListeners();
 	}
 
@@ -150,6 +232,33 @@ class SecurityOverlayController extends ChangeNotifier {
 		if (_isOnSecurityScreen == onScreen) return;
 		_isOnSecurityScreen = onScreen;
 		notifyListeners();
+	}
+
+	/// Acknowledge a single alert by ID.
+	void acknowledgeAlert(String alertId) {
+		if (_acknowledgedAlertIds.add(alertId)) {
+			notifyListeners();
+		}
+	}
+
+	/// Acknowledge all currently active alerts.
+	void acknowledgeAllAlerts() {
+		bool changed = false;
+		for (final alert in _status.activeAlerts) {
+			if (_acknowledgedAlertIds.add(alert.id)) {
+				changed = true;
+			}
+		}
+		// Also acknowledge synthetic critical IDs for overlay suppression
+		final criticalIds = getCriticalAlertIds(_status);
+		for (final id in criticalIds) {
+			if (_acknowledgedAlertIds.add(id)) {
+				changed = true;
+			}
+		}
+		if (changed) {
+			notifyListeners();
+		}
 	}
 
 	/// Acknowledge current critical alerts (dismiss overlay for current session).

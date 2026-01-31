@@ -73,6 +73,56 @@ void main() {
 		});
 	});
 
+	group('groupAlertsBySeverity', () {
+		test('groups alerts into severity sections in correct order', () {
+			final alerts = [
+				_makeAlert(id: 'i1', severity: Severity.info, timestamp: DateTime(2025, 1, 1)),
+				_makeAlert(id: 'c1', severity: Severity.critical, timestamp: DateTime(2025, 1, 1)),
+				_makeAlert(id: 'w1', severity: Severity.warning, timestamp: DateTime(2025, 1, 1)),
+				_makeAlert(id: 'c2', severity: Severity.critical, timestamp: DateTime(2025, 1, 2)),
+			];
+
+			final grouped = groupAlertsBySeverity(alerts);
+
+			expect(grouped.keys.toList(), [Severity.critical, Severity.warning, Severity.info]);
+			expect(grouped[Severity.critical]!.length, 2);
+			expect(grouped[Severity.warning]!.length, 1);
+			expect(grouped[Severity.info]!.length, 1);
+		});
+
+		test('excludes empty severity groups', () {
+			final alerts = [
+				_makeAlert(id: 'c1', severity: Severity.critical),
+				_makeAlert(id: 'i1', severity: Severity.info),
+			];
+
+			final grouped = groupAlertsBySeverity(alerts);
+
+			expect(grouped.containsKey(Severity.warning), false);
+			expect(grouped.keys.toList(), [Severity.critical, Severity.info]);
+		});
+
+		test('sorts within each group by timestamp desc then id asc', () {
+			final alerts = [
+				_makeAlert(id: 'c2', severity: Severity.critical, timestamp: DateTime(2025, 1, 1)),
+				_makeAlert(id: 'c1', severity: Severity.critical, timestamp: DateTime(2025, 1, 2)),
+				_makeAlert(id: 'c3', severity: Severity.critical, timestamp: DateTime(2025, 1, 2)),
+			];
+
+			final grouped = groupAlertsBySeverity(alerts);
+			final critical = grouped[Severity.critical]!;
+
+			// c1 and c3 have same timestamp (newest), c1 < c3 by id
+			expect(critical[0].id, 'c1');
+			expect(critical[1].id, 'c3');
+			expect(critical[2].id, 'c2');
+		});
+
+		test('empty list returns empty map', () {
+			expect(groupAlertsBySeverity([]), isEmpty);
+		});
+	});
+
 	group('shouldShowSecurityOverlay', () {
 		test('returns false when no critical condition', () {
 			final result = shouldShowSecurityOverlay(
@@ -360,6 +410,304 @@ void main() {
 			));
 
 			expect(notifyCount, 1);
+		});
+	});
+
+	group('SecurityOverlayController - groupedAlerts', () {
+		late SecurityOverlayController controller;
+
+		setUp(() {
+			controller = SecurityOverlayController();
+		});
+
+		tearDown(() {
+			controller.dispose();
+		});
+
+		test('returns grouped alerts by severity', () {
+			controller.updateStatus(_makeStatus(
+				hasCriticalAlert: true,
+				activeAlerts: [
+					_makeAlert(id: 'c1', severity: Severity.critical),
+					_makeAlert(id: 'w1', severity: Severity.warning),
+					_makeAlert(id: 'i1', severity: Severity.info),
+				],
+			));
+
+			final grouped = controller.groupedAlerts;
+			expect(grouped.keys.toList(), [Severity.critical, Severity.warning, Severity.info]);
+			expect(grouped[Severity.critical]!.length, 1);
+		});
+
+		test('grouped alerts cache is invalidated on status update', () {
+			controller.updateStatus(_makeStatus(
+				activeAlerts: [_makeAlert(id: 'a', severity: Severity.info)],
+			));
+			final first = controller.groupedAlerts;
+			expect(first.length, 1);
+
+			controller.updateStatus(_makeStatus(
+				hasCriticalAlert: true,
+				activeAlerts: [
+					_makeAlert(id: 'a', severity: Severity.info),
+					_makeAlert(id: 'b', severity: Severity.critical),
+				],
+			));
+			final second = controller.groupedAlerts;
+			expect(second.length, 2);
+		});
+	});
+
+	group('SecurityOverlayController - per-alert acknowledgement', () {
+		late SecurityOverlayController controller;
+
+		setUp(() {
+			controller = SecurityOverlayController();
+		});
+
+		tearDown(() {
+			controller.dispose();
+		});
+
+		test('acknowledgeAlert marks single alert', () {
+			controller.updateStatus(_makeStatus(
+				hasCriticalAlert: true,
+				activeAlerts: [
+					_makeAlert(id: 'a'),
+					_makeAlert(id: 'b'),
+				],
+			));
+
+			controller.acknowledgeAlert('a');
+			expect(controller.isAlertAcknowledged('a'), true);
+			expect(controller.isAlertAcknowledged('b'), false);
+		});
+
+		test('acknowledgeAllAlerts marks all alerts', () {
+			controller.updateStatus(_makeStatus(
+				hasCriticalAlert: true,
+				activeAlerts: [
+					_makeAlert(id: 'a'),
+					_makeAlert(id: 'b'),
+					_makeAlert(id: 'c', severity: Severity.warning),
+				],
+			));
+
+			controller.acknowledgeAllAlerts();
+			expect(controller.isAlertAcknowledged('a'), true);
+			expect(controller.isAlertAcknowledged('b'), true);
+			expect(controller.isAlertAcknowledged('c'), true);
+		});
+
+		test('allAlertsAcknowledged returns true when all active alerts are acked', () {
+			controller.updateStatus(_makeStatus(
+				hasCriticalAlert: true,
+				activeAlerts: [
+					_makeAlert(id: 'a'),
+					_makeAlert(id: 'b'),
+				],
+			));
+
+			expect(controller.allAlertsAcknowledged, false);
+
+			controller.acknowledgeAlert('a');
+			expect(controller.allAlertsAcknowledged, false);
+
+			controller.acknowledgeAlert('b');
+			expect(controller.allAlertsAcknowledged, true);
+		});
+
+		test('allAlertsAcknowledged returns false when no alerts', () {
+			controller.updateStatus(_makeStatus());
+			expect(controller.allAlertsAcknowledged, false);
+		});
+
+		test('acknowledgeAlert notifies listeners', () {
+			controller.updateStatus(_makeStatus(
+				activeAlerts: [_makeAlert(id: 'a', severity: Severity.info)],
+			));
+
+			int notifyCount = 0;
+			controller.addListener(() => notifyCount++);
+
+			controller.acknowledgeAlert('a');
+			expect(notifyCount, 1);
+		});
+
+		test('acknowledgeAlert does not notify if already acknowledged', () {
+			controller.updateStatus(_makeStatus(
+				activeAlerts: [_makeAlert(id: 'a', severity: Severity.info)],
+			));
+
+			controller.acknowledgeAlert('a');
+
+			int notifyCount = 0;
+			controller.addListener(() => notifyCount++);
+
+			controller.acknowledgeAlert('a');
+			expect(notifyCount, 0);
+		});
+	});
+
+	group('SecurityOverlayController - acknowledgement lifecycle', () {
+		late SecurityOverlayController controller;
+
+		setUp(() {
+			controller = SecurityOverlayController();
+		});
+
+		tearDown(() {
+			controller.dispose();
+		});
+
+		test('removes acknowledged IDs when alert disappears', () {
+			controller.updateStatus(_makeStatus(
+				hasCriticalAlert: true,
+				activeAlerts: [
+					_makeAlert(id: 'a'),
+					_makeAlert(id: 'b'),
+				],
+			));
+
+			controller.acknowledgeAlert('a');
+			controller.acknowledgeAlert('b');
+			expect(controller.isAlertAcknowledged('a'), true);
+
+			// Alert 'a' disappears
+			controller.updateStatus(_makeStatus(
+				hasCriticalAlert: true,
+				activeAlerts: [_makeAlert(id: 'b')],
+			));
+
+			expect(controller.isAlertAcknowledged('a'), false);
+			expect(controller.isAlertAcknowledged('b'), true);
+		});
+
+		test('resets acknowledgement when alert reappears with newer timestamp', () {
+			final ts1 = DateTime(2025, 1, 1);
+			final ts2 = DateTime(2025, 1, 2);
+
+			controller.updateStatus(_makeStatus(
+				hasCriticalAlert: true,
+				activeAlerts: [_makeAlert(id: 'a', timestamp: ts1)],
+			));
+
+			controller.acknowledgeAlert('a');
+			expect(controller.isAlertAcknowledged('a'), true);
+
+			// Same alert reappears with newer timestamp
+			controller.updateStatus(_makeStatus(
+				hasCriticalAlert: true,
+				activeAlerts: [_makeAlert(id: 'a', timestamp: ts2)],
+			));
+
+			expect(controller.isAlertAcknowledged('a'), false);
+		});
+
+		test('keeps acknowledgement when alert stays with same timestamp', () {
+			final ts = DateTime(2025, 1, 1);
+
+			controller.updateStatus(_makeStatus(
+				hasCriticalAlert: true,
+				activeAlerts: [_makeAlert(id: 'a', timestamp: ts)],
+			));
+
+			controller.acknowledgeAlert('a');
+			expect(controller.isAlertAcknowledged('a'), true);
+
+			// Same alert with same timestamp
+			controller.updateStatus(_makeStatus(
+				hasCriticalAlert: true,
+				activeAlerts: [_makeAlert(id: 'a', timestamp: ts)],
+			));
+
+			expect(controller.isAlertAcknowledged('a'), true);
+		});
+	});
+
+	group('SecurityOverlayController - overlay suppression with ack', () {
+		late SecurityOverlayController controller;
+
+		setUp(() {
+			controller = SecurityOverlayController();
+		});
+
+		tearDown(() {
+			controller.dispose();
+		});
+
+		test('overlay hidden when all critical alerts acknowledged via acknowledgeAllAlerts', () {
+			controller.updateStatus(_makeStatus(
+				hasCriticalAlert: true,
+				activeAlerts: [
+					_makeAlert(id: 'a', severity: Severity.critical),
+					_makeAlert(id: 'b', severity: Severity.critical),
+					_makeAlert(id: 'c', severity: Severity.warning),
+				],
+			));
+
+			expect(controller.shouldShowOverlay, true);
+
+			controller.acknowledgeAllAlerts();
+			expect(controller.shouldShowOverlay, false);
+		});
+
+		test('overlay hidden when all critical alerts acknowledged individually', () {
+			controller.updateStatus(_makeStatus(
+				hasCriticalAlert: true,
+				activeAlerts: [
+					_makeAlert(id: 'a', severity: Severity.critical),
+					_makeAlert(id: 'b', severity: Severity.critical),
+				],
+			));
+
+			controller.acknowledgeAlert('a');
+			expect(controller.shouldShowOverlay, true);
+
+			controller.acknowledgeAlert('b');
+			expect(controller.shouldShowOverlay, false);
+		});
+
+		test('overlay returns when new critical alert appears after ack all', () {
+			controller.updateStatus(_makeStatus(
+				hasCriticalAlert: true,
+				activeAlerts: [_makeAlert(id: 'a', severity: Severity.critical)],
+			));
+
+			controller.acknowledgeAllAlerts();
+			expect(controller.shouldShowOverlay, false);
+
+			// New critical alert
+			controller.updateStatus(_makeStatus(
+				hasCriticalAlert: true,
+				activeAlerts: [
+					_makeAlert(id: 'a', severity: Severity.critical),
+					_makeAlert(id: 'b', severity: Severity.critical),
+				],
+			));
+
+			expect(controller.shouldShowOverlay, true);
+		});
+
+		test('overlay returns when critical alert timestamp increases', () {
+			final ts1 = DateTime(2025, 1, 1);
+			final ts2 = DateTime(2025, 1, 2);
+
+			controller.updateStatus(_makeStatus(
+				hasCriticalAlert: true,
+				activeAlerts: [_makeAlert(id: 'a', severity: Severity.critical, timestamp: ts1)],
+			));
+
+			controller.acknowledgeAllAlerts();
+			expect(controller.shouldShowOverlay, false);
+
+			// Same alert with newer timestamp
+			controller.updateStatus(_makeStatus(
+				hasCriticalAlert: true,
+				activeAlerts: [_makeAlert(id: 'a', severity: Severity.critical, timestamp: ts2)],
+			));
+
+			expect(controller.shouldShowOverlay, true);
 		});
 	});
 }
