@@ -425,6 +425,9 @@ class _MyAppState extends State<MyApp> {
           value: locator<security_module.SecurityOverlayController>(),
         ),
         ChangeNotifierProvider.value(
+          value: locator<security_module.SecurityEventsRepository>(),
+        ),
+        ChangeNotifierProvider.value(
           value: locator<spaces_module.MediaActivityService>(),
         ),
       ],

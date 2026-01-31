@@ -6,10 +6,13 @@ import 'package:fastybird_smart_panel/core/widgets/system_pages/export.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/export.dart';
 import 'package:fastybird_smart_panel/modules/security/models/security_alert.dart';
+import 'package:fastybird_smart_panel/modules/security/models/security_event.dart';
 import 'package:fastybird_smart_panel/modules/security/models/security_status.dart';
+import 'package:fastybird_smart_panel/modules/security/repositories/security_events.dart';
 import 'package:fastybird_smart_panel/modules/security/services/security_overlay_controller.dart';
 import 'package:fastybird_smart_panel/modules/security/types/security.dart';
 import 'package:fastybird_smart_panel/modules/security/utils/entry_points.dart';
+import 'package:fastybird_smart_panel/modules/security/utils/security_event_ui.dart';
 import 'package:fastybird_smart_panel/modules/security/utils/security_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -18,14 +21,16 @@ import 'package:provider/provider.dart';
 class SecurityScreen extends StatelessWidget {
 	const SecurityScreen({super.key});
 
+	static const int _maxDisplayedEvents = 10;
+
 	@override
 	Widget build(BuildContext context) {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 		final screenService = locator<ScreenService>();
 		final localizations = AppLocalizations.of(context)!;
 
-		return Consumer2<SecurityOverlayController, DevicesService>(
-			builder: (context, controller, devicesService, _) {
+		return Consumer3<SecurityOverlayController, DevicesService, SecurityEventsRepository>(
+			builder: (context, controller, devicesService, eventsRepo, _) {
 				final status = controller.status;
 				final groupedAlerts = controller.groupedAlerts;
 				final totalAlerts = status.activeAlerts.length;
@@ -98,13 +103,39 @@ class SecurityScreen extends StatelessWidget {
 								SizedBox(height: AppSpacings.pMd),
 								Expanded(
 									child: totalAlerts == 0
-										? _buildEmptyState(isDark, screenService)
-										: _buildGroupedAlertsList(
-											groupedAlerts,
-											controller,
-											isDark,
-											screenService,
-											localizations,
+										? Column(
+											children: [
+												_buildEmptyState(isDark, screenService),
+												SizedBox(height: AppSpacings.pLg),
+												Expanded(
+													child: _buildRecentEventsSection(
+														eventsRepo,
+														devicesService,
+														isDark,
+														screenService,
+														localizations,
+													),
+												),
+											],
+										)
+										: ListView(
+											children: [
+												..._buildGroupedAlertsWidgets(
+													groupedAlerts,
+													controller,
+													isDark,
+													screenService,
+													localizations,
+												),
+												SizedBox(height: AppSpacings.pLg),
+												_buildRecentEventsSection(
+													eventsRepo,
+													devicesService,
+													isDark,
+													screenService,
+													localizations,
+												),
+											],
 										),
 								),
 							],
@@ -115,7 +146,7 @@ class SecurityScreen extends StatelessWidget {
 		);
 	}
 
-	Widget _buildGroupedAlertsList(
+	List<Widget> _buildGroupedAlertsWidgets(
 		Map<Severity, List<SecurityAlertModel>> groupedAlerts,
 		SecurityOverlayController controller,
 		bool isDark,
@@ -220,7 +251,255 @@ class SecurityScreen extends StatelessWidget {
 			);
 		}
 
-		return ListView(children: sections);
+		return sections;
+	}
+
+	Widget _buildRecentEventsSection(
+		SecurityEventsRepository eventsRepo,
+		DevicesService devicesService,
+		bool isDark,
+		ScreenService screenService,
+		AppLocalizations localizations,
+	) {
+		return Column(
+			crossAxisAlignment: CrossAxisAlignment.start,
+			mainAxisSize: MainAxisSize.min,
+			children: [
+				Row(
+					children: [
+						Icon(
+							MdiIcons.history,
+							size: screenService.scale(20),
+							color: SystemPagesTheme.textSecondary(isDark),
+						),
+						SizedBox(width: AppSpacings.pSm),
+						Expanded(
+							child: Text(
+								'Recent Events',
+								style: TextStyle(
+									color: SystemPagesTheme.textPrimary(isDark),
+									fontSize: AppFontSize.large,
+									fontWeight: FontWeight.w600,
+								),
+							),
+						),
+						if (eventsRepo.state != SecurityEventsState.loading)
+							GestureDetector(
+								onTap: () => eventsRepo.fetchEvents(),
+								child: Icon(
+									MdiIcons.refresh,
+									size: screenService.scale(18),
+									color: SystemPagesTheme.textSecondary(isDark),
+								),
+							),
+					],
+				),
+				SizedBox(height: AppSpacings.pMd),
+				_buildRecentEventsContent(
+					eventsRepo,
+					devicesService,
+					isDark,
+					screenService,
+					localizations,
+				),
+			],
+		);
+	}
+
+	Widget _buildRecentEventsContent(
+		SecurityEventsRepository eventsRepo,
+		DevicesService devicesService,
+		bool isDark,
+		ScreenService screenService,
+		AppLocalizations localizations,
+	) {
+		switch (eventsRepo.state) {
+			case SecurityEventsState.initial:
+			case SecurityEventsState.loading:
+				return _buildEventsLoading(isDark, screenService);
+			case SecurityEventsState.error:
+				return _buildEventsError(eventsRepo, isDark, screenService);
+			case SecurityEventsState.loaded:
+				if (eventsRepo.events.isEmpty) {
+					return _buildEventsEmpty(isDark);
+				}
+				final displayEvents = eventsRepo.events.take(_maxDisplayedEvents).toList();
+				return Column(
+					mainAxisSize: MainAxisSize.min,
+					children: displayEvents.map((event) => Padding(
+						key: ValueKey('event-${event.id}'),
+						padding: EdgeInsets.only(bottom: AppSpacings.pSm),
+						child: _buildEventRow(event, devicesService, isDark, screenService, localizations),
+					)).toList(),
+				);
+		}
+	}
+
+	Widget _buildEventsLoading(bool isDark, ScreenService screenService) {
+		return Column(
+			mainAxisSize: MainAxisSize.min,
+			children: List.generate(3, (index) => Padding(
+				padding: EdgeInsets.only(bottom: AppSpacings.pSm),
+				child: Container(
+					height: screenService.scale(48),
+					decoration: BoxDecoration(
+						color: SystemPagesTheme.cardSecondary(isDark),
+						borderRadius: BorderRadius.circular(AppBorderRadius.small),
+					),
+				),
+			)),
+		);
+	}
+
+	Widget _buildEventsError(
+		SecurityEventsRepository eventsRepo,
+		bool isDark,
+		ScreenService screenService,
+	) {
+		return Container(
+			width: double.infinity,
+			padding: EdgeInsets.all(AppSpacings.pMd),
+			decoration: BoxDecoration(
+				color: SystemPagesTheme.errorLight(isDark),
+				borderRadius: BorderRadius.circular(AppBorderRadius.small),
+			),
+			child: Row(
+				children: [
+					Icon(
+						MdiIcons.alertCircleOutline,
+						size: screenService.scale(18),
+						color: SystemPagesTheme.error(isDark),
+					),
+					SizedBox(width: AppSpacings.pSm),
+					Expanded(
+						child: Text(
+							eventsRepo.errorMessage ?? 'Failed to load events',
+							style: TextStyle(
+								color: SystemPagesTheme.error(isDark),
+								fontSize: AppFontSize.small,
+							),
+						),
+					),
+					GestureDetector(
+						onTap: () => eventsRepo.fetchEvents(),
+						child: Container(
+							padding: EdgeInsets.symmetric(
+								horizontal: AppSpacings.pSm,
+								vertical: AppSpacings.pXs,
+							),
+							decoration: BoxDecoration(
+								color: SystemPagesTheme.error(isDark).withValues(alpha: 0.15),
+								borderRadius: BorderRadius.circular(AppBorderRadius.small),
+							),
+							child: Text(
+								'Retry',
+								style: TextStyle(
+									color: SystemPagesTheme.error(isDark),
+									fontSize: AppFontSize.extraSmall,
+									fontWeight: FontWeight.w600,
+								),
+							),
+						),
+					),
+				],
+			),
+		);
+	}
+
+	Widget _buildEventsEmpty(bool isDark) {
+		return Padding(
+			padding: EdgeInsets.symmetric(vertical: AppSpacings.pMd),
+			child: Text(
+				'No recent events',
+				style: TextStyle(
+					color: SystemPagesTheme.textMuted(isDark),
+					fontSize: AppFontSize.small,
+				),
+			),
+		);
+	}
+
+	Widget _buildEventRow(
+		SecurityEventModel event,
+		DevicesService devicesService,
+		bool isDark,
+		ScreenService screenService,
+		AppLocalizations localizations,
+	) {
+		final icon = securityEventIcon(event);
+		final title = securityEventTitle(event);
+		final deviceName = event.sourceDeviceId != null
+			? devicesService.getDevice(event.sourceDeviceId!)?.name
+			: null;
+
+		return Container(
+			padding: EdgeInsets.all(AppSpacings.pMd),
+			decoration: BoxDecoration(
+				color: SystemPagesTheme.card(isDark),
+				borderRadius: BorderRadius.circular(AppBorderRadius.small),
+			),
+			child: Row(
+				children: [
+					Icon(
+						icon,
+						size: screenService.scale(18),
+						color: _eventIconColor(event, isDark),
+					),
+					SizedBox(width: AppSpacings.pMd),
+					Expanded(
+						child: Column(
+							crossAxisAlignment: CrossAxisAlignment.start,
+							children: [
+								Text(
+									title,
+									style: TextStyle(
+										color: SystemPagesTheme.textPrimary(isDark),
+										fontSize: AppFontSize.small,
+										fontWeight: FontWeight.w500,
+									),
+									maxLines: 1,
+									overflow: TextOverflow.ellipsis,
+								),
+								if (deviceName != null) ...[
+									SizedBox(height: 2),
+									Text(
+										deviceName,
+										style: TextStyle(
+											color: SystemPagesTheme.textMuted(isDark),
+											fontSize: AppFontSize.extraSmall,
+										),
+										maxLines: 1,
+										overflow: TextOverflow.ellipsis,
+									),
+								],
+							],
+						),
+					),
+					SizedBox(width: AppSpacings.pSm),
+					Text(
+						DatetimeUtils.formatTimeAgo(event.timestamp, localizations),
+						style: TextStyle(
+							color: SystemPagesTheme.textMuted(isDark),
+							fontSize: AppFontSize.extraSmall,
+						),
+					),
+				],
+			),
+		);
+	}
+
+	Color _eventIconColor(SecurityEventModel event, bool isDark) {
+		if (event.severity != null) {
+			return severityColor(event.severity!, isDark);
+		}
+
+		return switch (event.eventType) {
+			SecurityEventType.alertRaised => SystemPagesTheme.error(isDark),
+			SecurityEventType.alertResolved => SystemPagesTheme.success(isDark),
+			SecurityEventType.alertAcknowledged => SystemPagesTheme.success(isDark),
+			SecurityEventType.alarmStateChanged => SystemPagesTheme.warning(isDark),
+			SecurityEventType.armedStateChanged => SystemPagesTheme.info(isDark),
+		};
 	}
 
 	String _severitySectionTitle(Severity severity) {
@@ -428,34 +707,32 @@ class SecurityScreen extends StatelessWidget {
 	}
 
 	Widget _buildEmptyState(bool isDark, ScreenService screenService) {
-		return Center(
-			child: Column(
-				mainAxisSize: MainAxisSize.min,
-				children: [
-					Icon(
-						MdiIcons.shieldCheck,
-						size: screenService.scale(48),
-						color: SystemPagesTheme.success(isDark),
+		return Column(
+			mainAxisSize: MainAxisSize.min,
+			children: [
+				Icon(
+					MdiIcons.shieldCheck,
+					size: screenService.scale(48),
+					color: SystemPagesTheme.success(isDark),
+				),
+				SizedBox(height: AppSpacings.pMd),
+				Text(
+					'No active alerts',
+					style: TextStyle(
+						color: SystemPagesTheme.textPrimary(isDark),
+						fontSize: AppFontSize.large,
+						fontWeight: FontWeight.w500,
 					),
-					SizedBox(height: AppSpacings.pMd),
-					Text(
-						'No active alerts',
-						style: TextStyle(
-							color: SystemPagesTheme.textPrimary(isDark),
-							fontSize: AppFontSize.large,
-							fontWeight: FontWeight.w500,
-						),
+				),
+				SizedBox(height: AppSpacings.pXs),
+				Text(
+					'Your home is secure.',
+					style: TextStyle(
+						color: SystemPagesTheme.textMuted(isDark),
+						fontSize: AppFontSize.base,
 					),
-					SizedBox(height: AppSpacings.pXs),
-					Text(
-						'Your home is secure.',
-						style: TextStyle(
-							color: SystemPagesTheme.textMuted(isDark),
-							fontSize: AppFontSize.base,
-						),
-					),
-				],
-			),
+				),
+			],
 		);
 	}
 

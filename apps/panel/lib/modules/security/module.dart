@@ -1,21 +1,25 @@
 import 'package:dio/dio.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/modules/security/constants.dart';
+import 'package:fastybird_smart_panel/modules/security/repositories/security_events.dart';
 import 'package:fastybird_smart_panel/modules/security/repositories/security_status.dart';
 import 'package:flutter/foundation.dart';
 
 class SecurityModuleService {
 	final SocketService _socketService;
 	late final SecurityStatusRepository _statusRepository;
+	late final SecurityEventsRepository _eventsRepository;
 
 	SecurityModuleService({
 		required Dio dio,
 		required SocketService socketService,
 	}) : _socketService = socketService {
 		_statusRepository = SecurityStatusRepository(dio: dio);
+		_eventsRepository = SecurityEventsRepository(dio: dio);
 	}
 
 	SecurityStatusRepository get statusRepository => _statusRepository;
+	SecurityEventsRepository get eventsRepository => _eventsRepository;
 
 	Future<void> initialize() async {
 		try {
@@ -23,6 +27,14 @@ class SecurityModuleService {
 		} catch (e) {
 			if (kDebugMode) {
 				debugPrint('[SECURITY MODULE] Error during initialization: $e');
+			}
+		}
+
+		try {
+			await _eventsRepository.fetchEvents();
+		} catch (e) {
+			if (kDebugMode) {
+				debugPrint('[SECURITY MODULE] Error fetching security events: $e');
 			}
 		}
 
