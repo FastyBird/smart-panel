@@ -715,6 +715,82 @@ void main() {
 		});
 	});
 
+	group('SecurityOverlayController - synthetic ID auto-ack', () {
+		late SecurityOverlayController controller;
+
+		setUp(() {
+			controller = SecurityOverlayController();
+		});
+
+		tearDown(() {
+			controller.dispose();
+		});
+
+		test('overlay stays hidden after ack when server confirms real alerts acknowledged', () async {
+			// Simulate: alarm triggered + real critical alert
+			controller.updateStatus(_makeStatus(
+				hasCriticalAlert: true,
+				alarmState: AlarmState.triggered,
+				activeAlerts: [_makeAlert(id: 'a', severity: Severity.critical)],
+			));
+			expect(controller.shouldShowOverlay, true);
+
+			// User taps ack (optimistic)
+			await controller.acknowledgeCurrentAlerts();
+			expect(controller.shouldShowOverlay, false);
+
+			// Server status arrives (e.g. from fetchStatus or socket) with real alert acked
+			// but synthetic __alarm_triggered__ was cleared from optimistic cache by updateStatus
+			controller.updateStatus(_makeStatus(
+				hasCriticalAlert: true,
+				alarmState: AlarmState.triggered,
+				activeAlerts: [_makeAlert(id: 'a', severity: Severity.critical, acknowledged: true)],
+			));
+
+			// Must stay hidden: all real critical alerts are acked, so synthetic IDs auto-ack
+			expect(controller.shouldShowOverlay, false);
+		});
+
+		test('second display hides overlay when server reports all critical alerts acknowledged', () {
+			// Second display never had optimistic cache - receives socket update directly
+			controller.updateStatus(_makeStatus(
+				hasCriticalAlert: true,
+				alarmState: AlarmState.triggered,
+				activeAlerts: [_makeAlert(id: 'a', severity: Severity.critical, acknowledged: true)],
+			));
+
+			// All real critical alerts are server-acked, synthetic IDs should auto-ack
+			expect(controller.shouldShowOverlay, false);
+		});
+
+		test('overlay still shows if some real critical alerts unacknowledged', () {
+			controller.updateStatus(_makeStatus(
+				hasCriticalAlert: true,
+				alarmState: AlarmState.triggered,
+				activeAlerts: [
+					_makeAlert(id: 'a', severity: Severity.critical, acknowledged: true),
+					_makeAlert(id: 'b', severity: Severity.critical, acknowledged: false),
+				],
+			));
+
+			expect(controller.shouldShowOverlay, true);
+		});
+
+		test('buildEffectiveAcknowledgedIds includes synthetic IDs when all real critical acked', () {
+			final status = _makeStatus(
+				hasCriticalAlert: true,
+				alarmState: AlarmState.triggered,
+				activeAlerts: [
+					_makeAlert(id: 'a', severity: Severity.critical, acknowledged: true),
+				],
+			);
+
+			final ids = buildEffectiveAcknowledgedIds(status, {});
+			expect(ids, contains('a'));
+			expect(ids, contains('__alarm_triggered__'));
+		});
+	});
+
 	group('SecurityOverlayController - offline behavior', () {
 		late SecurityOverlayController controller;
 
