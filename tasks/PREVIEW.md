@@ -6,10 +6,10 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 
 | Status | Count |
 |--------|-------|
-| Done | 96 |
+| Done | 97 |
 | In Progress | 8 |
 | Planned | 27 |
-| **Total** | **131** |
+| **Total** | **132** |
 
 ---
 
@@ -114,6 +114,7 @@ This page provides an overview of all tasks in the Smart Panel project, organize
 | FEATURE-PANEL-SECURITY-ENTRY-POINTS | Panel app – Entry points snapshot (doors/windows overview) | panel | medium |
 | FEATURE-PANEL-SECURITY-SCREEN | Panel app – Security screen UI (status + active alerts list) | panel | medium |
 | FEATURE-PANEL-SECURITY-ALERTS-GROUPING | Panel app – Alerts grouping + local acknowledge UX (session-only) | panel | medium |
+| FEATURE-PANEL-SECURITY-EVENTS-TIMELINE | Panel app – Recent security events timeline UI | panel | medium |
 
 ### In Progress
 
@@ -333,7 +334,8 @@ EPIC-EXPAND-SMART-PANEL-DOMAINS (planned)
 │   ├── FEATURE-SECURITY-PROVIDER-REGISTRY (done)
 │   ├── FEATURE-SECURITY-ALARM-PROVIDER (done)
 │   ├── FEATURE-SECURITY-ACTIVE-ALERTS (done)
-│   └── FEATURE-SECURITY-EVENT-TIMELINE (done)
+│   ├── FEATURE-SECURITY-EVENT-TIMELINE (done)
+│   └── FEATURE-PANEL-SECURITY-EVENTS-TIMELINE (done)
 ├── Phase 2: Unified Room Modes
 │   ├── FEATURE-SPACE-ACTIVITY-MODES (planned)
 │   ├── FEATURE-SPACE-MODE-ADMIN-UI (planned)
@@ -423,6 +425,7 @@ tasks/
 │   ├── FEATURE-PANEL-SECURITY-ENTRY-POINTS.md
 │   ├── FEATURE-PANEL-SECURITY-OVERLAY.md
 │   ├── FEATURE-PANEL-SECURITY-SCREEN.md
+│   ├── FEATURE-PANEL-SECURITY-EVENTS-TIMELINE.md
 │   ├── FEATURE-PANEL-SENSOR-DEVICE-PAGE.md
 │   ├── FEATURE-PLUGIN-HA-ADOPTION-IMPROVEMENTS.md
 │   ├── FEATURE-PLUGIN-HA-AUTO-MAP.md
@@ -495,4 +498,4 @@ tasks/
 
 ---
 
-*Last updated: 2026-01-30*
+*Last updated: 2026-01-31*

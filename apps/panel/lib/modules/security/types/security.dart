@@ -54,6 +54,25 @@ enum Severity {
 	}
 }
 
+enum SecurityEventType {
+	alertRaised,
+	alertResolved,
+	alertAcknowledged,
+	alarmStateChanged,
+	armedStateChanged;
+
+	static SecurityEventType fromString(String value) {
+		return switch (value) {
+			'alert_raised' => SecurityEventType.alertRaised,
+			'alert_resolved' => SecurityEventType.alertResolved,
+			'alert_acknowledged' => SecurityEventType.alertAcknowledged,
+			'alarm_state_changed' => SecurityEventType.alarmStateChanged,
+			'armed_state_changed' => SecurityEventType.armedStateChanged,
+			_ => SecurityEventType.alertRaised,
+		};
+	}
+}
+
 enum SecurityAlertType {
 	intrusion,
 	entryOpen,
