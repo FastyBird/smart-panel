@@ -234,17 +234,6 @@ class MediaActivityService extends ChangeNotifier {
 		return MediaActivityKey.values.where((k) => keys.contains(k)).toList();
 	}
 
-	/// Get composition labels for the active card (e.g., "Display: Samsung TV").
-	List<String> getActiveCompositionLabels(String spaceId) {
-		final targets = resolveControlTargets(spaceId);
-		final labels = <String>[];
-		if (targets.hasDisplay) labels.add('Display: ${targets.displayTarget!.name}');
-		if (targets.hasVolume) labels.add('Audio: ${targets.volumeTarget!.name}');
-		if (targets.hasPlayback) labels.add('Source: ${targets.playbackTarget!.name}');
-		if (targets.hasRemote) labels.add('Remote: ${targets.remoteTarget!.name}');
-		return labels;
-	}
-
 	/// Get structured composition entries for the active card.
 	List<MediaCompositionEntry> getActiveCompositionEntries(String spaceId) {
 		final targets = resolveControlTargets(spaceId);

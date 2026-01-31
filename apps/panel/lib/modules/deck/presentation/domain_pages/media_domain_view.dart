@@ -286,7 +286,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 										),
 									],
 								),
-								if (!_wsConnected) _buildOfflineOverlay(context),
 							],
 						),
 					),
@@ -491,12 +490,17 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 
 
+		final boxHeight = _screenService.isPortrait
+				? _screenService.screenHeight * 3 / 5
+				: null;
+
 		return Container(
 			width: double.infinity,
-			padding: EdgeInsets.symmetric(vertical: AppSpacings.pXl * 3),
+			height: boxHeight,
+			alignment: Alignment.center,
 			child: Column(
 				mainAxisAlignment: MainAxisAlignment.center,
-				crossAxisAlignment: CrossAxisAlignment.center,
+				mainAxisSize: MainAxisSize.min,
 				children: [
 					Container(
 						width: _scale(90),
@@ -542,10 +546,18 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		final accentColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
 		final activityName = _activityLabel(activeState.activityKey);
 
+		final boxHeight = _screenService.isPortrait
+				? _screenService.screenHeight * 3 / 5
+				: null;
 
-		return Column(
-			mainAxisAlignment: MainAxisAlignment.center,
-			children: [
+		return Container(
+			width: double.infinity,
+			height: boxHeight,
+			alignment: Alignment.center,
+			child: Column(
+				mainAxisAlignment: MainAxisAlignment.center,
+				mainAxisSize: MainAxisSize.min,
+				children: [
 					AnimatedBuilder(
 						animation: _pulseController,
 						builder: (context, child) {
@@ -581,6 +593,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 						),
 					),
 			],
+			),
 		);
 	}
 
@@ -596,12 +609,17 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		final activityName = _activityLabel(activeState.activityKey);
 
 
+		final boxHeight = _screenService.isPortrait
+				? _screenService.screenHeight * 3 / 5
+				: null;
+
 		return Container(
 			width: double.infinity,
-			padding: EdgeInsets.symmetric(vertical: AppSpacings.pXl * 3),
+			height: boxHeight,
+			alignment: Alignment.center,
 			child: Column(
 				mainAxisAlignment: MainAxisAlignment.center,
-				crossAxisAlignment: CrossAxisAlignment.center,
+				mainAxisSize: MainAxisSize.min,
 				children: [
 					Container(
 						width: _scale(90),
@@ -827,7 +845,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 				child: Row(
 					children: [
 						Icon(
-							Icons.warning_amber_rounded,
+							MdiIcons.alertOutline,
 							color: warningColor,
 							size: _scale(18),
 						),
@@ -842,7 +860,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 							),
 						),
 						Icon(
-							Icons.chevron_right,
+							MdiIcons.chevronRight,
 							color: warningColor,
 							size: _scale(18),
 						),
@@ -875,7 +893,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			child: Row(
 				children: [
 					Icon(
-						Icons.warning_amber_rounded,
+						MdiIcons.alertOutline,
 						color: warningColor,
 						size: _scale(18),
 					),
@@ -903,7 +921,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		return Container(
 			padding: AppSpacings.paddingLg,
 			decoration: BoxDecoration(
-				color: isDark ? AppFillColorDark.base : AppFillColorLight.base,
+				color: isDark ? AppFillColorDark.base : AppFillColorLight.darker,
 				borderRadius: BorderRadius.circular(AppBorderRadius.medium),
 			),
 			child: Column(
@@ -939,9 +957,9 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 											Text(
 												item.role.toUpperCase(),
 												style: TextStyle(
-													fontSize: AppFontSize.extraSmall,
+													fontSize: AppFontSize.extraExtraSmall,
 													fontWeight: FontWeight.w500,
-													color: isLight ? AppTextColorLight.placeholder : AppTextColorDark.placeholder,
+													color: isLight ? AppTextColorLight.secondary : AppTextColorDark.placeholder,
 													letterSpacing: 0.5,
 												),
 											),
@@ -1068,7 +1086,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 						),
 						AppSpacings.spacingXsHorizontal,
 						Icon(
-							Icons.chevron_right,
+							MdiIcons.chevronRight,
 							size: _scale(16),
 							color: accentColor,
 						),
@@ -1269,7 +1287,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 					Row(
 						children: [
 							Icon(
-								Icons.error_outline,
+								MdiIcons.alertCircleOutline,
 								color: errorColor,
 								size: _scale(18),
 							),
@@ -1286,13 +1304,13 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 					Row(
 						children: [
 							OutlinedButton.icon(
-								icon: Icon(Icons.refresh, size: _scale(16)),
+								icon: Icon(MdiIcons.refresh, size: _scale(16)),
 								label: const Text('Retry'),
 								onPressed: () => _retryActivity(state),
 							),
 							AppSpacings.spacingMdHorizontal,
 							OutlinedButton.icon(
-								icon: Icon(Icons.stop, size: _scale(16)),
+								icon: Icon(MdiIcons.stop, size: _scale(16)),
 								label: const Text('Deactivate'),
 								onPressed: _deactivateActivity,
 							),
@@ -1335,7 +1353,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 									// Header
 									Row(
 										children: [
-											Icon(Icons.info_outline, size: _scale(24)),
+											Icon(MdiIcons.informationOutline, size: _scale(24)),
 											AppSpacings.spacingMdHorizontal,
 											Text(
 												'Activation Details',
@@ -1419,7 +1437,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 											if (state.isFailed && state.activityKey != null)
 												Expanded(
 													child: FilledButton.icon(
-														icon: Icon(Icons.refresh, size: _scale(16)),
+														icon: Icon(MdiIcons.refresh, size: _scale(16)),
 														label: const Text('Retry activity'),
 														onPressed: () {
 															Navigator.pop(ctx);
@@ -1430,7 +1448,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 											if (state.isFailed) AppSpacings.spacingMdHorizontal,
 											Expanded(
 												child: OutlinedButton.icon(
-													icon: Icon(Icons.stop, size: _scale(16)),
+													icon: Icon(MdiIcons.stop, size: _scale(16)),
 													label: const Text('Deactivate'),
 													onPressed: () {
 														Navigator.pop(ctx);
@@ -1442,7 +1460,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 									),
 									AppSpacings.spacingMdVertical,
 									TextButton.icon(
-										icon: Icon(Icons.copy, size: _scale(16)),
+										icon: Icon(MdiIcons.contentCopy, size: _scale(16)),
 										label: const Text('Copy debug JSON'),
 										onPressed: () => _copyDebugJson(state),
 									),
@@ -1629,7 +1647,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 				}),
 				AppSpacings.spacingMdHorizontal,
 				Icon(
-					Icons.chevron_right,
+					MdiIcons.chevronRight,
 					size: _scale(28),
 					color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
 				),
@@ -1667,97 +1685,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		if (group.hasSource) icons.add(MdiIcons.playCircle);
 		if (group.hasRemote) icons.add(MdiIcons.remote);
 		return icons;
-	}
-
-	// ============================================
-	// OFFLINE OVERLAY (restyled)
-	// ============================================
-
-	Widget _buildOfflineOverlay(BuildContext context) {
-		final isDark = Theme.of(context).brightness == Brightness.dark;
-		final accentColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
-
-
-		return GestureDetector(
-			behavior: HitTestBehavior.opaque,
-			onTap: () {},
-			child: Container(
-				color: Colors.black.withValues(alpha: 0.85),
-				child: Center(
-					child: Padding(
-						padding: EdgeInsets.all(AppSpacings.pXl * 2),
-						child: Column(
-							mainAxisAlignment: MainAxisAlignment.center,
-							children: [
-								Container(
-									width: _scale(72),
-									height: _scale(72),
-									decoration: BoxDecoration(
-										color: Colors.white.withValues(alpha: 0.1),
-										shape: BoxShape.circle,
-									),
-									child: Icon(
-										Icons.wifi_off,
-										size: _scale(36),
-										color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
-									),
-								),
-								AppSpacings.spacingLgVertical,
-								Text(
-									AppLocalizations.of(context)!.media_ws_offline_title,
-									style: TextStyle(
-										fontSize: AppFontSize.extraLarge,
-										fontWeight: FontWeight.w600,
-										color: Colors.white,
-									),
-									textAlign: TextAlign.center,
-								),
-								AppSpacings.spacingMdVertical,
-								Text(
-									AppLocalizations.of(context)!.media_ws_offline_description,
-									style: TextStyle(
-										fontSize: AppFontSize.base,
-										color: Colors.white.withValues(alpha: 0.6),
-									),
-									textAlign: TextAlign.center,
-								),
-								AppSpacings.spacingXlVertical,
-								ElevatedButton(
-									onPressed: () {
-										_socketService?.reconnect();
-									},
-									style: ElevatedButton.styleFrom(
-										backgroundColor: accentColor,
-										foregroundColor: Colors.white,
-										padding: EdgeInsets.symmetric(
-											horizontal: AppSpacings.pXl,
-											vertical: AppSpacings.pMd,
-										),
-										shape: RoundedRectangleBorder(
-											borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-										),
-										elevation: 0,
-									),
-									child: const Text('Retry Connection'),
-								),
-								AppSpacings.spacingMdVertical,
-								OutlinedButton(
-									onPressed: _navigateToHome,
-									style: OutlinedButton.styleFrom(
-										foregroundColor: Colors.white.withValues(alpha: 0.8),
-										side: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
-										shape: RoundedRectangleBorder(
-											borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-										),
-									),
-									child: const Text('Back to Home'),
-								),
-							],
-						),
-					),
-				),
-			),
-		);
 	}
 
 	// ============================================
@@ -2060,7 +1987,7 @@ class _MediaDeviceDetailPageState extends State<MediaDeviceDetailPage> {
 							child: Column(
 								mainAxisSize: MainAxisSize.min,
 								children: [
-									Icon(Icons.wifi_off, size: _scale(48), color: Colors.grey),
+									Icon(MdiIcons.wifiOff, size: _scale(48), color: Colors.grey),
 									AppSpacings.spacingLgVertical,
 									Text(
 										'Connection lost',
