@@ -45,7 +45,6 @@ export class IntentSpecLoaderService implements OnModuleInit {
 	private enums: YamlEnumsConfig | null = null;
 	private lightingIntents: ResolvedIntentCategory | null = null;
 	private climateIntents: ResolvedIntentCategory | null = null;
-	private mediaIntents: ResolvedIntentCategory | null = null;
 	private lightingModes: Map<string, ResolvedModeOrchestration> = new Map();
 	private coversModes: Map<string, ResolvedCoversModeOrchestration> = new Map();
 	private loadResults: SpecLoadResult[] = [];
@@ -71,7 +70,6 @@ export class IntentSpecLoaderService implements OnModuleInit {
 		this.enums = null;
 		this.lightingIntents = null;
 		this.climateIntents = null;
-		this.mediaIntents = null;
 		this.lightingModes.clear();
 		this.coversModes.clear();
 		this.brightnessDeltas.clear();
@@ -84,8 +82,6 @@ export class IntentSpecLoaderService implements OnModuleInit {
 		// Step 2: Load intent specs
 		this.loadLightingIntents();
 		this.loadClimateIntents();
-		this.loadMediaIntents();
-
 		// Step 3: Load mode orchestrations
 		this.loadLightingModes();
 		this.loadCoversModes();
@@ -93,7 +89,6 @@ export class IntentSpecLoaderService implements OnModuleInit {
 		this.logger.log(
 			`Loaded specs: ${this.lightingIntents?.intents.length ?? 0} lighting intents, ` +
 				`${this.climateIntents?.intents.length ?? 0} climate intents, ` +
-				`${this.mediaIntents?.intents.length ?? 0} media intents, ` +
 				`${this.lightingModes.size} lighting modes, ` +
 				`${this.coversModes.size} covers modes`,
 		);
@@ -253,39 +248,6 @@ export class IntentSpecLoaderService implements OnModuleInit {
 		}
 
 		this.climateIntents = {
-			category: builtinConfig.category.id,
-			label: builtinConfig.category.label,
-			description: builtinConfig.category.description,
-			icon: builtinConfig.category.icon,
-			intents,
-		};
-	}
-
-	/**
-	 * Load and merge media intents
-	 */
-	private loadMediaIntents(): void {
-		const builtinPath = join(this.builtinSpecPath, 'media-intents.yaml');
-		const userPath = join(this.userSpecPath, 'media-intents.yaml');
-
-		const builtinConfig = this.loadYamlFile<YamlIntentConfig>(builtinPath, 'builtin');
-
-		if (!builtinConfig) {
-			this.logger.error('Failed to load builtin media intents');
-			return;
-		}
-
-		let intents = this.resolveIntents(builtinConfig.intents, builtinConfig.limits);
-
-		if (existsSync(userPath)) {
-			const userConfig = this.loadYamlFile<YamlIntentConfig>(userPath, 'user');
-
-			if (userConfig) {
-				intents = this.mergeIntents(intents, this.resolveIntents(userConfig.intents, userConfig.limits));
-			}
-		}
-
-		this.mediaIntents = {
 			category: builtinConfig.category.id,
 			label: builtinConfig.category.label,
 			description: builtinConfig.category.description,
@@ -658,10 +620,6 @@ export class IntentSpecLoaderService implements OnModuleInit {
 			catalog.push(this.climateIntents);
 		}
 
-		if (this.mediaIntents) {
-			catalog.push(this.mediaIntents);
-		}
-
 		return catalog;
 	}
 
@@ -677,13 +635,6 @@ export class IntentSpecLoaderService implements OnModuleInit {
 	 */
 	getClimateIntents(): ResolvedIntent[] {
 		return this.climateIntents?.intents ?? [];
-	}
-
-	/**
-	 * Get media intents only
-	 */
-	getMediaIntents(): ResolvedIntent[] {
-		return this.mediaIntents?.intents ?? [];
 	}
 
 	/**

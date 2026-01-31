@@ -156,12 +156,6 @@ class MediaActivityRepository extends ChangeNotifier {
 		try {
 			final state = MediaActiveStateModel.fromJson(json, spaceId: spaceId);
 			_activeStates[spaceId] = state;
-
-			if (kDebugMode) {
-				debugPrint(
-					'[MEDIA ACTIVITY] Updated active state for $spaceId: ${state.state} (${state.activityKey})',
-				);
-			}
 			notifyListeners();
 		} catch (e) {
 			if (kDebugMode) {
@@ -190,7 +184,7 @@ class MediaActivityRepository extends ChangeNotifier {
 
 		try {
 			final keyStr = mediaActivityKeyToString(activityKey);
-			final response = await _dio.post('/modules/spaces/spaces/$spaceId/media/activities/$keyStr/activate');
+			final response = await _dio.post('/modules/spaces/spaces/$spaceId/media/activities/$keyStr/activate', data: {});
 
 			final statusCode = response.statusCode ?? 0;
 			if (statusCode >= 200 && statusCode < 300) {
@@ -253,7 +247,7 @@ class MediaActivityRepository extends ChangeNotifier {
 		try {
 			final keyStr = mediaActivityKeyToString(activityKey);
 			final response = await _dio.post(
-				'/modules/spaces/spaces/$spaceId/media/activities/$keyStr/preview',
+				'/modules/spaces/spaces/$spaceId/media/activities/$keyStr/preview', data: {},
 			);
 
 			final statusCode = response.statusCode ?? 0;
@@ -287,7 +281,7 @@ class MediaActivityRepository extends ChangeNotifier {
 		notifyListeners();
 
 		try {
-			final response = await _dio.post('/modules/spaces/spaces/$spaceId/media/activities/deactivate');
+			final response = await _dio.post('/modules/spaces/spaces/$spaceId/media/activities/deactivate', data: {});
 
 			final statusCode = response.statusCode ?? 0;
 			if (statusCode >= 200 && statusCode < 300) {

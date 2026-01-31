@@ -5,6 +5,7 @@ import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger';
+import { toSnakeCaseKeys } from '../../../common/utils/transform.utils';
 import { IDevicePropertyData } from '../../devices/platforms/device.platform';
 import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
 import { SpaceActiveMediaActivityEntity } from '../entities/space-active-media-activity.entity';
@@ -203,7 +204,7 @@ export class SpaceMediaActivityService {
 				activityKey,
 				state: MediaActivationState.ACTIVATING,
 				activatedAt: new Date(),
-				resolved: JSON.stringify(plan.resolved),
+				resolved: JSON.stringify(toSnakeCaseKeys(plan.resolved)),
 				lastResult: null,
 			});
 		} else {
@@ -216,7 +217,7 @@ export class SpaceMediaActivityService {
 			record.activityKey = activityKey;
 			record.state = MediaActivationState.ACTIVATING;
 			record.activatedAt = new Date();
-			record.resolved = JSON.stringify(plan.resolved);
+			record.resolved = JSON.stringify(toSnakeCaseKeys(plan.resolved));
 			record.lastResult = null;
 		}
 
@@ -254,7 +255,7 @@ export class SpaceMediaActivityService {
 
 			// Persist final state
 			record.state = finalState;
-			record.lastResult = JSON.stringify(lastResult);
+			record.lastResult = JSON.stringify(toSnakeCaseKeys(lastResult));
 			await this.activeRepository.save(record);
 
 			// Emit appropriate event
@@ -305,7 +306,7 @@ export class SpaceMediaActivityService {
 			};
 
 			record.state = MediaActivationState.FAILED;
-			record.lastResult = JSON.stringify(lastResult);
+			record.lastResult = JSON.stringify(toSnakeCaseKeys(lastResult));
 			await this.activeRepository.save(record);
 
 			this.emitEvent(EventType.MEDIA_ACTIVITY_FAILED, spaceId, activityKey, plan.resolved, lastResult);
@@ -977,18 +978,26 @@ export class SpaceMediaActivityService {
 		summary?: MediaActivityLastResultModel,
 		warnings?: string[],
 	): void {
+		const stateMap: Record<string, MediaActivationState> = {
+			[EventType.MEDIA_ACTIVITY_ACTIVATING]: MediaActivationState.ACTIVATING,
+			[EventType.MEDIA_ACTIVITY_ACTIVATED]: MediaActivationState.ACTIVE,
+			[EventType.MEDIA_ACTIVITY_FAILED]: MediaActivationState.FAILED,
+			[EventType.MEDIA_ACTIVITY_DEACTIVATED]: MediaActivationState.DEACTIVATED,
+		};
+
 		const payload: Record<string, unknown> = {
 			space_id: spaceId,
 			activity_key: activityKey,
+			state: stateMap[eventType] ?? MediaActivationState.DEACTIVATED,
 			timestamp: new Date().toISOString(),
 		};
 
 		if (resolved) {
-			payload.resolved = resolved;
+			payload.resolved = toSnakeCaseKeys(resolved);
 		}
 
 		if (summary) {
-			payload.summary = summary;
+			payload.summary = toSnakeCaseKeys(summary);
 		}
 
 		if (warnings && warnings.length > 0) {

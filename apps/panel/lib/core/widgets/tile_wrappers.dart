@@ -305,6 +305,7 @@ class DeviceTileLandscape extends StatelessWidget {
   final Color? iconAccentColor;
   final VoidCallback? onIconTap;
   final VoidCallback? onTileTap;
+  final Widget? accessories;
 
   DeviceTileLandscape({
     super.key,
@@ -320,6 +321,7 @@ class DeviceTileLandscape extends StatelessWidget {
     this.iconAccentColor,
     this.onIconTap,
     this.onTileTap,
+    this.accessories,
   });
 
   @override
@@ -349,6 +351,7 @@ class DeviceTileLandscape extends StatelessWidget {
         showWarningBadge: true,
         showInactiveBorder: true,
         showSelectionIndicator: showSelectionIndicator,
+        accessories: accessories,
       ),
     );
   }
@@ -376,6 +379,7 @@ class DeviceTilePortrait extends StatelessWidget {
   final Color? iconAccentColor;
   final VoidCallback? onIconTap;
   final VoidCallback? onTileTap;
+  final Widget? accessories;
 
   DeviceTilePortrait({
     super.key,
@@ -390,6 +394,7 @@ class DeviceTilePortrait extends StatelessWidget {
     this.iconAccentColor,
     this.onIconTap,
     this.onTileTap,
+    this.accessories,
   });
 
   @override
@@ -418,6 +423,7 @@ class DeviceTilePortrait extends StatelessWidget {
         showDoubleBorder: false,
         showWarningBadge: true,
         showInactiveBorder: false,
+        accessories: accessories,
       ),
     );
   }

@@ -70,6 +70,11 @@ class UniversalTile extends StatelessWidget {
   final double? nameFontSize;
   final double? statusFontSize;
 
+  // Accessories widget (capability icons, etc.)
+  // Horizontal: placed on the right side after text content
+  // Vertical: placed at the bottom after status text
+  final Widget? accessories;
+
   UniversalTile({
     super.key,
     this.layout = TileLayout.vertical,
@@ -91,6 +96,7 @@ class UniversalTile extends StatelessWidget {
     this.showInactiveBorder = false,
     this.nameFontSize,
     this.statusFontSize,
+    this.accessories,
   });
 
   double _scale(double size) =>
@@ -203,6 +209,12 @@ class UniversalTile extends StatelessWidget {
                         textAlign: TextAlign.center,
                       ),
                     ],
+
+                    // Accessories (optional)
+                    if (accessories != null) ...[
+                      AppSpacings.spacingXsVertical,
+                      accessories!,
+                    ],
                   ],
                 ),
               ),
@@ -304,6 +316,13 @@ class UniversalTile extends StatelessWidget {
                 ],
               ),
             ),
+
+            // Accessories for horizontal
+            if (accessories != null)
+              Padding(
+                padding: EdgeInsets.only(left: AppSpacings.pSm),
+                child: accessories!,
+              ),
 
             // Selection indicator for horizontal
             if (isSelected && showSelectionIndicator)

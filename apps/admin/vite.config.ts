@@ -60,6 +60,7 @@ export default defineConfig((config: UserConfig): UserConfig => {
 			// preserveSymlinks: true,
 		},
 		server: {
+			host: '0.0.0.0',
 			fs: {
 				allow: [
 					// app root is implicitly allowed
@@ -79,10 +80,10 @@ export default defineConfig((config: UserConfig): UserConfig => {
 			hmr: {
 				host: 'localhost',
 			},
-			port: Number(env['FB_ADMIN_PORT']) || 3000,
+			port: Number(env['FB_ADMIN_PORT']) || 3003,
 		},
 		preview: {
-			port: Number(env['FB_ADMIN_PORT']) || 3000,
+			port: Number(env['FB_ADMIN_PORT']) || 3003,
 		},
 	};
 });

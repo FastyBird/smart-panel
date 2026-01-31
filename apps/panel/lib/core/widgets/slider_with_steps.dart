@@ -38,6 +38,9 @@ class SliderWithSteps extends StatelessWidget {
   /// When false, the slider allows continuous 0-100% values.
   final bool discrete;
 
+  /// Whether to show step labels below the slider.
+  final bool showSteps;
+
   const SliderWithSteps({
     super.key,
     required this.value,
@@ -47,6 +50,7 @@ class SliderWithSteps extends StatelessWidget {
     this.steps = const ['0%', '25%', '50%', '75%', '100%'],
     this.enabled = true,
     this.discrete = false,
+    this.showSteps = true,
   });
 
   @override
@@ -110,19 +114,21 @@ class SliderWithSteps extends StatelessWidget {
               ),
             ),
           ),
-          AppSpacings.spacingXsVertical,
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: steps
-                .map((s) => Text(
-                      s,
-                      style: TextStyle(
-                        color: mutedColor,
-                        fontSize: AppFontSize.extraSmall,
-                      ),
-                    ))
-                .toList(),
-          ),
+          if (showSteps) ...[
+            AppSpacings.spacingXsVertical,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: steps
+                  .map((s) => Text(
+                        s,
+                        style: TextStyle(
+                          color: mutedColor,
+                          fontSize: AppFontSize.extraSmall,
+                        ),
+                      ))
+                  .toList(),
+            ),
+          ],
         ],
       );
   }

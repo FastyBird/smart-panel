@@ -1,3 +1,4 @@
+import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:flutter/material.dart';
 
 // ============================================================================
@@ -119,14 +120,8 @@ class TrackInfo {
       ? position.inSeconds / duration.inSeconds 
       : 0.0;
 
-  String get positionString => _formatDuration(position);
-  String get durationString => _formatDuration(duration);
-
-  String _formatDuration(Duration d) {
-    final minutes = d.inMinutes;
-    final seconds = d.inSeconds % 60;
-    return '$minutes:${seconds.toString().padLeft(2, '0')}';
-  }
+  String get positionString => DatetimeUtils.formatDuration(position);
+  String get durationString => DatetimeUtils.formatDuration(duration);
 }
 
 class QueueItem {
