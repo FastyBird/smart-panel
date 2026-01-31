@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/unbound-method */
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { Repository } from 'typeorm';
 
 import { Test, TestingModule } from '@nestjs/testing';
@@ -35,7 +36,7 @@ describe('SecurityEventsService', () => {
 	const makeAlert = (overrides: Partial<SecurityAlertModel> = {}): SecurityAlertModel => {
 		const alert = new SecurityAlertModel();
 		alert.id = overrides.id ?? 'sensor:dev1:smoke';
-		alert.type = (overrides.type as SecurityAlertType) ?? SecurityAlertType.SMOKE;
+		alert.type = overrides.type ?? SecurityAlertType.SMOKE;
 		alert.severity = overrides.severity ?? Severity.CRITICAL;
 		alert.timestamp = overrides.timestamp ?? '2025-01-18T12:00:00Z';
 		alert.acknowledged = overrides.acknowledged ?? false;

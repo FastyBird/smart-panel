@@ -115,14 +115,14 @@ export class SecurityEventsService {
 			});
 		}
 
-		// Update snapshot
-		this.updateSnapshot(activeAlerts, armedState, alarmState);
-
 		// Persist events
 		if (events.length > 0) {
 			await this.repo.save(events.map((e) => this.repo.create(e)));
 			await this.enforceRetention();
 		}
+
+		// Update snapshot only after successful persistence
+		this.updateSnapshot(activeAlerts, armedState, alarmState);
 	}
 
 	async recordAcknowledgement(alertId: string, alertType?: string, sourceDeviceId?: string): Promise<void> {
