@@ -3,6 +3,7 @@ import { LessThan, Repository } from 'typeorm';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
+import { SecurityEventEntity } from '../entities/security-event.entity';
 import { SecurityAlertModel } from '../models/security-status.model';
 import {
 	AlarmState,
@@ -12,8 +13,6 @@ import {
 	SecurityEventType,
 	Severity,
 } from '../security.constants';
-
-import { SecurityEventEntity } from '../entities/security-event.entity';
 
 interface EventsQuery {
 	limit?: number;

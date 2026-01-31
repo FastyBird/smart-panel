@@ -34,7 +34,12 @@ import { SecurityService } from './services/security.service';
 	description: SECURITY_MODULE_API_TAG_DESCRIPTION,
 })
 @Module({
-	imports: [SwaggerModule, ExtensionsModule, DevicesModule, TypeOrmModule.forFeature([SecurityAlertAckEntity, SecurityEventEntity])],
+	imports: [
+		SwaggerModule,
+		ExtensionsModule,
+		DevicesModule,
+		TypeOrmModule.forFeature([SecurityAlertAckEntity, SecurityEventEntity]),
+	],
 	controllers: [SecurityController, SecurityAlertsController, SecurityEventsController],
 	providers: [
 		DefaultSecurityProvider,

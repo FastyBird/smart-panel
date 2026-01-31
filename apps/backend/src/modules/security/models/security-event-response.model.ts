@@ -3,7 +3,6 @@ import { Expose } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { BaseSuccessResponseModel } from '../../api/models/api-response.model';
-
 import { SecurityEventType, Severity } from '../security.constants';
 
 @ApiSchema({ name: 'SecurityModuleDataEvent' })

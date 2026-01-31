@@ -21,8 +21,18 @@ export class SecurityEventsController {
 		description: 'Returns a list of recent security events (alert transitions, acknowledgements, state changes)',
 		operationId: 'get-security-module-events',
 	})
-	@ApiQuery({ name: 'limit', required: false, type: 'number', description: 'Max events to return (default 50, max 200)' })
-	@ApiQuery({ name: 'since', required: false, type: 'string', description: 'ISO 8601 datetime — only return events after this time' })
+	@ApiQuery({
+		name: 'limit',
+		required: false,
+		type: 'number',
+		description: 'Max events to return (default 50, max 200)',
+	})
+	@ApiQuery({
+		name: 'since',
+		required: false,
+		type: 'string',
+		description: 'ISO 8601 datetime — only return events after this time',
+	})
 	@ApiQuery({ name: 'severity', required: false, enum: Severity, description: 'Filter by severity' })
 	@ApiQuery({ name: 'type', required: false, enum: SecurityEventType, description: 'Filter by event type' })
 	@ApiSuccessResponse(SecurityEventsResponseModel, 'Security events retrieved successfully')

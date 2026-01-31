@@ -114,7 +114,7 @@ describe('SecurityEventsService', () => {
 			await service.recordAlertTransitions([alert], ArmedState.DISARMED, AlarmState.IDLE);
 
 			expect(repo.save).toHaveBeenCalled();
-			const saved = repo.save.mock.calls[0][0] as SecurityEventEntity[];
+			const saved = repo.save.mock.calls[0][0] as unknown as SecurityEventEntity[];
 			const raised = saved.find((e) => e.eventType === SecurityEventType.ALERT_RAISED);
 			expect(raised).toBeDefined();
 			expect(raised!.alertId).toBe('sensor:dev1:smoke');
@@ -130,7 +130,7 @@ describe('SecurityEventsService', () => {
 			await service.recordAlertTransitions([], ArmedState.DISARMED, AlarmState.IDLE);
 
 			expect(repo.save).toHaveBeenCalled();
-			const saved = repo.save.mock.calls[0][0] as SecurityEventEntity[];
+			const saved = repo.save.mock.calls[0][0] as unknown as SecurityEventEntity[];
 			const resolved = saved.find((e) => e.eventType === SecurityEventType.ALERT_RESOLVED);
 			expect(resolved).toBeDefined();
 			expect(resolved!.alertId).toBe('sensor:dev1:smoke');
@@ -142,7 +142,7 @@ describe('SecurityEventsService', () => {
 			await service.recordAlertTransitions([], ArmedState.ARMED_AWAY, AlarmState.IDLE);
 
 			expect(repo.save).toHaveBeenCalled();
-			const saved = repo.save.mock.calls[0][0] as SecurityEventEntity[];
+			const saved = repo.save.mock.calls[0][0] as unknown as SecurityEventEntity[];
 			const stateChange = saved.find((e) => e.eventType === SecurityEventType.ARMED_STATE_CHANGED);
 			expect(stateChange).toBeDefined();
 			expect(stateChange!.payload).toEqual({ from: ArmedState.DISARMED, to: ArmedState.ARMED_AWAY });
@@ -154,7 +154,7 @@ describe('SecurityEventsService', () => {
 			await service.recordAlertTransitions([], ArmedState.DISARMED, AlarmState.TRIGGERED);
 
 			expect(repo.save).toHaveBeenCalled();
-			const saved = repo.save.mock.calls[0][0] as SecurityEventEntity[];
+			const saved = repo.save.mock.calls[0][0] as unknown as SecurityEventEntity[];
 			const stateChange = saved.find((e) => e.eventType === SecurityEventType.ALARM_STATE_CHANGED);
 			expect(stateChange).toBeDefined();
 			expect(stateChange!.severity).toBe(Severity.CRITICAL);
@@ -176,7 +176,7 @@ describe('SecurityEventsService', () => {
 			await service.recordAcknowledgement('sensor:dev1:smoke', 'smoke', 'dev1');
 
 			expect(repo.save).toHaveBeenCalled();
-			const saved = repo.save.mock.calls[0][0] as SecurityEventEntity;
+			const saved = repo.save.mock.calls[0][0] as unknown as SecurityEventEntity;
 			expect(saved.eventType).toBe(SecurityEventType.ALERT_ACKNOWLEDGED);
 			expect(saved.alertId).toBe('sensor:dev1:smoke');
 			expect(saved.alertType).toBe('smoke');
