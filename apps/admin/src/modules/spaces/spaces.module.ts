@@ -91,12 +91,7 @@ export default {
 				return;
 			}
 
-			if (data.event === EventType.MEDIA_STATE_CHANGED && 'space_id' in data.payload) {
-				refreshSignals.mediaState.value++;
-				return;
-			}
-
-			if (data.event === EventType.COVERS_STATE_CHANGED && 'space_id' in data.payload) {
+				if (data.event === EventType.COVERS_STATE_CHANGED && 'space_id' in data.payload) {
 				refreshSignals.coversState.value++;
 				return;
 			}
@@ -138,13 +133,7 @@ export default {
 					refreshSignals.lighting.value++;
 					break;
 
-				case EventType.MEDIA_TARGET_CREATED:
-				case EventType.MEDIA_TARGET_UPDATED:
-				case EventType.MEDIA_TARGET_DELETED:
-					refreshSignals.media.value++;
-					break;
-
-				case EventType.COVERS_TARGET_CREATED:
+					case EventType.COVERS_TARGET_CREATED:
 				case EventType.COVERS_TARGET_UPDATED:
 				case EventType.COVERS_TARGET_DELETED:
 					refreshSignals.covers.value++;
