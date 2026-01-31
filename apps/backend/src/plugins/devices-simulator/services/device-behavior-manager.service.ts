@@ -223,10 +223,7 @@ export class DeviceBehaviorManagerService implements OnModuleDestroy {
 				}
 
 				try {
-					const device = await this.devicesService.findOne<SimulatorDeviceEntity>(
-						deviceId,
-						DEVICES_SIMULATOR_TYPE,
-					);
+					const device = await this.devicesService.findOne<SimulatorDeviceEntity>(deviceId, DEVICES_SIMULATOR_TYPE);
 
 					if (!device) {
 						this.deviceStates.delete(deviceId);
