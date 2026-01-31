@@ -110,6 +110,11 @@ export class WindowCoveringRealisticBehavior extends BaseDeviceBehavior {
 		targetPosition: number,
 		travelTime: number,
 	): void {
+		// No movement needed if already at target
+		if (currentPosition === targetPosition) {
+			return;
+		}
+
 		const isOpening = targetPosition > currentPosition;
 
 		// Cancel existing transitions

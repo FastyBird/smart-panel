@@ -118,6 +118,10 @@ export class HumidifierRealisticBehavior extends BaseDeviceBehavior {
 					});
 
 					if (newLevel <= 0) {
+						// Cancel active humidity transition since we can't humidify without water
+						this.cancelTransitions(state, ChannelCategory.HUMIDITY, PropertyCategory.HUMIDITY);
+						this.setStateValue(state, 'isOn', false);
+
 						results.push({
 							channelCategory: ChannelCategory.HUMIDIFIER,
 							propertyCategory: PropertyCategory.WATER_TANK_EMPTY,
