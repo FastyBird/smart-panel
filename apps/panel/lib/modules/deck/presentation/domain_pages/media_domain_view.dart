@@ -401,15 +401,9 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			return _buildOffStateContent(context);
 		}
 
-		final isCompact = activeState.isActive || activeState.isActiveWithWarnings;
-		final verticalPadding = isCompact ? AppSpacings.pLg : AppSpacings.pXl * 3;
-
 		return Container(
 			width: double.infinity,
-			padding: EdgeInsets.symmetric(
-				horizontal: AppSpacings.pLg,
-				vertical: verticalPadding,
-			),
+			padding: AppSpacings.paddingLg,
 			decoration: BoxDecoration(
 				color: isLight ? AppFillColorLight.light : AppFillColorDark.light,
 				borderRadius: BorderRadius.circular(AppBorderRadius.medium),
