@@ -25,11 +25,7 @@ export class SecurityService {
 
 		// Record transitions before applying ack state (so we detect raw transitions)
 		try {
-			await this.eventsService.recordAlertTransitions(
-				status.activeAlerts,
-				status.armedState,
-				status.alarmState,
-			);
+			await this.eventsService.recordAlertTransitions(status.activeAlerts, status.armedState, status.alarmState);
 		} catch (error) {
 			this.logger.warn(`Failed to record alert transitions: ${error}`);
 		}
@@ -76,12 +72,7 @@ export class SecurityService {
 
 		for (const alert of status.activeAlerts) {
 			try {
-				await this.eventsService.recordAcknowledgement(
-					alert.id,
-					alert.type,
-					alert.sourceDeviceId,
-					alert.severity,
-				);
+				await this.eventsService.recordAcknowledgement(alert.id, alert.type, alert.sourceDeviceId, alert.severity);
 			} catch (error) {
 				this.logger.warn(`Failed to record acknowledgement event for ${alert.id}: ${error}`);
 			}
