@@ -51,6 +51,13 @@ import {
 } from './entities/devices-simulator.entity';
 import { SimulatorConfigModel } from './models/config.model';
 import { SimulatorDevicePlatform } from './platforms/simulator-device.platform';
+import {
+	AirConditionerRealisticBehavior,
+	HumidifierRealisticBehavior,
+	TelevisionDelayedBehavior,
+	ThermostatRealisticBehavior,
+} from './behaviors';
+import { DeviceBehaviorManagerService } from './services/device-behavior-manager.service';
 import { DeviceGeneratorService } from './services/device-generator.service';
 import { ScenarioExecutorService } from './services/scenario-executor.service';
 import { ScenarioLoaderService } from './services/scenario-loader.service';
@@ -76,6 +83,7 @@ import { SimulationService } from './services/simulation.service';
 		ScenarioLoaderService,
 		ScenarioExecutorService,
 		SimulationService,
+		DeviceBehaviorManagerService,
 		GenerateDeviceCommand,
 		PopulateValuesCommand,
 		ScenarioCommand,
@@ -83,7 +91,7 @@ import { SimulationService } from './services/simulation.service';
 		SimulateCommand,
 	],
 	controllers: [SimulatorController],
-	exports: [DeviceGeneratorService, SimulationService],
+	exports: [DeviceGeneratorService, SimulationService, DeviceBehaviorManagerService],
 })
 export class DevicesSimulatorPlugin {
 	constructor(
@@ -98,6 +106,7 @@ export class DevicesSimulatorPlugin {
 		private readonly extensionsService: ExtensionsService,
 		private readonly pluginServiceManager: PluginServiceManagerService,
 		private readonly simulationService: SimulationService,
+		private readonly behaviorManager: DeviceBehaviorManagerService,
 	) {}
 
 	onModuleInit() {
@@ -303,6 +312,12 @@ pnpm run cli simulator:connection --device <id> --state lost
 				repository: 'https://github.com/FastyBird/smart-panel',
 			},
 		});
+
+		// Register device behaviors for realistic command responses
+		this.behaviorManager.registerBehavior(new ThermostatRealisticBehavior(), true);
+		this.behaviorManager.registerBehavior(new TelevisionDelayedBehavior(), true);
+		this.behaviorManager.registerBehavior(new HumidifierRealisticBehavior(), true);
+		this.behaviorManager.registerBehavior(new AirConditionerRealisticBehavior(), true);
 
 		// Register service with centralized plugin service manager
 		this.pluginServiceManager.register(this.simulationService);

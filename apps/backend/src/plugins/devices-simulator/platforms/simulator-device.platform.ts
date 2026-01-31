@@ -5,6 +5,7 @@ import { IDevicePlatform, IDevicePropertyData } from '../../../modules/devices/p
 import { ChannelsPropertiesService } from '../../../modules/devices/services/channels.properties.service';
 import { DEVICES_SIMULATOR_PLUGIN_NAME, DEVICES_SIMULATOR_TYPE } from '../devices-simulator.constants';
 import { SimulatorDeviceEntity } from '../entities/devices-simulator.entity';
+import { DeviceBehaviorManagerService } from '../services/device-behavior-manager.service';
 
 export type ISimulatorDevicePropertyData = IDevicePropertyData & {
 	device: SimulatorDeviceEntity;
@@ -17,7 +18,10 @@ export class SimulatorDevicePlatform implements IDevicePlatform {
 		'SimulatorDevicePlatform',
 	);
 
-	constructor(private readonly channelsPropertiesService: ChannelsPropertiesService) {}
+	constructor(
+		private readonly channelsPropertiesService: ChannelsPropertiesService,
+		private readonly behaviorManager: DeviceBehaviorManagerService,
+	) {}
 
 	getType(): string {
 		return DEVICES_SIMULATOR_TYPE;
@@ -34,11 +38,23 @@ export class SimulatorDevicePlatform implements IDevicePlatform {
 		);
 
 		try {
+			const previousValue = property.value?.value;
+
 			// For simulated devices, we persist the value directly since there's no physical device
 			await this.channelsPropertiesService.update(property.id, {
 				type: property.type,
 				value,
 			});
+
+			// Notify behavior manager about the property change so it can schedule
+			// realistic follow-up updates (e.g., gradual temperature convergence)
+			this.behaviorManager.handlePropertyChange(
+				device,
+				channel.category,
+				property.category,
+				value,
+				previousValue,
+			);
 
 			return true;
 		} catch (error) {
@@ -69,6 +85,8 @@ export class SimulatorDevicePlatform implements IDevicePlatform {
 		// Process each update and persist the value
 		for (const update of updates) {
 			try {
+				const previousValue = update.property.value?.value;
+
 				await this.channelsPropertiesService.update(update.property.id, {
 					type: update.property.type,
 					value: update.value,
@@ -77,6 +95,15 @@ export class SimulatorDevicePlatform implements IDevicePlatform {
 				this.logger.debug(
 					`Simulated update: channel=${update.channel.id}, property=${update.property.id}, value=${update.value}`,
 					{ resource: device.id },
+				);
+
+				// Notify behavior manager about the property change
+				this.behaviorManager.handlePropertyChange(
+					device,
+					update.channel.category,
+					update.property.category,
+					update.value,
+					previousValue,
 				);
 
 				results.push(true);
