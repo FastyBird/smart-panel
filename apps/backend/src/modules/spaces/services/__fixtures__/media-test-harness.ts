@@ -27,7 +27,7 @@ export class MediaTestHarness {
 		findDevicesByIds: jest.fn().mockResolvedValue([]),
 	};
 
-	mockMediaEndpointService = {
+	mockMediaCapabilityService = {
 		getMediaCapabilitiesInSpace: jest.fn().mockResolvedValue([]),
 	};
 
@@ -82,7 +82,7 @@ export class MediaTestHarness {
 
 		// Wire up capability summaries
 		const summaries = scenario.devices.map((d) => this.toSummary(d));
-		this.mockMediaEndpointService.getMediaCapabilitiesInSpace.mockResolvedValue(summaries);
+		this.mockMediaCapabilityService.getMediaCapabilitiesInSpace.mockResolvedValue(summaries);
 	}
 
 	// -----------------------------------------------------------------------

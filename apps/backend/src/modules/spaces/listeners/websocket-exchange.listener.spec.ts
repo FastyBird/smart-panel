@@ -91,7 +91,7 @@ describe('WebsocketExchangeListener (Spaces)', () => {
 		it('should register all command handlers', () => {
 			listener.onModuleInit();
 
-			// Note: Media domain uses routing-based architecture via SpaceMediaRoutingService
+			// Note: Media domain uses activity-based architecture via SpaceMediaActivityService
 			expect(commandEventRegistry.register).toHaveBeenCalledTimes(4);
 			expect(commandEventRegistry.register).toHaveBeenCalledWith(
 				SpacesWsEventType.LIGHTING_INTENT,

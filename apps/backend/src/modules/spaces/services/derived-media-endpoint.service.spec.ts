@@ -6,7 +6,7 @@ import { DeviceCategory } from '../../devices/devices.constants';
 import { MediaCapabilityPermission, MediaEndpointType } from '../spaces.constants';
 
 import { DerivedMediaEndpointService } from './derived-media-endpoint.service';
-import { SpaceMediaEndpointService } from './space-media-endpoint.service';
+import { MediaCapabilityService } from './media-capability.service';
 import { SpacesService } from './spaces.service';
 
 // Helper to build a capability summary
@@ -39,7 +39,7 @@ function capMapping(propertyId?: string) {
 describe('DerivedMediaEndpointService', () => {
 	let service: DerivedMediaEndpointService;
 	let mockSpacesService: { getOneOrThrow: jest.Mock };
-	let mockMediaEndpointService: { getMediaCapabilitiesInSpace: jest.Mock };
+	let mockMediaCapabilityService: { getMediaCapabilitiesInSpace: jest.Mock };
 
 	const spaceId = uuid();
 
@@ -47,7 +47,7 @@ describe('DerivedMediaEndpointService', () => {
 		mockSpacesService = {
 			getOneOrThrow: jest.fn().mockResolvedValue({ id: spaceId, name: 'Living Room' }),
 		};
-		mockMediaEndpointService = {
+		mockMediaCapabilityService = {
 			getMediaCapabilitiesInSpace: jest.fn().mockResolvedValue([]),
 		};
 
@@ -55,7 +55,7 @@ describe('DerivedMediaEndpointService', () => {
 			providers: [
 				DerivedMediaEndpointService,
 				{ provide: SpacesService, useValue: mockSpacesService },
-				{ provide: SpaceMediaEndpointService, useValue: mockMediaEndpointService },
+				{ provide: MediaCapabilityService, useValue: mockMediaCapabilityService },
 			],
 		}).compile();
 
@@ -72,7 +72,7 @@ describe('DerivedMediaEndpointService', () => {
 				power: capMapping(),
 				remote: capMapping(),
 			});
-			mockMediaEndpointService.getMediaCapabilitiesInSpace.mockResolvedValue([summary]);
+			mockMediaCapabilityService.getMediaCapabilitiesInSpace.mockResolvedValue([summary]);
 
 			const result1 = await service.buildEndpointsForSpace(spaceId);
 			const result2 = await service.buildEndpointsForSpace(spaceId);
@@ -88,7 +88,7 @@ describe('DerivedMediaEndpointService', () => {
 				deviceCategory: DeviceCategory.SPEAKER,
 				volume: capMapping(),
 			});
-			mockMediaEndpointService.getMediaCapabilitiesInSpace.mockResolvedValue([summary]);
+			mockMediaCapabilityService.getMediaCapabilitiesInSpace.mockResolvedValue([summary]);
 
 			const result = await service.buildEndpointsForSpace(spaceId);
 
@@ -107,7 +107,7 @@ describe('DerivedMediaEndpointService', () => {
 				input: capMapping(),
 				remote: capMapping(),
 			});
-			mockMediaEndpointService.getMediaCapabilitiesInSpace.mockResolvedValue([summary]);
+			mockMediaCapabilityService.getMediaCapabilitiesInSpace.mockResolvedValue([summary]);
 
 			const result = await service.buildEndpointsForSpace(spaceId);
 
@@ -136,7 +136,7 @@ describe('DerivedMediaEndpointService', () => {
 				mute: capMapping(),
 				remote: capMapping(),
 			});
-			mockMediaEndpointService.getMediaCapabilitiesInSpace.mockResolvedValue([summary]);
+			mockMediaCapabilityService.getMediaCapabilitiesInSpace.mockResolvedValue([summary]);
 
 			const result = await service.buildEndpointsForSpace(spaceId);
 
@@ -155,7 +155,7 @@ describe('DerivedMediaEndpointService', () => {
 				power: capMapping(powerPropId),
 				input: capMapping(inputPropId),
 			});
-			mockMediaEndpointService.getMediaCapabilitiesInSpace.mockResolvedValue([summary]);
+			mockMediaCapabilityService.getMediaCapabilitiesInSpace.mockResolvedValue([summary]);
 
 			const result = await service.buildEndpointsForSpace(spaceId);
 			const display = result.endpoints.find((e) => e.type === MediaEndpointType.DISPLAY);
@@ -186,7 +186,7 @@ describe('DerivedMediaEndpointService', () => {
 				volume: capMapping(),
 				mute: capMapping(),
 			});
-			mockMediaEndpointService.getMediaCapabilitiesInSpace.mockResolvedValue([summary]);
+			mockMediaCapabilityService.getMediaCapabilitiesInSpace.mockResolvedValue([summary]);
 
 			const result = await service.buildEndpointsForSpace(spaceId);
 
@@ -201,7 +201,7 @@ describe('DerivedMediaEndpointService', () => {
 				volume: capMapping(),
 				playback: capMapping(),
 			});
-			mockMediaEndpointService.getMediaCapabilitiesInSpace.mockResolvedValue([summary]);
+			mockMediaCapabilityService.getMediaCapabilitiesInSpace.mockResolvedValue([summary]);
 
 			const result = await service.buildEndpointsForSpace(spaceId);
 
@@ -250,7 +250,7 @@ describe('DerivedMediaEndpointService', () => {
 					playback: capMapping(),
 				}),
 			];
-			mockMediaEndpointService.getMediaCapabilitiesInSpace.mockResolvedValue(summaries);
+			mockMediaCapabilityService.getMediaCapabilitiesInSpace.mockResolvedValue(summaries);
 
 			const result = await service.buildEndpointsForSpace(spaceId);
 
@@ -288,7 +288,7 @@ describe('DerivedMediaEndpointService', () => {
 				power: capMapping(),
 				// No volume, no mute, no input, no remote
 			});
-			mockMediaEndpointService.getMediaCapabilitiesInSpace.mockResolvedValue([summary]);
+			mockMediaCapabilityService.getMediaCapabilitiesInSpace.mockResolvedValue([summary]);
 
 			const result = await service.buildEndpointsForSpace(spaceId);
 
@@ -305,7 +305,7 @@ describe('DerivedMediaEndpointService', () => {
 		});
 
 		it('should produce no endpoints for device with no media capabilities', async () => {
-			mockMediaEndpointService.getMediaCapabilitiesInSpace.mockResolvedValue([]);
+			mockMediaCapabilityService.getMediaCapabilitiesInSpace.mockResolvedValue([]);
 
 			const result = await service.buildEndpointsForSpace(spaceId);
 
@@ -320,7 +320,7 @@ describe('DerivedMediaEndpointService', () => {
 				deviceCategory: DeviceCategory.SPEAKER,
 				volume: capMapping(volumePropId),
 			});
-			mockMediaEndpointService.getMediaCapabilitiesInSpace.mockResolvedValue([summary]);
+			mockMediaCapabilityService.getMediaCapabilitiesInSpace.mockResolvedValue([summary]);
 
 			const result = await service.buildEndpointsForSpace(spaceId);
 			const audioEndpoint = result.endpoints.find((e) => e.type === MediaEndpointType.AUDIO_OUTPUT);
@@ -340,7 +340,7 @@ describe('DerivedMediaEndpointService', () => {
 				power: capMapping(),
 				remote: capMapping(remotePropId),
 			});
-			mockMediaEndpointService.getMediaCapabilitiesInSpace.mockResolvedValue([summary]);
+			mockMediaCapabilityService.getMediaCapabilitiesInSpace.mockResolvedValue([summary]);
 
 			const result = await service.buildEndpointsForSpace(spaceId);
 			const remoteEndpoint = result.endpoints.find((e) => e.type === MediaEndpointType.REMOTE_TARGET);
@@ -358,7 +358,7 @@ describe('DerivedMediaEndpointService', () => {
 				deviceCategory: DeviceCategory.TELEVISION,
 				power: capMapping(),
 			});
-			mockMediaEndpointService.getMediaCapabilitiesInSpace.mockResolvedValue([summary]);
+			mockMediaCapabilityService.getMediaCapabilitiesInSpace.mockResolvedValue([summary]);
 
 			const result = await service.buildEndpointsForSpace(spaceId);
 

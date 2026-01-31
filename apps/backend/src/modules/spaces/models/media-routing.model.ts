@@ -3,9 +3,6 @@ import { Expose, Type } from 'class-transformer';
 import { ApiExtraModels, ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
 import { BaseSuccessResponseModel } from '../../api/models/api-response.model';
-import { SpaceActiveMediaRoutingEntity } from '../entities/space-active-media-routing.entity';
-import { SpaceMediaEndpointEntity } from '../entities/space-media-endpoint.entity';
-import { SpaceMediaRoutingEntity } from '../entities/space-media-routing.entity';
 import {
 	MediaActivationState,
 	MediaCapabilityPermission,
@@ -418,60 +415,6 @@ export class MediaRoutingActivationResultModel {
 // ========================
 
 /**
- * Response wrapper for MediaEndpointEntity
- */
-@ApiSchema({ name: 'SpacesModuleResMediaEndpoint' })
-export class MediaEndpointResponseModel extends BaseSuccessResponseModel<SpaceMediaEndpointEntity> {
-	@ApiProperty({
-		description: 'The actual data payload returned by the API',
-		type: () => SpaceMediaEndpointEntity,
-	})
-	@Expose()
-	declare data: SpaceMediaEndpointEntity;
-}
-
-/**
- * Response wrapper for array of MediaEndpointEntity
- */
-@ApiSchema({ name: 'SpacesModuleResMediaEndpoints' })
-export class MediaEndpointsResponseModel extends BaseSuccessResponseModel<SpaceMediaEndpointEntity[]> {
-	@ApiProperty({
-		description: 'The actual data payload returned by the API',
-		type: 'array',
-		items: { $ref: getSchemaPath(SpaceMediaEndpointEntity) },
-	})
-	@Expose()
-	declare data: SpaceMediaEndpointEntity[];
-}
-
-/**
- * Response wrapper for MediaRoutingEntity
- */
-@ApiSchema({ name: 'SpacesModuleResMediaRouting' })
-export class MediaRoutingResponseModel extends BaseSuccessResponseModel<SpaceMediaRoutingEntity> {
-	@ApiProperty({
-		description: 'The actual data payload returned by the API',
-		type: () => SpaceMediaRoutingEntity,
-	})
-	@Expose()
-	declare data: SpaceMediaRoutingEntity;
-}
-
-/**
- * Response wrapper for array of MediaRoutingEntity
- */
-@ApiSchema({ name: 'SpacesModuleResMediaRoutings' })
-export class MediaRoutingsResponseModel extends BaseSuccessResponseModel<SpaceMediaRoutingEntity[]> {
-	@ApiProperty({
-		description: 'The actual data payload returned by the API',
-		type: 'array',
-		items: { $ref: getSchemaPath(SpaceMediaRoutingEntity) },
-	})
-	@Expose()
-	declare data: SpaceMediaRoutingEntity[];
-}
-
-/**
  * Response wrapper for capability summaries
  */
 @ApiSchema({ name: 'SpacesModuleResMediaCapabilities' })
@@ -676,20 +619,6 @@ export class ActiveMediaRoutingStateModel {
 	})
 	@Expose({ name: 'steps_skipped' })
 	stepsSkipped?: number;
-}
-
-/**
- * Response wrapper for ActiveMediaRoutingEntity
- */
-@ApiSchema({ name: 'SpacesModuleResActiveMediaRouting' })
-export class ActiveMediaRoutingResponseModel extends BaseSuccessResponseModel<SpaceActiveMediaRoutingEntity | null> {
-	@ApiProperty({
-		description: 'The actual data payload returned by the API (null if no active routing)',
-		type: () => SpaceActiveMediaRoutingEntity,
-		nullable: true,
-	})
-	@Expose()
-	declare data: SpaceActiveMediaRoutingEntity | null;
 }
 
 /**

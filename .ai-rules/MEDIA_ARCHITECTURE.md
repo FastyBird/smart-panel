@@ -6,20 +6,21 @@ This document describes the architecture of the media control system in the Smar
 
 ## Architecture Summary
 
-The Media domain uses a **routing-based, activity-first architecture**:
-- **Endpoints**: Functional abstractions over device capabilities (display, audio_output, source, remote_target)
-- **Routings**: Activity presets that define which endpoints participate in a media activity
-- **Single Active Routing**: Only one routing can be active per space at any time
+The Media domain uses an **activity-based architecture**:
+- **Endpoints**: Functional abstractions (display, audio_output, source, remote_target) — computed on-the-fly by `DerivedMediaEndpointService`, not persisted
+- **Bindings**: Activity presets that map activities to endpoint IDs (Watch → display/audio/source/remote)
+- **Activities**: Named modes (Watch, Listen, Gaming, Background, Off) — one active per space
 - **Explicit Capabilities**: Capabilities are never hidden; UI renders based on what's available
 
 ### Key Services
-- `SpaceMediaEndpointService` - Manages endpoints and capability detection
-- `SpaceMediaRoutingService` - Handles routing CRUD, activation, and state
+- `MediaCapabilityService` - Derives capability summaries from devices (used by derived endpoints and bindings)
+- `DerivedMediaEndpointService` - Builds endpoints on-the-fly from device capabilities
+- `SpaceMediaActivityBindingService` - Manages activity→endpoint bindings
+- `SpaceMediaActivityService` - Handles activity activation, deactivation, and execution
 
 ### Key Entities
-- `SpaceMediaEndpointEntity` - Functional device projection with capabilities
-- `SpaceMediaRoutingEntity` - Activity preset with endpoint references and policies
-- `SpaceActiveMediaRoutingEntity` - Tracks current active routing per space
+- `SpaceMediaActivityBindingEntity` - Activity preset with endpoint ID references
+- `SpaceActiveMediaActivityEntity` - Tracks current active activity per space
 
 ---
 
@@ -57,26 +58,24 @@ The Media domain uses a **routing-based, activity-first architecture**:
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                        SpacesController                          │
-│              POST /spaces/:id/media/routings/activate            │
-└───────────────────────────────┬─────────────────────────────────┘
-                                │
-                                ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                    SpaceMediaRoutingService                       │
-│  - activateRouting()                                             │
-│  - buildExecutionPlan()                                          │
-│  - deactivateMedia()                                             │
-│  - getMediaStateV2()                                             │
+│     GET /media/endpoints  |  POST /media/activities/:key/activate│
 └───────────────────────────────┬─────────────────────────────────┘
                                 │
                 ┌───────────────┼───────────────┐
                 ▼               ▼               ▼
-┌───────────────────┐ ┌─────────────────┐ ┌──────────────────────┐
-│ SpaceMediaEndpoint│ │ PlatformRegistry│ │ EventEmitter2        │
-│     Service       │ │    Service      │ │                      │
-│ - findBySpace     │ │ - get(device)   │ │ - routing events     │
-│ - detectCaps      │ │ - processBatch()│ │ - state change events│
-└───────────────────┘ └─────────────────┘ └──────────────────────┘
+┌──────────────────────┐ ┌─────────────────────┐ ┌────────────────────┐
+│ DerivedMediaEndpoint │ │ SpaceMediaActivity  │ │ MediaCapability     │
+│     Service          │ │     Service         │ │     Service         │
+│ - buildEndpoints()   │ │ - activate()        │ │ - getCapabilities() │
+└──────────┬───────────┘ │ - deactivate()      │ └──────────┬─────────┘
+           │             └─────────────────────┘            │
+           │                           │                    │
+           └───────────────────────────┼────────────────────┘
+                                       │
+                           ┌───────────▼───────────┐
+                           │ SpaceMediaActivity    │
+                           │ BindingService        │
+                           └───────────────────────┘
 ```
 
 ## Channel Capability Detection
@@ -205,7 +204,7 @@ The following code exists in the codebase from an earlier unreleased design and 
 - `MediaIntentService`
 - `SpaceMediaStateService`
 
-New development must use `SpaceMediaEndpointService` and `SpaceMediaRoutingService`.
+New development must use `SpaceMediaActivityService`, `DerivedMediaEndpointService`, and `MediaCapabilityService`.
 
 ## Documentation References
 

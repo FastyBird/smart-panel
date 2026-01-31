@@ -18,13 +18,10 @@ import { WebsocketModule } from '../websocket/websocket.module';
 import { SpacesController } from './controllers/spaces.controller';
 import { UpdateSpacesConfigDto } from './dto/update-config.dto';
 import { SpaceActiveMediaActivityEntity } from './entities/space-active-media-activity.entity';
-import { SpaceActiveMediaRoutingEntity } from './entities/space-active-media-routing.entity';
 import { SpaceClimateRoleEntity } from './entities/space-climate-role.entity';
 import { SpaceCoversRoleEntity } from './entities/space-covers-role.entity';
 import { SpaceLightingRoleEntity } from './entities/space-lighting-role.entity';
 import { SpaceMediaActivityBindingEntity } from './entities/space-media-activity-binding.entity';
-import { SpaceMediaEndpointEntity } from './entities/space-media-endpoint.entity';
-import { SpaceMediaRoutingEntity } from './entities/space-media-routing.entity';
 import { SpaceSensorRoleEntity } from './entities/space-sensor-role.entity';
 import { SpaceEntity } from './entities/space.entity';
 import { SpaceActivityListener } from './listeners/space-activity.listener';
@@ -46,9 +43,8 @@ import { SpaceIntentService } from './services/space-intent.service';
 import { SpaceLightingRoleService } from './services/space-lighting-role.service';
 import { SpaceLightingStateService } from './services/space-lighting-state.service';
 import { SpaceMediaActivityBindingService } from './services/space-media-activity-binding.service';
+import { MediaCapabilityService } from './services/media-capability.service';
 import { SpaceMediaActivityService } from './services/space-media-activity.service';
-import { SpaceMediaEndpointService } from './services/space-media-endpoint.service';
-import { SpaceMediaRoutingService } from './services/space-media-routing.service';
 import { SpaceSensorRoleService } from './services/space-sensor-role.service';
 import { SpaceSensorStateService } from './services/space-sensor-state.service';
 import { SpaceSuggestionService } from './services/space-suggestion.service';
@@ -72,9 +68,6 @@ import { IntentSpecLoaderService } from './spec';
 			SpaceClimateRoleEntity,
 			SpaceCoversRoleEntity,
 			SpaceMediaActivityBindingEntity,
-			SpaceMediaEndpointEntity,
-			SpaceMediaRoutingEntity,
-			SpaceActiveMediaRoutingEntity,
 			SpaceActiveMediaActivityEntity,
 			SpaceSensorRoleEntity,
 			DeviceEntity,
@@ -102,11 +95,10 @@ import { IntentSpecLoaderService } from './spec';
 		SpaceClimateStateService,
 		SpaceCoversRoleService,
 		SpaceCoversStateService,
+		MediaCapabilityService,
 		DerivedMediaEndpointService,
 		SpaceMediaActivityBindingService,
 		SpaceMediaActivityService,
-		SpaceMediaEndpointService,
-		SpaceMediaRoutingService,
 		SpaceSensorRoleService,
 		SpaceSensorStateService,
 		SpaceSuggestionService,
@@ -127,8 +119,6 @@ import { IntentSpecLoaderService } from './spec';
 		SpaceCoversRoleService,
 		SpaceMediaActivityBindingService,
 		SpaceMediaActivityService,
-		SpaceMediaEndpointService,
-		SpaceMediaRoutingService,
 		SpaceSensorRoleService,
 		SpaceSuggestionService,
 		SpaceContextSnapshotService,

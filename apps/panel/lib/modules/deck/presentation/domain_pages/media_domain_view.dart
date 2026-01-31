@@ -1742,12 +1742,16 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	// Actions dispatching media intents via SpaceStateRepository
 	Future<void> _setVolume(int volume) async {
 		if (_spaceStateRepo == null) return;
+		final previousVolume = _volume;
 		setState(() {
 			_isSending = true;
 			_volume = volume;
 		});
 		try {
-			await _spaceStateRepo!.setMediaVolume(_roomId, volume);
+			final result = await _spaceStateRepo!.setMediaVolume(_roomId, volume);
+			if (result == null && mounted) {
+				setState(() => _volume = previousVolume);
+			}
 		} finally {
 			if (mounted) setState(() => _isSending = false);
 		}
@@ -1761,10 +1765,11 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			_isMuted = !wasMuted;
 		});
 		try {
-			if (wasMuted) {
-				await _spaceStateRepo!.unmuteMedia(_roomId);
-			} else {
-				await _spaceStateRepo!.muteMedia(_roomId);
+			final result = wasMuted
+					? await _spaceStateRepo!.unmuteMedia(_roomId)
+					: await _spaceStateRepo!.muteMedia(_roomId);
+			if (result == null && mounted) {
+				setState(() => _isMuted = wasMuted);
 			}
 		} finally {
 			if (mounted) setState(() => _isSending = false);

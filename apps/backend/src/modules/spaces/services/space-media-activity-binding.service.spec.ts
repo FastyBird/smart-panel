@@ -11,7 +11,7 @@ import { MediaActivityKey, MediaEndpointType } from '../spaces.constants';
 
 import { DerivedMediaEndpointService } from './derived-media-endpoint.service';
 import { SpaceMediaActivityBindingService } from './space-media-activity-binding.service';
-import { SpaceMediaEndpointService } from './space-media-endpoint.service';
+import { MediaCapabilityService } from './media-capability.service';
 import { SpacesService } from './spaces.service';
 
 const spaceId = uuid();
@@ -71,7 +71,7 @@ describe('SpaceMediaActivityBindingService', () => {
 	};
 	let mockSpacesService: { getOneOrThrow: jest.Mock };
 	let mockDerivedEndpointService: { buildEndpointsForSpace: jest.Mock };
-	let mockMediaEndpointService: { getMediaCapabilitiesInSpace: jest.Mock };
+	let mockMediaCapabilityService: { getMediaCapabilitiesInSpace: jest.Mock };
 
 	let savedBindings: SpaceMediaActivityBindingEntity[];
 
@@ -98,7 +98,7 @@ describe('SpaceMediaActivityBindingService', () => {
 			buildEndpointsForSpace: jest.fn().mockResolvedValue({ spaceId, endpoints: [] }),
 		};
 
-		mockMediaEndpointService = {
+		mockMediaCapabilityService = {
 			getMediaCapabilitiesInSpace: jest.fn().mockResolvedValue([]),
 		};
 
@@ -108,7 +108,7 @@ describe('SpaceMediaActivityBindingService', () => {
 				{ provide: getRepositoryToken(SpaceMediaActivityBindingEntity), useValue: mockRepository },
 				{ provide: SpacesService, useValue: mockSpacesService },
 				{ provide: DerivedMediaEndpointService, useValue: mockDerivedEndpointService },
-				{ provide: SpaceMediaEndpointService, useValue: mockMediaEndpointService },
+				{ provide: MediaCapabilityService, useValue: mockMediaCapabilityService },
 			],
 		}).compile();
 
@@ -133,7 +133,7 @@ describe('SpaceMediaActivityBindingService', () => {
 				];
 
 				mockDerivedEndpointService.buildEndpointsForSpace.mockResolvedValue({ spaceId, endpoints });
-				mockMediaEndpointService.getMediaCapabilitiesInSpace.mockResolvedValue([
+				mockMediaCapabilityService.getMediaCapabilitiesInSpace.mockResolvedValue([
 					buildSummary(tvDeviceId, 'TV', DeviceCategory.TELEVISION),
 				]);
 			});
@@ -193,7 +193,7 @@ describe('SpaceMediaActivityBindingService', () => {
 				];
 
 				mockDerivedEndpointService.buildEndpointsForSpace.mockResolvedValue({ spaceId, endpoints });
-				mockMediaEndpointService.getMediaCapabilitiesInSpace.mockResolvedValue([
+				mockMediaCapabilityService.getMediaCapabilitiesInSpace.mockResolvedValue([
 					buildSummary(speakerDeviceId, 'Speaker', DeviceCategory.SPEAKER),
 				]);
 			});
@@ -279,7 +279,7 @@ describe('SpaceMediaActivityBindingService', () => {
 				];
 
 				mockDerivedEndpointService.buildEndpointsForSpace.mockResolvedValue({ spaceId, endpoints });
-				mockMediaEndpointService.getMediaCapabilitiesInSpace.mockResolvedValue([
+				mockMediaCapabilityService.getMediaCapabilitiesInSpace.mockResolvedValue([
 					buildSummary(tvDeviceId, 'TV', DeviceCategory.TELEVISION),
 					buildSummary(avrDeviceId, 'AVR', DeviceCategory.AV_RECEIVER),
 					buildSummary(speakerDeviceId, 'Speaker', DeviceCategory.SPEAKER),
@@ -386,7 +386,7 @@ describe('SpaceMediaActivityBindingService', () => {
 			const endpoints = [buildEndpoint(MediaEndpointType.DISPLAY, tvDeviceId, 'TV', { power: true })];
 
 			mockDerivedEndpointService.buildEndpointsForSpace.mockResolvedValue({ spaceId, endpoints });
-			mockMediaEndpointService.getMediaCapabilitiesInSpace.mockResolvedValue([
+			mockMediaCapabilityService.getMediaCapabilitiesInSpace.mockResolvedValue([
 				buildSummary(tvDeviceId, 'TV', DeviceCategory.TELEVISION),
 			]);
 

@@ -32,7 +32,7 @@ export 'package:fastybird_smart_panel/modules/spaces/repositories/covers_targets
 export 'package:fastybird_smart_panel/modules/spaces/repositories/space_state.dart';
 export 'package:fastybird_smart_panel/modules/spaces/repositories/intent_types.dart';
 
-// Media Activity (V2)
+// Media Activity
 export 'package:fastybird_smart_panel/modules/spaces/models/media_activity/media_activity.dart';
 export 'package:fastybird_smart_panel/modules/spaces/repositories/media_activity.dart';
 export 'package:fastybird_smart_panel/modules/spaces/services/media_activity_service.dart';

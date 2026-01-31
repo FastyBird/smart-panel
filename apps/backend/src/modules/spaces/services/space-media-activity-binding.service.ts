@@ -12,7 +12,7 @@ import { MediaActivityKey, MediaEndpointType, SPACES_MODULE_NAME } from '../spac
 import { SpacesValidationException } from '../spaces.exceptions';
 
 import { DerivedMediaEndpointService } from './derived-media-endpoint.service';
-import { SpaceMediaEndpointService } from './space-media-endpoint.service';
+import { MediaCapabilityService } from './media-capability.service';
 import { SpacesService } from './spaces.service';
 
 /**
@@ -45,7 +45,7 @@ export class SpaceMediaActivityBindingService {
 		private readonly repository: Repository<SpaceMediaActivityBindingEntity>,
 		private readonly spacesService: SpacesService,
 		private readonly derivedMediaEndpointService: DerivedMediaEndpointService,
-		private readonly mediaEndpointService: SpaceMediaEndpointService,
+		private readonly mediaCapabilityService: MediaCapabilityService,
 	) {}
 
 	/**
@@ -211,7 +211,7 @@ export class SpaceMediaActivityBindingService {
 		const endpointList = Array.from(endpoints.values());
 
 		// Load capability summaries for device category awareness
-		const summaries = await this.mediaEndpointService.getMediaCapabilitiesInSpace(spaceId);
+		const summaries = await this.mediaCapabilityService.getMediaCapabilitiesInSpace(spaceId);
 		const categoryMap = new Map<string, DeviceCategory>();
 
 		for (const s of summaries) {
