@@ -1,12 +1,15 @@
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
 import { SecurityAlertAckEntity } from '../entities/security-alert-ack.entity';
+import { SecurityEventEntity } from '../entities/security-event.entity';
 import { DefaultSecurityProvider } from '../providers/default-security.provider';
 import { SECURITY_STATE_PROVIDERS, Severity } from '../security.constants';
 import { SecurityAggregatorService } from '../services/security-aggregator.service';
 import { SecurityAlertAckService } from '../services/security-alert-ack.service';
+import { SecurityEventsService } from '../services/security-events.service';
 import { SecurityService } from '../services/security.service';
 
 import { SecurityController } from './security.controller';
@@ -37,6 +40,25 @@ describe('SecurityController', () => {
 					},
 				},
 				SecurityAlertAckService,
+				{
+					provide: getRepositoryToken(SecurityEventEntity),
+					useValue: {
+						find: jest.fn().mockResolvedValue([]),
+						findOne: jest.fn().mockResolvedValue(null),
+						create: jest.fn((data: any) => ({ ...data })),
+						save: jest.fn((e: any) => Promise.resolve(e)),
+						delete: jest.fn(),
+						count: jest.fn().mockResolvedValue(0),
+						remove: jest.fn(),
+						createQueryBuilder: jest.fn().mockReturnValue({
+							orderBy: jest.fn().mockReturnThis(),
+							limit: jest.fn().mockReturnThis(),
+							andWhere: jest.fn().mockReturnThis(),
+							getMany: jest.fn().mockResolvedValue([]),
+						}),
+					},
+				},
+				SecurityEventsService,
 				SecurityAggregatorService,
 				SecurityService,
 				{

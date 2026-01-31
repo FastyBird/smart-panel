@@ -8,6 +8,7 @@ import { SecurityAlertType, Severity } from '../security.constants';
 
 import { SecurityAggregatorService } from './security-aggregator.service';
 import { SecurityAlertAckService } from './security-alert-ack.service';
+import { SecurityEventsService } from './security-events.service';
 import { SecurityService } from './security.service';
 
 function makeAlert(id: string, timestamp: string, severity: Severity = Severity.WARNING): SecurityAlertModel {
@@ -37,6 +38,7 @@ describe('SecurityService', () => {
 	let service: SecurityService;
 	let aggregator: jest.Mocked<SecurityAggregatorService>;
 	let ackService: jest.Mocked<SecurityAlertAckService>;
+	let eventsService: jest.Mocked<SecurityEventsService>;
 	let eventEmitter: jest.Mocked<EventEmitter2>;
 
 	beforeEach(() => {
@@ -52,11 +54,16 @@ describe('SecurityService', () => {
 			cleanupStale: jest.fn(),
 		} as any;
 
+		eventsService = {
+			recordAlertTransitions: jest.fn(),
+			recordAcknowledgement: jest.fn(),
+		} as any;
+
 		eventEmitter = {
 			emit: jest.fn(),
 		} as any;
 
-		service = new SecurityService(aggregator, ackService, eventEmitter);
+		service = new SecurityService(aggregator, ackService, eventsService, eventEmitter);
 	});
 
 	describe('getStatus', () => {
