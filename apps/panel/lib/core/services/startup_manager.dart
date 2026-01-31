@@ -752,7 +752,9 @@ class StartupManagerService {
       dio: _apiIoService,
       socketService: _socketClient,
     );
-    var securityOverlayController = SecurityOverlayController();
+    var securityOverlayController = SecurityOverlayController(
+      repository: securityModuleService.statusRepository,
+    );
     var weatherModuleService = WeatherModuleService(
       apiClient: _apiClient,
       socketService: _socketClient,

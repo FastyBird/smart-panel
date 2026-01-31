@@ -9,12 +9,14 @@ SecurityAlertModel _makeAlert({
 	Severity severity = Severity.critical,
 	SecurityAlertType type = SecurityAlertType.smoke,
 	DateTime? timestamp,
+	bool acknowledged = false,
 }) {
 	return SecurityAlertModel(
 		id: id,
 		type: type,
 		severity: severity,
 		timestamp: timestamp ?? DateTime(2025, 1, 1),
+		acknowledged: acknowledged,
 	);
 }
 
@@ -252,6 +254,53 @@ void main() {
 		});
 	});
 
+	group('buildEffectiveAcknowledgedIds', () {
+		test('includes server acknowledged alerts', () {
+			final status = _makeStatus(
+				activeAlerts: [
+					_makeAlert(id: 'a', acknowledged: true),
+					_makeAlert(id: 'b', acknowledged: false),
+				],
+			);
+
+			final ids = buildEffectiveAcknowledgedIds(status, {});
+			expect(ids, {'a'});
+		});
+
+		test('includes optimistic ack IDs', () {
+			final status = _makeStatus(
+				activeAlerts: [
+					_makeAlert(id: 'a', acknowledged: false),
+					_makeAlert(id: 'b', acknowledged: false),
+				],
+			);
+
+			final ids = buildEffectiveAcknowledgedIds(status, {'b'});
+			expect(ids, {'b'});
+		});
+
+		test('merges server and optimistic', () {
+			final status = _makeStatus(
+				activeAlerts: [
+					_makeAlert(id: 'a', acknowledged: true),
+					_makeAlert(id: 'b', acknowledged: false),
+				],
+			);
+
+			final ids = buildEffectiveAcknowledgedIds(status, {'b'});
+			expect(ids, {'a', 'b'});
+		});
+
+		test('includes synthetic IDs from optimistic cache', () {
+			final status = _makeStatus(
+				activeAlerts: [_makeAlert(id: 'a', acknowledged: true)],
+			);
+
+			final ids = buildEffectiveAcknowledgedIds(status, {'__alarm_triggered__'});
+			expect(ids, {'a', '__alarm_triggered__'});
+		});
+	});
+
 	group('SecurityOverlayController', () {
 		late SecurityOverlayController controller;
 
@@ -275,26 +324,26 @@ void main() {
 			expect(controller.shouldShowOverlay, true);
 		});
 
-		test('acknowledge hides overlay', () {
+		test('acknowledge hides overlay', () async {
 			controller.updateStatus(_makeStatus(
 				hasCriticalAlert: true,
 				activeAlerts: [_makeAlert(id: 'a')],
 			));
 			expect(controller.shouldShowOverlay, true);
 
-			controller.acknowledgeCurrentAlerts();
+			await controller.acknowledgeCurrentAlerts();
 			expect(controller.shouldShowOverlay, false);
 		});
 
-		test('new critical alert re-shows overlay after acknowledgement', () {
+		test('new critical alert re-shows overlay after acknowledgement', () async {
 			controller.updateStatus(_makeStatus(
 				hasCriticalAlert: true,
 				activeAlerts: [_makeAlert(id: 'a')],
 			));
-			controller.acknowledgeCurrentAlerts();
+			await controller.acknowledgeCurrentAlerts();
 			expect(controller.shouldShowOverlay, false);
 
-			// New alert appears
+			// New alert appears — server state replaces optimistic
 			controller.updateStatus(_makeStatus(
 				hasCriticalAlert: true,
 				activeAlerts: [
@@ -312,11 +361,25 @@ void main() {
 			expect(controller.shouldShowOverlay, true);
 		});
 
-		test('alarm triggered can be acknowledged', () {
+		test('alarm triggered can be acknowledged', () async {
 			controller.updateStatus(_makeStatus(
 				alarmState: AlarmState.triggered,
 			));
-			controller.acknowledgeCurrentAlerts();
+			await controller.acknowledgeCurrentAlerts();
+			expect(controller.shouldShowOverlay, false);
+		});
+
+		test('alarm triggered ack with synthetic ID persists after API success', () async {
+			// When alarm is triggered with no real alerts, only a synthetic ID exists.
+			// After API call succeeds, the synthetic ID must remain in optimistic cache
+			// so the overlay stays suppressed until the next updateStatus().
+			controller.updateStatus(_makeStatus(
+				alarmState: AlarmState.triggered,
+			));
+			expect(controller.shouldShowOverlay, true);
+
+			await controller.acknowledgeCurrentAlerts();
+			// Overlay must stay hidden — synthetic ID kept in optimistic cache
 			expect(controller.shouldShowOverlay, false);
 		});
 
@@ -469,7 +532,7 @@ void main() {
 			controller.dispose();
 		});
 
-		test('acknowledgeAlert marks single alert', () {
+		test('acknowledgeAlert marks single alert (optimistic)', () async {
 			controller.updateStatus(_makeStatus(
 				hasCriticalAlert: true,
 				activeAlerts: [
@@ -478,12 +541,12 @@ void main() {
 				],
 			));
 
-			controller.acknowledgeAlert('a');
+			await controller.acknowledgeAlert('a');
 			expect(controller.isAlertAcknowledged('a'), true);
 			expect(controller.isAlertAcknowledged('b'), false);
 		});
 
-		test('acknowledgeAllAlerts marks all alerts', () {
+		test('acknowledgeAllAlerts marks all alerts (optimistic)', () async {
 			controller.updateStatus(_makeStatus(
 				hasCriticalAlert: true,
 				activeAlerts: [
@@ -493,13 +556,13 @@ void main() {
 				],
 			));
 
-			controller.acknowledgeAllAlerts();
+			await controller.acknowledgeAllAlerts();
 			expect(controller.isAlertAcknowledged('a'), true);
 			expect(controller.isAlertAcknowledged('b'), true);
 			expect(controller.isAlertAcknowledged('c'), true);
 		});
 
-		test('allAlertsAcknowledged returns true when all active alerts are acked', () {
+		test('allAlertsAcknowledged returns true when all active alerts are acked', () async {
 			controller.updateStatus(_makeStatus(
 				hasCriticalAlert: true,
 				activeAlerts: [
@@ -510,10 +573,10 @@ void main() {
 
 			expect(controller.allAlertsAcknowledged, false);
 
-			controller.acknowledgeAlert('a');
+			await controller.acknowledgeAlert('a');
 			expect(controller.allAlertsAcknowledged, false);
 
-			controller.acknowledgeAlert('b');
+			await controller.acknowledgeAlert('b');
 			expect(controller.allAlertsAcknowledged, true);
 		});
 
@@ -522,7 +585,7 @@ void main() {
 			expect(controller.allAlertsAcknowledged, false);
 		});
 
-		test('acknowledgeAlert notifies listeners', () {
+		test('acknowledgeAlert notifies listeners', () async {
 			controller.updateStatus(_makeStatus(
 				activeAlerts: [_makeAlert(id: 'a', severity: Severity.info)],
 			));
@@ -530,26 +593,12 @@ void main() {
 			int notifyCount = 0;
 			controller.addListener(() => notifyCount++);
 
-			controller.acknowledgeAlert('a');
+			await controller.acknowledgeAlert('a');
 			expect(notifyCount, 1);
-		});
-
-		test('acknowledgeAlert does not notify if already acknowledged', () {
-			controller.updateStatus(_makeStatus(
-				activeAlerts: [_makeAlert(id: 'a', severity: Severity.info)],
-			));
-
-			controller.acknowledgeAlert('a');
-
-			int notifyCount = 0;
-			controller.addListener(() => notifyCount++);
-
-			controller.acknowledgeAlert('a');
-			expect(notifyCount, 0);
 		});
 	});
 
-	group('SecurityOverlayController - acknowledgement lifecycle', () {
+	group('SecurityOverlayController - server acknowledged flags', () {
 		late SecurityOverlayController controller;
 
 		setUp(() {
@@ -560,68 +609,156 @@ void main() {
 			controller.dispose();
 		});
 
-		test('removes acknowledged IDs when alert disappears', () {
+		test('isAlertAcknowledged uses server acknowledged flag', () {
 			controller.updateStatus(_makeStatus(
 				hasCriticalAlert: true,
 				activeAlerts: [
-					_makeAlert(id: 'a'),
-					_makeAlert(id: 'b'),
+					_makeAlert(id: 'a', acknowledged: true),
+					_makeAlert(id: 'b', acknowledged: false),
 				],
 			));
 
-			controller.acknowledgeAlert('a');
-			controller.acknowledgeAlert('b');
 			expect(controller.isAlertAcknowledged('a'), true);
-
-			// Alert 'a' disappears
-			controller.updateStatus(_makeStatus(
-				hasCriticalAlert: true,
-				activeAlerts: [_makeAlert(id: 'b')],
-			));
-
-			expect(controller.isAlertAcknowledged('a'), false);
-			expect(controller.isAlertAcknowledged('b'), true);
+			expect(controller.isAlertAcknowledged('b'), false);
 		});
 
-		test('resets acknowledgement when alert reappears with newer timestamp', () {
-			final ts1 = DateTime(2025, 1, 1);
-			final ts2 = DateTime(2025, 1, 2);
-
+		test('overlay hidden when all critical alerts acknowledged on server', () {
 			controller.updateStatus(_makeStatus(
 				hasCriticalAlert: true,
-				activeAlerts: [_makeAlert(id: 'a', timestamp: ts1)],
+				activeAlerts: [
+					_makeAlert(id: 'a', severity: Severity.critical, acknowledged: true),
+					_makeAlert(id: 'b', severity: Severity.critical, acknowledged: true),
+				],
 			));
 
-			controller.acknowledgeAlert('a');
+			expect(controller.shouldShowOverlay, false);
+		});
+
+		test('overlay shows when some critical alerts unacknowledged on server', () {
+			controller.updateStatus(_makeStatus(
+				hasCriticalAlert: true,
+				activeAlerts: [
+					_makeAlert(id: 'a', severity: Severity.critical, acknowledged: true),
+					_makeAlert(id: 'b', severity: Severity.critical, acknowledged: false),
+				],
+			));
+
+			expect(controller.shouldShowOverlay, true);
+		});
+
+		test('allAlertsAcknowledged uses server flags', () {
+			controller.updateStatus(_makeStatus(
+				hasCriticalAlert: true,
+				activeAlerts: [
+					_makeAlert(id: 'a', acknowledged: true),
+					_makeAlert(id: 'b', acknowledged: true),
+				],
+			));
+
+			expect(controller.allAlertsAcknowledged, true);
+		});
+
+		test('server update clears optimistic cache', () async {
+			controller.updateStatus(_makeStatus(
+				hasCriticalAlert: true,
+				activeAlerts: [_makeAlert(id: 'a')],
+			));
+
+			// Optimistic ack
+			await controller.acknowledgeAlert('a');
 			expect(controller.isAlertAcknowledged('a'), true);
 
-			// Same alert reappears with newer timestamp
+			// Server update arrives with acknowledged=false (e.g. ack didn't persist)
 			controller.updateStatus(_makeStatus(
 				hasCriticalAlert: true,
-				activeAlerts: [_makeAlert(id: 'a', timestamp: ts2)],
+				activeAlerts: [_makeAlert(id: 'a', acknowledged: false)],
 			));
 
+			// Optimistic cleared, server says not acknowledged
 			expect(controller.isAlertAcknowledged('a'), false);
 		});
 
-		test('keeps acknowledgement when alert stays with same timestamp', () {
-			final ts = DateTime(2025, 1, 1);
-
+		test('server update with acknowledged=true reflects correctly', () async {
 			controller.updateStatus(_makeStatus(
 				hasCriticalAlert: true,
-				activeAlerts: [_makeAlert(id: 'a', timestamp: ts)],
+				activeAlerts: [_makeAlert(id: 'a')],
 			));
 
-			controller.acknowledgeAlert('a');
-			expect(controller.isAlertAcknowledged('a'), true);
-
-			// Same alert with same timestamp
+			// Server update arrives confirming ack
 			controller.updateStatus(_makeStatus(
 				hasCriticalAlert: true,
-				activeAlerts: [_makeAlert(id: 'a', timestamp: ts)],
+				activeAlerts: [_makeAlert(id: 'a', acknowledged: true)],
 			));
 
 			expect(controller.isAlertAcknowledged('a'), true);
+		});
+
+		test('overlay reappears when new unacknowledged critical alert arrives', () {
+			// All critical acknowledged on server
+			controller.updateStatus(_makeStatus(
+				hasCriticalAlert: true,
+				activeAlerts: [
+					_makeAlert(id: 'a', severity: Severity.critical, acknowledged: true),
+				],
+			));
+			expect(controller.shouldShowOverlay, false);
+
+			// New unacknowledged critical alert
+			controller.updateStatus(_makeStatus(
+				hasCriticalAlert: true,
+				activeAlerts: [
+					_makeAlert(id: 'a', severity: Severity.critical, acknowledged: true),
+					_makeAlert(id: 'b', severity: Severity.critical, acknowledged: false),
+				],
+			));
+			expect(controller.shouldShowOverlay, true);
+		});
+	});
+
+	group('SecurityOverlayController - offline behavior', () {
+		late SecurityOverlayController controller;
+
+		setUp(() {
+			controller = SecurityOverlayController();
+		});
+
+		tearDown(() {
+			controller.dispose();
+		});
+
+		test('acknowledgeAlert returns false when offline', () async {
+			controller.updateStatus(_makeStatus(
+				hasCriticalAlert: true,
+				activeAlerts: [_makeAlert(id: 'a')],
+			));
+			controller.setConnectionOffline(true);
+
+			final result = await controller.acknowledgeAlert('a');
+			expect(result, false);
+			expect(controller.isAlertAcknowledged('a'), false);
+		});
+
+		test('acknowledgeAllAlerts returns false when offline', () async {
+			controller.updateStatus(_makeStatus(
+				hasCriticalAlert: true,
+				activeAlerts: [_makeAlert(id: 'a')],
+			));
+			controller.setConnectionOffline(true);
+
+			final result = await controller.acknowledgeAllAlerts();
+			expect(result, false);
+			expect(controller.isAlertAcknowledged('a'), false);
+		});
+
+		test('acknowledgeCurrentAlerts returns false when offline', () async {
+			controller.updateStatus(_makeStatus(
+				hasCriticalAlert: true,
+				activeAlerts: [_makeAlert(id: 'a')],
+			));
+			controller.setConnectionOffline(true);
+
+			final result = await controller.acknowledgeCurrentAlerts();
+			expect(result, false);
 		});
 	});
 
@@ -636,7 +773,7 @@ void main() {
 			controller.dispose();
 		});
 
-		test('overlay hidden when all critical alerts acknowledged via acknowledgeAllAlerts', () {
+		test('overlay hidden when all critical alerts acknowledged via acknowledgeAllAlerts', () async {
 			controller.updateStatus(_makeStatus(
 				hasCriticalAlert: true,
 				activeAlerts: [
@@ -648,11 +785,11 @@ void main() {
 
 			expect(controller.shouldShowOverlay, true);
 
-			controller.acknowledgeAllAlerts();
+			await controller.acknowledgeAllAlerts();
 			expect(controller.shouldShowOverlay, false);
 		});
 
-		test('overlay hidden when all critical alerts acknowledged individually', () {
+		test('overlay hidden when all critical alerts acknowledged individually', () async {
 			controller.updateStatus(_makeStatus(
 				hasCriticalAlert: true,
 				activeAlerts: [
@@ -661,50 +798,29 @@ void main() {
 				],
 			));
 
-			controller.acknowledgeAlert('a');
+			await controller.acknowledgeAlert('a');
 			expect(controller.shouldShowOverlay, true);
 
-			controller.acknowledgeAlert('b');
+			await controller.acknowledgeAlert('b');
 			expect(controller.shouldShowOverlay, false);
 		});
 
-		test('overlay returns when new critical alert appears after ack all', () {
+		test('overlay returns when new critical alert appears after ack all', () async {
 			controller.updateStatus(_makeStatus(
 				hasCriticalAlert: true,
 				activeAlerts: [_makeAlert(id: 'a', severity: Severity.critical)],
 			));
 
-			controller.acknowledgeAllAlerts();
+			await controller.acknowledgeAllAlerts();
 			expect(controller.shouldShowOverlay, false);
 
-			// New critical alert
+			// New critical alert from server
 			controller.updateStatus(_makeStatus(
 				hasCriticalAlert: true,
 				activeAlerts: [
-					_makeAlert(id: 'a', severity: Severity.critical),
-					_makeAlert(id: 'b', severity: Severity.critical),
+					_makeAlert(id: 'a', severity: Severity.critical, acknowledged: true),
+					_makeAlert(id: 'b', severity: Severity.critical, acknowledged: false),
 				],
-			));
-
-			expect(controller.shouldShowOverlay, true);
-		});
-
-		test('overlay returns when critical alert timestamp increases', () {
-			final ts1 = DateTime(2025, 1, 1);
-			final ts2 = DateTime(2025, 1, 2);
-
-			controller.updateStatus(_makeStatus(
-				hasCriticalAlert: true,
-				activeAlerts: [_makeAlert(id: 'a', severity: Severity.critical, timestamp: ts1)],
-			));
-
-			controller.acknowledgeAllAlerts();
-			expect(controller.shouldShowOverlay, false);
-
-			// Same alert with newer timestamp
-			controller.updateStatus(_makeStatus(
-				hasCriticalAlert: true,
-				activeAlerts: [_makeAlert(id: 'a', severity: Severity.critical, timestamp: ts2)],
 			));
 
 			expect(controller.shouldShowOverlay, true);
