@@ -10,6 +10,17 @@ import { MediaActivationState, MediaActivityKey } from '../spaces.constants';
 
 import { SpaceEntity } from './space.entity';
 
+const jsonToSnakeCaseTransformer = ({ value }: { value: string | null }): Record<string, unknown> | null => {
+	if (!value) return null;
+	try {
+		return toSnakeCaseKeys<Record<string, unknown>, Record<string, unknown>>(
+			JSON.parse(value) as Record<string, unknown>,
+		);
+	} catch {
+		return null;
+	}
+};
+
 /**
  * Represents the currently active media activity for a space.
  * Only ONE active activity per space is allowed at any time.
@@ -88,19 +99,7 @@ export class SpaceActiveMediaActivityEntity extends BaseEntity {
 	@Expose()
 	@IsOptional()
 	@IsString()
-	@Transform(
-		({ value }: { value: string | null }) => {
-			if (!value) return null;
-			try {
-				return toSnakeCaseKeys<Record<string, unknown>, Record<string, unknown>>(
-					JSON.parse(value) as Record<string, unknown>,
-				);
-			} catch {
-				return null;
-			}
-		},
-		{ toPlainOnly: true },
-	)
+	@Transform(jsonToSnakeCaseTransformer, { toPlainOnly: true })
 	@Column({ type: 'text', nullable: true })
 	resolved: string | null;
 
@@ -116,19 +115,7 @@ export class SpaceActiveMediaActivityEntity extends BaseEntity {
 	@Transform(({ obj }: { obj: { last_result?: string; lastResult?: string } }) => obj.last_result ?? obj.lastResult, {
 		toClassOnly: true,
 	})
-	@Transform(
-		({ value }: { value: string | null }) => {
-			if (!value) return null;
-			try {
-				return toSnakeCaseKeys<Record<string, unknown>, Record<string, unknown>>(
-					JSON.parse(value) as Record<string, unknown>,
-				);
-			} catch {
-				return null;
-			}
-		},
-		{ toPlainOnly: true },
-	)
+	@Transform(jsonToSnakeCaseTransformer, { toPlainOnly: true })
 	@Column({ type: 'text', nullable: true })
 	lastResult: string | null;
 }

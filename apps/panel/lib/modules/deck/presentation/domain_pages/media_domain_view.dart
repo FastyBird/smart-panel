@@ -563,7 +563,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 									child: CustomPaint(
 										painter: _SpinnerArcPainter(
 											color: accentColor,
-											progress: _pulseController.value,
 										),
 									),
 								),
@@ -1833,9 +1832,8 @@ class _CompositionDisplayItem {
 
 class _SpinnerArcPainter extends CustomPainter {
 	final Color color;
-	final double progress;
 
-	_SpinnerArcPainter({required this.color, required this.progress});
+	_SpinnerArcPainter({required this.color});
 
 	@override
 	void paint(Canvas canvas, Size size) {
@@ -1851,7 +1849,7 @@ class _SpinnerArcPainter extends CustomPainter {
 
 	@override
 	bool shouldRepaint(covariant _SpinnerArcPainter oldDelegate) {
-		return oldDelegate.progress != progress;
+		return oldDelegate.color != color;
 	}
 }
 
