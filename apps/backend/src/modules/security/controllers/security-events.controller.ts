@@ -1,4 +1,4 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { BadRequestException, Controller, Get, Query } from '@nestjs/common';
 import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import {
@@ -45,9 +45,19 @@ export class SecurityEventsController {
 		@Query('severity') severity?: Severity,
 		@Query('type') type?: SecurityEventType,
 	): Promise<SecurityEventsResponseModel> {
+		let sinceDate: Date | undefined;
+
+		if (since != null) {
+			sinceDate = new Date(since);
+
+			if (Number.isNaN(sinceDate.getTime())) {
+				throw new BadRequestException('Invalid "since" parameter: must be a valid ISO 8601 datetime');
+			}
+		}
+
 		const events = await this.eventsService.findRecent({
 			limit: limit != null ? parseInt(limit, 10) : undefined,
-			since: since != null ? new Date(since) : undefined,
+			since: sinceDate,
 			severity,
 			type,
 		});
