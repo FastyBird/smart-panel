@@ -3,6 +3,14 @@ import 'package:fastybird_smart_panel/modules/security/models/security_status.da
 import 'package:fastybird_smart_panel/modules/security/types/security.dart';
 import 'package:flutter/foundation.dart';
 
+/// Compare two alerts by timestamp desc, then id asc.
+int _compareByTimestampThenId(SecurityAlertModel a, SecurityAlertModel b) {
+	final timestampCompare = b.timestamp.compareTo(a.timestamp);
+	if (timestampCompare != 0) return timestampCompare;
+
+	return a.id.compareTo(b.id);
+}
+
 /// Pure function: sort alerts by severity desc, timestamp desc, id asc.
 List<SecurityAlertModel> sortAlerts(List<SecurityAlertModel> alerts) {
 	final sorted = List<SecurityAlertModel>.from(alerts);
@@ -10,10 +18,7 @@ List<SecurityAlertModel> sortAlerts(List<SecurityAlertModel> alerts) {
 		final severityCompare = b.severity.rank.compareTo(a.severity.rank);
 		if (severityCompare != 0) return severityCompare;
 
-		final timestampCompare = b.timestamp.compareTo(a.timestamp);
-		if (timestampCompare != 0) return timestampCompare;
-
-		return a.id.compareTo(b.id);
+		return _compareByTimestampThenId(a, b);
 	});
 	return sorted;
 }
@@ -21,12 +26,7 @@ List<SecurityAlertModel> sortAlerts(List<SecurityAlertModel> alerts) {
 /// Sort alerts within a single severity group: timestamp desc, then id asc.
 List<SecurityAlertModel> sortAlertsWithinGroup(List<SecurityAlertModel> alerts) {
 	final sorted = List<SecurityAlertModel>.from(alerts);
-	sorted.sort((a, b) {
-		final timestampCompare = b.timestamp.compareTo(a.timestamp);
-		if (timestampCompare != 0) return timestampCompare;
-
-		return a.id.compareTo(b.id);
-	});
+	sorted.sort(_compareByTimestampThenId);
 	return sorted;
 }
 
@@ -130,9 +130,6 @@ class SecurityOverlayController extends ChangeNotifier {
 	Map<Severity, List<SecurityAlertModel>>? _cachedGroupedAlerts;
 
 	SecurityStatusModel get status => _status;
-
-	/// Set of currently acknowledged alert IDs (read-only view).
-	Set<String> get acknowledgedAlertIds => Set.unmodifiable(_acknowledgedAlertIds);
 
 	/// Whether all active alerts are acknowledged.
 	bool get allAlertsAcknowledged {
