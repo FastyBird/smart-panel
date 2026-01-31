@@ -44,6 +44,11 @@ export class ThermostatRealisticBehavior extends BaseDeviceBehavior {
 			(event.channelCategory === ChannelCategory.HEATER || event.channelCategory === ChannelCategory.COOLER)
 		) {
 			const targetTemp = event.value as number;
+			const isHeater = event.channelCategory === ChannelCategory.HEATER;
+			const stateKey = isHeater ? 'heaterTarget' : 'coolerTarget';
+
+			this.setStateValue(state, stateKey, targetTemp);
+
 			const currentTemp = this.getOrInitStateFromDevice(
 				state,
 				'currentTemp',
@@ -67,8 +72,6 @@ export class ThermostatRealisticBehavior extends BaseDeviceBehavior {
 			const durationMinutes = diff / ratePerMinute;
 			const durationMs = Math.round(durationMinutes * 60 * 1000);
 
-			// Store the target in state for tick processing
-			this.setStateValue(state, 'targetTemp', targetTemp);
 			this.setStateValue(state, 'isHeating', isHeating);
 
 			// Cancel any existing temperature transitions
@@ -129,10 +132,12 @@ export class ThermostatRealisticBehavior extends BaseDeviceBehavior {
 			(event.channelCategory === ChannelCategory.HEATER || event.channelCategory === ChannelCategory.COOLER)
 		) {
 			const isOn = event.value === true;
+			const isHeater = event.channelCategory === ChannelCategory.HEATER;
+
+			this.setStateValue(state, isHeater ? 'heaterOn' : 'coolerOn', isOn);
 
 			if (!isOn) {
-				// Turned off - cancel all temperature transitions and deactivate status
-				this.cancelTransitions(state, ChannelCategory.TEMPERATURE, PropertyCategory.TEMPERATURE);
+				// Cancel status transitions for the channel being turned off
 				this.cancelTransitions(state, event.channelCategory, PropertyCategory.STATUS);
 
 				updates.push({
@@ -142,64 +147,92 @@ export class ThermostatRealisticBehavior extends BaseDeviceBehavior {
 					delayMs: 0,
 					durationMs: 0,
 				});
-			} else {
-				// Turned on - re-schedule temperature transition if we have a target
-				const targetTemp = this.getStateValue(state, 'targetTemp', null as unknown as number) as number | null;
 
-				if (targetTemp !== null) {
-					const currentTemp = this.getOrInitStateFromDevice(
-						state,
-						'currentTemp',
-						device,
-						ChannelCategory.TEMPERATURE,
-						PropertyCategory.TEMPERATURE,
-						20,
-					);
-					const diff = Math.abs(targetTemp - currentTemp);
+				// Check if the other channel is still active
+				const otherOn = this.getStateValue(state, isHeater ? 'coolerOn' : 'heaterOn', false) as boolean;
 
-					if (diff >= ThermostatRealisticBehavior.SETTLING_THRESHOLD) {
-						const isHeating = targetTemp > currentTemp;
-						const ratePerMinute = isHeating
-							? ThermostatRealisticBehavior.HEAT_RATE_PER_MINUTE
-							: ThermostatRealisticBehavior.COOL_RATE_PER_MINUTE;
-						const durationMs = Math.round((diff / ratePerMinute) * 60 * 1000);
+				// Cancel temperature transitions
+				this.cancelTransitions(state, ChannelCategory.TEMPERATURE, PropertyCategory.TEMPERATURE);
 
-						this.setStateValue(state, 'isHeating', isHeating);
-						this.cancelTransitions(state, ChannelCategory.TEMPERATURE, PropertyCategory.TEMPERATURE);
-
-						updates.push({
-							channelCategory: ChannelCategory.TEMPERATURE,
-							propertyCategory: PropertyCategory.TEMPERATURE,
-							targetValue: targetTemp,
-							startValue: currentTemp,
-							delayMs: 0,
-							durationMs,
-						});
-
-						// Activate heater/cooler status
-						this.cancelTransitions(state, event.channelCategory, PropertyCategory.STATUS);
-
-						updates.push({
-							channelCategory: event.channelCategory,
-							propertyCategory: PropertyCategory.STATUS,
-							targetValue: true,
-							delayMs: 0,
-							durationMs: 0,
-						});
-
-						updates.push({
-							channelCategory: event.channelCategory,
-							propertyCategory: PropertyCategory.STATUS,
-							targetValue: false,
-							delayMs: durationMs,
-							durationMs: 0,
-						});
-					}
+				// If the other channel is still active, re-schedule its temperature transition
+				if (otherOn) {
+					this.scheduleTransitionForChannel(device, state, updates, !isHeater);
 				}
+			} else {
+				// Turned on - schedule temperature transition for this channel
+				this.scheduleTransitionForChannel(device, state, updates, isHeater);
 			}
 		}
 
 		return updates;
+	}
+
+	/**
+	 * Schedule a temperature transition for the given channel (heater or cooler).
+	 */
+	private scheduleTransitionForChannel(
+		device: SimulatorDeviceEntity,
+		state: DeviceBehaviorState,
+		updates: ScheduledPropertyUpdate[],
+		isHeater: boolean,
+	): void {
+		const stateKey = isHeater ? 'heaterTarget' : 'coolerTarget';
+		const targetTemp = this.getStateValue(state, stateKey, null as unknown as number) as number | null;
+
+		if (targetTemp === null) {
+			return;
+		}
+
+		const currentTemp = this.getOrInitStateFromDevice(
+			state,
+			'currentTemp',
+			device,
+			ChannelCategory.TEMPERATURE,
+			PropertyCategory.TEMPERATURE,
+			20,
+		);
+		const diff = Math.abs(targetTemp - currentTemp);
+
+		if (diff < ThermostatRealisticBehavior.SETTLING_THRESHOLD) {
+			return;
+		}
+
+		const isHeating = targetTemp > currentTemp;
+		const ratePerMinute = isHeating
+			? ThermostatRealisticBehavior.HEAT_RATE_PER_MINUTE
+			: ThermostatRealisticBehavior.COOL_RATE_PER_MINUTE;
+		const durationMs = Math.round((diff / ratePerMinute) * 60 * 1000);
+		const channelCategory = isHeater ? ChannelCategory.HEATER : ChannelCategory.COOLER;
+
+		this.setStateValue(state, 'isHeating', isHeating);
+		this.cancelTransitions(state, ChannelCategory.TEMPERATURE, PropertyCategory.TEMPERATURE);
+
+		updates.push({
+			channelCategory: ChannelCategory.TEMPERATURE,
+			propertyCategory: PropertyCategory.TEMPERATURE,
+			targetValue: targetTemp,
+			startValue: currentTemp,
+			delayMs: 0,
+			durationMs,
+		});
+
+		this.cancelTransitions(state, channelCategory, PropertyCategory.STATUS);
+
+		updates.push({
+			channelCategory,
+			propertyCategory: PropertyCategory.STATUS,
+			targetValue: true,
+			delayMs: 0,
+			durationMs: 0,
+		});
+
+		updates.push({
+			channelCategory,
+			propertyCategory: PropertyCategory.STATUS,
+			targetValue: false,
+			delayMs: durationMs,
+			durationMs: 0,
+		});
 	}
 
 	override tick(
