@@ -61,7 +61,9 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	bool _isLoading = true;
 	bool _isSending = false;
 	bool _wsConnected = false;
-	int _volume = 50;
+	// Local optimistic state for volume/mute — no server-side aggregated state
+	// is available, so these track user interactions only and reset on navigation.
+	int _volume = 0;
 	bool _isMuted = false;
 
 	late AnimationController _pulseController;

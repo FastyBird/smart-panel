@@ -145,7 +145,7 @@ export interface IUseSpaceIntents {
 	adjustSetpoint: (delta: SetpointDelta, increase: boolean) => Promise<IClimateIntentResult | null>;
 	setSetpoint: (value: number, mode?: ClimateMode) => Promise<IClimateIntentResult | null>;
 	setClimateMode: (mode: ClimateMode) => Promise<IClimateIntentResult | null>;
-	}
+}
 
 /**
  * Composable for executing lighting and climate intents on a space.
@@ -342,7 +342,6 @@ export const useSpaceIntents = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpa
 	};
 	const setClimateMode = (mode: ClimateMode) => executeClimateIntent({ type: 'set_mode', mode });
 
-	
 	// Clear state when space changes to prevent stale data from appearing in new space
 	watch(spaceId, () => {
 		// Increment generation to invalidate any in-flight requests
@@ -372,5 +371,5 @@ export const useSpaceIntents = (spaceId: Ref<ISpace['id'] | undefined>): IUseSpa
 		adjustSetpoint,
 		setSetpoint,
 		setClimateMode,
-			};
+	};
 };
