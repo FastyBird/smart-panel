@@ -63,14 +63,14 @@ export class SecurityEventsService {
 	): Promise<void> {
 		// Serialize concurrent calls to prevent duplicate event generation
 		const previous = this.transitionLock;
-		let resolve: () => void;
+		let resolve: () => void = () => {};
 		this.transitionLock = new Promise<void>((r) => (resolve = r));
 
 		try {
 			await previous;
 			await this.doRecordAlertTransitions(activeAlerts, armedState, alarmState);
 		} finally {
-			resolve!();
+			resolve();
 		}
 	}
 
