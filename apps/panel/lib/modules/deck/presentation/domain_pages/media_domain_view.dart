@@ -46,6 +46,9 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	double _scale(double val) =>
 			_screenService.scale(val, density: _visualDensityService.density);
 
+	double? get _portraitContentHeight =>
+			_screenService.isPortrait ? _screenService.screenHeight * 3 / 5 : null;
+
 	MediaActivityService? _mediaService;
 	SpacesService? _spacesService;
 	SpaceStateRepository? _spaceStateRepo;
@@ -482,13 +485,9 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 
 
-		final boxHeight = _screenService.isPortrait
-				? _screenService.screenHeight * 3 / 5
-				: null;
-
 		return Container(
 			width: double.infinity,
-			height: boxHeight,
+			height: _portraitContentHeight,
 			alignment: Alignment.center,
 			child: Column(
 				mainAxisAlignment: MainAxisAlignment.center,
@@ -538,13 +537,9 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		final accentColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
 		final activityName = _activityLabel(activeState.activityKey);
 
-		final boxHeight = _screenService.isPortrait
-				? _screenService.screenHeight * 3 / 5
-				: null;
-
 		return Container(
 			width: double.infinity,
-			height: boxHeight,
+			height: _portraitContentHeight,
 			alignment: Alignment.center,
 			child: Column(
 				mainAxisAlignment: MainAxisAlignment.center,
@@ -601,13 +596,9 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		final activityName = _activityLabel(activeState.activityKey);
 
 
-		final boxHeight = _screenService.isPortrait
-				? _screenService.screenHeight * 3 / 5
-				: null;
-
 		return Container(
 			width: double.infinity,
-			height: boxHeight,
+			height: _portraitContentHeight,
 			alignment: Alignment.center,
 			child: Column(
 				mainAxisAlignment: MainAxisAlignment.center,
