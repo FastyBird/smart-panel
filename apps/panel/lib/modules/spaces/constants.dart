@@ -10,7 +10,6 @@ class SpacesModuleConstants {
   static const String lightingIntentEvent = 'SpacesModule.LightingIntent';
   static const String climateIntentEvent = 'SpacesModule.ClimateIntent';
   static const String coversIntentEvent = 'SpacesModule.CoversIntent';
-  static const String mediaIntentEvent = 'SpacesModule.MediaIntent';
   static const String undoIntentEvent = 'SpacesModule.UndoIntent';
 
   static const String lightTargetCreatedEvent =
@@ -27,13 +26,6 @@ class SpacesModuleConstants {
   static const String climateTargetDeletedEvent =
       'SpacesModule.ClimateTarget.Deleted';
 
-  static const String mediaTargetCreatedEvent =
-      'SpacesModule.MediaTarget.Created';
-  static const String mediaTargetUpdatedEvent =
-      'SpacesModule.MediaTarget.Updated';
-  static const String mediaTargetDeletedEvent =
-      'SpacesModule.MediaTarget.Deleted';
-
   static const String coversTargetCreatedEvent =
       'SpacesModule.CoversTarget.Created';
   static const String coversTargetUpdatedEvent =
@@ -46,14 +38,12 @@ class SpacesModuleConstants {
       'SpacesModule.Space.LightingStateChanged';
   static const String climateStateChangedEvent =
       'SpacesModule.Space.ClimateStateChanged';
-  static const String mediaStateChangedEvent =
-      'SpacesModule.Space.MediaStateChanged';
   static const String coversStateChangedEvent =
       'SpacesModule.Space.CoversStateChanged';
   static const String sensorStateChangedEvent =
       'SpacesModule.Space.SensorStateChanged';
 
-  // Media activity lifecycle events (V2)
+  // Media activity lifecycle events
   static const String mediaActivityActivatingEvent =
       'SpacesModule.MediaActivity.Activating';
   static const String mediaActivityActivatedEvent =
@@ -69,6 +59,5 @@ class SpacesModuleEventHandlerName {
   static const String lightingIntent = 'SpacesModule.LightingIntentHandler';
   static const String climateIntent = 'SpacesModule.ClimateIntentHandler';
   static const String coversIntent = 'SpacesModule.CoversIntentHandler';
-  static const String mediaIntent = 'SpacesModule.MediaIntentHandler';
   static const String undoIntent = 'SpacesModule.UndoIntentHandler';
 }

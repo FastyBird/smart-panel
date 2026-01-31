@@ -5,7 +5,6 @@ import 'package:fastybird_smart_panel/api/models/spaces_module_lighting_intent.d
 import 'package:fastybird_smart_panel/api/models/spaces_module_req_climate_intent.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_req_covers_intent.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_req_lighting_intent.dart';
-// Note: Media intent imports removed - media domain now uses routing-based architecture (V2)
 import 'package:fastybird_smart_panel/api/models/spaces_module_req_suggestion_feedback.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_suggestion_feedback.dart';
 import 'package:fastybird_smart_panel/api/spaces_module/spaces_module_client.dart';
@@ -18,7 +17,6 @@ import 'package:fastybird_smart_panel/modules/spaces/models/climate_state/climat
 import 'package:fastybird_smart_panel/modules/spaces/models/covers_state/covers_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/intent_result/intent_result.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/lighting_state/lighting_state.dart';
-import 'package:fastybird_smart_panel/modules/spaces/models/media_state/media_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/sensor_state/sensor_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/suggestion/suggestion.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/undo/undo_state.dart';
@@ -65,9 +63,6 @@ class SpaceStateRepository extends ChangeNotifier {
 
   /// Cached climate states by space ID
   final Map<String, ClimateStateModel> _climateStates = {};
-
-  /// Cached media states by space ID
-  final Map<String, MediaStateModel> _mediaStates = {};
 
   /// Cached covers states by space ID
   final Map<String, CoversStateModel> _coversStates = {};
@@ -213,48 +208,6 @@ class SpaceStateRepository extends ChangeNotifier {
           '[SPACES MODULE][STATE] Error fetching climate state for $spaceId: $e',
         );
       }
-    }
-    return null;
-  }
-
-  // ============================================
-  // MEDIA STATE
-  // ============================================
-
-  /// Get cached media state for a space
-  MediaStateModel? getMediaState(String spaceId) {
-    return _mediaStates[spaceId];
-  }
-
-  /// Update media state from WebSocket event
-  void updateMediaState(String spaceId, Map<String, dynamic> json) {
-    try {
-      final state = MediaStateModel.fromJson(json, spaceId: spaceId);
-      _mediaStates[spaceId] = state;
-
-      if (kDebugMode) {
-        debugPrint(
-          '[SPACES MODULE][STATE] Updated media state for space: $spaceId',
-        );
-      }
-      notifyListeners();
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint(
-          '[SPACES MODULE][STATE] Failed to parse media state: $e',
-        );
-      }
-    }
-  }
-
-  /// Fetch media state from API
-  /// Stub - media state API no longer exists (V2 routing architecture)
-  Future<MediaStateModel?> fetchMediaState(String spaceId) async {
-    // API endpoint removed - media domain now uses routing-based architecture
-    if (kDebugMode) {
-      debugPrint(
-        '[SPACES MODULE][STATE] fetchMediaState stubbed - API removed',
-      );
     }
     return null;
   }
@@ -837,241 +790,6 @@ class SpaceStateRepository extends ChangeNotifier {
   }
 
   // ============================================
-  // MEDIA INTENTS
-  // ============================================
-
-  /// Execute a media intent
-  ///
-  /// Uses WebSocket as primary channel with API fallback when WebSocket is unavailable.
-  Future<MediaIntentResult?> executeMediaIntent({
-    required String spaceId,
-    required MediaIntentType type,
-    MediaMode? mode,
-    int? volume,
-    VolumeDelta? delta,
-    bool? increase,
-    MediaRole? role,
-    bool? on,
-    String? source,
-  }) async {
-    final stopwatch = Stopwatch()..start();
-    final intentName = 'media_${mediaIntentTypeToString(type)}';
-
-    // Build intent body for both WebSocket and API
-    final Map<String, dynamic> intentBody = {
-      'type': mediaIntentTypeToString(type),
-      if (mode != null) 'mode': mediaModeToString(mode),
-      if (volume != null) 'volume': volume,
-      if (delta != null) 'delta': volumeDeltaToString(delta),
-      if (increase != null) 'increase': increase,
-      if (role != null) 'role': mediaRoleToString(role),
-      if (on != null) 'on': on,
-      if (source != null) 'source': source,
-    };
-
-    _intentsRepository.createLocalSpaceIntent(
-      spaceId: spaceId,
-      type: _mapMediaIntentType(type),
-      value: intentBody,
-    );
-
-    try {
-      // Use command dispatch with WebSocket primary and API fallback
-      final dispatchResult = await _commandDispatch.dispatch(
-        event: SpacesModuleConstants.mediaIntentEvent,
-        handler: SpacesModuleEventHandlerName.mediaIntent,
-        payload: {
-          'spaceId': spaceId,
-          'intent': intentBody,
-        },
-        apiFallback: () => _executeMediaIntentViaApi(spaceId, intentBody),
-      );
-
-      stopwatch.stop();
-
-      if (dispatchResult.success) {
-        final result = dispatchResult.data != null
-            ? MediaIntentResult.fromJson(dispatchResult.data!)
-            : MediaIntentResult(
-                success: true,
-                affectedDevices: 0,
-                failedDevices: 0,
-              );
-
-        MetricsService.instance.trackIntent(
-          intentName,
-          result.failedDevices > 0 ? MetricStatus.partial : MetricStatus.success,
-          stopwatch.elapsed,
-          spaceId: spaceId,
-          affectedDevices: result.affectedDevices,
-          failedDevices: result.failedDevices,
-        );
-
-        if (kDebugMode) {
-          debugPrint(
-            '[SPACES MODULE][STATE] Media intent executed via ${dispatchResult.channel.name} for $spaceId',
-          );
-        }
-
-        fetchUndoState(spaceId);
-
-        return result;
-      } else {
-        MetricsService.instance.trackIntent(
-          intentName,
-          MetricStatus.failure,
-          stopwatch.elapsed,
-          spaceId: spaceId,
-        );
-        if (kDebugMode) {
-          debugPrint(
-            '[SPACES MODULE][STATE] Media intent failed for $spaceId: ${dispatchResult.reason}',
-          );
-        }
-      }
-    } catch (e) {
-      stopwatch.stop();
-      MetricsService.instance.trackIntent(
-        intentName,
-        MetricStatus.failure,
-        stopwatch.elapsed,
-        spaceId: spaceId,
-      );
-      if (kDebugMode) {
-        debugPrint(
-          '[SPACES MODULE][STATE] Error executing media intent for $spaceId: $e',
-        );
-      }
-    }
-    return null;
-  }
-
-  /// Execute media intent via API (used as fallback)
-  /// Stub - media intent API no longer exists (V2 routing architecture)
-  Future<Map<String, dynamic>?> _executeMediaIntentViaApi(
-    String spaceId,
-    Map<String, dynamic> intentBody,
-  ) async {
-    // API endpoint removed - media domain now uses routing-based architecture
-    if (kDebugMode) {
-      debugPrint(
-        '[SPACES MODULE][STATE] _executeMediaIntentViaApi stubbed - API removed',
-      );
-    }
-    return null;
-  }
-
-  /// Set media mode (OFF/BACKGROUND/FOCUSED/PARTY)
-  Future<MediaIntentResult?> setMediaMode(
-    String spaceId,
-    MediaMode mode,
-  ) {
-    return executeMediaIntent(
-      spaceId: spaceId,
-      type: MediaIntentType.setMode,
-      mode: mode,
-    );
-  }
-
-  /// Set absolute volume for all media devices
-  Future<MediaIntentResult?> setMediaVolume(
-    String spaceId,
-    int volume,
-  ) {
-    return executeMediaIntent(
-      spaceId: spaceId,
-      type: MediaIntentType.volumeSet,
-      volume: volume,
-    );
-  }
-
-  /// Adjust volume by delta
-  Future<MediaIntentResult?> adjustMediaVolume(
-    String spaceId, {
-    required VolumeDelta delta,
-    required bool increase,
-  }) {
-    return executeMediaIntent(
-      spaceId: spaceId,
-      type: MediaIntentType.volumeDelta,
-      delta: delta,
-      increase: increase,
-    );
-  }
-
-  /// Toggle mute on
-  Future<MediaIntentResult?> muteMedia(String spaceId) {
-    return executeMediaIntent(
-      spaceId: spaceId,
-      type: MediaIntentType.mute,
-    );
-  }
-
-  /// Toggle mute off
-  Future<MediaIntentResult?> unmuteMedia(String spaceId) {
-    return executeMediaIntent(
-      spaceId: spaceId,
-      type: MediaIntentType.unmute,
-    );
-  }
-
-  /// Power on media devices
-  Future<MediaIntentResult?> powerOnMedia(String spaceId) {
-    return executeMediaIntent(
-      spaceId: spaceId,
-      type: MediaIntentType.powerOn,
-    );
-  }
-
-  /// Power off media devices
-  Future<MediaIntentResult?> powerOffMedia(String spaceId) {
-    return executeMediaIntent(
-      spaceId: spaceId,
-      type: MediaIntentType.powerOff,
-    );
-  }
-
-  /// Set volume for a specific role
-  Future<MediaIntentResult?> setMediaRoleVolume(
-    String spaceId, {
-    required MediaRole role,
-    required int volume,
-  }) {
-    return executeMediaIntent(
-      spaceId: spaceId,
-      type: MediaIntentType.roleVolume,
-      role: role,
-      volume: volume,
-    );
-  }
-
-  /// Power on/off for a specific role
-  Future<MediaIntentResult?> setMediaRolePower(
-    String spaceId, {
-    required MediaRole role,
-    required bool on,
-  }) {
-    return executeMediaIntent(
-      spaceId: spaceId,
-      type: MediaIntentType.rolePower,
-      role: role,
-      on: on,
-    );
-  }
-
-  /// Set input/source (TV/AVR)
-  Future<MediaIntentResult?> setMediaInput(
-    String spaceId, {
-    required String source,
-  }) {
-    return executeMediaIntent(
-      spaceId: spaceId,
-      type: MediaIntentType.inputSet,
-      source: source,
-    );
-  }
-
-  // ============================================
   // COVERS INTENTS
   // ============================================
 
@@ -1520,7 +1238,6 @@ class SpaceStateRepository extends ChangeNotifier {
       await Future.wait([
         fetchLightingState(spaceId),
         fetchClimateState(spaceId),
-        fetchMediaState(spaceId),
         fetchCoversState(spaceId),
         fetchSensorState(spaceId),
         fetchSuggestion(spaceId),
@@ -1539,7 +1256,6 @@ class SpaceStateRepository extends ChangeNotifier {
   void clearAll() {
     _lightingStates.clear();
     _climateStates.clear();
-    _mediaStates.clear();
     _coversStates.clear();
     _sensorStates.clear();
     _suggestions.clear();
@@ -1552,7 +1268,6 @@ class SpaceStateRepository extends ChangeNotifier {
   void clearForSpace(String spaceId) {
     _lightingStates.remove(spaceId);
     _climateStates.remove(spaceId);
-    _mediaStates.remove(spaceId);
     _coversStates.remove(spaceId);
     _sensorStates.remove(spaceId);
     _suggestions.remove(spaceId);
@@ -1603,42 +1318,6 @@ class SpaceStateRepository extends ChangeNotifier {
         return IntentType.spaceClimateSetpointDelta;
       case ClimateIntentType.climateSet:
         return IntentType.spaceClimateSet;
-    }
-  }
-
-  /// Map MediaIntentType to IntentType
-  IntentType _mapMediaIntentType(MediaIntentType type) {
-    switch (type) {
-      case MediaIntentType.powerOn:
-        return IntentType.spaceMediaPowerOn;
-      case MediaIntentType.powerOff:
-        return IntentType.spaceMediaPowerOff;
-      case MediaIntentType.volumeSet:
-        return IntentType.spaceMediaVolumeSet;
-      case MediaIntentType.volumeDelta:
-        return IntentType.spaceMediaVolumeDelta;
-      case MediaIntentType.mute:
-        return IntentType.spaceMediaMute;
-      case MediaIntentType.unmute:
-        return IntentType.spaceMediaUnmute;
-      case MediaIntentType.rolePower:
-        return IntentType.spaceMediaRolePower;
-      case MediaIntentType.roleVolume:
-        return IntentType.spaceMediaRoleVolume;
-      case MediaIntentType.play:
-        return IntentType.spaceMediaPlay;
-      case MediaIntentType.pause:
-        return IntentType.spaceMediaPause;
-      case MediaIntentType.stop:
-        return IntentType.spaceMediaStop;
-      case MediaIntentType.next:
-        return IntentType.spaceMediaNext;
-      case MediaIntentType.previous:
-        return IntentType.spaceMediaPrevious;
-      case MediaIntentType.inputSet:
-        return IntentType.spaceMediaInputSet;
-      case MediaIntentType.setMode:
-        return IntentType.spaceMediaSetMode;
     }
   }
 

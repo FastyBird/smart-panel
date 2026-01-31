@@ -6,7 +6,6 @@ import 'package:fastybird_smart_panel/modules/spaces/repositories/climate_target
 import 'package:fastybird_smart_panel/modules/spaces/repositories/covers_targets.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/intent_types.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/light_targets.dart';
-import 'package:fastybird_smart_panel/modules/spaces/repositories/media_targets.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/space_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/repositories/spaces.dart';
 import 'package:fastybird_smart_panel/modules/spaces/service.dart';
@@ -20,8 +19,6 @@ class MockLightTargetsRepository extends Mock implements LightTargetsRepository 
 
 class MockClimateTargetsRepository extends Mock implements ClimateTargetsRepository {}
 
-class MockMediaTargetsRepository extends Mock implements MediaTargetsRepository {}
-
 class MockCoversTargetsRepository extends Mock implements CoversTargetsRepository {}
 
 class MockSpaceStateRepository extends Mock implements SpaceStateRepository {}
@@ -30,7 +27,6 @@ void main() {
   late MockSpacesRepository mockSpacesRepository;
   late MockLightTargetsRepository mockLightTargetsRepository;
   late MockClimateTargetsRepository mockClimateTargetsRepository;
-  late MockMediaTargetsRepository mockMediaTargetsRepository;
   late MockCoversTargetsRepository mockCoversTargetsRepository;
   late MockSpaceStateRepository mockSpaceStateRepository;
   late SpacesService service;
@@ -39,7 +35,6 @@ void main() {
     mockSpacesRepository = MockSpacesRepository();
     mockLightTargetsRepository = MockLightTargetsRepository();
     mockClimateTargetsRepository = MockClimateTargetsRepository();
-    mockMediaTargetsRepository = MockMediaTargetsRepository();
     mockCoversTargetsRepository = MockCoversTargetsRepository();
     mockSpaceStateRepository = MockSpaceStateRepository();
 
@@ -47,7 +42,6 @@ void main() {
       spacesRepository: mockSpacesRepository,
       lightTargetsRepository: mockLightTargetsRepository,
       climateTargetsRepository: mockClimateTargetsRepository,
-      mediaTargetsRepository: mockMediaTargetsRepository,
       coversTargetsRepository: mockCoversTargetsRepository,
       spaceStateRepository: mockSpaceStateRepository,
     );

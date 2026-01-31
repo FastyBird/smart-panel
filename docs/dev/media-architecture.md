@@ -19,8 +19,8 @@ Devices → Capabilities → Endpoints → Bindings → Plan → Executor
 
 | Service                              | File                                                  | Responsibility                          |
 |--------------------------------------|-------------------------------------------------------|-----------------------------------------|
+| `MediaCapabilityService`             | `media-capability.service.ts`                         | Derive capability summaries from devices |
 | `DerivedMediaEndpointService`        | `derived-media-endpoint.service.ts`                   | Build endpoints from device capabilities |
-| `SpaceMediaEndpointService`          | `space-media-endpoint.service.ts`                     | Persistent endpoint CRUD                 |
 | `SpaceMediaActivityBindingService`   | `space-media-activity-binding.service.ts`             | Binding CRUD + smart defaults            |
 | `SpaceMediaActivityService`          | `space-media-activity.service.ts`                     | Activation, deactivation, dry-run        |
 

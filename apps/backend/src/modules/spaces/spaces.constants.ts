@@ -21,20 +21,10 @@ export enum EventType {
 	LIGHTING_STATE_CHANGED = 'SpacesModule.Space.LightingStateChanged',
 	CLIMATE_STATE_CHANGED = 'SpacesModule.Space.ClimateStateChanged',
 	COVERS_STATE_CHANGED = 'SpacesModule.Space.CoversStateChanged',
-	MEDIA_STATE_CHANGED = 'SpacesModule.Space.MediaStateChanged',
 	// Covers role events
 	COVERS_TARGET_CREATED = 'SpacesModule.CoversTarget.Created',
 	COVERS_TARGET_UPDATED = 'SpacesModule.CoversTarget.Updated',
 	COVERS_TARGET_DELETED = 'SpacesModule.CoversTarget.Deleted',
-	// Media role events
-	MEDIA_TARGET_CREATED = 'SpacesModule.MediaTarget.Created',
-	MEDIA_TARGET_UPDATED = 'SpacesModule.MediaTarget.Updated',
-	MEDIA_TARGET_DELETED = 'SpacesModule.MediaTarget.Deleted',
-	// Media routing activation events
-	MEDIA_ROUTING_ACTIVATING = 'SpacesModule.MediaRouting.Activating',
-	MEDIA_ROUTING_ACTIVATED = 'SpacesModule.MediaRouting.Activated',
-	MEDIA_ROUTING_FAILED = 'SpacesModule.MediaRouting.Failed',
-	MEDIA_ROUTING_DEACTIVATED = 'SpacesModule.MediaRouting.Deactivated',
 	// Media activity activation events
 	MEDIA_ACTIVITY_ACTIVATING = 'SpacesModule.MediaActivity.Activating',
 	MEDIA_ACTIVITY_ACTIVATED = 'SpacesModule.MediaActivity.Activated',
@@ -1630,24 +1620,6 @@ export const COVERS_INTENT_CATALOG: IntentTypeMeta[] = [
 // ========================
 
 /**
- * Volume delta sizes for media adjustment
- */
-export enum VolumeDelta {
-	SMALL = 'small',
-	MEDIUM = 'medium',
-	LARGE = 'large',
-}
-
-/**
- * Volume delta steps (percentage points)
- */
-export const VOLUME_DELTA_STEPS: Record<VolumeDelta, number> = {
-	[VolumeDelta.SMALL]: 5,
-	[VolumeDelta.MEDIUM]: 10,
-	[VolumeDelta.LARGE]: 20,
-};
-
-/**
  * Media device categories for filtering
  *
  * Note:
@@ -1680,27 +1652,6 @@ export const MEDIA_CHANNEL_CATEGORIES = [
 	ChannelCategory.MEDIA_INPUT,
 	ChannelCategory.MEDIA_PLAYBACK,
 ] as const;
-
-/**
- * Metadata for volume delta values
- */
-export const VOLUME_DELTA_META: Record<VolumeDelta, IntentEnumValueMeta> = {
-	[VolumeDelta.SMALL]: {
-		value: VolumeDelta.SMALL,
-		label: 'Small',
-		description: `Adjust volume by ${VOLUME_DELTA_STEPS[VolumeDelta.SMALL]}%`,
-	},
-	[VolumeDelta.MEDIUM]: {
-		value: VolumeDelta.MEDIUM,
-		label: 'Medium',
-		description: `Adjust volume by ${VOLUME_DELTA_STEPS[VolumeDelta.MEDIUM]}%`,
-	},
-	[VolumeDelta.LARGE]: {
-		value: VolumeDelta.LARGE,
-		label: 'Large',
-		description: `Adjust volume by ${VOLUME_DELTA_STEPS[VolumeDelta.LARGE]}%`,
-	},
-};
 
 // ========================
 // Media Domain V2 - Endpoint/Routing Architecture
@@ -1736,72 +1687,6 @@ export enum MediaActivityKey {
 	BACKGROUND = 'background',
 	/** Off activity - all media devices powered off */
 	OFF = 'off',
-}
-
-/**
- * Media Routing Types - activity presets that define endpoint configurations
- */
-export enum MediaRoutingType {
-	/** Watch routing - optimized for video content (TV + AVR + source) */
-	WATCH = 'watch',
-	/** Listen routing - optimized for audio content (speakers/AVR only) */
-	LISTEN = 'listen',
-	/** Gaming routing - optimized for gaming (low latency, game console) */
-	GAMING = 'gaming',
-	/** Background routing - ambient audio at low volume */
-	BACKGROUND = 'background',
-	/** Off routing - all media devices powered off */
-	OFF = 'off',
-	/** Custom routing - user-defined configuration */
-	CUSTOM = 'custom',
-}
-
-/**
- * Media Power Policy - defines how power is handled during routing activation
- */
-export enum MediaPowerPolicy {
-	/** Power on all endpoints in the routing */
-	ON = 'on',
-	/** Power off all endpoints in the routing */
-	OFF = 'off',
-	/** Leave power state unchanged */
-	UNCHANGED = 'unchanged',
-}
-
-/**
- * Media Input Policy - defines how input switching is handled during routing activation
- */
-export enum MediaInputPolicy {
-	/** Always switch inputs as configured */
-	ALWAYS = 'always',
-	/** Only switch inputs if device is currently on a different input */
-	IF_DIFFERENT = 'if_different',
-	/** Never switch inputs automatically */
-	NEVER = 'never',
-}
-
-/**
- * Media Conflict Policy - defines how conflicts with existing routing are resolved
- */
-export enum MediaConflictPolicy {
-	/** Replace the current active routing immediately */
-	REPLACE = 'replace',
-	/** Fail activation if another routing is active */
-	FAIL_IF_ACTIVE = 'fail_if_active',
-	/** Deactivate current routing first, then activate new one */
-	DEACTIVATE_FIRST = 'deactivate_first',
-}
-
-/**
- * Media Offline Policy - defines how offline devices are handled during activation
- */
-export enum MediaOfflinePolicy {
-	/** Skip offline devices and continue with available ones */
-	SKIP = 'skip',
-	/** Fail activation if any critical endpoint is offline */
-	FAIL = 'fail',
-	/** Wait for devices to come online (with timeout) */
-	WAIT = 'wait',
 }
 
 /**
@@ -1872,128 +1757,6 @@ export const MEDIA_ENDPOINT_TYPE_META: Record<MediaEndpointType, IntentEnumValue
 };
 
 /**
- * Metadata for media routing types
- */
-export const MEDIA_ROUTING_TYPE_META: Record<MediaRoutingType, IntentEnumValueMeta> = {
-	[MediaRoutingType.WATCH]: {
-		value: MediaRoutingType.WATCH,
-		label: 'Watch',
-		description: 'Watch video content (TV + audio)',
-		icon: 'mdi:television-play',
-	},
-	[MediaRoutingType.LISTEN]: {
-		value: MediaRoutingType.LISTEN,
-		label: 'Listen',
-		description: 'Listen to audio content',
-		icon: 'mdi:music',
-	},
-	[MediaRoutingType.GAMING]: {
-		value: MediaRoutingType.GAMING,
-		label: 'Gaming',
-		description: 'Play video games',
-		icon: 'mdi:gamepad-variant',
-	},
-	[MediaRoutingType.BACKGROUND]: {
-		value: MediaRoutingType.BACKGROUND,
-		label: 'Background',
-		description: 'Background ambient audio',
-		icon: 'mdi:music-note',
-	},
-	[MediaRoutingType.OFF]: {
-		value: MediaRoutingType.OFF,
-		label: 'Off',
-		description: 'Turn off all media',
-		icon: 'mdi:power-off',
-	},
-	[MediaRoutingType.CUSTOM]: {
-		value: MediaRoutingType.CUSTOM,
-		label: 'Custom',
-		description: 'Custom configuration',
-		icon: 'mdi:cog',
-	},
-};
-
-/**
- * Default routing configurations - used when auto-creating routings
- * Note: name and icon are derived from MEDIA_ROUTING_TYPE_META to avoid duplication
- */
-export interface MediaRoutingDefaults {
-	powerPolicy: MediaPowerPolicy;
-	inputPolicy: MediaInputPolicy;
-	conflictPolicy: MediaConflictPolicy;
-	offlinePolicy: MediaOfflinePolicy;
-	audioVolumePreset: number | null;
-}
-
-export const MEDIA_ROUTING_DEFAULTS: Record<MediaRoutingType, MediaRoutingDefaults> = {
-	[MediaRoutingType.WATCH]: {
-		powerPolicy: MediaPowerPolicy.ON,
-		inputPolicy: MediaInputPolicy.ALWAYS,
-		conflictPolicy: MediaConflictPolicy.REPLACE,
-		offlinePolicy: MediaOfflinePolicy.SKIP,
-		audioVolumePreset: 50,
-	},
-	[MediaRoutingType.LISTEN]: {
-		powerPolicy: MediaPowerPolicy.ON,
-		inputPolicy: MediaInputPolicy.IF_DIFFERENT,
-		conflictPolicy: MediaConflictPolicy.REPLACE,
-		offlinePolicy: MediaOfflinePolicy.SKIP,
-		audioVolumePreset: 40,
-	},
-	[MediaRoutingType.GAMING]: {
-		powerPolicy: MediaPowerPolicy.ON,
-		inputPolicy: MediaInputPolicy.ALWAYS,
-		conflictPolicy: MediaConflictPolicy.REPLACE,
-		offlinePolicy: MediaOfflinePolicy.SKIP,
-		audioVolumePreset: 60,
-	},
-	[MediaRoutingType.BACKGROUND]: {
-		powerPolicy: MediaPowerPolicy.ON,
-		inputPolicy: MediaInputPolicy.NEVER,
-		conflictPolicy: MediaConflictPolicy.REPLACE,
-		offlinePolicy: MediaOfflinePolicy.SKIP,
-		audioVolumePreset: 25,
-	},
-	[MediaRoutingType.OFF]: {
-		powerPolicy: MediaPowerPolicy.OFF,
-		inputPolicy: MediaInputPolicy.NEVER,
-		conflictPolicy: MediaConflictPolicy.REPLACE,
-		offlinePolicy: MediaOfflinePolicy.SKIP,
-		audioVolumePreset: null,
-	},
-	[MediaRoutingType.CUSTOM]: {
-		powerPolicy: MediaPowerPolicy.UNCHANGED,
-		inputPolicy: MediaInputPolicy.IF_DIFFERENT,
-		conflictPolicy: MediaConflictPolicy.REPLACE,
-		offlinePolicy: MediaOfflinePolicy.SKIP,
-		audioVolumePreset: null,
-	},
-};
-
-/**
- * Media Intent Types V2 - routing-based intents
- */
-export enum MediaIntentTypeV2 {
-	/** Activate a specific routing */
-	ROUTING_ACTIVATE = 'routing_activate',
-	/** Deactivate current routing (same as activating OFF) */
-	ROUTING_DEACTIVATE = 'routing_deactivate',
-	/** Volume control (applies to active routing's audio endpoint) */
-	VOLUME_SET = 'volume_set',
-	VOLUME_DELTA = 'volume_delta',
-	MUTE = 'mute',
-	UNMUTE = 'unmute',
-	/** Playback control (applies to active routing's source endpoint) */
-	PLAY = 'play',
-	PAUSE = 'pause',
-	STOP = 'stop',
-	NEXT = 'next',
-	PREVIOUS = 'previous',
-	/** Input control (applies to specific endpoint) */
-	INPUT_SET = 'input_set',
-}
-
-/**
  * Complete intent category catalog
  */
 export const INTENT_CATEGORY_CATALOG: IntentCategoryMeta[] = [
@@ -2018,7 +1781,7 @@ export const INTENT_CATEGORY_CATALOG: IntentCategoryMeta[] = [
 		icon: 'mdi:blinds',
 		intents: COVERS_INTENT_CATALOG,
 	},
-	// Note: Media domain uses routing-based architecture (MediaIntentTypeV2) instead of intent catalog
+	// Note: Media domain uses activity-based architecture (SpaceMediaActivityService)
 ];
 
 /**

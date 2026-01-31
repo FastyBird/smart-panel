@@ -62,22 +62,6 @@ class IntentResultHandler {
     );
   }
 
-  /// Shows an alert if any devices were skipped due to being offline.
-  ///
-  /// Returns true if an alert was shown, false otherwise.
-  static bool showOfflineAlertIfNeededForMedia(
-    BuildContext context,
-    MediaIntentResult? result,
-  ) {
-    if (result == null) return false;
-    return _showOfflineAlert(
-      context,
-      result.skippedOfflineDevices,
-      result.success,
-      result.affectedDevices,
-    );
-  }
-
   static bool _showOfflineAlert(
     BuildContext context,
     int? skippedOfflineDevices,

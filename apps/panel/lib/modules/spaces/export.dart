@@ -6,10 +6,8 @@ export 'package:fastybird_smart_panel/modules/spaces/models/model.dart';
 export 'package:fastybird_smart_panel/modules/spaces/models/spaces/space.dart';
 export 'package:fastybird_smart_panel/modules/spaces/models/light_targets/light_target.dart';
 export 'package:fastybird_smart_panel/modules/spaces/models/climate_targets/climate_target.dart';
-export 'package:fastybird_smart_panel/modules/spaces/models/media_targets/media_target.dart';
 export 'package:fastybird_smart_panel/modules/spaces/models/lighting_state/lighting_state.dart';
 export 'package:fastybird_smart_panel/modules/spaces/models/climate_state/climate_state.dart';
-export 'package:fastybird_smart_panel/modules/spaces/models/media_state/media_state.dart';
 export 'package:fastybird_smart_panel/modules/spaces/models/covers_state/covers_state.dart';
 export 'package:fastybird_smart_panel/modules/spaces/models/sensor_state/sensor_state.dart';
 export 'package:fastybird_smart_panel/modules/spaces/models/suggestion/suggestion.dart';
@@ -20,24 +18,21 @@ export 'package:fastybird_smart_panel/modules/spaces/models/intent_result/intent
 export 'package:fastybird_smart_panel/modules/spaces/views/spaces/view.dart';
 export 'package:fastybird_smart_panel/modules/spaces/views/light_targets/view.dart';
 export 'package:fastybird_smart_panel/modules/spaces/views/climate_targets/view.dart';
-export 'package:fastybird_smart_panel/modules/spaces/views/media_targets/view.dart';
 
 // Mappers
 export 'package:fastybird_smart_panel/modules/spaces/mappers/space.dart';
 export 'package:fastybird_smart_panel/modules/spaces/mappers/light_target.dart';
 export 'package:fastybird_smart_panel/modules/spaces/mappers/climate_target.dart';
-export 'package:fastybird_smart_panel/modules/spaces/mappers/media_target.dart';
 
 // Repositories
 export 'package:fastybird_smart_panel/modules/spaces/repositories/spaces.dart';
 export 'package:fastybird_smart_panel/modules/spaces/repositories/light_targets.dart';
 export 'package:fastybird_smart_panel/modules/spaces/repositories/climate_targets.dart';
-export 'package:fastybird_smart_panel/modules/spaces/repositories/media_targets.dart';
 export 'package:fastybird_smart_panel/modules/spaces/repositories/covers_targets.dart';
 export 'package:fastybird_smart_panel/modules/spaces/repositories/space_state.dart';
 export 'package:fastybird_smart_panel/modules/spaces/repositories/intent_types.dart';
 
-// Media Activity (V2)
+// Media Activity
 export 'package:fastybird_smart_panel/modules/spaces/models/media_activity/media_activity.dart';
 export 'package:fastybird_smart_panel/modules/spaces/repositories/media_activity.dart';
 export 'package:fastybird_smart_panel/modules/spaces/services/media_activity_service.dart';

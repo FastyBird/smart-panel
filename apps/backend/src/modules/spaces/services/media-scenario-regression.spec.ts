@@ -46,9 +46,9 @@ import {
 } from './__fixtures__/media-scenario-templates';
 import { MediaTestHarness } from './__fixtures__/media-test-harness';
 import { DerivedMediaEndpointService } from './derived-media-endpoint.service';
+import { MediaCapabilityService } from './media-capability.service';
 import { SpaceMediaActivityBindingService } from './space-media-activity-binding.service';
 import { SpaceMediaActivityService } from './space-media-activity.service';
-import { SpaceMediaEndpointService } from './space-media-endpoint.service';
 import { SpacesService } from './spaces.service';
 
 // ==========================================================================
@@ -80,14 +80,14 @@ function buildSummaryFromDevice(d: ScenarioDevice): Record<string, unknown> {
 describe('Media Regression – Endpoints Derivation', () => {
 	let service: DerivedMediaEndpointService;
 	let mockSpacesService: { getOneOrThrow: jest.Mock };
-	let mockMediaEndpointService: { getMediaCapabilitiesInSpace: jest.Mock };
+	let mockMediaCapabilityService: { getMediaCapabilitiesInSpace: jest.Mock };
 
 	beforeEach(async () => {
 		resetIds();
 		mockSpacesService = {
 			getOneOrThrow: jest.fn().mockResolvedValue({ id: SPACE_ID, name: 'Test Space' }),
 		};
-		mockMediaEndpointService = {
+		mockMediaCapabilityService = {
 			getMediaCapabilitiesInSpace: jest.fn().mockResolvedValue([]),
 		};
 
@@ -95,7 +95,7 @@ describe('Media Regression – Endpoints Derivation', () => {
 			providers: [
 				DerivedMediaEndpointService,
 				{ provide: SpacesService, useValue: mockSpacesService },
-				{ provide: SpaceMediaEndpointService, useValue: mockMediaEndpointService },
+				{ provide: MediaCapabilityService, useValue: mockMediaCapabilityService },
 			],
 		}).compile();
 
@@ -104,7 +104,7 @@ describe('Media Regression – Endpoints Derivation', () => {
 
 	function loadScenario(scenario: MediaScenario) {
 		const summaries = scenario.devices.map((d) => buildSummaryFromDevice(d));
-		mockMediaEndpointService.getMediaCapabilitiesInSpace.mockResolvedValue(summaries);
+		mockMediaCapabilityService.getMediaCapabilitiesInSpace.mockResolvedValue(summaries);
 	}
 
 	describe('media_tv_only (no volume)', () => {
@@ -249,7 +249,7 @@ describe('Media Regression – Default Bindings Quality', () => {
 				{ provide: getRepositoryToken(SpaceMediaActivityBindingEntity), useValue: harness.mockBindingRepository },
 				{ provide: SpacesService, useValue: harness.mockSpacesService },
 				{ provide: DerivedMediaEndpointService, useValue: harness.mockDerivedEndpointService },
-				{ provide: SpaceMediaEndpointService, useValue: harness.mockMediaEndpointService },
+				{ provide: MediaCapabilityService, useValue: harness.mockMediaCapabilityService },
 			],
 		}).compile();
 
@@ -318,7 +318,7 @@ describe('Media Regression – Default Bindings Quality', () => {
 				}),
 			];
 			setEndpoints(scenario, endpoints);
-			harness.mockMediaEndpointService.getMediaCapabilitiesInSpace.mockResolvedValue(
+			harness.mockMediaCapabilityService.getMediaCapabilitiesInSpace.mockResolvedValue(
 				scenario.devices.map((d) => {
 					const s = new MediaCapabilitySummaryModel();
 					s.deviceId = d.deviceId;
@@ -408,7 +408,7 @@ describe('Media Regression – Default Bindings Quality', () => {
 					track: true,
 				}),
 			]);
-			harness.mockMediaEndpointService.getMediaCapabilitiesInSpace.mockResolvedValue([
+			harness.mockMediaCapabilityService.getMediaCapabilitiesInSpace.mockResolvedValue([
 				(() => {
 					const s = new MediaCapabilitySummaryModel();
 					s.deviceId = DEVICE_SPEAKER;
@@ -455,7 +455,7 @@ describe('Media Regression – Default Bindings Quality', () => {
 				}),
 			];
 			setEndpoints(scenario, eps);
-			harness.mockMediaEndpointService.getMediaCapabilitiesInSpace.mockResolvedValue(
+			harness.mockMediaCapabilityService.getMediaCapabilitiesInSpace.mockResolvedValue(
 				scenario.devices.map((d) => {
 					const s = new MediaCapabilitySummaryModel();
 					s.deviceId = d.deviceId;

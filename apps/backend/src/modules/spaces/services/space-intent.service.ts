@@ -21,8 +21,8 @@ export { IntentExecutionResult } from './space-intent-base.service';
  * This service maintains backward compatibility with existing code
  * while delegating all actual logic to specialized services.
  *
- * Note: Media domain now uses endpoint/routing architecture via
- * SpaceMediaEndpointService and SpaceMediaRoutingService.
+ * Note: Media domain uses activity-based architecture via
+ * SpaceMediaActivityService and DerivedMediaEndpointService.
  */
 @Injectable()
 export class SpaceIntentService {

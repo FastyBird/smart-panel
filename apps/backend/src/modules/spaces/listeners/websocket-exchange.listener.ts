@@ -20,7 +20,7 @@ export const SpacesWsEventType = {
 	CLIMATE_INTENT: 'SpacesModule.ClimateIntent',
 	COVERS_INTENT: 'SpacesModule.CoversIntent',
 	UNDO_INTENT: 'SpacesModule.UndoIntent',
-	// Note: Media domain uses routing-based architecture via SpaceMediaRoutingService
+	// Note: Media domain uses activity-based architecture via SpaceMediaActivityService
 } as const;
 
 /**
@@ -31,7 +31,7 @@ export const SpacesWsHandlerName = {
 	CLIMATE_INTENT: 'SpacesModule.ClimateIntentHandler',
 	COVERS_INTENT: 'SpacesModule.CoversIntentHandler',
 	UNDO_INTENT: 'SpacesModule.UndoIntentHandler',
-	// Note: Media domain uses routing-based architecture via SpaceMediaRoutingService
+	// Note: Media domain uses activity-based architecture via SpaceMediaActivityService
 } as const;
 
 interface SpaceIntentPayload {
@@ -59,7 +59,7 @@ type UndoIntentPayload = SpaceIntentPayload;
  * This provides an alternative to REST API for executing space intents,
  * allowing for faster response times and better real-time feedback.
  *
- * Note: Media domain now uses routing-based architecture via SpaceMediaRoutingService
+ * Note: Media domain uses activity-based architecture via SpaceMediaActivityService
  * and is not included in the WebSocket intent handlers.
  */
 @Injectable()

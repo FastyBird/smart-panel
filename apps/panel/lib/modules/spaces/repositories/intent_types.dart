@@ -61,40 +61,6 @@ enum SetpointDelta {
   large,
 }
 
-/// Types of media intents that can be executed on a space.
-///
-/// - [powerOn]/[powerOff]: Control power for all media devices
-/// - [volumeSet]/[volumeDelta]: Set or adjust volume across devices
-/// - [mute]/[unmute]: Toggle mute state
-/// - [rolePower]/[roleVolume]: Control specific media roles
-/// - [play]/[pause]/[stop]/[next]/[previous]: Playback intents
-/// - [inputSet]: Change input/source
-/// - [setMode]: Apply preset media mode (off/background/focused/party)
-enum MediaIntentType {
-  powerOn,
-  powerOff,
-  volumeSet,
-  volumeDelta,
-  mute,
-  unmute,
-  rolePower,
-  roleVolume,
-  play,
-  pause,
-  stop,
-  next,
-  previous,
-  inputSet,
-  setMode,
-}
-
-/// Size of volume adjustment for delta-based changes.
-enum VolumeDelta {
-  small,
-  medium,
-  large,
-}
-
 /// Types of covers intents that can be executed on a space.
 ///
 /// Each type corresponds to a specific covers action:
@@ -188,54 +154,6 @@ String setpointDeltaToString(SetpointDelta delta) {
     case SetpointDelta.medium:
       return 'medium';
     case SetpointDelta.large:
-      return 'large';
-  }
-}
-
-/// Convert MediaIntentType to API string
-String mediaIntentTypeToString(MediaIntentType type) {
-  switch (type) {
-    case MediaIntentType.powerOn:
-      return 'power_on';
-    case MediaIntentType.powerOff:
-      return 'power_off';
-    case MediaIntentType.volumeSet:
-      return 'volume_set';
-    case MediaIntentType.volumeDelta:
-      return 'volume_delta';
-    case MediaIntentType.mute:
-      return 'mute';
-    case MediaIntentType.unmute:
-      return 'unmute';
-    case MediaIntentType.rolePower:
-      return 'role_power';
-    case MediaIntentType.roleVolume:
-      return 'role_volume';
-    case MediaIntentType.play:
-      return 'play';
-    case MediaIntentType.pause:
-      return 'pause';
-    case MediaIntentType.stop:
-      return 'stop';
-    case MediaIntentType.next:
-      return 'next';
-    case MediaIntentType.previous:
-      return 'previous';
-    case MediaIntentType.inputSet:
-      return 'input_set';
-    case MediaIntentType.setMode:
-      return 'set_mode';
-  }
-}
-
-/// Convert VolumeDelta to API string
-String volumeDeltaToString(VolumeDelta delta) {
-  switch (delta) {
-    case VolumeDelta.small:
-      return 'small';
-    case VolumeDelta.medium:
-      return 'medium';
-    case VolumeDelta.large:
       return 'large';
   }
 }

@@ -11,7 +11,7 @@ import {
 import { MediaCapabilityMappingModel, MediaCapabilitySummaryModel } from '../models/media-routing.model';
 import { MediaEndpointType, SPACES_MODULE_NAME } from '../spaces.constants';
 
-import { SpaceMediaEndpointService } from './space-media-endpoint.service';
+import { MediaCapabilityService } from './media-capability.service';
 import { SpacesService } from './spaces.service';
 
 /**
@@ -26,7 +26,7 @@ export class DerivedMediaEndpointService {
 
 	constructor(
 		private readonly spacesService: SpacesService,
-		private readonly mediaEndpointService: SpaceMediaEndpointService,
+		private readonly mediaCapabilityService: MediaCapabilityService,
 	) {}
 
 	/**
@@ -42,7 +42,7 @@ export class DerivedMediaEndpointService {
 		await this.spacesService.getOneOrThrow(spaceId);
 
 		// Get capability summaries from existing service
-		const summaries = await this.mediaEndpointService.getMediaCapabilitiesInSpace(spaceId);
+		const summaries = await this.mediaCapabilityService.getMediaCapabilitiesInSpace(spaceId);
 
 		const endpoints: DerivedMediaEndpointModel[] = [];
 

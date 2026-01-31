@@ -21,8 +21,6 @@ import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/deck_service.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/navigate_event.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/media_activity/media_activity.dart';
-import 'package:fastybird_smart_panel/modules/spaces/repositories/intent_types.dart';
-import 'package:fastybird_smart_panel/modules/spaces/repositories/space_state.dart';
 import 'package:fastybird_smart_panel/modules/spaces/service.dart';
 import 'package:fastybird_smart_panel/modules/spaces/services/media_activity_service.dart';
 import 'package:flutter/foundation.dart';
@@ -52,7 +50,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 
 	MediaActivityService? _mediaService;
 	SpacesService? _spacesService;
-	SpaceStateRepository? _spaceStateRepo;
 	DeckService? _deckService;
 	EventBus? _eventBus;
 	SocketService? _socketService;
@@ -61,6 +58,10 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	bool _isLoading = true;
 	bool _isSending = false;
 	bool _wsConnected = false;
+	// Local optimistic state for volume/mute — no server-side aggregated state
+	// is available, so these track user interactions only and reset on navigation.
+	int _volume = 0;
+	bool _isMuted = false;
 
 	late AnimationController _pulseController;
 
@@ -92,13 +93,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			}
 		}
 
-		try {
-			_spaceStateRepo = locator<SpaceStateRepository>();
-		} catch (e) {
-			if (kDebugMode) {
-				debugPrint('[MediaDomainViewPage] Failed to get SpaceStateRepository: $e');
-			}
-		}
 
 		try {
 			_deckService = locator<DeckService>();
@@ -967,9 +961,8 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	Widget _buildVolumeControl(BuildContext context) {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 		final accentColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
-		final mediaState = _spaceStateRepo?.getMediaState(_roomId);
-		final volume = mediaState?.averageVolume ?? 0;
-		final isMuted = mediaState?.anyMuted ?? false;
+		final volume = _volume;
+		final isMuted = _isMuted;
 
 		final columnWidth = _scale(40);
 
@@ -1736,31 +1729,19 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		);
 	}
 
-	// Actions dispatching media intents via SpaceStateRepository
-	Future<void> _setVolume(int volume) async {
-		if (_spaceStateRepo == null) return;
-		setState(() => _isSending = true);
-		try {
-			await _spaceStateRepo!.setMediaVolume(_roomId, volume);
-		} finally {
-			if (mounted) setState(() => _isSending = false);
-		}
+	// TODO: Volume, mute, playback will use direct device commands when media domain is finished
+	void _setVolume(int volume) {
+		setState(() => _volume = volume);
+		ScaffoldMessenger.of(context).showSnackBar(
+			const SnackBar(content: Text('Direct device commands coming soon')),
+		);
 	}
 
-	Future<void> _toggleMute() async {
-		if (_spaceStateRepo == null) return;
-		setState(() => _isSending = true);
-		try {
-			final mediaState = _spaceStateRepo!.getMediaState(_roomId);
-			final isMuted = mediaState?.isMuted ?? false;
-			if (isMuted) {
-				await _spaceStateRepo!.unmuteMedia(_roomId);
-			} else {
-				await _spaceStateRepo!.muteMedia(_roomId);
-			}
-		} finally {
-			if (mounted) setState(() => _isSending = false);
-		}
+	void _toggleMute() {
+		setState(() => _isMuted = !_isMuted);
+		ScaffoldMessenger.of(context).showSnackBar(
+			const SnackBar(content: Text('Direct device commands coming soon')),
+		);
 	}
 
 	void _showInputSelector() {
@@ -1769,34 +1750,10 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		);
 	}
 
-	Future<void> _sendPlaybackCommand(String command) async {
-		if (_spaceStateRepo == null) return;
-		setState(() => _isSending = true);
-		try {
-			final MediaIntentType type;
-			switch (command) {
-				case 'play':
-					type = MediaIntentType.play;
-					break;
-				case 'pause':
-					type = MediaIntentType.pause;
-					break;
-				case 'next':
-					type = MediaIntentType.next;
-					break;
-				case 'previous':
-					type = MediaIntentType.previous;
-					break;
-				default:
-					return;
-			}
-			await _spaceStateRepo!.executeMediaIntent(
-				spaceId: _roomId,
-				type: type,
-			);
-		} finally {
-			if (mounted) setState(() => _isSending = false);
-		}
+	void _sendPlaybackCommand(String command) {
+		ScaffoldMessenger.of(context).showSnackBar(
+			const SnackBar(content: Text('Direct device commands coming soon')),
+		);
 	}
 
 	void _showRemote() {
@@ -1874,9 +1831,7 @@ class _MediaDeviceDetailPageState extends State<MediaDeviceDetailPage> {
 	double _scale(double val) =>
 			_screenService.scale(val, density: _visualDensityService.density);
 
-	SpaceStateRepository? _spaceStateRepo;
 	SocketService? _socketService;
-	bool _isSending = false;
 	bool _wsConnected = false;
 
 	MediaDeviceGroup get _group => widget.deviceGroup;
@@ -1884,13 +1839,6 @@ class _MediaDeviceDetailPageState extends State<MediaDeviceDetailPage> {
 	@override
 	void initState() {
 		super.initState();
-		try {
-			_spaceStateRepo = locator<SpaceStateRepository>();
-		} catch (e) {
-			if (kDebugMode) {
-				debugPrint('[MediaDeviceDetailPage] Failed to get SpaceStateRepository: $e');
-			}
-		}
 		try {
 			_socketService = locator<SocketService>();
 			_socketService?.addConnectionListener(_onConnectionChanged);
@@ -2084,47 +2032,47 @@ class _MediaDeviceDetailPageState extends State<MediaDeviceDetailPage> {
 								children: [
 									IconButton(
 										icon: Icon(MdiIcons.chevronUp, size: _scale(32)),
-										onPressed: _isSending ? null : () {},
+										onPressed: () => _showComingSoon(context),
 									),
 									Row(
 										mainAxisSize: MainAxisSize.min,
 										children: [
 											IconButton(
 												icon: Icon(MdiIcons.chevronLeft, size: _scale(32)),
-												onPressed: _isSending ? null : () {},
+												onPressed: () => _showComingSoon(context),
 											),
 											AppSpacings.spacingMdHorizontal,
 											FilledButton(
-												onPressed: _isSending ? null : () {},
+												onPressed: () => _showComingSoon(context),
 												child: const Text('OK'),
 											),
 											AppSpacings.spacingMdHorizontal,
 											IconButton(
 												icon: Icon(MdiIcons.chevronRight, size: _scale(32)),
-												onPressed: _isSending ? null : () {},
+												onPressed: () => _showComingSoon(context),
 											),
 										],
 									),
 									IconButton(
 										icon: Icon(MdiIcons.chevronDown, size: _scale(32)),
-										onPressed: _isSending ? null : () {},
+										onPressed: () => _showComingSoon(context),
 									),
 									AppSpacings.spacingMdVertical,
 									Row(
 										mainAxisAlignment: MainAxisAlignment.center,
 										children: [
 											TextButton(
-												onPressed: _isSending ? null : () {},
+												onPressed: () => _showComingSoon(context),
 												child: const Text('Back'),
 											),
 											AppSpacings.spacingLgHorizontal,
 											TextButton(
-												onPressed: _isSending ? null : () {},
+												onPressed: () => _showComingSoon(context),
 												child: const Text('Home'),
 											),
 											AppSpacings.spacingLgHorizontal,
 											TextButton(
-												onPressed: _isSending ? null : () {},
+												onPressed: () => _showComingSoon(context),
 												child: const Text('Menu'),
 											),
 										],
@@ -2147,30 +2095,12 @@ class _MediaDeviceDetailPageState extends State<MediaDeviceDetailPage> {
 				Text(localizations.media_capability_power),
 				const Spacer(),
 				FilledButton(
-					onPressed: _isSending
-							? null
-							: () async {
-									setState(() => _isSending = true);
-									try {
-										await _spaceStateRepo?.powerOnMedia(widget.spaceId);
-									} finally {
-										if (mounted) setState(() => _isSending = false);
-									}
-								},
+					onPressed: () => _showComingSoon(context),
 					child: Text(localizations.media_action_power_on),
 				),
 				AppSpacings.spacingMdHorizontal,
 				OutlinedButton(
-					onPressed: _isSending
-							? null
-							: () async {
-									setState(() => _isSending = true);
-									try {
-										await _spaceStateRepo?.powerOffMedia(widget.spaceId);
-									} finally {
-										if (mounted) setState(() => _isSending = false);
-									}
-								},
+					onPressed: () => _showComingSoon(context),
 					child: Text(localizations.media_action_power_off),
 				),
 			],
@@ -2185,11 +2115,7 @@ class _MediaDeviceDetailPageState extends State<MediaDeviceDetailPage> {
 				const Text('Input'),
 				const Spacer(),
 				TextButton(
-					onPressed: _isSending ? null : () {
-						ScaffoldMessenger.of(context).showSnackBar(
-							const SnackBar(content: Text('Input selector coming soon')),
-						);
-					},
+					onPressed: () => _showComingSoon(context),
 					child: const Text('Select'),
 				),
 			],
@@ -2207,38 +2133,12 @@ class _MediaDeviceDetailPageState extends State<MediaDeviceDetailPage> {
 				IconButton(
 					icon: Icon(MdiIcons.volumeMinus),
 					iconSize: _scale(20),
-					onPressed: _isSending
-							? null
-							: () async {
-									setState(() => _isSending = true);
-									try {
-										await _spaceStateRepo?.adjustMediaVolume(
-											widget.spaceId,
-											delta: VolumeDelta.small,
-											increase: false,
-										);
-									} finally {
-										if (mounted) setState(() => _isSending = false);
-									}
-								},
+					onPressed: () => _showComingSoon(context),
 				),
 				IconButton(
 					icon: Icon(MdiIcons.volumePlus),
 					iconSize: _scale(20),
-					onPressed: _isSending
-							? null
-							: () async {
-									setState(() => _isSending = true);
-									try {
-										await _spaceStateRepo?.adjustMediaVolume(
-											widget.spaceId,
-											delta: VolumeDelta.small,
-											increase: true,
-										);
-									} finally {
-										if (mounted) setState(() => _isSending = false);
-									}
-								},
+					onPressed: () => _showComingSoon(context),
 				),
 			],
 		);
@@ -2253,29 +2153,11 @@ class _MediaDeviceDetailPageState extends State<MediaDeviceDetailPage> {
 				Text(localizations.media_capability_mute),
 				const Spacer(),
 				TextButton(
-					onPressed: _isSending
-							? null
-							: () async {
-									setState(() => _isSending = true);
-									try {
-										await _spaceStateRepo?.muteMedia(widget.spaceId);
-									} finally {
-										if (mounted) setState(() => _isSending = false);
-									}
-								},
+					onPressed: () => _showComingSoon(context),
 					child: Text(localizations.media_action_mute),
 				),
 				TextButton(
-					onPressed: _isSending
-							? null
-							: () async {
-									setState(() => _isSending = true);
-									try {
-										await _spaceStateRepo?.unmuteMedia(widget.spaceId);
-									} finally {
-										if (mounted) setState(() => _isSending = false);
-									}
-								},
+					onPressed: () => _showComingSoon(context),
 					child: Text(localizations.media_action_unmute),
 				),
 			],
@@ -2288,25 +2170,25 @@ class _MediaDeviceDetailPageState extends State<MediaDeviceDetailPage> {
 			children: [
 				IconButton(
 					icon: Icon(MdiIcons.skipPrevious),
-					onPressed: _isSending ? null : () => _playbackCmd(MediaIntentType.previous),
+					onPressed: () => _showComingSoon(context),
 				),
 				IconButton(
 					icon: Icon(MdiIcons.play),
 					iconSize: _scale(32),
-					onPressed: _isSending ? null : () => _playbackCmd(MediaIntentType.play),
+					onPressed: () => _showComingSoon(context),
 				),
 				IconButton(
 					icon: Icon(MdiIcons.pause),
 					iconSize: _scale(32),
-					onPressed: _isSending ? null : () => _playbackCmd(MediaIntentType.pause),
+					onPressed: () => _showComingSoon(context),
 				),
 				IconButton(
 					icon: Icon(MdiIcons.stop),
-					onPressed: _isSending ? null : () => _playbackCmd(MediaIntentType.stop),
+					onPressed: () => _showComingSoon(context),
 				),
 				IconButton(
 					icon: Icon(MdiIcons.skipNext),
-					onPressed: _isSending ? null : () => _playbackCmd(MediaIntentType.next),
+					onPressed: () => _showComingSoon(context),
 				),
 			],
 		);
@@ -2339,16 +2221,9 @@ class _MediaDeviceDetailPageState extends State<MediaDeviceDetailPage> {
 		);
 	}
 
-	Future<void> _playbackCmd(MediaIntentType type) async {
-		if (_spaceStateRepo == null) return;
-		setState(() => _isSending = true);
-		try {
-			await _spaceStateRepo!.executeMediaIntent(
-				spaceId: widget.spaceId,
-				type: type,
-			);
-		} finally {
-			if (mounted) setState(() => _isSending = false);
-		}
+	void _showComingSoon(BuildContext context) {
+		ScaffoldMessenger.of(context).showSnackBar(
+			const SnackBar(content: Text('Direct device commands coming soon')),
+		);
 	}
 }
