@@ -39,6 +39,23 @@ export class SimulatorDeviceEntity extends DeviceEntity {
 	simulateInterval: number;
 
 	@ApiProperty({
+		description: 'Simulation behavior mode: default (timer-based random) or realistic (reacts to user commands)',
+		name: 'behavior_mode',
+		type: 'string',
+		enum: ['default', 'realistic'],
+		default: 'default',
+		example: 'default',
+	})
+	@Expose({ name: 'behavior_mode' })
+	@Transform(
+		({ obj }: { obj: { behavior_mode?: string; behaviorMode?: string } }) =>
+			obj.behavior_mode ?? obj.behaviorMode,
+		{ toClassOnly: true },
+	)
+	@Column({ default: 'default' })
+	behaviorMode: string;
+
+	@ApiProperty({
 		description: 'Device type',
 		type: 'string',
 		default: DEVICES_SIMULATOR_TYPE,

@@ -1,5 +1,5 @@
 import { Expose, Transform } from 'class-transformer';
-import { IsBoolean, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsBoolean, IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -45,4 +45,19 @@ export class UpdateSimulatorDeviceDto extends UpdateDeviceDto {
 	@Min(1000, { message: '[{"field":"simulate_interval","reason":"Simulate interval must be at least 1000ms."}]' })
 	@Max(60000, { message: '[{"field":"simulate_interval","reason":"Simulate interval must not exceed 60000ms."}]' })
 	simulate_interval?: number;
+
+	@ApiPropertyOptional({
+		description: 'Simulation behavior mode: default (timer-based) or realistic (reacts to user commands)',
+		name: 'behavior_mode',
+		type: 'string',
+		enum: ['default', 'realistic'],
+		example: 'realistic',
+	})
+	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	@IsOptional()
+	@IsIn(['default', 'realistic'], {
+		message: '[{"field":"behavior_mode","reason":"Behavior mode must be either default or realistic."}]',
+	})
+	behavior_mode?: string;
 }

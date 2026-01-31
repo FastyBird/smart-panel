@@ -95,6 +95,11 @@ export class DeviceBehaviorManagerService {
 	 * Get the behavior for a device (explicit assignment or category default)
 	 */
 	getBehaviorForDevice(device: SimulatorDeviceEntity): IDeviceBehavior | null {
+		// Only "realistic" devices get behavior-based simulation
+		if (device.behaviorMode !== 'realistic') {
+			return null;
+		}
+
 		// Check explicit assignment first
 		const assignedType = this.deviceBehaviorAssignments.get(device.id);
 		if (assignedType) {

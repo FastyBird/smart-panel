@@ -2,6 +2,7 @@ import { Expose, Transform, Type } from 'class-transformer';
 import {
 	IsBoolean,
 	IsEnum,
+	IsIn,
 	IsInt,
 	IsNotEmpty,
 	IsOptional,
@@ -118,6 +119,22 @@ export class GenerateDeviceDto {
 	@Min(1000, { message: '[{"field":"simulate_interval","reason":"Simulate interval must be at least 1000ms."}]' })
 	@Max(60000, { message: '[{"field":"simulate_interval","reason":"Simulate interval must not exceed 60000ms."}]' })
 	simulate_interval?: number;
+
+	@ApiPropertyOptional({
+		description: 'Simulation behavior mode: default (timer-based) or realistic (reacts to user commands)',
+		name: 'behavior_mode',
+		type: 'string',
+		enum: ['default', 'realistic'],
+		default: 'default',
+		example: 'default',
+	})
+	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	@IsOptional()
+	@IsIn(['default', 'realistic'], {
+		message: '[{"field":"behavior_mode","reason":"Behavior mode must be either default or realistic."}]',
+	})
+	behavior_mode?: string;
 }
 
 @ApiSchema({ name: 'DevicesSimulatorPluginReqGenerateDevice' })

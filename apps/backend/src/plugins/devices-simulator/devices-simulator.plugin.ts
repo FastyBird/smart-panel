@@ -53,9 +53,15 @@ import { SimulatorConfigModel } from './models/config.model';
 import { SimulatorDevicePlatform } from './platforms/simulator-device.platform';
 import {
 	AirConditionerRealisticBehavior,
+	DoorRealisticBehavior,
 	HumidifierRealisticBehavior,
+	LockRealisticBehavior,
+	SpeakerRealisticBehavior,
 	TelevisionDelayedBehavior,
 	ThermostatRealisticBehavior,
+	ValveRealisticBehavior,
+	WaterHeaterRealisticBehavior,
+	WindowCoveringRealisticBehavior,
 } from './behaviors';
 import { DeviceBehaviorManagerService } from './services/device-behavior-manager.service';
 import { DeviceGeneratorService } from './services/device-generator.service';
@@ -318,6 +324,12 @@ pnpm run cli simulator:connection --device <id> --state lost
 		this.behaviorManager.registerBehavior(new TelevisionDelayedBehavior(), true);
 		this.behaviorManager.registerBehavior(new HumidifierRealisticBehavior(), true);
 		this.behaviorManager.registerBehavior(new AirConditionerRealisticBehavior(), true);
+		this.behaviorManager.registerBehavior(new LockRealisticBehavior(), true);
+		this.behaviorManager.registerBehavior(new ValveRealisticBehavior(), true);
+		this.behaviorManager.registerBehavior(new WindowCoveringRealisticBehavior(), true);
+		this.behaviorManager.registerBehavior(new DoorRealisticBehavior(), true);
+		this.behaviorManager.registerBehavior(new SpeakerRealisticBehavior(), true);
+		this.behaviorManager.registerBehavior(new WaterHeaterRealisticBehavior(), true);
 
 		// Register service with centralized plugin service manager
 		this.pluginServiceManager.register(this.simulationService);
