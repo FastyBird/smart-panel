@@ -101,10 +101,7 @@ describe('SecurityService', () => {
 
 			const result = await service.getStatus();
 			expect(result.activeAlerts[0].acknowledged).toBe(true);
-			expect(ackService.updateLastEventAt).toHaveBeenCalledWith(
-				'sensor:dev1:smoke',
-				new Date('2025-01-02T00:00:00Z'),
-			);
+			expect(ackService.updateLastEventAt).toHaveBeenCalledWith('sensor:dev1:smoke', new Date('2025-01-02T00:00:00Z'));
 		});
 
 		it('should not call updateLastEventAt for alerts with invalid timestamps', async () => {
