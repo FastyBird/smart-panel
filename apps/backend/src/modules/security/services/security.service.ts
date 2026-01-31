@@ -74,17 +74,17 @@ export class SecurityService {
 
 		await this.ackService.acknowledgeAll(alerts);
 
-		try {
-			for (const alert of status.activeAlerts) {
+		for (const alert of status.activeAlerts) {
+			try {
 				await this.eventsService.recordAcknowledgement(
 					alert.id,
 					alert.type,
 					alert.sourceDeviceId,
 					alert.severity,
 				);
+			} catch (error) {
+				this.logger.warn(`Failed to record acknowledgement event for ${alert.id}: ${error}`);
 			}
-		} catch (error) {
-			this.logger.warn(`Failed to record acknowledgement events: ${error}`);
 		}
 
 		const activeIds = alerts.map((a) => a.id);
