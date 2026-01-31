@@ -67,6 +67,7 @@ export class SecurityEventModel {
 	@ApiPropertyOptional({
 		description: 'Additional event payload',
 		type: 'object',
+		additionalProperties: true,
 	})
 	@Expose()
 	payload?: Record<string, unknown>;
