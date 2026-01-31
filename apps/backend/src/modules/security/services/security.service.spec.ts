@@ -45,6 +45,7 @@ describe('SecurityService', () => {
 			findByIds: jest.fn().mockResolvedValue([]),
 			acknowledge: jest.fn(),
 			acknowledgeAll: jest.fn(),
+			resetAcknowledgement: jest.fn(),
 			updateLastEventAt: jest.fn(),
 			cleanupStale: jest.fn(),
 		} as any;
@@ -93,7 +94,10 @@ describe('SecurityService', () => {
 
 			const result = await service.getStatus();
 			expect(result.activeAlerts[0].acknowledged).toBe(false);
-			expect(ackService.updateLastEventAt).toHaveBeenCalledWith('sensor:dev1:smoke', new Date('2025-01-02T00:00:00Z'));
+			expect(ackService.resetAcknowledgement).toHaveBeenCalledWith(
+				'sensor:dev1:smoke',
+				new Date('2025-01-02T00:00:00Z'),
+			);
 		});
 
 		it('should not call updateLastEventAt for alerts with invalid timestamps', async () => {

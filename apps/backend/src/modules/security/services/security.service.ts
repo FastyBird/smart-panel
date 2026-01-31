@@ -55,8 +55,8 @@ export class SecurityService {
 			const alertTimeValid = !Number.isNaN(alertTime.getTime());
 
 			if (record.lastEventAt != null && alertTimeValid && alertTime > record.lastEventAt) {
-				// New event instance — reset ack
-				await this.ackService.updateLastEventAt(alert.id, alertTime);
+				// New event instance — reset ack in DB and response
+				await this.ackService.resetAcknowledgement(alert.id, alertTime);
 				alert.acknowledged = false;
 			} else {
 				// Update lastEventAt if not yet stored, preserving existing acknowledged state
