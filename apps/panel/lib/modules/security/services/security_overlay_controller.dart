@@ -122,9 +122,17 @@ Set<String> buildEffectiveAcknowledgedIds(
 ) {
 	final ids = <String>{};
 
+	bool allRealCriticalAcked = true;
+	bool hasRealCriticalAlert = false;
+
 	for (final alert in status.activeAlerts) {
 		if (alert.acknowledged || optimisticAckIds.contains(alert.id)) {
 			ids.add(alert.id);
+		} else if (alert.severity == Severity.critical) {
+			allRealCriticalAcked = false;
+		}
+		if (alert.severity == Severity.critical) {
+			hasRealCriticalAlert = true;
 		}
 	}
 
@@ -133,6 +141,15 @@ Set<String> buildEffectiveAcknowledgedIds(
 		if (id.startsWith('__')) {
 			ids.add(id);
 		}
+	}
+
+	// When all real critical alerts are acknowledged (server-side or optimistic),
+	// also mark synthetic critical IDs as acknowledged. This handles:
+	// - The acknowledging display after optimistic cache is cleared by updateStatus()
+	// - Other displays that receive the socket broadcast but never had optimistic cache
+	if (hasRealCriticalAlert && allRealCriticalAcked) {
+		final syntheticCriticalIds = getCriticalAlertIds(status).where((id) => id.startsWith('__'));
+		ids.addAll(syntheticCriticalIds);
 	}
 
 	return ids;
@@ -232,8 +249,18 @@ class SecurityOverlayController extends ChangeNotifier {
 
 	void updateStatus(SecurityStatusModel newStatus) {
 		// Clear optimistic cache: server state is now the truth.
-		// Keep only IDs that are still pending (in-flight request).
-		_optimisticAckIds.retainWhere((id) => _pendingAckIds.contains(id));
+		// Keep IDs that are still pending (in-flight request) and synthetic IDs
+		// (which have no server-side equivalent). Synthetic IDs are cleared when
+		// the critical condition resolves, so they don't suppress future overlays.
+		_optimisticAckIds.retainWhere(
+			(id) => _pendingAckIds.contains(id) || id.startsWith('__'),
+		);
+
+		// Drop synthetic IDs when no critical condition exists (alarm cleared, etc.)
+		// so the overlay can reappear if the condition is re-triggered later.
+		if (!_hasCriticalCondition(newStatus)) {
+			_optimisticAckIds.removeWhere((id) => id.startsWith('__'));
+		}
 
 		_status = newStatus;
 		_cachedSortedAlerts = null;
