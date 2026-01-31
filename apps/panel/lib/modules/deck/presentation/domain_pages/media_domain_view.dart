@@ -763,13 +763,13 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 					],
 
 					// Capability-driven controls
-					if (targets.hasVolume) ...[
-						const SizedBox(height: 16),
-						_buildVolumeControl(context),
-					],
 					if (targets.hasPlayback) ...[
 						const SizedBox(height: 16),
 						_buildPlaybackControl(context),
+					],
+					if (targets.hasVolume) ...[
+						const SizedBox(height: 16),
+						_buildVolumeControl(context),
 					],
 					if (targets.hasInput) ...[
 						const SizedBox(height: 16),
@@ -1048,6 +1048,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	Widget _buildPlaybackControl(BuildContext context) {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 		final accentColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
+		final density = _visualDensityService.density;
 		// TODO: Replace with real playback state when API is available
 		const title = 'No track';
 		const artist = '';
@@ -1056,44 +1057,47 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		const progress = 0.0;
 
 		return Column(
+			spacing: AppSpacings.pLg,
 			children: [
 				// Now playing info
-				Text(
-					title,
-					style: TextStyle(
-						fontSize: 15,
-						fontWeight: FontWeight.w600,
-						color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
-					),
-					textAlign: TextAlign.center,
-				),
-				if (artist.isNotEmpty)
-					Text(
-						artist,
-						style: TextStyle(
-							fontSize: 12,
-							color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
+				Column(
+					children: [
+						Text(
+							title,
+							style: TextStyle(
+								fontSize: AppFontSize.large,
+								fontWeight: FontWeight.w600,
+								color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
+							),
+							textAlign: TextAlign.center,
 						),
-						textAlign: TextAlign.center,
-					),
-				const SizedBox(height: 12),
+						if (artist.isNotEmpty)
+							Text(
+								artist,
+								style: TextStyle(
+									fontSize: AppFontSize.small,
+									color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
+								),
+								textAlign: TextAlign.center,
+							),
+					],
+				),
 				// Transport buttons (circular)
 				Row(
 					mainAxisAlignment: MainAxisAlignment.center,
+					spacing: AppSpacings.pLg,
 					children: [
 						_buildTransportButton(
 							context,
 							icon: MdiIcons.skipPrevious,
 							onTap: _isSending ? null : () => _sendPlaybackCommand('previous'),
 						),
-						const SizedBox(width: 16),
 						_buildTransportButton(
 							context,
 							icon: MdiIcons.play,
 							isMain: true,
 							onTap: _isSending ? null : () => _sendPlaybackCommand('play'),
 						),
-						const SizedBox(width: 16),
 						_buildTransportButton(
 							context,
 							icon: MdiIcons.skipNext,
@@ -1101,24 +1105,23 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 						),
 					],
 				),
-				const SizedBox(height: 12),
 				// Progress bar with timestamps
 				Row(
 					children: [
 						Text(
 							_formatDuration(position),
 							style: TextStyle(
-								fontSize: 11,
+								fontSize: AppFontSize.extraSmall,
 								color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
 							),
 						),
-						const SizedBox(width: 8),
+						AppSpacings.spacingMdHorizontal,
 						Expanded(
 							child: Container(
-								height: 4,
+								height: _screenService.scale(4, density: density),
 								decoration: BoxDecoration(
 									color: isDark ? AppFillColorDark.base : AppFillColorLight.base,
-									borderRadius: BorderRadius.circular(2),
+									borderRadius: BorderRadius.circular(_screenService.scale(2, density: density)),
 								),
 								child: FractionallySizedBox(
 									alignment: Alignment.centerLeft,
@@ -1126,17 +1129,17 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 									child: Container(
 										decoration: BoxDecoration(
 											color: accentColor,
-											borderRadius: BorderRadius.circular(2),
+											borderRadius: BorderRadius.circular(_screenService.scale(2, density: density)),
 										),
 									),
 								),
 							),
 						),
-						const SizedBox(width: 8),
+						AppSpacings.spacingMdHorizontal,
 						Text(
 							_formatDuration(duration),
 							style: TextStyle(
-								fontSize: 11,
+								fontSize: AppFontSize.extraSmall,
 								color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
 							),
 						),
@@ -1154,12 +1157,15 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	}) {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 		final accentColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
+		final density = _visualDensityService.density;
+		final size = _screenService.scale(isMain ? 56 : 44, density: density);
+		final iconSize = _screenService.scale(isMain ? 28 : 20, density: density);
 
 		return GestureDetector(
 			onTap: onTap,
 			child: Container(
-				width: isMain ? 56 : 44,
-				height: isMain ? 56 : 44,
+				width: size,
+				height: size,
 				decoration: BoxDecoration(
 					color: isMain ? accentColor : (isDark ? AppFillColorDark.base : AppFillColorLight.base),
 					border: isMain ? null : Border.all(color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light),
@@ -1167,7 +1173,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 				),
 				child: Icon(
 					icon,
-					size: isMain ? 28 : 20,
+					size: iconSize,
 					color: isMain ? Colors.white : (isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary),
 				),
 			),
@@ -1175,32 +1181,32 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	}
 
 	Widget _buildRemoteButton(BuildContext context) {
-		final isDark = Theme.of(context).brightness == Brightness.dark;
+		final isLight = Theme.of(context).brightness == Brightness.light;
 
 		return GestureDetector(
 			onTap: _isSending ? null : () => _showRemote(),
 			child: Container(
-				padding: const EdgeInsets.all(12),
+				padding: AppSpacings.paddingMd,
 				decoration: BoxDecoration(
-					color: isDark ? AppFillColorDark.base : AppFillColorLight.base,
-					border: Border.all(color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light),
-					borderRadius: BorderRadius.circular(16),
+					color: isLight ? AppFillColorLight.base : AppFillColorDark.base,
+					borderRadius: BorderRadius.circular(AppBorderRadius.base),
+					border: isLight ? Border.all(color: AppBorderColorLight.base) : null,
 				),
 				child: Row(
 					mainAxisAlignment: MainAxisAlignment.center,
 					children: [
 						Icon(
 							MdiIcons.remote,
-							size: 20,
-							color: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
+							size: _screenService.scale(18, density: _visualDensityService.density),
+							color: isLight ? AppTextColorLight.regular : AppTextColorDark.regular,
 						),
-						const SizedBox(width: 8),
+						AppSpacings.spacingXsHorizontal,
 						Text(
 							'Remote Control',
 							style: TextStyle(
-								fontSize: 13,
+								fontSize: AppFontSize.small,
 								fontWeight: FontWeight.w500,
-								color: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
+								color: isLight ? AppTextColorLight.regular : AppTextColorDark.regular,
 							),
 						),
 					],
