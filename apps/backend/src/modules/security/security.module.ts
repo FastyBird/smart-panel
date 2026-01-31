@@ -1,4 +1,5 @@
 import { Module, OnModuleInit } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { DevicesModule } from '../devices/devices.module';
 import { ExtensionsModule } from '../extensions/extensions.module';
@@ -7,7 +8,9 @@ import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../swagger/swagger.module';
 
+import { SecurityAlertsController } from './controllers/security-alerts.controller';
 import { SecurityController } from './controllers/security.controller';
+import { SecurityAlertAckEntity } from './entities/security-alert-ack.entity';
 import { AlarmSecurityProvider } from './providers/alarm-security.provider';
 import { DefaultSecurityProvider } from './providers/default-security.provider';
 import { SecuritySensorsProvider } from './providers/security-sensors.provider';
@@ -19,6 +22,7 @@ import {
 } from './security.constants';
 import { SECURITY_SWAGGER_EXTRA_MODELS } from './security.openapi';
 import { SecurityAggregatorService } from './services/security-aggregator.service';
+import { SecurityAlertAckService } from './services/security-alert-ack.service';
 import { SecurityService } from './services/security.service';
 
 @ApiTag({
@@ -27,8 +31,8 @@ import { SecurityService } from './services/security.service';
 	description: SECURITY_MODULE_API_TAG_DESCRIPTION,
 })
 @Module({
-	imports: [SwaggerModule, ExtensionsModule, DevicesModule],
-	controllers: [SecurityController],
+	imports: [SwaggerModule, ExtensionsModule, DevicesModule, TypeOrmModule.forFeature([SecurityAlertAckEntity])],
+	controllers: [SecurityController, SecurityAlertsController],
 	providers: [
 		DefaultSecurityProvider,
 		AlarmSecurityProvider,
@@ -42,6 +46,7 @@ import { SecurityService } from './services/security.service';
 			) => [alarmProvider, defaultProvider, sensorsProvider],
 			inject: [AlarmSecurityProvider, DefaultSecurityProvider, SecuritySensorsProvider],
 		},
+		SecurityAlertAckService,
 		SecurityAggregatorService,
 		SecurityService,
 	],
@@ -72,11 +77,14 @@ The Security module provides security status information for the Smart Panel dis
 - **Armed State** - Track system armed state (disarmed, armed home, armed away, armed night)
 - **Alarm State** - Monitor alarm state (idle, pending, triggered, silenced)
 - **Alert Severity** - Aggregate alert severity across security devices
+- **Alert Acknowledgement** - Acknowledge alerts with persistent state
 - **Extensible** - Provider-based architecture for future integrations
 
 ## Endpoints
 
 - \`GET /api/v1/modules/security/status\` - Current security status
+- \`PATCH /api/v1/modules/security/alerts/:id/ack\` - Acknowledge a single alert
+- \`PATCH /api/v1/modules/security/alerts/ack\` - Acknowledge all active alerts
 
 ## Architecture
 
