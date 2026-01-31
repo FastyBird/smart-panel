@@ -220,4 +220,53 @@ export abstract class BaseDeviceBehavior implements IDeviceBehavior {
 			(u) => !(u.channelCategory === channelCategory && u.propertyCategory === propertyCategory),
 		);
 	}
+
+	/**
+	 * Read a property value from the device entity's channel properties.
+	 * Returns the fallback if the channel/property is not found or has no value.
+	 */
+	protected getDevicePropertyValue(
+		device: SimulatorDeviceEntity,
+		channelCategory: ChannelCategory,
+		propertyCategory: PropertyCategory,
+		fallback: number,
+	): number {
+		const channel = device.channels?.find((ch) => ch.category === channelCategory);
+
+		if (channel) {
+			const prop = channel.properties?.find((p) => p.category === propertyCategory);
+
+			if (prop?.value?.value != null) {
+				const val = Number(prop.value.value);
+
+				if (!isNaN(val)) {
+					return val;
+				}
+			}
+		}
+
+		return fallback;
+	}
+
+	/**
+	 * Get a state value, initializing it from the device's actual property value
+	 * if not yet tracked. This prevents hardcoded defaults from overwriting real values.
+	 */
+	protected getOrInitStateFromDevice(
+		state: DeviceBehaviorState,
+		key: string,
+		device: SimulatorDeviceEntity,
+		channelCategory: ChannelCategory,
+		propertyCategory: PropertyCategory,
+		fallback: number,
+	): number {
+		if (!state.data.has(key)) {
+			const actual = this.getDevicePropertyValue(device, channelCategory, propertyCategory, fallback);
+			state.data.set(key, actual);
+
+			return actual;
+		}
+
+		return state.data.get(key) as number;
+	}
 }

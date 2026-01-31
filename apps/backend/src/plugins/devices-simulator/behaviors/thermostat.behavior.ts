@@ -44,7 +44,9 @@ export class ThermostatRealisticBehavior extends BaseDeviceBehavior {
 			(event.channelCategory === ChannelCategory.HEATER || event.channelCategory === ChannelCategory.COOLER)
 		) {
 			const targetTemp = event.value as number;
-			const currentTemp = (this.getStateValue(state, 'currentTemp', 20) as number);
+			const currentTemp = this.getOrInitStateFromDevice(
+				state, 'currentTemp', device, ChannelCategory.TEMPERATURE, PropertyCategory.TEMPERATURE, 20,
+			);
 			const diff = Math.abs(targetTemp - currentTemp);
 
 			if (diff < ThermostatRealisticBehavior.SETTLING_THRESHOLD) {

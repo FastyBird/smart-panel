@@ -148,7 +148,9 @@ export class AirConditionerRealisticBehavior extends BaseDeviceBehavior {
 			return;
 		}
 
-		const currentTemp = this.getStateValue(state, 'currentTemp', 22) as number;
+		const currentTemp = this.getOrInitStateFromDevice(
+			state, 'currentTemp', device, ChannelCategory.TEMPERATURE, PropertyCategory.TEMPERATURE, 22,
+		);
 		let targetTemp: number;
 
 		if (coolOn && heatOn) {

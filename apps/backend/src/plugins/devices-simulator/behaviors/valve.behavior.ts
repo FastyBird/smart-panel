@@ -38,7 +38,9 @@ export class ValveRealisticBehavior extends BaseDeviceBehavior {
 		if (event.channelCategory === ChannelCategory.VALVE) {
 			if (event.propertyCategory === PropertyCategory.ON) {
 				const opening = event.value === true;
-				const currentPosition = this.getStateValue(state, 'position', opening ? 0 : 100) as number;
+				const currentPosition = this.getOrInitStateFromDevice(
+					state, 'position', device, ChannelCategory.VALVE, PropertyCategory.PERCENTAGE, opening ? 0 : 100,
+				);
 				const targetPosition = opening ? 100 : 0;
 
 				this.setStateValue(state, 'targetPosition', targetPosition);
@@ -58,7 +60,9 @@ export class ValveRealisticBehavior extends BaseDeviceBehavior {
 			// Direct position command
 			if (event.propertyCategory === PropertyCategory.PERCENTAGE) {
 				const targetPosition = event.value as number;
-				const currentPosition = this.getStateValue(state, 'position', 0) as number;
+				const currentPosition = this.getOrInitStateFromDevice(
+					state, 'position', device, ChannelCategory.VALVE, PropertyCategory.PERCENTAGE, 0,
+				);
 
 				this.setStateValue(state, 'targetPosition', targetPosition);
 

@@ -38,7 +38,9 @@ export class WindowCoveringRealisticBehavior extends BaseDeviceBehavior {
 		if (event.channelCategory === ChannelCategory.WINDOW_COVERING) {
 			if (event.propertyCategory === PropertyCategory.COMMAND) {
 				const command = event.value as string;
-				const currentPosition = this.getStateValue(state, 'position', 0) as number;
+				const currentPosition = this.getOrInitStateFromDevice(
+					state, 'position', device, ChannelCategory.WINDOW_COVERING, PropertyCategory.POSITION, 0,
+				);
 
 				if (command === 'stop') {
 					// Cancel all transitions and set status to stopped
@@ -65,7 +67,9 @@ export class WindowCoveringRealisticBehavior extends BaseDeviceBehavior {
 
 			if (event.propertyCategory === PropertyCategory.POSITION) {
 				const targetPosition = event.value as number;
-				const currentPosition = this.getStateValue(state, 'position', 0) as number;
+				const currentPosition = this.getOrInitStateFromDevice(
+					state, 'position', device, ChannelCategory.WINDOW_COVERING, PropertyCategory.POSITION, 0,
+				);
 				const distance = Math.abs(targetPosition - currentPosition);
 				const travelTime = Math.round(
 					(distance / 100) * WindowCoveringRealisticBehavior.FULL_TRAVEL_TIME_MS,

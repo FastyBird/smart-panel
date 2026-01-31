@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleDestroy } from '@nestjs/common';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../../modules/devices/devices.constants';
@@ -24,7 +24,7 @@ import { SimulatorDeviceEntity } from '../entities/devices-simulator.entity';
  * The manager maintains per-device state and processes ticks to apply scheduled updates.
  */
 @Injectable()
-export class DeviceBehaviorManagerService {
+export class DeviceBehaviorManagerService implements OnModuleDestroy {
 	private readonly logger: ExtensionLoggerService = createExtensionLogger(
 		DEVICES_SIMULATOR_PLUGIN_NAME,
 		'DeviceBehaviorManagerService',

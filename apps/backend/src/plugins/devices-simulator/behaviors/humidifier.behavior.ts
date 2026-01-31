@@ -143,7 +143,9 @@ export class HumidifierRealisticBehavior extends BaseDeviceBehavior {
 		updates: ScheduledPropertyUpdate[],
 	): void {
 		const targetHumidity = this.getStateValue(state, 'targetHumidity', 50) as number;
-		const currentHumidity = this.getStateValue(state, 'currentHumidity', 40) as number;
+		const currentHumidity = this.getOrInitStateFromDevice(
+			state, 'currentHumidity', device, ChannelCategory.HUMIDITY, PropertyCategory.HUMIDITY, 40,
+		);
 		const diff = Math.abs(targetHumidity - currentHumidity);
 
 		if (diff < HumidifierRealisticBehavior.SETTLING_THRESHOLD) {

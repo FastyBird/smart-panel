@@ -87,20 +87,21 @@ export class WaterHeaterRealisticBehavior extends BaseDeviceBehavior {
 			}
 		}
 
-		// Report power consumption while heating
-		const isHeating = state.activeUpdates.some(
+		// Report power consumption only while actively heating (not during passive cooling)
+		const activelyHeating = this.getStateValue(state, 'activelyHeating', false) as boolean;
+		const hasTemperatureTransition = state.activeUpdates.some(
 			(u) =>
 				u.channelCategory === ChannelCategory.TEMPERATURE &&
 				u.propertyCategory === PropertyCategory.TEMPERATURE,
 		);
 
-		if (isHeating && this.hasChannel(device, ChannelCategory.ELECTRICAL_POWER)) {
+		if (activelyHeating && hasTemperatureTransition && this.hasChannel(device, ChannelCategory.ELECTRICAL_POWER)) {
 			results.push({
 				channelCategory: ChannelCategory.ELECTRICAL_POWER,
 				propertyCategory: PropertyCategory.POWER,
 				value: WaterHeaterRealisticBehavior.HEATER_POWER_WATTS,
 			});
-		} else if (!isHeating && this.hasChannel(device, ChannelCategory.ELECTRICAL_POWER)) {
+		} else if (this.hasChannel(device, ChannelCategory.ELECTRICAL_POWER)) {
 			results.push({
 				channelCategory: ChannelCategory.ELECTRICAL_POWER,
 				propertyCategory: PropertyCategory.POWER,
@@ -120,49 +121,79 @@ export class WaterHeaterRealisticBehavior extends BaseDeviceBehavior {
 		if (!heaterOn) return;
 
 		const targetTemp = this.getStateValue(state, 'targetTemp', 50) as number;
-		const currentTemp = this.getStateValue(state, 'currentTemp', 20) as number;
+		const currentTemp = this.getOrInitStateFromDevice(
+			state, 'currentTemp', device, ChannelCategory.TEMPERATURE, PropertyCategory.TEMPERATURE, 20,
+		);
 		const diff = targetTemp - currentTemp;
 
 		if (Math.abs(diff) < WaterHeaterRealisticBehavior.SETTLING_THRESHOLD) {
 			return;
 		}
 
-		const isHeating = diff > 0;
-		const rate = isHeating
-			? WaterHeaterRealisticBehavior.HEAT_RATE_PER_MINUTE
-			: WaterHeaterRealisticBehavior.COOL_RATE_PER_MINUTE;
-		const durationMs = Math.round((Math.abs(diff) / rate) * 60 * 1000);
-
 		this.cancelTransitions(state, ChannelCategory.TEMPERATURE, PropertyCategory.TEMPERATURE);
-
-		if (this.hasChannel(device, ChannelCategory.TEMPERATURE)) {
-			updates.push({
-				channelCategory: ChannelCategory.TEMPERATURE,
-				propertyCategory: PropertyCategory.TEMPERATURE,
-				targetValue: targetTemp,
-				startValue: currentTemp,
-				delayMs: 0,
-				durationMs,
-			});
-		}
-
-		// Activate heater status
 		this.cancelTransitions(state, ChannelCategory.HEATER, PropertyCategory.STATUS);
-		updates.push({
-			channelCategory: ChannelCategory.HEATER,
-			propertyCategory: PropertyCategory.STATUS,
-			targetValue: true,
-			delayMs: 0,
-			durationMs: 0,
-		});
 
-		// Deactivate when done
-		updates.push({
-			channelCategory: ChannelCategory.HEATER,
-			propertyCategory: PropertyCategory.STATUS,
-			targetValue: false,
-			delayMs: durationMs,
-			durationMs: 0,
-		});
+		if (diff > 0) {
+			// Target above current: actively heat
+			const durationMs = Math.round((diff / WaterHeaterRealisticBehavior.HEAT_RATE_PER_MINUTE) * 60 * 1000);
+
+			if (this.hasChannel(device, ChannelCategory.TEMPERATURE)) {
+				updates.push({
+					channelCategory: ChannelCategory.TEMPERATURE,
+					propertyCategory: PropertyCategory.TEMPERATURE,
+					targetValue: targetTemp,
+					startValue: currentTemp,
+					delayMs: 0,
+					durationMs,
+				});
+			}
+
+			// Activate heater status during heating
+			updates.push({
+				channelCategory: ChannelCategory.HEATER,
+				propertyCategory: PropertyCategory.STATUS,
+				targetValue: true,
+				delayMs: 0,
+				durationMs: 0,
+			});
+
+			// Deactivate when done
+			updates.push({
+				channelCategory: ChannelCategory.HEATER,
+				propertyCategory: PropertyCategory.STATUS,
+				targetValue: false,
+				delayMs: durationMs,
+				durationMs: 0,
+			});
+
+			this.setStateValue(state, 'activelyHeating', true);
+		} else {
+			// Target below current: water heaters cannot actively cool,
+			// just turn off the heater and let temperature drop passively
+			updates.push({
+				channelCategory: ChannelCategory.HEATER,
+				propertyCategory: PropertyCategory.STATUS,
+				targetValue: false,
+				delayMs: 0,
+				durationMs: 0,
+			});
+
+			// Schedule passive cooling (slow temperature drop)
+			const absDiff = Math.abs(diff);
+			const durationMs = Math.round((absDiff / WaterHeaterRealisticBehavior.COOL_RATE_PER_MINUTE) * 60 * 1000);
+
+			if (this.hasChannel(device, ChannelCategory.TEMPERATURE)) {
+				updates.push({
+					channelCategory: ChannelCategory.TEMPERATURE,
+					propertyCategory: PropertyCategory.TEMPERATURE,
+					targetValue: targetTemp,
+					startValue: currentTemp,
+					delayMs: 0,
+					durationMs,
+				});
+			}
+
+			this.setStateValue(state, 'activelyHeating', false);
+		}
 	}
 }
