@@ -25,16 +25,36 @@ export class SecurityService {
 	}
 
 	async acknowledgeAlert(id: string): Promise<SecurityAlertAckEntity> {
-		return this.ackService.acknowledge(id);
+		const status = await this.aggregator.aggregate();
+		const alert = status.activeAlerts.find((a) => a.id === id);
+		const lastEventAt = this.parseTimestamp(alert?.timestamp);
+
+		return this.ackService.acknowledge(id, lastEventAt ?? undefined);
 	}
 
 	async acknowledgeAllAlerts(): Promise<SecurityAlertAckEntity[]> {
 		const status = await this.aggregator.aggregate();
-		const activeIds = status.activeAlerts.map((a) => a.id);
 
-		await this.ackService.acknowledgeAll(activeIds);
+		const alerts = status.activeAlerts.map((a) => ({
+			id: a.id,
+			timestamp: this.parseTimestamp(a.timestamp) ?? undefined,
+		}));
+
+		await this.ackService.acknowledgeAll(alerts);
+
+		const activeIds = alerts.map((a) => a.id);
 
 		return (await this.ackService.findByIds(activeIds)).filter((r) => r.acknowledged);
+	}
+
+	private parseTimestamp(timestamp: string | undefined): Date | null {
+		if (timestamp == null) {
+			return null;
+		}
+
+		const date = new Date(timestamp);
+
+		return Number.isNaN(date.getTime()) ? null : date;
 	}
 
 	private async applyAcknowledgements(status: SecurityStatusModel): Promise<void> {

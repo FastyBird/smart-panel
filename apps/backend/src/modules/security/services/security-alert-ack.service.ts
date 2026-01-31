@@ -22,7 +22,7 @@ export class SecurityAlertAckService {
 		return this.repo.find({ where: { id: In(ids) } });
 	}
 
-	async acknowledge(id: string): Promise<SecurityAlertAckEntity> {
+	async acknowledge(id: string, lastEventAt?: Date): Promise<SecurityAlertAckEntity> {
 		let record = await this.repo.findOne({ where: { id } });
 
 		if (record == null) {
@@ -32,15 +32,21 @@ export class SecurityAlertAckService {
 		record.acknowledged = true;
 		record.acknowledgedAt = new Date();
 
+		if (lastEventAt != null) {
+			record.lastEventAt = lastEventAt;
+		}
+
 		return this.repo.save(record);
 	}
 
-	async acknowledgeAll(ids: string[]): Promise<void> {
-		if (ids.length === 0) {
+	async acknowledgeAll(alerts: { id: string; timestamp?: Date }[]): Promise<void> {
+		if (alerts.length === 0) {
 			return;
 		}
 
 		const now = new Date();
+		const ids = alerts.map((a) => a.id);
+		const timestampMap = new Map(alerts.map((a) => [a.id, a.timestamp]));
 
 		const records = await this.findByIds(ids);
 		const existingIds = new Set(records.map((r) => r.id));
@@ -48,17 +54,26 @@ export class SecurityAlertAckService {
 		for (const record of records) {
 			record.acknowledged = true;
 			record.acknowledgedAt = now;
+
+			const ts = timestampMap.get(record.id);
+
+			if (ts != null) {
+				record.lastEventAt = ts;
+			}
 		}
 
 		const newRecords = ids
 			.filter((id) => !existingIds.has(id))
-			.map((id) =>
-				this.repo.create({
+			.map((id) => {
+				const ts = timestampMap.get(id);
+
+				return this.repo.create({
 					id,
 					acknowledged: true,
 					acknowledgedAt: now,
-				}),
-			);
+					lastEventAt: ts ?? null,
+				});
+			});
 
 		await this.repo.save([...records, ...newRecords]);
 	}

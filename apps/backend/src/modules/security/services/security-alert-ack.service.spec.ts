@@ -81,25 +81,47 @@ describe('SecurityAlertAckService', () => {
 			expect(result.acknowledged).toBe(true);
 			expect(result.acknowledgedAt).toBeInstanceOf(Date);
 		});
+
+		it('should store lastEventAt when provided', async () => {
+			repo.findOne.mockResolvedValue(null);
+			repo.create.mockReturnValue({ id: 'a' } as SecurityAlertAckEntity);
+			repo.save.mockImplementation((e) => Promise.resolve(e as SecurityAlertAckEntity));
+
+			const ts = new Date('2025-01-15T00:00:00Z');
+			const result = await service.acknowledge('a', ts);
+			expect(result.lastEventAt).toEqual(ts);
+		});
 	});
 
 	describe('acknowledgeAll', () => {
-		it('should do nothing for empty ids', async () => {
+		it('should do nothing for empty list', async () => {
 			await service.acknowledgeAll([]);
 			expect(repo.save).not.toHaveBeenCalled();
 		});
 
-		it('should acknowledge existing and create new records', async () => {
-			const existing = { id: 'a', acknowledged: false, acknowledgedAt: null } as SecurityAlertAckEntity;
+		it('should acknowledge existing and create new records with timestamps', async () => {
+			const existing = {
+				id: 'a',
+				acknowledged: false,
+				acknowledgedAt: null,
+				lastEventAt: null,
+			} as SecurityAlertAckEntity;
 			repo.find.mockResolvedValue([existing]);
 			repo.save.mockImplementation((e: any) => Promise.resolve(e));
 
-			await service.acknowledgeAll(['a', 'b']);
+			const tsA = new Date('2025-01-10T00:00:00Z');
+			const tsB = new Date('2025-01-11T00:00:00Z');
+
+			await service.acknowledgeAll([
+				{ id: 'a', timestamp: tsA },
+				{ id: 'b', timestamp: tsB },
+			]);
 
 			expect(repo.save).toHaveBeenCalled();
 			const savedEntities = repo.save.mock.calls[0][0] as SecurityAlertAckEntity[];
 			expect(savedEntities).toHaveLength(2);
 			expect(savedEntities.every((e) => e.acknowledged === true)).toBe(true);
+			expect(existing.lastEventAt).toEqual(tsA);
 		});
 	});
 

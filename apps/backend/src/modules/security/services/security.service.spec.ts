@@ -146,18 +146,32 @@ describe('SecurityService', () => {
 	});
 
 	describe('acknowledgeAlert', () => {
-		it('should delegate to ack service', async () => {
+		it('should pass alert timestamp to ack service', async () => {
+			const alert = makeAlert('a', '2025-01-15T00:00:00Z');
+			aggregator.aggregate.mockResolvedValue(makeStatus([alert]));
+
 			const entity = { id: 'a', acknowledged: true } as SecurityAlertAckEntity;
 			ackService.acknowledge.mockResolvedValue(entity);
 
 			const result = await service.acknowledgeAlert('a');
 			expect(result).toBe(entity);
+			expect(ackService.acknowledge).toHaveBeenCalledWith('a', new Date('2025-01-15T00:00:00Z'));
+		});
+
+		it('should call acknowledge without timestamp when alert not found', async () => {
+			aggregator.aggregate.mockResolvedValue(makeStatus([]));
+
+			const entity = { id: 'a', acknowledged: true } as SecurityAlertAckEntity;
+			ackService.acknowledge.mockResolvedValue(entity);
+
+			await service.acknowledgeAlert('a');
+			expect(ackService.acknowledge).toHaveBeenCalledWith('a', undefined);
 		});
 	});
 
 	describe('acknowledgeAllAlerts', () => {
-		it('should acknowledge all active alert ids', async () => {
-			const alerts = [makeAlert('a', '2025-01-01T00:00:00Z'), makeAlert('b', '2025-01-01T00:00:00Z')];
+		it('should pass alert timestamps to ack service', async () => {
+			const alerts = [makeAlert('a', '2025-01-01T00:00:00Z'), makeAlert('b', '2025-01-02T00:00:00Z')];
 			aggregator.aggregate.mockResolvedValue(makeStatus(alerts));
 			ackService.findByIds.mockResolvedValue([
 				{ id: 'a', acknowledged: true } as SecurityAlertAckEntity,
@@ -165,7 +179,10 @@ describe('SecurityService', () => {
 			]);
 
 			const result = await service.acknowledgeAllAlerts();
-			expect(ackService.acknowledgeAll).toHaveBeenCalledWith(['a', 'b']);
+			expect(ackService.acknowledgeAll).toHaveBeenCalledWith([
+				{ id: 'a', timestamp: new Date('2025-01-01T00:00:00Z') },
+				{ id: 'b', timestamp: new Date('2025-01-02T00:00:00Z') },
+			]);
 			expect(result).toHaveLength(2);
 		});
 	});
