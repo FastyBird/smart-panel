@@ -61,6 +61,8 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	bool _isLoading = true;
 	bool _isSending = false;
 	bool _wsConnected = false;
+	int _volume = 50;
+	bool _isMuted = false;
 
 	late AnimationController _pulseController;
 
@@ -967,8 +969,8 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	Widget _buildVolumeControl(BuildContext context) {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 		final accentColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
-		const volume = 0;
-		const isMuted = false;
+		final volume = _volume;
+		final isMuted = _isMuted;
 
 		final columnWidth = _scale(40);
 
@@ -1738,7 +1740,10 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	// Actions dispatching media intents via SpaceStateRepository
 	Future<void> _setVolume(int volume) async {
 		if (_spaceStateRepo == null) return;
-		setState(() => _isSending = true);
+		setState(() {
+			_isSending = true;
+			_volume = volume;
+		});
 		try {
 			await _spaceStateRepo!.setMediaVolume(_roomId, volume);
 		} finally {
@@ -1748,10 +1753,13 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 
 	Future<void> _toggleMute() async {
 		if (_spaceStateRepo == null) return;
-		setState(() => _isSending = true);
+		final wasMuted = _isMuted;
+		setState(() {
+			_isSending = true;
+			_isMuted = !wasMuted;
+		});
 		try {
-			const isMuted = false;
-			if (isMuted) {
+			if (wasMuted) {
 				await _spaceStateRepo!.unmuteMedia(_roomId);
 			} else {
 				await _spaceStateRepo!.muteMedia(_roomId);

@@ -480,18 +480,6 @@ export const CLIMATE_AUXILIARY_CATEGORIES = [
 	DevicesModuleDeviceCategory.fan,
 ] as const;
 
-// Media device category classifications
-export const MEDIA_DEVICE_CATEGORIES = [
-	DevicesModuleDeviceCategory.media,
-	DevicesModuleDeviceCategory.speaker,
-	DevicesModuleDeviceCategory.television,
-	DevicesModuleDeviceCategory.av_receiver,
-	DevicesModuleDeviceCategory.set_top_box,
-	DevicesModuleDeviceCategory.game_console,
-	DevicesModuleDeviceCategory.projector,
-	DevicesModuleDeviceCategory.streaming_service,
-] as const;
-
 // Sensor role ordering for consistent UI presentation
 export const SENSOR_ROLE_ORDER: SensorRole[] = [
 	SensorRole.ENVIRONMENT,
