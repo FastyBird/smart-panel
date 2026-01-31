@@ -77,6 +77,11 @@ export class HumidifierRealisticBehavior extends BaseDeviceBehavior {
 			// React to mist level change
 			if (event.propertyCategory === PropertyCategory.MIST_LEVEL) {
 				this.setStateValue(state, 'mistLevel', event.value);
+				// Re-schedule transition with new rate if currently running
+				const isOn = this.getStateValue(state, 'isOn', false);
+				if (isOn) {
+					this.scheduleHumidityTransition(device, state, updates);
+				}
 			}
 		}
 
