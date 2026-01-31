@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/unbound-method */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
 import { Repository } from 'typeorm';
 
 import { Test, TestingModule } from '@nestjs/testing';
@@ -107,34 +106,38 @@ describe('SecurityEventsService', () => {
 		});
 
 		it('should generate alert_raised when new alert appears', async () => {
-			// Seed with empty
 			await service.recordAlertTransitions([], ArmedState.DISARMED, AlarmState.IDLE);
 
-			// New alert appears
 			const alert = makeAlert();
 			await service.recordAlertTransitions([alert], ArmedState.DISARMED, AlarmState.IDLE);
 
 			expect(repo.save).toHaveBeenCalled();
-			const saved = repo.save.mock.calls[0][0] as unknown as SecurityEventEntity[];
-			const raised = saved.find((e) => e.eventType === SecurityEventType.ALERT_RAISED);
-			expect(raised).toBeDefined();
-			expect(raised!.alertId).toBe('sensor:dev1:smoke');
-			expect(raised!.severity).toBe(Severity.CRITICAL);
+			expect(repo.save.mock.calls[0][0]).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						eventType: SecurityEventType.ALERT_RAISED,
+						alertId: 'sensor:dev1:smoke',
+						severity: Severity.CRITICAL,
+					}),
+				]),
+			);
 		});
 
 		it('should generate alert_resolved when alert disappears', async () => {
 			const alert = makeAlert();
-			// Seed with alert
 			await service.recordAlertTransitions([alert], ArmedState.DISARMED, AlarmState.IDLE);
 
-			// Alert disappears
 			await service.recordAlertTransitions([], ArmedState.DISARMED, AlarmState.IDLE);
 
 			expect(repo.save).toHaveBeenCalled();
-			const saved = repo.save.mock.calls[0][0] as unknown as SecurityEventEntity[];
-			const resolved = saved.find((e) => e.eventType === SecurityEventType.ALERT_RESOLVED);
-			expect(resolved).toBeDefined();
-			expect(resolved!.alertId).toBe('sensor:dev1:smoke');
+			expect(repo.save.mock.calls[0][0]).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						eventType: SecurityEventType.ALERT_RESOLVED,
+						alertId: 'sensor:dev1:smoke',
+					}),
+				]),
+			);
 		});
 
 		it('should generate armed_state_changed event', async () => {
@@ -143,10 +146,14 @@ describe('SecurityEventsService', () => {
 			await service.recordAlertTransitions([], ArmedState.ARMED_AWAY, AlarmState.IDLE);
 
 			expect(repo.save).toHaveBeenCalled();
-			const saved = repo.save.mock.calls[0][0] as unknown as SecurityEventEntity[];
-			const stateChange = saved.find((e) => e.eventType === SecurityEventType.ARMED_STATE_CHANGED);
-			expect(stateChange).toBeDefined();
-			expect(stateChange!.payload).toEqual({ from: ArmedState.DISARMED, to: ArmedState.ARMED_AWAY });
+			expect(repo.save.mock.calls[0][0]).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						eventType: SecurityEventType.ARMED_STATE_CHANGED,
+						payload: { from: ArmedState.DISARMED, to: ArmedState.ARMED_AWAY },
+					}),
+				]),
+			);
 		});
 
 		it('should generate alarm_state_changed event', async () => {
@@ -155,11 +162,15 @@ describe('SecurityEventsService', () => {
 			await service.recordAlertTransitions([], ArmedState.DISARMED, AlarmState.TRIGGERED);
 
 			expect(repo.save).toHaveBeenCalled();
-			const saved = repo.save.mock.calls[0][0] as unknown as SecurityEventEntity[];
-			const stateChange = saved.find((e) => e.eventType === SecurityEventType.ALARM_STATE_CHANGED);
-			expect(stateChange).toBeDefined();
-			expect(stateChange!.severity).toBe(Severity.CRITICAL);
-			expect(stateChange!.payload).toEqual({ from: AlarmState.IDLE, to: AlarmState.TRIGGERED });
+			expect(repo.save.mock.calls[0][0]).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						eventType: SecurityEventType.ALARM_STATE_CHANGED,
+						severity: Severity.CRITICAL,
+						payload: { from: AlarmState.IDLE, to: AlarmState.TRIGGERED },
+					}),
+				]),
+			);
 		});
 
 		it('should not generate events when nothing changed', async () => {
@@ -177,11 +188,14 @@ describe('SecurityEventsService', () => {
 			await service.recordAcknowledgement('sensor:dev1:smoke', 'smoke', 'dev1');
 
 			expect(repo.save).toHaveBeenCalled();
-			const saved = repo.save.mock.calls[0][0] as unknown as SecurityEventEntity;
-			expect(saved.eventType).toBe(SecurityEventType.ALERT_ACKNOWLEDGED);
-			expect(saved.alertId).toBe('sensor:dev1:smoke');
-			expect(saved.alertType).toBe('smoke');
-			expect(saved.sourceDeviceId).toBe('dev1');
+			expect(repo.save.mock.calls[0][0]).toEqual(
+				expect.objectContaining({
+					eventType: SecurityEventType.ALERT_ACKNOWLEDGED,
+					alertId: 'sensor:dev1:smoke',
+					alertType: 'smoke',
+					sourceDeviceId: 'dev1',
+				}),
+			);
 		});
 	});
 
