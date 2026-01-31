@@ -97,6 +97,12 @@
 					"default": 5000,
 					"description": "Auto-simulation interval in milliseconds"
 				},
+				"behavior_mode": {
+					"type": "string",
+					"enum": ["default", "realistic"],
+					"default": "default",
+					"description": "Simulation behavior mode: default (timer-based) or realistic (reacts to user commands)"
+				},
 				"channels": {
 					"type": "array",
 					"items": {

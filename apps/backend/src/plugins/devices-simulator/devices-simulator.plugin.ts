@@ -24,6 +24,18 @@ import { ExtendedDiscriminatorService } from '../../modules/swagger/services/ext
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../../modules/swagger/swagger.module';
 
+import {
+	AirConditionerRealisticBehavior,
+	DoorRealisticBehavior,
+	HumidifierRealisticBehavior,
+	LockRealisticBehavior,
+	SpeakerRealisticBehavior,
+	TelevisionDelayedBehavior,
+	ThermostatRealisticBehavior,
+	ValveRealisticBehavior,
+	WaterHeaterRealisticBehavior,
+	WindowCoveringRealisticBehavior,
+} from './behaviors';
 import { GenerateDeviceCommand } from './commands/generate-device.command';
 import { PopulateValuesCommand } from './commands/populate-values.command';
 import { ScenarioCommand } from './commands/scenario.command';
@@ -51,6 +63,7 @@ import {
 } from './entities/devices-simulator.entity';
 import { SimulatorConfigModel } from './models/config.model';
 import { SimulatorDevicePlatform } from './platforms/simulator-device.platform';
+import { DeviceBehaviorManagerService } from './services/device-behavior-manager.service';
 import { DeviceGeneratorService } from './services/device-generator.service';
 import { ScenarioExecutorService } from './services/scenario-executor.service';
 import { ScenarioLoaderService } from './services/scenario-loader.service';
@@ -76,6 +89,7 @@ import { SimulationService } from './services/simulation.service';
 		ScenarioLoaderService,
 		ScenarioExecutorService,
 		SimulationService,
+		DeviceBehaviorManagerService,
 		GenerateDeviceCommand,
 		PopulateValuesCommand,
 		ScenarioCommand,
@@ -83,7 +97,7 @@ import { SimulationService } from './services/simulation.service';
 		SimulateCommand,
 	],
 	controllers: [SimulatorController],
-	exports: [DeviceGeneratorService, SimulationService],
+	exports: [DeviceGeneratorService, SimulationService, DeviceBehaviorManagerService],
 })
 export class DevicesSimulatorPlugin {
 	constructor(
@@ -98,6 +112,7 @@ export class DevicesSimulatorPlugin {
 		private readonly extensionsService: ExtensionsService,
 		private readonly pluginServiceManager: PluginServiceManagerService,
 		private readonly simulationService: SimulationService,
+		private readonly behaviorManager: DeviceBehaviorManagerService,
 	) {}
 
 	onModuleInit() {
@@ -303,6 +318,18 @@ pnpm run cli simulator:connection --device <id> --state lost
 				repository: 'https://github.com/FastyBird/smart-panel',
 			},
 		});
+
+		// Register device behaviors for realistic command responses
+		this.behaviorManager.registerBehavior(new ThermostatRealisticBehavior(), true);
+		this.behaviorManager.registerBehavior(new TelevisionDelayedBehavior(), true);
+		this.behaviorManager.registerBehavior(new HumidifierRealisticBehavior(), true);
+		this.behaviorManager.registerBehavior(new AirConditionerRealisticBehavior(), true);
+		this.behaviorManager.registerBehavior(new LockRealisticBehavior(), true);
+		this.behaviorManager.registerBehavior(new ValveRealisticBehavior(), true);
+		this.behaviorManager.registerBehavior(new WindowCoveringRealisticBehavior(), true);
+		this.behaviorManager.registerBehavior(new DoorRealisticBehavior(), true);
+		this.behaviorManager.registerBehavior(new SpeakerRealisticBehavior(), true);
+		this.behaviorManager.registerBehavior(new WaterHeaterRealisticBehavior(), true);
 
 		// Register service with centralized plugin service manager
 		this.pluginServiceManager.register(this.simulationService);

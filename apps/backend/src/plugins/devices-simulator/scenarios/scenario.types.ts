@@ -45,6 +45,8 @@ export interface ScenarioDeviceDefinition {
 	auto_simulate?: boolean;
 	/** Auto-simulation interval in milliseconds */
 	simulate_interval?: number;
+	/** Simulation behavior mode: default (timer-based) or realistic (reacts to user commands) */
+	behavior_mode?: string;
 	/** Channels to create for this device */
 	channels: ScenarioChannelDefinition[];
 }

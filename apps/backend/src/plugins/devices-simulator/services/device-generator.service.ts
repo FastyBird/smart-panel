@@ -29,6 +29,7 @@ interface GeneratedDeviceData {
 	room_id: string | null;
 	auto_simulate: boolean;
 	simulate_interval: number;
+	behavior_mode: string;
 	channels: CreateDeviceChannelDto[];
 }
 
@@ -58,6 +59,7 @@ export class DeviceGeneratorService {
 			room_id: dto.room_id ?? null,
 			auto_simulate: dto.auto_simulate ?? false,
 			simulate_interval: dto.simulate_interval ?? 5000,
+			behavior_mode: dto.behavior_mode ?? 'default',
 			channels,
 		};
 	}

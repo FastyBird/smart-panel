@@ -199,6 +199,7 @@ export class ScenarioExecutorService {
 			room_id: roomId,
 			auto_simulate: deviceDef.auto_simulate ?? false,
 			simulate_interval: deviceDef.simulate_interval ?? 5000,
+			behavior_mode: deviceDef.behavior_mode ?? 'default',
 			channels,
 		};
 
