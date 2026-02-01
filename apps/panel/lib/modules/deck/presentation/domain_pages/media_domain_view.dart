@@ -787,12 +787,8 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		BuildContext context,
 		MediaActiveStateModel activeState,
 	) {
-		final isDark = Theme.of(context).brightness == Brightness.dark;
 		final targets = _mediaService?.resolveControlTargets(_roomId) ?? const ActiveControlTargets();
 		final compositionEntries = _mediaService?.getActiveCompositionEntries(_roomId) ?? [];
-		final accentColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
-		final accentBg = isDark ? AppColorsDark.primaryLight5 : AppColorsLight.primaryLight9;
-
 		// Resolve display names and online status for composition entries
 		final roomName = _spacesService?.getSpace(_roomId)?.name ?? '';
 		final displayItems = <_CompositionDisplayItem>[];
@@ -816,48 +812,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		return Column(
 			crossAxisAlignment: CrossAxisAlignment.start,
 			children: [
-				// Activity header with icon + name + status
-				Row(
-					children: [
-						Container(
-							width: _scale(48),
-							height: _scale(48),
-							decoration: BoxDecoration(
-								color: accentBg,
-								borderRadius: BorderRadius.circular(AppBorderRadius.base),
-							),
-							child: Icon(
-								_activityIcon(activeState.activityKey),
-								size: _scale(24),
-								color: accentColor,
-							),
-						),
-						AppSpacings.spacingMdHorizontal,
-						Expanded(
-							child: Column(
-								crossAxisAlignment: CrossAxisAlignment.start,
-								children: [
-									Text(
-										_activityLabel(activeState.activityKey),
-										style: TextStyle(
-											fontSize: AppFontSize.large,
-											fontWeight: FontWeight.w600,
-											color: isDark ? AppTextColorDark.regular : AppTextColorLight.regular,
-										),
-									),
-									Text(
-										activeState.hasWarnings ? 'Active with issues' : 'Active',
-										style: TextStyle(
-											fontSize: AppFontSize.small,
-											color: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
-										),
-									),
-								],
-							),
-						),
-					],
-				),
-
 					// Warning banner
 					if (activeState.hasWarnings && !activeState.isFailed) ...[
 						AppSpacings.spacingLgVertical,
