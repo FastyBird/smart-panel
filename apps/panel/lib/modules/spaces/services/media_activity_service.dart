@@ -98,7 +98,10 @@ class MediaActivityService extends ChangeNotifier {
 	// ============================================
 
 	/// Group endpoints by device ID.
-	List<MediaDeviceGroup> getDeviceGroups(String spaceId) {
+	///
+	/// [deviceNameResolver] optionally resolves a device name by its ID
+	/// (e.g. from the devices module). Falls back to the endpoint name.
+	List<MediaDeviceGroup> getDeviceGroups(String spaceId, {String? Function(String deviceId)? deviceNameResolver}) {
 		final endpoints = _repository.getEndpoints(spaceId);
 		final Map<String, List<MediaEndpointModel>> grouped = {};
 
@@ -108,8 +111,8 @@ class MediaActivityService extends ChangeNotifier {
 
 		return grouped.entries.map((entry) {
 			final eps = entry.value;
-			// Use the first endpoint's name as a fallback device name
-			final name = eps.isNotEmpty ? eps.first.name.split(' ').first : 'Unknown';
+			final name = deviceNameResolver?.call(entry.key)
+					?? (eps.isNotEmpty ? eps.first.name : 'Unknown');
 			return MediaDeviceGroup(
 				deviceId: entry.key,
 				deviceName: name,

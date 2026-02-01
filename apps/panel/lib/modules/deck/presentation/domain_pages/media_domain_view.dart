@@ -377,9 +377,16 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			builder: (context, mediaService, _) {
 				final isDark = Theme.of(context).brightness == Brightness.dark;
 				final activeState = mediaService.getActiveState(_roomId);
-				final deviceGroups = mediaService.getDeviceGroups(_roomId);
 				final endpoints = mediaService.getEndpoints(_roomId);
 				final roomName = _spacesService?.getSpace(_roomId)?.name ?? '';
+				final deviceGroups = mediaService.getDeviceGroups(
+					_roomId,
+					deviceNameResolver: (deviceId) {
+						final device = _devicesService?.getDevice(deviceId);
+						if (device == null) return null;
+						return stripRoomNameFromDevice(device.name, roomName);
+					},
+				);
 				final hasEndpoints = endpoints.isNotEmpty;
 
 				if (_isLoading) {
@@ -868,10 +875,9 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 
 		for (final entry in compositionEntries) {
 			final device = _devicesService?.getDevice(entry.deviceId);
-			var name = device?.name ?? entry.endpointName;
-			name = stripRoomNameFromDevice(name, roomName);
-			// Strip endpoint type suffix like "(Display)", "(Audio Output)", "(Source)", "(Remote Target)"
-			name = name.replaceFirst(RegExp(r'\s*\((Display|Audio Output|Source|Remote Target)\)\s*$'), '');
+			var name = device != null
+					? stripRoomNameFromDevice(device.name, roomName)
+					: entry.endpointName;
 			final isOnline = device?.isOnline ?? true;
 
 			// Resolve input property ID for this role's endpoint
