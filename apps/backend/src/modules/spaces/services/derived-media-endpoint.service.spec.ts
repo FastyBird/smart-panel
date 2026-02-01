@@ -25,6 +25,10 @@ function buildSummary(overrides: Record<string, unknown> = {}) {
 		input: overrides.input !== undefined ? overrides.input : undefined,
 		remote: overrides.remote !== undefined ? overrides.remote : undefined,
 		trackMetadata: overrides.trackMetadata !== undefined ? overrides.trackMetadata : undefined,
+		album: overrides.album !== undefined ? overrides.album : undefined,
+		artist: overrides.artist !== undefined ? overrides.artist : undefined,
+		position: overrides.position !== undefined ? overrides.position : undefined,
+		duration: overrides.duration !== undefined ? overrides.duration : undefined,
 	};
 }
 
@@ -348,6 +352,105 @@ describe('DerivedMediaEndpointService', () => {
 			expect(remoteEndpoint).toBeDefined();
 			expect(remoteEndpoint?.links.remote).toBeDefined();
 			expect(remoteEndpoint?.links.remote?.commands.remoteKey).toBe(remotePropId);
+		});
+	});
+
+	describe('track metadata and playback position links', () => {
+		it('should include trackMetadata, album, artist, position, duration links on display endpoint when caps present', async () => {
+			const trackPropId = uuid();
+			const albumPropId = uuid();
+			const artistPropId = uuid();
+			const positionPropId = uuid();
+			const durationPropId = uuid();
+
+			const summary = buildSummary({
+				deviceCategory: DeviceCategory.TELEVISION,
+				power: capMapping(),
+				trackMetadata: capMapping(trackPropId),
+				album: capMapping(albumPropId),
+				artist: capMapping(artistPropId),
+				position: capMapping(positionPropId),
+				duration: capMapping(durationPropId),
+			});
+			mockMediaCapabilityService.getMediaCapabilitiesInSpace.mockResolvedValue([summary]);
+
+			const result = await service.buildEndpointsForSpace(spaceId);
+			const display = result.endpoints.find((e) => e.type === MediaEndpointType.DISPLAY);
+
+			expect(display).toBeDefined();
+			expect(display?.links.trackMetadata?.propertyId).toBe(trackPropId);
+			expect(display?.links.album?.propertyId).toBe(albumPropId);
+			expect(display?.links.artist?.propertyId).toBe(artistPropId);
+			expect(display?.links.position?.propertyId).toBe(positionPropId);
+			expect(display?.links.duration?.propertyId).toBe(durationPropId);
+		});
+
+		it('should include track links on audio_output endpoint when caps present', async () => {
+			const trackPropId = uuid();
+			const artistPropId = uuid();
+			const positionPropId = uuid();
+			const durationPropId = uuid();
+
+			const summary = buildSummary({
+				deviceCategory: DeviceCategory.SPEAKER,
+				volume: capMapping(),
+				trackMetadata: capMapping(trackPropId),
+				artist: capMapping(artistPropId),
+				position: capMapping(positionPropId),
+				duration: capMapping(durationPropId),
+			});
+			mockMediaCapabilityService.getMediaCapabilitiesInSpace.mockResolvedValue([summary]);
+
+			const result = await service.buildEndpointsForSpace(spaceId);
+			const audio = result.endpoints.find((e) => e.type === MediaEndpointType.AUDIO_OUTPUT);
+
+			expect(audio).toBeDefined();
+			expect(audio?.links.trackMetadata?.propertyId).toBe(trackPropId);
+			expect(audio?.links.artist?.propertyId).toBe(artistPropId);
+			expect(audio?.links.position?.propertyId).toBe(positionPropId);
+			expect(audio?.links.duration?.propertyId).toBe(durationPropId);
+		});
+
+		it('should include track links on source endpoint when caps present', async () => {
+			const trackPropId = uuid();
+			const albumPropId = uuid();
+			const positionPropId = uuid();
+
+			const summary = buildSummary({
+				deviceCategory: DeviceCategory.STREAMING_SERVICE,
+				playback: capMapping(),
+				trackMetadata: capMapping(trackPropId),
+				album: capMapping(albumPropId),
+				position: capMapping(positionPropId),
+			});
+			mockMediaCapabilityService.getMediaCapabilitiesInSpace.mockResolvedValue([summary]);
+
+			const result = await service.buildEndpointsForSpace(spaceId);
+			const source = result.endpoints.find((e) => e.type === MediaEndpointType.SOURCE);
+
+			expect(source).toBeDefined();
+			expect(source?.links.trackMetadata?.propertyId).toBe(trackPropId);
+			expect(source?.links.album?.propertyId).toBe(albumPropId);
+			expect(source?.links.position?.propertyId).toBe(positionPropId);
+		});
+
+		it('should NOT include track links when caps are absent', async () => {
+			const summary = buildSummary({
+				deviceCategory: DeviceCategory.TELEVISION,
+				power: capMapping(),
+				// No trackMetadata, album, artist, position, duration
+			});
+			mockMediaCapabilityService.getMediaCapabilitiesInSpace.mockResolvedValue([summary]);
+
+			const result = await service.buildEndpointsForSpace(spaceId);
+			const display = result.endpoints.find((e) => e.type === MediaEndpointType.DISPLAY);
+
+			expect(display).toBeDefined();
+			expect(display?.links.trackMetadata).toBeUndefined();
+			expect(display?.links.album).toBeUndefined();
+			expect(display?.links.artist).toBeUndefined();
+			expect(display?.links.position).toBeUndefined();
+			expect(display?.links.duration).toBeUndefined();
 		});
 	});
 

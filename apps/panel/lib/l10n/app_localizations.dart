@@ -4300,6 +4300,396 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Other'**
   String get media_input_other;
+
+  /// Title when media is in off state
+  ///
+  /// In en, this message translates to:
+  /// **'Media Off'**
+  String get media_off_title;
+
+  /// Subtitle shown when media is off
+  ///
+  /// In en, this message translates to:
+  /// **'Select an activity to begin'**
+  String get media_off_subtitle;
+
+  /// Shown when an activity is being activated
+  ///
+  /// In en, this message translates to:
+  /// **'Starting {activityName}...'**
+  String media_starting_activity(String activityName);
+
+  /// Shown when an activity failed to apply
+  ///
+  /// In en, this message translates to:
+  /// **'{activityName} Failed'**
+  String media_activity_failed(String activityName);
+
+  /// Description when activity fails
+  ///
+  /// In en, this message translates to:
+  /// **'Activity failed to apply. Check device connectivity.'**
+  String get media_activity_failed_description;
+
+  /// Retry button label
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get media_activity_retry;
+
+  /// Turn off button label
+  ///
+  /// In en, this message translates to:
+  /// **'Turn Off'**
+  String get media_activity_turn_off;
+
+  /// Warning when audio output device is offline
+  ///
+  /// In en, this message translates to:
+  /// **'Audio output offline – using display speakers'**
+  String get media_warning_audio_offline;
+
+  /// Warning when some devices are offline
+  ///
+  /// In en, this message translates to:
+  /// **'Some devices offline'**
+  String get media_warning_some_devices_offline;
+
+  /// Warning about failed activation steps
+  ///
+  /// In en, this message translates to:
+  /// **'Some steps failed ({count} {count, plural, =1{warning} other{warnings}})'**
+  String media_warning_steps_failed(int count);
+
+  /// Generic warning about step issues
+  ///
+  /// In en, this message translates to:
+  /// **'Some steps had issues'**
+  String get media_warning_steps_had_issues;
+
+  /// Remote control button and sheet title
+  ///
+  /// In en, this message translates to:
+  /// **'Remote Control'**
+  String get media_remote_control;
+
+  /// Volume percentage display
+  ///
+  /// In en, this message translates to:
+  /// **'{volume}%'**
+  String media_volume_percent(int volume);
+
+  /// Title of the failure details bottom sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Activation Details'**
+  String get media_failure_details_title;
+
+  /// Label for total steps count
+  ///
+  /// In en, this message translates to:
+  /// **'Total'**
+  String get media_failure_summary_total;
+
+  /// Label for successful steps count
+  ///
+  /// In en, this message translates to:
+  /// **'OK'**
+  String get media_failure_summary_ok;
+
+  /// Label for error count
+  ///
+  /// In en, this message translates to:
+  /// **'Errors'**
+  String get media_failure_summary_errors;
+
+  /// Label for warning count
+  ///
+  /// In en, this message translates to:
+  /// **'Warnings'**
+  String get media_failure_summary_warnings;
+
+  /// Section heading for critical errors
+  ///
+  /// In en, this message translates to:
+  /// **'Errors (critical)'**
+  String get media_failure_errors_critical;
+
+  /// Section heading for non-critical warnings
+  ///
+  /// In en, this message translates to:
+  /// **'Warnings (non-critical)'**
+  String get media_failure_warnings_non_critical;
+
+  /// Section heading for legacy warnings
+  ///
+  /// In en, this message translates to:
+  /// **'Warnings'**
+  String get media_failure_warnings_label;
+
+  /// Button to retry the failed activity
+  ///
+  /// In en, this message translates to:
+  /// **'Retry activity'**
+  String get media_failure_retry_activity;
+
+  /// Button to deactivate the activity
+  ///
+  /// In en, this message translates to:
+  /// **'Deactivate'**
+  String get media_failure_deactivate;
+
+  /// Device ID label in failure details
+  ///
+  /// In en, this message translates to:
+  /// **'Device: {deviceId}'**
+  String media_failure_device_label(String deviceId);
+
+  /// Inline failure summary
+  ///
+  /// In en, this message translates to:
+  /// **'Activity failed to apply ({errors} {errors, plural, =1{error} other{errors}}, {warnings} {warnings, plural, =1{warning} other{warnings}})'**
+  String media_failure_inline(int errors, int warnings);
+
+  /// Watch activity label
+  ///
+  /// In en, this message translates to:
+  /// **'Watch'**
+  String get media_activity_watch;
+
+  /// Listen activity label
+  ///
+  /// In en, this message translates to:
+  /// **'Listen'**
+  String get media_activity_listen;
+
+  /// Gaming activity label
+  ///
+  /// In en, this message translates to:
+  /// **'Gaming'**
+  String get media_activity_gaming;
+
+  /// Background activity label
+  ///
+  /// In en, this message translates to:
+  /// **'Bgnd'**
+  String get media_activity_background;
+
+  /// Off activity label
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get media_activity_off;
+
+  /// Header subtitle when activity is active
+  ///
+  /// In en, this message translates to:
+  /// **'{activityName} active'**
+  String media_activity_active(String activityName);
+
+  /// Device status: standby
+  ///
+  /// In en, this message translates to:
+  /// **'Standby'**
+  String get media_status_standby;
+
+  /// Device status: activating
+  ///
+  /// In en, this message translates to:
+  /// **'Activating...'**
+  String get media_status_activating;
+
+  /// Device status: failed
+  ///
+  /// In en, this message translates to:
+  /// **'Failed'**
+  String get media_status_failed;
+
+  /// Device status: stopping
+  ///
+  /// In en, this message translates to:
+  /// **'Stopping...'**
+  String get media_status_stopping;
+
+  /// Device status: active with warnings
+  ///
+  /// In en, this message translates to:
+  /// **'Active with issues'**
+  String get media_status_active_with_issues;
+
+  /// Device status: active
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get media_status_active;
+
+  /// Device status: ready
+  ///
+  /// In en, this message translates to:
+  /// **'Ready'**
+  String get media_status_ready;
+
+  /// Remote D-pad up label
+  ///
+  /// In en, this message translates to:
+  /// **'Up'**
+  String get media_remote_up;
+
+  /// Remote D-pad down label
+  ///
+  /// In en, this message translates to:
+  /// **'Down'**
+  String get media_remote_down;
+
+  /// Remote D-pad left label
+  ///
+  /// In en, this message translates to:
+  /// **'Left'**
+  String get media_remote_left;
+
+  /// Remote D-pad right label
+  ///
+  /// In en, this message translates to:
+  /// **'Right'**
+  String get media_remote_right;
+
+  /// Remote D-pad OK/select label
+  ///
+  /// In en, this message translates to:
+  /// **'OK'**
+  String get media_remote_ok;
+
+  /// Remote back button label
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get media_remote_back;
+
+  /// Remote exit button label
+  ///
+  /// In en, this message translates to:
+  /// **'Exit'**
+  String get media_remote_exit;
+
+  /// Remote info button label
+  ///
+  /// In en, this message translates to:
+  /// **'Info'**
+  String get media_remote_info;
+
+  /// Remote rewind button label
+  ///
+  /// In en, this message translates to:
+  /// **'Rewind'**
+  String get media_remote_rewind;
+
+  /// Remote fast forward button label
+  ///
+  /// In en, this message translates to:
+  /// **'FF'**
+  String get media_remote_fast_forward;
+
+  /// Remote play button label
+  ///
+  /// In en, this message translates to:
+  /// **'Play'**
+  String get media_remote_play;
+
+  /// Remote pause button label
+  ///
+  /// In en, this message translates to:
+  /// **'Pause'**
+  String get media_remote_pause;
+
+  /// Remote next button label
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get media_remote_next;
+
+  /// Remote previous button label
+  ///
+  /// In en, this message translates to:
+  /// **'Prev'**
+  String get media_remote_prev;
+
+  /// Title when WebSocket connection is lost on detail page
+  ///
+  /// In en, this message translates to:
+  /// **'Connection lost'**
+  String get media_detail_connection_lost;
+
+  /// Description when WebSocket connection is lost
+  ///
+  /// In en, this message translates to:
+  /// **'Media controls require a live WebSocket connection.'**
+  String get media_detail_connection_lost_description;
+
+  /// Button to go back from device detail
+  ///
+  /// In en, this message translates to:
+  /// **'Go back'**
+  String get media_detail_go_back;
+
+  /// Display section title in device detail
+  ///
+  /// In en, this message translates to:
+  /// **'Display'**
+  String get media_detail_section_display;
+
+  /// Audio section title in device detail
+  ///
+  /// In en, this message translates to:
+  /// **'Audio'**
+  String get media_detail_section_audio;
+
+  /// Source section title in device detail
+  ///
+  /// In en, this message translates to:
+  /// **'Source'**
+  String get media_detail_section_source;
+
+  /// Remote section title in device detail
+  ///
+  /// In en, this message translates to:
+  /// **'Remote'**
+  String get media_detail_section_remote;
+
+  /// Input row label in device detail
+  ///
+  /// In en, this message translates to:
+  /// **'Input'**
+  String get media_detail_input;
+
+  /// Select button label in device detail
+  ///
+  /// In en, this message translates to:
+  /// **'Select'**
+  String get media_detail_select;
+
+  /// Now playing section label
+  ///
+  /// In en, this message translates to:
+  /// **'Now Playing'**
+  String get media_detail_now_playing;
+
+  /// Shown when no track metadata is available
+  ///
+  /// In en, this message translates to:
+  /// **'No track information available'**
+  String get media_detail_no_track_info;
+
+  /// Home button label on remote
+  ///
+  /// In en, this message translates to:
+  /// **'Home'**
+  String get media_detail_home;
+
+  /// Menu button label on remote
+  ///
+  /// In en, this message translates to:
+  /// **'Menu'**
+  String get media_detail_menu;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

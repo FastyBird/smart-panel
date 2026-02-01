@@ -2915,5 +2915,303 @@
   "media_input_other": "Other",
   "@media_input_other": {
     "description": "Label for unknown/other input source"
+  },
+  "media_off_title": "Media Off",
+  "@media_off_title": {
+    "description": "Title when media is in off state"
+  },
+  "media_off_subtitle": "Select an activity to begin",
+  "@media_off_subtitle": {
+    "description": "Subtitle shown when media is off"
+  },
+  "media_starting_activity": "Starting {activityName}...",
+  "@media_starting_activity": {
+    "description": "Shown when an activity is being activated",
+    "placeholders": {
+      "activityName": {
+        "type": "String"
+      }
+    }
+  },
+  "media_activity_failed": "{activityName} Failed",
+  "@media_activity_failed": {
+    "description": "Shown when an activity failed to apply",
+    "placeholders": {
+      "activityName": {
+        "type": "String"
+      }
+    }
+  },
+  "media_activity_failed_description": "Activity failed to apply. Check device connectivity.",
+  "@media_activity_failed_description": {
+    "description": "Description when activity fails"
+  },
+  "media_activity_retry": "Retry",
+  "@media_activity_retry": {
+    "description": "Retry button label"
+  },
+  "media_activity_turn_off": "Turn Off",
+  "@media_activity_turn_off": {
+    "description": "Turn off button label"
+  },
+  "media_warning_audio_offline": "Audio output offline – using display speakers",
+  "@media_warning_audio_offline": {
+    "description": "Warning when audio output device is offline"
+  },
+  "media_warning_some_devices_offline": "Some devices offline",
+  "@media_warning_some_devices_offline": {
+    "description": "Warning when some devices are offline"
+  },
+  "media_warning_steps_failed": "Some steps failed ({count} {count, plural, =1{warning} other{warnings}})",
+  "@media_warning_steps_failed": {
+    "description": "Warning about failed activation steps",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "media_warning_steps_had_issues": "Some steps had issues",
+  "@media_warning_steps_had_issues": {
+    "description": "Generic warning about step issues"
+  },
+  "media_remote_control": "Remote Control",
+  "@media_remote_control": {
+    "description": "Remote control button and sheet title"
+  },
+  "media_volume_percent": "{volume}%",
+  "@media_volume_percent": {
+    "description": "Volume percentage display",
+    "placeholders": {
+      "volume": {
+        "type": "int"
+      }
+    }
+  },
+  "media_failure_details_title": "Activation Details",
+  "@media_failure_details_title": {
+    "description": "Title of the failure details bottom sheet"
+  },
+  "media_failure_summary_total": "Total",
+  "@media_failure_summary_total": {
+    "description": "Label for total steps count"
+  },
+  "media_failure_summary_ok": "OK",
+  "@media_failure_summary_ok": {
+    "description": "Label for successful steps count"
+  },
+  "media_failure_summary_errors": "Errors",
+  "@media_failure_summary_errors": {
+    "description": "Label for error count"
+  },
+  "media_failure_summary_warnings": "Warnings",
+  "@media_failure_summary_warnings": {
+    "description": "Label for warning count"
+  },
+  "media_failure_errors_critical": "Errors (critical)",
+  "@media_failure_errors_critical": {
+    "description": "Section heading for critical errors"
+  },
+  "media_failure_warnings_non_critical": "Warnings (non-critical)",
+  "@media_failure_warnings_non_critical": {
+    "description": "Section heading for non-critical warnings"
+  },
+  "media_failure_warnings_label": "Warnings",
+  "@media_failure_warnings_label": {
+    "description": "Section heading for legacy warnings"
+  },
+  "media_failure_retry_activity": "Retry activity",
+  "@media_failure_retry_activity": {
+    "description": "Button to retry the failed activity"
+  },
+  "media_failure_deactivate": "Deactivate",
+  "@media_failure_deactivate": {
+    "description": "Button to deactivate the activity"
+  },
+  "media_failure_device_label": "Device: {deviceId}",
+  "@media_failure_device_label": {
+    "description": "Device ID label in failure details",
+    "placeholders": {
+      "deviceId": {
+        "type": "String"
+      }
+    }
+  },
+  "media_failure_inline": "Activity failed to apply ({errors} {errors, plural, =1{error} other{errors}}, {warnings} {warnings, plural, =1{warning} other{warnings}})",
+  "@media_failure_inline": {
+    "description": "Inline failure summary",
+    "placeholders": {
+      "errors": {
+        "type": "int"
+      },
+      "warnings": {
+        "type": "int"
+      }
+    }
+  },
+  "media_activity_watch": "Watch",
+  "@media_activity_watch": {
+    "description": "Watch activity label"
+  },
+  "media_activity_listen": "Listen",
+  "@media_activity_listen": {
+    "description": "Listen activity label"
+  },
+  "media_activity_gaming": "Gaming",
+  "@media_activity_gaming": {
+    "description": "Gaming activity label"
+  },
+  "media_activity_background": "Bgnd",
+  "@media_activity_background": {
+    "description": "Background activity label"
+  },
+  "media_activity_off": "Off",
+  "@media_activity_off": {
+    "description": "Off activity label"
+  },
+  "media_activity_active": "{activityName} active",
+  "@media_activity_active": {
+    "description": "Header subtitle when activity is active",
+    "placeholders": {
+      "activityName": {
+        "type": "String"
+      }
+    }
+  },
+  "media_status_standby": "Standby",
+  "@media_status_standby": {
+    "description": "Device status: standby"
+  },
+  "media_status_activating": "Activating...",
+  "@media_status_activating": {
+    "description": "Device status: activating"
+  },
+  "media_status_failed": "Failed",
+  "@media_status_failed": {
+    "description": "Device status: failed"
+  },
+  "media_status_stopping": "Stopping...",
+  "@media_status_stopping": {
+    "description": "Device status: stopping"
+  },
+  "media_status_active_with_issues": "Active with issues",
+  "@media_status_active_with_issues": {
+    "description": "Device status: active with warnings"
+  },
+  "media_status_active": "Active",
+  "@media_status_active": {
+    "description": "Device status: active"
+  },
+  "media_status_ready": "Ready",
+  "@media_status_ready": {
+    "description": "Device status: ready"
+  },
+  "media_remote_up": "Up",
+  "@media_remote_up": {
+    "description": "Remote D-pad up label"
+  },
+  "media_remote_down": "Down",
+  "@media_remote_down": {
+    "description": "Remote D-pad down label"
+  },
+  "media_remote_left": "Left",
+  "@media_remote_left": {
+    "description": "Remote D-pad left label"
+  },
+  "media_remote_right": "Right",
+  "@media_remote_right": {
+    "description": "Remote D-pad right label"
+  },
+  "media_remote_ok": "OK",
+  "@media_remote_ok": {
+    "description": "Remote D-pad OK/select label"
+  },
+  "media_remote_back": "Back",
+  "@media_remote_back": {
+    "description": "Remote back button label"
+  },
+  "media_remote_exit": "Exit",
+  "@media_remote_exit": {
+    "description": "Remote exit button label"
+  },
+  "media_remote_info": "Info",
+  "@media_remote_info": {
+    "description": "Remote info button label"
+  },
+  "media_remote_rewind": "Rewind",
+  "@media_remote_rewind": {
+    "description": "Remote rewind button label"
+  },
+  "media_remote_fast_forward": "FF",
+  "@media_remote_fast_forward": {
+    "description": "Remote fast forward button label"
+  },
+  "media_remote_play": "Play",
+  "@media_remote_play": {
+    "description": "Remote play button label"
+  },
+  "media_remote_pause": "Pause",
+  "@media_remote_pause": {
+    "description": "Remote pause button label"
+  },
+  "media_remote_next": "Next",
+  "@media_remote_next": {
+    "description": "Remote next button label"
+  },
+  "media_remote_prev": "Prev",
+  "@media_remote_prev": {
+    "description": "Remote previous button label"
+  },
+  "media_detail_connection_lost": "Connection lost",
+  "@media_detail_connection_lost": {
+    "description": "Title when WebSocket connection is lost on detail page"
+  },
+  "media_detail_connection_lost_description": "Media controls require a live WebSocket connection.",
+  "@media_detail_connection_lost_description": {
+    "description": "Description when WebSocket connection is lost"
+  },
+  "media_detail_go_back": "Go back",
+  "@media_detail_go_back": {
+    "description": "Button to go back from device detail"
+  },
+  "media_detail_section_display": "Display",
+  "@media_detail_section_display": {
+    "description": "Display section title in device detail"
+  },
+  "media_detail_section_audio": "Audio",
+  "@media_detail_section_audio": {
+    "description": "Audio section title in device detail"
+  },
+  "media_detail_section_source": "Source",
+  "@media_detail_section_source": {
+    "description": "Source section title in device detail"
+  },
+  "media_detail_section_remote": "Remote",
+  "@media_detail_section_remote": {
+    "description": "Remote section title in device detail"
+  },
+  "media_detail_input": "Input",
+  "@media_detail_input": {
+    "description": "Input row label in device detail"
+  },
+  "media_detail_select": "Select",
+  "@media_detail_select": {
+    "description": "Select button label in device detail"
+  },
+  "media_detail_now_playing": "Now Playing",
+  "@media_detail_now_playing": {
+    "description": "Now playing section label"
+  },
+  "media_detail_no_track_info": "No track information available",
+  "@media_detail_no_track_info": {
+    "description": "Shown when no track metadata is available"
+  },
+  "media_detail_home": "Home",
+  "@media_detail_home": {
+    "description": "Home button label on remote"
+  },
+  "media_detail_menu": "Menu",
+  "@media_detail_menu": {
+    "description": "Menu button label on remote"
   }
 }
