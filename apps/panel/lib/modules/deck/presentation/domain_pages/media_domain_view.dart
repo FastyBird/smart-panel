@@ -414,7 +414,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 										child: RefreshIndicator(
 											onRefresh: _refresh,
 											child: ListView(
-												padding: EdgeInsets.all(AppSpacings.pXl + AppSpacings.pMd),
+												padding: AppSpacings.paddingXl,
 												children: [
 													SizedBox(height: AppSpacings.pXl * 2),
 													Icon(
@@ -1448,7 +1448,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 									_devicesService!.setPropertyValue(posId, newPos.toInt());
 								},
 								child: Padding(
-									padding: EdgeInsets.symmetric(vertical: AppSpacings.pLg + AppSpacings.pSm),
+									padding: EdgeInsets.symmetric(vertical: AppSpacings.pLg),
 									child: bar,
 								),
 							);
@@ -1663,12 +1663,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 					child: SafeArea(
 						top: false,
 						child: Padding(
-							padding: EdgeInsets.fromLTRB(
-								AppSpacings.pLg,
-								AppSpacings.pMd + AppSpacings.pSm,
-								AppSpacings.pLg,
-								AppSpacings.pXl,
-							),
+							padding: AppSpacings.paddingLg,
 							child: Column(
 								mainAxisSize: MainAxisSize.min,
 								crossAxisAlignment: CrossAxisAlignment.start,
@@ -2412,12 +2407,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 					child: SafeArea(
 						top: false,
 						child: Padding(
-							padding: EdgeInsets.fromLTRB(
-								AppSpacings.pLg,
-								AppSpacings.pMd + AppSpacings.pSm,
-								AppSpacings.pLg,
-								AppSpacings.pXl,
-							),
+							padding: AppSpacings.paddingLg,
 							child: Column(
 								mainAxisSize: MainAxisSize.min,
 								children: [
