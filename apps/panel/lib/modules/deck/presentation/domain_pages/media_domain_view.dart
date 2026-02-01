@@ -279,9 +279,9 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 				if (stateId != null) {
 					final prop = _devicesService?.getChannelProperty(stateId);
 					final val = prop?.value;
-					if (val is StringValueType) {
-						_playbackState = val.value;
-					}
+					_playbackState = val is StringValueType ? val.value : null;
+				} else {
+					_playbackState = null;
 				}
 			}
 
@@ -289,17 +289,17 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			final trackId = playbackLinks.trackMetadataPropertyId;
 			if (trackId != null) {
 				final prop = _devicesService?.getChannelProperty(trackId);
-				if (prop?.value is StringValueType) {
-					_trackName = (prop!.value as StringValueType).value;
-				}
+				_trackName = prop?.value is StringValueType ? (prop!.value as StringValueType).value : null;
+			} else {
+				_trackName = null;
 			}
 
 			final artistId = playbackLinks.artistPropertyId;
 			if (artistId != null) {
 				final prop = _devicesService?.getChannelProperty(artistId);
-				if (prop?.value is StringValueType) {
-					_artistName = (prop!.value as StringValueType).value;
-				}
+				_artistName = prop?.value is StringValueType ? (prop!.value as StringValueType).value : null;
+			} else {
+				_artistName = null;
 			}
 
 			// Position & duration
@@ -307,20 +307,26 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			if (posId != null) {
 				final prop = _devicesService?.getChannelProperty(posId);
 				final val = prop?.value;
-				if (val is NumberValueType) {
-					_position = val.value.toDouble();
-				}
+				_position = val is NumberValueType ? val.value.toDouble() : null;
+			} else {
+				_position = null;
 			}
 
 			final durId = playbackLinks.durationPropertyId;
 			if (durId != null) {
 				final prop = _devicesService?.getChannelProperty(durId);
 				final val = prop?.value;
-				if (val is NumberValueType) {
-					_duration = val.value.toDouble();
-				}
+				_duration = val is NumberValueType ? val.value.toDouble() : null;
+			} else {
+				_duration = null;
 			}
-
+		} else {
+			// No playback target — clear all metadata
+			_playbackState = null;
+			_trackName = null;
+			_artistName = null;
+			_position = null;
+			_duration = null;
 		}
 	}
 
