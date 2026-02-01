@@ -43,6 +43,7 @@ import 'package:fastybird_smart_panel/modules/devices/views/channels/smoke.dart'
 import 'package:fastybird_smart_panel/modules/devices/views/channels/speaker.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/sulphur_dioxide.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/switcher.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/channels/projector.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/television.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/temperature.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/thermostat.dart';
@@ -240,6 +241,9 @@ Map<DevicesModuleChannelCategory, ChannelView Function(ChannelModel, List<Channe
   DevicesModuleChannelCategory.television: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, TelevisionChannelView.new);
   },
+  DevicesModuleChannelCategory.projector: (channel, properties, isValid, validationIssues) {
+    return _createChannelView(channel, properties, isValid, validationIssues, ProjectorChannelView.new);
+  },
   DevicesModuleChannelCategory.temperature: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, TemperatureChannelView.new);
   },
@@ -398,6 +402,9 @@ Map<DevicesModuleChannelCategory, IconData Function()> channelIconMappers = {
     return MdiIcons.chip;
   },
   DevicesModuleChannelCategory.television: () {
+    return MdiIcons.chip;
+  },
+  DevicesModuleChannelCategory.projector: () {
     return MdiIcons.chip;
   },
   DevicesModuleChannelCategory.temperature: () {

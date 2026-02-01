@@ -168,8 +168,10 @@ const deviceChannelsSortingSpecification: Record<DevicesModuleDeviceCategory, De
 		DevicesModuleChannelCategory.device_information,
 	],
 	[DevicesModuleDeviceCategory.projector]: [
-		DevicesModuleChannelCategory.media_input,
+		DevicesModuleChannelCategory.projector,
+		DevicesModuleChannelCategory.speaker,
 		DevicesModuleChannelCategory.media_playback,
+		DevicesModuleChannelCategory.media_input,
 		DevicesModuleChannelCategory.device_information,
 	],
 	[DevicesModuleDeviceCategory.set_top_box]: [

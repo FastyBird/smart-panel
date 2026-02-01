@@ -21,6 +21,7 @@ import 'package:fastybird_smart_panel/modules/devices/presentation/device_detail
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/speaker.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/sprinkler.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/switcher.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/projector.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/television.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/thermostat.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/valve.dart';
@@ -51,6 +52,7 @@ import 'package:fastybird_smart_panel/modules/devices/views/devices/sensor.dart'
 import 'package:fastybird_smart_panel/modules/devices/views/devices/speaker.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/sprinkler.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/switcher.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/devices/projector.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/television.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/thermostat.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/valve.dart';
@@ -195,6 +197,9 @@ Map<DevicesModuleDeviceCategory, DeviceView Function(DeviceModel, List<ChannelVi
   DevicesModuleDeviceCategory.television: (device, channels, isValid, validationIssues) {
     return _createDeviceView(device, channels, isValid, validationIssues, TelevisionDeviceView.new);
   },
+  DevicesModuleDeviceCategory.projector: (device, channels, isValid, validationIssues) {
+    return _createDeviceView(device, channels, isValid, validationIssues, ProjectorDeviceView.new);
+  },
   DevicesModuleDeviceCategory.thermostat: (device, channels, isValid, validationIssues) {
     return _createDeviceView(device, channels, isValid, validationIssues, ThermostatDeviceView.new);
   },
@@ -291,6 +296,9 @@ Map<DevicesModuleDeviceCategory, IconData Function()> deviceIconMappers = {
   },
   DevicesModuleDeviceCategory.television: () {
     return MdiIcons.television;
+  },
+  DevicesModuleDeviceCategory.projector: () {
+    return MdiIcons.projector;
   },
   DevicesModuleDeviceCategory.thermostat: () {
     return MdiIcons.thermostat;
@@ -495,6 +503,14 @@ Map<DevicesModuleDeviceCategory, Widget Function(DeviceView)> deviceWidgetMapper
       );
     }
     return TelevisionDeviceDetail(device: device);
+  },
+  DevicesModuleDeviceCategory.projector: (device) {
+    if (device is! ProjectorDeviceView) {
+      throw ArgumentError(
+        'Device view is not valid for Projector device detail',
+      );
+    }
+    return ProjectorDeviceDetail(device: device);
   },
   DevicesModuleDeviceCategory.thermostat: (device) {
     if (device is! ThermostatDeviceView) {

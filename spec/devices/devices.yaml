@@ -1724,12 +1724,12 @@ projector:
           Navigate through presentation slides using remote control keys.
   developerNotes:
     en:
-      - The television channel is used for display control (power, input, keys).
+      - The projector channel is used for display control (power, input, keys).
       - Speaker channel is optional for projectors with built-in audio.
       - Consider warm-up and cool-down times for projector power cycling.
   channels:
-    television:
-      category: television
+    projector:
+      category: projector
       required: true
       multiple: false
       description:

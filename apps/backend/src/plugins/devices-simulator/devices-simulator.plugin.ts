@@ -29,6 +29,7 @@ import {
 	DoorRealisticBehavior,
 	HumidifierRealisticBehavior,
 	LockRealisticBehavior,
+	ProjectorDelayedBehavior,
 	SpeakerRealisticBehavior,
 	TelevisionDelayedBehavior,
 	ThermostatRealisticBehavior,
@@ -322,6 +323,7 @@ pnpm run cli simulator:connection --device <id> --state lost
 		// Register device behaviors for realistic command responses
 		this.behaviorManager.registerBehavior(new ThermostatRealisticBehavior(), true);
 		this.behaviorManager.registerBehavior(new TelevisionDelayedBehavior(), true);
+		this.behaviorManager.registerBehavior(new ProjectorDelayedBehavior(), true);
 		this.behaviorManager.registerBehavior(new HumidifierRealisticBehavior(), true);
 		this.behaviorManager.registerBehavior(new AirConditionerRealisticBehavior(), true);
 		this.behaviorManager.registerBehavior(new LockRealisticBehavior(), true);

@@ -109,6 +109,7 @@ export enum ChannelCategory {
 	OUTLET = 'outlet',
 	OZONE = 'ozone',
 	PRESSURE = 'pressure',
+	PROJECTOR = 'projector',
 	ROBOT_VACUUM = 'robot_vacuum',
 	SMOKE = 'smoke',
 	SPEAKER = 'speaker',
