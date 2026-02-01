@@ -4091,6 +4091,12 @@ abstract class AppLocalizations {
   /// **'Offline'**
   String get sensor_freshness_offline;
 
+  /// Title for the input source selector bottom sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Select Input'**
+  String get media_input_select_title;
+
   /// Label for HDMI 1 input source
   ///
   /// In en, this message translates to:

@@ -704,6 +704,7 @@
   "sensor_freshness_live": "Živě",
   "sensor_freshness_stale": "Zastaralé",
   "sensor_freshness_offline": "Offline",
+  "media_input_select_title": "Vybrat vstup",
   "media_input_hdmi1": "HDMI 1",
   "media_input_hdmi2": "HDMI 2",
   "media_input_hdmi3": "HDMI 3",

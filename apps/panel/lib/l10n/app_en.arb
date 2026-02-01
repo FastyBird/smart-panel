@@ -2776,6 +2776,10 @@
   "@sensor_freshness_offline": {
     "description": "Label shown when sensor device is offline"
   },
+  "media_input_select_title": "Select Input",
+  "@media_input_select_title": {
+    "description": "Title for the input source selector bottom sheet"
+  },
   "media_input_hdmi1": "HDMI 1",
   "@media_input_hdmi1": {
     "description": "Label for HDMI 1 input source"

@@ -323,24 +323,28 @@ class _ValueSelectorSheetState<T> extends State<ValueSelectorSheet<T>> {
     final handleColor =
         isDark ? AppFillColorDark.darker : AppFillColorLight.darker;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: isDark ? AppFillColorDark.base : AppFillColorLight.blank,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(_scale(24))),
-      ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(
-            AppSpacings.pLg,
-            _scale(12),
-            AppSpacings.pLg,
-            AppSpacings.pXl,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+    final maxHeight = MediaQuery.of(context).size.height * 0.7;
+
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxHeight: maxHeight),
+      child: Container(
+        decoration: BoxDecoration(
+          color: isDark ? AppFillColorDark.base : AppFillColorLight.blank,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(_scale(24))),
+        ),
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              AppSpacings.pLg,
+              _scale(12),
+              AppSpacings.pLg,
+              AppSpacings.pXl,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
               // Handle
               Center(
                 child: Container(
@@ -387,7 +391,9 @@ class _ValueSelectorSheetState<T> extends State<ValueSelectorSheet<T>> {
               AppSpacings.spacingLgVertical,
 
               // Options Grid
-              LayoutBuilder(
+              Flexible(
+                child: SingleChildScrollView(
+                  child: LayoutBuilder(
                 builder: (context, constraints) {
                   final spacing = _scale(10);
                   final totalSpacing = spacing * (widget.columns - 1);
@@ -468,6 +474,8 @@ class _ValueSelectorSheetState<T> extends State<ValueSelectorSheet<T>> {
                   );
                 },
               ),
+                ),
+              ),
               AppSpacings.spacingLgVertical,
 
               // Confirm Button
@@ -499,6 +507,7 @@ class _ValueSelectorSheetState<T> extends State<ValueSelectorSheet<T>> {
             ],
           ),
         ),
+      ),
       ),
     );
   }

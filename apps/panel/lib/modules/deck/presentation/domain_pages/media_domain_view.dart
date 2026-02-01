@@ -14,6 +14,7 @@ import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
+import 'package:fastybird_smart_panel/core/widgets/value_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/tile_wrappers.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
@@ -1012,7 +1013,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	Widget _buildCompositionPreview(BuildContext context, List<_CompositionDisplayItem> items) {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 		final isLight = !isDark;
-		final accentColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
 		final warningColor = isDark ? AppColorsDark.warning : AppColorsLight.warning;
 
 		return Container(
@@ -1090,31 +1090,73 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 									onTap: _isSending
 											? null
 											: () => _showInputSelectorSheet(inputOptions!, inputValue, item.inputPropertyId!),
-									child: Row(
-										mainAxisSize: MainAxisSize.min,
-										children: [
-											Text(
-												_inputSourceLabel(context, inputValue),
-												style: TextStyle(
-													fontSize: AppFontSize.extraSmall,
-													color: accentColor,
+									child: Container(
+										padding: EdgeInsets.symmetric(
+											horizontal: AppSpacings.pMd,
+											vertical: AppSpacings.pSm,
+										),
+										decoration: BoxDecoration(
+											color: isDark
+													? AppFillColorDark.base
+													: AppFillColorLight.base,
+											borderRadius: BorderRadius.circular(AppBorderRadius.base),
+											border: Border.all(
+												color: isDark
+														? AppBorderColorDark.dark
+														: AppBorderColorLight.dark,
+											),
+										),
+										child: Row(
+											mainAxisSize: MainAxisSize.min,
+											children: [
+												Text(
+													_inputSourceLabel(context, inputValue),
+													style: TextStyle(
+														fontSize: AppFontSize.extraExtraSmall,
+														fontWeight: FontWeight.w500,
+														color: isDark
+																? AppTextColorDark.regular
+																: AppTextColorLight.regular,
+													),
 												),
-											),
-											AppSpacings.spacingXsHorizontal,
-											Icon(
-												MdiIcons.chevronRight,
-												size: _scale(14),
-												color: accentColor,
-											),
-										],
+												AppSpacings.spacingXsHorizontal,
+												Icon(
+													MdiIcons.chevronDown,
+													size: _scale(12),
+													color: isDark
+															? AppTextColorDark.regular
+															: AppTextColorLight.regular,
+												),
+											],
+										),
 									),
 								)
 							else if (inputValue != null)
-								Text(
-									_inputSourceLabel(context, inputValue),
-									style: TextStyle(
-										fontSize: AppFontSize.extraSmall,
-										color: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
+								Container(
+									padding: EdgeInsets.symmetric(
+										horizontal: AppSpacings.pMd,
+										vertical: AppSpacings.pSm,
+									),
+									decoration: BoxDecoration(
+										color: isDark
+												? AppFillColorDark.base
+												: AppFillColorLight.base,
+										borderRadius: BorderRadius.circular(AppBorderRadius.base),
+										border: Border.all(
+											color: isDark
+													? AppBorderColorDark.dark
+													: AppBorderColorLight.dark,
+										),
+									),
+									child: Text(
+										_inputSourceLabel(context, inputValue),
+										style: TextStyle(
+											fontSize: AppFontSize.extraExtraSmall,
+											fontWeight: FontWeight.w500,
+											color: isDark
+													? AppTextColorDark.regular
+													: AppTextColorLight.regular,
+										),
 									),
 								),
 						],
@@ -1907,75 +1949,26 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	}
 
 	void _showInputSelectorSheet(List<String> sources, String? currentValue, String propId) {
-		final isDark = Theme.of(context).brightness == Brightness.dark;
-		final accentColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
-		final bgColor = isDark ? AppFillColorDark.base : AppFillColorLight.blank;
-		final handleColor = isDark ? AppFillColorDark.darker : AppFillColorLight.darker;
+		final localizations = AppLocalizations.of(context)!;
 
 		showModalBottomSheet(
 			context: context,
+			isScrollControlled: true,
 			backgroundColor: AppColors.blank,
-			builder: (ctx) {
-				return Container(
-					decoration: BoxDecoration(
-						color: bgColor,
-						borderRadius: BorderRadius.vertical(top: Radius.circular(_scale(24))),
-					),
-					child: SafeArea(
-						top: false,
-						child: Padding(
-							padding: EdgeInsets.fromLTRB(
-								AppSpacings.pLg,
-								_scale(12),
-								AppSpacings.pLg,
-								AppSpacings.pXl,
-							),
-							child: Column(
-								mainAxisSize: MainAxisSize.min,
-								children: [
-									Center(
-										child: Container(
-											width: _scale(36),
-											height: _scale(4),
-											decoration: BoxDecoration(
-												color: handleColor,
-												borderRadius: BorderRadius.circular(AppBorderRadius.small),
-											),
-										),
-									),
-									AppSpacings.spacingMdVertical,
-									Text(
-										'Select Input',
-										style: TextStyle(
-											fontSize: AppFontSize.extraLarge,
-											fontWeight: FontWeight.w600,
-											color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
-										),
-									),
-									AppSpacings.spacingLgVertical,
-									...sources.map((source) {
-										final isActive = source == currentValue;
-										return ListTile(
-											title: Text(_inputSourceLabel(context, source)),
-											leading: Icon(
-												MdiIcons.audioInputStereoMinijack,
-												color: isActive ? accentColor : null,
-											),
-											trailing: isActive
-													? Icon(MdiIcons.check, color: accentColor)
-													: null,
-											onTap: () {
-												Navigator.pop(ctx);
-												_devicesService!.setPropertyValue(propId, source);
-											},
-										);
-									}),
-								],
-							),
-						),
-					),
-				);
-			},
+			builder: (ctx) => ValueSelectorSheet<String>(
+				currentValue: currentValue,
+				options: sources
+						.map((s) => ValueOption<String>(value: s, label: _inputSourceLabel(context, s)))
+						.toList(),
+				title: localizations.media_input_select_title,
+				columns: 3,
+				onConfirm: (value) {
+					Navigator.pop(ctx);
+					if (value != null) {
+						_devicesService!.setPropertyValue(propId, value);
+					}
+				},
+			),
 		);
 	}
 
@@ -2436,30 +2429,26 @@ class _MediaDeviceDetailPageState extends State<MediaDeviceDetailPage> {
 	}
 
 	void _showDetailInputSelector(List<String> sources, String? currentValue, String propId) {
-		final isDark = Theme.of(context).brightness == Brightness.dark;
-		final accentColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
+		final localizations = AppLocalizations.of(context)!;
 
 		showModalBottomSheet(
 			context: context,
-			builder: (ctx) {
-				return SafeArea(
-					child: Column(
-						mainAxisSize: MainAxisSize.min,
-						children: sources.map((source) {
-							final isActive = source == currentValue;
-							return ListTile(
-								title: Text(_mediaInputSourceLabel(context, source)),
-								leading: Icon(MdiIcons.audioInputStereoMinijack, color: isActive ? accentColor : null),
-								trailing: isActive ? Icon(MdiIcons.check, color: accentColor) : null,
-								onTap: () {
-									Navigator.pop(ctx);
-									_sendCommand(propId, source);
-								},
-							);
-						}).toList(),
-					),
-				);
-			},
+			isScrollControlled: true,
+			backgroundColor: AppColors.blank,
+			builder: (ctx) => ValueSelectorSheet<String>(
+				currentValue: currentValue,
+				options: sources
+						.map((s) => ValueOption<String>(value: s, label: _mediaInputSourceLabel(context, s)))
+						.toList(),
+				title: localizations.media_input_select_title,
+				columns: 3,
+				onConfirm: (value) {
+					Navigator.pop(ctx);
+					if (value != null) {
+						_sendCommand(propId, value);
+					}
+				},
+			),
 		);
 	}
 
