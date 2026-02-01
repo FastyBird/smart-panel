@@ -699,7 +699,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 					),
 					AppSpacings.spacingSmVertical,
 					Text(
-						'Select an activity above to begin',
+						'Select an activity to begin',
 						style: TextStyle(
 							fontSize: AppFontSize.base,
 							color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
@@ -819,19 +819,20 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 					Row(
 						mainAxisAlignment: MainAxisAlignment.center,
 						children: [
-							ElevatedButton(
+							FilledButton(
 								onPressed: () => _retryActivity(activeState),
-								style: ElevatedButton.styleFrom(
+								style: FilledButton.styleFrom(
 									backgroundColor: accentColor,
 									foregroundColor: Colors.white,
+									textStyle: TextStyle(fontSize: AppFontSize.small),
 									padding: EdgeInsets.symmetric(
-										horizontal: AppSpacings.pXl,
-										vertical: AppSpacings.pMd,
+										horizontal: _scale(AppSpacings.pMd),
+										vertical: _scale(AppSpacings.pSm),
 									),
+									side: BorderSide.none,
 									shape: RoundedRectangleBorder(
-										borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+										borderRadius: BorderRadius.circular(_scale(AppBorderRadius.medium)),
 									),
-									elevation: 0,
 								),
 								child: const Text('Retry'),
 							),
@@ -840,13 +841,14 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 								onPressed: _deactivateActivity,
 								style: OutlinedButton.styleFrom(
 									foregroundColor: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
+									textStyle: TextStyle(fontSize: AppFontSize.small),
 									padding: EdgeInsets.symmetric(
-										horizontal: AppSpacings.pXl,
-										vertical: AppSpacings.pMd,
+										horizontal: _scale(AppSpacings.pMd),
+										vertical: _scale(AppSpacings.pSm),
 									),
 									side: BorderSide(color: isDark ? AppBorderColorDark.base : AppBorderColorLight.base),
 									shape: RoundedRectangleBorder(
-										borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+										borderRadius: BorderRadius.circular(_scale(AppBorderRadius.medium)),
 									),
 								),
 								child: const Text('Turn Off'),
@@ -908,19 +910,18 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			children: [
 					// Warning banner
 					if (activeState.hasWarnings && !activeState.isFailed) ...[
-						AppSpacings.spacingLgVertical,
 						_buildWarningBanner(context, activeState),
+            AppSpacings.spacingMdVertical,
 					],
 
 					// Offline device banner
 					if (offlineRoles.isNotEmpty && !activeState.hasWarnings) ...[
-						AppSpacings.spacingMdVertical,
 						_buildOfflineDeviceBanner(context, offlineRoles),
+            AppSpacings.spacingMdVertical,
 					],
 
 					// Composition preview
 					if (displayItems.isNotEmpty) ...[
-						AppSpacings.spacingMdVertical,
 						_buildCompositionPreview(context, displayItems),
 					],
 
@@ -1779,7 +1780,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 											if (state.isFailed) AppSpacings.spacingMdHorizontal,
 											Expanded(
 												child: OutlinedButton.icon(
-													icon: Icon(MdiIcons.stop, size: _scale(16)),
+													icon: Icon(MdiIcons.stopCircleOutline, size: _scale(16)),
 													label: const Text('Deactivate'),
 													onPressed: () {
 														Navigator.pop(ctx);
