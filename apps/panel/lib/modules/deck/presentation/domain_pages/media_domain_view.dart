@@ -2283,6 +2283,108 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		_devicesService!.setPropertyValue(propId, command);
 	}
 
+	Widget _buildRemoteDpadButton(
+		BuildContext context, {
+		IconData? icon,
+		String? label,
+		bool isPrimary = false,
+		VoidCallback? onTap,
+	}) {
+		final isDark = Theme.of(context).brightness == Brightness.dark;
+		final accentColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
+		final baseColor = isDark ? AppFillColorDark.light : AppFillColorLight.base;
+		final secondaryColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
+		final size = _scale(40);
+
+		final bgColor = isPrimary ? accentColor : baseColor;
+		final contentColor = isPrimary ? AppColors.white : secondaryColor;
+		final border = isPrimary ? null : Border.all(color: isDark ? AppBorderColorDark.light : AppBorderColorLight.base);
+
+		return SizedBox(
+			width: size,
+			height: size,
+			child: Material(
+				color: bgColor,
+				borderRadius: BorderRadius.circular(AppBorderRadius.base),
+				child: InkWell(
+					onTap: onTap,
+					borderRadius: BorderRadius.circular(AppBorderRadius.base),
+					child: Container(
+						decoration: BoxDecoration(
+							border: border,
+							borderRadius: BorderRadius.circular(AppBorderRadius.base),
+						),
+						child: Center(
+							child: icon != null
+								? Icon(icon, size: _scale(20), color: contentColor)
+								: Text(
+									label ?? '',
+									style: TextStyle(
+										fontSize: AppFontSize.small,
+										fontWeight: FontWeight.w600,
+										color: contentColor,
+									),
+								),
+						),
+					),
+				),
+			),
+		);
+	}
+
+	Widget _buildRemoteTransportButton(
+		BuildContext context, {
+		required IconData icon,
+		bool isMain = false,
+		VoidCallback? onTap,
+	}) {
+		final isDark = Theme.of(context).brightness == Brightness.dark;
+		final accentColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
+		final baseColor = isDark ? AppFillColorDark.light : AppFillColorLight.base;
+
+		final size = _scale(isMain ? 44 : 32);
+		final iconSize = _scale(isMain ? 22 : 16);
+
+		final Color bgColor;
+		final Color iconColor;
+
+		if (isMain) {
+			bgColor = accentColor;
+			iconColor = AppColors.white;
+		} else {
+			bgColor = baseColor;
+			iconColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
+		}
+
+		final border = isMain ? null : Border.all(color: isDark ? AppBorderColorDark.light : AppBorderColorLight.base);
+
+		return SizedBox(
+			width: size,
+			height: size,
+			child: Material(
+				color: bgColor,
+				borderRadius: BorderRadius.circular(AppBorderRadius.base),
+				child: InkWell(
+					onTap: onTap,
+					borderRadius: BorderRadius.circular(AppBorderRadius.base),
+					child: Container(
+						decoration: BoxDecoration(
+							border: border,
+							borderRadius: BorderRadius.circular(AppBorderRadius.base),
+						),
+						child: Center(
+							child: Icon(
+								icon,
+								size: iconSize,
+								color: iconColor,
+							),
+						),
+					),
+				),
+			),
+		);
+	}
+
 	void _showRemote() {
 		final targets = _mediaService?.resolveControlTargets(_roomId);
 		if (targets == null || !targets.hasRemote) return;
@@ -2319,22 +2421,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		};
 
 		final remoteLocalizations = AppLocalizations.of(context)!;
-		String labelFor(TelevisionRemoteKeyValue key) => switch (key) {
-			TelevisionRemoteKeyValue.arrowUp => remoteLocalizations.media_remote_up,
-			TelevisionRemoteKeyValue.arrowDown => remoteLocalizations.media_remote_down,
-			TelevisionRemoteKeyValue.arrowLeft => remoteLocalizations.media_remote_left,
-			TelevisionRemoteKeyValue.arrowRight => remoteLocalizations.media_remote_right,
-			TelevisionRemoteKeyValue.select => remoteLocalizations.media_remote_ok,
-			TelevisionRemoteKeyValue.back => remoteLocalizations.media_remote_back,
-			TelevisionRemoteKeyValue.exit => remoteLocalizations.media_remote_exit,
-			TelevisionRemoteKeyValue.info => remoteLocalizations.media_remote_info,
-			TelevisionRemoteKeyValue.rewind => remoteLocalizations.media_remote_rewind,
-			TelevisionRemoteKeyValue.fastForward => remoteLocalizations.media_remote_fast_forward,
-			TelevisionRemoteKeyValue.play => remoteLocalizations.media_remote_play,
-			TelevisionRemoteKeyValue.pause => remoteLocalizations.media_remote_pause,
-			TelevisionRemoteKeyValue.next => remoteLocalizations.media_remote_next,
-			TelevisionRemoteKeyValue.previous => remoteLocalizations.media_remote_prev,
-		};
 
 		bool has(TelevisionRemoteKeyValue key) => supported.contains(key.value);
 
@@ -2375,13 +2461,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		final handleColor = isDark ? AppFillColorDark.darker : AppFillColorLight.darker;
 		final textColor = isDark ? AppTextColorDark.primary : AppTextColorLight.primary;
 		final secondaryColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
-		final navFgColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
-
-		final navButtonStyle = FilledButton.styleFrom(
-			textStyle: TextStyle(fontSize: AppFontSize.small),
-			foregroundColor: navFgColor,
-			padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd, vertical: AppSpacings.pSm),
-		);
 
 		showModalBottomSheet(
 			context: context,
@@ -2448,54 +2527,63 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 									// D-pad
 									if (hasDpad) ...[
 										if (hasUp)
-											IconButton(
-												icon: Icon(MdiIcons.chevronUp, size: _scale(32)),
-												onPressed: () => _sendRemoteSheetCommand(propId, TelevisionRemoteKeyValue.arrowUp),
+											_buildRemoteDpadButton(
+												context,
+												icon: MdiIcons.chevronUp,
+												onTap: () => _sendRemoteSheetCommand(propId, TelevisionRemoteKeyValue.arrowUp),
 											),
+										AppSpacings.spacingSmVertical,
 										Row(
 											mainAxisSize: MainAxisSize.min,
 											children: [
 												if (hasLeft)
-													IconButton(
-														icon: Icon(MdiIcons.chevronLeft, size: _scale(32)),
-														onPressed: () => _sendRemoteSheetCommand(propId, TelevisionRemoteKeyValue.arrowLeft),
+													_buildRemoteDpadButton(
+														context,
+														icon: MdiIcons.chevronLeft,
+														onTap: () => _sendRemoteSheetCommand(propId, TelevisionRemoteKeyValue.arrowLeft),
 													),
 												if (hasSelect) ...[
-													AppSpacings.spacingMdHorizontal,
-													FilledButton(
-														onPressed: () => _sendRemoteSheetCommand(propId, TelevisionRemoteKeyValue.select),
-														child: Text(remoteLocalizations.media_remote_ok),
+													AppSpacings.spacingSmHorizontal,
+													_buildRemoteDpadButton(
+														context,
+														label: remoteLocalizations.media_remote_ok,
+														isPrimary: true,
+														onTap: () => _sendRemoteSheetCommand(propId, TelevisionRemoteKeyValue.select),
 													),
-													AppSpacings.spacingMdHorizontal,
+													AppSpacings.spacingSmHorizontal,
 												],
 												if (hasRight)
-													IconButton(
-														icon: Icon(MdiIcons.chevronRight, size: _scale(32)),
-														onPressed: () => _sendRemoteSheetCommand(propId, TelevisionRemoteKeyValue.arrowRight),
+													_buildRemoteDpadButton(
+														context,
+														icon: MdiIcons.chevronRight,
+														onTap: () => _sendRemoteSheetCommand(propId, TelevisionRemoteKeyValue.arrowRight),
 													),
 											],
 										),
+										AppSpacings.spacingSmVertical,
 										if (hasDown)
-											IconButton(
-												icon: Icon(MdiIcons.chevronDown, size: _scale(32)),
-												onPressed: () => _sendRemoteSheetCommand(propId, TelevisionRemoteKeyValue.arrowDown),
+											_buildRemoteDpadButton(
+												context,
+												icon: MdiIcons.chevronDown,
+												onTap: () => _sendRemoteSheetCommand(propId, TelevisionRemoteKeyValue.arrowDown),
 											),
 									],
 
 									// Transport controls (media playback style)
 									if (transportActions.isNotEmpty) ...[
-										AppSpacings.spacingMdVertical,
+										AppSpacings.spacingLgVertical,
 										Row(
 											mainAxisAlignment: MainAxisAlignment.center,
-											spacing: AppSpacings.pSm,
 											children: transportActions.map((key) {
 												final isMain = key == TelevisionRemoteKeyValue.play;
-												return _buildTransportButton(
-													context,
-													icon: iconFor(key),
-													isMain: isMain,
-													compact: true,
-													onTap: () => _sendRemoteSheetCommand(propId, key),
+												return Padding(
+													padding: EdgeInsets.symmetric(horizontal: AppSpacings.pXs),
+													child: _buildRemoteTransportButton(
+														context,
+														icon: iconFor(key),
+														isMain: isMain,
+														onTap: () => _sendRemoteSheetCommand(propId, key),
+													),
 												);
 											}).toList(),
 										),
@@ -2506,17 +2594,16 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 										AppSpacings.spacingLgVertical,
 										Row(
 											mainAxisAlignment: MainAxisAlignment.center,
-											spacing: AppSpacings.pLg,
-											children: navActions
-													.map(
-														(key) => FilledButton.icon(
-															onPressed: () => _sendRemoteSheetCommand(propId, key),
-															icon: Icon(iconFor(key), size: _scale(16), color: navFgColor),
-															label: Text(labelFor(key), style: TextStyle(color: navFgColor, fontSize: AppFontSize.small)),
-															style: navButtonStyle,
-														),
-													)
-													.toList(),
+											children: navActions.map((key) {
+												return Padding(
+													padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
+													child: _buildRemoteDpadButton(
+														context,
+														icon: iconFor(key),
+														onTap: () => _sendRemoteSheetCommand(propId, key),
+													),
+												);
+											}).toList(),
 										),
 									],
 								],
