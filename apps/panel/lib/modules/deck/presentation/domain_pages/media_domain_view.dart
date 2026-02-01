@@ -1011,7 +1011,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 								label,
 								style: TextStyle(
 									fontSize: AppFontSize.small,
-									color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
+									color: warningColor,
 								),
 							),
 						),
@@ -1060,7 +1060,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 							label,
 							style: TextStyle(
 								fontSize: AppFontSize.small,
-								color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
+								color: warningColor,
 							),
 						),
 					),
@@ -1719,10 +1719,10 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 											spacing: AppSpacings.pMd,
 											runSpacing: AppSpacings.pSm,
 											children: [
-												_summaryChip(AppLocalizations.of(context)!.media_failure_summary_total, lastResult.stepsTotal, isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder),
-												_summaryChip(AppLocalizations.of(context)!.media_failure_summary_ok, lastResult.stepsSucceeded, isDark ? AppColorsDark.success : AppColorsLight.success),
-												_summaryChip(AppLocalizations.of(context)!.media_failure_summary_errors, lastResult.errorCount, isDark ? AppColorsDark.error : AppColorsLight.error),
-												_summaryChip(AppLocalizations.of(context)!.media_failure_summary_warnings, lastResult.warningCount, isDark ? AppColorsDark.warning : AppColorsLight.warning),
+												_summaryChip(AppLocalizations.of(context)!.media_failure_summary_total, lastResult.stepsTotal, (isDark ? AppColorsDark.neutral : AppColorsLight.neutral), (isDark ? AppColorsDark.neutralLight9 : AppColorsLight.neutralLight9)),
+												_summaryChip(AppLocalizations.of(context)!.media_failure_summary_ok, lastResult.stepsSucceeded, (isDark ? AppColorsDark.success : AppColorsLight.success), (isDark ? AppColorsDark.successLight9 : AppColorsLight.successLight9)),
+												_summaryChip(AppLocalizations.of(context)!.media_failure_summary_errors, lastResult.errorCount, (isDark ? AppColorsDark.error : AppColorsLight.error), (isDark ? AppColorsDark.errorLight9 : AppColorsLight.errorLight9)),
+												_summaryChip(AppLocalizations.of(context)!.media_failure_summary_warnings, lastResult.warningCount, (isDark ? AppColorsDark.warning : AppColorsLight.warning), (isDark ? AppColorsDark.warningLight9 : AppColorsLight.warningLight9)),
 											],
 										),
 										AppSpacings.spacingLgVertical,
@@ -1739,7 +1739,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 											),
 										),
 										AppSpacings.spacingSmVertical,
-										...errors.map((f) => _failureRow(f, isDark ? AppColorsDark.error : AppColorsLight.error)),
+										...errors.map((f) => _failureRow(f, isDark ? AppColorsDark.error : AppColorsLight.error, isDark ? AppColorsDark.primaryLight9 : AppColorsLight.primaryLight9)),
 										AppSpacings.spacingMdVertical,
 									],
 
@@ -1754,7 +1754,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 											),
 										),
 										AppSpacings.spacingSmVertical,
-										...warnings.map((f) => _failureRow(f, isDark ? AppColorsDark.warning : AppColorsLight.warning)),
+										...warnings.map((f) => _failureRow(f, isDark ? AppColorsDark.error : AppColorsLight.error, isDark ? AppColorsDark.primaryLight9 : AppColorsLight.primaryLight9)),
 										AppSpacings.spacingMdVertical,
 									],
 
@@ -1813,30 +1813,30 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		);
 	}
 
-	Widget _summaryChip(String label, int count, Color color) {
+	Widget _summaryChip(String label, int count, Color textColor, Color backgroundColor) {
 		return Container(
 			padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd, vertical: AppSpacings.pSm),
 			decoration: BoxDecoration(
-				color: color.withValues(alpha: 0.1),
+				color: backgroundColor,
 				borderRadius: BorderRadius.circular(AppBorderRadius.medium),
 			),
 			child: Text(
 				'$label: $count',
-				style: TextStyle(fontSize: AppFontSize.extraSmall, fontWeight: FontWeight.w600, color: color),
+				style: TextStyle(fontSize: AppFontSize.extraSmall, fontWeight: FontWeight.w600, color: textColor),
 			),
 		);
 	}
 
-	Widget _failureRow(MediaStepFailureModel failure, Color color) {
+	Widget _failureRow(MediaStepFailureModel failure, Color textColor, Color backgroundColor) {
 		return Padding(
 			padding: EdgeInsets.only(bottom: AppSpacings.pSm),
 			child: Container(
 				width: double.infinity,
 				padding: EdgeInsets.all(AppSpacings.pMd),
 				decoration: BoxDecoration(
-					color: color.withValues(alpha: 0.05),
+					color: backgroundColor,
 					borderRadius: BorderRadius.circular(AppBorderRadius.base),
-					border: Border.all(color: color.withValues(alpha: 0.2)),
+					border: Border.all(color: backgroundColor),
 				),
 				child: Column(
 					crossAxisAlignment: CrossAxisAlignment.start,
@@ -1844,11 +1844,11 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 						if (failure.label != null)
 							Text(
 								failure.label!,
-								style: TextStyle(fontSize: AppFontSize.small, fontWeight: FontWeight.w600, color: color),
+								style: TextStyle(fontSize: AppFontSize.small, fontWeight: FontWeight.w600, color: textColor),
 							),
 						Text(
 							failure.reason,
-							style: TextStyle(fontSize: AppFontSize.extraSmall, color: color.withValues(alpha: 0.8)),
+							style: TextStyle(fontSize: AppFontSize.extraSmall, color: textColor),
 						),
 						if (failure.targetDeviceId != null)
 							Text(
@@ -2054,7 +2054,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	Widget _buildDeviceTile(BuildContext context, MediaDeviceGroup group, MediaActiveStateModel? activeState) {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 		final isActive = _isDeviceActive(group, activeState);
-		final accentColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
 		final isLandscape = _screenService.isLandscape;
 
 		final accessories = Row(
@@ -2068,7 +2067,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 							height: _scale(22),
 							decoration: BoxDecoration(
 								color: isActive
-										? accentColor.withValues(alpha: 0.15)
+										? (isDark ? AppColorsDark.primaryLight5 : AppColorsLight.primaryLight5)
 										: (isDark ? AppFillColorDark.base : AppFillColorLight.base),
 								borderRadius: BorderRadius.circular(AppBorderRadius.base),
 							),
@@ -2076,18 +2075,17 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 								capIcon,
 								size: _scale(12),
 								color: isActive
-										? accentColor
+										? (isDark ? AppColorsDark.primary : AppColorsLight.primary)
 										: (isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder),
 							),
 						),
 					);
 				}),
-				AppSpacings.spacingMdHorizontal,
 				Icon(
 					MdiIcons.chevronRight,
 					size: _scale(28),
 					color: isActive
-							? accentColor
+							? (isDark ? AppColorsDark.primary : AppColorsLight.primary)
 							: (isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder),
 				),
 			],
