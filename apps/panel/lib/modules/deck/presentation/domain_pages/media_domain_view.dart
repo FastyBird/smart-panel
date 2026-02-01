@@ -114,6 +114,9 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	/// Track metadata read from device properties.
 	String? _trackName;
 	String? _artistName;
+	/// Playback position and duration in seconds.
+	double? _position;
+	double? _duration;
 
 	Timer? _volumeDebounceTimer;
 	Timer? _playbackSettleTimer;
@@ -297,6 +300,25 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 				}
 			}
 
+			// Position & duration
+			final posId = playbackLinks.positionPropertyId;
+			if (posId != null) {
+				final prop = _devicesService?.getChannelProperty(posId);
+				final val = prop?.value;
+				if (val is NumberValueType) {
+					_position = val.value.toDouble();
+				}
+			}
+
+			final durId = playbackLinks.durationPropertyId;
+			if (durId != null) {
+				final prop = _devicesService?.getChannelProperty(durId);
+				final val = prop?.value;
+				if (val is NumberValueType) {
+					_duration = val.value.toDouble();
+				}
+			}
+
 		}
 	}
 
@@ -330,6 +352,8 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			_playbackState = null;
 			_trackName = null;
 			_artistName = null;
+			_position = null;
+			_duration = null;
 		});
 		try {
 			if (key == MediaActivityKey.off) {
@@ -890,13 +914,17 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 					],
 
 					// Capability-driven controls
-					if (_trackName != null || _artistName != null) ...[
+					if (_trackName != null || _artistName != null || (_duration != null && _duration! > 0)) ...[
 						AppSpacings.spacingLgVertical,
 						_buildNowPlaying(context),
 					],
 					if (targets.hasPlayback) ...[
 						AppSpacings.spacingMdVertical,
 						_buildPlaybackControl(context),
+					],
+					if (_duration != null && _duration! > 0) ...[
+						AppSpacings.spacingMdVertical,
+						_buildProgressBar(context),
 					],
 					if (targets.hasVolume) ...[
 						AppSpacings.spacingLgVertical,
@@ -1067,7 +1095,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 											Text(
 												item.role.toUpperCase(),
 												style: TextStyle(
-													fontSize: AppFontSize.extraExtraSmall,
+													fontSize: AppFontSize.extraSmall,
 													fontWeight: FontWeight.w500,
 													color: isLight ? AppTextColorLight.secondary : AppTextColorDark.placeholder,
 													letterSpacing: 0.5,
@@ -1112,7 +1140,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 												Text(
 													_inputSourceLabel(context, inputValue),
 													style: TextStyle(
-														fontSize: AppFontSize.extraExtraSmall,
+														fontSize: AppFontSize.extraSmall,
 														fontWeight: FontWeight.w500,
 														color: isDark
 																? AppTextColorDark.regular
@@ -1151,7 +1179,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 									child: Text(
 										_inputSourceLabel(context, inputValue),
 										style: TextStyle(
-											fontSize: AppFontSize.extraExtraSmall,
+											fontSize: AppFontSize.extraSmall,
 											fontWeight: FontWeight.w500,
 											color: isDark
 													? AppTextColorDark.regular
@@ -1315,6 +1343,68 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 					),
 			],
 		);
+	}
+
+	Widget _buildProgressBar(BuildContext context) {
+		final isDark = Theme.of(context).brightness == Brightness.dark;
+		final accentColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
+		final trackColor = isDark ? AppFillColorDark.darker : AppFillColorLight.darker;
+		final secondaryColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
+
+		final pos = _position ?? 0;
+		final dur = _duration ?? 1;
+		final progress = (pos / dur).clamp(0.0, 1.0);
+
+		final timeWidth = _scale(52);
+
+		return Row(
+			children: [
+				SizedBox(
+					width: timeWidth,
+					child: Text(
+						_formatTime(pos.toInt()),
+						style: TextStyle(
+							fontSize: AppFontSize.extraSmall,
+							color: secondaryColor,
+						),
+					),
+				),
+				AppSpacings.spacingMdHorizontal,
+				Expanded(
+					child: ClipRRect(
+						borderRadius: BorderRadius.circular(_scale(2)),
+						child: LinearProgressIndicator(
+							value: progress,
+							minHeight: _scale(3),
+							backgroundColor: trackColor,
+							valueColor: AlwaysStoppedAnimation<Color>(accentColor),
+						),
+					),
+				),
+				AppSpacings.spacingMdHorizontal,
+				SizedBox(
+					width: timeWidth,
+					child: Text(
+						_formatTime(dur.toInt()),
+						style: TextStyle(
+							fontSize: AppFontSize.extraSmall,
+							color: secondaryColor,
+						),
+						textAlign: TextAlign.right,
+					),
+				),
+			],
+		);
+	}
+
+	String _formatTime(int totalSeconds) {
+		final hours = totalSeconds ~/ 3600;
+		final minutes = (totalSeconds % 3600) ~/ 60;
+		final seconds = totalSeconds % 60;
+		if (hours > 0) {
+			return '$hours:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+		}
+		return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
 	}
 
 	Widget _buildTransportButton(
