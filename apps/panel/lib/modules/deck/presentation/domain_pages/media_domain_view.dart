@@ -1357,6 +1357,12 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 
 		final timeWidth = _scale(52);
 
+		// Check if position property is writable for seek support
+		final targets = _mediaService?.resolveControlTargets(_roomId);
+		final posId = targets?.playbackTarget?.links.positionPropertyId;
+		final isSeekable = posId != null && _devicesService != null &&
+				(_devicesService!.getChannelProperty(posId)?.isWritable ?? false);
+
 		return Row(
 			children: [
 				SizedBox(
@@ -1371,14 +1377,36 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 				),
 				AppSpacings.spacingMdHorizontal,
 				Expanded(
-					child: ClipRRect(
-						borderRadius: BorderRadius.circular(_scale(2)),
-						child: LinearProgressIndicator(
-							value: progress,
-							minHeight: _scale(3),
-							backgroundColor: trackColor,
-							valueColor: AlwaysStoppedAnimation<Color>(accentColor),
-						),
+					child: LayoutBuilder(
+						builder: (context, constraints) {
+							final barWidth = constraints.maxWidth;
+							final bar = ClipRRect(
+								borderRadius: BorderRadius.circular(_scale(2)),
+								child: LinearProgressIndicator(
+									value: progress,
+									minHeight: _scale(3),
+									backgroundColor: trackColor,
+									valueColor: AlwaysStoppedAnimation<Color>(accentColor),
+								),
+							);
+
+							if (!isSeekable) return bar;
+
+							return GestureDetector(
+								behavior: HitTestBehavior.opaque,
+								onTapDown: (details) {
+									final tapX = details.localPosition.dx;
+									final ratio = (tapX / barWidth).clamp(0.0, 1.0);
+									final newPos = (ratio * dur).roundToDouble();
+									setState(() => _position = newPos);
+									_devicesService!.setPropertyValue(posId, newPos.toInt());
+								},
+								child: Padding(
+									padding: EdgeInsets.symmetric(vertical: _scale(20)),
+									child: bar,
+								),
+							);
+						},
 					),
 				),
 				AppSpacings.spacingMdHorizontal,
