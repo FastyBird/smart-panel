@@ -43,6 +43,8 @@ class _MediaDeviceDetailState extends State<MediaDeviceDetail> {
 	DeviceControlStateService? _deviceControlStateService;
 
 	Timer? _volumeDebounceTimer;
+	Timer? _playbackSettleTimer;
+	MediaPlaybackStatusValue? _optimisticPlaybackStatus;
 	static const _debounceDuration = Duration(milliseconds: 300);
 
 	@override
@@ -63,6 +65,7 @@ class _MediaDeviceDetailState extends State<MediaDeviceDetail> {
 	@override
 	void dispose() {
 		_volumeDebounceTimer?.cancel();
+		_playbackSettleTimer?.cancel();
 		_devicesService.removeListener(_onDeviceChanged);
 		_deviceControlStateService?.removeListener(_onControlStateChanged);
 		super.dispose();
@@ -70,6 +73,7 @@ class _MediaDeviceDetailState extends State<MediaDeviceDetail> {
 
 	void _onDeviceChanged() {
 		if (!mounted) return;
+		if (_playbackSettleTimer != null && _playbackSettleTimer!.isActive) return;
 		_checkConvergence();
 		setState(() {});
 	}
@@ -265,6 +269,23 @@ class _MediaDeviceDetailState extends State<MediaDeviceDetail> {
 		final channel = _device.mediaPlaybackChannel;
 		if (!channel.hasCommand) return;
 
+		final optimisticStatus = switch (command) {
+			MediaPlaybackCommandValue.play => MediaPlaybackStatusValue.playing,
+			MediaPlaybackCommandValue.pause => MediaPlaybackStatusValue.paused,
+			MediaPlaybackCommandValue.stop => MediaPlaybackStatusValue.stopped,
+			_ => null,
+		};
+
+		if (optimisticStatus != null) {
+			setState(() => _optimisticPlaybackStatus = optimisticStatus);
+		}
+
+		_playbackSettleTimer?.cancel();
+		_playbackSettleTimer = Timer(const Duration(seconds: 3), () {
+			if (!mounted) return;
+			setState(() => _optimisticPlaybackStatus = null);
+		});
+
 		_devicesService.setPropertyValueWithContext(
 			deviceId: _device.id,
 			channelId: channel.id,
@@ -318,6 +339,9 @@ class _MediaDeviceDetailState extends State<MediaDeviceDetail> {
 	// --------------------------------------------------------------------------
 	// UI HELPERS
 	// --------------------------------------------------------------------------
+
+	MediaPlaybackStatusValue? get _effectivePlaybackStatus =>
+		_optimisticPlaybackStatus ?? _device.mediaPlaybackStatus;
 
 	bool get _isOn => _device.isOn;
 
@@ -638,7 +662,7 @@ class _MediaDeviceDetailState extends State<MediaDeviceDetail> {
 			track: _device.isMediaPlaybackTrack,
 			artist: _device.mediaPlaybackArtist,
 			album: _device.mediaPlaybackAlbum,
-			status: _device.mediaPlaybackStatus,
+			status: _effectivePlaybackStatus,
 			availableCommands: _device.mediaPlaybackAvailableCommands,
 			hasPosition: _device.hasMediaPlaybackPosition,
 			position: _device.mediaPlaybackPosition,

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
@@ -35,6 +37,9 @@ class _GameConsoleDeviceDetailState extends State<GameConsoleDeviceDetail> {
 	final VisualDensityService _visualDensityService = locator<VisualDensityService>();
 	final DevicesService _devicesService = locator<DevicesService>();
 
+	Timer? _playbackSettleTimer;
+	MediaPlaybackStatusValue? _optimisticPlaybackStatus;
+
 	@override
 	void initState() {
 		super.initState();
@@ -43,12 +48,15 @@ class _GameConsoleDeviceDetailState extends State<GameConsoleDeviceDetail> {
 
 	@override
 	void dispose() {
+		_playbackSettleTimer?.cancel();
 		_devicesService.removeListener(_onDeviceChanged);
 		super.dispose();
 	}
 
 	void _onDeviceChanged() {
-		if (mounted) setState(() {});
+		if (!mounted) return;
+		if (_playbackSettleTimer != null && _playbackSettleTimer!.isActive) return;
+		setState(() {});
 	}
 
 	GameConsoleDeviceView get _device {
@@ -82,6 +90,23 @@ class _GameConsoleDeviceDetailState extends State<GameConsoleDeviceDetail> {
 		final channel = _device.mediaPlaybackChannel;
 		if (channel == null || !channel.hasCommand) return;
 
+		final optimisticStatus = switch (command) {
+			MediaPlaybackCommandValue.play => MediaPlaybackStatusValue.playing,
+			MediaPlaybackCommandValue.pause => MediaPlaybackStatusValue.paused,
+			MediaPlaybackCommandValue.stop => MediaPlaybackStatusValue.stopped,
+			_ => null,
+		};
+
+		if (optimisticStatus != null) {
+			setState(() => _optimisticPlaybackStatus = optimisticStatus);
+		}
+
+		_playbackSettleTimer?.cancel();
+		_playbackSettleTimer = Timer(const Duration(seconds: 3), () {
+			if (!mounted) return;
+			setState(() => _optimisticPlaybackStatus = null);
+		});
+
 		_devicesService.setPropertyValueWithContext(
 			deviceId: _device.id,
 			channelId: channel.id,
@@ -107,6 +132,9 @@ class _GameConsoleDeviceDetailState extends State<GameConsoleDeviceDetail> {
 	// --------------------------------------------------------------------------
 	// UI HELPERS
 	// --------------------------------------------------------------------------
+
+	MediaPlaybackStatusValue? get _effectivePlaybackStatus =>
+		_optimisticPlaybackStatus ?? _device.mediaPlaybackStatus;
 
 	bool get _isOn => _device.isOn;
 
@@ -312,7 +340,7 @@ class _GameConsoleDeviceDetailState extends State<GameConsoleDeviceDetail> {
 			track: _device.isMediaPlaybackTrack,
 			artist: _device.mediaPlaybackArtist,
 			album: _device.mediaPlaybackAlbum,
-			status: _device.mediaPlaybackStatus,
+			status: _effectivePlaybackStatus,
 			availableCommands: _device.mediaPlaybackAvailableCommands,
 			hasPosition: _device.hasMediaPlaybackPosition,
 			position: _device.mediaPlaybackPosition,
