@@ -943,7 +943,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 					],
 
 					// Capability-driven controls
-					if (_trackName != null || _artistName != null || (_duration != null && _duration! > 0)) ...[
+					if (_trackName != null || _artistName != null) ...[
 						AppSpacings.spacingLgVertical,
 						_buildNowPlaying(context),
 					],

@@ -102,6 +102,7 @@ class _MediaDeviceDetailPageState extends State<MediaDeviceDetailPage> {
 		}
 		try {
 			_devicesService = locator<DevicesService>();
+			_devicesService?.addListener(_onDevicesChanged);
 		} catch (e) {
 			if (kDebugMode) {
 				debugPrint('[MediaDeviceDetailPage] Failed to get DevicesService: $e');
@@ -112,8 +113,15 @@ class _MediaDeviceDetailPageState extends State<MediaDeviceDetailPage> {
 	@override
 	void dispose() {
 		_volumeDebounceTimer?.cancel();
+		_devicesService?.removeListener(_onDevicesChanged);
 		_socketService?.removeConnectionListener(_onConnectionChanged);
 		super.dispose();
+	}
+
+	void _onDevicesChanged() {
+		if (mounted) {
+			setState(() {});
+		}
 	}
 
 	void _onConnectionChanged(bool connected) {
@@ -644,8 +652,7 @@ class _MediaDeviceDetailPageState extends State<MediaDeviceDetailPage> {
 	void _sendRemoteCommand(MediaEndpointModel? endpoint, String command) {
 		if (endpoint == null || _devicesService == null) return;
 
-		// Remote commands use the playback command ID as the command channel
-		final propId = endpoint.links.playbackCommandId;
+		final propId = endpoint.links.remotePropertyId;
 		if (propId != null) {
 			_devicesService!.setPropertyValue(propId, command);
 		}
