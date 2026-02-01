@@ -7,6 +7,8 @@ import 'package:fastybird_smart_panel/modules/devices/views/channels/view.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/brightness.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/on.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/remote_key.dart';
+
+
 class TelevisionChannelView extends ChannelView
     with ChannelOnMixin, ChannelBrightnessMixin {
   TelevisionChannelView({

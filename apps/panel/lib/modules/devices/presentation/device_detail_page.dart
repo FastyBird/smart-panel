@@ -20,6 +20,7 @@ const Set<DevicesModuleDeviceCategory> _devicesWithCustomHeader = {
   DevicesModuleDeviceCategory.airPurifier,
   DevicesModuleDeviceCategory.fan,
   DevicesModuleDeviceCategory.lighting,
+  DevicesModuleDeviceCategory.television,
   DevicesModuleDeviceCategory.windowCovering,
 };
 

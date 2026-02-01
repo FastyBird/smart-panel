@@ -839,7 +839,20 @@ mixin DeviceMediaInputMixin {
 
   bool get hasMediaInput => mediaInputChannel != null;
 
-  String? get mediaInputSource => mediaInputChannel?.source;
+  String? get mediaInputSource {
+    try {
+      return mediaInputChannel?.source;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  bool get hasMediaInputSourceLabel => mediaInputChannel?.hasSourceLabel ?? false;
+
+  String? get mediaInputSourceLabel => mediaInputChannel?.sourceLabel;
+
+  List<String> get mediaInputAvailableSources =>
+      mediaInputChannel?.availableSources ?? [];
 
   bool get hasMediaInputActive => mediaInputChannel?.hasActive ?? false;
 
@@ -1105,6 +1118,10 @@ mixin DeviceSpeakerMixin {
   int get speakerMinVolume => speakerChannel?.minVolume ?? 0;
 
   int get speakerMaxVolume => speakerChannel?.maxVolume ?? 100;
+
+  bool get hasSpeakerMute => speakerChannel?.hasMute ?? false;
+
+  bool get isSpeakerMuted => speakerChannel?.isMuted ?? false;
 
   bool get hasSpeakerMode => speakerChannel?.hasMode ?? false;
 

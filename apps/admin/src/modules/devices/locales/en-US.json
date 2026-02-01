@@ -853,6 +853,7 @@
       "shuffle": "Shuffle",
       "siren": "Siren",
       "source": "Source",
+      "source_label": "Source label",
       "speed": "Speed",
       "state": "State",
       "status": "Status",

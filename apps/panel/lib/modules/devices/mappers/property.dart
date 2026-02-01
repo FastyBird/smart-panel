@@ -49,6 +49,7 @@ import 'package:fastybird_smart_panel/modules/devices/views/properties/manufactu
 import 'package:fastybird_smart_panel/modules/devices/views/properties/mist_level.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/mode.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/model.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/mute.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/natural_breeze.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/obstruction.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/on.dart';
@@ -69,6 +70,7 @@ import 'package:fastybird_smart_panel/modules/devices/views/properties/saturatio
 import 'package:fastybird_smart_panel/modules/devices/views/properties/serial_number.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/siren.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/source.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/source_label.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/speed.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/state.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/status.dart';
@@ -242,6 +244,8 @@ ChannelPropertyView buildChannelPropertyView(ChannelPropertyModel property) {
       return _createPropertyView(property, MistLevelChannelPropertyView.new);
     case DevicesModulePropertyCategory.mode:
       return _createPropertyView(property, ModeChannelPropertyView.new);
+    case DevicesModulePropertyCategory.mute:
+      return _createPropertyView(property, MuteChannelPropertyView.new);
     case DevicesModulePropertyCategory.model:
       return _createPropertyView(property, ModelChannelPropertyView.new);
     case DevicesModulePropertyCategory.naturalBreeze:
@@ -282,6 +286,8 @@ ChannelPropertyView buildChannelPropertyView(ChannelPropertyModel property) {
       return _createPropertyView(property, SerialNumberChannelPropertyView.new);
     case DevicesModulePropertyCategory.source:
       return _createPropertyView(property, SourceChannelPropertyView.new);
+    case DevicesModulePropertyCategory.sourceLabel:
+      return _createPropertyView(property, SourceLabelChannelPropertyView.new);
     case DevicesModulePropertyCategory.speed:
       return _createPropertyView(property, SpeedChannelPropertyView.new);
     case DevicesModulePropertyCategory.status:
@@ -390,6 +396,7 @@ Map<DevicesModulePropertyCategory, IconData Function()>
   DevicesModulePropertyCategory.siren: () => MdiIcons.alarmLight,
   DevicesModulePropertyCategory.serialNumber: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.source: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.sourceLabel: () => MdiIcons.label,
   DevicesModulePropertyCategory.state: () => MdiIcons.shieldCheck,
   DevicesModulePropertyCategory.speed: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.status: () => MdiIcons.databaseCog,

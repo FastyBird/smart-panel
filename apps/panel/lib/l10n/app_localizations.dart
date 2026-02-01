@@ -4367,6 +4367,12 @@ abstract class AppLocalizations {
   /// **'Some steps had issues'**
   String get media_warning_steps_had_issues;
 
+  /// Remote label for device detail card
+  ///
+  /// In en, this message translates to:
+  /// **'Remote'**
+  String get media_remote;
+
   /// Remote control button and sheet title
   ///
   /// In en, this message translates to:

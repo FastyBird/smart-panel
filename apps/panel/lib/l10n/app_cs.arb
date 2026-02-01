@@ -750,6 +750,7 @@
   "media_warning_some_devices_offline": "Některá zařízení jsou offline",
   "media_warning_steps_failed": "Některé kroky selhaly ({count} {count, plural, =1{varování} few{varování} other{varování}})",
   "media_warning_steps_had_issues": "Některé kroky měly problémy",
+  "media_remote": "Ovládání",
   "media_remote_control": "Dálkové ovládání",
   "media_volume_percent": "{volume}%",
   "media_failure_details_title": "Podrobnosti aktivace",

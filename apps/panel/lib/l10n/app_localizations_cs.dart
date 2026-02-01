@@ -2309,6 +2309,9 @@ class AppLocalizationsCs extends AppLocalizations {
   String get media_warning_steps_had_issues => 'Některé kroky měly problémy';
 
   @override
+  String get media_remote => 'Ovládání';
+
+  @override
   String get media_remote_control => 'Dálkové ovládání';
 
   @override

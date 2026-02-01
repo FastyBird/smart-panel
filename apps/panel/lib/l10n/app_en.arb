@@ -2975,6 +2975,10 @@
   "@media_warning_steps_had_issues": {
     "description": "Generic warning about step issues"
   },
+  "media_remote": "Remote",
+  "@media_remote": {
+    "description": "Remote label for device detail card"
+  },
   "media_remote_control": "Remote Control",
   "@media_remote_control": {
     "description": "Remote control button and sheet title"

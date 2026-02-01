@@ -26,7 +26,7 @@ import 'package:fastybird_smart_panel/modules/devices/types/formats.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/deck_service.dart';
-import 'package:fastybird_smart_panel/modules/deck/views/media_device_detail_page.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_detail_page.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/navigate_event.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/media_activity/media_activity.dart';
 import 'package:fastybird_smart_panel/modules/spaces/service.dart';
@@ -2186,10 +2186,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		Navigator.push(
 			context,
 			MaterialPageRoute(
-				builder: (context) => MediaDeviceDetailPage(
-					spaceId: _roomId,
-					deviceGroup: group,
-				),
+				builder: (context) => DeviceDetailPage(group.deviceId),
 			),
 		);
 	}

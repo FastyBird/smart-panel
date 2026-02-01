@@ -103,6 +103,10 @@ class ModeSelector<T> extends StatelessWidget {
   /// and vertical scroll for vertical orientation
   final bool scrollable;
 
+  /// Whether to show icons (defaults to true)
+  /// When false, only labels are shown (showLabels is forced to true)
+  final bool showIcon;
+
   /// Optional status icons to display in the top-right corner of mode buttons.
   /// Maps mode values to (icon, color) pairs. If a mode's value is in this map,
   /// the icon will be shown with the specified color.
@@ -117,6 +121,7 @@ class ModeSelector<T> extends StatelessWidget {
     this.iconPlacement = ModeSelectorIconPlacement.left,
     this.color = ModeSelectorColor.primary,
     this.showLabels,
+    this.showIcon = true,
     this.minButtonWidth = 80.0,
     this.scrollable = false,
     this.statusIcons,
@@ -261,7 +266,22 @@ class ModeSelector<T> extends StatelessWidget {
 
     Widget content;
 
-    if (!showLabel) {
+    if (!showIcon) {
+      // Label only (no icon)
+      content = Center(
+        child: Text(
+          mode.label,
+          style: TextStyle(
+            color: contentColor,
+            fontSize: AppFontSize.small,
+            fontWeight: fontWeight,
+          ),
+          overflow: isScrollable ? TextOverflow.visible : TextOverflow.ellipsis,
+          maxLines: 1,
+          softWrap: false,
+        ),
+      );
+    } else if (!showLabel) {
       // Icon only
       content = Center(
         child: Icon(
@@ -331,7 +351,7 @@ class ModeSelector<T> extends StatelessWidget {
     // When scrollable in horizontal mode:
     // - With labels: use intrinsic width (null) so content determines size
     // - Icon only: use fixed minimum size
-    final scrollableWidth = isScrollable && !isVerticalLayout && !showLabel
+    final scrollableWidth = isScrollable && !isVerticalLayout && !showLabel && showIcon
         ? _scale(48)
         : null;
 

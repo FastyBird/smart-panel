@@ -6,6 +6,7 @@ import 'package:fastybird_smart_panel/modules/devices/views/channels/mixins.dart
 import 'package:fastybird_smart_panel/modules/devices/views/channels/view.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/active.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/mode.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/mute.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/volume.dart';
 
 class SpeakerChannelView extends ChannelView
@@ -31,8 +32,19 @@ class SpeakerChannelView extends ChannelView
   VolumeChannelPropertyView? get volumeProp =>
       properties.whereType<VolumeChannelPropertyView>().firstOrNull;
 
+  MuteChannelPropertyView? get muteProp =>
+      properties.whereType<MuteChannelPropertyView>().firstOrNull;
+
   ModeChannelPropertyView? get modeProp =>
       properties.whereType<ModeChannelPropertyView>().firstOrNull;
+
+  bool get hasMute => muteProp != null;
+
+  bool get isMuted {
+    final MuteChannelPropertyView? prop = muteProp;
+    if (prop?.isMuted != null) return prop!.isMuted!;
+    return false;
+  }
 
   bool get hasMode => modeProp != null;
 
