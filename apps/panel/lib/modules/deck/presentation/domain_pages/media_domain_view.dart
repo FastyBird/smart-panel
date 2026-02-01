@@ -1892,6 +1892,21 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		);
 	}
 
+	bool _isDeviceActive(MediaDeviceGroup group, MediaActiveStateModel? activeState) {
+		if (activeState == null || activeState.isDeactivated) return false;
+
+		final resolved = activeState.resolved;
+		if (resolved == null) return false;
+
+		final deviceId = group.deviceId;
+		final isResolved = resolved.displayDeviceId == deviceId ||
+				resolved.audioDeviceId == deviceId ||
+				resolved.sourceDeviceId == deviceId ||
+				resolved.remoteDeviceId == deviceId;
+
+		return isResolved && (activeState.isActive || activeState.isActiveWithWarnings);
+	}
+
 	String _deviceStatus(MediaDeviceGroup group, MediaActiveStateModel? activeState) {
 		if (activeState == null || activeState.isDeactivated) return 'Standby';
 
@@ -1917,7 +1932,8 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 
 	Widget _buildDeviceTile(BuildContext context, MediaDeviceGroup group, MediaActiveStateModel? activeState) {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
-
+		final isActive = _isDeviceActive(group, activeState);
+		final accentColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
 
 		final accessories = Row(
 			mainAxisSize: MainAxisSize.min,
@@ -1929,13 +1945,17 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 							width: _scale(22),
 							height: _scale(22),
 							decoration: BoxDecoration(
-								color: isDark ? AppFillColorDark.base : AppFillColorLight.base,
+								color: isActive
+										? accentColor.withValues(alpha: 0.15)
+										: (isDark ? AppFillColorDark.base : AppFillColorLight.base),
 								borderRadius: BorderRadius.circular(AppBorderRadius.base),
 							),
 							child: Icon(
 								capIcon,
 								size: _scale(12),
-								color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
+								color: isActive
+										? accentColor
+										: (isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder),
 							),
 						),
 					);
@@ -1944,7 +1964,9 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 				Icon(
 					MdiIcons.chevronRight,
 					size: _scale(28),
-					color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
+					color: isActive
+							? accentColor
+							: (isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder),
 				),
 			],
 		);
@@ -1958,6 +1980,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 						icon: _deviceGroupIcon(group),
 						name: group.deviceName,
 						status: status,
+						isActive: isActive,
 						onTileTap: () => _navigateToDeviceDetail(group),
 						accessories: accessories,
 					);
@@ -1966,6 +1989,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 					icon: _deviceGroupIcon(group),
 					name: group.deviceName,
 					status: status,
+					isActive: isActive,
 					onTileTap: () => _navigateToDeviceDetail(group),
 					accessories: accessories,
 				);
