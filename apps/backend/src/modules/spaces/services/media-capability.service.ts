@@ -74,6 +74,11 @@ export class MediaCapabilityService {
 		if (capabilities.playbackState) summary.playbackState = capabilities.playbackState;
 		if (capabilities.input) summary.input = capabilities.input;
 		if (capabilities.remote) summary.remote = capabilities.remote;
+		if (capabilities.position) summary.position = capabilities.position;
+		if (capabilities.duration) summary.duration = capabilities.duration;
+		if (capabilities.track) summary.trackMetadata = capabilities.track;
+		if (capabilities.album) summary.album = capabilities.album;
+		if (capabilities.artist) summary.artist = capabilities.artist;
 
 		summary.suggestedEndpointTypes = this.suggestEndpointTypes(device, capabilities);
 
@@ -111,13 +116,13 @@ export class MediaCapabilityService {
 					}
 				}
 
-				if ((isSpeaker || isTelevision) && property.category === PropertyCategory.VOLUME) {
+				if (isSpeaker && property.category === PropertyCategory.VOLUME) {
 					if (!capabilities.volume) {
 						capabilities.volume = { propertyId: property.id, channelId: channel.id, permission };
 					}
 				}
 
-				if ((isSpeaker || isTelevision) && property.category === PropertyCategory.MUTE) {
+				if (isSpeaker && property.category === PropertyCategory.MUTE) {
 					if (!capabilities.mute) {
 						capabilities.mute = { propertyId: property.id, channelId: channel.id, permission };
 					}
@@ -129,9 +134,39 @@ export class MediaCapabilityService {
 					}
 				}
 
-				if (isPlayback && property.category === PropertyCategory.STATE) {
+				if (isPlayback && property.category === PropertyCategory.STATUS) {
 					if (!capabilities.playbackState) {
 						capabilities.playbackState = { propertyId: property.id, channelId: channel.id, permission };
+					}
+				}
+
+				if (isPlayback && property.category === PropertyCategory.POSITION) {
+					if (!capabilities.position) {
+						capabilities.position = { propertyId: property.id, channelId: channel.id, permission };
+					}
+				}
+
+				if (isPlayback && property.category === PropertyCategory.DURATION) {
+					if (!capabilities.duration) {
+						capabilities.duration = { propertyId: property.id, channelId: channel.id, permission };
+					}
+				}
+
+				if (isPlayback && property.category === PropertyCategory.TRACK) {
+					if (!capabilities.track) {
+						capabilities.track = { propertyId: property.id, channelId: channel.id, permission };
+					}
+				}
+
+				if (isPlayback && property.category === PropertyCategory.ALBUM) {
+					if (!capabilities.album) {
+						capabilities.album = { propertyId: property.id, channelId: channel.id, permission };
+					}
+				}
+
+				if (isPlayback && property.category === PropertyCategory.ARTIST) {
+					if (!capabilities.artist) {
+						capabilities.artist = { propertyId: property.id, channelId: channel.id, permission };
 					}
 				}
 

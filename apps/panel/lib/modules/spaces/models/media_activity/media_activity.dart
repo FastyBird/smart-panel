@@ -168,14 +168,16 @@ class MediaCapabilitiesModel {
 			mute: json['mute'] == true,
 			playback: json['playback'] == true,
 			playbackState: json['playback_state'] == true,
-			input: json['input'] == true,
-			remote: json['remote'] == true,
-			trackMetadata: json['track_metadata'] == true,
+			input: json['input_select'] == true || json['input'] == true,
+			remote: json['remote_commands'] == true || json['remote'] == true,
+			trackMetadata: json['track'] == true || json['track_metadata'] == true,
 		);
 	}
 }
 
 /// Links from capabilities to concrete property/command IDs.
+///
+/// Backend returns nested structure: `{ "volume": { "property_id": "uuid" } }`
 class MediaLinksModel {
 	final Map<String, dynamic> raw;
 
@@ -185,11 +187,41 @@ class MediaLinksModel {
 		return MediaLinksModel(raw: json);
 	}
 
-	String? get powerPropertyId => raw['power_property_id'] as String?;
-	String? get volumePropertyId => raw['volume_property_id'] as String?;
-	String? get mutePropertyId => raw['mute_property_id'] as String?;
-	String? get inputPropertyId => raw['input_property_id'] as String?;
-	String? get playbackCommandId => raw['playback_command_id'] as String?;
+	String? _extractPropertyId(String key) {
+		final value = raw[key];
+		if (value is Map<String, dynamic>) {
+			return value['property_id'] as String?;
+		}
+		// Fallback: flat key format (e.g. 'volume_property_id')
+		return raw['${key}_property_id'] as String?;
+	}
+
+	String? get powerPropertyId => _extractPropertyId('power');
+	String? get volumePropertyId => _extractPropertyId('volume');
+	String? get mutePropertyId => _extractPropertyId('mute');
+	String? get inputPropertyId =>
+			_extractPropertyId('input_select') ?? _extractPropertyId('inputSelect') ?? _extractPropertyId('input');
+	String? get playbackCommandId => _extractPropertyId('playback');
+	String? get playbackStatePropertyId =>
+			_extractPropertyId('playback_state') ?? _extractPropertyId('playbackState');
+	String? get trackMetadataPropertyId =>
+			_extractPropertyId('track_metadata') ?? _extractPropertyId('trackMetadata');
+	String? get albumPropertyId => _extractPropertyId('album');
+	String? get artistPropertyId => _extractPropertyId('artist');
+	String? get positionPropertyId => _extractPropertyId('position');
+	String? get durationPropertyId => _extractPropertyId('duration');
+
+	/// Remote commands map: { "remoteKey": "propertyId" }
+	Map<String, String>? get remoteCommands {
+		final remote = raw['remote'];
+		if (remote is Map<String, dynamic>) {
+			final commands = remote['commands'];
+			if (commands is Map<String, dynamic>) {
+				return commands.map((k, v) => MapEntry(k, v.toString()));
+			}
+		}
+		return null;
+	}
 }
 
 /// A derived media endpoint for a space.

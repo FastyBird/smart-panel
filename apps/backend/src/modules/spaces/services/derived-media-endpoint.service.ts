@@ -202,8 +202,8 @@ export class DerivedMediaEndpointService {
 				caps.inputSelect = !!summary.input;
 				caps.volume = false;
 				caps.mute = false;
-				caps.playback = false;
-				caps.track = false;
+				caps.playback = !!summary.playback;
+				caps.track = !!(summary.trackMetadata || summary.artist || summary.album || summary.playbackState);
 				caps.remoteCommands = false;
 				break;
 
@@ -211,9 +211,9 @@ export class DerivedMediaEndpointService {
 				caps.power = !!summary.power;
 				caps.volume = !!summary.volume;
 				caps.mute = !!summary.mute;
-				caps.inputSelect = false;
+				caps.inputSelect = !!summary.input;
 				caps.playback = !!summary.playback;
-				caps.track = false;
+				caps.track = !!(summary.trackMetadata || summary.artist || summary.album || summary.playbackState);
 				caps.remoteCommands = false;
 				break;
 
@@ -221,7 +221,7 @@ export class DerivedMediaEndpointService {
 				caps.power = !!summary.power;
 				caps.inputSelect = !!summary.input;
 				caps.playback = !!summary.playback;
-				caps.track = !!(summary.trackMetadata || summary.playbackState);
+				caps.track = !!(summary.trackMetadata || summary.artist || summary.album || summary.playbackState);
 				caps.volume = false;
 				caps.mute = false;
 				caps.remoteCommands = false;
@@ -258,12 +258,27 @@ export class DerivedMediaEndpointService {
 			case MediaEndpointType.DISPLAY:
 				addLink(summary.power, 'power');
 				addLink(summary.input, 'inputSelect');
+				addLink(summary.playback, 'playback');
+				addLink(summary.playbackState, 'playbackState');
+				addLink(summary.trackMetadata, 'trackMetadata');
+				addLink(summary.album, 'album');
+				addLink(summary.artist, 'artist');
+				addLink(summary.position, 'position');
+				addLink(summary.duration, 'duration');
 				break;
 
 			case MediaEndpointType.AUDIO_OUTPUT:
 				addLink(summary.power, 'power');
 				addLink(summary.volume, 'volume');
 				addLink(summary.mute, 'mute');
+				addLink(summary.input, 'inputSelect');
+				addLink(summary.playback, 'playback');
+				addLink(summary.playbackState, 'playbackState');
+				addLink(summary.trackMetadata, 'trackMetadata');
+				addLink(summary.album, 'album');
+				addLink(summary.artist, 'artist');
+				addLink(summary.position, 'position');
+				addLink(summary.duration, 'duration');
 				break;
 
 			case MediaEndpointType.SOURCE:
@@ -272,6 +287,10 @@ export class DerivedMediaEndpointService {
 				addLink(summary.playback, 'playback');
 				addLink(summary.playbackState, 'playbackState');
 				addLink(summary.trackMetadata, 'trackMetadata');
+				addLink(summary.album, 'album');
+				addLink(summary.artist, 'artist');
+				addLink(summary.position, 'position');
+				addLink(summary.duration, 'duration');
 				break;
 
 			case MediaEndpointType.REMOTE_TARGET:
