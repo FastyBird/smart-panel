@@ -4,12 +4,14 @@ import 'package:fastybird_smart_panel/modules/devices/views/channels/electrical_
 import 'package:fastybird_smart_panel/modules/devices/views/channels/media_input.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/media_playback.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/speaker.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/channels/switcher.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/mixins.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/view.dart';
 
 class SpeakerDeviceView extends DeviceView
     with
         DeviceDeviceInformationMixin,
+        DeviceSwitcherMixin,
         DeviceSpeakerMixin,
         DeviceElectricalEnergyMixin,
         DeviceElectricalPowerMixin,
@@ -35,6 +37,13 @@ class SpeakerDeviceView extends DeviceView
   @override
   DeviceInformationChannelView get deviceInformationChannel =>
       channels.whereType<DeviceInformationChannelView>().first;
+
+  @override
+  SwitcherChannelView? get switcherChannel =>
+      channels.whereType<SwitcherChannelView>().firstOrNull;
+
+  @override
+  bool get isOn => hasSwitcher ? isSwitcherOn : true;
 
   @override
   SpeakerChannelView get speakerChannel =>
