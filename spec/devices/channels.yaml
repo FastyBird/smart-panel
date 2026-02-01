@@ -2969,6 +2969,10 @@ television:
       unit: null
       format: null
     brightness:
+      category: brightness
+      required: false
+      description:
+        en: TV brightness - integrator can choose between percentage or discrete levels
       permissions:
         - rw
       data_types:
