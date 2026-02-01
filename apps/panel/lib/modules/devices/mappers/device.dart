@@ -10,6 +10,7 @@ import 'package:fastybird_smart_panel/modules/devices/presentation/device_detail
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/door.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/doorbell.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/fan.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/game_console.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/generic.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/heating_unit.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/lighting.dart';
@@ -41,6 +42,7 @@ import 'package:fastybird_smart_panel/modules/devices/views/devices/camera.dart'
 import 'package:fastybird_smart_panel/modules/devices/views/devices/door.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/doorbell.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/fan.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/devices/game_console.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/generic.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/heating_unit.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/water_heater.dart';
@@ -163,6 +165,9 @@ Map<DevicesModuleDeviceCategory, DeviceView Function(DeviceModel, List<ChannelVi
   DevicesModuleDeviceCategory.fan: (device, channels, isValid, validationIssues) {
     return _createDeviceView(device, channels, isValid, validationIssues, FanDeviceView.new);
   },
+  DevicesModuleDeviceCategory.gameConsole: (device, channels, isValid, validationIssues) {
+    return _createDeviceView(device, channels, isValid, validationIssues, GameConsoleDeviceView.new);
+  },
   DevicesModuleDeviceCategory.heatingUnit: (device, channels, isValid, validationIssues) {
     return _createDeviceView(device, channels, isValid, validationIssues, HeatingUnitDeviceView.new);
   },
@@ -265,6 +270,9 @@ Map<DevicesModuleDeviceCategory, IconData Function()> deviceIconMappers = {
   },
   DevicesModuleDeviceCategory.fan: () {
     return MdiIcons.fan;
+  },
+  DevicesModuleDeviceCategory.gameConsole: () {
+    return MdiIcons.gamepadVariant;
   },
   DevicesModuleDeviceCategory.heatingUnit: () {
     return MdiIcons.radiator;
@@ -415,6 +423,14 @@ Map<DevicesModuleDeviceCategory, Widget Function(DeviceView)> deviceWidgetMapper
       );
     }
     return FanDeviceDetail(device: device);
+  },
+  DevicesModuleDeviceCategory.gameConsole: (device) {
+    if (device is! GameConsoleDeviceView) {
+      throw ArgumentError(
+        'Device view is not valid for Game Console device detail',
+      );
+    }
+    return GameConsoleDeviceDetail(device: device);
   },
   DevicesModuleDeviceCategory.heatingUnit: (device) {
     if (device is! HeatingUnitDeviceView) {
