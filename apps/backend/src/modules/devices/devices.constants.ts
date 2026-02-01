@@ -205,7 +205,6 @@ export enum PropertyCategory {
 	TEMPERATURE = 'temperature',
 	TILT = 'tilt',
 	TIMER = 'timer',
-	TITLE = 'title',
 	TREBLE = 'treble',
 	TRIGGERED = 'triggered',
 	TRACK = 'track',
