@@ -22,6 +22,7 @@ import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
 import 'package:fastybird_smart_panel/modules/deck/utils/lighting.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/devices/mixins.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/formats.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
@@ -2013,18 +2014,15 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	}
 
 	bool _isDeviceActive(MediaDeviceGroup group, MediaActiveStateModel? activeState) {
-		if (activeState == null || activeState.isDeactivated) return false;
+		final device = _devicesService?.getDevice(group.deviceId);
+		if (device == null) return false;
 
-		final resolved = activeState.resolved;
-		if (resolved == null) return false;
+		if (device is DeviceSwitcherMixin) {
+			final switcher = device as DeviceSwitcherMixin;
+			return switcher.hasSwitcher && switcher.isSwitcherOn;
+		}
 
-		final deviceId = group.deviceId;
-		final isResolved = resolved.displayDeviceId == deviceId ||
-				resolved.audioDeviceId == deviceId ||
-				resolved.sourceDeviceId == deviceId ||
-				resolved.remoteDeviceId == deviceId;
-
-		return isResolved && (activeState.isActive || activeState.isActiveWithWarnings);
+		return false;
 	}
 
 	String _deviceStatus(BuildContext context, MediaDeviceGroup group, MediaActiveStateModel? activeState) {
