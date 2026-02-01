@@ -1254,11 +1254,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 							child: Container(
 								padding: EdgeInsets.all(AppSpacings.pMd),
 								decoration: BoxDecoration(
-									border: Border.all(
-										color: isMuted
-												? (isDark ? AppColorsDark.primary : AppColorsLight.primary)
-												: (isDark ? AppBorderColorDark.light : AppBorderColorLight.light),
-									),
+									border: isMuted || isDark ? null : Border.all(color: AppBorderColorLight.base),
 									borderRadius: BorderRadius.circular(AppBorderRadius.medium),
 								),
 								child: Icon(
@@ -1508,7 +1504,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		} else {
 			bgColor = baseColor;
 			iconColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
-			borderSide = BorderSide(color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light);
+		borderSide = isDark ? BorderSide.none : BorderSide(color: AppBorderColorLight.base);
 		}
 
 		return SizedBox(
@@ -1546,7 +1542,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 
 		return Material(
 			color: isLight ? AppFillColorLight.base : AppFillColorDark.base,
-			borderRadius: BorderRadius.circular(AppBorderRadius.base),
+			borderRadius: BorderRadius.circular(AppBorderRadius.medium),
 			child: InkWell(
 				onTap: _isSending
 						? null
@@ -1554,11 +1550,11 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 								HapticFeedback.lightImpact();
 								_showRemote();
 							},
-				borderRadius: BorderRadius.circular(AppBorderRadius.base),
+				borderRadius: BorderRadius.circular(AppBorderRadius.medium),
 				child: Container(
 					padding: AppSpacings.paddingMd,
 					decoration: BoxDecoration(
-						borderRadius: BorderRadius.circular(AppBorderRadius.base),
+						borderRadius: BorderRadius.circular(AppBorderRadius.medium),
 						border: isLight ? Border.all(color: AppBorderColorLight.base) : null,
 					),
 					child: Row(
