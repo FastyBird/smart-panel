@@ -761,6 +761,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 									child: CustomPaint(
 										painter: _SpinnerArcPainter(
 											color: accentColor,
+											strokeWidth: _scale(3),
 										),
 									),
 								),
@@ -839,7 +840,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 								onPressed: () => _retryActivity(activeState),
 								style: FilledButton.styleFrom(
 									backgroundColor: accentColor,
-									foregroundColor: Colors.white,
+									foregroundColor: AppColors.white,
 									textStyle: TextStyle(fontSize: AppFontSize.small),
 									padding: EdgeInsets.symmetric(
 										horizontal: _scale(AppSpacings.pMd),
@@ -1447,7 +1448,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 									_devicesService!.setPropertyValue(posId, newPos.toInt());
 								},
 								child: Padding(
-									padding: EdgeInsets.symmetric(vertical: _scale(20)),
+									padding: EdgeInsets.symmetric(vertical: AppSpacings.pLg + AppSpacings.pSm),
 									child: bar,
 								),
 							);
@@ -1501,7 +1502,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 
 		if (isActive) {
 			bgColor = accentColor;
-			iconColor = Colors.white;
+			iconColor = AppColors.white;
 			borderSide = BorderSide.none;
 		} else {
 			bgColor = baseColor;
@@ -1664,7 +1665,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 						child: Padding(
 							padding: EdgeInsets.fromLTRB(
 								AppSpacings.pLg,
-								_scale(12),
+								AppSpacings.pMd + AppSpacings.pSm,
 								AppSpacings.pLg,
 								AppSpacings.pXl,
 							),
@@ -1723,10 +1724,10 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 											spacing: AppSpacings.pMd,
 											runSpacing: AppSpacings.pSm,
 											children: [
-												_summaryChip(AppLocalizations.of(context)!.media_failure_summary_total, lastResult.stepsTotal, Colors.grey),
-												_summaryChip(AppLocalizations.of(context)!.media_failure_summary_ok, lastResult.stepsSucceeded, Colors.green),
-												_summaryChip(AppLocalizations.of(context)!.media_failure_summary_errors, lastResult.errorCount, Colors.red),
-												_summaryChip(AppLocalizations.of(context)!.media_failure_summary_warnings, lastResult.warningCount, Colors.orange),
+												_summaryChip(AppLocalizations.of(context)!.media_failure_summary_total, lastResult.stepsTotal, isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder),
+												_summaryChip(AppLocalizations.of(context)!.media_failure_summary_ok, lastResult.stepsSucceeded, isDark ? AppColorsDark.success : AppColorsLight.success),
+												_summaryChip(AppLocalizations.of(context)!.media_failure_summary_errors, lastResult.errorCount, isDark ? AppColorsDark.error : AppColorsLight.error),
+												_summaryChip(AppLocalizations.of(context)!.media_failure_summary_warnings, lastResult.warningCount, isDark ? AppColorsDark.warning : AppColorsLight.warning),
 											],
 										),
 										AppSpacings.spacingLgVertical,
@@ -1738,12 +1739,12 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 											AppLocalizations.of(context)!.media_failure_errors_critical,
 											style: TextStyle(
 												fontWeight: FontWeight.w600,
-												color: Colors.red.shade700,
+												color: isDark ? AppColorsDark.error : AppColorsLight.error,
 												fontSize: AppFontSize.small,
 											),
 										),
 										AppSpacings.spacingSmVertical,
-										...errors.map((f) => _failureRow(f, Colors.red)),
+										...errors.map((f) => _failureRow(f, isDark ? AppColorsDark.error : AppColorsLight.error)),
 										AppSpacings.spacingMdVertical,
 									],
 
@@ -1753,12 +1754,12 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 											AppLocalizations.of(context)!.media_failure_warnings_non_critical,
 											style: TextStyle(
 												fontWeight: FontWeight.w600,
-												color: Colors.orange.shade700,
+												color: isDark ? AppColorsDark.warning : AppColorsLight.warning,
 												fontSize: AppFontSize.small,
 											),
 										),
 										AppSpacings.spacingSmVertical,
-										...warnings.map((f) => _failureRow(f, Colors.orange)),
+										...warnings.map((f) => _failureRow(f, isDark ? AppColorsDark.warning : AppColorsLight.warning)),
 										AppSpacings.spacingMdVertical,
 									],
 
@@ -1768,7 +1769,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 											AppLocalizations.of(context)!.media_failure_warnings_label,
 											style: TextStyle(
 												fontWeight: FontWeight.w600,
-												color: Colors.orange.shade700,
+												color: isDark ? AppColorsDark.warning : AppColorsLight.warning,
 												fontSize: AppFontSize.small,
 											),
 										),
@@ -1857,7 +1858,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 						if (failure.targetDeviceId != null)
 							Text(
 								AppLocalizations.of(context)!.media_failure_device_label(failure.targetDeviceId!),
-								style: TextStyle(fontSize: AppFontSize.extraSmall, color: Colors.grey.shade600),
+								style: TextStyle(fontSize: AppFontSize.extraSmall, color: Theme.of(context).brightness == Brightness.dark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder),
 							),
 					],
 				),
@@ -2413,7 +2414,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 						child: Padding(
 							padding: EdgeInsets.fromLTRB(
 								AppSpacings.pLg,
-								_scale(12),
+								AppSpacings.pMd + AppSpacings.pSm,
 								AppSpacings.pLg,
 								AppSpacings.pXl,
 							),
@@ -2577,15 +2578,16 @@ class _CompositionDisplayItem {
 
 class _SpinnerArcPainter extends CustomPainter {
 	final Color color;
+	final double strokeWidth;
 
-	_SpinnerArcPainter({required this.color});
+	_SpinnerArcPainter({required this.color, this.strokeWidth = 3});
 
 	@override
 	void paint(Canvas canvas, Size size) {
 		final paint = Paint()
 			..color = color
 			..style = PaintingStyle.stroke
-			..strokeWidth = 3
+			..strokeWidth = strokeWidth
 			..strokeCap = StrokeCap.round;
 
 		final rect = Rect.fromLTWH(0, 0, size.width, size.height);
@@ -2594,7 +2596,7 @@ class _SpinnerArcPainter extends CustomPainter {
 
 	@override
 	bool shouldRepaint(covariant _SpinnerArcPainter oldDelegate) {
-		return oldDelegate.color != color;
+		return oldDelegate.color != color || oldDelegate.strokeWidth != strokeWidth;
 	}
 }
 

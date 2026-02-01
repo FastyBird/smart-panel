@@ -155,13 +155,14 @@ class _MediaDeviceDetailPageState extends State<MediaDeviceDetailPage> {
 	}
 
 	Widget _buildDetailOfflineOverlay(BuildContext context) {
+		final isDark = Theme.of(context).brightness == Brightness.dark;
 		final localizations = AppLocalizations.of(context)!;
 
 		return GestureDetector(
 			behavior: HitTestBehavior.opaque,
 			onTap: () {},
 			child: Container(
-				color: Colors.black.withValues(alpha: 0.7),
+				color: isDark ? AppBgColorDark.pageOverlay70 : AppBgColorLight.pageOverlay70,
 				child: Center(
 					child: Card(
 						margin: EdgeInsets.all(AppSpacings.pXl + AppSpacings.pMd),
@@ -170,7 +171,7 @@ class _MediaDeviceDetailPageState extends State<MediaDeviceDetailPage> {
 							child: Column(
 								mainAxisSize: MainAxisSize.min,
 								children: [
-									Icon(MdiIcons.wifiOff, size: _scale(48), color: Colors.grey),
+									Icon(MdiIcons.wifiOff, size: _scale(48), color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder),
 									AppSpacings.spacingLgVertical,
 									Text(
 										localizations.media_detail_connection_lost,
