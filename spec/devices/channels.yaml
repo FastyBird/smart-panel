@@ -2988,38 +2988,6 @@ television:
           format: ["off","low","medium","high","full"]
           description:
             en: Brightness as discrete levels
-    source:
-      category: source
-      required: true
-      description:
-        en: Select input/source using either a standardized identifier or an integration-specific value.
-      permissions:
-        - rw
-      data_types:
-        - id: standard
-          data_type: enum
-          unit: null
-          format: ["hdmi1","hdmi2","hdmi3","hdmi4","hdmi5","hdmi6","arc","earc","tv","cable","satellite","antenna","av1","av2","component","vga","dvi","usb","bluetooth","wifi","airplay","cast","dlna","miracast","app_netflix","app_youtube","app_spotify","app_prime_video","app_disney_plus","app_hbo_max","app_apple_tv","app_plex","app_kodi","other"]
-          step: null
-          description:
-            en: Standardized input/source identifier (recommended for UI).
-        - id: custom
-          data_type: string
-          unit: null
-          format: null
-          step: null
-          description:
-            en: Integration-specific input/source value (fallback).
-    source_label:
-      category: source_label
-      required: false
-      description:
-        en: Human-readable label for the current input/source.
-      permissions:
-        - ro
-      data_type: string
-      unit: null
-      format: null
     remote_key:
       category: remote_key
       required: false
@@ -3080,38 +3048,6 @@ projector:
           format: ["off","low","medium","high","full"]
           description:
             en: Brightness as discrete levels
-    source:
-      category: source
-      required: true
-      description:
-        en: Select input/source using either a standardized identifier or an integration-specific value.
-      permissions:
-        - rw
-      data_types:
-        - id: standard
-          data_type: enum
-          unit: null
-          format: ["hdmi1","hdmi2","hdmi3","hdmi4","hdmi5","hdmi6","arc","earc","tv","cable","satellite","antenna","av1","av2","component","vga","dvi","usb","bluetooth","wifi","airplay","cast","dlna","miracast","app_netflix","app_youtube","app_spotify","app_prime_video","app_disney_plus","app_hbo_max","app_apple_tv","app_plex","app_kodi","other"]
-          step: null
-          description:
-            en: Standardized input/source identifier (recommended for UI).
-        - id: custom
-          data_type: string
-          unit: null
-          format: null
-          step: null
-          description:
-            en: Integration-specific input/source value (fallback).
-    source_label:
-      category: source_label
-      required: false
-      description:
-        en: Human-readable label for the current input/source.
-      permissions:
-        - ro
-      data_type: string
-      unit: null
-      format: null
     remote_key:
       category: remote_key
       required: false

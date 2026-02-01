@@ -171,7 +171,7 @@ export class MediaCapabilityService {
 					}
 				}
 
-				if ((isTelevision || isProjector || isInput) && property.category === PropertyCategory.SOURCE) {
+				if (isInput && property.category === PropertyCategory.SOURCE) {
 					if (!capabilities.input) {
 						capabilities.input = { propertyId: property.id, channelId: channel.id, permission };
 					}

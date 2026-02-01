@@ -43,11 +43,6 @@ class ProjectorDeviceView extends DeviceView
 
   int get projectorMaxBrightness => projectorChannel.maxBrightness;
 
-  String? get projectorSource => projectorChannel.source;
-
-  List<String> get projectorAvailableSources =>
-      projectorChannel.availableSources;
-
   bool get hasProjectorRemoteKey => projectorChannel.hasRemoteKey;
 
   ProjectorRemoteKeyValue? get projectorRemoteKey =>

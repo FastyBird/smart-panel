@@ -7,8 +7,6 @@ import 'package:fastybird_smart_panel/modules/devices/views/channels/view.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/brightness.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/on.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/remote_key.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/properties/source.dart';
-
 class ProjectorChannelView extends ChannelView
     with ChannelOnMixin, ChannelBrightnessMixin {
   ProjectorChannelView({
@@ -32,37 +30,8 @@ class ProjectorChannelView extends ChannelView
   BrightnessChannelPropertyView? get brightnessProp =>
       properties.whereType<BrightnessChannelPropertyView>().firstOrNull;
 
-  SourceChannelPropertyView get sourceProp =>
-      properties.whereType<SourceChannelPropertyView>().first;
-
   RemoteKeyChannelPropertyView? get remoteKeyProp =>
       properties.whereType<RemoteKeyChannelPropertyView>().firstOrNull;
-
-  String? get source {
-    final ValueType? value = sourceProp.value;
-
-    if (value is StringValueType) {
-      return value.value;
-    }
-
-    final ValueType? defaultValue = sourceProp.defaultValue;
-
-    if (defaultValue is StringValueType) {
-      return defaultValue.value;
-    }
-
-    return null;
-  }
-
-  List<String> get availableSources {
-    final FormatType? format = sourceProp.format;
-
-    if (format is StringListFormatType) {
-      return format.value;
-    }
-
-    return [];
-  }
 
   bool get hasRemoteKey => remoteKeyProp != null;
 

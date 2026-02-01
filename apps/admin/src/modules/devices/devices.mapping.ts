@@ -253,6 +253,8 @@ const deviceChannelsSortingSpecification: Record<DevicesModuleDeviceCategory, De
 	[DevicesModuleDeviceCategory.television]: [
 		DevicesModuleChannelCategory.television,
 		DevicesModuleChannelCategory.speaker,
+		DevicesModuleChannelCategory.media_playback,
+		DevicesModuleChannelCategory.media_input,
 		DevicesModuleChannelCategory.device_information,
 	],
 	[DevicesModuleDeviceCategory.thermostat]: [
