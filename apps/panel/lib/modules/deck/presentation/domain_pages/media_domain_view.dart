@@ -31,6 +31,48 @@ import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 import 'package:provider/provider.dart';
 
+String _mediaInputSourceLabel(BuildContext context, String source) {
+	final localizations = AppLocalizations.of(context)!;
+	final key = 'media_input_$source';
+	switch (key) {
+		case 'media_input_hdmi1': return localizations.media_input_hdmi1;
+		case 'media_input_hdmi2': return localizations.media_input_hdmi2;
+		case 'media_input_hdmi3': return localizations.media_input_hdmi3;
+		case 'media_input_hdmi4': return localizations.media_input_hdmi4;
+		case 'media_input_hdmi5': return localizations.media_input_hdmi5;
+		case 'media_input_hdmi6': return localizations.media_input_hdmi6;
+		case 'media_input_arc': return localizations.media_input_arc;
+		case 'media_input_earc': return localizations.media_input_earc;
+		case 'media_input_tv': return localizations.media_input_tv;
+		case 'media_input_cable': return localizations.media_input_cable;
+		case 'media_input_satellite': return localizations.media_input_satellite;
+		case 'media_input_antenna': return localizations.media_input_antenna;
+		case 'media_input_av1': return localizations.media_input_av1;
+		case 'media_input_av2': return localizations.media_input_av2;
+		case 'media_input_component': return localizations.media_input_component;
+		case 'media_input_vga': return localizations.media_input_vga;
+		case 'media_input_dvi': return localizations.media_input_dvi;
+		case 'media_input_usb': return localizations.media_input_usb;
+		case 'media_input_bluetooth': return localizations.media_input_bluetooth;
+		case 'media_input_wifi': return localizations.media_input_wifi;
+		case 'media_input_airplay': return localizations.media_input_airplay;
+		case 'media_input_cast': return localizations.media_input_cast;
+		case 'media_input_dlna': return localizations.media_input_dlna;
+		case 'media_input_miracast': return localizations.media_input_miracast;
+		case 'media_input_app_netflix': return localizations.media_input_app_netflix;
+		case 'media_input_app_youtube': return localizations.media_input_app_youtube;
+		case 'media_input_app_spotify': return localizations.media_input_app_spotify;
+		case 'media_input_app_prime_video': return localizations.media_input_app_prime_video;
+		case 'media_input_app_disney_plus': return localizations.media_input_app_disney_plus;
+		case 'media_input_app_hbo_max': return localizations.media_input_app_hbo_max;
+		case 'media_input_app_apple_tv': return localizations.media_input_app_apple_tv;
+		case 'media_input_app_plex': return localizations.media_input_app_plex;
+		case 'media_input_app_kodi': return localizations.media_input_app_kodi;
+		case 'media_input_other': return localizations.media_input_other;
+		default: return source;
+	}
+}
+
 class MediaDomainViewPage extends StatefulWidget {
 	final DomainViewItem viewItem;
 
@@ -801,10 +843,26 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			// Strip endpoint type suffix like "(Display)", "(Audio Output)", "(Source)", "(Remote Target)"
 			name = name.replaceFirst(RegExp(r'\s*\((Display|Audio Output|Source|Remote Target)\)\s*$'), '');
 			final isOnline = device?.isOnline ?? true;
+
+			// Resolve input property ID for this role's endpoint
+			String? inputPropId;
+			switch (entry.role) {
+				case 'Display':
+					inputPropId = targets.displayTarget?.links.inputPropertyId;
+					break;
+				case 'Audio':
+					inputPropId = targets.volumeTarget?.links.inputPropertyId;
+					break;
+				case 'Source':
+					inputPropId = targets.playbackTarget?.links.inputPropertyId;
+					break;
+			}
+
 			displayItems.add(_CompositionDisplayItem(
 				role: entry.role,
 				displayName: name,
 				isOnline: isOnline,
+				inputPropertyId: inputPropId,
 			));
 			if (!isOnline) offlineRoles.add(entry.role);
 		}
@@ -954,7 +1012,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	Widget _buildCompositionPreview(BuildContext context, List<_CompositionDisplayItem> items) {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 		final isLight = !isDark;
-
+		final accentColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
 		final warningColor = isDark ? AppColorsDark.warning : AppColorsLight.warning;
 
 		return Container(
@@ -971,6 +1029,19 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 					final nameColor = item.isOnline
 							? (isLight ? AppTextColorLight.primary : AppTextColorDark.primary)
 							: warningColor;
+
+					// Resolve input source value and format
+					String? inputValue;
+					List<String>? inputOptions;
+					if (item.inputPropertyId != null && _devicesService != null) {
+						final prop = _devicesService!.getChannelProperty(item.inputPropertyId!);
+						if (prop?.value is StringValueType) {
+							inputValue = (prop!.value as StringValueType).value;
+						}
+						if (prop?.format is StringListFormatType) {
+							inputOptions = (prop!.format as StringListFormatType).value;
+						}
+					}
 
 					return Row(
 						children: [
@@ -1013,6 +1084,39 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 									],
 								),
 							),
+							// Input source on the right
+							if (inputValue != null && inputOptions != null && inputOptions.isNotEmpty)
+								GestureDetector(
+									onTap: _isSending
+											? null
+											: () => _showInputSelectorSheet(inputOptions!, inputValue, item.inputPropertyId!),
+									child: Row(
+										mainAxisSize: MainAxisSize.min,
+										children: [
+											Text(
+												_inputSourceLabel(context, inputValue),
+												style: TextStyle(
+													fontSize: AppFontSize.extraSmall,
+													color: accentColor,
+												),
+											),
+											AppSpacings.spacingXsHorizontal,
+											Icon(
+												MdiIcons.chevronRight,
+												size: _scale(14),
+												color: accentColor,
+											),
+										],
+									),
+								)
+							else if (inputValue != null)
+								Text(
+									_inputSourceLabel(context, inputValue),
+									style: TextStyle(
+										fontSize: AppFontSize.extraSmall,
+										color: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
+									),
+								),
 						],
 					);
 				}).toList(),
@@ -1093,56 +1197,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 					),
 				),
 			],
-		);
-	}
-
-	Widget _buildInputControl(BuildContext context) {
-		final isDark = Theme.of(context).brightness == Brightness.dark;
-		final accentColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
-
-		// TODO: Replace with real input sources when API is available
-		return GestureDetector(
-			onTap: _isSending ? null : () => _showInputSelector(),
-			child: Container(
-				padding: AppSpacings.paddingMd,
-				decoration: BoxDecoration(
-					color: isDark ? AppFillColorDark.base : AppFillColorLight.base,
-					border: Border.all(color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light),
-					borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-				),
-				child: Row(
-					children: [
-						Icon(
-							MdiIcons.audioInputStereoMinijack,
-							size: _scale(18),
-							color: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
-						),
-						AppSpacings.spacingMdHorizontal,
-						Text(
-							'Input',
-							style: TextStyle(
-								fontSize: AppFontSize.small,
-								fontWeight: FontWeight.w500,
-								color: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
-							),
-						),
-						const Spacer(),
-						Text(
-							'Select',
-							style: TextStyle(
-								fontSize: AppFontSize.small,
-								color: accentColor,
-							),
-						),
-						AppSpacings.spacingXsHorizontal,
-						Icon(
-							MdiIcons.chevronRight,
-							size: _scale(16),
-							color: accentColor,
-						),
-					],
-				),
-			),
 		);
 	}
 
@@ -1798,6 +1852,8 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	}
 
 
+	String _inputSourceLabel(BuildContext context, String source) => _mediaInputSourceLabel(context, source);
+
 	void _navigateToDeviceDetail(MediaDeviceGroup group) {
 		Navigator.push(
 			context,
@@ -1850,34 +1906,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		_devicesService!.setPropertyValue(propId, newMuted);
 	}
 
-	void _showInputSelector() {
-		final targets = _mediaService?.resolveControlTargets(_roomId);
-		final propId = targets?.inputTarget?.links.inputPropertyId;
-		if (propId == null || _devicesService == null) return;
-
-		final prop = _devicesService!.getChannelProperty(propId);
-		final format = prop?.format;
-
-		// Build list of available input sources from the property format
-		List<String> sources = [];
-		if (format is StringListFormatType) {
-			sources = format.value;
-		}
-
-		if (sources.isEmpty) {
-			ScaffoldMessenger.of(context).showSnackBar(
-				const SnackBar(content: Text('No input sources available')),
-			);
-			return;
-		}
-
-		final currentValue = prop?.value is StringValueType
-				? (prop!.value as StringValueType).value
-				: null;
-
-		_showInputSelectorSheet(sources, currentValue, propId);
-	}
-
 	void _showInputSelectorSheet(List<String> sources, String? currentValue, String propId) {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 		final accentColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
@@ -1928,7 +1956,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 									...sources.map((source) {
 										final isActive = source == currentValue;
 										return ListTile(
-											title: Text(source),
+											title: Text(_inputSourceLabel(context, source)),
 											leading: Icon(
 												MdiIcons.audioInputStereoMinijack,
 												color: isActive ? accentColor : null,
@@ -2010,11 +2038,13 @@ class _CompositionDisplayItem {
 	final String role;
 	final String displayName;
 	final bool isOnline;
+	final String? inputPropertyId;
 
 	const _CompositionDisplayItem({
 		required this.role,
 		required this.displayName,
 		required this.isOnline,
+		this.inputPropertyId,
 	});
 }
 
@@ -2383,7 +2413,7 @@ class _MediaDeviceDetailPageState extends State<MediaDeviceDetailPage> {
 				const Spacer(),
 				if (currentInput != null)
 					Text(
-						currentInput,
+						_mediaInputSourceLabel(context, currentInput),
 						style: TextStyle(
 							fontSize: AppFontSize.small,
 							color: Theme.of(context).brightness == Brightness.dark
@@ -2418,7 +2448,7 @@ class _MediaDeviceDetailPageState extends State<MediaDeviceDetailPage> {
 						children: sources.map((source) {
 							final isActive = source == currentValue;
 							return ListTile(
-								title: Text(source),
+								title: Text(_mediaInputSourceLabel(context, source)),
 								leading: Icon(MdiIcons.audioInputStereoMinijack, color: isActive ? accentColor : null),
 								trailing: isActive ? Icon(MdiIcons.check, color: accentColor) : null,
 								onTap: () {

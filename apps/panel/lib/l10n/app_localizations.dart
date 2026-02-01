@@ -4090,6 +4090,210 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Offline'**
   String get sensor_freshness_offline;
+
+  /// Label for HDMI 1 input source
+  ///
+  /// In en, this message translates to:
+  /// **'HDMI 1'**
+  String get media_input_hdmi1;
+
+  /// Label for HDMI 2 input source
+  ///
+  /// In en, this message translates to:
+  /// **'HDMI 2'**
+  String get media_input_hdmi2;
+
+  /// Label for HDMI 3 input source
+  ///
+  /// In en, this message translates to:
+  /// **'HDMI 3'**
+  String get media_input_hdmi3;
+
+  /// Label for HDMI 4 input source
+  ///
+  /// In en, this message translates to:
+  /// **'HDMI 4'**
+  String get media_input_hdmi4;
+
+  /// Label for HDMI 5 input source
+  ///
+  /// In en, this message translates to:
+  /// **'HDMI 5'**
+  String get media_input_hdmi5;
+
+  /// Label for HDMI 6 input source
+  ///
+  /// In en, this message translates to:
+  /// **'HDMI 6'**
+  String get media_input_hdmi6;
+
+  /// Label for ARC (Audio Return Channel) input source
+  ///
+  /// In en, this message translates to:
+  /// **'ARC'**
+  String get media_input_arc;
+
+  /// Label for eARC (Enhanced Audio Return Channel) input source
+  ///
+  /// In en, this message translates to:
+  /// **'eARC'**
+  String get media_input_earc;
+
+  /// Label for TV tuner input source
+  ///
+  /// In en, this message translates to:
+  /// **'TV'**
+  String get media_input_tv;
+
+  /// Label for cable TV input source
+  ///
+  /// In en, this message translates to:
+  /// **'Cable'**
+  String get media_input_cable;
+
+  /// Label for satellite TV input source
+  ///
+  /// In en, this message translates to:
+  /// **'Satellite'**
+  String get media_input_satellite;
+
+  /// Label for antenna/OTA input source
+  ///
+  /// In en, this message translates to:
+  /// **'Antenna'**
+  String get media_input_antenna;
+
+  /// Label for AV 1 (composite) input source
+  ///
+  /// In en, this message translates to:
+  /// **'AV 1'**
+  String get media_input_av1;
+
+  /// Label for AV 2 (composite) input source
+  ///
+  /// In en, this message translates to:
+  /// **'AV 2'**
+  String get media_input_av2;
+
+  /// Label for component video input source
+  ///
+  /// In en, this message translates to:
+  /// **'Component'**
+  String get media_input_component;
+
+  /// Label for VGA input source
+  ///
+  /// In en, this message translates to:
+  /// **'VGA'**
+  String get media_input_vga;
+
+  /// Label for DVI input source
+  ///
+  /// In en, this message translates to:
+  /// **'DVI'**
+  String get media_input_dvi;
+
+  /// Label for USB input source
+  ///
+  /// In en, this message translates to:
+  /// **'USB'**
+  String get media_input_usb;
+
+  /// Label for Bluetooth input source
+  ///
+  /// In en, this message translates to:
+  /// **'Bluetooth'**
+  String get media_input_bluetooth;
+
+  /// Label for Wi-Fi input source
+  ///
+  /// In en, this message translates to:
+  /// **'Wi-Fi'**
+  String get media_input_wifi;
+
+  /// Label for Apple AirPlay input source
+  ///
+  /// In en, this message translates to:
+  /// **'AirPlay'**
+  String get media_input_airplay;
+
+  /// Label for Google Cast input source
+  ///
+  /// In en, this message translates to:
+  /// **'Chromecast'**
+  String get media_input_cast;
+
+  /// Label for DLNA input source
+  ///
+  /// In en, this message translates to:
+  /// **'DLNA'**
+  String get media_input_dlna;
+
+  /// Label for Miracast input source
+  ///
+  /// In en, this message translates to:
+  /// **'Miracast'**
+  String get media_input_miracast;
+
+  /// Label for Netflix app input source
+  ///
+  /// In en, this message translates to:
+  /// **'Netflix'**
+  String get media_input_app_netflix;
+
+  /// Label for YouTube app input source
+  ///
+  /// In en, this message translates to:
+  /// **'YouTube'**
+  String get media_input_app_youtube;
+
+  /// Label for Spotify app input source
+  ///
+  /// In en, this message translates to:
+  /// **'Spotify'**
+  String get media_input_app_spotify;
+
+  /// Label for Amazon Prime Video app input source
+  ///
+  /// In en, this message translates to:
+  /// **'Prime Video'**
+  String get media_input_app_prime_video;
+
+  /// Label for Disney+ app input source
+  ///
+  /// In en, this message translates to:
+  /// **'Disney+'**
+  String get media_input_app_disney_plus;
+
+  /// Label for HBO Max app input source
+  ///
+  /// In en, this message translates to:
+  /// **'HBO Max'**
+  String get media_input_app_hbo_max;
+
+  /// Label for Apple TV app input source
+  ///
+  /// In en, this message translates to:
+  /// **'Apple TV'**
+  String get media_input_app_apple_tv;
+
+  /// Label for Plex app input source
+  ///
+  /// In en, this message translates to:
+  /// **'Plex'**
+  String get media_input_app_plex;
+
+  /// Label for Kodi app input source
+  ///
+  /// In en, this message translates to:
+  /// **'Kodi'**
+  String get media_input_app_kodi;
+
+  /// Label for unknown/other input source
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get media_input_other;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

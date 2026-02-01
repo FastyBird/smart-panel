@@ -2775,5 +2775,141 @@
   "sensor_freshness_offline": "Offline",
   "@sensor_freshness_offline": {
     "description": "Label shown when sensor device is offline"
+  },
+  "media_input_hdmi1": "HDMI 1",
+  "@media_input_hdmi1": {
+    "description": "Label for HDMI 1 input source"
+  },
+  "media_input_hdmi2": "HDMI 2",
+  "@media_input_hdmi2": {
+    "description": "Label for HDMI 2 input source"
+  },
+  "media_input_hdmi3": "HDMI 3",
+  "@media_input_hdmi3": {
+    "description": "Label for HDMI 3 input source"
+  },
+  "media_input_hdmi4": "HDMI 4",
+  "@media_input_hdmi4": {
+    "description": "Label for HDMI 4 input source"
+  },
+  "media_input_hdmi5": "HDMI 5",
+  "@media_input_hdmi5": {
+    "description": "Label for HDMI 5 input source"
+  },
+  "media_input_hdmi6": "HDMI 6",
+  "@media_input_hdmi6": {
+    "description": "Label for HDMI 6 input source"
+  },
+  "media_input_arc": "ARC",
+  "@media_input_arc": {
+    "description": "Label for ARC (Audio Return Channel) input source"
+  },
+  "media_input_earc": "eARC",
+  "@media_input_earc": {
+    "description": "Label for eARC (Enhanced Audio Return Channel) input source"
+  },
+  "media_input_tv": "TV",
+  "@media_input_tv": {
+    "description": "Label for TV tuner input source"
+  },
+  "media_input_cable": "Cable",
+  "@media_input_cable": {
+    "description": "Label for cable TV input source"
+  },
+  "media_input_satellite": "Satellite",
+  "@media_input_satellite": {
+    "description": "Label for satellite TV input source"
+  },
+  "media_input_antenna": "Antenna",
+  "@media_input_antenna": {
+    "description": "Label for antenna/OTA input source"
+  },
+  "media_input_av1": "AV 1",
+  "@media_input_av1": {
+    "description": "Label for AV 1 (composite) input source"
+  },
+  "media_input_av2": "AV 2",
+  "@media_input_av2": {
+    "description": "Label for AV 2 (composite) input source"
+  },
+  "media_input_component": "Component",
+  "@media_input_component": {
+    "description": "Label for component video input source"
+  },
+  "media_input_vga": "VGA",
+  "@media_input_vga": {
+    "description": "Label for VGA input source"
+  },
+  "media_input_dvi": "DVI",
+  "@media_input_dvi": {
+    "description": "Label for DVI input source"
+  },
+  "media_input_usb": "USB",
+  "@media_input_usb": {
+    "description": "Label for USB input source"
+  },
+  "media_input_bluetooth": "Bluetooth",
+  "@media_input_bluetooth": {
+    "description": "Label for Bluetooth input source"
+  },
+  "media_input_wifi": "Wi-Fi",
+  "@media_input_wifi": {
+    "description": "Label for Wi-Fi input source"
+  },
+  "media_input_airplay": "AirPlay",
+  "@media_input_airplay": {
+    "description": "Label for Apple AirPlay input source"
+  },
+  "media_input_cast": "Chromecast",
+  "@media_input_cast": {
+    "description": "Label for Google Cast input source"
+  },
+  "media_input_dlna": "DLNA",
+  "@media_input_dlna": {
+    "description": "Label for DLNA input source"
+  },
+  "media_input_miracast": "Miracast",
+  "@media_input_miracast": {
+    "description": "Label for Miracast input source"
+  },
+  "media_input_app_netflix": "Netflix",
+  "@media_input_app_netflix": {
+    "description": "Label for Netflix app input source"
+  },
+  "media_input_app_youtube": "YouTube",
+  "@media_input_app_youtube": {
+    "description": "Label for YouTube app input source"
+  },
+  "media_input_app_spotify": "Spotify",
+  "@media_input_app_spotify": {
+    "description": "Label for Spotify app input source"
+  },
+  "media_input_app_prime_video": "Prime Video",
+  "@media_input_app_prime_video": {
+    "description": "Label for Amazon Prime Video app input source"
+  },
+  "media_input_app_disney_plus": "Disney+",
+  "@media_input_app_disney_plus": {
+    "description": "Label for Disney+ app input source"
+  },
+  "media_input_app_hbo_max": "HBO Max",
+  "@media_input_app_hbo_max": {
+    "description": "Label for HBO Max app input source"
+  },
+  "media_input_app_apple_tv": "Apple TV",
+  "@media_input_app_apple_tv": {
+    "description": "Label for Apple TV app input source"
+  },
+  "media_input_app_plex": "Plex",
+  "@media_input_app_plex": {
+    "description": "Label for Plex app input source"
+  },
+  "media_input_app_kodi": "Kodi",
+  "@media_input_app_kodi": {
+    "description": "Label for Kodi app input source"
+  },
+  "media_input_other": "Other",
+  "@media_input_other": {
+    "description": "Label for unknown/other input source"
   }
 }

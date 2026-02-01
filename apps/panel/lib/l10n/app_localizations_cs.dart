@@ -2156,4 +2156,106 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get sensor_freshness_offline => 'Offline';
+
+  @override
+  String get media_input_hdmi1 => 'HDMI 1';
+
+  @override
+  String get media_input_hdmi2 => 'HDMI 2';
+
+  @override
+  String get media_input_hdmi3 => 'HDMI 3';
+
+  @override
+  String get media_input_hdmi4 => 'HDMI 4';
+
+  @override
+  String get media_input_hdmi5 => 'HDMI 5';
+
+  @override
+  String get media_input_hdmi6 => 'HDMI 6';
+
+  @override
+  String get media_input_arc => 'ARC';
+
+  @override
+  String get media_input_earc => 'eARC';
+
+  @override
+  String get media_input_tv => 'TV';
+
+  @override
+  String get media_input_cable => 'Kabel';
+
+  @override
+  String get media_input_satellite => 'Satelit';
+
+  @override
+  String get media_input_antenna => 'Anténa';
+
+  @override
+  String get media_input_av1 => 'AV 1';
+
+  @override
+  String get media_input_av2 => 'AV 2';
+
+  @override
+  String get media_input_component => 'Komponentní';
+
+  @override
+  String get media_input_vga => 'VGA';
+
+  @override
+  String get media_input_dvi => 'DVI';
+
+  @override
+  String get media_input_usb => 'USB';
+
+  @override
+  String get media_input_bluetooth => 'Bluetooth';
+
+  @override
+  String get media_input_wifi => 'Wi-Fi';
+
+  @override
+  String get media_input_airplay => 'AirPlay';
+
+  @override
+  String get media_input_cast => 'Chromecast';
+
+  @override
+  String get media_input_dlna => 'DLNA';
+
+  @override
+  String get media_input_miracast => 'Miracast';
+
+  @override
+  String get media_input_app_netflix => 'Netflix';
+
+  @override
+  String get media_input_app_youtube => 'YouTube';
+
+  @override
+  String get media_input_app_spotify => 'Spotify';
+
+  @override
+  String get media_input_app_prime_video => 'Prime Video';
+
+  @override
+  String get media_input_app_disney_plus => 'Disney+';
+
+  @override
+  String get media_input_app_hbo_max => 'HBO Max';
+
+  @override
+  String get media_input_app_apple_tv => 'Apple TV';
+
+  @override
+  String get media_input_app_plex => 'Plex';
+
+  @override
+  String get media_input_app_kodi => 'Kodi';
+
+  @override
+  String get media_input_other => 'Ostatní';
 }
