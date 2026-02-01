@@ -7,6 +7,7 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/number_format.dart';
+import 'package:fastybird_smart_panel/core/utils/color.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
@@ -758,11 +759,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
         : hasHealthIssues
             ? (isDark ? AppColorsDark.warning : AppColorsLight.warning)
             : (isDark ? AppColorsDark.primary : AppColorsLight.primary);
-    final accentBgColor = hasAlerts
-        ? (isDark ? AppColorsDark.dangerLight5 : AppColorsLight.dangerLight5)
-        : hasHealthIssues
-            ? (isDark ? AppColorsDark.warningLight5 : AppColorsLight.warningLight5)
-            : (isDark ? AppColorsDark.primaryLight5 : AppColorsLight.primaryLight5);
+    final accentBgColor = getSemanticBackgroundColor(context, accentColor);
 
     String subtitle;
     if (hasAlerts) {
@@ -928,7 +925,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
             width: _scale(36),
             height: _scale(36),
             decoration: BoxDecoration(
-              color: dangerColor.withValues(alpha: 0.15),
+              color: getSemanticBackgroundColor(context, dangerColor),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(MdiIcons.alertOutline, color: dangerColor, size: _scale(20)),
@@ -1249,7 +1246,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
                   width: _scale(36),
                   height: _scale(36),
                   decoration: BoxDecoration(
-                    color: isAlert ? dangerColor.withValues(alpha: 0.15) : categoryBgColor,
+                    color: isAlert ? getSemanticBackgroundColor(context, dangerColor) : categoryBgColor,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
@@ -1686,35 +1683,7 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
   }
 
   Color _getCategoryBgColor(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    switch (_sensor.category) {
-      case SensorCategory.temperature:
-        return isDark ? AppColorsDark.infoLight5 : AppColorsLight.infoLight5;
-      case SensorCategory.humidity:
-        return isDark
-            ? AppColorsDark.successLight5
-            : AppColorsLight.successLight5;
-      case SensorCategory.airQuality:
-        return isDark
-            ? AppColorsDark.successLight5
-            : AppColorsLight.successLight5;
-      case SensorCategory.motion:
-        return isDark
-            ? AppColorsDark.warningLight5
-            : AppColorsLight.warningLight5;
-      case SensorCategory.safety:
-        return isDark
-            ? AppColorsDark.dangerLight5
-            : AppColorsLight.dangerLight5;
-      case SensorCategory.light:
-        return isDark
-            ? AppColorsDark.warningLight5
-            : AppColorsLight.warningLight5;
-      case SensorCategory.energy:
-        return isDark
-            ? AppColorsDark.primaryLight5
-            : AppColorsLight.primaryLight5;
-    }
+    return getSemanticBackgroundColor(context, _getCategoryColor(context));
   }
 
   @override

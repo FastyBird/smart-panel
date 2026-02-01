@@ -133,12 +133,44 @@ export class DerivedMediaLinksModel {
 
 	@ApiPropertyOptional({
 		name: 'track_metadata',
-		description: 'Track metadata property link',
+		description: 'Track name property link',
 		type: () => DerivedMediaPropertyLinkModel,
 	})
 	@Expose({ name: 'track_metadata' })
 	@Type(() => DerivedMediaPropertyLinkModel)
 	trackMetadata?: DerivedMediaPropertyLinkModel;
+
+	@ApiPropertyOptional({
+		description: 'Album name property link',
+		type: () => DerivedMediaPropertyLinkModel,
+	})
+	@Expose()
+	@Type(() => DerivedMediaPropertyLinkModel)
+	album?: DerivedMediaPropertyLinkModel;
+
+	@ApiPropertyOptional({
+		description: 'Artist name property link',
+		type: () => DerivedMediaPropertyLinkModel,
+	})
+	@Expose()
+	@Type(() => DerivedMediaPropertyLinkModel)
+	artist?: DerivedMediaPropertyLinkModel;
+
+	@ApiPropertyOptional({
+		description: 'Playback position property link',
+		type: () => DerivedMediaPropertyLinkModel,
+	})
+	@Expose()
+	@Type(() => DerivedMediaPropertyLinkModel)
+	position?: DerivedMediaPropertyLinkModel;
+
+	@ApiPropertyOptional({
+		description: 'Track duration property link',
+		type: () => DerivedMediaPropertyLinkModel,
+	})
+	@Expose()
+	@Type(() => DerivedMediaPropertyLinkModel)
+	duration?: DerivedMediaPropertyLinkModel;
 
 	@ApiPropertyOptional({
 		description: 'Remote control command links',

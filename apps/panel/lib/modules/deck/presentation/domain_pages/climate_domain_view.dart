@@ -5,6 +5,7 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/number_format.dart';
+import 'package:fastybird_smart_panel/core/utils/color.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/circular_control_dial.dart';
 import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
@@ -1456,21 +1457,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   }
 
   Color _getModeLightColor(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    switch (_state.mode) {
-      case ClimateMode.off:
-        return isDark ? AppFillColorDark.light : AppFillColorLight.light;
-      case ClimateMode.heat:
-        return isDark
-            ? AppColorsDark.warningLight5
-            : AppColorsLight.warningLight5;
-      case ClimateMode.cool:
-        return isDark ? AppColorsDark.infoLight5 : AppColorsLight.infoLight5;
-      case ClimateMode.auto:
-        return isDark
-            ? AppColorsDark.successLight5
-            : AppColorsLight.successLight5;
-    }
+    return getSemanticBackgroundColor(context, _getModeColor(context));
   }
 
   Color _getSensorColor(BuildContext context, String type) {

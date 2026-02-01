@@ -137,12 +137,44 @@ export class MediaCapabilitySummaryModel {
 
 	@ApiPropertyOptional({
 		name: 'track_metadata',
-		description: 'Track metadata capability mapping',
+		description: 'Track name capability mapping',
 		type: () => MediaCapabilityMappingModel,
 	})
 	@Expose({ name: 'track_metadata' })
 	@Type(() => MediaCapabilityMappingModel)
 	trackMetadata?: MediaCapabilityMappingModel;
+
+	@ApiPropertyOptional({
+		description: 'Album name capability mapping',
+		type: () => MediaCapabilityMappingModel,
+	})
+	@Expose()
+	@Type(() => MediaCapabilityMappingModel)
+	album?: MediaCapabilityMappingModel;
+
+	@ApiPropertyOptional({
+		description: 'Artist name capability mapping',
+		type: () => MediaCapabilityMappingModel,
+	})
+	@Expose()
+	@Type(() => MediaCapabilityMappingModel)
+	artist?: MediaCapabilityMappingModel;
+
+	@ApiPropertyOptional({
+		description: 'Playback position capability mapping',
+		type: () => MediaCapabilityMappingModel,
+	})
+	@Expose()
+	@Type(() => MediaCapabilityMappingModel)
+	position?: MediaCapabilityMappingModel;
+
+	@ApiPropertyOptional({
+		description: 'Track duration capability mapping',
+		type: () => MediaCapabilityMappingModel,
+	})
+	@Expose()
+	@Type(() => MediaCapabilityMappingModel)
+	duration?: MediaCapabilityMappingModel;
 
 	@ApiProperty({
 		name: 'suggested_endpoint_types',

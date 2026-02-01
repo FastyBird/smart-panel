@@ -2156,4 +2156,339 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get sensor_freshness_offline => 'Offline';
+
+  @override
+  String get media_input_select_title => 'Vybrat vstup';
+
+  @override
+  String get media_input_hdmi1 => 'HDMI 1';
+
+  @override
+  String get media_input_hdmi2 => 'HDMI 2';
+
+  @override
+  String get media_input_hdmi3 => 'HDMI 3';
+
+  @override
+  String get media_input_hdmi4 => 'HDMI 4';
+
+  @override
+  String get media_input_hdmi5 => 'HDMI 5';
+
+  @override
+  String get media_input_hdmi6 => 'HDMI 6';
+
+  @override
+  String get media_input_arc => 'ARC';
+
+  @override
+  String get media_input_earc => 'eARC';
+
+  @override
+  String get media_input_tv => 'TV';
+
+  @override
+  String get media_input_cable => 'Kabel';
+
+  @override
+  String get media_input_satellite => 'Satelit';
+
+  @override
+  String get media_input_antenna => 'Anténa';
+
+  @override
+  String get media_input_av1 => 'AV 1';
+
+  @override
+  String get media_input_av2 => 'AV 2';
+
+  @override
+  String get media_input_component => 'Komponentní';
+
+  @override
+  String get media_input_vga => 'VGA';
+
+  @override
+  String get media_input_dvi => 'DVI';
+
+  @override
+  String get media_input_usb => 'USB';
+
+  @override
+  String get media_input_bluetooth => 'Bluetooth';
+
+  @override
+  String get media_input_wifi => 'Wi-Fi';
+
+  @override
+  String get media_input_airplay => 'AirPlay';
+
+  @override
+  String get media_input_cast => 'Chromecast';
+
+  @override
+  String get media_input_dlna => 'DLNA';
+
+  @override
+  String get media_input_miracast => 'Miracast';
+
+  @override
+  String get media_input_app_netflix => 'Netflix';
+
+  @override
+  String get media_input_app_youtube => 'YouTube';
+
+  @override
+  String get media_input_app_spotify => 'Spotify';
+
+  @override
+  String get media_input_app_prime_video => 'Prime Video';
+
+  @override
+  String get media_input_app_disney_plus => 'Disney+';
+
+  @override
+  String get media_input_app_hbo_max => 'HBO Max';
+
+  @override
+  String get media_input_app_apple_tv => 'Apple TV';
+
+  @override
+  String get media_input_app_plex => 'Plex';
+
+  @override
+  String get media_input_app_kodi => 'Kodi';
+
+  @override
+  String get media_input_other => 'Ostatní';
+
+  @override
+  String get media_off_title => 'Média vypnuta';
+
+  @override
+  String get media_off_subtitle => 'Vyberte aktivitu pro zahájení';
+
+  @override
+  String media_starting_activity(String activityName) {
+    return 'Spouštění $activityName...';
+  }
+
+  @override
+  String media_activity_failed(String activityName) {
+    return '$activityName selhalo';
+  }
+
+  @override
+  String get media_activity_failed_description => 'Aktivitu se nepodařilo aplikovat. Zkontrolujte připojení zařízení.';
+
+  @override
+  String get media_activity_retry => 'Opakovat';
+
+  @override
+  String get media_activity_turn_off => 'Vypnout';
+
+  @override
+  String get media_warning_audio_offline => 'Audio výstup offline – používají se reproduktory displeje';
+
+  @override
+  String get media_warning_some_devices_offline => 'Některá zařízení jsou offline';
+
+  @override
+  String media_warning_steps_failed(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'varování',
+      few: 'varování',
+      one: 'varování',
+    );
+    return 'Některé kroky selhaly ($count $_temp0)';
+  }
+
+  @override
+  String get media_warning_steps_had_issues => 'Některé kroky měly problémy';
+
+  @override
+  String get media_remote_control => 'Dálkové ovládání';
+
+  @override
+  String media_volume_percent(int volume) {
+    return '$volume%';
+  }
+
+  @override
+  String get media_failure_details_title => 'Podrobnosti aktivace';
+
+  @override
+  String get media_failure_summary_total => 'Celkem';
+
+  @override
+  String get media_failure_summary_ok => 'OK';
+
+  @override
+  String get media_failure_summary_errors => 'Chyby';
+
+  @override
+  String get media_failure_summary_warnings => 'Varování';
+
+  @override
+  String get media_failure_errors_critical => 'Chyby (kritické)';
+
+  @override
+  String get media_failure_warnings_non_critical => 'Varování (nekritická)';
+
+  @override
+  String get media_failure_warnings_label => 'Varování';
+
+  @override
+  String get media_failure_retry_activity => 'Opakovat aktivitu';
+
+  @override
+  String get media_failure_deactivate => 'Deaktivovat';
+
+  @override
+  String media_failure_device_label(String deviceId) {
+    return 'Zařízení: $deviceId';
+  }
+
+  @override
+  String media_failure_inline(int errors, int warnings) {
+    String _temp0 = intl.Intl.pluralLogic(
+      errors,
+      locale: localeName,
+      other: 'chyb',
+      few: 'chyby',
+      one: 'chyba',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      warnings,
+      locale: localeName,
+      other: 'varování',
+      few: 'varování',
+      one: 'varování',
+    );
+    return 'Aktivitu se nepodařilo aplikovat ($errors $_temp0, $warnings $_temp1)';
+  }
+
+  @override
+  String get media_activity_watch => 'Sledovat';
+
+  @override
+  String get media_activity_listen => 'Poslouchat';
+
+  @override
+  String get media_activity_gaming => 'Hraní';
+
+  @override
+  String get media_activity_background => 'Pozadí';
+
+  @override
+  String get media_activity_off => 'Vyp';
+
+  @override
+  String media_activity_active(String activityName) {
+    return '$activityName aktivní';
+  }
+
+  @override
+  String get media_status_standby => 'Pohotovost';
+
+  @override
+  String get media_status_activating => 'Aktivace...';
+
+  @override
+  String get media_status_failed => 'Selhalo';
+
+  @override
+  String get media_status_stopping => 'Zastavování...';
+
+  @override
+  String get media_status_active_with_issues => 'Aktivní s problémy';
+
+  @override
+  String get media_status_active => 'Aktivní';
+
+  @override
+  String get media_status_ready => 'Připraveno';
+
+  @override
+  String get media_remote_up => 'Nahoru';
+
+  @override
+  String get media_remote_down => 'Dolů';
+
+  @override
+  String get media_remote_left => 'Vlevo';
+
+  @override
+  String get media_remote_right => 'Vpravo';
+
+  @override
+  String get media_remote_ok => 'OK';
+
+  @override
+  String get media_remote_back => 'Zpět';
+
+  @override
+  String get media_remote_exit => 'Konec';
+
+  @override
+  String get media_remote_info => 'Info';
+
+  @override
+  String get media_remote_rewind => 'Zpětně';
+
+  @override
+  String get media_remote_fast_forward => 'Vpřed';
+
+  @override
+  String get media_remote_play => 'Přehrát';
+
+  @override
+  String get media_remote_pause => 'Pauza';
+
+  @override
+  String get media_remote_next => 'Další';
+
+  @override
+  String get media_remote_prev => 'Předch.';
+
+  @override
+  String get media_detail_connection_lost => 'Spojení ztraceno';
+
+  @override
+  String get media_detail_connection_lost_description => 'Ovládání médií vyžaduje aktivní WebSocket připojení.';
+
+  @override
+  String get media_detail_go_back => 'Zpět';
+
+  @override
+  String get media_detail_section_display => 'Displej';
+
+  @override
+  String get media_detail_section_audio => 'Audio';
+
+  @override
+  String get media_detail_section_source => 'Zdroj';
+
+  @override
+  String get media_detail_section_remote => 'Dálkové ovládání';
+
+  @override
+  String get media_detail_input => 'Vstup';
+
+  @override
+  String get media_detail_select => 'Vybrat';
+
+  @override
+  String get media_detail_now_playing => 'Právě hraje';
+
+  @override
+  String get media_detail_no_track_info => 'Informace o skladbě nejsou k dispozici';
+
+  @override
+  String get media_detail_home => 'Domů';
+
+  @override
+  String get media_detail_menu => 'Menu';
 }

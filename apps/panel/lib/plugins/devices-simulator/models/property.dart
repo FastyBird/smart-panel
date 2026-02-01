@@ -38,7 +38,7 @@ class SimulatorChannelPropertyModel extends ChannelPropertyModel {
       id: json['id'],
       category: DevicesModulePropertyCategory.fromJson(json['category']),
       name: json['name'],
-      permission: (json['permission'] as List<dynamic>? ?? [])
+      permission: (json['permissions'] as List<dynamic>? ?? [])
           .map((e) => DevicesModulePermissionType.fromJson(e.toString()))
           .where((e) => e != DevicesModulePermissionType.$unknown)
           .toList(),

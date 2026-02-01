@@ -2143,4 +2143,336 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sensor_freshness_offline => 'Offline';
+
+  @override
+  String get media_input_select_title => 'Select Input';
+
+  @override
+  String get media_input_hdmi1 => 'HDMI 1';
+
+  @override
+  String get media_input_hdmi2 => 'HDMI 2';
+
+  @override
+  String get media_input_hdmi3 => 'HDMI 3';
+
+  @override
+  String get media_input_hdmi4 => 'HDMI 4';
+
+  @override
+  String get media_input_hdmi5 => 'HDMI 5';
+
+  @override
+  String get media_input_hdmi6 => 'HDMI 6';
+
+  @override
+  String get media_input_arc => 'ARC';
+
+  @override
+  String get media_input_earc => 'eARC';
+
+  @override
+  String get media_input_tv => 'TV';
+
+  @override
+  String get media_input_cable => 'Cable';
+
+  @override
+  String get media_input_satellite => 'Satellite';
+
+  @override
+  String get media_input_antenna => 'Antenna';
+
+  @override
+  String get media_input_av1 => 'AV 1';
+
+  @override
+  String get media_input_av2 => 'AV 2';
+
+  @override
+  String get media_input_component => 'Component';
+
+  @override
+  String get media_input_vga => 'VGA';
+
+  @override
+  String get media_input_dvi => 'DVI';
+
+  @override
+  String get media_input_usb => 'USB';
+
+  @override
+  String get media_input_bluetooth => 'Bluetooth';
+
+  @override
+  String get media_input_wifi => 'Wi-Fi';
+
+  @override
+  String get media_input_airplay => 'AirPlay';
+
+  @override
+  String get media_input_cast => 'Chromecast';
+
+  @override
+  String get media_input_dlna => 'DLNA';
+
+  @override
+  String get media_input_miracast => 'Miracast';
+
+  @override
+  String get media_input_app_netflix => 'Netflix';
+
+  @override
+  String get media_input_app_youtube => 'YouTube';
+
+  @override
+  String get media_input_app_spotify => 'Spotify';
+
+  @override
+  String get media_input_app_prime_video => 'Prime Video';
+
+  @override
+  String get media_input_app_disney_plus => 'Disney+';
+
+  @override
+  String get media_input_app_hbo_max => 'HBO Max';
+
+  @override
+  String get media_input_app_apple_tv => 'Apple TV';
+
+  @override
+  String get media_input_app_plex => 'Plex';
+
+  @override
+  String get media_input_app_kodi => 'Kodi';
+
+  @override
+  String get media_input_other => 'Other';
+
+  @override
+  String get media_off_title => 'Media Off';
+
+  @override
+  String get media_off_subtitle => 'Select an activity to begin';
+
+  @override
+  String media_starting_activity(String activityName) {
+    return 'Starting $activityName...';
+  }
+
+  @override
+  String media_activity_failed(String activityName) {
+    return '$activityName Failed';
+  }
+
+  @override
+  String get media_activity_failed_description => 'Activity failed to apply. Check device connectivity.';
+
+  @override
+  String get media_activity_retry => 'Retry';
+
+  @override
+  String get media_activity_turn_off => 'Turn Off';
+
+  @override
+  String get media_warning_audio_offline => 'Audio output offline – using display speakers';
+
+  @override
+  String get media_warning_some_devices_offline => 'Some devices offline';
+
+  @override
+  String media_warning_steps_failed(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'warnings',
+      one: 'warning',
+    );
+    return 'Some steps failed ($count $_temp0)';
+  }
+
+  @override
+  String get media_warning_steps_had_issues => 'Some steps had issues';
+
+  @override
+  String get media_remote_control => 'Remote Control';
+
+  @override
+  String media_volume_percent(int volume) {
+    return '$volume%';
+  }
+
+  @override
+  String get media_failure_details_title => 'Activation Details';
+
+  @override
+  String get media_failure_summary_total => 'Total';
+
+  @override
+  String get media_failure_summary_ok => 'OK';
+
+  @override
+  String get media_failure_summary_errors => 'Errors';
+
+  @override
+  String get media_failure_summary_warnings => 'Warnings';
+
+  @override
+  String get media_failure_errors_critical => 'Errors (critical)';
+
+  @override
+  String get media_failure_warnings_non_critical => 'Warnings (non-critical)';
+
+  @override
+  String get media_failure_warnings_label => 'Warnings';
+
+  @override
+  String get media_failure_retry_activity => 'Retry activity';
+
+  @override
+  String get media_failure_deactivate => 'Deactivate';
+
+  @override
+  String media_failure_device_label(String deviceId) {
+    return 'Device: $deviceId';
+  }
+
+  @override
+  String media_failure_inline(int errors, int warnings) {
+    String _temp0 = intl.Intl.pluralLogic(
+      errors,
+      locale: localeName,
+      other: 'errors',
+      one: 'error',
+    );
+    String _temp1 = intl.Intl.pluralLogic(
+      warnings,
+      locale: localeName,
+      other: 'warnings',
+      one: 'warning',
+    );
+    return 'Activity failed to apply ($errors $_temp0, $warnings $_temp1)';
+  }
+
+  @override
+  String get media_activity_watch => 'Watch';
+
+  @override
+  String get media_activity_listen => 'Listen';
+
+  @override
+  String get media_activity_gaming => 'Gaming';
+
+  @override
+  String get media_activity_background => 'Bgnd';
+
+  @override
+  String get media_activity_off => 'Off';
+
+  @override
+  String media_activity_active(String activityName) {
+    return '$activityName active';
+  }
+
+  @override
+  String get media_status_standby => 'Standby';
+
+  @override
+  String get media_status_activating => 'Activating...';
+
+  @override
+  String get media_status_failed => 'Failed';
+
+  @override
+  String get media_status_stopping => 'Stopping...';
+
+  @override
+  String get media_status_active_with_issues => 'Active with issues';
+
+  @override
+  String get media_status_active => 'Active';
+
+  @override
+  String get media_status_ready => 'Ready';
+
+  @override
+  String get media_remote_up => 'Up';
+
+  @override
+  String get media_remote_down => 'Down';
+
+  @override
+  String get media_remote_left => 'Left';
+
+  @override
+  String get media_remote_right => 'Right';
+
+  @override
+  String get media_remote_ok => 'OK';
+
+  @override
+  String get media_remote_back => 'Back';
+
+  @override
+  String get media_remote_exit => 'Exit';
+
+  @override
+  String get media_remote_info => 'Info';
+
+  @override
+  String get media_remote_rewind => 'Rewind';
+
+  @override
+  String get media_remote_fast_forward => 'FF';
+
+  @override
+  String get media_remote_play => 'Play';
+
+  @override
+  String get media_remote_pause => 'Pause';
+
+  @override
+  String get media_remote_next => 'Next';
+
+  @override
+  String get media_remote_prev => 'Prev';
+
+  @override
+  String get media_detail_connection_lost => 'Connection lost';
+
+  @override
+  String get media_detail_connection_lost_description => 'Media controls require a live WebSocket connection.';
+
+  @override
+  String get media_detail_go_back => 'Go back';
+
+  @override
+  String get media_detail_section_display => 'Display';
+
+  @override
+  String get media_detail_section_audio => 'Audio';
+
+  @override
+  String get media_detail_section_source => 'Source';
+
+  @override
+  String get media_detail_section_remote => 'Remote';
+
+  @override
+  String get media_detail_input => 'Input';
+
+  @override
+  String get media_detail_select => 'Select';
+
+  @override
+  String get media_detail_now_playing => 'Now Playing';
+
+  @override
+  String get media_detail_no_track_info => 'No track information available';
+
+  @override
+  String get media_detail_home => 'Home';
+
+  @override
+  String get media_detail_menu => 'Menu';
 }

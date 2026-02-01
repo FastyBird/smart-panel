@@ -409,6 +409,9 @@ class UniversalTile extends StatelessWidget {
     final accentColor = activeColor ??
         (isDark ? AppColorsDark.primary : AppColorsLight.primary);
 
+    final accentColorDark2 = activeColor?.withValues(alpha: 0.3) ??
+        (isDark ? AppColorsDark.primaryDark2 : AppColorsLight.primaryDark2);
+
     final accentColorLight5 = activeColor?.withValues(alpha: 0.3) ??
         (isDark ? AppColorsDark.primaryLight5 : AppColorsLight.primaryLight5);
 
@@ -492,8 +495,8 @@ class UniversalTile extends StatelessWidget {
     if (isOffline) {
       subtitleColor =
           isDark ? AppTextColorDark.disabled : AppTextColorLight.disabled;
-    } else if (isActive && activeColor != null) {
-      subtitleColor = activeColor!.withValues(alpha: 0.8);
+    } else if (isActive) {
+      subtitleColor = (activeColor ?? accentColorDark2).withValues(alpha: 0.8);
     } else {
       subtitleColor =
           isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;

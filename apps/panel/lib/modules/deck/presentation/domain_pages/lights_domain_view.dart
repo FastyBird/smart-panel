@@ -3,6 +3,7 @@ import 'package:fastybird_smart_panel/api/models/scenes_module_data_scene_catego
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
+import 'package:fastybird_smart_panel/core/utils/color.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/intent_mode_selector.dart';
@@ -1006,7 +1007,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
     // Get state-based colors (consistent with shading domain)
     final stateColor = _getLightStateColor(context, lightsOn, totalLights);
-    final stateBgColor = stateColor.withValues(alpha: 0.15);
+    final stateBgColor = getSemanticBackgroundColor(context, stateColor);
 
     // Build subtitle based on mode and lights state
     final mode = _currentMode;

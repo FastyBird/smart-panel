@@ -45,7 +45,7 @@ class GenericChannelPropertyModel extends ChannelPropertyModel {
       channel: json['channel'],
       category: DevicesModulePropertyCategory.fromJson(json['category'] ?? 'generic'),
       name: json['name'],
-      permission: (json['permission'] as List<dynamic>? ?? [])
+      permission: (json['permissions'] as List<dynamic>? ?? [])
           .map((e) => DevicesModulePermissionType.fromJson(e.toString()))
           .where((e) => e != DevicesModulePermissionType.$unknown)
           .toList(),

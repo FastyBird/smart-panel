@@ -1,11 +1,13 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:event_bus/event_bus.dart';
+import 'package:flutter/services.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
-import 'package:fastybird_smart_panel/core/utils/datetime.dart';
+import 'package:fastybird_smart_panel/core/utils/color.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/slider_with_steps.dart';
@@ -13,12 +15,18 @@ import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
+import 'package:fastybird_smart_panel/core/widgets/value_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/tile_wrappers.dart';
+import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
 import 'package:fastybird_smart_panel/modules/deck/utils/lighting.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
+import 'package:fastybird_smart_panel/modules/devices/types/formats.dart';
+import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
+import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/deck_service.dart';
+import 'package:fastybird_smart_panel/modules/deck/views/media_device_detail_page.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/navigate_event.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/media_activity/media_activity.dart';
 import 'package:fastybird_smart_panel/modules/spaces/service.dart';
@@ -27,6 +35,48 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 import 'package:provider/provider.dart';
+
+String _mediaInputSourceLabel(BuildContext context, String source) {
+	final localizations = AppLocalizations.of(context)!;
+	final key = 'media_input_$source';
+	switch (key) {
+		case 'media_input_hdmi1': return localizations.media_input_hdmi1;
+		case 'media_input_hdmi2': return localizations.media_input_hdmi2;
+		case 'media_input_hdmi3': return localizations.media_input_hdmi3;
+		case 'media_input_hdmi4': return localizations.media_input_hdmi4;
+		case 'media_input_hdmi5': return localizations.media_input_hdmi5;
+		case 'media_input_hdmi6': return localizations.media_input_hdmi6;
+		case 'media_input_arc': return localizations.media_input_arc;
+		case 'media_input_earc': return localizations.media_input_earc;
+		case 'media_input_tv': return localizations.media_input_tv;
+		case 'media_input_cable': return localizations.media_input_cable;
+		case 'media_input_satellite': return localizations.media_input_satellite;
+		case 'media_input_antenna': return localizations.media_input_antenna;
+		case 'media_input_av1': return localizations.media_input_av1;
+		case 'media_input_av2': return localizations.media_input_av2;
+		case 'media_input_component': return localizations.media_input_component;
+		case 'media_input_vga': return localizations.media_input_vga;
+		case 'media_input_dvi': return localizations.media_input_dvi;
+		case 'media_input_usb': return localizations.media_input_usb;
+		case 'media_input_bluetooth': return localizations.media_input_bluetooth;
+		case 'media_input_wifi': return localizations.media_input_wifi;
+		case 'media_input_airplay': return localizations.media_input_airplay;
+		case 'media_input_cast': return localizations.media_input_cast;
+		case 'media_input_dlna': return localizations.media_input_dlna;
+		case 'media_input_miracast': return localizations.media_input_miracast;
+		case 'media_input_app_netflix': return localizations.media_input_app_netflix;
+		case 'media_input_app_youtube': return localizations.media_input_app_youtube;
+		case 'media_input_app_spotify': return localizations.media_input_app_spotify;
+		case 'media_input_app_prime_video': return localizations.media_input_app_prime_video;
+		case 'media_input_app_disney_plus': return localizations.media_input_app_disney_plus;
+		case 'media_input_app_hbo_max': return localizations.media_input_app_hbo_max;
+		case 'media_input_app_apple_tv': return localizations.media_input_app_apple_tv;
+		case 'media_input_app_plex': return localizations.media_input_app_plex;
+		case 'media_input_app_kodi': return localizations.media_input_app_kodi;
+		case 'media_input_other': return localizations.media_input_other;
+		default: return source;
+	}
+}
 
 class MediaDomainViewPage extends StatefulWidget {
 	final DomainViewItem viewItem;
@@ -62,6 +112,18 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	// is available, so these track user interactions only and reset on navigation.
 	int _volume = 0;
 	bool _isMuted = false;
+	/// Current playback state read from device status property.
+	/// Values: 'playing', 'paused', 'stopped' (or null if unknown).
+	String? _playbackState;
+	/// Track metadata read from device properties.
+	String? _trackName;
+	String? _artistName;
+	/// Playback position and duration in seconds.
+	double? _position;
+	double? _duration;
+
+	Timer? _volumeDebounceTimer;
+	Timer? _playbackSettleTimer;
 
 	late AnimationController _pulseController;
 
@@ -93,7 +155,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			}
 		}
 
-
 		try {
 			_deckService = locator<DeckService>();
 		} catch (e) {
@@ -122,6 +183,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 
 		try {
 			_devicesService = locator<DevicesService>();
+			_devicesService?.addListener(_onDevicesChanged);
 		} catch (e) {
 			if (kDebugMode) {
 				debugPrint('[MediaDomainViewPage] Failed to get DevicesService: $e');
@@ -137,6 +199,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			await _mediaService!.fetchAllForSpace(_roomId);
 		} finally {
 			if (mounted) {
+				_syncDeviceState();
 				setState(() => _isLoading = false);
 			}
 		}
@@ -148,17 +211,123 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 
 	@override
 	void dispose() {
+		_volumeDebounceTimer?.cancel();
+		_playbackSettleTimer?.cancel();
 		_pulseController.dispose();
 		_mediaService?.removeListener(_onDataChanged);
+		_devicesService?.removeListener(_onDevicesChanged);
 		_socketService?.removeConnectionListener(_onConnectionChanged);
 		super.dispose();
 	}
 
 	void _onDataChanged() {
 		if (!mounted) return;
+		_syncDeviceState();
 		WidgetsBinding.instance.addPostFrameCallback((_) {
 			if (mounted) setState(() {});
 		});
+	}
+
+	void _onDevicesChanged() {
+		if (!mounted) return;
+		// Sync volume/mute from device properties when backend pushes updates
+		// Skip if a debounce timer is active (user is dragging the slider)
+		if (_volumeDebounceTimer == null || !_volumeDebounceTimer!.isActive) {
+			_syncDeviceState();
+			WidgetsBinding.instance.addPostFrameCallback((_) {
+				if (mounted) setState(() {});
+			});
+		}
+	}
+
+	/// Read volume/mute/playback state from device properties.
+	/// Called on data changes to keep UI in sync with actual device values.
+	void _syncDeviceState() {
+		final targets = _mediaService?.resolveControlTargets(_roomId);
+		if (targets == null) return;
+
+		// Volume: read from the resolved volume property
+		if (targets.hasVolume) {
+			final propId = targets.volumeTarget!.links.volumePropertyId;
+			if (propId != null) {
+				final prop = _devicesService?.getChannelProperty(propId);
+				final val = prop?.value;
+				if (val is NumberValueType) {
+					_volume = val.value.toInt();
+				}
+			}
+
+			// Mute: read from the resolved mute property
+			final muteId = targets.volumeTarget!.links.mutePropertyId;
+			if (muteId != null) {
+				final prop = _devicesService?.getChannelProperty(muteId);
+				final val = prop?.value;
+				if (val is BooleanValueType) {
+					_isMuted = val.value;
+				}
+			}
+		}
+
+		// Playback state and track metadata
+		if (targets.hasPlayback) {
+			final playbackLinks = targets.playbackTarget!.links;
+
+			// Only sync playback state from device when not in optimistic settle window
+			final isSettling = _playbackSettleTimer != null && _playbackSettleTimer!.isActive;
+			if (!isSettling) {
+				final stateId = playbackLinks.playbackStatePropertyId;
+				if (stateId != null) {
+					final prop = _devicesService?.getChannelProperty(stateId);
+					final val = prop?.value;
+					_playbackState = val is StringValueType ? val.value : null;
+				} else {
+					_playbackState = null;
+				}
+			}
+
+			// Track metadata
+			final trackId = playbackLinks.trackMetadataPropertyId;
+			if (trackId != null) {
+				final prop = _devicesService?.getChannelProperty(trackId);
+				_trackName = prop?.value is StringValueType ? (prop!.value as StringValueType).value : null;
+			} else {
+				_trackName = null;
+			}
+
+			final artistId = playbackLinks.artistPropertyId;
+			if (artistId != null) {
+				final prop = _devicesService?.getChannelProperty(artistId);
+				_artistName = prop?.value is StringValueType ? (prop!.value as StringValueType).value : null;
+			} else {
+				_artistName = null;
+			}
+
+			// Position & duration
+			final posId = playbackLinks.positionPropertyId;
+			if (posId != null) {
+				final prop = _devicesService?.getChannelProperty(posId);
+				final val = prop?.value;
+				_position = val is NumberValueType ? val.value.toDouble() : null;
+			} else {
+				_position = null;
+			}
+
+			final durId = playbackLinks.durationPropertyId;
+			if (durId != null) {
+				final prop = _devicesService?.getChannelProperty(durId);
+				final val = prop?.value;
+				_duration = val is NumberValueType ? val.value.toDouble() : null;
+			} else {
+				_duration = null;
+			}
+		} else {
+			// No playback target — clear all metadata
+			_playbackState = null;
+			_trackName = null;
+			_artistName = null;
+			_position = null;
+			_duration = null;
+		}
 	}
 
 	void _onConnectionChanged(bool isConnected) {
@@ -182,7 +351,18 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 
 	Future<void> _onActivitySelected(MediaActivityKey key) async {
 		if (_mediaService == null || _isSending) return;
-		setState(() => _isSending = true);
+		setState(() {
+			_isSending = true;
+			// Reset local state when switching activities
+
+			_volume = 0;
+			_isMuted = false;
+			_playbackState = null;
+			_trackName = null;
+			_artistName = null;
+			_position = null;
+			_duration = null;
+		});
 		try {
 			if (key == MediaActivityKey.off) {
 				await _mediaService!.deactivateActivity(_roomId);
@@ -190,7 +370,10 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 				await _mediaService!.activateActivity(_roomId, key);
 			}
 		} finally {
-			if (mounted) setState(() => _isSending = false);
+			if (mounted) {
+				_syncDeviceState();
+				setState(() => _isSending = false);
+			}
 		}
 	}
 
@@ -200,9 +383,16 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			builder: (context, mediaService, _) {
 				final isDark = Theme.of(context).brightness == Brightness.dark;
 				final activeState = mediaService.getActiveState(_roomId);
-				final deviceGroups = mediaService.getDeviceGroups(_roomId);
 				final endpoints = mediaService.getEndpoints(_roomId);
 				final roomName = _spacesService?.getSpace(_roomId)?.name ?? '';
+				final deviceGroups = mediaService.getDeviceGroups(
+					_roomId,
+					deviceNameResolver: (deviceId) {
+						final device = _devicesService?.getDevice(deviceId);
+						if (device == null) return null;
+						return stripRoomNameFromDevice(device.name, roomName);
+					},
+				);
 				final hasEndpoints = endpoints.isNotEmpty;
 
 				if (_isLoading) {
@@ -224,7 +414,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 										child: RefreshIndicator(
 											onRefresh: _refresh,
 											child: ListView(
-												padding: EdgeInsets.all(AppSpacings.pXl + AppSpacings.pMd),
+												padding: AppSpacings.paddingXl,
 												children: [
 													SizedBox(height: AppSpacings.pXl * 2),
 													Icon(
@@ -303,22 +493,25 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		final localizations = AppLocalizations.of(context)!;
 		final hasActive = activeState != null && activeState.isActive;
 		final subtitle = hasActive
-				? '${_activityLabel(activeState.activityKey)} active'
+				? localizations.media_activity_active(_activityLabel(context, activeState.activityKey))
 				: localizations.media_mode_off;
+
+		final stateColor = hasActive
+				? (isDark ? AppColorsDark.success : AppColorsLight.success)
+				: (isDark ? AppColorsDark.info : AppColorsLight.info);
 
 		return PageHeader(
 			title: localizations.domain_media,
 			subtitle: subtitle,
-			subtitleColor:
-					hasActive ? (isDark ? AppColorsDark.primary : AppColorsLight.primary) : null,
+			subtitleColor: hasActive ? stateColor : null,
 			backgroundColor: AppColors.blank,
 			leading: HeaderDeviceIcon(
 				icon: hasActive ? MdiIcons.musicNote : MdiIcons.musicNoteOff,
-				backgroundColor: isDark
-						? (hasActive ? AppColorsDark.primaryLight5 : AppFillColorDark.light)
-						: (hasActive ? AppColorsLight.primaryLight5 : AppFillColorLight.light),
+				backgroundColor: hasActive
+						? getSemanticBackgroundColor(context, stateColor)
+						: (isDark ? AppFillColorDark.light : AppFillColorLight.light),
 				iconColor: hasActive
-						? (isDark ? AppColorsDark.primary : AppColorsLight.primary)
+						? stateColor
 						: (isDark ? AppTextColorDark.secondary : AppTextColorLight.primary),
 			),
 			trailing: HeaderHomeButton(
@@ -368,7 +561,16 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			mainContent: _buildActivityContent(context, activeState, isOff, isActivating, isFailed),
 			mainContentScrollable: true,
 			modeSelector: _buildLandscapeModeSelector(context, activeState),
-			additionalContent: _buildDevicesList(context, deviceGroups),
+			additionalContent: Column(
+				crossAxisAlignment: CrossAxisAlignment.start,
+				children: [
+					if (!isOff) ...[
+						_buildLandscapeControls(context),
+						AppSpacings.spacingLgVertical,
+					],
+					_buildDevicesList(context, deviceGroups),
+				],
+			),
 		);
 	}
 
@@ -422,7 +624,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		return availableKeys.map((key) => ModeOption<MediaActivityKey>(
 			value: key,
 			icon: _activityIcon(key),
-			label: _activityLabel(key),
+			label: _activityLabel(context, key),
 		)).toList();
 	}
 
@@ -503,7 +705,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 					),
 					AppSpacings.spacingLgVertical,
 					Text(
-						'Media Off',
+						AppLocalizations.of(context)!.media_off_title,
 						style: TextStyle(
 							fontSize: AppFontSize.extraLarge,
 							fontWeight: FontWeight.w600,
@@ -512,7 +714,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 					),
 					AppSpacings.spacingSmVertical,
 					Text(
-						'Select an activity above to begin',
+						AppLocalizations.of(context)!.media_off_subtitle,
 						style: TextStyle(
 							fontSize: AppFontSize.base,
 							color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
@@ -530,7 +732,8 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	Widget _buildActivatingContent(BuildContext context, MediaActiveStateModel activeState) {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 		final accentColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
-		final activityName = _activityLabel(activeState.activityKey);
+		final localizations = AppLocalizations.of(context)!;
+		final activityName = _activityLabel(context, activeState.activityKey);
 
 		return Container(
 			width: double.infinity,
@@ -558,6 +761,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 									child: CustomPaint(
 										painter: _SpinnerArcPainter(
 											color: accentColor,
+											strokeWidth: _scale(3),
 										),
 									),
 								),
@@ -566,7 +770,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 					),
 					AppSpacings.spacingLgVertical,
 					Text(
-						'Starting $activityName...',
+						localizations.media_starting_activity(activityName),
 						style: TextStyle(
 							fontSize: AppFontSize.large,
 							fontWeight: FontWeight.w600,
@@ -587,8 +791,8 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		final accentColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
 		final errorColor = isDark ? AppColorsDark.error : AppColorsLight.error;
 		final errorBg = isDark ? AppColorsDark.errorLight9 : AppColorsLight.errorLight9;
-		final activityName = _activityLabel(activeState.activityKey);
-
+		final localizations = AppLocalizations.of(context)!;
+		final activityName = _activityLabel(context, activeState.activityKey);
 
 		return Container(
 			width: double.infinity,
@@ -613,7 +817,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 					),
 					AppSpacings.spacingLgVertical,
 					Text(
-						'$activityName Failed',
+						localizations.media_activity_failed(activityName),
 						style: TextStyle(
 							fontSize: AppFontSize.extraLarge,
 							fontWeight: FontWeight.w600,
@@ -622,7 +826,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 					),
 					AppSpacings.spacingSmVertical,
 					Text(
-						'Activity failed to apply. Check device connectivity.',
+						localizations.media_activity_failed_description,
 						style: TextStyle(
 							fontSize: AppFontSize.base,
 							color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
@@ -632,37 +836,39 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 					Row(
 						mainAxisAlignment: MainAxisAlignment.center,
 						children: [
-							ElevatedButton(
+							FilledButton(
 								onPressed: () => _retryActivity(activeState),
-								style: ElevatedButton.styleFrom(
+								style: FilledButton.styleFrom(
 									backgroundColor: accentColor,
-									foregroundColor: Colors.white,
+									foregroundColor: AppColors.white,
+									textStyle: TextStyle(fontSize: AppFontSize.small),
 									padding: EdgeInsets.symmetric(
-										horizontal: AppSpacings.pXl,
-										vertical: AppSpacings.pMd,
+										horizontal: _scale(AppSpacings.pMd),
+										vertical: _scale(AppSpacings.pSm),
 									),
+									side: BorderSide.none,
 									shape: RoundedRectangleBorder(
-										borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+										borderRadius: BorderRadius.circular(_scale(AppBorderRadius.medium)),
 									),
-									elevation: 0,
 								),
-								child: const Text('Retry'),
+								child: Text(localizations.media_activity_retry),
 							),
 							AppSpacings.spacingMdHorizontal,
 							OutlinedButton(
 								onPressed: _deactivateActivity,
 								style: OutlinedButton.styleFrom(
 									foregroundColor: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
+									textStyle: TextStyle(fontSize: AppFontSize.small),
 									padding: EdgeInsets.symmetric(
-										horizontal: AppSpacings.pXl,
-										vertical: AppSpacings.pMd,
+										horizontal: _scale(AppSpacings.pMd),
+										vertical: _scale(AppSpacings.pSm),
 									),
 									side: BorderSide(color: isDark ? AppBorderColorDark.base : AppBorderColorLight.base),
 									shape: RoundedRectangleBorder(
-										borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+										borderRadius: BorderRadius.circular(_scale(AppBorderRadius.medium)),
 									),
 								),
-								child: const Text('Turn Off'),
+								child: Text(localizations.media_activity_turn_off),
 							),
 						],
 					),
@@ -679,12 +885,8 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		BuildContext context,
 		MediaActiveStateModel activeState,
 	) {
-		final isDark = Theme.of(context).brightness == Brightness.dark;
 		final targets = _mediaService?.resolveControlTargets(_roomId) ?? const ActiveControlTargets();
 		final compositionEntries = _mediaService?.getActiveCompositionEntries(_roomId) ?? [];
-		final accentColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
-		final accentBg = isDark ? AppColorsDark.primaryLight5 : AppColorsLight.primaryLight9;
-
 		// Resolve display names and online status for composition entries
 		final roomName = _spacesService?.getSpace(_roomId)?.name ?? '';
 		final displayItems = <_CompositionDisplayItem>[];
@@ -692,15 +894,30 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 
 		for (final entry in compositionEntries) {
 			final device = _devicesService?.getDevice(entry.deviceId);
-			var name = device?.name ?? entry.endpointName;
-			name = stripRoomNameFromDevice(name, roomName);
-			// Strip endpoint type suffix like "(Display)", "(Audio Output)", "(Source)", "(Remote Target)"
-			name = name.replaceFirst(RegExp(r'\s*\((Display|Audio Output|Source|Remote Target)\)\s*$'), '');
+			var name = device != null
+					? stripRoomNameFromDevice(device.name, roomName)
+					: entry.endpointName;
 			final isOnline = device?.isOnline ?? true;
+
+			// Resolve input property ID for this role's endpoint
+			String? inputPropId;
+			switch (entry.role) {
+				case 'Display':
+					inputPropId = targets.displayTarget?.links.inputPropertyId;
+					break;
+				case 'Audio':
+					inputPropId = targets.volumeTarget?.links.inputPropertyId;
+					break;
+				case 'Source':
+					inputPropId = targets.playbackTarget?.links.inputPropertyId;
+					break;
+			}
+
 			displayItems.add(_CompositionDisplayItem(
 				role: entry.role,
 				displayName: name,
 				isOnline: isOnline,
+				inputPropertyId: inputPropId,
 			));
 			if (!isOnline) offlineRoles.add(entry.role);
 		}
@@ -708,80 +925,41 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		return Column(
 			crossAxisAlignment: CrossAxisAlignment.start,
 			children: [
-				// Activity header with icon + name + status
-				Row(
-					children: [
-						Container(
-							width: _scale(48),
-							height: _scale(48),
-							decoration: BoxDecoration(
-								color: accentBg,
-								borderRadius: BorderRadius.circular(AppBorderRadius.base),
-							),
-							child: Icon(
-								_activityIcon(activeState.activityKey),
-								size: _scale(24),
-								color: accentColor,
-							),
-						),
-						AppSpacings.spacingMdHorizontal,
-						Expanded(
-							child: Column(
-								crossAxisAlignment: CrossAxisAlignment.start,
-								children: [
-									Text(
-										_activityLabel(activeState.activityKey),
-										style: TextStyle(
-											fontSize: AppFontSize.large,
-											fontWeight: FontWeight.w600,
-											color: isDark ? AppTextColorDark.regular : AppTextColorLight.regular,
-										),
-									),
-									Text(
-										activeState.hasWarnings ? 'Active with issues' : 'Active',
-										style: TextStyle(
-											fontSize: AppFontSize.small,
-											color: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
-										),
-									),
-								],
-							),
-						),
-					],
-				),
-
 					// Warning banner
 					if (activeState.hasWarnings && !activeState.isFailed) ...[
-						AppSpacings.spacingLgVertical,
 						_buildWarningBanner(context, activeState),
+            AppSpacings.spacingMdVertical,
 					],
 
 					// Offline device banner
 					if (offlineRoles.isNotEmpty && !activeState.hasWarnings) ...[
-						AppSpacings.spacingMdVertical,
 						_buildOfflineDeviceBanner(context, offlineRoles),
+            AppSpacings.spacingMdVertical,
 					],
 
 					// Composition preview
 					if (displayItems.isNotEmpty) ...[
-						AppSpacings.spacingMdVertical,
 						_buildCompositionPreview(context, displayItems),
 					],
 
 					// Capability-driven controls
-					if (targets.hasPlayback) ...[
+					if (_trackName != null || _artistName != null) ...[
 						AppSpacings.spacingLgVertical,
+						_buildNowPlaying(context),
+					],
+					if (targets.hasPlayback) ...[
+						AppSpacings.spacingMdVertical,
 						_buildPlaybackControl(context),
 					],
-					if (targets.hasVolume) ...[
+					if (_duration != null && _duration! > 0) ...[
+						AppSpacings.spacingMdVertical,
+						_buildProgressBar(context),
+					],
+					if (targets.hasVolume && !_screenService.isLandscape) ...[
 						AppSpacings.spacingLgVertical,
 						_buildVolumeControl(context),
 					],
-					if (targets.hasInput) ...[
-						AppSpacings.spacingLgVertical,
-						_buildInputControl(context),
-					],
-					if (targets.hasRemote) ...[
+					if (targets.hasRemote && !_screenService.isLandscape) ...[
 						AppSpacings.spacingLgVertical,
 						_buildRemoteButton(context),
 					],
@@ -800,14 +978,15 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		final warningColor = isDark ? AppColorsDark.warning : AppColorsLight.warning;
 		final warningBg = isDark ? AppColorsDark.warningLight9 : AppColorsLight.warningLight9;
 
+		final localizations = AppLocalizations.of(context)!;
 		final warningCount = state.lastResult?.warningCount ?? state.warnings.length;
 		final String label;
 		if (warningCount > 0) {
-			label = 'Some steps failed ($warningCount warning${warningCount != 1 ? 's' : ''})';
+			label = localizations.media_warning_steps_failed(warningCount);
 		} else if (state.warnings.isNotEmpty) {
 			label = state.warnings.first;
 		} else {
-			label = 'Some steps had issues';
+			label = localizations.media_warning_steps_had_issues;
 		}
 
 		return GestureDetector(
@@ -832,7 +1011,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 								label,
 								style: TextStyle(
 									fontSize: AppFontSize.small,
-									color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
+									color: warningColor,
 								),
 							),
 						),
@@ -853,11 +1032,12 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		final warningBg = isDark ? AppColorsDark.warningLight9 : AppColorsLight.warningLight9;
 
 
+		final localizations = AppLocalizations.of(context)!;
 		final String label;
 		if (offlineRoles.length == 1 && offlineRoles.first == 'Audio') {
-			label = 'Audio output offline – using display speakers';
+			label = localizations.media_warning_audio_offline;
 		} else {
-			label = 'Some devices offline';
+			label = localizations.media_warning_some_devices_offline;
 		}
 
 		return Container(
@@ -880,7 +1060,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 							label,
 							style: TextStyle(
 								fontSize: AppFontSize.small,
-								color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
+								color: warningColor,
 							),
 						),
 					),
@@ -892,7 +1072,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	Widget _buildCompositionPreview(BuildContext context, List<_CompositionDisplayItem> items) {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 		final isLight = !isDark;
-
 		final warningColor = isDark ? AppColorsDark.warning : AppColorsLight.warning;
 
 		return Container(
@@ -909,6 +1088,19 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 					final nameColor = item.isOnline
 							? (isLight ? AppTextColorLight.primary : AppTextColorDark.primary)
 							: warningColor;
+
+					// Resolve input source value and format
+					String? inputValue;
+					List<String>? inputOptions;
+					if (item.inputPropertyId != null && _devicesService != null) {
+						final prop = _devicesService!.getChannelProperty(item.inputPropertyId!);
+						if (prop?.value is StringValueType) {
+							inputValue = (prop!.value as StringValueType).value;
+						}
+						if (prop?.format is StringListFormatType) {
+							inputOptions = (prop!.format as StringListFormatType).value;
+						}
+					}
 
 					return Row(
 						children: [
@@ -934,7 +1126,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 											Text(
 												item.role.toUpperCase(),
 												style: TextStyle(
-													fontSize: AppFontSize.extraExtraSmall,
+													fontSize: AppFontSize.extraSmall,
 													fontWeight: FontWeight.w500,
 													color: isLight ? AppTextColorLight.secondary : AppTextColorDark.placeholder,
 													letterSpacing: 0.5,
@@ -951,6 +1143,81 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 									],
 								),
 							),
+							// Input source on the right
+							if (inputValue != null && inputOptions != null && inputOptions.isNotEmpty)
+								GestureDetector(
+									onTap: _isSending
+											? null
+											: () => _showInputSelectorSheet(inputOptions!, inputValue, item.inputPropertyId!),
+									child: Container(
+										padding: EdgeInsets.symmetric(
+											horizontal: AppSpacings.pMd,
+											vertical: AppSpacings.pSm,
+										),
+										decoration: BoxDecoration(
+											color: isDark
+													? AppFillColorDark.base
+													: AppFillColorLight.base,
+											borderRadius: BorderRadius.circular(AppBorderRadius.base),
+											border: Border.all(
+												color: isDark
+														? AppBorderColorDark.dark
+														: AppBorderColorLight.dark,
+											),
+										),
+										child: Row(
+											mainAxisSize: MainAxisSize.min,
+											children: [
+												Text(
+													_inputSourceLabel(context, inputValue),
+													style: TextStyle(
+														fontSize: AppFontSize.extraSmall,
+														fontWeight: FontWeight.w500,
+														color: isDark
+																? AppTextColorDark.regular
+																: AppTextColorLight.regular,
+													),
+												),
+												AppSpacings.spacingXsHorizontal,
+												Icon(
+													MdiIcons.chevronDown,
+													size: _scale(12),
+													color: isDark
+															? AppTextColorDark.regular
+															: AppTextColorLight.regular,
+												),
+											],
+										),
+									),
+								)
+							else if (inputValue != null)
+								Container(
+									padding: EdgeInsets.symmetric(
+										horizontal: AppSpacings.pMd,
+										vertical: AppSpacings.pSm,
+									),
+									decoration: BoxDecoration(
+										color: isDark
+												? AppFillColorDark.base
+												: AppFillColorLight.base,
+										borderRadius: BorderRadius.circular(AppBorderRadius.base),
+										border: Border.all(
+											color: isDark
+													? AppBorderColorDark.dark
+													: AppBorderColorLight.dark,
+										),
+									),
+									child: Text(
+										_inputSourceLabel(context, inputValue),
+										style: TextStyle(
+											fontSize: AppFontSize.extraSmall,
+											fontWeight: FontWeight.w500,
+											color: isDark
+													? AppTextColorDark.regular
+													: AppTextColorLight.regular,
+										),
+									),
+								),
 						],
 					);
 				}).toList(),
@@ -970,46 +1237,58 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			children: [
 				SizedBox(
 					width: columnWidth,
-					child: GestureDetector(
-						onTap: _isSending ? null : () => _toggleMute(),
-						child: Container(
-							padding: EdgeInsets.all(AppSpacings.pMd),
-							decoration: BoxDecoration(
-								color: isMuted
-										? (isDark ? AppColorsDark.primaryLight5 : AppColorsLight.primaryLight9)
-										: (isDark ? AppFillColorDark.base : AppFillColorLight.base),
-								border: Border.all(
+					child: Material(
+						color: isMuted
+								? (isDark ? AppColorsDark.primaryLight5 : AppColorsLight.primaryLight9)
+								: (isDark ? AppFillColorDark.base : AppFillColorLight.base),
+						borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+						child: InkWell(
+							onTap: _isSending
+									? null
+									: () {
+											HapticFeedback.lightImpact();
+											_toggleMute();
+										},
+							borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+							child: Container(
+								padding: EdgeInsets.all(AppSpacings.pMd),
+								decoration: BoxDecoration(
+									border: Border.all(
+										color: isMuted
+												? (isDark ? AppColorsDark.primary : AppColorsLight.primary)
+												: (isDark ? AppBorderColorDark.light : AppBorderColorLight.light),
+									),
+									borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+								),
+								child: Icon(
+									isMuted ? MdiIcons.volumeOff : MdiIcons.volumeHigh,
+									size: AppFontSize.large,
 									color: isMuted
 											? (isDark ? AppColorsDark.primary : AppColorsLight.primary)
-											: (isDark ? AppBorderColorDark.light : AppBorderColorLight.light),
+											: (isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary),
 								),
-								borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-							),
-							child: Icon(
-								isMuted ? MdiIcons.volumeOff : MdiIcons.volumeHigh,
-								size: AppFontSize.large,
-								color: isMuted
-										? (isDark ? AppColorsDark.primary : AppColorsLight.primary)
-										: (isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary),
 							),
 						),
 					),
 				),
 				AppSpacings.spacingMdHorizontal,
 				Expanded(
-					child: SliderWithSteps(
-						value: volume / 100,
-						activeColor: accentColor,
-						showSteps: false,
-						enabled: !_isSending,
-						onChanged: (val) => _setVolume((val * 100).round()),
+					child: GestureDetector(
+						onHorizontalDragUpdate: (_) {},
+						child: SliderWithSteps(
+							value: volume / 100,
+							activeColor: accentColor,
+							showSteps: false,
+							enabled: !_isSending,
+							onChanged: (val) => _setVolume((val * 100).round()),
+						),
 					),
 				),
 				AppSpacings.spacingMdHorizontal,
 				SizedBox(
 					width: columnWidth,
 					child: Text(
-						'$volume%',
+						AppLocalizations.of(context)!.media_volume_percent(volume),
 						style: TextStyle(
 							fontSize: AppFontSize.small,
 							fontWeight: FontWeight.w600,
@@ -1022,186 +1301,240 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		);
 	}
 
-	Widget _buildInputControl(BuildContext context) {
-		final isDark = Theme.of(context).brightness == Brightness.dark;
-		final accentColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
+	Widget _buildPlaybackControl(BuildContext context) {
+		final isPlaying = _playbackState == 'playing';
+		final isPaused = _playbackState == 'paused';
+		final isStopped = _playbackState == 'stopped' || _playbackState == null;
 
-		// TODO: Replace with real input sources when API is available
-		return GestureDetector(
-			onTap: _isSending ? null : () => _showInputSelector(),
-			child: Container(
-				padding: AppSpacings.paddingMd,
-				decoration: BoxDecoration(
-					color: isDark ? AppFillColorDark.base : AppFillColorLight.base,
-					border: Border.all(color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light),
-					borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-				),
-				child: Row(
-					children: [
-						Icon(
-							MdiIcons.audioInputStereoMinijack,
-							size: _scale(18),
-							color: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
-						),
-						AppSpacings.spacingMdHorizontal,
-						Text(
-							'Input',
-							style: TextStyle(
-								fontSize: AppFontSize.small,
-								fontWeight: FontWeight.w500,
-								color: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
+		// Read supported commands from the playback command property format
+		final targets = _mediaService?.resolveControlTargets(_roomId);
+		final cmdPropId = targets?.playbackTarget?.links.playbackCommandId;
+		Set<String> supported = {'play', 'pause', 'stop', 'previous', 'next'};
+		if (cmdPropId != null && _devicesService != null) {
+			final prop = _devicesService!.getChannelProperty(cmdPropId);
+			if (prop?.format is StringListFormatType) {
+				supported = (prop!.format as StringListFormatType).value.toSet();
+			}
+		}
+
+		// Define button specs: (command, icon, isMain, isActive)
+		final specs = <(String, IconData, bool, bool)>[
+			if (supported.contains('previous')) ('previous', MdiIcons.skipPrevious, false, false),
+			if (supported.contains('play')) ('play', MdiIcons.play, true, isPlaying),
+			if (supported.contains('pause')) ('pause', MdiIcons.pause, false, isPaused),
+			if (supported.contains('stop')) ('stop', MdiIcons.stop, false, isStopped && _playbackState != null),
+			if (supported.contains('next')) ('next', MdiIcons.skipNext, false, false),
+		];
+
+		if (specs.isEmpty) return const SizedBox.shrink();
+
+		return LayoutBuilder(
+			builder: (context, constraints) {
+				final mainCount = specs.where((s) => s.$3).length;
+				final regularCount = specs.length - mainCount;
+				final gapCount = specs.length - 1;
+				final defaultTotal = mainCount * _scale(56) + regularCount * _scale(44) + gapCount * AppSpacings.pLg;
+				final compact = constraints.maxWidth < defaultTotal;
+
+				return Row(
+					mainAxisAlignment: MainAxisAlignment.center,
+					spacing: compact ? AppSpacings.pSm : AppSpacings.pLg,
+					children: specs.map((spec) {
+						final (cmd, icon, isMain, isActive) = spec;
+						return _buildTransportButton(
+							context,
+							icon: icon,
+							isMain: isMain,
+							isActive: isActive,
+							compact: compact,
+							onTap: _isSending ? null : () => _sendPlaybackCommand(
+								cmd == 'play' && isPlaying ? 'pause' :
+								cmd == 'pause' && isPaused ? 'play' : cmd,
 							),
-						),
-						const Spacer(),
-						Text(
-							'Select',
-							style: TextStyle(
-								fontSize: AppFontSize.small,
-								color: accentColor,
-							),
-						),
-						AppSpacings.spacingXsHorizontal,
-						Icon(
-							MdiIcons.chevronRight,
-							size: _scale(16),
-							color: accentColor,
-						),
-					],
-				),
-			),
+						);
+					}).toList(),
+				);
+			},
 		);
 	}
 
-	Widget _buildPlaybackControl(BuildContext context) {
+	Widget _buildNowPlaying(BuildContext context) {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
-		final accentColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
-
-		// TODO: Replace with real playback state when API is available
-		const title = 'No track';
-		const artist = '';
-		const position = Duration.zero;
-		const duration = Duration.zero;
-		const progress = 0.0;
 
 		return Column(
-			spacing: AppSpacings.pLg,
+			crossAxisAlignment: CrossAxisAlignment.stretch,
 			children: [
-				// Now playing info
-				Column(
-					children: [
-						Text(
-							title,
-							style: TextStyle(
-								fontSize: AppFontSize.large,
-								fontWeight: FontWeight.w600,
-								color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
-							),
-							textAlign: TextAlign.center,
+				if (_trackName != null)
+					Text(
+						_trackName!,
+						style: TextStyle(
+							fontSize: AppFontSize.large,
+							fontWeight: FontWeight.w600,
+							color: isDark ? AppTextColorDark.regular : AppTextColorLight.regular,
 						),
-						if (artist.isNotEmpty)
-							Text(
-								artist,
-								style: TextStyle(
-									fontSize: AppFontSize.small,
-									color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
-								),
-								textAlign: TextAlign.center,
-							),
-					],
+						maxLines: 1,
+						overflow: TextOverflow.ellipsis,
+						textAlign: TextAlign.center,
+					),
+				if (_artistName != null)
+					Text(
+						_artistName!,
+						style: TextStyle(
+							fontSize: AppFontSize.small,
+							color: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
+						),
+						maxLines: 1,
+						overflow: TextOverflow.ellipsis,
+						textAlign: TextAlign.center,
+					),
+			],
+		);
+	}
+
+	Widget _buildProgressBar(BuildContext context) {
+		final isDark = Theme.of(context).brightness == Brightness.dark;
+		final accentColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
+		final trackColor = isDark ? AppFillColorDark.darker : AppFillColorLight.darker;
+		final secondaryColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
+
+		final pos = _position ?? 0;
+		final dur = _duration ?? 1;
+		final progress = (pos / dur).clamp(0.0, 1.0);
+
+		final timeWidth = _scale(52);
+
+		// Check if position property is writable for seek support
+		final targets = _mediaService?.resolveControlTargets(_roomId);
+		final posId = targets?.playbackTarget?.links.positionPropertyId;
+		final isSeekable = posId != null && _devicesService != null &&
+				(_devicesService!.getChannelProperty(posId)?.isWritable ?? false);
+
+		return Row(
+			children: [
+				SizedBox(
+					width: timeWidth,
+					child: Text(
+						_formatTime(pos.toInt()),
+						style: TextStyle(
+							fontSize: AppFontSize.extraSmall,
+							color: secondaryColor,
+						),
+					),
 				),
-				// Transport buttons (circular)
-				Row(
-					mainAxisAlignment: MainAxisAlignment.center,
-					spacing: AppSpacings.pLg,
-					children: [
-						_buildTransportButton(
-							context,
-							icon: MdiIcons.skipPrevious,
-							onTap: _isSending ? null : () => _sendPlaybackCommand('previous'),
-						),
-						_buildTransportButton(
-							context,
-							icon: MdiIcons.play,
-							isMain: true,
-							onTap: _isSending ? null : () => _sendPlaybackCommand('play'),
-						),
-						_buildTransportButton(
-							context,
-							icon: MdiIcons.skipNext,
-							onTap: _isSending ? null : () => _sendPlaybackCommand('next'),
-						),
-					],
+				AppSpacings.spacingMdHorizontal,
+				Expanded(
+					child: LayoutBuilder(
+						builder: (context, constraints) {
+							final barWidth = constraints.maxWidth;
+							final bar = ClipRRect(
+								borderRadius: BorderRadius.circular(_scale(2)),
+								child: LinearProgressIndicator(
+									value: progress,
+									minHeight: _scale(3),
+									backgroundColor: trackColor,
+									valueColor: AlwaysStoppedAnimation<Color>(accentColor),
+								),
+							);
+
+							if (!isSeekable) return bar;
+
+							return GestureDetector(
+								behavior: HitTestBehavior.opaque,
+								onTapDown: (details) {
+									final tapX = details.localPosition.dx;
+									final ratio = (tapX / barWidth).clamp(0.0, 1.0);
+									final newPos = (ratio * dur).roundToDouble();
+									setState(() => _position = newPos);
+									_devicesService!.setPropertyValue(posId, newPos.toInt());
+								},
+								child: Padding(
+									padding: EdgeInsets.symmetric(vertical: AppSpacings.pLg),
+									child: bar,
+								),
+							);
+						},
+					),
 				),
-				// Progress bar with timestamps
-				Row(
-					children: [
-						Text(
-							DatetimeUtils.formatDuration(position),
-							style: TextStyle(
-								fontSize: AppFontSize.extraSmall,
-								color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
-							),
+				AppSpacings.spacingMdHorizontal,
+				SizedBox(
+					width: timeWidth,
+					child: Text(
+						_formatTime(dur.toInt()),
+						style: TextStyle(
+							fontSize: AppFontSize.extraSmall,
+							color: secondaryColor,
 						),
-						AppSpacings.spacingMdHorizontal,
-						Expanded(
-							child: Container(
-								height: _scale(4),
-								decoration: BoxDecoration(
-									color: isDark ? AppFillColorDark.base : AppFillColorLight.base,
-									borderRadius: BorderRadius.circular(_scale(2)),
-								),
-								child: FractionallySizedBox(
-									alignment: Alignment.centerLeft,
-									widthFactor: progress.clamp(0.0, 1.0),
-									child: Container(
-										decoration: BoxDecoration(
-											color: accentColor,
-											borderRadius: BorderRadius.circular(_scale(2)),
-										),
-									),
-								),
-							),
-						),
-						AppSpacings.spacingMdHorizontal,
-						Text(
-							DatetimeUtils.formatDuration(duration),
-							style: TextStyle(
-								fontSize: AppFontSize.extraSmall,
-								color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
-							),
-						),
-					],
+						textAlign: TextAlign.right,
+					),
 				),
 			],
 		);
+	}
+
+	String _formatTime(int totalSeconds) {
+		final hours = totalSeconds ~/ 3600;
+		final minutes = (totalSeconds % 3600) ~/ 60;
+		final seconds = totalSeconds % 60;
+		if (hours > 0) {
+			return '$hours:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+		}
+		return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
 	}
 
 	Widget _buildTransportButton(
 		BuildContext context, {
 		required IconData icon,
 		bool isMain = false,
+		bool isActive = false,
+		bool compact = false,
 		VoidCallback? onTap,
 	}) {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 		final accentColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
+		final baseColor = isDark ? AppFillColorDark.base : AppFillColorLight.base;
 
-		final size = _scale(isMain ? 56 : 44);
-		final iconSize = _scale(isMain ? 28 : 20);
+		final size = _scale(isMain ? (compact ? 44 : 56) : (compact ? 34 : 44));
+		final iconSize = _scale(isMain ? (compact ? 22 : 28) : (compact ? 16 : 20));
 
-		return GestureDetector(
-			onTap: onTap,
-			child: Container(
-				width: size,
-				height: size,
-				decoration: BoxDecoration(
-					color: isMain ? accentColor : (isDark ? AppFillColorDark.base : AppFillColorLight.base),
-					border: isMain ? null : Border.all(color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light),
-					shape: BoxShape.circle,
-				),
-				child: Icon(
-					icon,
-					size: iconSize,
-					color: isMain ? Colors.white : (isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary),
+		final Color bgColor;
+		final Color iconColor;
+		final BorderSide borderSide;
+
+		if (isActive) {
+			bgColor = accentColor;
+			iconColor = AppColors.white;
+			borderSide = BorderSide.none;
+		} else {
+			bgColor = baseColor;
+			iconColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
+			borderSide = BorderSide(color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light);
+		}
+
+		return SizedBox(
+			width: size,
+			height: size,
+			child: Material(
+				color: bgColor,
+				shape: CircleBorder(side: borderSide),
+				child: InkWell(
+					onTap: onTap == null
+							? null
+							: () {
+									HapticFeedback.lightImpact();
+									onTap();
+								},
+					customBorder: const CircleBorder(),
+					splashColor: isActive
+							? AppColors.white.withValues(alpha: 0.2)
+							: accentColor.withValues(alpha: 0.15),
+					highlightColor: isActive
+							? AppColors.white.withValues(alpha: 0.1)
+							: accentColor.withValues(alpha: 0.08),
+					child: Icon(
+						icon,
+						size: iconSize,
+						color: iconColor,
+					),
 				),
 			),
 		);
@@ -1210,33 +1543,42 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	Widget _buildRemoteButton(BuildContext context) {
 		final isLight = Theme.of(context).brightness == Brightness.light;
 
-		return GestureDetector(
-			onTap: _isSending ? null : () => _showRemote(),
-			child: Container(
-				padding: AppSpacings.paddingMd,
-				decoration: BoxDecoration(
-					color: isLight ? AppFillColorLight.base : AppFillColorDark.base,
-					borderRadius: BorderRadius.circular(AppBorderRadius.base),
-					border: isLight ? Border.all(color: AppBorderColorLight.base) : null,
-				),
-				child: Row(
-					mainAxisAlignment: MainAxisAlignment.center,
-					children: [
-						Icon(
-							MdiIcons.remote,
-							size: _scale(18),
-							color: isLight ? AppTextColorLight.regular : AppTextColorDark.regular,
-						),
-						AppSpacings.spacingXsHorizontal,
-						Text(
-							'Remote Control',
-							style: TextStyle(
-								fontSize: AppFontSize.small,
-								fontWeight: FontWeight.w500,
+		return Material(
+			color: isLight ? AppFillColorLight.base : AppFillColorDark.base,
+			borderRadius: BorderRadius.circular(AppBorderRadius.base),
+			child: InkWell(
+				onTap: _isSending
+						? null
+						: () {
+								HapticFeedback.lightImpact();
+								_showRemote();
+							},
+				borderRadius: BorderRadius.circular(AppBorderRadius.base),
+				child: Container(
+					padding: AppSpacings.paddingMd,
+					decoration: BoxDecoration(
+						borderRadius: BorderRadius.circular(AppBorderRadius.base),
+						border: isLight ? Border.all(color: AppBorderColorLight.base) : null,
+					),
+					child: Row(
+						mainAxisAlignment: MainAxisAlignment.center,
+						children: [
+							Icon(
+								MdiIcons.remote,
+								size: _scale(18),
 								color: isLight ? AppTextColorLight.regular : AppTextColorDark.regular,
 							),
-						),
-					],
+							AppSpacings.spacingXsHorizontal,
+							Text(
+								AppLocalizations.of(context)!.media_remote_control,
+								style: TextStyle(
+									fontSize: AppFontSize.small,
+									fontWeight: FontWeight.w500,
+									color: isLight ? AppTextColorLight.regular : AppTextColorDark.regular,
+								),
+							),
+						],
+					),
 				),
 			),
 		);
@@ -1270,7 +1612,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 							AppSpacings.spacingSmHorizontal,
 							Expanded(
 								child: Text(
-									'Activity failed to apply ($errorCount error${errorCount != 1 ? 's' : ''}, $warningCount warning${warningCount != 1 ? 's' : ''})',
+									AppLocalizations.of(context)!.media_failure_inline(errorCount, warningCount),
 									style: TextStyle(fontWeight: FontWeight.w600, color: errorColor, fontSize: AppFontSize.small),
 								),
 							),
@@ -1281,13 +1623,13 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 						children: [
 							OutlinedButton.icon(
 								icon: Icon(MdiIcons.refresh, size: _scale(16)),
-								label: const Text('Retry'),
+								label: Text(AppLocalizations.of(context)!.media_activity_retry),
 								onPressed: () => _retryActivity(state),
 							),
 							AppSpacings.spacingMdHorizontal,
 							OutlinedButton.icon(
 								icon: Icon(MdiIcons.stop, size: _scale(16)),
-								label: const Text('Deactivate'),
+								label: Text(AppLocalizations.of(context)!.media_failure_deactivate),
 								onPressed: _deactivateActivity,
 							),
 						],
@@ -1321,12 +1663,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 					child: SafeArea(
 						top: false,
 						child: Padding(
-							padding: EdgeInsets.fromLTRB(
-								AppSpacings.pLg,
-								_scale(12),
-								AppSpacings.pLg,
-								AppSpacings.pXl,
-							),
+							padding: AppSpacings.paddingLg,
 							child: Column(
 								mainAxisSize: MainAxisSize.min,
 								crossAxisAlignment: CrossAxisAlignment.start,
@@ -1349,7 +1686,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 										mainAxisAlignment: MainAxisAlignment.spaceBetween,
 										children: [
 											Text(
-												'Activation Details',
+												AppLocalizations.of(context)!.media_failure_details_title,
 												style: TextStyle(
 													color: textColor,
 													fontSize: AppFontSize.extraLarge,
@@ -1382,10 +1719,10 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 											spacing: AppSpacings.pMd,
 											runSpacing: AppSpacings.pSm,
 											children: [
-												_summaryChip('Total', lastResult.stepsTotal, Colors.grey),
-												_summaryChip('OK', lastResult.stepsSucceeded, Colors.green),
-												_summaryChip('Errors', lastResult.errorCount, Colors.red),
-												_summaryChip('Warnings', lastResult.warningCount, Colors.orange),
+												_summaryChip(AppLocalizations.of(context)!.media_failure_summary_total, lastResult.stepsTotal, (isDark ? AppColorsDark.neutral : AppColorsLight.neutral), (isDark ? AppColorsDark.neutralLight9 : AppColorsLight.neutralLight9)),
+												_summaryChip(AppLocalizations.of(context)!.media_failure_summary_ok, lastResult.stepsSucceeded, (isDark ? AppColorsDark.success : AppColorsLight.success), (isDark ? AppColorsDark.successLight9 : AppColorsLight.successLight9)),
+												_summaryChip(AppLocalizations.of(context)!.media_failure_summary_errors, lastResult.errorCount, (isDark ? AppColorsDark.error : AppColorsLight.error), (isDark ? AppColorsDark.errorLight9 : AppColorsLight.errorLight9)),
+												_summaryChip(AppLocalizations.of(context)!.media_failure_summary_warnings, lastResult.warningCount, (isDark ? AppColorsDark.warning : AppColorsLight.warning), (isDark ? AppColorsDark.warningLight9 : AppColorsLight.warningLight9)),
 											],
 										),
 										AppSpacings.spacingLgVertical,
@@ -1394,40 +1731,40 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 									// Errors
 									if (errors.isNotEmpty) ...[
 										Text(
-											'Errors (critical)',
+											AppLocalizations.of(context)!.media_failure_errors_critical,
 											style: TextStyle(
 												fontWeight: FontWeight.w600,
-												color: Colors.red.shade700,
+												color: isDark ? AppColorsDark.error : AppColorsLight.error,
 												fontSize: AppFontSize.small,
 											),
 										),
 										AppSpacings.spacingSmVertical,
-										...errors.map((f) => _failureRow(f, Colors.red)),
+										...errors.map((f) => _failureRow(f, isDark ? AppColorsDark.error : AppColorsLight.error, isDark ? AppColorsDark.primaryLight9 : AppColorsLight.primaryLight9)),
 										AppSpacings.spacingMdVertical,
 									],
 
 									// Warnings
 									if (warnings.isNotEmpty) ...[
 										Text(
-											'Warnings (non-critical)',
+											AppLocalizations.of(context)!.media_failure_warnings_non_critical,
 											style: TextStyle(
 												fontWeight: FontWeight.w600,
-												color: Colors.orange.shade700,
+												color: isDark ? AppColorsDark.warning : AppColorsLight.warning,
 												fontSize: AppFontSize.small,
 											),
 										),
 										AppSpacings.spacingSmVertical,
-										...warnings.map((f) => _failureRow(f, Colors.orange)),
+										...warnings.map((f) => _failureRow(f, isDark ? AppColorsDark.error : AppColorsLight.error, isDark ? AppColorsDark.primaryLight9 : AppColorsLight.primaryLight9)),
 										AppSpacings.spacingMdVertical,
 									],
 
 									// Legacy string warnings
 									if (state.warnings.isNotEmpty && warnings.isEmpty) ...[
 										Text(
-											'Warnings',
+											AppLocalizations.of(context)!.media_failure_warnings_label,
 											style: TextStyle(
 												fontWeight: FontWeight.w600,
-												color: Colors.orange.shade700,
+												color: isDark ? AppColorsDark.warning : AppColorsLight.warning,
 												fontSize: AppFontSize.small,
 											),
 										),
@@ -1447,7 +1784,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 												Expanded(
 													child: FilledButton.icon(
 														icon: Icon(MdiIcons.refresh, size: _scale(16)),
-														label: const Text('Retry activity'),
+														label: Text(AppLocalizations.of(context)!.media_failure_retry_activity),
 														onPressed: () {
 															Navigator.pop(ctx);
 															_retryActivity(state);
@@ -1457,8 +1794,8 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 											if (state.isFailed) AppSpacings.spacingMdHorizontal,
 											Expanded(
 												child: OutlinedButton.icon(
-													icon: Icon(MdiIcons.stop, size: _scale(16)),
-													label: const Text('Deactivate'),
+													icon: Icon(MdiIcons.stopCircleOutline, size: _scale(16)),
+													label: Text(AppLocalizations.of(context)!.media_failure_deactivate),
 													onPressed: () {
 														Navigator.pop(ctx);
 														_deactivateActivity();
@@ -1476,30 +1813,30 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		);
 	}
 
-	Widget _summaryChip(String label, int count, Color color) {
+	Widget _summaryChip(String label, int count, Color textColor, Color backgroundColor) {
 		return Container(
 			padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd, vertical: AppSpacings.pSm),
 			decoration: BoxDecoration(
-				color: color.withValues(alpha: 0.1),
+				color: backgroundColor,
 				borderRadius: BorderRadius.circular(AppBorderRadius.medium),
 			),
 			child: Text(
 				'$label: $count',
-				style: TextStyle(fontSize: AppFontSize.extraSmall, fontWeight: FontWeight.w600, color: color),
+				style: TextStyle(fontSize: AppFontSize.extraSmall, fontWeight: FontWeight.w600, color: textColor),
 			),
 		);
 	}
 
-	Widget _failureRow(MediaStepFailureModel failure, Color color) {
+	Widget _failureRow(MediaStepFailureModel failure, Color textColor, Color backgroundColor) {
 		return Padding(
 			padding: EdgeInsets.only(bottom: AppSpacings.pSm),
 			child: Container(
 				width: double.infinity,
 				padding: EdgeInsets.all(AppSpacings.pMd),
 				decoration: BoxDecoration(
-					color: color.withValues(alpha: 0.05),
+					color: backgroundColor,
 					borderRadius: BorderRadius.circular(AppBorderRadius.base),
-					border: Border.all(color: color.withValues(alpha: 0.2)),
+					border: Border.all(color: backgroundColor),
 				),
 				child: Column(
 					crossAxisAlignment: CrossAxisAlignment.start,
@@ -1507,16 +1844,16 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 						if (failure.label != null)
 							Text(
 								failure.label!,
-								style: TextStyle(fontSize: AppFontSize.small, fontWeight: FontWeight.w600, color: color),
+								style: TextStyle(fontSize: AppFontSize.small, fontWeight: FontWeight.w600, color: textColor),
 							),
 						Text(
 							failure.reason,
-							style: TextStyle(fontSize: AppFontSize.extraSmall, color: color.withValues(alpha: 0.8)),
+							style: TextStyle(fontSize: AppFontSize.extraSmall, color: textColor),
 						),
 						if (failure.targetDeviceId != null)
 							Text(
-								'Device: ${failure.targetDeviceId}',
-								style: TextStyle(fontSize: AppFontSize.extraSmall, color: Colors.grey.shade600),
+								AppLocalizations.of(context)!.media_failure_device_label(failure.targetDeviceId!),
+								style: TextStyle(fontSize: AppFontSize.extraSmall, color: Theme.of(context).brightness == Brightness.dark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder),
 							),
 					],
 				),
@@ -1532,6 +1869,112 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 
 	void _deactivateActivity() {
 		_onActivitySelected(MediaActivityKey.off);
+	}
+
+	// ============================================
+	// LANDSCAPE CONTROLS
+	// ============================================
+
+	Widget _buildLandscapeControls(BuildContext context) {
+		final localizations = AppLocalizations.of(context)!;
+		final isDark = Theme.of(context).brightness == Brightness.dark;
+		final accentColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
+		final targets = _mediaService?.resolveControlTargets(_roomId);
+		final tileHeight = _scale(AppTileHeight.horizontal);
+
+		final controls = <Widget>[];
+
+		// Volume control as ValueSelectorRow
+		if (targets?.hasVolume == true) {
+			final volumeOptions = [0, 25, 50, 75, 100].map((v) => ValueOption<int>(
+				value: v,
+				label: '$v%',
+			)).toList();
+
+			controls.add(
+				SizedBox(
+					height: tileHeight,
+					width: double.infinity,
+					child: ValueSelectorRow<int>(
+						currentValue: _volume,
+						label: localizations.media_volume,
+						icon: MdiIcons.volumeHigh,
+						sheetTitle: localizations.media_volume,
+						activeColor: accentColor,
+						options: volumeOptions,
+						displayFormatter: (v) => '${v ?? 0}%',
+						columns: 5,
+						layout: ValueSelectorRowLayout.compact,
+						showChevron: true,
+						onChanged: _isSending ? null : (v) {
+							if (v != null) _setVolume(v);
+						},
+					),
+				),
+			);
+		}
+
+		// Mute toggle as UniversalTile
+		if (targets?.hasVolume == true) {
+			controls.add(
+				SizedBox(
+					height: tileHeight,
+					width: double.infinity,
+					child: UniversalTile(
+						layout: TileLayout.horizontal,
+						icon: _isMuted ? MdiIcons.volumeOff : MdiIcons.volumeHigh,
+						name: localizations.media_action_mute,
+						status: _isMuted ? localizations.on_state_on : localizations.on_state_off,
+						isActive: _isMuted,
+						activeColor: accentColor,
+						onTileTap: _isSending ? null : () {
+							HapticFeedback.lightImpact();
+							_toggleMute();
+						},
+						showGlow: false,
+						showDoubleBorder: false,
+						showInactiveBorder: true,
+					),
+				),
+			);
+		}
+
+		// Remote control tile
+		if (targets?.hasRemote == true) {
+			controls.add(
+				SizedBox(
+					height: tileHeight,
+					width: double.infinity,
+					child: UniversalTile(
+						layout: TileLayout.horizontal,
+						icon: MdiIcons.remote,
+						name: localizations.media_remote_control,
+						isActive: false,
+						onTileTap: () {
+							HapticFeedback.lightImpact();
+							_showRemote();
+						},
+						showGlow: false,
+						showDoubleBorder: false,
+						showInactiveBorder: true,
+					),
+				),
+			);
+		}
+
+		if (controls.isEmpty) return const SizedBox.shrink();
+
+		return Column(
+			crossAxisAlignment: CrossAxisAlignment.start,
+			children: [
+				SectionTitle(
+					title: localizations.device_controls,
+					icon: MdiIcons.tuneVertical,
+				),
+				AppSpacings.spacingMdVertical,
+				...controls.expand((c) => [c, AppSpacings.spacingMdVertical]).toList()..removeLast(),
+			],
+		);
 	}
 
 	// ============================================
@@ -1569,11 +2012,11 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		);
 	}
 
-	String _deviceStatus(MediaDeviceGroup group, MediaActiveStateModel? activeState) {
-		if (activeState == null || activeState.isDeactivated) return 'Standby';
+	bool _isDeviceActive(MediaDeviceGroup group, MediaActiveStateModel? activeState) {
+		if (activeState == null || activeState.isDeactivated) return false;
 
 		final resolved = activeState.resolved;
-		if (resolved == null) return 'Standby';
+		if (resolved == null) return false;
 
 		final deviceId = group.deviceId;
 		final isResolved = resolved.displayDeviceId == deviceId ||
@@ -1581,20 +2024,37 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 				resolved.sourceDeviceId == deviceId ||
 				resolved.remoteDeviceId == deviceId;
 
-		if (!isResolved) return 'Standby';
+		return isResolved && (activeState.isActive || activeState.isActiveWithWarnings);
+	}
 
-		if (activeState.isActivating) return 'Activating...';
-		if (activeState.isFailed) return 'Failed';
-		if (activeState.isDeactivating) return 'Stopping...';
-		if (activeState.isActiveWithWarnings) return 'Active with issues';
-		if (activeState.isActive) return 'Active';
+	String _deviceStatus(BuildContext context, MediaDeviceGroup group, MediaActiveStateModel? activeState) {
+		final localizations = AppLocalizations.of(context)!;
+		if (activeState == null || activeState.isDeactivated) return localizations.media_status_standby;
 
-		return 'Ready';
+		final resolved = activeState.resolved;
+		if (resolved == null) return localizations.media_status_standby;
+
+		final deviceId = group.deviceId;
+		final isResolved = resolved.displayDeviceId == deviceId ||
+				resolved.audioDeviceId == deviceId ||
+				resolved.sourceDeviceId == deviceId ||
+				resolved.remoteDeviceId == deviceId;
+
+		if (!isResolved) return localizations.media_status_standby;
+
+		if (activeState.isActivating) return localizations.media_status_activating;
+		if (activeState.isFailed) return localizations.media_status_failed;
+		if (activeState.isDeactivating) return localizations.media_status_stopping;
+		if (activeState.isActiveWithWarnings) return localizations.media_status_active_with_issues;
+		if (activeState.isActive) return localizations.media_status_active;
+
+		return localizations.media_status_ready;
 	}
 
 	Widget _buildDeviceTile(BuildContext context, MediaDeviceGroup group, MediaActiveStateModel? activeState) {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
-
+		final isActive = _isDeviceActive(group, activeState);
+		final isLandscape = _screenService.isLandscape;
 
 		final accessories = Row(
 			mainAxisSize: MainAxisSize.min,
@@ -1606,47 +2066,49 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 							width: _scale(22),
 							height: _scale(22),
 							decoration: BoxDecoration(
-								color: isDark ? AppFillColorDark.base : AppFillColorLight.base,
+								color: isActive
+										? (isDark ? AppColorsDark.primaryLight5 : AppColorsLight.primaryLight5)
+										: (isDark ? AppFillColorDark.base : AppFillColorLight.base),
 								borderRadius: BorderRadius.circular(AppBorderRadius.base),
 							),
 							child: Icon(
 								capIcon,
 								size: _scale(12),
-								color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
+								color: isActive
+										? (isDark ? AppColorsDark.primary : AppColorsLight.primary)
+										: (isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder),
 							),
 						),
 					);
 				}),
-				AppSpacings.spacingMdHorizontal,
 				Icon(
 					MdiIcons.chevronRight,
 					size: _scale(28),
-					color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
+					color: isActive
+							? (isDark ? AppColorsDark.primary : AppColorsLight.primary)
+							: (isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder),
 				),
 			],
 		);
 
-		final status = _deviceStatus(group, activeState);
+		final status = _deviceStatus(context, group, activeState);
 
-		return OrientationBuilder(
-			builder: (context, orientation) {
-				if (orientation == Orientation.landscape) {
-					return DeviceTileLandscape(
-						icon: _deviceGroupIcon(group),
-						name: group.deviceName,
-						status: status,
-						onTileTap: () => _navigateToDeviceDetail(group),
-						accessories: accessories,
-					);
-				}
-				return DeviceTilePortrait(
-					icon: _deviceGroupIcon(group),
-					name: group.deviceName,
-					status: status,
-					onTileTap: () => _navigateToDeviceDetail(group),
-					accessories: accessories,
-				);
-			},
+		if (isLandscape) {
+			return DeviceTileLandscape(
+				icon: _deviceGroupIcon(group),
+				name: group.deviceName,
+				status: status,
+				isActive: isActive,
+				onTileTap: () => _navigateToDeviceDetail(group),
+			);
+		}
+		return DeviceTilePortrait(
+			icon: _deviceGroupIcon(group),
+			name: group.deviceName,
+			status: status,
+			isActive: isActive,
+			onTileTap: () => _navigateToDeviceDetail(group),
+			accessories: accessories,
 		);
 	}
 
@@ -1663,19 +2125,20 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	// HELPERS
 	// ============================================
 
-	String _activityLabel(MediaActivityKey? key) {
+	String _activityLabel(BuildContext context, MediaActivityKey? key) {
+		final localizations = AppLocalizations.of(context)!;
 		switch (key) {
 			case MediaActivityKey.watch:
-				return 'Watch';
+				return localizations.media_activity_watch;
 			case MediaActivityKey.listen:
-				return 'Listen';
+				return localizations.media_activity_listen;
 			case MediaActivityKey.gaming:
-				return 'Gaming';
+				return localizations.media_activity_gaming;
 			case MediaActivityKey.background:
-				return 'Bgnd';
+				return localizations.media_activity_background;
 			case MediaActivityKey.off:
 			case null:
-				return 'Off';
+				return localizations.media_activity_off;
 		}
 	}
 
@@ -1717,6 +2180,8 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	}
 
 
+	String _inputSourceLabel(BuildContext context, String source) => _mediaInputSourceLabel(context, source);
+
 	void _navigateToDeviceDetail(MediaDeviceGroup group) {
 		Navigator.push(
 			context,
@@ -1729,37 +2194,351 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		);
 	}
 
-	// TODO: Volume, mute, playback will use direct device commands when media domain is finished
 	void _setVolume(int volume) {
 		setState(() => _volume = volume);
-		ScaffoldMessenger.of(context).showSnackBar(
-			const SnackBar(content: Text('Direct device commands coming soon')),
-		);
+
+		final targets = _mediaService?.resolveControlTargets(_roomId);
+		final propId = targets?.volumeTarget?.links.volumePropertyId;
+		if (propId == null || _devicesService == null) {
+			if (kDebugMode) {
+				debugPrint('[MediaDomainViewPage] Volume: no property ID (propId=$propId, links=${targets?.volumeTarget?.links.raw})');
+			}
+			return;
+		}
+
+		_volumeDebounceTimer?.cancel();
+		_volumeDebounceTimer = Timer(const Duration(milliseconds: 150), () {
+			if (kDebugMode) {
+				debugPrint('[MediaDomainViewPage] Setting volume=$volume on property=$propId');
+			}
+			_devicesService!.setPropertyValue(propId, volume);
+		});
 	}
 
 	void _toggleMute() {
-		setState(() => _isMuted = !_isMuted);
-		ScaffoldMessenger.of(context).showSnackBar(
-			const SnackBar(content: Text('Direct device commands coming soon')),
-		);
+		final newMuted = !_isMuted;
+		setState(() => _isMuted = newMuted);
+
+		final targets = _mediaService?.resolveControlTargets(_roomId);
+		final propId = targets?.volumeTarget?.links.mutePropertyId;
+		if (propId == null || _devicesService == null) {
+			if (kDebugMode) {
+				debugPrint('[MediaDomainViewPage] Mute: no property ID (propId=$propId, links=${targets?.volumeTarget?.links.raw})');
+			}
+			return;
+		}
+
+		if (kDebugMode) {
+			debugPrint('[MediaDomainViewPage] Setting mute=$newMuted on property=$propId');
+		}
+		_devicesService!.setPropertyValue(propId, newMuted);
 	}
 
-	void _showInputSelector() {
-		ScaffoldMessenger.of(context).showSnackBar(
-			const SnackBar(content: Text('Input selector coming soon')),
+	void _showInputSelectorSheet(List<String> sources, String? currentValue, String propId) {
+		final localizations = AppLocalizations.of(context)!;
+
+		showModalBottomSheet(
+			context: context,
+			isScrollControlled: true,
+			backgroundColor: AppColors.blank,
+			builder: (ctx) => ValueSelectorSheet<String>(
+				currentValue: currentValue,
+				options: sources
+						.map((s) => ValueOption<String>(value: s, label: _inputSourceLabel(context, s)))
+						.toList(),
+				title: localizations.media_input_select_title,
+				columns: 3,
+				onConfirm: (value) {
+					Navigator.pop(ctx);
+					if (value != null) {
+						_devicesService!.setPropertyValue(propId, value);
+					}
+				},
+			),
 		);
 	}
 
 	void _sendPlaybackCommand(String command) {
-		ScaffoldMessenger.of(context).showSnackBar(
-			const SnackBar(content: Text('Direct device commands coming soon')),
-		);
+		final targets = _mediaService?.resolveControlTargets(_roomId);
+		final propId = targets?.playbackTarget?.links.playbackCommandId;
+		if (propId == null || _devicesService == null) {
+			if (kDebugMode) {
+				debugPrint('[MediaDomainViewPage] Playback: no property ID (propId=$propId, links=${targets?.playbackTarget?.links.raw})');
+			}
+			return;
+		}
+
+		// Optimistic state: map command to expected status
+		final optimisticState = switch (command) {
+			'play' => 'playing',
+			'pause' => 'paused',
+			'stop' => 'stopped',
+			_ => _playbackState,
+		};
+		setState(() => _playbackState = optimisticState);
+
+		// Block _syncDeviceState from overwriting during settle window.
+		// After timeout, re-read the actual device value (backend truth).
+		_playbackSettleTimer?.cancel();
+		_playbackSettleTimer = Timer(const Duration(seconds: 3), () {
+			if (!mounted) return;
+			_syncDeviceState();
+			setState(() {});
+		});
+
+		if (kDebugMode) {
+			debugPrint('[MediaDomainViewPage] Sending playback=$command on property=$propId');
+		}
+		_devicesService!.setPropertyValue(propId, command);
 	}
 
 	void _showRemote() {
-		ScaffoldMessenger.of(context).showSnackBar(
-			const SnackBar(content: Text('Remote control coming soon')),
+		final targets = _mediaService?.resolveControlTargets(_roomId);
+		if (targets == null || !targets.hasRemote) return;
+
+		final remoteEndpoint = targets.remoteTarget!;
+		final propId = remoteEndpoint.links.remotePropertyId;
+		if (propId == null || _devicesService == null) return;
+
+		// Read supported commands from property format
+		Set<String> supported = {};
+		final prop = _devicesService!.getChannelProperty(propId);
+		if (prop?.format is StringListFormatType) {
+			supported = (prop!.format as StringListFormatType).value.toSet();
+		}
+
+		if (supported.isEmpty) return;
+
+		// Map enum values to icons and labels
+		IconData iconFor(TelevisionRemoteKeyValue key) => switch (key) {
+			TelevisionRemoteKeyValue.arrowUp => MdiIcons.chevronUp,
+			TelevisionRemoteKeyValue.arrowDown => MdiIcons.chevronDown,
+			TelevisionRemoteKeyValue.arrowLeft => MdiIcons.chevronLeft,
+			TelevisionRemoteKeyValue.arrowRight => MdiIcons.chevronRight,
+			TelevisionRemoteKeyValue.select => MdiIcons.radioboxMarked,
+			TelevisionRemoteKeyValue.back => MdiIcons.arrowLeft,
+			TelevisionRemoteKeyValue.exit => MdiIcons.exitToApp,
+			TelevisionRemoteKeyValue.info => MdiIcons.informationOutline,
+			TelevisionRemoteKeyValue.rewind => MdiIcons.rewind,
+			TelevisionRemoteKeyValue.fastForward => MdiIcons.fastForward,
+			TelevisionRemoteKeyValue.play => MdiIcons.play,
+			TelevisionRemoteKeyValue.pause => MdiIcons.pause,
+			TelevisionRemoteKeyValue.next => MdiIcons.skipNext,
+			TelevisionRemoteKeyValue.previous => MdiIcons.skipPrevious,
+		};
+
+		final remoteLocalizations = AppLocalizations.of(context)!;
+		String labelFor(TelevisionRemoteKeyValue key) => switch (key) {
+			TelevisionRemoteKeyValue.arrowUp => remoteLocalizations.media_remote_up,
+			TelevisionRemoteKeyValue.arrowDown => remoteLocalizations.media_remote_down,
+			TelevisionRemoteKeyValue.arrowLeft => remoteLocalizations.media_remote_left,
+			TelevisionRemoteKeyValue.arrowRight => remoteLocalizations.media_remote_right,
+			TelevisionRemoteKeyValue.select => remoteLocalizations.media_remote_ok,
+			TelevisionRemoteKeyValue.back => remoteLocalizations.media_remote_back,
+			TelevisionRemoteKeyValue.exit => remoteLocalizations.media_remote_exit,
+			TelevisionRemoteKeyValue.info => remoteLocalizations.media_remote_info,
+			TelevisionRemoteKeyValue.rewind => remoteLocalizations.media_remote_rewind,
+			TelevisionRemoteKeyValue.fastForward => remoteLocalizations.media_remote_fast_forward,
+			TelevisionRemoteKeyValue.play => remoteLocalizations.media_remote_play,
+			TelevisionRemoteKeyValue.pause => remoteLocalizations.media_remote_pause,
+			TelevisionRemoteKeyValue.next => remoteLocalizations.media_remote_next,
+			TelevisionRemoteKeyValue.previous => remoteLocalizations.media_remote_prev,
+		};
+
+		bool has(TelevisionRemoteKeyValue key) => supported.contains(key.value);
+
+		final hasUp = has(TelevisionRemoteKeyValue.arrowUp);
+		final hasDown = has(TelevisionRemoteKeyValue.arrowDown);
+		final hasLeft = has(TelevisionRemoteKeyValue.arrowLeft);
+		final hasRight = has(TelevisionRemoteKeyValue.arrowRight);
+		final hasSelect = has(TelevisionRemoteKeyValue.select);
+		final hasDpad = hasUp || hasDown || hasLeft || hasRight || hasSelect;
+
+		// Transport (media playback) keys in logical order
+		const transportOrder = [
+			TelevisionRemoteKeyValue.previous,
+			TelevisionRemoteKeyValue.rewind,
+			TelevisionRemoteKeyValue.play,
+			TelevisionRemoteKeyValue.pause,
+			TelevisionRemoteKeyValue.fastForward,
+			TelevisionRemoteKeyValue.next,
+		];
+
+		// Navigation keys
+		const navKeys = {
+			TelevisionRemoteKeyValue.back,
+			TelevisionRemoteKeyValue.exit,
+			TelevisionRemoteKeyValue.info,
+		};
+
+		final transportActions = transportOrder
+				.where((key) => has(key))
+				.toList();
+
+		final navActions = TelevisionRemoteKeyValue.values
+				.where((key) => navKeys.contains(key) && has(key))
+				.toList();
+
+		final isDark = Theme.of(context).brightness == Brightness.dark;
+		final bgColor = isDark ? AppFillColorDark.base : AppFillColorLight.blank;
+		final handleColor = isDark ? AppFillColorDark.darker : AppFillColorLight.darker;
+		final textColor = isDark ? AppTextColorDark.primary : AppTextColorLight.primary;
+		final secondaryColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
+		final navFgColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
+
+		final navButtonStyle = FilledButton.styleFrom(
+			textStyle: TextStyle(fontSize: AppFontSize.small),
+			foregroundColor: navFgColor,
+			padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd, vertical: AppSpacings.pSm),
 		);
+
+		showModalBottomSheet(
+			context: context,
+			isScrollControlled: true,
+			backgroundColor: AppColors.blank,
+			builder: (ctx) {
+				return Container(
+					decoration: BoxDecoration(
+						color: bgColor,
+						borderRadius: BorderRadius.vertical(top: Radius.circular(_scale(24))),
+					),
+					child: SafeArea(
+						top: false,
+						child: Padding(
+							padding: AppSpacings.paddingLg,
+							child: Column(
+								mainAxisSize: MainAxisSize.min,
+								children: [
+									// Handle
+									Center(
+										child: Container(
+											width: _scale(36),
+											height: _scale(4),
+											decoration: BoxDecoration(
+												color: handleColor,
+												borderRadius: BorderRadius.circular(AppBorderRadius.small),
+											),
+										),
+									),
+									AppSpacings.spacingMdVertical,
+
+									// Header with close button
+									Row(
+										mainAxisAlignment: MainAxisAlignment.spaceBetween,
+										children: [
+											Text(
+												remoteLocalizations.media_remote_control,
+												style: TextStyle(
+													color: textColor,
+													fontSize: AppFontSize.extraLarge,
+													fontWeight: FontWeight.w600,
+												),
+											),
+											GestureDetector(
+												onTap: () => Navigator.pop(ctx),
+												child: Container(
+													width: _scale(32),
+													height: _scale(32),
+													decoration: BoxDecoration(
+														color: handleColor,
+														borderRadius: BorderRadius.circular(_scale(16)),
+													),
+													child: Icon(
+														MdiIcons.close,
+														color: secondaryColor,
+														size: _scale(18),
+													),
+												),
+											),
+										],
+									),
+									AppSpacings.spacingLgVertical,
+
+									// D-pad
+									if (hasDpad) ...[
+										if (hasUp)
+											IconButton(
+												icon: Icon(MdiIcons.chevronUp, size: _scale(32)),
+												onPressed: () => _sendRemoteSheetCommand(propId, TelevisionRemoteKeyValue.arrowUp),
+											),
+										Row(
+											mainAxisSize: MainAxisSize.min,
+											children: [
+												if (hasLeft)
+													IconButton(
+														icon: Icon(MdiIcons.chevronLeft, size: _scale(32)),
+														onPressed: () => _sendRemoteSheetCommand(propId, TelevisionRemoteKeyValue.arrowLeft),
+													),
+												if (hasSelect) ...[
+													AppSpacings.spacingMdHorizontal,
+													FilledButton(
+														onPressed: () => _sendRemoteSheetCommand(propId, TelevisionRemoteKeyValue.select),
+														child: Text(remoteLocalizations.media_remote_ok),
+													),
+													AppSpacings.spacingMdHorizontal,
+												],
+												if (hasRight)
+													IconButton(
+														icon: Icon(MdiIcons.chevronRight, size: _scale(32)),
+														onPressed: () => _sendRemoteSheetCommand(propId, TelevisionRemoteKeyValue.arrowRight),
+													),
+											],
+										),
+										if (hasDown)
+											IconButton(
+												icon: Icon(MdiIcons.chevronDown, size: _scale(32)),
+												onPressed: () => _sendRemoteSheetCommand(propId, TelevisionRemoteKeyValue.arrowDown),
+											),
+									],
+
+									// Transport controls (media playback style)
+									if (transportActions.isNotEmpty) ...[
+										AppSpacings.spacingMdVertical,
+										Row(
+											mainAxisAlignment: MainAxisAlignment.center,
+											spacing: AppSpacings.pSm,
+											children: transportActions.map((key) {
+												final isMain = key == TelevisionRemoteKeyValue.play;
+												return _buildTransportButton(
+													context,
+													icon: iconFor(key),
+													isMain: isMain,
+													compact: true,
+													onTap: () => _sendRemoteSheetCommand(propId, key),
+												);
+											}).toList(),
+										),
+									],
+
+									// Navigation buttons (back, exit, info)
+									if (navActions.isNotEmpty) ...[
+										AppSpacings.spacingLgVertical,
+										Row(
+											mainAxisAlignment: MainAxisAlignment.center,
+											spacing: AppSpacings.pLg,
+											children: navActions
+													.map(
+														(key) => FilledButton.icon(
+															onPressed: () => _sendRemoteSheetCommand(propId, key),
+															icon: Icon(iconFor(key), size: _scale(16), color: navFgColor),
+															label: Text(labelFor(key), style: TextStyle(color: navFgColor, fontSize: AppFontSize.small)),
+															style: navButtonStyle,
+														),
+													)
+													.toList(),
+										),
+									],
+								],
+							),
+						),
+					),
+				);
+			},
+		);
+	}
+
+	void _sendRemoteSheetCommand(String propId, TelevisionRemoteKeyValue command) {
+		_devicesService?.setPropertyValue(propId, command.value);
 	}
 }
 
@@ -1771,11 +2550,13 @@ class _CompositionDisplayItem {
 	final String role;
 	final String displayName;
 	final bool isOnline;
+	final String? inputPropertyId;
 
 	const _CompositionDisplayItem({
 		required this.role,
 		required this.displayName,
 		required this.isOnline,
+		this.inputPropertyId,
 	});
 }
 
@@ -1785,15 +2566,16 @@ class _CompositionDisplayItem {
 
 class _SpinnerArcPainter extends CustomPainter {
 	final Color color;
+	final double strokeWidth;
 
-	_SpinnerArcPainter({required this.color});
+	_SpinnerArcPainter({required this.color, this.strokeWidth = 3});
 
 	@override
 	void paint(Canvas canvas, Size size) {
 		final paint = Paint()
 			..color = color
 			..style = PaintingStyle.stroke
-			..strokeWidth = 3
+			..strokeWidth = strokeWidth
 			..strokeCap = StrokeCap.round;
 
 		final rect = Rect.fromLTWH(0, 0, size.width, size.height);
@@ -1802,428 +2584,7 @@ class _SpinnerArcPainter extends CustomPainter {
 
 	@override
 	bool shouldRepaint(covariant _SpinnerArcPainter oldDelegate) {
-		return oldDelegate.color != color;
+		return oldDelegate.color != color || oldDelegate.strokeWidth != strokeWidth;
 	}
 }
 
-// ============================================================================
-// DEVICE DETAIL PAGE
-// ============================================================================
-
-class MediaDeviceDetailPage extends StatefulWidget {
-	final String spaceId;
-	final MediaDeviceGroup deviceGroup;
-
-	const MediaDeviceDetailPage({
-		super.key,
-		required this.spaceId,
-		required this.deviceGroup,
-	});
-
-	@override
-	State<MediaDeviceDetailPage> createState() => _MediaDeviceDetailPageState();
-}
-
-class _MediaDeviceDetailPageState extends State<MediaDeviceDetailPage> {
-	final ScreenService _screenService = locator<ScreenService>();
-	final VisualDensityService _visualDensityService = locator<VisualDensityService>();
-
-	double _scale(double val) =>
-			_screenService.scale(val, density: _visualDensityService.density);
-
-	SocketService? _socketService;
-	bool _wsConnected = false;
-
-	MediaDeviceGroup get _group => widget.deviceGroup;
-
-	@override
-	void initState() {
-		super.initState();
-		try {
-			_socketService = locator<SocketService>();
-			_socketService?.addConnectionListener(_onConnectionChanged);
-			_wsConnected = _socketService?.isConnected ?? false;
-		} catch (e) {
-			if (kDebugMode) {
-				debugPrint('[MediaDeviceDetailPage] Failed to get SocketService: $e');
-			}
-		}
-	}
-
-	@override
-	void dispose() {
-		_socketService?.removeConnectionListener(_onConnectionChanged);
-		super.dispose();
-	}
-
-	void _onConnectionChanged(bool connected) {
-		if (mounted) {
-			setState(() => _wsConnected = connected);
-		}
-	}
-
-	@override
-	Widget build(BuildContext context) {
-		final isDark = Theme.of(context).brightness == Brightness.dark;
-
-		return Scaffold(
-			backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
-			appBar: AppBar(
-				title: Text(_group.deviceName),
-				backgroundColor: AppColors.blank,
-				elevation: 0,
-			),
-			body: Stack(
-				children: [
-					ListView(
-						padding: EdgeInsets.all(AppSpacings.pLg),
-						children: [
-							// Display controls
-							if (_group.hasDisplay) _buildDisplaySection(context, _group.displayEndpoint!),
-							// Audio controls
-							if (_group.hasAudio) _buildAudioSection(context, _group.audioEndpoint!),
-							// Source controls
-							if (_group.hasSource) _buildSourceSection(context, _group.sourceEndpoint!),
-							// Remote controls
-							if (_group.hasRemote) _buildRemoteSection(context),
-						],
-					),
-					if (!_wsConnected) _buildDetailOfflineOverlay(context),
-				],
-			),
-		);
-	}
-
-	Widget _buildDetailOfflineOverlay(BuildContext context) {
-		return GestureDetector(
-			behavior: HitTestBehavior.opaque,
-			onTap: () {},
-			child: Container(
-				color: Colors.black.withValues(alpha: 0.7),
-				child: Center(
-					child: Card(
-						margin: EdgeInsets.all(AppSpacings.pXl + AppSpacings.pMd),
-						child: Padding(
-							padding: EdgeInsets.all(AppSpacings.pXl),
-							child: Column(
-								mainAxisSize: MainAxisSize.min,
-								children: [
-									Icon(MdiIcons.wifiOff, size: _scale(48), color: Colors.grey),
-									AppSpacings.spacingLgVertical,
-									Text(
-										'Connection lost',
-										style: Theme.of(context).textTheme.titleMedium,
-										textAlign: TextAlign.center,
-									),
-									AppSpacings.spacingMdVertical,
-									Text(
-										'Media controls require a live WebSocket connection.',
-										style: Theme.of(context).textTheme.bodySmall,
-										textAlign: TextAlign.center,
-									),
-									AppSpacings.spacingLgVertical,
-									OutlinedButton(
-										onPressed: () => Navigator.of(context).pop(),
-										child: const Text('Go back'),
-									),
-								],
-							),
-						),
-					),
-				),
-			),
-		);
-	}
-
-	Widget _buildDisplaySection(BuildContext context, MediaEndpointModel endpoint) {
-		return Card(
-			shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppBorderRadius.round)),
-			child: Padding(
-				padding: EdgeInsets.all(AppSpacings.pLg),
-				child: Column(
-					crossAxisAlignment: CrossAxisAlignment.start,
-					children: [
-						SectionTitle(title: 'Display', icon: MdiIcons.television),
-						AppSpacings.spacingMdVertical,
-						if (endpoint.capabilities.power)
-							_buildPowerToggle(context),
-						if (endpoint.capabilities.input) ...[
-							AppSpacings.spacingMdVertical,
-							_buildInputRow(context),
-						],
-						if (endpoint.capabilities.volume) ...[
-							AppSpacings.spacingMdVertical,
-							_buildVolumeRow(context),
-						],
-					],
-				),
-			),
-		);
-	}
-
-	Widget _buildAudioSection(BuildContext context, MediaEndpointModel endpoint) {
-		return Card(
-			shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppBorderRadius.round)),
-			margin: EdgeInsets.only(top: AppSpacings.pMd),
-			child: Padding(
-				padding: EdgeInsets.all(AppSpacings.pLg),
-				child: Column(
-					crossAxisAlignment: CrossAxisAlignment.start,
-					children: [
-						SectionTitle(title: 'Audio', icon: MdiIcons.speaker),
-						AppSpacings.spacingMdVertical,
-						if (endpoint.capabilities.volume)
-							_buildVolumeRow(context),
-						if (endpoint.capabilities.mute) ...[
-							AppSpacings.spacingMdVertical,
-							_buildMuteToggle(context),
-						],
-						if (endpoint.capabilities.playback) ...[
-							AppSpacings.spacingMdVertical,
-							_buildPlaybackRow(context),
-						],
-						if (endpoint.capabilities.trackMetadata) ...[
-							AppSpacings.spacingMdVertical,
-							_buildTrackInfo(context),
-						],
-					],
-				),
-			),
-		);
-	}
-
-	Widget _buildSourceSection(BuildContext context, MediaEndpointModel endpoint) {
-		return Card(
-			shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppBorderRadius.round)),
-			margin: EdgeInsets.only(top: AppSpacings.pMd),
-			child: Padding(
-				padding: EdgeInsets.all(AppSpacings.pLg),
-				child: Column(
-					crossAxisAlignment: CrossAxisAlignment.start,
-					children: [
-						SectionTitle(title: 'Source', icon: MdiIcons.playCircle),
-						AppSpacings.spacingMdVertical,
-						if (endpoint.capabilities.playback)
-							_buildPlaybackRow(context),
-						if (endpoint.capabilities.trackMetadata) ...[
-							AppSpacings.spacingMdVertical,
-							_buildTrackInfo(context),
-						],
-					],
-				),
-			),
-		);
-	}
-
-	Widget _buildRemoteSection(BuildContext context) {
-		return Card(
-			shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppBorderRadius.round)),
-			margin: EdgeInsets.only(top: AppSpacings.pMd),
-			child: Padding(
-				padding: EdgeInsets.all(AppSpacings.pLg),
-				child: Column(
-					crossAxisAlignment: CrossAxisAlignment.start,
-					children: [
-						SectionTitle(title: 'Remote', icon: MdiIcons.remote),
-						AppSpacings.spacingMdVertical,
-						// D-pad style remote control
-						Center(
-							child: Column(
-								children: [
-									IconButton(
-										icon: Icon(MdiIcons.chevronUp, size: _scale(32)),
-										onPressed: () => _showComingSoon(context),
-									),
-									Row(
-										mainAxisSize: MainAxisSize.min,
-										children: [
-											IconButton(
-												icon: Icon(MdiIcons.chevronLeft, size: _scale(32)),
-												onPressed: () => _showComingSoon(context),
-											),
-											AppSpacings.spacingMdHorizontal,
-											FilledButton(
-												onPressed: () => _showComingSoon(context),
-												child: const Text('OK'),
-											),
-											AppSpacings.spacingMdHorizontal,
-											IconButton(
-												icon: Icon(MdiIcons.chevronRight, size: _scale(32)),
-												onPressed: () => _showComingSoon(context),
-											),
-										],
-									),
-									IconButton(
-										icon: Icon(MdiIcons.chevronDown, size: _scale(32)),
-										onPressed: () => _showComingSoon(context),
-									),
-									AppSpacings.spacingMdVertical,
-									Row(
-										mainAxisAlignment: MainAxisAlignment.center,
-										children: [
-											TextButton(
-												onPressed: () => _showComingSoon(context),
-												child: const Text('Back'),
-											),
-											AppSpacings.spacingLgHorizontal,
-											TextButton(
-												onPressed: () => _showComingSoon(context),
-												child: const Text('Home'),
-											),
-											AppSpacings.spacingLgHorizontal,
-											TextButton(
-												onPressed: () => _showComingSoon(context),
-												child: const Text('Menu'),
-											),
-										],
-									),
-								],
-							),
-						),
-					],
-				),
-			),
-		);
-	}
-
-	Widget _buildPowerToggle(BuildContext context) {
-		final localizations = AppLocalizations.of(context)!;
-		return Row(
-			children: [
-				Icon(MdiIcons.power, size: _scale(20)),
-				AppSpacings.spacingMdHorizontal,
-				Text(localizations.media_capability_power),
-				const Spacer(),
-				FilledButton(
-					onPressed: () => _showComingSoon(context),
-					child: Text(localizations.media_action_power_on),
-				),
-				AppSpacings.spacingMdHorizontal,
-				OutlinedButton(
-					onPressed: () => _showComingSoon(context),
-					child: Text(localizations.media_action_power_off),
-				),
-			],
-		);
-	}
-
-	Widget _buildInputRow(BuildContext context) {
-		return Row(
-			children: [
-				Icon(MdiIcons.audioInputStereoMinijack, size: _scale(20)),
-				AppSpacings.spacingMdHorizontal,
-				const Text('Input'),
-				const Spacer(),
-				TextButton(
-					onPressed: () => _showComingSoon(context),
-					child: const Text('Select'),
-				),
-			],
-		);
-	}
-
-	Widget _buildVolumeRow(BuildContext context) {
-		final localizations = AppLocalizations.of(context)!;
-		return Row(
-			children: [
-				Icon(MdiIcons.volumeHigh, size: _scale(20)),
-				AppSpacings.spacingMdHorizontal,
-				Text(localizations.media_volume),
-				const Spacer(),
-				IconButton(
-					icon: Icon(MdiIcons.volumeMinus),
-					iconSize: _scale(20),
-					onPressed: () => _showComingSoon(context),
-				),
-				IconButton(
-					icon: Icon(MdiIcons.volumePlus),
-					iconSize: _scale(20),
-					onPressed: () => _showComingSoon(context),
-				),
-			],
-		);
-	}
-
-	Widget _buildMuteToggle(BuildContext context) {
-		final localizations = AppLocalizations.of(context)!;
-		return Row(
-			children: [
-				Icon(MdiIcons.volumeMute, size: _scale(20)),
-				AppSpacings.spacingMdHorizontal,
-				Text(localizations.media_capability_mute),
-				const Spacer(),
-				TextButton(
-					onPressed: () => _showComingSoon(context),
-					child: Text(localizations.media_action_mute),
-				),
-				TextButton(
-					onPressed: () => _showComingSoon(context),
-					child: Text(localizations.media_action_unmute),
-				),
-			],
-		);
-	}
-
-	Widget _buildPlaybackRow(BuildContext context) {
-		return Row(
-			mainAxisAlignment: MainAxisAlignment.center,
-			children: [
-				IconButton(
-					icon: Icon(MdiIcons.skipPrevious),
-					onPressed: () => _showComingSoon(context),
-				),
-				IconButton(
-					icon: Icon(MdiIcons.play),
-					iconSize: _scale(32),
-					onPressed: () => _showComingSoon(context),
-				),
-				IconButton(
-					icon: Icon(MdiIcons.pause),
-					iconSize: _scale(32),
-					onPressed: () => _showComingSoon(context),
-				),
-				IconButton(
-					icon: Icon(MdiIcons.stop),
-					onPressed: () => _showComingSoon(context),
-				),
-				IconButton(
-					icon: Icon(MdiIcons.skipNext),
-					onPressed: () => _showComingSoon(context),
-				),
-			],
-		);
-	}
-
-	Widget _buildTrackInfo(BuildContext context) {
-		return Container(
-			width: double.infinity,
-			padding: EdgeInsets.all(AppSpacings.pMd),
-			decoration: BoxDecoration(
-				color: Theme.of(context).brightness == Brightness.dark
-						? AppFillColorDark.light
-						: AppFillColorLight.light,
-				borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-			),
-			child: Column(
-				crossAxisAlignment: CrossAxisAlignment.start,
-				children: [
-					Text(
-						'Now Playing',
-						style: Theme.of(context).textTheme.labelSmall,
-					),
-					AppSpacings.spacingSmVertical,
-					Text(
-						'Track information will appear here',
-						style: Theme.of(context).textTheme.bodySmall,
-					),
-				],
-			),
-		);
-	}
-
-	void _showComingSoon(BuildContext context) {
-		ScaffoldMessenger.of(context).showSnackBar(
-			const SnackBar(content: Text('Direct device commands coming soon')),
-		);
-	}
-}
