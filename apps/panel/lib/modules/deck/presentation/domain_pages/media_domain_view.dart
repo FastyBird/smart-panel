@@ -17,6 +17,7 @@ import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
 import 'package:fastybird_smart_panel/core/widgets/value_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/tile_wrappers.dart';
+import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
 import 'package:fastybird_smart_panel/modules/deck/utils/lighting.dart';
@@ -555,7 +556,16 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			mainContent: _buildActivityContent(context, activeState, isOff, isActivating, isFailed),
 			mainContentScrollable: true,
 			modeSelector: _buildLandscapeModeSelector(context, activeState),
-			additionalContent: _buildDevicesList(context, deviceGroups),
+			additionalContent: Column(
+				crossAxisAlignment: CrossAxisAlignment.start,
+				children: [
+					if (!isOff) ...[
+						_buildLandscapeControls(context),
+						AppSpacings.spacingLgVertical,
+					],
+					_buildDevicesList(context, deviceGroups),
+				],
+			),
 		);
 	}
 
@@ -938,11 +948,11 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 						AppSpacings.spacingMdVertical,
 						_buildProgressBar(context),
 					],
-					if (targets.hasVolume) ...[
+					if (targets.hasVolume && !_screenService.isLandscape) ...[
 						AppSpacings.spacingLgVertical,
 						_buildVolumeControl(context),
 					],
-					if (targets.hasRemote) ...[
+					if (targets.hasRemote && !_screenService.isLandscape) ...[
 						AppSpacings.spacingLgVertical,
 						_buildRemoteButton(context),
 					],
@@ -1855,6 +1865,112 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 
 	void _deactivateActivity() {
 		_onActivitySelected(MediaActivityKey.off);
+	}
+
+	// ============================================
+	// LANDSCAPE CONTROLS
+	// ============================================
+
+	Widget _buildLandscapeControls(BuildContext context) {
+		final localizations = AppLocalizations.of(context)!;
+		final isDark = Theme.of(context).brightness == Brightness.dark;
+		final accentColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
+		final targets = _mediaService?.resolveControlTargets(_roomId);
+		final tileHeight = _scale(AppTileHeight.horizontal);
+
+		final controls = <Widget>[];
+
+		// Volume control as ValueSelectorRow
+		if (targets?.hasVolume == true) {
+			final volumeOptions = [0, 25, 50, 75, 100].map((v) => ValueOption<int>(
+				value: v,
+				label: '$v%',
+			)).toList();
+
+			controls.add(
+				SizedBox(
+					height: tileHeight,
+					width: double.infinity,
+					child: ValueSelectorRow<int>(
+						currentValue: _volume,
+						label: localizations.media_volume,
+						icon: MdiIcons.volumeHigh,
+						sheetTitle: localizations.media_volume,
+						activeColor: accentColor,
+						options: volumeOptions,
+						displayFormatter: (v) => '${v ?? 0}%',
+						columns: 5,
+						layout: ValueSelectorRowLayout.compact,
+						showChevron: true,
+						onChanged: _isSending ? null : (v) {
+							if (v != null) _setVolume(v);
+						},
+					),
+				),
+			);
+		}
+
+		// Mute toggle as UniversalTile
+		if (targets?.hasVolume == true) {
+			controls.add(
+				SizedBox(
+					height: tileHeight,
+					width: double.infinity,
+					child: UniversalTile(
+						layout: TileLayout.horizontal,
+						icon: _isMuted ? MdiIcons.volumeOff : MdiIcons.volumeHigh,
+						name: localizations.media_action_mute,
+						status: _isMuted ? localizations.on_state_on : localizations.on_state_off,
+						isActive: _isMuted,
+						activeColor: accentColor,
+						onTileTap: _isSending ? null : () {
+							HapticFeedback.lightImpact();
+							_toggleMute();
+						},
+						showGlow: false,
+						showDoubleBorder: false,
+						showInactiveBorder: true,
+					),
+				),
+			);
+		}
+
+		// Remote control tile
+		if (targets?.hasRemote == true) {
+			controls.add(
+				SizedBox(
+					height: tileHeight,
+					width: double.infinity,
+					child: UniversalTile(
+						layout: TileLayout.horizontal,
+						icon: MdiIcons.remote,
+						name: 'Remote Control',
+						isActive: false,
+						onTileTap: () {
+							HapticFeedback.lightImpact();
+							_showRemote();
+						},
+						showGlow: false,
+						showDoubleBorder: false,
+						showInactiveBorder: true,
+					),
+				),
+			);
+		}
+
+		if (controls.isEmpty) return const SizedBox.shrink();
+
+		return Column(
+			crossAxisAlignment: CrossAxisAlignment.start,
+			children: [
+				SectionTitle(
+					title: localizations.device_controls,
+					icon: MdiIcons.tuneVertical,
+				),
+				AppSpacings.spacingMdVertical,
+				...controls.expand((c) => [c, AppSpacings.spacingMdVertical]).toList()..removeLast(),
+			],
+		);
 	}
 
 	// ============================================
