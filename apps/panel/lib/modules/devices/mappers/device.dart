@@ -20,6 +20,7 @@ import 'package:fastybird_smart_panel/modules/devices/presentation/device_detail
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/pump.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/robot_vacuum.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/sensor.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/set_top_box.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/speaker.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/sprinkler.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/switcher.dart';
@@ -53,6 +54,7 @@ import 'package:fastybird_smart_panel/modules/devices/views/devices/outlet.dart'
 import 'package:fastybird_smart_panel/modules/devices/views/devices/pump.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/robot_vacuum.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/sensor.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/devices/set_top_box.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/speaker.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/sprinkler.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/switcher.dart';
@@ -195,6 +197,9 @@ Map<DevicesModuleDeviceCategory, DeviceView Function(DeviceModel, List<ChannelVi
   DevicesModuleDeviceCategory.sensor: (device, channels, isValid, validationIssues) {
     return _createDeviceView(device, channels, isValid, validationIssues, SensorDeviceView.new);
   },
+  DevicesModuleDeviceCategory.setTopBox: (device, channels, isValid, validationIssues) {
+    return _createDeviceView(device, channels, isValid, validationIssues, SetTopBoxDeviceView.new);
+  },
   DevicesModuleDeviceCategory.speaker: (device, channels, isValid, validationIssues) {
     return _createDeviceView(device, channels, isValid, validationIssues, SpeakerDeviceView.new);
   },
@@ -300,6 +305,9 @@ Map<DevicesModuleDeviceCategory, IconData Function()> deviceIconMappers = {
   },
   DevicesModuleDeviceCategory.sensor: () {
     return MdiIcons.accessPoint;
+  },
+  DevicesModuleDeviceCategory.setTopBox: () {
+    return MdiIcons.setTopBox;
   },
   DevicesModuleDeviceCategory.speaker: () {
     return MdiIcons.speaker;
@@ -503,6 +511,14 @@ Map<DevicesModuleDeviceCategory, Widget Function(DeviceView)> deviceWidgetMapper
       );
     }
     return SensorDeviceDetail(device: device);
+  },
+  DevicesModuleDeviceCategory.setTopBox: (device) {
+    if (device is! SetTopBoxDeviceView) {
+      throw ArgumentError(
+        'Device view is not valid for Set-top Box device detail',
+      );
+    }
+    return SetTopBoxDeviceDetail(device: device);
   },
   DevicesModuleDeviceCategory.speaker: (device) {
     if (device is! SpeakerDeviceView) {
