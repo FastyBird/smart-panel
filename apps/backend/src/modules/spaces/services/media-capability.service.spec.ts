@@ -161,10 +161,10 @@ describe('MediaCapabilityService', () => {
 			expect(result[0].artist).toBeDefined();
 		});
 
-		it('should detect input from television channel with SOURCE property', async () => {
+		it('should detect input from television device with media_input channel SOURCE property', async () => {
 			const device = buildDevice({
 				category: DeviceCategory.TELEVISION,
-				channels: [buildChannel(ChannelCategory.TELEVISION, [{ category: PropertyCategory.SOURCE }])],
+				channels: [buildChannel(ChannelCategory.MEDIA_INPUT, [{ category: PropertyCategory.SOURCE }])],
 			});
 			mockSpacesService.findDevicesBySpace.mockResolvedValue([device]);
 
