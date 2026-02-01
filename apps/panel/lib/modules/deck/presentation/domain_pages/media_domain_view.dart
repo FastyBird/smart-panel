@@ -7,6 +7,7 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
+import 'package:fastybird_smart_panel/core/utils/color.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/slider_with_steps.dart';
@@ -481,19 +482,22 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 				? '${_activityLabel(activeState.activityKey)} active'
 				: localizations.media_mode_off;
 
+		final stateColor = hasActive
+				? (isDark ? AppColorsDark.success : AppColorsLight.success)
+				: (isDark ? AppColorsDark.info : AppColorsLight.info);
+
 		return PageHeader(
 			title: localizations.domain_media,
 			subtitle: subtitle,
-			subtitleColor:
-					hasActive ? (isDark ? AppColorsDark.primary : AppColorsLight.primary) : null,
+			subtitleColor: hasActive ? stateColor : null,
 			backgroundColor: AppColors.blank,
 			leading: HeaderDeviceIcon(
 				icon: hasActive ? MdiIcons.musicNote : MdiIcons.musicNoteOff,
-				backgroundColor: isDark
-						? (hasActive ? AppColorsDark.primaryLight5 : AppFillColorDark.light)
-						: (hasActive ? AppColorsLight.primaryLight5 : AppFillColorLight.light),
+				backgroundColor: hasActive
+						? getSemanticBackgroundColor(context, stateColor)
+						: (isDark ? AppFillColorDark.light : AppFillColorLight.light),
 				iconColor: hasActive
-						? (isDark ? AppColorsDark.primary : AppColorsLight.primary)
+						? stateColor
 						: (isDark ? AppTextColorDark.secondary : AppTextColorLight.primary),
 			),
 			trailing: HeaderHomeButton(

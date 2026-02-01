@@ -2,6 +2,7 @@ import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
+import 'package:fastybird_smart_panel/core/utils/color.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/intent_mode_selector.dart';
@@ -309,7 +310,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
 
     // Determine state color based on position
     final stateColor = _getPositionColor(position, !isDark);
-    final stateBgColor = stateColor.withValues(alpha: 0.15);
+    final stateBgColor = getSemanticBackgroundColor(context, stateColor);
 
     // Build subtitle
     String subtitle;
@@ -644,7 +645,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     final bool isLight = Theme.of(context).brightness == Brightness.light;
     final position = _getRolePosition(roleData);
     final Color stateColor = _getPositionColor(position, isLight);
-    final Color stateColorLight = stateColor.withValues(alpha: 0.15);
+    final Color stateColorLight = getSemanticBackgroundColor(context, stateColor);
     final localizations = AppLocalizations.of(context)!;
 
     // Determine if this card is expandable (secondary roles without forced controls)
