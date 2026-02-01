@@ -1921,7 +1921,7 @@ game_console:
         en: Optional power control for game consoles (hard power / standby) when supported by the integration.
     media_playback:
       category: media_playback
-      required: true
+      required: false
       multiple: false
       description:
         en: Represents activity/playback state and basic media controls exposed by the console integration.
