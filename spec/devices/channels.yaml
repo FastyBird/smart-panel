@@ -2758,16 +2758,6 @@ media_playback:
       data_type: enum
       unit: null
       format: ["play","pause","stop","next","previous","rewind","fast_forward"]
-    title:
-      category: title
-      required: false
-      description:
-        en: Track title.
-      permissions:
-        - ro
-      data_type: string
-      unit: null
-      format: null
     artist:
       category: artist
       required: false
