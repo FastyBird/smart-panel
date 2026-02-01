@@ -843,10 +843,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 						AppSpacings.spacingLgVertical,
 						_buildVolumeControl(context),
 					],
-					if (targets.hasInput) ...[
-						AppSpacings.spacingLgVertical,
-						_buildInputControl(context),
-					],
 					if (targets.hasRemote) ...[
 						AppSpacings.spacingLgVertical,
 						_buildRemoteButton(context),
