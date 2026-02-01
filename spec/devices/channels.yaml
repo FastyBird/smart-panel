@@ -2958,11 +2958,17 @@ television:
       data_type: bool
       unit: null
       format: null
-    brightness:
-      category: brightness
+    active:
+      category: active
       required: false
       description:
-        en: TV brightness - integrator can choose between percentage or discrete levels
+        en: Indicates if the TV is fully powered up and operational
+      permissions:
+        - ro
+      data_type: bool
+      unit: null
+      format: null
+    brightness:
       permissions:
         - rw
       data_types:
@@ -3037,6 +3043,16 @@ projector:
         en: Power state of the device (on/off)
       permissions:
         - rw
+      data_type: bool
+      unit: null
+      format: null
+    active:
+      category: active
+      required: false
+      description:
+        en: Indicates if the projector is fully warmed up and operational
+      permissions:
+        - ro
       data_type: bool
       unit: null
       format: null
