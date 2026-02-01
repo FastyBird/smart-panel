@@ -29,8 +29,8 @@ class ProjectorDeviceView extends DeviceView
       channels.whereType<DeviceInformationChannelView>().first;
 
   @override
-  SpeakerChannelView get speakerChannel =>
-      channels.whereType<SpeakerChannelView>().first;
+  SpeakerChannelView? get speakerChannel =>
+      channels.whereType<SpeakerChannelView>().firstOrNull;
 
   ProjectorChannelView get projectorChannel =>
       channels.whereType<ProjectorChannelView>().first;
