@@ -99,6 +99,7 @@ export class MediaCapabilityService {
 
 		for (const channel of mediaChannels) {
 			const isTelevision = channel.category === ChannelCategory.TELEVISION;
+			const isProjector = channel.category === ChannelCategory.PROJECTOR;
 			const isSwitcher = channel.category === ChannelCategory.SWITCHER;
 			const isSpeaker = channel.category === ChannelCategory.SPEAKER;
 			const isPlayback = channel.category === ChannelCategory.MEDIA_PLAYBACK;
@@ -108,7 +109,7 @@ export class MediaCapabilityService {
 				const permission = this.mapPermissions(property.permissions);
 
 				if (
-					(isTelevision || isSwitcher) &&
+					(isTelevision || isProjector || isSwitcher) &&
 					(property.category === PropertyCategory.ON || property.category === PropertyCategory.ACTIVE)
 				) {
 					if (!capabilities.power) {
@@ -170,13 +171,13 @@ export class MediaCapabilityService {
 					}
 				}
 
-				if ((isTelevision || isInput) && property.category === PropertyCategory.SOURCE) {
+				if ((isTelevision || isProjector || isInput) && property.category === PropertyCategory.SOURCE) {
 					if (!capabilities.input) {
 						capabilities.input = { propertyId: property.id, channelId: channel.id, permission };
 					}
 				}
 
-				if (isTelevision && property.category === PropertyCategory.REMOTE_KEY) {
+				if ((isTelevision || isProjector) && property.category === PropertyCategory.REMOTE_KEY) {
 					if (!capabilities.remote) {
 						capabilities.remote = { propertyId: property.id, channelId: channel.id, permission };
 					}

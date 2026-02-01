@@ -1649,6 +1649,7 @@ export const MEDIA_CHANNEL_CATEGORIES = [
 	ChannelCategory.SWITCHER,
 	ChannelCategory.SPEAKER,
 	ChannelCategory.TELEVISION,
+	ChannelCategory.PROJECTOR,
 	ChannelCategory.MEDIA_INPUT,
 	ChannelCategory.MEDIA_PLAYBACK,
 ] as const;

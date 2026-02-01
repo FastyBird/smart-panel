@@ -2958,11 +2958,113 @@ television:
       data_type: bool
       unit: null
       format: null
+    active:
+      category: active
+      required: false
+      description:
+        en: Indicates if the TV is fully powered up and operational
+      permissions:
+        - ro
+      data_type: bool
+      unit: null
+      format: null
     brightness:
       category: brightness
       required: false
       description:
         en: TV brightness - integrator can choose between percentage or discrete levels
+      permissions:
+        - rw
+      data_types:
+        - id: percentage
+          data_type: uchar
+          unit: "%"
+          format: [0,100]
+          step: 1
+          description:
+            en: Brightness as percentage (0-100%)
+        - id: level
+          data_type: enum
+          format: ["off","low","medium","high","full"]
+          description:
+            en: Brightness as discrete levels
+    source:
+      category: source
+      required: true
+      description:
+        en: Select input/source using either a standardized identifier or an integration-specific value.
+      permissions:
+        - rw
+      data_types:
+        - id: standard
+          data_type: enum
+          unit: null
+          format: ["hdmi1","hdmi2","hdmi3","hdmi4","hdmi5","hdmi6","arc","earc","tv","cable","satellite","antenna","av1","av2","component","vga","dvi","usb","bluetooth","wifi","airplay","cast","dlna","miracast","app_netflix","app_youtube","app_spotify","app_prime_video","app_disney_plus","app_hbo_max","app_apple_tv","app_plex","app_kodi","other"]
+          step: null
+          description:
+            en: Standardized input/source identifier (recommended for UI).
+        - id: custom
+          data_type: string
+          unit: null
+          format: null
+          step: null
+          description:
+            en: Integration-specific input/source value (fallback).
+    source_label:
+      category: source_label
+      required: false
+      description:
+        en: Human-readable label for the current input/source.
+      permissions:
+        - ro
+      data_type: string
+      unit: null
+      format: null
+    remote_key:
+      category: remote_key
+      required: false
+      description:
+        en: ""
+      permissions:
+        - wo
+      data_type: enum
+      unit: null
+      format: ["rewind","fast_forward","next","previous","arrow_up","arrow_down","arrow_left","arrow_right","select","back","exit","info","play","pause"]
+
+projector:
+  category: projector
+  name:
+    en: Projector
+  description:
+    en: >-
+      Provides control for projectors, including power, input source, brightness, and remote keys.
+  docGroup: media
+  properties:
+    on:
+      category: on
+      required: true
+      description:
+        en: Power state of the device (on/off)
+      permissions:
+        - rw
+      data_type: bool
+      unit: null
+      format: null
+    active:
+      category: active
+      required: false
+      description:
+        en: Indicates if the projector is fully warmed up and operational
+      permissions:
+        - ro
+      data_type: bool
+      unit: null
+      format: null
+    brightness:
+      category: brightness
+      required: false
+      description:
+        en: Projector brightness - integrator can choose between percentage or discrete levels
       permissions:
         - rw
       data_types:

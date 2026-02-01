@@ -307,6 +307,7 @@ patternProperties:
           - outlet
           - ozone
           - pressure
+          - projector
           - robot_vacuum
           - smoke
           - speaker

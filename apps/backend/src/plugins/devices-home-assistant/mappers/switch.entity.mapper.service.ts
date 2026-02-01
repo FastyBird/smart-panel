@@ -39,6 +39,7 @@ export class SwitchEntityMapperService extends EntityMapper {
 			ChannelCategory.ROBOT_VACUUM,
 			ChannelCategory.SWITCHER,
 			ChannelCategory.TELEVISION,
+			ChannelCategory.PROJECTOR,
 			ChannelCategory.VALVE,
 		]);
 
@@ -69,6 +70,7 @@ export class SwitchEntityMapperService extends EntityMapper {
 			ChannelCategory.ROBOT_VACUUM,
 			ChannelCategory.SWITCHER,
 			ChannelCategory.TELEVISION,
+			ChannelCategory.PROJECTOR,
 			ChannelCategory.VALVE,
 		]);
 
