@@ -1275,53 +1275,53 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		final isPaused = _playbackState == 'paused';
 		final isStopped = _playbackState == 'stopped' || _playbackState == null;
 
+		// Read supported commands from the playback command property format
+		final targets = _mediaService?.resolveControlTargets(_roomId);
+		final cmdPropId = targets?.playbackTarget?.links.playbackCommandId;
+		Set<String> supported = {'play', 'pause', 'stop', 'previous', 'next'};
+		if (cmdPropId != null && _devicesService != null) {
+			final prop = _devicesService!.getChannelProperty(cmdPropId);
+			if (prop?.format is StringListFormatType) {
+				supported = (prop!.format as StringListFormatType).value.toSet();
+			}
+		}
+
+		// Define button specs: (command, icon, isMain, isActive)
+		final specs = <(String, IconData, bool, bool)>[
+			if (supported.contains('previous')) ('previous', MdiIcons.skipPrevious, false, false),
+			if (supported.contains('play')) ('play', MdiIcons.play, true, isPlaying),
+			if (supported.contains('pause')) ('pause', MdiIcons.pause, false, isPaused),
+			if (supported.contains('stop')) ('stop', MdiIcons.stop, false, isStopped && _playbackState != null),
+			if (supported.contains('next')) ('next', MdiIcons.skipNext, false, false),
+		];
+
+		if (specs.isEmpty) return const SizedBox.shrink();
+
 		return LayoutBuilder(
 			builder: (context, constraints) {
-				// Calculate if buttons fit: 5 buttons + 4 gaps
-				// Default: 1 main (56) + 4 regular (44) = 232 + 4*pLg gaps
-				final defaultTotal = _scale(56) + 4 * _scale(44) + 4 * AppSpacings.pLg;
+				final mainCount = specs.where((s) => s.$3).length;
+				final regularCount = specs.length - mainCount;
+				final gapCount = specs.length - 1;
+				final defaultTotal = mainCount * _scale(56) + regularCount * _scale(44) + gapCount * AppSpacings.pLg;
 				final compact = constraints.maxWidth < defaultTotal;
-				final spacing = compact ? AppSpacings.pSm : AppSpacings.pLg;
 
 				return Row(
 					mainAxisAlignment: MainAxisAlignment.center,
-					spacing: spacing,
-					children: [
-						_buildTransportButton(
+					spacing: compact ? AppSpacings.pSm : AppSpacings.pLg,
+					children: specs.map((spec) {
+						final (cmd, icon, isMain, isActive) = spec;
+						return _buildTransportButton(
 							context,
-							icon: MdiIcons.skipPrevious,
+							icon: icon,
+							isMain: isMain,
+							isActive: isActive,
 							compact: compact,
-							onTap: _isSending ? null : () => _sendPlaybackCommand('previous'),
-						),
-						_buildTransportButton(
-							context,
-							icon: MdiIcons.play,
-							isActive: isPlaying,
-							isMain: true,
-							compact: compact,
-							onTap: _isSending ? null : () => _sendPlaybackCommand(isPlaying ? 'pause' : 'play'),
-						),
-						_buildTransportButton(
-							context,
-							icon: MdiIcons.pause,
-							isActive: isPaused,
-							compact: compact,
-							onTap: _isSending ? null : () => _sendPlaybackCommand(isPaused ? 'play' : 'pause'),
-						),
-						_buildTransportButton(
-							context,
-							icon: MdiIcons.stop,
-							isActive: isStopped && _playbackState != null,
-							compact: compact,
-							onTap: _isSending ? null : () => _sendPlaybackCommand('stop'),
-						),
-						_buildTransportButton(
-							context,
-							icon: MdiIcons.skipNext,
-							compact: compact,
-							onTap: _isSending ? null : () => _sendPlaybackCommand('next'),
-						),
-					],
+							onTap: _isSending ? null : () => _sendPlaybackCommand(
+								cmd == 'play' && isPlaying ? 'pause' :
+								cmd == 'pause' && isPaused ? 'play' : cmd,
+							),
+						);
+					}).toList(),
 				);
 			},
 		);
