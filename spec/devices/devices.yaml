@@ -1733,7 +1733,7 @@ projector:
       required: true
       multiple: false
       description:
-        en: Controls display power, input source, and remote/navigation keys for the projector.
+        en: Controls display power, brightness, and remote/navigation keys for the projector.
     device_information:
       category: device_information
       required: true
@@ -1746,6 +1746,18 @@ projector:
       multiple: false
       description:
         en: Optional audio output control if the projector exposes speaker/volume control.
+    media_playback:
+      category: media_playback
+      required: false
+      multiple: false
+      description:
+        en: Optional playback controls when the projector exposes media player capabilities.
+    media_input:
+      category: media_input
+      required: false
+      multiple: false
+      description:
+        en: Optional input/source management when exposed as separate channel.
 
 av_receiver:
   category: av_receiver
