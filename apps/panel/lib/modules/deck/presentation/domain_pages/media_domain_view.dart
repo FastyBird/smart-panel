@@ -1934,6 +1934,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 		final isActive = _isDeviceActive(group, activeState);
 		final accentColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
+		final isLandscape = _screenService.isLandscape;
 
 		final accessories = Row(
 			mainAxisSize: MainAxisSize.min,
@@ -1973,27 +1974,22 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 
 		final status = _deviceStatus(group, activeState);
 
-		return OrientationBuilder(
-			builder: (context, orientation) {
-				if (orientation == Orientation.landscape) {
-					return DeviceTileLandscape(
-						icon: _deviceGroupIcon(group),
-						name: group.deviceName,
-						status: status,
-						isActive: isActive,
-						onTileTap: () => _navigateToDeviceDetail(group),
-						accessories: accessories,
-					);
-				}
-				return DeviceTilePortrait(
-					icon: _deviceGroupIcon(group),
-					name: group.deviceName,
-					status: status,
-					isActive: isActive,
-					onTileTap: () => _navigateToDeviceDetail(group),
-					accessories: accessories,
-				);
-			},
+		if (isLandscape) {
+			return DeviceTileLandscape(
+				icon: _deviceGroupIcon(group),
+				name: group.deviceName,
+				status: status,
+				isActive: isActive,
+				onTileTap: () => _navigateToDeviceDetail(group),
+			);
+		}
+		return DeviceTilePortrait(
+			icon: _deviceGroupIcon(group),
+			name: group.deviceName,
+			status: status,
+			isActive: isActive,
+			onTileTap: () => _navigateToDeviceDetail(group),
+			accessories: accessories,
 		);
 	}
 
