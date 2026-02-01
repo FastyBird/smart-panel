@@ -896,6 +896,19 @@ mixin DeviceMediaPlaybackMixin {
 
   int get mediaPlaybackMaxPosition =>
       mediaPlaybackChannel?.maxPosition ?? 86400;
+
+  bool get hasMediaPlaybackArtist => mediaPlaybackChannel?.hasArtist ?? false;
+
+  String? get mediaPlaybackArtist => mediaPlaybackChannel?.artist;
+
+  bool get hasMediaPlaybackAlbum => mediaPlaybackChannel?.hasAlbum ?? false;
+
+  String? get mediaPlaybackAlbum => mediaPlaybackChannel?.album;
+
+  bool get hasMediaPlaybackCommand => mediaPlaybackChannel?.hasCommand ?? false;
+
+  List<MediaPlaybackCommandValue> get mediaPlaybackAvailableCommands =>
+      mediaPlaybackChannel?.availableCommands ?? [];
 }
 
 mixin DeviceMicrophoneMixin {

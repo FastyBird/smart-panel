@@ -7,6 +7,8 @@ import 'package:fastybird_smart_panel/modules/devices/types/formats.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/value_state.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/active.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/album.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/artist.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/alarm_state.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/angle.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/aqi.dart';
@@ -162,10 +164,14 @@ ChannelPropertyView buildChannelPropertyView(ChannelPropertyModel property) {
       return _createPropertyView(property, ActiveChannelPropertyView.new);
     case DevicesModulePropertyCategory.alarmState:
       return _createPropertyView(property, AlarmStateChannelPropertyView.new);
+    case DevicesModulePropertyCategory.album:
+      return _createPropertyView(property, AlbumChannelPropertyView.new);
     case DevicesModulePropertyCategory.angle:
       return _createPropertyView(property, AngleChannelPropertyView.new);
     case DevicesModulePropertyCategory.aqi:
       return _createPropertyView(property, AqiChannelPropertyView.new);
+    case DevicesModulePropertyCategory.artist:
+      return _createPropertyView(property, ArtistChannelPropertyView.new);
     case DevicesModulePropertyCategory.brightness:
       return _createPropertyView(property, BrightnessChannelPropertyView.new);
     case DevicesModulePropertyCategory.changeNeeded:
@@ -336,7 +342,9 @@ Map<DevicesModulePropertyCategory, IconData Function()>
   DevicesModulePropertyCategory.generic: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.active: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.alarmState: () => MdiIcons.shieldAlertOutline,
+  DevicesModulePropertyCategory.album: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.angle: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.artist: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.aqi: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.brightness: () => MdiIcons.weatherSunny,
   DevicesModulePropertyCategory.changeNeeded: () => MdiIcons.databaseCog,

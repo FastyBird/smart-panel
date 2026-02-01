@@ -1,6 +1,7 @@
 import 'package:fastybird_smart_panel/modules/devices/models/devices/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/devices/generic_device.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/air_conditioner.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/av_receiver.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/air_dehumidifier.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/air_humidifier.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/air_purifier.dart';
@@ -31,6 +32,7 @@ import 'package:fastybird_smart_panel/api/models/devices_module_device_category.
 import 'package:fastybird_smart_panel/modules/devices/repositories/validation.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/view.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/air_conditioner.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/devices/av_receiver.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/air_dehumidifier.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/air_humidifier.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/air_purifier.dart';
@@ -134,6 +136,9 @@ Map<DevicesModuleDeviceCategory, DeviceView Function(DeviceModel, List<ChannelVi
   DevicesModuleDeviceCategory.airConditioner: (device, channels, isValid, validationIssues) {
     return _createDeviceView(device, channels, isValid, validationIssues, AirConditionerDeviceView.new);
   },
+  DevicesModuleDeviceCategory.avReceiver: (device, channels, isValid, validationIssues) {
+    return _createDeviceView(device, channels, isValid, validationIssues, AvReceiverDeviceView.new);
+  },
   DevicesModuleDeviceCategory.airDehumidifier: (device, channels, isValid, validationIssues) {
     return _createDeviceView(device, channels, isValid, validationIssues, AirDehumidifierDeviceView.new);
   },
@@ -233,6 +238,9 @@ Map<DevicesModuleDeviceCategory, IconData Function()> deviceIconMappers = {
   },
   DevicesModuleDeviceCategory.airConditioner: () {
     return MdiIcons.airConditioner;
+  },
+  DevicesModuleDeviceCategory.avReceiver: () {
+    return MdiIcons.audioVideo;
   },
   DevicesModuleDeviceCategory.airDehumidifier: () {
     return MdiIcons.airPurifier;
@@ -335,6 +343,14 @@ Map<DevicesModuleDeviceCategory, Widget Function(DeviceView)> deviceWidgetMapper
       );
     }
     return AirConditionerDeviceDetail(device: device);
+  },
+  DevicesModuleDeviceCategory.avReceiver: (device) {
+    if (device is! AvReceiverDeviceView) {
+      throw ArgumentError(
+        'Device view is not valid for AV Receiver device detail',
+      );
+    }
+    return AvReceiverDeviceDetail(device: device);
   },
   DevicesModuleDeviceCategory.airDehumidifier: (device) {
     if (device is! AirDehumidifierDeviceView) {

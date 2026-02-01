@@ -1,0 +1,651 @@
+import 'dart:async';
+
+import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
+import 'package:fastybird_smart_panel/core/services/visual_density.dart';
+import 'package:fastybird_smart_panel/core/utils/datetime.dart';
+import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/device_detail_landscape_layout.dart';
+import 'package:fastybird_smart_panel/core/widgets/device_detail_portrait_layout.dart';
+import 'package:fastybird_smart_panel/core/widgets/device_offline_overlay.dart';
+import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
+import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_info_card.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_playback_card.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_source_card.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_volume_card.dart';
+import 'package:fastybird_smart_panel/modules/devices/service.dart';
+import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
+import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/devices/av_receiver.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
+
+class AvReceiverDeviceDetail extends StatefulWidget {
+	final AvReceiverDeviceView _device;
+	final VoidCallback? onBack;
+
+	const AvReceiverDeviceDetail({
+		super.key,
+		required AvReceiverDeviceView device,
+		this.onBack,
+	}) : _device = device;
+
+	@override
+	State<AvReceiverDeviceDetail> createState() => _AvReceiverDeviceDetailState();
+}
+
+class _AvReceiverDeviceDetailState extends State<AvReceiverDeviceDetail> {
+	final ScreenService _screenService = locator<ScreenService>();
+	final VisualDensityService _visualDensityService = locator<VisualDensityService>();
+	final DevicesService _devicesService = locator<DevicesService>();
+	DeviceControlStateService? _deviceControlStateService;
+
+	Timer? _volumeDebounceTimer;
+	static const _debounceDuration = Duration(milliseconds: 300);
+
+	@override
+	void initState() {
+		super.initState();
+		_devicesService.addListener(_onDeviceChanged);
+
+		try {
+			_deviceControlStateService = locator<DeviceControlStateService>();
+			_deviceControlStateService?.addListener(_onControlStateChanged);
+		} catch (e) {
+			if (kDebugMode) {
+				debugPrint('[AvReceiverDeviceDetail] Failed to get DeviceControlStateService: $e');
+			}
+		}
+	}
+
+	@override
+	void dispose() {
+		_volumeDebounceTimer?.cancel();
+		_devicesService.removeListener(_onDeviceChanged);
+		_deviceControlStateService?.removeListener(_onControlStateChanged);
+		super.dispose();
+	}
+
+	void _onDeviceChanged() {
+		if (!mounted) return;
+		_checkConvergence();
+		setState(() {});
+	}
+
+	void _onControlStateChanged() {
+		if (mounted) setState(() {});
+	}
+
+	void _checkConvergence() {
+		final controlState = _deviceControlStateService;
+		if (controlState == null) return;
+
+		final speakerChannel = _device.speakerChannel;
+		final volumeProp = speakerChannel.volumeProp;
+		if (volumeProp != null) {
+			controlState.checkPropertyConvergence(
+				_device.id,
+				speakerChannel.id,
+				volumeProp.id,
+				speakerChannel.volume,
+				tolerance: 1.0,
+			);
+		}
+
+		if (speakerChannel.hasMute) {
+			final muteProp = speakerChannel.muteProp!;
+			controlState.checkPropertyConvergence(
+				_device.id,
+				speakerChannel.id,
+				muteProp.id,
+				speakerChannel.isMuted,
+			);
+		} else if (speakerChannel.hasActive) {
+			controlState.checkPropertyConvergence(
+				_device.id,
+				speakerChannel.id,
+				speakerChannel.activeProp.id,
+				speakerChannel.isActive,
+			);
+		}
+	}
+
+	AvReceiverDeviceView get _device {
+		final updated = _devicesService.getDevice(widget._device.id);
+		if (updated is AvReceiverDeviceView) {
+			return updated;
+		}
+		return widget._device;
+	}
+
+	double _scale(double value) =>
+		_screenService.scale(value, density: _visualDensityService.density);
+
+	// --------------------------------------------------------------------------
+	// COMMAND HELPERS
+	// --------------------------------------------------------------------------
+
+	void _togglePower() {
+		final switcherChannel = _device.switcherChannel;
+		if (switcherChannel == null) return;
+
+		_devicesService.setPropertyValueWithContext(
+			deviceId: _device.id,
+			channelId: switcherChannel.id,
+			propertyId: switcherChannel.onProp.id,
+			value: !_device.isSwitcherOn,
+		);
+	}
+
+	void _setSource(String source) {
+		final mediaInput = _device.mediaInputChannel;
+		if (mediaInput == null) return;
+
+		_devicesService.setPropertyValueWithContext(
+			deviceId: _device.id,
+			channelId: mediaInput.id,
+			propertyId: mediaInput.sourceProp.id,
+			value: source,
+		);
+	}
+
+	void _setVolume(int volume) {
+		final speakerChannel = _device.speakerChannel;
+		final prop = speakerChannel.volumeProp;
+		if (prop == null) return;
+
+		final clamped = volume.clamp(_device.speakerMinVolume, _device.speakerMaxVolume);
+
+		_deviceControlStateService?.setPending(
+			_device.id,
+			speakerChannel.id,
+			prop.id,
+			clamped,
+		);
+		setState(() {});
+
+		_volumeDebounceTimer?.cancel();
+		_volumeDebounceTimer = Timer(_debounceDuration, () {
+			if (!mounted) return;
+
+			_devicesService.setPropertyValueWithContext(
+				deviceId: _device.id,
+				channelId: speakerChannel.id,
+				propertyId: prop.id,
+				value: clamped,
+			);
+
+			_deviceControlStateService?.setSettling(
+				_device.id,
+				speakerChannel.id,
+				prop.id,
+			);
+			setState(() {});
+		});
+	}
+
+	int get _effectiveVolume {
+		final speakerChannel = _device.speakerChannel;
+		final prop = speakerChannel.volumeProp;
+		final controlState = _deviceControlStateService;
+
+		if (controlState != null && prop != null &&
+			controlState.isLocked(_device.id, speakerChannel.id, prop.id)) {
+			final desired = controlState.getDesiredValue(_device.id, speakerChannel.id, prop.id);
+			if (desired is num) return desired.toInt();
+		}
+
+		return _device.speakerVolume;
+	}
+
+	void _toggleMute() {
+		final speakerChannel = _device.speakerChannel;
+
+		if (speakerChannel.hasMute) {
+			final prop = speakerChannel.muteProp!;
+			final newValue = !_effectiveMuted;
+
+			_deviceControlStateService?.setPending(
+				_device.id,
+				speakerChannel.id,
+				prop.id,
+				newValue,
+			);
+			setState(() {});
+
+			_devicesService.setPropertyValueWithContext(
+				deviceId: _device.id,
+				channelId: speakerChannel.id,
+				propertyId: prop.id,
+				value: newValue,
+			);
+
+			_deviceControlStateService?.setSettling(
+				_device.id,
+				speakerChannel.id,
+				prop.id,
+			);
+			setState(() {});
+		} else if (speakerChannel.hasActive) {
+			final prop = speakerChannel.activeProp;
+			final newValue = _effectiveMuted;
+
+			_deviceControlStateService?.setPending(
+				_device.id,
+				speakerChannel.id,
+				prop.id,
+				newValue,
+			);
+			setState(() {});
+
+			_devicesService.setPropertyValueWithContext(
+				deviceId: _device.id,
+				channelId: speakerChannel.id,
+				propertyId: prop.id,
+				value: newValue,
+			);
+
+			_deviceControlStateService?.setSettling(
+				_device.id,
+				speakerChannel.id,
+				prop.id,
+			);
+			setState(() {});
+		}
+	}
+
+	void _sendPlaybackCommand(MediaPlaybackCommandValue command) {
+		final channel = _device.mediaPlaybackChannel;
+		if (channel == null || !channel.hasCommand) return;
+
+		_devicesService.setPropertyValueWithContext(
+			deviceId: _device.id,
+			channelId: channel.id,
+			propertyId: channel.commandProp!.id,
+			value: command.value,
+		);
+	}
+
+	void _seekPosition(int position) {
+		final channel = _device.mediaPlaybackChannel;
+		if (channel == null || !channel.hasPosition) return;
+		final prop = channel.positionProp;
+		if (prop == null || !prop.isWritable) return;
+
+		_devicesService.setPropertyValueWithContext(
+			deviceId: _device.id,
+			channelId: channel.id,
+			propertyId: prop.id,
+			value: position,
+		);
+	}
+
+	bool get _effectiveMuted {
+		final speakerChannel = _device.speakerChannel;
+		final controlState = _deviceControlStateService;
+
+		if (controlState != null) {
+			if (speakerChannel.hasMute) {
+				final prop = speakerChannel.muteProp!;
+				if (controlState.isLocked(_device.id, speakerChannel.id, prop.id)) {
+					final desired = controlState.getDesiredValue(_device.id, speakerChannel.id, prop.id);
+					if (desired is bool) return desired;
+				}
+				return speakerChannel.isMuted;
+			} else if (speakerChannel.hasActive) {
+				final prop = speakerChannel.activeProp;
+				if (controlState.isLocked(_device.id, speakerChannel.id, prop.id)) {
+					final desired = controlState.getDesiredValue(_device.id, speakerChannel.id, prop.id);
+					if (desired is bool) return !desired;
+				}
+				return !speakerChannel.isActive;
+			}
+		}
+
+		return _device.hasSpeakerMute
+			? _device.isSpeakerMuted
+			: !_device.isSpeakerActive;
+	}
+
+	// --------------------------------------------------------------------------
+	// UI HELPERS
+	// --------------------------------------------------------------------------
+
+	bool get _isOn => _device.isOn;
+
+	String _getStatusLabel(AppLocalizations localizations) {
+		if (_device.hasSwitcher && !_device.isSwitcherOn) {
+			return localizations.on_state_off;
+		}
+		if (_device.hasMediaInputSourceLabel) {
+			return _device.mediaInputSourceLabel!;
+		}
+		final source = _device.mediaInputSource;
+		if (source != null) {
+			if (_device.mediaInputAvailableSources.isNotEmpty) {
+				return _inputSourceLabel(context, source);
+			}
+			return source;
+		}
+		if (_device.hasMediaPlayback && _device.isMediaPlaybackPlaying) {
+			final track = _device.isMediaPlaybackTrack;
+			if (track != null) return track;
+			return localizations.on_state_on;
+		}
+		return _device.hasSwitcher
+			? localizations.on_state_on
+			: localizations.on_state_on;
+	}
+
+	String? _getDisplaySource() {
+		if (_device.hasMediaInputSourceLabel) {
+			return _device.mediaInputSourceLabel;
+		}
+
+		final source = _device.mediaInputSource;
+		if (source == null) return null;
+
+		if (_device.mediaInputAvailableSources.isNotEmpty) {
+			return _inputSourceLabel(context, source);
+		}
+
+		return source;
+	}
+
+	Color _getAccentColor(bool isDark) {
+		if (_isOn) {
+			return isDark ? AppColorsDark.info : AppColorsLight.info;
+		}
+		return isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
+	}
+
+	Color _getAccentLightColor(bool isDark) {
+		if (_isOn) {
+			return isDark ? AppColorsDark.infoLight5 : AppColorsLight.infoLight5;
+		}
+		return isDark ? AppFillColorDark.darker : AppFillColorLight.darker;
+	}
+
+	String _inputSourceLabel(BuildContext context, String source) {
+		final localizations = AppLocalizations.of(context)!;
+		final key = 'media_input_$source';
+		switch (key) {
+			case 'media_input_hdmi1': return localizations.media_input_hdmi1;
+			case 'media_input_hdmi2': return localizations.media_input_hdmi2;
+			case 'media_input_hdmi3': return localizations.media_input_hdmi3;
+			case 'media_input_hdmi4': return localizations.media_input_hdmi4;
+			case 'media_input_hdmi5': return localizations.media_input_hdmi5;
+			case 'media_input_hdmi6': return localizations.media_input_hdmi6;
+			case 'media_input_arc': return localizations.media_input_arc;
+			case 'media_input_earc': return localizations.media_input_earc;
+			case 'media_input_tv': return localizations.media_input_tv;
+			case 'media_input_cable': return localizations.media_input_cable;
+			case 'media_input_satellite': return localizations.media_input_satellite;
+			case 'media_input_antenna': return localizations.media_input_antenna;
+			case 'media_input_av1': return localizations.media_input_av1;
+			case 'media_input_av2': return localizations.media_input_av2;
+			case 'media_input_component': return localizations.media_input_component;
+			case 'media_input_vga': return localizations.media_input_vga;
+			case 'media_input_dvi': return localizations.media_input_dvi;
+			case 'media_input_usb': return localizations.media_input_usb;
+			case 'media_input_bluetooth': return localizations.media_input_bluetooth;
+			case 'media_input_wifi': return localizations.media_input_wifi;
+			case 'media_input_airplay': return localizations.media_input_airplay;
+			case 'media_input_cast': return localizations.media_input_cast;
+			case 'media_input_dlna': return localizations.media_input_dlna;
+			case 'media_input_miracast': return localizations.media_input_miracast;
+			case 'media_input_app_netflix': return localizations.media_input_app_netflix;
+			case 'media_input_app_youtube': return localizations.media_input_app_youtube;
+			case 'media_input_app_spotify': return localizations.media_input_app_spotify;
+			case 'media_input_app_prime_video': return localizations.media_input_app_prime_video;
+			case 'media_input_app_disney_plus': return localizations.media_input_app_disney_plus;
+			case 'media_input_app_hbo_max': return localizations.media_input_app_hbo_max;
+			case 'media_input_app_apple_tv': return localizations.media_input_app_apple_tv;
+			case 'media_input_app_plex': return localizations.media_input_app_plex;
+			case 'media_input_app_kodi': return localizations.media_input_app_kodi;
+			case 'media_input_other': return localizations.media_input_other;
+			default: return source;
+		}
+	}
+
+	// --------------------------------------------------------------------------
+	// BUILD
+	// --------------------------------------------------------------------------
+
+	@override
+	Widget build(BuildContext context) {
+		final isDark = Theme.of(context).brightness == Brightness.dark;
+		final localizations = AppLocalizations.of(context)!;
+
+		final lastSeenText = widget._device.lastStateChange != null
+			? DatetimeUtils.formatTimeAgo(widget._device.lastStateChange!, localizations)
+			: null;
+
+		return Scaffold(
+			backgroundColor: isDark ? AppBgColorDark.base : AppBgColorLight.page,
+			body: SafeArea(
+				child: Column(
+					children: [
+						_buildHeader(context, isDark),
+						Expanded(
+							child: Stack(
+								children: [
+									OrientationBuilder(
+										builder: (context, orientation) {
+											return orientation == Orientation.landscape
+												? _buildLandscapeLayout(context, isDark)
+												: _buildPortraitLayout(context, isDark);
+										},
+									),
+									if (!widget._device.isOnline)
+										DeviceOfflineState(
+											isDark: isDark,
+											lastSeenText: lastSeenText,
+										),
+								],
+							),
+						),
+					],
+				),
+			),
+		);
+	}
+
+	Widget _buildHeader(BuildContext context, bool isDark) {
+		final localizations = AppLocalizations.of(context)!;
+		final accentColor = _getAccentColor(isDark);
+		final secondaryColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
+		final mutedColor = isDark ? AppTextColorDark.disabled : AppTextColorLight.disabled;
+		final isOn = _isOn;
+
+		return PageHeader(
+			title: _device.name,
+			subtitle: _getStatusLabel(localizations),
+			subtitleColor: isOn ? accentColor : secondaryColor,
+			backgroundColor: AppColors.blank,
+			leading: Row(
+				mainAxisSize: MainAxisSize.min,
+				children: [
+					HeaderIconButton(
+						icon: MdiIcons.arrowLeft,
+						onTap: widget.onBack ?? () => Navigator.of(context).pop(),
+					),
+					AppSpacings.spacingMdHorizontal,
+					Container(
+						width: _scale(44),
+						height: _scale(44),
+						decoration: BoxDecoration(
+							color: isOn
+								? _getAccentLightColor(isDark)
+								: (isDark ? AppFillColorDark.darker : AppFillColorLight.darker),
+							borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+						),
+						child: Icon(
+							MdiIcons.audioVideo,
+							color: isOn ? accentColor : mutedColor,
+							size: _scale(24),
+						),
+					),
+				],
+			),
+			trailing: _device.hasSwitcher
+				? GestureDetector(
+					onTap: _togglePower,
+					child: AnimatedContainer(
+						duration: const Duration(milliseconds: 200),
+						width: _scale(48),
+						height: _scale(32),
+						decoration: BoxDecoration(
+							color: isOn
+								? accentColor
+								: (isDark ? AppFillColorDark.light : AppFillColorLight.light),
+							borderRadius: BorderRadius.circular(AppBorderRadius.round),
+							border: (!isOn && !isDark)
+								? Border.all(color: AppBorderColorLight.base, width: _scale(1))
+								: null,
+						),
+						child: Icon(
+							MdiIcons.power,
+							size: _scale(18),
+							color: isOn
+								? AppColors.white
+								: (isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary),
+						),
+					),
+				)
+				: null,
+		);
+	}
+
+	// --------------------------------------------------------------------------
+	// PORTRAIT LAYOUT
+	// --------------------------------------------------------------------------
+
+	Widget _buildPortraitLayout(BuildContext context, bool isDark) {
+		final accentColor = _getAccentColor(isDark);
+
+		return DeviceDetailPortraitLayout(
+			content: Column(
+				crossAxisAlignment: CrossAxisAlignment.start,
+				children: [
+					MediaInfoCard(
+						icon: MdiIcons.audioVideo,
+						iconColor: accentColor,
+						iconBgColor: _getAccentLightColor(isDark),
+						name: _device.name,
+						isOn: _isOn,
+						displaySource: _getDisplaySource(),
+						accentColor: accentColor,
+						scale: _scale,
+					),
+					if (_device.hasMediaPlayback) ...[
+						AppSpacings.spacingLgVertical,
+						_buildPlaybackCard(isDark),
+					],
+					AppSpacings.spacingLgVertical,
+					MediaVolumeCard(
+						volume: _effectiveVolume,
+						isMuted: _effectiveMuted,
+						hasMute: _device.hasSpeakerMute || _device.speakerChannel.hasActive,
+						isEnabled: _isOn,
+						accentColor: accentColor,
+						onVolumeChanged: _setVolume,
+						onMuteToggle: _toggleMute,
+						scale: _scale,
+					),
+					if (_device.mediaInputAvailableSources.isNotEmpty) ...[
+						AppSpacings.spacingLgVertical,
+						MediaSourceCard(
+							currentSource: _device.mediaInputSource,
+							availableSources: _device.mediaInputAvailableSources,
+							isEnabled: _isOn,
+							sourceLabel: (s) => _inputSourceLabel(context, s),
+							onSourceChanged: _setSource,
+							scale: _scale,
+						),
+					],
+				],
+			),
+		);
+	}
+
+	// --------------------------------------------------------------------------
+	// LANDSCAPE LAYOUT
+	// --------------------------------------------------------------------------
+
+	Widget _buildLandscapeLayout(BuildContext context, bool isDark) {
+		final accentColor = _getAccentColor(isDark);
+
+		return DeviceDetailLandscapeLayout(
+			mainContent: Column(
+				mainAxisAlignment: MainAxisAlignment.center,
+				children: [
+					MediaInfoCard(
+						icon: MdiIcons.audioVideo,
+						iconColor: accentColor,
+						iconBgColor: _getAccentLightColor(isDark),
+						name: _device.name,
+						isOn: _isOn,
+						displaySource: _getDisplaySource(),
+						accentColor: accentColor,
+						scale: _scale,
+					),
+					if (_device.hasMediaPlayback) ...[
+						AppSpacings.spacingMdVertical,
+						_buildPlaybackCard(isDark),
+					],
+					AppSpacings.spacingMdVertical,
+					MediaVolumeCard(
+						volume: _effectiveVolume,
+						isMuted: _effectiveMuted,
+						hasMute: _device.hasSpeakerMute || _device.speakerChannel.hasActive,
+						isEnabled: _isOn,
+						accentColor: accentColor,
+						onVolumeChanged: _setVolume,
+						onMuteToggle: _toggleMute,
+						scale: _scale,
+					),
+				],
+			),
+			secondaryContent: Column(
+				crossAxisAlignment: CrossAxisAlignment.start,
+				children: [
+					if (_device.mediaInputAvailableSources.isNotEmpty)
+						MediaSourceCard(
+							currentSource: _device.mediaInputSource,
+							availableSources: _device.mediaInputAvailableSources,
+							isEnabled: _isOn,
+							sourceLabel: (s) => _inputSourceLabel(context, s),
+							onSourceChanged: _setSource,
+							scale: _scale,
+						),
+				],
+			),
+		);
+	}
+
+	Widget _buildPlaybackCard(bool isDark) {
+		final accentColor = _getAccentColor(isDark);
+		final positionProp = _device.mediaPlaybackChannel?.positionProp;
+
+		return MediaPlaybackCard(
+			track: _device.isMediaPlaybackTrack,
+			artist: _device.mediaPlaybackArtist,
+			album: _device.mediaPlaybackAlbum,
+			status: _device.mediaPlaybackStatus,
+			availableCommands: _device.mediaPlaybackAvailableCommands,
+			hasPosition: _device.hasMediaPlaybackPosition,
+			position: _device.mediaPlaybackPosition,
+			hasDuration: _device.hasMediaPlaybackDuration,
+			duration: _device.mediaPlaybackDuration,
+			isPositionWritable: positionProp?.isWritable ?? false,
+			isEnabled: _isOn,
+			accentColor: accentColor,
+			scale: _scale,
+			onCommand: _sendPlaybackCommand,
+			onSeek: _seekPosition,
+		);
+	}
+}
