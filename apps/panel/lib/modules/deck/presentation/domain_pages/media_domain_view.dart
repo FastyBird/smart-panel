@@ -1275,40 +1275,55 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		final isPaused = _playbackState == 'paused';
 		final isStopped = _playbackState == 'stopped' || _playbackState == null;
 
-		return Row(
-			mainAxisAlignment: MainAxisAlignment.center,
-			spacing: AppSpacings.pLg,
-			children: [
-				_buildTransportButton(
-					context,
-					icon: MdiIcons.skipPrevious,
-					onTap: _isSending ? null : () => _sendPlaybackCommand('previous'),
-				),
-				_buildTransportButton(
-					context,
-					icon: MdiIcons.play,
-					isActive: isPlaying,
-					isMain: true,
-					onTap: _isSending ? null : () => _sendPlaybackCommand(isPlaying ? 'pause' : 'play'),
-				),
-				_buildTransportButton(
-					context,
-					icon: MdiIcons.pause,
-					isActive: isPaused,
-					onTap: _isSending ? null : () => _sendPlaybackCommand(isPaused ? 'play' : 'pause'),
-				),
-				_buildTransportButton(
-					context,
-					icon: MdiIcons.stop,
-					isActive: isStopped && _playbackState != null,
-					onTap: _isSending ? null : () => _sendPlaybackCommand('stop'),
-				),
-				_buildTransportButton(
-					context,
-					icon: MdiIcons.skipNext,
-					onTap: _isSending ? null : () => _sendPlaybackCommand('next'),
-				),
-			],
+		return LayoutBuilder(
+			builder: (context, constraints) {
+				// Calculate if buttons fit: 5 buttons + 4 gaps
+				// Default: 1 main (56) + 4 regular (44) = 232 + 4*pLg gaps
+				final defaultTotal = _scale(56) + 4 * _scale(44) + 4 * AppSpacings.pLg;
+				final compact = constraints.maxWidth < defaultTotal;
+				final spacing = compact ? AppSpacings.pSm : AppSpacings.pLg;
+
+				return Row(
+					mainAxisAlignment: MainAxisAlignment.center,
+					spacing: spacing,
+					children: [
+						_buildTransportButton(
+							context,
+							icon: MdiIcons.skipPrevious,
+							compact: compact,
+							onTap: _isSending ? null : () => _sendPlaybackCommand('previous'),
+						),
+						_buildTransportButton(
+							context,
+							icon: MdiIcons.play,
+							isActive: isPlaying,
+							isMain: true,
+							compact: compact,
+							onTap: _isSending ? null : () => _sendPlaybackCommand(isPlaying ? 'pause' : 'play'),
+						),
+						_buildTransportButton(
+							context,
+							icon: MdiIcons.pause,
+							isActive: isPaused,
+							compact: compact,
+							onTap: _isSending ? null : () => _sendPlaybackCommand(isPaused ? 'play' : 'pause'),
+						),
+						_buildTransportButton(
+							context,
+							icon: MdiIcons.stop,
+							isActive: isStopped && _playbackState != null,
+							compact: compact,
+							onTap: _isSending ? null : () => _sendPlaybackCommand('stop'),
+						),
+						_buildTransportButton(
+							context,
+							icon: MdiIcons.skipNext,
+							compact: compact,
+							onTap: _isSending ? null : () => _sendPlaybackCommand('next'),
+						),
+					],
+				);
+			},
 		);
 	}
 
@@ -1440,14 +1455,15 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		required IconData icon,
 		bool isMain = false,
 		bool isActive = false,
+		bool compact = false,
 		VoidCallback? onTap,
 	}) {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 		final accentColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
 		final baseColor = isDark ? AppFillColorDark.base : AppFillColorLight.base;
 
-		final size = _scale(isMain ? 56 : 44);
-		final iconSize = _scale(isMain ? 28 : 20);
+		final size = _scale(isMain ? (compact ? 44 : 56) : (compact ? 34 : 44));
+		final iconSize = _scale(isMain ? (compact ? 22 : 28) : (compact ? 16 : 20));
 
 		final Color bgColor;
 		final Color iconColor;
