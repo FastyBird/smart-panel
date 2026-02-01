@@ -23,6 +23,7 @@ import 'package:fastybird_smart_panel/modules/deck/utils/lighting.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/formats.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
+import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/deck_service.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/navigate_event.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/media_activity/media_activity.dart';
@@ -2148,16 +2149,253 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		final targets = _mediaService?.resolveControlTargets(_roomId);
 		if (targets == null || !targets.hasRemote) return;
 
-		final deviceGroups = _mediaService?.getDeviceGroups(_roomId) ?? [];
-		final remoteDeviceId = targets.remoteTarget!.deviceId;
-		final remoteGroup = deviceGroups.cast<MediaDeviceGroup?>().firstWhere(
-			(g) => g!.deviceId == remoteDeviceId,
-			orElse: () => null,
+		final remoteEndpoint = targets.remoteTarget!;
+		final propId = remoteEndpoint.links.remotePropertyId;
+		if (propId == null || _devicesService == null) return;
+
+		// Read supported commands from property format
+		Set<String> supported = {};
+		final prop = _devicesService!.getChannelProperty(propId);
+		if (prop?.format is StringListFormatType) {
+			supported = (prop!.format as StringListFormatType).value.toSet();
+		}
+
+		if (supported.isEmpty) return;
+
+		// Map enum values to icons and labels
+		IconData iconFor(TelevisionRemoteKeyValue key) => switch (key) {
+			TelevisionRemoteKeyValue.arrowUp => MdiIcons.chevronUp,
+			TelevisionRemoteKeyValue.arrowDown => MdiIcons.chevronDown,
+			TelevisionRemoteKeyValue.arrowLeft => MdiIcons.chevronLeft,
+			TelevisionRemoteKeyValue.arrowRight => MdiIcons.chevronRight,
+			TelevisionRemoteKeyValue.select => MdiIcons.radioboxMarked,
+			TelevisionRemoteKeyValue.back => MdiIcons.arrowLeft,
+			TelevisionRemoteKeyValue.exit => MdiIcons.exitToApp,
+			TelevisionRemoteKeyValue.info => MdiIcons.informationOutline,
+			TelevisionRemoteKeyValue.rewind => MdiIcons.rewind,
+			TelevisionRemoteKeyValue.fastForward => MdiIcons.fastForward,
+			TelevisionRemoteKeyValue.play => MdiIcons.play,
+			TelevisionRemoteKeyValue.pause => MdiIcons.pause,
+			TelevisionRemoteKeyValue.next => MdiIcons.skipNext,
+			TelevisionRemoteKeyValue.previous => MdiIcons.skipPrevious,
+		};
+
+		String labelFor(TelevisionRemoteKeyValue key) => switch (key) {
+			TelevisionRemoteKeyValue.arrowUp => 'Up',
+			TelevisionRemoteKeyValue.arrowDown => 'Down',
+			TelevisionRemoteKeyValue.arrowLeft => 'Left',
+			TelevisionRemoteKeyValue.arrowRight => 'Right',
+			TelevisionRemoteKeyValue.select => 'OK',
+			TelevisionRemoteKeyValue.back => 'Back',
+			TelevisionRemoteKeyValue.exit => 'Exit',
+			TelevisionRemoteKeyValue.info => 'Info',
+			TelevisionRemoteKeyValue.rewind => 'Rewind',
+			TelevisionRemoteKeyValue.fastForward => 'FF',
+			TelevisionRemoteKeyValue.play => 'Play',
+			TelevisionRemoteKeyValue.pause => 'Pause',
+			TelevisionRemoteKeyValue.next => 'Next',
+			TelevisionRemoteKeyValue.previous => 'Prev',
+		};
+
+		bool has(TelevisionRemoteKeyValue key) => supported.contains(key.value);
+
+		final hasUp = has(TelevisionRemoteKeyValue.arrowUp);
+		final hasDown = has(TelevisionRemoteKeyValue.arrowDown);
+		final hasLeft = has(TelevisionRemoteKeyValue.arrowLeft);
+		final hasRight = has(TelevisionRemoteKeyValue.arrowRight);
+		final hasSelect = has(TelevisionRemoteKeyValue.select);
+		final hasDpad = hasUp || hasDown || hasLeft || hasRight || hasSelect;
+
+		// Transport (media playback) keys in logical order
+		const transportOrder = [
+			TelevisionRemoteKeyValue.previous,
+			TelevisionRemoteKeyValue.rewind,
+			TelevisionRemoteKeyValue.play,
+			TelevisionRemoteKeyValue.pause,
+			TelevisionRemoteKeyValue.fastForward,
+			TelevisionRemoteKeyValue.next,
+		];
+
+		// Navigation keys
+		const navKeys = {
+			TelevisionRemoteKeyValue.back,
+			TelevisionRemoteKeyValue.exit,
+			TelevisionRemoteKeyValue.info,
+		};
+
+		final transportActions = transportOrder
+				.where((key) => has(key))
+				.toList();
+
+		final navActions = TelevisionRemoteKeyValue.values
+				.where((key) => navKeys.contains(key) && has(key))
+				.toList();
+
+		final isDark = Theme.of(context).brightness == Brightness.dark;
+		final bgColor = isDark ? AppFillColorDark.base : AppFillColorLight.blank;
+		final handleColor = isDark ? AppFillColorDark.darker : AppFillColorLight.darker;
+		final textColor = isDark ? AppTextColorDark.primary : AppTextColorLight.primary;
+		final secondaryColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
+		final navFgColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
+
+		final navButtonStyle = FilledButton.styleFrom(
+			textStyle: TextStyle(fontSize: AppFontSize.small),
+			foregroundColor: navFgColor,
+			padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd, vertical: AppSpacings.pSm),
 		);
 
-		if (remoteGroup != null) {
-			_navigateToDeviceDetail(remoteGroup);
-		}
+		showModalBottomSheet(
+			context: context,
+			isScrollControlled: true,
+			backgroundColor: AppColors.blank,
+			builder: (ctx) {
+				return Container(
+					decoration: BoxDecoration(
+						color: bgColor,
+						borderRadius: BorderRadius.vertical(top: Radius.circular(_scale(24))),
+					),
+					child: SafeArea(
+						top: false,
+						child: Padding(
+							padding: EdgeInsets.fromLTRB(
+								AppSpacings.pLg,
+								_scale(12),
+								AppSpacings.pLg,
+								AppSpacings.pXl,
+							),
+							child: Column(
+								mainAxisSize: MainAxisSize.min,
+								children: [
+									// Handle
+									Center(
+										child: Container(
+											width: _scale(36),
+											height: _scale(4),
+											decoration: BoxDecoration(
+												color: handleColor,
+												borderRadius: BorderRadius.circular(AppBorderRadius.small),
+											),
+										),
+									),
+									AppSpacings.spacingMdVertical,
+
+									// Header with close button
+									Row(
+										mainAxisAlignment: MainAxisAlignment.spaceBetween,
+										children: [
+											Text(
+												'Remote Control',
+												style: TextStyle(
+													color: textColor,
+													fontSize: AppFontSize.extraLarge,
+													fontWeight: FontWeight.w600,
+												),
+											),
+											GestureDetector(
+												onTap: () => Navigator.pop(ctx),
+												child: Container(
+													width: _scale(32),
+													height: _scale(32),
+													decoration: BoxDecoration(
+														color: handleColor,
+														borderRadius: BorderRadius.circular(_scale(16)),
+													),
+													child: Icon(
+														MdiIcons.close,
+														color: secondaryColor,
+														size: _scale(18),
+													),
+												),
+											),
+										],
+									),
+									AppSpacings.spacingLgVertical,
+
+									// D-pad
+									if (hasDpad) ...[
+										if (hasUp)
+											IconButton(
+												icon: Icon(MdiIcons.chevronUp, size: _scale(32)),
+												onPressed: () => _sendRemoteSheetCommand(propId, TelevisionRemoteKeyValue.arrowUp),
+											),
+										Row(
+											mainAxisSize: MainAxisSize.min,
+											children: [
+												if (hasLeft)
+													IconButton(
+														icon: Icon(MdiIcons.chevronLeft, size: _scale(32)),
+														onPressed: () => _sendRemoteSheetCommand(propId, TelevisionRemoteKeyValue.arrowLeft),
+													),
+												if (hasSelect) ...[
+													AppSpacings.spacingMdHorizontal,
+													FilledButton(
+														onPressed: () => _sendRemoteSheetCommand(propId, TelevisionRemoteKeyValue.select),
+														child: const Text('OK'),
+													),
+													AppSpacings.spacingMdHorizontal,
+												],
+												if (hasRight)
+													IconButton(
+														icon: Icon(MdiIcons.chevronRight, size: _scale(32)),
+														onPressed: () => _sendRemoteSheetCommand(propId, TelevisionRemoteKeyValue.arrowRight),
+													),
+											],
+										),
+										if (hasDown)
+											IconButton(
+												icon: Icon(MdiIcons.chevronDown, size: _scale(32)),
+												onPressed: () => _sendRemoteSheetCommand(propId, TelevisionRemoteKeyValue.arrowDown),
+											),
+									],
+
+									// Transport controls (media playback style)
+									if (transportActions.isNotEmpty) ...[
+										AppSpacings.spacingMdVertical,
+										Row(
+											mainAxisAlignment: MainAxisAlignment.center,
+											spacing: AppSpacings.pSm,
+											children: transportActions.map((key) {
+												final isMain = key == TelevisionRemoteKeyValue.play;
+												return _buildTransportButton(
+													context,
+													icon: iconFor(key),
+													isMain: isMain,
+													compact: true,
+													onTap: () => _sendRemoteSheetCommand(propId, key),
+												);
+											}).toList(),
+										),
+									],
+
+									// Navigation buttons (back, exit, info)
+									if (navActions.isNotEmpty) ...[
+										AppSpacings.spacingLgVertical,
+										Row(
+											mainAxisAlignment: MainAxisAlignment.center,
+											spacing: AppSpacings.pLg,
+											children: navActions
+													.map(
+														(key) => FilledButton.icon(
+															onPressed: () => _sendRemoteSheetCommand(propId, key),
+															icon: Icon(iconFor(key), size: _scale(16), color: navFgColor),
+															label: Text(labelFor(key), style: TextStyle(color: navFgColor, fontSize: AppFontSize.small)),
+															style: navButtonStyle,
+														),
+													)
+													.toList(),
+										),
+									],
+								],
+							),
+						),
+					),
+				);
+			},
+		);
+	}
+
+	void _sendRemoteSheetCommand(String propId, TelevisionRemoteKeyValue command) {
+		_devicesService?.setPropertyValue(propId, command.value);
 	}
 }
 

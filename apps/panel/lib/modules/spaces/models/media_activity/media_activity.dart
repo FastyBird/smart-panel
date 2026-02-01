@@ -210,14 +210,21 @@ class MediaLinksModel {
 	String? get artistPropertyId => _extractPropertyId('artist');
 	String? get positionPropertyId => _extractPropertyId('position');
 	String? get durationPropertyId => _extractPropertyId('duration');
+	/// Remote command property ID.
+	///
+	/// The backend structure is: `{ "remote": { "commands": { "remoteKey": "propertyId" } } }`
+	/// where the single value is the property ID for sending remote key commands.
+	String? get remotePropertyId {
+		// Try standard extraction first
+		final standard = _extractPropertyId('remote_commands') ?? _extractPropertyId('remoteCommands') ?? _extractPropertyId('remote');
+		if (standard != null) return standard;
 
-	/// Remote commands map: { "remoteKey": "propertyId" }
-	Map<String, String>? get remoteCommands {
+		// Extract from commands map: { "remote": { "commands": { "remoteKey": "propId" } } }
 		final remote = raw['remote'];
 		if (remote is Map<String, dynamic>) {
 			final commands = remote['commands'];
-			if (commands is Map<String, dynamic>) {
-				return commands.map((k, v) => MapEntry(k, v.toString()));
+			if (commands is Map<String, dynamic> && commands.isNotEmpty) {
+				return commands.values.first?.toString();
 			}
 		}
 		return null;
