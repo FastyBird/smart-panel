@@ -23,6 +23,7 @@ import 'package:fastybird_smart_panel/modules/devices/presentation/device_detail
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/set_top_box.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/speaker.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/sprinkler.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/streaming_service.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/switcher.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/projector.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/television.dart';
@@ -56,6 +57,7 @@ import 'package:fastybird_smart_panel/modules/devices/views/devices/robot_vacuum
 import 'package:fastybird_smart_panel/modules/devices/views/devices/sensor.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/set_top_box.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/speaker.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/devices/streaming_service.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/sprinkler.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/switcher.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/projector.dart';
@@ -203,6 +205,9 @@ Map<DevicesModuleDeviceCategory, DeviceView Function(DeviceModel, List<ChannelVi
   DevicesModuleDeviceCategory.speaker: (device, channels, isValid, validationIssues) {
     return _createDeviceView(device, channels, isValid, validationIssues, SpeakerDeviceView.new);
   },
+  DevicesModuleDeviceCategory.streamingService: (device, channels, isValid, validationIssues) {
+    return _createDeviceView(device, channels, isValid, validationIssues, StreamingServiceDeviceView.new);
+  },
   DevicesModuleDeviceCategory.sprinkler: (device, channels, isValid, validationIssues) {
     return _createDeviceView(device, channels, isValid, validationIssues, SprinklerDeviceView.new);
   },
@@ -311,6 +316,9 @@ Map<DevicesModuleDeviceCategory, IconData Function()> deviceIconMappers = {
   },
   DevicesModuleDeviceCategory.speaker: () {
     return MdiIcons.speaker;
+  },
+  DevicesModuleDeviceCategory.streamingService: () {
+    return MdiIcons.playNetwork;
   },
   DevicesModuleDeviceCategory.sprinkler: () {
     return MdiIcons.sprinklerVariant;
@@ -527,6 +535,14 @@ Map<DevicesModuleDeviceCategory, Widget Function(DeviceView)> deviceWidgetMapper
       );
     }
     return SpeakerDeviceDetail(device: device);
+  },
+  DevicesModuleDeviceCategory.streamingService: (device) {
+    if (device is! StreamingServiceDeviceView) {
+      throw ArgumentError(
+        'Device view is not valid for Streaming Service device detail',
+      );
+    }
+    return StreamingServiceDeviceDetail(device: device);
   },
   DevicesModuleDeviceCategory.sprinkler: (device) {
     if (device is! SprinklerDeviceView) {
