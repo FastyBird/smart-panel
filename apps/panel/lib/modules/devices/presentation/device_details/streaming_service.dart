@@ -128,7 +128,11 @@ class _StreamingServiceDeviceDetailState extends State<StreamingServiceDeviceDet
 		if (_device.isMediaPlaybackPlaying) {
 			final track = _device.isMediaPlaybackTrack;
 			if (track != null) return track;
-			return localizations.on_state_on;
+			return localizations.media_playing;
+		}
+		final status = _device.mediaPlaybackStatus;
+		if (status == MediaPlaybackStatusValue.paused || status == MediaPlaybackStatusValue.stopped) {
+			return localizations.media_idle;
 		}
 		return localizations.on_state_on;
 	}
