@@ -416,17 +416,12 @@ class UniversalTile extends StatelessWidget {
     final accentColorLight5 = family.light5;
     final accentColorLight9 = family.light9;
 
-    // Icon-only accent: activeColor set but !isActive -> use theme color for icon only
-    final iconOnlyAccent = activeColor != null && !isActive;
-
     // Tile background
     final Color tileBgColor;
     if (isOffline) {
       tileBgColor = isDark ? AppFillColorDark.darker : AppFillColorLight.darker;
     } else if (isActive) {
       tileBgColor = accentColorLight9;
-    } else if (iconOnlyAccent) {
-      tileBgColor = isDark ? AppFillColorDark.light : AppFillColorLight.blank;
     } else {
       tileBgColor = isDark ? AppFillColorDark.light : AppFillColorLight.blank;
     }
@@ -453,7 +448,9 @@ class UniversalTile extends StatelessWidget {
     final Color iconBgColor;
     if (isOffline) {
       iconBgColor = isDark ? AppFillColorDark.light : AppFillColorLight.light;
-    } else if (iconOnlyAccent || isActive) {
+    } else if (iconAccentColor != null) {
+      iconBgColor = ThemeColorFamily.get(brightness, iconAccentColor!).light5;
+    } else if (isActive) {
       iconBgColor = accentColorLight5;
     } else {
       iconBgColor = isDark ? AppFillColorDark.darker : AppFillColorLight.light;
@@ -463,7 +460,9 @@ class UniversalTile extends StatelessWidget {
     final Color iconColor;
     if (isOffline) {
       iconColor = isDark ? AppTextColorDark.disabled : AppTextColorLight.disabled;
-    } else if (iconOnlyAccent || isActive) {
+    } else if (iconAccentColor != null) {
+      iconColor = ThemeColorFamily.get(brightness, iconAccentColor!).base;
+    } else if (isActive) {
       iconColor = accentColor;
     } else {
       iconColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;

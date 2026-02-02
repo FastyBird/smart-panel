@@ -1138,7 +1138,7 @@ class _AirConditionerDeviceDetailState
             icon: sensor.icon,
             name: sensor.displayValue,
             status: sensor.label,
-            activeColor: sensor.valueThemeColor ?? accentThemeColor,
+            iconAccentColor: sensor.valueThemeColor ?? accentThemeColor,
           );
         },
       );
@@ -1158,7 +1158,7 @@ class _AirConditionerDeviceDetailState
             icon: sensor.icon,
             name: sensor.displayValue,
             status: sensor.label,
-            activeColor: sensor.valueThemeColor ?? accentThemeColor,
+            iconAccentColor: sensor.valueThemeColor ?? accentThemeColor,
           );
         }).toList(),
       );
@@ -1177,7 +1177,7 @@ class _AirConditionerDeviceDetailState
             icon: sensor.icon,
             name: sensor.displayValue,
             status: sensor.label,
-            activeColor: sensor.valueThemeColor ?? accentThemeColor,
+            iconAccentColor: sensor.valueThemeColor ?? accentThemeColor,
           ),
         );
       }).toList(),
@@ -1601,7 +1601,7 @@ class _AirConditionerDeviceDetailState
         onTileTap: () => _setFanSwing(!fanChannel.swing),
         showGlow: false,
         showDoubleBorder: false,
-        showInactiveBorder: true,
+        showInactiveBorder: _screenService.isLandscape,
       )));
       options.add(AppSpacings.spacingMdVertical);
     }
@@ -1626,7 +1626,7 @@ class _AirConditionerDeviceDetailState
         },
         showGlow: false,
         showDoubleBorder: false,
-        showInactiveBorder: true,
+        showInactiveBorder: _screenService.isLandscape,
       )));
       options.add(AppSpacings.spacingMdVertical);
     }
@@ -1645,7 +1645,7 @@ class _AirConditionerDeviceDetailState
         onTileTap: () => _setFanNaturalBreeze(!fanChannel.naturalBreeze),
         showGlow: false,
         showDoubleBorder: false,
-        showInactiveBorder: true,
+        showInactiveBorder: _screenService.isLandscape,
       )));
       options.add(AppSpacings.spacingMdVertical);
     }
@@ -1664,7 +1664,7 @@ class _AirConditionerDeviceDetailState
         onTileTap: () => _setFanLocked(!fanChannel.locked),
         showGlow: false,
         showDoubleBorder: false,
-        showInactiveBorder: true,
+        showInactiveBorder: _screenService.isLandscape,
       )));
       options.add(AppSpacings.spacingMdVertical);
     }

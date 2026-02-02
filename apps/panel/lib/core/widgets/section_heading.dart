@@ -78,7 +78,6 @@ class SectionTitle extends StatelessWidget {
             if (trailing != null) trailing!,
           ],
         ),
-        AppSpacings.spacingMdVertical,
       ],
     );
   }

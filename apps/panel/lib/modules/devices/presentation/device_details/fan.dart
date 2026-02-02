@@ -802,7 +802,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
         onTileTap: () => _setFanSwing(!fanChannel.swing),
         showGlow: false,
         showDoubleBorder: false,
-        showInactiveBorder: true,
+        showInactiveBorder: _screenService.isLandscape,
       )));
       options.add(AppSpacings.spacingMdVertical);
     }
@@ -827,7 +827,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
         },
         showGlow: false,
         showDoubleBorder: false,
-        showInactiveBorder: true,
+        showInactiveBorder: _screenService.isLandscape,
       )));
       options.add(AppSpacings.spacingMdVertical);
     }
@@ -846,7 +846,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
         onTileTap: () => _setFanLocked(!fanChannel.locked),
         showGlow: false,
         showDoubleBorder: false,
-        showInactiveBorder: true,
+        showInactiveBorder: _screenService.isLandscape,
       )));
       options.add(AppSpacings.spacingMdVertical);
     }

@@ -851,8 +851,8 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
           padding: EdgeInsets.only(
             left: AppSpacings.pLg,
             right: AppSpacings.pLg,
-            top: AppSpacings.pSm,
-            bottom: AppSpacings.pSm,
+            top: AppSpacings.pMd,
+            bottom: 0,
           ),
           decoration: BoxDecoration(
             border: Border(
@@ -881,7 +881,6 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
             separatorWidth: AppSpacings.pMd,
             itemBuilder: (context, index) {
               final device = _state.climateDevices[index];
-              final modeColor = _getModeColor(context);
               final deviceView = _devicesService?.getDevice(device.id);
               final isOffline = deviceView != null && !deviceView.isOnline;
 
@@ -895,9 +894,6 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
                 isOffline: isOffline,
                 showWarningBadge: true,
                 activeColor: device.isActive ? _getModeThemeColor() : null,
-                onIconTap: isOffline ? null : () {
-                  // TODO: Toggle device
-                },
                 onTileTap: () => _openClimateDeviceDetail(device),
               );
             },
@@ -939,7 +935,6 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
 
   /// Large screens: 2 vertical tiles per row (square)
   Widget _buildLandscapeDevicesGrid(BuildContext context) {
-    final modeColor = _getModeColor(context);
     final localizations = AppLocalizations.of(context)!;
 
     return GridView.count(
@@ -963,11 +958,6 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
           isOffline: isOffline,
           showWarningBadge: true,
           activeColor: device.isActive ? _getModeThemeColor() : null,
-          onIconTap: isOffline
-              ? null
-              : () {
-                  // TODO: Toggle device
-                },
           onTileTap: () => _openClimateDeviceDetail(device),
         );
       }).toList(),
@@ -976,7 +966,6 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
 
   /// Small/medium screens: Column of fixed-height horizontal tiles
   Widget _buildLandscapeDevicesList(BuildContext context) {
-    final modeColor = _getModeColor(context);
     final localizations = AppLocalizations.of(context)!;
 
     return Column(
@@ -1000,11 +989,6 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
             isOffline: isOffline,
             showWarningBadge: true,
             activeColor: device.isActive ? _getModeThemeColor() : null,
-            onIconTap: isOffline
-                ? null
-                : () {
-                    // TODO: Toggle device
-                  },
             onTileTap: () => _openClimateDeviceDetail(device),
           ),
         );

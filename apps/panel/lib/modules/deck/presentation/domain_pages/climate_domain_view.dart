@@ -1629,19 +1629,19 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildPrimaryControlCard(context, dialSize: _scale(200)),
-          AppSpacings.spacingLgVertical,
           // Sensors section - horizontal scroll like presets on window_covering.dart
           if (hasSensors) ...[
+            AppSpacings.spacingLgVertical,
             SectionTitle(
               title: localizations.device_sensors,
               icon: MdiIcons.eyeSettings,
             ),
             AppSpacings.spacingMdVertical,
             _buildSensorsWithGradient(context),
-            AppSpacings.spacingLgVertical,
           ],
           // Auxiliary section - same as devices on covering domain
           if (hasAuxiliary) ...[
+            AppSpacings.spacingLgVertical,
             SectionTitle(
               title: localizations.climate_role_auxiliary,
               icon: MdiIcons.devices,
@@ -1673,7 +1673,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           icon: sensor.icon,
           name: sensor.isOnline ? sensor.value : _translateSensorLabel(localizations, sensor),
           status: sensor.isOnline ? _translateSensorLabel(localizations, sensor) : localizations.device_status_offline,
-          activeColor: SensorColors.themeColorForType(sensor.type),
+          iconAccentColor: SensorColors.themeColorForType(sensor.type),
           isOffline: !sensor.isOnline,
           showWarningBadge: true,
           onTileTap: () {
@@ -1767,6 +1767,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         SectionTitle(title: localizations.device_sensors, icon: MdiIcons.eyeSettings),
       );
       contentWidgets.add(_buildLandscapeSensorsCard(context));
+      contentWidgets.add(AppSpacings.spacingLgVertical);
     }
 
     // Auxiliary section - displayed as individual tiles (like devices on covering domain)
@@ -1791,17 +1792,13 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             onTileTap: () => _openAuxiliaryDeviceDetail(device),
           ),
         );
+        contentWidgets.add(AppSpacings.spacingMdVertical);
       }
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        for (int i = 0; i < contentWidgets.length; i++) ...[
-          if (i > 0) SizedBox(height: AppSpacings.pMd),
-          contentWidgets[i],
-        ],
-      ],
+      children: contentWidgets,
     );
   }
 
@@ -1827,7 +1824,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             icon: sensor.icon,
             name: sensor.isOnline ? sensor.value : _translateSensorLabel(localizations, sensor),
             status: sensor.isOnline ? _translateSensorLabel(localizations, sensor) : localizations.device_status_offline,
-            activeColor: SensorColors.themeColorForType(sensor.type),
+            iconAccentColor: SensorColors.themeColorForType(sensor.type),
             isOffline: !sensor.isOnline,
             showWarningBadge: true,
             onTileTap: () {
@@ -2072,7 +2069,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             AppSpacings.spacingMdVertical,
             _buildModeSelector(context),
             if (showDetailHint) ...[
-              AppSpacings.spacingSmVertical,
+              AppSpacings.spacingMdVertical,
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
