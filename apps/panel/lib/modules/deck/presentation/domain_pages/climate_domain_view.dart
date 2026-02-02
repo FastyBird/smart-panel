@@ -84,6 +84,21 @@ spaces_climate.ClimateMode _toServiceClimateMode(ClimateMode mode) {
   }
 }
 
+/// Convert spaces service ClimateMode to local enum
+ClimateMode _fromServiceClimateMode(spaces_climate.ClimateMode? mode) {
+  switch (mode) {
+    case spaces_climate.ClimateMode.heat:
+      return ClimateMode.heat;
+    case spaces_climate.ClimateMode.cool:
+      return ClimateMode.cool;
+    case spaces_climate.ClimateMode.auto:
+      return ClimateMode.auto;
+    case spaces_climate.ClimateMode.off:
+    case null:
+      return ClimateMode.off;
+  }
+}
+
 enum RoomCapability { none, heaterOnly, coolerOnly, heaterAndCooler }
 
 class ClimateDevice {
@@ -436,21 +451,8 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           ?.toInt();
       if (desiredModeIndex != null &&
           desiredModeIndex < spaces_climate.ClimateMode.values.length) {
-        final desiredMode = spaces_climate.ClimateMode.values[desiredModeIndex];
-        switch (desiredMode) {
-          case spaces_climate.ClimateMode.heat:
-            mode = ClimateMode.heat;
-            break;
-          case spaces_climate.ClimateMode.cool:
-            mode = ClimateMode.cool;
-            break;
-          case spaces_climate.ClimateMode.auto:
-            mode = ClimateMode.auto;
-            break;
-          case spaces_climate.ClimateMode.off:
-            mode = ClimateMode.off;
-            break;
-        }
+        mode = _fromServiceClimateMode(
+            spaces_climate.ClimateMode.values[desiredModeIndex]);
       }
     } else if (setpointIsLocked && _state.mode != ClimateMode.off) {
       // Preserve current mode when setpoint is locked to avoid mode switching
@@ -461,21 +463,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
       // Note: lastAppliedMode is the last mode explicitly set by the user, but it
       // can be stale (from hours/days ago). The 'mode' field reflects the actual
       // current state which is more reliable for display purposes.
-      switch (climateState.mode) {
-        case spaces_climate.ClimateMode.heat:
-          mode = ClimateMode.heat;
-          break;
-        case spaces_climate.ClimateMode.cool:
-          mode = ClimateMode.cool;
-          break;
-        case spaces_climate.ClimateMode.auto:
-          mode = ClimateMode.auto;
-          break;
-        case spaces_climate.ClimateMode.off:
-        case null:
-          mode = ClimateMode.off;
-          break;
-      }
+      mode = _fromServiceClimateMode(climateState.mode);
     }
 
     // Determine capability from climate state
@@ -529,15 +517,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     }
 
     // Get temperature values from climate state
-    final rawMinSetpoint = climateState?.minSetpoint ?? 16.0;
-    final rawMaxSetpoint = climateState?.maxSetpoint ?? 30.0;
-    // Ensure min < max to prevent clamp() ArgumentError and satisfy
-    // CircularControlDial assertion (maxValue > minValue requires strict inequality)
-    var minSetpoint = math.min(rawMinSetpoint, rawMaxSetpoint);
-    var maxSetpoint = math.max(rawMinSetpoint, rawMaxSetpoint);
-    if (maxSetpoint <= minSetpoint) {
-      maxSetpoint = minSetpoint + 1.0;
-    }
+    final (minSetpoint, maxSetpoint) = _getSetpointRange(climateState);
 
     // Get the appropriate target temperature based on mode
     // When mode is locked (user just changed it), use the setpoint for the NEW mode
@@ -878,6 +858,28 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     }
   }
 
+  /// Resolves effective on/off state for an auxiliary device (optimistic UI).
+  bool _getAuxiliaryDeviceIsActive(
+    String deviceId,
+    String channelId,
+    String propertyId,
+    bool fallback,
+  ) {
+    if (_deviceControlStateService != null &&
+        _deviceControlStateService!.isLocked(deviceId, channelId, propertyId)) {
+      final desiredValue =
+          _deviceControlStateService!.getDesiredValue(deviceId, channelId, propertyId);
+      if (desiredValue is bool) return desiredValue;
+    }
+    if (_intentOverlayService != null &&
+        _intentOverlayService!.isLocked(deviceId, channelId, propertyId)) {
+      final overlayValue =
+          _intentOverlayService!.getOverlayValue(deviceId, channelId, propertyId);
+      if (overlayValue is bool) return overlayValue;
+    }
+    return fallback;
+  }
+
   void _buildAuxiliaryFromDevice(
     DeviceView device,
     List<AuxiliaryDevice> auxiliaryDevices,
@@ -886,41 +888,9 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     // Wrap in try-catch to handle devices with missing required channels
     // Some devices may not have all expected channels configured
     try {
-      String? channelId;
-      String? propertyId;
-      bool isActive = false;
-
       if (device is FanDeviceView) {
         final channel = device.fanChannel;
-        channelId = channel.id;
-        final onProp = channel.onProp;
-        propertyId = onProp.id;
-
-        // Use DeviceControlStateService first for optimistic UI (most reliable)
-        // Fall back to IntentOverlayService, then actual device state
-        isActive = channel.on;
-        if (_deviceControlStateService != null &&
-            _deviceControlStateService!.isLocked(device.id, channelId, propertyId)) {
-          final desiredValue = _deviceControlStateService!.getDesiredValue(
-            device.id,
-            channelId,
-            propertyId,
-          );
-          if (desiredValue is bool) {
-            isActive = desiredValue;
-          }
-        } else if (_intentOverlayService != null &&
-            _intentOverlayService!.isLocked(device.id, channelId, propertyId)) {
-          final overlayValue = _intentOverlayService!.getOverlayValue(
-            device.id,
-            channelId,
-            propertyId,
-          );
-          if (overlayValue is bool) {
-            isActive = overlayValue;
-          }
-        }
-
+        final isActive = _getAuxiliaryDeviceIsActive(device.id, channel.id, channel.onProp.id, channel.on);
         auxiliaryDevices.add(AuxiliaryDevice(
           id: device.id,
           name: stripRoomNameFromDevice(device.name, roomName),
@@ -930,35 +900,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         ));
       } else if (device is AirPurifierDeviceView) {
         final channel = device.fanChannel;
-        channelId = channel.id;
-        final onProp = channel.onProp;
-        propertyId = onProp.id;
-
-        // Use DeviceControlStateService first for optimistic UI (most reliable)
-        // Fall back to IntentOverlayService, then actual device state
-        isActive = channel.on;
-        if (_deviceControlStateService != null &&
-            _deviceControlStateService!.isLocked(device.id, channelId, propertyId)) {
-          final desiredValue = _deviceControlStateService!.getDesiredValue(
-            device.id,
-            channelId,
-            propertyId,
-          );
-          if (desiredValue is bool) {
-            isActive = desiredValue;
-          }
-        } else if (_intentOverlayService != null &&
-            _intentOverlayService!.isLocked(device.id, channelId, propertyId)) {
-          final overlayValue = _intentOverlayService!.getOverlayValue(
-            device.id,
-            channelId,
-            propertyId,
-          );
-          if (overlayValue is bool) {
-            isActive = overlayValue;
-          }
-        }
-
+        final isActive = _getAuxiliaryDeviceIsActive(device.id, channel.id, channel.onProp.id, channel.on);
         auxiliaryDevices.add(AuxiliaryDevice(
           id: device.id,
           name: stripRoomNameFromDevice(device.name, roomName),
@@ -968,35 +910,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         ));
       } else if (device is AirHumidifierDeviceView) {
         final channel = device.humidifierChannel;
-        channelId = channel.id;
-        final onProp = channel.onProp;
-        propertyId = onProp.id;
-
-        // Use DeviceControlStateService first for optimistic UI (most reliable)
-        // Fall back to IntentOverlayService, then actual device state
-        isActive = channel.on;
-        if (_deviceControlStateService != null &&
-            _deviceControlStateService!.isLocked(device.id, channelId, propertyId)) {
-          final desiredValue = _deviceControlStateService!.getDesiredValue(
-            device.id,
-            channelId,
-            propertyId,
-          );
-          if (desiredValue is bool) {
-            isActive = desiredValue;
-          }
-        } else if (_intentOverlayService != null &&
-            _intentOverlayService!.isLocked(device.id, channelId, propertyId)) {
-          final overlayValue = _intentOverlayService!.getOverlayValue(
-            device.id,
-            channelId,
-            propertyId,
-          );
-          if (overlayValue is bool) {
-            isActive = overlayValue;
-          }
-        }
-
+        final isActive = _getAuxiliaryDeviceIsActive(device.id, channel.id, channel.onProp.id, channel.on);
         auxiliaryDevices.add(AuxiliaryDevice(
           id: device.id,
           name: stripRoomNameFromDevice(device.name, roomName),
@@ -1006,35 +920,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         ));
       } else if (device is AirDehumidifierDeviceView) {
         final channel = device.dehumidifierChannel;
-        channelId = channel.id;
-        final onProp = channel.onProp;
-        propertyId = onProp.id;
-
-        // Use DeviceControlStateService first for optimistic UI (most reliable)
-        // Fall back to IntentOverlayService, then actual device state
-        isActive = channel.on;
-        if (_deviceControlStateService != null &&
-            _deviceControlStateService!.isLocked(device.id, channelId, propertyId)) {
-          final desiredValue = _deviceControlStateService!.getDesiredValue(
-            device.id,
-            channelId,
-            propertyId,
-          );
-          if (desiredValue is bool) {
-            isActive = desiredValue;
-          }
-        } else if (_intentOverlayService != null &&
-            _intentOverlayService!.isLocked(device.id, channelId, propertyId)) {
-          final overlayValue = _intentOverlayService!.getOverlayValue(
-            device.id,
-            channelId,
-            propertyId,
-          );
-          if (overlayValue is bool) {
-            isActive = overlayValue;
-          }
-        }
-
+        final isActive = _getAuxiliaryDeviceIsActive(device.id, channel.id, channel.onProp.id, channel.on);
         auxiliaryDevices.add(AuxiliaryDevice(
           id: device.id,
           name: stripRoomNameFromDevice(device.name, roomName),
@@ -1289,6 +1175,16 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   double _scale(double size) =>
       _screenService.scale(size, density: _visualDensityService.density);
 
+  /// Returns (minSetpoint, maxSetpoint) from climate state with safe defaults.
+  (double, double) _getSetpointRange(spaces_climate.ClimateStateModel? climateState) {
+    final rawMin = climateState?.minSetpoint ?? 16.0;
+    final rawMax = climateState?.maxSetpoint ?? 30.0;
+    var minSp = math.min(rawMin, rawMax);
+    var maxSp = math.max(rawMin, rawMax);
+    if (maxSp <= minSp) maxSp = minSp + 1.0;
+    return (minSp, maxSp);
+  }
+
   void _navigateToHome() {
     final deck = _deckService?.deck;
     if (deck == null || deck.items.isEmpty) {
@@ -1304,22 +1200,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   }
 
   void _setMode(ClimateMode mode) {
-    // Convert to API mode
-    spaces_climate.ClimateMode apiMode;
-    switch (mode) {
-      case ClimateMode.heat:
-        apiMode = spaces_climate.ClimateMode.heat;
-        break;
-      case ClimateMode.cool:
-        apiMode = spaces_climate.ClimateMode.cool;
-        break;
-      case ClimateMode.auto:
-        apiMode = spaces_climate.ClimateMode.auto;
-        break;
-      case ClimateMode.off:
-        apiMode = spaces_climate.ClimateMode.off;
-        break;
-    }
+    final apiMode = _toServiceClimateMode(mode);
 
     // Set pending state in control service (will lock UI to show desired value)
     _controlStateService.setPending(
@@ -1376,14 +1257,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     }
 
     final climateState = _spacesService?.getClimateState(_roomId);
-    final rawMinSetpoint = climateState?.minSetpoint ?? 16.0;
-    final rawMaxSetpoint = climateState?.maxSetpoint ?? 30.0;
-    // Ensure min < max to prevent clamp() ArgumentError from malformed API data
-    var minSetpoint = math.min(rawMinSetpoint, rawMaxSetpoint);
-    var maxSetpoint = math.max(rawMinSetpoint, rawMaxSetpoint);
-    if (maxSetpoint <= minSetpoint) {
-      maxSetpoint = minSetpoint + 1.0;
-    }
+    final (minSetpoint, maxSetpoint) = _getSetpointRange(climateState);
     final clampedTemp = temp.clamp(minSetpoint, maxSetpoint);
 
     if (kDebugMode) {
@@ -1458,11 +1332,6 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
 
   Color _getModeLightColor(BuildContext context) {
     return getSemanticBackgroundColor(context, _getModeColor(context));
-  }
-
-  Color _getSensorColor(BuildContext context, String type) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return SensorColors.forType(type, isDark);
   }
 
   DialAccentColor _getDialAccentType() {
@@ -1719,11 +1588,11 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           rowItems.add(const Expanded(child: SizedBox()));
         }
         if (j < crossAxisCount - 1) {
-          rowItems.add(SizedBox(width: AppSpacings.pMd));
+          rowItems.add(AppSpacings.spacingMdHorizontal);
         }
       }
       if (rows.isNotEmpty) {
-        rows.add(SizedBox(height: AppSpacings.pMd));
+        rows.add(AppSpacings.spacingMdVertical);
       }
       rows.add(Row(children: rowItems));
     }
@@ -1764,24 +1633,26 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     // Sensors section - displayed as a card (like presets on window_covering.dart)
     if (hasSensors) {
       contentWidgets.add(
-        SectionTitle(title: localizations.device_sensors, icon: MdiIcons.eyeSettings),
+        Column(
+          spacing: AppSpacings.pMd,
+          children: [
+            SectionTitle(title: localizations.device_sensors, icon: MdiIcons.eyeSettings),
+            _buildLandscapeSensorsCard(context),
+          ],
+        ),
       );
-      contentWidgets.add(_buildLandscapeSensorsCard(context));
-      contentWidgets.add(AppSpacings.spacingLgVertical);
     }
 
     // Auxiliary section - displayed as individual tiles (like devices on covering domain)
     if (hasAuxiliary) {
-      contentWidgets.add(
-        SectionTitle(title: localizations.climate_role_auxiliary, icon: MdiIcons.devices),
-      );
+      final auxiliaryDevices = <Widget>[];
 
       // Add each auxiliary device as an individual tile
       for (final device in _state.auxiliaryDevices) {
         final deviceView = _devicesService?.getDevice(device.id);
         final isOffline = deviceView != null && !deviceView.isOnline;
 
-        contentWidgets.add(
+        auxiliaryDevices.add(
           DeviceTileLandscape(
             icon: device.icon,
             name: device.name,
@@ -1792,12 +1663,27 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             onTileTap: () => _openAuxiliaryDeviceDetail(device),
           ),
         );
-        contentWidgets.add(AppSpacings.spacingMdVertical);
       }
+
+      contentWidgets.add(
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          spacing: AppSpacings.pMd,
+          children: [
+            SectionTitle(title: localizations.climate_role_auxiliary, icon: MdiIcons.devices),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              spacing: AppSpacings.pMd,
+              children: auxiliaryDevices,
+            ),
+          ],
+        ),
+      );
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: AppSpacings.pLg,
       children: contentWidgets,
     );
   }
@@ -1848,7 +1734,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             icon: sensor.icon,
             name: sensor.isOnline ? sensor.value : _translateSensorLabel(localizations, sensor),
             status: sensor.isOnline ? _translateSensorLabel(localizations, sensor) : localizations.device_status_offline,
-            activeColor: SensorColors.themeColorForType(sensor.type),
+            iconAccentColor: SensorColors.themeColorForType(sensor.type),
             isOffline: !sensor.isOnline,
             showWarningBadge: true,
             onTileTap: () {
@@ -1906,7 +1792,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
                 math.min(availableForDial, maxDialHeight).clamp(120.0, 500.0);
 
             final hintSpacing =
-                _screenService.isLargeScreen ? AppSpacings.pSm : AppSpacings.pXs;
+                _screenService.isLargeScreen ? AppSpacings.spacingSmVertical : AppSpacings.spacingXsVertical;
 
             return Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -1933,29 +1819,8 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
                   ],
                 ),
                 if (showDetailHint) ...[
-                  SizedBox(height: hintSpacing),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        localizations.climate_tap_for_details,
-                        style: TextStyle(
-                          color: isDark
-                              ? AppTextColorDark.secondary
-                              : AppTextColorLight.secondary,
-                          fontSize: AppFontSize.extraSmall,
-                        ),
-                      ),
-                      AppSpacings.spacingXsHorizontal,
-                      Icon(
-                        MdiIcons.chevronRight,
-                        color: isDark
-                            ? AppTextColorDark.secondary
-                            : AppTextColorLight.secondary,
-                        size: _scale(14),
-                      ),
-                    ],
-                  ),
+                  hintSpacing,
+                  _buildTapForDetailsHint(context),
                 ],
               ],
             );
@@ -1974,6 +1839,28 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
       onChanged: _setMode,
       orientation: ModeSelectorOrientation.vertical,
       showLabels: false,
+    );
+  }
+
+  /// Shared "tap for details" hint row used in portrait and landscape dial cards.
+  Widget _buildTapForDetailsHint(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final localizations = AppLocalizations.of(context)!;
+    final secondaryColor =
+        isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          localizations.climate_tap_for_details,
+          style: TextStyle(
+            color: secondaryColor,
+            fontSize: AppFontSize.extraSmall,
+          ),
+        ),
+        AppSpacings.spacingXsHorizontal,
+        Icon(MdiIcons.chevronRight, color: secondaryColor, size: _scale(14)),
+      ],
     );
   }
 
@@ -2070,28 +1957,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             _buildModeSelector(context),
             if (showDetailHint) ...[
               AppSpacings.spacingMdVertical,
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    localizations.climate_tap_for_details,
-                    style: TextStyle(
-                      color: isDark
-                          ? AppTextColorDark.secondary
-                          : AppTextColorLight.secondary,
-                      fontSize: AppFontSize.extraSmall,
-                    ),
-                  ),
-                  AppSpacings.spacingXsHorizontal,
-                  Icon(
-                    MdiIcons.chevronRight,
-                    color: isDark
-                        ? AppTextColorDark.secondary
-                        : AppTextColorLight.secondary,
-                    size: _scale(14),
-                  ),
-                ],
-              ),
+              _buildTapForDetailsHint(context),
             ],
           ],
         ),

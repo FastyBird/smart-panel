@@ -302,24 +302,9 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
       if (climateState == null) return;
 
       // Determine mode from climate state (unless locked by state machine)
-      ClimateMode mode = _state.mode;
-      if (!_controlStateService.isLocked(ClimateControlConstants.modeChannelId)) {
-        switch (climateState.mode) {
-          case spaces_climate.ClimateMode.heat:
-            mode = ClimateMode.heat;
-            break;
-          case spaces_climate.ClimateMode.cool:
-            mode = ClimateMode.cool;
-            break;
-          case spaces_climate.ClimateMode.auto:
-            mode = ClimateMode.auto;
-            break;
-          case spaces_climate.ClimateMode.off:
-          case null:
-            mode = ClimateMode.off;
-            break;
-        }
-      }
+      ClimateMode mode = _controlStateService.isLocked(ClimateControlConstants.modeChannelId)
+          ? _state.mode
+          : _fromServiceClimateMode(climateState.mode);
 
       // Determine capability from climate state
       RoomCapability capability;
@@ -347,15 +332,7 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
         mode = ClimateMode.off;
       }
 
-      // Ensure min < max to prevent clamp() ArgumentError and satisfy
-      // CircularControlDial assertion (maxValue > minValue requires strict inequality)
-      var safeMinSetpoint =
-          math.min(climateState.minSetpoint, climateState.maxSetpoint);
-      var safeMaxSetpoint =
-          math.max(climateState.minSetpoint, climateState.maxSetpoint);
-      if (safeMaxSetpoint <= safeMinSetpoint) {
-        safeMaxSetpoint = safeMinSetpoint + 1.0;
-      }
+      final (safeMinSetpoint, safeMaxSetpoint) = _getSetpointRange(climateState);
 
       // Get the appropriate target temperature based on mode
       // When mode is locked (user just changed it), use the setpoint for the NEW mode
@@ -429,6 +406,53 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
     });
   }
 
+  /// Returns (isActive, status) for a climate device view for list updates.
+  (bool, String?) _getClimateDeviceStatus(dynamic device) {
+    if (device is ThermostatDeviceView) {
+      final heaterOn = device.heaterChannel?.on ?? false;
+      final coolerOn = device.coolerChannel?.on ?? false;
+      final isHeating = device.heaterChannel?.isHeating ?? false;
+      final isCooling = device.coolerChannel?.isCooling ?? false;
+      final isActive = isHeating || isCooling;
+      final status = (!heaterOn && !coolerOn)
+          ? 'Off'
+          : isHeating
+              ? 'Heating'
+              : isCooling
+                  ? 'Cooling'
+                  : 'Standby';
+      return (isActive, status);
+    }
+    if (device is HeatingUnitDeviceView) {
+      final heaterOn = device.heaterChannel.on;
+      final isHeating = device.heaterChannel.isHeating;
+      final status = !heaterOn ? 'Off' : isHeating ? 'Heating' : 'Standby';
+      return (isHeating, status);
+    }
+    if (device is WaterHeaterDeviceView) {
+      final heaterOn = device.heaterChannel.on;
+      final isHeating = device.heaterChannel.isHeating;
+      final status = !heaterOn ? 'Off' : isHeating ? 'Heating' : 'Standby';
+      return (isHeating, status);
+    }
+    if (device is AirConditionerDeviceView) {
+      final coolerOn = device.coolerChannel.on;
+      final heaterOn = device.heaterChannel?.on ?? false;
+      final isCooling = device.coolerChannel.isCooling;
+      final isHeating = device.heaterChannel?.isHeating ?? false;
+      final isActive = isCooling || isHeating;
+      final status = (!coolerOn && !heaterOn)
+          ? 'Off'
+          : isCooling
+              ? 'Cooling'
+              : isHeating
+                  ? 'Heating'
+                  : 'Standby';
+      return (isActive, status);
+    }
+    return (false, null);
+  }
+
   void _onDevicesDataChanged() {
     if (!mounted) return;
     // Use addPostFrameCallback to avoid "setState during build" errors
@@ -442,79 +466,14 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
         final device = devicesService.getDevice(climateDevice.id);
         if (device == null) return climateDevice;
 
-        bool isActive = climateDevice.isActive;
-        String? status = climateDevice.status;
-
-        if (device is ThermostatDeviceView) {
-          // Thermostat has optional heater and cooler channels
-          final heaterOn = device.heaterChannel?.on ?? false;
-          final coolerOn = device.coolerChannel?.on ?? false;
-          final isHeating = device.heaterChannel?.isHeating ?? false;
-          final isCooling = device.coolerChannel?.isCooling ?? false;
-
-          // isActive based on actual heating/cooling status (like air_conditioner)
-          isActive = isHeating || isCooling;
-
-          if (!heaterOn && !coolerOn) {
-            status = 'Off';
-          } else if (isHeating) {
-            status = 'Heating';
-          } else if (isCooling) {
-            status = 'Cooling';
-          } else {
-            status = 'Standby';
-          }
-        } else if (device is HeatingUnitDeviceView) {
-          // Heating unit has a required heater channel
-          final heaterOn = device.heaterChannel.on;
-          final isHeating = device.heaterChannel.isHeating;
-          isActive = isHeating;
-
-          if (!heaterOn) {
-            status = 'Off';
-          } else if (isHeating) {
-            status = 'Heating';
-          } else {
-            status = 'Standby';
-          }
-        } else if (device is WaterHeaterDeviceView) {
-          // Water heater has a required heater channel
-          final heaterOn = device.heaterChannel.on;
-          final isHeating = device.heaterChannel.isHeating;
-          isActive = isHeating;
-
-          if (!heaterOn) {
-            status = 'Off';
-          } else if (isHeating) {
-            status = 'Heating';
-          } else {
-            status = 'Standby';
-          }
-        } else if (device is AirConditionerDeviceView) {
-          // A/C can have both cooler (required) and heater (optional) channels
-          final coolerOn = device.coolerChannel.on;
-          final heaterOn = device.heaterChannel?.on ?? false;
-          final isCooling = device.coolerChannel.isCooling;
-          final isHeating = device.heaterChannel?.isHeating ?? false;
-          isActive = isCooling || isHeating;
-
-          if (!coolerOn && !heaterOn) {
-            status = 'Off';
-          } else if (isCooling) {
-            status = 'Cooling';
-          } else if (isHeating) {
-            status = 'Heating';
-          } else {
-            status = 'Standby';
-          }
-        }
+        final (isActive, status) = _getClimateDeviceStatus(device);
 
         return ClimateDevice(
           id: climateDevice.id,
           name: climateDevice.name,
           type: climateDevice.type,
           isActive: isActive,
-          status: status,
+          status: status ?? climateDevice.status,
           isPrimary: climateDevice.isPrimary,
         );
       }).toList();
@@ -541,23 +500,19 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
   double _scale(double size) =>
       _screenService.scale(size, density: _visualDensityService.density);
 
+  /// Returns (minSetpoint, maxSetpoint) from climate state with safe defaults.
+  (double, double) _getSetpointRange(spaces_climate.ClimateStateModel? climateState) {
+    if (climateState == null) return (_state.minSetpoint, _state.maxSetpoint);
+    final rawMin = climateState.minSetpoint;
+    final rawMax = climateState.maxSetpoint;
+    var minSp = math.min(rawMin, rawMax);
+    var maxSp = math.max(rawMin, rawMax);
+    if (maxSp <= minSp) maxSp = minSp + 1.0;
+    return (minSp, maxSp);
+  }
+
   void _setMode(ClimateMode mode) {
-    // Convert to API mode
-    spaces_climate.ClimateMode apiMode;
-    switch (mode) {
-      case ClimateMode.heat:
-        apiMode = spaces_climate.ClimateMode.heat;
-        break;
-      case ClimateMode.cool:
-        apiMode = spaces_climate.ClimateMode.cool;
-        break;
-      case ClimateMode.auto:
-        apiMode = spaces_climate.ClimateMode.auto;
-        break;
-      case ClimateMode.off:
-        apiMode = spaces_climate.ClimateMode.off;
-        break;
-    }
+    final apiMode = _toServiceClimateMode(mode);
 
     // Set pending state in control service (will lock UI to show desired value)
     _controlStateService.setPending(
@@ -642,6 +597,20 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
         return spaces_climate.ClimateMode.cool;
       case ClimateMode.auto:
         return spaces_climate.ClimateMode.auto;
+    }
+  }
+
+  ClimateMode _fromServiceClimateMode(spaces_climate.ClimateMode? mode) {
+    switch (mode) {
+      case spaces_climate.ClimateMode.heat:
+        return ClimateMode.heat;
+      case spaces_climate.ClimateMode.cool:
+        return ClimateMode.cool;
+      case spaces_climate.ClimateMode.auto:
+        return ClimateMode.auto;
+      case spaces_climate.ClimateMode.off:
+      case null:
+        return ClimateMode.off;
     }
   }
 
@@ -848,11 +817,9 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          padding: EdgeInsets.only(
-            left: AppSpacings.pLg,
-            right: AppSpacings.pLg,
-            top: AppSpacings.pMd,
-            bottom: 0,
+          padding: EdgeInsets.symmetric(
+            vertical: AppSpacings.pMd,
+            horizontal: AppSpacings.pLg,
           ),
           decoration: BoxDecoration(
             border: Border(
@@ -925,7 +892,7 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
           title: localizations.climate_devices_section,
           icon: MdiIcons.devices,
         ),
-        SizedBox(height: AppSpacings.pMd),
+        AppSpacings.spacingMdVertical,
         isLargeScreen
             ? _buildLandscapeDevicesGrid(context)
             : _buildLandscapeDevicesList(context),
