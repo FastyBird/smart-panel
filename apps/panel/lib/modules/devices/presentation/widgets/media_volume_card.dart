@@ -60,30 +60,34 @@ class MediaVolumeCard extends StatelessWidget {
 							if (hasMute) ...[
 								SizedBox(
 									width: columnWidth,
-									child: Material(
-										color: isMuted
-											? (isDark ? AppColorsDark.infoLight5 : AppColorsLight.infoLight9)
-											: (isDark ? AppFillColorDark.base : AppFillColorLight.base),
-										borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-										child: InkWell(
-											onTap: isEnabled ? onMuteToggle : null,
-											borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-											child: Container(
-												padding: EdgeInsets.all(AppSpacings.pMd),
-												decoration: BoxDecoration(
-													border: isMuted || isDark ? null : Border.all(color: AppBorderColorLight.base),
-													borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-												),
-												child: Icon(
-													isMuted ? MdiIcons.volumeOff : MdiIcons.volumeHigh,
-													size: AppFontSize.large,
-													color: isMuted
-														? accentColor
-														: (isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary),
-												),
-											),
-										),
-									),
+									child: Theme(
+                  data: isDark
+                      ? (isMuted
+                          ? ThemeData(filledButtonTheme: AppFilledButtonsDarkThemes.info)
+                          : ThemeData(filledButtonTheme: AppFilledButtonsDarkThemes.neutral))
+                      : ThemeData(
+                          filledButtonTheme: isMuted
+                              ? AppFilledButtonsLightThemes.info
+                              : AppFilledButtonsLightThemes.neutral,
+                        ),
+                    child: FilledButton(
+                      onPressed: isEnabled ? onMuteToggle : null,
+                      style: FilledButton.styleFrom(
+                        padding: AppSpacings.paddingMd,
+                      ),
+                      child: Icon(
+                        isMuted ? MdiIcons.volumeOff : MdiIcons.volumeHigh,
+                        size: AppFontSize.large,
+                        color: isDark
+                            ? (isMuted
+                                ? AppFilledButtonsDarkThemes.infoForegroundColor
+                                : AppFilledButtonsDarkThemes.neutralForegroundColor)
+                            : (isMuted
+                                ? AppFilledButtonsLightThemes.infoForegroundColor
+                                : AppFilledButtonsLightThemes.neutralForegroundColor),
+                      ),
+                    ),
+                  ),
 								),
 								AppSpacings.spacingMdHorizontal,
 							],

@@ -897,43 +897,42 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     required bool isActive,
     required VoidCallback onTap,
   }) {
-    final bool isLight = Theme.of(context).brightness == Brightness.light;
-    final primaryColor = isLight ? AppColorsLight.primary : AppColorsDark.primary;
-    final baseColor = isLight ? AppFillColorLight.base : AppFillColorDark.base;
-    final textColor = isLight ? AppTextColorLight.regular : AppTextColorDark.regular;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final themeData = isActive
+        ? ThemeData(filledButtonTheme: isDark ? AppFilledButtonsDarkThemes.primary : AppFilledButtonsLightThemes.primary)
+        : (isDark ? ThemeData(filledButtonTheme: AppFilledButtonsDarkThemes.neutral) : ThemeData(filledButtonTheme: AppFilledButtonsLightThemes.neutral));
     final iconSize = _screenService.scale(18, density: _visualDensityService.density);
     final buttonSize = _screenService.scale(36, density: _visualDensityService.density);
 
     return SizedBox(
       width: buttonSize,
       height: buttonSize,
-      child: Material(
-        color: isActive ? primaryColor : baseColor,
-        borderRadius: BorderRadius.circular(AppBorderRadius.base),
-        child: InkWell(
-          onTap: () {
+      child: Theme(
+        data: themeData,
+        child: FilledButton(
+          onPressed: () {
             HapticFeedback.lightImpact();
             onTap();
           },
-          borderRadius: BorderRadius.circular(AppBorderRadius.base),
-          splashColor: isActive
-              ? AppColors.white.withValues(alpha: 0.2)
-              : primaryColor.withValues(alpha: 0.15),
-          highlightColor: isActive
-              ? AppColors.white.withValues(alpha: 0.1)
-              : primaryColor.withValues(alpha: 0.08),
-          child: Container(
-            decoration: BoxDecoration(
+          style: FilledButton.styleFrom(
+            padding: EdgeInsets.zero,
+            minimumSize: Size(buttonSize, buttonSize),
+            maximumSize: Size(buttonSize, buttonSize),
+            shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(AppBorderRadius.base),
-              border: isActive || !isLight
-                  ? null
-                  : Border.all(color: AppBorderColorLight.base),
             ),
-            child: Icon(
-              icon,
-              size: iconSize,
-              color: isActive ? AppColors.white : textColor,
-            ),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+          child: Icon(
+            icon,
+            size: iconSize,
+            color: isDark
+                ? (isActive
+                    ? AppFilledButtonsDarkThemes.primaryForegroundColor
+                    : AppFilledButtonsDarkThemes.neutralForegroundColor)
+                : (isActive
+                    ? AppFilledButtonsLightThemes.primaryForegroundColor
+                    : AppFilledButtonsLightThemes.neutralForegroundColor),
           ),
         ),
       ),
@@ -1618,36 +1617,29 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     required bool isActive,
     required VoidCallback onTap,
   }) {
-    final bool isLight = Theme.of(context).brightness == Brightness.light;
-    final primaryColor = isLight ? AppColorsLight.primary : AppColorsDark.primary;
-    final baseColor = isLight ? AppFillColorLight.base : AppFillColorDark.base;
-    final textColor = isLight ? AppTextColorLight.regular : AppTextColorDark.regular;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final themeData = isActive
+        ? ThemeData(filledButtonTheme: isDark ? AppFilledButtonsDarkThemes.primary : AppFilledButtonsLightThemes.primary)
+        : (isDark ? ThemeData(filledButtonTheme: AppFilledButtonsDarkThemes.neutral) : ThemeData(filledButtonTheme: AppFilledButtonsLightThemes.neutral));
+    final iconSize = _screenService.scale(20, density: _visualDensityService.density);
 
-    return Material(
-      color: isActive ? primaryColor : baseColor,
-      borderRadius: BorderRadius.circular(AppBorderRadius.base),
-      child: InkWell(
-        onTap: () {
-          HapticFeedback.lightImpact();
-          onTap();
-        },
-        borderRadius: BorderRadius.circular(AppBorderRadius.base),
-        splashColor: isActive
-            ? AppColors.white.withValues(alpha: 0.2)
-            : primaryColor.withValues(alpha: 0.15),
-        highlightColor: isActive
-            ? AppColors.white.withValues(alpha: 0.1)
-            : primaryColor.withValues(alpha: 0.08),
-        child: Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: AppSpacings.pMd,
-            vertical: AppSpacings.pSm,
-          ),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppBorderRadius.base),
-            border: isActive || !isLight
-                ? null
-                : Border.all(color: AppBorderColorLight.base),
+    return SizedBox(
+      width: double.infinity,
+      child: Theme(
+        data: themeData,
+        child: FilledButton(
+          onPressed: () {
+            HapticFeedback.lightImpact();
+            onTap();
+          },
+          style: FilledButton.styleFrom(
+            padding: EdgeInsets.symmetric(
+              horizontal: AppSpacings.pMd,
+              vertical: AppSpacings.pSm,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppBorderRadius.base),
+            ),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -1655,11 +1647,14 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
             children: [
               Icon(
                 icon,
-                size: _screenService.scale(
-                  20,
-                  density: _visualDensityService.density,
-                ),
-                color: isActive ? AppColors.white : textColor,
+                size: iconSize,
+                color: isDark
+                    ? (isActive
+                        ? AppFilledButtonsDarkThemes.primaryForegroundColor
+                        : AppFilledButtonsDarkThemes.neutralForegroundColor)
+                    : (isActive
+                        ? AppFilledButtonsLightThemes.primaryForegroundColor
+                        : AppFilledButtonsLightThemes.neutralForegroundColor),
               ),
               AppSpacings.spacingXsHorizontal,
               Text(
@@ -1667,7 +1662,6 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
                 style: TextStyle(
                   fontSize: AppFontSize.small,
                   fontWeight: FontWeight.w500,
-                  color: isActive ? AppColors.white : textColor,
                 ),
               ),
             ],

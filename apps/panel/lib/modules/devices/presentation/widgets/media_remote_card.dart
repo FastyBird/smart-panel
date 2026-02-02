@@ -79,6 +79,10 @@ class MediaRemoteCard<T extends Enum> extends StatelessWidget {
 			.where((k) => navKeys.contains(k.name))
 			.toList();
 
+		final themeData = Theme.of(context).brightness == Brightness.light
+			? ThemeData(filledButtonTheme: AppFilledButtonsLightThemes.neutral)
+			: ThemeData(filledButtonTheme: AppFilledButtonsDarkThemes.neutral);
+
 		return Container(
 			padding: AppSpacings.paddingLg,
 			decoration: BoxDecoration(
@@ -86,7 +90,9 @@ class MediaRemoteCard<T extends Enum> extends StatelessWidget {
 				borderRadius: BorderRadius.circular(AppBorderRadius.round),
 				border: Border.all(color: borderColor, width: scale(1)),
 			),
-			child: Column(
+			child: Theme(
+				data: themeData,
+				child: Column(
 				children: [
 					Row(
 						children: [
@@ -177,6 +183,7 @@ class MediaRemoteCard<T extends Enum> extends StatelessWidget {
 						),
 					],
 				],
+				),
 			),
 		);
 	}
@@ -185,50 +192,45 @@ class MediaRemoteCard<T extends Enum> extends StatelessWidget {
 		BuildContext context, {
 		required IconData icon,
 		bool isMain = false,
-		bool isActive = false,
 		VoidCallback? onTap,
 	}) {
-		final isDark = Theme.of(context).brightness == Brightness.dark;
-		final effectiveAccent = accentColor ?? (isDark ? AppColorsDark.primary : AppColorsLight.primary);
-		final baseColor = isDark ? AppFillColorDark.base : AppFillColorLight.base;
-
 		final size = scale(isMain ? 44 : 32);
 		final iconSize = scale(isMain ? 22 : 16);
-
-		final Color bgColor;
-		final Color iconColor;
-
-		if (isActive || isMain) {
-			bgColor = effectiveAccent;
-			iconColor = AppColors.white;
-		} else {
-			bgColor = baseColor;
-			iconColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
-		}
-
-		final border = (isActive || isMain) || isDark ? null : Border.all(color: AppBorderColorLight.base);
+		final isDark = Theme.of(context).brightness == Brightness.dark;
+		final themeData = isMain
+			? ThemeData(filledButtonTheme: isDark ? AppFilledButtonsDarkThemes.info : AppFilledButtonsLightThemes.info)
+			: (isDark ? ThemeData(filledButtonTheme: AppFilledButtonsDarkThemes.neutral) : ThemeData(filledButtonTheme: AppFilledButtonsLightThemes.neutral));
 
 		return SizedBox(
 			width: size,
 			height: size,
-			child: Material(
-				color: bgColor,
-				borderRadius: BorderRadius.circular(AppBorderRadius.base),
-				child: InkWell(
-					onTap: onTap,
-					borderRadius: BorderRadius.circular(AppBorderRadius.base),
-					child: Container(
-						decoration: BoxDecoration(
-							border: border,
+			child: Theme(
+				data: themeData,
+				child: FilledButton(
+					onPressed: onTap == null
+						? null
+						: () {
+							HapticFeedback.lightImpact();
+							onTap();
+						},
+					style: FilledButton.styleFrom(
+						padding: AppSpacings.paddingMd,
+						minimumSize: Size(size, size),
+						maximumSize: Size(size, size),
+						shape: RoundedRectangleBorder(
 							borderRadius: BorderRadius.circular(AppBorderRadius.base),
 						),
-						child: Center(
-							child: Icon(
-								icon,
-								size: iconSize,
-								color: iconColor,
-							),
-						),
+					),
+					child: Icon(
+						icon,
+						size: iconSize,
+						color: isDark
+							? (isMain
+								? AppFilledButtonsDarkThemes.infoForegroundColor
+								: AppFilledButtonsDarkThemes.neutralForegroundColor)
+							: (isMain
+								? AppFilledButtonsLightThemes.infoForegroundColor
+								: AppFilledButtonsLightThemes.neutralForegroundColor),
 					),
 				),
 			),
@@ -242,43 +244,51 @@ class MediaRemoteCard<T extends Enum> extends StatelessWidget {
 		bool isPrimary = false,
 		VoidCallback? onTap,
 	}) {
-		final isDark = Theme.of(context).brightness == Brightness.dark;
-		final effectiveAccent = accentColor ?? (isDark ? AppColorsDark.primary : AppColorsLight.primary);
-		final baseColor = isDark ? AppFillColorDark.base : AppFillColorLight.base;
-		final secondaryColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
 		final size = scale(40);
-
-		final bgColor = isPrimary ? effectiveAccent : baseColor;
-		final contentColor = isPrimary ? AppColors.white : secondaryColor;
-		final border = isPrimary || isDark ? null : Border.all(color: AppBorderColorLight.base);
+		final isDark = Theme.of(context).brightness == Brightness.dark;
+		final themeData = isPrimary
+			? ThemeData(filledButtonTheme: isDark ? AppFilledButtonsDarkThemes.info : AppFilledButtonsLightThemes.info)
+			: (isDark ? ThemeData(filledButtonTheme: AppFilledButtonsDarkThemes.neutral) : ThemeData(filledButtonTheme: AppFilledButtonsLightThemes.neutral));
 
 		return SizedBox(
 			width: size,
 			height: size,
-			child: Material(
-				color: bgColor,
-				borderRadius: BorderRadius.circular(AppBorderRadius.base),
-				child: InkWell(
-					onTap: onTap,
-					borderRadius: BorderRadius.circular(AppBorderRadius.base),
-					child: Container(
-						decoration: BoxDecoration(
-							border: border,
+			child: Theme(
+				data: themeData,
+				child: FilledButton(
+					onPressed: onTap == null
+						? null
+						: () {
+							HapticFeedback.lightImpact();
+							onTap();
+						},
+					style: FilledButton.styleFrom(
+						padding: AppSpacings.paddingMd,
+						minimumSize: Size(size, size),
+						maximumSize: Size(size, size),
+						shape: RoundedRectangleBorder(
 							borderRadius: BorderRadius.circular(AppBorderRadius.base),
 						),
-						child: Center(
-							child: icon != null
-								? Icon(icon, size: scale(20), color: contentColor)
-								: Text(
-									label ?? '',
-									style: TextStyle(
-										fontSize: AppFontSize.small,
-										fontWeight: FontWeight.w600,
-										color: contentColor,
-									),
-								),
-						),
 					),
+				child: icon != null
+					? Icon(
+						icon,
+						size: scale(20),
+						color: isDark
+							? (isPrimary
+								? AppFilledButtonsDarkThemes.infoForegroundColor
+								: AppFilledButtonsDarkThemes.neutralForegroundColor)
+							: (isPrimary
+								? AppFilledButtonsLightThemes.infoForegroundColor
+								: AppFilledButtonsLightThemes.neutralForegroundColor),
+					)
+					: Text(
+							label ?? '',
+							style: TextStyle(
+								fontSize: AppFontSize.small,
+								fontWeight: FontWeight.w600,
+							),
+						),
 				),
 			),
 		);

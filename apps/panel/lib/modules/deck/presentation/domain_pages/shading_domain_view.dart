@@ -24,6 +24,7 @@ import 'package:fastybird_smart_panel/modules/spaces/utils/intent_result_handler
 import 'package:fastybird_smart_panel/modules/spaces/views/covers_targets/view.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 // ============================================================================
@@ -975,56 +976,55 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     required bool isActive,
     required VoidCallback onTap,
   }) {
-    final bool isLight = Theme.of(context).brightness == Brightness.light;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final themeData = isActive
+        ? ThemeData(filledButtonTheme: isDark ? AppFilledButtonsDarkThemes.primary : AppFilledButtonsLightThemes.primary)
+        : (isDark ? ThemeData(filledButtonTheme: AppFilledButtonsDarkThemes.neutral) : ThemeData(filledButtonTheme: AppFilledButtonsLightThemes.neutral));
+    final iconSize = _screenService.scale(18, density: _visualDensityService.density);
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: AppSpacings.pMd,
-          vertical: AppSpacings.pSm,
-        ),
-        decoration: BoxDecoration(
-          color: isActive
-              ? (isLight ? AppColorsLight.primary : AppColorsDark.primary)
-              : (isLight
-                  ? AppFillColorLight.base
-                  : AppFillColorDark.base),
-          borderRadius: BorderRadius.circular(AppBorderRadius.base),
-          border: isActive || !isLight
-              ? null
-              : Border.all(color: AppBorderColorLight.base),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: _screenService.scale(
-                18,
-                density: _visualDensityService.density,
-              ),
-              color: isActive
-                  ? AppColors.white
-                  : (isLight
-                      ? AppTextColorLight.regular
-                      : AppTextColorDark.regular),
+    return SizedBox(
+      width: double.infinity,
+      child: Theme(
+        data: themeData,
+        child: FilledButton(
+          onPressed: () {
+            HapticFeedback.lightImpact();
+            onTap();
+          },
+          style: FilledButton.styleFrom(
+            padding: EdgeInsets.symmetric(
+              horizontal: AppSpacings.pMd,
+              vertical: AppSpacings.pSm,
             ),
-            AppSpacings.spacingXsHorizontal,
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: AppFontSize.small,
-                fontWeight: FontWeight.w500,
-                color: isActive
-                    ? AppColors.white
-                    : (isLight
-                        ? AppTextColorLight.regular
-                        : AppTextColorDark.regular),
-              ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppBorderRadius.base),
             ),
-          ],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: iconSize,
+                color: isDark
+                    ? (isActive
+                        ? AppFilledButtonsDarkThemes.primaryForegroundColor
+                        : AppFilledButtonsDarkThemes.neutralForegroundColor)
+                    : (isActive
+                        ? AppFilledButtonsLightThemes.primaryForegroundColor
+                        : AppFilledButtonsLightThemes.neutralForegroundColor),
+              ),
+              AppSpacings.spacingXsHorizontal,
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: AppFontSize.small,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

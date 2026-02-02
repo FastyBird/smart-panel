@@ -48,6 +48,7 @@ class MediaPlaybackCard extends StatelessWidget {
 		final borderColor = isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
 		final secondaryColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
 		final localizations = AppLocalizations.of(context)!;
+		final themeData = isDark ? ThemeData(filledButtonTheme: AppFilledButtonsDarkThemes.neutral) : ThemeData(filledButtonTheme: AppFilledButtonsLightThemes.neutral);
 
 		return Container(
 			padding: AppSpacings.paddingLg,
@@ -56,7 +57,9 @@ class MediaPlaybackCard extends StatelessWidget {
 				borderRadius: BorderRadius.circular(AppBorderRadius.round),
 				border: Border.all(color: borderColor, width: scale(1)),
 			),
-			child: Column(
+			child: Theme(
+				data: themeData,
+				child: Column(
 				crossAxisAlignment: CrossAxisAlignment.stretch,
 				children: [
 					Row(
@@ -84,13 +87,14 @@ class MediaPlaybackCard extends StatelessWidget {
 						_buildProgressBar(context),
 					],
 				],
+				),
 			),
 		);
 	}
 
 	Widget _buildNowPlaying(BuildContext context) {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
-		final primaryColor = isDark ? AppTextColorDark.regular : AppTextColorLight.regular;
+		final activeColor = isDark ? AppTextColorDark.regular : AppTextColorLight.regular;
 		final secondaryColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
 
 		final subtitleParts = <String>[
@@ -108,7 +112,7 @@ class MediaPlaybackCard extends StatelessWidget {
 						style: TextStyle(
 							fontSize: AppFontSize.small,
 							fontWeight: FontWeight.w600,
-							color: primaryColor,
+							color: activeColor,
 						),
 						maxLines: 1,
 						overflow: TextOverflow.ellipsis,
@@ -194,7 +198,7 @@ class MediaPlaybackCard extends StatelessWidget {
 
 	Widget _buildProgressBar(BuildContext context) {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
-		final accent = accentColor ?? (isDark ? AppColorsDark.primary : AppColorsLight.primary);
+		final accent = accentColor ?? (isDark ? AppColorsDark.info : AppColorsLight.info);
 		final trackColor = isDark ? AppFillColorDark.darker : AppFillColorLight.darker;
 		final secondaryColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
 
@@ -266,43 +270,42 @@ class MediaPlaybackCard extends StatelessWidget {
 		bool compact = false,
 		VoidCallback? onTap,
 	}) {
-		final isDark = Theme.of(context).brightness == Brightness.dark;
-		final accent = accentColor ?? (isDark ? AppColorsDark.primary : AppColorsLight.primary);
-		final baseColor = isDark ? AppFillColorDark.base : AppFillColorLight.base;
-
 		final size = scale(isMain ? (compact ? 36 : 48) : (compact ? 28 : 36));
 		final iconSize = scale(isMain ? (compact ? 18 : 24) : (compact ? 14 : 18));
-
-		final Color bgColor;
-		final Color iconColor;
-		final BorderSide borderSide;
-
-		if (isActive) {
-			bgColor = accent;
-			iconColor = AppColors.white;
-			borderSide = BorderSide.none;
-		} else {
-			bgColor = baseColor;
-			iconColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
-			borderSide = BorderSide(color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light);
-		}
+		final isDark = Theme.of(context).brightness == Brightness.dark;
+		final themeData = isActive
+			? ThemeData(filledButtonTheme: isDark ? AppFilledButtonsDarkThemes.info : AppFilledButtonsLightThemes.info)
+			: (isDark ? ThemeData(filledButtonTheme: AppFilledButtonsDarkThemes.neutral) : ThemeData(filledButtonTheme: AppFilledButtonsLightThemes.neutral));
 
 		return SizedBox(
 			width: size,
 			height: size,
-			child: Material(
-				color: bgColor,
-				shape: CircleBorder(side: borderSide),
-				child: InkWell(
-					onTap: onTap == null
+			child: Theme(
+				data: themeData,
+				child: FilledButton(
+					onPressed: onTap == null
 						? null
 						: () {
 							HapticFeedback.lightImpact();
 							onTap();
 						},
-					customBorder: const CircleBorder(),
-					child: Center(
-						child: Icon(icon, size: iconSize, color: iconColor),
+					style: FilledButton.styleFrom(
+						padding: EdgeInsets.zero,
+						minimumSize: Size(size, size),
+						maximumSize: Size(size, size),
+						shape: const CircleBorder(),
+						tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+					),
+					child: Icon(
+						icon,
+						size: iconSize,
+						color: isDark
+							? (isActive
+								? AppFilledButtonsDarkThemes.infoForegroundColor
+								: AppFilledButtonsDarkThemes.neutralForegroundColor)
+							: (isActive
+								? AppFilledButtonsLightThemes.infoForegroundColor
+								: AppFilledButtonsLightThemes.neutralForegroundColor),
 					),
 				),
 			),

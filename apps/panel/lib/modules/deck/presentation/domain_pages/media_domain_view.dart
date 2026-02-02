@@ -747,7 +747,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 
 	Widget _buildFailedContent(BuildContext context, MediaActiveStateModel activeState) {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
-		final accentColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
 		final errorColor = isDark ? AppColorsDark.error : AppColorsLight.error;
 		final errorBg = isDark ? AppColorsDark.errorLight9 : AppColorsLight.errorLight9;
 		final localizations = AppLocalizations.of(context)!;
@@ -795,39 +794,45 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 					Row(
 						mainAxisAlignment: MainAxisAlignment.center,
 						children: [
-							FilledButton(
-								onPressed: () => _retryActivity(activeState),
-								style: FilledButton.styleFrom(
-									backgroundColor: accentColor,
-									foregroundColor: AppColors.white,
-									textStyle: TextStyle(fontSize: AppFontSize.small),
-									padding: EdgeInsets.symmetric(
-										horizontal: _scale(AppSpacings.pMd),
-										vertical: _scale(AppSpacings.pSm),
-									),
-									side: BorderSide.none,
-									shape: RoundedRectangleBorder(
-										borderRadius: BorderRadius.circular(_scale(AppBorderRadius.medium)),
-									),
+							Theme(
+								data: ThemeData(
+									filledButtonTheme: isDark ? AppFilledButtonsDarkThemes.primary : AppFilledButtonsLightThemes.primary,
 								),
-								child: Text(localizations.media_activity_retry),
+								child: FilledButton(
+									onPressed: () => _retryActivity(activeState),
+									style: FilledButton.styleFrom(
+										textStyle: TextStyle(fontSize: AppFontSize.small),
+										padding: EdgeInsets.symmetric(
+											horizontal: _scale(AppSpacings.pMd),
+											vertical: _scale(AppSpacings.pSm),
+										),
+										shape: RoundedRectangleBorder(
+											borderRadius: BorderRadius.circular(_scale(AppBorderRadius.medium)),
+										),
+									),
+									child: Text(localizations.media_activity_retry),
+								),
 							),
 							AppSpacings.spacingMdHorizontal,
-							OutlinedButton(
-								onPressed: _deactivateActivity,
-								style: OutlinedButton.styleFrom(
-									foregroundColor: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
-									textStyle: TextStyle(fontSize: AppFontSize.small),
-									padding: EdgeInsets.symmetric(
-										horizontal: _scale(AppSpacings.pMd),
-										vertical: _scale(AppSpacings.pSm),
-									),
-									side: BorderSide(color: isDark ? AppBorderColorDark.base : AppBorderColorLight.base),
-									shape: RoundedRectangleBorder(
-										borderRadius: BorderRadius.circular(_scale(AppBorderRadius.medium)),
-									),
+							Theme(
+								data: ThemeData(
+									outlinedButtonTheme: isDark ? AppOutlinedButtonsDarkThemes.base : AppOutlinedButtonsLightThemes.base,
 								),
-								child: Text(localizations.media_activity_turn_off),
+								child: OutlinedButton(
+									onPressed: _deactivateActivity,
+									style: OutlinedButton.styleFrom(
+										textStyle: TextStyle(fontSize: AppFontSize.small),
+										padding: EdgeInsets.symmetric(
+											horizontal: _scale(AppSpacings.pMd),
+											vertical: _scale(AppSpacings.pSm),
+										),
+										side: BorderSide(color: isDark ? AppBorderColorDark.base : AppBorderColorLight.base),
+										shape: RoundedRectangleBorder(
+											borderRadius: BorderRadius.circular(_scale(AppBorderRadius.medium)),
+										),
+									),
+									child: Text(localizations.media_activity_turn_off),
+								),
 							),
 						],
 					),
@@ -1196,32 +1201,34 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			children: [
 				SizedBox(
 					width: columnWidth,
-					child: Material(
-						color: isMuted
-								? (isDark ? AppColorsDark.primaryLight5 : AppColorsLight.primaryLight9)
-								: (isDark ? AppFillColorDark.base : AppFillColorLight.base),
-						borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-						child: InkWell(
-							onTap: _isSending
-									? null
-									: () {
-											HapticFeedback.lightImpact();
-											_toggleMute();
-										},
-							borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-							child: Container(
-								padding: EdgeInsets.all(AppSpacings.pMd),
-								decoration: BoxDecoration(
-									border: isMuted || isDark ? null : Border.all(color: AppBorderColorLight.base),
+					child: Theme(
+						data: isMuted
+							? ThemeData(filledButtonTheme: isDark ? AppFilledButtonsDarkThemes.primary : AppFilledButtonsLightThemes.primary)
+							: (isDark ? ThemeData(filledButtonTheme: AppFilledButtonsDarkThemes.neutral) : ThemeData(filledButtonTheme: AppFilledButtonsLightThemes.neutral)),
+						child: FilledButton(
+							onPressed: _isSending ? null : () {
+								HapticFeedback.lightImpact();
+								_toggleMute();
+							},
+							style: FilledButton.styleFrom(
+								padding: AppSpacings.paddingMd,
+								minimumSize: Size(columnWidth, columnWidth),
+								maximumSize: Size(columnWidth, columnWidth),
+								shape: RoundedRectangleBorder(
 									borderRadius: BorderRadius.circular(AppBorderRadius.medium),
 								),
-								child: Icon(
-									isMuted ? MdiIcons.volumeOff : MdiIcons.volumeHigh,
-									size: AppFontSize.large,
-									color: isMuted
-											? (isDark ? AppColorsDark.primary : AppColorsLight.primary)
-											: (isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary),
-								),
+								tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+							),
+							child: Icon(
+								isMuted ? MdiIcons.volumeOff : MdiIcons.volumeHigh,
+								size: AppFontSize.large,
+								color: isDark
+									? (isMuted
+										? AppFilledButtonsDarkThemes.primaryForegroundColor
+										: AppFilledButtonsDarkThemes.neutralForegroundColor)
+									: (isMuted
+										? AppFilledButtonsLightThemes.primaryForegroundColor
+										: AppFilledButtonsLightThemes.neutralForegroundColor),
 							),
 						),
 					),
@@ -1444,51 +1451,42 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		bool compact = false,
 		VoidCallback? onTap,
 	}) {
-		final isDark = Theme.of(context).brightness == Brightness.dark;
-		final accentColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
-		final baseColor = isDark ? AppFillColorDark.base : AppFillColorLight.base;
-
 		final size = _scale(isMain ? (compact ? 44 : 56) : (compact ? 34 : 44));
 		final iconSize = _scale(isMain ? (compact ? 22 : 28) : (compact ? 16 : 20));
-
-		final Color bgColor;
-		final Color iconColor;
-		final BorderSide borderSide;
-
-		if (isActive) {
-			bgColor = accentColor;
-			iconColor = AppColors.white;
-			borderSide = BorderSide.none;
-		} else {
-			bgColor = baseColor;
-			iconColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
-		borderSide = isDark ? BorderSide.none : BorderSide(color: AppBorderColorLight.base);
-		}
+		final isDark = Theme.of(context).brightness == Brightness.dark;
+		final themeData = isActive
+			? ThemeData(filledButtonTheme: isDark ? AppFilledButtonsDarkThemes.primary : AppFilledButtonsLightThemes.primary)
+			: (isDark ? ThemeData(filledButtonTheme: AppFilledButtonsDarkThemes.neutral) : ThemeData(filledButtonTheme: AppFilledButtonsLightThemes.neutral));
 
 		return SizedBox(
 			width: size,
 			height: size,
-			child: Material(
-				color: bgColor,
-				shape: CircleBorder(side: borderSide),
-				child: InkWell(
-					onTap: onTap == null
-							? null
-							: () {
-									HapticFeedback.lightImpact();
-									onTap();
-								},
-					customBorder: const CircleBorder(),
-					splashColor: isActive
-							? AppColors.white.withValues(alpha: 0.2)
-							: accentColor.withValues(alpha: 0.15),
-					highlightColor: isActive
-							? AppColors.white.withValues(alpha: 0.1)
-							: accentColor.withValues(alpha: 0.08),
+			child: Theme(
+				data: themeData,
+				child: FilledButton(
+					onPressed: onTap == null
+						? null
+						: () {
+							HapticFeedback.lightImpact();
+							onTap();
+						},
+					style: FilledButton.styleFrom(
+						padding: EdgeInsets.zero,
+						minimumSize: Size(size, size),
+						maximumSize: Size(size, size),
+						shape: const CircleBorder(),
+						tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+					),
 					child: Icon(
 						icon,
 						size: iconSize,
-						color: iconColor,
+						color: isDark
+							? (isActive
+								? AppFilledButtonsDarkThemes.primaryForegroundColor
+								: AppFilledButtonsDarkThemes.neutralForegroundColor)
+							: (isActive
+								? AppFilledButtonsLightThemes.primaryForegroundColor
+								: AppFilledButtonsLightThemes.neutralForegroundColor),
 					),
 				),
 			),
@@ -1496,40 +1494,43 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	}
 
 	Widget _buildRemoteButton(BuildContext context) {
-		final isLight = Theme.of(context).brightness == Brightness.light;
+		final isDark = Theme.of(context).brightness == Brightness.dark;
+		final themeData = isDark ? ThemeData(filledButtonTheme: AppFilledButtonsDarkThemes.neutral) : ThemeData(filledButtonTheme: AppFilledButtonsLightThemes.neutral);
 
-		return Material(
-			color: isLight ? AppFillColorLight.base : AppFillColorDark.base,
-			borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-			child: InkWell(
-				onTap: _isSending
+		return SizedBox(
+			width: double.infinity,
+			child: Theme(
+				data: themeData,
+				child: FilledButton(
+					onPressed: _isSending
 						? null
 						: () {
-								HapticFeedback.lightImpact();
-								_showRemote();
-							},
-				borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-				child: Container(
-					padding: AppSpacings.paddingMd,
-					decoration: BoxDecoration(
-						borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-						border: isLight ? Border.all(color: AppBorderColorLight.base) : null,
+							HapticFeedback.lightImpact();
+							_showRemote();
+						},
+					style: FilledButton.styleFrom(
+						padding: AppSpacings.paddingMd,
+						shape: RoundedRectangleBorder(
+							borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+						),
 					),
 					child: Row(
-						mainAxisAlignment: MainAxisAlignment.center,
-						children: [
-							Icon(
-								MdiIcons.remote,
-								size: _scale(18),
-								color: isLight ? AppTextColorLight.regular : AppTextColorDark.regular,
-							),
-							AppSpacings.spacingXsHorizontal,
-							Text(
-								AppLocalizations.of(context)!.media_remote_control,
+					mainAxisSize: MainAxisSize.min,
+					mainAxisAlignment: MainAxisAlignment.center,
+					children: [
+						Icon(
+							MdiIcons.remote,
+							size: _scale(18),
+							color: isDark
+								? AppFilledButtonsDarkThemes.neutralForegroundColor
+								: AppFilledButtonsLightThemes.neutralForegroundColor,
+						),
+						AppSpacings.spacingXsHorizontal,
+						Text(
+							AppLocalizations.of(context)!.media_remote_control,
 								style: TextStyle(
 									fontSize: AppFontSize.small,
 									fontWeight: FontWeight.w500,
-									color: isLight ? AppTextColorLight.regular : AppTextColorDark.regular,
 								),
 							),
 						],
@@ -1576,16 +1577,36 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 					AppSpacings.spacingMdVertical,
 					Row(
 						children: [
-							OutlinedButton.icon(
-								icon: Icon(MdiIcons.refresh, size: _scale(16)),
-								label: Text(AppLocalizations.of(context)!.media_activity_retry),
-								onPressed: () => _retryActivity(state),
+							Theme(
+								data: ThemeData(
+									filledButtonTheme: Theme.of(context).brightness == Brightness.dark
+										? AppFilledButtonsDarkThemes.primary
+										: AppFilledButtonsLightThemes.primary,
+								),
+								child: FilledButton.icon(
+									icon: Icon(MdiIcons.refresh, size: _scale(16)),
+									label: Text(AppLocalizations.of(context)!.media_activity_retry),
+									onPressed: () => _retryActivity(state),
+									style: FilledButton.styleFrom(
+										textStyle: TextStyle(fontSize: AppFontSize.small),
+									),
+								),
 							),
 							AppSpacings.spacingMdHorizontal,
-							OutlinedButton.icon(
-								icon: Icon(MdiIcons.stop, size: _scale(16)),
-								label: Text(AppLocalizations.of(context)!.media_failure_deactivate),
-								onPressed: _deactivateActivity,
+							Theme(
+								data: ThemeData(
+									outlinedButtonTheme: Theme.of(context).brightness == Brightness.dark
+										? AppOutlinedButtonsDarkThemes.base
+										: AppOutlinedButtonsLightThemes.base,
+								),
+								child: OutlinedButton.icon(
+									icon: Icon(MdiIcons.stop, size: _scale(16)),
+									label: Text(AppLocalizations.of(context)!.media_failure_deactivate),
+									onPressed: _deactivateActivity,
+									style: OutlinedButton.styleFrom(
+										textStyle: TextStyle(fontSize: AppFontSize.small),
+									),
+								),
 							),
 						],
 					),
@@ -1737,24 +1758,44 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 										children: [
 											if (state.isFailed && state.activityKey != null)
 												Expanded(
-													child: FilledButton.icon(
-														icon: Icon(MdiIcons.refresh, size: _scale(16)),
-														label: Text(AppLocalizations.of(context)!.media_failure_retry_activity),
-														onPressed: () {
-															Navigator.pop(ctx);
-															_retryActivity(state);
-														},
+													child: Theme(
+														data: ThemeData(
+															filledButtonTheme: Theme.of(ctx).brightness == Brightness.dark
+																? AppFilledButtonsDarkThemes.primary
+																: AppFilledButtonsLightThemes.primary,
+														),
+														child: FilledButton.icon(
+															icon: Icon(MdiIcons.refresh, size: _scale(16)),
+															label: Text(AppLocalizations.of(context)!.media_failure_retry_activity),
+															onPressed: () {
+																Navigator.pop(ctx);
+																_retryActivity(state);
+															},
+															style: FilledButton.styleFrom(
+																textStyle: TextStyle(fontSize: AppFontSize.small),
+															),
+														),
 													),
 												),
 											if (state.isFailed) AppSpacings.spacingMdHorizontal,
 											Expanded(
-												child: OutlinedButton.icon(
-													icon: Icon(MdiIcons.stopCircleOutline, size: _scale(16)),
-													label: Text(AppLocalizations.of(context)!.media_failure_deactivate),
-													onPressed: () {
-														Navigator.pop(ctx);
-														_deactivateActivity();
-													},
+												child: Theme(
+													data: ThemeData(
+														outlinedButtonTheme: Theme.of(ctx).brightness == Brightness.dark
+															? AppOutlinedButtonsDarkThemes.base
+															: AppOutlinedButtonsLightThemes.base,
+													),
+													child: OutlinedButton.icon(
+														icon: Icon(MdiIcons.stopCircleOutline, size: _scale(16)),
+														label: Text(AppLocalizations.of(context)!.media_failure_deactivate),
+														onPressed: () {
+															Navigator.pop(ctx);
+															_deactivateActivity();
+														},
+														style: OutlinedButton.styleFrom(
+															textStyle: TextStyle(fontSize: AppFontSize.small),
+														),
+													),
 												),
 											),
 										],
@@ -2028,13 +2069,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 						),
 					);
 				}),
-				Icon(
-					MdiIcons.chevronRight,
-					size: _scale(28),
-					color: isActive
-							? (isDark ? AppColorsDark.primary : AppColorsLight.primary)
-							: (isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder),
-				),
 			],
 		);
 
@@ -2242,43 +2276,51 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		bool isPrimary = false,
 		VoidCallback? onTap,
 	}) {
-		final isDark = Theme.of(context).brightness == Brightness.dark;
-		final accentColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
-		final baseColor = isDark ? AppFillColorDark.light : AppFillColorLight.base;
-		final secondaryColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
 		final size = _scale(40);
-
-		final bgColor = isPrimary ? accentColor : baseColor;
-		final contentColor = isPrimary ? AppColors.white : secondaryColor;
-		final border = isPrimary ? null : Border.all(color: isDark ? AppBorderColorDark.light : AppBorderColorLight.base);
+		final isDark = Theme.of(context).brightness == Brightness.dark;
+		final themeData = isPrimary
+			? ThemeData(filledButtonTheme: isDark ? AppFilledButtonsDarkThemes.primary : AppFilledButtonsLightThemes.primary)
+			: (isDark ? ThemeData(filledButtonTheme: AppFilledButtonsDarkThemes.neutral) : ThemeData(filledButtonTheme: AppFilledButtonsLightThemes.neutral));
 
 		return SizedBox(
 			width: size,
 			height: size,
-			child: Material(
-				color: bgColor,
-				borderRadius: BorderRadius.circular(AppBorderRadius.base),
-				child: InkWell(
-					onTap: onTap,
-					borderRadius: BorderRadius.circular(AppBorderRadius.base),
-					child: Container(
-						decoration: BoxDecoration(
-							border: border,
+			child: Theme(
+				data: themeData,
+				child: FilledButton(
+					onPressed: onTap == null
+						? null
+						: () {
+							HapticFeedback.lightImpact();
+							onTap();
+						},
+					style: FilledButton.styleFrom(
+						padding: AppSpacings.paddingMd,
+						minimumSize: Size(size, size),
+						maximumSize: Size(size, size),
+						shape: RoundedRectangleBorder(
 							borderRadius: BorderRadius.circular(AppBorderRadius.base),
 						),
-						child: Center(
-							child: icon != null
-								? Icon(icon, size: _scale(20), color: contentColor)
-								: Text(
-									label ?? '',
-									style: TextStyle(
-										fontSize: AppFontSize.small,
-										fontWeight: FontWeight.w600,
-										color: contentColor,
-									),
-								),
-						),
 					),
+					child: icon != null
+						? Icon(
+							icon,
+							size: _scale(20),
+							color: isDark
+								? (isPrimary
+									? AppFilledButtonsDarkThemes.primaryForegroundColor
+									: AppFilledButtonsDarkThemes.neutralForegroundColor)
+								: (isPrimary
+									? AppFilledButtonsLightThemes.primaryForegroundColor
+									: AppFilledButtonsLightThemes.neutralForegroundColor),
+						)
+						: Text(
+							label ?? '',
+							style: TextStyle(
+								fontSize: AppFontSize.small,
+								fontWeight: FontWeight.w600,
+							),
+						),
 				),
 			),
 		);
@@ -2290,47 +2332,43 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		bool isMain = false,
 		VoidCallback? onTap,
 	}) {
-		final isDark = Theme.of(context).brightness == Brightness.dark;
-		final accentColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
-		final baseColor = isDark ? AppFillColorDark.light : AppFillColorLight.base;
-
 		final size = _scale(isMain ? 44 : 32);
 		final iconSize = _scale(isMain ? 22 : 16);
-
-		final Color bgColor;
-		final Color iconColor;
-
-		if (isMain) {
-			bgColor = accentColor;
-			iconColor = AppColors.white;
-		} else {
-			bgColor = baseColor;
-			iconColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
-		}
-
-		final border = isMain ? null : Border.all(color: isDark ? AppBorderColorDark.light : AppBorderColorLight.base);
+		final isDark = Theme.of(context).brightness == Brightness.dark;
+		final themeData = isMain
+			? ThemeData(filledButtonTheme: isDark ? AppFilledButtonsDarkThemes.primary : AppFilledButtonsLightThemes.primary)
+			: (isDark ? ThemeData(filledButtonTheme: AppFilledButtonsDarkThemes.neutral) : ThemeData(filledButtonTheme: AppFilledButtonsLightThemes.neutral));
 
 		return SizedBox(
 			width: size,
 			height: size,
-			child: Material(
-				color: bgColor,
-				borderRadius: BorderRadius.circular(AppBorderRadius.base),
-				child: InkWell(
-					onTap: onTap,
-					borderRadius: BorderRadius.circular(AppBorderRadius.base),
-					child: Container(
-						decoration: BoxDecoration(
-							border: border,
+			child: Theme(
+				data: themeData,
+				child: FilledButton(
+					onPressed: onTap == null
+						? null
+						: () {
+							HapticFeedback.lightImpact();
+							onTap();
+						},
+					style: FilledButton.styleFrom(
+						padding: AppSpacings.paddingMd,
+						minimumSize: Size(size, size),
+						maximumSize: Size(size, size),
+						shape: RoundedRectangleBorder(
 							borderRadius: BorderRadius.circular(AppBorderRadius.base),
 						),
-						child: Center(
-							child: Icon(
-								icon,
-								size: iconSize,
-								color: iconColor,
-							),
-						),
+					),
+					child: Icon(
+						icon,
+						size: iconSize,
+						color: isDark
+							? (isMain
+								? AppFilledButtonsDarkThemes.primaryForegroundColor
+								: AppFilledButtonsDarkThemes.neutralForegroundColor)
+							: (isMain
+								? AppFilledButtonsLightThemes.primaryForegroundColor
+								: AppFilledButtonsLightThemes.neutralForegroundColor),
 					),
 				),
 			),

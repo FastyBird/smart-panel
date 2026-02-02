@@ -793,20 +793,31 @@ class AppFilledButtonsLightThemes {
 
   static FilledButtonThemeData get neutral => FilledButtonThemeData(
     style: createButtonTheme(
-      color: AppColors.white,
-      pressedColor: AppColors.white,
-      hoveredColor: AppColors.white,
-      disabledColor: AppColors.white,
-      bgColor: AppColorsLight.neutral,
-      pressedBgColor: AppColorsLight.neutralDark2,
-      hoveredBgColor: AppColorsLight.neutralLight3,
-      disabledBgColor: AppColorsLight.neutralLight5,
-      borderColor: AppColorsLight.neutral,
-      pressedBorderColor: AppColorsLight.neutralDark2,
-      hoveredBorderColor: AppColorsLight.neutralLight3,
-      disabledBorderColor: AppColorsLight.neutralLight5,
+      color: AppTextColorLight.primary,
+      pressedColor: AppTextColorLight.primary,
+      hoveredColor: AppTextColorLight.primary,
+      disabledColor: AppTextColorLight.secondary,
+      bgColor: AppColorsLight.neutralLight7,
+      pressedBgColor: AppColorsLight.neutralLight8,
+      hoveredBgColor: AppColorsLight.neutralLight5,
+      disabledBgColor: AppColorsLight.neutralLight8,
+      borderColor: AppColorsLight.neutralLight7,
+      pressedBorderColor: AppColorsLight.neutralLight8,
+      hoveredBorderColor: AppColorsLight.neutralLight5,
+      disabledBorderColor: AppColorsLight.neutralLight8,
     ),
   );
+
+  /// Foreground (text/icon) color per variant. Pass to Icon/Text inside FilledButtons
+  /// so they match the button theme (FilledButton can override Theme.iconTheme).
+  static Color get baseForegroundColor => AppTextColorLight.regular;
+  static Color get primaryForegroundColor => AppColors.white;
+  static Color get successForegroundColor => AppColors.white;
+  static Color get warningForegroundColor => AppColors.white;
+  static Color get dangerForegroundColor => AppColors.white;
+  static Color get errorForegroundColor => AppColors.white;
+  static Color get infoForegroundColor => AppColors.white;
+  static Color get neutralForegroundColor => AppTextColorLight.primary;
 }
 
 class AppFilledButtonsDarkThemes {
@@ -931,20 +942,31 @@ class AppFilledButtonsDarkThemes {
 
   static FilledButtonThemeData get neutral => FilledButtonThemeData(
     style: createButtonTheme(
-      color: AppColors.white,
-      pressedColor: AppColors.white,
-      hoveredColor: AppColors.white,
+      color: AppTextColorDark.secondary,
+      pressedColor: AppTextColorDark.secondary,
+      hoveredColor: AppTextColorDark.secondary,
       disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
-      bgColor: AppColorsDark.neutral,
-      pressedBgColor: AppColorsDark.neutralDark2,
-      hoveredBgColor: AppColorsDark.neutralLight3,
-      disabledBgColor: AppColorsDark.neutralLight5,
-      borderColor: AppColorsDark.neutral,
-      pressedBorderColor: AppColorsDark.neutralDark2,
-      hoveredBorderColor: AppColorsDark.neutralLight3,
-      disabledBorderColor: AppColorsDark.neutralLight5,
+      bgColor: AppColorsDark.neutralLight7,
+      pressedBgColor: AppColorsDark.neutralLight8,
+      hoveredBgColor: AppColorsDark.neutralLight5,
+      disabledBgColor: AppColorsDark.neutralLight8,
+      borderColor: AppColorsDark.neutralLight7,
+      pressedBorderColor: AppColorsDark.neutralLight8,
+      hoveredBorderColor: AppColorsDark.neutralLight5,
+      disabledBorderColor: AppColorsDark.neutralLight8,
     ),
   );
+
+  /// Foreground (text/icon) color per variant. Pass to Icon/Text inside FilledButtons
+  /// so they match the button theme (FilledButton can override Theme.iconTheme).
+  static Color get baseForegroundColor => AppTextColorDark.regular;
+  static Color get primaryForegroundColor => AppColors.white;
+  static Color get successForegroundColor => AppColors.white;
+  static Color get warningForegroundColor => AppColors.white;
+  static Color get dangerForegroundColor => AppColors.white;
+  static Color get errorForegroundColor => AppColors.white;
+  static Color get infoForegroundColor => AppColors.white;
+  static Color get neutralForegroundColor => AppTextColorDark.secondary;
 }
 
 class AppOutlinedButtonsLightThemes {
@@ -1066,6 +1088,16 @@ class AppOutlinedButtonsLightThemes {
       disabledBorderColor: AppColorsLight.infoLight8,
     ),
   );
+
+  /// Foreground (text/icon) color per variant. Pass to Icon/Text inside FilledButtons
+  /// so they match the button theme (OutlinedButton can override Theme.iconTheme).
+  static Color get baseForegroundColor => AppTextColorLight.regular;
+  static Color get primaryForegroundColor => AppColorsLight.primary;
+  static Color get successForegroundColor => AppColorsLight.success;
+  static Color get warningForegroundColor => AppColorsLight.warning;
+  static Color get dangerForegroundColor => AppColorsLight.danger;
+  static Color get errorForegroundColor => AppColorsLight.error;
+  static Color get infoForegroundColor => AppColorsLight.info;
 }
 
 class AppOutlinedButtonsDarkThemes {
@@ -1187,6 +1219,16 @@ class AppOutlinedButtonsDarkThemes {
       disabledBorderColor: AppColorsDark.infoLight8,
     ),
   );
+
+  /// Foreground (text/icon) color per variant. Pass to Icon/Text inside FilledButtons
+  /// so they match the button theme (OutlinedButton can override Theme.iconTheme).
+  static Color get baseForegroundColor => AppTextColorDark.regular;
+  static Color get primaryForegroundColor => AppColorsDark.primary;
+  static Color get successForegroundColor => AppColorsDark.success;
+  static Color get warningForegroundColor => AppColorsDark.warning;
+  static Color get dangerForegroundColor => AppColorsDark.danger;
+  static Color get errorForegroundColor => AppColorsDark.error;
+  static Color get infoForegroundColor => AppColorsDark.info;
 }
 
 class AppIconButtonsLightThemes {
@@ -1568,6 +1610,7 @@ ButtonStyle createButtonTheme({
           density: visualDensityService.density,
         ),
         fontWeight: FontWeight.w500,
+        color: color,
       ),
     ),
     shape: WidgetStateProperty.all(
