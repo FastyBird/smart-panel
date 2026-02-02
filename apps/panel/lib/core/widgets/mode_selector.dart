@@ -210,7 +210,7 @@ class _ModeSelectorState<T> extends State<ModeSelector<T>> {
       padding: EdgeInsets.all(AppSpacings.pSm),
       decoration: BoxDecoration(
         color: isDark ? AppFillColorDark.darker : AppFillColorLight.darker,
-        borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+        borderRadius: BorderRadius.circular(AppBorderRadius.base),
       ),
       child: widget.orientation == ModeSelectorOrientation.horizontal
           ? _buildHorizontal(context, isDark)

@@ -561,7 +561,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			padding: AppSpacings.paddingLg,
 			decoration: BoxDecoration(
 				color: isLight ? AppFillColorLight.light : AppFillColorDark.light,
-				borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+				borderRadius: BorderRadius.circular(AppBorderRadius.base),
 				border: isLight
 						? Border.all(color: AppBorderColorLight.base)
 						: null,
@@ -597,7 +597,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			padding: AppSpacings.paddingMd,
 			decoration: BoxDecoration(
 				color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
-				borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+				borderRadius: BorderRadius.circular(AppBorderRadius.base),
 				border: Border.all(
 					color: isDark ? AppFillColorDark.light : AppBorderColorLight.light,
 					width: 1,
@@ -803,7 +803,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 											vertical: _scale(AppSpacings.pSm),
 										),
 										shape: RoundedRectangleBorder(
-											borderRadius: BorderRadius.circular(_scale(AppBorderRadius.medium)),
+											borderRadius: BorderRadius.circular(AppBorderRadius.base),
 										),
 									),
 									child: Text(localizations.media_activity_retry),
@@ -824,7 +824,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 										),
 										side: BorderSide(color: isDark ? AppBorderColorDark.base : AppBorderColorLight.base),
 										shape: RoundedRectangleBorder(
-											borderRadius: BorderRadius.circular(_scale(AppBorderRadius.medium)),
+											borderRadius: BorderRadius.circular(AppBorderRadius.base),
 										),
 									),
 									child: Text(localizations.media_activity_turn_off),
@@ -956,7 +956,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 				padding: AppSpacings.paddingMd,
 				decoration: BoxDecoration(
 					color: warningBg,
-					borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+					borderRadius: BorderRadius.circular(AppBorderRadius.base),
 				),
 				child: Row(
 					children: [
@@ -1005,7 +1005,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			padding: AppSpacings.paddingMd,
 			decoration: BoxDecoration(
 				color: warningBg,
-				borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+				borderRadius: BorderRadius.circular(AppBorderRadius.base),
 			),
 			child: Row(
 				children: [
@@ -1038,7 +1038,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			padding: AppSpacings.paddingLg,
 			decoration: BoxDecoration(
 				color: isDark ? AppFillColorDark.darker : AppFillColorLight.darker,
-				borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+				borderRadius: BorderRadius.circular(AppBorderRadius.base),
 			),
 			child: Column(
 				spacing: AppSpacings.pMd,
@@ -1105,25 +1105,21 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 							),
 							// Input source on the right
 							if (inputValue != null && inputOptions != null && inputOptions.isNotEmpty)
-								GestureDetector(
-									onTap: _isSending
+								Theme(
+									data: isDark
+										? ThemeData(brightness: Brightness.dark, outlinedButtonTheme: AppOutlinedButtonsDarkThemes.base)
+										: ThemeData(outlinedButtonTheme: AppOutlinedButtonsLightThemes.base),
+									child: OutlinedButton(
+										onPressed: _isSending
 											? null
 											: () => _showInputSelectorSheet(inputOptions!, inputValue, item.inputPropertyId!),
-									child: Container(
-										padding: EdgeInsets.symmetric(
-											horizontal: AppSpacings.pMd,
-											vertical: AppSpacings.pSm,
-										),
-										decoration: BoxDecoration(
-											color: isDark
-													? AppFillColorDark.base
-													: AppFillColorLight.base,
-											borderRadius: BorderRadius.circular(AppBorderRadius.base),
-											border: Border.all(
-												color: isDark
-														? AppBorderColorDark.dark
-														: AppBorderColorLight.dark,
+										style: OutlinedButton.styleFrom(
+											padding: EdgeInsets.symmetric(
+												horizontal: AppSpacings.pMd,
+												vertical: AppSpacings.pMd,
 											),
+											minimumSize: Size.zero,
+											tapTargetSize: MaterialTapTargetSize.shrinkWrap,
 										),
 										child: Row(
 											mainAxisSize: MainAxisSize.min,
@@ -1133,18 +1129,12 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 													style: TextStyle(
 														fontSize: AppFontSize.extraSmall,
 														fontWeight: FontWeight.w500,
-														color: isDark
-																? AppTextColorDark.regular
-																: AppTextColorLight.regular,
 													),
 												),
 												AppSpacings.spacingXsHorizontal,
 												Icon(
 													MdiIcons.chevronDown,
-													size: _scale(12),
-													color: isDark
-															? AppTextColorDark.regular
-															: AppTextColorLight.regular,
+													size: AppFontSize.extraSmall,
 												),
 											],
 										),
@@ -1211,7 +1201,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 								minimumSize: Size(columnWidth, columnWidth),
 								maximumSize: Size(columnWidth, columnWidth),
 								shape: RoundedRectangleBorder(
-									borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+									borderRadius: BorderRadius.circular(AppBorderRadius.base),
 								),
 								tapTargetSize: MaterialTapTargetSize.shrinkWrap,
 							),
@@ -1385,7 +1375,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 						builder: (context, constraints) {
 							final barWidth = constraints.maxWidth;
 							final bar = ClipRRect(
-								borderRadius: BorderRadius.circular(_scale(2)),
+								borderRadius: BorderRadius.circular(AppBorderRadius.base),
 								child: LinearProgressIndicator(
 									value: progress,
 									minHeight: _scale(3),
@@ -1507,7 +1497,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 					style: FilledButton.styleFrom(
 						padding: AppSpacings.paddingMd,
 						shape: RoundedRectangleBorder(
-							borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+							borderRadius: BorderRadius.circular(AppBorderRadius.base),
 						),
 					),
 					child: Row(
@@ -1549,7 +1539,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			padding: AppSpacings.paddingMd,
 			decoration: BoxDecoration(
 				color: errorBg,
-				borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+				borderRadius: BorderRadius.circular(AppBorderRadius.base),
 			),
 			child: Column(
 				crossAxisAlignment: CrossAxisAlignment.start,
@@ -1672,7 +1662,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 													height: _scale(32),
 													decoration: BoxDecoration(
 														color: handleColor,
-														borderRadius: BorderRadius.circular(_scale(16)),
+														borderRadius: BorderRadius.circular(AppBorderRadius.base),
 													),
 													child: Icon(
 														MdiIcons.close,
@@ -1810,7 +1800,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd, vertical: AppSpacings.pSm),
 			decoration: BoxDecoration(
 				color: backgroundColor,
-				borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+				borderRadius: BorderRadius.circular(AppBorderRadius.base),
 			),
 			child: Text(
 				'$label: $count',
@@ -2446,7 +2436,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		final bgColor = isDark ? AppFillColorDark.base : AppFillColorLight.blank;
 		final handleColor = isDark ? AppFillColorDark.darker : AppFillColorLight.darker;
 		final textColor = isDark ? AppTextColorDark.primary : AppTextColorLight.primary;
-		final secondaryColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
 
 		showModalBottomSheet(
 			context: context,
@@ -2490,19 +2479,25 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 													fontWeight: FontWeight.w600,
 												),
 											),
-											GestureDetector(
-												onTap: () => Navigator.pop(ctx),
-												child: Container(
-													width: _scale(32),
-													height: _scale(32),
-													decoration: BoxDecoration(
-														color: handleColor,
-														borderRadius: BorderRadius.circular(_scale(16)),
+											Theme(
+												data: isDark
+													? ThemeData(brightness: Brightness.dark, filledButtonTheme: AppFilledButtonsDarkThemes.neutral)
+													: ThemeData(filledButtonTheme: AppFilledButtonsLightThemes.neutral),
+												child: FilledButton(
+													onPressed: () => Navigator.pop(ctx),
+													style: FilledButton.styleFrom(
+														padding: EdgeInsets.zero,
+														minimumSize: Size(_scale(32), _scale(32)),
+														maximumSize: Size(_scale(32), _scale(32)),
+														shape: const CircleBorder(),
+														tapTargetSize: MaterialTapTargetSize.shrinkWrap,
 													),
 													child: Icon(
 														MdiIcons.close,
-														color: secondaryColor,
 														size: _scale(18),
+														color: isDark
+															? AppFilledButtonsDarkThemes.neutralForegroundColor
+															: AppFilledButtonsLightThemes.neutralForegroundColor,
 													),
 												),
 											),

@@ -82,7 +82,7 @@ class MediaInfoCard extends StatelessWidget {
 			padding: AppSpacings.paddingLg,
 			decoration: BoxDecoration(
 				color: cardColor,
-				borderRadius: BorderRadius.circular(AppBorderRadius.round),
+				borderRadius: BorderRadius.circular(AppBorderRadius.base),
 				border: Border.all(color: borderColor, width: scale(1)),
 			),
 			child: Column(
@@ -92,7 +92,7 @@ class MediaInfoCard extends StatelessWidget {
 						height: scale(64),
 						decoration: BoxDecoration(
 							color: iconBgColor,
-							borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+							borderRadius: BorderRadius.circular(AppBorderRadius.base),
 						),
 						child: Icon(
 							icon,
@@ -161,7 +161,7 @@ class MediaInfoCard extends StatelessWidget {
               padding: AppSpacings.paddingMd,
               decoration: BoxDecoration(
                 color: isDark ? AppFillColorDark.darker : AppFillColorLight.darker,
-                borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+                borderRadius: BorderRadius.circular(AppBorderRadius.base),
               ),
               child: Column(
                 children: [
@@ -328,7 +328,7 @@ class MediaInfoCard extends StatelessWidget {
 						builder: (context, constraints) {
 							final barWidth = constraints.maxWidth;
 							final bar = ClipRRect(
-								borderRadius: BorderRadius.circular(scale(2)),
+								borderRadius: BorderRadius.circular(AppBorderRadius.base),
 								child: LinearProgressIndicator(
 									value: progress,
 									minHeight: scale(3),
