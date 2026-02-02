@@ -15,13 +15,10 @@ import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 import 'package:provider/provider.dart';
 
-/// Device categories that provide their own header/Scaffold
-const Set<DevicesModuleDeviceCategory> _devicesWithCustomHeader = {
-  DevicesModuleDeviceCategory.airPurifier,
-  DevicesModuleDeviceCategory.fan,
-  DevicesModuleDeviceCategory.lighting,
-  DevicesModuleDeviceCategory.windowCovering,
-};
+/// Check whether a device category has a registered detail widget
+/// (which provides its own Scaffold + header).
+bool _hasCustomDetailWidget(DevicesModuleDeviceCategory category) =>
+    deviceWidgetMappers.containsKey(category);
 
 class DeviceDetailPage extends StatelessWidget {
   final ScreenService _screenService = locator<ScreenService>();
@@ -77,8 +74,8 @@ class DeviceDetailPage extends StatelessWidget {
         );
       }
 
-      // Devices with custom header provide their own Scaffold
-      if (_devicesWithCustomHeader.contains(device.category)) {
+      // Devices with a registered detail widget provide their own Scaffold
+      if (_hasCustomDetailWidget(device.category)) {
         // For lighting devices, pass initial channel ID if available
         if (device.category == DevicesModuleDeviceCategory.lighting &&
             device is LightingDeviceView) {

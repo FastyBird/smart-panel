@@ -3,6 +3,9 @@ import 'package:fastybird_smart_panel/modules/devices/types/formats.dart';
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/view.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/album.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/artist.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/command.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/duration.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/position.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/status.dart';
@@ -33,6 +36,39 @@ class MediaPlaybackChannelView extends ChannelView {
 
   PositionChannelPropertyView? get positionProp =>
       properties.whereType<PositionChannelPropertyView>().firstOrNull;
+
+  CommandChannelPropertyView? get commandProp =>
+      properties.whereType<CommandChannelPropertyView>().firstOrNull;
+
+  ArtistChannelPropertyView? get artistProp =>
+      properties.whereType<ArtistChannelPropertyView>().firstOrNull;
+
+  AlbumChannelPropertyView? get albumProp =>
+      properties.whereType<AlbumChannelPropertyView>().firstOrNull;
+
+  bool get hasCommand => commandProp != null;
+
+  bool get hasArtist => artistProp != null;
+
+  String? get artist => artistProp?.artist;
+
+  bool get hasAlbum => albumProp != null;
+
+  String? get album => albumProp?.album;
+
+  List<MediaPlaybackCommandValue> get availableCommands {
+    final CommandChannelPropertyView? prop = commandProp;
+    final FormatType? format = prop?.format;
+
+    if (format is StringListFormatType) {
+      return format.value
+          .map((item) => MediaPlaybackCommandValue.fromValue(item))
+          .whereType<MediaPlaybackCommandValue>()
+          .toList();
+    }
+
+    return [];
+  }
 
   MediaPlaybackStatusValue get status {
     final ValueType? value = statusProp.value;

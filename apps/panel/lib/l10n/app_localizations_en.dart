@@ -2295,6 +2295,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get media_warning_steps_had_issues => 'Some steps had issues';
 
   @override
+  String get media_remote => 'Remote';
+
+  @override
   String get media_remote_control => 'Remote Control';
 
   @override

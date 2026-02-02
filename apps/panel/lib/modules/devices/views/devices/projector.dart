@@ -1,12 +1,13 @@
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/device_information.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/channels/media_input.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/projector.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/speaker.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/mixins.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/view.dart';
 
 class ProjectorDeviceView extends DeviceView
-    with DeviceDeviceInformationMixin, DeviceSpeakerMixin {
+    with DeviceDeviceInformationMixin, DeviceSpeakerMixin, DeviceMediaInputMixin {
   ProjectorDeviceView({
     required super.id,
     required super.type,
@@ -31,6 +32,10 @@ class ProjectorDeviceView extends DeviceView
   @override
   SpeakerChannelView? get speakerChannel =>
       channels.whereType<SpeakerChannelView>().firstOrNull;
+
+  @override
+  MediaInputChannelView? get mediaInputChannel =>
+      channels.whereType<MediaInputChannelView>().firstOrNull;
 
   ProjectorChannelView get projectorChannel =>
       channels.whereType<ProjectorChannelView>().first;

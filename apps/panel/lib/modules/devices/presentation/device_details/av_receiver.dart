@@ -18,26 +18,26 @@ import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/devices/speaker.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/devices/av_receiver.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
-class SpeakerDeviceDetail extends StatefulWidget {
-	final SpeakerDeviceView _device;
+class AvReceiverDeviceDetail extends StatefulWidget {
+	final AvReceiverDeviceView _device;
 	final VoidCallback? onBack;
 
-	const SpeakerDeviceDetail({
+	const AvReceiverDeviceDetail({
 		super.key,
-		required SpeakerDeviceView device,
+		required AvReceiverDeviceView device,
 		this.onBack,
 	}) : _device = device;
 
 	@override
-	State<SpeakerDeviceDetail> createState() => _SpeakerDeviceDetailState();
+	State<AvReceiverDeviceDetail> createState() => _AvReceiverDeviceDetailState();
 }
 
-class _SpeakerDeviceDetailState extends State<SpeakerDeviceDetail> {
+class _AvReceiverDeviceDetailState extends State<AvReceiverDeviceDetail> {
 	final ScreenService _screenService = locator<ScreenService>();
 	final VisualDensityService _visualDensityService = locator<VisualDensityService>();
 	final DevicesService _devicesService = locator<DevicesService>();
@@ -58,7 +58,7 @@ class _SpeakerDeviceDetailState extends State<SpeakerDeviceDetail> {
 			_deviceControlStateService?.addListener(_onControlStateChanged);
 		} catch (e) {
 			if (kDebugMode) {
-				debugPrint('[SpeakerDeviceDetail] Failed to get DeviceControlStateService: $e');
+				debugPrint('[AvReceiverDeviceDetail] Failed to get DeviceControlStateService: $e');
 			}
 		}
 	}
@@ -117,9 +117,9 @@ class _SpeakerDeviceDetailState extends State<SpeakerDeviceDetail> {
 		}
 	}
 
-	SpeakerDeviceView get _device {
+	AvReceiverDeviceView get _device {
 		final updated = _devicesService.getDevice(widget._device.id);
-		if (updated is SpeakerDeviceView) {
+		if (updated is AvReceiverDeviceView) {
 			return updated;
 		}
 		return widget._device;
@@ -466,7 +466,7 @@ class _SpeakerDeviceDetailState extends State<SpeakerDeviceDetail> {
 							borderRadius: BorderRadius.circular(AppBorderRadius.medium),
 						),
 						child: Icon(
-							MdiIcons.speaker,
+							MdiIcons.audioVideo,
 							color: isOn ? accentColor : mutedColor,
 							size: _scale(24),
 						),
@@ -514,7 +514,7 @@ class _SpeakerDeviceDetailState extends State<SpeakerDeviceDetail> {
 				crossAxisAlignment: CrossAxisAlignment.start,
 				children: [
 					MediaInfoCard(
-						icon: MdiIcons.speaker,
+						icon: MdiIcons.audioVideo,
 						iconColor: accentColor,
 						iconBgColor: _getAccentLightColor(isDark),
 						name: _device.name,
@@ -566,7 +566,7 @@ class _SpeakerDeviceDetailState extends State<SpeakerDeviceDetail> {
 				mainAxisAlignment: MainAxisAlignment.center,
 				children: [
 					MediaInfoCard(
-						icon: MdiIcons.speaker,
+						icon: MdiIcons.audioVideo,
 						iconColor: accentColor,
 						iconBgColor: _getAccentLightColor(isDark),
 						name: _device.name,

@@ -3,12 +3,14 @@ import 'package:fastybird_smart_panel/modules/devices/views/channels/media_input
 import 'package:fastybird_smart_panel/modules/devices/views/channels/media_playback.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/microphone.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/speaker.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/channels/switcher.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/mixins.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/view.dart';
 
 class MediaDeviceView extends DeviceView
     with
         DeviceDeviceInformationMixin,
+        DeviceSwitcherMixin,
         DeviceMediaInputMixin,
         DeviceMediaPlaybackMixin,
         DeviceMicrophoneMixin,
@@ -33,6 +35,13 @@ class MediaDeviceView extends DeviceView
   @override
   DeviceInformationChannelView get deviceInformationChannel =>
       channels.whereType<DeviceInformationChannelView>().first;
+
+  @override
+  SwitcherChannelView? get switcherChannel =>
+      channels.whereType<SwitcherChannelView>().firstOrNull;
+
+  @override
+  bool get isOn => hasSwitcher ? isSwitcherOn : true;
 
   @override
   MediaInputChannelView? get mediaInputChannel =>

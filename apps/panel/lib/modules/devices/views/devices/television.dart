@@ -1,12 +1,14 @@
+import 'package:collection/collection.dart';
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/device_information.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/channels/media_input.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/speaker.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/television.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/mixins.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/view.dart';
 
 class TelevisionDeviceView extends DeviceView
-    with DeviceDeviceInformationMixin, DeviceSpeakerMixin {
+    with DeviceDeviceInformationMixin, DeviceSpeakerMixin, DeviceMediaInputMixin {
   TelevisionDeviceView({
     required super.id,
     required super.type,
@@ -31,6 +33,10 @@ class TelevisionDeviceView extends DeviceView
   @override
   SpeakerChannelView get speakerChannel =>
       channels.whereType<SpeakerChannelView>().first;
+
+  @override
+  MediaInputChannelView? get mediaInputChannel =>
+      channels.whereType<MediaInputChannelView>().firstOrNull;
 
   TelevisionChannelView get televisionChannel =>
       channels.whereType<TelevisionChannelView>().first;

@@ -1,6 +1,7 @@
 import 'package:fastybird_smart_panel/modules/devices/models/devices/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/devices/generic_device.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/air_conditioner.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/av_receiver.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/air_dehumidifier.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/air_humidifier.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/air_purifier.dart';
@@ -9,6 +10,7 @@ import 'package:fastybird_smart_panel/modules/devices/presentation/device_detail
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/door.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/doorbell.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/fan.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/game_console.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/generic.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/heating_unit.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/lighting.dart';
@@ -18,8 +20,10 @@ import 'package:fastybird_smart_panel/modules/devices/presentation/device_detail
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/pump.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/robot_vacuum.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/sensor.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/set_top_box.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/speaker.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/sprinkler.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/streaming_service.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/switcher.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/projector.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/television.dart';
@@ -31,6 +35,7 @@ import 'package:fastybird_smart_panel/api/models/devices_module_device_category.
 import 'package:fastybird_smart_panel/modules/devices/repositories/validation.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/view.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/air_conditioner.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/devices/av_receiver.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/air_dehumidifier.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/air_humidifier.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/air_purifier.dart';
@@ -39,6 +44,7 @@ import 'package:fastybird_smart_panel/modules/devices/views/devices/camera.dart'
 import 'package:fastybird_smart_panel/modules/devices/views/devices/door.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/doorbell.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/fan.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/devices/game_console.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/generic.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/heating_unit.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/water_heater.dart';
@@ -49,7 +55,9 @@ import 'package:fastybird_smart_panel/modules/devices/views/devices/outlet.dart'
 import 'package:fastybird_smart_panel/modules/devices/views/devices/pump.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/robot_vacuum.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/sensor.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/devices/set_top_box.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/speaker.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/devices/streaming_service.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/sprinkler.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/switcher.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/projector.dart';
@@ -134,6 +142,9 @@ Map<DevicesModuleDeviceCategory, DeviceView Function(DeviceModel, List<ChannelVi
   DevicesModuleDeviceCategory.airConditioner: (device, channels, isValid, validationIssues) {
     return _createDeviceView(device, channels, isValid, validationIssues, AirConditionerDeviceView.new);
   },
+  DevicesModuleDeviceCategory.avReceiver: (device, channels, isValid, validationIssues) {
+    return _createDeviceView(device, channels, isValid, validationIssues, AvReceiverDeviceView.new);
+  },
   DevicesModuleDeviceCategory.airDehumidifier: (device, channels, isValid, validationIssues) {
     return _createDeviceView(device, channels, isValid, validationIssues, AirDehumidifierDeviceView.new);
   },
@@ -157,6 +168,9 @@ Map<DevicesModuleDeviceCategory, DeviceView Function(DeviceModel, List<ChannelVi
   },
   DevicesModuleDeviceCategory.fan: (device, channels, isValid, validationIssues) {
     return _createDeviceView(device, channels, isValid, validationIssues, FanDeviceView.new);
+  },
+  DevicesModuleDeviceCategory.gameConsole: (device, channels, isValid, validationIssues) {
+    return _createDeviceView(device, channels, isValid, validationIssues, GameConsoleDeviceView.new);
   },
   DevicesModuleDeviceCategory.heatingUnit: (device, channels, isValid, validationIssues) {
     return _createDeviceView(device, channels, isValid, validationIssues, HeatingUnitDeviceView.new);
@@ -185,8 +199,14 @@ Map<DevicesModuleDeviceCategory, DeviceView Function(DeviceModel, List<ChannelVi
   DevicesModuleDeviceCategory.sensor: (device, channels, isValid, validationIssues) {
     return _createDeviceView(device, channels, isValid, validationIssues, SensorDeviceView.new);
   },
+  DevicesModuleDeviceCategory.setTopBox: (device, channels, isValid, validationIssues) {
+    return _createDeviceView(device, channels, isValid, validationIssues, SetTopBoxDeviceView.new);
+  },
   DevicesModuleDeviceCategory.speaker: (device, channels, isValid, validationIssues) {
     return _createDeviceView(device, channels, isValid, validationIssues, SpeakerDeviceView.new);
+  },
+  DevicesModuleDeviceCategory.streamingService: (device, channels, isValid, validationIssues) {
+    return _createDeviceView(device, channels, isValid, validationIssues, StreamingServiceDeviceView.new);
   },
   DevicesModuleDeviceCategory.sprinkler: (device, channels, isValid, validationIssues) {
     return _createDeviceView(device, channels, isValid, validationIssues, SprinklerDeviceView.new);
@@ -234,6 +254,9 @@ Map<DevicesModuleDeviceCategory, IconData Function()> deviceIconMappers = {
   DevicesModuleDeviceCategory.airConditioner: () {
     return MdiIcons.airConditioner;
   },
+  DevicesModuleDeviceCategory.avReceiver: () {
+    return MdiIcons.audioVideo;
+  },
   DevicesModuleDeviceCategory.airDehumidifier: () {
     return MdiIcons.airPurifier;
   },
@@ -257,6 +280,9 @@ Map<DevicesModuleDeviceCategory, IconData Function()> deviceIconMappers = {
   },
   DevicesModuleDeviceCategory.fan: () {
     return MdiIcons.fan;
+  },
+  DevicesModuleDeviceCategory.gameConsole: () {
+    return MdiIcons.gamepadVariant;
   },
   DevicesModuleDeviceCategory.heatingUnit: () {
     return MdiIcons.radiator;
@@ -285,8 +311,14 @@ Map<DevicesModuleDeviceCategory, IconData Function()> deviceIconMappers = {
   DevicesModuleDeviceCategory.sensor: () {
     return MdiIcons.accessPoint;
   },
+  DevicesModuleDeviceCategory.setTopBox: () {
+    return MdiIcons.setTopBox;
+  },
   DevicesModuleDeviceCategory.speaker: () {
     return MdiIcons.speaker;
+  },
+  DevicesModuleDeviceCategory.streamingService: () {
+    return MdiIcons.playNetwork;
   },
   DevicesModuleDeviceCategory.sprinkler: () {
     return MdiIcons.sprinklerVariant;
@@ -335,6 +367,14 @@ Map<DevicesModuleDeviceCategory, Widget Function(DeviceView)> deviceWidgetMapper
       );
     }
     return AirConditionerDeviceDetail(device: device);
+  },
+  DevicesModuleDeviceCategory.avReceiver: (device) {
+    if (device is! AvReceiverDeviceView) {
+      throw ArgumentError(
+        'Device view is not valid for AV Receiver device detail',
+      );
+    }
+    return AvReceiverDeviceDetail(device: device);
   },
   DevicesModuleDeviceCategory.airDehumidifier: (device) {
     if (device is! AirDehumidifierDeviceView) {
@@ -399,6 +439,14 @@ Map<DevicesModuleDeviceCategory, Widget Function(DeviceView)> deviceWidgetMapper
       );
     }
     return FanDeviceDetail(device: device);
+  },
+  DevicesModuleDeviceCategory.gameConsole: (device) {
+    if (device is! GameConsoleDeviceView) {
+      throw ArgumentError(
+        'Device view is not valid for Game Console device detail',
+      );
+    }
+    return GameConsoleDeviceDetail(device: device);
   },
   DevicesModuleDeviceCategory.heatingUnit: (device) {
     if (device is! HeatingUnitDeviceView) {
@@ -472,6 +520,14 @@ Map<DevicesModuleDeviceCategory, Widget Function(DeviceView)> deviceWidgetMapper
     }
     return SensorDeviceDetail(device: device);
   },
+  DevicesModuleDeviceCategory.setTopBox: (device) {
+    if (device is! SetTopBoxDeviceView) {
+      throw ArgumentError(
+        'Device view is not valid for Set-top Box device detail',
+      );
+    }
+    return SetTopBoxDeviceDetail(device: device);
+  },
   DevicesModuleDeviceCategory.speaker: (device) {
     if (device is! SpeakerDeviceView) {
       throw ArgumentError(
@@ -479,6 +535,14 @@ Map<DevicesModuleDeviceCategory, Widget Function(DeviceView)> deviceWidgetMapper
       );
     }
     return SpeakerDeviceDetail(device: device);
+  },
+  DevicesModuleDeviceCategory.streamingService: (device) {
+    if (device is! StreamingServiceDeviceView) {
+      throw ArgumentError(
+        'Device view is not valid for Streaming Service device detail',
+      );
+    }
+    return StreamingServiceDeviceDetail(device: device);
   },
   DevicesModuleDeviceCategory.sprinkler: (device) {
     if (device is! SprinklerDeviceView) {

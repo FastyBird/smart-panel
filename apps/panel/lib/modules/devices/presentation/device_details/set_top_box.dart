@@ -18,26 +18,26 @@ import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/devices/speaker.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/devices/set_top_box.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
-class SpeakerDeviceDetail extends StatefulWidget {
-	final SpeakerDeviceView _device;
+class SetTopBoxDeviceDetail extends StatefulWidget {
+	final SetTopBoxDeviceView _device;
 	final VoidCallback? onBack;
 
-	const SpeakerDeviceDetail({
+	const SetTopBoxDeviceDetail({
 		super.key,
-		required SpeakerDeviceView device,
+		required SetTopBoxDeviceView device,
 		this.onBack,
 	}) : _device = device;
 
 	@override
-	State<SpeakerDeviceDetail> createState() => _SpeakerDeviceDetailState();
+	State<SetTopBoxDeviceDetail> createState() => _SetTopBoxDeviceDetailState();
 }
 
-class _SpeakerDeviceDetailState extends State<SpeakerDeviceDetail> {
+class _SetTopBoxDeviceDetailState extends State<SetTopBoxDeviceDetail> {
 	final ScreenService _screenService = locator<ScreenService>();
 	final VisualDensityService _visualDensityService = locator<VisualDensityService>();
 	final DevicesService _devicesService = locator<DevicesService>();
@@ -58,7 +58,7 @@ class _SpeakerDeviceDetailState extends State<SpeakerDeviceDetail> {
 			_deviceControlStateService?.addListener(_onControlStateChanged);
 		} catch (e) {
 			if (kDebugMode) {
-				debugPrint('[SpeakerDeviceDetail] Failed to get DeviceControlStateService: $e');
+				debugPrint('[SetTopBoxDeviceDetail] Failed to get DeviceControlStateService: $e');
 			}
 		}
 	}
@@ -88,6 +88,8 @@ class _SpeakerDeviceDetailState extends State<SpeakerDeviceDetail> {
 		if (controlState == null) return;
 
 		final speakerChannel = _device.speakerChannel;
+		if (speakerChannel == null) return;
+
 		final volumeProp = speakerChannel.volumeProp;
 		if (volumeProp != null) {
 			controlState.checkPropertyConvergence(
@@ -117,9 +119,9 @@ class _SpeakerDeviceDetailState extends State<SpeakerDeviceDetail> {
 		}
 	}
 
-	SpeakerDeviceView get _device {
+	SetTopBoxDeviceView get _device {
 		final updated = _devicesService.getDevice(widget._device.id);
-		if (updated is SpeakerDeviceView) {
+		if (updated is SetTopBoxDeviceView) {
 			return updated;
 		}
 		return widget._device;
@@ -158,6 +160,7 @@ class _SpeakerDeviceDetailState extends State<SpeakerDeviceDetail> {
 
 	void _setVolume(int volume) {
 		final speakerChannel = _device.speakerChannel;
+		if (speakerChannel == null) return;
 		final prop = speakerChannel.volumeProp;
 		if (prop == null) return;
 
@@ -193,6 +196,7 @@ class _SpeakerDeviceDetailState extends State<SpeakerDeviceDetail> {
 
 	int get _effectiveVolume {
 		final speakerChannel = _device.speakerChannel;
+		if (speakerChannel == null) return 0;
 		final prop = speakerChannel.volumeProp;
 		final controlState = _deviceControlStateService;
 
@@ -207,6 +211,7 @@ class _SpeakerDeviceDetailState extends State<SpeakerDeviceDetail> {
 
 	void _toggleMute() {
 		final speakerChannel = _device.speakerChannel;
+		if (speakerChannel == null) return;
 
 		if (speakerChannel.hasMute) {
 			final prop = speakerChannel.muteProp!;
@@ -263,7 +268,7 @@ class _SpeakerDeviceDetailState extends State<SpeakerDeviceDetail> {
 
 	void _sendPlaybackCommand(MediaPlaybackCommandValue command) {
 		final channel = _device.mediaPlaybackChannel;
-		if (channel == null || !channel.hasCommand) return;
+		if (!channel.hasCommand) return;
 
 		final optimisticStatus = switch (command) {
 			MediaPlaybackCommandValue.play => MediaPlaybackStatusValue.playing,
@@ -292,7 +297,7 @@ class _SpeakerDeviceDetailState extends State<SpeakerDeviceDetail> {
 
 	void _seekPosition(int position) {
 		final channel = _device.mediaPlaybackChannel;
-		if (channel == null || !channel.hasPosition) return;
+		if (!channel.hasPosition) return;
 		final prop = channel.positionProp;
 		if (prop == null || !prop.isWritable) return;
 
@@ -306,6 +311,7 @@ class _SpeakerDeviceDetailState extends State<SpeakerDeviceDetail> {
 
 	bool get _effectiveMuted {
 		final speakerChannel = _device.speakerChannel;
+		if (speakerChannel == null) return false;
 		final controlState = _deviceControlStateService;
 
 		if (controlState != null) {
@@ -328,7 +334,7 @@ class _SpeakerDeviceDetailState extends State<SpeakerDeviceDetail> {
 
 		return _device.hasSpeakerMute
 			? _device.isSpeakerMuted
-			: !_device.isSpeakerActive;
+			: (_device.hasSpeaker ? !_device.isSpeakerActive : false);
 	}
 
 	// --------------------------------------------------------------------------
@@ -359,9 +365,7 @@ class _SpeakerDeviceDetailState extends State<SpeakerDeviceDetail> {
 			if (track != null) return track;
 			return localizations.on_state_on;
 		}
-		return _device.hasSwitcher
-			? localizations.on_state_on
-			: localizations.on_state_on;
+		return localizations.on_state_on;
 	}
 
 	String? _getDisplaySource() {
@@ -466,7 +470,7 @@ class _SpeakerDeviceDetailState extends State<SpeakerDeviceDetail> {
 							borderRadius: BorderRadius.circular(AppBorderRadius.medium),
 						),
 						child: Icon(
-							MdiIcons.speaker,
+							MdiIcons.setTopBox,
 							color: isOn ? accentColor : mutedColor,
 							size: _scale(24),
 						),
@@ -514,7 +518,7 @@ class _SpeakerDeviceDetailState extends State<SpeakerDeviceDetail> {
 				crossAxisAlignment: CrossAxisAlignment.start,
 				children: [
 					MediaInfoCard(
-						icon: MdiIcons.speaker,
+						icon: MdiIcons.setTopBox,
 						iconColor: accentColor,
 						iconBgColor: _getAccentLightColor(isDark),
 						name: _device.name,
@@ -523,21 +527,21 @@ class _SpeakerDeviceDetailState extends State<SpeakerDeviceDetail> {
 						accentColor: accentColor,
 						scale: _scale,
 					),
-					if (_device.hasMediaPlayback) ...[
-						AppSpacings.spacingLgVertical,
-						_buildPlaybackCard(isDark),
-					],
 					AppSpacings.spacingLgVertical,
-					MediaVolumeCard(
-						volume: _effectiveVolume,
-						isMuted: _effectiveMuted,
-						hasMute: _device.hasSpeakerMute || _device.speakerChannel.hasActive,
-						isEnabled: _isOn,
-						accentColor: accentColor,
-						onVolumeChanged: _setVolume,
-						onMuteToggle: _toggleMute,
-						scale: _scale,
-					),
+					_buildPlaybackCard(isDark),
+					if (_device.hasSpeaker) ...[
+						AppSpacings.spacingLgVertical,
+						MediaVolumeCard(
+							volume: _effectiveVolume,
+							isMuted: _effectiveMuted,
+							hasMute: _device.hasSpeakerMute || (_device.speakerChannel?.hasActive ?? false),
+							isEnabled: _isOn,
+							accentColor: accentColor,
+							onVolumeChanged: _setVolume,
+							onMuteToggle: _toggleMute,
+							scale: _scale,
+						),
+					],
 					if (_device.mediaInputAvailableSources.isNotEmpty) ...[
 						AppSpacings.spacingLgVertical,
 						MediaSourceCard(
@@ -566,7 +570,7 @@ class _SpeakerDeviceDetailState extends State<SpeakerDeviceDetail> {
 				mainAxisAlignment: MainAxisAlignment.center,
 				children: [
 					MediaInfoCard(
-						icon: MdiIcons.speaker,
+						icon: MdiIcons.setTopBox,
 						iconColor: accentColor,
 						iconBgColor: _getAccentLightColor(isDark),
 						name: _device.name,
@@ -575,21 +579,21 @@ class _SpeakerDeviceDetailState extends State<SpeakerDeviceDetail> {
 						accentColor: accentColor,
 						scale: _scale,
 					),
-					if (_device.hasMediaPlayback) ...[
-						AppSpacings.spacingMdVertical,
-						_buildPlaybackCard(isDark),
-					],
 					AppSpacings.spacingMdVertical,
-					MediaVolumeCard(
-						volume: _effectiveVolume,
-						isMuted: _effectiveMuted,
-						hasMute: _device.hasSpeakerMute || _device.speakerChannel.hasActive,
-						isEnabled: _isOn,
-						accentColor: accentColor,
-						onVolumeChanged: _setVolume,
-						onMuteToggle: _toggleMute,
-						scale: _scale,
-					),
+					_buildPlaybackCard(isDark),
+					if (_device.hasSpeaker) ...[
+						AppSpacings.spacingMdVertical,
+						MediaVolumeCard(
+							volume: _effectiveVolume,
+							isMuted: _effectiveMuted,
+							hasMute: _device.hasSpeakerMute || (_device.speakerChannel?.hasActive ?? false),
+							isEnabled: _isOn,
+							accentColor: accentColor,
+							onVolumeChanged: _setVolume,
+							onMuteToggle: _toggleMute,
+							scale: _scale,
+						),
+					],
 				],
 			),
 			secondaryContent: Column(
@@ -611,7 +615,7 @@ class _SpeakerDeviceDetailState extends State<SpeakerDeviceDetail> {
 
 	Widget _buildPlaybackCard(bool isDark) {
 		final accentColor = _getAccentColor(isDark);
-		final positionProp = _device.mediaPlaybackChannel?.positionProp;
+		final positionProp = _device.mediaPlaybackChannel.positionProp;
 
 		return MediaPlaybackCard(
 			track: _device.isMediaPlaybackTrack,
