@@ -1873,13 +1873,13 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 
 		return Column(
 			crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: AppSpacings.pMd,
 			children: [
 				SectionTitle(
 					title: localizations.device_controls,
 					icon: MdiIcons.tuneVertical,
 				),
-				AppSpacings.spacingMdVertical,
-				...controls.expand((c) => [c, AppSpacings.spacingMdVertical]).toList()..removeLast(),
+				...controls,
 			],
 		);
 	}

@@ -290,6 +290,7 @@ class LightingPresetsPanel extends StatelessWidget {
     if (isLargeScreen) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: AppSpacings.pMd,
         mainAxisSize: MainAxisSize.min,
         children: [
           SectionTitle(
@@ -321,6 +322,7 @@ class LightingPresetsPanel extends StatelessWidget {
     // Small/medium: Column of fixed-height horizontal tiles
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: AppSpacings.pMd,
       mainAxisSize: MainAxisSize.min,
       children: [
         SectionTitle(
@@ -411,6 +413,7 @@ class LightingPresetsPanel extends StatelessWidget {
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: AppSpacings.pMd,
       mainAxisSize: MainAxisSize.min,
       children: [
         SectionTitle(
@@ -451,6 +454,7 @@ class LightingPresetsPanel extends StatelessWidget {
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: AppSpacings.pMd,
       mainAxisSize: MainAxisSize.min,
       children: [
         SectionTitle(

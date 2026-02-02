@@ -86,6 +86,26 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
   double _scale(double size) =>
       _screenService.scale(size, density: _visualDensityService.density);
 
+  static const List<String> _controlChannelIds = [
+    LightingConstants.brightnessChannelId,
+    LightingConstants.hueChannelId,
+    LightingConstants.saturationChannelId,
+    LightingConstants.temperatureChannelId,
+    LightingConstants.whiteChannelId,
+    LightingConstants.onOffChannelId,
+  ];
+
+  T? _tryLocator<T extends Object>(String debugLabel, {void Function(T)? onSuccess}) {
+    try {
+      final s = locator<T>();
+      onSuccess?.call(s);
+      return s;
+    } catch (e) {
+      if (kDebugMode) debugPrint('[LightRoleDetail] Failed to get $debugLabel: $e');
+      return null;
+    }
+  }
+
   // Domain control state service for optimistic UI (role-level)
   late DomainControlStateService<LightTargetView> _controlStateService;
 
@@ -169,37 +189,14 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
     );
     _controlStateService.addListener(_onRoleControlStateChanged);
 
-    try {
-      _spacesService = locator<SpacesService>();
-      _spacesService?.addListener(_onSpacesDataChanged);
-    } catch (e) {
-      if (kDebugMode) debugPrint('[LightRoleDetail] Failed to get SpacesService: $e');
-    }
-
-    try {
-      _devicesService = locator<DevicesService>();
-      _devicesService?.addListener(_onDevicesDataChanged);
-    } catch (e) {
-      if (kDebugMode) debugPrint('[LightRoleDetail] Failed to get DevicesService: $e');
-    }
-
+    _spacesService = _tryLocator<SpacesService>('SpacesService', onSuccess: (s) => s.addListener(_onSpacesDataChanged));
+    _devicesService = _tryLocator<DevicesService>('DevicesService', onSuccess: (s) => s.addListener(_onDevicesDataChanged));
     if (locator.isRegistered<IntentOverlayService>()) {
       _intentOverlayService = locator<IntentOverlayService>();
       _intentOverlayService?.addListener(_onIntentChanged);
     }
-
-    try {
-      _roleControlStateRepository = locator<RoleControlStateRepository>();
-    } catch (e) {
-      if (kDebugMode) debugPrint('[LightRoleDetail] Failed to get RoleControlStateRepository: $e');
-    }
-
-    try {
-      _deviceControlStateService = locator<DeviceControlStateService>();
-      _deviceControlStateService?.addListener(_onControlStateChanged);
-    } catch (e) {
-      if (kDebugMode) debugPrint('[LightRoleDetail] Failed to get DeviceControlStateService: $e');
-    }
+    _roleControlStateRepository = _tryLocator<RoleControlStateRepository>('RoleControlStateRepository');
+    _deviceControlStateService = _tryLocator<DeviceControlStateService>('DeviceControlStateService', onSuccess: (s) => s.addListener(_onControlStateChanged));
 
     // Load cached values
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -459,33 +456,9 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
     if (!mounted) return;
 
     final targets = _getTargets();
-
-    // Update intent lock status for all channels - this automatically
-    // detects unlocks and triggers settling via the control state service
-    _controlStateService.updateIntentLockStatus(
-      LightingConstants.brightnessChannelId,
-      targets,
-    );
-    _controlStateService.updateIntentLockStatus(
-      LightingConstants.hueChannelId,
-      targets,
-    );
-    _controlStateService.updateIntentLockStatus(
-      LightingConstants.saturationChannelId,
-      targets,
-    );
-    _controlStateService.updateIntentLockStatus(
-      LightingConstants.temperatureChannelId,
-      targets,
-    );
-    _controlStateService.updateIntentLockStatus(
-      LightingConstants.whiteChannelId,
-      targets,
-    );
-    _controlStateService.updateIntentLockStatus(
-      LightingConstants.onOffChannelId,
-      targets,
-    );
+    for (final channelId in _controlChannelIds) {
+      _controlStateService.updateIntentLockStatus(channelId, targets);
+    }
   }
 
   void _onSpacesDataChanged() {
@@ -500,30 +473,9 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
       }
 
       // Check convergence for all channels - the service handles state transitions
-      _controlStateService.checkConvergence(
-        LightingConstants.brightnessChannelId,
-        targets,
-      );
-      _controlStateService.checkConvergence(
-        LightingConstants.hueChannelId,
-        targets,
-      );
-      _controlStateService.checkConvergence(
-        LightingConstants.saturationChannelId,
-        targets,
-      );
-      _controlStateService.checkConvergence(
-        LightingConstants.temperatureChannelId,
-        targets,
-      );
-      _controlStateService.checkConvergence(
-        LightingConstants.whiteChannelId,
-        targets,
-      );
-      _controlStateService.checkConvergence(
-        LightingConstants.onOffChannelId,
-        targets,
-      );
+      for (final channelId in _controlChannelIds) {
+        _controlStateService.checkConvergence(channelId, targets);
+      }
 
       _updateCacheIfSynced(targets);
       setState(() {});

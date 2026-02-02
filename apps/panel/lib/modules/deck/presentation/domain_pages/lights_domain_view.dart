@@ -253,6 +253,17 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
   String get _roomId => widget.viewItem.roomId;
 
+  T? _tryLocator<T extends Object>(String debugLabel, {void Function(T)? onSuccess}) {
+    try {
+      final s = locator<T>();
+      onSuccess?.call(s);
+      return s;
+    } catch (e) {
+      if (kDebugMode) debugPrint('[LightsDomainView] Failed to get $debugLabel: $e');
+      return null;
+    }
+  }
+
   /// Get lighting state from backend (cached)
   LightingStateModel? get _lightingState =>
       _spacesService?.getLightingState(_roomId);
@@ -433,55 +444,16 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     );
     _roleControlStateService.addListener(_onControlStateChanged);
 
-    try {
-      _spacesService = locator<SpacesService>();
-      _spacesService?.addListener(_onDataChanged);
-    } catch (e) {
-      if (kDebugMode) debugPrint('[LightsDomainView] Failed to get SpacesService: $e');
-    }
-
-    try {
-      _devicesService = locator<DevicesService>();
-      _devicesService?.addListener(_onDataChanged);
-    } catch (e) {
-      if (kDebugMode) debugPrint('[LightsDomainView] Failed to get DevicesService: $e');
-    }
-
-    try {
-      _scenesService = locator<ScenesService>();
-      _scenesService?.addListener(_onDataChanged);
-    } catch (e) {
-      if (kDebugMode) debugPrint('[LightsDomainView] Failed to get ScenesService: $e');
-    }
-
-    try {
-      _deckService = locator<DeckService>();
-    } catch (e) {
-      if (kDebugMode) debugPrint('[LightsDomainView] Failed to get DeckService: $e');
-    }
-
-    try {
-      _eventBus = locator<EventBus>();
-    } catch (e) {
-      if (kDebugMode) debugPrint('[LightsDomainView] Failed to get EventBus: $e');
-    }
-
-    try {
-      _intentsRepository = locator<IntentsRepository>();
-      _intentsRepository?.addListener(_onIntentChanged);
-    } catch (e) {
-      if (kDebugMode) debugPrint('[LightsDomainView] Failed to get IntentsRepository: $e');
-    }
-
+    _spacesService = _tryLocator<SpacesService>('SpacesService', onSuccess: (s) => s.addListener(_onDataChanged));
+    _devicesService = _tryLocator<DevicesService>('DevicesService', onSuccess: (s) => s.addListener(_onDataChanged));
+    _scenesService = _tryLocator<ScenesService>('ScenesService', onSuccess: (s) => s.addListener(_onDataChanged));
+    _deckService = _tryLocator<DeckService>('DeckService');
+    _eventBus = _tryLocator<EventBus>('EventBus');
+    _intentsRepository = _tryLocator<IntentsRepository>('IntentsRepository', onSuccess: (s) => s.addListener(_onIntentChanged));
     if (locator.isRegistered<IntentOverlayService>()) {
       _intentOverlayService = locator<IntentOverlayService>();
     }
-
-    try {
-      _deviceControlStateService = locator<DeviceControlStateService>();
-    } catch (e) {
-      if (kDebugMode) debugPrint('[LightsDomainView] Failed to get DeviceControlStateService: $e');
-    }
+    _deviceControlStateService = _tryLocator<DeviceControlStateService>('DeviceControlStateService');
 
     // Fetch light targets for this space
     _fetchLightTargets();
@@ -873,6 +845,25 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     return roles;
   }
 
+  bool _getLightOptimisticOn(
+    String deviceId,
+    String channelId,
+    String propertyId,
+    bool fallback,
+  ) {
+    if (_deviceControlStateService != null &&
+        _deviceControlStateService!.isLocked(deviceId, channelId, propertyId)) {
+      final v = _deviceControlStateService!.getDesiredValue(deviceId, channelId, propertyId);
+      if (v is bool) return v;
+    }
+    if (_intentOverlayService != null &&
+        _intentOverlayService!.isLocked(deviceId, channelId, propertyId)) {
+      final v = _intentOverlayService!.getOverlayValue(deviceId, channelId, propertyId);
+      if (v is bool) return v;
+    }
+    return fallback;
+  }
+
   List<LightDeviceData> _buildOtherLights(
     List<LightTargetView> targets,
     DevicesService devicesService,
@@ -888,36 +879,12 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         (c) => c.id == target.channelId,
         orElse: () => device.lightChannels.first,
       );
-
-      // Use DeviceControlStateService first for optimistic UI (most reliable)
-      // Fall back to IntentOverlayService, then actual device state
-      bool isOn = channel.on;
-      final controlStateService = _deviceControlStateService;
-      final onProp = channel.onProp;
-
-      if (controlStateService != null &&
-          controlStateService.isLocked(target.deviceId, target.channelId, onProp.id)) {
-        // Use desired value from control state service (immediate, no listener delay)
-        final desiredValue = controlStateService.getDesiredValue(
-          target.deviceId,
-          target.channelId,
-          onProp.id,
-        );
-        if (desiredValue is bool) {
-          isOn = desiredValue;
-        }
-      } else if (_intentOverlayService != null &&
-          _intentOverlayService!.isLocked(target.deviceId, target.channelId, onProp.id)) {
-        // Fall back to intent overlay service
-        final overlayValue = _intentOverlayService!.getOverlayValue(
-          target.deviceId,
-          target.channelId,
-          onProp.id,
-        );
-        if (overlayValue is bool) {
-          isOn = overlayValue;
-        }
-      }
+      final isOn = _getLightOptimisticOn(
+        target.deviceId,
+        target.channelId,
+        channel.onProp.id,
+        channel.on,
+      );
 
       LightState state;
       if (!device.isOnline) {
@@ -1071,6 +1038,31 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     }
   }
 
+  LightingModeUI? _toLightingModeUI(LightingMode? mode) {
+    if (mode == null) return null;
+    return LightingModeUI.values.firstWhere(
+      (m) => m.name == mode.name,
+      orElse: () => LightingModeUI.off,
+    );
+  }
+
+  (LightingModeUI? activeValue, LightingModeUI? matchedValue, LightingModeUI? lastIntentValue)
+      _getLightingModeSelectorValues() {
+    final mode = _currentMode;
+    if (_modeControlStateService.isLocked(LightingConstants.modeChannelId)) {
+      return (mode, null, null);
+    }
+    final detectedMode = _lightingState?.detectedMode;
+    final lastAppliedMode = _lightingState?.lastAppliedMode;
+    final isModeFromIntent = _lightingState?.isModeFromIntent ?? false;
+    final detectedModeUI = _toLightingModeUI(detectedMode);
+    final lastAppliedModeUI = _toLightingModeUI(lastAppliedMode);
+    if (detectedModeUI != null && isModeFromIntent) return (detectedModeUI, null, null);
+    if (detectedModeUI != null && !isModeFromIntent) return (null, detectedModeUI, null);
+    if (lastAppliedModeUI != null) return (null, null, lastAppliedModeUI);
+    return (mode == LightingModeUI.off ? LightingModeUI.off : null, null, null);
+  }
+
   // --------------------------------------------------------------------------
   // PORTRAIT LAYOUT
   // --------------------------------------------------------------------------
@@ -1096,6 +1088,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     return PortraitViewLayout(
       content: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: AppSpacings.pMd,
         children: [
           // Roles Grid
           if (hasRoles)
@@ -1103,7 +1096,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
           // Quick Scenes Section
           if (hasScenes) ...[
-            if (hasRoles) AppSpacings.spacingLgVertical,
             SectionTitle(
                 title: localizations.space_scenes_title,
                 icon: MdiIcons.autoFix),
@@ -1122,7 +1114,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
           // Other Lights Section
           if (hasOtherLights) ...[
-            if (hasRoles || hasScenes) AppSpacings.spacingLgVertical,
             _buildOtherLightsTitle(otherLights, otherTargets, localizations),
             _buildLightsGrid(
               context,
@@ -1148,63 +1139,8 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   /// generic mode selection UI, while this view handles the domain logic.
   Widget _buildModeSelector(BuildContext context, AppLocalizations localizations) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final mode = _currentMode;
+    final (activeValue, matchedValue, lastIntentValue) = _getLightingModeSelectorValues();
     final isModeLocked = _modeControlStateService.isLocked(LightingConstants.modeChannelId);
-
-    // Determine activeValue, matchedValue, and lastIntentValue based on state:
-    // - activeValue: mode explicitly set by intent AND still matches (2px border, mode color)
-    // - matchedValue: mode detected by user manually setting devices (1px border, mode color)
-    // - lastIntentValue: last applied intent when no mode matches (1px border, neutral color)
-    final LightingModeUI? activeValue;
-    final LightingModeUI? matchedValue;
-    final LightingModeUI? lastIntentValue;
-
-    if (isModeLocked) {
-      // Optimistic UI: show pending mode as active
-      activeValue = mode;
-      matchedValue = null;
-      lastIntentValue = null;
-    } else {
-      final detectedMode = _lightingState?.detectedMode;
-      final lastAppliedMode = _lightingState?.lastAppliedMode;
-      final isModeFromIntent = _lightingState?.isModeFromIntent ?? false;
-
-      // Convert backend LightingMode to UI LightingModeUI
-      final LightingModeUI? detectedModeUI = detectedMode != null
-          ? LightingModeUI.values.firstWhere(
-              (m) => m.name == detectedMode.name,
-              orElse: () => LightingModeUI.off,
-            )
-          : null;
-      final LightingModeUI? lastAppliedModeUI = lastAppliedMode != null
-          ? LightingModeUI.values.firstWhere(
-              (m) => m.name == lastAppliedMode.name,
-              orElse: () => LightingModeUI.off,
-            )
-          : null;
-
-      if (detectedModeUI != null && isModeFromIntent) {
-        // Mode was set by intent and still matches: show as active
-        activeValue = detectedModeUI;
-        matchedValue = null;
-        lastIntentValue = null;
-      } else if (detectedModeUI != null && !isModeFromIntent) {
-        // Mode detected but not from intent (user manually matched): show as matched
-        activeValue = null;
-        matchedValue = detectedModeUI;
-        lastIntentValue = null;
-      } else if (lastAppliedModeUI != null) {
-        // No mode matches, but we have a last applied intent: show as last intent
-        activeValue = null;
-        matchedValue = null;
-        lastIntentValue = lastAppliedModeUI;
-      } else {
-        // No mode at all - check if all lights are off
-        activeValue = mode == LightingModeUI.off ? LightingModeUI.off : null;
-        matchedValue = null;
-        lastIntentValue = null;
-      }
-    }
 
     return Container(
       padding: AppSpacings.paddingMd,
@@ -1344,6 +1280,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: AppSpacings.pMd,
       children: [
         SectionTitle(
           title: localizations.space_scenes_title,
@@ -1358,9 +1295,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   /// Large screens: 2 vertical tiles per row (square).
   /// Small/medium screens: Column of fixed-height horizontal tiles.
   Widget _buildLandscapeScenesCard(BuildContext context) {
-    final bool isLight = Theme.of(context).brightness == Brightness.light;
-    final primaryColor =
-        isLight ? AppColorsLight.primary : AppColorsDark.primary;
     final isLargeScreen = _screenService.isLargeScreen;
     final scenes = _lightingScenes;
 
@@ -1412,63 +1346,8 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     AppLocalizations localizations, {
     bool showLabels = false,
   }) {
-    final mode = _currentMode;
+    final (activeValue, matchedValue, lastIntentValue) = _getLightingModeSelectorValues();
     final isModeLocked = _modeControlStateService.isLocked(LightingConstants.modeChannelId);
-
-    // Determine activeValue, matchedValue, and lastIntentValue based on state:
-    // - activeValue: mode explicitly set by intent AND still matches (2px border, mode color)
-    // - matchedValue: mode detected by user manually setting devices (1px border, mode color)
-    // - lastIntentValue: last applied intent when no mode matches (1px border, neutral color)
-    final LightingModeUI? activeValue;
-    final LightingModeUI? matchedValue;
-    final LightingModeUI? lastIntentValue;
-
-    if (isModeLocked) {
-      // Optimistic UI: show pending mode as active
-      activeValue = mode;
-      matchedValue = null;
-      lastIntentValue = null;
-    } else {
-      final detectedMode = _lightingState?.detectedMode;
-      final lastAppliedMode = _lightingState?.lastAppliedMode;
-      final isModeFromIntent = _lightingState?.isModeFromIntent ?? false;
-
-      // Convert backend LightingMode to UI LightingModeUI
-      final LightingModeUI? detectedModeUI = detectedMode != null
-          ? LightingModeUI.values.firstWhere(
-              (m) => m.name == detectedMode.name,
-              orElse: () => LightingModeUI.off,
-            )
-          : null;
-      final LightingModeUI? lastAppliedModeUI = lastAppliedMode != null
-          ? LightingModeUI.values.firstWhere(
-              (m) => m.name == lastAppliedMode.name,
-              orElse: () => LightingModeUI.off,
-            )
-          : null;
-
-      if (detectedModeUI != null && isModeFromIntent) {
-        // Mode was set by intent and still matches: show as active
-        activeValue = detectedModeUI;
-        matchedValue = null;
-        lastIntentValue = null;
-      } else if (detectedModeUI != null && !isModeFromIntent) {
-        // Mode detected but not from intent (user manually matched): show as matched
-        activeValue = null;
-        matchedValue = detectedModeUI;
-        lastIntentValue = null;
-      } else if (lastAppliedModeUI != null) {
-        // No mode matches, but we have a last applied intent: show as last intent
-        activeValue = null;
-        matchedValue = null;
-        lastIntentValue = lastAppliedModeUI;
-      } else {
-        // No mode at all - check if all lights are off
-        activeValue = mode == LightingModeUI.off ? LightingModeUI.off : null;
-        matchedValue = null;
-        lastIntentValue = null;
-      }
-    }
 
     return IgnorePointer(
       ignoring: isModeLocked,
