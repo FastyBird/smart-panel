@@ -98,34 +98,32 @@ class _TelevisionDeviceDetailState extends State<TelevisionDeviceDetail> {
 		}
 
 		final speakerChannel = _device.speakerChannel;
-		if (speakerChannel != null) {
-			final volumeProp = speakerChannel.volumeProp;
-			if (volumeProp != null) {
-				controlState.checkPropertyConvergence(
-					_device.id,
-					speakerChannel.id,
-					volumeProp.id,
-					speakerChannel.volume,
-					tolerance: 1.0,
-				);
-			}
+		final volumeProp = speakerChannel.volumeProp;
+		if (volumeProp != null) {
+			controlState.checkPropertyConvergence(
+				_device.id,
+				speakerChannel.id,
+				volumeProp.id,
+				speakerChannel.volume,
+				tolerance: 1.0,
+			);
+		}
 
-			if (speakerChannel.hasMute) {
-				final muteProp = speakerChannel.muteProp!;
-				controlState.checkPropertyConvergence(
-					_device.id,
-					speakerChannel.id,
-					muteProp.id,
-					speakerChannel.isMuted,
-				);
-			} else if (speakerChannel.hasActive) {
-				controlState.checkPropertyConvergence(
-					_device.id,
-					speakerChannel.id,
-					speakerChannel.activeProp.id,
-					speakerChannel.isActive,
-				);
-			}
+		if (speakerChannel.hasMute) {
+			final muteProp = speakerChannel.muteProp!;
+			controlState.checkPropertyConvergence(
+				_device.id,
+				speakerChannel.id,
+				muteProp.id,
+				speakerChannel.isMuted,
+			);
+		} else if (speakerChannel.hasActive) {
+			controlState.checkPropertyConvergence(
+				_device.id,
+				speakerChannel.id,
+				speakerChannel.activeProp.id,
+				speakerChannel.isActive,
+			);
 		}
 	}
 
@@ -216,8 +214,8 @@ class _TelevisionDeviceDetailState extends State<TelevisionDeviceDetail> {
 
 	void _setVolume(int volume) {
 		final speakerChannel = _device.speakerChannel;
-		final prop = speakerChannel?.volumeProp;
-		if (speakerChannel == null || prop == null) return;
+		final prop = speakerChannel.volumeProp;
+		if (prop == null) return;
 
 		final clamped = volume.clamp(_device.speakerMinVolume, _device.speakerMaxVolume);
 
@@ -264,10 +262,10 @@ class _TelevisionDeviceDetailState extends State<TelevisionDeviceDetail> {
 
 	int get _effectiveVolume {
 		final speakerChannel = _device.speakerChannel;
-		final prop = speakerChannel?.volumeProp;
+		final prop = speakerChannel.volumeProp;
 		final controlState = _deviceControlStateService;
 
-		if (controlState != null && speakerChannel != null && prop != null &&
+		if (controlState != null && prop != null &&
 			controlState.isLocked(_device.id, speakerChannel.id, prop.id)) {
 			final desired = controlState.getDesiredValue(_device.id, speakerChannel.id, prop.id);
 			if (desired is num) return desired.toInt();
@@ -278,7 +276,6 @@ class _TelevisionDeviceDetailState extends State<TelevisionDeviceDetail> {
 
 	void _toggleMute() {
 		final speakerChannel = _device.speakerChannel;
-		if (speakerChannel == null) return;
 
 		if (speakerChannel.hasMute) {
 			final prop = speakerChannel.muteProp!;
@@ -337,7 +334,7 @@ class _TelevisionDeviceDetailState extends State<TelevisionDeviceDetail> {
 		final speakerChannel = _device.speakerChannel;
 		final controlState = _deviceControlStateService;
 
-		if (speakerChannel != null && controlState != null) {
+		if (controlState != null) {
 			if (speakerChannel.hasMute) {
 				final prop = speakerChannel.muteProp!;
 				if (controlState.isLocked(_device.id, speakerChannel.id, prop.id)) {
@@ -543,7 +540,7 @@ class _TelevisionDeviceDetailState extends State<TelevisionDeviceDetail> {
 						MediaVolumeCard(
 							volume: _effectiveVolume,
 							isMuted: _effectiveMuted,
-							hasMute: _device.hasSpeakerMute || (_device.speakerChannel?.hasActive ?? false),
+							hasMute: _device.hasSpeakerMute || _device.speakerChannel.hasActive,
 							isEnabled: _device.isTelevisionOn,
 							accentColor: accentColor,
 							onVolumeChanged: _setVolume,
@@ -613,7 +610,7 @@ class _TelevisionDeviceDetailState extends State<TelevisionDeviceDetail> {
 						MediaVolumeCard(
 							volume: _effectiveVolume,
 							isMuted: _effectiveMuted,
-							hasMute: _device.hasSpeakerMute || (_device.speakerChannel?.hasActive ?? false),
+							hasMute: _device.hasSpeakerMute || _device.speakerChannel.hasActive,
 							isEnabled: _device.isTelevisionOn,
 							accentColor: accentColor,
 							onVolumeChanged: _setVolume,
