@@ -360,7 +360,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
             ),
             decoration: BoxDecoration(
               color: primaryBgColor,
-              borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+              borderRadius: BorderRadius.circular(AppBorderRadius.base),
             ),
             child: Icon(
               MdiIcons.blindsHorizontal,
@@ -467,7 +467,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     return Container(
       decoration: BoxDecoration(
         color: cardColor,
-        borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+        borderRadius: BorderRadius.circular(AppBorderRadius.base),
         border: isLight ? Border.all(color: borderColor) : null,
       ),
       child: LayoutBuilder(
@@ -1144,7 +1144,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
       padding: AppSpacings.paddingLg,
       decoration: BoxDecoration(
         color: isLight ? AppFillColorLight.light : AppFillColorDark.light,
-        borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+        borderRadius: BorderRadius.circular(AppBorderRadius.base),
         border: isLight ? Border.all(color: AppBorderColorLight.base) : null,
       ),
       child: Column(
@@ -1210,7 +1210,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
                   color: isLight
                       ? AppColors.white.withValues(alpha: 0.9)
                       : AppColors.black.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(AppBorderRadius.small),
+                  borderRadius: BorderRadius.circular(AppBorderRadius.base),
                 ),
                 child: Text(
                   localizations!.window_covering_position_open_percent(_position),
@@ -1951,7 +1951,7 @@ class _TiltSlider extends StatelessWidget {
       ),
       decoration: BoxDecoration(
         color: cardColor,
-        borderRadius: BorderRadius.circular(AppBorderRadius.round),
+        borderRadius: BorderRadius.circular(AppBorderRadius.base),
         border: Border.all(
           color: borderColor,
           width: screenService.scale(1, density: visualDensityService.density),

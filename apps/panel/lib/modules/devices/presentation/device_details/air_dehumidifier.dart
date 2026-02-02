@@ -481,7 +481,7 @@ class _AirDehumidifierDeviceDetailState
                   : (isDark
                       ? AppFillColorDark.darker
                       : AppFillColorLight.darker),
-              borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+              borderRadius: BorderRadius.circular(AppBorderRadius.base),
             ),
             child: Icon(
               MdiIcons.waterOutline,
@@ -503,7 +503,7 @@ class _AirDehumidifierDeviceDetailState
                 : (isDark
                     ? AppFillColorDark.light
                     : AppFillColorLight.light),
-            borderRadius: BorderRadius.circular(AppBorderRadius.round),
+            borderRadius: BorderRadius.circular(AppBorderRadius.base),
             border: (!isOn && !isDark)
                 ? Border.all(color: AppBorderColorLight.base, width: _scale(1))
                 : null,
@@ -574,7 +574,7 @@ class _AirDehumidifierDeviceDetailState
       padding: AppSpacings.paddingLg,
       decoration: BoxDecoration(
         color: cardColor,
-        borderRadius: BorderRadius.circular(AppBorderRadius.round),
+        borderRadius: BorderRadius.circular(AppBorderRadius.base),
         border: Border.all(color: controlBorderColor, width: _scale(1)),
       ),
       child: Column(
@@ -604,7 +604,7 @@ class _AirDehumidifierDeviceDetailState
       padding: AppSpacings.paddingLg,
       decoration: BoxDecoration(
         color: cardColor,
-        borderRadius: BorderRadius.circular(AppBorderRadius.round),
+        borderRadius: BorderRadius.circular(AppBorderRadius.base),
         border: Border.all(color: controlBorderColor, width: _scale(1)),
       ),
       child: LayoutBuilder(
@@ -708,7 +708,7 @@ class _AirDehumidifierDeviceDetailState
             padding: AppSpacings.paddingLg,
             decoration: BoxDecoration(
               color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
-              borderRadius: BorderRadius.circular(AppBorderRadius.round),
+              borderRadius: BorderRadius.circular(AppBorderRadius.base),
               border: Border.all(color: controlBorderColor, width: _scale(1)),
             ),
             child: Column(

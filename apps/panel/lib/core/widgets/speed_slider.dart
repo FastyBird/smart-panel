@@ -148,7 +148,7 @@ class _SpeedSliderState extends State<SpeedSlider> {
         ),
         decoration: BoxDecoration(
           color: cardColor,
-          borderRadius: BorderRadius.circular(AppBorderRadius.round),
+          borderRadius: BorderRadius.circular(AppBorderRadius.base),
           border: Border.all(color: borderColor, width: _scale(1)),
         ),
         child: Column(

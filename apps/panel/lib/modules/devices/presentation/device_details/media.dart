@@ -465,7 +465,7 @@ class _MediaDeviceDetailState extends State<MediaDeviceDetail> {
 							color: isOn
 								? _getAccentLightColor(isDark)
 								: (isDark ? AppFillColorDark.darker : AppFillColorLight.darker),
-							borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+							borderRadius: BorderRadius.circular(AppBorderRadius.base),
 						),
 						child: Icon(
 							MdiIcons.musicNote,
@@ -486,7 +486,7 @@ class _MediaDeviceDetailState extends State<MediaDeviceDetail> {
 							color: isOn
 								? accentColor
 								: (isDark ? AppFillColorDark.light : AppFillColorLight.light),
-							borderRadius: BorderRadius.circular(AppBorderRadius.round),
+							borderRadius: BorderRadius.circular(AppBorderRadius.base),
 							border: (!isOn && !isDark)
 								? Border.all(color: AppBorderColorLight.base, width: _scale(1))
 								: null,

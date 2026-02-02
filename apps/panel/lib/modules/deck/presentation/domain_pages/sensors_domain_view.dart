@@ -916,7 +916,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
       margin: EdgeInsets.only(bottom: AppSpacings.pLg),
       decoration: BoxDecoration(
         color: dangerColor.withValues(alpha: isDark ? 0.15 : 0.1),
-        borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+        borderRadius: BorderRadius.circular(AppBorderRadius.base),
         border: Border.all(color: dangerColor.withValues(alpha: 0.3), width: 1),
       ),
       child: Row(
@@ -1095,7 +1095,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
       padding: AppSpacings.paddingMd,
       decoration: BoxDecoration(
         color: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
-        borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+        borderRadius: BorderRadius.circular(AppBorderRadius.base),
         border: Border.all(
           color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light,
           width: 1,
@@ -1225,7 +1225,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
           color: isAlert
               ? dangerColor.withValues(alpha: isDark ? 0.15 : 0.1)
               : (isDark ? AppFillColorDark.light : AppFillColorLight.blank),
-          borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+          borderRadius: BorderRadius.circular(AppBorderRadius.base),
           border: Border.all(
             color: isAlert
                 ? dangerColor
@@ -1987,7 +1987,7 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
         padding: AppSpacings.paddingMd,
         decoration: BoxDecoration(
           color: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
-          borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+          borderRadius: BorderRadius.circular(AppBorderRadius.base),
           border: Border.all(
             color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light,
             width: 1,

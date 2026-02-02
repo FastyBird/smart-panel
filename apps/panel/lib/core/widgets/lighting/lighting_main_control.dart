@@ -443,7 +443,7 @@ class _SliderPanel extends StatelessWidget {
       padding: EdgeInsets.all(AppSpacings.pSm),
       decoration: BoxDecoration(
         color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
-        borderRadius: BorderRadius.circular(AppBorderRadius.round),
+        borderRadius: BorderRadius.circular(AppBorderRadius.base),
         border: isDark
             ? null
             : Border.all(
@@ -658,7 +658,7 @@ class _SliderPanel extends StatelessWidget {
           height: _scale(20),
           decoration: BoxDecoration(
             color: thumbColor,
-            borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+            borderRadius: BorderRadius.circular(AppBorderRadius.base),
           ),
         ),
       ),
@@ -735,7 +735,7 @@ class _ColorPanel extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: color,
-        borderRadius: BorderRadius.circular(AppBorderRadius.round),
+        borderRadius: BorderRadius.circular(AppBorderRadius.base),
         boxShadow: [
           BoxShadow(
             color: color.withValues(alpha: 0.4),
@@ -1015,7 +1015,7 @@ class _ColorPanel extends StatelessWidget {
           height: _scale(20),
           decoration: BoxDecoration(
             color: color,
-            borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+            borderRadius: BorderRadius.circular(AppBorderRadius.base),
           ),
         ),
       ),

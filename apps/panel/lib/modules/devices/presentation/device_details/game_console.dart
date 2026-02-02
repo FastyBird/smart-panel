@@ -233,7 +233,7 @@ class _GameConsoleDeviceDetailState extends State<GameConsoleDeviceDetail> {
 							color: isOn
 								? _getAccentLightColor(isDark)
 								: (isDark ? AppFillColorDark.darker : AppFillColorLight.darker),
-							borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+							borderRadius: BorderRadius.circular(AppBorderRadius.base),
 						),
 						child: Icon(
 							MdiIcons.gamepadVariant,
@@ -254,7 +254,7 @@ class _GameConsoleDeviceDetailState extends State<GameConsoleDeviceDetail> {
 							color: isOn
 								? accentColor
 								: (isDark ? AppFillColorDark.light : AppFillColorLight.light),
-							borderRadius: BorderRadius.circular(AppBorderRadius.round),
+							borderRadius: BorderRadius.circular(AppBorderRadius.base),
 							border: (!isOn && !isDark)
 								? Border.all(color: AppBorderColorLight.base, width: _scale(1))
 								: null,

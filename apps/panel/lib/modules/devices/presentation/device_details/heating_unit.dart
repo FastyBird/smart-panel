@@ -463,7 +463,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
                   : (isDark
                       ? AppFillColorDark.darker
                       : AppFillColorLight.darker),
-              borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+              borderRadius: BorderRadius.circular(AppBorderRadius.base),
             ),
             child: Icon(
               MdiIcons.radiator,
@@ -700,7 +700,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
       padding: AppSpacings.paddingLg,
       decoration: BoxDecoration(
         color: cardColor,
-        borderRadius: BorderRadius.circular(AppBorderRadius.round),
+        borderRadius: BorderRadius.circular(AppBorderRadius.base),
         border: Border.all(color: borderColor, width: _scale(1)),
       ),
       child: Column(
@@ -749,7 +749,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
       padding: AppSpacings.paddingLg,
       decoration: BoxDecoration(
         color: cardColor,
-        borderRadius: BorderRadius.circular(AppBorderRadius.round),
+        borderRadius: BorderRadius.circular(AppBorderRadius.base),
         border: Border.all(color: borderColor, width: _scale(1)),
       ),
       child: LayoutBuilder(

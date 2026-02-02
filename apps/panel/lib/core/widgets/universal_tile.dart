@@ -123,7 +123,7 @@ class UniversalTile extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+          borderRadius: BorderRadius.circular(AppBorderRadius.base),
           border: Border.all(
             color: colors.outerBorderColor,
             width: colors.borderWidth,
@@ -143,7 +143,7 @@ class UniversalTile extends StatelessWidget {
           decoration: BoxDecoration(
             color: colors.tileBgColor,
             borderRadius: BorderRadius.circular(
-              AppBorderRadius.medium - colors.borderWidth,
+              AppBorderRadius.base - colors.borderWidth,
             ),
             border: showDoubleBorder
                 ? Border.all(
@@ -259,7 +259,7 @@ class UniversalTile extends StatelessWidget {
         ),
         decoration: BoxDecoration(
           color: colors.tileBgColor,
-          borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+          borderRadius: BorderRadius.circular(AppBorderRadius.base),
           border: Border.all(
             color: colors.outerBorderColor,
             width: colors.borderWidth,

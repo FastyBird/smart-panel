@@ -660,7 +660,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
       padding: AppSpacings.paddingMd,
       decoration: BoxDecoration(
         color: isLight ? AppFillColorLight.light : AppFillColorDark.light,
-        borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+        borderRadius: BorderRadius.circular(AppBorderRadius.base),
         border: isLight
             ? Border.all(color: AppBorderColorLight.base)
             : null,
@@ -1076,7 +1076,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
       padding: AppSpacings.paddingMd,
       decoration: BoxDecoration(
         color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
-        borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+        borderRadius: BorderRadius.circular(AppBorderRadius.base),
         border: Border.all(
           color: isDark ? AppFillColorDark.light : AppBorderColorLight.light,
           width: 1,

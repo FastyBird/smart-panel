@@ -129,7 +129,7 @@ class ValueSelectorRow<T> extends StatelessWidget {
 
     return Material(
       color: cardColor,
-      borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+      borderRadius: BorderRadius.circular(AppBorderRadius.base),
       child: InkWell(
         onTap: onChanged != null
             ? () {
@@ -137,7 +137,7 @@ class ValueSelectorRow<T> extends StatelessWidget {
                 _showSelectorSheet(context, isDark);
               }
             : null,
-        borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+        borderRadius: BorderRadius.circular(AppBorderRadius.base),
         child: Container(
           padding: EdgeInsets.symmetric(
             horizontal: AppSpacings.pMd,
@@ -146,7 +146,7 @@ class ValueSelectorRow<T> extends StatelessWidget {
                 : AppSpacings.pMd,
           ),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+            borderRadius: BorderRadius.circular(AppBorderRadius.base),
             border: Border.all(
               color: borderColor,
               width: _scale(1),
@@ -561,7 +561,7 @@ class _ValueSelectorSheetState<T> extends State<ValueSelectorSheet<T>> {
                       padding: EdgeInsets.symmetric(vertical: AppSpacings.pMd),
                       shape: RoundedRectangleBorder(
                         borderRadius:
-                            BorderRadius.circular(AppBorderRadius.medium),
+                            BorderRadius.circular(AppBorderRadius.base),
                       ),
                     ),
                     child: Text(

@@ -780,7 +780,7 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
         ),
         decoration: BoxDecoration(
           color: isDark ? AppFillColorDark.light : AppFillColorLight.darker,
-          borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+          borderRadius: BorderRadius.circular(AppBorderRadius.base),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -1021,7 +1021,7 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
       padding: AppSpacings.paddingLg,
       decoration: BoxDecoration(
         color: cardColor,
-        borderRadius: BorderRadius.circular(AppBorderRadius.round),
+        borderRadius: BorderRadius.circular(AppBorderRadius.base),
         border: Border.all(color: borderColor, width: _scale(1)),
       ),
       child: Column(
@@ -1116,7 +1116,7 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
       padding: AppSpacings.paddingLg,
       decoration: BoxDecoration(
         color: cardColor,
-        borderRadius: BorderRadius.circular(AppBorderRadius.round),
+        borderRadius: BorderRadius.circular(AppBorderRadius.base),
         border: Border.all(color: borderColor, width: _scale(1)),
       ),
       child: LayoutBuilder(

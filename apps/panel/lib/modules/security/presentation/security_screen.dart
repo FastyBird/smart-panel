@@ -526,7 +526,7 @@ class SecurityScreen extends StatelessWidget {
 			padding: EdgeInsets.all(AppSpacings.pLg),
 			decoration: BoxDecoration(
 				color: SystemPagesTheme.card(isDark),
-				borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+				borderRadius: BorderRadius.circular(AppBorderRadius.base),
 			),
 			child: Column(
 				crossAxisAlignment: CrossAxisAlignment.start,
@@ -748,7 +748,7 @@ class SecurityScreen extends StatelessWidget {
 			padding: EdgeInsets.all(AppSpacings.pLg),
 			decoration: BoxDecoration(
 				color: SystemPagesTheme.card(isDark),
-				borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+				borderRadius: BorderRadius.circular(AppBorderRadius.base),
 				border: isTriggered
 					? Border.all(
 						color: SystemPagesTheme.error(isDark),

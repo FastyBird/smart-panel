@@ -287,7 +287,7 @@ class LightingChannelsList extends StatelessWidget {
             decoration: BoxDecoration(
               color: stateColor?.withValues(alpha: 0.2) ??
                   (isDark ? AppFillColorDark.light : AppFillColorLight.light),
-              borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+              borderRadius: BorderRadius.circular(AppBorderRadius.base),
             ),
             child: Text(
               '${channels.length}',
@@ -312,7 +312,7 @@ class LightingChannelsList extends StatelessWidget {
                 ),
                 decoration: BoxDecoration(
                   color: stateColor,
-                  borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+                  borderRadius: BorderRadius.circular(AppBorderRadius.base),
                 ),
                 child: Text(
                   state == LightingState.mixed

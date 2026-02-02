@@ -626,7 +626,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
                   : (isDark
                       ? AppFillColorDark.darker
                       : AppFillColorLight.darker),
-              borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+              borderRadius: BorderRadius.circular(AppBorderRadius.base),
             ),
             child: Icon(
               MdiIcons.airFilter,
@@ -687,7 +687,6 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
     final controlsSection = _buildFanOptionsSection(localizations, isDark, airColor, false);
 
     return DeviceDetailPortraitLayout(
-      contentPadding: AppSpacings.paddingMd,
       content: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -730,7 +729,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
       padding: AppSpacings.paddingLg,
       decoration: BoxDecoration(
         color: cardColor,
-        borderRadius: BorderRadius.circular(AppBorderRadius.round),
+        borderRadius: BorderRadius.circular(AppBorderRadius.base),
         border: Border.all(color: borderColor, width: _scale(1)),
       ),
       child: Column(
@@ -941,7 +940,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
       padding: AppSpacings.paddingLg,
       decoration: BoxDecoration(
         color: cardColor,
-        borderRadius: BorderRadius.circular(AppBorderRadius.round),
+        borderRadius: BorderRadius.circular(AppBorderRadius.base),
         border: Border.all(color: borderColor, width: _scale(1)),
       ),
       child: LayoutBuilder(

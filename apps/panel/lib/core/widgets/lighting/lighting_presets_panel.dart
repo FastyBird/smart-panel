@@ -496,7 +496,7 @@ class LightingPresetsPanel extends StatelessWidget {
                 height: swatchHeight,
                 decoration: BoxDecoration(
                   color: presetColor,
-                  borderRadius: BorderRadius.circular(AppBorderRadius.small),
+                  borderRadius: BorderRadius.circular(AppBorderRadius.base),
                   border: Border.all(
                     color: isActive ? presetColor : borderColor,
                     width: isActive ? 3 : 1,

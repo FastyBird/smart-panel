@@ -52,7 +52,7 @@ class DeviceStatusBar extends StatelessWidget {
       padding: EdgeInsets.all(AppSpacings.pMd),
       decoration: BoxDecoration(
         color: cardColor,
-        borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+        borderRadius: BorderRadius.circular(AppBorderRadius.base),
         border: Border.all(color: borderColor, width: _scale(1)),
       ),
       child: Column(
@@ -81,7 +81,7 @@ class DeviceStatusBar extends StatelessWidget {
           ),
           AppSpacings.spacingMdVertical,
           ClipRRect(
-            borderRadius: BorderRadius.circular(AppBorderRadius.small),
+            borderRadius: BorderRadius.circular(AppBorderRadius.base),
             child: LinearProgressIndicator(
               value: value,
               minHeight: _scale(6),

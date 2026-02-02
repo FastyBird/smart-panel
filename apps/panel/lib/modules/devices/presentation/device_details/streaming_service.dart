@@ -209,7 +209,7 @@ class _StreamingServiceDeviceDetailState extends State<StreamingServiceDeviceDet
 						height: _scale(44),
 						decoration: BoxDecoration(
 							color: _getAccentLightColor(isDark),
-							borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+							borderRadius: BorderRadius.circular(AppBorderRadius.base),
 						),
 						child: Icon(
 							MdiIcons.playNetwork,

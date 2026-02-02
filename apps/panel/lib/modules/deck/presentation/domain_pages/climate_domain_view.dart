@@ -19,7 +19,7 @@ import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/deck_service.dart';
 import 'package:fastybird_smart_panel/modules/deck/utils/lighting.dart';
-import 'package:fastybird_smart_panel/modules/deck/views/climate_role_detail_page.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/climate_role_detail_page.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/navigate_event.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/air_conditioner.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/air_dehumidifier.dart';
@@ -1583,7 +1583,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             ),
             decoration: BoxDecoration(
               color: isDark ? AppFillColorDark.light : AppFillColorLight.darker,
-              borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+              borderRadius: BorderRadius.circular(AppBorderRadius.base),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -1894,7 +1894,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         padding: cardPadding,
         decoration: BoxDecoration(
           color: cardColor,
-          borderRadius: BorderRadius.circular(AppBorderRadius.round),
+          borderRadius: BorderRadius.circular(AppBorderRadius.base),
           border: Border.all(color: borderColor, width: _scale(1)),
         ),
         child: LayoutBuilder(
@@ -2052,7 +2052,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         padding: AppSpacings.paddingLg,
         decoration: BoxDecoration(
           color: cardColor,
-          borderRadius: BorderRadius.circular(AppBorderRadius.round),
+          borderRadius: BorderRadius.circular(AppBorderRadius.base),
           border: Border.all(color: borderColor, width: _scale(1)),
         ),
         child: Column(

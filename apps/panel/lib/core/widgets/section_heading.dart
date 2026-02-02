@@ -257,7 +257,7 @@ class SectionHeader extends StatelessWidget {
               ),
               decoration: BoxDecoration(
                 color: badgeBgColor,
-                borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+                borderRadius: BorderRadius.circular(AppBorderRadius.base),
               ),
               child: Text(
                 '$count',

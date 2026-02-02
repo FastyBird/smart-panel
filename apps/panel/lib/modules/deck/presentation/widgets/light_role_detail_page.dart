@@ -2415,7 +2415,7 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
             height: _scale(44),
             decoration: BoxDecoration(
               color: isOn ? primaryBgColor : inactiveBgColor,
-              borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+              borderRadius: BorderRadius.circular(AppBorderRadius.base),
             ),
             child: Icon(
               getLightRoleIcon(widget.role),
@@ -2435,7 +2435,7 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
             color: isOn
                 ? primaryColor
                 : (isDark ? AppFillColorDark.light : AppFillColorLight.light),
-            borderRadius: BorderRadius.circular(AppBorderRadius.round),
+            borderRadius: BorderRadius.circular(AppBorderRadius.base),
             border: (!isOn && !isDark)
                 ? Border.all(color: AppBorderColorLight.base, width: _scale(1))
                 : null,

@@ -78,7 +78,7 @@ class _ConnectionOverlayState extends State<ConnectionOverlay> {
             ),
             decoration: BoxDecoration(
               color: SystemPagesTheme.card(isDark),
-              borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+              borderRadius: BorderRadius.circular(AppBorderRadius.base),
               boxShadow: [
                 BoxShadow(
                   color: AppShadowColor.strong,

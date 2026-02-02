@@ -20,7 +20,7 @@ import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/deck_service.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/domain_control_state_service.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/navigate_event.dart';
-import 'package:fastybird_smart_panel/modules/deck/views/light_role_detail_page.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/light_role_detail_page.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_detail_page.dart';
 import 'package:fastybird_smart_panel/modules/deck/utils/lighting.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/light.dart';
@@ -1212,7 +1212,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       padding: AppSpacings.paddingMd,
       decoration: BoxDecoration(
         color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
-        borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+        borderRadius: BorderRadius.circular(AppBorderRadius.base),
         border: Border.all(
           color: isDark ? AppFillColorDark.light : AppBorderColorLight.light,
           width: 1,

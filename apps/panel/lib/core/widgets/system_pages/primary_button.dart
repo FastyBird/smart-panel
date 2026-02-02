@@ -51,7 +51,7 @@ class _SystemPagePrimaryButtonState extends State<SystemPagePrimaryButton> {
           ),
           decoration: BoxDecoration(
             color: isDisabled ? accent.withValues(alpha: 0.5) : accent,
-            borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+            borderRadius: BorderRadius.circular(AppBorderRadius.base),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,

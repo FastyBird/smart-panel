@@ -1107,8 +1107,8 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 							if (inputValue != null && inputOptions != null && inputOptions.isNotEmpty)
 								Theme(
 									data: isDark
-										? ThemeData(brightness: Brightness.dark, outlinedButtonTheme: AppOutlinedButtonsDarkThemes.base)
-										: ThemeData(outlinedButtonTheme: AppOutlinedButtonsLightThemes.base),
+										? ThemeData(brightness: Brightness.dark, outlinedButtonTheme: AppOutlinedButtonsDarkThemes.neutral)
+										: ThemeData(outlinedButtonTheme: AppOutlinedButtonsLightThemes.neutral),
 									child: OutlinedButton(
 										onPressed: _isSending
 											? null

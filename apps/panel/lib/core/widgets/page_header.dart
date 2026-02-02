@@ -309,7 +309,7 @@ class HeaderDeviceIcon extends StatelessWidget {
       height: containerSize,
       decoration: BoxDecoration(
         color: backgroundColor,
-        borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+        borderRadius: BorderRadius.circular(AppBorderRadius.base),
       ),
       child: Icon(
         icon,

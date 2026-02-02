@@ -714,9 +714,7 @@ class _SensorDetailBottomSheetState extends State<SensorDetailBottomSheet> {
       height: MediaQuery.of(context).size.height * 0.7,
       decoration: BoxDecoration(
         color: isLight ? AppBgColorLight.base : AppBgColorDark.base,
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(AppBorderRadius.medium),
-        ),
+        borderRadius: BorderRadius.circular(AppBorderRadius.base),
       ),
       child: Column(
         children: [
@@ -880,7 +878,7 @@ class _SensorDetailBottomSheetState extends State<SensorDetailBottomSheet> {
                           ? AppColorsLight.primary
                           : AppColorsDark.primary)
                       : AppColors.blank,
-                  borderRadius: BorderRadius.circular(AppBorderRadius.small),
+                  borderRadius: BorderRadius.circular(AppBorderRadius.base),
                   border: Border.all(
                     color: isLight
                         ? AppBorderColorLight.base

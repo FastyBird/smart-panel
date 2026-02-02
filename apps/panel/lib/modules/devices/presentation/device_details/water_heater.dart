@@ -117,7 +117,7 @@ class _WaterHeaterDeviceDetailState extends State<WaterHeaterDeviceDetail> {
                   : (isDark
                       ? AppFillColorDark.darker
                       : AppFillColorLight.darker),
-              borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+              borderRadius: BorderRadius.circular(AppBorderRadius.base),
             ),
             child: Icon(
               MdiIcons.waterBoiler,

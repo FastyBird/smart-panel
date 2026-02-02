@@ -738,7 +738,7 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
             height: _scale(44),
             decoration: BoxDecoration(
               color: isOn ? primaryBgColor : inactiveBgColor,
-              borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+              borderRadius: BorderRadius.circular(AppBorderRadius.base),
             ),
             child: Icon(
               MdiIcons.lightbulb,
@@ -761,7 +761,7 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
                       : (isDark
                           ? AppFillColorDark.light
                           : AppFillColorLight.light),
-                  borderRadius: BorderRadius.circular(AppBorderRadius.round),
+                  borderRadius: BorderRadius.circular(AppBorderRadius.base),
                   border: (!isOn && !isDark)
                       ? Border.all(
                           color: AppBorderColorLight.base, width: _scale(1))

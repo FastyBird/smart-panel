@@ -100,7 +100,7 @@ class IntentModeSelector<T> extends StatelessWidget {
       padding: EdgeInsets.all(AppSpacings.pSm),
       decoration: BoxDecoration(
         color: isDark ? AppFillColorDark.darker : AppFillColorLight.darker,
-        borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+        borderRadius: BorderRadius.circular(AppBorderRadius.base),
       ),
       child: orientation == ModeSelectorOrientation.horizontal
           ? _buildHorizontal(context, isDark)

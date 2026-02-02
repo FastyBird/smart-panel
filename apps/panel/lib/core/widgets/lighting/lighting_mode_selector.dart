@@ -136,7 +136,7 @@ class LightingModeSelector extends StatelessWidget {
       padding: AppSpacings.paddingMd,
       decoration: BoxDecoration(
         color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
-        borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+        borderRadius: BorderRadius.circular(AppBorderRadius.base),
         border: Border.all(
           color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light,
           width: _scale(1),

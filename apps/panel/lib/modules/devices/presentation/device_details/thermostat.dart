@@ -725,7 +725,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
                   : (isDark
                       ? AppFillColorDark.darker
                       : AppFillColorLight.darker),
-              borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+              borderRadius: BorderRadius.circular(AppBorderRadius.base),
             ),
             child: Icon(
               MdiIcons.thermostat,
@@ -1017,7 +1017,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
       padding: AppSpacings.paddingLg,
       decoration: BoxDecoration(
         color: cardColor,
-        borderRadius: BorderRadius.circular(AppBorderRadius.round),
+        borderRadius: BorderRadius.circular(AppBorderRadius.base),
         border: Border.all(color: borderColor, width: _scale(1)),
       ),
       child: Column(
@@ -1067,7 +1067,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
       padding: AppSpacings.paddingLg,
       decoration: BoxDecoration(
         color: cardColor,
-        borderRadius: BorderRadius.circular(AppBorderRadius.round),
+        borderRadius: BorderRadius.circular(AppBorderRadius.base),
         border: Border.all(color: borderColor, width: _scale(1)),
       ),
       child: LayoutBuilder(

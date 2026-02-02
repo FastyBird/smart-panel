@@ -54,6 +54,6 @@ export 'package:fastybird_smart_panel/modules/deck/presentation/system_pages/ent
 export 'package:fastybird_smart_panel/modules/deck/presentation/system_pages/master_overview.dart';
 export 'package:fastybird_smart_panel/modules/deck/presentation/system_pages/room_overview.dart';
 
-// Views
-export 'package:fastybird_smart_panel/modules/deck/views/climate_role_detail_page.dart';
-export 'package:fastybird_smart_panel/modules/deck/views/light_role_detail_page.dart';
+// Presentation - Widgets
+export 'package:fastybird_smart_panel/modules/deck/presentation/widgets/climate_role_detail_page.dart';
+export 'package:fastybird_smart_panel/modules/deck/presentation/widgets/light_role_detail_page.dart';

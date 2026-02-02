@@ -1089,6 +1089,23 @@ class AppOutlinedButtonsLightThemes {
     ),
   );
 
+  static OutlinedButtonThemeData get neutral => OutlinedButtonThemeData(
+    style: createButtonTheme(
+      color: AppTextColorLight.regular,
+      pressedColor: AppColorsLight.primary,
+      hoveredColor: AppColorsLight.primary,
+      disabledColor: AppTextColorLight.placeholder,
+      bgColor: AppFillColorLight.blank,
+      pressedBgColor: AppFillColorLight.blank,
+      hoveredBgColor: AppFillColorLight.blank,
+      disabledBgColor: AppFillColorLight.blank,
+      borderColor: AppBorderColorLight.base,
+      pressedBorderColor: AppColorsLight.primary,
+      hoveredBorderColor: AppColorsLight.primary,
+      disabledBorderColor: AppBorderColorLight.light,
+    ),
+  );
+
   /// Foreground (text/icon) color per variant. Pass to Icon/Text inside FilledButtons
   /// so they match the button theme (OutlinedButton can override Theme.iconTheme).
   static Color get baseForegroundColor => AppTextColorLight.regular;
@@ -1098,6 +1115,7 @@ class AppOutlinedButtonsLightThemes {
   static Color get dangerForegroundColor => AppColorsLight.danger;
   static Color get errorForegroundColor => AppColorsLight.error;
   static Color get infoForegroundColor => AppColorsLight.info;
+  static Color get neutralForegroundColor => AppTextColorLight.regular;
 }
 
 class AppOutlinedButtonsDarkThemes {
@@ -1220,6 +1238,23 @@ class AppOutlinedButtonsDarkThemes {
     ),
   );
 
+  static OutlinedButtonThemeData get neutral => OutlinedButtonThemeData(
+    style: createButtonTheme(
+      color: AppTextColorDark.primary,
+      pressedColor: AppColorsDark.primary,
+      hoveredColor: AppColorsDark.primary,
+      disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
+      bgColor: AppFillColorDark.blank,
+      pressedBgColor: AppFillColorDark.blank,
+      hoveredBgColor: AppFillColorDark.blank,
+      disabledBgColor: AppFillColorDark.blank,
+      borderColor: AppBorderColorDark.darker,
+      pressedBorderColor: AppBorderColorDark.dark,
+      hoveredBorderColor: AppBorderColorDark.dark,
+      disabledBorderColor: AppBorderColorDark.light,
+    ),
+  );
+
   /// Foreground (text/icon) color per variant. Pass to Icon/Text inside FilledButtons
   /// so they match the button theme (OutlinedButton can override Theme.iconTheme).
   static Color get baseForegroundColor => AppTextColorDark.regular;
@@ -1229,6 +1264,7 @@ class AppOutlinedButtonsDarkThemes {
   static Color get dangerForegroundColor => AppColorsDark.danger;
   static Color get errorForegroundColor => AppColorsDark.error;
   static Color get infoForegroundColor => AppColorsDark.info;
+  static Color get neutralForegroundColor => AppTextColorDark.primary;
 }
 
 class AppIconButtonsLightThemes {
