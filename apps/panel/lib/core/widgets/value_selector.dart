@@ -252,6 +252,15 @@ class ValueSelectorRow<T> extends StatelessWidget {
   }
 }
 
+/// How options are rendered in [ValueSelectorSheet].
+enum ValueSelectorOptionStyle {
+  /// Grid of tappable cards (default)
+  grid,
+
+  /// OutlinedButton for unselected, OutlinedButton (primary) for selected
+  buttons,
+}
+
 /// A bottom sheet widget for selecting a value from a grid of options.
 class ValueSelectorSheet<T> extends StatefulWidget {
   /// Currently selected value
@@ -272,6 +281,10 @@ class ValueSelectorSheet<T> extends StatefulWidget {
   /// Number of columns in the grid
   final int columns;
 
+  /// How to render options: [ValueSelectorOptionStyle.grid] (cards) or
+  /// [ValueSelectorOptionStyle.buttons] (outlined / primary filled).
+  final ValueSelectorOptionStyle optionStyle;
+
   const ValueSelectorSheet({
     super.key,
     required this.currentValue,
@@ -280,6 +293,7 @@ class ValueSelectorSheet<T> extends StatefulWidget {
     this.activeColor,
     this.onConfirm,
     this.columns = 4,
+    this.optionStyle = ValueSelectorOptionStyle.grid,
   });
 
   @override
@@ -370,19 +384,25 @@ class _ValueSelectorSheetState<T> extends State<ValueSelectorSheet<T>> {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: Container(
-                      width: _scale(32),
-                      height: _scale(32),
-                      decoration: BoxDecoration(
-                        color: handleColor,
-                        borderRadius: BorderRadius.circular(_scale(16)),
+                  Theme(
+                    data: isDark
+                        ? ThemeData(brightness: Brightness.dark, filledButtonTheme: AppFilledButtonsDarkThemes.neutral)
+                        : ThemeData(filledButtonTheme: AppFilledButtonsLightThemes.neutral),
+                    child: FilledButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: FilledButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        minimumSize: Size(_scale(32), _scale(32)),
+                        maximumSize: Size(_scale(32), _scale(32)),
+                        shape: const CircleBorder(),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
                       child: Icon(
                         MdiIcons.close,
-                        color: secondaryColor,
                         size: _scale(18),
+                        color: isDark
+                            ? AppFilledButtonsDarkThemes.neutralForegroundColor
+                            : AppFilledButtonsLightThemes.neutralForegroundColor,
                       ),
                     ),
                   ),
@@ -390,90 +410,138 @@ class _ValueSelectorSheetState<T> extends State<ValueSelectorSheet<T>> {
               ),
               AppSpacings.spacingLgVertical,
 
-              // Options Grid
+              // Options Grid or Buttons
               Flexible(
                 child: SingleChildScrollView(
                   child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final spacing = _scale(10);
-                  final totalSpacing = spacing * (widget.columns - 1);
-                  final itemWidth =
-                      (constraints.maxWidth - totalSpacing) / widget.columns;
+                    builder: (context, constraints) {
+                      final spacing = _scale(10);
+                      final totalSpacing = spacing * (widget.columns - 1);
+                      final itemWidth =
+                          (constraints.maxWidth - totalSpacing) / widget.columns;
 
-                  return Wrap(
-                    spacing: spacing,
-                    runSpacing: spacing,
-                    children: List.generate(widget.options.length, (index) {
-                      final option = widget.options[index];
-                      final isSelected = _selectedIndex == index;
+                      if (widget.optionStyle == ValueSelectorOptionStyle.buttons) {
+                        return Wrap(
+                          spacing: spacing,
+                          runSpacing: spacing,
+                          children: List.generate(widget.options.length, (index) {
+                            final option = widget.options[index];
+                            final isSelected = _selectedIndex == index;
+                            final isDark = Theme.of(context).brightness == Brightness.dark;
+                            final themeData = isSelected
+                                ? (isDark
+                                    ? ThemeData(brightness: Brightness.dark, outlinedButtonTheme: AppOutlinedButtonsDarkThemes.primary)
+                                    : ThemeData(outlinedButtonTheme: AppOutlinedButtonsLightThemes.primary))
+                                : (isDark
+                                    ? ThemeData(brightness: Brightness.dark, outlinedButtonTheme: AppOutlinedButtonsDarkThemes.base)
+                                    : ThemeData(outlinedButtonTheme: AppOutlinedButtonsLightThemes.base));
 
-                      // Double-border technique to prevent UI jumping on selection
-                      final innerBgColor = isSelected
-                          ? effectiveActiveColor.withValues(alpha: 0.12)
-                          : cardColor;
+                            final buttonChild = Text(
+                              option.label,
+                              style: TextStyle(
+                                fontSize: AppFontSize.small,
+                                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                              ),
+                              textAlign: TextAlign.center,
+                            );
 
-                      return GestureDetector(
-                        onTap: () => setState(() => _selectedIndex = index),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          width: itemWidth,
-                          decoration: BoxDecoration(
-                            borderRadius:
-                                BorderRadius.circular(AppBorderRadius.base),
-                            border: Border.all(
-                              color:
-                                  isSelected ? effectiveActiveColor : borderColor,
-                              width: _scale(1),
-                            ),
-                          ),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            padding: EdgeInsets.symmetric(vertical: AppSpacings.pMd),
-                            decoration: BoxDecoration(
-                              color: innerBgColor,
-                              borderRadius:
-                                  BorderRadius.circular(AppBorderRadius.base - 1),
-                              border: Border.all(
-                                color:
-                                    isSelected ? effectiveActiveColor : innerBgColor,
-                                width: _scale(1),
+                            return SizedBox(
+                              width: itemWidth,
+                              child: Theme(
+                                data: themeData,
+                                child: OutlinedButton(
+                                  onPressed: () {
+                                    HapticFeedback.lightImpact();
+                                    setState(() => _selectedIndex = index);
+                                  },
+                                  style: OutlinedButton.styleFrom(
+                                    padding: EdgeInsets.symmetric(vertical: AppSpacings.pMd),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(AppBorderRadius.base),
+                                    ),
+                                  ),
+                                  child: buttonChild,
+                                )
+                              ),
+                            );
+                          }),
+                        );
+                      }
+
+                      return Wrap(
+                        spacing: spacing,
+                        runSpacing: spacing,
+                        children: List.generate(widget.options.length, (index) {
+                          final option = widget.options[index];
+                          final isSelected = _selectedIndex == index;
+
+                          // Double-border technique to prevent UI jumping on selection
+                          final innerBgColor = isSelected
+                              ? effectiveActiveColor.withValues(alpha: 0.12)
+                              : cardColor;
+
+                          return GestureDetector(
+                            onTap: () => setState(() => _selectedIndex = index),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              width: itemWidth,
+                              decoration: BoxDecoration(
+                                borderRadius:
+                                    BorderRadius.circular(AppBorderRadius.base),
+                                border: Border.all(
+                                  color:
+                                      isSelected ? effectiveActiveColor : borderColor,
+                                  width: _scale(1),
+                                ),
+                              ),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                padding: EdgeInsets.symmetric(vertical: AppSpacings.pMd),
+                                decoration: BoxDecoration(
+                                  color: innerBgColor,
+                                  borderRadius:
+                                      BorderRadius.circular(AppBorderRadius.base - 1),
+                                  border: Border.all(
+                                    color:
+                                        isSelected ? effectiveActiveColor : innerBgColor,
+                                    width: _scale(1),
+                                  ),
+                                ),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    if (option.icon != null) ...[
+                                      Icon(
+                                        option.icon,
+                                        color: isSelected
+                                            ? effectiveActiveColor
+                                            : secondaryColor,
+                                        size: _scale(20),
+                                      ),
+                                      AppSpacings.spacingXsVertical,
+                                    ],
+                                    Text(
+                                      option.label,
+                                      style: TextStyle(
+                                        color: isSelected
+                                            ? effectiveActiveColor
+                                            : textColor,
+                                        fontSize: AppFontSize.small,
+                                        fontWeight: isSelected
+                                            ? FontWeight.w600
+                                            : FontWeight.w500,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ],
+                                ),
                               ),
                             ),
-                            child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (option.icon != null) ...[
-                                Icon(
-                                  option.icon,
-                                  color: isSelected
-                                      ? effectiveActiveColor
-                                      : secondaryColor,
-                                  size: _scale(20),
-                                ),
-                                AppSpacings.spacingXsVertical,
-                              ],
-                              Text(
-                                option.label,
-                                style: TextStyle(
-                                  color: isSelected
-                                      ? effectiveActiveColor
-                                      : textColor,
-                                  fontSize: AppFontSize.small,
-                                  fontWeight: isSelected
-                                      ? FontWeight.w600
-                                      : FontWeight.w500,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ],
-                          ),
-                          ),
-                        ),
+                          );
+                        }),
                       );
-                    }),
-                  );
-                },
-              ),
+                    },
+                  ),
                 ),
               ),
               AppSpacings.spacingLgVertical,
@@ -481,25 +549,27 @@ class _ValueSelectorSheetState<T> extends State<ValueSelectorSheet<T>> {
               // Confirm Button
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: widget.options.isEmpty || _selectedIndex < 0
-                      ? null
-                      : () => widget.onConfirm?.call(widget.options[_selectedIndex].value),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: effectiveActiveColor,
-                    foregroundColor: AppColors.white,
-                    padding: EdgeInsets.symmetric(vertical: AppSpacings.pMd),
-                    shape: RoundedRectangleBorder(
-                      borderRadius:
-                          BorderRadius.circular(AppBorderRadius.medium),
+                child: Theme(
+                  data: isDark
+                      ? ThemeData(brightness: Brightness.dark, filledButtonTheme: AppFilledButtonsDarkThemes.primary)
+                      : ThemeData(filledButtonTheme: AppFilledButtonsLightThemes.primary),
+                  child: FilledButton(
+                    onPressed: widget.options.isEmpty || _selectedIndex < 0
+                        ? null
+                        : () => widget.onConfirm?.call(widget.options[_selectedIndex].value),
+                    style: FilledButton.styleFrom(
+                      padding: EdgeInsets.symmetric(vertical: AppSpacings.pMd),
+                      shape: RoundedRectangleBorder(
+                        borderRadius:
+                            BorderRadius.circular(AppBorderRadius.medium),
+                      ),
                     ),
-                    elevation: 0,
-                  ),
-                  child: Text(
-                    localizations.button_done,
-                    style: TextStyle(
-                      fontSize: AppFontSize.base,
-                      fontWeight: FontWeight.w600,
+                    child: Text(
+                      localizations.button_done,
+                      style: TextStyle(
+                        fontSize: AppFontSize.base,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ),

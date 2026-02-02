@@ -455,22 +455,18 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 				? localizations.media_activity_active(_activityLabel(context, activeState.activityKey))
 				: localizations.media_mode_off;
 
-		final stateColor = hasActive
-				? (isDark ? AppColorsDark.success : AppColorsLight.success)
-				: (isDark ? AppColorsDark.info : AppColorsLight.info);
-
 		return PageHeader(
 			title: localizations.domain_media,
 			subtitle: subtitle,
-			subtitleColor: hasActive ? stateColor : null,
+			subtitleColor: hasActive ? (isDark ? AppColorsDark.primaryDark2 : AppColorsLight.primaryDark2) : null,
 			backgroundColor: AppColors.blank,
 			leading: HeaderDeviceIcon(
 				icon: hasActive ? MdiIcons.musicNote : MdiIcons.musicNoteOff,
 				backgroundColor: hasActive
-						? getSemanticBackgroundColor(context, stateColor)
-						: (isDark ? AppFillColorDark.light : AppFillColorLight.light),
+						? (isDark ? AppColorsDark.primaryLight5 : AppColorsLight.primaryLight5)
+						: (isDark ? AppFillColorDark.light : AppFillColorLight.darker),
 				iconColor: hasActive
-						? stateColor
+						? (isDark ? AppColorsDark.primaryDark2 : AppColorsLight.primaryDark2)
 						: (isDark ? AppTextColorDark.secondary : AppTextColorLight.primary),
 			),
 			trailing: HeaderHomeButton(
@@ -1041,7 +1037,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		return Container(
 			padding: AppSpacings.paddingLg,
 			decoration: BoxDecoration(
-				color: isDark ? AppFillColorDark.base : AppFillColorLight.darker,
+				color: isDark ? AppFillColorDark.darker : AppFillColorLight.darker,
 				borderRadius: BorderRadius.circular(AppBorderRadius.medium),
 			),
 			child: Column(
@@ -1922,7 +1918,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 						name: localizations.media_action_mute,
 						status: _isMuted ? localizations.on_state_on : localizations.on_state_off,
 						isActive: _isMuted,
-						activeColor: accentColor,
 						onTileTap: _isSending ? null : () {
 							HapticFeedback.lightImpact();
 							_toggleMute();
@@ -2063,7 +2058,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 								capIcon,
 								size: _scale(12),
 								color: isActive
-										? (isDark ? AppColorsDark.primary : AppColorsLight.primary)
+										? (isDark ? AppColorsDark.primaryDark2 : AppColorsLight.primaryDark2)
 										: (isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder),
 							),
 						),
@@ -2225,6 +2220,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 						.toList(),
 				title: localizations.media_input_select_title,
 				columns: 3,
+				optionStyle: ValueSelectorOptionStyle.buttons,
 				onConfirm: (value) {
 					Navigator.pop(ctx);
 					if (value != null) {

@@ -11,7 +11,6 @@ import 'package:fastybird_smart_panel/core/widgets/device_offline_overlay.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_info_card.dart';
-import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_playback_card.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/game_console.dart';
@@ -292,11 +291,19 @@ class _GameConsoleDeviceDetailState extends State<GameConsoleDeviceDetail> {
 						isOn: _isOn,
 						accentColor: accentColor,
 						scale: _scale,
+						playbackTrack: _device.hasMediaPlayback ? _device.isMediaPlaybackTrack : null,
+						playbackArtist: _device.hasMediaPlayback ? _device.mediaPlaybackArtist : null,
+						playbackAlbum: _device.hasMediaPlayback ? _device.mediaPlaybackAlbum : null,
+						playbackStatus: _device.hasMediaPlayback ? _effectivePlaybackStatus : null,
+						playbackAvailableCommands: _device.hasMediaPlayback ? _device.mediaPlaybackAvailableCommands : const [],
+						playbackHasPosition: _device.hasMediaPlayback && _device.hasMediaPlaybackPosition,
+						playbackPosition: _device.hasMediaPlayback ? _device.mediaPlaybackPosition : 0,
+						playbackHasDuration: _device.hasMediaPlayback && _device.hasMediaPlaybackDuration,
+						playbackDuration: _device.hasMediaPlayback ? _device.mediaPlaybackDuration : 0,
+						playbackIsPositionWritable: _device.hasMediaPlayback && (_device.mediaPlaybackChannel?.positionProp?.isWritable ?? false),
+						onPlaybackCommand: _device.hasMediaPlayback ? _sendPlaybackCommand : null,
+						onPlaybackSeek: _device.hasMediaPlayback ? _seekPosition : null,
 					),
-					if (_device.hasMediaPlayback) ...[
-						AppSpacings.spacingLgVertical,
-						_buildPlaybackCard(isDark),
-					],
 				],
 			),
 		);
@@ -321,37 +328,23 @@ class _GameConsoleDeviceDetailState extends State<GameConsoleDeviceDetail> {
 						isOn: _isOn,
 						accentColor: accentColor,
 						scale: _scale,
+						playbackTrack: _device.hasMediaPlayback ? _device.isMediaPlaybackTrack : null,
+						playbackArtist: _device.hasMediaPlayback ? _device.mediaPlaybackArtist : null,
+						playbackAlbum: _device.hasMediaPlayback ? _device.mediaPlaybackAlbum : null,
+						playbackStatus: _device.hasMediaPlayback ? _effectivePlaybackStatus : null,
+						playbackAvailableCommands: _device.hasMediaPlayback ? _device.mediaPlaybackAvailableCommands : const [],
+						playbackHasPosition: _device.hasMediaPlayback && _device.hasMediaPlaybackPosition,
+						playbackPosition: _device.hasMediaPlayback ? _device.mediaPlaybackPosition : 0,
+						playbackHasDuration: _device.hasMediaPlayback && _device.hasMediaPlaybackDuration,
+						playbackDuration: _device.hasMediaPlayback ? _device.mediaPlaybackDuration : 0,
+						playbackIsPositionWritable: _device.hasMediaPlayback && (_device.mediaPlaybackChannel?.positionProp?.isWritable ?? false),
+						onPlaybackCommand: _device.hasMediaPlayback ? _sendPlaybackCommand : null,
+						onPlaybackSeek: _device.hasMediaPlayback ? _seekPosition : null,
 					),
-					if (_device.hasMediaPlayback) ...[
-						AppSpacings.spacingMdVertical,
-						_buildPlaybackCard(isDark),
-					],
 				],
 			),
 			secondaryContent: const SizedBox.shrink(),
 		);
 	}
 
-	Widget _buildPlaybackCard(bool isDark) {
-		final accentColor = _getAccentColor(isDark);
-		final positionProp = _device.mediaPlaybackChannel?.positionProp;
-
-		return MediaPlaybackCard(
-			track: _device.isMediaPlaybackTrack,
-			artist: _device.mediaPlaybackArtist,
-			album: _device.mediaPlaybackAlbum,
-			status: _effectivePlaybackStatus,
-			availableCommands: _device.mediaPlaybackAvailableCommands,
-			hasPosition: _device.hasMediaPlaybackPosition,
-			position: _device.mediaPlaybackPosition,
-			hasDuration: _device.hasMediaPlaybackDuration,
-			duration: _device.mediaPlaybackDuration,
-			isPositionWritable: positionProp?.isWritable ?? false,
-			isEnabled: _isOn,
-			accentColor: accentColor,
-			scale: _scale,
-			onCommand: _sendPlaybackCommand,
-			onSeek: _seekPosition,
-		);
-	}
 }

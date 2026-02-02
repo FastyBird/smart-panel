@@ -21,7 +21,7 @@ Color getSemanticBackgroundColor(BuildContext context, Color semanticColor) {
     return isDark ? AppColorsDark.primaryLight5 : AppColorsLight.primaryLight5;
   }
   // Fallback
-  return isDark ? AppFillColorDark.light : AppFillColorLight.light;
+  return isDark ? AppFillColorDark.light : AppFillColorLight.darker;
 }
 
 class ColorUtils {

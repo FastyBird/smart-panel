@@ -475,7 +475,9 @@ class UniversalTile extends StatelessWidget {
       // Icon-only accent: color icon without full active state
       iconColor = iconAccentColor!;
     } else if (isActive) {
-      iconColor = accentColor;
+      iconColor = activeColor != null
+          ? accentColor
+          : isDark ? AppColorsDark.primaryDark2 : AppColorsLight.primaryDark2;
     } else {
       iconColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
     }

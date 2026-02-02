@@ -11,7 +11,6 @@ import 'package:fastybird_smart_panel/core/widgets/device_offline_overlay.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_info_card.dart';
-import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_playback_card.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/streaming_service.dart';
@@ -242,9 +241,19 @@ class _StreamingServiceDeviceDetailState extends State<StreamingServiceDeviceDet
 						isOn: true,
 						accentColor: accentColor,
 						scale: _scale,
+						playbackTrack: _device.isMediaPlaybackTrack,
+						playbackArtist: _device.mediaPlaybackArtist,
+						playbackAlbum: _device.mediaPlaybackAlbum,
+						playbackStatus: _effectivePlaybackStatus,
+						playbackAvailableCommands: _device.mediaPlaybackAvailableCommands,
+						playbackHasPosition: _device.hasMediaPlaybackPosition,
+						playbackPosition: _device.mediaPlaybackPosition,
+						playbackHasDuration: _device.hasMediaPlaybackDuration,
+						playbackDuration: _device.mediaPlaybackDuration,
+						playbackIsPositionWritable: _device.mediaPlaybackChannel.positionProp?.isWritable ?? false,
+						onPlaybackCommand: _sendPlaybackCommand,
+						onPlaybackSeek: _seekPosition,
 					),
-					AppSpacings.spacingLgVertical,
-					_buildPlaybackCard(isDark),
 				],
 			),
 		);
@@ -269,35 +278,23 @@ class _StreamingServiceDeviceDetailState extends State<StreamingServiceDeviceDet
 						isOn: true,
 						accentColor: accentColor,
 						scale: _scale,
+						playbackTrack: _device.isMediaPlaybackTrack,
+						playbackArtist: _device.mediaPlaybackArtist,
+						playbackAlbum: _device.mediaPlaybackAlbum,
+						playbackStatus: _effectivePlaybackStatus,
+						playbackAvailableCommands: _device.mediaPlaybackAvailableCommands,
+						playbackHasPosition: _device.hasMediaPlaybackPosition,
+						playbackPosition: _device.mediaPlaybackPosition,
+						playbackHasDuration: _device.hasMediaPlaybackDuration,
+						playbackDuration: _device.mediaPlaybackDuration,
+						playbackIsPositionWritable: _device.mediaPlaybackChannel.positionProp?.isWritable ?? false,
+						onPlaybackCommand: _sendPlaybackCommand,
+						onPlaybackSeek: _seekPosition,
 					),
-					AppSpacings.spacingMdVertical,
-					_buildPlaybackCard(isDark),
 				],
 			),
 			secondaryContent: const SizedBox.shrink(),
 		);
 	}
 
-	Widget _buildPlaybackCard(bool isDark) {
-		final accentColor = _getAccentColor(isDark);
-		final positionProp = _device.mediaPlaybackChannel.positionProp;
-
-		return MediaPlaybackCard(
-			track: _device.isMediaPlaybackTrack,
-			artist: _device.mediaPlaybackArtist,
-			album: _device.mediaPlaybackAlbum,
-			status: _effectivePlaybackStatus,
-			availableCommands: _device.mediaPlaybackAvailableCommands,
-			hasPosition: _device.hasMediaPlaybackPosition,
-			position: _device.mediaPlaybackPosition,
-			hasDuration: _device.hasMediaPlaybackDuration,
-			duration: _device.mediaPlaybackDuration,
-			isPositionWritable: positionProp?.isWritable ?? false,
-			isEnabled: true,
-			accentColor: accentColor,
-			scale: _scale,
-			onCommand: _sendPlaybackCommand,
-			onSeek: _seekPosition,
-		);
-	}
 }

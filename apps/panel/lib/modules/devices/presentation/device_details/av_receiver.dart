@@ -12,8 +12,6 @@ import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/utils/media_input_source_label.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_info_card.dart';
-import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_playback_card.dart';
-import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_source_card.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_volume_card.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
@@ -522,11 +520,23 @@ class _AvReceiverDeviceDetailState extends State<AvReceiverDeviceDetail> {
 						displaySource: _getDisplaySource(),
 						accentColor: accentColor,
 						scale: _scale,
+						playbackTrack: _device.hasMediaPlayback ? _device.isMediaPlaybackTrack : null,
+						playbackArtist: _device.hasMediaPlayback ? _device.mediaPlaybackArtist : null,
+						playbackAlbum: _device.hasMediaPlayback ? _device.mediaPlaybackAlbum : null,
+						playbackStatus: _device.hasMediaPlayback ? _effectivePlaybackStatus : null,
+						playbackAvailableCommands: _device.hasMediaPlayback ? _device.mediaPlaybackAvailableCommands : const [],
+						playbackHasPosition: _device.hasMediaPlayback && _device.hasMediaPlaybackPosition,
+						playbackPosition: _device.hasMediaPlayback ? _device.mediaPlaybackPosition : 0,
+						playbackHasDuration: _device.hasMediaPlayback && _device.hasMediaPlaybackDuration,
+						playbackDuration: _device.hasMediaPlayback ? _device.mediaPlaybackDuration : 0,
+						playbackIsPositionWritable: _device.hasMediaPlayback && (_device.mediaPlaybackChannel?.positionProp?.isWritable ?? false),
+						onPlaybackCommand: _device.hasMediaPlayback ? _sendPlaybackCommand : null,
+						onPlaybackSeek: _device.hasMediaPlayback ? _seekPosition : null,
+						availableSources: _device.mediaInputAvailableSources.isNotEmpty ? _device.mediaInputAvailableSources : null,
+						currentSource: _device.mediaInputSource,
+						sourceLabel: _device.mediaInputAvailableSources.isNotEmpty ? (s) => mediaInputSourceLabel(context, s) : null,
+						onSourceChanged: _device.mediaInputAvailableSources.isNotEmpty ? _setSource : null,
 					),
-					if (_device.hasMediaPlayback) ...[
-						AppSpacings.spacingLgVertical,
-						_buildPlaybackCard(isDark),
-					],
 					AppSpacings.spacingLgVertical,
 					MediaVolumeCard(
 						volume: _effectiveVolume,
@@ -538,17 +548,6 @@ class _AvReceiverDeviceDetailState extends State<AvReceiverDeviceDetail> {
 						onMuteToggle: _toggleMute,
 						scale: _scale,
 					),
-					if (_device.mediaInputAvailableSources.isNotEmpty) ...[
-						AppSpacings.spacingLgVertical,
-						MediaSourceCard(
-							currentSource: _device.mediaInputSource,
-							availableSources: _device.mediaInputAvailableSources,
-							isEnabled: _isOn,
-							sourceLabel: (s) => mediaInputSourceLabel(context, s),
-							onSourceChanged: _setSource,
-							scale: _scale,
-						),
-					],
 				],
 			),
 		);
@@ -574,11 +573,23 @@ class _AvReceiverDeviceDetailState extends State<AvReceiverDeviceDetail> {
 						displaySource: _getDisplaySource(),
 						accentColor: accentColor,
 						scale: _scale,
+						playbackTrack: _device.hasMediaPlayback ? _device.isMediaPlaybackTrack : null,
+						playbackArtist: _device.hasMediaPlayback ? _device.mediaPlaybackArtist : null,
+						playbackAlbum: _device.hasMediaPlayback ? _device.mediaPlaybackAlbum : null,
+						playbackStatus: _device.hasMediaPlayback ? _effectivePlaybackStatus : null,
+						playbackAvailableCommands: _device.hasMediaPlayback ? _device.mediaPlaybackAvailableCommands : const [],
+						playbackHasPosition: _device.hasMediaPlayback && _device.hasMediaPlaybackPosition,
+						playbackPosition: _device.hasMediaPlayback ? _device.mediaPlaybackPosition : 0,
+						playbackHasDuration: _device.hasMediaPlayback && _device.hasMediaPlaybackDuration,
+						playbackDuration: _device.hasMediaPlayback ? _device.mediaPlaybackDuration : 0,
+						playbackIsPositionWritable: _device.hasMediaPlayback && (_device.mediaPlaybackChannel?.positionProp?.isWritable ?? false),
+						onPlaybackCommand: _device.hasMediaPlayback ? _sendPlaybackCommand : null,
+						onPlaybackSeek: _device.hasMediaPlayback ? _seekPosition : null,
+						availableSources: _device.mediaInputAvailableSources.isNotEmpty ? _device.mediaInputAvailableSources : null,
+						currentSource: _device.mediaInputSource,
+						sourceLabel: _device.mediaInputAvailableSources.isNotEmpty ? (s) => mediaInputSourceLabel(context, s) : null,
+						onSourceChanged: _device.mediaInputAvailableSources.isNotEmpty ? _setSource : null,
 					),
-					if (_device.hasMediaPlayback) ...[
-						AppSpacings.spacingMdVertical,
-						_buildPlaybackCard(isDark),
-					],
 					AppSpacings.spacingMdVertical,
 					MediaVolumeCard(
 						volume: _effectiveVolume,
@@ -592,43 +603,11 @@ class _AvReceiverDeviceDetailState extends State<AvReceiverDeviceDetail> {
 					),
 				],
 			),
-			secondaryContent: Column(
+			secondaryContent: const Column(
 				crossAxisAlignment: CrossAxisAlignment.start,
-				children: [
-					if (_device.mediaInputAvailableSources.isNotEmpty)
-						MediaSourceCard(
-							currentSource: _device.mediaInputSource,
-							availableSources: _device.mediaInputAvailableSources,
-							isEnabled: _isOn,
-							sourceLabel: (s) => mediaInputSourceLabel(context, s),
-							onSourceChanged: _setSource,
-							scale: _scale,
-						),
-				],
+				children: [],
 			),
 		);
 	}
 
-	Widget _buildPlaybackCard(bool isDark) {
-		final accentColor = _getAccentColor(isDark);
-		final positionProp = _device.mediaPlaybackChannel?.positionProp;
-
-		return MediaPlaybackCard(
-			track: _device.isMediaPlaybackTrack,
-			artist: _device.mediaPlaybackArtist,
-			album: _device.mediaPlaybackAlbum,
-			status: _effectivePlaybackStatus,
-			availableCommands: _device.mediaPlaybackAvailableCommands,
-			hasPosition: _device.hasMediaPlaybackPosition,
-			position: _device.mediaPlaybackPosition,
-			hasDuration: _device.hasMediaPlaybackDuration,
-			duration: _device.mediaPlaybackDuration,
-			isPositionWritable: positionProp?.isWritable ?? false,
-			isEnabled: _isOn,
-			accentColor: accentColor,
-			scale: _scale,
-			onCommand: _sendPlaybackCommand,
-			onSeek: _seekPosition,
-		);
-	}
 }

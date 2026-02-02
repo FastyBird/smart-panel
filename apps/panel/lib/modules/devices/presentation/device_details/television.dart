@@ -14,7 +14,6 @@ import 'package:fastybird_smart_panel/modules/devices/presentation/utils/media_i
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_brightness_card.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_info_card.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_remote_card.dart';
-import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_source_card.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_volume_card.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
@@ -534,6 +533,10 @@ class _TelevisionDeviceDetailState extends State<TelevisionDeviceDetail> {
 						displaySource: _getDisplaySource(),
 						accentColor: accentColor,
 						scale: _scale,
+						availableSources: _device.mediaInputAvailableSources.isNotEmpty ? _device.mediaInputAvailableSources : null,
+						currentSource: _device.mediaInputSource,
+						sourceLabel: _device.mediaInputAvailableSources.isNotEmpty ? (s) => mediaInputSourceLabel(context, s) : null,
+						onSourceChanged: _device.mediaInputAvailableSources.isNotEmpty ? _setSource : null,
 					),
 					if (_device.hasSpeaker) ...[
 						AppSpacings.spacingLgVertical,
@@ -545,17 +548,6 @@ class _TelevisionDeviceDetailState extends State<TelevisionDeviceDetail> {
 							accentColor: accentColor,
 							onVolumeChanged: _setVolume,
 							onMuteToggle: _toggleMute,
-							scale: _scale,
-						),
-					],
-					if (_device.mediaInputAvailableSources.isNotEmpty) ...[
-						AppSpacings.spacingLgVertical,
-						MediaSourceCard(
-							currentSource: _device.mediaInputSource,
-							availableSources: _device.mediaInputAvailableSources,
-							isEnabled: _device.isTelevisionOn,
-							sourceLabel: (s) => mediaInputSourceLabel(context, s),
-							onSourceChanged: _setSource,
 							scale: _scale,
 						),
 					],
@@ -604,6 +596,10 @@ class _TelevisionDeviceDetailState extends State<TelevisionDeviceDetail> {
 						displaySource: _getDisplaySource(),
 						accentColor: accentColor,
 						scale: _scale,
+						availableSources: _device.mediaInputAvailableSources.isNotEmpty ? _device.mediaInputAvailableSources : null,
+						currentSource: _device.mediaInputSource,
+						sourceLabel: _device.mediaInputAvailableSources.isNotEmpty ? (s) => mediaInputSourceLabel(context, s) : null,
+						onSourceChanged: _device.mediaInputAvailableSources.isNotEmpty ? _setSource : null,
 					),
 					if (_device.hasSpeaker) ...[
 						AppSpacings.spacingMdVertical,
@@ -623,17 +619,7 @@ class _TelevisionDeviceDetailState extends State<TelevisionDeviceDetail> {
 			secondaryContent: Column(
 				crossAxisAlignment: CrossAxisAlignment.start,
 				children: [
-					if (_device.mediaInputAvailableSources.isNotEmpty)
-						MediaSourceCard(
-							currentSource: _device.mediaInputSource,
-							availableSources: _device.mediaInputAvailableSources,
-							isEnabled: _device.isTelevisionOn,
-							sourceLabel: (s) => mediaInputSourceLabel(context, s),
-							onSourceChanged: _setSource,
-							scale: _scale,
-						),
-					if (_device.televisionChannel.brightnessProp != null) ...[
-						if (_device.mediaInputAvailableSources.isNotEmpty) AppSpacings.spacingLgVertical,
+					if (_device.televisionChannel.brightnessProp != null)
 						MediaBrightnessCard(
 							brightness: _effectiveBrightness,
 							isEnabled: _device.isTelevisionOn,
@@ -641,9 +627,8 @@ class _TelevisionDeviceDetailState extends State<TelevisionDeviceDetail> {
 							onBrightnessChanged: _setBrightness,
 							scale: _scale,
 						),
-					],
 					if (_device.hasTelevisionRemoteKey) ...[
-						if (_device.mediaInputAvailableSources.isNotEmpty) AppSpacings.spacingLgVertical,
+						AppSpacings.spacingLgVertical,
 						MediaRemoteCard<TelevisionRemoteKeyValue>(
 							availableKeys: _device.televisionAvailableRemoteKeys,
 							isEnabled: _device.isTelevisionOn,

@@ -14,7 +14,6 @@ import 'package:fastybird_smart_panel/modules/devices/presentation/utils/media_i
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_brightness_card.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_info_card.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_remote_card.dart';
-import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_source_card.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_volume_card.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
@@ -537,6 +536,10 @@ class _ProjectorDeviceDetailState extends State<ProjectorDeviceDetail> {
 						displaySource: _getDisplaySource(),
 						accentColor: accentColor,
 						scale: _scale,
+						availableSources: _device.mediaInputAvailableSources.isNotEmpty ? _device.mediaInputAvailableSources : null,
+						currentSource: _device.mediaInputSource,
+						sourceLabel: _device.mediaInputAvailableSources.isNotEmpty ? (s) => mediaInputSourceLabel(context, s) : null,
+						onSourceChanged: _device.mediaInputAvailableSources.isNotEmpty ? _setSource : null,
 					),
 					if (_device.hasSpeaker) ...[
 						AppSpacings.spacingLgVertical,
@@ -548,17 +551,6 @@ class _ProjectorDeviceDetailState extends State<ProjectorDeviceDetail> {
 							accentColor: accentColor,
 							onVolumeChanged: _setVolume,
 							onMuteToggle: _toggleMute,
-							scale: _scale,
-						),
-					],
-					if (_device.mediaInputAvailableSources.isNotEmpty) ...[
-						AppSpacings.spacingLgVertical,
-						MediaSourceCard(
-							currentSource: _device.mediaInputSource,
-							availableSources: _device.mediaInputAvailableSources,
-							isEnabled: _device.isProjectorOn,
-							sourceLabel: (s) => mediaInputSourceLabel(context, s),
-							onSourceChanged: _setSource,
 							scale: _scale,
 						),
 					],
@@ -607,6 +599,10 @@ class _ProjectorDeviceDetailState extends State<ProjectorDeviceDetail> {
 						displaySource: _getDisplaySource(),
 						accentColor: accentColor,
 						scale: _scale,
+						availableSources: _device.mediaInputAvailableSources.isNotEmpty ? _device.mediaInputAvailableSources : null,
+						currentSource: _device.mediaInputSource,
+						sourceLabel: _device.mediaInputAvailableSources.isNotEmpty ? (s) => mediaInputSourceLabel(context, s) : null,
+						onSourceChanged: _device.mediaInputAvailableSources.isNotEmpty ? _setSource : null,
 					),
 					if (_device.hasSpeaker) ...[
 						AppSpacings.spacingMdVertical,
@@ -626,17 +622,7 @@ class _ProjectorDeviceDetailState extends State<ProjectorDeviceDetail> {
 			secondaryContent: Column(
 				crossAxisAlignment: CrossAxisAlignment.start,
 				children: [
-					if (_device.mediaInputAvailableSources.isNotEmpty)
-						MediaSourceCard(
-							currentSource: _device.mediaInputSource,
-							availableSources: _device.mediaInputAvailableSources,
-							isEnabled: _device.isProjectorOn,
-							sourceLabel: (s) => mediaInputSourceLabel(context, s),
-							onSourceChanged: _setSource,
-							scale: _scale,
-						),
-					if (_device.projectorChannel.brightnessProp != null) ...[
-						if (_device.mediaInputAvailableSources.isNotEmpty) AppSpacings.spacingLgVertical,
+					if (_device.projectorChannel.brightnessProp != null)
 						MediaBrightnessCard(
 							brightness: _effectiveBrightness,
 							isEnabled: _device.isProjectorOn,
@@ -644,9 +630,8 @@ class _ProjectorDeviceDetailState extends State<ProjectorDeviceDetail> {
 							onBrightnessChanged: _setBrightness,
 							scale: _scale,
 						),
-					],
 					if (_device.hasProjectorRemoteKey) ...[
-						if (_device.projectorChannel.brightnessProp != null || _device.mediaInputAvailableSources.isNotEmpty) AppSpacings.spacingLgVertical,
+						if (_device.projectorChannel.brightnessProp != null) AppSpacings.spacingLgVertical,
 						MediaRemoteCard<ProjectorRemoteKeyValue>(
 							availableKeys: _device.projectorAvailableRemoteKeys,
 							isEnabled: _device.isProjectorOn,
