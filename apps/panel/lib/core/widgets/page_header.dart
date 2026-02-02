@@ -225,7 +225,9 @@ class _HeaderIconButton extends StatelessWidget {
   }
 }
 
-/// Header icon button exposed for external use
+/// Header icon button exposed for external use.
+///
+/// Uses filled button neutral theme for consistent styling.
 class HeaderIconButton extends StatelessWidget {
   final ScreenService _screenService = locator<ScreenService>();
   final VisualDensityService _visualDensityService =
@@ -233,15 +235,11 @@ class HeaderIconButton extends StatelessWidget {
 
   final IconData icon;
   final VoidCallback? onTap;
-  final Color? backgroundColor;
-  final Color? iconColor;
 
   HeaderIconButton({
     super.key,
     required this.icon,
     this.onTap,
-    this.backgroundColor,
-    this.iconColor,
   });
 
   double _scale(double size) =>
@@ -250,28 +248,25 @@ class HeaderIconButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = backgroundColor ??
-        (isDark ? AppFillColorDark.light : AppFillColorLight.light);
-    final borderColor = isDark ? null : AppBorderColorLight.base;
-    final color = iconColor ??
-        (isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary);
+    final neutralTheme = isDark
+        ? AppFilledButtonsDarkThemes.neutral
+        : AppFilledButtonsLightThemes.neutral;
+    final foregroundColor = isDark
+        ? AppFilledButtonsDarkThemes.neutralForegroundColor
+        : AppFilledButtonsLightThemes.neutralForegroundColor;
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: _scale(36),
-        height: _scale(36),
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(AppBorderRadius.round),
-          border: borderColor != null
-              ? Border.all(color: borderColor, width: _scale(1))
-              : null,
+    return Theme(
+      data: Theme.of(context).copyWith(filledButtonTheme: neutralTheme),
+      child: FilledButton(
+        onPressed: onTap,
+        style: FilledButton.styleFrom(
+          padding: AppSpacings.paddingMd,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         ),
         child: Icon(
           icon,
-          size: _scale(18),
-          color: color,
+          size: AppFontSize.extraLarge,
+          color: foregroundColor,
         ),
       ),
     );
@@ -321,41 +316,37 @@ class HeaderDeviceIcon extends StatelessWidget {
 }
 
 /// Home button for navigation back to home
+///
+/// Uses filled button neutral theme for consistent styling.
 class HeaderHomeButton extends StatelessWidget {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
   final VoidCallback? onTap;
 
-  HeaderHomeButton({
+  const HeaderHomeButton({
     super.key,
     this.onTap,
   });
 
-  double _scale(double s) =>
-      _screenService.scale(s, density: _visualDensityService.density);
-
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? AppFillColorDark.light : AppFillColorLight.darker;
-    final iconColor =
-        isDark ? AppTextColorDark.secondary : AppTextColorLight.primary;
+    final neutralTheme = isDark
+        ? AppFilledButtonsDarkThemes.neutral
+        : AppFilledButtonsLightThemes.neutral;
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: _scale(32),
-        height: _scale(32),
-        decoration: BoxDecoration(
-          color: bgColor,
-          shape: BoxShape.circle,
+    return Theme(
+      data: Theme.of(context).copyWith(filledButtonTheme: neutralTheme),
+      child: FilledButton(
+        onPressed: onTap,
+        style: FilledButton.styleFrom(
+          padding: AppSpacings.paddingMd,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         ),
         child: Icon(
           MdiIcons.homeOutline,
-          size: _scale(18),
-          color: iconColor,
+          size: AppFontSize.extraLarge,
+          color: isDark
+              ? AppFilledButtonsDarkThemes.neutralForegroundColor
+              : AppFilledButtonsLightThemes.neutralForegroundColor,
         ),
       ),
     );

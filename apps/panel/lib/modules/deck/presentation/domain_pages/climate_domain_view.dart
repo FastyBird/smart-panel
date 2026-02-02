@@ -1577,10 +1577,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         children: [
           // Current temperature display
           Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: AppSpacings.pMd,
-              vertical: AppSpacings.pSm,
-            ),
+            padding: AppSpacings.paddingMd,
             decoration: BoxDecoration(
               color: isDark ? AppFillColorDark.light : AppFillColorLight.darker,
               borderRadius: BorderRadius.circular(AppBorderRadius.base),
@@ -1590,7 +1587,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
               children: [
                 Icon(
                   MdiIcons.thermometer,
-                  size: _scale(16),
+                  size: AppFontSize.base,
                   color: isDark
                       ? AppTextColorDark.secondary
                       : AppTextColorLight.secondary,

@@ -54,26 +54,31 @@ class SectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Row(
+    return Column(
       children: [
-        Icon(
-          icon,
-          color: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
-          size: _scale(18),
-        ),
-        AppSpacings.spacingMdHorizontal,
-        Expanded(
-          child: Text(
-            title,
-            style: TextStyle(
+        Row(
+          children: [
+            Icon(
+              icon,
               color: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
-              fontSize: AppFontSize.base,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.5,
+              size: _scale(18),
             ),
-          ),
+            AppSpacings.spacingMdHorizontal,
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  color: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
+                  fontSize: AppFontSize.base,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+            if (trailing != null) trailing!,
+          ],
         ),
-        if (trailing != null) trailing!,
+        AppSpacings.spacingMdVertical,
       ],
     );
   }
@@ -81,7 +86,8 @@ class SectionTitle extends StatelessWidget {
 
 /// Action button for use in SectionTitle trailing slot.
 ///
-/// Styled as a small pill-shaped button with optional icon and text.
+/// Uses filled button neutral theme. Styled as a small button with optional
+/// icon and text.
 ///
 /// Example:
 /// ```dart
@@ -118,19 +124,24 @@ class SectionTitleButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final contentColor =
-        isDark ? AppTextColorDark.secondary : AppTextColorLight.primary;
+    final neutralTheme = isDark
+        ? AppFilledButtonsDarkThemes.neutral
+        : AppFilledButtonsLightThemes.neutral;
+    final foregroundColor = isDark
+        ? AppFilledButtonsDarkThemes.neutralForegroundColor
+        : AppFilledButtonsLightThemes.neutralForegroundColor;
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: AppSpacings.pMd,
-          vertical: AppSpacings.pSm,
-        ),
-        decoration: BoxDecoration(
-          color: isDark ? AppFillColorDark.light : AppFillColorLight.darker,
-          borderRadius: BorderRadius.circular(AppBorderRadius.round),
+    return Theme(
+      data: Theme.of(context).copyWith(filledButtonTheme: neutralTheme),
+      child: FilledButton(
+        onPressed: onTap,
+        style: FilledButton.styleFrom(
+          padding: EdgeInsets.symmetric(
+            horizontal: AppSpacings.pMd,
+            vertical: AppSpacings.pSm,
+          ),
+          minimumSize: Size.zero,
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -138,15 +149,15 @@ class SectionTitleButton extends StatelessWidget {
             if (icon != null) ...[
               Icon(
                 icon,
-                size: _scale(14),
-                color: contentColor,
+                size: AppFontSize.small,
+                color: foregroundColor,
               ),
               AppSpacings.spacingSmHorizontal,
             ],
             Text(
               label,
               style: TextStyle(
-                color: contentColor,
+                color: foregroundColor,
                 fontSize: AppFontSize.extraSmall,
                 fontWeight: FontWeight.w500,
               ),

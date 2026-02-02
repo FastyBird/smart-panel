@@ -1051,7 +1051,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     }
     if (lightsOn == 0) {
       // All off
-      return isDark ? AppColorsDark.info : AppColorsLight.info;
+      return isDark ? AppColorsDark.neutral : AppColorsLight.neutral;
     }
     // Mixed (some on, some off)
     return isDark ? AppColorsDark.warning : AppColorsLight.warning;
@@ -1107,7 +1107,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             SectionTitle(
                 title: localizations.space_scenes_title,
                 icon: MdiIcons.autoFix),
-            AppSpacings.spacingMdVertical,
             // Use horizontal scroll when other lights present (less vertical space)
             if (hasOtherLights)
               SizedBox(
@@ -1125,7 +1124,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
           if (hasOtherLights) ...[
             if (hasRoles || hasScenes) AppSpacings.spacingLgVertical,
             _buildOtherLightsTitle(otherLights, otherTargets, localizations),
-            AppSpacings.spacingMdVertical,
             _buildLightsGrid(
               context,
               otherLights,
@@ -1351,7 +1349,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
           title: localizations.space_scenes_title,
           icon: MdiIcons.autoFix,
         ),
-        SizedBox(height: AppSpacings.pMd),
         _buildLandscapeScenesCard(context),
       ],
     );

@@ -544,7 +544,7 @@ class _SliderPanel extends StatelessWidget {
                   end: Alignment.topCenter,
                   colors: gradientColors,
                 ),
-                borderRadius: BorderRadius.circular(_scale(26)),
+                borderRadius: BorderRadius.circular(AppBorderRadius.base),
                 border: isDark
                     ? null
                     : Border.all(
@@ -605,7 +605,7 @@ class _SliderPanel extends StatelessWidget {
                   end: Alignment.centerRight,
                   colors: gradientColors,
                 ),
-                borderRadius: BorderRadius.circular(_scale(26)),
+                borderRadius: BorderRadius.circular(AppBorderRadius.base),
                 border: isDark
                     ? null
                     : Border.all(
@@ -639,7 +639,7 @@ class _SliderPanel extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         color: AppColors.white,
-        borderRadius: BorderRadius.circular(size / 2),
+        borderRadius: BorderRadius.circular(AppBorderRadius.base),
         border: Border.all(
           color: borderColor,
           width: _scale(3),
@@ -654,8 +654,8 @@ class _SliderPanel extends StatelessWidget {
       ),
       child: Center(
         child: Container(
-          width: _scale(20),
-          height: _scale(20),
+          width: size * 2/3,
+          height: size * 2/3,
           decoration: BoxDecoration(
             color: thumbColor,
             borderRadius: BorderRadius.circular(AppBorderRadius.base),
@@ -787,7 +787,7 @@ class _ColorPanel extends StatelessWidget {
                     Color(0xFFFF0000),
                   ],
                 ),
-                borderRadius: BorderRadius.circular(_scale(26)),
+                borderRadius: BorderRadius.circular(AppBorderRadius.base),
                 border: isDark
                     ? null
                     : Border.all(
@@ -843,7 +843,7 @@ class _ColorPanel extends StatelessWidget {
                   end: Alignment.bottomCenter,
                   colors: [currentColor, AppColors.white],
                 ),
-                borderRadius: BorderRadius.circular(_scale(26)),
+                borderRadius: BorderRadius.circular(AppBorderRadius.base),
                 border: isDark
                     ? null
                     : Border.all(
@@ -907,7 +907,7 @@ class _ColorPanel extends StatelessWidget {
                     Color(0xFFFF0000),
                   ],
                 ),
-                borderRadius: BorderRadius.circular(_scale(26)),
+                borderRadius: BorderRadius.circular(AppBorderRadius.base),
                 border: isDark
                     ? null
                     : Border.all(
@@ -961,7 +961,7 @@ class _ColorPanel extends StatelessWidget {
                 gradient: LinearGradient(
                   colors: [AppColors.white, currentColor],
                 ),
-                borderRadius: BorderRadius.circular(_scale(26)),
+                borderRadius: BorderRadius.circular(AppBorderRadius.base),
                 border: isDark
                     ? null
                     : Border.all(
@@ -996,7 +996,7 @@ class _ColorPanel extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         color: AppColors.white,
-        borderRadius: BorderRadius.circular(size / 2),
+        borderRadius: BorderRadius.circular(AppBorderRadius.base),
         border: Border.all(
           color: borderColor,
           width: _scale(3),
@@ -1011,8 +1011,8 @@ class _ColorPanel extends StatelessWidget {
       ),
       child: Center(
         child: Container(
-          width: _scale(20),
-          height: _scale(20),
+          width: size * 2/3,
+          height: size * 2/3,
           decoration: BoxDecoration(
             color: color,
             borderRadius: BorderRadius.circular(AppBorderRadius.base),

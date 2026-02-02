@@ -283,8 +283,6 @@ class LightingPresetsPanel extends StatelessWidget {
     List<_LightPreset> presets,
     AppLocalizations localizations,
   ) {
-    final primaryColor =
-        isDark ? AppColorsDark.primary : AppColorsLight.primary;
     final isLargeScreen = _screenService.isLargeScreen;
 
     // Large screens: 2 vertical tiles per row (square)
@@ -298,7 +296,6 @@ class LightingPresetsPanel extends StatelessWidget {
             title: localizations.window_covering_presets_label,
             icon: MdiIcons.viewGrid,
           ),
-          AppSpacings.spacingSmVertical,
           GridView.count(
             crossAxisCount: 2,
             mainAxisSpacing: AppSpacings.pMd,
@@ -313,7 +310,6 @@ class LightingPresetsPanel extends StatelessWidget {
                 icon: preset.icon,
                 name: preset.label,
                 isActive: isActive,
-                activeColor: primaryColor,
                 onTileTap: () => _applyPreset(preset),
               );
             }).toList(),
@@ -331,7 +327,6 @@ class LightingPresetsPanel extends StatelessWidget {
           title: localizations.window_covering_presets_label,
           icon: MdiIcons.viewGrid,
         ),
-        AppSpacings.spacingSmVertical,
         ...presets.asMap().entries.map((entry) {
           final index = entry.key;
           final preset = entry.value;
@@ -344,7 +339,6 @@ class LightingPresetsPanel extends StatelessWidget {
               icon: preset.icon,
               name: preset.label,
               isActive: isActive,
-              activeColor: primaryColor,
               onTileTap: () => _applyPreset(preset),
             ),
           );
@@ -371,7 +365,6 @@ class LightingPresetsPanel extends StatelessWidget {
           title: localizations.window_covering_presets_label,
           icon: MdiIcons.viewGrid,
         ),
-        AppSpacings.spacingSmVertical,
         GridView.count(
           crossAxisCount: 4,
           mainAxisSpacing: AppSpacings.pSm,
@@ -414,24 +407,16 @@ class LightingPresetsPanel extends StatelessWidget {
     List<_LightPreset> presets,
     AppLocalizations localizations,
   ) {
-    final primaryColor =
-        isDark ? AppColorsDark.primary : AppColorsLight.primary;
     final tileHeight = _scale(AppTileHeight.horizontal);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Padding(
-          padding: EdgeInsets.only(
-            top: AppSpacings.pSm,
-          ),
-          child: SectionTitle(
-            title: localizations.window_covering_presets_label,
-            icon: MdiIcons.viewGrid,
-          ),
+        SectionTitle(
+          title: localizations.window_covering_presets_label,
+          icon: MdiIcons.viewGrid,
         ),
-        AppSpacings.spacingSmVertical,
         HorizontalScrollWithGradient(
           height: tileHeight,
           layoutPadding: AppSpacings.pLg,
@@ -445,7 +430,6 @@ class LightingPresetsPanel extends StatelessWidget {
               icon: preset.icon,
               name: preset.label,
               isActive: isActive,
-              activeColor: primaryColor,
               onTileTap: () => _applyPreset(preset),
             );
           },
@@ -469,16 +453,10 @@ class LightingPresetsPanel extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Padding(
-          padding: EdgeInsets.only(
-            top: AppSpacings.pSm,
-          ),
-          child: SectionTitle(
-            title: localizations.window_covering_presets_label,
-            icon: MdiIcons.viewGrid,
-          ),
+        SectionTitle(
+          title: localizations.window_covering_presets_label,
+          icon: MdiIcons.viewGrid,
         ),
-        AppSpacings.spacingSmVertical,
         HorizontalScrollWithGradient(
           height: swatchHeight,
           layoutPadding: AppSpacings.pLg,

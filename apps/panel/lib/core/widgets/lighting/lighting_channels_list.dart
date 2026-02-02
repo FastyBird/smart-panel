@@ -78,8 +78,6 @@ class LightingChannelsList extends StatelessWidget {
 
   Widget _buildLandscapeChannelsList(BuildContext context, bool isDark) {
     final localizations = AppLocalizations.of(context)!;
-    final primaryColor =
-        isDark ? AppColorsDark.primary : AppColorsLight.primary;
     final isLargeScreen = _screenService.isLargeScreen;
     final stateColor = _getStateColor(isDark);
 
@@ -116,7 +114,6 @@ class LightingChannelsList extends StatelessWidget {
                 isActive: channel.isOn && channel.isOnline,
                 isOffline: !channel.isOnline,
                 isSelected: channel.isSelected,
-                activeColor: primaryColor,
                 onTileTap: () => onChannelTileTap?.call(channel),
                 onIconTap: channel.isOnline
                     ? () => onChannelIconTap?.call(channel)
@@ -152,7 +149,6 @@ class LightingChannelsList extends StatelessWidget {
               isActive: channel.isOn && channel.isOnline,
               isOffline: !channel.isOnline,
               isSelected: channel.isSelected,
-              activeColor: primaryColor,
               onTileTap: () => onChannelTileTap?.call(channel),
               onIconTap: channel.isOnline
                   ? () => onChannelIconTap?.call(channel)
@@ -172,8 +168,6 @@ class LightingChannelsList extends StatelessWidget {
 
   Widget _buildPortraitChannelsList(BuildContext context, bool isDark) {
     final localizations = AppLocalizations.of(context)!;
-    final primaryColor =
-        isDark ? AppColorsDark.primary : AppColorsLight.primary;
     final stateColor = _getStateColor(isDark);
     final dividerColor =
         isDark ? AppBorderColorDark.light : AppBorderColorLight.base;
@@ -230,12 +224,12 @@ class LightingChannelsList extends StatelessWidget {
                 isActive: channel.isOn && channel.isOnline,
                 isOffline: !channel.isOnline,
                 isSelected: channel.isSelected,
-                activeColor: primaryColor,
                 onTileTap: () => onChannelTileTap?.call(channel),
                 onIconTap: channel.isOnline
                     ? () => onChannelIconTap?.call(channel)
                     : null,
                 showSelectionIndicator: true,
+                showInactiveBorder: false,
                 showWarningBadge: true,
               );
             },

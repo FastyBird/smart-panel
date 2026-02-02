@@ -2266,7 +2266,7 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
                             onColorChanged: onColorChanged,
                             onWhiteChannelChanged: onWhiteChannelChanged,
                           ),
-                        if (showPresets) SizedBox(height: AppSpacings.pLg),
+                        if (showPresets) AppSpacings.spacingMdVertical,
                         LightingChannelsList(
                           channels: channels,
                           state: state,
@@ -2425,29 +2425,31 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
           ),
         ],
       ),
-      trailing: GestureDetector(
-        onTap: onPowerToggle,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          width: _scale(48),
-          height: _scale(32),
-          decoration: BoxDecoration(
-            color: isOn
-                ? primaryColor
-                : (isDark ? AppFillColorDark.light : AppFillColorLight.light),
-            borderRadius: BorderRadius.circular(AppBorderRadius.base),
-            border: (!isOn && !isDark)
-                ? Border.all(color: AppBorderColorLight.base, width: _scale(1))
-                : null,
+      trailing: Theme(
+        data: Theme.of(context).copyWith(
+          filledButtonTheme: isOn ? (isDark
+              ? AppFilledButtonsDarkThemes.primary
+              : AppFilledButtonsLightThemes.primary) : (isDark
+              ? AppFilledButtonsDarkThemes.neutral
+              : AppFilledButtonsLightThemes.neutral),
+        ),
+        child: FilledButton(
+          onPressed: onPowerToggle,
+          style: FilledButton.styleFrom(
+            padding: EdgeInsets.symmetric(
+              horizontal: AppSpacings.pLg,
+              vertical: AppSpacings.pMd,
+            ),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
           child: Icon(
             MdiIcons.power,
-            size: _scale(18),
-            color: isOn
-                ? AppColors.white
-                : (isDark
-                    ? AppTextColorDark.secondary
-                    : AppTextColorLight.secondary),
+            size: AppFontSize.extraLarge,
+            color: isOn ? (isDark
+                ? AppFilledButtonsDarkThemes.primaryForegroundColor
+                : AppFilledButtonsLightThemes.primaryForegroundColor) : (isDark
+                ? AppFilledButtonsDarkThemes.neutralForegroundColor
+                : AppFilledButtonsLightThemes.neutralForegroundColor),
           ),
         ),
       ),
