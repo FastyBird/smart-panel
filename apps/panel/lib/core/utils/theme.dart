@@ -953,7 +953,7 @@ class AppFilledButtonsDarkThemes {
       borderColor: AppColorsDark.neutralLight7,
       pressedBorderColor: AppColorsDark.neutralLight8,
       hoveredBorderColor: AppColorsDark.neutralLight5,
-      disabledBorderColor: AppColorsDark.neutralLight8,
+      disabledBorderColor: AppColorsDark.neutralLight7,
     ),
   );
 

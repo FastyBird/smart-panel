@@ -48,7 +48,9 @@ class MediaPlaybackCard extends StatelessWidget {
 		final borderColor = isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
 		final secondaryColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
 		final localizations = AppLocalizations.of(context)!;
-		final themeData = isDark ? ThemeData(filledButtonTheme: AppFilledButtonsDarkThemes.neutral) : ThemeData(filledButtonTheme: AppFilledButtonsLightThemes.neutral);
+		final themeData = isDark
+			? ThemeData(brightness: Brightness.dark, filledButtonTheme: AppFilledButtonsDarkThemes.neutral)
+			: ThemeData(filledButtonTheme: AppFilledButtonsLightThemes.neutral);
 
 		return Container(
 			padding: AppSpacings.paddingLg,
@@ -274,8 +276,12 @@ class MediaPlaybackCard extends StatelessWidget {
 		final iconSize = scale(isMain ? (compact ? 18 : 24) : (compact ? 14 : 18));
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 		final themeData = isActive
-			? ThemeData(filledButtonTheme: isDark ? AppFilledButtonsDarkThemes.info : AppFilledButtonsLightThemes.info)
-			: (isDark ? ThemeData(filledButtonTheme: AppFilledButtonsDarkThemes.neutral) : ThemeData(filledButtonTheme: AppFilledButtonsLightThemes.neutral));
+			? (isDark
+				? ThemeData(brightness: Brightness.dark, filledButtonTheme: AppFilledButtonsDarkThemes.info)
+				: ThemeData(filledButtonTheme: AppFilledButtonsLightThemes.info))
+			: (isDark
+				? ThemeData(brightness: Brightness.dark, filledButtonTheme: AppFilledButtonsDarkThemes.neutral)
+				: ThemeData(filledButtonTheme: AppFilledButtonsLightThemes.neutral));
 
 		return SizedBox(
 			width: size,
