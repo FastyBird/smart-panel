@@ -136,24 +136,64 @@ class _ModeSelectorState<T> extends State<ModeSelector<T>> {
   /// Key used to scroll to the selected item when scrollable and after first frame.
   final GlobalKey _selectedKey = GlobalKey();
 
+  ScrollController? _scrollController;
+
   @override
   void initState() {
     super.initState();
+    if (widget.scrollable) {
+      _scrollController = ScrollController();
+      _scheduleScrollToSelected();
+    }
+  }
+
+  @override
+  void didUpdateWidget(ModeSelector<T> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.scrollable &&
+        (widget.selectedValue != oldWidget.selectedValue ||
+            widget.modes != oldWidget.modes)) {
+      _scheduleScrollToSelected();
+    }
+  }
+
+  void _scheduleScrollToSelected() {
     if (widget.scrollable && widget.selectedValue != null) {
       WidgetsBinding.instance.addPostFrameCallback(_scrollToSelected);
     }
   }
 
+  @override
+  void dispose() {
+    _scrollController?.dispose();
+    super.dispose();
+  }
+
+  /// Scroll only the selector's list to center the selected item (does not scroll the page).
   void _scrollToSelected(_) {
-    final context = _selectedKey.currentContext;
-    if (context != null && context.mounted) {
-      Scrollable.ensureVisible(
-        context,
-        alignment: 0.5,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-      );
-    }
+    final ctx = _selectedKey.currentContext;
+    if (ctx == null || !mounted || _scrollController == null) return;
+
+    final box = ctx.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize || box.parent == null) return;
+
+    final position = _scrollController!.position;
+    final viewportDimension = position.viewportDimension;
+    final maxScrollExtent = position.maxScrollExtent;
+
+    final isHorizontal = widget.orientation == ModeSelectorOrientation.horizontal;
+    final itemOffsetInContent = box.localToGlobal(Offset.zero, ancestor: box.parent);
+    final itemOffset = isHorizontal ? itemOffsetInContent.dx : itemOffsetInContent.dy;
+    final itemSize = isHorizontal ? box.size.width : box.size.height;
+
+    final scrollOffset = (itemOffset + itemSize / 2 - viewportDimension / 2)
+        .clamp(0.0, maxScrollExtent);
+
+    _scrollController!.animateTo(
+      scrollOffset,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
   }
 
   double _scale(double value) =>
@@ -231,6 +271,7 @@ class _ModeSelectorState<T> extends State<ModeSelector<T>> {
 
         if (widget.scrollable) {
           return SingleChildScrollView(
+            controller: _scrollController,
             scrollDirection: Axis.horizontal,
             child: Row(children: buttons),
           );
@@ -278,6 +319,7 @@ class _ModeSelectorState<T> extends State<ModeSelector<T>> {
 
     if (widget.scrollable) {
       return SingleChildScrollView(
+        controller: _scrollController,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: buttons,
