@@ -10,6 +10,7 @@ import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
+import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
 import 'package:fastybird_smart_panel/core/widgets/slider_with_steps.dart';
 import 'package:fastybird_smart_panel/core/widgets/tile_wrappers.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
@@ -69,6 +70,8 @@ class _CoverDeviceData {
     required this.position,
     this.isOnline = true,
   });
+
+  bool get isActive => isOnline && position > 0;
 }
 
 // ============================================================================
@@ -548,16 +551,11 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   ) {
     // Build list of device tile widgets using DeviceTileLandscape wrapper
     final deviceWidgets = deviceDataList.map((device) {
-      final isActive = device.isOnline && device.position > 0;
-      final status = _getDeviceStatus(device, localizations);
-
       return DeviceTileLandscape(
-        icon: device.position > 0
-            ? MdiIcons.blindsHorizontal
-            : MdiIcons.blindsHorizontalClosed,
+        icon: _getDeviceTileIcon(device),
         name: device.name,
-        status: status,
-        isActive: isActive,
+        status: _getDeviceStatus(device, localizations),
+        isActive: device.isActive,
         isOffline: !device.isOnline,
         onTileTap: () => _openDeviceDetail(context, device),
       );
@@ -565,14 +563,13 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: AppSpacings.pMd,
       children: [
-        _buildSectionTitle(
-          context,
-          localizations.shading_devices_title,
-          MdiIcons.viewGrid,
+        SectionTitle(
+          title: localizations.shading_devices_title,
+          icon: MdiIcons.viewGrid,
         ),
         for (final widget in deviceWidgets) ...[
-          SizedBox(height: AppSpacings.pMd),
           widget,
         ],
       ],
@@ -617,8 +614,10 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
           // Devices Section
           if (deviceDataList.isNotEmpty) ...[
             AppSpacings.spacingLgVertical,
-            _buildSectionTitle(
-                context, localizations.shading_devices_title, MdiIcons.viewGrid),
+            SectionTitle(
+              title: localizations.shading_devices_title,
+              icon: MdiIcons.viewGrid,
+            ),
             AppSpacings.spacingMdVertical,
             _buildDevicesGrid(
               context,
@@ -891,6 +890,16 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   // INTENT METHODS
   // ===========================================================================
 
+  void _showActionFailed({CoversTargetRole? clearPendingRole}) {
+    if (!mounted) return;
+    final localizations = AppLocalizations.of(context)!;
+    AlertBar.showError(context, message: localizations.action_failed);
+    if (clearPendingRole != null) {
+      _pendingPositions.remove(clearPendingRole);
+      setState(() {});
+    }
+  }
+
   /// Set position for covers with a specific role
   Future<void> _setRolePosition(CoversTargetRole role, int position) async {
     setState(() => _pendingPositions[role] = position);
@@ -906,21 +915,13 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
 
       final result = await _spacesService?.setRolePosition(_roomId, stateRole, position);
       if (result == null && mounted) {
-        final localizations = AppLocalizations.of(context)!;
-        AlertBar.showError(context, message: localizations.action_failed);
-        _pendingPositions.remove(role);
-        setState(() {});
+        _showActionFailed(clearPendingRole: role);
       }
     } catch (e) {
       if (kDebugMode) {
         debugPrint('[ShadingDomainView] Failed to set role position: $e');
       }
-      if (mounted) {
-        final localizations = AppLocalizations.of(context)!;
-        AlertBar.showError(context, message: localizations.action_failed);
-        _pendingPositions.remove(role);
-        setState(() {});
-      }
+      if (mounted) _showActionFailed(clearPendingRole: role);
     }
   }
 
@@ -928,18 +929,12 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   Future<void> _stopCovers() async {
     try {
       final result = await _spacesService?.stopCovers(_roomId);
-      if (result == null && mounted) {
-        final localizations = AppLocalizations.of(context)!;
-        AlertBar.showError(context, message: localizations.action_failed);
-      }
+      if (result == null && mounted) _showActionFailed();
     } catch (e) {
       if (kDebugMode) {
         debugPrint('[ShadingDomainView] Failed to stop covers: $e');
       }
-      if (mounted) {
-        final localizations = AppLocalizations.of(context)!;
-        AlertBar.showError(context, message: localizations.action_failed);
-      }
+      if (mounted) _showActionFailed();
     }
   }
 
@@ -953,19 +948,13 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
       }
 
       if (result == null || result.failedDevices > 0) {
-        if (mounted) {
-          final localizations = AppLocalizations.of(context)!;
-          AlertBar.showError(context, message: localizations.action_failed);
-        }
+        if (mounted) _showActionFailed();
       }
     } catch (e) {
       if (kDebugMode) {
         debugPrint('[ShadingDomainView] Failed to set covers mode: $e');
       }
-      if (mounted) {
-        final localizations = AppLocalizations.of(context)!;
-        AlertBar.showError(context, message: localizations.action_failed);
-      }
+      if (mounted) _showActionFailed();
     }
   }
 
@@ -1037,40 +1026,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   /// Build the mode selector widget for portrait/horizontal layout.
   Widget _buildModeSelector(BuildContext context, AppLocalizations localizations) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    // Determine activeValue, matchedValue, and lastIntentValue based on state:
-    // - activeValue: mode explicitly set by intent AND still matches (2px border, mode color)
-    // - matchedValue: mode detected by user manually setting devices (1px border, mode color)
-    // - lastIntentValue: last applied intent when no mode matches (1px border, neutral color)
-    final CoversMode? activeValue;
-    final CoversMode? matchedValue;
-    final CoversMode? lastIntentValue;
-
-    final detectedMode = _coversState?.detectedMode;
-    final lastAppliedMode = _coversState?.lastAppliedMode;
-    final isModeFromIntent = _coversState?.isModeFromIntent ?? false;
-
-    if (detectedMode != null && isModeFromIntent) {
-      // Mode was set by intent and still matches: show as active
-      activeValue = detectedMode;
-      matchedValue = null;
-      lastIntentValue = null;
-    } else if (detectedMode != null && !isModeFromIntent) {
-      // Mode detected but not from intent (user manually matched): show as matched
-      activeValue = null;
-      matchedValue = detectedMode;
-      lastIntentValue = null;
-    } else if (lastAppliedMode != null) {
-      // No mode matches, but we have a last applied intent: show as last intent
-      activeValue = null;
-      matchedValue = null;
-      lastIntentValue = lastAppliedMode;
-    } else {
-      // No mode at all
-      activeValue = null;
-      matchedValue = null;
-      lastIntentValue = null;
-    }
+    final (activeValue, matchedValue, lastIntentValue) = _getCoversModeSelectorValues();
 
     return Container(
       padding: AppSpacings.paddingMd,
@@ -1096,39 +1052,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
 
   /// Build vertical mode selector for landscape layout
   Widget _buildLandscapeModeSelector(BuildContext context, AppLocalizations localizations) {
-    // Determine activeValue, matchedValue, and lastIntentValue based on state:
-    // - activeValue: mode explicitly set by intent AND still matches (2px border, mode color)
-    // - matchedValue: mode detected by user manually setting devices (1px border, mode color)
-    // - lastIntentValue: last applied intent when no mode matches (1px border, neutral color)
-    final CoversMode? activeValue;
-    final CoversMode? matchedValue;
-    final CoversMode? lastIntentValue;
-
-    final detectedMode = _coversState?.detectedMode;
-    final lastAppliedMode = _coversState?.lastAppliedMode;
-    final isModeFromIntent = _coversState?.isModeFromIntent ?? false;
-
-    if (detectedMode != null && isModeFromIntent) {
-      // Mode was set by intent and still matches: show as active
-      activeValue = detectedMode;
-      matchedValue = null;
-      lastIntentValue = null;
-    } else if (detectedMode != null && !isModeFromIntent) {
-      // Mode detected but not from intent (user manually matched): show as matched
-      activeValue = null;
-      matchedValue = detectedMode;
-      lastIntentValue = null;
-    } else if (lastAppliedMode != null) {
-      // No mode matches, but we have a last applied intent: show as last intent
-      activeValue = null;
-      matchedValue = null;
-      lastIntentValue = lastAppliedMode;
-    } else {
-      // No mode at all
-      activeValue = null;
-      matchedValue = null;
-      lastIntentValue = null;
-    }
+    final (activeValue, matchedValue, lastIntentValue) = _getCoversModeSelectorValues();
 
     return IntentModeSelector<CoversMode>(
       modes: _getCoversModeOptions(localizations),
@@ -1139,6 +1063,25 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
       orientation: ModeSelectorOrientation.vertical,
       iconPlacement: ModeSelectorIconPlacement.top,
     );
+  }
+
+  /// Resolves activeValue, matchedValue, lastIntentValue for the mode selector UI.
+  (CoversMode? activeValue, CoversMode? matchedValue, CoversMode? lastIntentValue)
+      _getCoversModeSelectorValues() {
+    final detectedMode = _coversState?.detectedMode;
+    final lastAppliedMode = _coversState?.lastAppliedMode;
+    final isModeFromIntent = _coversState?.isModeFromIntent ?? false;
+
+    if (detectedMode != null && isModeFromIntent) {
+      return (detectedMode, null, null);
+    }
+    if (detectedMode != null && !isModeFromIntent) {
+      return (null, detectedMode, null);
+    }
+    if (lastAppliedMode != null) {
+      return (null, null, lastAppliedMode);
+    }
+    return (null, null, null);
   }
 
   /// Get mode options for the mode selector
@@ -1187,16 +1130,11 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   }) {
     // Build device tiles using DeviceTilePortrait wrapper
     final items = deviceDataList.map((device) {
-      final isActive = device.isOnline && device.position > 0;
-      final status = _getDeviceStatus(device, localizations);
-
       return DeviceTilePortrait(
-        icon: device.position > 0
-            ? MdiIcons.blindsHorizontal
-            : MdiIcons.blindsHorizontalClosed,
+        icon: _getDeviceTileIcon(device),
         name: device.name,
-        status: status,
-        isActive: isActive,
+        status: _getDeviceStatus(device, localizations),
+        isActive: device.isActive,
         isOffline: !device.isOnline,
         onTileTap: () => _openDeviceDetail(context, device),
       );
@@ -1226,6 +1164,13 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     return Column(children: rows);
   }
 
+  /// Icon for device tile based on position (open vs closed).
+  IconData _getDeviceTileIcon(_CoverDeviceData device) {
+    return device.position > 0
+        ? MdiIcons.blindsHorizontal
+        : MdiIcons.blindsHorizontalClosed;
+  }
+
   /// Get localized status text for a device
   String _getDeviceStatus(_CoverDeviceData device, AppLocalizations localizations) {
     if (!device.isOnline) return localizations.device_status_offline;
@@ -1247,41 +1192,6 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
           initialChannelId: device.channelId,
         ),
       ),
-    );
-  }
-
-  // ===========================================================================
-  // COMMON WIDGETS
-  // ===========================================================================
-
-  Widget _buildSectionTitle(BuildContext context, String title, IconData icon) {
-    final bool isLight = Theme.of(context).brightness == Brightness.light;
-
-    return Row(
-      children: [
-        Icon(
-          icon,
-          color: isLight
-              ? AppTextColorLight.secondary
-              : AppTextColorDark.secondary,
-          size: _screenService.scale(
-            18,
-            density: _visualDensityService.density,
-          ),
-        ),
-        AppSpacings.spacingSmHorizontal,
-        Text(
-          title.toUpperCase(),
-          style: TextStyle(
-            fontSize: AppFontSize.small,
-            fontWeight: FontWeight.w600,
-            color: isLight
-                ? AppTextColorLight.secondary
-                : AppTextColorDark.secondary,
-            letterSpacing: 0.5,
-          ),
-        ),
-      ],
     );
   }
 
