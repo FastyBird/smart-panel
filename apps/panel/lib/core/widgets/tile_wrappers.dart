@@ -22,8 +22,7 @@ class VerticalTileLarge extends StatelessWidget {
   final bool isSelected;
   final bool showSelectionIndicator;
   final bool showWarningBadge;
-  final Color? activeColor;
-  final Color? iconAccentColor;
+  final TileThemeColor? activeColor;
   final VoidCallback? onIconTap;
   final VoidCallback? onTileTap;
 
@@ -39,7 +38,6 @@ class VerticalTileLarge extends StatelessWidget {
     this.showSelectionIndicator = false,
     this.showWarningBadge = false,
     this.activeColor,
-    this.iconAccentColor,
     this.onIconTap,
     this.onTileTap,
   });
@@ -56,7 +54,6 @@ class VerticalTileLarge extends StatelessWidget {
       isOffline: isOffline,
       isSelected: isSelected,
       activeColor: activeColor,
-      iconAccentColor: iconAccentColor,
       onIconTap: onIconTap,
       onTileTap: onTileTap,
       showGlow: false,
@@ -88,8 +85,7 @@ class HorizontalTileStretched extends StatelessWidget {
   final bool isSelected;
   final bool showSelectionIndicator;
   final bool showWarningBadge;
-  final Color? activeColor;
-  final Color? iconAccentColor;
+  final TileThemeColor? activeColor;
   final VoidCallback? onIconTap;
   final VoidCallback? onTileTap;
 
@@ -105,7 +101,6 @@ class HorizontalTileStretched extends StatelessWidget {
     this.showSelectionIndicator = false,
     this.showWarningBadge = false,
     this.activeColor,
-    this.iconAccentColor,
     this.onIconTap,
     this.onTileTap,
   });
@@ -129,7 +124,6 @@ class HorizontalTileStretched extends StatelessWidget {
         isOffline: isOffline,
         isSelected: isSelected,
         activeColor: activeColor,
-        iconAccentColor: iconAccentColor,
         onIconTap: onIconTap,
         onTileTap: onTileTap,
         showGlow: false,
@@ -158,8 +152,7 @@ class HorizontalTileCompact extends StatelessWidget {
   final bool isOffline;
   final bool isSelected;
   final bool showWarningBadge;
-  final Color? activeColor;
-  final Color? iconAccentColor;
+  final TileThemeColor? activeColor;
   final VoidCallback? onIconTap;
   final VoidCallback? onTileTap;
 
@@ -174,7 +167,6 @@ class HorizontalTileCompact extends StatelessWidget {
     this.isSelected = false,
     this.showWarningBadge = false,
     this.activeColor,
-    this.iconAccentColor,
     this.onIconTap,
     this.onTileTap,
   });
@@ -196,7 +188,6 @@ class HorizontalTileCompact extends StatelessWidget {
         isOffline: isOffline,
         isSelected: isSelected,
         activeColor: activeColor,
-        iconAccentColor: iconAccentColor,
         onIconTap: onIconTap,
         onTileTap: onTileTap,
         showGlow: false,
@@ -227,8 +218,7 @@ class VerticalTileCompact extends StatelessWidget {
   final bool showSelectionIndicator;
   final bool showWarningBadge;
   final bool showInactiveBorder;
-  final Color? activeColor;
-  final Color? iconAccentColor;
+  final TileThemeColor? activeColor;
   final VoidCallback? onIconTap;
   final VoidCallback? onTileTap;
 
@@ -245,7 +235,6 @@ class VerticalTileCompact extends StatelessWidget {
     this.showWarningBadge = false,
     this.showInactiveBorder = true,
     this.activeColor,
-    this.iconAccentColor,
     this.onIconTap,
     this.onTileTap,
   });
@@ -271,7 +260,6 @@ class VerticalTileCompact extends StatelessWidget {
         isOffline: isOffline,
         isSelected: isSelected,
         activeColor: activeColor,
-        iconAccentColor: iconAccentColor,
         onIconTap: onIconTap,
         onTileTap: onTileTap,
         showGlow: false,
@@ -303,8 +291,7 @@ class DeviceTileLandscape extends StatelessWidget {
   final bool isOffline;
   final bool isSelected;
   final bool showSelectionIndicator;
-  final Color? activeColor;
-  final Color? iconAccentColor;
+  final TileThemeColor? activeColor;
   final VoidCallback? onIconTap;
   final VoidCallback? onTileTap;
   final Widget? accessories;
@@ -320,7 +307,6 @@ class DeviceTileLandscape extends StatelessWidget {
     this.isSelected = false,
     this.showSelectionIndicator = false,
     this.activeColor,
-    this.iconAccentColor,
     this.onIconTap,
     this.onTileTap,
     this.accessories,
@@ -345,7 +331,6 @@ class DeviceTileLandscape extends StatelessWidget {
         isOffline: isOffline,
         isSelected: isSelected,
         activeColor: activeColor,
-        iconAccentColor: iconAccentColor,
         onIconTap: onIconTap,
         onTileTap: onTileTap,
         showGlow: false,
@@ -377,8 +362,7 @@ class DeviceTilePortrait extends StatelessWidget {
   final bool isActive;
   final bool isOffline;
   final bool isSelected;
-  final Color? activeColor;
-  final Color? iconAccentColor;
+  final TileThemeColor? activeColor;
   final VoidCallback? onIconTap;
   final VoidCallback? onTileTap;
   final Widget? accessories;
@@ -393,7 +377,6 @@ class DeviceTilePortrait extends StatelessWidget {
     this.isOffline = false,
     this.isSelected = false,
     this.activeColor,
-    this.iconAccentColor,
     this.onIconTap,
     this.onTileTap,
     this.accessories,
@@ -418,7 +401,6 @@ class DeviceTilePortrait extends StatelessWidget {
         isOffline: isOffline,
         isSelected: isSelected,
         activeColor: activeColor,
-        iconAccentColor: iconAccentColor,
         onIconTap: onIconTap,
         onTileTap: onTileTap,
         showGlow: false,

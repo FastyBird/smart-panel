@@ -17,6 +17,30 @@ class SensorType {
 
 /// Standardized sensor colors for consistent UI across all sensor displays
 class SensorColors {
+  /// Theme color key for a sensor type. Use for tile [activeColor].
+  /// Returns null for unknown types (tile will use primary).
+  static TileThemeColor? themeColorForType(String type) {
+    switch (type) {
+      case SensorType.temperature:
+      case SensorType.pressure:
+        return TileThemeColor.info;
+      case SensorType.humidity:
+        return TileThemeColor.success;
+      case SensorType.aqi:
+      case SensorType.pm:
+      case SensorType.voc:
+      case SensorType.contact:
+      case SensorType.leak:
+        return TileThemeColor.warning;
+      case SensorType.co2:
+        return TileThemeColor.error;
+      case SensorType.filter:
+        return TileThemeColor.info;
+      default:
+        return null;
+    }
+  }
+
   /// Get color for a sensor based on its type
   static Color forType(String type, bool isDark) {
     switch (type) {

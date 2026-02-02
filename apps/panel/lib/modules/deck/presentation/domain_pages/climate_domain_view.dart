@@ -1673,7 +1673,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           icon: sensor.icon,
           name: sensor.isOnline ? sensor.value : _translateSensorLabel(localizations, sensor),
           status: sensor.isOnline ? _translateSensorLabel(localizations, sensor) : localizations.device_status_offline,
-          iconAccentColor: _getSensorColor(context, sensor.type),
+          activeColor: SensorColors.themeColorForType(sensor.type),
           isOffline: !sensor.isOnline,
           showWarningBadge: true,
           onTileTap: () {
@@ -1827,7 +1827,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             icon: sensor.icon,
             name: sensor.isOnline ? sensor.value : _translateSensorLabel(localizations, sensor),
             status: sensor.isOnline ? _translateSensorLabel(localizations, sensor) : localizations.device_status_offline,
-            iconAccentColor: _getSensorColor(context, sensor.type),
+            activeColor: SensorColors.themeColorForType(sensor.type),
             isOffline: !sensor.isOnline,
             showWarningBadge: true,
             onTileTap: () {
@@ -1851,7 +1851,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             icon: sensor.icon,
             name: sensor.isOnline ? sensor.value : _translateSensorLabel(localizations, sensor),
             status: sensor.isOnline ? _translateSensorLabel(localizations, sensor) : localizations.device_status_offline,
-            iconAccentColor: _getSensorColor(context, sensor.type),
+            activeColor: SensorColors.themeColorForType(sensor.type),
             isOffline: !sensor.isOnline,
             showWarningBadge: true,
             onTileTap: () {

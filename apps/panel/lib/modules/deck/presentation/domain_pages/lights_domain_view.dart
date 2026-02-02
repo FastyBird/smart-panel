@@ -1378,7 +1378,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             icon: _getSceneIcon(scene),
             name: scene.name,
             isActive: false,
-            activeColor: primaryColor,
+            activeColor: TileThemeColor.primary,
             onTileTap: () => _activateScene(scene),
           );
         }).toList(),
@@ -1398,7 +1398,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             icon: _getSceneIcon(scene),
             name: scene.name,
             isActive: false,
-            activeColor: primaryColor,
+            activeColor: TileThemeColor.primary,
             onTileTap: () => _activateScene(scene),
           ),
         );

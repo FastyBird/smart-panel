@@ -39,6 +39,7 @@ class _SensorInfo {
   final String? unit;
   final IconData icon;
   final Color? valueColor;
+  final TileThemeColor? valueThemeColor;
   final bool isWarning;
 
   const _SensorInfo({
@@ -48,6 +49,7 @@ class _SensorInfo {
     required this.icon,
     this.unit,
     this.valueColor,
+    this.valueThemeColor,
     this.isWarning = false,
   });
 
@@ -560,6 +562,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
       unit: '°C',
       icon: MdiIcons.thermometer,
       valueColor: SensorColors.temperature(isDark),
+      valueThemeColor: TileThemeColor.info,
     ));
 
     // Humidity (optional)
@@ -572,6 +575,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
         unit: '%',
         icon: MdiIcons.waterPercent,
         valueColor: SensorColors.humidity(isDark),
+        valueThemeColor: TileThemeColor.success,
       ));
     }
 
@@ -587,6 +591,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
             : localizations.contact_sensor_closed,
         icon: MdiIcons.windowOpenVariant,
         valueColor: SensorColors.alert(isDark),
+        valueThemeColor: TileThemeColor.warning,
         isWarning: isOpen,
       ));
     }
@@ -595,14 +600,14 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
       return const SizedBox.shrink();
     }
 
-    return _buildSensorsSection(isDark, sensors, modeColor);
+    return _buildSensorsSection(isDark, sensors, TileThemeColor.primary);
   }
 
   /// Builds sensors section using tile wrappers:
   /// - Portrait: HorizontalScrollWithGradient with HorizontalTileCompact
   /// - Landscape large: GridView.count with VerticalTileLarge
   /// - Landscape small/medium: Column with HorizontalTileStretched
-  Widget _buildSensorsSection(bool isDark, List<_SensorInfo> sensors, Color accentColor) {
+  Widget _buildSensorsSection(bool isDark, List<_SensorInfo> sensors, TileThemeColor? accentThemeColor) {
     if (sensors.isEmpty) return const SizedBox.shrink();
 
     final isLandscape = _screenService.isLandscape;
@@ -623,7 +628,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
             icon: sensor.icon,
             name: sensor.displayValue,
             status: sensor.label,
-            iconAccentColor: sensor.valueColor ?? accentColor,
+            activeColor: sensor.valueThemeColor ?? accentThemeColor,
             showWarningBadge: sensor.isWarning,
           );
         },
@@ -644,7 +649,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
             icon: sensor.icon,
             name: sensor.displayValue,
             status: sensor.label,
-            iconAccentColor: sensor.valueColor ?? accentColor,
+            activeColor: sensor.valueThemeColor ?? accentThemeColor,
             showWarningBadge: sensor.isWarning,
           );
         }).toList(),
@@ -663,7 +668,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
             icon: sensor.icon,
             name: sensor.displayValue,
             status: sensor.label,
-            iconAccentColor: sensor.valueColor ?? accentColor,
+            activeColor: sensor.valueThemeColor ?? accentThemeColor,
             showWarningBadge: sensor.isWarning,
           ),
         );

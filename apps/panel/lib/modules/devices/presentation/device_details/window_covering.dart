@@ -1022,7 +1022,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
                 status: '$position%',
                 isActive: position > 0,
                 isSelected: isSelected,
-                activeColor: primaryColor,
+                activeColor: TileThemeColor.primary,
                 onTileTap: () => _handleChannelSelect(index),
                 showSelectionIndicator: true,
               );
@@ -1081,7 +1081,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
               status: '$position%',
               isActive: position > 0,
               isSelected: isSelected,
-              activeColor: primaryColor,
+              activeColor: TileThemeColor.primary,
               onTileTap: () => _handleChannelSelect(index),
               showSelectionIndicator: true,
             ),
@@ -1124,7 +1124,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
               name: preset.getName(localizations),
               status: '${preset.position}%',
               isActive: isActive,
-              activeColor: primaryColor,
+              activeColor: TileThemeColor.primary,
               onTileTap: () => _applyPreset(index),
             );
           },
@@ -1692,7 +1692,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
         label: localizations.window_covering_tilt_label,
         icon: MdiIcons.angleAcute,
         sheetTitle: localizations.window_covering_tilt_label,
-        activeColor: primaryColor,
+        activeColor: Theme.of(context).brightness == Brightness.light ? AppColorsLight.primary : AppColorsDark.primary,
         options: _getTiltOptions(minTilt, maxTilt),
         displayFormatter: (v) => '${v ?? 0}°',
         columns: 3,
@@ -1711,7 +1711,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
 
     return _TiltSlider(
       value: normalizedValue.clamp(0.0, 1.0),
-      activeColor: primaryColor,
+      activeColor: Theme.of(context).brightness == Brightness.light ? AppColorsLight.primary : AppColorsDark.primary,
       label: localizations.window_covering_tilt_label,
       valueLabel: '$_tiltAngle°',
       steps: [
@@ -1819,7 +1819,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
                 name: preset.getName(localizations),
                 status: '${preset.position}%',
                 isActive: isActive,
-                activeColor: primaryColor,
+                activeColor: TileThemeColor.primary,
                 onTileTap: () => _applyPreset(index),
               );
             }).toList(),
@@ -1850,7 +1850,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
               name: preset.getName(localizations),
               status: '${preset.position}%',
               isActive: isActive,
-              activeColor: primaryColor,
+              activeColor: TileThemeColor.primary,
               onTileTap: () => _applyPreset(index),
             ),
           );

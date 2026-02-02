@@ -46,6 +46,7 @@ class _SensorInfo {
   final String? unit;
   final IconData icon;
   final Color? valueColor;
+  final TileThemeColor? valueThemeColor;
   final bool isWarning;
 
   const _SensorInfo({
@@ -55,6 +56,7 @@ class _SensorInfo {
     required this.icon,
     this.unit,
     this.valueColor,
+    this.valueThemeColor,
     this.isWarning = false,
   });
 
@@ -724,6 +726,17 @@ class _AirConditionerDeviceDetailState
     }
   }
 
+  TileThemeColor? _getModeThemeColor() {
+    switch (_currentMode) {
+      case AcMode.heat:
+        return TileThemeColor.warning;
+      case AcMode.cool:
+        return TileThemeColor.info;
+      case AcMode.off:
+        return null;
+    }
+  }
+
   Color _getModeLightColor(bool isDark) {
     switch (_currentMode) {
       case AcMode.heat:
@@ -1011,6 +1024,7 @@ class _AirConditionerDeviceDetailState
       unit: '°C',
       icon: MdiIcons.thermometer,
       valueColor: SensorColors.temperature(isDark),
+      valueThemeColor: TileThemeColor.info,
     ));
 
     // Humidity (optional)
@@ -1023,6 +1037,7 @@ class _AirConditionerDeviceDetailState
         unit: '%',
         icon: MdiIcons.waterPercent,
         valueColor: SensorColors.humidity(isDark),
+        valueThemeColor: TileThemeColor.success,
       ));
     }
 
@@ -1038,6 +1053,7 @@ class _AirConditionerDeviceDetailState
             : localizations.contact_sensor_closed,
         icon: MdiIcons.windowOpenVariant,
         valueColor: SensorColors.alert(isDark),
+        valueThemeColor: TileThemeColor.warning,
         isWarning: isOpen,
       ));
     }
@@ -1055,6 +1071,7 @@ class _AirConditionerDeviceDetailState
             : localizations.leak_sensor_dry,
         icon: MdiIcons.pipeLeak,
         valueColor: SensorColors.alert(isDark),
+        valueThemeColor: TileThemeColor.warning,
         isWarning: isLeaking,
       ));
     }
@@ -1072,6 +1089,7 @@ class _AirConditionerDeviceDetailState
           unit: '%',
           icon: MdiIcons.airFilter,
           valueColor: SensorColors.filter(isDark),
+          valueThemeColor: TileThemeColor.info,
           isWarning: filterLife < 0.3 || _device.isFilterNeedsReplacement,
         ));
       } else if (filterChannel.hasStatus) {
@@ -1082,6 +1100,7 @@ class _AirConditionerDeviceDetailState
           value: FilterUtils.getStatusLabel(localizations, filterChannel.status),
           icon: MdiIcons.airFilter,
           valueColor: SensorColors.filter(isDark),
+          valueThemeColor: TileThemeColor.info,
           isWarning: _device.isFilterNeedsReplacement,
         ));
       }
@@ -1091,14 +1110,14 @@ class _AirConditionerDeviceDetailState
       return const SizedBox.shrink();
     }
 
-    return _buildSensorsSection(isDark, sensors, modeColor);
+    return _buildSensorsSection(isDark, sensors, _getModeThemeColor());
   }
 
   /// Builds sensors section matching climate domain pattern:
   /// - Portrait: HorizontalScrollWithGradient with HorizontalTileCompact
   /// - Landscape large: GridView.count with 2 columns using VerticalTileLarge
   /// - Landscape small/medium: Column with HorizontalTileStretched
-  Widget _buildSensorsSection(bool isDark, List<_SensorInfo> sensors, Color accentColor) {
+  Widget _buildSensorsSection(bool isDark, List<_SensorInfo> sensors, TileThemeColor? accentThemeColor) {
     if (sensors.isEmpty) return const SizedBox.shrink();
 
     final isLandscape = _screenService.isLandscape;
@@ -1119,7 +1138,7 @@ class _AirConditionerDeviceDetailState
             icon: sensor.icon,
             name: sensor.displayValue,
             status: sensor.label,
-            iconAccentColor: sensor.valueColor ?? accentColor,
+            activeColor: sensor.valueThemeColor ?? accentThemeColor,
           );
         },
       );
@@ -1139,7 +1158,7 @@ class _AirConditionerDeviceDetailState
             icon: sensor.icon,
             name: sensor.displayValue,
             status: sensor.label,
-            iconAccentColor: sensor.valueColor ?? accentColor,
+            activeColor: sensor.valueThemeColor ?? accentThemeColor,
           );
         }).toList(),
       );
@@ -1158,7 +1177,7 @@ class _AirConditionerDeviceDetailState
             icon: sensor.icon,
             name: sensor.displayValue,
             status: sensor.label,
-            iconAccentColor: sensor.valueColor ?? accentColor,
+            activeColor: sensor.valueThemeColor ?? accentThemeColor,
           ),
         );
       }).toList(),
@@ -1578,7 +1597,7 @@ class _AirConditionerDeviceDetailState
             ? localizations.on_state_on
             : localizations.on_state_off,
         isActive: fanChannel.swing,
-        activeColor: modeColor,
+        activeColor: _getModeThemeColor(),
         onTileTap: () => _setFanSwing(!fanChannel.swing),
         showGlow: false,
         showDoubleBorder: false,
@@ -1598,7 +1617,7 @@ class _AirConditionerDeviceDetailState
             ? FanUtils.getDirectionLabel(localizations, fanChannel.direction!)
             : localizations.fan_direction_clockwise,
         isActive: isReversed,
-        activeColor: modeColor,
+        activeColor: _getModeThemeColor(),
         onTileTap: () {
           final newDirection = isReversed
               ? FanDirectionValue.clockwise
@@ -1622,7 +1641,7 @@ class _AirConditionerDeviceDetailState
             ? localizations.on_state_on
             : localizations.on_state_off,
         isActive: fanChannel.naturalBreeze,
-        activeColor: modeColor,
+        activeColor: _getModeThemeColor(),
         onTileTap: () => _setFanNaturalBreeze(!fanChannel.naturalBreeze),
         showGlow: false,
         showDoubleBorder: false,
@@ -1641,7 +1660,7 @@ class _AirConditionerDeviceDetailState
             ? localizations.thermostat_lock_locked
             : localizations.thermostat_lock_unlocked,
         isActive: fanChannel.locked,
-        activeColor: modeColor,
+        activeColor: _getModeThemeColor(),
         onTileTap: () => _setFanLocked(!fanChannel.locked),
         showGlow: false,
         showDoubleBorder: false,

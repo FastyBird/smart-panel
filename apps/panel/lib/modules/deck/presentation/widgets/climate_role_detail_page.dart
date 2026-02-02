@@ -662,6 +662,19 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
     }
   }
 
+  TileThemeColor? _getModeThemeColor() {
+    switch (_state.mode) {
+      case ClimateMode.off:
+        return null;
+      case ClimateMode.heat:
+        return TileThemeColor.warning;
+      case ClimateMode.cool:
+        return TileThemeColor.info;
+      case ClimateMode.auto:
+        return TileThemeColor.success;
+    }
+  }
+
   Color _getModeLightColor(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     switch (_state.mode) {
@@ -881,7 +894,7 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
                 isActive: device.isActive,
                 isOffline: isOffline,
                 showWarningBadge: true,
-                activeColor: device.isActive ? modeColor : null,
+                activeColor: device.isActive ? _getModeThemeColor() : null,
                 onIconTap: isOffline ? null : () {
                   // TODO: Toggle device
                 },
@@ -949,7 +962,7 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
           isActive: device.isActive,
           isOffline: isOffline,
           showWarningBadge: true,
-          activeColor: device.isActive ? modeColor : null,
+          activeColor: device.isActive ? _getModeThemeColor() : null,
           onIconTap: isOffline
               ? null
               : () {
@@ -986,7 +999,7 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
             isActive: device.isActive,
             isOffline: isOffline,
             showWarningBadge: true,
-            activeColor: device.isActive ? modeColor : null,
+            activeColor: device.isActive ? _getModeThemeColor() : null,
             onIconTap: isOffline
                 ? null
                 : () {

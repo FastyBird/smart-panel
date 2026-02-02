@@ -987,9 +987,9 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
   // --------------------------------------------------------------------------
 
   /// Build summary data items for the environment
-  List<({String name, String status, IconData icon, Color color})> _buildSummaryItems({required bool isDark}) {
+  List<({String name, String status, IconData icon, Color color, TileThemeColor? themeColor})> _buildSummaryItems({required bool isDark}) {
     final env = _environment;
-    final items = <({String name, String status, IconData icon, Color color})>[];
+    final items = <({String name, String status, IconData icon, Color color, TileThemeColor? themeColor})>[];
 
     if (env?.averageTemperature != null) {
       items.add((
@@ -997,6 +997,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
         status: 'Avg Temperature',
         icon: MdiIcons.thermometer,
         color: isDark ? AppColorsDark.info : AppColorsLight.info,
+        themeColor: TileThemeColor.info,
       ));
     }
 
@@ -1006,6 +1007,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
         status: 'Avg Humidity',
         icon: MdiIcons.waterPercent,
         color: isDark ? AppColorsDark.success : AppColorsLight.success,
+        themeColor: TileThemeColor.success,
       ));
     }
 
@@ -1015,6 +1017,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
         status: 'Illuminance',
         icon: MdiIcons.weatherSunny,
         color: isDark ? AppColorsDark.warning : AppColorsLight.warning,
+        themeColor: TileThemeColor.warning,
       ));
     } else if (env?.averagePressure != null) {
       items.add((
@@ -1022,6 +1025,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
         status: 'Pressure',
         icon: MdiIcons.gaugeEmpty,
         color: isDark ? AppColorsDark.info : AppColorsLight.info,
+        themeColor: TileThemeColor.info,
       ));
     }
 
@@ -1050,7 +1054,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
             icon: item.icon,
             name: item.name,
             status: item.status,
-            iconAccentColor: item.color,
+            activeColor: item.themeColor,
             onTileTap: () {},
           );
         },

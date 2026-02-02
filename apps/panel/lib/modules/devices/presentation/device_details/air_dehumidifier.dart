@@ -43,6 +43,7 @@ class _SensorInfo {
   final String? unit;
   final IconData icon;
   final Color? valueColor;
+  final TileThemeColor? valueThemeColor;
   final bool isWarning;
 
   const _SensorInfo({
@@ -52,6 +53,7 @@ class _SensorInfo {
     required this.icon,
     this.unit,
     this.valueColor,
+    this.valueThemeColor,
     this.isWarning = false,
   });
 
@@ -1055,7 +1057,7 @@ class _AirDehumidifierDeviceDetailState
             ? localizations.on_state_on
             : localizations.on_state_off,
         isActive: fanChannel.swing,
-        activeColor: humidityColor,
+        activeColor: TileThemeColor.info,
         onTileTap: () => _setFanSwing(!fanChannel.swing),
         showGlow: false,
         showDoubleBorder: false,
@@ -1074,7 +1076,7 @@ class _AirDehumidifierDeviceDetailState
             ? FanUtils.getDirectionLabel(localizations, fanChannel.direction!)
             : '-',
         isActive: fanChannel.direction == FanDirectionValue.counterClockwise,
-        activeColor: humidityColor,
+        activeColor: TileThemeColor.info,
         onTileTap: () {
           // Toggle between clockwise and counter_clockwise
           final newDirection =
@@ -1100,7 +1102,7 @@ class _AirDehumidifierDeviceDetailState
             ? localizations.on_state_on
             : localizations.on_state_off,
         isActive: fanChannel.naturalBreeze,
-        activeColor: humidityColor,
+        activeColor: TileThemeColor.info,
         onTileTap: () => _setFanNaturalBreeze(!fanChannel.naturalBreeze),
         showGlow: false,
         showDoubleBorder: false,
@@ -1119,7 +1121,7 @@ class _AirDehumidifierDeviceDetailState
             ? localizations.thermostat_lock_locked
             : localizations.thermostat_lock_unlocked,
         isActive: channel.locked,
-        activeColor: humidityColor,
+        activeColor: TileThemeColor.info,
         onTileTap: () => _setDehumidifierLocked(!channel.locked),
         showGlow: false,
         showDoubleBorder: false,
@@ -1198,7 +1200,7 @@ class _AirDehumidifierDeviceDetailState
             icon: sensor.icon,
             name: sensor.displayValue,
             status: sensor.label,
-            iconAccentColor: sensor.valueColor ?? humidityColor,
+            activeColor: sensor.valueThemeColor ?? TileThemeColor.info,
             showWarningBadge: sensor.isWarning,
           );
         },
@@ -1219,7 +1221,7 @@ class _AirDehumidifierDeviceDetailState
             icon: sensor.icon,
             name: sensor.displayValue,
             status: sensor.label,
-            iconAccentColor: sensor.valueColor ?? humidityColor,
+            activeColor: sensor.valueThemeColor ?? TileThemeColor.info,
             showWarningBadge: sensor.isWarning,
           );
         }).toList(),
@@ -1238,7 +1240,7 @@ class _AirDehumidifierDeviceDetailState
             icon: sensor.icon,
             name: sensor.displayValue,
             status: sensor.label,
-            iconAccentColor: sensor.valueColor ?? humidityColor,
+            activeColor: sensor.valueThemeColor ?? TileThemeColor.info,
             showWarningBadge: sensor.isWarning,
           ),
         );
