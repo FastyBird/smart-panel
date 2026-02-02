@@ -156,7 +156,7 @@ class ModeSelector<T> extends StatelessWidget {
         final availableWidth = constraints.maxWidth;
         final buttonCount = modes.length;
         final widthPerButton = availableWidth / buttonCount;
-        final shouldShowLabels = showLabels ?? (widthPerButton >= minButtonWidth);
+        final shouldShowLabels = !showIcon ? true : (showLabels ?? (widthPerButton >= minButtonWidth));
 
         final buttons = modes.asMap().entries.map((entry) {
           final index = entry.key;
@@ -220,7 +220,7 @@ class ModeSelector<T> extends StatelessWidget {
           mode: mode,
           isSelected: isSelected,
           colors: colors,
-          showLabel: showLabels ?? false,
+          showLabel: !showIcon ? true : (showLabels ?? false),
           useTopIcon: true,
           isVerticalLayout: true,
           statusIcon: statusIcon,
