@@ -7,7 +7,6 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
-import 'package:fastybird_smart_panel/core/utils/color.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/slider_with_steps.dart';
@@ -88,6 +87,19 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 
 	String get _roomId => widget.viewItem.roomId;
 
+	T? _tryLocator<T extends Object>(String debugLabel, {void Function(T)? onSuccess}) {
+		try {
+			final s = locator<T>();
+			onSuccess?.call(s);
+			return s;
+		} catch (e) {
+			if (kDebugMode) {
+				debugPrint('[MediaDomainViewPage] Failed to get $debugLabel: $e');
+			}
+			return null;
+		}
+	}
+
 	@override
 	void initState() {
 		super.initState();
@@ -97,57 +109,13 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			duration: const Duration(milliseconds: 1500),
 		)..repeat();
 
-		try {
-			_mediaService = locator<MediaActivityService>();
-			_mediaService?.addListener(_onDataChanged);
-		} catch (e) {
-			if (kDebugMode) {
-				debugPrint('[MediaDomainViewPage] Failed to get MediaActivityService: $e');
-			}
-		}
-
-		try {
-			_spacesService = locator<SpacesService>();
-		} catch (e) {
-			if (kDebugMode) {
-				debugPrint('[MediaDomainViewPage] Failed to get SpacesService: $e');
-			}
-		}
-
-		try {
-			_deckService = locator<DeckService>();
-		} catch (e) {
-			if (kDebugMode) {
-				debugPrint('[MediaDomainViewPage] Failed to get DeckService: $e');
-			}
-		}
-
-		try {
-			_eventBus = locator<EventBus>();
-		} catch (e) {
-			if (kDebugMode) {
-				debugPrint('[MediaDomainViewPage] Failed to get EventBus: $e');
-			}
-		}
-
-		try {
-			_socketService = locator<SocketService>();
-			_socketService?.addConnectionListener(_onConnectionChanged);
-			_wsConnected = _socketService?.isConnected ?? false;
-		} catch (e) {
-			if (kDebugMode) {
-				debugPrint('[MediaDomainViewPage] Failed to get SocketService: $e');
-			}
-		}
-
-		try {
-			_devicesService = locator<DevicesService>();
-			_devicesService?.addListener(_onDevicesChanged);
-		} catch (e) {
-			if (kDebugMode) {
-				debugPrint('[MediaDomainViewPage] Failed to get DevicesService: $e');
-			}
-		}
+		_mediaService = _tryLocator<MediaActivityService>('MediaActivityService', onSuccess: (s) => s.addListener(_onDataChanged));
+		_spacesService = _tryLocator<SpacesService>('SpacesService');
+		_deckService = _tryLocator<DeckService>('DeckService');
+		_eventBus = _tryLocator<EventBus>('EventBus');
+		_socketService = _tryLocator<SocketService>('SocketService', onSuccess: (s) => s.addConnectionListener(_onConnectionChanged));
+		if (_socketService != null) _wsConnected = _socketService!.isConnected;
+		_devicesService = _tryLocator<DevicesService>('DevicesService', onSuccess: (s) => s.addListener(_onDevicesChanged));
 
 		WidgetsBinding.instance.addPostFrameCallback((_) => _prefetch());
 	}
@@ -558,7 +526,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 
 		return Container(
 			width: double.infinity,
-			padding: AppSpacings.paddingLg,
+			padding: AppSpacings.paddingMd,
 			decoration: BoxDecoration(
 				color: isLight ? AppFillColorLight.light : AppFillColorDark.light,
 				borderRadius: BorderRadius.circular(AppBorderRadius.base),
@@ -887,7 +855,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			children: [
 					// Warning banner
 					if (activeState.hasWarnings && !activeState.isFailed) ...[
-						_buildWarningBanner(context, activeState),
+						_buildWarningBannerForState(context, activeState),
             AppSpacings.spacingMdVertical,
 					],
 
@@ -933,100 +901,58 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		);
 	}
 
-	Widget _buildWarningBanner(BuildContext context, MediaActiveStateModel state) {
+	Widget _buildWarningBanner(BuildContext context, String label, {VoidCallback? onTap}) {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 		final warningColor = isDark ? AppColorsDark.warning : AppColorsLight.warning;
 		final warningBg = isDark ? AppColorsDark.warningLight9 : AppColorsLight.warningLight9;
-
-		final localizations = AppLocalizations.of(context)!;
-		final warningCount = state.lastResult?.warningCount ?? state.warnings.length;
-		final String label;
-		if (warningCount > 0) {
-			label = localizations.media_warning_steps_failed(warningCount);
-		} else if (state.warnings.isNotEmpty) {
-			label = state.warnings.first;
-		} else {
-			label = localizations.media_warning_steps_had_issues;
-		}
-
-		return GestureDetector(
-			onTap: () => _showFailureDetailsSheet(context, state),
-			child: Container(
-				width: double.infinity,
-				padding: AppSpacings.paddingMd,
-				decoration: BoxDecoration(
-					color: warningBg,
-					borderRadius: BorderRadius.circular(AppBorderRadius.base),
+		final row = Row(
+			children: [
+				Icon(MdiIcons.alertOutline, color: warningColor, size: _scale(18)),
+				AppSpacings.spacingMdHorizontal,
+				Expanded(
+					child: Text(
+						label,
+						style: TextStyle(fontSize: AppFontSize.small, color: warningColor),
+					),
 				),
-				child: Row(
-					children: [
-						Icon(
-							MdiIcons.alertOutline,
-							color: warningColor,
-							size: _scale(18),
-						),
-						AppSpacings.spacingMdHorizontal,
-						Expanded(
-							child: Text(
-								label,
-								style: TextStyle(
-									fontSize: AppFontSize.small,
-									color: warningColor,
-								),
-							),
-						),
-						Icon(
-							MdiIcons.chevronRight,
-							color: warningColor,
-							size: _scale(18),
-						),
-					],
-				),
-			),
+				if (onTap != null)
+					Icon(MdiIcons.chevronRight, color: warningColor, size: _scale(18)),
+			],
 		);
-	}
-
-	Widget _buildOfflineDeviceBanner(BuildContext context, List<String> offlineRoles) {
-		final isDark = Theme.of(context).brightness == Brightness.dark;
-		final warningColor = isDark ? AppColorsDark.warning : AppColorsLight.warning;
-		final warningBg = isDark ? AppColorsDark.warningLight9 : AppColorsLight.warningLight9;
-
-
-		final localizations = AppLocalizations.of(context)!;
-		final String label;
-		if (offlineRoles.length == 1 && offlineRoles.first == 'Audio') {
-			label = localizations.media_warning_audio_offline;
-		} else {
-			label = localizations.media_warning_some_devices_offline;
-		}
-
-		return Container(
+		final container = Container(
 			width: double.infinity,
 			padding: AppSpacings.paddingMd,
 			decoration: BoxDecoration(
 				color: warningBg,
 				borderRadius: BorderRadius.circular(AppBorderRadius.base),
 			),
-			child: Row(
-				children: [
-					Icon(
-						MdiIcons.alertOutline,
-						color: warningColor,
-						size: _scale(18),
-					),
-					AppSpacings.spacingMdHorizontal,
-					Expanded(
-						child: Text(
-							label,
-							style: TextStyle(
-								fontSize: AppFontSize.small,
-								color: warningColor,
-							),
-						),
-					),
-				],
-			),
+			child: row,
 		);
+		if (onTap != null) return GestureDetector(onTap: onTap, child: container);
+		return container;
+	}
+
+	Widget _buildWarningBannerForState(BuildContext context, MediaActiveStateModel state) {
+		final localizations = AppLocalizations.of(context)!;
+		final warningCount = state.lastResult?.warningCount ?? state.warnings.length;
+		final label = warningCount > 0
+			? localizations.media_warning_steps_failed(warningCount)
+			: state.warnings.isNotEmpty
+				? state.warnings.first
+				: localizations.media_warning_steps_had_issues;
+		return _buildWarningBanner(
+			context,
+			label,
+			onTap: () => _showFailureDetailsSheet(context, state),
+		);
+	}
+
+	Widget _buildOfflineDeviceBanner(BuildContext context, List<String> offlineRoles) {
+		final localizations = AppLocalizations.of(context)!;
+		final label = offlineRoles.length == 1 && offlineRoles.first == 'Audio'
+			? localizations.media_warning_audio_offline
+			: localizations.media_warning_some_devices_offline;
+		return _buildWarningBanner(context, label);
 	}
 
 	Widget _buildCompositionPreview(BuildContext context, List<_CompositionDisplayItem> items) {
@@ -1035,7 +961,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		final warningColor = isDark ? AppColorsDark.warning : AppColorsLight.warning;
 
 		return Container(
-			padding: AppSpacings.paddingLg,
+			padding: AppSpacings.paddingMd,
 			decoration: BoxDecoration(
 				color: isDark ? AppFillColorDark.darker : AppFillColorLight.darker,
 				borderRadius: BorderRadius.circular(AppBorderRadius.base),
@@ -1971,24 +1897,15 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 
 		return Column(
 			crossAxisAlignment: CrossAxisAlignment.start,
+			spacing: AppSpacings.pMd,
 			children: [
 				SectionTitle(
 					title: localizations.media_targets_title,
 					icon: MdiIcons.monitorSpeaker,
 				),
-				AppSpacings.spacingMdVertical,
-				if (deviceGroups.isEmpty)
-					Text(
-						localizations.media_no_bindings_description,
-						style: Theme.of(context).textTheme.bodyMedium,
-					)
-				else
-					...deviceGroups.map(
-						(group) => Padding(
-							padding: EdgeInsets.only(bottom: AppSpacings.pMd),
-							child: _buildDeviceTile(context, group, activeState),
-						),
-					),
+        ...deviceGroups.map(
+          (group) => _buildDeviceTile(context, group, activeState),
+        ),
 			],
 		);
 	}
