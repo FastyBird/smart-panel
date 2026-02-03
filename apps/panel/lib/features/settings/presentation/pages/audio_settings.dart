@@ -4,7 +4,7 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/icon_switch.dart';
 import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/setting_row.dart';
@@ -269,7 +269,7 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
             _hasSpeakerEnabled = !_hasSpeakerEnabled;
           });
 
-          AlertBar.showError(context, message: 'Save settings failed.');
+          AppToast.showError(context, message: 'Save settings failed.');
         }
       },
     );
@@ -316,7 +316,7 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
               _speakerVolume = _speakerVolumeBackup ?? 50;
             });
 
-            AlertBar.showError(
+            AppToast.showError(
               context,
               message: 'Save settings failed.',
             );
@@ -351,7 +351,7 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
             _hasMicrophoneEnabled = !_hasMicrophoneEnabled;
           });
 
-          AlertBar.showError(context, message: 'Save settings failed.');
+          AppToast.showError(context, message: 'Save settings failed.');
         }
       },
     );
@@ -398,7 +398,7 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
               _microphoneVolume = _microphoneVolumeBackup ?? 50;
             });
 
-            AlertBar.showError(
+            AppToast.showError(
               context,
               message: 'Save settings failed.',
             );

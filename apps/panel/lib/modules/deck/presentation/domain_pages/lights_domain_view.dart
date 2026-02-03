@@ -4,7 +4,7 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/intent_mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
@@ -1623,7 +1623,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         }
         // If intents repository is available, _onIntentChanged will handle completion
       } else if (!success && mounted) {
-        AlertBar.showError(context, message: localizations.action_failed);
+        AppToast.showError(context, message: localizations.action_failed);
         _modeControlStateService.setIdle(LightingConstants.modeChannelId);
         _modeWasLocked = false; // Reset to prevent inconsistent state
       }
@@ -1633,7 +1633,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         debugPrint('[LightsDomainView] Failed to set lighting mode: $e');
       }
       if (mounted) {
-        AlertBar.showError(context, message: localizations.action_failed);
+        AppToast.showError(context, message: localizations.action_failed);
         _modeControlStateService.setIdle(LightingConstants.modeChannelId);
         _modeWasLocked = false; // Reset to prevent inconsistent state
       }
@@ -1724,7 +1724,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         }
         // If intents repository is available, _onIntentChanged will handle completion
       } else if (!success && mounted) {
-        AlertBar.showError(
+        AppToast.showError(
           context,
           message: localizations.action_failed,
         );
@@ -1737,7 +1737,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         debugPrint('[LightsDomainView] Failed to toggle role: $e');
       }
       if (mounted) {
-        AlertBar.showError(
+        AppToast.showError(
           context,
           message: localizations.action_failed,
         );

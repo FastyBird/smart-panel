@@ -1,16 +1,16 @@
-import 'package:fastybird_smart_panel/core/widgets/device_detail_landscape_layout.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_landscape_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 // =============================================================================
-// Tests for DeviceDetailLandscapeLayout
+// Tests for DeviceLandscapeLayout
 // =============================================================================
 
 void main() {
-  group('DeviceDetailLandscapeLayout', () {
+  group('DeviceLandscapeLayout', () {
     test('should accept null secondaryContent', () {
       // Verify that the widget can be constructed with null secondaryContent
-      const layout = DeviceDetailLandscapeLayout(
+      const layout = DeviceLandscapeLayout(
         mainContent: SizedBox(),
         secondaryContent: null,
       );
@@ -21,7 +21,7 @@ void main() {
     });
 
     test('should accept all optional parameters', () {
-      const layout = DeviceDetailLandscapeLayout(
+      const layout = DeviceLandscapeLayout(
         mainContent: SizedBox(),
         modeSelector: Text('Mode'),
         secondaryContent: Text('Secondary'),
@@ -41,7 +41,7 @@ void main() {
     });
 
     test('should have correct default values', () {
-      const layout = DeviceDetailLandscapeLayout(
+      const layout = DeviceLandscapeLayout(
         mainContent: SizedBox(),
         secondaryContent: Text('Secondary'),
       );

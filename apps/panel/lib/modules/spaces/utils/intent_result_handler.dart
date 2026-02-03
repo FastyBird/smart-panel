@@ -1,4 +1,4 @@
-import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/intent_result/intent_result.dart';
 import 'package:flutter/foundation.dart';
@@ -92,7 +92,7 @@ class IntentResultHandler {
 
     // If all devices were offline (no devices affected and not successful)
     if (!success && affectedDevices == 0) {
-      AlertBar.showWarning(
+      AppToast.showWarning(
         context,
         message: localizations.all_devices_offline,
         duration: const Duration(seconds: 5),
@@ -101,7 +101,7 @@ class IntentResultHandler {
     }
 
     // Some devices were offline but some succeeded
-    AlertBar.showInfo(
+    AppToast.showInfo(
       context,
       message: localizations.devices_offline_skipped(skippedOfflineDevices),
       duration: const Duration(seconds: 4),

@@ -5,7 +5,7 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/setting_row.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
@@ -371,7 +371,7 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
             _language = backup;
           });
 
-          AlertBar.showError(
+          AppToast.showError(
             context,
             message: 'Save settings failed.',
           );
@@ -409,7 +409,7 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
             _timezone = backup;
           });
 
-          AlertBar.showError(
+          AppToast.showError(
             context,
             message: 'Save settings failed.',
           );
@@ -451,7 +451,7 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
             _timeFormat = backup;
           });
 
-          AlertBar.showError(
+          AppToast.showError(
             context,
             message: 'Save settings failed.',
           );

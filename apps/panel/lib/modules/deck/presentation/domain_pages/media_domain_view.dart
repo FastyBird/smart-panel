@@ -14,6 +14,7 @@ import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_bottom_sheet.dart';
 import 'package:fastybird_smart_panel/core/widgets/value_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/tile_wrappers.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
@@ -1528,191 +1529,118 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		final errors = lastResult?.errors ?? [];
 		final warnings = lastResult?.warnings ?? [];
 
-		final bgColor = isDark ? AppFillColorDark.base : AppFillColorLight.blank;
-		final handleColor = isDark ? AppFillColorDark.darker : AppFillColorLight.darker;
-		final textColor = isDark ? AppTextColorDark.primary : AppTextColorLight.primary;
-		final secondaryColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
-
-		showModalBottomSheet(
-			context: context,
-			isScrollControlled: true,
-			backgroundColor: AppColors.blank,
-			builder: (ctx) {
-				return Container(
-					decoration: BoxDecoration(
-						color: bgColor,
-						borderRadius: BorderRadius.vertical(top: Radius.circular(_scale(24))),
-					),
-					child: SafeArea(
-						top: false,
-						child: Padding(
-							padding: AppSpacings.paddingLg,
-							child: Column(
-								mainAxisSize: MainAxisSize.min,
-								crossAxisAlignment: CrossAxisAlignment.start,
-								children: [
-									// Handle
-									Center(
-										child: Container(
-											width: _scale(36),
-											height: _scale(4),
-											decoration: BoxDecoration(
-												color: handleColor,
-												borderRadius: BorderRadius.circular(AppBorderRadius.small),
-											),
-										),
-									),
-									AppSpacings.spacingMdVertical,
-
-									// Header with close button
-									Row(
-										mainAxisAlignment: MainAxisAlignment.spaceBetween,
-										children: [
-											Text(
-												AppLocalizations.of(context)!.media_failure_details_title,
-												style: TextStyle(
-													color: textColor,
-													fontSize: AppFontSize.extraLarge,
-													fontWeight: FontWeight.w600,
-												),
-											),
-											GestureDetector(
-												onTap: () => Navigator.pop(ctx),
-												child: Container(
-													width: _scale(32),
-													height: _scale(32),
-													decoration: BoxDecoration(
-														color: handleColor,
-														borderRadius: BorderRadius.circular(AppBorderRadius.base),
-													),
-													child: Icon(
-														MdiIcons.close,
-														color: secondaryColor,
-														size: _scale(18),
-													),
-												),
-											),
-										],
-									),
-									AppSpacings.spacingLgVertical,
-
-									// Summary counts
-									if (lastResult != null) ...[
-										Wrap(
-											spacing: AppSpacings.pMd,
-											runSpacing: AppSpacings.pSm,
-											children: [
-												_summaryChip(AppLocalizations.of(context)!.media_failure_summary_total, lastResult.stepsTotal, (isDark ? AppColorsDark.neutral : AppColorsLight.neutral), (isDark ? AppColorsDark.neutralLight9 : AppColorsLight.neutralLight9)),
-												_summaryChip(AppLocalizations.of(context)!.media_failure_summary_ok, lastResult.stepsSucceeded, (isDark ? AppColorsDark.success : AppColorsLight.success), (isDark ? AppColorsDark.successLight9 : AppColorsLight.successLight9)),
-												_summaryChip(AppLocalizations.of(context)!.media_failure_summary_errors, lastResult.errorCount, (isDark ? AppColorsDark.error : AppColorsLight.error), (isDark ? AppColorsDark.errorLight9 : AppColorsLight.errorLight9)),
-												_summaryChip(AppLocalizations.of(context)!.media_failure_summary_warnings, lastResult.warningCount, (isDark ? AppColorsDark.warning : AppColorsLight.warning), (isDark ? AppColorsDark.warningLight9 : AppColorsLight.warningLight9)),
-											],
-										),
-										AppSpacings.spacingLgVertical,
-									],
-
-									// Errors
-									if (errors.isNotEmpty) ...[
-										Text(
-											AppLocalizations.of(context)!.media_failure_errors_critical,
-											style: TextStyle(
-												fontWeight: FontWeight.w600,
-												color: isDark ? AppColorsDark.error : AppColorsLight.error,
-												fontSize: AppFontSize.small,
-											),
-										),
-										AppSpacings.spacingSmVertical,
-										...errors.map((f) => _failureRow(f, isDark ? AppColorsDark.error : AppColorsLight.error, isDark ? AppColorsDark.primaryLight9 : AppColorsLight.primaryLight9)),
-										AppSpacings.spacingMdVertical,
-									],
-
-									// Warnings
-									if (warnings.isNotEmpty) ...[
-										Text(
-											AppLocalizations.of(context)!.media_failure_warnings_non_critical,
-											style: TextStyle(
-												fontWeight: FontWeight.w600,
-												color: isDark ? AppColorsDark.warning : AppColorsLight.warning,
-												fontSize: AppFontSize.small,
-											),
-										),
-										AppSpacings.spacingSmVertical,
-										...warnings.map((f) => _failureRow(f, isDark ? AppColorsDark.error : AppColorsLight.error, isDark ? AppColorsDark.primaryLight9 : AppColorsLight.primaryLight9)),
-										AppSpacings.spacingMdVertical,
-									],
-
-									// Legacy string warnings
-									if (state.warnings.isNotEmpty && warnings.isEmpty) ...[
-										Text(
-											AppLocalizations.of(context)!.media_failure_warnings_label,
-											style: TextStyle(
-												fontWeight: FontWeight.w600,
-												color: isDark ? AppColorsDark.warning : AppColorsLight.warning,
-												fontSize: AppFontSize.small,
-											),
-										),
-										AppSpacings.spacingSmVertical,
-										...state.warnings.map((w) => Padding(
-											padding: EdgeInsets.only(bottom: AppSpacings.pSm),
-											child: Text('- $w', style: TextStyle(fontSize: AppFontSize.small)),
-										)),
-										AppSpacings.spacingMdVertical,
-									],
-
-									// Actions
-									AppSpacings.spacingMdVertical,
-									Row(
-										children: [
-											if (state.isFailed && state.activityKey != null)
-												Expanded(
-													child: Theme(
-														data: ThemeData(
-															filledButtonTheme: Theme.of(ctx).brightness == Brightness.dark
-																? AppFilledButtonsDarkThemes.primary
-																: AppFilledButtonsLightThemes.primary,
-														),
-														child: FilledButton.icon(
-															icon: Icon(MdiIcons.refresh, size: _scale(16)),
-															label: Text(AppLocalizations.of(context)!.media_failure_retry_activity),
-															onPressed: () {
-																Navigator.pop(ctx);
-																_retryActivity(state);
-															},
-															style: FilledButton.styleFrom(
-																textStyle: TextStyle(fontSize: AppFontSize.small),
-															),
-														),
-													),
-												),
-											if (state.isFailed) AppSpacings.spacingMdHorizontal,
-											Expanded(
-												child: Theme(
-													data: ThemeData(
-														outlinedButtonTheme: Theme.of(ctx).brightness == Brightness.dark
-															? AppOutlinedButtonsDarkThemes.base
-															: AppOutlinedButtonsLightThemes.base,
-													),
-													child: OutlinedButton.icon(
-														icon: Icon(MdiIcons.stopCircleOutline, size: _scale(16)),
-														label: Text(AppLocalizations.of(context)!.media_failure_deactivate),
-														onPressed: () {
-															Navigator.pop(ctx);
-															_deactivateActivity();
-														},
-														style: OutlinedButton.styleFrom(
-															textStyle: TextStyle(fontSize: AppFontSize.small),
-														),
-													),
-												),
-											),
-										],
-									),
-								],
+		showAppBottomSheet(
+			context,
+			title: AppLocalizations.of(context)!.media_failure_details_title,
+			content: Column(
+				mainAxisSize: MainAxisSize.min,
+				crossAxisAlignment: CrossAxisAlignment.start,
+				children: [
+					if (lastResult != null) ...[
+						Wrap(
+							spacing: AppSpacings.pMd,
+							runSpacing: AppSpacings.pSm,
+							children: [
+								_summaryChip(AppLocalizations.of(context)!.media_failure_summary_total, lastResult.stepsTotal, (isDark ? AppColorsDark.neutral : AppColorsLight.neutral), (isDark ? AppColorsDark.neutralLight9 : AppColorsLight.neutralLight9)),
+								_summaryChip(AppLocalizations.of(context)!.media_failure_summary_ok, lastResult.stepsSucceeded, (isDark ? AppColorsDark.success : AppColorsLight.success), (isDark ? AppColorsDark.successLight9 : AppColorsLight.successLight9)),
+								_summaryChip(AppLocalizations.of(context)!.media_failure_summary_errors, lastResult.errorCount, (isDark ? AppColorsDark.error : AppColorsLight.error), (isDark ? AppColorsDark.errorLight9 : AppColorsLight.errorLight9)),
+								_summaryChip(AppLocalizations.of(context)!.media_failure_summary_warnings, lastResult.warningCount, (isDark ? AppColorsDark.warning : AppColorsLight.warning), (isDark ? AppColorsDark.warningLight9 : AppColorsLight.warningLight9)),
+							],
+						),
+						AppSpacings.spacingLgVertical,
+					],
+					if (errors.isNotEmpty) ...[
+						Text(
+							AppLocalizations.of(context)!.media_failure_errors_critical,
+							style: TextStyle(
+								fontWeight: FontWeight.w600,
+								color: isDark ? AppColorsDark.error : AppColorsLight.error,
+								fontSize: AppFontSize.small,
 							),
 						),
-					),
-				);
-			},
+						AppSpacings.spacingSmVertical,
+						...errors.map((f) => _failureRow(f, isDark ? AppColorsDark.error : AppColorsLight.error, isDark ? AppColorsDark.primaryLight9 : AppColorsLight.primaryLight9)),
+						AppSpacings.spacingMdVertical,
+					],
+					if (warnings.isNotEmpty) ...[
+						Text(
+							AppLocalizations.of(context)!.media_failure_warnings_non_critical,
+							style: TextStyle(
+								fontWeight: FontWeight.w600,
+								color: isDark ? AppColorsDark.warning : AppColorsLight.warning,
+								fontSize: AppFontSize.small,
+							),
+						),
+						AppSpacings.spacingSmVertical,
+						...warnings.map((f) => _failureRow(f, isDark ? AppColorsDark.error : AppColorsLight.error, isDark ? AppColorsDark.primaryLight9 : AppColorsLight.primaryLight9)),
+						AppSpacings.spacingMdVertical,
+					],
+					if (state.warnings.isNotEmpty && warnings.isEmpty) ...[
+						Text(
+							AppLocalizations.of(context)!.media_failure_warnings_label,
+							style: TextStyle(
+								fontWeight: FontWeight.w600,
+								color: isDark ? AppColorsDark.warning : AppColorsLight.warning,
+								fontSize: AppFontSize.small,
+							),
+						),
+						AppSpacings.spacingSmVertical,
+						...state.warnings.map((w) => Padding(
+							padding: EdgeInsets.only(bottom: AppSpacings.pSm),
+							child: Text('- $w', style: TextStyle(fontSize: AppFontSize.small)),
+						)),
+						AppSpacings.spacingMdVertical,
+					],
+				],
+			),
+			bottomSection: Builder(
+				builder: (sheetContext) => Row(
+					children: [
+						if (state.isFailed && state.activityKey != null)
+							Expanded(
+								child: Theme(
+									data: ThemeData(
+										filledButtonTheme: Theme.of(sheetContext).brightness == Brightness.dark
+											? AppFilledButtonsDarkThemes.primary
+											: AppFilledButtonsLightThemes.primary,
+									),
+									child: FilledButton.icon(
+										icon: Icon(MdiIcons.refresh, size: _scale(16)),
+										label: Text(AppLocalizations.of(context)!.media_failure_retry_activity),
+										onPressed: () {
+											Navigator.pop(sheetContext);
+											_retryActivity(state);
+										},
+										style: FilledButton.styleFrom(
+											textStyle: TextStyle(fontSize: AppFontSize.small),
+										),
+									),
+								),
+							),
+						if (state.isFailed) AppSpacings.spacingMdHorizontal,
+						Expanded(
+							child: Theme(
+								data: ThemeData(
+									outlinedButtonTheme: Theme.of(sheetContext).brightness == Brightness.dark
+										? AppOutlinedButtonsDarkThemes.base
+										: AppOutlinedButtonsLightThemes.base,
+								),
+								child: OutlinedButton.icon(
+									icon: Icon(MdiIcons.stopCircleOutline, size: _scale(16)),
+									label: Text(AppLocalizations.of(context)!.media_failure_deactivate),
+									onPressed: () {
+										Navigator.pop(sheetContext);
+										_deactivateActivity();
+									},
+									style: OutlinedButton.styleFrom(
+										textStyle: TextStyle(fontSize: AppFontSize.small),
+									),
+								),
+							),
+						),
+					],
+				),
+			),
 		);
 	}
 
@@ -2111,24 +2039,26 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	void _showInputSelectorSheet(List<String> sources, String? currentValue, String propId) {
 		final localizations = AppLocalizations.of(context)!;
 
-		showModalBottomSheet(
-			context: context,
-			isScrollControlled: true,
-			backgroundColor: AppColors.blank,
-			builder: (ctx) => ValueSelectorSheet<String>(
-				currentValue: currentValue,
-				options: sources
-						.map((s) => ValueOption<String>(value: s, label: mediaInputSourceLabel(context, s)))
-						.toList(),
-				title: localizations.media_input_select_title,
-				columns: 3,
-				optionStyle: ValueSelectorOptionStyle.buttons,
-				onConfirm: (value) {
-					Navigator.pop(ctx);
-					if (value != null) {
-						_devicesService!.setPropertyValue(propId, value);
-					}
-				},
+		showAppBottomSheet(
+			context,
+			title: localizations.media_input_select_title,
+			scrollable: false,
+			content: Builder(
+				builder: (sheetContext) => ValueSelectorSheet<String>(
+					currentValue: currentValue,
+					options: sources
+							.map((s) => ValueOption<String>(value: s, label: mediaInputSourceLabel(context, s)))
+							.toList(),
+					title: localizations.media_input_select_title,
+					columns: 3,
+					optionStyle: ValueSelectorOptionStyle.buttons,
+					onConfirm: (value) {
+						Navigator.pop(sheetContext);
+						if (value != null) {
+							_devicesService!.setPropertyValue(propId, value);
+						}
+					},
+				),
 			),
 		);
 	}
@@ -2344,167 +2274,91 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 				.where((key) => navKeys.contains(key) && has(key))
 				.toList();
 
-		final isDark = Theme.of(context).brightness == Brightness.dark;
-		final bgColor = isDark ? AppFillColorDark.base : AppFillColorLight.blank;
-		final handleColor = isDark ? AppFillColorDark.darker : AppFillColorLight.darker;
-		final textColor = isDark ? AppTextColorDark.primary : AppTextColorLight.primary;
-
-		showModalBottomSheet(
-			context: context,
-			isScrollControlled: true,
-			backgroundColor: AppColors.blank,
-			builder: (ctx) {
-				return Container(
-					decoration: BoxDecoration(
-						color: bgColor,
-						borderRadius: BorderRadius.vertical(top: Radius.circular(_scale(24))),
-					),
-					child: SafeArea(
-						top: false,
-						child: Padding(
-							padding: AppSpacings.paddingLg,
-							child: Column(
-								mainAxisSize: MainAxisSize.min,
-								children: [
-									// Handle
-									Center(
-										child: Container(
-											width: _scale(36),
-											height: _scale(4),
-											decoration: BoxDecoration(
-												color: handleColor,
-												borderRadius: BorderRadius.circular(AppBorderRadius.small),
-											),
-										),
-									),
-									AppSpacings.spacingMdVertical,
-
-									// Header with close button
-									Row(
-										mainAxisAlignment: MainAxisAlignment.spaceBetween,
-										children: [
-											Text(
-												remoteLocalizations.media_remote_control,
-												style: TextStyle(
-													color: textColor,
-													fontSize: AppFontSize.extraLarge,
-													fontWeight: FontWeight.w600,
-												),
-											),
-											Theme(
-												data: isDark
-													? ThemeData(brightness: Brightness.dark, filledButtonTheme: AppFilledButtonsDarkThemes.neutral)
-													: ThemeData(filledButtonTheme: AppFilledButtonsLightThemes.neutral),
-												child: FilledButton(
-													onPressed: () => Navigator.pop(ctx),
-													style: FilledButton.styleFrom(
-														padding: EdgeInsets.zero,
-														minimumSize: Size(_scale(32), _scale(32)),
-														maximumSize: Size(_scale(32), _scale(32)),
-														shape: const CircleBorder(),
-														tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-													),
-													child: Icon(
-														MdiIcons.close,
-														size: _scale(18),
-														color: isDark
-															? AppFilledButtonsDarkThemes.neutralForegroundColor
-															: AppFilledButtonsLightThemes.neutralForegroundColor,
-													),
-												),
-											),
-										],
-									),
-									AppSpacings.spacingLgVertical,
-
-									// D-pad
-									if (hasDpad) ...[
-										if (hasUp)
-											_buildRemoteDpadButton(
-												context,
-												icon: MdiIcons.chevronUp,
-												onTap: () => _sendRemoteSheetCommand(propId, TelevisionRemoteKeyValue.arrowUp),
-											),
-										AppSpacings.spacingSmVertical,
-										Row(
-											mainAxisSize: MainAxisSize.min,
-											children: [
-												if (hasLeft)
-													_buildRemoteDpadButton(
-														context,
-														icon: MdiIcons.chevronLeft,
-														onTap: () => _sendRemoteSheetCommand(propId, TelevisionRemoteKeyValue.arrowLeft),
-													),
-												if (hasSelect) ...[
-													AppSpacings.spacingSmHorizontal,
-													_buildRemoteDpadButton(
-														context,
-														label: remoteLocalizations.media_remote_ok,
-														isPrimary: true,
-														onTap: () => _sendRemoteSheetCommand(propId, TelevisionRemoteKeyValue.select),
-													),
-													AppSpacings.spacingSmHorizontal,
-												],
-												if (hasRight)
-													_buildRemoteDpadButton(
-														context,
-														icon: MdiIcons.chevronRight,
-														onTap: () => _sendRemoteSheetCommand(propId, TelevisionRemoteKeyValue.arrowRight),
-													),
-											],
-										),
-										AppSpacings.spacingSmVertical,
-										if (hasDown)
-											_buildRemoteDpadButton(
-												context,
-												icon: MdiIcons.chevronDown,
-												onTap: () => _sendRemoteSheetCommand(propId, TelevisionRemoteKeyValue.arrowDown),
-											),
-									],
-
-									// Transport controls (media playback style)
-									if (transportActions.isNotEmpty) ...[
-										AppSpacings.spacingLgVertical,
-										Row(
-											mainAxisAlignment: MainAxisAlignment.center,
-											children: transportActions.map((key) {
-												final isMain = key == TelevisionRemoteKeyValue.play;
-												return Padding(
-													padding: EdgeInsets.symmetric(horizontal: AppSpacings.pXs),
-													child: _buildRemoteTransportButton(
-														context,
-														icon: iconFor(key),
-														isMain: isMain,
-														onTap: () => _sendRemoteSheetCommand(propId, key),
-													),
-												);
-											}).toList(),
-										),
-									],
-
-									// Navigation buttons (back, exit, info)
-									if (navActions.isNotEmpty) ...[
-										AppSpacings.spacingLgVertical,
-										Row(
-											mainAxisAlignment: MainAxisAlignment.center,
-											children: navActions.map((key) {
-												return Padding(
-													padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
-													child: _buildRemoteDpadButton(
-														context,
-														icon: iconFor(key),
-														onTap: () => _sendRemoteSheetCommand(propId, key),
-													),
-												);
-											}).toList(),
-										),
-									],
-								],
+		showAppBottomSheet(
+			context,
+			title: remoteLocalizations.media_remote_control,
+			content: Column(
+				mainAxisSize: MainAxisSize.min,
+				children: [
+					if (hasDpad) ...[
+						if (hasUp)
+							_buildRemoteDpadButton(
+								context,
+								icon: MdiIcons.chevronUp,
+								onTap: () => _sendRemoteSheetCommand(propId, TelevisionRemoteKeyValue.arrowUp),
 							),
+						AppSpacings.spacingSmVertical,
+						Row(
+							mainAxisSize: MainAxisSize.min,
+							children: [
+								if (hasLeft)
+									_buildRemoteDpadButton(
+										context,
+										icon: MdiIcons.chevronLeft,
+										onTap: () => _sendRemoteSheetCommand(propId, TelevisionRemoteKeyValue.arrowLeft),
+									),
+								if (hasSelect) ...[
+									AppSpacings.spacingSmHorizontal,
+									_buildRemoteDpadButton(
+										context,
+										label: remoteLocalizations.media_remote_ok,
+										isPrimary: true,
+										onTap: () => _sendRemoteSheetCommand(propId, TelevisionRemoteKeyValue.select),
+									),
+									AppSpacings.spacingSmHorizontal,
+								],
+								if (hasRight)
+									_buildRemoteDpadButton(
+										context,
+										icon: MdiIcons.chevronRight,
+										onTap: () => _sendRemoteSheetCommand(propId, TelevisionRemoteKeyValue.arrowRight),
+									),
+							],
 						),
-					),
-				);
-			},
+						AppSpacings.spacingSmVertical,
+						if (hasDown)
+							_buildRemoteDpadButton(
+								context,
+								icon: MdiIcons.chevronDown,
+								onTap: () => _sendRemoteSheetCommand(propId, TelevisionRemoteKeyValue.arrowDown),
+							),
+					],
+					if (transportActions.isNotEmpty) ...[
+						AppSpacings.spacingLgVertical,
+						Row(
+							mainAxisAlignment: MainAxisAlignment.center,
+							children: transportActions.map((key) {
+								final isMain = key == TelevisionRemoteKeyValue.play;
+								return Padding(
+									padding: EdgeInsets.symmetric(horizontal: AppSpacings.pXs),
+									child: _buildRemoteTransportButton(
+										context,
+										icon: iconFor(key),
+										isMain: isMain,
+										onTap: () => _sendRemoteSheetCommand(propId, key),
+									),
+								);
+							}).toList(),
+						),
+					],
+					if (navActions.isNotEmpty) ...[
+						AppSpacings.spacingLgVertical,
+						Row(
+							mainAxisAlignment: MainAxisAlignment.center,
+							children: navActions.map((key) {
+								return Padding(
+									padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
+									child: _buildRemoteDpadButton(
+										context,
+										icon: iconFor(key),
+										onTap: () => _sendRemoteSheetCommand(propId, key),
+									),
+								);
+							}).toList(),
+						),
+					],
+				],
+			),
 		);
 	}
 

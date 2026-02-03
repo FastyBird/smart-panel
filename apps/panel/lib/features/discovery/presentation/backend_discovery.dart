@@ -9,7 +9,6 @@ import 'package:fastybird_smart_panel/core/models/discovered_backend.dart';
 import 'package:fastybird_smart_panel/core/services/mdns_discovery.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/system_pages/export.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
@@ -163,7 +162,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
           _state = DiscoveryState.error;
         });
         final localizations = AppLocalizations.of(context)!;
-        AlertBar.showError(
+        AppToast.showError(
           context,
           message: localizations.discovery_error_failed(e.toString()),
         );
@@ -245,7 +244,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
     final localizations = AppLocalizations.of(context)!;
 
     if (url.isEmpty) {
-      AlertBar.showWarning(
+      AppToast.showWarning(
         context,
         message: localizations.discovery_validation_empty,
       );
@@ -253,7 +252,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
     }
 
     if (!_isValidAddress(url)) {
-      AlertBar.showError(
+      AppToast.showError(
         context,
         message: localizations.discovery_validation_invalid,
       );

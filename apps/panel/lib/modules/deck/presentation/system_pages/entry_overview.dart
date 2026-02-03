@@ -3,7 +3,7 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
@@ -231,20 +231,20 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
         });
 
         final localizations = AppLocalizations.of(context);
-        AlertBar.showSuccess(
+        AppToast.showSuccess(
           context,
           message: localizations?.entry_mode_activated ?? 'Mode activated',
         );
       } else if (result.isPartialSuccess) {
         final localizations = AppLocalizations.of(context);
-        AlertBar.showInfo(
+        AppToast.showInfo(
           context,
           message: localizations?.space_scene_partial_success ??
               'Mode partially activated',
         );
       } else {
         final localizations = AppLocalizations.of(context);
-        AlertBar.showError(
+        AppToast.showError(
           context,
           message: result.message ?? localizations?.action_failed ?? 'Failed',
         );
@@ -258,7 +258,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
       });
 
       final localizations = AppLocalizations.of(context);
-      AlertBar.showError(
+      AppToast.showError(
         context,
         message: localizations?.action_failed ?? 'Failed to activate mode',
       );

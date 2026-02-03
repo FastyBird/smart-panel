@@ -4,7 +4,7 @@ import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
@@ -308,18 +308,18 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
       final localizations = AppLocalizations.of(context);
 
       if (result.isSuccess) {
-        AlertBar.showSuccess(
+        AppToast.showSuccess(
           context,
           message: localizations?.space_scene_triggered ?? 'Scene activated',
         );
       } else if (result.isPartialSuccess) {
-        AlertBar.showInfo(
+        AppToast.showInfo(
           context,
           message: localizations?.space_scene_partial_success ??
               'Scene partially activated',
         );
       } else {
-        AlertBar.showError(
+        AppToast.showError(
           context,
           message: result.message ?? localizations?.action_failed ?? 'Failed',
         );
@@ -333,7 +333,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
       });
 
       final localizations = AppLocalizations.of(context);
-      AlertBar.showError(
+      AppToast.showError(
         context,
         message: localizations?.action_failed ?? 'Failed to activate scene',
       );
@@ -387,17 +387,17 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
     // Show feedback - get localizations after mounted check
     final feedbackLocalizations = AppLocalizations.of(context);
     if (failCount == 0 && successCount > 0) {
-      AlertBar.showSuccess(
+      AppToast.showSuccess(
         context,
         message: 'Lights turned off',
       );
     } else if (successCount > 0) {
-      AlertBar.showInfo(
+      AppToast.showInfo(
         context,
         message: 'Some lights turned off',
       );
     } else if (failCount > 0) {
-      AlertBar.showError(
+      AppToast.showError(
         context,
         message: feedbackLocalizations?.action_failed ?? 'Failed to turn off lights',
       );

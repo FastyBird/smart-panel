@@ -5,13 +5,13 @@ import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/device_detail_landscape_layout.dart';
-import 'package:fastybird_smart_panel/core/widgets/device_detail_portrait_layout.dart';
-import 'package:fastybird_smart_panel/core/widgets/device_offline_overlay.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_landscape_layout.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_portrait_layout.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_offline_overlay.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
-import 'package:fastybird_smart_panel/core/widgets/speed_slider.dart';
+import 'package:fastybird_smart_panel/core/widgets/card_slider.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/core/widgets/value_selector.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
@@ -452,7 +452,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
   Widget _buildPortrait(BuildContext context, bool isDark) {
     final localizations = AppLocalizations.of(context)!;
 
-    return DeviceDetailPortraitLayout(
+    return DevicePortraitLayout(
       content: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         spacing: AppSpacings.pMd,
@@ -481,7 +481,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
 
     final hasDeviceControls = _device.fanChannel.hasSpeed || _hasDeviceControlOptions;
 
-    return DeviceDetailLandscapeLayout(
+    return DeviceLandscapeLayout(
       mainContent: isLargeScreen
           ? _buildControlCard(context, isDark)
           : _buildCompactControlCard(context, isDark),
@@ -630,7 +630,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
           ),
         );
       } else {
-        // Portrait: Use SpeedSlider with defined steps
+        // Portrait: Use CardSlider with defined steps
         final steps = availableLevels
             .map((level) => FanUtils.getSpeedLevelLabel(localizations, level))
             .toList();
@@ -644,7 +644,9 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
             ? currentIndex / (availableLevels.length - 1)
             : 0.0;
 
-        return SpeedSlider(
+        return CardSlider(
+          label: localizations.device_fan_speed,
+          icon: MdiIcons.speedometer,
           value: normalizedValue.clamp(0.0, 1.0),
           themeColor: _getStatusColor(),
           enabled: _device.isOn,
@@ -684,8 +686,10 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
           ),
         );
       } else {
-        // Portrait (all sizes): Use SpeedSlider
-        return SpeedSlider(
+        // Portrait (all sizes): Use CardSlider
+        return CardSlider(
+          label: localizations.device_fan_speed,
+          icon: MdiIcons.speedometer,
           value: _speed,
           themeColor: _getStatusColor(),
           enabled: _device.isOn,

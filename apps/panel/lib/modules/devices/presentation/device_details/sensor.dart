@@ -3,6 +3,7 @@ import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_bottom_sheet.dart';
 import 'package:fastybird_smart_panel/modules/devices/utils/value.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/property_timeseries.dart';
@@ -623,11 +624,13 @@ class SensorCard extends StatelessWidget {
   }
 
   void _showSensorDetail(BuildContext context, SensorData sensor) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: AppColors.blank,
-      builder: (context) => SensorDetailBottomSheet(sensor: sensor),
+    showAppBottomSheet(
+      context,
+      title: null,
+      showHandle: false,
+      contentPadding: EdgeInsets.zero,
+      scrollable: false,
+      content: SensorDetailBottomSheet(sensor: sensor),
     );
   }
 }

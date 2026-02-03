@@ -2,6 +2,7 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_bottom_sheet.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -232,22 +233,77 @@ class ValueSelectorRow<T> extends StatelessWidget {
   void _showSelectorSheet(BuildContext context, bool isDark) {
     final effectiveActiveColor =
         activeColor ?? (isDark ? AppColorsDark.primary : AppColorsLight.primary);
+    final found = options.indexWhere((o) => o.value == currentValue);
+    final initialIndex = options.isEmpty
+        ? -1
+        : (found < 0 ? 0 : found.clamp(0, options.length - 1));
+    final selectedIndexNotifier = ValueNotifier<int>(initialIndex);
 
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: AppColors.blank,
-      builder: (context) => ValueSelectorSheet<T>(
+    showAppBottomSheet(
+      context,
+      title: sheetTitle,
+      scrollable: false,
+      content: ValueSelectorSheet<T>(
         currentValue: currentValue,
         options: options,
         title: sheetTitle,
         activeColor: effectiveActiveColor,
         columns: columns,
-        onConfirm: (value) {
-          Navigator.pop(context);
-          onChanged?.call(value);
-        },
+        selectedIndexNotifier: selectedIndexNotifier,
       ),
+      bottomSection: _buildDoneButton(
+        context,
+        isDark,
+        selectedIndexNotifier,
+      ),
+    );
+  }
+
+  Widget _buildDoneButton(
+    BuildContext context,
+    bool isDark,
+    ValueNotifier<int> selectedIndexNotifier,
+  ) {
+    final localizations = AppLocalizations.of(context)!;
+    return ValueListenableBuilder<int>(
+      valueListenable: selectedIndexNotifier,
+      builder: (context, index, _) {
+        return SizedBox(
+          width: double.infinity,
+          child: Theme(
+            data: isDark
+                ? ThemeData(
+                    brightness: Brightness.dark,
+                    filledButtonTheme: AppFilledButtonsDarkThemes.primary,
+                  )
+                : ThemeData(
+                    filledButtonTheme: AppFilledButtonsLightThemes.primary,
+                  ),
+            child: FilledButton(
+              onPressed: options.isEmpty || index < 0
+                  ? null
+                  : () {
+                      Navigator.pop(context);
+                      onChanged?.call(options[index].value);
+                    },
+              style: FilledButton.styleFrom(
+                padding: EdgeInsets.symmetric(vertical: AppSpacings.pMd),
+                shape: RoundedRectangleBorder(
+                  borderRadius:
+                      BorderRadius.circular(AppBorderRadius.base),
+                ),
+              ),
+              child: Text(
+                localizations.button_done,
+                style: TextStyle(
+                  fontSize: AppFontSize.base,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -262,6 +318,8 @@ enum ValueSelectorOptionStyle {
 }
 
 /// A bottom sheet widget for selecting a value from a grid of options.
+/// When used with [showAppBottomSheet], pass [selectedIndexNotifier] so the
+/// Done button in [bottomSection] can read the current selection.
 class ValueSelectorSheet<T> extends StatefulWidget {
   /// Currently selected value
   final T? currentValue;
@@ -275,8 +333,12 @@ class ValueSelectorSheet<T> extends StatefulWidget {
   /// Accent color for selection
   final Color? activeColor;
 
-  /// Callback when selection is confirmed
+  /// Callback when selection is confirmed (used when sheet has its own button).
   final ValueChanged<T?>? onConfirm;
+
+  /// Notifier for the selected option index. When provided, the sheet does not
+  /// build a Done button; the caller should use [bottomSection] and read from this.
+  final ValueNotifier<int>? selectedIndexNotifier;
 
   /// Number of columns in the grid
   final int columns;
@@ -292,6 +354,7 @@ class ValueSelectorSheet<T> extends StatefulWidget {
     required this.title,
     this.activeColor,
     this.onConfirm,
+    this.selectedIndexNotifier,
     this.columns = 4,
     this.optionStyle = ValueSelectorOptionStyle.grid,
   });
@@ -311,11 +374,17 @@ class _ValueSelectorSheetState<T> extends State<ValueSelectorSheet<T>> {
   void initState() {
     super.initState();
     if (widget.options.isEmpty) {
-      _selectedIndex = -1; // No selection when options is empty
+      _selectedIndex = -1;
     } else {
       final index = widget.options.indexWhere((o) => o.value == widget.currentValue);
       _selectedIndex = index < 0 ? 0 : index.clamp(0, widget.options.length - 1);
     }
+    widget.selectedIndexNotifier?.value = _selectedIndex;
+  }
+
+  void _setSelectedIndex(int index) {
+    setState(() => _selectedIndex = index);
+    widget.selectedIndexNotifier?.value = index;
   }
 
   double _scale(double value) =>
@@ -334,250 +403,183 @@ class _ValueSelectorSheetState<T> extends State<ValueSelectorSheet<T>> {
         isDark ? AppTextColorDark.primary : AppTextColorLight.primary;
     final secondaryColor =
         isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
-    final handleColor =
-        isDark ? AppFillColorDark.darker : AppFillColorLight.darker;
 
-    final maxHeight = MediaQuery.of(context).size.height * 0.7;
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        vertical: AppSpacings.pMd,
+        horizontal: AppSpacings.pLg,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Options Grid or Buttons
+          SingleChildScrollView(
+            physics: const ClampingScrollPhysics(),
+            child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final spacing = _scale(10);
+                        final totalSpacing = spacing * (widget.columns - 1);
+                        final itemWidth =
+                            (constraints.maxWidth - totalSpacing) / widget.columns;
 
-    return ConstrainedBox(
-      constraints: BoxConstraints(maxHeight: maxHeight),
-      child: Container(
-        decoration: BoxDecoration(
-          color: isDark ? AppFillColorDark.base : AppFillColorLight.blank,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(_scale(24))),
-        ),
-        child: SafeArea(
-          top: false,
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(
-              AppSpacings.pLg,
-              _scale(12),
-              AppSpacings.pLg,
-              AppSpacings.pXl,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-              // Handle
-              Center(
-                child: Container(
-                  width: _scale(36),
-                  height: _scale(4),
-                  decoration: BoxDecoration(
-                    color: handleColor,
-                    borderRadius: BorderRadius.circular(AppBorderRadius.small),
-                  ),
-                ),
-              ),
-              AppSpacings.spacingMdVertical,
+                        if (widget.optionStyle == ValueSelectorOptionStyle.buttons) {
+                          return Wrap(
+                            spacing: spacing,
+                            runSpacing: spacing,
+                            children: List.generate(widget.options.length, (index) {
+                              final option = widget.options[index];
+                              final isSelected = _selectedIndex == index;
+                              final isDark = Theme.of(context).brightness == Brightness.dark;
+                              final themeData = isSelected
+                                  ? (isDark
+                                      ? ThemeData(brightness: Brightness.dark, outlinedButtonTheme: AppOutlinedButtonsDarkThemes.primary)
+                                      : ThemeData(outlinedButtonTheme: AppOutlinedButtonsLightThemes.primary))
+                                  : (isDark
+                                      ? ThemeData(brightness: Brightness.dark, outlinedButtonTheme: AppOutlinedButtonsDarkThemes.base)
+                                      : ThemeData(outlinedButtonTheme: AppOutlinedButtonsLightThemes.base));
 
-              // Header
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    widget.title,
-                    style: TextStyle(
-                      color: textColor,
-                      fontSize: AppFontSize.extraLarge,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  Theme(
-                    data: isDark
-                        ? ThemeData(brightness: Brightness.dark, filledButtonTheme: AppFilledButtonsDarkThemes.neutral)
-                        : ThemeData(filledButtonTheme: AppFilledButtonsLightThemes.neutral),
-                    child: FilledButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: FilledButton.styleFrom(
-                        padding: EdgeInsets.zero,
-                        minimumSize: Size(_scale(32), _scale(32)),
-                        maximumSize: Size(_scale(32), _scale(32)),
-                        shape: const CircleBorder(),
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                      child: Icon(
-                        MdiIcons.close,
-                        size: _scale(18),
-                        color: isDark
-                            ? AppFilledButtonsDarkThemes.neutralForegroundColor
-                            : AppFilledButtonsLightThemes.neutralForegroundColor,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              AppSpacings.spacingLgVertical,
+                              final buttonChild = Text(
+                                option.label,
+                                style: TextStyle(
+                                  fontSize: AppFontSize.small,
+                                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                                ),
+                                textAlign: TextAlign.center,
+                              );
 
-              // Options Grid or Buttons
-              Flexible(
-                child: SingleChildScrollView(
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final spacing = _scale(10);
-                      final totalSpacing = spacing * (widget.columns - 1);
-                      final itemWidth =
-                          (constraints.maxWidth - totalSpacing) / widget.columns;
+                              return SizedBox(
+                                width: itemWidth,
+                                child: Theme(
+                                  data: themeData,
+                                  child: OutlinedButton(
+                                    onPressed: () {
+                                      HapticFeedback.lightImpact();
+                                      _setSelectedIndex(index);
+                                    },
+                                    style: OutlinedButton.styleFrom(
+                                      padding: EdgeInsets.symmetric(vertical: AppSpacings.pMd),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(AppBorderRadius.base),
+                                      ),
+                                    ),
+                                    child: buttonChild,
+                                  )
+                                ),
+                              );
+                            }),
+                          );
+                        }
 
-                      if (widget.optionStyle == ValueSelectorOptionStyle.buttons) {
                         return Wrap(
                           spacing: spacing,
                           runSpacing: spacing,
                           children: List.generate(widget.options.length, (index) {
                             final option = widget.options[index];
                             final isSelected = _selectedIndex == index;
-                            final isDark = Theme.of(context).brightness == Brightness.dark;
-                            final themeData = isSelected
-                                ? (isDark
-                                    ? ThemeData(brightness: Brightness.dark, outlinedButtonTheme: AppOutlinedButtonsDarkThemes.primary)
-                                    : ThemeData(outlinedButtonTheme: AppOutlinedButtonsLightThemes.primary))
-                                : (isDark
-                                    ? ThemeData(brightness: Brightness.dark, outlinedButtonTheme: AppOutlinedButtonsDarkThemes.base)
-                                    : ThemeData(outlinedButtonTheme: AppOutlinedButtonsLightThemes.base));
 
-                            final buttonChild = Text(
-                              option.label,
-                              style: TextStyle(
-                                fontSize: AppFontSize.small,
-                                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                              ),
-                              textAlign: TextAlign.center,
-                            );
+                            // Double-border technique to prevent UI jumping on selection
+                            final innerBgColor = isSelected
+                                ? effectiveActiveColor.withValues(alpha: 0.12)
+                                : cardColor;
 
-                            return SizedBox(
-                              width: itemWidth,
-                              child: Theme(
-                                data: themeData,
-                                child: OutlinedButton(
-                                  onPressed: () {
-                                    HapticFeedback.lightImpact();
-                                    setState(() => _selectedIndex = index);
-                                  },
-                                  style: OutlinedButton.styleFrom(
-                                    padding: EdgeInsets.symmetric(vertical: AppSpacings.pMd),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(AppBorderRadius.base),
+                            return GestureDetector(
+                              onTap: () {
+                                HapticFeedback.lightImpact();
+                                _setSelectedIndex(index);
+                              },
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                width: itemWidth,
+                                decoration: BoxDecoration(
+                                  borderRadius:
+                                      BorderRadius.circular(AppBorderRadius.base),
+                                  border: Border.all(
+                                    color:
+                                        isSelected ? effectiveActiveColor : borderColor,
+                                    width: _scale(1),
+                                  ),
+                                ),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  padding: EdgeInsets.symmetric(vertical: AppSpacings.pMd),
+                                  decoration: BoxDecoration(
+                                    color: innerBgColor,
+                                    borderRadius:
+                                        BorderRadius.circular(AppBorderRadius.base - 1),
+                                    border: Border.all(
+                                      color:
+                                          isSelected ? effectiveActiveColor : innerBgColor,
+                                      width: _scale(1),
                                     ),
                                   ),
-                                  child: buttonChild,
-                                )
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      if (option.icon != null) ...[
+                                        Icon(
+                                          option.icon,
+                                          color: isSelected
+                                              ? effectiveActiveColor
+                                              : secondaryColor,
+                                          size: _scale(20),
+                                        ),
+                                        AppSpacings.spacingXsVertical,
+                                      ],
+                                      Text(
+                                        option.label,
+                                        style: TextStyle(
+                                          color: isSelected
+                                              ? effectiveActiveColor
+                                              : textColor,
+                                          fontSize: AppFontSize.small,
+                                          fontWeight: isSelected
+                                              ? FontWeight.w600
+                                              : FontWeight.w500,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
                             );
                           }),
                         );
-                      }
-
-                      return Wrap(
-                        spacing: spacing,
-                        runSpacing: spacing,
-                        children: List.generate(widget.options.length, (index) {
-                          final option = widget.options[index];
-                          final isSelected = _selectedIndex == index;
-
-                          // Double-border technique to prevent UI jumping on selection
-                          final innerBgColor = isSelected
-                              ? effectiveActiveColor.withValues(alpha: 0.12)
-                              : cardColor;
-
-                          return GestureDetector(
-                            onTap: () => setState(() => _selectedIndex = index),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              width: itemWidth,
-                              decoration: BoxDecoration(
-                                borderRadius:
-                                    BorderRadius.circular(AppBorderRadius.base),
-                                border: Border.all(
-                                  color:
-                                      isSelected ? effectiveActiveColor : borderColor,
-                                  width: _scale(1),
-                                ),
-                              ),
-                              child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 200),
-                                padding: EdgeInsets.symmetric(vertical: AppSpacings.pMd),
-                                decoration: BoxDecoration(
-                                  color: innerBgColor,
-                                  borderRadius:
-                                      BorderRadius.circular(AppBorderRadius.base - 1),
-                                  border: Border.all(
-                                    color:
-                                        isSelected ? effectiveActiveColor : innerBgColor,
-                                    width: _scale(1),
-                                  ),
-                                ),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    if (option.icon != null) ...[
-                                      Icon(
-                                        option.icon,
-                                        color: isSelected
-                                            ? effectiveActiveColor
-                                            : secondaryColor,
-                                        size: _scale(20),
-                                      ),
-                                      AppSpacings.spacingXsVertical,
-                                    ],
-                                    Text(
-                                      option.label,
-                                      style: TextStyle(
-                                        color: isSelected
-                                            ? effectiveActiveColor
-                                            : textColor,
-                                        fontSize: AppFontSize.small,
-                                        fontWeight: isSelected
-                                            ? FontWeight.w600
-                                            : FontWeight.w500,
-                                      ),
-                                      textAlign: TextAlign.center,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          );
-                        }),
-                      );
-                    },
-                  ),
-                ),
-              ),
-              AppSpacings.spacingLgVertical,
-
-              // Confirm Button
-              SizedBox(
-                width: double.infinity,
-                child: Theme(
-                  data: isDark
-                      ? ThemeData(brightness: Brightness.dark, filledButtonTheme: AppFilledButtonsDarkThemes.primary)
-                      : ThemeData(filledButtonTheme: AppFilledButtonsLightThemes.primary),
-                  child: FilledButton(
-                    onPressed: widget.options.isEmpty || _selectedIndex < 0
-                        ? null
-                        : () => widget.onConfirm?.call(widget.options[_selectedIndex].value),
-                    style: FilledButton.styleFrom(
-                      padding: EdgeInsets.symmetric(vertical: AppSpacings.pMd),
-                      shape: RoundedRectangleBorder(
-                        borderRadius:
-                            BorderRadius.circular(AppBorderRadius.base),
-                      ),
+                      },
                     ),
-                    child: Text(
-                      localizations.button_done,
-                      style: TextStyle(
-                        fontSize: AppFontSize.base,
-                        fontWeight: FontWeight.w600,
-                      ),
+                  ),
+          if (widget.selectedIndexNotifier == null) ...[
+            AppSpacings.spacingLgVertical,
+            SizedBox(
+              width: double.infinity,
+              child: Theme(
+                data: isDark
+                    ? ThemeData(brightness: Brightness.dark, filledButtonTheme: AppFilledButtonsDarkThemes.primary)
+                    : ThemeData(filledButtonTheme: AppFilledButtonsLightThemes.primary),
+                child: FilledButton(
+                  onPressed: widget.options.isEmpty || _selectedIndex < 0
+                      ? null
+                      : () => widget.onConfirm?.call(widget.options[_selectedIndex].value),
+                  style: FilledButton.styleFrom(
+                    padding: EdgeInsets.symmetric(vertical: AppSpacings.pMd),
+                    shape: RoundedRectangleBorder(
+                      borderRadius:
+                          BorderRadius.circular(AppBorderRadius.base),
+                    ),
+                  ),
+                  child: Text(
+                    localizations.button_done,
+                    style: TextStyle(
+                      fontSize: AppFontSize.base,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
               ),
-            ],
-          ),
-        ),
-      ),
+            ),
+          ],
+        ],
       ),
     );
   }

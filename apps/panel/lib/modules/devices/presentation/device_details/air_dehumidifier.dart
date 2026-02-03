@@ -7,16 +7,16 @@ import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/circular_control_dial.dart';
-import 'package:fastybird_smart_panel/core/widgets/device_detail_landscape_layout.dart';
-import 'package:fastybird_smart_panel/core/widgets/device_detail_portrait_layout.dart';
-import 'package:fastybird_smart_panel/core/widgets/device_offline_overlay.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_landscape_layout.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_portrait_layout.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_offline_overlay.dart';
 import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
-import 'package:fastybird_smart_panel/core/widgets/speed_slider.dart';
+import 'package:fastybird_smart_panel/core/widgets/card_slider.dart';
 import 'package:fastybird_smart_panel/core/widgets/tile_wrappers.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/core/widgets/value_selector.dart';
@@ -121,7 +121,7 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
     }
     final localizations = AppLocalizations.of(context);
     if (mounted && localizations != null) {
-      AlertBar.showError(context, message: localizations.action_failed);
+      AppToast.showError(context, message: localizations.action_failed);
     }
     if (mounted) {
       setState(() {});
@@ -321,7 +321,7 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
         if (mounted) {
           final localizations = AppLocalizations.of(context);
           if (localizations != null) {
-            AlertBar.showError(context, message: localizations.action_failed);
+            AppToast.showError(context, message: localizations.action_failed);
           }
           setState(() {});
         }
@@ -552,7 +552,7 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
       skipFanMode: hasSpeed,
     );
 
-    return DeviceDetailPortraitLayout(
+    return DevicePortraitLayout(
       content: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         spacing: AppSpacings.pMd,
@@ -590,7 +590,7 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
     final controlsSection =
         _buildLandscapeControlsSection(context, localizations, isDark);
 
-    return DeviceDetailLandscapeLayout(
+    return DeviceLandscapeLayout(
       mainContent: isLargeScreen
           ? _buildPrimaryControlCard(context, isDark, dialSize: _scale(DeviceDetailDialSizes.landscape))
           : _buildCompactControlCard(context, isDark),
@@ -991,7 +991,7 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
   // --------------------------------------------------------------------------
 
   /// Builds the speed slider for portrait layout.
-  /// If fan has mode, includes ModeSelector as footer in the SpeedSlider.
+  /// If fan has mode, includes ModeSelector as footer in the CardSlider.
   Widget _buildSpeedSliderForPortrait(
     AppLocalizations localizations,
     bool isDark,
@@ -1031,7 +1031,7 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
     }
 
     if (fanChannel.isSpeedEnum) {
-      // Enum-based speed - use SpeedSlider with defined steps
+      // Enum-based speed - use CardSlider with defined steps
       final availableLevels = fanChannel.availableSpeedLevels;
       if (availableLevels.isEmpty) return const SizedBox.shrink();
 
@@ -1048,7 +1048,9 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
           ? currentIndex / (availableLevels.length - 1)
           : 0.0;
 
-      return SpeedSlider(
+      return CardSlider(
+        label: localizations.device_fan_speed,
+        icon: MdiIcons.speedometer,
         value: normalizedValue.clamp(0.0, 1.0),
         themeColor: _getStatusColor(),
         enabled: _device.isOn,
@@ -1062,13 +1064,15 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
         footer: modeFooter,
       );
     } else {
-      // Numeric speed (0-100%) - use SpeedSlider with default steps
+      // Numeric speed (0-100%) - use CardSlider with default steps
       final minSpeed = fanChannel.minSpeed;
       final maxSpeed = fanChannel.maxSpeed;
       final range = maxSpeed - minSpeed;
       if (range <= 0) return const SizedBox.shrink();
 
-      return SpeedSlider(
+      return CardSlider(
+        label: localizations.device_fan_speed,
+        icon: MdiIcons.speedometer,
         value: _normalizedFanSpeed,
         themeColor: _getStatusColor(),
         enabled: _device.isOn,

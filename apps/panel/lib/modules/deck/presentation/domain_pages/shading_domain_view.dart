@@ -4,7 +4,7 @@ import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/color.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/intent_mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
@@ -892,7 +892,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   void _showActionFailed({CoversTargetRole? clearPendingRole}) {
     if (!mounted) return;
     final localizations = AppLocalizations.of(context)!;
-    AlertBar.showError(context, message: localizations.action_failed);
+    AppToast.showError(context, message: localizations.action_failed);
     if (clearPendingRole != null) {
       _pendingPositions.remove(clearPendingRole);
       setState(() {});

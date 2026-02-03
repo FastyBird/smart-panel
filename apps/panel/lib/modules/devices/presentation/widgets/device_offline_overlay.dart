@@ -17,7 +17,7 @@ const Color _offlineColor = Color(0xFF78909C);
 /// Stack(
 ///   children: [
 ///     // Main content
-///     DeviceDetailPortraitLayout(...),
+///     DevicePortraitLayout(...),
 ///     // Offline state
 ///     if (!device.isOnline)
 ///       DeviceOfflineState(

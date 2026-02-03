@@ -1,3 +1,7 @@
+export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_channels_section.dart';
+export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_landscape_layout.dart';
+export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_offline_overlay.dart';
+export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_portrait_layout.dart';
 export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_colors.dart';
 export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_power_button.dart';
 export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_brightness_card.dart';

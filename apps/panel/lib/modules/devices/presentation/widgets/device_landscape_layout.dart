@@ -20,14 +20,14 @@ import 'package:flutter/material.dart';
 ///
 /// Example usage:
 /// ```dart
-/// DeviceDetailLandscapeLayout(
+/// DeviceLandscapeLayout(
 ///   mainContent: _buildControlCard(context),
 ///   modeSelector: MyModeSelector(), // Optional - if provided, creates 3-column layout
 ///   secondaryContent: _buildStatusContent(context),
 ///   largeSecondaryColumn: true, // Equal columns (1:1)
 /// )
 /// ```
-class DeviceDetailLandscapeLayout extends StatelessWidget {
+class DeviceLandscapeLayout extends StatelessWidget {
   /// The main control content widget (left column)
   final Widget mainContent;
 
@@ -64,7 +64,7 @@ class DeviceDetailLandscapeLayout extends StatelessWidget {
   /// Default: true
   final bool secondaryScrollable;
 
-  const DeviceDetailLandscapeLayout({
+  const DeviceLandscapeLayout({
     super.key,
     required this.mainContent,
     this.modeSelector,

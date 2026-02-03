@@ -5,12 +5,14 @@ import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
-import 'package:fastybird_smart_panel/core/widgets/device_detail_landscape_layout.dart';
-import 'package:fastybird_smart_panel/core/widgets/device_detail_portrait_layout.dart';
-import 'package:fastybird_smart_panel/core/widgets/device_offline_overlay.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_landscape_layout.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_portrait_layout.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_offline_overlay.dart';
 import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_channels_section.dart';
+import 'package:fastybird_smart_panel/core/widgets/card_slider.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
 import 'package:fastybird_smart_panel/core/widgets/slider_with_steps.dart';
 import 'package:fastybird_smart_panel/core/widgets/tile_wrappers.dart';
@@ -170,7 +172,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   void _showActionFailed() {
     final localizations = AppLocalizations.of(context);
     if (mounted && localizations != null) {
-      AlertBar.showError(context, message: localizations.action_failed);
+      AppToast.showError(context, message: localizations.action_failed);
     }
   }
 
@@ -373,7 +375,75 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
           HeaderMainIcon(icon: MdiIcons.blindsHorizontal, color: statusColor),
         ],
       ),
-      trailing: _selectedChannel.obstruction ? _buildObstructionIcon(isDark) : null,
+      trailing: _buildHeaderTrailing(context, isDark),
+    );
+  }
+
+  Widget? _buildHeaderTrailing(BuildContext context, bool isDark) {
+    final hasChannels = _isMultiChannel;
+    final hasObstruction = _selectedChannel.obstruction;
+    if (!hasChannels && !hasObstruction) return null;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (hasChannels) _buildChannelsHeaderButton(context, isDark),
+        if (hasChannels && hasObstruction) SizedBox(width: AppSpacings.pSm),
+        if (hasObstruction) _buildObstructionIcon(isDark),
+      ],
+    );
+  }
+
+  /// Channels (layers) button in header trailing. Opens the channels bottom sheet.
+  Widget _buildChannelsHeaderButton(BuildContext context, bool isDark) {
+    final localizations = AppLocalizations.of(context)!;
+    final filledTheme = isDark
+        ? AppFilledButtonsDarkThemes.primary
+        : AppFilledButtonsLightThemes.primary;
+    final iconColor = isDark
+        ? AppFilledButtonsDarkThemes.primaryForegroundColor
+        : AppFilledButtonsLightThemes.primaryForegroundColor;
+    return Theme(
+      data: Theme.of(context).copyWith(filledButtonTheme: filledTheme),
+      child: FilledButton(
+        onPressed: () {
+          final channelCount = _device.windowCoveringChannels.length;
+          DeviceChannelsSection.showChannelsSheet(
+            context,
+            title: localizations.window_covering_channels_label,
+            icon: MdiIcons.blindsHorizontal,
+            itemCount: channelCount,
+            tileBuilder: (c, i) {
+              final ch = _channelAt(i);
+              return HorizontalTileStretched(
+                icon: MdiIcons.blindsHorizontalClosed,
+                activeIcon: MdiIcons.blindsHorizontal,
+                name: ch.channel.name,
+                status: '${ch.position}%',
+                isActive: ch.position > 0,
+                isSelected: ch.isSelected,
+                onTileTap: () {
+                  _handleChannelSelect(i);
+                  if (c.mounted) Navigator.of(c).pop();
+                },
+                showSelectionIndicator: true,
+              );
+            },
+            showCountInHeader: false,
+          );
+        },
+        style: FilledButton.styleFrom(
+          padding: EdgeInsets.symmetric(
+            horizontal: AppSpacings.pLg,
+            vertical: AppSpacings.pMd,
+          ),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
+        child: Icon(
+          MdiIcons.layers,
+          size: AppFontSize.extraLarge,
+          color: iconColor,
+        ),
+      ),
     );
   }
 
@@ -476,10 +546,9 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
           ],
         ),
       _buildPresetsCard(context),
-      if (_isMultiChannel) _buildLandscapeChannelsList(context),
     ];
 
-    return DeviceDetailLandscapeLayout(
+    return DeviceLandscapeLayout(
       mainContent: _buildLandscapeMainControl(context),
       secondaryContent: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -962,7 +1031,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   // --------------------------------------------------------------------------
 
   Widget _buildPortraitLayout(BuildContext context) {
-    return DeviceDetailPortraitLayout(
+    return DevicePortraitLayout(
       content: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -975,68 +1044,8 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
           _buildPresetsWithGradient(context),
         ],
       ),
-      stickyBottom: _isMultiChannel ? _buildPortraitChannelsList(context) : null,
+      stickyBottom: null,
       useStickyBottomPadding: false,
-    );
-  }
-
-  /// Builds the channels list section matching lighting control panel pattern
-  Widget _buildPortraitChannelsList(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final localizations = AppLocalizations.of(context)!;
-    final dividerColor =
-        isDark ? AppBorderColorDark.light : AppBorderColorLight.base;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      spacing: AppSpacings.pMd,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: AppSpacings.pLg,
-            vertical: AppSpacings.pMd,
-          ),
-          decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(
-                color: dividerColor,
-                width: 1,
-              ),
-            ),
-          ),
-          child: SectionTitle(
-            title: localizations.window_covering_channels_label,
-            icon: MdiIcons.blindsHorizontal,
-          ),
-        ),
-        Padding(
-          padding: EdgeInsets.only(
-            left: AppSpacings.pLg,
-            right: AppSpacings.pLg,
-            bottom: AppSpacings.pMd,
-          ),
-          child: HorizontalScrollWithGradient(
-            height: _scale(80),
-            layoutPadding: AppSpacings.pMd,
-            itemCount: _device.windowCoveringChannels.length,
-            separatorWidth: AppSpacings.pMd,
-            itemBuilder: (context, index) {
-              final c = _channelAt(index);
-              return VerticalTileCompact(
-                icon: MdiIcons.blindsHorizontalClosed,
-                activeIcon: MdiIcons.blindsHorizontal,
-                name: c.channel.name,
-                status: '${c.position}%',
-                isActive: c.position > 0,
-                isSelected: c.isSelected,
-                onTileTap: () => _handleChannelSelect(index),
-                showSelectionIndicator: true,
-              );
-            },
-          ),
-        ),
-      ],
     );
   }
 
@@ -1062,37 +1071,6 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
         _selectedPresetIndex = null;
       });
     }
-  }
-
-  /// Builds the channels list for landscape layout.
-  /// Uses DeviceTileLandscape wrapper for all device sizes.
-  Widget _buildLandscapeChannelsList(BuildContext context) {
-    final localizations = AppLocalizations.of(context)!;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      spacing: AppSpacings.pMd,
-      children: [
-        SectionTitle(
-          title: localizations.window_covering_channels_label,
-          icon: MdiIcons.blindsHorizontal,
-        ),
-        ..._device.windowCoveringChannels.asMap().entries.map((entry) {
-          final index = entry.key;
-          final c = _channelAt(index);
-          return DeviceTileLandscape(
-            icon: MdiIcons.blindsHorizontalClosed,
-            activeIcon: MdiIcons.blindsHorizontal,
-            name: c.channel.name,
-            status: '${c.position}%',
-            isActive: c.position > 0,
-            isSelected: c.isSelected,
-            onTileTap: () => _handleChannelSelect(index),
-            showSelectionIndicator: true,
-          );
-        }),
-      ],
-    );
   }
 
   /// Builds the presets horizontal scroll with edge gradients that extend
@@ -1358,18 +1336,19 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
       );
     }
 
-    // Full layout: slider
+    // Full layout: slider using CardSlider
     final normalizedValue = tiltRange > 0 ? (_tiltAngle - minTilt) / tiltRange : 0.5;
 
-    return _TiltSlider(
-      value: normalizedValue.clamp(0.0, 1.0),
+    return CardSlider(
       label: localizations.window_covering_tilt_label,
-      valueLabel: '$_tiltAngle°',
+      icon: MdiIcons.angleAcute,
+      value: normalizedValue.clamp(0.0, 1.0),
       steps: [
         '$minTilt°',
         '${((maxTilt + minTilt) / 2).round()}°',
         '$maxTilt°',
       ],
+      discrete: true,
       onChanged: (value) {
         final newTilt = (minTilt + value * tiltRange).round();
         _handleTiltChanged(newTilt.toDouble());
@@ -1528,94 +1507,6 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     return true;
   }
 
-}
-
-// --------------------------------------------------------------------------
-// TILT SLIDER WIDGET (SpeedSlider-style UI for tilt control)
-// --------------------------------------------------------------------------
-
-/// A tilt slider widget that follows SpeedSlider's visual design.
-///
-/// Shows label on the left, value in degrees on the right, and a slider below.
-class _TiltSlider extends StatelessWidget {
-  final double value;
-  final String label;
-  final String valueLabel;
-  final List<String> steps;
-  final ValueChanged<double>? onChanged;
-
-  const _TiltSlider({
-    required this.value,
-    required this.label,
-    required this.valueLabel,
-    required this.steps,
-    this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = isDark ? AppFillColorDark.light : AppFillColorLight.blank;
-    final borderColor =
-        isDark ? AppFillColorDark.light : AppBorderColorLight.light;
-    final textColor =
-        isDark ? AppTextColorDark.primary : AppTextColorLight.primary;
-    final secondaryColor =
-        isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
-
-    final screenService = locator<ScreenService>();
-    final visualDensityService = locator<VisualDensityService>();
-
-    return Container(
-      padding: AppSpacings.paddingMd,
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(AppBorderRadius.base),
-        border: Border.all(
-          color: borderColor,
-          width: screenService.scale(1, density: visualDensityService.density),
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Icon(MdiIcons.angleAcute, size: AppFontSize.small, color: secondaryColor),
-                  AppSpacings.spacingSmHorizontal,
-                  Text(
-                    label.toUpperCase(),
-                    style: TextStyle(
-                      color: secondaryColor,
-                      fontSize: AppFontSize.small,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ],
-              ),
-              Text(
-                valueLabel,
-                style: TextStyle(
-                  color: textColor,
-                  fontSize: AppFontSize.extraLarge,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-          AppSpacings.spacingMdVertical,
-          SliderWithSteps(
-            value: value,
-            steps: steps,
-            onChanged: onChanged,
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 // --------------------------------------------------------------------------

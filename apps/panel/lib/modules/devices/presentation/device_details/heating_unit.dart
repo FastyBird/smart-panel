@@ -7,11 +7,11 @@ import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/circular_control_dial.dart';
-import 'package:fastybird_smart_panel/core/widgets/device_detail_landscape_layout.dart';
-import 'package:fastybird_smart_panel/core/widgets/device_detail_portrait_layout.dart';
-import 'package:fastybird_smart_panel/core/widgets/device_offline_overlay.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_landscape_layout.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_portrait_layout.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_offline_overlay.dart';
 import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
@@ -125,7 +125,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
 
     final localizations = AppLocalizations.of(context);
     if (mounted && localizations != null) {
-      AlertBar.showError(context, message: localizations.action_failed);
+      AppToast.showError(context, message: localizations.action_failed);
     }
 
     if (mounted) {
@@ -268,7 +268,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
         if (mounted) {
           final localizations = AppLocalizations.of(context);
           if (localizations != null) {
-            AlertBar.showError(context, message: localizations.action_failed);
+            AppToast.showError(context, message: localizations.action_failed);
           }
           setState(() {});
         }
@@ -436,7 +436,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
     final statusSection =
         _buildStatusSection(localizations, isDark, modeColorFamily.base);
 
-    return DeviceDetailPortraitLayout(
+    return DevicePortraitLayout(
       content: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         spacing: AppSpacings.pMd,
@@ -465,7 +465,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
     final statusSection =
         _buildStatusSection(localizations, isDark, modeColorFamily.base);
 
-    return DeviceDetailLandscapeLayout(
+    return DeviceLandscapeLayout(
       mainContent: isLargeScreen
           ? _buildPrimaryControlCard(context, isDark, dialSize: _scale(DeviceDetailDialSizes.landscape))
           : _buildCompactDialWithModes(context, isDark),

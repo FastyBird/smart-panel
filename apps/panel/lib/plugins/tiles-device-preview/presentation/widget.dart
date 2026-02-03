@@ -2,7 +2,7 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/button_tile.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/mappers/data_source.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/presentation/widgets/tiles/tile.dart';
@@ -61,7 +61,7 @@ class DevicePreviewTileWidget extends TileWidget<DevicePreviewTileView> {
                 );
 
                 if (!res && context.mounted) {
-                  AlertBar.showError(
+                  AppToast.showError(
                     context,
                     message: localizations.action_failed,
                   );

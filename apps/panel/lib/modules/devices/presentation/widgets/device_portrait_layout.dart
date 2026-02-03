@@ -13,7 +13,7 @@ import 'package:flutter/material.dart';
 ///
 /// Example usage:
 /// ```dart
-/// DeviceDetailPortraitLayout(
+/// DevicePortraitLayout(
 ///   content: Column(
 ///     children: [
 ///       _buildControlCard(context),
@@ -24,7 +24,7 @@ import 'package:flutter/material.dart';
 ///   stickyBottom: _buildChannelsPanel(context), // Optional sticky bottom
 /// )
 /// ```
-class DeviceDetailPortraitLayout extends StatelessWidget {
+class DevicePortraitLayout extends StatelessWidget {
   /// The main scrollable content
   final Widget content;
 
@@ -57,7 +57,7 @@ class DeviceDetailPortraitLayout extends StatelessWidget {
   /// Default: true
   final bool showStickyBottomBorder;
 
-  const DeviceDetailPortraitLayout({
+  const DevicePortraitLayout({
     super.key,
     required this.content,
     this.stickyBottom,

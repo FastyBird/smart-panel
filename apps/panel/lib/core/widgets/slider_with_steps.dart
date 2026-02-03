@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 
 /// A simple slider widget with step labels below.
 ///
-/// Unlike [SpeedSlider], this widget does not include a container, label,
+/// Unlike [CardSlider], this widget does not include a container, label,
 /// or value display - just the slider and step labels. Useful when you want
 /// to embed a slider within an existing card or layout.
 ///

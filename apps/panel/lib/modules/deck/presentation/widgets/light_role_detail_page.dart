@@ -5,7 +5,7 @@ import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/color.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/lighting/export.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -1171,7 +1171,7 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
       if (!mounted) return;
 
       if (!success) {
-        AlertBar.showError(
+        AppToast.showError(
           context,
           message: localizations.action_failed,
         );
@@ -1196,7 +1196,7 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
       }
     } catch (e) {
       if (!mounted) return;
-      AlertBar.showError(
+      AppToast.showError(
         context,
         message: localizations.action_failed,
       );
@@ -1242,14 +1242,14 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
       if (!mounted) return;
 
       if (!success) {
-        AlertBar.showError(
+        AppToast.showError(
           context,
           message: localizations.action_failed,
         );
       }
     } catch (e) {
       if (mounted) {
-        AlertBar.showError(
+        AppToast.showError(
           context,
           message: localizations.action_failed,
         );
@@ -1297,7 +1297,7 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
     // If all devices are offline, show warning
     if (properties.isEmpty && offlineCount > 0) {
       if (mounted) {
-        AlertBar.showWarning(
+        AppToast.showWarning(
           context,
           message: localizations.all_devices_offline,
         );
@@ -1309,7 +1309,7 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
 
     // Show info if some devices were skipped
     if (offlineCount > 0 && mounted) {
-      AlertBar.showInfo(
+      AppToast.showInfo(
         context,
         message: localizations.devices_offline_skipped(offlineCount),
       );
@@ -1415,14 +1415,14 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
       if (!mounted) return;
 
       if (!success) {
-        AlertBar.showError(
+        AppToast.showError(
           context,
           message: localizations.action_failed,
         );
       }
     } catch (e) {
       if (!mounted) return;
-      AlertBar.showError(
+      AppToast.showError(
         context,
         message: localizations.action_failed,
       );
@@ -1492,7 +1492,7 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
     // If all devices are offline, show warning
     if (properties.isEmpty && offlineCount > 0) {
       if (mounted) {
-        AlertBar.showWarning(
+        AppToast.showWarning(
           context,
           message: localizations.all_devices_offline,
         );
@@ -1504,7 +1504,7 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
 
     // Show info if some devices were skipped
     if (offlineCount > 0 && mounted) {
-      AlertBar.showInfo(
+      AppToast.showInfo(
         context,
         message: localizations.devices_offline_skipped(offlineCount),
       );
@@ -1567,14 +1567,14 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
       if (!mounted) return;
 
       if (!success) {
-        AlertBar.showError(
+        AppToast.showError(
           context,
           message: localizations.action_failed,
         );
       }
     } catch (e) {
       if (!mounted) return;
-      AlertBar.showError(
+      AppToast.showError(
         context,
         message: localizations.action_failed,
       );
@@ -1669,7 +1669,7 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
     // If all devices are offline, show warning
     if (properties.isEmpty && offlineCount > 0) {
       if (mounted) {
-        AlertBar.showWarning(
+        AppToast.showWarning(
           context,
           message: localizations.all_devices_offline,
         );
@@ -1681,7 +1681,7 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
 
     // Show info if some devices were skipped
     if (offlineCount > 0 && mounted) {
-      AlertBar.showInfo(
+      AppToast.showInfo(
         context,
         message: localizations.devices_offline_skipped(offlineCount),
       );

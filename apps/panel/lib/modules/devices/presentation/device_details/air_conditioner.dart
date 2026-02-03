@@ -7,16 +7,16 @@ import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/circular_control_dial.dart';
-import 'package:fastybird_smart_panel/core/widgets/device_detail_landscape_layout.dart';
-import 'package:fastybird_smart_panel/core/widgets/device_detail_portrait_layout.dart';
-import 'package:fastybird_smart_panel/core/widgets/device_offline_overlay.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_landscape_layout.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_portrait_layout.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_offline_overlay.dart';
 import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
-import 'package:fastybird_smart_panel/core/widgets/speed_slider.dart';
+import 'package:fastybird_smart_panel/core/widgets/card_slider.dart';
 import 'package:fastybird_smart_panel/core/widgets/tile_wrappers.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/core/widgets/value_selector.dart';
@@ -100,7 +100,7 @@ class _AirConditionerDeviceDetailState
   static const _speedDebounceDuration = Duration(milliseconds: 300);
 
   // Grace period after mode changes to prevent control state listener from
-  // causing flickering in SpeedSlider enabled state
+  // causing flickering in CardSlider enabled state
   DateTime? _modeChangeTime;
   static const _modeChangeGracePeriod = Duration(milliseconds: 500);
 
@@ -132,7 +132,7 @@ class _AirConditionerDeviceDetailState
   void _onControllerError(String _propertyId, Object _error) {
     final localizations = AppLocalizations.of(context);
     if (mounted && localizations != null) {
-      AlertBar.showError(context, message: localizations.action_failed);
+      AppToast.showError(context, message: localizations.action_failed);
     }
 
     if (mounted) {
@@ -259,7 +259,7 @@ class _AirConditionerDeviceDetailState
     if (!mounted) return;
 
     // Skip rebuilds during grace period after mode changes to prevent
-    // SpeedSlider flickering (enabled state depends on _currentMode which
+    // CardSlider flickering (enabled state depends on _currentMode which
     // uses control state)
     if (_modeChangeTime != null &&
         DateTime.now().difference(_modeChangeTime!) < _modeChangeGracePeriod) {
@@ -438,7 +438,7 @@ class _AirConditionerDeviceDetailState
     if (controller == null) return;
 
     // Set grace period to prevent control state listener from causing
-    // SpeedSlider flickering during mode transitions
+    // CardSlider flickering during mode transitions
     _modeChangeTime = DateTime.now();
 
     final coolerOnProp = _device.coolerChannel.onProp;
@@ -527,7 +527,7 @@ class _AirConditionerDeviceDetailState
           if (mounted) {
             final localizations = AppLocalizations.of(context);
             if (localizations != null) {
-              AlertBar.showError(context, message: localizations.action_failed);
+              AppToast.showError(context, message: localizations.action_failed);
             }
             setState(() {});
           }
@@ -879,7 +879,7 @@ class _AirConditionerDeviceDetailState
     final fanOptions = _buildFanOptions(
         localizations, isDark, modeColorFamily.base, false, tileHeight);
 
-    return DeviceDetailPortraitLayout(
+    return DevicePortraitLayout(
       content: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         spacing: AppSpacings.pMd,
@@ -930,7 +930,7 @@ class _AirConditionerDeviceDetailState
     final fanOptions = _buildFanOptions(localizations, isDark,
         modeColorFamily.base, useCompactLayout, tileHeight);
 
-    return DeviceDetailLandscapeLayout(
+    return DeviceLandscapeLayout(
       mainContent: isLargeScreen
           ? _buildPrimaryControlCard(context, isDark, dialSize: _scale(DeviceDetailDialSizes.landscape))
           : _buildCompactDialWithModes(context, isDark),
@@ -1376,7 +1376,7 @@ class _AirConditionerDeviceDetailState
 
         return speedWidget;
       } else {
-        // Portrait: Use SpeedSlider with defined steps
+        // Portrait: Use CardSlider with defined steps
         final steps = availableLevels
             .map((level) => FanUtils.getSpeedLevelLabel(localizations, level))
             .toList();
@@ -1392,7 +1392,9 @@ class _AirConditionerDeviceDetailState
             ? currentIndex / (availableLevels.length - 1)
             : 0.0;
 
-        return SpeedSlider(
+        return CardSlider(
+          label: localizations.device_fan_speed,
+          icon: MdiIcons.speedometer,
           value: normalizedValue.clamp(0.0, 1.0),
           themeColor: _getModeColor(),
           enabled: isEnabled,
@@ -1448,11 +1450,13 @@ class _AirConditionerDeviceDetailState
 
         return speedWidget;
       } else {
-        // Portrait (all sizes): Use SpeedSlider
+        // Portrait (all sizes): Use CardSlider
         // Mode selector goes inside the slider's bordered box as footer
         final isEnabled = _currentMode != AcMode.off;
 
-        return SpeedSlider(
+        return CardSlider(
+          label: localizations.device_fan_speed,
+          icon: MdiIcons.speedometer,
           value: _fanSpeed.clamp(0.0, 1.0),
           themeColor: _getModeColor(),
           enabled: isEnabled,

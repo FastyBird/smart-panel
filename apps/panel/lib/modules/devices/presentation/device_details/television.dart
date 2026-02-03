@@ -5,9 +5,9 @@ import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/device_detail_landscape_layout.dart';
-import 'package:fastybird_smart_panel/core/widgets/device_detail_portrait_layout.dart';
-import 'package:fastybird_smart_panel/core/widgets/device_offline_overlay.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_landscape_layout.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_portrait_layout.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_offline_overlay.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/utils/media_input_source_label.dart';
@@ -520,7 +520,7 @@ class _TelevisionDeviceDetailState extends State<TelevisionDeviceDetail> {
 	Widget _buildPortraitLayout(BuildContext context, bool isDark) {
 		final accentColor = _getAccentColor(isDark);
 
-		return DeviceDetailPortraitLayout(
+		return DevicePortraitLayout(
 			content: Column(
 				crossAxisAlignment: CrossAxisAlignment.start,
 				children: [
@@ -582,7 +582,7 @@ class _TelevisionDeviceDetailState extends State<TelevisionDeviceDetail> {
 	Widget _buildLandscapeLayout(BuildContext context, bool isDark) {
 		final accentColor = _getAccentColor(isDark);
 
-		return DeviceDetailLandscapeLayout(
+		return DeviceLandscapeLayout(
 			mainContent: Column(
 				mainAxisAlignment: MainAxisAlignment.center,
 				children: [

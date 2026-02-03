@@ -6,8 +6,8 @@ import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/circular_control_dial.dart';
-import 'package:fastybird_smart_panel/core/widgets/device_detail_landscape_layout.dart';
-import 'package:fastybird_smart_panel/core/widgets/device_detail_portrait_layout.dart';
+import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
+import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
@@ -779,7 +779,7 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
   Widget _buildPortraitLayout(BuildContext context) {
     final hasDevices = _state.climateDevices.isNotEmpty;
 
-    return DeviceDetailPortraitLayout(
+    return PortraitViewLayout(
       content: _buildPrimaryControlCard(context, dialSize: _scale(200)),
       stickyBottom: hasDevices ? _buildPortraitDevicesList(context) : null,
       useStickyBottomPadding: false,
@@ -856,9 +856,9 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
   // --------------------------------------------------------------------------
 
   Widget _buildLandscapeLayout(BuildContext context) {
-    return DeviceDetailLandscapeLayout(
+    return LandscapeViewLayout(
       mainContent: _buildCompactDialWithModes(context),
-      secondaryContent: _buildLandscapeDevicesColumn(context),
+      additionalContent: _buildLandscapeDevicesColumn(context),
     );
   }
 
