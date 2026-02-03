@@ -763,22 +763,20 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
           : _buildCompactDialWithModes(context, isDark),
       secondaryContent: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: AppSpacings.pMd,
         children: [
           if (statusSection is! SizedBox) ...[
             SectionTitle(
               title: localizations.device_sensors,
               icon: MdiIcons.eyeSettings,
             ),
-            AppSpacings.spacingMdVertical,
             statusSection,
           ],
           if (controlsSection is! SizedBox) ...[
-            if (statusSection is! SizedBox) AppSpacings.spacingLgVertical,
             SectionTitle(
               title: localizations.device_controls,
               icon: MdiIcons.tuneVertical,
             ),
-            AppSpacings.spacingMdVertical,
             controlsSection,
           ],
         ],
@@ -974,12 +972,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     final targetSetpoint = _targetSetpoint.clamp(minSetpoint, maxSetpoint);
 
     return Container(
-      padding: EdgeInsets.only(
-        top: AppSpacings.pLg,
-        bottom: AppSpacings.pMd,
-        left: AppSpacings.pMd,
-        right: AppSpacings.pMd,
-      ),
+      padding: AppSpacings.paddingMd,
       decoration: BoxDecoration(
         color: cardColor,
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
@@ -1019,7 +1012,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     final targetSetpoint = _targetSetpoint.clamp(minSetpoint, maxSetpoint);
 
     return Container(
-      padding: AppSpacings.paddingLg,
+      padding: AppSpacings.paddingMd,
       decoration: BoxDecoration(
         color: cardColor,
         borderRadius: BorderRadius.circular(AppBorderRadius.base),

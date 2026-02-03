@@ -8,7 +8,6 @@ import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/swipe_event.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -305,9 +304,6 @@ class _CircularControlDialState extends State<CircularControlDial>
   }
 
   void _handleDragStart(Offset localPosition) {
-    if (kDebugMode) {
-      debugPrint('[CircularControlDial] _handleDragStart: localPosition=$localPosition, enabled=${widget.enabled}');
-    }
     if (!widget.enabled) return;
     setState(() => _isDragging = true);
     _eventBus.fire(PageSwipeBlockEvent(blocked: true));
@@ -320,9 +316,6 @@ class _CircularControlDialState extends State<CircularControlDial>
   }
 
   void _handleDragEnd() {
-    if (kDebugMode) {
-      debugPrint('[CircularControlDial] _handleDragEnd: _isDragging=$_isDragging, value=$_value');
-    }
     if (_isDragging) {
       // Fire unblock event before setState to ensure it fires even if widget is disposed
       _eventBus.fire(PageSwipeBlockEvent(blocked: false));
@@ -421,14 +414,16 @@ class _CircularControlDialState extends State<CircularControlDial>
     final glowColor = accentColor.withValues(alpha: 0.35);
     final thumbPosition = _getThumbPosition();
 
-    return RawGestureDetector(
-      gestures: _gestures,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTapUp: (details) => _handleTap(details.localPosition),
-        child: SizedBox(
-          width: widget.size,
-          height: widget.size,
+    return Padding(
+      padding: AppSpacings.paddingMd,
+      child: RawGestureDetector(
+        gestures: _gestures,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTapUp: (details) => _handleTap(details.localPosition),
+          child: SizedBox(
+            width: widget.size,
+            height: widget.size,
           child: AnimatedBuilder(
             animation: _glowController,
             builder: (context, child) {
@@ -570,6 +565,7 @@ class _CircularControlDialState extends State<CircularControlDial>
           ),
         ),
       ),
+    ),
     );
   }
 
@@ -762,9 +758,6 @@ class _DialDragGestureRecognizer extends OneSequenceGestureRecognizer {
   @override
   void addPointer(PointerDownEvent event) {
     final onTrack = isOnTrack(event.localPosition);
-    if (kDebugMode) {
-      debugPrint('[_DialDragGestureRecognizer] addPointer: localPosition=${event.localPosition}, onTrack=$onTrack');
-    }
     if (onTrack) {
       startTrackingPointer(event.pointer, event.transform);
       resolve(GestureDisposition.accepted);

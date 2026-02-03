@@ -4,6 +4,7 @@ import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/slider_with_steps.dart';
 import 'package:flutter/material.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 /// A reusable speed/level slider widget with labeled steps.
 ///
@@ -136,14 +137,11 @@ class _SpeedSliderState extends State<SpeedSlider> {
       opacity: widget.enabled ? 1.0 : 0.5,
       duration: const Duration(milliseconds: 200),
       child: Container(
-        padding: EdgeInsets.symmetric(
-          vertical: AppSpacings.pMd,
-          horizontal: AppSpacings.pLg,
-        ),
+        padding: AppSpacings.paddingMd,
         decoration: BoxDecoration(
           color: cardColor,
           borderRadius: BorderRadius.circular(AppBorderRadius.base),
-          border: Border.all(color: borderColor, width: _scale(1)),
+          border: Border.all(color: isDark ? cardColor : borderColor, width: _scale(1)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -151,13 +149,19 @@ class _SpeedSliderState extends State<SpeedSlider> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  displayLabel,
-                  style: TextStyle(
-                    color: secondaryColor,
-                    fontSize: AppFontSize.small,
-                    fontWeight: FontWeight.w500,
-                  ),
+                Row(
+                  children: [
+                    Icon(MdiIcons.speedometer, size: AppFontSize.small, color: secondaryColor),
+                    AppSpacings.spacingSmHorizontal,
+                    Text(
+                      displayLabel.toUpperCase(),
+                      style: TextStyle(
+                        color: secondaryColor,
+                        fontSize: AppFontSize.small,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
                 Text(
                   widget.discrete ? _getCurrentStepLabel() : '${(_displayValue * 100).toInt()}%',

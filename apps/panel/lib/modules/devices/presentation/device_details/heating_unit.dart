@@ -635,12 +635,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
     final targetSetpoint = _targetSetpoint.clamp(minSetpoint, maxSetpoint);
 
     return Container(
-      padding: EdgeInsets.only(
-        top: AppSpacings.pLg,
-        bottom: AppSpacings.pMd,
-        left: AppSpacings.pMd,
-        right: AppSpacings.pMd,
-      ),
+      padding: AppSpacings.paddingMd,
       decoration: BoxDecoration(
         color: cardColor,
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
@@ -664,7 +659,6 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
             displayFormat: DialDisplayFormat.temperature,
             onChanged: _onSetpointChanged,
           ),
-          AppSpacings.spacingMdVertical,
           _buildModeSelector(context, ModeSelectorOrientation.horizontal),
         ],
       ),
@@ -679,7 +673,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
     final targetSetpoint = _targetSetpoint.clamp(minSetpoint, maxSetpoint);
 
     return Container(
-      padding: AppSpacings.paddingLg,
+      padding: AppSpacings.paddingMd,
       decoration: BoxDecoration(
         color: cardColor,
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
