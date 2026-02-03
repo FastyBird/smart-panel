@@ -6,129 +6,122 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
-/// Power Button Widget for device control
+/// Power button widget for device control.
 class DevicePowerButton extends StatelessWidget {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
-  final bool isOn;
-  final Color? activeColor;
-  final Color? activeBgColor;
-  final Color? glowColor;
-  final VoidCallback? onTap;
-  final double size;
-  final bool showInfoText;
-
   DevicePowerButton({
     super.key,
     required this.isOn,
-    this.activeColor,
-    this.activeBgColor,
-    this.glowColor,
+    this.themeColor,
     this.onTap,
     this.size = 160,
     this.showInfoText = true,
   });
+
+  final bool isOn;
+  final ThemeColors? themeColor;
+  final VoidCallback? onTap;
+  final double size;
+  final bool showInfoText;
+
+  final ScreenService _screenService = locator<ScreenService>();
+  final VisualDensityService _visualDensityService =
+      locator<VisualDensityService>();
+
+  static const _animationDuration = Duration(milliseconds: 200);
 
   double _scale(double value) =>
       _screenService.scale(value, density: _visualDensityService.density);
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final effectiveActiveColor =
-        activeColor ?? (isDark ? AppColorsDark.primary : AppColorsLight.primary);
-    final effectiveActiveBgColor = activeBgColor ??
-        (isDark ? AppColorsDark.primaryLight9 : AppColorsLight.primaryLight9);
-    final effectiveGlowColor = glowColor ??
-        (isDark ? AppColorsDark.primaryLight5 : AppColorsLight.primaryLight5);
+    final brightness = Theme.of(context).brightness;
+    final isDark = brightness == Brightness.dark;
+    final colorFamily =
+        ThemeColorFamily.get(brightness, themeColor ?? ThemeColors.primary);
+    final effectiveActiveColor = colorFamily.base;
+    final effectiveActiveBgColor = colorFamily.light9;
+    final effectiveGlowColor = colorFamily.light5;
     final inactiveBgColor =
         isDark ? AppFillColorDark.light : AppFillColorLight.light;
     final inactiveColor =
         isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
+    final inactiveBorderColor =
+        isDark ? AppColors.blank : AppBorderColorLight.light;
 
-    final infoText = isOn ? 'Tap to turn off' : 'Tap to turn on';
+    final shadowOffset = Offset(0, _scale(4));
+    final baseShadow = BoxShadow(
+      color: AppShadowColor.light,
+      blurRadius: _scale(20),
+      offset: shadowOffset,
+    );
+    final boxShadow = isOn
+        ? [
+            BoxShadow(
+              color: effectiveGlowColor,
+              blurRadius: _scale(40),
+              spreadRadius: 0,
+            ),
+            baseShadow,
+          ]
+        : [baseShadow];
 
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          GestureDetector(
-            onTap: () {
-              HapticFeedback.mediumImpact();
-              onTap?.call();
-            },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: _scale(size),
-              height: _scale(size),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: isOn ? effectiveActiveBgColor : inactiveBgColor,
-                border: Border.all(
-                  color: isOn
-                      ? effectiveActiveColor
-                      : (isDark
-                          ? AppColors.blank
-                          : AppBorderColorLight.light),
-                  width: isOn ? _scale(4) : _scale(1),
-                ),
-                boxShadow: isOn
-                    ? [
-                        BoxShadow(
-                          color: effectiveGlowColor,
-                          blurRadius: _scale(40),
-                          spreadRadius: 0,
-                        ),
-                        BoxShadow(
-                          color: AppShadowColor.light,
-                          blurRadius: _scale(20),
-                          offset: Offset(0, _scale(4)),
-                        ),
-                      ]
-                    : [
-                        BoxShadow(
-                          color: AppShadowColor.light,
-                          blurRadius: _scale(20),
-                          offset: Offset(0, _scale(4)),
-                        ),
-                      ],
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    MdiIcons.power,
-                    size: _scale(44),
-                    color: isOn ? effectiveActiveColor : inactiveColor,
+    return Padding(
+      padding: AppSpacings.paddingLg,
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            GestureDetector(
+              onTap: () {
+                HapticFeedback.mediumImpact();
+                onTap?.call();
+              },
+              child: AnimatedContainer(
+                duration: _animationDuration,
+                width: _scale(size),
+                height: _scale(size),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isOn ? effectiveActiveBgColor : inactiveBgColor,
+                  border: Border.all(
+                    color: isOn ? effectiveActiveColor : inactiveBorderColor,
+                    width: isOn ? _scale(4) : _scale(1),
                   ),
-                  AppSpacings.spacingMdVertical,
-                  Text(
-                    isOn ? 'On' : 'Off',
-                    style: TextStyle(
-                      fontSize: _scale(26),
-                      fontWeight: FontWeight.w300,
+                  boxShadow: boxShadow,
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      MdiIcons.power,
+                      size: _scale(44),
                       color: isOn ? effectiveActiveColor : inactiveColor,
                     ),
-                  ),
-                ],
+                    AppSpacings.spacingMdVertical,
+                    Text(
+                      isOn ? 'On' : 'Off',
+                      style: TextStyle(
+                        fontSize: _scale(26),
+                        fontWeight: FontWeight.w300,
+                        color: isOn ? effectiveActiveColor : inactiveColor,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-          if (showInfoText) ...[
-            AppSpacings.spacingLgVertical,
-            Text(
-              infoText,
-              style: TextStyle(
-                fontSize: AppFontSize.small,
-                color: isDark
-                    ? AppTextColorDark.secondary
-                    : AppTextColorLight.secondary,
+            if (showInfoText) ...[
+              AppSpacings.spacingLgVertical,
+              Text(
+                isOn ? 'Tap to turn off' : 'Tap to turn on',
+                style: TextStyle(
+                  fontSize: AppFontSize.small,
+                  color: inactiveColor,
+                ),
               ),
-            ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }

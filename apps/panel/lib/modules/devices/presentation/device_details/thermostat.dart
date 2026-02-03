@@ -567,8 +567,15 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     return localizations.thermostat_state_idle_at(tempStr);
   }
 
-  ThemeColors _getModeColor() {
-    switch (_currentMode) {
+  /// Theme color for the current mode. Single source for all mode-based colors.
+  ThemeColors _getModeColor() => _themeColorForMode(_currentMode);
+
+  /// Theme color family for the current mode. Use for borders, bases, etc.
+  ThemeColorFamily _getModeColorFamily(BuildContext context) =>
+      ThemeColorFamily.get(Theme.of(context).brightness, _getModeColor());
+
+  static ThemeColors _themeColorForMode(ThermostatMode mode) {
+    switch (mode) {
       case ThermostatMode.heat:
         return ThemeColors.warning;
       case ThermostatMode.cool:
@@ -580,23 +587,15 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     }
   }
 
-  Color _getModeBorderColor() {
-    final brightness = Theme.of(context).brightness;
-    final modeColor = _getModeColor();
-    final modeColorFamily = ThemeColorFamily.get(brightness, modeColor);
-
-    return modeColorFamily.light7;
-  }
-
   DialAccentColor _getDialAccentColor() {
-    switch (_currentMode) {
-      case ThermostatMode.heat:
+    switch (_getModeColor()) {
+      case ThemeColors.warning:
         return DialAccentColor.warning;
-      case ThermostatMode.cool:
+      case ThemeColors.info:
         return DialAccentColor.info;
-      case ThermostatMode.auto:
-        return DialAccentColor.neutral;
-      case ThermostatMode.off:
+      case ThemeColors.success:
+        return DialAccentColor.success;
+      default:
         return DialAccentColor.neutral;
     }
   }
@@ -612,7 +611,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
         value: ThermostatMode.heat,
         icon: MdiIcons.fireCircle,
         label: localizations.thermostat_mode_heat,
-        color: ThemeColors.warning,
+        color: _themeColorForMode(ThermostatMode.heat),
       ));
     }
 
@@ -621,7 +620,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
         value: ThermostatMode.cool,
         icon: MdiIcons.snowflake,
         label: localizations.thermostat_mode_cool,
-        color: ThemeColors.info,
+        color: _themeColorForMode(ThermostatMode.cool),
       ));
     }
 
@@ -630,7 +629,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
       value: ThermostatMode.off,
       icon: MdiIcons.power,
       label: localizations.thermostat_mode_off,
-      color: ThemeColors.neutral,
+      color: _themeColorForMode(ThermostatMode.off),
     ));
 
     return modes;
@@ -680,11 +679,8 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
   }
 
   Widget _buildHeader(BuildContext context, bool isDark) {
-    final brightness = Theme.of(context).brightness;
     final localizations = AppLocalizations.of(context)!;
-    final modeColor = _getModeColor();
-    final modeColorFamily = ThemeColorFamily.get(brightness, modeColor);
-
+    final modeColorFamily = _getModeColorFamily(context);
     final secondaryColor =
         isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
 
@@ -701,7 +697,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
             onTap: widget.onBack ?? () => Navigator.of(context).pop(),
           ),
           AppSpacings.spacingMdHorizontal,
-          HeaderMainIcon(icon: MdiIcons.thermostat, color: modeColor),
+          HeaderMainIcon(icon: MdiIcons.thermostat, color: _getModeColor()),
         ],
       ),
     );
@@ -713,11 +709,9 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
 
   Widget _buildPortraitLayout(BuildContext context, bool isDark) {
     final localizations = AppLocalizations.of(context)!;
-    final brightness = Theme.of(context).brightness;
-    final modeColor = _getModeColor();
-    final modeColorFamily = ThemeColorFamily.get(brightness, modeColor);
+    final modeColorFamily = _getModeColorFamily(context);
     final statusSection = _buildStatusSection(localizations, isDark, modeColorFamily.base);
-    final controlsSection = _buildControlsSection(localizations, isDark, modeColor);
+    final controlsSection = _buildControlsSection(localizations, isDark, _getModeColor());
 
     return DeviceDetailPortraitLayout(
       content: Column(
@@ -750,12 +744,10 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
 
   Widget _buildLandscapeLayout(BuildContext context, bool isDark) {
     final localizations = AppLocalizations.of(context)!;
-    final brightness = Theme.of(context).brightness;
     final isLargeScreen = _screenService.isLargeScreen;
-    final modeColor = _getModeColor();
-    final modeColorFamily = ThemeColorFamily.get(brightness, modeColor);
+    final modeColorFamily = _getModeColorFamily(context);
     final statusSection = _buildStatusSection(localizations, isDark, modeColorFamily.base);
-    final controlsSection = _buildControlsSection(localizations, isDark, modeColor);
+    final controlsSection = _buildControlsSection(localizations, isDark, _getModeColor());
 
     return DeviceDetailLandscapeLayout(
       mainContent: isLargeScreen
@@ -965,7 +957,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     bool isDark, {
     required double dialSize,
   }) {
-    final borderColor = _getModeBorderColor();
+    final borderColor = _getModeColorFamily(context).light7;
     final cardColor =
         isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
     final (minSetpoint, maxSetpoint) = _validSetpointRange;
@@ -1005,7 +997,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
 
   /// Compact dial with vertical icon-only mode selector on the right
   Widget _buildCompactDialWithModes(BuildContext context, bool isDark) {
-    final borderColor = _getModeBorderColor();
+    final borderColor = _getModeColorFamily(context).light7;
     final cardColor =
         isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
     final (minSetpoint, maxSetpoint) = _validSetpointRange;
@@ -1028,29 +1020,30 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
           final dialSize =
               math.min(availableForDial, maxDialHeight).clamp(120.0, 400.0);
 
-          return Center(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                CircularControlDial(
-                  value: targetSetpoint,
-                  currentValue: _currentTemperature,
-                  minValue: minSetpoint,
-                  maxValue: maxSetpoint,
-                  step: 0.5,
-                  size: dialSize,
-                  accentType: _getDialAccentColor(),
-                  isActive: _isActive,
-                  enabled: _currentMode == ThermostatMode.heat ||
-                  _currentMode == ThermostatMode.cool,
-                  modeLabel: _currentMode.value,
-                  displayFormat: DialDisplayFormat.temperature,
-                  onChanged: _onSetpointChanged,
+          return Row(
+            children: [
+              Expanded(
+                child: Center(
+                  child: CircularControlDial(
+                    value: targetSetpoint,
+                    currentValue: _currentTemperature,
+                    minValue: minSetpoint,
+                    maxValue: maxSetpoint,
+                    step: 0.5,
+                    size: dialSize,
+                    accentType: _getDialAccentColor(),
+                    isActive: _isActive,
+                    enabled: _currentMode == ThermostatMode.heat ||
+                    _currentMode == ThermostatMode.cool,
+                    modeLabel: _currentMode.value,
+                    displayFormat: DialDisplayFormat.temperature,
+                    onChanged: _onSetpointChanged,
+                  ),
                 ),
-                _buildModeSelector(context, ModeSelectorOrientation.vertical,
-                    showLabels: false),
-              ],
-            ), 
+              ),
+              _buildModeSelector(context, ModeSelectorOrientation.vertical,
+                  showLabels: false),
+            ],
           );
         },
       ),

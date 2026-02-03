@@ -317,8 +317,15 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
     return localizations.thermostat_state_idle_at(tempStr);
   }
 
-  ThemeColors _getModeColor() {
-    switch (_currentMode) {
+  /// Theme color for the current mode. Single source for all mode-based colors.
+  ThemeColors _getModeColor() => _themeColorForMode(_currentMode);
+
+  /// Theme color family for the current mode. Use for borders, bases, etc.
+  ThemeColorFamily _getModeColorFamily(BuildContext context) =>
+      ThemeColorFamily.get(Theme.of(context).brightness, _getModeColor());
+
+  static ThemeColors _themeColorForMode(HeaterMode mode) {
+    switch (mode) {
       case HeaterMode.heat:
         return ThemeColors.warning;
       case HeaterMode.off:
@@ -326,20 +333,10 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
     }
   }
 
-  Color _getModeBorderColor() {
-    final brightness = Theme.of(context).brightness;
-    final modeColor = _getModeColor();
-    final modeColorFamily = ThemeColorFamily.get(brightness, modeColor);
-    return modeColorFamily.light7;
-  }
-
   DialAccentColor _getDialAccentColor() {
-    switch (_currentMode) {
-      case HeaterMode.heat:
-        return DialAccentColor.warning;
-      case HeaterMode.off:
-        return DialAccentColor.neutral;
-    }
+    return _getModeColor() == ThemeColors.warning
+        ? DialAccentColor.warning
+        : DialAccentColor.neutral;
   }
 
   List<ModeOption<HeaterMode>> _getModeOptions(
@@ -349,13 +346,13 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
         value: HeaterMode.heat,
         icon: MdiIcons.fireCircle,
         label: localizations.thermostat_mode_heat,
-        color: ThemeColors.warning,
+        color: _themeColorForMode(HeaterMode.heat),
       ),
       ModeOption(
         value: HeaterMode.off,
         icon: MdiIcons.power,
         label: localizations.thermostat_mode_off,
-        color: ThemeColors.neutral,
+        color: _themeColorForMode(HeaterMode.off),
       ),
     ];
   }
@@ -405,10 +402,8 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
   }
 
   Widget _buildHeader(BuildContext context, bool isDark) {
-    final brightness = Theme.of(context).brightness;
     final localizations = AppLocalizations.of(context)!;
-    final modeColor = _getModeColor();
-    final modeColorFamily = ThemeColorFamily.get(brightness, modeColor);
+    final modeColorFamily = _getModeColorFamily(context);
     final secondaryColor =
         isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
 
@@ -425,7 +420,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
             onTap: widget.onBack ?? () => Navigator.of(context).pop(),
           ),
           AppSpacings.spacingMdHorizontal,
-          HeaderMainIcon(icon: MdiIcons.radiator, color: modeColor),
+          HeaderMainIcon(icon: MdiIcons.radiator, color: _getModeColor()),
         ],
       ),
     );
@@ -437,9 +432,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
 
   Widget _buildPortraitLayout(BuildContext context, bool isDark) {
     final localizations = AppLocalizations.of(context)!;
-    final brightness = Theme.of(context).brightness;
-    final modeColor = _getModeColor();
-    final modeColorFamily = ThemeColorFamily.get(brightness, modeColor);
+    final modeColorFamily = _getModeColorFamily(context);
     final statusSection =
         _buildStatusSection(localizations, isDark, modeColorFamily.base);
 
@@ -467,10 +460,8 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
 
   Widget _buildLandscapeLayout(BuildContext context, bool isDark) {
     final localizations = AppLocalizations.of(context)!;
-    final brightness = Theme.of(context).brightness;
     final isLargeScreen = _screenService.isLargeScreen;
-    final modeColor = _getModeColor();
-    final modeColorFamily = ThemeColorFamily.get(brightness, modeColor);
+    final modeColorFamily = _getModeColorFamily(context);
     final statusSection =
         _buildStatusSection(localizations, isDark, modeColorFamily.base);
 
@@ -628,7 +619,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
     bool isDark, {
     required double dialSize,
   }) {
-    final borderColor = _getModeBorderColor();
+    final borderColor = _getModeColorFamily(context).light7;
     final cardColor =
         isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
     final (minSetpoint, maxSetpoint) = _validSetpointRange;
@@ -666,7 +657,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
   }
 
   Widget _buildCompactDialWithModes(BuildContext context, bool isDark) {
-    final borderColor = _getModeBorderColor();
+    final borderColor = _getModeColorFamily(context).light7;
     final cardColor =
         isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
     final (minSetpoint, maxSetpoint) = _validSetpointRange;
@@ -689,28 +680,29 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
           final dialSize =
               math.min(availableForDial, maxDialHeight).clamp(120.0, 400.0);
 
-          return Center(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                CircularControlDial(
-                  value: targetSetpoint,
-                  currentValue: _currentTemperature,
-                  minValue: minSetpoint,
-                  maxValue: maxSetpoint,
-                  step: 0.5,
-                  size: dialSize,
-                  accentType: _getDialAccentColor(),
-                  isActive: _isActive,
-                  enabled: _currentMode == HeaterMode.heat,
-                  modeLabel: _currentMode.value,
-                  displayFormat: DialDisplayFormat.temperature,
-                  onChanged: _onSetpointChanged,
+          return Row(
+            children: [
+              Expanded(
+                child: Center(
+                  child: CircularControlDial(
+                    value: targetSetpoint,
+                    currentValue: _currentTemperature,
+                    minValue: minSetpoint,
+                    maxValue: maxSetpoint,
+                    step: 0.5,
+                    size: dialSize,
+                    accentType: _getDialAccentColor(),
+                    isActive: _isActive,
+                    enabled: _currentMode == HeaterMode.heat,
+                    modeLabel: _currentMode.value,
+                    displayFormat: DialDisplayFormat.temperature,
+                    onChanged: _onSetpointChanged,
+                  ),
                 ),
-                _buildModeSelector(context, ModeSelectorOrientation.vertical,
-                    showLabels: false),
-              ],
-            ),
+              ),
+              _buildModeSelector(context, ModeSelectorOrientation.vertical,
+                  showLabels: false),
+            ],
           );
         },
       ),

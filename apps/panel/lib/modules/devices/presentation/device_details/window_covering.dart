@@ -266,15 +266,19 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     return widget._device;
   }
 
+  // --------------------------------------------------------------------------
+  // STATE HELPERS
+  // --------------------------------------------------------------------------
+
   // Get current position (local value takes precedence for smooth slider)
   int get _position => _localPosition ?? _controller?.position ?? _selectedChannel.position;
 
   // Get current tilt (local value takes precedence for smooth slider)
   int get _tiltAngle => _localTilt ?? _controller?.tilt ?? _selectedChannel.tilt;
 
-  // ===========================================================================
-  // ACTION HANDLERS
-  // ===========================================================================
+  // --------------------------------------------------------------------------
+  // CONTROL HANDLERS
+  // --------------------------------------------------------------------------
 
   void _handleOpen() {
     final controller = _controller;
@@ -299,6 +303,10 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     controller.stop();
     setState(() {});
   }
+
+  // --------------------------------------------------------------------------
+  // BUILD METHODS
+  // --------------------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -340,9 +348,9 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     );
   }
 
-  // ===========================================================================
+  // --------------------------------------------------------------------------
   // HEADER
-  // ===========================================================================
+  // --------------------------------------------------------------------------
 
   Widget _buildHeader(BuildContext context, bool isDark) {
     final brightness = Theme.of(context).brightness;
@@ -389,9 +397,9 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     );
   }
 
-  // ===========================================================================
-  // HELPERS
-  // ===========================================================================
+  // --------------------------------------------------------------------------
+  // UI HELPERS
+  // --------------------------------------------------------------------------
 
   double _scale(double value) =>
       _screenService.scale(value, density: _visualDensityService.density);
@@ -446,9 +454,9 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     }
   }
 
-  // ===========================================================================
+  // --------------------------------------------------------------------------
   // LANDSCAPE LAYOUT
-  // ===========================================================================
+  // --------------------------------------------------------------------------
 
   Widget _buildLandscapeLayout(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
@@ -949,9 +957,9 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     );
   }
 
-  // ===========================================================================
+  // --------------------------------------------------------------------------
   // PORTRAIT LAYOUT
-  // ===========================================================================
+  // --------------------------------------------------------------------------
 
   Widget _buildPortraitLayout(BuildContext context) {
     return DeviceDetailPortraitLayout(
@@ -1125,9 +1133,9 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     );
   }
 
-  // ===========================================================================
+  // --------------------------------------------------------------------------
   // MAIN CONTROL CARD
-  // ===========================================================================
+  // --------------------------------------------------------------------------
 
   Widget _buildMainControlCard(BuildContext context) {
     final bool isLight = Theme.of(context).brightness == Brightness.light;
@@ -1319,9 +1327,9 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     );
   }
 
-  // ===========================================================================
+  // --------------------------------------------------------------------------
   // TILT CONTROL
-  // ===========================================================================
+  // --------------------------------------------------------------------------
 
   Widget _buildTiltCard(BuildContext context, {bool useCompactLayout = false}) {
     final localizations = AppLocalizations.of(context)!;
@@ -1406,9 +1414,9 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     );
   }
 
-  // ===========================================================================
+  // --------------------------------------------------------------------------
   // PRESETS
-  // ===========================================================================
+  // --------------------------------------------------------------------------
 
   /// Builds presets card for landscape mode.
   /// Uses VerticalTileLarge for large screens, HorizontalTileStretched for small/medium.
@@ -1522,9 +1530,9 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
 
 }
 
-// ===========================================================================
+// --------------------------------------------------------------------------
 // TILT SLIDER WIDGET (SpeedSlider-style UI for tilt control)
-// ===========================================================================
+// --------------------------------------------------------------------------
 
 /// A tilt slider widget that follows SpeedSlider's visual design.
 ///
@@ -1610,9 +1618,9 @@ class _TiltSlider extends StatelessWidget {
   }
 }
 
-// ===========================================================================
+// --------------------------------------------------------------------------
 // PRESET DATA MODEL
-// ===========================================================================
+// --------------------------------------------------------------------------
 
 enum _PresetType { morning, day, evening, night, privacy, away }
 
@@ -1648,9 +1656,9 @@ class _Preset {
   }
 }
 
-// ===========================================================================
+// --------------------------------------------------------------------------
 // CURTAIN FOLDS PAINTER
-// ===========================================================================
+// --------------------------------------------------------------------------
 
 /// CustomPainter that draws vertical fold lines for curtain visualization.
 class _CurtainFoldsPainter extends CustomPainter {
@@ -1682,9 +1690,9 @@ class _CurtainFoldsPainter extends CustomPainter {
       oldDelegate.isLight != isLight || oldDelegate.scaleFactor != scaleFactor;
 }
 
-// ===========================================================================
+// --------------------------------------------------------------------------
 // VISUALIZATION COLORS
-// ===========================================================================
+// --------------------------------------------------------------------------
 
 /// Visualization colors for window covering animations.
 /// These represent physical materials like sky, metal, fabric, and wood.

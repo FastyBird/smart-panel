@@ -726,8 +726,15 @@ class _AirConditionerDeviceDetailState
     return localizations.thermostat_state_idle_at(tempStr);
   }
 
-  ThemeColors _getModeColor() {
-    switch (_currentMode) {
+  /// Theme color for the current mode. Single source for all mode-based colors.
+  ThemeColors _getModeColor() => _themeColorForMode(_currentMode);
+
+  /// Theme color family for the current mode. Use for borders, bases, etc.
+  ThemeColorFamily _getModeColorFamily(BuildContext context) =>
+      ThemeColorFamily.get(Theme.of(context).brightness, _getModeColor());
+
+  static ThemeColors _themeColorForMode(AcMode mode) {
+    switch (mode) {
       case AcMode.heat:
         return ThemeColors.warning;
       case AcMode.cool:
@@ -737,20 +744,13 @@ class _AirConditionerDeviceDetailState
     }
   }
 
-  Color _getModeBorderColor() {
-    final brightness = Theme.of(context).brightness;
-    final modeColor = _getModeColor();
-    final modeColorFamily = ThemeColorFamily.get(brightness, modeColor);
-    return modeColorFamily.light7;
-  }
-
   DialAccentColor _getDialAccentColor() {
-    switch (_currentMode) {
-      case AcMode.heat:
+    switch (_getModeColor()) {
+      case ThemeColors.warning:
         return DialAccentColor.warning;
-      case AcMode.cool:
+      case ThemeColors.info:
         return DialAccentColor.info;
-      case AcMode.off:
+      default:
         return DialAccentColor.neutral;
     }
   }
@@ -764,7 +764,7 @@ class _AirConditionerDeviceDetailState
         value: AcMode.heat,
         icon: MdiIcons.fireCircle,
         label: localizations.thermostat_mode_heat,
-        color: ThemeColors.warning,
+        color: _themeColorForMode(AcMode.heat),
       ));
     }
 
@@ -773,7 +773,7 @@ class _AirConditionerDeviceDetailState
       value: AcMode.cool,
       icon: MdiIcons.snowflake,
       label: localizations.thermostat_mode_cool,
-      color: ThemeColors.info,
+      color: _themeColorForMode(AcMode.cool),
     ));
 
     // Always add OFF mode
@@ -781,7 +781,7 @@ class _AirConditionerDeviceDetailState
       value: AcMode.off,
       icon: MdiIcons.power,
       label: localizations.thermostat_mode_off,
-      color: ThemeColors.neutral,
+      color: _themeColorForMode(AcMode.off),
     ));
 
     return modes;
@@ -831,10 +831,8 @@ class _AirConditionerDeviceDetailState
   }
 
   Widget _buildHeader(BuildContext context, bool isDark) {
-    final brightness = Theme.of(context).brightness;
     final localizations = AppLocalizations.of(context)!;
-    final modeColor = _getModeColor();
-    final modeColorFamily = ThemeColorFamily.get(brightness, modeColor);
+    final modeColorFamily = _getModeColorFamily(context);
     final secondaryColor =
         isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
 
@@ -851,7 +849,7 @@ class _AirConditionerDeviceDetailState
             onTap: widget.onBack ?? () => Navigator.of(context).pop(),
           ),
           AppSpacings.spacingMdHorizontal,
-          HeaderMainIcon(icon: MdiIcons.airConditioner, color: modeColor),
+          HeaderMainIcon(icon: MdiIcons.airConditioner, color: _getModeColor()),
         ],
       ),
     );
@@ -863,9 +861,7 @@ class _AirConditionerDeviceDetailState
 
   Widget _buildPortraitLayout(BuildContext context, bool isDark) {
     final localizations = AppLocalizations.of(context)!;
-    final brightness = Theme.of(context).brightness;
-    final modeColor = _getModeColor();
-    final modeColorFamily = ThemeColorFamily.get(brightness, modeColor);
+    final modeColorFamily = _getModeColorFamily(context);
     final statusSection = _buildStatusSection(localizations, isDark);
     final tileHeight = _scale(AppTileHeight.horizontal);
     final fanChannel = _device.fanChannel;
@@ -873,10 +869,10 @@ class _AirConditionerDeviceDetailState
     // Build speed/mode control widget (fan card)
     Widget? speedControl;
     if (fanChannel.hasSpeed) {
-      speedControl = _buildFanSpeedControl(localizations, isDark, modeColor, false, tileHeight);
+      speedControl = _buildFanSpeedControl(context, localizations, isDark, false, tileHeight);
     } else if (fanChannel.hasMode && fanChannel.availableModes.length > 1) {
       speedControl =
-          _buildFanModeControl(localizations, modeColor, false, tileHeight);
+          _buildFanModeControl(context, localizations, false, tileHeight);
     }
 
     // Build fan options (other controls)
@@ -915,10 +911,8 @@ class _AirConditionerDeviceDetailState
 
   Widget _buildLandscapeLayout(BuildContext context, bool isDark) {
     final localizations = AppLocalizations.of(context)!;
-    final brightness = Theme.of(context).brightness;
     final isLargeScreen = _screenService.isLargeScreen;
-    final modeColor = _getModeColor();
-    final modeColorFamily = ThemeColorFamily.get(brightness, modeColor);
+    final modeColorFamily = _getModeColorFamily(context);
     final statusSection = _buildStatusSection(localizations, isDark);
     final tileHeight = _scale(AppTileHeight.horizontal);
     final fanChannel = _device.fanChannel;
@@ -927,9 +921,9 @@ class _AirConditionerDeviceDetailState
     // Build speed/mode control widget (fan card)
     Widget? speedControl;
     if (fanChannel.hasSpeed) {
-      speedControl = _buildFanSpeedControl(localizations, isDark, modeColor, useCompactLayout, tileHeight);
+      speedControl = _buildFanSpeedControl(context, localizations, isDark, useCompactLayout, tileHeight);
     } else if (fanChannel.hasMode && fanChannel.availableModes.length > 1) {
-      speedControl = _buildFanModeControl(localizations, modeColor, useCompactLayout, tileHeight);
+      speedControl = _buildFanModeControl(context, localizations, useCompactLayout, tileHeight);
     }
 
     // Build fan options (other controls)
@@ -1143,7 +1137,7 @@ class _AirConditionerDeviceDetailState
     bool isDark, {
     required double dialSize,
   }) {
-    final borderColor = _getModeBorderColor();
+    final borderColor = _getModeColorFamily(context).light7;
     final cardColor =
         isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
     final (minSetpoint, maxSetpoint) = _validSetpointRange;
@@ -1182,7 +1176,7 @@ class _AirConditionerDeviceDetailState
 
   /// Compact dial with vertical icon-only mode selector on the right
   Widget _buildCompactDialWithModes(BuildContext context, bool isDark) {
-    final borderColor = _getModeBorderColor();
+    final borderColor = _getModeColorFamily(context).light7;
     final cardColor =
         isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
     final (minSetpoint, maxSetpoint) = _validSetpointRange;
@@ -1205,29 +1199,29 @@ class _AirConditionerDeviceDetailState
           final dialSize =
               math.min(availableForDial, maxDialHeight).clamp(120.0, 400.0);
 
-          return  Center(
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CircularControlDial(
-                  value: targetSetpoint,
-                  currentValue: _currentTemperature,
-                  minValue: minSetpoint,
-                  maxValue: maxSetpoint,
-                  step: 0.5,
-                  size: dialSize,
-                  accentType: _getDialAccentColor(),
-                  isActive: _isActive,
-                  enabled: _currentMode == AcMode.heat || _currentMode == AcMode.cool,
-                  modeLabel: _currentMode.value,
-                  displayFormat: DialDisplayFormat.temperature,
-                  onChanged: _onSetpointChanged,
+          return Row(
+            children: [
+              Expanded(
+                child: Center(
+                  child: CircularControlDial(
+                    value: targetSetpoint,
+                    currentValue: _currentTemperature,
+                    minValue: minSetpoint,
+                    maxValue: maxSetpoint,
+                    step: 0.5,
+                    size: dialSize,
+                    accentType: _getDialAccentColor(),
+                    isActive: _isActive,
+                    enabled: _currentMode == AcMode.heat || _currentMode == AcMode.cool,
+                    modeLabel: _currentMode.value,
+                    displayFormat: DialDisplayFormat.temperature,
+                    onChanged: _onSetpointChanged,
+                  ),
                 ),
-                AppSpacings.spacingXlHorizontal,
-                _buildModeSelector(context, ModeSelectorOrientation.vertical,
-                    showLabels: false),
-              ],
-            ),
+              ),
+              _buildModeSelector(context, ModeSelectorOrientation.vertical,
+                  showLabels: false),
+            ],
           );
         },
       ),
@@ -1255,8 +1249,8 @@ class _AirConditionerDeviceDetailState
   // --------------------------------------------------------------------------
 
   Widget _buildFanModeControl(
+    BuildContext context,
     AppLocalizations localizations,
-    ThemeColors activeColor,
     bool useCompactLayout,
     double? tileHeight,
   ) {
@@ -1265,7 +1259,7 @@ class _AirConditionerDeviceDetailState
     // selectedMode can be null if device is reset or sends invalid value
     final selectedMode = fanChannel.mode;
 
-    final modeColorFamily = ThemeColorFamily.get(Theme.of(context).brightness, activeColor);
+    final modeColorFamily = _getModeColorFamily(context);
 
     if (useCompactLayout) {
       final options = availableModes.map((mode) {
@@ -1313,15 +1307,15 @@ class _AirConditionerDeviceDetailState
       onChanged: _setFanMode,
       orientation: ModeSelectorOrientation.horizontal,
       iconPlacement: ModeSelectorIconPlacement.left,
-      color: activeColor,
+      color: _getModeColor(),
       scrollable: true,
     );
   }
 
   Widget _buildFanSpeedControl(
+    BuildContext context,
     AppLocalizations localizations,
     bool isDark,
-    ThemeColors modeColor,
     bool useCompactLayout,
     double tileHeight,
   ) {
@@ -1331,7 +1325,7 @@ class _AirConditionerDeviceDetailState
       return const SizedBox.shrink();
     }
 
-    final modeColorFamily = ThemeColorFamily.get(Theme.of(context).brightness, modeColor);
+    final modeColorFamily = _getModeColorFamily(context);
 
     final hasMode = fanChannel.hasMode && fanChannel.availableModes.length > 1;
 
@@ -1379,7 +1373,7 @@ class _AirConditionerDeviceDetailState
             children: [
               speedWidget,
               AppSpacings.spacingMdVertical,
-              _buildFanModeControl(localizations, modeColor, true, tileHeight),
+              _buildFanModeControl(context, localizations, true, tileHeight),
             ],
           );
         }
@@ -1414,7 +1408,7 @@ class _AirConditionerDeviceDetailState
             _setFanSpeedLevel(availableLevels[index]);
           },
           footer: hasMode
-              ? _buildFanModeControl(localizations, modeColor, false, null)
+              ? _buildFanModeControl(context, localizations, false, null)
               : null,
         );
       }
@@ -1451,7 +1445,7 @@ class _AirConditionerDeviceDetailState
             children: [
               speedWidget,
               AppSpacings.spacingMdVertical,
-              _buildFanModeControl(localizations, modeColor, true, tileHeight),
+              _buildFanModeControl(context, localizations, true, tileHeight),
             ],
           );
         }
@@ -1474,7 +1468,7 @@ class _AirConditionerDeviceDetailState
           ],
           onChanged: _setFanSpeedValue,
           footer: hasMode
-              ? _buildFanModeControl(localizations, modeColor, false, null)
+              ? _buildFanModeControl(context, localizations, false, null)
               : null,
         );
       }

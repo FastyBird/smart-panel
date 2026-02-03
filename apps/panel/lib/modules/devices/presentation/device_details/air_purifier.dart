@@ -738,9 +738,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
         children: [
           DevicePowerButton(
             isOn: _device.isOn,
-            activeColor: airColor,
-            activeBgColor: DeviceColors.airLight9(isDark),
-            glowColor: DeviceColors.airLight5(isDark),
+            themeColor: ThemeColors.success,
             showInfoText: false,
             onTap: () => _setFanPower(!_device.isOn),
           ),
@@ -967,9 +965,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
             children: [
               DevicePowerButton(
                 isOn: _device.isOn,
-                activeColor: airColor,
-                activeBgColor: DeviceColors.airLight9(isDark),
-                glowColor: DeviceColors.airLight5(isDark),
+                themeColor: ThemeColors.success,
                 showInfoText: false,
                 size: buttonSize,
                 onTap: () => _setFanPower(!_device.isOn),
@@ -1406,7 +1402,6 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
 
     final isLandscape = _screenService.isLandscape;
     final isLargeScreen = _screenService.isLargeScreen;
-    final airColor = DeviceColors.air(isDark);
 
     // Portrait: Horizontal scroll with HorizontalTileCompact
     if (!isLandscape) {
