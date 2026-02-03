@@ -759,7 +759,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
 
     return DeviceDetailLandscapeLayout(
       mainContent: isLargeScreen
-          ? _buildPrimaryControlCard(context, isDark, dialSize: _scale(200))
+          ? _buildPrimaryControlCard(context, isDark, dialSize: _scale(220))
           : _buildCompactDialWithModes(context, isDark),
       secondaryContent: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -980,7 +980,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           CircularControlDial(
             value: targetSetpoint,
@@ -1028,27 +1028,29 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
           final dialSize =
               math.min(availableForDial, maxDialHeight).clamp(120.0, 400.0);
 
-          return Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              CircularControlDial(
-                value: targetSetpoint,
-                currentValue: _currentTemperature,
-                minValue: minSetpoint,
-                maxValue: maxSetpoint,
-                step: 0.5,
-                size: dialSize,
-                accentType: _getDialAccentColor(),
-                isActive: _isActive,
-                enabled: _currentMode == ThermostatMode.heat ||
-                _currentMode == ThermostatMode.cool,
-                modeLabel: _currentMode.value,
-                displayFormat: DialDisplayFormat.temperature,
-                onChanged: _onSetpointChanged,
-              ),
-              _buildModeSelector(context, ModeSelectorOrientation.vertical,
-                  showLabels: false),
-            ],
+          return Center(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                CircularControlDial(
+                  value: targetSetpoint,
+                  currentValue: _currentTemperature,
+                  minValue: minSetpoint,
+                  maxValue: maxSetpoint,
+                  step: 0.5,
+                  size: dialSize,
+                  accentType: _getDialAccentColor(),
+                  isActive: _isActive,
+                  enabled: _currentMode == ThermostatMode.heat ||
+                  _currentMode == ThermostatMode.cool,
+                  modeLabel: _currentMode.value,
+                  displayFormat: DialDisplayFormat.temperature,
+                  onChanged: _onSetpointChanged,
+                ),
+                _buildModeSelector(context, ModeSelectorOrientation.vertical,
+                    showLabels: false),
+              ],
+            ), 
           );
         },
       ),
