@@ -229,21 +229,14 @@ class _HeaderIconButton extends StatelessWidget {
 ///
 /// Uses filled button neutral theme for consistent styling.
 class HeaderIconButton extends StatelessWidget {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
   final IconData icon;
   final VoidCallback? onTap;
 
-  HeaderIconButton({
+  const HeaderIconButton({
     super.key,
     required this.icon,
     this.onTap,
   });
-
-  double _scale(double size) =>
-      _screenService.scale(size, density: _visualDensityService.density);
 
   @override
   Widget build(BuildContext context) {
@@ -273,23 +266,20 @@ class HeaderIconButton extends StatelessWidget {
   }
 }
 
-/// Icon in a colored container for device/domain headers
-class HeaderDeviceIcon extends StatelessWidget {
+/// Icon in a colored container for page headers.
+/// Background and icon colors are resolved from [ThemeColorFamily] for [color].
+class HeaderMainIcon extends StatelessWidget {
   final ScreenService _screenService = locator<ScreenService>();
   final VisualDensityService _visualDensityService =
       locator<VisualDensityService>();
 
   final IconData icon;
-  final Color backgroundColor;
-  final Color iconColor;
-  final double? size;
+  final ThemeColors color;
 
-  HeaderDeviceIcon({
+  HeaderMainIcon({
     super.key,
     required this.icon,
-    required this.backgroundColor,
-    required this.iconColor,
-    this.size,
+    this.color = ThemeColors.primary,
   });
 
   double _scale(double s) =>
@@ -297,18 +287,18 @@ class HeaderDeviceIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final containerSize = size ?? _scale(44);
-
+    final brightness = Theme.of(context).brightness;
+    final family = ThemeColorFamily.get(brightness, color);
     return Container(
-      width: containerSize,
-      height: containerSize,
+      width: _scale(44),
+      height: _scale(44),
       decoration: BoxDecoration(
-        color: backgroundColor,
+        color: family.light8,
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
       ),
       child: Icon(
         icon,
-        color: iconColor,
+        color: family.base,
         size: _scale(24),
       ),
     );

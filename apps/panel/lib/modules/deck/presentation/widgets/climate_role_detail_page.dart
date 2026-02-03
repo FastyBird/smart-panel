@@ -631,34 +631,16 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
     }
   }
 
-  TileThemeColor? _getModeThemeColor() {
+  ThemeColors? _getModeThemeColor() {
     switch (_state.mode) {
       case ClimateMode.off:
         return null;
       case ClimateMode.heat:
-        return TileThemeColor.warning;
+        return ThemeColors.warning;
       case ClimateMode.cool:
-        return TileThemeColor.info;
+        return ThemeColors.info;
       case ClimateMode.auto:
-        return TileThemeColor.success;
-    }
-  }
-
-  Color _getModeLightColor(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    switch (_state.mode) {
-      case ClimateMode.off:
-        return isDark ? AppFillColorDark.light : AppFillColorLight.light;
-      case ClimateMode.heat:
-        return isDark
-            ? AppColorsDark.warningLight5
-            : AppColorsLight.warningLight5;
-      case ClimateMode.cool:
-        return isDark ? AppColorsDark.infoLight5 : AppColorsLight.infoLight5;
-      case ClimateMode.auto:
-        return isDark
-            ? AppColorsDark.successLight5
-            : AppColorsLight.successLight5;
+        return ThemeColors.success;
     }
   }
 
@@ -748,10 +730,9 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
             onTap: () => Navigator.pop(context),
           ),
           AppSpacings.spacingMdHorizontal,
-          HeaderDeviceIcon(
+          HeaderMainIcon(
             icon: MdiIcons.thermostat,
-            backgroundColor: _getModeLightColor(context),
-            iconColor: modeColor,
+            color: _getModeThemeColor() ?? ThemeColors.neutral,
           ),
         ],
       ),

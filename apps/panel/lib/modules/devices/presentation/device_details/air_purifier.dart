@@ -42,7 +42,7 @@ class _SensorInfo {
   final String? unit;
   final IconData icon;
   final Color? valueColor;
-  final TileThemeColor? valueThemeColor;
+  final ThemeColors? valueThemeColor;
   final bool isWarning;
 
   const _SensorInfo({
@@ -527,7 +527,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
         // Portrait (all sizes): Use SpeedSlider
         return SpeedSlider(
           value: _normalizedSpeed,
-          activeColor: airColor,
+          themeColor: ThemeColors.success,
           enabled: isEnabled,
           steps: [
             localizations.fan_speed_off,
@@ -1423,7 +1423,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
             icon: sensor.icon,
             name: sensor.displayValue,
             status: sensor.label,
-            activeColor: sensor.valueThemeColor ?? TileThemeColor.success,
+            activeColor: sensor.valueThemeColor ?? ThemeColors.success,
             showWarningBadge: sensor.isWarning,
           );
         },
@@ -1444,7 +1444,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
             icon: sensor.icon,
             name: sensor.displayValue,
             status: sensor.label,
-            activeColor: sensor.valueThemeColor ?? TileThemeColor.success,
+            activeColor: sensor.valueThemeColor ?? ThemeColors.success,
             showWarningBadge: sensor.isWarning,
           );
         }).toList(),
@@ -1463,7 +1463,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
             icon: sensor.icon,
             name: sensor.displayValue,
             status: sensor.label,
-            activeColor: sensor.valueThemeColor ?? TileThemeColor.success,
+            activeColor: sensor.valueThemeColor ?? ThemeColors.success,
             showWarningBadge: sensor.isWarning,
           ),
         );
@@ -1525,7 +1525,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
 
       return SpeedSlider(
         value: normalizedValue.clamp(0.0, 1.0),
-        activeColor: airColor,
+        themeColor: ThemeColors.success,
         enabled: isEnabled,
         steps: steps,
         onChanged: (value) {
@@ -1539,7 +1539,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
       // Numeric speed (0-100%) - use SpeedSlider for portrait
       return SpeedSlider(
         value: _normalizedSpeed,
-        activeColor: airColor,
+        themeColor: ThemeColors.success,
         enabled: isEnabled,
         steps: [
           localizations.fan_speed_off,
@@ -1583,7 +1583,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
             ? localizations.on_state_on
             : localizations.on_state_off,
         isActive: fanChannel.swing,
-        activeColor: TileThemeColor.success,
+        activeColor: ThemeColors.success,
         onTileTap: () => _setFanSwing(!fanChannel.swing),
         showGlow: false,
         showDoubleBorder: false,
@@ -1602,7 +1602,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
             ? FanUtils.getDirectionLabel(localizations, fanChannel.direction!)
             : localizations.fan_direction_clockwise,
         isActive: fanChannel.direction == FanDirectionValue.counterClockwise,
-        activeColor: TileThemeColor.success,
+        activeColor: ThemeColors.success,
         onTileTap: () {
           final isReversed = fanChannel.direction == FanDirectionValue.counterClockwise;
           final newDirection = isReversed
@@ -1627,7 +1627,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
             ? localizations.on_state_on
             : localizations.on_state_off,
         isActive: fanChannel.naturalBreeze,
-        activeColor: TileThemeColor.success,
+        activeColor: ThemeColors.success,
         onTileTap: () => _setFanNaturalBreeze(!fanChannel.naturalBreeze),
         showGlow: false,
         showDoubleBorder: false,
@@ -1646,7 +1646,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
             ? localizations.thermostat_lock_locked
             : localizations.thermostat_lock_unlocked,
         isActive: _childLock,
-        activeColor: TileThemeColor.success,
+        activeColor: ThemeColors.success,
         onTileTap: () => _setFanLocked(!_childLock),
         showGlow: false,
         showDoubleBorder: false,

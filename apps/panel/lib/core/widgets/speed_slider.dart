@@ -10,18 +10,15 @@ import 'package:flutter/material.dart';
 /// Features:
 /// - Continuous or discrete step modes
 /// - Customizable step labels
-/// - Theme-aware colors with custom active color support
+/// - Theme-aware colors via [ThemeColorFamily] and [themeColor]
 /// - Custom thumb with colored border for better visibility
 /// - Smooth animated transitions when value or enabled state changes
 class SpeedSlider extends StatefulWidget {
   /// Current value (0.0 to 1.0)
   final double value;
 
-  /// Active/accent color for the slider track and thumb border
-  final Color? activeColor;
-
-  /// Overlay color when dragging
-  final Color? overlayColor;
+  /// Theme color key for the slider. Resolved via [ThemeColorFamily].
+  final ThemeColors themeColor;
 
   /// Callback when value changes
   final ValueChanged<double>? onChanged;
@@ -49,8 +46,7 @@ class SpeedSlider extends StatefulWidget {
   const SpeedSlider({
     super.key,
     required this.value,
-    this.activeColor,
-    this.overlayColor,
+    this.themeColor = ThemeColors.info,
     this.onChanged,
     this.steps = const ['Off', 'Low', 'Med', 'High', 'Max'],
     this.enabled = true,
@@ -126,8 +122,6 @@ class _SpeedSliderState extends State<SpeedSlider> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final effectiveActiveColor =
-        widget.activeColor ?? (isDark ? AppColorsDark.info : AppColorsLight.info);
     final cardColor = isDark ? AppFillColorDark.light : AppFillColorLight.blank;
     final borderColor =
         isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
@@ -178,8 +172,7 @@ class _SpeedSliderState extends State<SpeedSlider> {
             AppSpacings.spacingMdVertical,
             SliderWithSteps(
               value: _displayValue,
-              activeColor: effectiveActiveColor,
-              overlayColor: widget.overlayColor,
+              themeColor: widget.themeColor,
               steps: widget.steps,
               enabled: widget.enabled,
               discrete: widget.discrete,

@@ -52,11 +52,11 @@ class UniversalTile extends StatelessWidget {
   /// Optional theme color key for active/accent. When set, only theme colors are used
   /// (no alpha modifiers). Light/dark is chosen from current theme.
   /// When set but [isActive] is false, only the icon (and icon bg) use this color.
-  final TileThemeColor? activeColor;
+  final ThemeColors? activeColor;
 
   // Icon-only accent color (colors icon/icon bg without affecting tile active state)
   // Useful for sensors where icon color indicates type but tile isn't "active"
-  final TileThemeColor? iconAccentColor;
+  final ThemeColors? iconAccentColor;
 
   // Interactions
   final VoidCallback? onIconTap;
@@ -409,7 +409,7 @@ class UniversalTile extends StatelessWidget {
     final borderWidth = _scale(1);
 
     // Resolve theme color family (no alpha modifiers)
-    final colorKey = activeColor ?? TileThemeColor.primary;
+    final colorKey = activeColor ?? ThemeColors.primary;
     final family = ThemeColorFamily.get(brightness, colorKey);
     final accentColor = family.base;
     final accentColorDark2 = family.dark2;

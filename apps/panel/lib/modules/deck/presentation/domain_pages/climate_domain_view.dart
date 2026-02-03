@@ -5,7 +5,6 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/number_format.dart';
-import 'package:fastybird_smart_panel/core/utils/color.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/circular_control_dial.dart';
 import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
@@ -1330,8 +1329,17 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     }
   }
 
-  Color _getModeLightColor(BuildContext context) {
-    return getSemanticBackgroundColor(context, _getModeColor(context));
+  ThemeColors? _getModeThemeColor() {
+    switch (_state.mode) {
+      case ClimateMode.off:
+        return null;
+      case ClimateMode.heat:
+        return ThemeColors.warning;
+      case ClimateMode.cool:
+        return ThemeColors.info;
+      case ClimateMode.auto:
+        return ThemeColors.success;
+    }
   }
 
   DialAccentColor _getDialAccentType() {
@@ -1436,10 +1444,9 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
       subtitle: _getStatusLabel(localizations),
       subtitleColor: _isDialActive() ? modeColor : secondaryColor,
       backgroundColor: AppColors.blank,
-      leading: HeaderDeviceIcon(
+      leading: HeaderMainIcon(
         icon: MdiIcons.thermostat,
-        backgroundColor: _getModeLightColor(context),
-        iconColor: modeColor,
+        color: _getModeThemeColor() ?? ThemeColors.neutral,
       ),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,

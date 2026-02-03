@@ -633,7 +633,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
 
         return SpeedSlider(
           value: normalizedValue.clamp(0.0, 1.0),
-          activeColor: fanColor,
+          themeColor: ThemeColors.info,
           enabled: _device.isOn,
           steps: steps,
           onChanged: (value) {
@@ -674,7 +674,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
         // Portrait (all sizes): Use SpeedSlider
         return SpeedSlider(
           value: _speed,
-          activeColor: fanColor,
+          themeColor: ThemeColors.info,
           enabled: _device.isOn,
           steps: [
             localizations.fan_speed_off,
@@ -798,7 +798,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
             ? localizations.on_state_on
             : localizations.on_state_off,
         isActive: fanChannel.swing,
-        activeColor: TileThemeColor.info,
+        activeColor: ThemeColors.info,
         onTileTap: () => _setFanSwing(!fanChannel.swing),
         showGlow: false,
         showDoubleBorder: false,
@@ -818,7 +818,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
             ? FanUtils.getDirectionLabel(localizations, fanChannel.direction!)
             : localizations.fan_direction_clockwise,
         isActive: isReversed,
-        activeColor: TileThemeColor.info,
+        activeColor: ThemeColors.info,
         onTileTap: () {
           final newDirection = isReversed
               ? FanDirectionValue.clockwise
@@ -842,7 +842,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
             ? localizations.thermostat_lock_locked
             : localizations.thermostat_lock_unlocked,
         isActive: fanChannel.locked,
-        activeColor: TileThemeColor.info,
+        activeColor: ThemeColors.info,
         onTileTap: () => _setFanLocked(!fanChannel.locked),
         showGlow: false,
         showDoubleBorder: false,

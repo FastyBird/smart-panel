@@ -73,6 +73,9 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   // Selected preset index (null = no preset selected)
   int? _selectedPresetIndex;
 
+  static const _debounceDuration = Duration(milliseconds: 150);
+  static const _visualizationAspectRatio = 180.0 / 160.0;
+
   // Presets configuration
   static final _presets = [
     _Preset(type: _PresetType.morning, icon: MdiIcons.weatherSunsetUp, position: 100, tiltAngle: 0),
@@ -98,15 +101,10 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
 
     _devicesService.addListener(_onDeviceChanged);
 
-    try {
-      _deviceControlStateService = locator<DeviceControlStateService>();
-      _deviceControlStateService?.addListener(_onControlStateChanged);
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint(
-            '[WindowCoveringDeviceDetail] Failed to get DeviceControlStateService: $e');
-      }
-    }
+    _deviceControlStateService = _tryLocator<DeviceControlStateService>(
+      'DeviceControlStateService',
+      onSuccess: (s) => s.addListener(_onControlStateChanged),
+    );
 
     _initController();
   }
@@ -155,16 +153,34 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     return channels[_selectedChannelIndex];
   }
 
+  T? _tryLocator<T extends Object>(String debugLabel, {void Function(T)? onSuccess}) {
+    try {
+      final s = locator<T>();
+      onSuccess?.call(s);
+      return s;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+            '[WindowCoveringDeviceDetail] Failed to get $debugLabel: $e');
+      }
+      return null;
+    }
+  }
+
+  void _showActionFailed() {
+    final localizations = AppLocalizations.of(context);
+    if (mounted && localizations != null) {
+      AlertBar.showError(context, message: localizations.action_failed);
+    }
+  }
+
   void _onControllerError(String propertyId, Object error) {
     if (kDebugMode) {
       debugPrint(
           '[WindowCoveringDeviceDetail] Controller error for $propertyId: $error');
     }
 
-    final localizations = AppLocalizations.of(context);
-    if (mounted && localizations != null) {
-      AlertBar.showError(context, message: localizations.action_failed);
-    }
+    _showActionFailed();
 
     // Clear local values on error
     _localPosition = null;
@@ -329,17 +345,15 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   // ===========================================================================
 
   Widget _buildHeader(BuildContext context, bool isDark) {
-    final primaryColor =
-        isDark ? AppColorsDark.primary : AppColorsLight.primary;
-    final primaryBgColor =
-        isDark ? AppColorsDark.primaryLight9 : AppColorsLight.primaryLight9;
-    final warningColor =
-        isDark ? AppColorsDark.warning : AppColorsLight.warning;
+    final brightness = Theme.of(context).brightness;
+    final statusColor = _getStatusColor(context);
+
+    final statusColorFamily = ThemeColorFamily.get(brightness, statusColor);
 
     return PageHeader(
       title: widget._device.name,
       subtitle: '${_getStatusLabel(context)} • $_position%',
-      subtitleColor: _getStatusColor(context),
+      subtitleColor: statusColorFamily.base,
       backgroundColor: AppColors.blank,
       leading: Row(
         mainAxisSize: MainAxisSize.min,
@@ -349,45 +363,30 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
             onTap: widget.onBack ?? () => Navigator.of(context).pop(),
           ),
           AppSpacings.spacingMdHorizontal,
-          Container(
-            width: _screenService.scale(
-              44,
-              density: _visualDensityService.density,
-            ),
-            height: _screenService.scale(
-              44,
-              density: _visualDensityService.density,
-            ),
-            decoration: BoxDecoration(
-              color: primaryBgColor,
-              borderRadius: BorderRadius.circular(AppBorderRadius.base),
-            ),
-            child: Icon(
-              MdiIcons.blindsHorizontal,
-              color: primaryColor,
-              size: _screenService.scale(
-                24,
-                density: _visualDensityService.density,
-              ),
-            ),
-          ),
+          HeaderMainIcon(icon: MdiIcons.blindsHorizontal, color: statusColor),
         ],
       ),
-      trailing: _selectedChannel.obstruction
-          ? Container(
-              width: _scale(32),
-              height: _scale(32),
-              decoration: BoxDecoration(
-                color: warningColor.withValues(alpha: 0.15),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                MdiIcons.alertCircle,
-                size: _scale(18),
-                color: warningColor,
-              ),
-            )
-          : null,
+      trailing: _selectedChannel.obstruction ? _buildObstructionIcon(isDark) : null,
+    );
+  }
+
+  Widget _buildObstructionIcon(bool isDark) {
+    final warningFamily = ThemeColorFamily.get(
+      isDark ? Brightness.dark : Brightness.light,
+      ThemeColors.warning,
+    );
+    return Container(
+      width: _scale(32),
+      height: _scale(32),
+      decoration: BoxDecoration(
+        color: warningFamily.light8,
+        shape: BoxShape.circle,
+      ),
+      child: Icon(
+        MdiIcons.alertCircle,
+        size: _scale(18),
+        color: warningFamily.base,
+      ),
     );
   }
 
@@ -397,6 +396,25 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
 
   double _scale(double value) =>
       _screenService.scale(value, density: _visualDensityService.density);
+
+  ThemeData _getActionButtonTheme(bool isActive) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final filledTheme = isActive
+        ? (isDark ? AppFilledButtonsDarkThemes.primary : AppFilledButtonsLightThemes.primary)
+        : (isDark ? AppFilledButtonsDarkThemes.neutral : AppFilledButtonsLightThemes.neutral);
+    return ThemeData(filledButtonTheme: filledTheme);
+  }
+
+  Color _getActionIconColor(bool isActive) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return isDark
+        ? (isActive
+            ? AppFilledButtonsDarkThemes.primaryForegroundColor
+            : AppFilledButtonsDarkThemes.neutralForegroundColor)
+        : (isActive
+            ? AppFilledButtonsLightThemes.primaryForegroundColor
+            : AppFilledButtonsLightThemes.neutralForegroundColor);
+  }
 
   String _getStatusLabel(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
@@ -415,6 +433,20 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     }
   }
 
+  ThemeColors _getStatusColor(BuildContext context) {
+    switch (_selectedChannel.status) {
+      case WindowCoveringStatusValue.opened:
+        return ThemeColors.success;
+      case WindowCoveringStatusValue.closed:
+        return ThemeColors.neutral;
+      case WindowCoveringStatusValue.opening:
+      case WindowCoveringStatusValue.closing:
+        return ThemeColors.info;
+      case WindowCoveringStatusValue.stopped:
+        return ThemeColors.warning;
+    }
+  }
+
   // ===========================================================================
   // LANDSCAPE LAYOUT
   // ===========================================================================
@@ -427,12 +459,12 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
       if (_selectedChannel.hasTilt)
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          spacing: AppSpacings.pMd,
           children: [
             SectionTitle(
               title: localizations.device_controls,
               icon: MdiIcons.tuneVertical,
             ),
-            AppSpacings.spacingSmVertical,
             _buildTiltCard(context, useCompactLayout: true),
           ],
         ),
@@ -444,12 +476,8 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
       mainContent: _buildLandscapeMainControl(context),
       secondaryContent: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          for (int i = 0; i < secondaryWidgets.length; i++) ...[
-            secondaryWidgets[i],
-            if (i < secondaryWidgets.length - 1) SizedBox(height: AppSpacings.pMd),
-          ],
-        ],
+        spacing: AppSpacings.pMd,
+        children: secondaryWidgets,
       ),
     );
   }
@@ -488,7 +516,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   /// Large display layout: visualization + slider + horizontal buttons (like portrait)
   Widget _buildLandscapeLargeLayout(
       BuildContext context, BoxConstraints constraints) {
-    final padding = AppSpacings.pLg;
+    final padding = AppSpacings.pMd;
     final spacing = AppSpacings.pMd;
     final availableHeight = constraints.maxHeight - padding * 2;
 
@@ -498,13 +526,12 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     final maxVisualizationHeight =
         availableHeight - sliderHeight - buttonsHeight - spacing * 2;
 
-    final visualizationAspectRatio = 180.0 / 160.0;
     // Allow larger visualization on big screens (up to 280px height)
     final visualizationHeight = maxVisualizationHeight.clamp(_scale(80), _scale(280));
-    final visualizationWidth = visualizationHeight * visualizationAspectRatio;
+    final visualizationWidth = visualizationHeight * _visualizationAspectRatio;
 
     return Padding(
-      padding: AppSpacings.paddingLg,
+      padding: AppSpacings.paddingMd,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -527,7 +554,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   /// Bottom row: full-width slider
   Widget _buildLandscapeCompactLayout(
       BuildContext context, BoxConstraints constraints) {
-    final padding = AppSpacings.pLg;
+    final padding = AppSpacings.pMd;
     final spacing = AppSpacings.pMd;
     final availableHeight = constraints.maxHeight - padding * 2;
     final availableWidth = constraints.maxWidth - padding * 2;
@@ -538,11 +565,10 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
 
     // Window takes 2/3 of width, buttons take 1/3
     final visualizationWidth = (availableWidth - spacing) * 2 / 3;
-    final visualizationAspectRatio = 180.0 / 160.0;
-    var visualizationHeight = (visualizationWidth / visualizationAspectRatio).clamp(_scale(60), maxVisualizationHeight);
+    var visualizationHeight = (visualizationWidth / _visualizationAspectRatio).clamp(_scale(60), maxVisualizationHeight);
 
     return Padding(
-      padding: AppSpacings.paddingLg,
+      padding: AppSpacings.paddingMd,
       child: Column(
         children: [
           // Top row: visualization (3/4) + buttons (1/4)
@@ -560,7 +586,6 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
                     ),
                   ),
                 ),
-                SizedBox(width: spacing),
                 // Vertical action buttons - 1/4 width
                 Expanded(
                   flex: 1,
@@ -626,7 +651,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
                   borderRadius: BorderRadius.circular(AppBorderRadius.small),
                 ),
                 child: Text(
-                  '$_position%',
+                  AppLocalizations.of(context)?.window_covering_position_open_percent(_position) ?? '$_position%',
                   style: TextStyle(
                     fontSize: AppFontSize.extraSmall,
                     fontWeight: FontWeight.w500,
@@ -897,10 +922,6 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     required bool isActive,
     required VoidCallback onTap,
   }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final themeData = isActive
-        ? ThemeData(filledButtonTheme: isDark ? AppFilledButtonsDarkThemes.primary : AppFilledButtonsLightThemes.primary)
-        : (isDark ? ThemeData(filledButtonTheme: AppFilledButtonsDarkThemes.neutral) : ThemeData(filledButtonTheme: AppFilledButtonsLightThemes.neutral));
     final iconSize = _screenService.scale(18, density: _visualDensityService.density);
     final buttonSize = _screenService.scale(36, density: _visualDensityService.density);
 
@@ -908,7 +929,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
       width: buttonSize,
       height: buttonSize,
       child: Theme(
-        data: themeData,
+        data: _getActionButtonTheme(isActive),
         child: FilledButton(
           onPressed: () {
             HapticFeedback.lightImpact();
@@ -923,17 +944,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
             ),
             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
-          child: Icon(
-            icon,
-            size: iconSize,
-            color: isDark
-                ? (isActive
-                    ? AppFilledButtonsDarkThemes.primaryForegroundColor
-                    : AppFilledButtonsDarkThemes.neutralForegroundColor)
-                : (isActive
-                    ? AppFilledButtonsLightThemes.primaryForegroundColor
-                    : AppFilledButtonsLightThemes.neutralForegroundColor),
-          ),
+          child: Icon(icon, size: iconSize, color: _getActionIconColor(isActive)),
         ),
       ),
     );
@@ -966,21 +977,18 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   Widget _buildPortraitChannelsList(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final localizations = AppLocalizations.of(context)!;
-    final primaryColor =
-        isDark ? AppColorsDark.primary : AppColorsLight.primary;
     final dividerColor =
         isDark ? AppBorderColorDark.light : AppBorderColorLight.base;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: AppSpacings.pMd,
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          padding: EdgeInsets.only(
-            left: AppSpacings.pLg,
-            right: AppSpacings.pLg,
-            top: AppSpacings.pSm,
-            bottom: AppSpacings.pSm,
+          padding: EdgeInsets.symmetric(
+            horizontal: AppSpacings.pLg,
+            vertical: AppSpacings.pMd,
           ),
           decoration: BoxDecoration(
             border: Border(
@@ -995,7 +1003,6 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
             icon: MdiIcons.blindsHorizontal,
           ),
         ),
-        AppSpacings.spacingMdVertical,
         Padding(
           padding: EdgeInsets.only(
             left: AppSpacings.pLg,
@@ -1004,25 +1011,18 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
           ),
           child: HorizontalScrollWithGradient(
             height: _scale(80),
-            layoutPadding: AppSpacings.pLg,
+            layoutPadding: AppSpacings.pMd,
             itemCount: _device.windowCoveringChannels.length,
             separatorWidth: AppSpacings.pMd,
             itemBuilder: (context, index) {
-              final channel = _device.windowCoveringChannels[index];
-              final controller = _channelControllers.isNotEmpty
-                  ? _channelControllers[index]
-                  : null;
-              final isSelected = index == _selectedChannelIndex;
-              final position = controller?.position ?? channel.position;
-
+              final c = _channelAt(index);
               return VerticalTileCompact(
                 icon: MdiIcons.blindsHorizontalClosed,
                 activeIcon: MdiIcons.blindsHorizontal,
-                name: channel.name,
-                status: '$position%',
-                isActive: position > 0,
-                isSelected: isSelected,
-                activeColor: TileThemeColor.primary,
+                name: c.channel.name,
+                status: '${c.position}%',
+                isActive: c.position > 0,
+                isSelected: c.isSelected,
                 onTileTap: () => _handleChannelSelect(index),
                 showSelectionIndicator: true,
               );
@@ -1030,6 +1030,17 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
           ),
         ),
       ],
+    );
+  }
+
+  /// Channel data for building channel list tiles at [index].
+  ({WindowCoveringChannelView channel, int position, bool isSelected}) _channelAt(int index) {
+    final channel = _device.windowCoveringChannels[index];
+    final controller = _channelControllers.isNotEmpty ? _channelControllers[index] : null;
+    return (
+      channel: channel,
+      position: controller?.position ?? channel.position,
+      isSelected: index == _selectedChannelIndex,
     );
   }
 
@@ -1049,42 +1060,28 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   /// Builds the channels list for landscape layout.
   /// Uses DeviceTileLandscape wrapper for all device sizes.
   Widget _buildLandscapeChannelsList(BuildContext context) {
-    final bool isLight = Theme.of(context).brightness == Brightness.light;
-    final primaryColor =
-        isLight ? AppColorsLight.primary : AppColorsDark.primary;
     final localizations = AppLocalizations.of(context)!;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: AppSpacings.pMd,
       children: [
         SectionTitle(
           title: localizations.window_covering_channels_label,
           icon: MdiIcons.blindsHorizontal,
         ),
-        AppSpacings.spacingSmVertical,
         ..._device.windowCoveringChannels.asMap().entries.map((entry) {
           final index = entry.key;
-          final channel = entry.value;
-          final controller = _channelControllers.isNotEmpty
-              ? _channelControllers[index]
-              : null;
-          final isSelected = index == _selectedChannelIndex;
-          final position = controller?.position ?? channel.position;
-          final isLast = index == _device.windowCoveringChannels.length - 1;
-
-          return Padding(
-            padding: EdgeInsets.only(bottom: isLast ? 0 : AppSpacings.pMd),
-            child: DeviceTileLandscape(
-              icon: MdiIcons.blindsHorizontalClosed,
-              activeIcon: MdiIcons.blindsHorizontal,
-              name: channel.name,
-              status: '$position%',
-              isActive: position > 0,
-              isSelected: isSelected,
-              activeColor: TileThemeColor.primary,
-              onTileTap: () => _handleChannelSelect(index),
-              showSelectionIndicator: true,
-            ),
+          final c = _channelAt(index);
+          return DeviceTileLandscape(
+            icon: MdiIcons.blindsHorizontalClosed,
+            activeIcon: MdiIcons.blindsHorizontal,
+            name: c.channel.name,
+            status: '${c.position}%',
+            isActive: c.position > 0,
+            isSelected: c.isSelected,
+            onTileTap: () => _handleChannelSelect(index),
+            showSelectionIndicator: true,
           );
         }),
       ],
@@ -1095,24 +1092,21 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   /// over the layout padding to the screen edges.
   /// Uses HorizontalTileCompact wrapper for portrait mode.
   Widget _buildPresetsWithGradient(BuildContext context) {
-    final bool isLight = Theme.of(context).brightness == Brightness.light;
-    final primaryColor =
-        isLight ? AppColorsLight.primary : AppColorsDark.primary;
     final localizations = AppLocalizations.of(context)!;
 
     final tileHeight = _scale(AppTileHeight.horizontal);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: AppSpacings.pMd,
       children: [
         SectionTitle(
           title: localizations.window_covering_presets_label,
           icon: MdiIcons.viewGrid,
         ),
-        AppSpacings.spacingSmVertical,
         HorizontalScrollWithGradient(
           height: tileHeight,
-          layoutPadding: AppSpacings.pLg,
+          layoutPadding: AppSpacings.pMd,
           itemCount: _presets.length,
           separatorWidth: AppSpacings.pMd,
           itemBuilder: (context, index) {
@@ -1124,7 +1118,6 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
               name: preset.getName(localizations),
               status: '${preset.position}%',
               isActive: isActive,
-              activeColor: TileThemeColor.primary,
               onTileTap: () => _applyPreset(index),
             );
           },
@@ -1141,7 +1134,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     final bool isLight = Theme.of(context).brightness == Brightness.light;
 
     return Container(
-      padding: AppSpacings.paddingLg,
+      padding: AppSpacings.paddingMd,
       decoration: BoxDecoration(
         color: isLight ? AppFillColorLight.light : AppFillColorDark.light,
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
@@ -1164,221 +1157,9 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   }
 
   Widget _buildWindowVisualization(BuildContext context) {
-    final bool isLight = Theme.of(context).brightness == Brightness.light;
-    final localizations = AppLocalizations.of(context);
-    final coverHeight = (100 - _position) / 100;
-
-    return Container(
-      width: _screenService.scale(
-        180,
-        density: _visualDensityService.density,
-      ),
-      height: _screenService.scale(
-        160,
-        density: _visualDensityService.density,
-      ),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: isLight
-              ? [_VisualizationColorsLight.skyTop, _VisualizationColorsLight.skyBottom]
-              : [_VisualizationColorsDark.skyTop, _VisualizationColorsDark.skyBottom],
-        ),
-        borderRadius: BorderRadius.circular(AppBorderRadius.base),
-        border: Border.all(
-          color: isLight ? AppBorderColorLight.base : AppBorderColorDark.base,
-          width: _scale(4),
-        ),
-      ),
-      child: Stack(
-        children: [
-          // Type-specific visualization
-          _buildCoverVisualization(context, coverHeight),
-          // Position Label
-          Positioned(
-            bottom: AppSpacings.pSm,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: AppSpacings.pSm,
-                  vertical: AppSpacings.pXs,
-                ),
-                decoration: BoxDecoration(
-                  color: isLight
-                      ? AppColors.white.withValues(alpha: 0.9)
-                      : AppColors.black.withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(AppBorderRadius.base),
-                ),
-                child: Text(
-                  localizations!.window_covering_position_open_percent(_position),
-                  style: TextStyle(
-                    fontSize: AppFontSize.extraSmall,
-                    fontWeight: FontWeight.w500,
-                    color: isLight
-                        ? AppTextColorLight.regular
-                        : AppTextColorDark.regular,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCoverVisualization(BuildContext context, double coverHeight) {
-    try {
-      switch (_device.windowCoveringType) {
-        case WindowCoveringTypeValue.blind:
-        case WindowCoveringTypeValue.venetianBlind:
-          return _buildBlindVisualization(context, coverHeight);
-        case WindowCoveringTypeValue.curtain:
-        case WindowCoveringTypeValue.verticalBlind:
-          return _buildCurtainVisualization(context);
-        case WindowCoveringTypeValue.roller:
-        case WindowCoveringTypeValue.awning:
-          return _buildRollerVisualization(context, coverHeight);
-        case WindowCoveringTypeValue.shutter:
-        case WindowCoveringTypeValue.outdoorBlind:
-          return _buildOutdoorBlindVisualization(context, coverHeight);
-      }
-    } catch (_) {
-      // Default to blind visualization if type is unknown
-      return _buildBlindVisualization(context, coverHeight);
-    }
-  }
-
-  Widget _buildBlindVisualization(BuildContext context, double coverHeight) {
-    final bool isLight = Theme.of(context).brightness == Brightness.light;
-    // Each slat is 8px + 2px margin = 10px, need more slats to fill container
-    final slatCount = (_position < 90 ? (160 * coverHeight / 8).floor() : 0);
-    final tiltFactor = _tiltAngle / 90 * 0.5;
-
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      clipBehavior: Clip.hardEdge,
-      decoration: const BoxDecoration(),
-      height: _screenService.scale(
-            160,
-            density: _visualDensityService.density,
-          ) *
-          coverHeight,
-      child: Column(
-        children: List.generate(
-          slatCount.clamp(0, 18),
-          (i) => Transform(
-            transform: Matrix4.identity()
-              ..setEntry(3, 2, 0.001)
-              ..rotateX(tiltFactor),
-            alignment: Alignment.center,
-            child: Container(
-              height: _screenService.scale(
-                8,
-                density: _visualDensityService.density,
-              ),
-              margin: EdgeInsets.only(
-                bottom: _scale(2),
-                left: _scale(2),
-                right: _scale(2),
-              ),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(_scale(1)),
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: isLight
-                      ? [_VisualizationColorsLight.metalSlatTop, _VisualizationColorsLight.metalSlatBottom]
-                      : [_VisualizationColorsDark.metalSlatTop, _VisualizationColorsDark.metalSlatBottom],
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color:
-                        AppColors.black.withValues(alpha: isLight ? 0.1 : 0.3),
-                    offset: Offset(0, _scale(1)),
-                    blurRadius: _scale(2),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCurtainVisualization(BuildContext context) {
-    final bool isLight = Theme.of(context).brightness == Brightness.light;
-    final panelWidth = (100 - _position) / 100 * 0.5;
-    final containerWidth = _screenService.scale(
-      180,
-      density: _visualDensityService.density,
-    );
-    final containerHeight = _screenService.scale(
-      160,
-      density: _visualDensityService.density,
-    );
-
-    return SizedBox(
-      width: containerWidth,
-      height: containerHeight,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          // Left panel
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            width: (containerWidth - _scale(8)) * panelWidth,
-            height: containerHeight,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-                colors: isLight
-                    ? [
-                        _VisualizationColorsLight.fabricLight,
-                        _VisualizationColorsLight.fabricMedium,
-                        _VisualizationColorsLight.fabricDark,
-                      ]
-                    : [
-                        _VisualizationColorsDark.fabricLight,
-                        _VisualizationColorsDark.fabricMedium,
-                        _VisualizationColorsDark.fabricDark,
-                      ],
-              ),
-            ),
-            child: _buildCurtainFolds(isLight),
-          ),
-          // Right panel
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            width: (containerWidth - _scale(8)) * panelWidth,
-            height: containerHeight,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.centerRight,
-                end: Alignment.centerLeft,
-                colors: isLight
-                    ? [
-                        _VisualizationColorsLight.fabricLight,
-                        _VisualizationColorsLight.fabricMedium,
-                        _VisualizationColorsLight.fabricDark,
-                      ]
-                    : [
-                        _VisualizationColorsDark.fabricLight,
-                        _VisualizationColorsDark.fabricMedium,
-                        _VisualizationColorsDark.fabricDark,
-                      ],
-              ),
-            ),
-            child: _buildCurtainFolds(isLight),
-          ),
-        ],
-      ),
-    );
+    final width = _screenService.scale(180, density: _visualDensityService.density);
+    final height = _screenService.scale(160, density: _visualDensityService.density);
+    return _buildWindowVisualizationSized(context, width, height);
   }
 
   Widget _buildCurtainFolds(bool isLight) {
@@ -1391,130 +1172,12 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     );
   }
 
-  Widget _buildRollerVisualization(BuildContext context, double coverHeight) {
-    final bool isLight = Theme.of(context).brightness == Brightness.light;
-    // Account for window border (4px on each side = 8px total)
-    final containerHeight = _screenService.scale(
-      152,
-      density: _visualDensityService.density,
-    );
-    final tubeHeight = _screenService.scale(
-      12,
-      density: _visualDensityService.density,
-    );
-    final shadeMaxHeight = containerHeight - tubeHeight;
-
-    return Column(
-      children: [
-        // Roller housing/cover at top
-        Container(
-          height: tubeHeight,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(_scale(4))),
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: isLight
-                  ? [_VisualizationColorsLight.metalTubeTop, _VisualizationColorsLight.metalTubeBottom]
-                  : [_VisualizationColorsDark.metalTubeTop, _VisualizationColorsDark.metalTubeBottom],
-            ),
-          ),
-        ),
-        // Shade
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          height: (shadeMaxHeight * coverHeight).clamp(0.0, shadeMaxHeight),
-          margin: EdgeInsets.symmetric(horizontal: _scale(2)),
-          decoration: BoxDecoration(
-            borderRadius:
-                BorderRadius.vertical(bottom: Radius.circular(_scale(4))),
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: isLight
-                  ? [_VisualizationColorsLight.shadeFabricTop, _VisualizationColorsLight.shadeFabricBottom]
-                  : [_VisualizationColorsDark.shadeFabricTop, _VisualizationColorsDark.shadeFabricBottom],
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.black.withValues(alpha: isLight ? 0.15 : 0.3),
-                offset: Offset(0, _scale(2)),
-                blurRadius: _scale(8),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildOutdoorBlindVisualization(
-      BuildContext context, double coverHeight) {
-    final bool isLight = Theme.of(context).brightness == Brightness.light;
-    // Each slat is 10px + 3px margin = 13px, but with scaling we need more
-    final slatCount = (_position < 90 ? (160 * coverHeight / 11).floor() : 0);
-    final tiltFactor = _tiltAngle / 90 * 0.5;
-
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      clipBehavior: Clip.hardEdge,
-      decoration: const BoxDecoration(),
-      height: _screenService.scale(
-            160,
-            density: _visualDensityService.density,
-          ) *
-          coverHeight,
-      child: Column(
-          children: List.generate(
-            slatCount.clamp(0, 14),
-            (i) => Transform(
-              transform: Matrix4.identity()
-                ..setEntry(3, 2, 0.001)
-                ..rotateX(tiltFactor),
-              alignment: Alignment.center,
-              child: Container(
-                height: _screenService.scale(
-                  10,
-                  density: _visualDensityService.density,
-                ),
-                margin: EdgeInsets.only(
-                  bottom: _scale(3),
-                  left: _scale(3),
-                  right: _scale(3),
-                ),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(_scale(2)),
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: isLight
-                        ? [_VisualizationColorsLight.woodSlatTop, _VisualizationColorsLight.woodSlatBottom]
-                        : [_VisualizationColorsDark.woodSlatTop, _VisualizationColorsDark.woodSlatBottom],
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color:
-                          AppColors.black.withValues(alpha: isLight ? 0.15 : 0.3),
-                      offset: Offset(0, _scale(1)),
-                      blurRadius: _scale(3),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-    );
-  }
-
   Widget _buildPositionSlider(BuildContext context) {
-    final bool isLight = Theme.of(context).brightness == Brightness.light;
     final localizations = AppLocalizations.of(context);
     final normalizedValue = _position / 100.0;
 
     return SliderWithSteps(
       value: normalizedValue,
-      activeColor: isLight ? AppColorsLight.primary : AppColorsDark.primary,
       steps: [
         localizations!.window_covering_status_closed,
         '25%',
@@ -1542,7 +1205,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     // Debounce the actual command
     _positionDebounceTimer?.cancel();
     _positionDebounceTimer = Timer(
-      const Duration(milliseconds: 150),
+      _debounceDuration,
       () {
         if (!mounted) return;
         _controller?.setPosition(intValue);
@@ -1617,16 +1280,12 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     required bool isActive,
     required VoidCallback onTap,
   }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final themeData = isActive
-        ? ThemeData(filledButtonTheme: isDark ? AppFilledButtonsDarkThemes.primary : AppFilledButtonsLightThemes.primary)
-        : (isDark ? ThemeData(filledButtonTheme: AppFilledButtonsDarkThemes.neutral) : ThemeData(filledButtonTheme: AppFilledButtonsLightThemes.neutral));
     final iconSize = _screenService.scale(20, density: _visualDensityService.density);
 
     return SizedBox(
       width: double.infinity,
       child: Theme(
-        data: themeData,
+        data: _getActionButtonTheme(isActive),
         child: FilledButton(
           onPressed: () {
             HapticFeedback.lightImpact();
@@ -1645,17 +1304,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
             mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
-                icon,
-                size: iconSize,
-                color: isDark
-                    ? (isActive
-                        ? AppFilledButtonsDarkThemes.primaryForegroundColor
-                        : AppFilledButtonsDarkThemes.neutralForegroundColor)
-                    : (isActive
-                        ? AppFilledButtonsLightThemes.primaryForegroundColor
-                        : AppFilledButtonsLightThemes.neutralForegroundColor),
-              ),
+              Icon(icon, size: iconSize, color: _getActionIconColor(isActive)),
               AppSpacings.spacingXsHorizontal,
               Text(
                 label,
@@ -1676,9 +1325,6 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   // ===========================================================================
 
   Widget _buildTiltCard(BuildContext context, {bool useCompactLayout = false}) {
-    final bool isLight = Theme.of(context).brightness == Brightness.light;
-    final primaryColor =
-        isLight ? AppColorsLight.primary : AppColorsDark.primary;
     final localizations = AppLocalizations.of(context)!;
 
     final minTilt = _selectedChannel.minTilt;
@@ -1692,7 +1338,6 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
         label: localizations.window_covering_tilt_label,
         icon: MdiIcons.angleAcute,
         sheetTitle: localizations.window_covering_tilt_label,
-        activeColor: Theme.of(context).brightness == Brightness.light ? AppColorsLight.primary : AppColorsDark.primary,
         options: _getTiltOptions(minTilt, maxTilt),
         displayFormatter: (v) => '${v ?? 0}°',
         columns: 3,
@@ -1711,7 +1356,6 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
 
     return _TiltSlider(
       value: normalizedValue.clamp(0.0, 1.0),
-      activeColor: Theme.of(context).brightness == Brightness.light ? AppColorsLight.primary : AppColorsDark.primary,
       label: localizations.window_covering_tilt_label,
       valueLabel: '$_tiltAngle°',
       steps: [
@@ -1752,7 +1396,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     // Debounce the actual command
     _tiltDebounceTimer?.cancel();
     _tiltDebounceTimer = Timer(
-      const Duration(milliseconds: 150),
+      _debounceDuration,
       () {
         if (!mounted) return;
         _controller?.setTilt(intValue);
@@ -1763,22 +1407,6 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     );
   }
 
-  Color _getStatusColor(BuildContext context) {
-    final bool isLight = Theme.of(context).brightness == Brightness.light;
-
-    switch (_selectedChannel.status) {
-      case WindowCoveringStatusValue.opened:
-        return isLight ? AppColorsLight.success : AppColorsDark.success;
-      case WindowCoveringStatusValue.closed:
-        return isLight ? AppTextColorLight.secondary : AppTextColorDark.secondary;
-      case WindowCoveringStatusValue.opening:
-      case WindowCoveringStatusValue.closing:
-        return isLight ? AppColorsLight.info : AppColorsDark.info;
-      case WindowCoveringStatusValue.stopped:
-        return isLight ? AppColorsLight.warning : AppColorsDark.warning;
-    }
-  }
-
   // ===========================================================================
   // PRESETS
   // ===========================================================================
@@ -1786,9 +1414,6 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   /// Builds presets card for landscape mode.
   /// Uses VerticalTileLarge for large screens, HorizontalTileStretched for small/medium.
   Widget _buildPresetsCard(BuildContext context) {
-    final bool isLight = Theme.of(context).brightness == Brightness.light;
-    final primaryColor =
-        isLight ? AppColorsLight.primary : AppColorsDark.primary;
     final localizations = AppLocalizations.of(context)!;
     final isLargeScreen = _screenService.isLargeScreen;
 
@@ -1796,12 +1421,12 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     if (isLargeScreen) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: AppSpacings.pMd,
         children: [
           SectionTitle(
             title: localizations.window_covering_presets_label,
             icon: MdiIcons.viewGrid,
           ),
-          AppSpacings.spacingSmVertical,
           GridView.count(
             crossAxisCount: 2,
             mainAxisSpacing: AppSpacings.pMd,
@@ -1819,7 +1444,6 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
                 name: preset.getName(localizations),
                 status: '${preset.position}%',
                 isActive: isActive,
-                activeColor: TileThemeColor.primary,
                 onTileTap: () => _applyPreset(index),
               );
             }).toList(),
@@ -1831,28 +1455,23 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     // Small/medium: Column with HorizontalTileStretched
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: AppSpacings.pMd,
       children: [
         SectionTitle(
           title: localizations.window_covering_presets_label,
           icon: MdiIcons.viewGrid,
         ),
-        AppSpacings.spacingSmVertical,
         ..._presets.asMap().entries.map((entry) {
           final index = entry.key;
           final preset = entry.value;
           final bool isActive = _isPresetActive(index);
-          final isLast = index == _presets.length - 1;
 
-          return Padding(
-            padding: EdgeInsets.only(bottom: isLast ? 0 : AppSpacings.pMd),
-            child: HorizontalTileStretched(
-              icon: preset.icon,
-              name: preset.getName(localizations),
-              status: '${preset.position}%',
-              isActive: isActive,
-              activeColor: TileThemeColor.primary,
-              onTileTap: () => _applyPreset(index),
-            ),
+          return HorizontalTileStretched(
+            icon: preset.icon,
+            name: preset.getName(localizations),
+            status: '${preset.position}%',
+            isActive: isActive,
+            onTileTap: () => _applyPreset(index),
           );
         }),
       ],
@@ -1913,7 +1532,6 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
 /// Shows label on the left, value in degrees on the right, and a slider below.
 class _TiltSlider extends StatelessWidget {
   final double value;
-  final Color? activeColor;
   final String label;
   final String valueLabel;
   final List<String> steps;
@@ -1921,7 +1539,6 @@ class _TiltSlider extends StatelessWidget {
 
   const _TiltSlider({
     required this.value,
-    this.activeColor,
     required this.label,
     required this.valueLabel,
     required this.steps,
@@ -1931,11 +1548,9 @@ class _TiltSlider extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final effectiveActiveColor =
-        activeColor ?? (isDark ? AppColorsDark.info : AppColorsLight.info);
     final cardColor = isDark ? AppFillColorDark.light : AppFillColorLight.blank;
     final borderColor =
-        isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
+        isDark ? AppFillColorDark.light : AppBorderColorLight.light;
     final textColor =
         isDark ? AppTextColorDark.primary : AppTextColorLight.primary;
     final secondaryColor =
@@ -1945,10 +1560,7 @@ class _TiltSlider extends StatelessWidget {
     final visualDensityService = locator<VisualDensityService>();
 
     return Container(
-      padding: EdgeInsets.symmetric(
-        vertical: AppSpacings.pMd,
-        horizontal: AppSpacings.pLg,
-      ),
+      padding: AppSpacings.paddingMd,
       decoration: BoxDecoration(
         color: cardColor,
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
@@ -1963,13 +1575,19 @@ class _TiltSlider extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                label,
-                style: TextStyle(
-                  color: secondaryColor,
-                  fontSize: AppFontSize.small,
-                  fontWeight: FontWeight.w500,
-                ),
+              Row(
+                children: [
+                  Icon(MdiIcons.angleAcute, size: AppFontSize.small, color: secondaryColor),
+                  AppSpacings.spacingSmHorizontal,
+                  Text(
+                    label.toUpperCase(),
+                    style: TextStyle(
+                      color: secondaryColor,
+                      fontSize: AppFontSize.small,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
               ),
               Text(
                 valueLabel,
@@ -1984,7 +1602,6 @@ class _TiltSlider extends StatelessWidget {
           AppSpacings.spacingMdVertical,
           SliderWithSteps(
             value: value,
-            activeColor: effectiveActiveColor,
             steps: steps,
             onChanged: onChanged,
           ),

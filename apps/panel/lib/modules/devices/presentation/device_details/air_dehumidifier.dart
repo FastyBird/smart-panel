@@ -43,7 +43,7 @@ class _SensorInfo {
   final String? unit;
   final IconData icon;
   final Color? valueColor;
-  final TileThemeColor? valueThemeColor;
+  final ThemeColors? valueThemeColor;
   final bool isWarning;
 
   const _SensorInfo({
@@ -983,7 +983,7 @@ class _AirDehumidifierDeviceDetailState
 
       return SpeedSlider(
         value: normalizedValue.clamp(0.0, 1.0),
-        activeColor: humidityColor,
+        themeColor: ThemeColors.teal,
         enabled: _device.isOn,
         steps: steps,
         onChanged: (value) {
@@ -1003,7 +1003,7 @@ class _AirDehumidifierDeviceDetailState
 
       return SpeedSlider(
         value: _normalizedFanSpeed,
-        activeColor: humidityColor,
+        themeColor: ThemeColors.teal,
         enabled: _device.isOn,
         steps: [
           localizations.fan_speed_off,
@@ -1057,7 +1057,7 @@ class _AirDehumidifierDeviceDetailState
             ? localizations.on_state_on
             : localizations.on_state_off,
         isActive: fanChannel.swing,
-        activeColor: TileThemeColor.info,
+        activeColor: ThemeColors.info,
         onTileTap: () => _setFanSwing(!fanChannel.swing),
         showGlow: false,
         showDoubleBorder: false,
@@ -1076,7 +1076,7 @@ class _AirDehumidifierDeviceDetailState
             ? FanUtils.getDirectionLabel(localizations, fanChannel.direction!)
             : '-',
         isActive: fanChannel.direction == FanDirectionValue.counterClockwise,
-        activeColor: TileThemeColor.info,
+        activeColor: ThemeColors.info,
         onTileTap: () {
           // Toggle between clockwise and counter_clockwise
           final newDirection =
@@ -1102,7 +1102,7 @@ class _AirDehumidifierDeviceDetailState
             ? localizations.on_state_on
             : localizations.on_state_off,
         isActive: fanChannel.naturalBreeze,
-        activeColor: TileThemeColor.info,
+        activeColor: ThemeColors.info,
         onTileTap: () => _setFanNaturalBreeze(!fanChannel.naturalBreeze),
         showGlow: false,
         showDoubleBorder: false,
@@ -1121,7 +1121,7 @@ class _AirDehumidifierDeviceDetailState
             ? localizations.thermostat_lock_locked
             : localizations.thermostat_lock_unlocked,
         isActive: channel.locked,
-        activeColor: TileThemeColor.info,
+        activeColor: ThemeColors.info,
         onTileTap: () => _setDehumidifierLocked(!channel.locked),
         showGlow: false,
         showDoubleBorder: false,
@@ -1200,7 +1200,7 @@ class _AirDehumidifierDeviceDetailState
             icon: sensor.icon,
             name: sensor.displayValue,
             status: sensor.label,
-            activeColor: sensor.valueThemeColor ?? TileThemeColor.info,
+            activeColor: sensor.valueThemeColor ?? ThemeColors.info,
             showWarningBadge: sensor.isWarning,
           );
         },
@@ -1221,7 +1221,7 @@ class _AirDehumidifierDeviceDetailState
             icon: sensor.icon,
             name: sensor.displayValue,
             status: sensor.label,
-            activeColor: sensor.valueThemeColor ?? TileThemeColor.info,
+            activeColor: sensor.valueThemeColor ?? ThemeColors.info,
             showWarningBadge: sensor.isWarning,
           );
         }).toList(),
@@ -1240,7 +1240,7 @@ class _AirDehumidifierDeviceDetailState
             icon: sensor.icon,
             name: sensor.displayValue,
             status: sensor.label,
-            activeColor: sensor.valueThemeColor ?? TileThemeColor.info,
+            activeColor: sensor.valueThemeColor ?? ThemeColors.info,
             showWarningBadge: sensor.isWarning,
           ),
         );
@@ -1284,8 +1284,8 @@ class _AirDehumidifierDeviceDetailState
         label: localizations.device_fan_speed,
         icon: MdiIcons.speedometer,
         sheetTitle: localizations.device_fan_speed,
-        activeColor: humidityColor,
-        options: options,
+activeColor: humidityColor,
+            options: options,
         displayFormatter: (level) => level != null
             ? FanUtils.getSpeedLevelLabel(localizations, level)
             : localizations.fan_speed_off,
@@ -1321,8 +1321,8 @@ class _AirDehumidifierDeviceDetailState
         label: localizations.device_fan_speed,
         icon: MdiIcons.speedometer,
         sheetTitle: localizations.device_fan_speed,
-        activeColor: humidityColor,
-        options: _getFanSpeedOptions(localizations),
+activeColor: humidityColor,
+            options: _getFanSpeedOptions(localizations),
         displayFormatter: (v) => _formatFanSpeed(localizations, v),
         columns: 4,
         layout: ValueSelectorRowLayout.compact,
@@ -1367,8 +1367,8 @@ class _AirDehumidifierDeviceDetailState
         label: localizations.device_fan_mode,
         icon: MdiIcons.tune,
         sheetTitle: localizations.device_fan_mode,
-        activeColor: humidityColor,
-        options: options,
+activeColor: humidityColor,
+            options: options,
         displayFormatter: (mode) => mode != null
             ? FanUtils.getModeLabel(localizations, mode)
             : '-',
@@ -1532,8 +1532,8 @@ class _AirDehumidifierDeviceDetailState
         label: localizations.device_timer,
         icon: MdiIcons.timerOutline,
         sheetTitle: localizations.device_timer,
-        activeColor: humidityColor,
-        options: options,
+activeColor: humidityColor,
+            options: options,
         displayFormatter: (p) => p != null
             ? DehumidifierUtils.getTimerPresetLabel(localizations, p)
             : localizations.dehumidifier_timer_off,
@@ -1560,8 +1560,8 @@ class _AirDehumidifierDeviceDetailState
         label: localizations.device_timer,
         icon: MdiIcons.timerOutline,
         sheetTitle: localizations.device_timer,
-        activeColor: humidityColor,
-        options: options,
+activeColor: humidityColor,
+            options: options,
         displayFormatter: (s) =>
             DehumidifierUtils.formatSeconds(localizations, s ?? 0),
         columns: options.length > 4 ? 4 : options.length,

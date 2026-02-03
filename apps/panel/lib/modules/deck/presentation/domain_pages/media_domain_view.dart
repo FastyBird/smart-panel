@@ -428,14 +428,9 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			subtitle: subtitle,
 			subtitleColor: hasActive ? (isDark ? AppColorsDark.primaryDark2 : AppColorsLight.primaryDark2) : null,
 			backgroundColor: AppColors.blank,
-			leading: HeaderDeviceIcon(
+			leading: HeaderMainIcon(
 				icon: hasActive ? MdiIcons.musicNote : MdiIcons.musicNoteOff,
-				backgroundColor: hasActive
-						? (isDark ? AppColorsDark.primaryLight5 : AppColorsLight.primaryLight5)
-						: (isDark ? AppFillColorDark.light : AppFillColorLight.darker),
-				iconColor: hasActive
-						? (isDark ? AppColorsDark.primaryDark2 : AppColorsLight.primaryDark2)
-						: (isDark ? AppTextColorDark.secondary : AppTextColorLight.primary),
+				color: hasActive ? ThemeColors.primary : ThemeColors.neutral,
 			),
 			trailing: HeaderHomeButton(
 				onTap: _navigateToHome,
@@ -1151,7 +1146,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 						onHorizontalDragUpdate: (_) {},
 						child: SliderWithSteps(
 							value: volume / 100,
-							activeColor: accentColor,
+							themeColor: ThemeColors.primary,
 							showSteps: false,
 							enabled: !_isSending,
 							onChanged: (val) => _setVolume((val * 100).round()),

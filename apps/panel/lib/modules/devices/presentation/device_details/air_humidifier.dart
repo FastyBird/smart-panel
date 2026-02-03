@@ -43,7 +43,7 @@ class _SensorInfo {
   final String? unit;
   final IconData icon;
   final Color? valueColor;
-  final TileThemeColor? valueThemeColor;
+  final ThemeColors? valueThemeColor;
   final bool isWarning;
 
   const _SensorInfo({
@@ -1009,7 +1009,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
 
       return SpeedSlider(
         value: normalizedValue.clamp(0.0, 1.0),
-        activeColor: humidityColor,
+        themeColor: ThemeColors.teal,
         enabled: _device.isOn,
         steps: steps,
         onChanged: (value) {
@@ -1029,7 +1029,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
 
       return SpeedSlider(
         value: _normalizedFanSpeed,
-        activeColor: humidityColor,
+        themeColor: ThemeColors.teal,
         enabled: _device.isOn,
         steps: [
           localizations.fan_speed_off,
@@ -1083,7 +1083,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
             ? localizations.on_state_on
             : localizations.on_state_off,
         isActive: fanChannel.swing,
-        activeColor: TileThemeColor.info,
+        activeColor: ThemeColors.info,
         onTileTap: () => _setFanSwing(!fanChannel.swing),
         showGlow: false,
         showDoubleBorder: false,
@@ -1102,7 +1102,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
             ? FanUtils.getDirectionLabel(localizations, fanChannel.direction!)
             : '-',
         isActive: fanChannel.direction == FanDirectionValue.counterClockwise,
-        activeColor: TileThemeColor.info,
+        activeColor: ThemeColors.info,
         onTileTap: () {
           // Toggle between clockwise and counter_clockwise
           final newDirection =
@@ -1128,7 +1128,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
             ? localizations.on_state_on
             : localizations.on_state_off,
         isActive: fanChannel.naturalBreeze,
-        activeColor: TileThemeColor.info,
+        activeColor: ThemeColors.info,
         onTileTap: () => _setFanNaturalBreeze(!fanChannel.naturalBreeze),
         showGlow: false,
         showDoubleBorder: false,
@@ -1157,7 +1157,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
             ? localizations.on_state_on
             : localizations.on_state_off,
         isActive: channel.warmMist,
-        activeColor: TileThemeColor.info,
+        activeColor: ThemeColors.info,
         onTileTap: () => _setWarmMist(!channel.warmMist),
         showGlow: false,
         showDoubleBorder: false,
@@ -1176,7 +1176,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
             ? localizations.thermostat_lock_locked
             : localizations.thermostat_lock_unlocked,
         isActive: channel.locked,
-        activeColor: TileThemeColor.info,
+        activeColor: ThemeColors.info,
         onTileTap: () => _setHumidifierLocked(!channel.locked),
         showGlow: false,
         showDoubleBorder: false,
@@ -1256,7 +1256,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
             icon: sensor.icon,
             name: sensor.displayValue,
             status: sensor.label,
-            activeColor: sensor.valueThemeColor ?? TileThemeColor.info,
+            activeColor: sensor.valueThemeColor ?? ThemeColors.info,
             showWarningBadge: sensor.isWarning,
           );
         },
@@ -1277,7 +1277,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
             icon: sensor.icon,
             name: sensor.displayValue,
             status: sensor.label,
-            activeColor: sensor.valueThemeColor ?? TileThemeColor.info,
+            activeColor: sensor.valueThemeColor ?? ThemeColors.info,
             showWarningBadge: sensor.isWarning,
           );
         }).toList(),
@@ -1296,7 +1296,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
             icon: sensor.icon,
             name: sensor.displayValue,
             status: sensor.label,
-            activeColor: sensor.valueThemeColor ?? TileThemeColor.info,
+            activeColor: sensor.valueThemeColor ?? ThemeColors.info,
             showWarningBadge: sensor.isWarning,
           ),
         );
@@ -1327,8 +1327,8 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
       label: localizations.humidifier_mist_level,
       icon: MdiIcons.water,
       sheetTitle: localizations.humidifier_mist_level,
-      activeColor: humidityColor,
-      options: options,
+activeColor: humidityColor,
+            options: options,
       displayFormatter: (l) => l != null
           ? HumidifierUtils.getMistLevelLabel(localizations, l)
           : localizations.humidifier_mist_level_off,
@@ -1372,8 +1372,8 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
       label: localizations.humidifier_mist_level,
       icon: MdiIcons.water,
       sheetTitle: localizations.humidifier_mist_level,
-      activeColor: humidityColor,
-      options: [
+activeColor: humidityColor,
+            options: [
         ValueOption(value: 0.0, label: localizations.humidifier_mist_level_low),
         ValueOption(value: 0.5, label: localizations.humidifier_mist_level_medium),
         ValueOption(value: 1.0, label: localizations.humidifier_mist_level_high),
@@ -1511,8 +1511,8 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
         label: localizations.device_fan_speed,
         icon: MdiIcons.speedometer,
         sheetTitle: localizations.device_fan_speed,
-        activeColor: humidityColor,
-        options: options,
+activeColor: humidityColor,
+            options: options,
         displayFormatter: (level) => level != null
             ? FanUtils.getSpeedLevelLabel(localizations, level)
             : localizations.fan_speed_off,
@@ -1548,8 +1548,8 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
         label: localizations.device_fan_speed,
         icon: MdiIcons.speedometer,
         sheetTitle: localizations.device_fan_speed,
-        activeColor: humidityColor,
-        options: _getFanSpeedOptions(localizations),
+activeColor: humidityColor,
+            options: _getFanSpeedOptions(localizations),
         displayFormatter: (v) => _formatFanSpeed(localizations, v),
         columns: 4,
         layout: ValueSelectorRowLayout.compact,
@@ -1594,8 +1594,8 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
         label: localizations.device_fan_mode,
         icon: MdiIcons.tune,
         sheetTitle: localizations.device_fan_mode,
-        activeColor: humidityColor,
-        options: options,
+activeColor: humidityColor,
+            options: options,
         displayFormatter: (mode) => mode != null
             ? FanUtils.getModeLabel(localizations, mode)
             : '-',
@@ -1766,8 +1766,8 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
         label: localizations.device_timer,
         icon: MdiIcons.timerOutline,
         sheetTitle: localizations.device_timer,
-        activeColor: humidityColor,
-        options: options,
+activeColor: humidityColor,
+            options: options,
         displayFormatter: (p) => p != null
             ? HumidifierUtils.getTimerPresetLabel(localizations, p)
             : localizations.humidifier_timer_off,
@@ -1794,8 +1794,8 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
         label: localizations.device_timer,
         icon: MdiIcons.timerOutline,
         sheetTitle: localizations.device_timer,
-        activeColor: humidityColor,
-        options: options,
+activeColor: humidityColor,
+            options: options,
         displayFormatter: (s) =>
             HumidifierUtils.formatSeconds(localizations, s ?? 0),
         columns: options.length > 4 ? 4 : options.length,

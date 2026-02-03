@@ -46,7 +46,7 @@ class _SensorInfo {
   final String? unit;
   final IconData icon;
   final Color? valueColor;
-  final TileThemeColor? valueThemeColor;
+  final ThemeColors? valueThemeColor;
   final bool isWarning;
 
   const _SensorInfo({
@@ -726,12 +726,12 @@ class _AirConditionerDeviceDetailState
     }
   }
 
-  TileThemeColor? _getModeThemeColor() {
+  ThemeColors? _getModeThemeColor() {
     switch (_currentMode) {
       case AcMode.heat:
-        return TileThemeColor.warning;
+        return ThemeColors.warning;
       case AcMode.cool:
-        return TileThemeColor.info;
+        return ThemeColors.info;
       case AcMode.off:
         return null;
     }
@@ -1024,7 +1024,7 @@ class _AirConditionerDeviceDetailState
       unit: '°C',
       icon: MdiIcons.thermometer,
       valueColor: SensorColors.temperature(isDark),
-      valueThemeColor: TileThemeColor.info,
+      valueThemeColor: ThemeColors.info,
     ));
 
     // Humidity (optional)
@@ -1037,7 +1037,7 @@ class _AirConditionerDeviceDetailState
         unit: '%',
         icon: MdiIcons.waterPercent,
         valueColor: SensorColors.humidity(isDark),
-        valueThemeColor: TileThemeColor.success,
+        valueThemeColor: ThemeColors.success,
       ));
     }
 
@@ -1053,7 +1053,7 @@ class _AirConditionerDeviceDetailState
             : localizations.contact_sensor_closed,
         icon: MdiIcons.windowOpenVariant,
         valueColor: SensorColors.alert(isDark),
-        valueThemeColor: TileThemeColor.warning,
+        valueThemeColor: ThemeColors.warning,
         isWarning: isOpen,
       ));
     }
@@ -1071,7 +1071,7 @@ class _AirConditionerDeviceDetailState
             : localizations.leak_sensor_dry,
         icon: MdiIcons.pipeLeak,
         valueColor: SensorColors.alert(isDark),
-        valueThemeColor: TileThemeColor.warning,
+        valueThemeColor: ThemeColors.warning,
         isWarning: isLeaking,
       ));
     }
@@ -1089,7 +1089,7 @@ class _AirConditionerDeviceDetailState
           unit: '%',
           icon: MdiIcons.airFilter,
           valueColor: SensorColors.filter(isDark),
-          valueThemeColor: TileThemeColor.info,
+          valueThemeColor: ThemeColors.info,
           isWarning: filterLife < 0.3 || _device.isFilterNeedsReplacement,
         ));
       } else if (filterChannel.hasStatus) {
@@ -1100,7 +1100,7 @@ class _AirConditionerDeviceDetailState
           value: FilterUtils.getStatusLabel(localizations, filterChannel.status),
           icon: MdiIcons.airFilter,
           valueColor: SensorColors.filter(isDark),
-          valueThemeColor: TileThemeColor.info,
+          valueThemeColor: ThemeColors.info,
           isWarning: _device.isFilterNeedsReplacement,
         ));
       }
@@ -1117,7 +1117,7 @@ class _AirConditionerDeviceDetailState
   /// - Portrait: HorizontalScrollWithGradient with HorizontalTileCompact
   /// - Landscape large: GridView.count with 2 columns using VerticalTileLarge
   /// - Landscape small/medium: Column with HorizontalTileStretched
-  Widget _buildSensorsSection(bool isDark, List<_SensorInfo> sensors, TileThemeColor? accentThemeColor) {
+  Widget _buildSensorsSection(bool isDark, List<_SensorInfo> sensors, ThemeColors? accentThemeColor) {
     if (sensors.isEmpty) return const SizedBox.shrink();
 
     final isLandscape = _screenService.isLandscape;
@@ -1476,7 +1476,7 @@ class _AirConditionerDeviceDetailState
 
         return SpeedSlider(
           value: normalizedValue.clamp(0.0, 1.0),
-          activeColor: modeColor,
+          themeColor: _getModeThemeColor() ?? ThemeColors.primary,
           enabled: isEnabled,
           steps: steps,
           onChanged: (value) {
@@ -1536,7 +1536,7 @@ class _AirConditionerDeviceDetailState
 
         return SpeedSlider(
           value: _fanSpeed.clamp(0.0, 1.0),
-          activeColor: modeColor,
+          themeColor: _getModeThemeColor() ?? ThemeColors.primary,
           enabled: isEnabled,
           steps: [
             localizations.fan_speed_off,

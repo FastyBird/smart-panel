@@ -759,7 +759,11 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
         : hasHealthIssues
             ? (isDark ? AppColorsDark.warning : AppColorsLight.warning)
             : (isDark ? AppColorsDark.primary : AppColorsLight.primary);
-    final accentBgColor = getSemanticBackgroundColor(context, accentColor);
+    final accentThemeColor = hasAlerts
+        ? ThemeColors.danger
+        : hasHealthIssues
+            ? ThemeColors.warning
+            : ThemeColors.primary;
 
     String subtitle;
     if (hasAlerts) {
@@ -780,10 +784,9 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
       subtitle: subtitle,
       subtitleColor: (hasAlerts || hasHealthIssues) ? accentColor : null,
       backgroundColor: AppColors.blank,
-      leading: HeaderDeviceIcon(
+      leading: HeaderMainIcon(
         icon: MdiIcons.accessPointNetwork,
-        backgroundColor: accentBgColor,
-        iconColor: accentColor,
+        color: accentThemeColor,
       ),
       trailing: HeaderHomeButton(
         onTap: _navigateToHome,
@@ -987,9 +990,9 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
   // --------------------------------------------------------------------------
 
   /// Build summary data items for the environment
-  List<({String name, String status, IconData icon, Color color, TileThemeColor? themeColor})> _buildSummaryItems({required bool isDark}) {
+  List<({String name, String status, IconData icon, Color color, ThemeColors? themeColor})> _buildSummaryItems({required bool isDark}) {
     final env = _environment;
-    final items = <({String name, String status, IconData icon, Color color, TileThemeColor? themeColor})>[];
+    final items = <({String name, String status, IconData icon, Color color, ThemeColors? themeColor})>[];
 
     if (env?.averageTemperature != null) {
       items.add((
@@ -997,7 +1000,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
         status: 'Avg Temperature',
         icon: MdiIcons.thermometer,
         color: isDark ? AppColorsDark.info : AppColorsLight.info,
-        themeColor: TileThemeColor.info,
+        themeColor: ThemeColors.info,
       ));
     }
 
@@ -1007,7 +1010,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
         status: 'Avg Humidity',
         icon: MdiIcons.waterPercent,
         color: isDark ? AppColorsDark.success : AppColorsLight.success,
-        themeColor: TileThemeColor.success,
+        themeColor: ThemeColors.success,
       ));
     }
 
@@ -1017,7 +1020,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
         status: 'Illuminance',
         icon: MdiIcons.weatherSunny,
         color: isDark ? AppColorsDark.warning : AppColorsLight.warning,
-        themeColor: TileThemeColor.warning,
+        themeColor: ThemeColors.warning,
       ));
     } else if (env?.averagePressure != null) {
       items.add((
@@ -1025,7 +1028,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
         status: 'Pressure',
         icon: MdiIcons.gaugeEmpty,
         color: isDark ? AppColorsDark.info : AppColorsLight.info,
-        themeColor: TileThemeColor.info,
+        themeColor: ThemeColors.info,
       ));
     }
 
@@ -1686,8 +1689,21 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
     }
   }
 
-  Color _getCategoryBgColor(BuildContext context) {
-    return getSemanticBackgroundColor(context, _getCategoryColor(context));
+  ThemeColors _getCategoryThemeColor() {
+    switch (_sensor.category) {
+      case SensorCategory.temperature:
+        return ThemeColors.info;
+      case SensorCategory.humidity:
+      case SensorCategory.airQuality:
+        return ThemeColors.success;
+      case SensorCategory.motion:
+      case SensorCategory.light:
+        return ThemeColors.warning;
+      case SensorCategory.safety:
+        return ThemeColors.danger;
+      case SensorCategory.energy:
+        return ThemeColors.primary;
+    }
   }
 
   @override
@@ -1728,10 +1744,9 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
             onTap: () => Navigator.pop(context),
           ),
           AppSpacings.spacingMdHorizontal,
-          HeaderDeviceIcon(
+          HeaderMainIcon(
             icon: _sensor.icon,
-            backgroundColor: _getCategoryBgColor(context),
-            iconColor: _getCategoryColor(context),
+            color: _getCategoryThemeColor(),
           ),
         ],
       ),

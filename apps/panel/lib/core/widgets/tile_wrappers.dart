@@ -22,8 +22,8 @@ class VerticalTileLarge extends StatelessWidget {
   final bool isSelected;
   final bool showSelectionIndicator;
   final bool showWarningBadge;
-  final TileThemeColor? activeColor;
-  final TileThemeColor? iconAccentColor;
+  final ThemeColors? activeColor;
+  final ThemeColors? iconAccentColor;
   final VoidCallback? onIconTap;
   final VoidCallback? onTileTap;
 
@@ -88,8 +88,8 @@ class HorizontalTileStretched extends StatelessWidget {
   final bool isSelected;
   final bool showSelectionIndicator;
   final bool showWarningBadge;
-  final TileThemeColor? activeColor;
-  final TileThemeColor? iconAccentColor;
+  final ThemeColors? activeColor;
+  final ThemeColors? iconAccentColor;
   final VoidCallback? onIconTap;
   final VoidCallback? onTileTap;
 
@@ -158,8 +158,8 @@ class HorizontalTileCompact extends StatelessWidget {
   final bool isOffline;
   final bool isSelected;
   final bool showWarningBadge;
-  final TileThemeColor? activeColor;
-  final TileThemeColor? iconAccentColor;
+  final ThemeColors? activeColor;
+  final ThemeColors? iconAccentColor;
   final VoidCallback? onIconTap;
   final VoidCallback? onTileTap;
 
@@ -227,8 +227,8 @@ class VerticalTileCompact extends StatelessWidget {
   final bool showSelectionIndicator;
   final bool showWarningBadge;
   final bool showInactiveBorder;
-  final TileThemeColor? activeColor;
-  final TileThemeColor? iconAccentColor;
+  final ThemeColors? activeColor;
+  final ThemeColors? iconAccentColor;
   final VoidCallback? onIconTap;
   final VoidCallback? onTileTap;
 
@@ -303,8 +303,8 @@ class DeviceTileLandscape extends StatelessWidget {
   final bool isOffline;
   final bool isSelected;
   final bool showSelectionIndicator;
-  final TileThemeColor? activeColor;
-  final TileThemeColor? iconAccentColor;
+  final ThemeColors? activeColor;
+  final ThemeColors? iconAccentColor;
   final VoidCallback? onIconTap;
   final VoidCallback? onTileTap;
   final Widget? accessories;
@@ -377,8 +377,8 @@ class DeviceTilePortrait extends StatelessWidget {
   final bool isActive;
   final bool isOffline;
   final bool isSelected;
-  final TileThemeColor? activeColor;
-  final TileThemeColor? iconAccentColor;
+  final ThemeColors? activeColor;
+  final ThemeColors? iconAccentColor;
   final VoidCallback? onIconTap;
   final VoidCallback? onTileTap;
   final Widget? accessories;

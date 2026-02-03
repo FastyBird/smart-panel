@@ -51,7 +51,7 @@ extension AppExtendedColors on ThemeData {
 
 /// Theme color key for tiles. Only these colors are allowed for tile active/accent.
 /// Light/dark variant is chosen automatically from current theme.
-enum TileThemeColor {
+enum ThemeColors {
   primary,
   success,
   warning,
@@ -60,9 +60,13 @@ enum TileThemeColor {
   info,
   neutral,
   flutter,
+  teal,
+  cyan,
+  pink,
+  indigo,
 }
 
-/// Resolved theme color family (no alpha modifiers) for a given [TileThemeColor] and brightness.
+/// Resolved theme color family (no alpha modifiers) for a given [ThemeColors] and brightness.
 /// Use in tiles, sliders, mode selector, and other widgets that need consistent theme colors.
 class ThemeColorFamily {
   const ThemeColorFamily({
@@ -83,10 +87,10 @@ class ThemeColorFamily {
   final Color light8;
   final Color light9;
 
-  static ThemeColorFamily get(Brightness brightness, TileThemeColor key) {
+  static ThemeColorFamily get(Brightness brightness, ThemeColors key) {
     final isDark = brightness == Brightness.dark;
     switch (key) {
-      case TileThemeColor.primary:
+      case ThemeColors.primary:
         return isDark
             ? const ThemeColorFamily(
                 base: AppColorsDark.primary,
@@ -106,7 +110,7 @@ class ThemeColorFamily {
                 light8: AppColorsLight.primaryLight8,
                 light9: AppColorsLight.primaryLight9,
               );
-      case TileThemeColor.success:
+      case ThemeColors.success:
         return isDark
             ? const ThemeColorFamily(
                 base: AppColorsDark.success,
@@ -126,7 +130,7 @@ class ThemeColorFamily {
                 light8: AppColorsLight.successLight8,
                 light9: AppColorsLight.successLight9,
               );
-      case TileThemeColor.warning:
+      case ThemeColors.warning:
         return isDark
             ? const ThemeColorFamily(
                 base: AppColorsDark.warning,
@@ -146,7 +150,7 @@ class ThemeColorFamily {
                 light8: AppColorsLight.warningLight8,
                 light9: AppColorsLight.warningLight9,
               );
-      case TileThemeColor.danger:
+      case ThemeColors.danger:
         return isDark
             ? const ThemeColorFamily(
                 base: AppColorsDark.danger,
@@ -166,7 +170,7 @@ class ThemeColorFamily {
                 light8: AppColorsLight.dangerLight8,
                 light9: AppColorsLight.dangerLight9,
               );
-      case TileThemeColor.error:
+      case ThemeColors.error:
         return isDark
             ? const ThemeColorFamily(
                 base: AppColorsDark.error,
@@ -186,7 +190,7 @@ class ThemeColorFamily {
                 light8: AppColorsLight.errorLight8,
                 light9: AppColorsLight.errorLight9,
               );
-      case TileThemeColor.info:
+      case ThemeColors.info:
         return isDark
             ? const ThemeColorFamily(
                 base: AppColorsDark.info,
@@ -206,7 +210,7 @@ class ThemeColorFamily {
                 light8: AppColorsLight.infoLight8,
                 light9: AppColorsLight.infoLight9,
               );
-      case TileThemeColor.neutral:
+      case ThemeColors.neutral:
         return isDark
             ? const ThemeColorFamily(
                 base: AppColorsDark.neutral,
@@ -226,7 +230,7 @@ class ThemeColorFamily {
                 light8: AppColorsLight.neutralLight8,
                 light9: AppColorsLight.neutralLight9,
               );
-      case TileThemeColor.flutter:
+      case ThemeColors.flutter:
         return isDark
             ? const ThemeColorFamily(
                 base: AppColorsDark.flutter,
@@ -245,6 +249,86 @@ class ThemeColorFamily {
                 light7: AppColorsLight.flutterLight7,
                 light8: AppColorsLight.flutterLight8,
                 light9: AppColorsLight.flutterLight9,
+              );
+      case ThemeColors.teal:
+        return isDark
+            ? const ThemeColorFamily(
+                base: AppColorsDark.teal,
+                dark2: AppColorsDark.tealDark2,
+                light3: AppColorsDark.tealLight3,
+                light5: AppColorsDark.tealLight5,
+                light7: AppColorsDark.tealLight7,
+                light8: AppColorsDark.tealLight8,
+                light9: AppColorsDark.tealLight9,
+              )
+            : const ThemeColorFamily(
+                base: AppColorsLight.teal,
+                dark2: AppColorsLight.tealDark2,
+                light3: AppColorsLight.tealLight3,
+                light5: AppColorsLight.tealLight5,
+                light7: AppColorsLight.tealLight7,
+                light8: AppColorsLight.tealLight8,
+                light9: AppColorsLight.tealLight9,
+              );
+      case ThemeColors.cyan:
+        return isDark
+            ? const ThemeColorFamily(
+                base: AppColorsDark.cyan,
+                dark2: AppColorsDark.cyanDark2,
+                light3: AppColorsDark.cyanLight3,
+                light5: AppColorsDark.cyanLight5,
+                light7: AppColorsDark.cyanLight7,
+                light8: AppColorsDark.cyanLight8,
+                light9: AppColorsDark.cyanLight9,
+              )
+            : const ThemeColorFamily(
+                base: AppColorsLight.cyan,
+                dark2: AppColorsLight.cyanDark2,
+                light3: AppColorsLight.cyanLight3,
+                light5: AppColorsLight.cyanLight5,
+                light7: AppColorsLight.cyanLight7,
+                light8: AppColorsLight.cyanLight8,
+                light9: AppColorsLight.cyanLight9,
+              );
+      case ThemeColors.pink:
+        return isDark
+            ? const ThemeColorFamily(
+                base: AppColorsDark.pink,
+                dark2: AppColorsDark.pinkDark2,
+                light3: AppColorsDark.pinkLight3,
+                light5: AppColorsDark.pinkLight5,
+                light7: AppColorsDark.pinkLight7,
+                light8: AppColorsDark.pinkLight8,
+                light9: AppColorsDark.pinkLight9,
+              )
+            : const ThemeColorFamily(
+                base: AppColorsLight.pink,
+                dark2: AppColorsLight.pinkDark2,
+                light3: AppColorsLight.pinkLight3,
+                light5: AppColorsLight.pinkLight5,
+                light7: AppColorsLight.pinkLight7,
+                light8: AppColorsLight.pinkLight8,
+                light9: AppColorsLight.pinkLight9,
+              );
+      case ThemeColors.indigo:
+        return isDark
+            ? const ThemeColorFamily(
+                base: AppColorsDark.indigo,
+                dark2: AppColorsDark.indigoDark2,
+                light3: AppColorsDark.indigoLight3,
+                light5: AppColorsDark.indigoLight5,
+                light7: AppColorsDark.indigoLight7,
+                light8: AppColorsDark.indigoLight8,
+                light9: AppColorsDark.indigoLight9,
+              )
+            : const ThemeColorFamily(
+                base: AppColorsLight.indigo,
+                dark2: AppColorsLight.indigoDark2,
+                light3: AppColorsLight.indigoLight3,
+                light5: AppColorsLight.indigoLight5,
+                light7: AppColorsLight.indigoLight7,
+                light8: AppColorsLight.indigoLight8,
+                light9: AppColorsLight.indigoLight9,
               );
     }
   }

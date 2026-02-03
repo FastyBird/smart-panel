@@ -19,23 +19,23 @@ class SensorType {
 class SensorColors {
   /// Theme color key for a sensor type. Use for tile [activeColor].
   /// Returns null for unknown types (tile will use primary).
-  static TileThemeColor? themeColorForType(String type) {
+  static ThemeColors? themeColorForType(String type) {
     switch (type) {
       case SensorType.temperature:
       case SensorType.pressure:
-        return TileThemeColor.info;
+        return ThemeColors.info;
       case SensorType.humidity:
-        return TileThemeColor.success;
+        return ThemeColors.success;
       case SensorType.aqi:
       case SensorType.pm:
       case SensorType.voc:
       case SensorType.contact:
       case SensorType.leak:
-        return TileThemeColor.warning;
+        return ThemeColors.warning;
       case SensorType.co2:
-        return TileThemeColor.error;
+        return ThemeColors.error;
       case SensorType.filter:
-        return TileThemeColor.info;
+        return ThemeColors.info;
       default:
         return null;
     }

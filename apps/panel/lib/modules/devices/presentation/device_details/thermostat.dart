@@ -48,7 +48,7 @@ class _SensorInfo {
   final String? unit;
   final IconData icon;
   final Color? valueColor;
-  final TileThemeColor? valueThemeColor;
+  final ThemeColors? valueThemeColor;
   final bool isWarning;
 
   const _SensorInfo({
@@ -558,27 +558,27 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     return localizations.thermostat_state_idle_at(tempStr);
   }
 
-  Color _getModeColor(bool isDark) {
+  ThemeColors _getModeColor(bool isDark) {
     switch (_currentMode) {
       case ThermostatMode.heat:
-        return isDark ? AppColorsDark.warning : AppColorsLight.warning;
+        return ThemeColors.warning;
       case ThermostatMode.cool:
-        return isDark ? AppColorsDark.info : AppColorsLight.info;
+        return ThemeColors.info;
       case ThermostatMode.auto:
-        return isDark ? AppColorsDark.success : AppColorsLight.success;
+        return ThemeColors.success;
       case ThermostatMode.off:
-        return isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
+        return ThemeColors.neutral;
     }
   }
 
-  TileThemeColor? _getModeThemeColor() {
+  ThemeColors? _getModeThemeColor() {
     switch (_currentMode) {
       case ThermostatMode.heat:
-        return TileThemeColor.warning;
+        return ThemeColors.warning;
       case ThermostatMode.cool:
-        return TileThemeColor.info;
+        return ThemeColors.info;
       case ThermostatMode.auto:
-        return TileThemeColor.success;
+        return ThemeColors.success;
       case ThermostatMode.off:
         return null;
     }
@@ -602,11 +602,13 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
   }
 
   Color _getModeBorderColor(bool isDark) {
+    final brightness = Theme.of(context).brightness;
+
     final modeColor = _getModeColor(isDark);
-    if (_currentMode == ThermostatMode.off) {
-      return isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
-    }
-    return modeColor.withValues(alpha: 0.3);
+
+    final modeColorFamily = ThemeColorFamily.get(brightness, modeColor);
+
+    return modeColorFamily.light7;
   }
 
   DialAccentColor _getDialAccentColor() {
@@ -711,8 +713,12 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
   }
 
   Widget _buildHeader(BuildContext context, bool isDark) {
+    final brightness = Theme.of(context).brightness;
     final localizations = AppLocalizations.of(context)!;
     final modeColor = _getModeColor(isDark);
+
+    final modeColorFamily = ThemeColorFamily.get(brightness, modeColor);
+
     final secondaryColor =
         isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
     final mutedColor =
@@ -721,7 +727,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     return PageHeader(
       title: _device.name,
       subtitle: _getStatusLabel(localizations),
-      subtitleColor: _isActive ? modeColor : secondaryColor,
+      subtitleColor: _isActive ? modeColorFamily.base : secondaryColor,
       backgroundColor: AppColors.blank,
       leading: Row(
         mainAxisSize: MainAxisSize.min,
@@ -744,7 +750,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
             ),
             child: Icon(
               MdiIcons.thermostat,
-              color: _isActive ? modeColor : mutedColor,
+              color: _isActive ? modeColorFamily.base : mutedColor,
               size: _scale(24),
             ),
           ),
@@ -759,9 +765,11 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
 
   Widget _buildPortraitLayout(BuildContext context, bool isDark) {
     final localizations = AppLocalizations.of(context)!;
+    final brightness = Theme.of(context).brightness;
     final modeColor = _getModeColor(isDark);
-    final statusSection = _buildStatusSection(localizations, isDark, modeColor);
-    final controlsSection = _buildControlsSection(localizations, isDark, modeColor, _getModeThemeColor());
+    final modeColorFamily = ThemeColorFamily.get(brightness, modeColor);
+    final statusSection = _buildStatusSection(localizations, isDark, modeColorFamily.base);
+    final controlsSection = _buildControlsSection(localizations, isDark, modeColorFamily.base, _getModeThemeColor());
 
     return DeviceDetailPortraitLayout(
       content: Column(
@@ -797,10 +805,12 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
 
   Widget _buildLandscapeLayout(BuildContext context, bool isDark) {
     final localizations = AppLocalizations.of(context)!;
+    final brightness = Theme.of(context).brightness;
     final isLargeScreen = _screenService.isLargeScreen;
     final modeColor = _getModeColor(isDark);
-    final statusSection = _buildStatusSection(localizations, isDark, modeColor);
-    final controlsSection = _buildControlsSection(localizations, isDark, modeColor, _getModeThemeColor());
+    final modeColorFamily = ThemeColorFamily.get(brightness, modeColor);
+    final statusSection = _buildStatusSection(localizations, isDark, modeColorFamily.base);
+    final controlsSection = _buildControlsSection(localizations, isDark, modeColorFamily.base, _getModeThemeColor());
 
     return DeviceDetailLandscapeLayout(
       mainContent: isLargeScreen
@@ -857,7 +867,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
       unit: '°C',
       icon: MdiIcons.thermometer,
       valueColor: SensorColors.temperature(isDark),
-      valueThemeColor: TileThemeColor.info,
+      valueThemeColor: ThemeColors.info,
     ));
 
     // Humidity (optional)
@@ -870,7 +880,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
         unit: '%',
         icon: MdiIcons.waterPercent,
         valueColor: SensorColors.humidity(isDark),
-        valueThemeColor: TileThemeColor.success,
+        valueThemeColor: ThemeColors.success,
       ));
     }
 
@@ -886,7 +896,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
             : localizations.contact_sensor_closed,
         icon: MdiIcons.windowOpenVariant,
         valueColor: SensorColors.alert(isDark),
-        valueThemeColor: TileThemeColor.warning,
+        valueThemeColor: ThemeColors.warning,
         isWarning: isOpen,
       ));
     }
@@ -902,7 +912,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     AppLocalizations localizations,
     bool isDark,
     Color modeColor,
-    TileThemeColor? modeThemeColor,
+    ThemeColors? modeThemeColor,
   ) {
     if (!_device.hasThermostatLock) {
       return const SizedBox.shrink();
@@ -938,7 +948,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
   /// - Portrait: HorizontalScrollWithGradient with HorizontalTileCompact
   /// - Landscape large: GridView.count with VerticalTileLarge
   /// - Landscape small/medium: Column with HorizontalTileStretched
-  Widget _buildSensorsSection(bool isDark, List<_SensorInfo> sensors, TileThemeColor? accentThemeColor) {
+  Widget _buildSensorsSection(bool isDark, List<_SensorInfo> sensors, ThemeColors? accentThemeColor) {
     if (sensors.isEmpty) return const SizedBox.shrink();
 
     final isLandscape = _screenService.isLandscape;

@@ -7,7 +7,7 @@ import 'package:material_design_icons_flutter/material_design_icons_flutter.dart
 class MediaBrightnessCard extends StatelessWidget {
 	final int brightness;
 	final bool isEnabled;
-	final Color accentColor;
+	final ThemeColors themeColor;
 	final ValueChanged<int> onBrightnessChanged;
 	final double Function(double) scale;
 
@@ -15,7 +15,7 @@ class MediaBrightnessCard extends StatelessWidget {
 		super.key,
 		required this.brightness,
 		required this.isEnabled,
-		required this.accentColor,
+		this.themeColor = ThemeColors.primary,
 		required this.onBrightnessChanged,
 		required this.scale,
 	});
@@ -53,7 +53,7 @@ class MediaBrightnessCard extends StatelessWidget {
 							Expanded(
 								child: SliderWithSteps(
 									value: brightness / 100,
-									activeColor: accentColor,
+									themeColor: themeColor,
 									showSteps: false,
 									enabled: isEnabled,
 									onChanged: (val) => onBrightnessChanged((val * 100).round()),

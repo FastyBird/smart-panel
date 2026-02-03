@@ -314,7 +314,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
 
     // Determine state color based on position
     final stateColor = _getPositionColor(position, !isDark);
-    final stateBgColor = getSemanticBackgroundColor(context, stateColor);
+    final stateThemeColor = _getPositionThemeColor(position);
 
     // Build subtitle
     String subtitle;
@@ -331,10 +331,9 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
       subtitle: subtitle,
       subtitleColor: position > 0 ? stateColor : null,
       backgroundColor: AppColors.blank,
-      leading: HeaderDeviceIcon(
+      leading: HeaderMainIcon(
         icon: position > 0 ? MdiIcons.blindsHorizontal : MdiIcons.blindsHorizontalClosed,
-        backgroundColor: stateBgColor,
-        iconColor: stateColor,
+        color: stateThemeColor,
       ),
       trailing: HeaderHomeButton(
         onTap: _navigateToHome,
@@ -828,7 +827,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
 
     return SliderWithSteps(
       value: normalizedValue,
-      activeColor: isLight ? AppColorsLight.primary : AppColorsDark.primary,
+      themeColor: ThemeColors.primary,
       steps: [
         localizations.shading_state_closed,
         '25%',
@@ -1199,6 +1198,12 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   // HELPERS
   // ===========================================================================
 
+  ThemeColors _getPositionThemeColor(int position) {
+    if (position == 100) return ThemeColors.success;
+    if (position == 0) return ThemeColors.info;
+    return ThemeColors.warning;
+  }
+
   Color _getPositionColor(int position, bool isLight) {
     if (position == 100) {
       return isLight ? AppColorsLight.success : AppColorsDark.success;
@@ -1233,10 +1238,9 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
               title: localizations.domain_shading,
               subtitle: localizations.domain_shading_empty_title,
               backgroundColor: AppColors.blank,
-              leading: HeaderDeviceIcon(
+              leading: HeaderMainIcon(
                 icon: MdiIcons.blindsHorizontalClosed,
-                backgroundColor: isLight ? AppFillColorLight.light : AppFillColorDark.light,
-                iconColor: secondaryColor,
+                color: ThemeColors.neutral,
               ),
               trailing: HeaderHomeButton(
                 onTap: _navigateToHome,

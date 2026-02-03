@@ -39,7 +39,7 @@ class _SensorInfo {
   final String? unit;
   final IconData icon;
   final Color? valueColor;
-  final TileThemeColor? valueThemeColor;
+  final ThemeColors? valueThemeColor;
   final bool isWarning;
 
   const _SensorInfo({
@@ -562,7 +562,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
       unit: '°C',
       icon: MdiIcons.thermometer,
       valueColor: SensorColors.temperature(isDark),
-      valueThemeColor: TileThemeColor.info,
+      valueThemeColor: ThemeColors.info,
     ));
 
     // Humidity (optional)
@@ -575,7 +575,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
         unit: '%',
         icon: MdiIcons.waterPercent,
         valueColor: SensorColors.humidity(isDark),
-        valueThemeColor: TileThemeColor.success,
+        valueThemeColor: ThemeColors.success,
       ));
     }
 
@@ -591,7 +591,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
             : localizations.contact_sensor_closed,
         icon: MdiIcons.windowOpenVariant,
         valueColor: SensorColors.alert(isDark),
-        valueThemeColor: TileThemeColor.warning,
+        valueThemeColor: ThemeColors.warning,
         isWarning: isOpen,
       ));
     }
@@ -600,14 +600,14 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
       return const SizedBox.shrink();
     }
 
-    return _buildSensorsSection(isDark, sensors, TileThemeColor.primary);
+    return _buildSensorsSection(isDark, sensors, ThemeColors.primary);
   }
 
   /// Builds sensors section using tile wrappers:
   /// - Portrait: HorizontalScrollWithGradient with HorizontalTileCompact
   /// - Landscape large: GridView.count with VerticalTileLarge
   /// - Landscape small/medium: Column with HorizontalTileStretched
-  Widget _buildSensorsSection(bool isDark, List<_SensorInfo> sensors, TileThemeColor? accentThemeColor) {
+  Widget _buildSensorsSection(bool isDark, List<_SensorInfo> sensors, ThemeColors? accentThemeColor) {
     if (sensors.isEmpty) return const SizedBox.shrink();
 
     final isLandscape = _screenService.isLandscape;

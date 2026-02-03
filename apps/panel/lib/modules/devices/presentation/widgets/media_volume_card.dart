@@ -9,7 +9,7 @@ class MediaVolumeCard extends StatelessWidget {
 	final bool isMuted;
 	final bool hasMute;
 	final bool isEnabled;
-	final Color accentColor;
+	final ThemeColors themeColor;
 	final ValueChanged<int> onVolumeChanged;
 	final VoidCallback? onMuteToggle;
 	final double Function(double) scale;
@@ -20,7 +20,7 @@ class MediaVolumeCard extends StatelessWidget {
 		required this.isMuted,
 		required this.hasMute,
 		required this.isEnabled,
-		required this.accentColor,
+		this.themeColor = ThemeColors.primary,
 		required this.onVolumeChanged,
 		this.onMuteToggle,
 		required this.scale,
@@ -94,7 +94,7 @@ class MediaVolumeCard extends StatelessWidget {
 							Expanded(
 								child: SliderWithSteps(
 									value: volume / 100,
-									activeColor: accentColor,
+									themeColor: themeColor,
 									showSteps: false,
 									enabled: isEnabled,
 									onChanged: (val) => onVolumeChanged((val * 100).round()),

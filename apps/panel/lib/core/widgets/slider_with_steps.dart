@@ -13,17 +13,15 @@ import 'package:flutter/material.dart';
 /// Features:
 /// - Continuous or discrete step modes
 /// - Customizable step labels
-/// - Theme-aware colors with custom active color support
+/// - Theme-aware colors via [ThemeColorFamily] and [themeColor]
 /// - Custom thumb with colored border for better visibility
 class SliderWithSteps extends StatelessWidget {
   /// Current value (0.0 to 1.0)
   final double value;
 
-  /// Active/accent color for the slider track and thumb border
-  final Color? activeColor;
-
-  /// Overlay color when dragging
-  final Color? overlayColor;
+  /// Theme color key for the slider track, thumb border, and overlay.
+  /// Resolved via [ThemeColorFamily.get](brightness, [themeColor]).
+  final ThemeColors themeColor;
 
   /// Callback when value changes
   final ValueChanged<double>? onChanged;
@@ -44,8 +42,7 @@ class SliderWithSteps extends StatelessWidget {
   const SliderWithSteps({
     super.key,
     required this.value,
-    this.activeColor,
-    this.overlayColor,
+    this.themeColor = ThemeColors.primary,
     this.onChanged,
     this.steps = const ['0%', '25%', '50%', '75%', '100%'],
     this.enabled = true,
@@ -61,11 +58,16 @@ class SliderWithSteps extends StatelessWidget {
     double scale(double val) =>
         screenService.scale(val, density: visualDensityService.density);
 
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final effectiveActiveColor =
-        activeColor ?? (isDark ? AppColorsDark.primary : AppColorsLight.primary);
+    final brightness = Theme.of(context).brightness;
+    final isDark = brightness == Brightness.dark;
+    final colorFamily = ThemeColorFamily.get(brightness, themeColor);
+    final effectiveActiveColor = colorFamily.base;
+    final effectiveOverlayColor = colorFamily.light7;
+
     final mutedColor =
         isDark ? AppTextColorDark.disabled : AppTextColorLight.disabled;
+    final stepColor =
+        isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
     final trackColor =
         isDark ? AppFillColorDark.darker : AppFillColorLight.darker;
 
@@ -95,8 +97,7 @@ class SliderWithSteps extends StatelessWidget {
               activeTrackColor: sliderActiveColor,
               inactiveTrackColor: trackColor,
               thumbColor: thumbFillColor,
-              overlayColor: overlayColor ??
-                  effectiveActiveColor.withValues(alpha: 0.15),
+              overlayColor: effectiveOverlayColor,
               trackHeight: scale(8),
               thumbShape: _SliderThumbWithBorder(
                 thumbRadius: scale(12),
@@ -122,7 +123,7 @@ class SliderWithSteps extends StatelessWidget {
                   .map((s) => Text(
                         s,
                         style: TextStyle(
-                          color: mutedColor,
+                          color: enabled ? stepColor : mutedColor,
                           fontSize: AppFontSize.extraSmall,
                         ),
                       ))
