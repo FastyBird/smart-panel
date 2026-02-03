@@ -4,7 +4,6 @@ import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
-import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_colors.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/water_heater.dart';
 import 'package:flutter/material.dart';
@@ -89,7 +88,11 @@ class _WaterHeaterDeviceDetailState extends State<WaterHeaterDeviceDetail> {
 
   Widget _buildHeader(BuildContext context, bool isDark) {
     final localizations = AppLocalizations.of(context)!;
-    final heatingColor = DeviceColors.heating(isDark);
+    final heatingColor =
+        isDark ? AppColorsDark.primary : AppColorsLight.primary;
+    final heatingBgColor = isDark
+        ? AppColorsDark.primaryLight9
+        : AppColorsLight.primaryLight9;
     final secondaryColor =
         isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
     final mutedColor =
@@ -113,7 +116,7 @@ class _WaterHeaterDeviceDetailState extends State<WaterHeaterDeviceDetail> {
             height: _scale(44),
             decoration: BoxDecoration(
               color: _device.isOn
-                  ? DeviceColors.heatingLight9(isDark)
+                  ? heatingBgColor
                   : (isDark
                       ? AppFillColorDark.darker
                       : AppFillColorLight.darker),

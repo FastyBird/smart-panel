@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
@@ -442,6 +441,14 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
   // PORTRAIT LAYOUT
   // --------------------------------------------------------------------------
 
+  bool get _hasDeviceControlOptions {
+    final fanChannel = _device.fanChannel;
+    return fanChannel.hasSwing ||
+        fanChannel.hasDirection ||
+        fanChannel.hasLocked ||
+        fanChannel.hasTimer;
+  }
+
   Widget _buildPortrait(BuildContext context, bool isDark) {
     final localizations = AppLocalizations.of(context)!;
 
@@ -452,11 +459,13 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
         children: [
           _buildControlCard(context, isDark),
           _buildSpeedControl(context, localizations, false),
-          SectionTitle(
-            title: localizations.device_controls,
-            icon: MdiIcons.tuneVertical,
-          ),
-          _buildOptions(context),
+          if (_hasDeviceControlOptions) ...[
+            SectionTitle(
+              title: localizations.device_controls,
+              icon: MdiIcons.tuneVertical,
+            ),
+            _buildOptions(context),
+          ],
         ],
       ),
     );
@@ -470,6 +479,8 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
     final localizations = AppLocalizations.of(context)!;
     final isLargeScreen = _screenService.isLargeScreen;
 
+    final hasDeviceControls = _device.fanChannel.hasSpeed || _hasDeviceControlOptions;
+
     return DeviceDetailLandscapeLayout(
       mainContent: isLargeScreen
           ? _buildControlCard(context, isDark)
@@ -478,12 +489,14 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
         crossAxisAlignment: CrossAxisAlignment.start,
         spacing: AppSpacings.pMd,
         children: [
-          SectionTitle(
-            title: localizations.device_controls,
-            icon: MdiIcons.tuneVertical,
-          ),
-          _buildSpeedControl(context, localizations, !isLargeScreen),
-          _buildOptions(context),
+          if (hasDeviceControls) ...[
+            SectionTitle(
+              title: localizations.device_controls,
+              icon: MdiIcons.tuneVertical,
+            ),
+            _buildSpeedControl(context, localizations, !isLargeScreen),
+            _buildOptions(context),
+          ],
         ],
       ),
     );
@@ -722,18 +735,6 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final modeIconsWidth = 50.0;
-          final spacing = 24.0;
-          final scaleFactor =
-              _screenService.scale(1.0, density: _visualDensityService.density);
-          final availableWidth = constraints.maxWidth / scaleFactor;
-          final availableForButton = availableWidth - modeIconsWidth - spacing;
-          final availableHeight = constraints.maxHeight.isFinite
-              ? constraints.maxHeight / scaleFactor
-              : availableForButton;
-          final buttonSize =
-              math.min(availableForButton, availableHeight).clamp(100.0, 120.0);
-
           return Row(
             children: [
               Expanded(
@@ -742,7 +743,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
                     isOn: _device.isOn,
                     themeColor: _getStatusColor(),
                     showInfoText: false,
-                    size: buttonSize,
+                    size: DevicePowerButton.compactSize,
                     onTap: () => _setFanPower(!_device.isOn),
                   ),
                 ),

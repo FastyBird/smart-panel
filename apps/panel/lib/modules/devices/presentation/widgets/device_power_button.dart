@@ -8,6 +8,9 @@ import 'package:material_design_icons_flutter/material_design_icons_flutter.dart
 
 /// Power button widget for device control.
 class DevicePowerButton extends StatelessWidget {
+  /// Size for compact layouts (e.g. landscape on small/medium screens).
+  static const double compactSize = 130;
+
   DevicePowerButton({
     super.key,
     required this.isOn,
