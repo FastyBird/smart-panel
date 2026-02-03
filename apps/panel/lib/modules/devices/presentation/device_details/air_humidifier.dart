@@ -98,12 +98,13 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
     try {
       _deviceControlStateService = locator<DeviceControlStateService>();
       _deviceControlStateService?.addListener(_onControlStateChanged);
-      _initController();
     } catch (e) {
       if (kDebugMode) {
         debugPrint('[AirHumidifierDeviceDetail] Failed to get DeviceControlStateService: $e');
       }
     }
+
+    _initController();
   }
 
   void _initController() {
@@ -574,6 +575,50 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
   }
 
   // --------------------------------------------------------------------------
+  // PORTRAIT LAYOUT
+  // --------------------------------------------------------------------------
+
+  Widget _buildPortraitLayout(BuildContext context, bool isDark) {
+    final localizations = AppLocalizations.of(context)!;
+    final fanChannel = _device.fanChannel;
+    final hasSpeed = fanChannel != null && fanChannel.hasSpeed;
+    final statusSection = _buildStatusSection(localizations, isDark);
+    final controlsSection = _buildFanOptionsSection(
+      context,
+      localizations,
+      isDark,
+      false,
+      skipFanMode: hasSpeed,
+    );
+
+    return DeviceDetailPortraitLayout(
+      content: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: AppSpacings.pMd,
+        children: [
+          _buildPrimaryControlCard(context, isDark, dialSize: _scale(DeviceDetailDialSizes.portrait)),
+          if (hasSpeed)
+            _buildSpeedSliderForPortrait(localizations, isDark),
+          if (statusSection is! SizedBox) ...[
+            SectionTitle(
+              title: localizations.device_sensors,
+              icon: MdiIcons.eyeSettings,
+            ),
+            statusSection,
+          ],
+          if (controlsSection is! SizedBox) ...[
+            SectionTitle(
+              title: localizations.device_controls,
+              icon: MdiIcons.tuneVertical,
+            ),
+            controlsSection,
+          ],
+        ],
+      ),
+    );
+  }
+
+  // --------------------------------------------------------------------------
   // LANDSCAPE LAYOUT
   // --------------------------------------------------------------------------
 
@@ -746,50 +791,6 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
         final newHumidity = (v * 100).round();
         _setHumidity(newHumidity);
       },
-    );
-  }
-
-  // --------------------------------------------------------------------------
-  // PORTRAIT LAYOUT
-  // --------------------------------------------------------------------------
-
-  Widget _buildPortraitLayout(BuildContext context, bool isDark) {
-    final localizations = AppLocalizations.of(context)!;
-    final fanChannel = _device.fanChannel;
-    final hasSpeed = fanChannel != null && fanChannel.hasSpeed;
-    final statusSection = _buildStatusSection(localizations, isDark);
-    final controlsSection = _buildFanOptionsSection(
-      context,
-      localizations,
-      isDark,
-      false,
-      skipFanMode: hasSpeed,
-    );
-
-    return DeviceDetailPortraitLayout(
-      content: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        spacing: AppSpacings.pMd,
-        children: [
-          _buildPrimaryControlCard(context, isDark, dialSize: _scale(DeviceDetailDialSizes.portrait)),
-          if (hasSpeed)
-            _buildSpeedSliderForPortrait(localizations, isDark),
-          if (statusSection is! SizedBox) ...[
-            SectionTitle(
-              title: localizations.device_sensors,
-              icon: MdiIcons.eyeSettings,
-            ),
-            statusSection,
-          ],
-          if (controlsSection is! SizedBox) ...[
-            SectionTitle(
-              title: localizations.device_controls,
-              icon: MdiIcons.tuneVertical,
-            ),
-            controlsSection,
-          ],
-        ],
-      ),
     );
   }
 
