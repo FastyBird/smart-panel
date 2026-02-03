@@ -806,7 +806,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
       onChanged: _setHumidifierMode,
       orientation: ModeSelectorOrientation.horizontal,
       iconPlacement: ModeSelectorIconPlacement.left,
-      color: ModeSelectorColor.teal,
+      color: ThemeColors.teal,
       scrollable: true,
     );
   }
@@ -833,7 +833,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
       onChanged: _setHumidifierMode,
       orientation: ModeSelectorOrientation.vertical,
       showLabels: false,
-      color: ModeSelectorColor.teal,
+      color: ThemeColors.teal,
       scrollable: true,
     );
   }
@@ -858,7 +858,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
             ? localizations.leak_sensor_detected
             : localizations.leak_sensor_dry,
         icon: MdiIcons.pipeLeak,
-        valueColor: SensorColors.alert(isDark),
+        valueColor: ThemeColorFamily.get(isDark ? Brightness.dark : Brightness.light, SensorColors.alert).base,
         isWarning: isLeaking,
       ));
     }
@@ -875,7 +875,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
       value: NumberFormatUtils.defaultFormat.formatInteger(currentHumidity),
       unit: '%',
       icon: MdiIcons.waterPercent,
-      valueColor: SensorColors.humidity(isDark),
+      valueColor: ThemeColorFamily.get(isDark ? Brightness.dark : Brightness.light, SensorColors.humidity).base,
     ));
 
     // Water tank level
@@ -886,7 +886,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
         value: NumberFormatUtils.defaultFormat.formatInteger(channel.waterTankLevel),
         unit: '%',
         icon: MdiIcons.cup,
-        valueColor: SensorColors.alert(isDark),
+        valueColor: ThemeColorFamily.get(isDark ? Brightness.dark : Brightness.light, SensorColors.alert).base,
         isWarning: channel.waterTankWarning,
       ));
     } else if (channel != null && channel.hasWaterTankEmpty) {
@@ -897,7 +897,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
             ? localizations.humidifier_mist_level_off
             : localizations.on_state_on,
         icon: MdiIcons.cup,
-        valueColor: SensorColors.alert(isDark),
+        valueColor: ThemeColorFamily.get(isDark ? Brightness.dark : Brightness.light, SensorColors.alert).base,
         isWarning: channel.waterTankEmpty,
       ));
     }
@@ -919,7 +919,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
         ),
         unit: '°C',
         icon: MdiIcons.thermometer,
-        valueColor: SensorColors.temperature(isDark),
+        valueColor: ThemeColorFamily.get(isDark ? Brightness.dark : Brightness.light, SensorColors.temperature).base,
       ));
     }
 
@@ -984,7 +984,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
         },
         orientation: ModeSelectorOrientation.horizontal,
         iconPlacement: ModeSelectorIconPlacement.left,
-        color: ModeSelectorColor.teal,
+        color: ThemeColors.teal,
         scrollable: true,
       );
     }
@@ -1633,7 +1633,7 @@ activeColor: humidityColor,
       onChanged: _setFanMode,
       orientation: ModeSelectorOrientation.horizontal,
       iconPlacement: ModeSelectorIconPlacement.left,
-      color: ModeSelectorColor.teal,
+      color: ThemeColors.teal,
       scrollable: true,
     );
   }

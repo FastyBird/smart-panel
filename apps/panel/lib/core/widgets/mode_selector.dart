@@ -22,20 +22,6 @@ enum ModeSelectorIconPlacement {
   top,
 }
 
-/// Semantic color names that map to theme colors
-enum ModeSelectorColor {
-  primary,
-  success,
-  warning,
-  danger,
-  info,
-  neutral,
-  teal,
-  cyan,
-  pink,
-  indigo,
-}
-
 /// Represents a single mode option in the selector
 class ModeOption<T> {
   /// The value this option represents
@@ -49,7 +35,7 @@ class ModeOption<T> {
 
   /// Optional override color for this specific mode
   /// If null, uses the selector's default color
-  final ModeSelectorColor? color;
+  final ThemeColors? color;
 
   const ModeOption({
     required this.value,
@@ -85,7 +71,7 @@ class ModeSelector<T> extends StatefulWidget {
   final ModeSelectorIconPlacement iconPlacement;
 
   /// Default color for all modes (can be overridden per mode)
-  final ModeSelectorColor color;
+  final ThemeColors color;
 
   /// Whether to show labels (if false, only icons are shown)
   /// When null, labels are shown/hidden automatically based on available space
@@ -116,7 +102,7 @@ class ModeSelector<T> extends StatefulWidget {
     required this.onChanged,
     this.orientation = ModeSelectorOrientation.horizontal,
     this.iconPlacement = ModeSelectorIconPlacement.left,
-    this.color = ModeSelectorColor.primary,
+    this.color = ThemeColors.primary,
     this.showLabels,
     this.showIcon = true,
     this.minButtonWidth = 80.0,
@@ -238,7 +224,8 @@ class _ModeSelectorState<T> extends State<ModeSelector<T>> {
           final mode = entry.value;
           final isSelected = widget.selectedValue == mode.value;
           final modeColor = mode.color ?? widget.color;
-          final colors = _getColors(isDark, modeColor);
+          final colors = _getColors(
+              isDark ? Brightness.dark : Brightness.light, modeColor);
           final statusIcon = widget.statusIcons?[mode.value];
 
           final button = _buildModeButton(
@@ -292,7 +279,8 @@ class _ModeSelectorState<T> extends State<ModeSelector<T>> {
       final mode = entry.value;
       final isSelected = widget.selectedValue == mode.value;
       final modeColor = mode.color ?? widget.color;
-      final colors = _getColors(isDark, modeColor);
+      final colors = _getColors(
+          isDark ? Brightness.dark : Brightness.light, modeColor);
       final statusIcon = widget.statusIcons?[mode.value];
 
       Widget child = Padding(
@@ -518,69 +506,12 @@ class _ModeSelectorState<T> extends State<ModeSelector<T>> {
     );
   }
 
-  _ModeColors _getColors(bool isDark, ModeSelectorColor colorName) {
-    switch (colorName) {
-      case ModeSelectorColor.primary:
-        return _ModeColors(
-          active: isDark ? AppColorsDark.primary : AppColorsLight.primary,
-          background:
-              isDark ? AppColorsDark.primaryLight9 : AppColorsLight.primaryLight9,
-        );
-      case ModeSelectorColor.success:
-        return _ModeColors(
-          active: isDark ? AppColorsDark.success : AppColorsLight.success,
-          background:
-              isDark ? AppColorsDark.successLight9 : AppColorsLight.successLight9,
-        );
-      case ModeSelectorColor.warning:
-        return _ModeColors(
-          active: isDark ? AppColorsDark.warning : AppColorsLight.warning,
-          background:
-              isDark ? AppColorsDark.warningLight9 : AppColorsLight.warningLight9,
-        );
-      case ModeSelectorColor.danger:
-        return _ModeColors(
-          active: isDark ? AppColorsDark.danger : AppColorsLight.danger,
-          background:
-              isDark ? AppColorsDark.dangerLight9 : AppColorsLight.dangerLight9,
-        );
-      case ModeSelectorColor.info:
-        return _ModeColors(
-          active: isDark ? AppColorsDark.info : AppColorsLight.info,
-          background:
-              isDark ? AppColorsDark.infoLight9 : AppColorsLight.infoLight9,
-        );
-      case ModeSelectorColor.neutral:
-        return _ModeColors(
-          active: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
-          background:
-              isDark ? AppColorsDark.neutralLight9 : AppColorsLight.neutralLight9,
-        );
-      case ModeSelectorColor.teal:
-        return _ModeColors(
-          active: isDark ? AppColorsDark.teal : AppColorsLight.teal,
-          background:
-              isDark ? AppColorsDark.tealLight9 : AppColorsLight.tealLight9,
-        );
-      case ModeSelectorColor.cyan:
-        return _ModeColors(
-          active: isDark ? AppColorsDark.cyan : AppColorsLight.cyan,
-          background:
-              isDark ? AppColorsDark.cyanLight9 : AppColorsLight.cyanLight9,
-        );
-      case ModeSelectorColor.pink:
-        return _ModeColors(
-          active: isDark ? AppColorsDark.pink : AppColorsLight.pink,
-          background:
-              isDark ? AppColorsDark.pinkLight9 : AppColorsLight.pinkLight9,
-        );
-      case ModeSelectorColor.indigo:
-        return _ModeColors(
-          active: isDark ? AppColorsDark.indigo : AppColorsLight.indigo,
-          background:
-              isDark ? AppColorsDark.indigoLight9 : AppColorsLight.indigoLight9,
-        );
-    }
+  _ModeColors _getColors(Brightness brightness, ThemeColors key) {
+    final family = ThemeColorFamily.get(brightness, key);
+    return _ModeColors(
+      active: family.base,
+      background: family.light9,
+    );
   }
 }
 

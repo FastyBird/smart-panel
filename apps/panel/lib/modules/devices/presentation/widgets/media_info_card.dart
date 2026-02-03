@@ -194,7 +194,7 @@ class MediaInfoCard extends StatelessWidget {
 							selectedValue: currentSource,
 							onChanged: isOn ? onSourceChanged! : (_) {},
 							orientation: ModeSelectorOrientation.horizontal,
-							color: ModeSelectorColor.info,
+							color: ThemeColors.info,
 							showIcon: false,
 							scrollable: true,
 						),

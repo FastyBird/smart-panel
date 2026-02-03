@@ -778,7 +778,7 @@ class _AirConditionerDeviceDetailState
         value: AcMode.heat,
         icon: MdiIcons.fireCircle,
         label: localizations.thermostat_mode_heat,
-        color: ModeSelectorColor.warning,
+        color: ThemeColors.warning,
       ));
     }
 
@@ -787,7 +787,7 @@ class _AirConditionerDeviceDetailState
       value: AcMode.cool,
       icon: MdiIcons.snowflake,
       label: localizations.thermostat_mode_cool,
-      color: ModeSelectorColor.info,
+      color: ThemeColors.info,
     ));
 
     // Always add OFF mode
@@ -795,7 +795,7 @@ class _AirConditionerDeviceDetailState
       value: AcMode.off,
       icon: MdiIcons.power,
       label: localizations.thermostat_mode_off,
-      color: ModeSelectorColor.neutral,
+      color: ThemeColors.neutral,
     ));
 
     return modes;
@@ -1023,7 +1023,7 @@ class _AirConditionerDeviceDetailState
       ),
       unit: '°C',
       icon: MdiIcons.thermometer,
-      valueColor: SensorColors.temperature(isDark),
+      valueColor: ThemeColorFamily.get(isDark ? Brightness.dark : Brightness.light, SensorColors.temperature).base,
       valueThemeColor: ThemeColors.info,
     ));
 
@@ -1036,7 +1036,7 @@ class _AirConditionerDeviceDetailState
             .formatInteger(humidityChannel.humidity),
         unit: '%',
         icon: MdiIcons.waterPercent,
-        valueColor: SensorColors.humidity(isDark),
+        valueColor: ThemeColorFamily.get(isDark ? Brightness.dark : Brightness.light, SensorColors.humidity).base,
         valueThemeColor: ThemeColors.success,
       ));
     }
@@ -1052,7 +1052,7 @@ class _AirConditionerDeviceDetailState
             ? localizations.contact_sensor_open
             : localizations.contact_sensor_closed,
         icon: MdiIcons.windowOpenVariant,
-        valueColor: SensorColors.alert(isDark),
+        valueColor: ThemeColorFamily.get(isDark ? Brightness.dark : Brightness.light, SensorColors.alert).base,
         valueThemeColor: ThemeColors.warning,
         isWarning: isOpen,
       ));
@@ -1070,7 +1070,7 @@ class _AirConditionerDeviceDetailState
             ? localizations.leak_sensor_detected
             : localizations.leak_sensor_dry,
         icon: MdiIcons.pipeLeak,
-        valueColor: SensorColors.alert(isDark),
+        valueColor: ThemeColorFamily.get(isDark ? Brightness.dark : Brightness.light, SensorColors.alert).base,
         valueThemeColor: ThemeColors.warning,
         isWarning: isLeaking,
       ));
@@ -1088,7 +1088,7 @@ class _AirConditionerDeviceDetailState
           value: '${(filterLife * 100).toInt()}',
           unit: '%',
           icon: MdiIcons.airFilter,
-          valueColor: SensorColors.filter(isDark),
+          valueColor: ThemeColorFamily.get(isDark ? Brightness.dark : Brightness.light, SensorColors.filter).base,
           valueThemeColor: ThemeColors.info,
           isWarning: filterLife < 0.3 || _device.isFilterNeedsReplacement,
         ));
@@ -1099,7 +1099,7 @@ class _AirConditionerDeviceDetailState
           label: localizations.device_filter_status,
           value: FilterUtils.getStatusLabel(localizations, filterChannel.status),
           icon: MdiIcons.airFilter,
-          valueColor: SensorColors.filter(isDark),
+          valueColor: ThemeColorFamily.get(isDark ? Brightness.dark : Brightness.light, SensorColors.filter).base,
           valueThemeColor: ThemeColors.info,
           isWarning: _device.isFilterNeedsReplacement,
         ));
@@ -1383,7 +1383,7 @@ class _AirConditionerDeviceDetailState
       onChanged: _setFanMode,
       orientation: ModeSelectorOrientation.horizontal,
       iconPlacement: ModeSelectorIconPlacement.left,
-      color: ModeSelectorColor.info,
+      color: ThemeColors.info,
       scrollable: true,
     );
   }

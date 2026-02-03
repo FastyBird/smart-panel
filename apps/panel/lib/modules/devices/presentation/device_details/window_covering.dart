@@ -346,8 +346,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
 
   Widget _buildHeader(BuildContext context, bool isDark) {
     final brightness = Theme.of(context).brightness;
-    final statusColor = _getStatusColor(context);
-
+    final statusColor = _getStatusColor();
     final statusColorFamily = ThemeColorFamily.get(brightness, statusColor);
 
     return PageHeader(
@@ -433,7 +432,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     }
   }
 
-  ThemeColors _getStatusColor(BuildContext context) {
+  ThemeColors _getStatusColor() {
     switch (_selectedChannel.status) {
       case WindowCoveringStatusValue.opened:
         return ThemeColors.success;

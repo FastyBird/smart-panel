@@ -542,7 +542,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
       onChanged: _setFanMode,
       orientation: ModeSelectorOrientation.horizontal,
       iconPlacement: ModeSelectorIconPlacement.left,
-      color: ModeSelectorColor.info,
+      color: ThemeColors.info,
       scrollable: true,
     );
   }
@@ -756,7 +756,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
                   onChanged: _setFanMode,
                   orientation: ModeSelectorOrientation.vertical,
                   showLabels: false,
-                  color: ModeSelectorColor.info,
+                  color: ThemeColors.info,
                   scrollable: true,
                 ),
               ],

@@ -381,13 +381,13 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
         value: HeaterMode.heat,
         icon: MdiIcons.fireCircle,
         label: localizations.thermostat_mode_heat,
-        color: ModeSelectorColor.warning,
+        color: ThemeColors.warning,
       ),
       ModeOption(
         value: HeaterMode.off,
         icon: MdiIcons.power,
         label: localizations.thermostat_mode_off,
-        color: ModeSelectorColor.neutral,
+        color: ThemeColors.neutral,
       ),
     ];
   }
@@ -561,7 +561,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
       ),
       unit: '°C',
       icon: MdiIcons.thermometer,
-      valueColor: SensorColors.temperature(isDark),
+      valueColor: ThemeColorFamily.get(isDark ? Brightness.dark : Brightness.light, SensorColors.temperature).base,
       valueThemeColor: ThemeColors.info,
     ));
 
@@ -574,7 +574,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
             .formatInteger(humidityChannel.humidity),
         unit: '%',
         icon: MdiIcons.waterPercent,
-        valueColor: SensorColors.humidity(isDark),
+        valueColor: ThemeColorFamily.get(isDark ? Brightness.dark : Brightness.light, SensorColors.humidity).base,
         valueThemeColor: ThemeColors.success,
       ));
     }
@@ -590,7 +590,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
             ? localizations.contact_sensor_open
             : localizations.contact_sensor_closed,
         icon: MdiIcons.windowOpenVariant,
-        valueColor: SensorColors.alert(isDark),
+        valueColor: ThemeColorFamily.get(isDark ? Brightness.dark : Brightness.light, SensorColors.alert).base,
         valueThemeColor: ThemeColors.warning,
         isWarning: isOpen,
       ));

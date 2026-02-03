@@ -606,22 +606,22 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     }
   }
 
-  ModeSelectorColor _getCategoryModeColor(SensorCategory category) {
+  ThemeColors _getCategoryModeColor(SensorCategory category) {
     switch (category) {
       case SensorCategory.temperature:
-        return ModeSelectorColor.info;
+        return ThemeColors.info;
       case SensorCategory.humidity:
-        return ModeSelectorColor.success;
+        return ThemeColors.success;
       case SensorCategory.airQuality:
-        return ModeSelectorColor.teal;
+        return ThemeColors.teal;
       case SensorCategory.motion:
-        return ModeSelectorColor.warning;
+        return ThemeColors.warning;
       case SensorCategory.safety:
-        return ModeSelectorColor.danger;
+        return ThemeColors.danger;
       case SensorCategory.light:
-        return ModeSelectorColor.warning;
+        return ThemeColors.warning;
       case SensorCategory.energy:
-        return ModeSelectorColor.primary;
+        return ThemeColors.primary;
     }
   }
 
@@ -638,7 +638,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
         value: null,
         icon: MdiIcons.viewGrid,
         label: 'All',
-        color: ModeSelectorColor.neutral,
+        color: ThemeColors.neutral,
       ),
       // Then available categories
       ...availableCategories.map((cat) => ModeOption<SensorCategory?>(

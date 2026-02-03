@@ -768,7 +768,7 @@ class _AirDehumidifierDeviceDetailState
       onChanged: _setDehumidifierMode,
       orientation: ModeSelectorOrientation.horizontal,
       iconPlacement: ModeSelectorIconPlacement.left,
-      color: ModeSelectorColor.teal,
+      color: ThemeColors.teal,
       scrollable: true,
     );
   }
@@ -795,7 +795,7 @@ class _AirDehumidifierDeviceDetailState
       onChanged: _setDehumidifierMode,
       orientation: ModeSelectorOrientation.vertical,
       showLabels: false,
-      color: ModeSelectorColor.teal,
+      color: ThemeColors.teal,
       scrollable: true,
     );
   }
@@ -820,7 +820,7 @@ class _AirDehumidifierDeviceDetailState
             ? localizations.leak_sensor_detected
             : localizations.leak_sensor_dry,
         icon: MdiIcons.pipeLeak,
-        valueColor: SensorColors.alert(isDark),
+        valueColor: ThemeColorFamily.get(isDark ? Brightness.dark : Brightness.light, SensorColors.alert).base,
         isWarning: isLeaking,
       ));
     }
@@ -837,7 +837,7 @@ class _AirDehumidifierDeviceDetailState
       value: NumberFormatUtils.defaultFormat.formatInteger(currentHumidity),
       unit: '%',
       icon: MdiIcons.waterPercent,
-      valueColor: SensorColors.humidity(isDark),
+      valueColor: ThemeColorFamily.get(isDark ? Brightness.dark : Brightness.light, SensorColors.humidity).base,
     ));
 
     // Water tank level
@@ -848,7 +848,7 @@ class _AirDehumidifierDeviceDetailState
         value: NumberFormatUtils.defaultFormat.formatInteger(channel.waterTankLevel),
         unit: '%',
         icon: MdiIcons.cup,
-        valueColor: SensorColors.alert(isDark),
+        valueColor: ThemeColorFamily.get(isDark ? Brightness.dark : Brightness.light, SensorColors.alert).base,
         isWarning: channel.waterTankWarning,
       ));
     } else if (channel != null && channel.hasWaterTankFull) {
@@ -859,7 +859,7 @@ class _AirDehumidifierDeviceDetailState
             ? localizations.on_state_on
             : localizations.on_state_off,
         icon: MdiIcons.cup,
-        valueColor: SensorColors.alert(isDark),
+        valueColor: ThemeColorFamily.get(isDark ? Brightness.dark : Brightness.light, SensorColors.alert).base,
         isWarning: channel.waterTankFull,
       ));
     }
@@ -871,7 +871,7 @@ class _AirDehumidifierDeviceDetailState
         label: localizations.dehumidifier_defrost,
         value: localizations.dehumidifier_defrost_active,
         icon: MdiIcons.snowflakeMelt,
-        valueColor: SensorColors.alert(isDark),
+        valueColor: ThemeColorFamily.get(isDark ? Brightness.dark : Brightness.light, SensorColors.alert).base,
         isWarning: true,
       ));
     }
@@ -893,7 +893,7 @@ class _AirDehumidifierDeviceDetailState
         ),
         unit: '°C',
         icon: MdiIcons.thermometer,
-        valueColor: SensorColors.temperature(isDark),
+        valueColor: ThemeColorFamily.get(isDark ? Brightness.dark : Brightness.light, SensorColors.temperature).base,
       ));
     }
 
@@ -958,7 +958,7 @@ class _AirDehumidifierDeviceDetailState
         },
         orientation: ModeSelectorOrientation.horizontal,
         iconPlacement: ModeSelectorIconPlacement.left,
-        color: ModeSelectorColor.teal,
+        color: ThemeColors.teal,
         scrollable: true,
       );
     }
@@ -1407,7 +1407,7 @@ activeColor: humidityColor,
       onChanged: _setFanMode,
       orientation: ModeSelectorOrientation.horizontal,
       iconPlacement: ModeSelectorIconPlacement.left,
-      color: ModeSelectorColor.teal,
+      color: ThemeColors.teal,
       scrollable: true,
     );
   }

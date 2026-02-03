@@ -775,7 +775,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
       onChanged: _setFanMode,
       orientation: ModeSelectorOrientation.horizontal,
       iconPlacement: ModeSelectorIconPlacement.left,
-      color: ModeSelectorColor.success,
+      color: ThemeColors.success,
       scrollable: true,
     );
   }
@@ -983,7 +983,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
                   onChanged: _setFanMode,
                   orientation: ModeSelectorOrientation.vertical,
                   showLabels: false,
-                  color: ModeSelectorColor.success,
+                  color: ThemeColors.success,
                   scrollable: true,
                 ),
               ],
@@ -1101,7 +1101,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           value: NumberFormatUtils.defaultFormat.formatDecimal(coChannel.concentration, decimalPlaces: 1),
           unit: 'ppm',
           icon: MdiIcons.moleculeCo,
-          valueColor: SensorColors.alert(isDark),
+          valueColor: ThemeColorFamily.get(isDark ? Brightness.dark : Brightness.light, SensorColors.alert).base,
           isWarning: coChannel.concentration > 35, // Warn if CO exceeds 35 ppm (EPA 1-hour limit)
         ));
       } else if (coChannel.hasDetected) {
@@ -1113,7 +1113,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
               ? localizations.gas_detected
               : localizations.gas_clear,
           icon: MdiIcons.moleculeCo,
-          valueColor: SensorColors.alert(isDark),
+          valueColor: ThemeColorFamily.get(isDark ? Brightness.dark : Brightness.light, SensorColors.alert).base,
           isWarning: isDetected,
         ));
       }
@@ -1130,7 +1130,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
             ? localizations.leak_sensor_detected
             : localizations.leak_sensor_dry,
         icon: MdiIcons.pipeLeak,
-        valueColor: SensorColors.alert(isDark),
+        valueColor: ThemeColorFamily.get(isDark ? Brightness.dark : Brightness.light, SensorColors.alert).base,
         isWarning: isLeaking,
       ));
     }
@@ -1333,7 +1333,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           value: '${(_filterLife * 100).toInt()}',
           unit: '%',
           icon: MdiIcons.airFilter,
-          valueColor: SensorColors.alert(isDark),
+          valueColor: ThemeColorFamily.get(isDark ? Brightness.dark : Brightness.light, SensorColors.alert).base,
           isWarning: _filterLife < 0.3 || _device.isFilterNeedsReplacement,
         ));
       } else if (filterChannel.hasStatus) {
@@ -1342,7 +1342,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           label: localizations.device_filter_status,
           value: FilterUtils.getStatusLabel(localizations, filterChannel.status),
           icon: MdiIcons.airFilter,
-          valueColor: SensorColors.alert(isDark),
+          valueColor: ThemeColorFamily.get(isDark ? Brightness.dark : Brightness.light, SensorColors.alert).base,
           isWarning: _device.isFilterNeedsReplacement,
         ));
       }
@@ -1364,7 +1364,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
         ),
         unit: '°C',
         icon: MdiIcons.thermometer,
-        valueColor: SensorColors.temperature(isDark),
+        valueColor: ThemeColorFamily.get(isDark ? Brightness.dark : Brightness.light, SensorColors.temperature).base,
       ));
     }
 
@@ -1377,7 +1377,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
         value: NumberFormatUtils.defaultFormat.formatInteger(humidityChannel.humidity),
         unit: '%',
         icon: MdiIcons.waterPercent,
-        valueColor: SensorColors.humidity(isDark),
+        valueColor: ThemeColorFamily.get(isDark ? Brightness.dark : Brightness.light, SensorColors.humidity).base,
       ));
     }
 

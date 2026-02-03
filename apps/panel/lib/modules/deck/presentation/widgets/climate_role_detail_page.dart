@@ -1014,7 +1014,7 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
     //     value: ClimateMode.auto,
     //     icon: MdiIcons.thermometerAuto,
     //     label: localizations.thermostat_mode_auto,
-    //     color: ModeSelectorColor.success,
+    //     color: ThemeColors.success,
     //   ));
     // }
     if (_state.capability == RoomCapability.heaterOnly ||
@@ -1023,7 +1023,7 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
         value: ClimateMode.heat,
         icon: MdiIcons.fireCircle,
         label: localizations.thermostat_mode_heat,
-        color: ModeSelectorColor.warning,
+        color: ThemeColors.warning,
       ));
     }
     if (_state.capability == RoomCapability.coolerOnly ||
@@ -1032,14 +1032,14 @@ class _ClimateRoleDetailPageState extends State<ClimateRoleDetailPage> {
         value: ClimateMode.cool,
         icon: MdiIcons.snowflake,
         label: localizations.thermostat_mode_cool,
-        color: ModeSelectorColor.info,
+        color: ThemeColors.info,
       ));
     }
     modes.add(ModeOption(
       value: ClimateMode.off,
       icon: MdiIcons.power,
       label: localizations.thermostat_mode_off,
-      color: ModeSelectorColor.neutral,
+      color: ThemeColors.neutral,
     ));
 
     return modes;

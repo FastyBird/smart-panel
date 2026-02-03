@@ -1092,25 +1092,25 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
         value: CoversMode.open,
         icon: MdiIcons.blindsHorizontal,
         label: localizations.covers_mode_open,
-        color: ModeSelectorColor.primary,
+        color: ThemeColors.primary,
       ),
       ModeOption(
         value: CoversMode.daylight,
         icon: MdiIcons.weatherSunny,
         label: localizations.covers_mode_daylight,
-        color: ModeSelectorColor.warning,
+        color: ThemeColors.warning,
       ),
       ModeOption(
         value: CoversMode.privacy,
         icon: MdiIcons.eyeOff,
         label: localizations.covers_mode_privacy,
-        color: ModeSelectorColor.info,
+        color: ThemeColors.info,
       ),
       ModeOption(
         value: CoversMode.closed,
         icon: MdiIcons.blindsHorizontalClosed,
         label: localizations.covers_mode_closed,
-        color: ModeSelectorColor.neutral,
+        color: ThemeColors.neutral,
       ),
     ];
   }

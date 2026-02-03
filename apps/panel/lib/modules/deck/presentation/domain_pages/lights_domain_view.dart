@@ -1754,25 +1754,25 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         value: LightingModeUI.work,
         icon: MdiIcons.lightbulbOn,
         label: localizations.space_lighting_mode_work,
-        color: ModeSelectorColor.primary,
+        color: ThemeColors.primary,
       ),
       ModeOption(
         value: LightingModeUI.relax,
         icon: MdiIcons.sofaSingleOutline,
         label: localizations.space_lighting_mode_relax,
-        color: ModeSelectorColor.warning,
+        color: ThemeColors.warning,
       ),
       ModeOption(
         value: LightingModeUI.night,
         icon: MdiIcons.weatherNight,
         label: localizations.space_lighting_mode_night,
-        color: ModeSelectorColor.info,
+        color: ThemeColors.info,
       ),
       ModeOption(
         value: LightingModeUI.off,
         icon: MdiIcons.power,
         label: localizations.space_lighting_mode_off,
-        color: ModeSelectorColor.neutral,
+        color: ThemeColors.neutral,
       ),
     ];
   }
