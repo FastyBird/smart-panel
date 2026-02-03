@@ -1101,6 +1101,91 @@ class AppFilledButtonsLightThemes {
     ),
   );
 
+  static FilledButtonThemeData get flutter => FilledButtonThemeData(
+    style: createButtonTheme(
+      color: AppColors.white,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: AppColors.white,
+      bgColor: AppColorsLight.flutter,
+      pressedBgColor: AppColorsLight.flutterDark2,
+      hoveredBgColor: AppColorsLight.flutterLight3,
+      disabledBgColor: AppColorsLight.flutterLight5,
+      borderColor: AppColorsLight.flutter,
+      pressedBorderColor: AppColorsLight.flutterDark2,
+      hoveredBorderColor: AppColorsLight.flutterLight3,
+      disabledBorderColor: AppColorsLight.flutterLight5,
+    ),
+  );
+
+  static FilledButtonThemeData get teal => FilledButtonThemeData(
+    style: createButtonTheme(
+      color: AppColors.white,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: AppColors.white,
+      bgColor: AppColorsLight.teal,
+      pressedBgColor: AppColorsLight.tealDark2,
+      hoveredBgColor: AppColorsLight.tealLight3,
+      disabledBgColor: AppColorsLight.tealLight5,
+      borderColor: AppColorsLight.teal,
+      pressedBorderColor: AppColorsLight.tealDark2,
+      hoveredBorderColor: AppColorsLight.tealLight3,
+      disabledBorderColor: AppColorsLight.tealLight5,
+    ),
+  );
+
+  static FilledButtonThemeData get cyan => FilledButtonThemeData(
+    style: createButtonTheme(
+      color: AppColors.white,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: AppColors.white,
+      bgColor: AppColorsLight.cyan,
+      pressedBgColor: AppColorsLight.cyanDark2,
+      hoveredBgColor: AppColorsLight.cyanLight3,
+      disabledBgColor: AppColorsLight.cyanLight5,
+      borderColor: AppColorsLight.cyan,
+      pressedBorderColor: AppColorsLight.cyanDark2,
+      hoveredBorderColor: AppColorsLight.cyanLight3,
+      disabledBorderColor: AppColorsLight.cyanLight5,
+    ),
+  );
+
+  static FilledButtonThemeData get pink => FilledButtonThemeData(
+    style: createButtonTheme(
+      color: AppColors.white,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: AppColors.white,
+      bgColor: AppColorsLight.pink,
+      pressedBgColor: AppColorsLight.pinkDark2,
+      hoveredBgColor: AppColorsLight.pinkLight3,
+      disabledBgColor: AppColorsLight.pinkLight5,
+      borderColor: AppColorsLight.pink,
+      pressedBorderColor: AppColorsLight.pinkDark2,
+      hoveredBorderColor: AppColorsLight.pinkLight3,
+      disabledBorderColor: AppColorsLight.pinkLight5,
+    ),
+  );
+
+  static FilledButtonThemeData get indigo => FilledButtonThemeData(
+    style: createButtonTheme(
+      color: AppColors.white,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: AppColors.white,
+      bgColor: AppColorsLight.indigo,
+      pressedBgColor: AppColorsLight.indigoDark2,
+      hoveredBgColor: AppColorsLight.indigoLight3,
+      disabledBgColor: AppColorsLight.indigoLight5,
+      borderColor: AppColorsLight.indigo,
+      pressedBorderColor: AppColorsLight.indigoDark2,
+      hoveredBorderColor: AppColorsLight.indigoLight3,
+      disabledBorderColor: AppColorsLight.indigoLight5,
+    ),
+  );
+
   /// Foreground (text/icon) color per variant. Pass to Icon/Text inside FilledButtons
   /// so they match the button theme (FilledButton can override Theme.iconTheme).
   static Color get baseForegroundColor => AppTextColorLight.regular;
@@ -1111,6 +1196,11 @@ class AppFilledButtonsLightThemes {
   static Color get errorForegroundColor => AppColors.white;
   static Color get infoForegroundColor => AppColors.white;
   static Color get neutralForegroundColor => AppTextColorLight.primary;
+  static Color get flutterForegroundColor => AppColors.white;
+  static Color get tealForegroundColor => AppColors.white;
+  static Color get cyanForegroundColor => AppColors.white;
+  static Color get pinkForegroundColor => AppColors.white;
+  static Color get indigoForegroundColor => AppColors.white;
 }
 
 class AppFilledButtonsDarkThemes {
@@ -1250,6 +1340,91 @@ class AppFilledButtonsDarkThemes {
     ),
   );
 
+  static FilledButtonThemeData get flutter => FilledButtonThemeData(
+    style: createButtonTheme(
+      color: AppColors.white,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
+      bgColor: AppColorsDark.flutter,
+      pressedBgColor: AppColorsDark.flutterDark2,
+      hoveredBgColor: AppColorsDark.flutterLight3,
+      disabledBgColor: AppColorsDark.flutterLight5,
+      borderColor: AppColorsDark.flutter,
+      pressedBorderColor: AppColorsDark.flutterDark2,
+      hoveredBorderColor: AppColorsDark.flutterLight3,
+      disabledBorderColor: AppColorsDark.flutterLight5,
+    ),
+  );
+
+  static FilledButtonThemeData get teal => FilledButtonThemeData(
+    style: createButtonTheme(
+      color: AppColors.white,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
+      bgColor: AppColorsDark.teal,
+      pressedBgColor: AppColorsDark.tealDark2,
+      hoveredBgColor: AppColorsDark.tealLight3,
+      disabledBgColor: AppColorsDark.tealLight5,
+      borderColor: AppColorsDark.teal,
+      pressedBorderColor: AppColorsDark.tealDark2,
+      hoveredBorderColor: AppColorsDark.tealLight3,
+      disabledBorderColor: AppColorsDark.tealLight5,
+    ),
+  );
+
+  static FilledButtonThemeData get cyan => FilledButtonThemeData(
+    style: createButtonTheme(
+      color: AppColors.white,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
+      bgColor: AppColorsDark.cyan,
+      pressedBgColor: AppColorsDark.cyanDark2,
+      hoveredBgColor: AppColorsDark.cyanLight3,
+      disabledBgColor: AppColorsDark.cyanLight5,
+      borderColor: AppColorsDark.cyan,
+      pressedBorderColor: AppColorsDark.cyanDark2,
+      hoveredBorderColor: AppColorsDark.cyanLight3,
+      disabledBorderColor: AppColorsDark.cyanLight5,
+    ),
+  );
+
+  static FilledButtonThemeData get pink => FilledButtonThemeData(
+    style: createButtonTheme(
+      color: AppColors.white,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
+      bgColor: AppColorsDark.pink,
+      pressedBgColor: AppColorsDark.pinkDark2,
+      hoveredBgColor: AppColorsDark.pinkLight3,
+      disabledBgColor: AppColorsDark.pinkLight5,
+      borderColor: AppColorsDark.pink,
+      pressedBorderColor: AppColorsDark.pinkDark2,
+      hoveredBorderColor: AppColorsDark.pinkLight3,
+      disabledBorderColor: AppColorsDark.pinkLight5,
+    ),
+  );
+
+  static FilledButtonThemeData get indigo => FilledButtonThemeData(
+    style: createButtonTheme(
+      color: AppColors.white,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
+      bgColor: AppColorsDark.indigo,
+      pressedBgColor: AppColorsDark.indigoDark2,
+      hoveredBgColor: AppColorsDark.indigoLight3,
+      disabledBgColor: AppColorsDark.indigoLight5,
+      borderColor: AppColorsDark.indigo,
+      pressedBorderColor: AppColorsDark.indigoDark2,
+      hoveredBorderColor: AppColorsDark.indigoLight3,
+      disabledBorderColor: AppColorsDark.indigoLight5,
+    ),
+  );
+
   /// Foreground (text/icon) color per variant. Pass to Icon/Text inside FilledButtons
   /// so they match the button theme (FilledButton can override Theme.iconTheme).
   static Color get baseForegroundColor => AppTextColorDark.regular;
@@ -1260,6 +1435,11 @@ class AppFilledButtonsDarkThemes {
   static Color get errorForegroundColor => AppColors.white;
   static Color get infoForegroundColor => AppColors.white;
   static Color get neutralForegroundColor => AppTextColorDark.secondary;
+  static Color get flutterForegroundColor => AppColors.white;
+  static Color get tealForegroundColor => AppColors.white;
+  static Color get cyanForegroundColor => AppColors.white;
+  static Color get pinkForegroundColor => AppColors.white;
+  static Color get indigoForegroundColor => AppColors.white;
 }
 
 class AppOutlinedButtonsLightThemes {
@@ -1399,6 +1579,91 @@ class AppOutlinedButtonsLightThemes {
     ),
   );
 
+  static OutlinedButtonThemeData get flutter => OutlinedButtonThemeData(
+    style: createButtonTheme(
+      color: AppColorsLight.flutter,
+      pressedColor: AppColorsLight.flutterDark2,
+      hoveredColor: AppColorsLight.flutter,
+      disabledColor: AppColorsLight.flutterLight5,
+      bgColor: AppColorsLight.flutterLight9,
+      pressedBgColor: AppColorsLight.flutterDark2,
+      hoveredBgColor: AppColorsLight.flutter,
+      disabledBgColor: AppColorsLight.flutterLight9,
+      borderColor: AppColorsLight.flutterLight5,
+      pressedBorderColor: AppColorsLight.flutterDark2,
+      hoveredBorderColor: AppColorsLight.flutter,
+      disabledBorderColor: AppColorsLight.flutterLight8,
+    ),
+  );
+
+  static OutlinedButtonThemeData get teal => OutlinedButtonThemeData(
+    style: createButtonTheme(
+      color: AppColorsLight.teal,
+      pressedColor: AppColorsLight.tealDark2,
+      hoveredColor: AppColorsLight.teal,
+      disabledColor: AppColorsLight.tealLight5,
+      bgColor: AppColorsLight.tealLight9,
+      pressedBgColor: AppColorsLight.tealDark2,
+      hoveredBgColor: AppColorsLight.teal,
+      disabledBgColor: AppColorsLight.tealLight9,
+      borderColor: AppColorsLight.tealLight5,
+      pressedBorderColor: AppColorsLight.tealDark2,
+      hoveredBorderColor: AppColorsLight.teal,
+      disabledBorderColor: AppColorsLight.tealLight8,
+    ),
+  );
+
+  static OutlinedButtonThemeData get cyan => OutlinedButtonThemeData(
+    style: createButtonTheme(
+      color: AppColorsLight.cyan,
+      pressedColor: AppColorsLight.cyanDark2,
+      hoveredColor: AppColorsLight.cyan,
+      disabledColor: AppColorsLight.cyanLight5,
+      bgColor: AppColorsLight.cyanLight9,
+      pressedBgColor: AppColorsLight.cyanDark2,
+      hoveredBgColor: AppColorsLight.cyan,
+      disabledBgColor: AppColorsLight.cyanLight9,
+      borderColor: AppColorsLight.cyanLight5,
+      pressedBorderColor: AppColorsLight.cyanDark2,
+      hoveredBorderColor: AppColorsLight.cyan,
+      disabledBorderColor: AppColorsLight.cyanLight8,
+    ),
+  );
+
+  static OutlinedButtonThemeData get pink => OutlinedButtonThemeData(
+    style: createButtonTheme(
+      color: AppColorsLight.pink,
+      pressedColor: AppColorsLight.pinkDark2,
+      hoveredColor: AppColorsLight.pink,
+      disabledColor: AppColorsLight.pinkLight5,
+      bgColor: AppColorsLight.pinkLight9,
+      pressedBgColor: AppColorsLight.pinkDark2,
+      hoveredBgColor: AppColorsLight.pink,
+      disabledBgColor: AppColorsLight.pinkLight9,
+      borderColor: AppColorsLight.pinkLight5,
+      pressedBorderColor: AppColorsLight.pinkDark2,
+      hoveredBorderColor: AppColorsLight.pink,
+      disabledBorderColor: AppColorsLight.pinkLight8,
+    ),
+  );
+
+  static OutlinedButtonThemeData get indigo => OutlinedButtonThemeData(
+    style: createButtonTheme(
+      color: AppColorsLight.indigo,
+      pressedColor: AppColorsLight.indigoDark2,
+      hoveredColor: AppColorsLight.indigo,
+      disabledColor: AppColorsLight.indigoLight5,
+      bgColor: AppColorsLight.indigoLight9,
+      pressedBgColor: AppColorsLight.indigoDark2,
+      hoveredBgColor: AppColorsLight.indigo,
+      disabledBgColor: AppColorsLight.indigoLight9,
+      borderColor: AppColorsLight.indigoLight5,
+      pressedBorderColor: AppColorsLight.indigoDark2,
+      hoveredBorderColor: AppColorsLight.indigo,
+      disabledBorderColor: AppColorsLight.indigoLight8,
+    ),
+  );
+
   /// Foreground (text/icon) color per variant. Pass to Icon/Text inside FilledButtons
   /// so they match the button theme (OutlinedButton can override Theme.iconTheme).
   static Color get baseForegroundColor => AppTextColorLight.regular;
@@ -1409,6 +1674,11 @@ class AppOutlinedButtonsLightThemes {
   static Color get errorForegroundColor => AppColorsLight.error;
   static Color get infoForegroundColor => AppColorsLight.info;
   static Color get neutralForegroundColor => AppTextColorLight.regular;
+  static Color get flutterForegroundColor => AppColorsLight.flutter;
+  static Color get tealForegroundColor => AppColorsLight.teal;
+  static Color get cyanForegroundColor => AppColorsLight.cyan;
+  static Color get pinkForegroundColor => AppColorsLight.pink;
+  static Color get indigoForegroundColor => AppColorsLight.indigo;
 }
 
 class AppOutlinedButtonsDarkThemes {
@@ -1548,6 +1818,91 @@ class AppOutlinedButtonsDarkThemes {
     ),
   );
 
+  static OutlinedButtonThemeData get flutter => OutlinedButtonThemeData(
+    style: createButtonTheme(
+      color: AppColorsDark.flutter,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: AppColorsDark.flutterLight5,
+      bgColor: AppColorsDark.flutterLight9,
+      pressedBgColor: AppColorsDark.flutterDark2,
+      hoveredBgColor: AppColorsDark.flutter,
+      disabledBgColor: AppColorsDark.flutterLight9,
+      borderColor: AppColorsDark.flutterLight5,
+      pressedBorderColor: AppColorsDark.flutterDark2,
+      hoveredBorderColor: AppColorsDark.flutter,
+      disabledBorderColor: AppColorsDark.flutterLight8,
+    ),
+  );
+
+  static OutlinedButtonThemeData get teal => OutlinedButtonThemeData(
+    style: createButtonTheme(
+      color: AppColorsDark.teal,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: AppColorsDark.tealLight5,
+      bgColor: AppColorsDark.tealLight9,
+      pressedBgColor: AppColorsDark.tealDark2,
+      hoveredBgColor: AppColorsDark.teal,
+      disabledBgColor: AppColorsDark.tealLight9,
+      borderColor: AppColorsDark.tealLight5,
+      pressedBorderColor: AppColorsDark.tealDark2,
+      hoveredBorderColor: AppColorsDark.teal,
+      disabledBorderColor: AppColorsDark.tealLight8,
+    ),
+  );
+
+  static OutlinedButtonThemeData get cyan => OutlinedButtonThemeData(
+    style: createButtonTheme(
+      color: AppColorsDark.cyan,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: AppColorsDark.cyanLight5,
+      bgColor: AppColorsDark.cyanLight9,
+      pressedBgColor: AppColorsDark.cyanDark2,
+      hoveredBgColor: AppColorsDark.cyan,
+      disabledBgColor: AppColorsDark.cyanLight9,
+      borderColor: AppColorsDark.cyanLight5,
+      pressedBorderColor: AppColorsDark.cyanDark2,
+      hoveredBorderColor: AppColorsDark.cyan,
+      disabledBorderColor: AppColorsDark.cyanLight8,
+    ),
+  );
+
+  static OutlinedButtonThemeData get pink => OutlinedButtonThemeData(
+    style: createButtonTheme(
+      color: AppColorsDark.pink,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: AppColorsDark.pinkLight5,
+      bgColor: AppColorsDark.pinkLight9,
+      pressedBgColor: AppColorsDark.pinkDark2,
+      hoveredBgColor: AppColorsDark.pink,
+      disabledBgColor: AppColorsDark.pinkLight9,
+      borderColor: AppColorsDark.pinkLight5,
+      pressedBorderColor: AppColorsDark.pinkDark2,
+      hoveredBorderColor: AppColorsDark.pink,
+      disabledBorderColor: AppColorsDark.pinkLight8,
+    ),
+  );
+
+  static OutlinedButtonThemeData get indigo => OutlinedButtonThemeData(
+    style: createButtonTheme(
+      color: AppColorsDark.indigo,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: AppColorsDark.indigoLight5,
+      bgColor: AppColorsDark.indigoLight9,
+      pressedBgColor: AppColorsDark.indigoDark2,
+      hoveredBgColor: AppColorsDark.indigo,
+      disabledBgColor: AppColorsDark.indigoLight9,
+      borderColor: AppColorsDark.indigoLight5,
+      pressedBorderColor: AppColorsDark.indigoDark2,
+      hoveredBorderColor: AppColorsDark.indigo,
+      disabledBorderColor: AppColorsDark.indigoLight8,
+    ),
+  );
+
   /// Foreground (text/icon) color per variant. Pass to Icon/Text inside FilledButtons
   /// so they match the button theme (OutlinedButton can override Theme.iconTheme).
   static Color get baseForegroundColor => AppTextColorDark.regular;
@@ -1558,6 +1913,11 @@ class AppOutlinedButtonsDarkThemes {
   static Color get errorForegroundColor => AppColorsDark.error;
   static Color get infoForegroundColor => AppColorsDark.info;
   static Color get neutralForegroundColor => AppTextColorDark.primary;
+  static Color get flutterForegroundColor => AppColorsDark.flutter;
+  static Color get tealForegroundColor => AppColorsDark.teal;
+  static Color get cyanForegroundColor => AppColorsDark.cyan;
+  static Color get pinkForegroundColor => AppColorsDark.pink;
+  static Color get indigoForegroundColor => AppColorsDark.indigo;
 }
 
 class AppIconButtonsLightThemes {
@@ -1679,6 +2039,91 @@ class AppIconButtonsLightThemes {
       disabledBorderColor: AppColorsLight.infoLight5,
     ),
   );
+
+  static IconButtonThemeData get flutter => IconButtonThemeData(
+    style: createIconButtonTheme(
+      color: AppColors.white,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: AppColors.white,
+      bgColor: AppColorsLight.flutter,
+      pressedBgColor: AppColorsLight.flutterDark2,
+      hoveredBgColor: AppColorsLight.flutterLight3,
+      disabledBgColor: AppColorsLight.flutterLight5,
+      borderColor: AppColorsLight.flutter,
+      pressedBorderColor: AppColorsLight.flutterDark2,
+      hoveredBorderColor: AppColorsLight.flutterLight3,
+      disabledBorderColor: AppColorsLight.flutterLight5,
+    ),
+  );
+
+  static IconButtonThemeData get teal => IconButtonThemeData(
+    style: createIconButtonTheme(
+      color: AppColors.white,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: AppColors.white,
+      bgColor: AppColorsLight.teal,
+      pressedBgColor: AppColorsLight.tealDark2,
+      hoveredBgColor: AppColorsLight.tealLight3,
+      disabledBgColor: AppColorsLight.tealLight5,
+      borderColor: AppColorsLight.teal,
+      pressedBorderColor: AppColorsLight.tealDark2,
+      hoveredBorderColor: AppColorsLight.tealLight3,
+      disabledBorderColor: AppColorsLight.tealLight5,
+    ),
+  );
+
+  static IconButtonThemeData get cyan => IconButtonThemeData(
+    style: createIconButtonTheme(
+      color: AppColors.white,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: AppColors.white,
+      bgColor: AppColorsLight.cyan,
+      pressedBgColor: AppColorsLight.cyanDark2,
+      hoveredBgColor: AppColorsLight.cyanLight3,
+      disabledBgColor: AppColorsLight.cyanLight5,
+      borderColor: AppColorsLight.cyan,
+      pressedBorderColor: AppColorsLight.cyanDark2,
+      hoveredBorderColor: AppColorsLight.cyanLight3,
+      disabledBorderColor: AppColorsLight.cyanLight5,
+    ),
+  );
+
+  static IconButtonThemeData get pink => IconButtonThemeData(
+    style: createIconButtonTheme(
+      color: AppColors.white,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: AppColors.white,
+      bgColor: AppColorsLight.pink,
+      pressedBgColor: AppColorsLight.pinkDark2,
+      hoveredBgColor: AppColorsLight.pinkLight3,
+      disabledBgColor: AppColorsLight.pinkLight5,
+      borderColor: AppColorsLight.pink,
+      pressedBorderColor: AppColorsLight.pinkDark2,
+      hoveredBorderColor: AppColorsLight.pinkLight3,
+      disabledBorderColor: AppColorsLight.pinkLight5,
+    ),
+  );
+
+  static IconButtonThemeData get indigo => IconButtonThemeData(
+    style: createIconButtonTheme(
+      color: AppColors.white,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: AppColors.white,
+      bgColor: AppColorsLight.indigo,
+      pressedBgColor: AppColorsLight.indigoDark2,
+      hoveredBgColor: AppColorsLight.indigoLight3,
+      disabledBgColor: AppColorsLight.indigoLight5,
+      borderColor: AppColorsLight.indigo,
+      pressedBorderColor: AppColorsLight.indigoDark2,
+      hoveredBorderColor: AppColorsLight.indigoLight3,
+      disabledBorderColor: AppColorsLight.indigoLight5,
+    ),
+  );
 }
 
 class AppIconButtonsDarkThemes {
@@ -1798,6 +2243,91 @@ class AppIconButtonsDarkThemes {
       pressedBorderColor: AppColorsDark.infoDark2,
       hoveredBorderColor: AppColorsDark.infoLight3,
       disabledBorderColor: AppColorsDark.infoLight5,
+    ),
+  );
+
+  static IconButtonThemeData get flutter => IconButtonThemeData(
+    style: createIconButtonTheme(
+      color: AppColors.white,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
+      bgColor: AppColorsDark.flutter,
+      pressedBgColor: AppColorsDark.flutterDark2,
+      hoveredBgColor: AppColorsDark.flutterLight3,
+      disabledBgColor: AppColorsDark.flutterLight5,
+      borderColor: AppColorsDark.flutter,
+      pressedBorderColor: AppColorsDark.flutterDark2,
+      hoveredBorderColor: AppColorsDark.flutterLight3,
+      disabledBorderColor: AppColorsDark.flutterLight5,
+    ),
+  );
+
+  static IconButtonThemeData get teal => IconButtonThemeData(
+    style: createIconButtonTheme(
+      color: AppColors.white,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
+      bgColor: AppColorsDark.teal,
+      pressedBgColor: AppColorsDark.tealDark2,
+      hoveredBgColor: AppColorsDark.tealLight3,
+      disabledBgColor: AppColorsDark.tealLight5,
+      borderColor: AppColorsDark.teal,
+      pressedBorderColor: AppColorsDark.tealDark2,
+      hoveredBorderColor: AppColorsDark.tealLight3,
+      disabledBorderColor: AppColorsDark.tealLight5,
+    ),
+  );
+
+  static IconButtonThemeData get cyan => IconButtonThemeData(
+    style: createIconButtonTheme(
+      color: AppColors.white,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
+      bgColor: AppColorsDark.cyan,
+      pressedBgColor: AppColorsDark.cyanDark2,
+      hoveredBgColor: AppColorsDark.cyanLight3,
+      disabledBgColor: AppColorsDark.cyanLight5,
+      borderColor: AppColorsDark.cyan,
+      pressedBorderColor: AppColorsDark.cyanDark2,
+      hoveredBorderColor: AppColorsDark.cyanLight3,
+      disabledBorderColor: AppColorsDark.cyanLight5,
+    ),
+  );
+
+  static IconButtonThemeData get pink => IconButtonThemeData(
+    style: createIconButtonTheme(
+      color: AppColors.white,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
+      bgColor: AppColorsDark.pink,
+      pressedBgColor: AppColorsDark.pinkDark2,
+      hoveredBgColor: AppColorsDark.pinkLight3,
+      disabledBgColor: AppColorsDark.pinkLight5,
+      borderColor: AppColorsDark.pink,
+      pressedBorderColor: AppColorsDark.pinkDark2,
+      hoveredBorderColor: AppColorsDark.pinkLight3,
+      disabledBorderColor: AppColorsDark.pinkLight5,
+    ),
+  );
+
+  static IconButtonThemeData get indigo => IconButtonThemeData(
+    style: createIconButtonTheme(
+      color: AppColors.white,
+      pressedColor: AppColors.white,
+      hoveredColor: AppColors.white,
+      disabledColor: const Color.fromRGBO(255, 255, 255, 0.5),
+      bgColor: AppColorsDark.indigo,
+      pressedBgColor: AppColorsDark.indigoDark2,
+      hoveredBgColor: AppColorsDark.indigoLight3,
+      disabledBgColor: AppColorsDark.indigoLight5,
+      borderColor: AppColorsDark.indigo,
+      pressedBorderColor: AppColorsDark.indigoDark2,
+      hoveredBorderColor: AppColorsDark.indigoLight3,
+      disabledBorderColor: AppColorsDark.indigoLight5,
     ),
   );
 }

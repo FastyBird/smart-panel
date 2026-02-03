@@ -718,7 +718,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
         crossAxisAlignment: CrossAxisAlignment.start,
         spacing: AppSpacings.pMd,
         children: [
-          _buildPrimaryControlCard(context, isDark, dialSize: _scale(200)),
+          _buildPrimaryControlCard(context, isDark, dialSize: _scale(DeviceDetailDialSizes.portrait)),
           if (statusSection is! SizedBox) ...[
             SectionTitle(
               title: localizations.device_sensors,
@@ -751,7 +751,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
 
     return DeviceDetailLandscapeLayout(
       mainContent: isLargeScreen
-          ? _buildPrimaryControlCard(context, isDark, dialSize: _scale(220))
+          ? _buildPrimaryControlCard(context, isDark, dialSize: _scale(DeviceDetailDialSizes.landscape))
           : _buildCompactDialWithModes(context, isDark),
       secondaryContent: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -930,19 +930,14 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
 
     // Landscape small/medium: Column with HorizontalTileStretched
     return Column(
-      children: sensors.asMap().entries.map((entry) {
-        final index = entry.key;
-        final sensor = entry.value;
-        final isLast = index == sensors.length - 1;
-        return Padding(
-          padding: EdgeInsets.only(bottom: isLast ? 0 : AppSpacings.pMd),
-          child: HorizontalTileStretched(
+      spacing: AppSpacings.pMd,
+      children: sensors.map((sensor) {
+        return HorizontalTileStretched(
             icon: sensor.icon,
             name: sensor.displayValue,
             status: sensor.label,
             iconAccentColor: sensor.themeColor,
             showWarningBadge: sensor.isWarning,
-          ),
         );
       }).toList(),
     );
@@ -964,6 +959,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     final targetSetpoint = _targetSetpoint.clamp(minSetpoint, maxSetpoint);
 
     return Container(
+      width: double.infinity,
       padding: AppSpacings.paddingMd,
       decoration: BoxDecoration(
         color: cardColor,

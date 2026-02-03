@@ -441,7 +441,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
         crossAxisAlignment: CrossAxisAlignment.start,
         spacing: AppSpacings.pMd,
         children: [
-          _buildPrimaryControlCard(context, isDark, dialSize: _scale(200)),
+          _buildPrimaryControlCard(context, isDark, dialSize: _scale(DeviceDetailDialSizes.portrait)),
           if (statusSection is! SizedBox) ...[
             SectionTitle(
               title: localizations.device_sensors,
@@ -467,7 +467,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
 
     return DeviceDetailLandscapeLayout(
       mainContent: isLargeScreen
-          ? _buildPrimaryControlCard(context, isDark, dialSize: _scale(220))
+          ? _buildPrimaryControlCard(context, isDark, dialSize: _scale(DeviceDetailDialSizes.landscape))
           : _buildCompactDialWithModes(context, isDark),
       secondaryContent: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -592,19 +592,14 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
     }
 
     return Column(
-      children: sensors.asMap().entries.map((entry) {
-        final index = entry.key;
-        final sensor = entry.value;
-        final isLast = index == sensors.length - 1;
-        return Padding(
-          padding: EdgeInsets.only(bottom: isLast ? 0 : AppSpacings.pMd),
-          child: HorizontalTileStretched(
+      spacing: AppSpacings.pMd,
+      children: sensors.map((sensor) {
+        return HorizontalTileStretched(
             icon: sensor.icon,
             name: sensor.displayValue,
             status: sensor.label,
             iconAccentColor: sensor.themeColor,
             showWarningBadge: sensor.isWarning,
-          ),
         );
       }).toList(),
     );
@@ -626,6 +621,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
     final targetSetpoint = _targetSetpoint.clamp(minSetpoint, maxSetpoint);
 
     return Container(
+      width: double.infinity,
       padding: AppSpacings.paddingMd,
       decoration: BoxDecoration(
         color: cardColor,

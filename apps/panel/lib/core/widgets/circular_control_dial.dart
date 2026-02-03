@@ -60,6 +60,18 @@ enum DialAccentColor {
   neutral,
 }
 
+/// Base design sizes for [CircularControlDial] in device detail screens.
+/// Scale with [ScreenService.scale] before passing to the dial.
+class DeviceDetailDialSizes {
+  DeviceDetailDialSizes._();
+
+  /// Portrait layout (primary control card).
+  static const double portrait = 200;
+
+  /// Landscape layout on large screen (primary control card).
+  static const double landscape = 220;
+}
+
 /// A reusable circular control dial widget similar to a Nest thermostat.
 ///
 /// This widget provides a circular dial with:
