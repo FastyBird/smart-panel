@@ -567,7 +567,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     return localizations.thermostat_state_idle_at(tempStr);
   }
 
-  ThemeColors _getModeThemeColor() {
+  ThemeColors _getModeColor() {
     switch (_currentMode) {
       case ThermostatMode.heat:
         return ThemeColors.warning;
@@ -582,7 +582,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
 
   Color _getModeBorderColor() {
     final brightness = Theme.of(context).brightness;
-    final modeColor = _getModeThemeColor();
+    final modeColor = _getModeColor();
     final modeColorFamily = ThemeColorFamily.get(brightness, modeColor);
 
     return modeColorFamily.light7;
@@ -682,7 +682,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
   Widget _buildHeader(BuildContext context, bool isDark) {
     final brightness = Theme.of(context).brightness;
     final localizations = AppLocalizations.of(context)!;
-    final modeColor = _getModeThemeColor();
+    final modeColor = _getModeColor();
     final modeColorFamily = ThemeColorFamily.get(brightness, modeColor);
 
     final secondaryColor =
@@ -714,7 +714,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
   Widget _buildPortraitLayout(BuildContext context, bool isDark) {
     final localizations = AppLocalizations.of(context)!;
     final brightness = Theme.of(context).brightness;
-    final modeColor = _getModeThemeColor();
+    final modeColor = _getModeColor();
     final modeColorFamily = ThemeColorFamily.get(brightness, modeColor);
     final statusSection = _buildStatusSection(localizations, isDark, modeColorFamily.base);
     final controlsSection = _buildControlsSection(localizations, isDark, modeColor);
@@ -752,7 +752,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     final localizations = AppLocalizations.of(context)!;
     final brightness = Theme.of(context).brightness;
     final isLargeScreen = _screenService.isLargeScreen;
-    final modeColor = _getModeThemeColor();
+    final modeColor = _getModeColor();
     final modeColorFamily = ThemeColorFamily.get(brightness, modeColor);
     final statusSection = _buildStatusSection(localizations, isDark, modeColorFamily.base);
     final controlsSection = _buildControlsSection(localizations, isDark, modeColor);
@@ -974,7 +974,12 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     final targetSetpoint = _targetSetpoint.clamp(minSetpoint, maxSetpoint);
 
     return Container(
-      padding: AppSpacings.paddingMd,
+      padding: EdgeInsets.only(
+        top: AppSpacings.pLg,
+        bottom: AppSpacings.pMd,
+        left: AppSpacings.pMd,
+        right: AppSpacings.pMd,
+      ),
       decoration: BoxDecoration(
         color: cardColor,
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
@@ -982,6 +987,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           CircularControlDial(
             value: targetSetpoint,
@@ -998,7 +1004,6 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
             displayFormat: DialDisplayFormat.temperature,
             onChanged: _onSetpointChanged,
           ),
-          AppSpacings.spacingMdVertical,
           _buildModeSelector(context, ModeSelectorOrientation.horizontal),
         ],
       ),
@@ -1031,7 +1036,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
               math.min(availableForDial, maxDialHeight).clamp(120.0, 400.0);
 
           return Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               CircularControlDial(
                 value: targetSetpoint,
@@ -1048,7 +1053,6 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
                 displayFormat: DialDisplayFormat.temperature,
                 onChanged: _onSetpointChanged,
               ),
-              AppSpacings.spacingXlHorizontal,
               _buildModeSelector(context, ModeSelectorOrientation.vertical,
                   showLabels: false),
             ],

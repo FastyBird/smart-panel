@@ -14,13 +14,13 @@ import 'package:fastybird_smart_panel/core/widgets/device_detail_portrait_layout
 import 'package:fastybird_smart_panel/core/widgets/device_offline_overlay.dart';
 import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
+import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
 import 'package:fastybird_smart_panel/core/widgets/tile_wrappers.dart';
-import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/devices/controllers/devices/heating_unit.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_colors.dart';
-import 'package:fastybird_smart_panel/modules/devices/controllers/devices/heating_unit.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/heating_unit.dart';
@@ -28,8 +28,13 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
-/// Mode enum for heating unit device
-enum HeaterMode { heat, off }
+/// Mode enum for heating unit device (heat / off only).
+enum HeaterMode {
+  off,
+  heat;
+
+  String get value => name;
+}
 
 /// Internal sensor data structure for heating unit device detail.
 class _SensorInfo {
@@ -38,8 +43,7 @@ class _SensorInfo {
   final String value;
   final String? unit;
   final IconData icon;
-  final Color? valueColor;
-  final ThemeColors? valueThemeColor;
+  final ThemeColors? themeColor;
   final bool isWarning;
 
   const _SensorInfo({
@@ -48,8 +52,7 @@ class _SensorInfo {
     required this.value,
     required this.icon,
     this.unit,
-    this.valueColor,
-    this.valueThemeColor,
+    this.themeColor,
     this.isWarning = false,
   });
 
@@ -84,11 +87,6 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
   Timer? _setpointDebounceTimer;
   static const _setpointDebounceDuration = Duration(milliseconds: 300);
 
-  // Grace period after mode changes to prevent control state listener from
-  // causing flickering
-  DateTime? _modeChangeTime;
-  static const _modeChangeGracePeriod = Duration(milliseconds: 500);
-
   @override
   void initState() {
     super.initState();
@@ -121,7 +119,8 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
 
   void _onControllerError(String propertyId, Object error) {
     if (kDebugMode) {
-      debugPrint('[HeatingUnitDeviceDetail] Controller error for $propertyId: $error');
+      debugPrint(
+          '[HeatingUnitDeviceDetail] Controller error for $propertyId: $error');
     }
 
     final localizations = AppLocalizations.of(context);
@@ -143,18 +142,17 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
   }
 
   void _onDeviceChanged() {
-    if (mounted) {
-      _checkConvergence();
-      _initController();
-      setState(() {});
-    }
+    if (!mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _checkConvergence();
+        _initController();
+        setState(() {});
+      }
+    });
   }
 
-  /// Check convergence for all controllable properties.
-  ///
-  /// When device data updates (from WebSocket), this checks if any properties
-  /// in settling state have converged (or diverged from external changes) and
-  /// clears the optimistic state appropriately.
+  /// Check convergence for heater channel properties.
   void _checkConvergence() {
     final controlState = _deviceControlStateService;
     if (controlState == null) return;
@@ -163,7 +161,6 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
     final heaterChannel = _device.heaterChannel;
     final channelId = heaterChannel.id;
 
-    // Check power property
     controlState.checkPropertyConvergence(
       deviceId,
       channelId,
@@ -171,7 +168,6 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
       heaterChannel.on,
     );
 
-    // Check temperature setpoint property
     controlState.checkPropertyConvergence(
       deviceId,
       channelId,
@@ -182,15 +178,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
   }
 
   void _onControlStateChanged() {
-    if (!mounted) return;
-
-    // Skip rebuilds during grace period after mode changes
-    if (_modeChangeTime != null &&
-        DateTime.now().difference(_modeChangeTime!) < _modeChangeGracePeriod) {
-      return;
-    }
-
-    setState(() {});
+    if (mounted) setState(() {});
   }
 
   HeatingUnitDeviceView get _device {
@@ -208,37 +196,31 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
   // STATE HELPERS
   // --------------------------------------------------------------------------
 
-  bool get _isHeating => _device.heaterChannel.isHeating;
-
-  bool get _isActive => _isHeating;
-
-  /// Determine current mode from device state
-  /// Mode is derived from heater.on property
+  /// Current mode from heater ON state or pending control state.
   HeaterMode get _currentMode {
-    final heaterOnProp = _device.heaterChannel.onProp;
     final controlState = _deviceControlStateService;
+    final heaterChannel = _device.heaterChannel;
 
-    // Check for pending heater state
-    bool heaterOn = _device.heaterChannel.on;
+    bool heaterOn = heaterChannel.on;
     if (controlState != null &&
         controlState.isLocked(
-            _device.id, _device.heaterChannel.id, heaterOnProp.id)) {
+            _device.id, heaterChannel.id, heaterChannel.onProp.id)) {
       final desiredValue = controlState.getDesiredValue(
         _device.id,
-        _device.heaterChannel.id,
-        heaterOnProp.id,
+        heaterChannel.id,
+        heaterChannel.onProp.id,
       );
       if (desiredValue is bool) {
         heaterOn = desiredValue;
       }
     }
 
-    // Determine mode from on state
-    if (heaterOn) {
-      return HeaterMode.heat;
-    }
-    return HeaterMode.off;
+    return heaterOn ? HeaterMode.heat : HeaterMode.off;
   }
+
+  bool get _isHeating => _device.heaterChannel.isHeating;
+
+  bool get _isActive => _isHeating;
 
   double get _currentTemperature => _device.temperatureChannel.temperature;
 
@@ -246,14 +228,19 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
 
   double get _maxSetpoint => _device.heaterChannel.maxTemperature;
 
-  double get _targetSetpoint {
-    // Use controller for optimistic-aware value
-    final controller = _controller;
-    if (controller != null) {
-      return controller.heater.temperature;
+  /// Valid min/max setpoint range; uses safe defaults if API returns malformed data.
+  (double, double) get _validSetpointRange {
+    var min = _minSetpoint;
+    var max = _maxSetpoint;
+    if (min >= max) {
+      min = 16.0;
+      max = 30.0;
     }
-    return _device.heaterChannel.temperature;
+    return (min, max);
   }
+
+  double get _targetSetpoint =>
+      _controller?.temperature ?? _device.heaterChannel.temperature;
 
   // --------------------------------------------------------------------------
   // MODE AND SETPOINT HANDLERS
@@ -263,22 +250,18 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
     final controller = _controller;
     if (controller == null) return;
 
-    // Set grace period to prevent control state listener from causing flickering
-    _modeChangeTime = DateTime.now();
+    final heaterChannel = _device.heaterChannel;
+    final heaterOnProp = heaterChannel.onProp;
 
-    final heaterOnProp = _device.heaterChannel.onProp;
-
-    // Build batch command list
     final commands = <PropertyCommandItem>[
       PropertyCommandItem(
         deviceId: _device.id,
-        channelId: _device.heaterChannel.id,
+        channelId: heaterChannel.id,
         propertyId: heaterOnProp.id,
         value: mode == HeaterMode.heat,
       ),
     ];
 
-    // Use controller's batch operation
     controller.setMultipleProperties(
       commands,
       onError: () {
@@ -297,30 +280,24 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
   void _onSetpointChanged(double value) {
     final controller = _controller;
     final setpointProp = _device.heaterChannel.temperatureProp;
+    final channelId = _device.heaterChannel.id;
     if (controller == null) return;
 
-    // Round to step value (0.5)
     final steppedValue = (value * 2).round() / 2;
-
-    // Clamp to valid range
     final clampedValue = steppedValue.clamp(_minSetpoint, _maxSetpoint);
 
-    // Set PENDING state immediately for responsive UI (for dial visual feedback)
     _deviceControlStateService?.setPending(
       _device.id,
-      _device.heaterChannel.id,
+      channelId,
       setpointProp.id,
       clampedValue,
     );
     setState(() {});
 
-    // Cancel any pending debounce timer
     _setpointDebounceTimer?.cancel();
 
-    // Debounce the API call to avoid flooding backend
     _setpointDebounceTimer = Timer(_setpointDebounceDuration, () {
       if (!mounted) return;
-
       controller.setTemperature(clampedValue);
     });
   }
@@ -340,30 +317,20 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
     return localizations.thermostat_state_idle_at(tempStr);
   }
 
-  Color _getModeColor(bool isDark) {
+  ThemeColors _getModeColor() {
     switch (_currentMode) {
       case HeaterMode.heat:
-        return isDark ? AppColorsDark.warning : AppColorsLight.warning;
+        return ThemeColors.warning;
       case HeaterMode.off:
-        return isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
+        return ThemeColors.neutral;
     }
   }
 
-  Color _getModeLightColor(bool isDark) {
-    switch (_currentMode) {
-      case HeaterMode.heat:
-        return isDark ? AppColorsDark.warningLight5 : AppColorsLight.warningLight5;
-      case HeaterMode.off:
-        return isDark ? AppFillColorDark.light : AppFillColorLight.light;
-    }
-  }
-
-  Color _getModeBorderColor(bool isDark) {
-    final modeColor = _getModeColor(isDark);
-    if (_currentMode == HeaterMode.off) {
-      return isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
-    }
-    return modeColor.withValues(alpha: 0.3);
+  Color _getModeBorderColor() {
+    final brightness = Theme.of(context).brightness;
+    final modeColor = _getModeColor();
+    final modeColorFamily = ThemeColorFamily.get(brightness, modeColor);
+    return modeColorFamily.light7;
   }
 
   DialAccentColor _getDialAccentColor() {
@@ -375,7 +342,8 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
     }
   }
 
-  List<ModeOption<HeaterMode>> _getModeOptions(AppLocalizations localizations) {
+  List<ModeOption<HeaterMode>> _getModeOptions(
+      AppLocalizations localizations) {
     return [
       ModeOption(
         value: HeaterMode.heat,
@@ -402,7 +370,8 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
     final localizations = AppLocalizations.of(context)!;
 
     final lastSeenText = widget._device.lastStateChange != null
-        ? DatetimeUtils.formatTimeAgo(widget._device.lastStateChange!, localizations)
+        ? DatetimeUtils.formatTimeAgo(
+            widget._device.lastStateChange!, localizations)
         : null;
 
     return Scaffold(
@@ -436,17 +405,17 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
   }
 
   Widget _buildHeader(BuildContext context, bool isDark) {
+    final brightness = Theme.of(context).brightness;
     final localizations = AppLocalizations.of(context)!;
-    final modeColor = _getModeColor(isDark);
+    final modeColor = _getModeColor();
+    final modeColorFamily = ThemeColorFamily.get(brightness, modeColor);
     final secondaryColor =
         isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
-    final mutedColor =
-        isDark ? AppTextColorDark.disabled : AppTextColorLight.disabled;
 
     return PageHeader(
       title: _device.name,
       subtitle: _getStatusLabel(localizations),
-      subtitleColor: _isActive ? modeColor : secondaryColor,
+      subtitleColor: _isActive ? modeColorFamily.base : secondaryColor,
       backgroundColor: AppColors.blank,
       leading: Row(
         mainAxisSize: MainAxisSize.min,
@@ -456,23 +425,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
             onTap: widget.onBack ?? () => Navigator.of(context).pop(),
           ),
           AppSpacings.spacingMdHorizontal,
-          Container(
-            width: _scale(44),
-            height: _scale(44),
-            decoration: BoxDecoration(
-              color: _isActive
-                  ? _getModeLightColor(isDark)
-                  : (isDark
-                      ? AppFillColorDark.darker
-                      : AppFillColorLight.darker),
-              borderRadius: BorderRadius.circular(AppBorderRadius.base),
-            ),
-            child: Icon(
-              MdiIcons.radiator,
-              color: _isActive ? modeColor : mutedColor,
-              size: _scale(24),
-            ),
-          ),
+          HeaderMainIcon(icon: MdiIcons.radiator, color: modeColor),
         ],
       ),
     );
@@ -484,21 +437,23 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
 
   Widget _buildPortraitLayout(BuildContext context, bool isDark) {
     final localizations = AppLocalizations.of(context)!;
-    final modeColor = _getModeColor(isDark);
-    final statusSection = _buildStatusSection(localizations, isDark, modeColor);
+    final brightness = Theme.of(context).brightness;
+    final modeColor = _getModeColor();
+    final modeColorFamily = ThemeColorFamily.get(brightness, modeColor);
+    final statusSection =
+        _buildStatusSection(localizations, isDark, modeColorFamily.base);
 
     return DeviceDetailPortraitLayout(
       content: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: AppSpacings.pMd,
         children: [
           _buildPrimaryControlCard(context, isDark, dialSize: _scale(200)),
           if (statusSection is! SizedBox) ...[
-            AppSpacings.spacingLgVertical,
             SectionTitle(
               title: localizations.device_sensors,
               icon: MdiIcons.eyeSettings,
             ),
-            AppSpacings.spacingMdVertical,
             statusSection,
           ],
         ],
@@ -512,9 +467,12 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
 
   Widget _buildLandscapeLayout(BuildContext context, bool isDark) {
     final localizations = AppLocalizations.of(context)!;
+    final brightness = Theme.of(context).brightness;
     final isLargeScreen = _screenService.isLargeScreen;
-    final modeColor = _getModeColor(isDark);
-    final statusSection = _buildStatusSection(localizations, isDark, modeColor);
+    final modeColor = _getModeColor();
+    final modeColorFamily = ThemeColorFamily.get(brightness, modeColor);
+    final statusSection =
+        _buildStatusSection(localizations, isDark, modeColorFamily.base);
 
     return DeviceDetailLandscapeLayout(
       mainContent: isLargeScreen
@@ -548,10 +506,8 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
     final humidityChannel = _device.humidityChannel;
     final contactChannel = _device.contactChannel;
 
-    // Build sensor info list
     final sensors = <_SensorInfo>[];
 
-    // Temperature (always present)
     sensors.add(_SensorInfo(
       id: 'temperature',
       label: localizations.device_current_temperature,
@@ -561,11 +517,9 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
       ),
       unit: '°C',
       icon: MdiIcons.thermometer,
-      valueColor: ThemeColorFamily.get(isDark ? Brightness.dark : Brightness.light, SensorColors.temperature).base,
-      valueThemeColor: ThemeColors.info,
+      themeColor: SensorColors.temperature,
     ));
 
-    // Humidity (optional)
     if (humidityChannel != null) {
       sensors.add(_SensorInfo(
         id: 'humidity',
@@ -574,13 +528,10 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
             .formatInteger(humidityChannel.humidity),
         unit: '%',
         icon: MdiIcons.waterPercent,
-        valueColor: ThemeColorFamily.get(isDark ? Brightness.dark : Brightness.light, SensorColors.humidity).base,
-        valueThemeColor: ThemeColors.success,
+        themeColor: SensorColors.humidity,
       ));
     }
 
-    // Contact sensor (optional) - shows window/door status
-    // detected = true means window is open
     if (contactChannel != null) {
       final isOpen = contactChannel.detected;
       sensors.add(_SensorInfo(
@@ -590,8 +541,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
             ? localizations.contact_sensor_open
             : localizations.contact_sensor_closed,
         icon: MdiIcons.windowOpenVariant,
-        valueColor: ThemeColorFamily.get(isDark ? Brightness.dark : Brightness.light, SensorColors.alert).base,
-        valueThemeColor: ThemeColors.warning,
+        themeColor: SensorColors.alert,
         isWarning: isOpen,
       ));
     }
@@ -600,23 +550,18 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
       return const SizedBox.shrink();
     }
 
-    return _buildSensorsSection(isDark, sensors, ThemeColors.primary);
+    return _buildSensorsSection(isDark, sensors);
   }
 
-  /// Builds sensors section using tile wrappers:
-  /// - Portrait: HorizontalScrollWithGradient with HorizontalTileCompact
-  /// - Landscape large: GridView.count with VerticalTileLarge
-  /// - Landscape small/medium: Column with HorizontalTileStretched
-  Widget _buildSensorsSection(bool isDark, List<_SensorInfo> sensors, ThemeColors? accentThemeColor) {
+  /// Builds sensors section using tile wrappers (same pattern as thermostat).
+  Widget _buildSensorsSection(bool isDark, List<_SensorInfo> sensors) {
     if (sensors.isEmpty) return const SizedBox.shrink();
 
     final isLandscape = _screenService.isLandscape;
     final isLargeScreen = _screenService.isLargeScreen;
 
-    // Portrait: Horizontal scroll with HorizontalTileCompact
     if (!isLandscape) {
       final tileHeight = _scale(AppTileHeight.horizontal);
-
       return HorizontalScrollWithGradient(
         height: tileHeight,
         layoutPadding: AppSpacings.pLg,
@@ -628,14 +573,13 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
             icon: sensor.icon,
             name: sensor.displayValue,
             status: sensor.label,
-            activeColor: sensor.valueThemeColor ?? accentThemeColor,
+            iconAccentColor: sensor.themeColor,
             showWarningBadge: sensor.isWarning,
           );
         },
       );
     }
 
-    // Landscape large: GridView with VerticalTileLarge
     if (isLargeScreen) {
       return GridView.count(
         crossAxisCount: 2,
@@ -649,14 +593,13 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
             icon: sensor.icon,
             name: sensor.displayValue,
             status: sensor.label,
-            activeColor: sensor.valueThemeColor ?? accentThemeColor,
+            iconAccentColor: sensor.themeColor,
             showWarningBadge: sensor.isWarning,
           );
         }).toList(),
       );
     }
 
-    // Landscape small/medium: Column with HorizontalTileStretched
     return Column(
       children: sensors.asMap().entries.map((entry) {
         final index = entry.key;
@@ -668,7 +611,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
             icon: sensor.icon,
             name: sensor.displayValue,
             status: sensor.label,
-            activeColor: sensor.valueThemeColor ?? accentThemeColor,
+            iconAccentColor: sensor.themeColor,
             showWarningBadge: sensor.isWarning,
           ),
         );
@@ -685,24 +628,19 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
     bool isDark, {
     required double dialSize,
   }) {
-    final borderColor = _getModeBorderColor(isDark);
+    final borderColor = _getModeBorderColor();
     final cardColor =
         isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
-
-    // Validate min/max - CircularControlDial asserts maxValue > minValue
-    var minSetpoint = _minSetpoint;
-    var maxSetpoint = _maxSetpoint;
-    if (minSetpoint >= maxSetpoint) {
-      // Use safe defaults if API returns malformed data
-      minSetpoint = 16.0;
-      maxSetpoint = 30.0;
-    }
-
-    // Clamp target to valid range
+    final (minSetpoint, maxSetpoint) = _validSetpointRange;
     final targetSetpoint = _targetSetpoint.clamp(minSetpoint, maxSetpoint);
 
     return Container(
-      padding: AppSpacings.paddingLg,
+      padding: EdgeInsets.only(
+        top: AppSpacings.pLg,
+        bottom: AppSpacings.pMd,
+        left: AppSpacings.pMd,
+        right: AppSpacings.pMd,
+      ),
       decoration: BoxDecoration(
         color: cardColor,
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
@@ -710,6 +648,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           CircularControlDial(
             value: targetSetpoint,
@@ -720,8 +659,8 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
             size: dialSize,
             accentType: _getDialAccentColor(),
             isActive: _isActive,
-            enabled: _currentMode != HeaterMode.off,
-            modeLabel: _currentMode.name,
+            enabled: _currentMode == HeaterMode.heat,
+            modeLabel: _currentMode.value,
             displayFormat: DialDisplayFormat.temperature,
             onChanged: _onSetpointChanged,
           ),
@@ -732,22 +671,11 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
     );
   }
 
-  /// Compact dial with vertical icon-only mode selector on the right
   Widget _buildCompactDialWithModes(BuildContext context, bool isDark) {
-    final borderColor = _getModeBorderColor(isDark);
+    final borderColor = _getModeBorderColor();
     final cardColor =
         isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
-
-    // Validate min/max - CircularControlDial asserts maxValue > minValue
-    var minSetpoint = _minSetpoint;
-    var maxSetpoint = _maxSetpoint;
-    if (minSetpoint >= maxSetpoint) {
-      // Use safe defaults if API returns malformed data
-      minSetpoint = 16.0;
-      maxSetpoint = 30.0;
-    }
-
-    // Clamp target to valid range
+    final (minSetpoint, maxSetpoint) = _validSetpointRange;
     final targetSetpoint = _targetSetpoint.clamp(minSetpoint, maxSetpoint);
 
     return Container(
@@ -768,7 +696,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
               math.min(availableForDial, maxDialHeight).clamp(120.0, 400.0);
 
           return Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               CircularControlDial(
                 value: targetSetpoint,
@@ -779,12 +707,11 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
                 size: dialSize,
                 accentType: _getDialAccentColor(),
                 isActive: _isActive,
-                enabled: _currentMode != HeaterMode.off,
-                modeLabel: _currentMode.name,
+                enabled: _currentMode == HeaterMode.heat,
+                modeLabel: _currentMode.value,
                 displayFormat: DialDisplayFormat.temperature,
                 onChanged: _onSetpointChanged,
               ),
-              AppSpacings.spacingXlHorizontal,
               _buildModeSelector(context, ModeSelectorOrientation.vertical,
                   showLabels: false),
             ],
