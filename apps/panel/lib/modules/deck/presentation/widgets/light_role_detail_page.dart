@@ -79,6 +79,7 @@ class LightRoleDetailPage extends StatefulWidget {
 }
 
 class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
+  final ScreenService _screenService = locator<ScreenService>();
 
   SpacesService? _spacesService;
   DevicesService? _devicesService;
@@ -2196,9 +2197,11 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
                                 setState(() => _selectedCapability = value);
                               },
                               isVertical: true,
+                              showLabels: _screenService.isAtLeastLarge,
                             )
                           : null,
                       additionalContent: additionalContent,
+                      fullHeight: true,
                     );
                   }
 
@@ -2881,16 +2884,13 @@ class _SliderPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (isLandscape) {
-      return Padding(
-        padding: EdgeInsets.all(AppSpacings.pLg),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(child: _buildDisplay()),
-            AppSpacings.spacingLgHorizontal,
-            _buildVerticalSlider(),
-          ],
-        ),
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(child: _buildDisplay()),
+          AppSpacings.spacingMdHorizontal,
+          _buildVerticalSlider(),
+        ],
       );
     } else {
       return Column(
@@ -3166,18 +3166,15 @@ class _ColorPanel extends StatelessWidget {
     final color = HSVColor.fromAHSV(1, hue, saturation, 1).toColor();
 
     if (isLandscape) {
-      return Padding(
-        padding: EdgeInsets.all(AppSpacings.pLg),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(child: _buildDisplay(color)),
-            AppSpacings.spacingLgHorizontal,
-            _buildVerticalHueSlider(),
-            AppSpacings.spacingMdHorizontal,
-            _buildVerticalSatSlider(),
-          ],
-        ),
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(child: _buildDisplay(color)),
+          AppSpacings.spacingMdHorizontal,
+          _buildVerticalHueSlider(),
+          AppSpacings.spacingMdHorizontal,
+          _buildVerticalSatSlider(),
+        ],
       );
     } else {
       return Column(

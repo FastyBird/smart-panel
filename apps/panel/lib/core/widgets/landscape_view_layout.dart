@@ -55,6 +55,8 @@ class LandscapeViewLayout extends StatelessWidget {
   /// Default: true
   final bool additionalContentScrollable;
 
+  final bool fullHeight;
+
   LandscapeViewLayout({
     super.key,
     required this.mainContent,
@@ -62,6 +64,7 @@ class LandscapeViewLayout extends StatelessWidget {
     this.additionalContent,
     this.modeSelectorShowLabels,
     this.mainContentScrollable = false,
+    this.fullHeight = false,
     this.additionalContentScrollable = true,
   });
 
@@ -89,13 +92,13 @@ class LandscapeViewLayout extends StatelessWidget {
     final defaultMainPadding = modeSelector != null
         ? EdgeInsets.only(
             top: AppSpacings.pMd,
-            bottom: AppSpacings.pLg,
+            bottom: fullHeight ? AppSpacings.pMd : AppSpacings.pLg,
             left: AppSpacings.pLg,
           )
         : AppSpacings.paddingLg;
     final defaultModeSelectorPadding = EdgeInsets.only(
       top: AppSpacings.pMd,
-      bottom: AppSpacings.pLg,
+      bottom: fullHeight ? AppSpacings.pMd : AppSpacings.pLg,
       left: AppSpacings.pMd,
       right: AppSpacings.pMd,
     );

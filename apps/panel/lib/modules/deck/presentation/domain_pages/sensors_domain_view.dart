@@ -25,12 +25,13 @@
 /// - Tapping a sensor opens [DeviceDetailPage] for its device.
 ///
 /// **File structure (for humans and AI):**
-/// Search for the exact section header (e.g. "// DATA MODELS", "// LIFECYCLE")
-/// to jump to that part of the file. Sections appear in this order:
+/// Search for the exact section header (e.g. "// CONSTANTS", "// DATA MODELS",
+/// "// LIFECYCLE") to jump to that part of the file. Sections appear in this order:
 ///
+/// - **CONSTANTS** — [_SensorsViewConstants]: freshness refresh interval.
 /// - **DATA MODELS** — [SensorStatus], [TrendDirection], [SensorData], [_parseTrend].
-/// - **SENSORS DOMAIN VIEW PAGE** — [SensorsDomainViewPage] and state: LIFECYCLE,
-///   LISTENERS, DATA LOADING, NAVIGATION, FILTERING & CATEGORIES, BUILD.
+/// - **SENSORS DOMAIN VIEW PAGE** — [SensorsDomainViewPage] and state: HELPERS,
+///   LIFECYCLE, LISTENERS, DATA LOADING, NAVIGATION, FILTERING & CATEGORIES, BUILD.
 /// - **EMPTY STATE** — no sensors message.
 /// - **HEADER** — title, subtitle (alert/health counts), home button.
 /// - **CATEGORY SELECTOR** — portrait and landscape mode selectors.
@@ -74,8 +75,20 @@ import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/devic
 import 'package:fastybird_smart_panel/modules/spaces/export.dart';
 
 // =============================================================================
+// CONSTANTS
+// =============================================================================
+// Used for periodic UI refresh so freshness indicators (fresh/recent/stale) update.
+
+class _SensorsViewConstants {
+  /// Interval for refreshing the page so [SensorFreshness] and dot colors update.
+  static const Duration freshnessRefreshInterval = Duration(seconds: 30);
+}
+
+// =============================================================================
 // DATA MODELS
 // =============================================================================
+// Local enums and view model for sensor tiles. [SensorData] is built from
+// [SpaceStateRepository] / [SensorStateModel] in [_loadSensorData].
 
 /// Display status for a sensor: normal, warning (e.g. motion active), alert (safety), or offline.
 enum SensorStatus {
@@ -178,6 +191,9 @@ TrendDirection _parseTrend(String? trend) {
 // =============================================================================
 // SENSORS DOMAIN VIEW PAGE
 // =============================================================================
+// Stateful page for one room's sensors. State: [_sensors], [_selectedCategory],
+// [_isLoading]. Listens to [SpacesService], [SpaceStateRepository], [DevicesService];
+// periodic timer refreshes UI for freshness indicators.
 
 class SensorsDomainViewPage extends StatefulWidget {
   final DomainViewItem viewItem;
@@ -207,9 +223,14 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
 
   String get _roomId => widget.viewItem.roomId;
 
+  // --------------------------------------------------------------------------
+  // HELPERS
+  // --------------------------------------------------------------------------
+
   double _scale(double size) =>
       _screenService.scale(size, density: _visualDensityService.density);
 
+  /// Resolves service from [locator]; optional [onSuccess] adds listener. Returns null on failure.
   T? _tryLocator<T extends Object>(String debugLabel, {void Function(T)? onSuccess}) {
     try {
       final s = locator<T>();
@@ -223,9 +244,11 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     }
   }
 
-  // -------------------------------------------------------------------------
+  // --------------------------------------------------------------------------
   // LIFECYCLE
-  // -------------------------------------------------------------------------
+  // --------------------------------------------------------------------------
+  // initState: resolve services, register listeners, load data, start freshness timer.
+  // dispose: cancel timer and remove listeners.
 
   @override
   void initState() {
@@ -240,7 +263,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     _loadSensorData();
 
     _freshnessTimer = Timer.periodic(
-      const Duration(seconds: 30),
+      _SensorsViewConstants.freshnessRefreshInterval,
       (_) {
         if (mounted) setState(() {});
       },
@@ -256,9 +279,9 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     super.dispose();
   }
 
-  // -------------------------------------------------------------------------
+  // --------------------------------------------------------------------------
   // LISTENERS
-  // -------------------------------------------------------------------------
+  // --------------------------------------------------------------------------
 
   void _onDataChanged() {
     if (!mounted) return;
@@ -269,9 +292,12 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     });
   }
 
-  // -------------------------------------------------------------------------
+  // --------------------------------------------------------------------------
   // DATA LOADING
-  // -------------------------------------------------------------------------
+  // --------------------------------------------------------------------------
+  // [_loadSensorData] transforms [SpaceStateRepository] readings into [SensorData].
+  // Helpers: [_mapChannelCategory], [_determineSensorStatus], [_formatSensorValue],
+  // [_isDiscreteProperty]; binary/format helpers below.
 
   /// Maps API channel category string to [SensorCategory] for grouping and display.
   SensorCategory _mapChannelCategory(String channelCategory) {
@@ -398,7 +424,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
   }
 
 
-  /// Check if a property has a discrete (non-numeric) data type — bool or enum
+  /// True when the channel property is bool or enum (used for binary/state display).
   bool _isDiscreteProperty(String? propertyId) {
     if (propertyId == null) return false;
     try {
@@ -411,7 +437,8 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     }
   }
 
-  /// Loads sensor list from [SpaceStateRepository] for [_roomId]; transforms readings into [SensorData].
+  /// Loads sensor list from [SpaceStateRepository] for [_roomId]; transforms
+  /// readings into [SensorData] and updates [_sensors] and [_isLoading].
   void _loadSensorData() {
     final roomName = _spacesService?.getSpace(_roomId)?.name ?? 'Room';
     final sensorState = _spaceStateRepository?.getSensorState(_roomId);
@@ -421,7 +448,6 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     }
 
     if (sensorState == null || !sensorState.hasSensors) {
-      // No sensor data available yet
       if (kDebugMode) {
         debugPrint('[SensorsDomainViewPage] No sensor data available');
       }
@@ -434,16 +460,14 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
       return;
     }
 
-    // Transform API data to view models
     final List<SensorData> sensors = [];
-
     for (final roleReadings in sensorState.readings) {
       for (final reading in roleReadings.readings) {
         final category = _mapChannelCategory(reading.channelCategory);
         final status = _determineSensorStatus(reading, sensorState);
         final value = _formatSensorValue(reading.value, reading.channelCategory);
 
-        // Strip room name prefix from device name since we're already on the room page
+        // Strip room name prefix from device name (we're already on the room page)
         var deviceLabel = reading.deviceName;
         if (deviceLabel.toLowerCase().startsWith(roomName.toLowerCase())) {
           deviceLabel = deviceLabel.substring(roomName.length).trim();
@@ -492,9 +516,9 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     return _spaceStateRepository?.getSensorState(_roomId)?.environment;
   }
 
-  // -------------------------------------------------------------------------
+  // --------------------------------------------------------------------------
   // NAVIGATION
-  // -------------------------------------------------------------------------
+  // --------------------------------------------------------------------------
 
   void _navigateToHome() {
     final deck = _deckService?.deck;
@@ -510,9 +534,10 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     }
   }
 
-  // -------------------------------------------------------------------------
+  // --------------------------------------------------------------------------
   // FILTERING & CATEGORIES
-  // -------------------------------------------------------------------------
+  // --------------------------------------------------------------------------
+  // Category display (colors, labels, icons) and filtered list for mode selector + grid.
 
   List<SensorData> get _filteredSensors {
     if (_selectedCategory == null) return _sensors;
@@ -628,9 +653,10 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     ];
   }
 
-  // -------------------------------------------------------------------------
+  // --------------------------------------------------------------------------
   // BUILD
-  // -------------------------------------------------------------------------
+  // --------------------------------------------------------------------------
+  // Scaffold with header; body: empty state or orientation-based layout (portrait/landscape).
 
   @override
   Widget build(BuildContext context) {
@@ -676,6 +702,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
   // =============================================================================
   // EMPTY STATE
   // =============================================================================
+  // Shown when [_sensors] is empty: icon, title, description.
 
   Widget _buildEmptyState(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -733,6 +760,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
   // =============================================================================
   // HEADER
   // =============================================================================
+  // Title, subtitle (alert/health counts or sensor count), leading icon, home button.
 
   Widget _buildHeader(BuildContext context, int alertCount) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -785,6 +813,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
   // =============================================================================
   // CATEGORY SELECTOR
   // =============================================================================
+  // Horizontal mode selector (portrait) or vertical (landscape); options from [_getCategoryModeOptions].
 
   Widget _buildCategorySelector(BuildContext context) {
     final modeOptions = _getCategoryModeOptions();
@@ -803,6 +832,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
   // =============================================================================
   // PORTRAIT LAYOUT
   // =============================================================================
+  // Optional alert banner, summary cards (when "All"), category selector, sensor grid.
 
   Widget _buildPortraitLayout(BuildContext context) {
     final isAtLeastMedium = _screenService.isAtLeastMedium;
@@ -828,6 +858,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
   // =============================================================================
   // LANDSCAPE LAYOUT
   // =============================================================================
+  // Summary row (when "All"), sensor grid, vertical category selector.
 
   Widget _buildLandscapeLayout(BuildContext context) {
     final isLargeScreen = _screenService.isLargeScreen;
@@ -848,7 +879,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     );
   }
 
-  /// Build vertical category selector for landscape layout
+  /// Vertical category selector for landscape; [showLabels] on large screens.
   Widget _buildLandscapeCategorySelector(
     BuildContext context, {
     bool showLabels = false,
@@ -868,6 +899,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
   // =============================================================================
   // ALERT BANNER
   // =============================================================================
+  // Single CTA when any sensor has [SensorStatus.alert]; tap opens that sensor's device detail.
 
   Widget _buildAlertBanner(BuildContext context) {
     final alertSensor =
@@ -883,6 +915,8 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
   // =============================================================================
   // SUMMARY CARDS
   // =============================================================================
+  // Row of environment averages from [_environment] (temp, humidity, illuminance/pressure).
+  // Compact mode: horizontal scroll tiles; otherwise expanded cards in a row.
 
   /// Builds summary row items from [_environment] (avg temperature, humidity, illuminance or pressure).
   List<({String name, String status, IconData icon, Color color, ThemeColors? themeColor})> _buildSummaryItems({
@@ -1051,6 +1085,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
   // =============================================================================
   // SENSOR GRID
   // =============================================================================
+  // Section title + count, then grid of [_filteredSensors]. Cards show icon, freshness dot, value, trend.
 
   Widget _buildSensorGrid(BuildContext context, {required int crossAxisCount, double childAspectRatio = 1.0}) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -1300,6 +1335,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
   // =============================================================================
   // SENSOR DETAIL
   // =============================================================================
+  // Navigate to [DeviceDetailPage] for the sensor's device; preselect channel when device is sensor.
 
   /// Pushes [DeviceDetailPage] for the sensor's device. When the device category
   /// is sensor, passes [sensor.id] as [DeviceDetailPage.initialChannelId] to
