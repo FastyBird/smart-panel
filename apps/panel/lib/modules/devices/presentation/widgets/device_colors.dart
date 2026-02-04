@@ -67,4 +67,7 @@ class SensorColors {
 
   /// Fallback for unknown sensor types
   static ThemeColors get defaultColor => ThemeColors.neutral;
+
+  /// Danger/alert state (e.g. sensor in alert status)
+  static ThemeColors get danger => ThemeColors.danger;
 }

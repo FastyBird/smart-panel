@@ -334,6 +334,14 @@ class ThemeColorFamily {
   }
 }
 
+/// Extension to get icon container colors from a [ThemeColorFamily]:
+/// [iconColor] = [ThemeColorFamily.base], [backgroundColor] = [ThemeColorFamily.light5].
+/// Use for role/category icon boxes (e.g. shading role icon, sensor card icon).
+extension ThemeColorFamilyIconContainer on ThemeColorFamily {
+  ({Color iconColor, Color backgroundColor}) get iconContainer =>
+      (iconColor: base, backgroundColor: light5);
+}
+
 class AppTheme {
   static final ScreenService _screenService = locator<ScreenService>();
   static final VisualDensityService _visualDensityService =

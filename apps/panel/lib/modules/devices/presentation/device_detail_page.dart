@@ -7,9 +7,11 @@ import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/lighting.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/sensor.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/window_covering.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/lighting.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/devices/sensor.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/window_covering.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -88,6 +90,14 @@ class DeviceDetailPage extends StatelessWidget {
         if (device.category == DevicesModuleDeviceCategory.windowCovering &&
             device is WindowCoveringDeviceView) {
           return WindowCoveringDeviceDetail(
+            device: device,
+            initialChannelId: initialChannelId,
+          );
+        }
+        // For sensor devices, pass initial channel ID to preselect the sensor
+        if (device.category == DevicesModuleDeviceCategory.sensor &&
+            device is SensorDeviceView) {
+          return SensorDeviceDetail(
             device: device,
             initialChannelId: initialChannelId,
           );

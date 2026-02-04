@@ -427,7 +427,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
         children: [
           HeaderIconButton(
             icon: MdiIcons.arrowLeft,
-            onTap: widget.onBack,
+            onTap: widget.onBack ?? () => Navigator.of(context).pop(),
           ),
           AppSpacings.spacingMdHorizontal,
           HeaderMainIcon(icon: MdiIcons.weatherWindy, color: _getStatusColor()),

@@ -683,28 +683,34 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
           // Header Row
           Row(
             children: [
-              // Role Icon
-              Container(
-                width: _screenService.scale(
-                  48,
-                  density: _visualDensityService.density,
-                ),
-                height: _screenService.scale(
-                  48,
-                  density: _visualDensityService.density,
-                ),
-                decoration: BoxDecoration(
-                  color: positionColorFamily.light5,
-                  borderRadius: BorderRadius.circular(AppBorderRadius.base),
-                ),
-                child: Icon(
-                  roleData.icon,
-                  color: positionColorFamily.base,
-                  size: _screenService.scale(
-                    24,
-                    density: _visualDensityService.density,
-                  ),
-                ),
+              // Role icon: background and icon from position state (open=success, closed=info, partial=warning)
+              Builder(
+                builder: (context) {
+                  final (iconColor: iconColor, backgroundColor: iconBgColor) =
+                      positionColorFamily.iconContainer;
+                  return Container(
+                    width: _screenService.scale(
+                      48,
+                      density: _visualDensityService.density,
+                    ),
+                    height: _screenService.scale(
+                      48,
+                      density: _visualDensityService.density,
+                    ),
+                    decoration: BoxDecoration(
+                      color: iconBgColor,
+                      borderRadius: BorderRadius.circular(AppBorderRadius.base),
+                    ),
+                    child: Icon(
+                      roleData.icon,
+                      color: iconColor,
+                      size: _screenService.scale(
+                        24,
+                        density: _visualDensityService.density,
+                      ),
+                    ),
+                  );
+                },
               ),
               AppSpacings.spacingMdHorizontal,
               // Title

@@ -1,9 +1,12 @@
+import 'dart:async';
+import 'dart:math';
+
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/app_bottom_sheet.dart';
+import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/modules/devices/utils/value.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/property_timeseries.dart';
@@ -12,15 +15,19 @@ import 'package:fastybird_smart_panel/modules/devices/views/channels/view.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/sensor.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart' show DateFormat;
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 class SensorDeviceDetail extends StatefulWidget {
   final SensorDeviceView _device;
+  final String? initialChannelId;
 
   const SensorDeviceDetail({
     super.key,
     required SensorDeviceView device,
+    this.initialChannelId,
   }) : _device = device;
 
   @override
@@ -28,6 +35,21 @@ class SensorDeviceDetail extends StatefulWidget {
 }
 
 class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
+  final GlobalKey _scrollToKey = GlobalKey();
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.initialChannelId != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final context = _scrollToKey.currentContext;
+        if (context != null) {
+          Scrollable.ensureVisible(context, alignment: 0.2);
+        }
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final environmentalSensors = _getEnvironmentalSensors();
@@ -48,24 +70,40 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
                     title: 'Environmental',
                     icon: MdiIcons.thermometer,
                     sensors: environmentalSensors,
+                    deviceName: widget._device.name,
+                    isDeviceOnline: widget._device.isOnline,
+                    scrollToChannelId: widget.initialChannelId,
+                    scrollToKey: _scrollToKey,
                   ),
                 if (airQualitySensors.isNotEmpty)
                   SensorSection(
                     title: 'Air Quality',
                     icon: MdiIcons.airFilter,
                     sensors: airQualitySensors,
+                    deviceName: widget._device.name,
+                    isDeviceOnline: widget._device.isOnline,
+                    scrollToChannelId: widget.initialChannelId,
+                    scrollToKey: _scrollToKey,
                   ),
                 if (detectionSensors.isNotEmpty)
                   SensorSection(
                     title: 'Detection',
                     icon: MdiIcons.motionSensor,
                     sensors: detectionSensors,
+                    deviceName: widget._device.name,
+                    isDeviceOnline: widget._device.isOnline,
+                    scrollToChannelId: widget.initialChannelId,
+                    scrollToKey: _scrollToKey,
                   ),
                 if (deviceInfoSensors.isNotEmpty)
                   SensorSection(
                     title: 'Device Info',
                     icon: MdiIcons.informationOutline,
                     sensors: deviceInfoSensors,
+                    deviceName: widget._device.name,
+                    isDeviceOnline: widget._device.isOnline,
+                    scrollToChannelId: widget.initialChannelId,
+                    scrollToKey: _scrollToKey,
                   ),
               ],
             ),
@@ -360,12 +398,20 @@ class SensorSection extends StatelessWidget {
   final String title;
   final IconData icon;
   final List<SensorData> sensors;
+  final String? deviceName;
+  final bool? isDeviceOnline;
+  final String? scrollToChannelId;
+  final GlobalKey? scrollToKey;
 
   const SensorSection({
     super.key,
     required this.title,
     required this.icon,
     required this.sensors,
+    this.deviceName,
+    this.isDeviceOnline,
+    this.scrollToChannelId,
+    this.scrollToKey,
   });
 
   @override
@@ -410,8 +456,21 @@ class SensorSection extends StatelessWidget {
         Wrap(
           spacing: AppSpacings.pSm,
           runSpacing: AppSpacings.pSm,
-          children:
-              sensors.map((sensor) => SensorCard(sensor: sensor)).toList(),
+          children: sensors
+              .map((sensor) {
+                final card = SensorCard(
+                  sensor: sensor,
+                  deviceName: deviceName,
+                  isDeviceOnline: isDeviceOnline,
+                );
+                if (scrollToChannelId != null &&
+                    scrollToKey != null &&
+                    sensor.channel.id == scrollToChannelId) {
+                  return KeyedSubtree(key: scrollToKey, child: card);
+                }
+                return card;
+              })
+              .toList(),
         ),
         AppSpacings.spacingMdVertical,
       ],
@@ -421,10 +480,14 @@ class SensorSection extends StatelessWidget {
 
 class SensorCard extends StatelessWidget {
   final SensorData sensor;
+  final String? deviceName;
+  final bool? isDeviceOnline;
 
   const SensorCard({
     super.key,
     required this.sensor,
+    this.deviceName,
+    this.isDeviceOnline,
   });
 
   String _translateSensorLabel(AppLocalizations localizations, String label) {
@@ -449,7 +512,16 @@ class SensorCard extends StatelessWidget {
 
     return GestureDetector(
       onTap: sensor.property != null && sensor.isDetection == null
-          ? () => _showSensorDetail(context, sensor)
+          ? () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => SensorDetailPage(
+                    sensor: sensor,
+                    deviceName: deviceName,
+                    isDeviceOnline: isDeviceOnline,
+                  ),
+                ),
+              )
           : null,
       child: Container(
         constraints: BoxConstraints(
@@ -623,16 +695,798 @@ class SensorCard extends StatelessWidget {
     );
   }
 
-  void _showSensorDetail(BuildContext context, SensorData sensor) {
-    showAppBottomSheet(
-      context,
-      title: null,
-      showHandle: false,
-      contentPadding: EdgeInsets.zero,
-      scrollable: false,
-      content: SensorDetailBottomSheet(sensor: sensor),
+}
+
+// =============================================================================
+// SENSOR DETAIL PAGE (full-screen, from deck sensors domain)
+// =============================================================================
+
+/// Full-screen sensor detail with current value, history chart, period selector,
+/// and optional event log for binary sensors. Uses device [SensorData].
+class SensorDetailPage extends StatefulWidget {
+  final SensorData sensor;
+  final String? deviceName;
+  final bool? isDeviceOnline;
+
+  const SensorDetailPage({
+    super.key,
+    required this.sensor,
+    this.deviceName,
+    this.isDeviceOnline,
+  });
+
+  @override
+  State<SensorDetailPage> createState() => _SensorDetailPageState();
+}
+
+class _SensorDetailPageState extends State<SensorDetailPage> {
+  final ScreenService _screenService = locator<ScreenService>();
+  final VisualDensityService _visualDensityService =
+      locator<VisualDensityService>();
+  final PropertyTimeseriesService _timeseriesService =
+      locator<PropertyTimeseriesService>();
+
+  int _selectedPeriod = 1; // 0=1H, 1=24H, 2=7D, 3=30D
+  bool _isLoadingTimeseries = false;
+  PropertyTimeseries? _timeseries;
+
+  bool get _isBinary => widget.sensor.isDetection == true;
+  String get _channelId => widget.sensor.channel.id;
+  String? get _propertyId => widget.sensor.property?.id;
+  String get _currentValue => widget.sensor.property != null
+      ? (widget.sensor.valueFormatter != null
+          ? (widget.sensor.valueFormatter!(widget.sensor.property!) ?? '--')
+          : ValueUtils.formatValue(widget.sensor.property!) ?? '--')
+      : '--';
+  String get _unit => widget.sensor.property?.unit ?? '';
+  bool get _isOffline => widget.isDeviceOnline == false;
+  String get _location => widget.deviceName ?? widget.sensor.channel.name;
+
+  TimeRange _getTimeRange() {
+    switch (_selectedPeriod) {
+      case 0:
+        return TimeRange.oneHour;
+      case 1:
+        return TimeRange.oneDay;
+      case 2:
+      case 3:
+        return TimeRange.sevenDays;
+      default:
+        return TimeRange.oneDay;
+    }
+  }
+
+  Future<void> _fetchTimeseries() async {
+    if (_propertyId == null) return;
+    if (!mounted) return;
+    setState(() => _isLoadingTimeseries = true);
+    try {
+      final result = await _timeseriesService.getTimeseries(
+        channelId: _channelId,
+        propertyId: _propertyId!,
+        timeRange: _getTimeRange(),
+      );
+      if (mounted) {
+        setState(() {
+          _timeseries = result;
+          _isLoadingTimeseries = false;
+        });
+      }
+    } catch (e) {
+      if (kDebugMode) debugPrint('[SensorDetailPage] Timeseries error: $e');
+      if (mounted) setState(() => _isLoadingTimeseries = false);
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchTimeseries();
+  }
+
+  void _onPeriodChanged(int period) {
+    if (_selectedPeriod != period) {
+      setState(() => _selectedPeriod = period);
+      _fetchTimeseries();
+    }
+  }
+
+  double _scale(double size) =>
+      _screenService.scale(size, density: _visualDensityService.density);
+
+  ThemeColors _themeColorForLabel() {
+    final l = widget.sensor.label.toLowerCase();
+    if (l.contains('temperature') || l.contains('pressure')) return ThemeColors.info;
+    if (l.contains('humidity')) return ThemeColors.success;
+    if (l.contains('motion') || l.contains('occupancy') || l.contains('contact') ||
+        l.contains('leak') || l.contains('smoke')) return ThemeColors.warning;
+    if (l.contains('carbon') || l.contains('co2') || l.contains('co ')) return ThemeColors.error;
+    return ThemeColors.primary;
+  }
+
+  Color _getCategoryColor(BuildContext context) {
+    final family = ThemeColorFamily.get(
+      Theme.of(context).brightness,
+      _themeColorForLabel(),
+    );
+    return family.base;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Scaffold(
+      backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
+      body: SafeArea(
+        child: Column(
+          children: [
+            _buildHeader(context),
+            Expanded(
+              child: OrientationBuilder(
+                builder: (context, orientation) {
+                  return orientation == Orientation.landscape
+                      ? _buildLandscapeLayout(context)
+                      : _buildPortraitLayout(context);
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
+
+  Widget _buildHeader(BuildContext context) {
+    return PageHeader(
+      title: widget.sensor.label,
+      subtitle: '$_location • ${_isOffline ? 'Offline' : 'Online'}',
+      leading: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          HeaderIconButton(
+            icon: MdiIcons.arrowLeft,
+            onTap: () => Navigator.pop(context),
+          ),
+          AppSpacings.spacingMdHorizontal,
+          HeaderMainIcon(
+            icon: widget.sensor.icon,
+            color: _themeColorForLabel(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPortraitLayout(BuildContext context) {
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          _buildLargeValue(context),
+          if (_isBinary)
+            _buildEventLog(context)
+          else ...[
+            _buildStatsRow(context),
+            _buildChart(context),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLandscapeLayout(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isSmall = !_screenService.isLargeScreen;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildLandscapeLeftPanel(context, isDark, isSmall),
+        Expanded(
+          child: Container(
+            color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
+            child: _isBinary
+                ? SingleChildScrollView(
+                    padding: EdgeInsets.only(top: AppSpacings.pLg),
+                    child: _buildEventLog(context, withMargin: false, withDecoration: false),
+                  )
+                : Center(
+                    child: SingleChildScrollView(
+                      child: _buildChart(context, withMargin: false, withDecoration: false),
+                    ),
+                  ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLandscapeLeftPanel(BuildContext context, bool isDark, bool isSmall) {
+    final content = Container(
+      width: isSmall ? null : _scale(320),
+      padding: AppSpacings.paddingLg,
+      decoration: BoxDecoration(
+        border: Border(
+          right: BorderSide(
+            color: isDark ? AppBorderColorDark.light : AppBorderColorLight.base,
+            width: _scale(1),
+          ),
+        ),
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          children: [
+            _buildLargeValue(context),
+            if (!_isBinary) _buildStatsRowCompact(context),
+          ],
+        ),
+      ),
+    );
+    return isSmall ? Expanded(child: content) : content;
+  }
+
+  Widget _buildLargeValue(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isCompact = _screenService.isSmallScreen;
+    return Padding(
+      padding: EdgeInsets.only(
+        top: isCompact ? AppSpacings.pSm : AppSpacings.pXl,
+        bottom: isCompact ? AppSpacings.pSm : AppSpacings.pXl,
+      ),
+      child: Column(
+        children: [
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: RichText(
+              text: TextSpan(
+                style: TextStyle(
+                  fontSize: _scale(isCompact ? 56 : 72),
+                  fontWeight: FontWeight.w200,
+                  color: _isOffline
+                      ? (isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder)
+                      : _getCategoryColor(context),
+                ),
+                children: [
+                  TextSpan(text: _currentValue),
+                  TextSpan(
+                    text: _unit.isNotEmpty ? ' $_unit' : '',
+                    style: TextStyle(
+                      fontSize: _scale(isCompact ? 18 : 24),
+                      fontWeight: FontWeight.w300,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          AppSpacings.spacingSmVertical,
+          Text(
+            'Current ${widget.sensor.label}',
+            style: TextStyle(
+              color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
+              fontSize: AppFontSize.base,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _getStatsValue(String type) {
+    if (_timeseries == null || _timeseries!.isEmpty) return '--';
+    double value;
+    switch (type) {
+      case 'min':
+        value = _timeseries!.minValue;
+        break;
+      case 'max':
+        value = _timeseries!.maxValue;
+        break;
+      case 'avg':
+        value = _timeseries!.avgValue;
+        break;
+      default:
+        return '--';
+    }
+    return '${NumberFormatUtils.defaultFormat.formatDecimal(value, decimalPlaces: 1)}$_unit';
+  }
+
+  String _getPeriodLabel() {
+    switch (_selectedPeriod) {
+      case 0: return '1h';
+      case 1: return '24h';
+      case 2: return '7d';
+      case 3: return '30d';
+      default: return '24h';
+    }
+  }
+
+  Widget _buildStatsRow(BuildContext context) {
+    final periodLabel = _getPeriodLabel();
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: AppSpacings.pLg),
+      child: Row(
+        children: [
+          _buildStatCard(context, '$periodLabel Min', _getStatsValue('min'), true),
+          AppSpacings.spacingMdHorizontal,
+          _buildStatCard(context, '$periodLabel Max', _getStatsValue('max'), false),
+          AppSpacings.spacingMdHorizontal,
+          _buildStatCard(context, '$periodLabel Avg', _getStatsValue('avg'), null),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatsRowCompact(BuildContext context) {
+    return Row(
+      children: [
+        _buildStatCard(context, 'Min', _getStatsValue('min'), true),
+        AppSpacings.spacingSmHorizontal,
+        _buildStatCard(context, 'Max', _getStatsValue('max'), false),
+        AppSpacings.spacingSmHorizontal,
+        _buildStatCard(context, 'Avg', _getStatsValue('avg'), null),
+      ],
+    );
+  }
+
+  Widget _buildStatCard(BuildContext context, String label, String value, bool? isMin) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    Color? valueColor;
+    if (isMin == true) valueColor = isDark ? AppColorsDark.info : AppColorsLight.info;
+    else if (isMin == false) valueColor = isDark ? AppColorsDark.danger : AppColorsLight.danger;
+    return Expanded(
+      child: Container(
+        padding: AppSpacings.paddingMd,
+        decoration: BoxDecoration(
+          color: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
+          borderRadius: BorderRadius.circular(AppBorderRadius.base),
+          border: Border.all(
+            color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light,
+            width: _scale(1),
+          ),
+        ),
+        child: Column(
+          children: [
+            Text(
+              label,
+              style: TextStyle(
+                color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
+                fontSize: AppFontSize.extraSmall,
+              ),
+            ),
+            AppSpacings.spacingXsVertical,
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                value,
+                style: TextStyle(
+                  color: valueColor ?? (isDark ? AppTextColorDark.primary : AppTextColorLight.primary),
+                  fontSize: AppFontSize.large,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEventLog(BuildContext context, {bool withMargin = true, bool withDecoration = true}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      margin: withMargin ? AppSpacings.paddingLg : EdgeInsets.zero,
+      padding: withDecoration ? AppSpacings.paddingLg : EdgeInsets.symmetric(horizontal: AppSpacings.pLg),
+      decoration: withDecoration
+          ? BoxDecoration(
+              color: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
+              borderRadius: BorderRadius.circular(AppBorderRadius.round),
+              border: Border.all(
+                color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light,
+                width: _scale(1),
+              ),
+            )
+          : null,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Event Log',
+                style: TextStyle(
+                  color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
+                  fontSize: AppFontSize.base,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Container(
+                padding: EdgeInsets.all(AppSpacings.pXs),
+                decoration: BoxDecoration(
+                  color: isDark ? AppFillColorDark.base : AppFillColorLight.base,
+                  borderRadius: BorderRadius.circular(AppBorderRadius.base),
+                ),
+                child: Row(
+                  children: [
+                    _buildPeriodButton(context, '1H', 0),
+                    _buildPeriodButton(context, '24H', 1),
+                    _buildPeriodButton(context, '7D', 2),
+                    _buildPeriodButton(context, '30D', 3),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          AppSpacings.spacingMdVertical,
+          _isLoadingTimeseries
+              ? SizedBox(
+                  height: _scale(160),
+                  child: Center(
+                    child: SizedBox(
+                      width: _scale(24),
+                      height: _scale(24),
+                      child: CircularProgressIndicator(strokeWidth: 2, color: _getCategoryColor(context)),
+                    ),
+                  ),
+                )
+              : (_timeseries != null && _timeseries!.isNotEmpty)
+                  ? _buildEventLogEntries(context)
+                  : SizedBox(
+                      height: _scale(160),
+                      child: Center(
+                        child: Text(
+                          'No events recorded',
+                          style: TextStyle(
+                            color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
+                            fontSize: AppFontSize.small,
+                          ),
+                        ),
+                      ),
+                    ),
+        ],
+      ),
+    );
+  }
+
+  static String _getBinaryLabelLong(String channelCategory, bool isActive) {
+    switch (channelCategory.toLowerCase()) {
+      case 'motion':
+      case 'occupancy':
+        return isActive ? 'Detected' : 'Clear';
+      case 'contact':
+        return isActive ? 'Open' : 'Closed';
+      case 'smoke':
+        return isActive ? 'Smoke detected' : 'Clear';
+      case 'gas':
+        return isActive ? 'Gas detected' : 'Clear';
+      case 'leak':
+        return isActive ? 'Leak detected' : 'Clear';
+      case 'carbon_monoxide':
+        return isActive ? 'CO detected' : 'Clear';
+      default:
+        return isActive ? 'Active' : 'Inactive';
+    }
+  }
+
+  Widget _buildEventLogEntries(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final points = _timeseries!.points;
+    final events = <TimeseriesPoint>[];
+    for (int i = 0; i < points.length; i++) {
+      final isActive = points[i].numericValue >= 0.5;
+      if (i == 0 || (points[i - 1].numericValue >= 0.5) != isActive) {
+        events.add(points[i]);
+      }
+    }
+    final reversedEvents = events.reversed.toList();
+    if (reversedEvents.isEmpty) {
+      return SizedBox(
+        height: _scale(160),
+        child: Center(
+          child: Text(
+            'No state changes',
+            style: TextStyle(
+              color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
+              fontSize: AppFontSize.small,
+            ),
+          ),
+        ),
+      );
+    }
+    final channelCategory = widget.sensor.channel.category.json;
+    final useShortDate = _selectedPeriod <= 1;
+    final dateFormat = useShortDate ? DateFormat.Hm() : DateFormat('MMM d, HH:mm');
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxHeight: _scale(200)),
+      child: ListView.separated(
+        shrinkWrap: true,
+        padding: EdgeInsets.zero,
+        itemCount: reversedEvents.length,
+        separatorBuilder: (_, __) => Divider(
+          height: _scale(1),
+          color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light,
+        ),
+        itemBuilder: (context, index) {
+          final point = reversedEvents[index];
+          final isActive = point.numericValue >= 0.5;
+          final stateLabel = _getBinaryLabelLong(channelCategory ?? '', isActive);
+          final dangerColor = isDark ? AppColorsDark.danger : AppColorsLight.danger;
+          final successColor = isDark ? AppColorsDark.success : AppColorsLight.success;
+          final dotColor = isActive ? dangerColor : successColor;
+          final textColor = isActive ? dangerColor : (isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary);
+          return Padding(
+            padding: EdgeInsets.symmetric(vertical: AppSpacings.pSm),
+            child: Row(
+              children: [
+                Container(
+                  width: _scale(8),
+                  height: _scale(8),
+                  decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
+                ),
+                SizedBox(width: AppSpacings.pMd),
+                Expanded(
+                  child: Text(
+                    stateLabel,
+                    style: TextStyle(color: textColor, fontSize: AppFontSize.small, fontWeight: FontWeight.w500),
+                  ),
+                ),
+                Text(
+                  dateFormat.format(point.time.toLocal()),
+                  style: TextStyle(
+                    color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
+                    fontSize: AppFontSize.extraSmall,
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildChart(BuildContext context, {bool withMargin = true, bool withDecoration = true}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      margin: withMargin ? AppSpacings.paddingLg : EdgeInsets.zero,
+      padding: withDecoration ? AppSpacings.paddingLg : EdgeInsets.symmetric(horizontal: AppSpacings.pLg),
+      decoration: withDecoration
+          ? BoxDecoration(
+              color: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
+              borderRadius: BorderRadius.circular(AppBorderRadius.round),
+              border: Border.all(
+                color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light,
+                width: _scale(1),
+              ),
+            )
+          : null,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'History',
+                style: TextStyle(
+                  color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
+                  fontSize: AppFontSize.base,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Container(
+                padding: EdgeInsets.all(AppSpacings.pXs),
+                decoration: BoxDecoration(
+                  color: isDark ? AppFillColorDark.base : AppFillColorLight.base,
+                  borderRadius: BorderRadius.circular(AppBorderRadius.base),
+                ),
+                child: Row(
+                  children: [
+                    _buildPeriodButton(context, '1H', 0),
+                    _buildPeriodButton(context, '24H', 1),
+                    _buildPeriodButton(context, '7D', 2),
+                    _buildPeriodButton(context, '30D', 3),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          AppSpacings.spacingMdVertical,
+          SizedBox(
+            height: _scale(160),
+            child: _isLoadingTimeseries
+                ? Center(
+                    child: SizedBox(
+                      width: _scale(24),
+                      height: _scale(24),
+                      child: CircularProgressIndicator(strokeWidth: 2, color: _getCategoryColor(context)),
+                    ),
+                  )
+                : (_timeseries != null && _timeseries!.isNotEmpty)
+                    ? CustomPaint(
+                        size: Size(double.infinity, _scale(160)),
+                        painter: _SensorChartPainter(
+                          color: _getCategoryColor(context),
+                          labelColor: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
+                          fontSize: AppFontSize.extraSmall,
+                          timeseries: _timeseries,
+                        ),
+                      )
+                    : Center(
+                        child: Text(
+                          'No history data available',
+                          style: TextStyle(
+                            color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
+                            fontSize: AppFontSize.small,
+                          ),
+                        ),
+                      ),
+          ),
+          AppSpacings.spacingSmVertical,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: _getTimeLabels().map((label) => _buildTimeLabel(context, label)).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<String> _getTimeLabels() {
+    switch (_selectedPeriod) {
+      case 0: return ['-60m', '-45m', '-30m', '-15m', 'Now'];
+      case 1: return ['00:00', '06:00', '12:00', '18:00', 'Now'];
+      case 2: return ['-7d', '-5d', '-3d', '-1d', 'Now'];
+      case 3: return ['-30d', '-22d', '-15d', '-7d', 'Now'];
+      default: return ['00:00', '06:00', '12:00', '18:00', 'Now'];
+    }
+  }
+
+  Widget _buildTimeLabel(BuildContext context, String text) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Text(
+      text,
+      style: TextStyle(
+        color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
+        fontSize: AppFontSize.extraSmall,
+      ),
+    );
+  }
+
+  Widget _buildPeriodButton(BuildContext context, String label, int index) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isSelected = _selectedPeriod == index;
+    return GestureDetector(
+      onTap: () => _onPeriodChanged(index),
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd, vertical: AppSpacings.pXs),
+        decoration: BoxDecoration(
+          color: isSelected ? (isDark ? AppFillColorDark.light : AppFillColorLight.light) : Colors.transparent,
+          borderRadius: BorderRadius.circular(AppBorderRadius.small),
+          boxShadow: isSelected ? [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 3, offset: const Offset(0, 1))] : null,
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? (isDark ? AppTextColorDark.primary : AppTextColorLight.primary) : (isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary),
+            fontSize: AppFontSize.extraSmall,
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// Chart painter for sensor detail (custom line chart)
+class _SensorChartPainter extends CustomPainter {
+  final Color color;
+  final Color labelColor;
+  final double fontSize;
+  final PropertyTimeseries? timeseries;
+
+  static const double _labelWidth = 40.0;
+  static const double _labelGap = 6.0;
+
+  _SensorChartPainter({required this.color, required this.labelColor, this.fontSize = 11, this.timeseries});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final chartLeft = _labelWidth + _labelGap;
+    final chartWidth = size.width - chartLeft;
+    final chartHeight = size.height;
+    double niceMin = 0;
+    double niceMax = 1;
+    List<double> ticks = [0, 0.5, 1];
+    if (timeseries != null && timeseries!.isNotEmpty) {
+      ticks = _computeNiceTicks(timeseries!.minValue, timeseries!.maxValue);
+      niceMin = ticks.first;
+      niceMax = ticks.last;
+    }
+    final niceRange = niceMax - niceMin;
+    final gridPaint = Paint()..color = color.withValues(alpha: 0.1)..strokeWidth = 0.5;
+    for (final tick in ticks) {
+      final normalized = niceRange == 0 ? 0.5 : (tick - niceMin) / niceRange;
+      final y = chartHeight * (1 - normalized);
+      canvas.drawLine(Offset(chartLeft, y), Offset(size.width, y), gridPaint);
+      if (timeseries != null && timeseries!.isNotEmpty) {
+        final label = _formatLabel(tick);
+        final textPainter = TextPainter(
+          text: TextSpan(text: label, style: TextStyle(color: labelColor, fontSize: fontSize)),
+          textDirection: TextDirection.ltr,
+        )..layout(maxWidth: _labelWidth);
+        textPainter.paint(canvas, Offset(_labelWidth - textPainter.width, y - textPainter.height / 2));
+      }
+    }
+    final points = <Offset>[];
+    if (timeseries != null && timeseries!.isNotEmpty) {
+      final data = timeseries!.points;
+      for (int i = 0; i < data.length; i++) {
+        final x = chartLeft + chartWidth * i / (data.length - 1).clamp(1, double.infinity);
+        final normalizedValue = niceRange == 0 ? 0.5 : (data[i].numericValue - niceMin) / niceRange;
+        final y = chartHeight * (1 - normalizedValue.clamp(0.0, 1.0));
+        points.add(Offset(x, y));
+      }
+    }
+    if (points.isEmpty) return;
+    final areaPath = Path()..moveTo(chartLeft, chartHeight);
+    for (final point in points) areaPath.lineTo(point.dx, point.dy);
+    areaPath.lineTo(points.last.dx, chartHeight);
+    areaPath.close();
+    canvas.drawPath(areaPath, Paint()..color = color.withValues(alpha: 0.1)..style = PaintingStyle.fill);
+    final linePath = Path()..moveTo(points.first.dx, points.first.dy);
+    for (int i = 1; i < points.length; i++) linePath.lineTo(points[i].dx, points[i].dy);
+    canvas.drawPath(linePath, Paint()..color = color..strokeWidth = 2..style = PaintingStyle.stroke);
+    if (timeseries != null && timeseries!.isNotEmpty) canvas.drawCircle(points.last, 4, Paint()..color = color);
+  }
+
+  static const double ln10 = 2.302585092994046;
+
+  List<double> _computeNiceTicks(double dataMin, double dataMax, {int targetTicks = 5}) {
+    if (dataMin == dataMax) {
+      final v = dataMin;
+      if (v == 0) return [-1, -0.5, 0, 0.5, 1];
+      final offset = v.abs() * 0.1;
+      final step = _niceStep(offset * 2 / (targetTicks - 1));
+      final nMin = ((v - offset) / step).floor() * step;
+      return List.generate(targetTicks, (i) => _roundToStep(nMin + i * step, step));
+    }
+    final rawStep = (dataMax - dataMin) / (targetTicks - 1);
+    final step = _niceStep(rawStep);
+    final niceMin = (dataMin / step).floor() * step;
+    final niceMax = (dataMax / step).ceil() * step;
+    final ticks = <double>[];
+    var tick = niceMin;
+    while (tick <= niceMax + step * 0.5) {
+      ticks.add(_roundToStep(tick, step));
+      tick += step;
+    }
+    return ticks;
+  }
+
+  double _niceStep(double rawStep) {
+    if (rawStep <= 0) return 1;
+    final magnitude = pow(10, (log(rawStep) / ln10).floor().toDouble());
+    final fraction = rawStep / magnitude;
+    double niceFraction = fraction <= 1.5 ? 1 : (fraction <= 3 ? 2 : (fraction <= 7 ? 5 : 10));
+    return niceFraction * magnitude;
+  }
+
+  double _roundToStep(double value, double step) {
+    if (step >= 1) return (value / step).round() * step;
+    final decimals = -(log(step) / ln10).floor();
+    final factor = pow(10, decimals.toDouble());
+    return (value * factor).round() / factor;
+  }
+
+  String _formatLabel(double value) {
+    if (value.abs() >= 1000) return '${(value / 1000).toStringAsFixed(1)}k';
+    if (value == value.roundToDouble()) return value.round().toString();
+    return value.toStringAsFixed(1);
+  }
+
+  @override
+  bool shouldRepaint(covariant _SensorChartPainter oldDelegate) =>
+      oldDelegate.color != color || oldDelegate.timeseries != timeseries;
 }
 
 class SensorDetailBottomSheet extends StatefulWidget {
