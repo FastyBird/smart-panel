@@ -59,9 +59,10 @@ class SecurityOverlay extends StatelessWidget {
 										),
 									],
 								),
-								child: Column(
-									mainAxisSize: MainAxisSize.min,
-									children: [
+								child: SingleChildScrollView(
+									child: Column(
+										mainAxisSize: MainAxisSize.min,
+										children: [
 										_buildIcon(isDark, screenService),
 										SizedBox(height: AppSpacings.pLg),
 										Text(
@@ -108,7 +109,8 @@ class SecurityOverlay extends StatelessWidget {
 												isDark: isDark,
 											),
 										),
-									],
+										],
+									),
 								),
 							),
 						),

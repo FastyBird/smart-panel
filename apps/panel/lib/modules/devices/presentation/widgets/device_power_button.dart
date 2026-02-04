@@ -71,10 +71,12 @@ class DevicePowerButton extends StatelessWidget {
     return Padding(
       padding: AppSpacings.paddingLg,
       child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            GestureDetector(
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              GestureDetector(
               onTap: () {
                 HapticFeedback.mediumImpact();
                 onTap?.call();
@@ -124,6 +126,7 @@ class DevicePowerButton extends StatelessWidget {
               ),
             ],
           ],
+        ),
         ),
       ),
     );

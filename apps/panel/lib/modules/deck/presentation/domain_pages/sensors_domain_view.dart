@@ -47,6 +47,7 @@ import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 import 'package:provider/provider.dart';
 
+import 'package:fastybird_smart_panel/api/models/devices_module_channel_category.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
@@ -341,16 +342,20 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
 
   /// Get short label for binary sensor state (for tiles)
   static String _getBinaryLabel(String channelCategory, bool isActive) {
-    switch (channelCategory.toLowerCase()) {
-      case 'motion':
-      case 'occupancy':
+    final category = DevicesModuleChannelCategory.fromJson(channelCategory);
+
+    switch (category) {
+      case DevicesModuleChannelCategory.motion:
+      case DevicesModuleChannelCategory.occupancy:
         return isActive ? 'Detected' : 'Clear';
-      case 'contact':
+      case DevicesModuleChannelCategory.contact:
+      case DevicesModuleChannelCategory.door:
+      case DevicesModuleChannelCategory.doorbell:
         return isActive ? 'Open' : 'Closed';
-      case 'smoke':
-      case 'gas':
-      case 'leak':
-      case 'carbon_monoxide':
+      case DevicesModuleChannelCategory.smoke:
+      case DevicesModuleChannelCategory.gas:
+      case DevicesModuleChannelCategory.leak:
+      case DevicesModuleChannelCategory.carbonMonoxide:
         return isActive ? 'Detected' : 'Clear';
       default:
         return isActive ? 'Active' : 'Inactive';
@@ -360,8 +365,16 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
   /// Check if a dynamic value represents a boolean true
   static bool _isBooleanTrue(dynamic value) {
     if (value is bool) return value;
-    if (value == 'true' || value == '1' || value == 1) return true;
+    final strValue = value.toString().toLowerCase();
+    if (strValue == 'true' || strValue == '1') return true;
     return false;
+  }
+
+  /// Check if value looks like a boolean (true/false, 1/0)
+  static bool _looksLikeBoolean(dynamic value) {
+    if (value is bool) return true;
+    final strValue = value.toString().toLowerCase();
+    return strValue == 'true' || strValue == 'false' || strValue == '1' || strValue == '0';
   }
 
   /// Format sensor value for display
@@ -369,7 +382,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     if (value == null) return '--';
 
     // Boolean sensors
-    if (value is bool || value == 'true' || value == 'false' || value == '1' || value == '0') {
+    if (_looksLikeBoolean(value)) {
       return _getBinaryLabel(channelCategory, _isBooleanTrue(value));
     }
 
@@ -841,7 +854,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
         children: [
           if (_selectedCategory == null) _buildSummaryCards(context),
           if (_selectedCategory == null) AppSpacings.spacingLgVertical,
-          _buildSensorGrid(context, crossAxisCount: sensorsPerRow),
+          _buildSensorGrid(context, crossAxisCount: sensorsPerRow, childAspectRatio: 0.95),
         ],
       ),
       mainContentScrollable: true,

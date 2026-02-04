@@ -88,16 +88,18 @@ class LandscapeViewLayout extends StatelessWidget {
     // Default paddings
     final defaultMainPadding = modeSelector != null
         ? EdgeInsets.only(
-            top: AppSpacings.pLg,
+            top: AppSpacings.pMd,
             bottom: AppSpacings.pLg,
             left: AppSpacings.pLg,
           )
         : AppSpacings.paddingLg;
-    final defaultModeSelectorPadding = EdgeInsets.symmetric(
-      vertical: AppSpacings.pLg,
-      horizontal: AppSpacings.pMd,
+    final defaultModeSelectorPadding = EdgeInsets.only(
+      top: AppSpacings.pMd,
+      bottom: AppSpacings.pLg,
+      left: AppSpacings.pMd,
+      right: AppSpacings.pMd,
     );
-    final defaultAdditionalPadding = AppSpacings.paddingLg;
+    final defaultAdditionalPadding = AppSpacings.paddingMd;
     final additionalBgColor =
         isDark ? AppFillColorDark.light : AppFillColorLight.light;
 
@@ -119,7 +121,7 @@ class LandscapeViewLayout extends StatelessWidget {
               Expanded(
                 child: mainContentScrollable
                     ? VerticalScrollWithGradient(
-                        gradientHeight: AppSpacings.pLg,
+                        gradientHeight: AppSpacings.pMd,
                         padding: defaultMainPadding,
                         itemCount: 1,
                         separatorHeight: 0,
@@ -152,7 +154,7 @@ class LandscapeViewLayout extends StatelessWidget {
               color: additionalBgColor,
               child: additionalContentScrollable
                   ? VerticalScrollWithGradient(
-                      gradientHeight: AppSpacings.pLg,
+                      gradientHeight: AppSpacings.pMd,
                       padding: defaultAdditionalPadding,
                       backgroundColor: additionalBgColor,
                       itemCount: 1,

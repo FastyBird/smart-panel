@@ -1017,6 +1017,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
               math.min(availableForDial, maxDialHeight).clamp(120.0, 400.0);
 
           return Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Expanded(
                 child: Center(
@@ -1037,8 +1038,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
                   ),
                 ),
               ),
-              _buildModeSelector(context, ModeSelectorOrientation.vertical,
-                  showLabels: false),
+              _buildVerticalModeSelector(context),
             ],
           );
         },
@@ -1059,6 +1059,19 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
       orientation: orientation,
       iconPlacement: ModeSelectorIconPlacement.left,
       showLabels: showLabels,
+    );
+  }
+
+  Widget _buildVerticalModeSelector(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
+
+    return ModeSelector<ThermostatMode>(
+      modes: _getModeOptions(localizations),
+      selectedValue: _currentMode,
+      onChanged: _onModeChanged,
+      orientation: ModeSelectorOrientation.vertical,
+      showLabels: false,
+      scrollable: true,
     );
   }
 }

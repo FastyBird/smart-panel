@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 
+import 'package:fastybird_smart_panel/api/models/devices_module_channel_category.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
@@ -205,7 +206,7 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
     final channels = _getAllSensorChannels();
     return HeaderIconButton(
       icon: MdiIcons.accessPointNetwork,
-      color: ThemeColors.primary,
+      color: ThemeColors.neutral,
       onTap: () {
         final localizations = AppLocalizations.of(context)!;
         DeviceChannelsSection.showChannelsSheet(
@@ -844,14 +845,23 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
   bool _isLoadingTimeseries = false;
   PropertyTimeseries? _timeseries;
 
-  bool get _isBinary => widget.sensor.isDetection == true;
+  bool get _isBinary => widget.sensor.isDetection != null;
   String get _channelId => widget.sensor.channel.id;
   String? get _propertyId => widget.sensor.property?.id;
-  String get _currentValue => widget.sensor.property != null
-      ? (widget.sensor.valueFormatter != null
-          ? (widget.sensor.valueFormatter!(widget.sensor.property!) ?? '--')
-          : ValueUtils.formatValue(widget.sensor.property!) ?? '--')
-      : '--';
+  String get _currentValue {
+    // For binary sensors, use the detection labels
+    if (_isBinary) {
+      return widget.sensor.isDetection!
+          ? (widget.sensor.detectedLabel ?? 'Active')
+          : (widget.sensor.notDetectedLabel ?? 'Inactive');
+    }
+    // For other sensors, use the value formatter or default formatting
+    return widget.sensor.property != null
+        ? (widget.sensor.valueFormatter != null
+            ? (widget.sensor.valueFormatter!(widget.sensor.property!) ?? '--')
+            : ValueUtils.formatValue(widget.sensor.property!) ?? '--')
+        : '--';
+  }
   String get _unit => widget.sensor.property?.unit ?? '';
   bool get _isOffline => widget.isDeviceOnline == false;
   String get _location => widget.deviceName ?? widget.sensor.channel.name;
@@ -1252,19 +1262,23 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
   }
 
   static String _getBinaryLabelLong(String channelCategory, bool isActive) {
-    switch (channelCategory.toLowerCase()) {
-      case 'motion':
-      case 'occupancy':
+    final category = DevicesModuleChannelCategory.fromJson(channelCategory);
+
+    switch (category) {
+      case DevicesModuleChannelCategory.motion:
+      case DevicesModuleChannelCategory.occupancy:
         return isActive ? 'Detected' : 'Clear';
-      case 'contact':
+      case DevicesModuleChannelCategory.contact:
+      case DevicesModuleChannelCategory.door:
+      case DevicesModuleChannelCategory.doorbell:
         return isActive ? 'Open' : 'Closed';
-      case 'smoke':
+      case DevicesModuleChannelCategory.smoke:
         return isActive ? 'Smoke detected' : 'Clear';
-      case 'gas':
+      case DevicesModuleChannelCategory.gas:
         return isActive ? 'Gas detected' : 'Clear';
-      case 'leak':
+      case DevicesModuleChannelCategory.leak:
         return isActive ? 'Leak detected' : 'Clear';
-      case 'carbon_monoxide':
+      case DevicesModuleChannelCategory.carbonMonoxide:
         return isActive ? 'CO detected' : 'Clear';
       default:
         return isActive ? 'Active' : 'Inactive';

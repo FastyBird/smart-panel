@@ -96,12 +96,12 @@ class PortraitViewLayout extends StatelessWidget {
       final defaultPadding = EdgeInsets.only(
         left: AppSpacings.pLg,
         right: AppSpacings.pLg,
-        top: AppSpacings.pLg,
-        bottom: AppSpacings.pLg + bottomPadding,
+        top: AppSpacings.pMd,
+        bottom: AppSpacings.pMd + bottomPadding,
       );
 
       contentWidget = VerticalScrollWithGradient(
-        gradientHeight: AppSpacings.pLg,
+        gradientHeight: AppSpacings.pMd,
         padding: contentPadding ?? defaultPadding,
         itemCount: 1,
         separatorHeight: 0,

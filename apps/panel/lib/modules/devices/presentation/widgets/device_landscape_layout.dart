@@ -92,16 +92,23 @@ class DeviceLandscapeLayout extends StatelessWidget {
     // Default paddings
     final defaultMainPadding = modeSelector != null
         ? EdgeInsets.only(
-            top: AppSpacings.pLg,
-            bottom: AppSpacings.pLg,
-            left: AppSpacings.pLg,
+            top: AppSpacings.pMd,
+            bottom: AppSpacings.pMd,
+            left: AppSpacings.pMd,
           )
-        : AppSpacings.paddingLg;
-    final defaultModeSelectorPadding = EdgeInsets.symmetric(
-      vertical: AppSpacings.pLg,
-      horizontal: AppSpacings.pMd,
+        : EdgeInsets.only(
+            top: AppSpacings.pMd,
+            bottom: AppSpacings.pMd,
+            left: AppSpacings.pLg,
+            right: AppSpacings.pMd,
+          );
+    final defaultModeSelectorPadding = EdgeInsets.only(
+      top: AppSpacings.pMd,
+      bottom: AppSpacings.pMd,
+      left: AppSpacings.pMd,
+      right: AppSpacings.pMd,
     );
-    final defaultSecondaryPadding = AppSpacings.paddingLg;
+    final defaultSecondaryPadding = AppSpacings.paddingMd;
 
     // Flex values: largeSecondaryColumn: true = 1:1 ratio, false = 2:1 ratio
     final mainFlex = largeSecondaryColumn ? 1 : 2;
@@ -112,7 +119,7 @@ class DeviceLandscapeLayout extends StatelessWidget {
     if (secondaryContent != null) {
       secondaryWidget = secondaryScrollable
           ? VerticalScrollWithGradient(
-              gradientHeight: AppSpacings.pLg,
+              gradientHeight: AppSpacings.pMd,
               padding: defaultSecondaryPadding,
               backgroundColor: secondaryBgColor,
               itemCount: 1,

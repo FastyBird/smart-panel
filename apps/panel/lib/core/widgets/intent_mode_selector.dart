@@ -207,20 +207,33 @@ class IntentModeSelector<T> extends StatelessWidget {
         }).toList();
 
         if (scrollable) {
-          return SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: buttons,
-            ),
+          // Center content when it fits, scroll when it doesn't
+          final column = Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: buttons,
           );
+
+          // If height is bounded, center the content within the scrollable area
+          if (constraints.maxHeight.isFinite) {
+            return SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: Center(child: column),
+              ),
+            );
+          }
+
+          return SingleChildScrollView(child: column);
         }
 
-        // Non-scrollable: stretch items to fill width
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: buttons,
+        // Non-scrollable: center content vertically, stretch items to fill width
+        return Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: buttons,
+          ),
         );
       },
     );
@@ -705,11 +718,11 @@ class IntentModeSelector<T> extends StatelessWidget {
       final statusTop = isIconOnly ? -_scale(5) : _scale(5);
       final statusRight = isIconOnly ? -_scale(5) : _scale(10);
 
-      // Use StackFit.expand for non-scrollable to fill available space,
-      // StackFit.loose for scrollable to avoid unbounded constraints
+      // Use StackFit.loose - the AnimatedContainer inside has explicit dimensions,
+      // so Stack sizes to it. StackFit.expand fails with unbounded height in Column.
       button = Stack(
         clipBehavior: Clip.none,
-        fit: isScrollable ? StackFit.loose : StackFit.expand,
+        fit: StackFit.loose,
         children: [
           button,
           Positioned(

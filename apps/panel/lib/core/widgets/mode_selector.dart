@@ -333,10 +333,12 @@ class _ModeSelectorState<T> extends State<ModeSelector<T>> {
     if (widget.scrollable) {
       return SingleChildScrollView(
         controller: _scrollController,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: buttons,
+        child: IntrinsicWidth(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: buttons,
+          ),
         ),
       );
     }
