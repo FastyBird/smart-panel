@@ -2494,4 +2494,245 @@ class AppLocalizationsEn extends AppLocalizations {
   String sensor_alert_exceeded_threshold(String name) {
     return '$name exceeded threshold';
   }
+
+  @override
+  String get sensor_state_detected => 'Detected';
+
+  @override
+  String get sensor_state_not_detected => 'Not Detected';
+
+  @override
+  String get sensor_state_clear => 'Clear';
+
+  @override
+  String get sensor_state_open => 'Open';
+
+  @override
+  String get sensor_state_closed => 'Closed';
+
+  @override
+  String get sensor_state_active => 'Active';
+
+  @override
+  String get sensor_state_inactive => 'Inactive';
+
+  @override
+  String get sensor_state_smoke_detected => 'Smoke detected';
+
+  @override
+  String get sensor_state_gas_detected => 'Gas detected';
+
+  @override
+  String get sensor_state_leak_detected => 'Leak detected';
+
+  @override
+  String get sensor_state_co_detected => 'CO detected';
+
+  @override
+  String get sensor_label_temperature => 'Temperature';
+
+  @override
+  String get sensor_label_humidity => 'Humidity';
+
+  @override
+  String get sensor_label_pressure => 'Pressure';
+
+  @override
+  String get sensor_label_illuminance => 'Illuminance';
+
+  @override
+  String get sensor_label_carbon_dioxide => 'Carbon Dioxide';
+
+  @override
+  String get sensor_label_carbon_monoxide => 'Carbon Monoxide';
+
+  @override
+  String get sensor_label_ozone => 'Ozone';
+
+  @override
+  String get sensor_label_nitrogen_dioxide => 'Nitrogen Dioxide';
+
+  @override
+  String get sensor_label_sulphur_dioxide => 'Sulphur Dioxide';
+
+  @override
+  String get sensor_label_voc => 'VOC';
+
+  @override
+  String get sensor_label_particulate_matter => 'Particulate Matter';
+
+  @override
+  String get sensor_label_motion => 'Motion';
+
+  @override
+  String get sensor_label_occupancy => 'Occupancy';
+
+  @override
+  String get sensor_label_contact => 'Contact';
+
+  @override
+  String get sensor_label_leak => 'Leak';
+
+  @override
+  String get sensor_label_smoke => 'Smoke';
+
+  @override
+  String get sensor_label_battery => 'Battery';
+
+  @override
+  String get sensor_alert_high_level => 'High Level';
+
+  @override
+  String get sensor_alert_low_battery => 'Low Battery';
+
+  @override
+  String get sensor_alert_charging => 'Charging';
+
+  @override
+  String get sensor_category_temperature => 'Temperature';
+
+  @override
+  String get sensor_category_humidity => 'Humidity';
+
+  @override
+  String get sensor_category_air_quality => 'Air Quality';
+
+  @override
+  String get sensor_category_motion => 'Motion';
+
+  @override
+  String get sensor_category_safety => 'Safety';
+
+  @override
+  String get sensor_category_light => 'Light';
+
+  @override
+  String get sensor_category_energy => 'Energy';
+
+  @override
+  String get sensor_ui_event_log => 'Event Log';
+
+  @override
+  String get sensor_ui_history => 'History';
+
+  @override
+  String get sensor_ui_current => 'Current';
+
+  @override
+  String sensor_ui_current_value(String name) {
+    return 'Current $name';
+  }
+
+  @override
+  String get sensor_ui_min => 'Min';
+
+  @override
+  String get sensor_ui_max => 'Max';
+
+  @override
+  String get sensor_ui_avg => 'Avg';
+
+  @override
+  String sensor_ui_period_min(String period) {
+    return '$period Min';
+  }
+
+  @override
+  String sensor_ui_period_max(String period) {
+    return '$period Max';
+  }
+
+  @override
+  String sensor_ui_period_avg(String period) {
+    return '$period Avg';
+  }
+
+  @override
+  String get sensor_ui_online => 'Online';
+
+  @override
+  String get sensor_ui_offline => 'Offline';
+
+  @override
+  String get sensor_ui_period_1h => '1H';
+
+  @override
+  String get sensor_ui_period_24h => '24H';
+
+  @override
+  String get sensor_ui_period_7d => '7D';
+
+  @override
+  String get sensor_ui_period_30d => '30D';
+
+  @override
+  String get sensor_empty_no_events => 'No events recorded';
+
+  @override
+  String get sensor_empty_no_state_changes => 'No state changes';
+
+  @override
+  String get sensor_empty_no_history => 'No history data available';
+
+  @override
+  String get sensor_empty_no_data => 'No data available';
+
+  @override
+  String get sensor_status_loading => 'Loading data...';
+
+  @override
+  String get sensor_status_failed => 'Failed to load data';
+
+  @override
+  String get sensor_status_retry => 'Retry';
+
+  @override
+  String get sensors_domain_title => 'Sensors';
+
+  @override
+  String get sensors_domain_empty_title => 'No Sensors';
+
+  @override
+  String get sensors_domain_empty_description => 'No sensors are assigned to this room yet.';
+
+  @override
+  String sensors_domain_alerts_active(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Alerts Active',
+      one: 'Alert Active',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get sensors_domain_no_sensors => 'No sensors configured';
+
+  @override
+  String sensors_domain_health_stale(int count) {
+    return '$count stale';
+  }
+
+  @override
+  String sensors_domain_health_offline(int count) {
+    return '$count offline';
+  }
+
+  @override
+  String get sensors_domain_health_normal => 'All normal';
+
+  @override
+  String get sensors_domain_avg_temperature => 'Avg Temperature';
+
+  @override
+  String get sensors_domain_avg_humidity => 'Avg Humidity';
+
+  @override
+  String get sensors_domain_all_sensors => 'All sensors';
+
+  @override
+  String sensors_domain_sensor_count(int count) {
+    return '$count sensors';
+  }
 }

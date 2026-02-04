@@ -77,14 +77,131 @@ class SensorEnumUtils {
     String? channelCategory, {
     bool short = true,
   }) {
-    if (channelCategory == null || channelCategory.isEmpty) return value;
+    if (channelCategory == null || channelCategory.isEmpty) {
+      // Try translating binary states even without channel category
+      return _translateBinaryState(l, value) ?? value;
+    }
     // Only translate non-numeric, non-placeholder values
     if (value == '--' || value.isEmpty) return value;
     if (double.tryParse(value.replaceAll(',', '')) != null) return value;
+
+    // Try enum translation first
     final translated = translatePrimary(
       l, channelCategory, value, short: short,
     );
-    return translated ?? value;
+    if (translated != null) return translated;
+
+    // Try binary state translation
+    return _translateBinaryState(l, value) ?? value;
+  }
+
+  /// Translates common binary sensor state labels.
+  static String? _translateBinaryState(AppLocalizations l, String value) {
+    switch (value.toLowerCase()) {
+      case 'detected':
+        return l.sensor_state_detected;
+      case 'not detected':
+        return l.sensor_state_not_detected;
+      case 'clear':
+        return l.sensor_state_clear;
+      case 'open':
+        return l.sensor_state_open;
+      case 'closed':
+        return l.sensor_state_closed;
+      case 'active':
+        return l.sensor_state_active;
+      case 'inactive':
+        return l.sensor_state_inactive;
+      case 'smoke detected':
+        return l.sensor_state_smoke_detected;
+      case 'gas detected':
+        return l.sensor_state_gas_detected;
+      case 'leak detected':
+        return l.sensor_state_leak_detected;
+      case 'co detected':
+        return l.sensor_state_co_detected;
+      default:
+        return null;
+    }
+  }
+
+  /// Translates sensor type labels (Temperature, Humidity, etc.).
+  static String translateSensorLabel(AppLocalizations l, String label) {
+    switch (label.toLowerCase()) {
+      case 'temperature':
+        return l.sensor_label_temperature;
+      case 'humidity':
+        return l.sensor_label_humidity;
+      case 'pressure':
+        return l.sensor_label_pressure;
+      case 'illuminance':
+        return l.sensor_label_illuminance;
+      case 'carbon dioxide':
+        return l.sensor_label_carbon_dioxide;
+      case 'carbon monoxide':
+        return l.sensor_label_carbon_monoxide;
+      case 'ozone':
+        return l.sensor_label_ozone;
+      case 'nitrogen dioxide':
+        return l.sensor_label_nitrogen_dioxide;
+      case 'sulphur dioxide':
+        return l.sensor_label_sulphur_dioxide;
+      case 'voc':
+        return l.sensor_label_voc;
+      case 'particulate matter':
+        return l.sensor_label_particulate_matter;
+      case 'motion':
+        return l.sensor_label_motion;
+      case 'occupancy':
+        return l.sensor_label_occupancy;
+      case 'contact':
+        return l.sensor_label_contact;
+      case 'leak':
+        return l.sensor_label_leak;
+      case 'smoke':
+        return l.sensor_label_smoke;
+      case 'battery':
+        return l.sensor_label_battery;
+      default:
+        return label;
+    }
+  }
+
+  /// Translates sensor category labels for filters.
+  static String translateSensorCategory(AppLocalizations l, String category) {
+    switch (category.toLowerCase()) {
+      case 'temperature':
+        return l.sensor_category_temperature;
+      case 'humidity':
+        return l.sensor_category_humidity;
+      case 'air quality':
+      case 'air_quality':
+        return l.sensor_category_air_quality;
+      case 'motion':
+        return l.sensor_category_motion;
+      case 'safety':
+        return l.sensor_category_safety;
+      case 'light':
+        return l.sensor_category_light;
+      case 'energy':
+        return l.sensor_category_energy;
+      default:
+        return category;
+    }
+  }
+
+  /// Translates alert labels.
+  static String translateAlertLabel(AppLocalizations l, String label) {
+    switch (label.toLowerCase()) {
+      case 'high level':
+        return l.sensor_alert_high_level;
+      case 'low battery':
+        return l.sensor_alert_low_battery;
+      case 'charging':
+        return l.sensor_alert_charging;
+      default:
+        return label;
+    }
   }
 
   /// Translate primary sensor value using channel category only.

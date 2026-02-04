@@ -599,17 +599,6 @@ class SensorCard extends StatelessWidget {
     this.isDeviceOnline,
   });
 
-  String _translateSensorLabel(AppLocalizations localizations, String label) {
-    switch (label) {
-      case 'Temperature':
-        return localizations.device_temperature;
-      case 'Humidity':
-        return localizations.device_humidity;
-      default:
-        return label;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final screenService = locator<ScreenService>();
@@ -683,7 +672,7 @@ class SensorCard extends StatelessWidget {
                 AppSpacings.spacingSmHorizontal,
                 Flexible(
                   child: Text(
-                    _translateSensorLabel(localizations, sensor.label),
+                    SensorEnumUtils.translateSensorLabel(localizations, sensor.label),
                     style: TextStyle(
                       fontSize: AppFontSize.extraSmall,
                       fontWeight: FontWeight.w500,
@@ -1081,7 +1070,9 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
         ),
         AppSpacings.spacingSmVertical,
         Text(
-          'Current ${widget.sensor.label}',
+          localizations.sensor_ui_current_value(
+            SensorEnumUtils.translateSensorLabel(localizations, widget.sensor.label),
+          ),
           style: TextStyle(
             color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
             fontSize: AppFontSize.base,
@@ -1121,26 +1112,28 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
   }
 
   Widget _buildStatsRow(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
     final periodLabel = _getPeriodLabel();
     return Row(
       children: [
-        _buildStatCard(context, '$periodLabel Min', _getStatsValue('min'), true),
+        _buildStatCard(context, localizations.sensor_ui_period_min(periodLabel), _getStatsValue('min'), true),
         AppSpacings.spacingMdHorizontal,
-        _buildStatCard(context, '$periodLabel Max', _getStatsValue('max'), false),
+        _buildStatCard(context, localizations.sensor_ui_period_max(periodLabel), _getStatsValue('max'), false),
         AppSpacings.spacingMdHorizontal,
-        _buildStatCard(context, '$periodLabel Avg', _getStatsValue('avg'), null),
+        _buildStatCard(context, localizations.sensor_ui_period_avg(periodLabel), _getStatsValue('avg'), null),
       ],
     );
   }
 
   Widget _buildStatsRowCompact(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
     return Row(
       children: [
-        _buildStatCard(context, 'Min', _getStatsValue('min'), true),
+        _buildStatCard(context, localizations.sensor_ui_min, _getStatsValue('min'), true),
         AppSpacings.spacingSmHorizontal,
-        _buildStatCard(context, 'Max', _getStatsValue('max'), false),
+        _buildStatCard(context, localizations.sensor_ui_max, _getStatsValue('max'), false),
         AppSpacings.spacingSmHorizontal,
-        _buildStatCard(context, 'Avg', _getStatsValue('avg'), null),
+        _buildStatCard(context, localizations.sensor_ui_avg, _getStatsValue('avg'), null),
       ],
     );
   }
@@ -1194,6 +1187,7 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
     bool flexible = false,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final localizations = AppLocalizations.of(context)!;
     Widget contentArea;
     if (_isLoadingTimeseries) {
       contentArea = Center(
@@ -1208,7 +1202,7 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
     } else {
       contentArea = Center(
         child: Text(
-          'No events recorded',
+          localizations.sensor_empty_no_events,
           style: TextStyle(
             color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
             fontSize: AppFontSize.small,
@@ -1239,7 +1233,7 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Event Log',
+                localizations.sensor_ui_event_log,
                 style: TextStyle(
                   color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
                   fontSize: AppFontSize.base,
@@ -1254,10 +1248,10 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
                 ),
                 child: Row(
                   children: [
-                    _buildPeriodButton(context, '1H', 0),
-                    _buildPeriodButton(context, '24H', 1),
-                    _buildPeriodButton(context, '7D', 2),
-                    _buildPeriodButton(context, '30D', 3),
+                    _buildPeriodButton(context, localizations.sensor_ui_period_1h, 0),
+                    _buildPeriodButton(context, localizations.sensor_ui_period_24h, 1),
+                    _buildPeriodButton(context, localizations.sensor_ui_period_7d, 2),
+                    _buildPeriodButton(context, localizations.sensor_ui_period_30d, 3),
                   ],
                 ),
               ),
@@ -1296,6 +1290,7 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
 
   Widget _buildEventLogEntries(BuildContext context, {bool inFlex = false}) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final localizations = AppLocalizations.of(context)!;
     final points = _timeseries!.points;
     final events = <TimeseriesPoint>[];
     for (int i = 0; i < points.length; i++) {
@@ -1309,7 +1304,7 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
       return inFlex
           ? Center(
               child: Text(
-                'No state changes',
+                localizations.sensor_empty_no_state_changes,
                 style: TextStyle(
                   color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
                   fontSize: AppFontSize.small,
@@ -1320,7 +1315,7 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
               height: _scale(160),
               child: Center(
                 child: Text(
-                  'No state changes',
+                  localizations.sensor_empty_no_state_changes,
                   style: TextStyle(
                     color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
                     fontSize: AppFontSize.small,
@@ -1387,6 +1382,7 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
 
   Widget _buildChart(BuildContext context, {bool withMargin = true, bool withDecoration = true, bool flexible = false}) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final localizations = AppLocalizations.of(context)!;
 
     Widget buildChartContent(double height) {
       if (_isLoadingTimeseries) {
@@ -1411,7 +1407,7 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
       }
       return Center(
         child: Text(
-          'No history data available',
+          localizations.sensor_empty_no_history,
           style: TextStyle(
             color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
             fontSize: AppFontSize.small,
@@ -1451,7 +1447,7 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'History',
+                localizations.sensor_ui_history,
                 style: TextStyle(
                   color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
                   fontSize: AppFontSize.base,
@@ -1466,10 +1462,10 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
                 ),
                 child: Row(
                   children: [
-                    _buildPeriodButton(context, '1H', 0),
-                    _buildPeriodButton(context, '24H', 1),
-                    _buildPeriodButton(context, '7D', 2),
-                    _buildPeriodButton(context, '30D', 3),
+                    _buildPeriodButton(context, localizations.sensor_ui_period_1h, 0),
+                    _buildPeriodButton(context, localizations.sensor_ui_period_24h, 1),
+                    _buildPeriodButton(context, localizations.sensor_ui_period_7d, 2),
+                    _buildPeriodButton(context, localizations.sensor_ui_period_30d, 3),
                   ],
                 ),
               ),
@@ -1659,17 +1655,6 @@ class SensorDetailBottomSheet extends StatefulWidget {
 }
 
 class _SensorDetailBottomSheetState extends State<SensorDetailBottomSheet> {
-  String _translateSensorLabel(AppLocalizations localizations, String label) {
-    switch (label) {
-      case 'Temperature':
-        return localizations.device_temperature;
-      case 'Humidity':
-        return localizations.device_humidity;
-      default:
-        return label;
-    }
-  }
-
   final PropertyTimeseriesService _timeseriesService =
       locator<PropertyTimeseriesService>();
   final ScreenService _screenService = locator<ScreenService>();
@@ -1764,7 +1749,7 @@ class _SensorDetailBottomSheetState extends State<SensorDetailBottomSheet> {
           AppSpacings.spacingMdHorizontal,
           Expanded(
             child: Text(
-              _translateSensorLabel(localizations, widget.sensor.label),
+              SensorEnumUtils.translateSensorLabel(localizations, widget.sensor.label),
               style: TextStyle(
                 fontSize: AppFontSize.large,
                 fontWeight: FontWeight.w600,
@@ -1811,7 +1796,7 @@ class _SensorDetailBottomSheetState extends State<SensorDetailBottomSheet> {
         textBaseline: TextBaseline.alphabetic,
         children: [
           Text(
-            'Current',
+            localizations.sensor_ui_current,
             style: TextStyle(
               fontSize: AppFontSize.base,
               color: isLight
@@ -1921,6 +1906,7 @@ class _SensorDetailBottomSheetState extends State<SensorDetailBottomSheet> {
 
   Widget _buildChart(BuildContext context) {
     final isLight = Theme.of(context).brightness == Brightness.light;
+    final localizations = AppLocalizations.of(context)!;
 
     if (_isLoading) {
       return Center(
@@ -1930,7 +1916,7 @@ class _SensorDetailBottomSheetState extends State<SensorDetailBottomSheet> {
             const CircularProgressIndicator(),
             AppSpacings.spacingMdVertical,
             Text(
-              'Loading data...',
+              localizations.sensor_status_loading,
               style: TextStyle(
                 color: isLight
                     ? AppTextColorLight.secondary
@@ -1954,7 +1940,7 @@ class _SensorDetailBottomSheetState extends State<SensorDetailBottomSheet> {
             ),
             AppSpacings.spacingMdVertical,
             Text(
-              'Failed to load data',
+              localizations.sensor_status_failed,
               style: TextStyle(
                 color: isLight
                     ? AppTextColorLight.secondary
@@ -1964,7 +1950,7 @@ class _SensorDetailBottomSheetState extends State<SensorDetailBottomSheet> {
             AppSpacings.spacingMdVertical,
             TextButton(
               onPressed: _loadTimeseries,
-              child: const Text('Retry'),
+              child: Text(localizations.sensor_status_retry),
             ),
           ],
         ),
@@ -1985,7 +1971,7 @@ class _SensorDetailBottomSheetState extends State<SensorDetailBottomSheet> {
             ),
             AppSpacings.spacingMdVertical,
             Text(
-              'No data available',
+              localizations.sensor_empty_no_data,
               style: TextStyle(
                 color: isLight
                     ? AppTextColorLight.secondary
@@ -2012,6 +1998,8 @@ class _SensorDetailBottomSheetState extends State<SensorDetailBottomSheet> {
       return const SizedBox.shrink();
     }
 
+    final localizations = AppLocalizations.of(context)!;
+
     return Container(
       padding: AppSpacings.paddingMd,
       child: Row(
@@ -2019,19 +2007,19 @@ class _SensorDetailBottomSheetState extends State<SensorDetailBottomSheet> {
         children: [
           _buildStatItem(
             context,
-            'Min',
+            localizations.sensor_ui_min,
             NumberFormatUtils.defaultFormat.formatDecimal(_timeseries!.minValue, decimalPlaces: 1),
             widget.sensor.property?.unit,
           ),
           _buildStatItem(
             context,
-            'Avg',
+            localizations.sensor_ui_avg,
             NumberFormatUtils.defaultFormat.formatDecimal(_timeseries!.avgValue, decimalPlaces: 1),
             widget.sensor.property?.unit,
           ),
           _buildStatItem(
             context,
-            'Max',
+            localizations.sensor_ui_max,
             NumberFormatUtils.defaultFormat.formatDecimal(_timeseries!.maxValue, decimalPlaces: 1),
             widget.sensor.property?.unit,
           ),

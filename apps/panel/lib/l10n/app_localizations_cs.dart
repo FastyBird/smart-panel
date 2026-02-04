@@ -2510,4 +2510,246 @@ class AppLocalizationsCs extends AppLocalizations {
   String sensor_alert_exceeded_threshold(String name) {
     return '$name překročil prahovou hodnotu';
   }
+
+  @override
+  String get sensor_state_detected => 'Detekováno';
+
+  @override
+  String get sensor_state_not_detected => 'Nedetekováno';
+
+  @override
+  String get sensor_state_clear => 'V pořádku';
+
+  @override
+  String get sensor_state_open => 'Otevřeno';
+
+  @override
+  String get sensor_state_closed => 'Zavřeno';
+
+  @override
+  String get sensor_state_active => 'Aktivní';
+
+  @override
+  String get sensor_state_inactive => 'Neaktivní';
+
+  @override
+  String get sensor_state_smoke_detected => 'Detekován kouř';
+
+  @override
+  String get sensor_state_gas_detected => 'Detekován plyn';
+
+  @override
+  String get sensor_state_leak_detected => 'Detekován únik';
+
+  @override
+  String get sensor_state_co_detected => 'Detekován CO';
+
+  @override
+  String get sensor_label_temperature => 'Teplota';
+
+  @override
+  String get sensor_label_humidity => 'Vlhkost';
+
+  @override
+  String get sensor_label_pressure => 'Tlak';
+
+  @override
+  String get sensor_label_illuminance => 'Osvětlení';
+
+  @override
+  String get sensor_label_carbon_dioxide => 'Oxid uhličitý';
+
+  @override
+  String get sensor_label_carbon_monoxide => 'Oxid uhelnatý';
+
+  @override
+  String get sensor_label_ozone => 'Ozón';
+
+  @override
+  String get sensor_label_nitrogen_dioxide => 'Oxid dusičitý';
+
+  @override
+  String get sensor_label_sulphur_dioxide => 'Oxid siřičitý';
+
+  @override
+  String get sensor_label_voc => 'VOC';
+
+  @override
+  String get sensor_label_particulate_matter => 'Pevné částice';
+
+  @override
+  String get sensor_label_motion => 'Pohyb';
+
+  @override
+  String get sensor_label_occupancy => 'Přítomnost';
+
+  @override
+  String get sensor_label_contact => 'Kontakt';
+
+  @override
+  String get sensor_label_leak => 'Únik';
+
+  @override
+  String get sensor_label_smoke => 'Kouř';
+
+  @override
+  String get sensor_label_battery => 'Baterie';
+
+  @override
+  String get sensor_alert_high_level => 'Vysoká úroveň';
+
+  @override
+  String get sensor_alert_low_battery => 'Slabá baterie';
+
+  @override
+  String get sensor_alert_charging => 'Nabíjení';
+
+  @override
+  String get sensor_category_temperature => 'Teplota';
+
+  @override
+  String get sensor_category_humidity => 'Vlhkost';
+
+  @override
+  String get sensor_category_air_quality => 'Kvalita vzduchu';
+
+  @override
+  String get sensor_category_motion => 'Pohyb';
+
+  @override
+  String get sensor_category_safety => 'Bezpečnost';
+
+  @override
+  String get sensor_category_light => 'Světlo';
+
+  @override
+  String get sensor_category_energy => 'Energie';
+
+  @override
+  String get sensor_ui_event_log => 'Historie událostí';
+
+  @override
+  String get sensor_ui_history => 'Historie';
+
+  @override
+  String get sensor_ui_current => 'Aktuální';
+
+  @override
+  String sensor_ui_current_value(String name) {
+    return 'Aktuální $name';
+  }
+
+  @override
+  String get sensor_ui_min => 'Min';
+
+  @override
+  String get sensor_ui_max => 'Max';
+
+  @override
+  String get sensor_ui_avg => 'Prům';
+
+  @override
+  String sensor_ui_period_min(String period) {
+    return '$period Min';
+  }
+
+  @override
+  String sensor_ui_period_max(String period) {
+    return '$period Max';
+  }
+
+  @override
+  String sensor_ui_period_avg(String period) {
+    return '$period Prům';
+  }
+
+  @override
+  String get sensor_ui_online => 'Online';
+
+  @override
+  String get sensor_ui_offline => 'Offline';
+
+  @override
+  String get sensor_ui_period_1h => '1H';
+
+  @override
+  String get sensor_ui_period_24h => '24H';
+
+  @override
+  String get sensor_ui_period_7d => '7D';
+
+  @override
+  String get sensor_ui_period_30d => '30D';
+
+  @override
+  String get sensor_empty_no_events => 'Žádné zaznamenané události';
+
+  @override
+  String get sensor_empty_no_state_changes => 'Žádné změny stavu';
+
+  @override
+  String get sensor_empty_no_history => 'Žádná historická data';
+
+  @override
+  String get sensor_empty_no_data => 'Žádná data';
+
+  @override
+  String get sensor_status_loading => 'Načítání dat...';
+
+  @override
+  String get sensor_status_failed => 'Načítání dat selhalo';
+
+  @override
+  String get sensor_status_retry => 'Opakovat';
+
+  @override
+  String get sensors_domain_title => 'Senzory';
+
+  @override
+  String get sensors_domain_empty_title => 'Žádné senzory';
+
+  @override
+  String get sensors_domain_empty_description => 'V této místnosti zatím nejsou přiřazeny žádné senzory.';
+
+  @override
+  String sensors_domain_alerts_active(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Aktivních výstrah',
+      few: 'Aktivní výstrahy',
+      one: 'Aktivní výstraha',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get sensors_domain_no_sensors => 'Žádné senzory';
+
+  @override
+  String sensors_domain_health_stale(int count) {
+    return '$count zastaralých';
+  }
+
+  @override
+  String sensors_domain_health_offline(int count) {
+    return '$count offline';
+  }
+
+  @override
+  String get sensors_domain_health_normal => 'Vše v pořádku';
+
+  @override
+  String get sensors_domain_avg_temperature => 'Prům. teplota';
+
+  @override
+  String get sensors_domain_avg_humidity => 'Prům. vlhkost';
+
+  @override
+  String get sensors_domain_all_sensors => 'Všechny senzory';
+
+  @override
+  String sensors_domain_sensor_count(int count) {
+    return '$count senzorů';
+  }
 }

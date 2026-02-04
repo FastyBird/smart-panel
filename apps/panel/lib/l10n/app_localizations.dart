@@ -4720,6 +4720,444 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{name} exceeded threshold'**
   String sensor_alert_exceeded_threshold(String name);
+
+  /// No description provided for @sensor_state_detected.
+  ///
+  /// In en, this message translates to:
+  /// **'Detected'**
+  String get sensor_state_detected;
+
+  /// No description provided for @sensor_state_not_detected.
+  ///
+  /// In en, this message translates to:
+  /// **'Not Detected'**
+  String get sensor_state_not_detected;
+
+  /// No description provided for @sensor_state_clear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear'**
+  String get sensor_state_clear;
+
+  /// No description provided for @sensor_state_open.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get sensor_state_open;
+
+  /// No description provided for @sensor_state_closed.
+  ///
+  /// In en, this message translates to:
+  /// **'Closed'**
+  String get sensor_state_closed;
+
+  /// No description provided for @sensor_state_active.
+  ///
+  /// In en, this message translates to:
+  /// **'Active'**
+  String get sensor_state_active;
+
+  /// No description provided for @sensor_state_inactive.
+  ///
+  /// In en, this message translates to:
+  /// **'Inactive'**
+  String get sensor_state_inactive;
+
+  /// No description provided for @sensor_state_smoke_detected.
+  ///
+  /// In en, this message translates to:
+  /// **'Smoke detected'**
+  String get sensor_state_smoke_detected;
+
+  /// No description provided for @sensor_state_gas_detected.
+  ///
+  /// In en, this message translates to:
+  /// **'Gas detected'**
+  String get sensor_state_gas_detected;
+
+  /// No description provided for @sensor_state_leak_detected.
+  ///
+  /// In en, this message translates to:
+  /// **'Leak detected'**
+  String get sensor_state_leak_detected;
+
+  /// No description provided for @sensor_state_co_detected.
+  ///
+  /// In en, this message translates to:
+  /// **'CO detected'**
+  String get sensor_state_co_detected;
+
+  /// No description provided for @sensor_label_temperature.
+  ///
+  /// In en, this message translates to:
+  /// **'Temperature'**
+  String get sensor_label_temperature;
+
+  /// No description provided for @sensor_label_humidity.
+  ///
+  /// In en, this message translates to:
+  /// **'Humidity'**
+  String get sensor_label_humidity;
+
+  /// No description provided for @sensor_label_pressure.
+  ///
+  /// In en, this message translates to:
+  /// **'Pressure'**
+  String get sensor_label_pressure;
+
+  /// No description provided for @sensor_label_illuminance.
+  ///
+  /// In en, this message translates to:
+  /// **'Illuminance'**
+  String get sensor_label_illuminance;
+
+  /// No description provided for @sensor_label_carbon_dioxide.
+  ///
+  /// In en, this message translates to:
+  /// **'Carbon Dioxide'**
+  String get sensor_label_carbon_dioxide;
+
+  /// No description provided for @sensor_label_carbon_monoxide.
+  ///
+  /// In en, this message translates to:
+  /// **'Carbon Monoxide'**
+  String get sensor_label_carbon_monoxide;
+
+  /// No description provided for @sensor_label_ozone.
+  ///
+  /// In en, this message translates to:
+  /// **'Ozone'**
+  String get sensor_label_ozone;
+
+  /// No description provided for @sensor_label_nitrogen_dioxide.
+  ///
+  /// In en, this message translates to:
+  /// **'Nitrogen Dioxide'**
+  String get sensor_label_nitrogen_dioxide;
+
+  /// No description provided for @sensor_label_sulphur_dioxide.
+  ///
+  /// In en, this message translates to:
+  /// **'Sulphur Dioxide'**
+  String get sensor_label_sulphur_dioxide;
+
+  /// No description provided for @sensor_label_voc.
+  ///
+  /// In en, this message translates to:
+  /// **'VOC'**
+  String get sensor_label_voc;
+
+  /// No description provided for @sensor_label_particulate_matter.
+  ///
+  /// In en, this message translates to:
+  /// **'Particulate Matter'**
+  String get sensor_label_particulate_matter;
+
+  /// No description provided for @sensor_label_motion.
+  ///
+  /// In en, this message translates to:
+  /// **'Motion'**
+  String get sensor_label_motion;
+
+  /// No description provided for @sensor_label_occupancy.
+  ///
+  /// In en, this message translates to:
+  /// **'Occupancy'**
+  String get sensor_label_occupancy;
+
+  /// No description provided for @sensor_label_contact.
+  ///
+  /// In en, this message translates to:
+  /// **'Contact'**
+  String get sensor_label_contact;
+
+  /// No description provided for @sensor_label_leak.
+  ///
+  /// In en, this message translates to:
+  /// **'Leak'**
+  String get sensor_label_leak;
+
+  /// No description provided for @sensor_label_smoke.
+  ///
+  /// In en, this message translates to:
+  /// **'Smoke'**
+  String get sensor_label_smoke;
+
+  /// No description provided for @sensor_label_battery.
+  ///
+  /// In en, this message translates to:
+  /// **'Battery'**
+  String get sensor_label_battery;
+
+  /// No description provided for @sensor_alert_high_level.
+  ///
+  /// In en, this message translates to:
+  /// **'High Level'**
+  String get sensor_alert_high_level;
+
+  /// No description provided for @sensor_alert_low_battery.
+  ///
+  /// In en, this message translates to:
+  /// **'Low Battery'**
+  String get sensor_alert_low_battery;
+
+  /// No description provided for @sensor_alert_charging.
+  ///
+  /// In en, this message translates to:
+  /// **'Charging'**
+  String get sensor_alert_charging;
+
+  /// No description provided for @sensor_category_temperature.
+  ///
+  /// In en, this message translates to:
+  /// **'Temperature'**
+  String get sensor_category_temperature;
+
+  /// No description provided for @sensor_category_humidity.
+  ///
+  /// In en, this message translates to:
+  /// **'Humidity'**
+  String get sensor_category_humidity;
+
+  /// No description provided for @sensor_category_air_quality.
+  ///
+  /// In en, this message translates to:
+  /// **'Air Quality'**
+  String get sensor_category_air_quality;
+
+  /// No description provided for @sensor_category_motion.
+  ///
+  /// In en, this message translates to:
+  /// **'Motion'**
+  String get sensor_category_motion;
+
+  /// No description provided for @sensor_category_safety.
+  ///
+  /// In en, this message translates to:
+  /// **'Safety'**
+  String get sensor_category_safety;
+
+  /// No description provided for @sensor_category_light.
+  ///
+  /// In en, this message translates to:
+  /// **'Light'**
+  String get sensor_category_light;
+
+  /// No description provided for @sensor_category_energy.
+  ///
+  /// In en, this message translates to:
+  /// **'Energy'**
+  String get sensor_category_energy;
+
+  /// No description provided for @sensor_ui_event_log.
+  ///
+  /// In en, this message translates to:
+  /// **'Event Log'**
+  String get sensor_ui_event_log;
+
+  /// No description provided for @sensor_ui_history.
+  ///
+  /// In en, this message translates to:
+  /// **'History'**
+  String get sensor_ui_history;
+
+  /// No description provided for @sensor_ui_current.
+  ///
+  /// In en, this message translates to:
+  /// **'Current'**
+  String get sensor_ui_current;
+
+  /// No description provided for @sensor_ui_current_value.
+  ///
+  /// In en, this message translates to:
+  /// **'Current {name}'**
+  String sensor_ui_current_value(String name);
+
+  /// No description provided for @sensor_ui_min.
+  ///
+  /// In en, this message translates to:
+  /// **'Min'**
+  String get sensor_ui_min;
+
+  /// No description provided for @sensor_ui_max.
+  ///
+  /// In en, this message translates to:
+  /// **'Max'**
+  String get sensor_ui_max;
+
+  /// No description provided for @sensor_ui_avg.
+  ///
+  /// In en, this message translates to:
+  /// **'Avg'**
+  String get sensor_ui_avg;
+
+  /// No description provided for @sensor_ui_period_min.
+  ///
+  /// In en, this message translates to:
+  /// **'{period} Min'**
+  String sensor_ui_period_min(String period);
+
+  /// No description provided for @sensor_ui_period_max.
+  ///
+  /// In en, this message translates to:
+  /// **'{period} Max'**
+  String sensor_ui_period_max(String period);
+
+  /// No description provided for @sensor_ui_period_avg.
+  ///
+  /// In en, this message translates to:
+  /// **'{period} Avg'**
+  String sensor_ui_period_avg(String period);
+
+  /// No description provided for @sensor_ui_online.
+  ///
+  /// In en, this message translates to:
+  /// **'Online'**
+  String get sensor_ui_online;
+
+  /// No description provided for @sensor_ui_offline.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline'**
+  String get sensor_ui_offline;
+
+  /// No description provided for @sensor_ui_period_1h.
+  ///
+  /// In en, this message translates to:
+  /// **'1H'**
+  String get sensor_ui_period_1h;
+
+  /// No description provided for @sensor_ui_period_24h.
+  ///
+  /// In en, this message translates to:
+  /// **'24H'**
+  String get sensor_ui_period_24h;
+
+  /// No description provided for @sensor_ui_period_7d.
+  ///
+  /// In en, this message translates to:
+  /// **'7D'**
+  String get sensor_ui_period_7d;
+
+  /// No description provided for @sensor_ui_period_30d.
+  ///
+  /// In en, this message translates to:
+  /// **'30D'**
+  String get sensor_ui_period_30d;
+
+  /// No description provided for @sensor_empty_no_events.
+  ///
+  /// In en, this message translates to:
+  /// **'No events recorded'**
+  String get sensor_empty_no_events;
+
+  /// No description provided for @sensor_empty_no_state_changes.
+  ///
+  /// In en, this message translates to:
+  /// **'No state changes'**
+  String get sensor_empty_no_state_changes;
+
+  /// No description provided for @sensor_empty_no_history.
+  ///
+  /// In en, this message translates to:
+  /// **'No history data available'**
+  String get sensor_empty_no_history;
+
+  /// No description provided for @sensor_empty_no_data.
+  ///
+  /// In en, this message translates to:
+  /// **'No data available'**
+  String get sensor_empty_no_data;
+
+  /// No description provided for @sensor_status_loading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading data...'**
+  String get sensor_status_loading;
+
+  /// No description provided for @sensor_status_failed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load data'**
+  String get sensor_status_failed;
+
+  /// No description provided for @sensor_status_retry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get sensor_status_retry;
+
+  /// No description provided for @sensors_domain_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Sensors'**
+  String get sensors_domain_title;
+
+  /// No description provided for @sensors_domain_empty_title.
+  ///
+  /// In en, this message translates to:
+  /// **'No Sensors'**
+  String get sensors_domain_empty_title;
+
+  /// No description provided for @sensors_domain_empty_description.
+  ///
+  /// In en, this message translates to:
+  /// **'No sensors are assigned to this room yet.'**
+  String get sensors_domain_empty_description;
+
+  /// No description provided for @sensors_domain_alerts_active.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Alert Active} other{Alerts Active}}'**
+  String sensors_domain_alerts_active(int count);
+
+  /// No description provided for @sensors_domain_no_sensors.
+  ///
+  /// In en, this message translates to:
+  /// **'No sensors configured'**
+  String get sensors_domain_no_sensors;
+
+  /// No description provided for @sensors_domain_health_stale.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} stale'**
+  String sensors_domain_health_stale(int count);
+
+  /// No description provided for @sensors_domain_health_offline.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} offline'**
+  String sensors_domain_health_offline(int count);
+
+  /// No description provided for @sensors_domain_health_normal.
+  ///
+  /// In en, this message translates to:
+  /// **'All normal'**
+  String get sensors_domain_health_normal;
+
+  /// No description provided for @sensors_domain_avg_temperature.
+  ///
+  /// In en, this message translates to:
+  /// **'Avg Temperature'**
+  String get sensors_domain_avg_temperature;
+
+  /// No description provided for @sensors_domain_avg_humidity.
+  ///
+  /// In en, this message translates to:
+  /// **'Avg Humidity'**
+  String get sensors_domain_avg_humidity;
+
+  /// No description provided for @sensors_domain_all_sensors.
+  ///
+  /// In en, this message translates to:
+  /// **'All sensors'**
+  String get sensors_domain_all_sensors;
+
+  /// No description provided for @sensors_domain_sensor_count.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} sensors'**
+  String sensors_domain_sensor_count(int count);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

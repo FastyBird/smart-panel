@@ -3245,5 +3245,141 @@
         "example": "Temperature"
       }
     }
+  },
+
+  "sensor_state_detected": "Detected",
+  "sensor_state_not_detected": "Not Detected",
+  "sensor_state_clear": "Clear",
+  "sensor_state_open": "Open",
+  "sensor_state_closed": "Closed",
+  "sensor_state_active": "Active",
+  "sensor_state_inactive": "Inactive",
+  "sensor_state_smoke_detected": "Smoke detected",
+  "sensor_state_gas_detected": "Gas detected",
+  "sensor_state_leak_detected": "Leak detected",
+  "sensor_state_co_detected": "CO detected",
+
+  "sensor_label_temperature": "Temperature",
+  "sensor_label_humidity": "Humidity",
+  "sensor_label_pressure": "Pressure",
+  "sensor_label_illuminance": "Illuminance",
+  "sensor_label_carbon_dioxide": "Carbon Dioxide",
+  "sensor_label_carbon_monoxide": "Carbon Monoxide",
+  "sensor_label_ozone": "Ozone",
+  "sensor_label_nitrogen_dioxide": "Nitrogen Dioxide",
+  "sensor_label_sulphur_dioxide": "Sulphur Dioxide",
+  "sensor_label_voc": "VOC",
+  "sensor_label_particulate_matter": "Particulate Matter",
+  "sensor_label_motion": "Motion",
+  "sensor_label_occupancy": "Occupancy",
+  "sensor_label_contact": "Contact",
+  "sensor_label_leak": "Leak",
+  "sensor_label_smoke": "Smoke",
+  "sensor_label_battery": "Battery",
+
+  "sensor_alert_high_level": "High Level",
+  "sensor_alert_low_battery": "Low Battery",
+  "sensor_alert_charging": "Charging",
+
+  "sensor_category_temperature": "Temperature",
+  "sensor_category_humidity": "Humidity",
+  "sensor_category_air_quality": "Air Quality",
+  "sensor_category_motion": "Motion",
+  "sensor_category_safety": "Safety",
+  "sensor_category_light": "Light",
+  "sensor_category_energy": "Energy",
+
+  "sensor_ui_event_log": "Event Log",
+  "sensor_ui_history": "History",
+  "sensor_ui_current": "Current",
+  "sensor_ui_current_value": "Current {name}",
+  "@sensor_ui_current_value": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "sensor_ui_min": "Min",
+  "sensor_ui_max": "Max",
+  "sensor_ui_avg": "Avg",
+  "sensor_ui_period_min": "{period} Min",
+  "@sensor_ui_period_min": {
+    "placeholders": {
+      "period": {
+        "type": "String"
+      }
+    }
+  },
+  "sensor_ui_period_max": "{period} Max",
+  "@sensor_ui_period_max": {
+    "placeholders": {
+      "period": {
+        "type": "String"
+      }
+    }
+  },
+  "sensor_ui_period_avg": "{period} Avg",
+  "@sensor_ui_period_avg": {
+    "placeholders": {
+      "period": {
+        "type": "String"
+      }
+    }
+  },
+  "sensor_ui_online": "Online",
+  "sensor_ui_offline": "Offline",
+  "sensor_ui_period_1h": "1H",
+  "sensor_ui_period_24h": "24H",
+  "sensor_ui_period_7d": "7D",
+  "sensor_ui_period_30d": "30D",
+
+  "sensor_empty_no_events": "No events recorded",
+  "sensor_empty_no_state_changes": "No state changes",
+  "sensor_empty_no_history": "No history data available",
+  "sensor_empty_no_data": "No data available",
+  "sensor_status_loading": "Loading data...",
+  "sensor_status_failed": "Failed to load data",
+  "sensor_status_retry": "Retry",
+
+  "sensors_domain_title": "Sensors",
+  "sensors_domain_empty_title": "No Sensors",
+  "sensors_domain_empty_description": "No sensors are assigned to this room yet.",
+  "sensors_domain_alerts_active": "{count, plural, =1{Alert Active} other{Alerts Active}}",
+  "@sensors_domain_alerts_active": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sensors_domain_no_sensors": "No sensors configured",
+  "sensors_domain_health_stale": "{count} stale",
+  "@sensors_domain_health_stale": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sensors_domain_health_offline": "{count} offline",
+  "@sensors_domain_health_offline": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sensors_domain_health_normal": "All normal",
+  "sensors_domain_avg_temperature": "Avg Temperature",
+  "sensors_domain_avg_humidity": "Avg Humidity",
+  "sensors_domain_all_sensors": "All sensors",
+  "sensors_domain_sensor_count": "{count} sensors",
+  "@sensors_domain_sensor_count": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   }
 }

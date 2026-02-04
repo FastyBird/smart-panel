@@ -546,22 +546,22 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     }
   }
 
-  String _getCategoryLabel(SensorCategory category) {
+  String _getCategoryLabel(AppLocalizations l, SensorCategory category) {
     switch (category) {
       case SensorCategory.temperature:
-        return 'Temperature';
+        return l.sensor_category_temperature;
       case SensorCategory.humidity:
-        return 'Humidity';
+        return l.sensor_category_humidity;
       case SensorCategory.airQuality:
-        return 'Air Quality';
+        return l.sensor_category_air_quality;
       case SensorCategory.motion:
-        return 'Motion';
+        return l.sensor_category_motion;
       case SensorCategory.safety:
-        return 'Safety';
+        return l.sensor_category_safety;
       case SensorCategory.light:
-        return 'Light';
+        return l.sensor_category_light;
       case SensorCategory.energy:
-        return 'Energy';
+        return l.sensor_category_energy;
     }
   }
 
@@ -622,7 +622,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
       ...availableCategories.map((cat) => ModeOption<SensorCategory?>(
             value: cat,
             icon: _getCategoryIcon(cat),
-            label: _getCategoryLabel(cat),
+            label: _getCategoryLabel(AppLocalizations.of(context)!, cat),
             color: _getCategoryModeColor(cat),
           )),
     ];
@@ -679,6 +679,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
 
   Widget _buildEmptyState(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final localizations = AppLocalizations.of(context)!;
 
     return Center(
       child: Padding(
@@ -703,7 +704,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
             ),
             AppSpacings.spacingLgVertical,
             Text(
-              'No Sensors',
+              localizations.sensors_domain_empty_title,
               style: TextStyle(
                 color: isDark
                     ? AppTextColorDark.primary
@@ -714,7 +715,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
             ),
             AppSpacings.spacingSmVertical,
             Text(
-              'No sensors are assigned to this room yet.',
+              localizations.sensors_domain_empty_description,
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: isDark
@@ -735,6 +736,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
 
   Widget _buildHeader(BuildContext context, int alertCount) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final localizations = AppLocalizations.of(context)!;
     final hasAlerts = alertCount > 0;
     final staleCount = _sensors.where((s) => !s.isOffline && s.freshness == SensorFreshness.stale).length;
     final offlineCount = _sensors.where((s) => s.isOffline).length;
@@ -753,16 +755,16 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
 
     String subtitle;
     if (hasAlerts) {
-      subtitle = '$alertCount Alert${alertCount > 1 ? 's' : ''} Active';
+      subtitle = localizations.sensors_domain_alerts_active(alertCount);
     } else if (_sensors.isEmpty) {
-      subtitle = 'No sensors configured';
+      subtitle = localizations.sensors_domain_no_sensors;
     } else if (hasHealthIssues) {
       final parts = <String>[];
-      if (staleCount > 0) parts.add('$staleCount stale');
-      if (offlineCount > 0) parts.add('$offlineCount offline');
-      subtitle = '${_sensors.length} sensor${_sensors.length > 1 ? 's' : ''} • ${parts.join(', ')}';
+      if (staleCount > 0) parts.add(localizations.sensors_domain_health_stale(staleCount));
+      if (offlineCount > 0) parts.add(localizations.sensors_domain_health_offline(offlineCount));
+      subtitle = '${localizations.sensors_domain_sensor_count(_sensors.length)} • ${parts.join(', ')}';
     } else {
-      subtitle = '${_sensors.length} sensor${_sensors.length > 1 ? 's' : ''} • All normal';
+      subtitle = '${localizations.sensors_domain_sensor_count(_sensors.length)} • ${localizations.sensors_domain_health_normal}';
     }
 
     return PageHeader(
@@ -883,14 +885,17 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
   // =============================================================================
 
   /// Builds summary row items from [_environment] (avg temperature, humidity, illuminance or pressure).
-  List<({String name, String status, IconData icon, Color color, ThemeColors? themeColor})> _buildSummaryItems({required bool isDark}) {
+  List<({String name, String status, IconData icon, Color color, ThemeColors? themeColor})> _buildSummaryItems({
+    required bool isDark,
+    required AppLocalizations localizations,
+  }) {
     final env = _environment;
     final items = <({String name, String status, IconData icon, Color color, ThemeColors? themeColor})>[];
 
     if (env?.averageTemperature != null) {
       items.add((
         name: '${_formatter.formatDecimal(env!.averageTemperature!, decimalPlaces: 1)}°C',
-        status: 'Avg Temperature',
+        status: localizations.sensors_domain_avg_temperature,
         icon: MdiIcons.thermometer,
         color: isDark ? AppColorsDark.info : AppColorsLight.info,
         themeColor: ThemeColors.info,
@@ -900,7 +905,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     if (env?.averageHumidity != null) {
       items.add((
         name: '${_formatter.formatInteger(env!.averageHumidity!.round())}%',
-        status: 'Avg Humidity',
+        status: localizations.sensors_domain_avg_humidity,
         icon: MdiIcons.waterPercent,
         color: isDark ? AppColorsDark.success : AppColorsLight.success,
         themeColor: ThemeColors.success,
@@ -910,7 +915,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     if (env?.averageIlluminance != null) {
       items.add((
         name: '${_formatter.formatInteger(env!.averageIlluminance!.round())} lux',
-        status: 'Illuminance',
+        status: localizations.sensor_label_illuminance,
         icon: MdiIcons.weatherSunny,
         color: isDark ? AppColorsDark.warning : AppColorsLight.warning,
         themeColor: ThemeColors.warning,
@@ -918,7 +923,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     } else if (env?.averagePressure != null) {
       items.add((
         name: '${_formatter.formatInteger(env!.averagePressure!.round())} hPa',
-        status: 'Pressure',
+        status: localizations.sensor_label_pressure,
         icon: MdiIcons.gaugeEmpty,
         color: isDark ? AppColorsDark.info : AppColorsLight.info,
         themeColor: ThemeColors.info,
@@ -930,7 +935,8 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
 
   Widget _buildSummaryCards(BuildContext context, {bool compact = false}) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final items = _buildSummaryItems(isDark: isDark);
+    final localizations = AppLocalizations.of(context)!;
+    final items = _buildSummaryItems(isDark: isDark, localizations: localizations);
 
     if (items.isEmpty) return const SizedBox.shrink();
 
@@ -1050,6 +1056,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final filtered = _filteredSensors;
 
+    final localizations = AppLocalizations.of(context)!;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       spacing: AppSpacings.pMd,
@@ -1057,10 +1064,10 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
         SectionTitle(
           icon: MdiIcons.viewGrid,
           title: _selectedCategory == null
-              ? 'All sensors'
-              : _getCategoryLabel(_selectedCategory!),
+              ? localizations.sensors_domain_all_sensors
+              : _getCategoryLabel(localizations, _selectedCategory!),
           trailing: Text(
-            '${filtered.length} sensors',
+            localizations.sensors_domain_sensor_count(filtered.length),
             style: TextStyle(
               color: isDark
                   ? AppTextColorDark.placeholder
