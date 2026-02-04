@@ -85,6 +85,12 @@ class LandscapeViewLayout extends StatelessWidget {
     this.additionalContentScrollable = true,
   });
 
+  /// Fixed width for mode selector column on large screens (icon + label)
+  static const double _modeSelectorWidthLarge = 100.0;
+
+  /// Fixed width for mode selector column on medium/small screens (icon only)
+  static const double _modeSelectorWidthCompact = 64.0;
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -92,11 +98,13 @@ class LandscapeViewLayout extends StatelessWidget {
         isDark ? AppBorderColorDark.light : AppBorderColorLight.base;
     final isLargeScreen = _screenService.isLargeScreen;
 
-    // Determine if mode selector should show labels
-    final showLabels =
-        modeSelectorShowLabels ?? (isLargeScreen && additionalContent == null);
+    // Determine if mode selector should show labels (large screens only)
+    final showLabels = modeSelectorShowLabels ?? isLargeScreen;
 
-    final mainContentPadding = this.mainContentPadding ?? (modeSelector != null ? EdgeInsets.only(top: AppSpacings.pMd, bottom: AppSpacings.pLg, left: AppSpacings.pLg) : AppSpacings.paddingLg);
+    // Fixed width for mode selector based on screen size
+    final modeSelectorWidth = _scale(showLabels ? _modeSelectorWidthLarge : _modeSelectorWidthCompact);
+
+    final mainContentPadding = this.mainContentPadding ?? (modeSelector != null ? EdgeInsets.only(top: AppSpacings.pLg, bottom: AppSpacings.pLg, left: AppSpacings.pLg) : AppSpacings.paddingLg);
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -123,15 +131,19 @@ class LandscapeViewLayout extends StatelessWidget {
                         child: mainContent,
                       ),
               ),
-              // Mode selector (optional) - intrinsic width within main flex
+              // Mode selector (optional) - fixed width based on screen size
               if (modeSelector != null)
-                Container(
-                  padding: modeSelectorPadding ??
-                      EdgeInsets.symmetric(
-                        vertical: AppSpacings.pLg,
-                        horizontal: AppSpacings.pMd,
-                      ),
-                  child: Center(child: modeSelector),
+                SizedBox(
+                  width: modeSelectorWidth,
+                  child: Padding(
+                    padding: modeSelectorPadding ?? EdgeInsets.only(
+                      top: AppSpacings.pLg,
+                      bottom: AppSpacings.pLg,
+                      left: AppSpacings.pMd,
+                      right: additionalContent == null ? AppSpacings.pLg : AppSpacings.pMd,
+                    ),
+                    child: modeSelector,
+                  ),
                 ),
             ],
           ),

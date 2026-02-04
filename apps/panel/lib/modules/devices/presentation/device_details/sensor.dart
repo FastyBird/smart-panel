@@ -9,6 +9,8 @@ import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/tile_wrappers.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_channels_section.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_landscape_layout.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_portrait_layout.dart';
 import 'package:fastybird_smart_panel/modules/devices/utils/value.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/property_timeseries.dart';
@@ -151,15 +153,11 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
           children: [
             _buildHeader(context, isDark),
             Expanded(
-              child: SingleChildScrollView(
-                padding: AppSpacings.paddingMd,
-                child: SensorSection(
-                  title: selectedSensor.label,
-                  icon: selectedSensor.icon,
-                  sensors: [selectedSensor],
-                  deviceName: widget._device.name,
-                  isDeviceOnline: widget._device.isOnline,
-                ),
+              child: SensorDetailPage(
+                sensor: selectedSensor,
+                deviceName: widget._device.name,
+                isDeviceOnline: widget._device.isOnline,
+                contentOnly: true,
               ),
             ),
           ],
@@ -172,12 +170,10 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
     final selectedSensor = _selectedSensor;
     if (selectedSensor == null) return const SizedBox.shrink();
 
-    final title = _isMultiChannel
-        ? (selectedSensor.channel.name.isNotEmpty
-            ? selectedSensor.channel.name
-            : selectedSensor.label)
-        : widget._device.name;
-    final subtitle = selectedSensor.label;
+    final title = selectedSensor.channel.name.isNotEmpty
+        ? selectedSensor.channel.name
+        : selectedSensor.label;
+    final subtitle = widget._device.name;
     final secondaryColor =
         isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
 
@@ -813,16 +809,23 @@ class SensorCard extends StatelessWidget {
 
 /// Full-screen sensor detail with current value, history chart, period selector,
 /// and optional event log for binary sensors. Uses device [SensorData].
+///
+/// When [contentOnly] is true, only the detail content is built (no scaffold/header).
+/// Use this to embed the detail inside another page (e.g. device detail body).
 class SensorDetailPage extends StatefulWidget {
   final SensorData sensor;
   final String? deviceName;
   final bool? isDeviceOnline;
+
+  /// When true, build only the content (charts, value, stats/event log), no scaffold or header.
+  final bool contentOnly;
 
   const SensorDetailPage({
     super.key,
     required this.sensor,
     this.deviceName,
     this.isDeviceOnline,
+    this.contentOnly = false,
   });
 
   @override
@@ -922,8 +925,21 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
     return family.base;
   }
 
+  Widget _buildContent(BuildContext context) {
+    return OrientationBuilder(
+      builder: (context, orientation) {
+        return orientation == Orientation.landscape
+            ? _buildLandscapeLayout(context)
+            : _buildPortraitLayout(context);
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (widget.contentOnly) {
+      return _buildContent(context);
+    }
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
@@ -932,13 +948,7 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
           children: [
             _buildHeader(context),
             Expanded(
-              child: OrientationBuilder(
-                builder: (context, orientation) {
-                  return orientation == Orientation.landscape
-                      ? _buildLandscapeLayout(context)
-                      : _buildPortraitLayout(context);
-                },
-              ),
+              child: _buildContent(context),
             ),
           ],
         ),
@@ -968,115 +978,96 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
   }
 
   Widget _buildPortraitLayout(BuildContext context) {
-    return SingleChildScrollView(
-      child: Column(
+    return DevicePortraitLayout(
+      scrollable: false,
+      content: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        spacing: AppSpacings.pMd,
         children: [
-          _buildLargeValue(context),
-          if (_isBinary)
-            _buildEventLog(context)
-          else ...[
-            _buildStatsRow(context),
-            _buildChart(context),
-          ],
+          // Large value section - takes 1 part of available space
+          Expanded(
+            flex: 1,
+            child: Center(child: _buildLargeValue(context)),
+          ),
+          // Bottom section - takes 2 parts of available space
+          Expanded(
+            flex: 2,
+            child: _isBinary
+                ? _buildEventLog(context, flexible: true)
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _buildStatsRow(context),
+                      SizedBox(height: AppSpacings.pMd),
+                      Expanded(child: _buildChart(context, flexible: true)),
+                    ],
+                  ),
+          ),
         ],
       ),
     );
   }
 
   Widget _buildLandscapeLayout(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isSmall = !_screenService.isLargeScreen;
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _buildLandscapeLeftPanel(context, isDark, isSmall),
-        Expanded(
-          child: Container(
-            color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
-            child: _isBinary
-                ? SingleChildScrollView(
-                    padding: EdgeInsets.only(top: AppSpacings.pLg),
-                    child: _buildEventLog(context, withMargin: false, withDecoration: false),
-                  )
-                : Center(
-                    child: SingleChildScrollView(
-                      child: _buildChart(context, withMargin: false, withDecoration: false),
-                    ),
-                  ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildLandscapeLeftPanel(BuildContext context, bool isDark, bool isSmall) {
-    final content = Container(
-      width: isSmall ? null : _scale(320),
-      padding: AppSpacings.paddingLg,
-      decoration: BoxDecoration(
-        border: Border(
-          right: BorderSide(
-            color: isDark ? AppBorderColorDark.light : AppBorderColorLight.base,
-            width: _scale(1),
-          ),
-        ),
-      ),
-      child: SingleChildScrollView(
+    final landscapeSecondary = _isBinary
+        ? _buildEventLog(context, withMargin: false, withDecoration: false)
+        : _buildChart(context, withMargin: false, withDecoration: false);
+    return DeviceLandscapeLayout(
+      mainContent: Center(
         child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          spacing: AppSpacings.pMd,
           children: [
             _buildLargeValue(context),
             if (!_isBinary) _buildStatsRowCompact(context),
           ],
         ),
       ),
+      secondaryContent: landscapeSecondary,
+      largeSecondaryColumn: true,
     );
-    return isSmall ? Expanded(child: content) : content;
   }
 
   Widget _buildLargeValue(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isCompact = _screenService.isSmallScreen;
-    return Padding(
-      padding: EdgeInsets.only(
-        top: isCompact ? AppSpacings.pSm : AppSpacings.pXl,
-        bottom: isCompact ? AppSpacings.pSm : AppSpacings.pXl,
-      ),
-      child: Column(
-        children: [
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: RichText(
-              text: TextSpan(
-                style: TextStyle(
-                  fontSize: _scale(isCompact ? 56 : 72),
-                  fontWeight: FontWeight.w200,
-                  color: _isOffline
-                      ? (isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder)
-                      : _getCategoryColor(context),
-                ),
-                children: [
-                  TextSpan(text: _currentValue),
-                  TextSpan(
-                    text: _unit.isNotEmpty ? ' $_unit' : '',
-                    style: TextStyle(
-                      fontSize: _scale(isCompact ? 18 : 24),
-                      fontWeight: FontWeight.w300,
-                    ),
-                  ),
-                ],
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: RichText(
+            text: TextSpan(
+              style: TextStyle(
+                fontSize: _scale(isCompact ? 56 : 72),
+                fontWeight: FontWeight.w200,
+                color: _isOffline
+                    ? (isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder)
+                    : _getCategoryColor(context),
               ),
+              children: [
+                TextSpan(text: _currentValue),
+                TextSpan(
+                  text: _unit.isNotEmpty ? ' $_unit' : '',
+                  style: TextStyle(
+                    fontSize: _scale(isCompact ? 18 : 24),
+                    fontWeight: FontWeight.w300,
+                  ),
+                ),
+              ],
             ),
           ),
-          AppSpacings.spacingSmVertical,
-          Text(
-            'Current ${widget.sensor.label}',
-            style: TextStyle(
-              color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
-              fontSize: AppFontSize.base,
-            ),
+        ),
+        AppSpacings.spacingSmVertical,
+        Text(
+          'Current ${widget.sensor.label}',
+          style: TextStyle(
+            color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
+            fontSize: AppFontSize.base,
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -1111,17 +1102,14 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
 
   Widget _buildStatsRow(BuildContext context) {
     final periodLabel = _getPeriodLabel();
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: AppSpacings.pLg),
-      child: Row(
-        children: [
-          _buildStatCard(context, '$periodLabel Min', _getStatsValue('min'), true),
-          AppSpacings.spacingMdHorizontal,
-          _buildStatCard(context, '$periodLabel Max', _getStatsValue('max'), false),
-          AppSpacings.spacingMdHorizontal,
-          _buildStatCard(context, '$periodLabel Avg', _getStatsValue('avg'), null),
-        ],
-      ),
+    return Row(
+      children: [
+        _buildStatCard(context, '$periodLabel Min', _getStatsValue('min'), true),
+        AppSpacings.spacingMdHorizontal,
+        _buildStatCard(context, '$periodLabel Max', _getStatsValue('max'), false),
+        AppSpacings.spacingMdHorizontal,
+        _buildStatCard(context, '$periodLabel Avg', _getStatsValue('avg'), null),
+      ],
     );
   }
 
@@ -1149,7 +1137,7 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
           color: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
           borderRadius: BorderRadius.circular(AppBorderRadius.base),
           border: Border.all(
-            color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light,
+            color: isDark ? AppFillColorDark.light : AppBorderColorLight.light,
             width: _scale(1),
           ),
         ),
@@ -1180,22 +1168,51 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
     );
   }
 
-  Widget _buildEventLog(BuildContext context, {bool withMargin = true, bool withDecoration = true}) {
+  Widget _buildEventLog(BuildContext context, {
+    bool withMargin = true,
+    bool withDecoration = true,
+    bool flexible = false,
+  }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    Widget contentArea;
+    if (_isLoadingTimeseries) {
+      contentArea = Center(
+        child: SizedBox(
+          width: _scale(24),
+          height: _scale(24),
+          child: CircularProgressIndicator(strokeWidth: 2, color: _getCategoryColor(context)),
+        ),
+      );
+    } else if (_timeseries != null && _timeseries!.isNotEmpty) {
+      contentArea = _buildEventLogEntries(context, inFlex: flexible);
+    } else {
+      contentArea = Center(
+        child: Text(
+          'No events recorded',
+          style: TextStyle(
+            color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
+            fontSize: AppFontSize.small,
+          ),
+        ),
+      );
+    }
+    if (flexible) {
+      contentArea = Expanded(child: contentArea);
+    }
     return Container(
-      margin: withMargin ? AppSpacings.paddingLg : EdgeInsets.zero,
       padding: withDecoration ? AppSpacings.paddingLg : EdgeInsets.symmetric(horizontal: AppSpacings.pLg),
       decoration: withDecoration
           ? BoxDecoration(
               color: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
-              borderRadius: BorderRadius.circular(AppBorderRadius.round),
+              borderRadius: BorderRadius.circular(AppBorderRadius.base),
               border: Border.all(
-                color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light,
+                color: isDark ? AppFillColorDark.light : AppBorderColorLight.light,
                 width: _scale(1),
               ),
             )
           : null,
       child: Column(
+        mainAxisSize: flexible ? MainAxisSize.max : MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
@@ -1227,31 +1244,7 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
             ],
           ),
           AppSpacings.spacingMdVertical,
-          _isLoadingTimeseries
-              ? SizedBox(
-                  height: _scale(160),
-                  child: Center(
-                    child: SizedBox(
-                      width: _scale(24),
-                      height: _scale(24),
-                      child: CircularProgressIndicator(strokeWidth: 2, color: _getCategoryColor(context)),
-                    ),
-                  ),
-                )
-              : (_timeseries != null && _timeseries!.isNotEmpty)
-                  ? _buildEventLogEntries(context)
-                  : SizedBox(
-                      height: _scale(160),
-                      child: Center(
-                        child: Text(
-                          'No events recorded',
-                          style: TextStyle(
-                            color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
-                            fontSize: AppFontSize.small,
-                          ),
-                        ),
-                      ),
-                    ),
+          contentArea,
         ],
       ),
     );
@@ -1277,7 +1270,7 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
     }
   }
 
-  Widget _buildEventLogEntries(BuildContext context) {
+  Widget _buildEventLogEntries(BuildContext context, {bool inFlex = false}) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final points = _timeseries!.points;
     final events = <TimeseriesPoint>[];
@@ -1289,87 +1282,145 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
     }
     final reversedEvents = events.reversed.toList();
     if (reversedEvents.isEmpty) {
-      return SizedBox(
-        height: _scale(160),
-        child: Center(
-          child: Text(
-            'No state changes',
-            style: TextStyle(
-              color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
-              fontSize: AppFontSize.small,
-            ),
-          ),
-        ),
-      );
+      return inFlex
+          ? Center(
+              child: Text(
+                'No state changes',
+                style: TextStyle(
+                  color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
+                  fontSize: AppFontSize.small,
+                ),
+              ),
+            )
+          : SizedBox(
+              height: _scale(160),
+              child: Center(
+                child: Text(
+                  'No state changes',
+                  style: TextStyle(
+                    color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
+                    fontSize: AppFontSize.small,
+                  ),
+                ),
+              ),
+            );
     }
     final channelCategory = widget.sensor.channel.category.json;
     final useShortDate = _selectedPeriod <= 1;
     final dateFormat = useShortDate ? DateFormat.Hm() : DateFormat('MMM d, HH:mm');
+    final listView = ListView.separated(
+      shrinkWrap: !inFlex,
+      padding: EdgeInsets.zero,
+      itemCount: reversedEvents.length,
+      separatorBuilder: (_, __) => Divider(
+        height: _scale(1),
+        color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light,
+      ),
+      itemBuilder: (context, index) {
+        final point = reversedEvents[index];
+        final isActive = point.numericValue >= 0.5;
+        final stateLabel = _getBinaryLabelLong(channelCategory ?? '', isActive);
+        final dangerColor = isDark ? AppColorsDark.danger : AppColorsLight.danger;
+        final successColor = isDark ? AppColorsDark.success : AppColorsLight.success;
+        final dotColor = isActive ? dangerColor : successColor;
+        final textColor = isActive ? dangerColor : (isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary);
+        return Padding(
+          padding: EdgeInsets.symmetric(vertical: AppSpacings.pSm),
+          child: Row(
+            children: [
+              Container(
+                width: _scale(8),
+                height: _scale(8),
+                decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
+              ),
+              SizedBox(width: AppSpacings.pMd),
+              Expanded(
+                child: Text(
+                  stateLabel,
+                  style: TextStyle(color: textColor, fontSize: AppFontSize.small, fontWeight: FontWeight.w500),
+                ),
+              ),
+              Text(
+                dateFormat.format(point.time.toLocal()),
+                style: TextStyle(
+                  color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
+                  fontSize: AppFontSize.extraSmall,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    if (inFlex) {
+      return listView;
+    }
     return ConstrainedBox(
       constraints: BoxConstraints(maxHeight: _scale(200)),
-      child: ListView.separated(
-        shrinkWrap: true,
-        padding: EdgeInsets.zero,
-        itemCount: reversedEvents.length,
-        separatorBuilder: (_, __) => Divider(
-          height: _scale(1),
-          color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light,
-        ),
-        itemBuilder: (context, index) {
-          final point = reversedEvents[index];
-          final isActive = point.numericValue >= 0.5;
-          final stateLabel = _getBinaryLabelLong(channelCategory ?? '', isActive);
-          final dangerColor = isDark ? AppColorsDark.danger : AppColorsLight.danger;
-          final successColor = isDark ? AppColorsDark.success : AppColorsLight.success;
-          final dotColor = isActive ? dangerColor : successColor;
-          final textColor = isActive ? dangerColor : (isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary);
-          return Padding(
-            padding: EdgeInsets.symmetric(vertical: AppSpacings.pSm),
-            child: Row(
-              children: [
-                Container(
-                  width: _scale(8),
-                  height: _scale(8),
-                  decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
-                ),
-                SizedBox(width: AppSpacings.pMd),
-                Expanded(
-                  child: Text(
-                    stateLabel,
-                    style: TextStyle(color: textColor, fontSize: AppFontSize.small, fontWeight: FontWeight.w500),
-                  ),
-                ),
-                Text(
-                  dateFormat.format(point.time.toLocal()),
-                  style: TextStyle(
-                    color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
-                    fontSize: AppFontSize.extraSmall,
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
+      child: listView,
     );
   }
 
-  Widget _buildChart(BuildContext context, {bool withMargin = true, bool withDecoration = true}) {
+  Widget _buildChart(BuildContext context, {bool withMargin = true, bool withDecoration = true, bool flexible = false}) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    Widget buildChartContent(double height) {
+      if (_isLoadingTimeseries) {
+        return Center(
+          child: SizedBox(
+            width: _scale(24),
+            height: _scale(24),
+            child: CircularProgressIndicator(strokeWidth: 2, color: _getCategoryColor(context)),
+          ),
+        );
+      }
+      if (_timeseries != null && _timeseries!.isNotEmpty) {
+        return CustomPaint(
+          size: Size(double.infinity, height),
+          painter: _SensorChartPainter(
+            color: _getCategoryColor(context),
+            labelColor: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
+            fontSize: AppFontSize.extraSmall,
+            timeseries: _timeseries,
+          ),
+        );
+      }
+      return Center(
+        child: Text(
+          'No history data available',
+          style: TextStyle(
+            color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
+            fontSize: AppFontSize.small,
+          ),
+        ),
+      );
+    }
+
+    final chartArea = flexible
+        ? Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) => buildChartContent(constraints.maxHeight),
+            ),
+          )
+        : SizedBox(
+            height: _scale(160),
+            child: buildChartContent(_scale(160)),
+          );
+
     return Container(
-      margin: withMargin ? AppSpacings.paddingLg : EdgeInsets.zero,
       padding: withDecoration ? AppSpacings.paddingLg : EdgeInsets.symmetric(horizontal: AppSpacings.pLg),
       decoration: withDecoration
           ? BoxDecoration(
               color: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
-              borderRadius: BorderRadius.circular(AppBorderRadius.round),
+              borderRadius: BorderRadius.circular(AppBorderRadius.base),
               border: Border.all(
-                color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light,
+                color: isDark ? AppFillColorDark.light : AppBorderColorLight.light,
                 width: _scale(1),
               ),
             )
           : null,
       child: Column(
+        mainAxisSize: flexible ? MainAxisSize.max : MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
@@ -1400,37 +1451,8 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
               ),
             ],
           ),
-          AppSpacings.spacingMdVertical,
-          SizedBox(
-            height: _scale(160),
-            child: _isLoadingTimeseries
-                ? Center(
-                    child: SizedBox(
-                      width: _scale(24),
-                      height: _scale(24),
-                      child: CircularProgressIndicator(strokeWidth: 2, color: _getCategoryColor(context)),
-                    ),
-                  )
-                : (_timeseries != null && _timeseries!.isNotEmpty)
-                    ? CustomPaint(
-                        size: Size(double.infinity, _scale(160)),
-                        painter: _SensorChartPainter(
-                          color: _getCategoryColor(context),
-                          labelColor: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
-                          fontSize: AppFontSize.extraSmall,
-                          timeseries: _timeseries,
-                        ),
-                      )
-                    : Center(
-                        child: Text(
-                          'No history data available',
-                          style: TextStyle(
-                            color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
-                            fontSize: AppFontSize.small,
-                          ),
-                        ),
-                      ),
-          ),
+          _screenService.isLandscape && _screenService.isAtLeastLarge ? AppSpacings.spacingLgVertical : AppSpacings.spacingMdVertical,
+          chartArea,
           AppSpacings.spacingSmVertical,
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,

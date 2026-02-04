@@ -863,6 +863,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
       orientation: ModeSelectorOrientation.vertical,
       iconPlacement: ModeSelectorIconPlacement.top,
       showLabels: showLabels,
+      scrollable: true,
     );
   }
 

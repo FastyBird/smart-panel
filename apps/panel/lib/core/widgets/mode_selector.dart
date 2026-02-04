@@ -82,6 +82,11 @@ class ModeSelector<T> extends StatefulWidget {
   /// otherwise used only to decide if labels should be hidden when space is tight.
   final double minButtonWidth;
 
+  /// Minimum height for each mode button in vertical scrollable orientation.
+  /// When [scrollable] is true and orientation is vertical, this is enforced
+  /// so items maintain consistent sizing.
+  final double minButtonHeight;
+
   /// Whether the selector should be scrollable when content doesn't fit
   /// When true, enables horizontal scroll for horizontal orientation
   /// and vertical scroll for vertical orientation
@@ -107,6 +112,7 @@ class ModeSelector<T> extends StatefulWidget {
     this.showLabels,
     this.showIcon = true,
     this.minButtonWidth = 80.0,
+    this.minButtonHeight = 56.0,
     this.scrollable = false,
     this.statusIcons,
   });
@@ -289,26 +295,39 @@ class _ModeSelectorState<T> extends State<ModeSelector<T>> {
           isDark ? Brightness.dark : Brightness.light, modeColor);
       final statusIcon = widget.statusIcons?[mode.value];
 
-      Widget child = Padding(
+      final button = _buildModeButton(
+        context,
+        isDark: isDark,
+        mode: mode,
+        isSelected: isSelected,
+        colors: colors,
+        showLabel: !widget.showIcon ? true : (widget.showLabels ?? false),
+        useTopIcon: true,
+        isVerticalLayout: true,
+        isScrollable: widget.scrollable,
+        statusIcon: statusIcon,
+      );
+
+      Widget wrapped = Padding(
         padding: EdgeInsets.only(
           bottom: index < widget.modes.length - 1 ? AppSpacings.pSm : 0,
         ),
-        child: _buildModeButton(
-          context,
-          isDark: isDark,
-          mode: mode,
-          isSelected: isSelected,
-          colors: colors,
-          showLabel: !widget.showIcon ? true : (widget.showLabels ?? false),
-          useTopIcon: true,
-          isVerticalLayout: true,
-          statusIcon: statusIcon,
-        ),
+        child: button,
       );
+
       if (widget.scrollable && index == selectedIndex) {
-        child = KeyedSubtree(key: _selectedKey, child: child);
+        wrapped = KeyedSubtree(key: _selectedKey, child: wrapped);
       }
-      return child;
+
+      // In vertical scrollable layout, enforce minimum height
+      if (widget.scrollable) {
+        wrapped = ConstrainedBox(
+          constraints: BoxConstraints(minHeight: widget.minButtonHeight),
+          child: wrapped,
+        );
+      }
+
+      return wrapped;
     }).toList();
 
     if (widget.scrollable) {
@@ -316,13 +335,16 @@ class _ModeSelectorState<T> extends State<ModeSelector<T>> {
         controller: _scrollController,
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: buttons,
         ),
       );
     }
 
+    // Non-scrollable: stretch items to fill width
     return Column(
       mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: buttons,
     );
   }
@@ -430,12 +452,10 @@ class _ModeSelectorState<T> extends State<ModeSelector<T>> {
       );
     }
 
-    // For vertical layout: fixed size when icon-only, flexible when showing labels
-    final buttonSize = isVerticalLayout && !showLabel ? _scale(36) : null;
-    // When scrollable in horizontal mode:
-    // - With labels: use intrinsic width (null) so content determines size
-    // - Icon only: use fixed minimum size
-    final scrollableWidth = isScrollable && !isVerticalLayout && !showLabel && widget.showIcon
+    // For vertical layout: fixed height when icon-only, null when showing labels
+    final buttonHeight = isVerticalLayout && !showLabel ? _scale(36) : null;
+    // For horizontal layout: fixed width when icon-only and scrollable
+    final buttonWidth = !isVerticalLayout && isScrollable && !showLabel && widget.showIcon
         ? _scale(48)
         : null;
 
@@ -457,12 +477,12 @@ class _ModeSelectorState<T> extends State<ModeSelector<T>> {
     }
 
     // Padding based on layout mode
-    EdgeInsetsGeometry? buttonPadding;
+    EdgeInsetsGeometry buttonPadding;
     if (isVerticalLayout) {
-      // Vertical layout: more padding when showing labels
+      // Vertical layout: symmetric padding, more when showing labels
       buttonPadding = showLabel
           ? EdgeInsets.symmetric(vertical: AppSpacings.pMd, horizontal: AppSpacings.pLg)
-          : null; // Icon-only uses fixed buttonSize
+          : EdgeInsets.symmetric(vertical: AppSpacings.pSm, horizontal: AppSpacings.pMd);
     } else {
       // Horizontal layout
       buttonPadding = EdgeInsets.symmetric(
@@ -496,8 +516,8 @@ class _ModeSelectorState<T> extends State<ModeSelector<T>> {
       onTap: () => widget.onChanged(mode.value),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        width: buttonSize ?? scrollableWidth,
-        height: buttonSize,
+        width: buttonWidth,
+        height: buttonHeight,
         padding: buttonPadding,
         decoration: BoxDecoration(
           color: backgroundColor,
