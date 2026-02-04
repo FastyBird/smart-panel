@@ -397,23 +397,6 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     return value.toString();
   }
 
-  /// Translates a pre-formatted sensor value (e.g. binary labels) via [SensorEnumUtils].
-  /// Call at display time when [BuildContext] is available for [AppLocalizations].
-  static String translateSensorValue(
-    AppLocalizations l,
-    String value,
-    String? channelCategory, {
-    bool short = true,
-  }) {
-    if (channelCategory == null || channelCategory.isEmpty) return value;
-    // Only translate non-numeric, non-placeholder values
-    if (value == '--' || value.isEmpty) return value;
-    if (double.tryParse(value.replaceAll(',', '')) != null) return value;
-    final translated = SensorEnumUtils.translatePrimary(
-      l, channelCategory, value, short: short,
-    );
-    return translated ?? value;
-  }
 
   /// Check if a property has a discrete (non-numeric) data type — bool or enum
   bool _isDiscreteProperty(String? propertyId) {
@@ -1221,7 +1204,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
                             ]
                           : [
                               TextSpan(
-                                text: _SensorsDomainViewPageState.translateSensorValue(
+                                text: SensorEnumUtils.translateSensorValue(
                                   AppLocalizations.of(context)!,
                                   sensor.value,
                                   sensor.channelCategory,

@@ -66,6 +66,27 @@ class SensorEnumUtils {
     return null;
   }
 
+  /// Translates a pre-formatted sensor value (e.g. binary labels) via [translatePrimary].
+  /// Call at display time when [BuildContext] is available for [AppLocalizations].
+  ///
+  /// Returns the original value if no translation is found or if the value is
+  /// numeric or a placeholder.
+  static String translateSensorValue(
+    AppLocalizations l,
+    String value,
+    String? channelCategory, {
+    bool short = true,
+  }) {
+    if (channelCategory == null || channelCategory.isEmpty) return value;
+    // Only translate non-numeric, non-placeholder values
+    if (value == '--' || value.isEmpty) return value;
+    if (double.tryParse(value.replaceAll(',', '')) != null) return value;
+    final translated = translatePrimary(
+      l, channelCategory, value, short: short,
+    );
+    return translated ?? value;
+  }
+
   /// Translate primary sensor value using channel category only.
   /// For primary readings where propertyCategory is not available,
   /// we infer it from the channel category.

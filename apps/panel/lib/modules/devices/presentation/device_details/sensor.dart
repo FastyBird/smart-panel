@@ -12,6 +12,7 @@ import 'package:fastybird_smart_panel/core/widgets/tile_wrappers.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_channels_section.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_landscape_layout.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_portrait_layout.dart';
+import 'package:fastybird_smart_panel/modules/devices/utils/sensor_enum_utils.dart';
 import 'package:fastybird_smart_panel/modules/devices/utils/value.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/property_timeseries.dart';
@@ -1043,6 +1044,14 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
   Widget _buildLargeValue(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isCompact = _screenService.isSmallScreen;
+    final localizations = AppLocalizations.of(context)!;
+    final channelCategory = widget.sensor.channel.category.json;
+    final displayValue = SensorEnumUtils.translateSensorValue(
+      localizations,
+      _currentValue,
+      channelCategory,
+      short: false,
+    );
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -1058,7 +1067,7 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
                     : _getCategoryColor(context),
               ),
               children: [
-                TextSpan(text: _currentValue),
+                TextSpan(text: displayValue),
                 TextSpan(
                   text: _unit.isNotEmpty ? ' $_unit' : '',
                   style: TextStyle(
