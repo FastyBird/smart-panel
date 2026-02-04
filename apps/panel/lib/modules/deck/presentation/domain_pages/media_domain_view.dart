@@ -428,12 +428,12 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			title: localizations.domain_media,
 			subtitle: subtitle,
 			subtitleColor: hasActive ? (isDark ? AppColorsDark.primaryDark2 : AppColorsLight.primaryDark2) : null,
-			backgroundColor: AppColors.blank,
 			leading: HeaderMainIcon(
 				icon: hasActive ? MdiIcons.musicNote : MdiIcons.musicNoteOff,
 				color: hasActive ? ThemeColors.primary : ThemeColors.neutral,
 			),
-			trailing: HeaderHomeButton(
+			trailing: HeaderIconButton(
+				icon: MdiIcons.homeOutline,
 				onTap: _navigateToHome,
 			),
 		);

@@ -60,12 +60,16 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
   Timer? _temperatureDebounceTimer;
   Timer? _whiteDebounceTimer;
 
+  /// Notifier for channels bottom sheet; notify to refresh list when channel state changes.
+  late final ValueNotifier<int> _channelListVersion;
+
   // --------------------------------------------------------------------------
   // LIFE CYCLE
   // --------------------------------------------------------------------------
 
   @override
   void initState() {
+    _channelListVersion = ValueNotifier(0);
     super.initState();
 
     // Initialize selected channel index from initialChannelId if provided
@@ -140,6 +144,7 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
     _colorDebounceTimer?.cancel();
     _temperatureDebounceTimer?.cancel();
     _whiteDebounceTimer?.cancel();
+    _channelListVersion.dispose();
     _deviceControlStateService?.removeListener(_onControlStateChanged);
     super.dispose();
   }
@@ -206,6 +211,7 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
         _selectedChannelIndex = index;
         _initSelectedCapability();
       });
+      _channelListVersion.value++;
     }
   }
 
@@ -461,9 +467,17 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
       isActive: channel.isOn && channel.isOnline,
       isOffline: !channel.isOnline,
       isSelected: channel.isSelected,
+      onIconTap: () {
+        final controllers = _controller?.lights ?? [];
+        final index = controllers.indexWhere((c) => c.channel.id == channel.id);
+        if (index != -1) {
+          controllers[index].togglePower();
+          setState(() {});
+          _channelListVersion.value++;
+        }
+      },
       onTileTap: () {
         _handleChannelTileTap(channel);
-        if (context.mounted) Navigator.of(context).pop();
       },
       showSelectionIndicator: true,
       showWarningBadge: true,
@@ -725,7 +739,6 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
       title: title,
       subtitle: subtitle,
       subtitleColor: isOn ? statusColorFamily.base : secondaryColor,
-      backgroundColor: AppColors.blank,
       leading: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -751,92 +764,38 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (hasChannels) _buildHeaderChannelsButton(context, isDark),
-        if (hasChannels && hasPower) SizedBox(width: AppSpacings.pSm),
-        if (hasPower) _buildHeaderPowerButton(context, isDark),
-      ],
-    );
-  }
-
-  /// Channels (layers) button in header trailing. Opens the channels bottom sheet.
-  Widget _buildHeaderChannelsButton(BuildContext context, bool isDark) {
-    final filledTheme = isDark
-        ? AppFilledButtonsDarkThemes.primary
-        : AppFilledButtonsLightThemes.primary;
-    final iconColor = isDark
-        ? AppFilledButtonsDarkThemes.primaryForegroundColor
-        : AppFilledButtonsLightThemes.primaryForegroundColor;
-    return Theme(
-      data: Theme.of(context).copyWith(filledButtonTheme: filledTheme),
-      child: FilledButton(
-        onPressed: () {
-          final list = _buildChannelsList();
-          DeviceChannelsSection.showChannelsSheet(
-            context,
-            title: AppLocalizations.of(context)!.domain_lights,
+        if (hasChannels)
+          HeaderIconButton(
             icon: MdiIcons.lightbulbGroup,
-            itemCount: list.length,
-            tileBuilder: (c, i) => _buildChannelTile(c, list[i]),
-            showCountInHeader: false,
-          );
-        },
-        style: FilledButton.styleFrom(
-          padding: EdgeInsets.symmetric(
-            horizontal: AppSpacings.pLg,
-            vertical: AppSpacings.pMd,
+            onTap: () {
+              final list = _buildChannelsList();
+              DeviceChannelsSection.showChannelsSheet(
+                context,
+                title: AppLocalizations.of(context)!.domain_lights,
+                icon: MdiIcons.lightbulbGroup,
+                itemCount: list.length,
+                tileBuilder: (c, i) =>
+                    _buildChannelTile(c, _buildChannelsList()[i]),
+                showCountInHeader: false,
+                listenable: _channelListVersion,
+              );
+            },
+            color: ThemeColors.primary,
           ),
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        ),
-        child: Icon(
-          MdiIcons.lightbulbGroup,
-          size: AppFontSize.extraLarge,
-          color: iconColor,
-        ),
-      ),
-    );
-  }
-
-  /// Power button in header. Theme and icon color are derived only from
-  /// [_getStatusColor].
-  Widget _buildHeaderPowerButton(BuildContext context, bool isDark) {
-    final statusColor = _getStatusColor();
-    final filledTheme = statusColor == ThemeColors.primary
-        ? (isDark
-            ? AppFilledButtonsDarkThemes.primary
-            : AppFilledButtonsLightThemes.primary)
-        : (isDark
-            ? AppFilledButtonsDarkThemes.neutral
-            : AppFilledButtonsLightThemes.neutral);
-    final iconColor = statusColor == ThemeColors.primary
-        ? (isDark
-            ? AppFilledButtonsDarkThemes.primaryForegroundColor
-            : AppFilledButtonsLightThemes.primaryForegroundColor)
-        : (isDark
-            ? AppFilledButtonsDarkThemes.neutralForegroundColor
-            : AppFilledButtonsLightThemes.neutralForegroundColor);
-    return Theme(
-      data: Theme.of(context).copyWith(filledButtonTheme: filledTheme),
-      child: FilledButton(
-        onPressed: () {
-          final controller = _selectedController ?? _controller?.light;
-          if (controller != null) {
-            controller.togglePower();
-            setState(() {});
-          }
-        },
-        style: FilledButton.styleFrom(
-          padding: EdgeInsets.symmetric(
-            horizontal: AppSpacings.pLg,
-            vertical: AppSpacings.pMd,
+        if (hasChannels && hasPower) SizedBox(width: AppSpacings.pSm),
+        if (hasPower)
+          HeaderIconButton(
+            icon: MdiIcons.power,
+            onTap: () {
+              final controller = _selectedController ?? _controller?.light;
+              if (controller != null) {
+                controller.togglePower();
+                setState(() {});
+              }
+            },
+            color: _getStatusColor(),
           ),
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        ),
-        child: Icon(
-          MdiIcons.power,
-          size: AppFontSize.extraLarge,
-          color: iconColor,
-        ),
-      ),
+      ],
     );
   }
 }
@@ -1830,12 +1789,12 @@ class LightingModeSelector extends StatelessWidget {
     BuildContext context,
     List<ModeOption<LightCapability>> modes,
   ) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Container(
-      padding: AppSpacings.paddingMd,
-      decoration: BoxDecoration(
-        color: isDark ? AppFillColorDark.lighter : AppFillColorLight.lighter,
+      padding: EdgeInsets.only(
+        left: AppSpacings.pLg,
+        right: AppSpacings.pLg,
+        bottom: AppSpacings.pLg,
+        top: AppSpacings.pMd,
       ),
       child: ModeSelector<LightCapability>(
         modes: modes,

@@ -783,12 +783,12 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
       title: 'Sensors',
       subtitle: subtitle,
       subtitleColor: (hasAlerts || hasHealthIssues) ? accentColor : null,
-      backgroundColor: AppColors.blank,
       leading: HeaderMainIcon(
         icon: MdiIcons.accessPointNetwork,
         color: accentThemeColor,
       ),
-      trailing: HeaderHomeButton(
+      trailing: HeaderIconButton(
+        icon: MdiIcons.homeOutline,
         onTap: _navigateToHome,
       ),
     );
@@ -1735,7 +1735,6 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
     return PageHeader(
       title: _sensor.name,
       subtitle: '${_sensor.location} • ${_sensor.isOffline ? 'Offline' : 'Online'}',
-      backgroundColor: AppColors.blank,
       leading: Row(
         mainAxisSize: MainAxisSize.min,
         children: [

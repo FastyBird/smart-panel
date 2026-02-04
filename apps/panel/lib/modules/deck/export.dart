@@ -55,5 +55,4 @@ export 'package:fastybird_smart_panel/modules/deck/presentation/system_pages/mas
 export 'package:fastybird_smart_panel/modules/deck/presentation/system_pages/room_overview.dart';
 
 // Presentation - Widgets
-export 'package:fastybird_smart_panel/modules/deck/presentation/widgets/climate_role_detail_page.dart';
 export 'package:fastybird_smart_panel/modules/deck/presentation/widgets/light_role_detail_page.dart';

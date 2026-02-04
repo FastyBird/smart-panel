@@ -521,7 +521,6 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
       title: _device.name,
       subtitle: subtitle,
       subtitleColor: isOn ? statusColorFamily.base : secondaryColor,
-      backgroundColor: AppColors.blank,
       leading: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -533,43 +532,10 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
           HeaderMainIcon(icon: MdiIcons.waterOutline, color: _getStatusColor()),
         ],
       ),
-      trailing: _buildHeaderPowerButton(context, isDark),
-    );
-  }
-
-  /// Power button in header. Theme and icon color are derived only from [_getStatusColor].
-  Widget _buildHeaderPowerButton(BuildContext context, bool isDark) {
-    final statusColor = _getStatusColor();
-    final filledTheme = statusColor == ThemeColors.teal
-        ? (isDark
-            ? AppFilledButtonsDarkThemes.teal
-            : AppFilledButtonsLightThemes.teal)
-        : (isDark
-            ? AppFilledButtonsDarkThemes.neutral
-            : AppFilledButtonsLightThemes.neutral);
-    final iconColor = statusColor == ThemeColors.teal
-        ? (isDark
-            ? AppFilledButtonsDarkThemes.tealForegroundColor
-            : AppFilledButtonsLightThemes.tealForegroundColor)
-        : (isDark
-            ? AppFilledButtonsDarkThemes.neutralForegroundColor
-            : AppFilledButtonsLightThemes.neutralForegroundColor);
-    return Theme(
-      data: Theme.of(context).copyWith(filledButtonTheme: filledTheme),
-      child: FilledButton(
-        onPressed: () => _togglePower(!_device.isOn),
-        style: FilledButton.styleFrom(
-          padding: EdgeInsets.symmetric(
-            horizontal: AppSpacings.pLg,
-            vertical: AppSpacings.pMd,
-          ),
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        ),
-        child: Icon(
-          MdiIcons.power,
-          size: AppFontSize.extraLarge,
-          color: iconColor,
-        ),
+      trailing: HeaderIconButton(
+        icon: MdiIcons.power,
+        onTap: () => _togglePower(!_device.isOn),
+        color: _getStatusColor(),
       ),
     );
   }

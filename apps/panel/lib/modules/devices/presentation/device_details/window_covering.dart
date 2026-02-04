@@ -363,7 +363,6 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
       title: widget._device.name,
       subtitle: '${_getStatusLabel(context)} • $_position%',
       subtitleColor: statusColorFamily.base,
-      backgroundColor: AppColors.blank,
       leading: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -383,67 +382,44 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     final hasChannels = _isMultiChannel;
     final hasObstruction = _selectedChannel.obstruction;
     if (!hasChannels && !hasObstruction) return null;
+    final localizations = AppLocalizations.of(context)!;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        if (hasChannels) _buildChannelsHeaderButton(context, isDark),
+        if (hasChannels)
+          HeaderIconButton(
+            icon: MdiIcons.layers,
+            onTap: () {
+              final channelCount = _device.windowCoveringChannels.length;
+              DeviceChannelsSection.showChannelsSheet(
+                context,
+                title: localizations.window_covering_channels_label,
+                icon: MdiIcons.blindsHorizontal,
+                itemCount: channelCount,
+                tileBuilder: (c, i) {
+                  final ch = _channelAt(i);
+                  return HorizontalTileStretched(
+                    icon: MdiIcons.blindsHorizontalClosed,
+                    activeIcon: MdiIcons.blindsHorizontal,
+                    name: ch.channel.name,
+                    status: '${ch.position}%',
+                    isActive: ch.position > 0,
+                    isSelected: ch.isSelected,
+                    onTileTap: () {
+                      _handleChannelSelect(i);
+                      if (c.mounted) Navigator.of(c).pop();
+                    },
+                    showSelectionIndicator: true,
+                  );
+                },
+                showCountInHeader: false,
+              );
+            },
+            color: ThemeColors.primary,
+          ),
         if (hasChannels && hasObstruction) SizedBox(width: AppSpacings.pSm),
         if (hasObstruction) _buildObstructionIcon(isDark),
       ],
-    );
-  }
-
-  /// Channels (layers) button in header trailing. Opens the channels bottom sheet.
-  Widget _buildChannelsHeaderButton(BuildContext context, bool isDark) {
-    final localizations = AppLocalizations.of(context)!;
-    final filledTheme = isDark
-        ? AppFilledButtonsDarkThemes.primary
-        : AppFilledButtonsLightThemes.primary;
-    final iconColor = isDark
-        ? AppFilledButtonsDarkThemes.primaryForegroundColor
-        : AppFilledButtonsLightThemes.primaryForegroundColor;
-    return Theme(
-      data: Theme.of(context).copyWith(filledButtonTheme: filledTheme),
-      child: FilledButton(
-        onPressed: () {
-          final channelCount = _device.windowCoveringChannels.length;
-          DeviceChannelsSection.showChannelsSheet(
-            context,
-            title: localizations.window_covering_channels_label,
-            icon: MdiIcons.blindsHorizontal,
-            itemCount: channelCount,
-            tileBuilder: (c, i) {
-              final ch = _channelAt(i);
-              return HorizontalTileStretched(
-                icon: MdiIcons.blindsHorizontalClosed,
-                activeIcon: MdiIcons.blindsHorizontal,
-                name: ch.channel.name,
-                status: '${ch.position}%',
-                isActive: ch.position > 0,
-                isSelected: ch.isSelected,
-                onTileTap: () {
-                  _handleChannelSelect(i);
-                  if (c.mounted) Navigator.of(c).pop();
-                },
-                showSelectionIndicator: true,
-              );
-            },
-            showCountInHeader: false,
-          );
-        },
-        style: FilledButton.styleFrom(
-          padding: EdgeInsets.symmetric(
-            horizontal: AppSpacings.pLg,
-            vertical: AppSpacings.pMd,
-          ),
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        ),
-        child: Icon(
-          MdiIcons.layers,
-          size: AppFontSize.extraLarge,
-          color: iconColor,
-        ),
-      ),
     );
   }
 

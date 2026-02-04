@@ -422,7 +422,6 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
       title: _device.name,
       subtitle: subtitle,
       subtitleColor: statusColorFamily.base,
-      backgroundColor: AppColors.blank,
       leading: Row(
         mainAxisSize: MainAxisSize.min,
         children: [

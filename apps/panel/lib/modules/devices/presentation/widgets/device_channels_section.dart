@@ -19,6 +19,9 @@ class DeviceChannelsSection {
   /// with [TileLayout.horizontal]).
   ///
   /// When [titleWidget] is set it has priority over [title] for the header title.
+  ///
+  /// When [listenable] is set, the sheet content rebuilds when it is notified
+  /// (e.g. so channel state changes are reflected without closing the sheet).
   static void showChannelsSheet(
     BuildContext context, {
     required String title,
@@ -27,19 +30,27 @@ class DeviceChannelsSection {
     required int itemCount,
     required Widget Function(BuildContext context, int index) tileBuilder,
     bool showCountInHeader = false,
+    Listenable? listenable,
   }) {
     if (itemCount == 0) return;
     final sheetTitle = showCountInHeader ? '$title ($itemCount)' : title;
+
+    Widget buildContent() => _ChannelsSheetContent(
+          itemCount: itemCount,
+          tileBuilder: tileBuilder,
+        );
 
     showAppBottomSheet(
       context,
       title: titleWidget != null ? null : sheetTitle,
       titleWidget: titleWidget,
       titleIcon: icon,
-      content: _ChannelsSheetContent(
-        itemCount: itemCount,
-        tileBuilder: tileBuilder,
-      ),
+      content: listenable != null
+          ? ListenableBuilder(
+              listenable: listenable,
+              builder: (context, _) => buildContent(),
+            )
+          : buildContent(),
     );
   }
 }

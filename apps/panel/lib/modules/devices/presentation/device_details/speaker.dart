@@ -445,7 +445,6 @@ class _SpeakerDeviceDetailState extends State<SpeakerDeviceDetail> {
 			title: _device.name,
 			subtitle: _getStatusLabel(localizations),
 			subtitleColor: isOn ? accentColor : secondaryColor,
-			backgroundColor: AppColors.blank,
 			leading: Row(
 				mainAxisSize: MainAxisSize.min,
 				children: [
@@ -472,29 +471,10 @@ class _SpeakerDeviceDetailState extends State<SpeakerDeviceDetail> {
 				],
 			),
 			trailing: _device.hasSwitcher
-				? GestureDetector(
+				? HeaderIconButton(
+					icon: MdiIcons.power,
 					onTap: _togglePower,
-					child: AnimatedContainer(
-						duration: const Duration(milliseconds: 200),
-						width: _scale(48),
-						height: _scale(32),
-						decoration: BoxDecoration(
-							color: isOn
-								? accentColor
-								: (isDark ? AppFillColorDark.light : AppFillColorLight.light),
-							borderRadius: BorderRadius.circular(AppBorderRadius.base),
-							border: (!isOn && !isDark)
-								? Border.all(color: AppBorderColorLight.base, width: _scale(1))
-								: null,
-						),
-						child: Icon(
-							MdiIcons.power,
-							size: _scale(18),
-							color: isOn
-								? AppColors.white
-								: (isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary),
-						),
-					),
+					color: isOn ? ThemeColors.primary : ThemeColors.neutral,
 				)
 				: null,
 		);

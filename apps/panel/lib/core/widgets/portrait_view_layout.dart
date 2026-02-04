@@ -130,13 +130,13 @@ class PortraitViewLayout extends StatelessWidget {
         Container(
           width: double.infinity,
           decoration: BoxDecoration(
-            color: isDark ? AppBgColorDark.page : AppBgColorLight.page,
+            color: isDark ? AppBgColorDark.page : AppBgColorLight.base,
             border: showStickyBottomBorder
                 ? Border(
                     top: BorderSide(
                       color: isDark
                           ? AppBorderColorDark.light
-                          : AppBorderColorLight.base,
+                          : AppBorderColorLight.darker,
                       width: 1,
                     ),
                   )

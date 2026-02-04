@@ -840,7 +840,6 @@ class _AirConditionerDeviceDetailState
       title: _device.name,
       subtitle: _getStatusLabel(localizations),
       subtitleColor: _isActive ? modeColorFamily.base : secondaryColor,
-      backgroundColor: AppColors.blank,
       leading: Row(
         mainAxisSize: MainAxisSize.min,
         children: [

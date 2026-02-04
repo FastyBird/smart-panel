@@ -102,7 +102,6 @@ class _WaterHeaterDeviceDetailState extends State<WaterHeaterDeviceDetail> {
       title: _device.name,
       subtitle: _getStatusLabel(localizations),
       subtitleColor: _device.isOn ? heatingColor : secondaryColor,
-      backgroundColor: AppColors.blank,
       leading: Row(
         mainAxisSize: MainAxisSize.min,
         children: [

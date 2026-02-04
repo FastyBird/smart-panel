@@ -330,12 +330,12 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
       title: localizations.domain_shading,
       subtitle: subtitle,
       subtitleColor: position > 0 ? stateColor : null,
-      backgroundColor: AppColors.blank,
       leading: HeaderMainIcon(
         icon: position > 0 ? MdiIcons.blindsHorizontal : MdiIcons.blindsHorizontalClosed,
         color: stateThemeColor,
       ),
-      trailing: HeaderHomeButton(
+      trailing: HeaderIconButton(
+        icon: MdiIcons.homeOutline,
         onTap: _navigateToHome,
       ),
     );
@@ -1237,12 +1237,12 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
             PageHeader(
               title: localizations.domain_shading,
               subtitle: localizations.domain_shading_empty_title,
-              backgroundColor: AppColors.blank,
               leading: HeaderMainIcon(
                 icon: MdiIcons.blindsHorizontalClosed,
                 color: ThemeColors.neutral,
               ),
-              trailing: HeaderHomeButton(
+              trailing: HeaderIconButton(
+                icon: MdiIcons.homeOutline,
                 onTap: _navigateToHome,
               ),
             ),

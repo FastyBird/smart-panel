@@ -90,6 +90,8 @@ class LandscapeViewLayout extends StatelessWidget {
     final showLabels =
         modeSelectorShowLabels ?? (isLargeScreen && additionalContent == null);
 
+    final mainContentPadding = this.mainContentPadding ?? (modeSelector != null ? EdgeInsets.only(top: AppSpacings.pLg, bottom: AppSpacings.pLg, left: AppSpacings.pLg) : AppSpacings.paddingLg);
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -105,13 +107,13 @@ class LandscapeViewLayout extends StatelessWidget {
                 child: mainContentScrollable
                     ? VerticalScrollWithGradient(
                         gradientHeight: AppSpacings.pLg,
-                        padding: mainContentPadding ?? AppSpacings.paddingLg,
+                        padding: mainContentPadding,
                         itemCount: 1,
                         separatorHeight: 0,
                         itemBuilder: (context, index) => mainContent,
                       )
                     : Padding(
-                        padding: mainContentPadding ?? AppSpacings.paddingLg,
+                        padding: mainContentPadding,
                         child: mainContent,
                       ),
               ),
@@ -121,7 +123,7 @@ class LandscapeViewLayout extends StatelessWidget {
                   padding: modeSelectorPadding ??
                       EdgeInsets.symmetric(
                         vertical: AppSpacings.pLg,
-                        horizontal: showLabels ? AppSpacings.pLg : AppSpacings.pMd,
+                        horizontal: AppSpacings.pMd,
                       ),
                   child: Center(child: modeSelector),
                 ),

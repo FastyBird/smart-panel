@@ -195,7 +195,6 @@ class _StreamingServiceDeviceDetailState extends State<StreamingServiceDeviceDet
 			title: _device.name,
 			subtitle: _getStatusLabel(localizations),
 			subtitleColor: accentColor,
-			backgroundColor: AppColors.blank,
 			leading: Row(
 				mainAxisSize: MainAxisSize.min,
 				children: [

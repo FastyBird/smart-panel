@@ -667,7 +667,6 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
       title: _device.name,
       subtitle: subtitle,
       subtitleColor: statusColorFamily.base,
-      backgroundColor: AppColors.blank,
       leading: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
