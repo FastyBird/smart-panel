@@ -66,7 +66,7 @@ import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/deck_service.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/navigate_event.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/sensor_category.dart';
-import 'package:fastybird_smart_panel/modules/deck/utils/sensor_enum_utils.dart';
+import 'package:fastybird_smart_panel/modules/devices/utils/sensor_enum_utils.dart';
 import 'package:fastybird_smart_panel/modules/deck/utils/sensor_freshness.dart';
 import 'package:fastybird_smart_panel/modules/devices/export.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_detail_page.dart';
