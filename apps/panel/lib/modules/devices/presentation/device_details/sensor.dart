@@ -7,6 +7,8 @@ import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
+import 'package:fastybird_smart_panel/core/widgets/tile_wrappers.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_channels_section.dart';
 import 'package:fastybird_smart_panel/modules/devices/utils/value.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/property_timeseries.dart';
@@ -35,81 +37,189 @@ class SensorDeviceDetail extends StatefulWidget {
 }
 
 class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
-  final GlobalKey _scrollToKey = GlobalKey();
+  /// Selected channel index for multi-channel sensor devices.
+  int _selectedChannelIndex = 0;
+
+  /// Notifier to trigger bottom sheet rebuild when channel selection changes.
+  final ValueNotifier<int> _channelListVersion = ValueNotifier(0);
 
   @override
   void initState() {
     super.initState();
+    final allChannels = _getAllSensorChannels();
+    if (allChannels.isEmpty) return;
     if (widget.initialChannelId != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        final context = _scrollToKey.currentContext;
-        if (context != null) {
-          Scrollable.ensureVisible(context, alignment: 0.2);
-        }
-      });
+      final index =
+          allChannels.indexWhere((s) => s.channel.id == widget.initialChannelId);
+      if (index >= 0) {
+        _selectedChannelIndex = index;
+      }
+    } else {
+      _selectedChannelIndex = 0;
     }
   }
 
   @override
-  Widget build(BuildContext context) {
-    final environmentalSensors = _getEnvironmentalSensors();
-    final airQualitySensors = _getAirQualitySensors();
-    final detectionSensors = _getDetectionSensors();
-    final deviceInfoSensors = _getDeviceInfoSensors();
+  void dispose() {
+    _channelListVersion.dispose();
+    super.dispose();
+  }
 
-    return SafeArea(
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          return SingleChildScrollView(
-            padding: AppSpacings.paddingMd,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (environmentalSensors.isNotEmpty)
-                  SensorSection(
-                    title: 'Environmental',
-                    icon: MdiIcons.thermometer,
-                    sensors: environmentalSensors,
-                    deviceName: widget._device.name,
-                    isDeviceOnline: widget._device.isOnline,
-                    scrollToChannelId: widget.initialChannelId,
-                    scrollToKey: _scrollToKey,
-                  ),
-                if (airQualitySensors.isNotEmpty)
-                  SensorSection(
-                    title: 'Air Quality',
-                    icon: MdiIcons.airFilter,
-                    sensors: airQualitySensors,
-                    deviceName: widget._device.name,
-                    isDeviceOnline: widget._device.isOnline,
-                    scrollToChannelId: widget.initialChannelId,
-                    scrollToKey: _scrollToKey,
-                  ),
-                if (detectionSensors.isNotEmpty)
-                  SensorSection(
-                    title: 'Detection',
-                    icon: MdiIcons.motionSensor,
-                    sensors: detectionSensors,
-                    deviceName: widget._device.name,
-                    isDeviceOnline: widget._device.isOnline,
-                    scrollToChannelId: widget.initialChannelId,
-                    scrollToKey: _scrollToKey,
-                  ),
-                if (deviceInfoSensors.isNotEmpty)
-                  SensorSection(
-                    title: 'Device Info',
-                    icon: MdiIcons.informationOutline,
-                    sensors: deviceInfoSensors,
-                    deviceName: widget._device.name,
-                    isDeviceOnline: widget._device.isOnline,
-                    scrollToChannelId: widget.initialChannelId,
-                    scrollToKey: _scrollToKey,
-                  ),
-              ],
+  /// All sensor channels in display order (environmental, air quality, detection, device info).
+  List<SensorData> _getAllSensorChannels() {
+    return [
+      ..._getEnvironmentalSensors(),
+      ..._getAirQualitySensors(),
+      ..._getDetectionSensors(),
+      ..._getDeviceInfoSensors(),
+    ];
+  }
+
+  bool get _isMultiChannel {
+    final channels = _getAllSensorChannels();
+    return channels.length > 1;
+  }
+
+  SensorData? get _selectedSensor {
+    final channels = _getAllSensorChannels();
+    if (channels.isEmpty) return null;
+    if (_selectedChannelIndex < 0 || _selectedChannelIndex >= channels.length) {
+      return channels.first;
+    }
+    return channels[_selectedChannelIndex];
+  }
+
+  void _handleChannelSelect(int index) {
+    if (index != _selectedChannelIndex) {
+      setState(() => _selectedChannelIndex = index);
+      _channelListVersion.value++;
+    }
+  }
+
+  /// Status text for a sensor channel tile (e.g. "23.5 °C" or "Detected").
+  String _getSensorChannelStatus(SensorData data) {
+    if (data.isDetection != null) {
+      return (data.isDetection ?? false)
+          ? (data.detectedLabel ?? 'Detected')
+          : (data.notDetectedLabel ?? 'Not Detected');
+    }
+    if (data.property != null && data.valueFormatter != null) {
+      return data.valueFormatter!(data.property!) ?? '—';
+    }
+    if (data.property != null) {
+      return ValueUtils.formatValue(data.property!) ?? '—';
+    }
+    return '—';
+  }
+
+  /// Builds one channel tile for the channels bottom sheet (horizontal layout).
+  Widget _buildChannelTile(BuildContext context, SensorData data, int index) {
+    final isSelected = index == _selectedChannelIndex;
+    return HorizontalTileStretched(
+      icon: data.icon,
+      activeIcon: data.icon,
+      name: data.channel.name.isNotEmpty ? data.channel.name : data.label,
+      status: _getSensorChannelStatus(data),
+      isActive: false,
+      isOffline: !widget._device.isOnline,
+      isSelected: isSelected,
+      onIconTap: null,
+      onTileTap: () => _handleChannelSelect(index),
+      showSelectionIndicator: true,
+      showWarningBadge: data.isAlert ?? false,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final allChannels = _getAllSensorChannels();
+    if (allChannels.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final selectedSensor = _selectedSensor;
+    if (selectedSensor == null) return const SizedBox.shrink();
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor =
+        isDark ? AppBgColorDark.page : AppBgColorLight.page;
+
+    return Scaffold(
+      backgroundColor: bgColor,
+      body: SafeArea(
+        child: Column(
+          children: [
+            _buildHeader(context, isDark),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: AppSpacings.paddingMd,
+                child: SensorSection(
+                  title: selectedSensor.label,
+                  icon: selectedSensor.icon,
+                  sensors: [selectedSensor],
+                  deviceName: widget._device.name,
+                  isDeviceOnline: widget._device.isOnline,
+                ),
+              ),
             ),
-          );
-        },
+          ],
+        ),
       ),
+    );
+  }
+
+  Widget _buildHeader(BuildContext context, bool isDark) {
+    final selectedSensor = _selectedSensor;
+    if (selectedSensor == null) return const SizedBox.shrink();
+
+    final title = _isMultiChannel
+        ? (selectedSensor.channel.name.isNotEmpty
+            ? selectedSensor.channel.name
+            : selectedSensor.label)
+        : widget._device.name;
+    final subtitle = selectedSensor.label;
+    final secondaryColor =
+        isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
+
+    return PageHeader(
+      title: title,
+      subtitle: subtitle,
+      subtitleColor: secondaryColor,
+      leading: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          HeaderIconButton(
+            icon: MdiIcons.arrowLeft,
+            onTap: () => Navigator.of(context).pop(),
+          ),
+          AppSpacings.spacingMdHorizontal,
+          HeaderMainIcon(
+            icon: MdiIcons.chip,
+            color: ThemeColors.primary,
+          ),
+        ],
+      ),
+      trailing: _buildHeaderTrailing(context),
+    );
+  }
+
+  Widget? _buildHeaderTrailing(BuildContext context) {
+    if (!_isMultiChannel) return null;
+    final channels = _getAllSensorChannels();
+    return HeaderIconButton(
+      icon: MdiIcons.formatListBulleted,
+      color: ThemeColors.primary,
+      onTap: () {
+        final localizations = AppLocalizations.of(context)!;
+        DeviceChannelsSection.showChannelsSheet(
+          context,
+          title: localizations.domain_sensors,
+          icon: MdiIcons.chip,
+          itemCount: channels.length,
+          tileBuilder: (c, i) => _buildChannelTile(c, channels[i], i),
+          listenable: _channelListVersion,
+        );
+      },
     );
   }
 
