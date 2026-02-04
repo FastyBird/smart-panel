@@ -3,6 +3,7 @@ import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 
 /// Defines the orientation of the mode selector
 enum ModeSelectorOrientation {
@@ -170,13 +171,22 @@ class _ModeSelectorState<T> extends State<ModeSelector<T>> {
     final box = ctx.findRenderObject() as RenderBox?;
     if (box == null || !box.hasSize || box.parent == null) return;
 
+    // Find the scrollable content (Row or Column) so we measure offset within it, not the immediate parent.
+    RenderObject? contentAncestor = box.parent;
+    while (contentAncestor != null && contentAncestor is! RenderFlex) {
+      contentAncestor = contentAncestor.parent;
+    }
+    if (contentAncestor == null) return;
+
     final position = _scrollController!.position;
     final viewportDimension = position.viewportDimension;
     final maxScrollExtent = position.maxScrollExtent;
 
     final isHorizontal = widget.orientation == ModeSelectorOrientation.horizontal;
-    final itemOffsetInContent = box.localToGlobal(Offset.zero, ancestor: box.parent);
-    final itemOffset = isHorizontal ? itemOffsetInContent.dx : itemOffsetInContent.dy;
+    final itemOffsetInContent =
+        box.localToGlobal(Offset.zero, ancestor: contentAncestor);
+    final itemOffset =
+        isHorizontal ? itemOffsetInContent.dx : itemOffsetInContent.dy;
     final itemSize = isHorizontal ? box.size.width : box.size.height;
 
     final scrollOffset = (itemOffset + itemSize / 2 - viewportDimension / 2)
