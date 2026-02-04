@@ -1382,6 +1382,9 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     final (activeValue, matchedValue, lastIntentValue) = _getLightingModeSelectorValues();
     final isModeLocked = _modeControlStateService.isLocked(LightingConstants.modeChannelId);
 
+    // Fixed width matching landscape layout constants (100 large, 64 compact)
+    final selectorWidth = _scale(showLabels ? 100.0 : 64.0);
+
     return IgnorePointer(
       ignoring: isModeLocked,
       child: IntentModeSelector<LightingModeUI>(
@@ -1393,6 +1396,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         orientation: ModeSelectorOrientation.vertical,
         iconPlacement: ModeSelectorIconPlacement.top,
         showLabels: showLabels,
+        fixedWidth: selectorWidth,
         scrollable: showLabels, // Enable scroll when labels shown (takes more space)
       ),
     );

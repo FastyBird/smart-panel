@@ -25,18 +25,13 @@ void main() {
         mainContent: SizedBox(),
         modeSelector: Text('Mode'),
         secondaryContent: Text('Secondary'),
-        mainContentPadding: EdgeInsets.all(8),
-        modeSelectorPadding: EdgeInsets.all(4),
-        secondaryContentPadding: EdgeInsets.all(12),
         largeSecondaryColumn: true,
-        showDivider: false,
         secondaryScrollable: false,
       );
 
       expect(layout.modeSelector, isA<Text>());
       expect(layout.secondaryContent, isA<Text>());
       expect(layout.largeSecondaryColumn, true);
-      expect(layout.showDivider, false);
       expect(layout.secondaryScrollable, false);
     });
 
@@ -47,11 +42,7 @@ void main() {
       );
 
       expect(layout.modeSelector, isNull);
-      expect(layout.mainContentPadding, isNull);
-      expect(layout.modeSelectorPadding, isNull);
-      expect(layout.secondaryContentPadding, isNull);
       expect(layout.largeSecondaryColumn, false);
-      expect(layout.showDivider, true);
       expect(layout.secondaryScrollable, true);
     });
   });

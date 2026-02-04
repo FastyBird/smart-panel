@@ -50,25 +50,10 @@ class DeviceLandscapeLayout extends StatelessWidget {
   /// If null, only the main content column is shown.
   final Widget? secondaryContent;
 
-  /// Padding for the main content column
-  /// Default: AppSpacings.paddingLg
-  final EdgeInsetsGeometry? mainContentPadding;
-
-  /// Padding for the mode selector column
-  final EdgeInsetsGeometry? modeSelectorPadding;
-
-  /// Padding for the secondary content column
-  /// Default: AppSpacings.paddingLg
-  final EdgeInsetsGeometry? secondaryContentPadding;
-
   /// Whether to use equal column widths (1:1 ratio).
   /// When false (default), uses 2:1 ratio (main larger, secondary smaller).
   /// When true, uses 1:1 ratio (equal columns, secondary is larger).
   final bool largeSecondaryColumn;
-
-  /// Whether to show the divider between columns
-  /// Default: true
-  final bool showDivider;
 
   /// Whether the secondary content should be scrollable
   /// Default: true
@@ -79,11 +64,7 @@ class DeviceLandscapeLayout extends StatelessWidget {
     required this.mainContent,
     this.modeSelector,
     this.secondaryContent,
-    this.mainContentPadding,
-    this.modeSelectorPadding,
-    this.secondaryContentPadding,
     this.largeSecondaryColumn = false,
-    this.showDivider = true,
     this.secondaryScrollable = true,
   });
 
@@ -109,21 +90,18 @@ class DeviceLandscapeLayout extends StatelessWidget {
         showModeSelectorLabels ? _modeSelectorWidthLarge : _modeSelectorWidthCompact);
 
     // Default paddings
-    final defaultMainPadding = mainContentPadding ??
-        (modeSelector != null
-            ? EdgeInsets.only(
-                top: AppSpacings.pLg,
-                bottom: AppSpacings.pLg,
-                left: AppSpacings.pLg,
-              )
-            : AppSpacings.paddingLg);
-    final defaultModeSelectorPadding = modeSelectorPadding ??
-        EdgeInsets.symmetric(
-          vertical: AppSpacings.pLg,
-          horizontal: AppSpacings.pMd,
-        );
-    final defaultSecondaryPadding =
-        secondaryContentPadding ?? AppSpacings.paddingLg;
+    final defaultMainPadding = modeSelector != null
+        ? EdgeInsets.only(
+            top: AppSpacings.pLg,
+            bottom: AppSpacings.pLg,
+            left: AppSpacings.pLg,
+          )
+        : AppSpacings.paddingLg;
+    final defaultModeSelectorPadding = EdgeInsets.symmetric(
+      vertical: AppSpacings.pLg,
+      horizontal: AppSpacings.pMd,
+    );
+    final defaultSecondaryPadding = AppSpacings.paddingLg;
 
     // Flex values: largeSecondaryColumn: true = 1:1 ratio, false = 2:1 ratio
     final mainFlex = largeSecondaryColumn ? 1 : 2;
@@ -174,12 +152,7 @@ class DeviceLandscapeLayout extends StatelessWidget {
                   width: modeSelectorWidth,
                   child: Padding(
                     padding: defaultModeSelectorPadding,
-                    // Column centers vertically while stretching child to fill width
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [modeSelector!],
-                    ),
+                    child: modeSelector,
                   ),
                 ),
             ],
@@ -188,9 +161,7 @@ class DeviceLandscapeLayout extends StatelessWidget {
 
         // Right column: Secondary content (optional, flex-based)
         if (secondaryContent != null) ...[
-          // Divider between columns
-          if (showDivider) Container(width: _scale(1), color: borderColor),
-
+          Container(width: _scale(1), color: borderColor),
           Expanded(
             flex: secondaryFlex,
             child: Container(

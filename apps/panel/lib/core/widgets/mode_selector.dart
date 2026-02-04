@@ -341,11 +341,13 @@ class _ModeSelectorState<T> extends State<ModeSelector<T>> {
       );
     }
 
-    // Non-scrollable: stretch items to fill width
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: buttons,
+    // Non-scrollable: center content vertically, stretch items to fill width
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: buttons,
+      ),
     );
   }
 

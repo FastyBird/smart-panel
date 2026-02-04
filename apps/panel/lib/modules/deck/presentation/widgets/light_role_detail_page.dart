@@ -2172,7 +2172,6 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
                         : null;
 
                     return LandscapeViewLayout(
-                      mainContentPadding: EdgeInsets.zero,
                       mainContent: LightingMainControl(
                         selectedCapability: _selectedCapability,
                         isOn: displayIsOn,
