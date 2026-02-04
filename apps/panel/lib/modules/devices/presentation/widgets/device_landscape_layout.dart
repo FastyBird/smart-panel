@@ -100,42 +100,58 @@ class DeviceLandscapeLayout extends StatelessWidget {
         isDark ? AppBorderColorDark.light : AppBorderColorLight.base;
     final secondaryBgColor =
         isDark ? AppFillColorDark.light : AppFillColorLight.light;
-    final isLargeScreen = _screenService.isLargeScreen;
 
     // Mode selector shows labels on large screens only
-    final showModeSelectorLabels = isLargeScreen;
+    final showModeSelectorLabels = _screenService.isLargeScreen;
 
     // Fixed width for mode selector based on screen size
-    final modeSelectorWidth = _scale(showModeSelectorLabels ? _modeSelectorWidthLarge : _modeSelectorWidthCompact);
+    final modeSelectorWidth = _scale(
+        showModeSelectorLabels ? _modeSelectorWidthLarge : _modeSelectorWidthCompact);
 
-    final mainContentPadding = this.mainContentPadding ?? (modeSelector != null ? EdgeInsets.only(top: AppSpacings.pLg, bottom: AppSpacings.pLg, left: AppSpacings.pLg) : AppSpacings.paddingLg);
+    // Default paddings
+    final defaultMainPadding = mainContentPadding ??
+        (modeSelector != null
+            ? EdgeInsets.only(
+                top: AppSpacings.pLg,
+                bottom: AppSpacings.pLg,
+                left: AppSpacings.pLg,
+              )
+            : AppSpacings.paddingLg);
+    final defaultModeSelectorPadding = modeSelectorPadding ??
+        EdgeInsets.symmetric(
+          vertical: AppSpacings.pLg,
+          horizontal: AppSpacings.pMd,
+        );
+    final defaultSecondaryPadding =
+        secondaryContentPadding ?? AppSpacings.paddingLg;
 
     // Flex values: largeSecondaryColumn: true = 1:1 ratio, false = 2:1 ratio
     final mainFlex = largeSecondaryColumn ? 1 : 2;
     const secondaryFlex = 1;
 
-    final defaultSecondaryPadding = secondaryContentPadding ?? AppSpacings.paddingLg;
-
+    // Build secondary widget once
     Widget? secondaryWidget;
     if (secondaryContent != null) {
-      if (secondaryScrollable) {
-        secondaryWidget = VerticalScrollWithGradient(
-          gradientHeight: AppSpacings.pLg,
-          padding: defaultSecondaryPadding,
-          backgroundColor: secondaryBgColor,
-          itemCount: 1,
-          separatorHeight: 0,
-          itemBuilder: (context, index) => secondaryContent!,
-        );
-      } else {
-        secondaryWidget = Padding(
-          padding: defaultSecondaryPadding,
-          child: secondaryContent,
-        );
-      }
+      secondaryWidget = secondaryScrollable
+          ? VerticalScrollWithGradient(
+              gradientHeight: AppSpacings.pLg,
+              padding: defaultSecondaryPadding,
+              backgroundColor: secondaryBgColor,
+              itemCount: 1,
+              separatorHeight: 0,
+              itemBuilder: (context, index) => secondaryContent!,
+            )
+          : Padding(
+              padding: defaultSecondaryPadding,
+              child: secondaryContent,
+            );
     }
 
-    return Row(
+    // Add right padding when mode selector exists but no secondary content
+    final needsOuterPadding =
+        modeSelector != null && secondaryContent == null;
+
+    final content = Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         // Left column(s): Main content + optional mode selector (flex-based together)
@@ -148,7 +164,7 @@ class DeviceLandscapeLayout extends StatelessWidget {
               // Main content takes remaining space
               Expanded(
                 child: Padding(
-                  padding: mainContentPadding,
+                  padding: defaultMainPadding,
                   child: mainContent,
                 ),
               ),
@@ -157,13 +173,13 @@ class DeviceLandscapeLayout extends StatelessWidget {
                 SizedBox(
                   width: modeSelectorWidth,
                   child: Padding(
-                    padding: modeSelectorPadding ?? EdgeInsets.only(
-                      top: AppSpacings.pLg,
-                      bottom: AppSpacings.pLg,
-                      left: AppSpacings.pMd,
-                      right: secondaryContent == null ? AppSpacings.pLg : AppSpacings.pMd,
+                    padding: defaultModeSelectorPadding,
+                    // Column centers vertically while stretching child to fill width
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [modeSelector!],
                     ),
-                    child: modeSelector,
                   ),
                 ),
             ],
@@ -185,5 +201,13 @@ class DeviceLandscapeLayout extends StatelessWidget {
         ],
       ],
     );
+
+    // Wrap with padding only when needed to avoid unnecessary widget
+    return needsOuterPadding
+        ? Padding(
+            padding: EdgeInsets.only(right: AppSpacings.pMd),
+            child: content,
+          )
+        : content;
   }
 }

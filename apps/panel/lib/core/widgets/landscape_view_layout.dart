@@ -102,11 +102,33 @@ class LandscapeViewLayout extends StatelessWidget {
     final showLabels = modeSelectorShowLabels ?? isLargeScreen;
 
     // Fixed width for mode selector based on screen size
-    final modeSelectorWidth = _scale(showLabels ? _modeSelectorWidthLarge : _modeSelectorWidthCompact);
+    final modeSelectorWidth =
+        _scale(showLabels ? _modeSelectorWidthLarge : _modeSelectorWidthCompact);
 
-    final mainContentPadding = this.mainContentPadding ?? (modeSelector != null ? EdgeInsets.only(top: AppSpacings.pLg, bottom: AppSpacings.pLg, left: AppSpacings.pLg) : AppSpacings.paddingLg);
+    // Default paddings
+    final defaultMainPadding = this.mainContentPadding ??
+        (modeSelector != null
+            ? EdgeInsets.only(
+                top: AppSpacings.pLg,
+                bottom: AppSpacings.pLg,
+                left: AppSpacings.pLg,
+              )
+            : AppSpacings.paddingLg);
+    final defaultModeSelectorPadding = modeSelectorPadding ??
+        EdgeInsets.symmetric(
+          vertical: AppSpacings.pLg,
+          horizontal: AppSpacings.pMd,
+        );
+    final defaultAdditionalPadding =
+        additionalContentPadding ?? AppSpacings.paddingLg;
+    final additionalBgColor =
+        isDark ? AppFillColorDark.light : AppFillColorLight.light;
 
-    return Row(
+    // Add right padding when mode selector exists but no additional content
+    final needsOuterPadding =
+        modeSelector != null && additionalContent == null;
+
+    final content = Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         // Left column(s): Main content + optional mode selector (flex-based together)
@@ -121,13 +143,13 @@ class LandscapeViewLayout extends StatelessWidget {
                 child: mainContentScrollable
                     ? VerticalScrollWithGradient(
                         gradientHeight: AppSpacings.pLg,
-                        padding: mainContentPadding,
+                        padding: defaultMainPadding,
                         itemCount: 1,
                         separatorHeight: 0,
                         itemBuilder: (context, index) => mainContent,
                       )
                     : Padding(
-                        padding: mainContentPadding,
+                        padding: defaultMainPadding,
                         child: mainContent,
                       ),
               ),
@@ -136,13 +158,13 @@ class LandscapeViewLayout extends StatelessWidget {
                 SizedBox(
                   width: modeSelectorWidth,
                   child: Padding(
-                    padding: modeSelectorPadding ?? EdgeInsets.only(
-                      top: AppSpacings.pLg,
-                      bottom: AppSpacings.pLg,
-                      left: AppSpacings.pMd,
-                      right: additionalContent == null ? AppSpacings.pLg : AppSpacings.pMd,
+                    padding: defaultModeSelectorPadding,
+                    // Column centers vertically while stretching child to fill width
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [modeSelector!],
                     ),
-                    child: modeSelector,
                   ),
                 ),
             ],
@@ -155,18 +177,18 @@ class LandscapeViewLayout extends StatelessWidget {
           Expanded(
             flex: additionalContentFlex,
             child: Container(
-              color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
+              color: additionalBgColor,
               child: additionalContentScrollable
                   ? VerticalScrollWithGradient(
                       gradientHeight: AppSpacings.pLg,
-                      padding: additionalContentPadding ?? EdgeInsets.all(AppSpacings.pLg),
-                      backgroundColor: isDark ? AppFillColorDark.light : AppFillColorLight.light,
+                      padding: defaultAdditionalPadding,
+                      backgroundColor: additionalBgColor,
                       itemCount: 1,
                       separatorHeight: 0,
                       itemBuilder: (context, index) => additionalContent!,
                     )
                   : Padding(
-                      padding: additionalContentPadding ?? EdgeInsets.all(AppSpacings.pLg),
+                      padding: defaultAdditionalPadding,
                       child: additionalContent,
                     ),
             ),
@@ -174,5 +196,13 @@ class LandscapeViewLayout extends StatelessWidget {
         ],
       ],
     );
+
+    // Wrap with padding only when needed to avoid unnecessary widget
+    return needsOuterPadding
+        ? Padding(
+            padding: EdgeInsets.only(right: AppSpacings.pMd),
+            child: content,
+          )
+        : content;
   }
 }
