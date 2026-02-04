@@ -1416,7 +1416,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
       isActive: device.isActive,
       isOffline: isOffline,
       showWarningBadge: true,
-      activeColor: device.isActive ? _getModeThemeColor() : null,
+      activeColor: device.isActive ? _getModeColor() : null,
       onTileTap: () {
         Navigator.of(context).pop();
         _openClimateDeviceDetail(device);
@@ -1453,8 +1453,11 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   // Mode → theme color (warning/info/success/neutral), dial accent, and
   // localized mode/status strings for header and dial.
 
-  ThemeColors _getModeThemeColor() {
-    switch (_state.mode) {
+  /// Theme color for current or given mode. Use this (and [_getModeColorFamily])
+  /// for all mode-based colors; avoid using [ThemeColors] directly.
+  ThemeColors _getModeColor([ClimateMode? mode]) {
+    final m = mode ?? _state.mode;
+    switch (m) {
       case ClimateMode.off:
         return ThemeColors.neutral;
       case ClimateMode.heat:
@@ -1468,11 +1471,11 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
 
   /// Resolved colors for current mode (used for header subtitle and dial border).
   ThemeColorFamily _getModeColorFamily(BuildContext context) =>
-      ThemeColorFamily.get(Theme.of(context).brightness, _getModeThemeColor());
+      ThemeColorFamily.get(Theme.of(context).brightness, _getModeColor());
 
   /// Dial glow/accent from current mode.
   DialAccentColor _getDialAccentType() {
-    switch (_getModeThemeColor()) {
+    switch (_getModeColor()) {
       case ThemeColors.warning:
         return DialAccentColor.warning;
       case ThemeColors.info:
@@ -1583,7 +1586,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
       subtitleColor: _isDialActive() ? modeColorFamily.base : secondaryColor,
       leading: HeaderMainIcon(
         icon: MdiIcons.thermostat,
-        color: _getModeThemeColor(),
+        color: _getModeColor(),
       ),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1931,7 +1934,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     //     value: ClimateMode.auto,
     //     icon: MdiIcons.thermometerAuto,
     //     label: localizations.thermostat_mode_auto,
-    //     color: ThemeColors.success,
+    //     color: _getModeColor(ClimateMode.auto),
     //   ));
     // }
     if (_state.capability == RoomCapability.heaterOnly ||
@@ -1940,7 +1943,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         value: ClimateMode.heat,
         icon: MdiIcons.fireCircle,
         label: localizations.thermostat_mode_heat,
-        color: ThemeColors.warning,
+        color: _getModeColor(ClimateMode.heat),
       ));
     }
     if (_state.capability == RoomCapability.coolerOnly ||
@@ -1949,14 +1952,14 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         value: ClimateMode.cool,
         icon: MdiIcons.snowflake,
         label: localizations.thermostat_mode_cool,
-        color: ThemeColors.info,
+        color: _getModeColor(ClimateMode.cool),
       ));
     }
     modes.add(ModeOption(
       value: ClimateMode.off,
       icon: MdiIcons.power,
       label: localizations.thermostat_mode_off,
-      color: ThemeColors.neutral,
+      color: _getModeColor(ClimateMode.off),
     ));
 
     return modes;
@@ -1973,9 +1976,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   }) {
     final localizations = AppLocalizations.of(context)!;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final borderColor = _state.mode != ClimateMode.off
-        ? _getModeColorFamily(context).light7
-        : (isDark ? AppBorderColorDark.light : AppBorderColorLight.light);
+    final borderColor = _getModeColorFamily(context).light7;
     // Use darker bg in dark mode for better contrast with dial inner background
     final cardColor =
         isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
