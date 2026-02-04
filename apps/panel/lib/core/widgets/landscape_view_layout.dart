@@ -1,5 +1,6 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
+import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:flutter/material.dart';
@@ -26,6 +27,11 @@ import 'package:flutter/material.dart';
 /// ```
 class LandscapeViewLayout extends StatelessWidget {
   final ScreenService _screenService = locator<ScreenService>();
+  final VisualDensityService _visualDensityService =
+      locator<VisualDensityService>();
+
+  double _scale(double value) =>
+      _screenService.scale(value, density: _visualDensityService.density);
 
   /// The main content widget (left column)
   final Widget mainContent;
@@ -90,7 +96,7 @@ class LandscapeViewLayout extends StatelessWidget {
     final showLabels =
         modeSelectorShowLabels ?? (isLargeScreen && additionalContent == null);
 
-    final mainContentPadding = this.mainContentPadding ?? (modeSelector != null ? EdgeInsets.only(top: AppSpacings.pLg, bottom: AppSpacings.pLg, left: AppSpacings.pLg) : AppSpacings.paddingLg);
+    final mainContentPadding = this.mainContentPadding ?? (modeSelector != null ? EdgeInsets.only(top: AppSpacings.pMd, bottom: AppSpacings.pLg, left: AppSpacings.pLg) : AppSpacings.paddingLg);
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -133,7 +139,7 @@ class LandscapeViewLayout extends StatelessWidget {
 
         // Right column: Additional content (optional) - flex-based
         if (additionalContent != null) ...[
-          Container(width: 1, color: borderColor),
+          Container(width: _scale(1), color: borderColor),
           Expanded(
             flex: additionalContentFlex,
             child: Container(

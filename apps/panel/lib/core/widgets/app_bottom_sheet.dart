@@ -132,14 +132,13 @@ class AppBottomSheet extends StatelessWidget {
           top: false,
           child: LayoutBuilder(
             builder: (context, constraints) {
-              final maxContentHeight = constraints.maxHeight - 120;
               final contentArea = scrollable
-                ? ListView(
-                    shrinkWrap: true,
-                    primary: false,
-                    children: [content],
-                  )
-                : content;
+                  ? ListView(
+                      shrinkWrap: true,
+                      primary: false,
+                      children: [content],
+                    )
+                  : content;
               return Padding(
                 padding: EdgeInsets.only(
                   top: AppSpacings.pMd,
@@ -159,7 +158,7 @@ class AppBottomSheet extends StatelessWidget {
                           border: Border(
                             bottom: BorderSide(
                               color: borderColor,
-                              width: 1,
+                              width: _scale(1),
                             ),
                           ),
                         ),
@@ -173,10 +172,7 @@ class AppBottomSheet extends StatelessWidget {
                         ),
                       ),
                     ],
-                    ConstrainedBox(
-                      constraints: BoxConstraints(
-                        maxHeight: maxContentHeight,
-                      ),
+                    Flexible(
                       child: contentArea,
                     ),
                     if (bottomSection != null) ...[
@@ -186,7 +182,7 @@ class AppBottomSheet extends StatelessWidget {
                           border: Border(
                             top: BorderSide(
                               color: borderColor,
-                              width: 1,
+                              width: _scale(1),
                             ),
                           ),
                         ),

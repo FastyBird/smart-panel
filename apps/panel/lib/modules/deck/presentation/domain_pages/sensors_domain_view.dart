@@ -920,7 +920,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
       decoration: BoxDecoration(
         color: dangerColor.withValues(alpha: isDark ? 0.15 : 0.1),
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
-        border: Border.all(color: dangerColor.withValues(alpha: 0.3), width: 1),
+        border: Border.all(color: dangerColor.withValues(alpha: 0.3), width: _scale(1)),
       ),
       child: Row(
         children: [
@@ -1105,7 +1105,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
         border: Border.all(
           color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light,
-          width: 1,
+          width: _scale(1),
         ),
       ),
       child: Column(
@@ -1239,7 +1239,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
                 : (isDark
                     ? AppBorderColorDark.light
                     : AppBorderColorLight.light),
-            width: 1,
+            width: _scale(1),
           ),
         ),
         child: Column(
@@ -1819,7 +1819,7 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
             color: isDark
                 ? AppBorderColorDark.light
                 : AppBorderColorLight.base,
-            width: 1,
+            width: _scale(1),
           ),
         ),
       ),
@@ -2008,7 +2008,7 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
           borderRadius: BorderRadius.circular(AppBorderRadius.base),
           border: Border.all(
             color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light,
-            width: 1,
+            width: _scale(1),
           ),
         ),
         child: Column(
@@ -2085,14 +2085,15 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
                   borderRadius: BorderRadius.circular(AppSpacings.pSm),
                   border: Border.all(
                     color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light,
+                    width: _scale(1),
                   ),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
-                      width: 6,
-                      height: 6,
+                      width: _scale(6),
+                      height: _scale(6),
                       decoration: BoxDecoration(
                         color: freshnessColor,
                         shape: BoxShape.circle,
@@ -2167,7 +2168,7 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
               borderRadius: BorderRadius.circular(AppBorderRadius.round),
               border: Border.all(
                 color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light,
-                width: 1,
+                width: _scale(1),
               ),
             )
           : null,
@@ -2287,7 +2288,7 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
         padding: EdgeInsets.zero,
         itemCount: reversedEvents.length,
         separatorBuilder: (_, __) => Divider(
-          height: 1,
+          height: _scale(1),
           color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light,
         ),
         itemBuilder: (context, index) {
@@ -2359,7 +2360,7 @@ class _SensorDetailPageState extends State<_SensorDetailPage> {
               borderRadius: BorderRadius.circular(AppBorderRadius.round),
               border: Border.all(
                 color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light,
-                width: 1,
+                width: _scale(1),
               ),
             )
           : null,

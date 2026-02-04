@@ -109,7 +109,7 @@ class _DeviceOfflineBanner extends StatelessWidget {
         borderRadius: BorderRadius.circular(_scale(16)),
         border: Border.all(
           color: _borderColor(),
-          width: 1,
+          width: _scale(1),
         ),
       ),
       child: Row(

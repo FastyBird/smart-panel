@@ -1,41 +1,107 @@
+/// Media domain view: room-level media control for a single space/room.
+///
+/// **Purpose:** One screen per room for AV control: activity selection (Watch,
+/// Listen, Gaming, Background, Off), composition preview (Display/Audio/Source
+/// roles and input source), volume/mute, playback transport, progress bar,
+/// and remote control. Media-capable devices are listed in a bottom sheet
+/// opened from the header.
+///
+/// **Data flow:**
+/// - [MediaActivityService] provides active state, endpoints, control targets
+///   (volume, playback, display, remote), and device groups for the room.
+/// - [DevicesService] provides live device views and property values (volume,
+///   mute, playback state, track metadata, position/duration) used for UI.
+/// - [SpacesService] provides room name. [DeckService] / [EventBus] for navigation.
+/// - Local state: _volume, _isMuted, _playbackState, _trackName, _artistName,
+///   _position, _duration are synced from device properties in [_syncDeviceState].
+///
+/// **Key concepts:**
+/// - Activity on/off and mode (Watch/Listen/etc.) are server-driven; volume,
+///   mute, and playback commands are sent to device properties with optimistic
+///   UI and debounce/settle timers where needed.
+/// - Portrait: activity content card + mode selector at bottom. Landscape:
+///   main content + vertical mode selector + optional controls column (volume,
+///   mute, playback tile, remote).
+/// - Failure/warning state: inline banners and [_showFailureDetailsSheet] for
+///   step results; retry and deactivate actions.
+///
+/// **File structure (for humans and AI):**
+/// Search for the exact section header (e.g. "// CONSTANTS", "// LIFECYCLE") to
+/// jump to that part of the file. Sections appear in this order:
+///
+/// - **CONSTANTS** — debounce/settle durations for volume and playback.
+/// - **MEDIA DOMAIN VIEW PAGE** — [MediaDomainViewPage] and state: LIFECYCLE,
+///   LISTENERS, STATE SYNC, NAVIGATION, ACTIVITY ACTIONS, BUILD.
+/// - **HEADER, THEME & LABELS** — header builder, mode colors, activity labels/icons.
+/// - **LAYOUTS** — portrait/landscape, activity content, mode selector.
+/// - **STATE CONTENT** — off, activating, failed content builders.
+/// - **ACTIVE CARD** — composition preview, warnings, volume/playback/remote controls.
+/// - **FAILURE DETAILS** — inline failure, sheet, retry/deactivate.
+/// - **LANDSCAPE CONTROLS** — playback tile, volume selector, mute, remote.
+/// - **HELPERS** — activity/device labels and icons, navigation, device sheet.
+/// - **ACTIONS** — volume, mute, input selector, playback command, playback sheet, remote.
+/// - **DATA MODELS / PAINTER** — [_CompositionDisplayItem], [_SpinnerArcPainter].
+library;
+
 import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:event_bus/event_bus.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
+import 'package:provider/provider.dart';
+
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_bottom_sheet.dart';
 import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
-import 'package:fastybird_smart_panel/core/widgets/slider_with_steps.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
-import 'package:fastybird_smart_panel/core/widgets/app_bottom_sheet.dart';
-import 'package:fastybird_smart_panel/core/widgets/value_selector.dart';
+import 'package:fastybird_smart_panel/core/widgets/slider_with_steps.dart';
 import 'package:fastybird_smart_panel/core/widgets/tile_wrappers.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
+import 'package:fastybird_smart_panel/core/widgets/value_selector.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_item_sheet.dart';
+import 'package:fastybird_smart_panel/modules/deck/services/deck_service.dart';
+import 'package:fastybird_smart_panel/modules/deck/types/navigate_event.dart';
 import 'package:fastybird_smart_panel/modules/deck/utils/lighting.dart';
+import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_detail_page.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/utils/media_input_source_label.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/formats.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
-import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
-import 'package:fastybird_smart_panel/modules/deck/services/deck_service.dart';
-import 'package:fastybird_smart_panel/modules/devices/presentation/device_detail_page.dart';
-import 'package:fastybird_smart_panel/modules/deck/types/navigate_event.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/media_activity/media_activity.dart';
 import 'package:fastybird_smart_panel/modules/spaces/service.dart';
 import 'package:fastybird_smart_panel/modules/spaces/services/media_activity_service.dart';
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
-import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
-import 'package:fastybird_smart_panel/modules/devices/presentation/utils/media_input_source_label.dart';
-import 'package:provider/provider.dart';
+import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
+
+// =============================================================================
+// CONSTANTS
+// =============================================================================
+// Debounce and settle timers for volume (avoid flooding backend) and playback
+// (optimistic UI until device state is re-read).
+
+class _MediaDomainConstants {
+	/// Volume slider debounce (ms) before sending value to device.
+	static const int volumeDebounceMs = 150;
+
+	/// Playback command settle window (seconds) before re-reading device state.
+	static const int playbackSettleSeconds = 3;
+}
+
+// =============================================================================
+// MEDIA DOMAIN VIEW PAGE
+// =============================================================================
 
 class MediaDomainViewPage extends StatefulWidget {
 	final DomainViewItem viewItem;
@@ -84,6 +150,9 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	Timer? _volumeDebounceTimer;
 	Timer? _playbackSettleTimer;
 
+	/// Notifier to rebuild playback sheet when state changes.
+	final ValueNotifier<int> _playbackSheetNotifier = ValueNotifier(0);
+
 	late AnimationController _pulseController;
 
 	String get _roomId => widget.viewItem.roomId;
@@ -100,6 +169,10 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			return null;
 		}
 	}
+
+	// -------------------------------------------------------------------------
+	// LIFECYCLE
+	// -------------------------------------------------------------------------
 
 	@override
 	void initState() {
@@ -121,6 +194,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		WidgetsBinding.instance.addPostFrameCallback((_) => _prefetch());
 	}
 
+	/// Fetches media activity for the room and syncs device state; clears loading.
 	Future<void> _prefetch() async {
 		if (_mediaService == null) return;
 		try {
@@ -133,6 +207,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		}
 	}
 
+	/// Called by RefreshIndicator; re-fetches and syncs state.
 	Future<void> _refresh() async {
 		await _prefetch();
 	}
@@ -141,6 +216,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	void dispose() {
 		_volumeDebounceTimer?.cancel();
 		_playbackSettleTimer?.cancel();
+		_playbackSheetNotifier.dispose();
 		_pulseController.dispose();
 		_mediaService?.removeListener(_onDataChanged);
 		_devicesService?.removeListener(_onDevicesChanged);
@@ -148,9 +224,14 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		super.dispose();
 	}
 
+	// -------------------------------------------------------------------------
+	// LISTENERS
+	// -------------------------------------------------------------------------
+
 	void _onDataChanged() {
 		if (!mounted) return;
 		_syncDeviceState();
+		_playbackSheetNotifier.value++;
 		WidgetsBinding.instance.addPostFrameCallback((_) {
 			if (mounted) setState(() {});
 		});
@@ -162,14 +243,19 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		// Skip if a debounce timer is active (user is dragging the slider)
 		if (_volumeDebounceTimer == null || !_volumeDebounceTimer!.isActive) {
 			_syncDeviceState();
+			_playbackSheetNotifier.value++;
 			WidgetsBinding.instance.addPostFrameCallback((_) {
 				if (mounted) setState(() {});
 			});
 		}
 	}
 
-	/// Read volume/mute/playback state from device properties.
-	/// Called on data changes to keep UI in sync with actual device values.
+	// -------------------------------------------------------------------------
+	// STATE SYNC
+	// -------------------------------------------------------------------------
+	/// Reads volume, mute, playback state, track metadata, position/duration from
+	/// device properties. Called on data changes and after fetch; skips playback
+	/// state during optimistic settle window.
 	void _syncDeviceState() {
 		final targets = _mediaService?.resolveControlTargets(_roomId);
 		if (targets == null) return;
@@ -263,6 +349,10 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		setState(() => _wsConnected = isConnected);
 	}
 
+	// -------------------------------------------------------------------------
+	// NAVIGATION
+	// -------------------------------------------------------------------------
+
 	void _navigateToHome() {
 		final deck = _deckService?.deck;
 		if (deck == null || deck.items.isEmpty) {
@@ -276,6 +366,10 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			_eventBus?.fire(NavigateToDeckItemEvent(homeItem.id));
 		}
 	}
+
+	// -------------------------------------------------------------------------
+	// ACTIVITY ACTIONS
+	// -------------------------------------------------------------------------
 
 	Future<void> _onActivitySelected(MediaActivityKey key) async {
 		if (_mediaService == null || _isSending) return;
@@ -305,6 +399,10 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		}
 	}
 
+	// -------------------------------------------------------------------------
+	// BUILD
+	// -------------------------------------------------------------------------
+
 	@override
 	Widget build(BuildContext context) {
 		return Consumer<MediaActivityService>(
@@ -313,14 +411,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 				final activeState = mediaService.getActiveState(_roomId);
 				final endpoints = mediaService.getEndpoints(_roomId);
 				final roomName = _spacesService?.getSpace(_roomId)?.name ?? '';
-				final deviceGroups = mediaService.getDeviceGroups(
-					_roomId,
-					deviceNameResolver: (deviceId) {
-						final device = _devicesService?.getDevice(deviceId);
-						if (device == null) return null;
-						return stripRoomNameFromDevice(device.name, roomName);
-					},
-				);
 				final hasEndpoints = endpoints.isNotEmpty;
 
 				if (_isLoading) {
@@ -375,6 +465,8 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 				}
 
 				final isOff = activeState == null || activeState.isDeactivated;
+				final isDeactivating = activeState?.isDeactivating ?? false;
+				final showOffContent = isOff || isDeactivating;
 				final isActivating = activeState != null && activeState.isActivating;
 				final isFailed = activeState != null && activeState.isFailed;
 
@@ -392,9 +484,9 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 													final isLandscape = orientation == Orientation.landscape;
 													return isLandscape
 															? _buildLandscapeLayout(
-																	context, activeState, deviceGroups, isOff, isActivating, isFailed)
+																	context, activeState, showOffContent, isActivating, isFailed)
 															: _buildPortraitLayout(
-																	context, activeState, deviceGroups, isOff, isActivating, isFailed);
+																	context, activeState, showOffContent, isActivating, isFailed);
 												},
 											),
 										),
@@ -408,135 +500,172 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		);
 	}
 
-	// ============================================
+	// =============================================================================
 	// HEADER
-	// ============================================
+	// =============================================================================
 
 	Widget _buildHeader(
 		BuildContext context,
 		String roomName,
 		MediaActiveStateModel? activeState,
 	) {
-		final isDark = Theme.of(context).brightness == Brightness.dark;
 		final localizations = AppLocalizations.of(context)!;
 		final hasActive = activeState != null && activeState.isActive;
 		final subtitle = hasActive
 				? localizations.media_activity_active(_activityLabel(context, activeState.activityKey))
 				: localizations.media_mode_off;
 
+		final modeColorFamily = _getModeColorFamily(context);
+		final deviceGroups = _mediaService?.getDeviceGroups(_roomId) ?? [];
+		final showDevicesButton = deviceGroups.isNotEmpty;
+
 		return PageHeader(
 			title: localizations.domain_media,
 			subtitle: subtitle,
-			subtitleColor: hasActive ? (isDark ? AppColorsDark.primaryDark2 : AppColorsLight.primaryDark2) : null,
+			subtitleColor: hasActive ? modeColorFamily.dark2 : null,
 			leading: HeaderMainIcon(
-				icon: hasActive ? MdiIcons.musicNote : MdiIcons.musicNoteOff,
-				color: hasActive ? ThemeColors.primary : ThemeColors.neutral,
+				icon: MdiIcons.playBoxOutline,
+				color: _getModeColor(),
 			),
-			trailing: HeaderIconButton(
-				icon: MdiIcons.homeOutline,
-				onTap: _navigateToHome,
+			trailing: Row(
+				mainAxisSize: MainAxisSize.min,
+				children: [
+					if (showDevicesButton) ...[
+						HeaderIconButton(
+							icon: MdiIcons.monitorSpeaker,
+							onTap: _showMediaDevicesSheet,
+						),
+						AppSpacings.spacingMdHorizontal,
+					],
+					HeaderIconButton(
+						icon: MdiIcons.homeOutline,
+						onTap: _navigateToHome,
+					),
+				],
 			),
 		);
 	}
 
-	// ============================================
+	// =============================================================================
+	// THEME & LABELS
+	// =============================================================================
+	// Mode → theme color (primary when active, neutral when off). Use
+	// [_getModeColor] and [_getModeColorFamily] as the only source of color
+	// for the domain view.
+
+	/// Current activity key from media service (for color resolution when not passed).
+	MediaActivityKey _getCurrentActivityKey() {
+		final activeState = _mediaService?.getActiveState(_roomId);
+		return _getSelectedActivityKey(activeState) ?? MediaActivityKey.off;
+	}
+
+	/// Theme color for current or given activity. Use this (and [_getModeColorFamily])
+	/// for all mode-based colors; avoid using [ThemeColors] or [AppColors*] directly.
+	ThemeColors _getModeColor([MediaActivityKey? mode]) {
+		final key = mode ?? _getCurrentActivityKey();
+		return key == MediaActivityKey.off ? ThemeColors.neutral : ThemeColors.primary;
+	}
+
+	/// Resolved colors for current mode (used for header subtitle, accents, borders).
+	ThemeColorFamily _getModeColorFamily(BuildContext context, [MediaActivityKey? mode]) =>
+		ThemeColorFamily.get(Theme.of(context).brightness, _getModeColor(mode));
+
+	// =============================================================================
 	// PORTRAIT LAYOUT
-	// ============================================
+	// =============================================================================
 
 	Widget _buildPortraitLayout(
 		BuildContext context,
 		MediaActiveStateModel? activeState,
-		List<MediaDeviceGroup> deviceGroups,
-		bool isOff,
+		bool showOffContent,
 		bool isActivating,
 		bool isFailed,
 	) {
+		final content = showOffContent
+			? _buildOffStateContent(context)
+			: isActivating
+				? _buildActivatingContent(context, activeState!)
+				: isFailed
+					? _buildFailedContent(context, activeState!)
+					: _buildActivityContent(context, activeState);
 		return PortraitViewLayout(
-			content: Column(
-				crossAxisAlignment: CrossAxisAlignment.start,
-				children: [
-					_buildActivityContent(context, activeState, isOff, isActivating, isFailed),
-					AppSpacings.spacingLgVertical,
-					_buildDevicesList(context, deviceGroups),
-				],
-			),
+			content: content,
+			scrollable: !showOffContent && !isActivating && !isFailed,
 			modeSelector: _buildModeSelector(context, activeState),
 		);
 	}
 
-	// ============================================
+	// =============================================================================
 	// LANDSCAPE LAYOUT
-	// ============================================
+	// =============================================================================
 
 	Widget _buildLandscapeLayout(
 		BuildContext context,
 		MediaActiveStateModel? activeState,
-		List<MediaDeviceGroup> deviceGroups,
-		bool isOff,
+		bool showOffContent,
 		bool isActivating,
 		bool isFailed,
 	) {
+		final isLargeScreen = _screenService.isLargeScreen;
+		final mainContent = showOffContent
+			? _buildOffStateContent(context)
+			: isActivating
+				? _buildActivatingContent(context, activeState!)
+				: isFailed
+					? _buildFailedContent(context, activeState!)
+					: _buildActivityContent(context, activeState);
 		return LandscapeViewLayout(
-			mainContent: _buildActivityContent(context, activeState, isOff, isActivating, isFailed),
-			mainContentScrollable: true,
-			modeSelector: _buildLandscapeModeSelector(context, activeState),
-			additionalContent: Column(
-				crossAxisAlignment: CrossAxisAlignment.start,
-				children: [
-					if (!isOff) ...[
-						_buildLandscapeControls(context),
-						AppSpacings.spacingLgVertical,
-					],
-					_buildDevicesList(context, deviceGroups),
-				],
+			mainContent: mainContent,
+			mainContentScrollable: false,
+			modeSelector: _buildLandscapeModeSelector(
+				context,
+				activeState,
+				showLabels: isLargeScreen,
 			),
+			modeSelectorShowLabels: isLargeScreen,
+			additionalContent: !showOffContent && !isActivating && !isFailed
+				? Column(
+						crossAxisAlignment: CrossAxisAlignment.start,
+						children: [
+							_buildLandscapeControls(context),
+							AppSpacings.spacingLgVertical,
+						],
+					)
+				: null,
 		);
 	}
 
-	// ============================================
+	// =============================================================================
 	// ACTIVITY CONTENT (state-dependent)
-	// ============================================
+	// =============================================================================
 
 	Widget _buildActivityContent(
 		BuildContext context,
 		MediaActiveStateModel? activeState,
-		bool isOff,
-		bool isActivating,
-		bool isFailed,
 	) {
-		// Off state: no card, no border, no background
-		if (isOff) return _buildOffStateContent(context);
-
+		// Off, deactivating, activating and failed are handled at layout level; this is only for active.
 		final isLight = Theme.of(context).brightness == Brightness.light;
 
-		Widget content;
-		if (isActivating) {
-			content = _buildActivatingContent(context, activeState!);
-		} else if (isFailed) {
-			content = _buildFailedContent(context, activeState!);
-		} else if (activeState != null && (activeState.isActive || activeState.isActiveWithWarnings)) {
-			content = _buildActiveCard(context, activeState);
-		} else {
-			return _buildOffStateContent(context);
-		}
+		final content = _buildActiveCard(context, activeState!);
 
 		return Container(
 			width: double.infinity,
+			height: _screenService.isLandscape ? double.infinity : null,
 			padding: AppSpacings.paddingMd,
 			decoration: BoxDecoration(
 				color: isLight ? AppFillColorLight.light : AppFillColorDark.light,
 				borderRadius: BorderRadius.circular(AppBorderRadius.base),
-				border: isLight
-						? Border.all(color: AppBorderColorLight.base)
-						: null,
+        border: isLight
+            ? Border.all(color: AppBorderColorLight.base)
+            : null,
 			),
 			child: content,
 		);
 	}
 
-	// ============================================
-	// MODE SELECTOR (using core ModeSelector widget)
-	// ============================================
+	// =============================================================================
+	// MODE SELECTOR
+	// =============================================================================
 
 	List<ModeOption<MediaActivityKey>> _getActivityModeOptions() {
 		final availableKeys = _mediaService?.getAvailableActivities(_roomId) ?? MediaActivityKey.values;
@@ -544,6 +673,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			value: key,
 			icon: _activityIcon(key),
 			label: _activityLabel(context, key),
+			color: _getModeColor(key),
 		)).toList();
 	}
 
@@ -555,32 +685,24 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	}
 
 	Widget _buildModeSelector(BuildContext context, MediaActiveStateModel? activeState) {
-		final isDark = Theme.of(context).brightness == Brightness.dark;
-
-		return Container(
-			padding: AppSpacings.paddingMd,
-			decoration: BoxDecoration(
-				color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
-				borderRadius: BorderRadius.circular(AppBorderRadius.base),
-				border: Border.all(
-					color: isDark ? AppFillColorDark.light : AppBorderColorLight.light,
-					width: 1,
-				),
-			),
-			child: IgnorePointer(
-				ignoring: !_wsConnected || _isSending,
-				child: ModeSelector<MediaActivityKey>(
-					modes: _getActivityModeOptions(),
-					selectedValue: _getSelectedActivityKey(activeState),
-					onChanged: _onActivitySelected,
-					orientation: ModeSelectorOrientation.horizontal,
-					iconPlacement: ModeSelectorIconPlacement.top,
-				),
+		return IgnorePointer(
+			ignoring: !_wsConnected || _isSending,
+			child: ModeSelector<MediaActivityKey>(
+				modes: _getActivityModeOptions(),
+				selectedValue: _getSelectedActivityKey(activeState),
+				onChanged: _onActivitySelected,
+				orientation: ModeSelectorOrientation.horizontal,
+				iconPlacement: ModeSelectorIconPlacement.top,
+				showLabels: true,
 			),
 		);
 	}
 
-	Widget _buildLandscapeModeSelector(BuildContext context, MediaActiveStateModel? activeState) {
+	Widget _buildLandscapeModeSelector(
+		BuildContext context,
+		MediaActiveStateModel? activeState, {
+		bool showLabels = false,
+	}) {
 		return IgnorePointer(
 			ignoring: !_wsConnected || _isSending,
 			child: ModeSelector<MediaActivityKey>(
@@ -589,21 +711,21 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 				onChanged: _onActivitySelected,
 				orientation: ModeSelectorOrientation.vertical,
 				iconPlacement: ModeSelectorIconPlacement.top,
+				showLabels: showLabels,
 			),
 		);
 	}
 
-	// ============================================
+	// =============================================================================
 	// OFF STATE CONTENT
-	// ============================================
+	// =============================================================================
 
 	Widget _buildOffStateContent(BuildContext context) {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 
-
 		return Container(
 			width: double.infinity,
-			height: _portraitContentHeight,
+			height: double.infinity,
 			alignment: Alignment.center,
 			child: Column(
 				mainAxisAlignment: MainAxisAlignment.center,
@@ -644,13 +766,13 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		);
 	}
 
-	// ============================================
+	// =============================================================================
 	// ACTIVATING STATE CONTENT
-	// ============================================
+	// =============================================================================
 
 	Widget _buildActivatingContent(BuildContext context, MediaActiveStateModel activeState) {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
-		final accentColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
+		final modeColorFamily = _getModeColorFamily(context);
 		final localizations = AppLocalizations.of(context)!;
 		final activityName = _activityLabel(context, activeState.activityKey);
 
@@ -673,13 +795,13 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 									decoration: BoxDecoration(
 										shape: BoxShape.circle,
 										border: Border.all(
-											color: accentColor.withValues(alpha: 0.2),
+											color: modeColorFamily.base.withValues(alpha: 0.2),
 											width: _scale(3),
 										),
 									),
 									child: CustomPaint(
 										painter: _SpinnerArcPainter(
-											color: accentColor,
+											color: modeColorFamily.base,
 											strokeWidth: _scale(3),
 										),
 									),
@@ -701,9 +823,9 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		);
 	}
 
-	// ============================================
+	// =============================================================================
 	// FAILED STATE CONTENT
-	// ============================================
+	// =============================================================================
 
 	Widget _buildFailedContent(BuildContext context, MediaActiveStateModel activeState) {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -714,7 +836,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 
 		return Container(
 			width: double.infinity,
-			height: _portraitContentHeight,
+			height: double.infinity,
 			alignment: Alignment.center,
 			child: Column(
 				mainAxisAlignment: MainAxisAlignment.center,
@@ -801,9 +923,9 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		);
 	}
 
-	// ============================================
+	// =============================================================================
 	// ACTIVE ACTIVITY CARD
-	// ============================================
+	// =============================================================================
 
 	Widget _buildActiveCard(
 		BuildContext context,
@@ -846,19 +968,23 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			if (!isOnline) offlineRoles.add(entry.role);
 		}
 
+		final cardSpacing = _screenService.isSmallScreen
+				? AppSpacings.pMd
+				: AppSpacings.pLg;
+        
 		return Column(
 			crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+			spacing: cardSpacing,
 			children: [
 					// Warning banner
 					if (activeState.hasWarnings && !activeState.isFailed) ...[
 						_buildWarningBannerForState(context, activeState),
-            AppSpacings.spacingMdVertical,
 					],
 
 					// Offline device banner
 					if (offlineRoles.isNotEmpty && !activeState.hasWarnings) ...[
 						_buildOfflineDeviceBanner(context, offlineRoles),
-            AppSpacings.spacingMdVertical,
 					],
 
 					// Composition preview
@@ -868,29 +994,23 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 
 					// Capability-driven controls
 					if (_trackName != null || _artistName != null) ...[
-						AppSpacings.spacingLgVertical,
 						_buildNowPlaying(context),
 					],
-					if (targets.hasPlayback) ...[
-						AppSpacings.spacingMdVertical,
+					if (targets.hasPlayback && (_screenService.isPortrait || _screenService.isLargeScreen)) ...[
 						_buildPlaybackControl(context),
 					],
 					if (_duration != null && _duration! > 0) ...[
-						AppSpacings.spacingMdVertical,
 						_buildProgressBar(context),
 					],
 					if (targets.hasVolume && !_screenService.isLandscape) ...[
-						AppSpacings.spacingLgVertical,
 						_buildVolumeControl(context),
 					],
 					if (targets.hasRemote && !_screenService.isLandscape) ...[
-						AppSpacings.spacingLgVertical,
 						_buildRemoteButton(context),
 					],
 
 					// Failure details
 				if (activeState.isFailed) ...[
-					AppSpacings.spacingMdVertical,
 					_buildFailureDetails(context, activeState),
 				],
 			],
@@ -1099,7 +1219,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 
 	Widget _buildVolumeControl(BuildContext context) {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
-		final accentColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
 		final volume = _volume;
 		final isMuted = _isMuted;
 
@@ -1143,16 +1262,13 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 				),
 				AppSpacings.spacingMdHorizontal,
 				Expanded(
-					child: GestureDetector(
-						onHorizontalDragUpdate: (_) {},
-						child: SliderWithSteps(
+					child: SliderWithSteps(
 							value: volume / 100,
-							themeColor: ThemeColors.primary,
+							themeColor: _getModeColor(),
 							showSteps: false,
 							enabled: !_isSending,
 							onChanged: (val) => _setVolume((val * 100).round()),
 						),
-					),
 				),
 				AppSpacings.spacingMdHorizontal,
 				SizedBox(
@@ -1263,7 +1379,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 
 	Widget _buildProgressBar(BuildContext context) {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
-		final accentColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
+		final modeColorFamily = _getModeColorFamily(context);
 		final trackColor = isDark ? AppFillColorDark.darker : AppFillColorLight.darker;
 		final secondaryColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
 
@@ -1302,7 +1418,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 									value: progress,
 									minHeight: _scale(3),
 									backgroundColor: trackColor,
-									valueColor: AlwaysStoppedAnimation<Color>(accentColor),
+									valueColor: AlwaysStoppedAnimation<Color>(modeColorFamily.base),
 								),
 							);
 
@@ -1559,7 +1675,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 							),
 						),
 						AppSpacings.spacingSmVertical,
-						...errors.map((f) => _failureRow(f, isDark ? AppColorsDark.error : AppColorsLight.error, isDark ? AppColorsDark.primaryLight9 : AppColorsLight.primaryLight9)),
+						...errors.map((f) => _failureRow(f, isDark ? AppColorsDark.error : AppColorsLight.error, _getModeColorFamily(context).light9)),
 						AppSpacings.spacingMdVertical,
 					],
 					if (warnings.isNotEmpty) ...[
@@ -1572,7 +1688,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 							),
 						),
 						AppSpacings.spacingSmVertical,
-						...warnings.map((f) => _failureRow(f, isDark ? AppColorsDark.error : AppColorsLight.error, isDark ? AppColorsDark.primaryLight9 : AppColorsLight.primaryLight9)),
+						...warnings.map((f) => _failureRow(f, isDark ? AppColorsDark.warning : AppColorsLight.warning, _getModeColorFamily(context).light9)),
 						AppSpacings.spacingMdVertical,
 					],
 					if (state.warnings.isNotEmpty && warnings.isEmpty) ...[
@@ -1702,18 +1818,41 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		_onActivitySelected(MediaActivityKey.off);
 	}
 
-	// ============================================
+	// =============================================================================
 	// LANDSCAPE CONTROLS
-	// ============================================
+	// =============================================================================
 
 	Widget _buildLandscapeControls(BuildContext context) {
 		final localizations = AppLocalizations.of(context)!;
-		final isDark = Theme.of(context).brightness == Brightness.dark;
-		final accentColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
+		final modeColorFamily = _getModeColorFamily(context);
 		final targets = _mediaService?.resolveControlTargets(_roomId);
 		final tileHeight = _scale(AppTileHeight.horizontal);
 
 		final controls = <Widget>[];
+
+		// Playback tile (landscape small/medium only) — first in section
+		if (targets?.hasPlayback == true && !_screenService.isLargeScreen) {
+			controls.add(
+				SizedBox(
+					height: tileHeight,
+					width: double.infinity,
+					child: UniversalTile(
+						layout: TileLayout.horizontal,
+						icon: MdiIcons.playCircle,
+						name: 'Playback',
+						isActive: false,
+						activeColor: _getModeColor(),
+						onTileTap: () {
+							HapticFeedback.lightImpact();
+							_showPlaybackSheet();
+						},
+						showGlow: false,
+						showDoubleBorder: false,
+						showInactiveBorder: true,
+					),
+				),
+			);
+		}
 
 		// Volume control as ValueSelectorRow
 		if (targets?.hasVolume == true) {
@@ -1731,7 +1870,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 						label: localizations.media_volume,
 						icon: MdiIcons.volumeHigh,
 						sheetTitle: localizations.media_volume,
-						activeColor: accentColor,
+						activeColor: modeColorFamily.base,
 						options: volumeOptions,
 						displayFormatter: (v) => '${v ?? 0}%',
 						columns: 5,
@@ -1757,6 +1896,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 						name: localizations.media_action_mute,
 						status: _isMuted ? localizations.on_state_on : localizations.on_state_off,
 						isActive: _isMuted,
+						activeColor: _getModeColor(),
 						onTileTap: _isSending ? null : () {
 							HapticFeedback.lightImpact();
 							_toggleMute();
@@ -1780,6 +1920,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 						icon: MdiIcons.remote,
 						name: localizations.media_remote_control,
 						isActive: false,
+						activeColor: _getModeColor(),
 						onTileTap: () {
 							HapticFeedback.lightImpact();
 							_showRemote();
@@ -1803,32 +1944,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 					icon: MdiIcons.tuneVertical,
 				),
 				...controls,
-			],
-		);
-	}
-
-	// ============================================
-	// DEVICES LIST (restyled)
-	// ============================================
-
-	Widget _buildDevicesList(
-		BuildContext context,
-		List<MediaDeviceGroup> deviceGroups,
-	) {
-		final localizations = AppLocalizations.of(context)!;
-		final activeState = _mediaService?.getActiveState(_roomId);
-
-		return Column(
-			crossAxisAlignment: CrossAxisAlignment.start,
-			spacing: AppSpacings.pMd,
-			children: [
-				SectionTitle(
-					title: localizations.media_targets_title,
-					icon: MdiIcons.monitorSpeaker,
-				),
-        ...deviceGroups.map(
-          (group) => _buildDeviceTile(context, group, activeState),
-        ),
 			],
 		);
 	}
@@ -1864,72 +1979,9 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		return localizations.media_status_ready;
 	}
 
-	Widget _buildDeviceTile(BuildContext context, MediaDeviceGroup group, MediaActiveStateModel? activeState) {
-		final isDark = Theme.of(context).brightness == Brightness.dark;
-		final isActive = _isDeviceActive(group, activeState);
-		final isLandscape = _screenService.isLandscape;
-
-		final accessories = Row(
-			mainAxisSize: MainAxisSize.min,
-			children: [
-				..._deviceCapabilityIcons(group).take(3).map((capIcon) {
-					return Padding(
-						padding: EdgeInsets.only(left: AppSpacings.pSm),
-						child: Container(
-							width: _scale(22),
-							height: _scale(22),
-							decoration: BoxDecoration(
-								color: isActive
-										? (isDark ? AppColorsDark.primaryLight5 : AppColorsLight.primaryLight5)
-										: (isDark ? AppFillColorDark.base : AppFillColorLight.base),
-								borderRadius: BorderRadius.circular(AppBorderRadius.base),
-							),
-							child: Icon(
-								capIcon,
-								size: _scale(12),
-								color: isActive
-										? (isDark ? AppColorsDark.primaryDark2 : AppColorsLight.primaryDark2)
-										: (isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder),
-							),
-						),
-					);
-				}),
-			],
-		);
-
-		final status = _deviceStatus(context, group, activeState);
-
-		if (isLandscape) {
-			return DeviceTileLandscape(
-				icon: _deviceGroupIcon(group),
-				name: group.deviceName,
-				status: status,
-				isActive: isActive,
-				onTileTap: () => _navigateToDeviceDetail(group),
-			);
-		}
-		return DeviceTilePortrait(
-			icon: _deviceGroupIcon(group),
-			name: group.deviceName,
-			status: status,
-			isActive: isActive,
-			onTileTap: () => _navigateToDeviceDetail(group),
-			accessories: accessories,
-		);
-	}
-
-	List<IconData> _deviceCapabilityIcons(MediaDeviceGroup group) {
-		final icons = <IconData>[];
-		if (group.hasDisplay) icons.add(MdiIcons.television);
-		if (group.hasAudio) icons.add(MdiIcons.volumeHigh);
-		if (group.hasSource) icons.add(MdiIcons.playCircle);
-		if (group.hasRemote) icons.add(MdiIcons.remote);
-		return icons;
-	}
-
-	// ============================================
-	// HELPERS
-	// ============================================
+	// =============================================================================
+	// HELPERS (labels, icons, navigation, device sheet)
+	// =============================================================================
 
 	String _activityLabel(BuildContext context, MediaActivityKey? key) {
 		final localizations = AppLocalizations.of(context)!;
@@ -1985,8 +2037,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		}
 	}
 
-
-
 	void _navigateToDeviceDetail(MediaDeviceGroup group) {
 		Navigator.push(
 			context,
@@ -1995,6 +2045,124 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			),
 		);
 	}
+
+	void _showMediaDevicesSheet() {
+		final roomName = _spacesService?.getSpace(_roomId)?.name ?? '';
+		String? deviceNameResolver(String deviceId) {
+			final device = _devicesService?.getDevice(deviceId);
+			if (device == null) return null;
+			return stripRoomNameFromDevice(device.name, roomName);
+		}
+
+		int getItemCount() =>
+			(_mediaService?.getDeviceGroups(_roomId, deviceNameResolver: deviceNameResolver) ?? []).length;
+		if (getItemCount() == 0) return;
+
+		final localizations = AppLocalizations.of(context)!;
+		List<MediaDeviceGroup> getDeviceGroups() =>
+			_mediaService?.getDeviceGroups(_roomId, deviceNameResolver: deviceNameResolver) ?? [];
+
+		if (_devicesService != null) {
+			DeckItemSheet.showItemSheetWithUpdates(
+				context,
+				title: localizations.media_targets_title,
+				icon: MdiIcons.monitorSpeaker,
+				rebuildWhen: _devicesService!,
+				getItemCount: getItemCount,
+				itemBuilder: (context, index) {
+					final groups = getDeviceGroups();
+					return _buildMediaDeviceTileForSheet(context, groups[index]);
+				},
+			);
+		} else {
+			final deviceGroups = getDeviceGroups();
+			DeckItemSheet.showItemSheet(
+				context,
+				title: localizations.media_targets_title,
+				icon: MdiIcons.monitorSpeaker,
+				itemCount: deviceGroups.length,
+				itemBuilder: (context, index) =>
+					_buildMediaDeviceTileForSheet(context, deviceGroups[index]),
+			);
+		}
+	}
+
+	List<IconData> _deviceCapabilityIcons(MediaDeviceGroup group) {
+		final icons = <IconData>[];
+		if (group.hasDisplay) icons.add(MdiIcons.television);
+		if (group.hasAudio) icons.add(MdiIcons.volumeHigh);
+		if (group.hasSource) icons.add(MdiIcons.playCircle);
+		if (group.hasRemote) icons.add(MdiIcons.remote);
+		return icons;
+	}
+
+	Widget _buildMediaDeviceTileForSheet(BuildContext context, MediaDeviceGroup group) {
+		final localizations = AppLocalizations.of(context)!;
+		final activeState = _mediaService?.getActiveState(_roomId);
+		final deviceView = _devicesService?.getDevice(group.deviceId);
+		final isOffline = deviceView == null || !deviceView.isOnline;
+		final isActive = _isDeviceActive(group, activeState);
+		final isDark = Theme.of(context).brightness == Brightness.dark;
+		final modeColorFamily = _getModeColorFamily(context);
+
+		final accessories = Row(
+			mainAxisSize: MainAxisSize.min,
+			children: [
+				..._deviceCapabilityIcons(group).take(3).map((capIcon) {
+					return Padding(
+						padding: EdgeInsets.only(left: AppSpacings.pSm),
+						child: Container(
+							width: _scale(22),
+							height: _scale(22),
+							decoration: BoxDecoration(
+								color: isActive
+									? modeColorFamily.light5
+									: (isDark ? AppFillColorDark.base : AppFillColorLight.base),
+								borderRadius: BorderRadius.circular(AppBorderRadius.base),
+							),
+							child: Icon(
+								capIcon,
+								size: _scale(12),
+								color: isActive
+									? modeColorFamily.dark2
+									: (isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder),
+							),
+						),
+					);
+				}),
+			],
+		);
+
+		final supportsPowerOn = !isOffline &&
+			(_devicesService?.deviceSupportsPowerOn(group.deviceId) ?? false);
+		final tileIcon = deviceView != null
+			? buildDeviceIcon(deviceView.category, deviceView.icon)
+			: _deviceGroupIcon(group);
+		return DeviceTilePortrait(
+			icon: tileIcon,
+			name: group.deviceName,
+			status: isOffline
+				? localizations.device_status_offline
+				: _deviceStatus(context, group, activeState),
+			isActive: isActive,
+			isOffline: isOffline,
+			activeColor: isActive ? _getModeColor() : null,
+			accessories: accessories,
+			onIconTap: supportsPowerOn
+				? () async {
+						await _devicesService?.toggleDeviceOnState(group.deviceId);
+					}
+				: null,
+			onTileTap: () {
+				Navigator.of(context).pop();
+				_navigateToDeviceDetail(group);
+			},
+		);
+	}
+
+	// =============================================================================
+	// ACTIONS (volume, mute, input, playback, remote)
+	// =============================================================================
 
 	void _setVolume(int volume) {
 		setState(() => _volume = volume);
@@ -2009,7 +2177,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		}
 
 		_volumeDebounceTimer?.cancel();
-		_volumeDebounceTimer = Timer(const Duration(milliseconds: 150), () {
+		_volumeDebounceTimer = Timer(const Duration(milliseconds: _MediaDomainConstants.volumeDebounceMs), () {
 			if (kDebugMode) {
 				debugPrint('[MediaDomainViewPage] Setting volume=$volume on property=$propId');
 			}
@@ -2038,27 +2206,61 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 
 	void _showInputSelectorSheet(List<String> sources, String? currentValue, String propId) {
 		final localizations = AppLocalizations.of(context)!;
+		final isDark = Theme.of(context).brightness == Brightness.dark;
+		final options = sources
+				.map((s) => ValueOption<String>(value: s, label: mediaInputSourceLabel(context, s)))
+				.toList();
+		final initialIndex = currentValue != null
+				? sources.indexOf(currentValue).clamp(0, sources.length - 1)
+				: 0;
+		final selectedIndexNotifier = ValueNotifier<int>(initialIndex);
 
 		showAppBottomSheet(
 			context,
 			title: localizations.media_input_select_title,
+			titleIcon: MdiIcons.audioInputStereoMinijack,
 			scrollable: false,
-			content: Builder(
-				builder: (sheetContext) => ValueSelectorSheet<String>(
-					currentValue: currentValue,
-					options: sources
-							.map((s) => ValueOption<String>(value: s, label: mediaInputSourceLabel(context, s)))
-							.toList(),
-					title: localizations.media_input_select_title,
-					columns: 3,
-					optionStyle: ValueSelectorOptionStyle.buttons,
-					onConfirm: (value) {
-						Navigator.pop(sheetContext);
-						if (value != null) {
-							_devicesService!.setPropertyValue(propId, value);
-						}
-					},
-				),
+			content: ValueSelectorSheet<String>(
+				currentValue: currentValue,
+				options: options,
+				title: localizations.media_input_select_title,
+				columns: 3,
+				optionStyle: ValueSelectorOptionStyle.buttons,
+				selectedIndexNotifier: selectedIndexNotifier,
+			),
+			bottomSection: ValueListenableBuilder<int>(
+				valueListenable: selectedIndexNotifier,
+				builder: (ctx, index, _) {
+					return SizedBox(
+						width: double.infinity,
+						child: Theme(
+							data: isDark
+									? ThemeData(brightness: Brightness.dark, filledButtonTheme: AppFilledButtonsDarkThemes.primary)
+									: ThemeData(filledButtonTheme: AppFilledButtonsLightThemes.primary),
+							child: FilledButton(
+								onPressed: options.isEmpty || index < 0
+										? null
+										: () {
+												Navigator.pop(ctx);
+												_devicesService!.setPropertyValue(propId, options[index].value);
+											},
+								style: FilledButton.styleFrom(
+									padding: EdgeInsets.symmetric(vertical: AppSpacings.pMd),
+									shape: RoundedRectangleBorder(
+										borderRadius: BorderRadius.circular(AppBorderRadius.base),
+									),
+								),
+								child: Text(
+									localizations.button_done,
+									style: TextStyle(
+										fontSize: AppFontSize.base,
+										fontWeight: FontWeight.w600,
+									),
+								),
+							),
+						),
+					);
+				},
 			),
 		);
 	}
@@ -2081,14 +2283,16 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			_ => _playbackState,
 		};
 		setState(() => _playbackState = optimisticState);
+		_playbackSheetNotifier.value++;
 
 		// Block _syncDeviceState from overwriting during settle window.
 		// After timeout, re-read the actual device value (backend truth).
 		_playbackSettleTimer?.cancel();
-		_playbackSettleTimer = Timer(const Duration(seconds: 3), () {
+		_playbackSettleTimer = Timer(const Duration(seconds: _MediaDomainConstants.playbackSettleSeconds), () {
 			if (!mounted) return;
 			_syncDeviceState();
 			setState(() {});
+			_playbackSheetNotifier.value++;
 		});
 
 		if (kDebugMode) {
@@ -2203,6 +2407,35 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		);
 	}
 
+	void _showPlaybackSheet() {
+		final targets = _mediaService?.resolveControlTargets(_roomId);
+		if (targets == null || !targets.hasPlayback) return;
+
+		showModalBottomSheet<void>(
+			context: context,
+			isScrollControlled: true,
+			backgroundColor: AppColors.blank,
+			builder: (sheetContext) => AppBottomSheet(
+				title: 'Playback',
+				titleIcon: MdiIcons.playCircle,
+				showCloseButton: true,
+				content: ListenableBuilder(
+					listenable: _playbackSheetNotifier,
+					builder: (ctx, _) => Padding(
+						padding: EdgeInsets.symmetric(vertical: AppSpacings.pMd),
+						child: _buildPlaybackControl(context),
+					),
+				),
+				scrollable: false,
+			),
+		).then((_) {
+			if (mounted) {
+				_syncDeviceState();
+				setState(() {});
+			}
+		});
+	}
+
 	void _showRemote() {
 		final targets = _mediaService?.resolveControlTargets(_roomId);
 		if (targets == null || !targets.hasRemote) return;
@@ -2277,88 +2510,92 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		showAppBottomSheet(
 			context,
 			title: remoteLocalizations.media_remote_control,
-			content: Column(
-				mainAxisSize: MainAxisSize.min,
-				children: [
-					if (hasDpad) ...[
-						if (hasUp)
-							_buildRemoteDpadButton(
-								context,
-								icon: MdiIcons.chevronUp,
-								onTap: () => _sendRemoteSheetCommand(propId, TelevisionRemoteKeyValue.arrowUp),
-							),
-						AppSpacings.spacingSmVertical,
-						Row(
-							mainAxisSize: MainAxisSize.min,
-							children: [
-								if (hasLeft)
-									_buildRemoteDpadButton(
-										context,
-										icon: MdiIcons.chevronLeft,
-										onTap: () => _sendRemoteSheetCommand(propId, TelevisionRemoteKeyValue.arrowLeft),
-									),
-								if (hasSelect) ...[
-									AppSpacings.spacingSmHorizontal,
-									_buildRemoteDpadButton(
-										context,
-										label: remoteLocalizations.media_remote_ok,
-										isPrimary: true,
-										onTap: () => _sendRemoteSheetCommand(propId, TelevisionRemoteKeyValue.select),
-									),
-									AppSpacings.spacingSmHorizontal,
-								],
-								if (hasRight)
-									_buildRemoteDpadButton(
-										context,
-										icon: MdiIcons.chevronRight,
-										onTap: () => _sendRemoteSheetCommand(propId, TelevisionRemoteKeyValue.arrowRight),
-									),
-							],
-						),
-						AppSpacings.spacingSmVertical,
-						if (hasDown)
-							_buildRemoteDpadButton(
-								context,
-								icon: MdiIcons.chevronDown,
-								onTap: () => _sendRemoteSheetCommand(propId, TelevisionRemoteKeyValue.arrowDown),
-							),
-					],
-					if (transportActions.isNotEmpty) ...[
-						AppSpacings.spacingLgVertical,
-						Row(
-							mainAxisAlignment: MainAxisAlignment.center,
-							children: transportActions.map((key) {
-								final isMain = key == TelevisionRemoteKeyValue.play;
-								return Padding(
-									padding: EdgeInsets.symmetric(horizontal: AppSpacings.pXs),
-									child: _buildRemoteTransportButton(
-										context,
-										icon: iconFor(key),
-										isMain: isMain,
-										onTap: () => _sendRemoteSheetCommand(propId, key),
-									),
-								);
-							}).toList(),
-						),
-					],
-					if (navActions.isNotEmpty) ...[
-						AppSpacings.spacingLgVertical,
-						Row(
-							mainAxisAlignment: MainAxisAlignment.center,
-							children: navActions.map((key) {
-								return Padding(
-									padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
-									child: _buildRemoteDpadButton(
-										context,
-										icon: iconFor(key),
-										onTap: () => _sendRemoteSheetCommand(propId, key),
-									),
-								);
-							}).toList(),
-						),
-					],
-				],
-			),
+			titleIcon: MdiIcons.remote,
+			content: Padding(
+        padding: EdgeInsets.symmetric(vertical: AppSpacings.pMd),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (hasDpad) ...[
+              if (hasUp)
+                _buildRemoteDpadButton(
+                  context,
+                  icon: MdiIcons.chevronUp,
+                  onTap: () => _sendRemoteSheetCommand(propId, TelevisionRemoteKeyValue.arrowUp),
+                ),
+              AppSpacings.spacingSmVertical,
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (hasLeft)
+                    _buildRemoteDpadButton(
+                      context,
+                      icon: MdiIcons.chevronLeft,
+                      onTap: () => _sendRemoteSheetCommand(propId, TelevisionRemoteKeyValue.arrowLeft),
+                    ),
+                  if (hasSelect) ...[
+                    AppSpacings.spacingSmHorizontal,
+                    _buildRemoteDpadButton(
+                      context,
+                      label: remoteLocalizations.media_remote_ok,
+                      isPrimary: true,
+                      onTap: () => _sendRemoteSheetCommand(propId, TelevisionRemoteKeyValue.select),
+                    ),
+                    AppSpacings.spacingSmHorizontal,
+                  ],
+                  if (hasRight)
+                    _buildRemoteDpadButton(
+                      context,
+                      icon: MdiIcons.chevronRight,
+                      onTap: () => _sendRemoteSheetCommand(propId, TelevisionRemoteKeyValue.arrowRight),
+                    ),
+                ],
+              ),
+              AppSpacings.spacingSmVertical,
+              if (hasDown)
+                _buildRemoteDpadButton(
+                  context,
+                  icon: MdiIcons.chevronDown,
+                  onTap: () => _sendRemoteSheetCommand(propId, TelevisionRemoteKeyValue.arrowDown),
+                ),
+            ],
+            if (transportActions.isNotEmpty) ...[
+              AppSpacings.spacingLgVertical,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: transportActions.map((key) {
+                  final isMain = key == TelevisionRemoteKeyValue.play;
+                  return Padding(
+                    padding: EdgeInsets.symmetric(horizontal: AppSpacings.pXs),
+                    child: _buildRemoteTransportButton(
+                      context,
+                      icon: iconFor(key),
+                      isMain: isMain,
+                      onTap: () => _sendRemoteSheetCommand(propId, key),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
+            if (navActions.isNotEmpty) ...[
+              AppSpacings.spacingLgVertical,
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: navActions.map((key) {
+                  return Padding(
+                    padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
+                    child: _buildRemoteDpadButton(
+                      context,
+                      icon: iconFor(key),
+                      onTap: () => _sendRemoteSheetCommand(propId, key),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
+          ],
+        ),
+      ),
 		);
 	}
 
@@ -2367,9 +2604,10 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	}
 }
 
-// ============================================================================
-// COMPOSITION DISPLAY ITEM
-// ============================================================================
+// =============================================================================
+// DATA MODELS
+// =============================================================================
+// View model for one entry in the active composition (Display/Audio/Source role).
 
 class _CompositionDisplayItem {
 	final String role;
@@ -2385,9 +2623,10 @@ class _CompositionDisplayItem {
 	});
 }
 
-// ============================================================================
+// =============================================================================
 // SPINNER ARC PAINTER
-// ============================================================================
+// =============================================================================
+// Used by activating-state content for the spinning arc indicator.
 
 class _SpinnerArcPainter extends CustomPainter {
 	final Color color;

@@ -76,6 +76,7 @@ import 'package:fastybird_smart_panel/modules/deck/services/domain_control_state
 import 'package:fastybird_smart_panel/modules/deck/types/navigate_event.dart';
 import 'package:fastybird_smart_panel/modules/deck/utils/lighting.dart';
 import 'package:fastybird_smart_panel/modules/devices/export.dart';
+import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/air_conditioner.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/heating_unit.dart';
@@ -1392,7 +1393,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     DeckItemSheet.showItemSheet(
       context,
       title: localizations.climate_devices_section,
-      icon: MdiIcons.devices,
+      icon: MdiIcons.homeThermometer,
       itemCount: _state.climateDevices.length,
       itemBuilder: (context, index) =>
           _buildClimateDeviceTileForSheet(context, _state.climateDevices[index]),
@@ -1406,9 +1407,12 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     final localizations = AppLocalizations.of(context)!;
     final deviceView = _devicesService?.getDevice(device.id);
     final isOffline = deviceView != null && !deviceView.isOnline;
+    final tileIcon = deviceView != null
+        ? buildDeviceIcon(deviceView.category, deviceView.icon)
+        : device.icon;
 
     return HorizontalTileStretched(
-      icon: device.icon,
+      icon: tileIcon,
       name: device.name,
       status: isOffline
           ? localizations.device_status_offline
@@ -1688,11 +1692,14 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           final device = devices[index];
           final deviceView = _devicesService?.getDevice(device.id);
           final isOffline = deviceView != null && !deviceView.isOnline;
+          final tileIcon = deviceView != null
+              ? buildDeviceIcon(deviceView.category, deviceView.icon)
+              : device.icon;
 
           rowItems.add(
             Expanded(
               child: DeviceTilePortrait(
-                icon: device.icon,
+                icon: tileIcon,
                 name: device.name,
                 status: _translateDeviceStatus(localizations, device.status, device.isActive),
                 isActive: device.isActive,
@@ -1775,10 +1782,13 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
       for (final device in _state.auxiliaryDevices) {
         final deviceView = _devicesService?.getDevice(device.id);
         final isOffline = deviceView != null && !deviceView.isOnline;
+        final tileIcon = deviceView != null
+            ? buildDeviceIcon(deviceView.category, deviceView.icon)
+            : device.icon;
 
         auxiliaryDevices.add(
           DeviceTileLandscape(
-            icon: device.icon,
+            icon: tileIcon,
             name: device.name,
             status: _translateDeviceStatus(localizations, device.status, device.isActive),
             isActive: device.isActive,

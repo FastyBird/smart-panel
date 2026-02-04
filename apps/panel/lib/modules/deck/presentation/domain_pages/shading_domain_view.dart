@@ -53,6 +53,7 @@ import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_item_sheet.dart';
 import 'package:fastybird_smart_panel/modules/devices/export.dart';
+import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_detail_page.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/window_covering.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/window_covering.dart';
@@ -746,8 +747,8 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
                       ),
                       fontWeight: FontWeight.w300,
                       color: isLight
-                          ? AppColorsLight.primary
-                          : AppColorsDark.primary,
+                            ? AppTextColorLight.regular
+                            : AppTextColorDark.regular,
                     ),
                   ),
                   Text(
@@ -1126,7 +1127,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     DeckItemSheet.showItemSheet(
       context,
       title: localizations.shading_devices_title,
-      icon: MdiIcons.devices,
+      icon: MdiIcons.windowShutterSettings,
       itemCount: deviceDataList.length,
       itemBuilder: (context, index) =>
           _buildShadingDeviceTileForSheet(context, deviceDataList[index]),
@@ -1138,9 +1139,13 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     _CoverDeviceData device,
   ) {
     final localizations = AppLocalizations.of(context)!;
+    final deviceView = _devicesService?.getDevice(device.deviceId);
+    final tileIcon = deviceView != null
+        ? buildDeviceIcon(deviceView.category, deviceView.icon)
+        : _getDeviceTileIcon(device);
 
     return HorizontalTileStretched(
-      icon: _getDeviceTileIcon(device),
+      icon: tileIcon,
       name: device.name,
       status: _getDeviceStatus(device, localizations),
       isActive: device.isActive,

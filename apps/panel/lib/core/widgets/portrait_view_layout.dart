@@ -137,7 +137,7 @@ class PortraitViewLayout extends StatelessWidget {
                       color: isDark
                           ? AppBorderColorDark.light
                           : AppBorderColorLight.darker,
-                      width: 1,
+                      width: _scale(1),
                     ),
                   )
                 : null,

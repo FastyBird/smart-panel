@@ -414,9 +414,10 @@ class _ValueSelectorSheetState<T> extends State<ValueSelectorSheet<T>> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Options Grid or Buttons
-          SingleChildScrollView(
-            physics: const ClampingScrollPhysics(),
-            child: LayoutBuilder(
+          Flexible(
+            child: SingleChildScrollView(
+              physics: const ClampingScrollPhysics(),
+              child: LayoutBuilder(
                       builder: (context, constraints) {
                         final spacing = _scale(10);
                         final totalSpacing = spacing * (widget.columns - 1);
@@ -549,6 +550,7 @@ class _ValueSelectorSheetState<T> extends State<ValueSelectorSheet<T>> {
                       },
                     ),
                   ),
+          ),
           if (widget.selectedIndexNotifier == null) ...[
             AppSpacings.spacingLgVertical,
             SizedBox(
