@@ -5,6 +5,7 @@ import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
+import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/water_heater.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -110,22 +111,9 @@ class _WaterHeaterDeviceDetailState extends State<WaterHeaterDeviceDetail> {
             onTap: widget.onBack ?? () => Navigator.of(context).pop(),
           ),
           AppSpacings.spacingMdHorizontal,
-          Container(
-            width: _scale(44),
-            height: _scale(44),
-            decoration: BoxDecoration(
-              color: _device.isOn
-                  ? heatingBgColor
-                  : (isDark
-                      ? AppFillColorDark.darker
-                      : AppFillColorLight.darker),
-              borderRadius: BorderRadius.circular(AppBorderRadius.base),
-            ),
-            child: Icon(
-              MdiIcons.waterBoiler,
-              color: _device.isOn ? heatingColor : mutedColor,
-              size: _scale(24),
-            ),
+          HeaderMainIcon(
+            icon: buildDeviceIcon(_device.category, _device.icon),
+            color: _device.isOn ? ThemeColors.warning : ThemeColors.neutral,
           ),
         ],
       ),

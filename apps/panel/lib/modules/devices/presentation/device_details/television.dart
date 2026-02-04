@@ -17,6 +17,7 @@ import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_volume_card.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
+import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/television.dart';
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 import 'package:flutter/foundation.dart';
@@ -468,20 +469,9 @@ class _TelevisionDeviceDetailState extends State<TelevisionDeviceDetail> {
 						onTap: widget.onBack ?? () => Navigator.of(context).pop(),
 					),
 					AppSpacings.spacingMdHorizontal,
-					Container(
-						width: _scale(44),
-						height: _scale(44),
-						decoration: BoxDecoration(
-							color: isOn
-								? _getAccentLightColor(isDark)
-								: (isDark ? AppFillColorDark.darker : AppFillColorLight.darker),
-							borderRadius: BorderRadius.circular(AppBorderRadius.base),
-						),
-						child: Icon(
-							MdiIcons.television,
-							color: isOn ? accentColor : mutedColor,
-							size: _scale(24),
-						),
+					HeaderMainIcon(
+						icon: buildDeviceIcon(_device.category, _device.icon),
+						color: isOn ? ThemeColors.primary : ThemeColors.neutral,
 					),
 				],
 			),

@@ -23,6 +23,7 @@ import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/devic
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_power_button.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
+import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/lighting.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -748,7 +749,7 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
           ),
           AppSpacings.spacingMdHorizontal,
           HeaderMainIcon(
-            icon: MdiIcons.lightbulb,
+            icon: buildDeviceIcon(widget._device.category, widget._device.icon),
             color: _getStatusColor(),
           ),
         ],

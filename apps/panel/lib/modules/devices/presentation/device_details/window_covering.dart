@@ -23,6 +23,7 @@ import 'package:fastybird_smart_panel/modules/devices/controllers/devices/window
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/window_covering.dart';
+import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/window_covering.dart';
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 import 'package:flutter/foundation.dart';
@@ -371,7 +372,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
             onTap: widget.onBack ?? () => Navigator.of(context).pop(),
           ),
           AppSpacings.spacingMdHorizontal,
-          HeaderMainIcon(icon: MdiIcons.blindsHorizontal, color: statusColor),
+          HeaderMainIcon(icon: buildDeviceIcon(_device.category, _device.icon), color: statusColor),
         ],
       ),
       trailing: _buildHeaderTrailing(context, isDark),

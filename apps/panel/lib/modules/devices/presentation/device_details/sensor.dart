@@ -16,6 +16,7 @@ import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/property_timeseries.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/battery.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/view.dart';
+import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/sensor.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -190,7 +191,7 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
           ),
           AppSpacings.spacingMdHorizontal,
           HeaderMainIcon(
-            icon: MdiIcons.chip,
+            icon: buildDeviceIcon(widget._device.category, widget._device.icon),
             color: ThemeColors.primary,
           ),
         ],
@@ -203,14 +204,14 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
     if (!_isMultiChannel) return null;
     final channels = _getAllSensorChannels();
     return HeaderIconButton(
-      icon: MdiIcons.formatListBulleted,
+      icon: MdiIcons.accessPointNetwork,
       color: ThemeColors.primary,
       onTap: () {
         final localizations = AppLocalizations.of(context)!;
         DeviceChannelsSection.showChannelsSheet(
           context,
           title: localizations.domain_sensors,
-          icon: MdiIcons.chip,
+          icon: MdiIcons.accessPointNetwork,
           itemCount: channels.length,
           tileBuilder: (c, i) => _buildChannelTile(c, channels[i], i),
           listenable: _channelListVersion,

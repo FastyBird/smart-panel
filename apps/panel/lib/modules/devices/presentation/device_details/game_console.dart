@@ -13,6 +13,7 @@ import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_info_card.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
+import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/game_console.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -225,20 +226,9 @@ class _GameConsoleDeviceDetailState extends State<GameConsoleDeviceDetail> {
 						onTap: widget.onBack ?? () => Navigator.of(context).pop(),
 					),
 					AppSpacings.spacingMdHorizontal,
-					Container(
-						width: _scale(44),
-						height: _scale(44),
-						decoration: BoxDecoration(
-							color: isOn
-								? _getAccentLightColor(isDark)
-								: (isDark ? AppFillColorDark.darker : AppFillColorLight.darker),
-							borderRadius: BorderRadius.circular(AppBorderRadius.base),
-						),
-						child: Icon(
-							MdiIcons.gamepadVariant,
-							color: isOn ? accentColor : mutedColor,
-							size: _scale(24),
-						),
+					HeaderMainIcon(
+						icon: buildDeviceIcon(_device.category, _device.icon),
+						color: isOn ? ThemeColors.primary : ThemeColors.neutral,
 					),
 				],
 			),
