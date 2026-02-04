@@ -2478,4 +2478,20 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get media_detail_menu => 'Menu';
+
+  @override
+  String get media_playback => 'Playback';
+
+  @override
+  String get filter_all => 'All';
+
+  @override
+  String sensor_alert_high_title(String name) {
+    return 'High $name Alert';
+  }
+
+  @override
+  String sensor_alert_exceeded_threshold(String name) {
+    return '$name exceeded threshold';
+  }
 }

@@ -4696,6 +4696,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Menu'**
   String get media_detail_menu;
+
+  /// Label for media playback control tile/sheet
+  ///
+  /// In en, this message translates to:
+  /// **'Playback'**
+  String get media_playback;
+
+  /// Label for 'All' filter option
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get filter_all;
+
+  /// Title for high sensor alert banner
+  ///
+  /// In en, this message translates to:
+  /// **'High {name} Alert'**
+  String sensor_alert_high_title(String name);
+
+  /// Description for sensor alert when threshold exceeded
+  ///
+  /// In en, this message translates to:
+  /// **'{name} exceeded threshold'**
+  String sensor_alert_exceeded_threshold(String name);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

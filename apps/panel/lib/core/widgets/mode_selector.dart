@@ -77,8 +77,9 @@ class ModeSelector<T> extends StatefulWidget {
   /// When null, labels are shown/hidden automatically based on available space
   final bool? showLabels;
 
-  /// Minimum width for each mode button in horizontal orientation
-  /// Used to determine if labels should be hidden
+  /// Minimum width for each mode button in horizontal orientation.
+  /// When [scrollable] is true, this is enforced so labels don't shrink to ellipsis;
+  /// otherwise used only to decide if labels should be hidden when space is tight.
   final double minButtonWidth;
 
   /// Whether the selector should be scrollable when content doesn't fit
@@ -250,7 +251,12 @@ class _ModeSelectorState<T> extends State<ModeSelector<T>> {
             wrapped = KeyedSubtree(key: _selectedKey, child: wrapped);
           }
 
+          // In horizontal scrollable layout, enforce minimum width so labels don't shrink to ellipsis
           if (widget.scrollable) {
+            wrapped = ConstrainedBox(
+              constraints: BoxConstraints(minWidth: widget.minButtonWidth),
+              child: wrapped,
+            );
             return wrapped;
           }
           return Expanded(child: wrapped);

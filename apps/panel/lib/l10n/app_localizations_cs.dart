@@ -2494,4 +2494,20 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get media_detail_menu => 'Menu';
+
+  @override
+  String get media_playback => 'Přehrávání';
+
+  @override
+  String get filter_all => 'Vše';
+
+  @override
+  String sensor_alert_high_title(String name) {
+    return 'Výstraha: vysoká hodnota $name';
+  }
+
+  @override
+  String sensor_alert_exceeded_threshold(String name) {
+    return '$name překročil prahovou hodnotu';
+  }
 }

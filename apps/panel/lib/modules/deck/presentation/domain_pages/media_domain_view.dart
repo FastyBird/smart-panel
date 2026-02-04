@@ -1839,7 +1839,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 					child: UniversalTile(
 						layout: TileLayout.horizontal,
 						icon: MdiIcons.playCircle,
-						name: 'Playback',
+						name: AppLocalizations.of(context)!.media_playback,
 						isActive: false,
 						activeColor: _getModeColor(),
 						onTileTap: () {
@@ -2416,7 +2416,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			isScrollControlled: true,
 			backgroundColor: AppColors.blank,
 			builder: (sheetContext) => AppBottomSheet(
-				title: 'Playback',
+				title: AppLocalizations.of(context)!.media_playback,
 				titleIcon: MdiIcons.playCircle,
 				showCloseButton: true,
 				content: ListenableBuilder(

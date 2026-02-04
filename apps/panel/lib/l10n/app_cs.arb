@@ -804,5 +804,9 @@
   "media_detail_now_playing": "Právě hraje",
   "media_detail_no_track_info": "Informace o skladbě nejsou k dispozici",
   "media_detail_home": "Domů",
-  "media_detail_menu": "Menu"
+  "media_detail_menu": "Menu",
+  "media_playback": "Přehrávání",
+  "filter_all": "Vše",
+  "sensor_alert_high_title": "Výstraha: vysoká hodnota {name}",
+  "sensor_alert_exceeded_threshold": "{name} překročil prahovou hodnotu"
 }

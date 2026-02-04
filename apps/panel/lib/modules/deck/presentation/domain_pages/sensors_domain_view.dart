@@ -619,7 +619,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
       ModeOption<SensorCategory?>(
         value: null,
         icon: MdiIcons.viewGrid,
-        label: 'All',
+        label: AppLocalizations.of(context)!.filter_all,
         color: ThemeColors.neutral,
       ),
       // Then available categories
@@ -770,7 +770,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     }
 
     return PageHeader(
-      title: 'Sensors',
+      title: AppLocalizations.of(context)!.domain_sensors,
       subtitle: subtitle,
       subtitleColor: (hasAlerts || hasHealthIssues) ? accentColor : null,
       leading: HeaderMainIcon(
@@ -797,6 +797,8 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
       orientation: ModeSelectorOrientation.horizontal,
       iconPlacement: ModeSelectorIconPlacement.top,
       showLabels: true,
+      scrollable: true,
+      minButtonWidth: 88,
     );
   }
 
@@ -872,8 +874,8 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     final alertSensor =
         _sensors.firstWhere((s) => s.status == SensorStatus.alert);
     return AlertBanner(
-      title: 'High ${alertSensor.name} Alert',
-      text: '${alertSensor.name} exceeded threshold',
+      title: AppLocalizations.of(context)!.sensor_alert_high_title(alertSensor.name),
+      text: AppLocalizations.of(context)!.sensor_alert_exceeded_threshold(alertSensor.name),
       color: SensorColors.danger,
       onTap: () => _openSensorDetail(context, alertSensor),
     );

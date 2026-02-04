@@ -698,7 +698,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         0,
         ClimateSensor(
           id: 'state_temp',
-          label: 'Temperature',
+          label: AppLocalizations.of(context)!.device_current_temperature,
           value:
               '${NumberFormatUtils.defaultFormat.formatDecimal(climateState!.currentTemperature!, decimalPlaces: 1)}°C',
           type: 'temp',
@@ -713,7 +713,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
       sensors.add(
         ClimateSensor(
           id: 'state_humidity',
-          label: 'Humidity',
+          label: AppLocalizations.of(context)!.device_humidity,
           value:
               '${NumberFormatUtils.defaultFormat.formatInteger(climateState!.currentHumidity!.toInt())}%',
           type: 'humidity',

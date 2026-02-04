@@ -3217,5 +3217,33 @@
   "media_detail_menu": "Menu",
   "@media_detail_menu": {
     "description": "Menu button label on remote"
+  },
+  "media_playback": "Playback",
+  "@media_playback": {
+    "description": "Label for media playback control tile/sheet"
+  },
+  "filter_all": "All",
+  "@filter_all": {
+    "description": "Label for 'All' filter option"
+  },
+  "sensor_alert_high_title": "High {name} Alert",
+  "@sensor_alert_high_title": {
+    "description": "Title for high sensor alert banner",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Temperature"
+      }
+    }
+  },
+  "sensor_alert_exceeded_threshold": "{name} exceeded threshold",
+  "@sensor_alert_exceeded_threshold": {
+    "description": "Description for sensor alert when threshold exceeded",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Temperature"
+      }
+    }
   }
 }
