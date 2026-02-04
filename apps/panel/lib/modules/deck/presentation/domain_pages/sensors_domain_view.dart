@@ -825,7 +825,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
       iconPlacement: ModeSelectorIconPlacement.top,
       showLabels: true,
       scrollable: true,
-      minButtonWidth: 88,
+      minButtonWidth: 130,
     );
   }
 
