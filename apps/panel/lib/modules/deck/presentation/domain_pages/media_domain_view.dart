@@ -58,6 +58,7 @@ import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/alert_banner.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_bottom_sheet.dart';
 import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
@@ -1017,37 +1018,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		);
 	}
 
-	Widget _buildWarningBanner(BuildContext context, String label, {VoidCallback? onTap}) {
-		final isDark = Theme.of(context).brightness == Brightness.dark;
-		final warningColor = isDark ? AppColorsDark.warning : AppColorsLight.warning;
-		final warningBg = isDark ? AppColorsDark.warningLight9 : AppColorsLight.warningLight9;
-		final row = Row(
-			children: [
-				Icon(MdiIcons.alertOutline, color: warningColor, size: _scale(18)),
-				AppSpacings.spacingMdHorizontal,
-				Expanded(
-					child: Text(
-						label,
-						style: TextStyle(fontSize: AppFontSize.small, color: warningColor),
-					),
-				),
-				if (onTap != null)
-					Icon(MdiIcons.chevronRight, color: warningColor, size: _scale(18)),
-			],
-		);
-		final container = Container(
-			width: double.infinity,
-			padding: AppSpacings.paddingMd,
-			decoration: BoxDecoration(
-				color: warningBg,
-				borderRadius: BorderRadius.circular(AppBorderRadius.base),
-			),
-			child: row,
-		);
-		if (onTap != null) return GestureDetector(onTap: onTap, child: container);
-		return container;
-	}
-
 	Widget _buildWarningBannerForState(BuildContext context, MediaActiveStateModel state) {
 		final localizations = AppLocalizations.of(context)!;
 		final warningCount = state.lastResult?.warningCount ?? state.warnings.length;
@@ -1056,9 +1026,9 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			: state.warnings.isNotEmpty
 				? state.warnings.first
 				: localizations.media_warning_steps_had_issues;
-		return _buildWarningBanner(
-			context,
-			label,
+		return AlertBanner(
+			text: label,
+			color: ThemeColors.warning,
 			onTap: () => _showFailureDetailsSheet(context, state),
 		);
 	}
@@ -1068,7 +1038,10 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		final label = offlineRoles.length == 1 && offlineRoles.first == 'Audio'
 			? localizations.media_warning_audio_offline
 			: localizations.media_warning_some_devices_offline;
-		return _buildWarningBanner(context, label);
+		return AlertBanner(
+			text: label,
+			color: ThemeColors.warning,
+		);
 	}
 
 	Widget _buildCompositionPreview(BuildContext context, List<_CompositionDisplayItem> items) {
@@ -1648,114 +1621,126 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		showAppBottomSheet(
 			context,
 			title: AppLocalizations.of(context)!.media_failure_details_title,
-			content: Column(
-				mainAxisSize: MainAxisSize.min,
-				crossAxisAlignment: CrossAxisAlignment.start,
-				children: [
-					if (lastResult != null) ...[
-						Wrap(
-							spacing: AppSpacings.pMd,
-							runSpacing: AppSpacings.pSm,
-							children: [
-								_summaryChip(AppLocalizations.of(context)!.media_failure_summary_total, lastResult.stepsTotal, (isDark ? AppColorsDark.neutral : AppColorsLight.neutral), (isDark ? AppColorsDark.neutralLight9 : AppColorsLight.neutralLight9)),
-								_summaryChip(AppLocalizations.of(context)!.media_failure_summary_ok, lastResult.stepsSucceeded, (isDark ? AppColorsDark.success : AppColorsLight.success), (isDark ? AppColorsDark.successLight9 : AppColorsLight.successLight9)),
-								_summaryChip(AppLocalizations.of(context)!.media_failure_summary_errors, lastResult.errorCount, (isDark ? AppColorsDark.error : AppColorsLight.error), (isDark ? AppColorsDark.errorLight9 : AppColorsLight.errorLight9)),
-								_summaryChip(AppLocalizations.of(context)!.media_failure_summary_warnings, lastResult.warningCount, (isDark ? AppColorsDark.warning : AppColorsLight.warning), (isDark ? AppColorsDark.warningLight9 : AppColorsLight.warningLight9)),
-							],
-						),
-						AppSpacings.spacingLgVertical,
-					],
-					if (errors.isNotEmpty) ...[
-						Text(
-							AppLocalizations.of(context)!.media_failure_errors_critical,
-							style: TextStyle(
-								fontWeight: FontWeight.w600,
-								color: isDark ? AppColorsDark.error : AppColorsLight.error,
-								fontSize: AppFontSize.small,
-							),
-						),
-						AppSpacings.spacingSmVertical,
-						...errors.map((f) => _failureRow(f, isDark ? AppColorsDark.error : AppColorsLight.error, _getModeColorFamily(context).light9)),
-						AppSpacings.spacingMdVertical,
-					],
-					if (warnings.isNotEmpty) ...[
-						Text(
-							AppLocalizations.of(context)!.media_failure_warnings_non_critical,
-							style: TextStyle(
-								fontWeight: FontWeight.w600,
-								color: isDark ? AppColorsDark.warning : AppColorsLight.warning,
-								fontSize: AppFontSize.small,
-							),
-						),
-						AppSpacings.spacingSmVertical,
-						...warnings.map((f) => _failureRow(f, isDark ? AppColorsDark.warning : AppColorsLight.warning, _getModeColorFamily(context).light9)),
-						AppSpacings.spacingMdVertical,
-					],
-					if (state.warnings.isNotEmpty && warnings.isEmpty) ...[
-						Text(
-							AppLocalizations.of(context)!.media_failure_warnings_label,
-							style: TextStyle(
-								fontWeight: FontWeight.w600,
-								color: isDark ? AppColorsDark.warning : AppColorsLight.warning,
-								fontSize: AppFontSize.small,
-							),
-						),
-						AppSpacings.spacingSmVertical,
-						...state.warnings.map((w) => Padding(
-							padding: EdgeInsets.only(bottom: AppSpacings.pSm),
-							child: Text('- $w', style: TextStyle(fontSize: AppFontSize.small)),
-						)),
-						AppSpacings.spacingMdVertical,
-					],
-				],
-			),
+			content: Padding(
+        padding: EdgeInsets.symmetric(horizontal: AppSpacings.pLg, vertical: AppSpacings.pMd),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (lastResult != null) ...[
+              Wrap(
+                spacing: AppSpacings.pMd,
+                runSpacing: AppSpacings.pSm,
+                children: [
+                  _summaryChip(AppLocalizations.of(context)!.media_failure_summary_total, lastResult.stepsTotal, (isDark ? AppColorsDark.neutral : AppColorsLight.neutral), (isDark ? AppColorsDark.neutralLight9 : AppColorsLight.neutralLight9)),
+                  _summaryChip(AppLocalizations.of(context)!.media_failure_summary_ok, lastResult.stepsSucceeded, (isDark ? AppColorsDark.success : AppColorsLight.success), (isDark ? AppColorsDark.successLight9 : AppColorsLight.successLight9)),
+                  _summaryChip(AppLocalizations.of(context)!.media_failure_summary_errors, lastResult.errorCount, (isDark ? AppColorsDark.error : AppColorsLight.error), (isDark ? AppColorsDark.errorLight9 : AppColorsLight.errorLight9)),
+                  _summaryChip(AppLocalizations.of(context)!.media_failure_summary_warnings, lastResult.warningCount, (isDark ? AppColorsDark.warning : AppColorsLight.warning), (isDark ? AppColorsDark.warningLight9 : AppColorsLight.warningLight9)),
+                ],
+              ),
+              AppSpacings.spacingLgVertical,
+            ],
+            if (errors.isNotEmpty) ...[
+              Text(
+                AppLocalizations.of(context)!.media_failure_errors_critical,
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? AppColorsDark.error : AppColorsLight.error,
+                  fontSize: AppFontSize.small,
+                ),
+              ),
+              AppSpacings.spacingSmVertical,
+              ...errors.map((f) => _failureRow(f, isDark ? AppColorsDark.error : AppColorsLight.error, _getModeColorFamily(context).light9)),
+              AppSpacings.spacingMdVertical,
+            ],
+            if (warnings.isNotEmpty) ...[
+              Text(
+                AppLocalizations.of(context)!.media_failure_warnings_non_critical,
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? AppColorsDark.warning : AppColorsLight.warning,
+                  fontSize: AppFontSize.small,
+                ),
+              ),
+              AppSpacings.spacingSmVertical,
+              ...warnings.map((f) => _failureRow(f, isDark ? AppColorsDark.warning : AppColorsLight.warning, _getModeColorFamily(context).light9)),
+              AppSpacings.spacingMdVertical,
+            ],
+            if (state.warnings.isNotEmpty && warnings.isEmpty) ...[
+              Text(
+                AppLocalizations.of(context)!.media_failure_warnings_label,
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? AppColorsDark.warning : AppColorsLight.warning,
+                  fontSize: AppFontSize.small,
+                ),
+              ),
+              AppSpacings.spacingSmVertical,
+              ...state.warnings.map((w) => Padding(
+                padding: EdgeInsets.only(bottom: AppSpacings.pSm),
+                child: Text('- $w', style: TextStyle(fontSize: AppFontSize.small)),
+              )),
+              AppSpacings.spacingMdVertical,
+            ],
+          ],
+        ),
+      ),
 			bottomSection: Builder(
-				builder: (sheetContext) => Row(
-					children: [
-						if (state.isFailed && state.activityKey != null)
+				builder: (sheetContext) {
+					final isDark = Theme.of(sheetContext).brightness == Brightness.dark;
+					final primaryFg = isDark ? AppFilledButtonsDarkThemes.primaryForegroundColor : AppFilledButtonsLightThemes.primaryForegroundColor;
+					final baseFg = isDark ? AppOutlinedButtonsDarkThemes.baseForegroundColor : AppOutlinedButtonsLightThemes.baseForegroundColor;
+					return Row(
+						spacing: AppSpacings.pMd,
+						children: [
+							if (state.isFailed && state.activityKey != null)
+								Expanded(
+									child: Theme(
+										data: ThemeData(
+											filledButtonTheme: isDark
+												? AppFilledButtonsDarkThemes.primary
+												: AppFilledButtonsLightThemes.primary,
+										),
+										child: FilledButton.icon(
+											icon: Icon(MdiIcons.refresh, size: _scale(16), color: primaryFg),
+											label: Text(AppLocalizations.of(context)!.media_failure_retry_activity),
+											onPressed: () {
+												Navigator.pop(sheetContext);
+												_retryActivity(state);
+											},
+											style: FilledButton.styleFrom(
+												textStyle: TextStyle(fontSize: AppFontSize.small),
+												padding: EdgeInsets.symmetric(horizontal: 0, vertical: AppSpacings.pMd),
+												tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+											),
+										),
+									),
+								),
 							Expanded(
 								child: Theme(
 									data: ThemeData(
-										filledButtonTheme: Theme.of(sheetContext).brightness == Brightness.dark
-											? AppFilledButtonsDarkThemes.primary
-											: AppFilledButtonsLightThemes.primary,
+										outlinedButtonTheme: isDark
+											? AppOutlinedButtonsDarkThemes.base
+											: AppOutlinedButtonsLightThemes.base,
 									),
-									child: FilledButton.icon(
-										icon: Icon(MdiIcons.refresh, size: _scale(16)),
-										label: Text(AppLocalizations.of(context)!.media_failure_retry_activity),
+									child: OutlinedButton.icon(
+										icon: Icon(MdiIcons.stopCircleOutline, size: _scale(16), color: baseFg),
+										label: Text(AppLocalizations.of(context)!.media_failure_deactivate),
 										onPressed: () {
 											Navigator.pop(sheetContext);
-											_retryActivity(state);
+											_deactivateActivity();
 										},
-										style: FilledButton.styleFrom(
+										style: OutlinedButton.styleFrom(
 											textStyle: TextStyle(fontSize: AppFontSize.small),
+											padding: EdgeInsets.symmetric(horizontal: 0, vertical: AppSpacings.pMd),
+											tapTargetSize: MaterialTapTargetSize.shrinkWrap,
 										),
 									),
 								),
 							),
-						if (state.isFailed) AppSpacings.spacingMdHorizontal,
-						Expanded(
-							child: Theme(
-								data: ThemeData(
-									outlinedButtonTheme: Theme.of(sheetContext).brightness == Brightness.dark
-										? AppOutlinedButtonsDarkThemes.base
-										: AppOutlinedButtonsLightThemes.base,
-								),
-								child: OutlinedButton.icon(
-									icon: Icon(MdiIcons.stopCircleOutline, size: _scale(16)),
-									label: Text(AppLocalizations.of(context)!.media_failure_deactivate),
-									onPressed: () {
-										Navigator.pop(sheetContext);
-										_deactivateActivity();
-									},
-									style: OutlinedButton.styleFrom(
-										textStyle: TextStyle(fontSize: AppFontSize.small),
-									),
-								),
-							),
-						),
-					],
-				),
+						],
+					);
+				},
 			),
 		);
 	}
