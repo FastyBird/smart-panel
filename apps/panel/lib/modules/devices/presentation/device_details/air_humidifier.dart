@@ -915,7 +915,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
         label: localizations.device_current_temperature,
         value: SensorUtils.formatNumericValue(currentTemp, tempChannel!.category),
         unit: SensorUtils.unitForCategory(tempChannel.category),
-        icon: buildChannelIcon(tempChannel!.category),
+        icon: buildChannelIcon(tempChannel.category),
         valueThemeColor: SensorColors.temperature,
         sensorData: SensorUtils.buildSensorData(tempChannel, localizations: localizations),
       ));

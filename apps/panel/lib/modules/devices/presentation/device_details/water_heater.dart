@@ -91,13 +91,8 @@ class _WaterHeaterDeviceDetailState extends State<WaterHeaterDeviceDetail> {
     final localizations = AppLocalizations.of(context)!;
     final heatingColor =
         isDark ? AppColorsDark.primary : AppColorsLight.primary;
-    final heatingBgColor = isDark
-        ? AppColorsDark.primaryLight9
-        : AppColorsLight.primaryLight9;
     final secondaryColor =
         isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
-    final mutedColor =
-        isDark ? AppTextColorDark.disabled : AppTextColorLight.disabled;
 
     return PageHeader(
       title: _device.name,

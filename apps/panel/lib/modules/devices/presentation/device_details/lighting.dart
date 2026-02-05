@@ -860,7 +860,7 @@ class LightingMainControl extends StatelessWidget {
   final Function(Color, double)? onColorChanged;
   final ValueChanged<int>? onWhiteChannelChanged;
 
-  LightingMainControl({
+  const LightingMainControl({
     super.key,
     required this.selectedCapability,
     required this.isOn,
@@ -1705,7 +1705,7 @@ class LightingModeSelector extends StatelessWidget {
   final bool isVertical;
   final bool? showLabels;
 
-  LightingModeSelector({
+  const LightingModeSelector({
     super.key,
     required this.capabilities,
     required this.selectedCapability,

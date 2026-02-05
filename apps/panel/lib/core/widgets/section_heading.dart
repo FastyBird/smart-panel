@@ -97,10 +97,6 @@ class SectionTitle extends StatelessWidget {
 /// )
 /// ```
 class SectionTitleButton extends StatelessWidget {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
   /// Button label text
   final String label;
 
@@ -110,15 +106,12 @@ class SectionTitleButton extends StatelessWidget {
   /// Callback when button is tapped
   final VoidCallback? onTap;
 
-  SectionTitleButton({
+  const SectionTitleButton({
     super.key,
     required this.label,
     this.icon,
     this.onTap,
   });
-
-  double _scale(double size) =>
-      _screenService.scale(size, density: _visualDensityService.density);
 
   @override
   Widget build(BuildContext context) {

@@ -454,7 +454,6 @@ class _TelevisionDeviceDetailState extends State<TelevisionDeviceDetail> {
 		final localizations = AppLocalizations.of(context)!;
 		final accentColor = _getAccentColor(isDark);
 		final secondaryColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
-		final mutedColor = isDark ? AppTextColorDark.disabled : AppTextColorLight.disabled;
 		final isOn = _device.isTelevisionOn;
 
 		return PageHeader(

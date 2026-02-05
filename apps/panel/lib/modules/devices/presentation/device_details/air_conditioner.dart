@@ -145,7 +145,7 @@ class _AirConditionerDeviceDetailState
     }
   }
 
-  void _onControllerError(String _propertyId, Object _error) {
+  void _onControllerError(String propertyId, Object error) {
     final localizations = AppLocalizations.of(context);
     if (mounted && localizations != null) {
       AppToast.showError(context, message: localizations.action_failed);
