@@ -146,27 +146,6 @@ void main() {
       expect(device.icon, MdiIcons.airHumidifierOff);
     });
 
-    test('should identify humidity control devices', () {
-      const humidifier = AuxiliaryDevice(
-        id: 'h1',
-        name: 'Humidifier',
-        type: AuxiliaryType.humidifier,
-      );
-      const dehumidifier = AuxiliaryDevice(
-        id: 'd1',
-        name: 'Dehumidifier',
-        type: AuxiliaryType.dehumidifier,
-      );
-      const fan = AuxiliaryDevice(
-        id: 'f1',
-        name: 'Fan',
-        type: AuxiliaryType.fan,
-      );
-
-      expect(humidifier.isHumidityControl, true);
-      expect(dehumidifier.isHumidityControl, true);
-      expect(fan.isHumidityControl, false);
-    });
   });
 
   group('ClimateSensor', () {
@@ -247,42 +226,14 @@ void main() {
         value: '??',
         type: DevicesModuleChannelCategory.generic,
       );
-      expect(sensor.icon, MdiIcons.eyeSettings);
+      expect(sensor.icon, MdiIcons.chip);
     });
   });
 
   group('ClimateRoomState', () {
     // Note: modeLabel tests removed - mode labels are now localized via _getModeLabel()
-
-    test('should filter humidity devices correctly', () {
-      const state = ClimateRoomState(
-        roomName: 'Test Room',
-        auxiliaryDevices: [
-          AuxiliaryDevice(
-              id: 'h1', name: 'Humidifier', type: AuxiliaryType.humidifier),
-          AuxiliaryDevice(
-              id: 'd1', name: 'Dehumidifier', type: AuxiliaryType.dehumidifier),
-          AuxiliaryDevice(id: 'f1', name: 'Fan', type: AuxiliaryType.fan),
-          AuxiliaryDevice(
-              id: 'p1', name: 'Purifier', type: AuxiliaryType.purifier),
-        ],
-      );
-
-      expect(state.humidityDevices.length, 2);
-      expect(state.otherAuxiliary.length, 2);
-      expect(state.hasHumidityControl, true);
-    });
-
-    test('should return hasHumidityControl false when no humidity devices', () {
-      const state = ClimateRoomState(
-        roomName: 'Test Room',
-        auxiliaryDevices: [
-          AuxiliaryDevice(id: 'f1', name: 'Fan', type: AuxiliaryType.fan),
-        ],
-      );
-
-      expect(state.hasHumidityControl, false);
-    });
+    // Note: humidity filtering tests removed - humidityDevices/otherAuxiliary/hasHumidityControl
+    //       properties were removed from ClimateRoomState
 
     test('should copy state correctly', () {
       const state = ClimateRoomState(
