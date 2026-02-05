@@ -121,12 +121,27 @@ class SensorUtils {
   // ===========================================================================
 
   /// Returns a [valueFormatter] closure with the correct decimal places for
-  /// [category]. Equivalent to `(prop) => ValueUtils.formatValue(prop, scale)`.
+  /// [category]. Uses locale-aware [NumberFormatUtils] for numeric values
+  /// and delegates to [ValueUtils] for booleans, strings, and validation.
   static String? Function(ChannelPropertyView) valueFormatterForCategory(
     DevicesModuleChannelCategory category,
   ) {
     final scale = scaleForCategory(category);
-    return (prop) => ValueUtils.formatValue(prop, scale);
+    return (prop) {
+      final value = prop.value;
+      if (value is NumberValueType) {
+        // Delegate to ValueUtils for range/invalid checks — it returns null
+        // when the value is out-of-range and no invalid substitute exists.
+        final raw = ValueUtils.formatValue(prop, scale);
+        if (raw == null) return null;
+        // Re-format the validated number through locale-aware formatter.
+        final num parsed = ValueUtils.roundToScale(value.value.toDouble(), scale);
+        return scale > 0
+            ? _formatter.formatDecimal(parsed.toDouble(), decimalPlaces: scale)
+            : _formatter.formatInteger(parsed.toInt());
+      }
+      return ValueUtils.formatValue(prop, scale);
+    };
   }
 
   // ===========================================================================
