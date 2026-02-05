@@ -10,6 +10,7 @@ class SensorData {
   final IconData icon;
   final ChannelView channel;
   final ChannelPropertyView? property;
+  final String unit;
   final String? Function(ChannelPropertyView)? valueFormatter;
   final bool? isDetection;
   final bool? isAlert;
@@ -20,6 +21,7 @@ class SensorData {
     required this.icon,
     required this.channel,
     this.property,
+    this.unit = '',
     this.valueFormatter,
     this.isDetection,
     this.isAlert,

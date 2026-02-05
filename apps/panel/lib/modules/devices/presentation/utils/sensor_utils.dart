@@ -224,11 +224,16 @@ class SensorUtils {
                 ? channel.name
                 : category.json ?? category.toString()));
 
+    // Resolve unit: property from backend → hardcoded fallback by category
+    final resolvedUnit =
+        resolvedProperty?.unit ?? unitForCategory(category);
+
     return SensorData(
       label: resolvedLabel,
       icon: icon ?? buildChannelIcon(category),
       channel: channel,
       property: resolvedProperty,
+      unit: resolvedUnit,
       valueFormatter:
           resolvedIsDetection != null
               ? null

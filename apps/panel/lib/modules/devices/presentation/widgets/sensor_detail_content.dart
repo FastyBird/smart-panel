@@ -84,7 +84,7 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
         : '--';
   }
 
-  String get _unit => _currentSensorData.property?.unit ?? '';
+  String get _unit => _currentSensorData.unit;
   bool get _isOffline => widget.isDeviceOnline == false;
 
   TimeRange _getTimeRange() {

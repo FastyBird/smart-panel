@@ -73,7 +73,14 @@ class _SensorInfo {
   });
 
   /// Returns the formatted display value with unit
-  String get displayValue => unit != null ? '$value$unit' : value;
+  /// Uses the backend-provided unit from [sensorData] when available,
+  /// falling back to the explicit [unit] field.
+  String get displayValue {
+    final u = (sensorData != null && sensorData!.unit.isNotEmpty)
+        ? sensorData!.unit
+        : unit;
+    return (u != null && u.isNotEmpty) ? '$value$u' : value;
+  }
 }
 
 class AirConditionerDeviceDetail extends StatefulWidget {
