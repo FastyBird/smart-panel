@@ -1,32 +1,27 @@
-// Sensor device detail UI: multi-channel sensor list, detail page with history
-// chart and event log. See [SensorDeviceDetail], [SensorDetailPage], [SensorData].
+// Sensor device detail UI: multi-channel sensor list with embedded detail.
+// See [SensorDeviceDetail], [SensorDetailPage].
+//
+// The detail content (chart, stats, event log) is provided by [SensorDetailContent]
+// from the shared widgets library, making it reusable across device types.
 
-import 'dart:math';
-
-import 'package:fastybird_smart_panel/api/models/devices_module_channel_category.dart';
-import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
-import 'package:fastybird_smart_panel/core/utils/number_format.dart';
+import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/tile_wrappers.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_channels_section.dart';
-import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_landscape_layout.dart';
-import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_portrait_layout.dart';
-import 'package:fastybird_smart_panel/modules/devices/presentation/utils/sensor_enum_utils.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_offline_overlay.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_data.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_detail_content.dart';
 import 'package:fastybird_smart_panel/modules/devices/utils/value.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
-import 'package:fastybird_smart_panel/modules/devices/services/property_timeseries.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/battery.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/channels/view.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/sensor.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart' show DateFormat;
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
+
+// Re-export SensorData so existing imports of `SensorData` from this file continue to work.
+export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_data.dart';
 
 // =============================================================================
 // SENSOR DEVICE DETAIL (multi-channel list + embedded detail)
@@ -158,6 +153,9 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
 
   @override
   Widget build(BuildContext context) {
+  final isDark = Theme.of(context).brightness == Brightness.dark;
+    final localizations = AppLocalizations.of(context)!;
+
     final allChannels = _getAllSensorChannels();
     if (allChannels.isEmpty) {
       return const SizedBox.shrink();
@@ -166,9 +164,12 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
     final selectedSensor = _selectedSensor;
     if (selectedSensor == null) return const SizedBox.shrink();
 
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor =
         isDark ? AppBgColorDark.page : AppBgColorLight.page;
+
+    final lastSeenText = widget._device.lastStateChange != null
+        ? DatetimeUtils.formatTimeAgo(widget._device.lastStateChange!, localizations)
+        : null;
 
     return Scaffold(
       backgroundColor: bgColor,
@@ -177,11 +178,20 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
           children: [
             _buildHeader(context, isDark),
             Expanded(
-              child: SensorDetailPage(
-                sensor: selectedSensor,
-                deviceName: widget._device.name,
-                isDeviceOnline: widget._device.isOnline,
-                contentOnly: true,
+              child: Stack(
+                children: [
+                  SensorDetailPage(
+                    sensor: selectedSensor,
+                    deviceName: widget._device.name,
+                    isDeviceOnline: widget._device.isOnline,
+                    contentOnly: true,
+                  ),
+                  if (!widget._device.isOnline)
+                    DeviceOfflineState(
+                      isDark: isDark,
+                      lastSeenText: lastSeenText,
+                    ),
+                ],
               ),
             ),
           ],
@@ -229,7 +239,7 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
     return HeaderIconButton(
       icon: MdiIcons.accessPointNetwork,
       color: ThemeColors.neutral,
-      onTap: () {
+      onTap: widget._device.isOnline ? () {
         final localizations = AppLocalizations.of(context)!;
         DeviceChannelsSection.showChannelsSheet(
           context,
@@ -239,7 +249,7 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
           tileBuilder: (c, i) => _buildChannelTile(c, channels[i], i),
           listenable: _channelListVersion,
         );
-      },
+      } : null,
     );
   }
 
@@ -503,40 +513,7 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
 }
 
 // =============================================================================
-// SENSOR DATA MODEL
-// =============================================================================
-
-/// View model for one sensor channel: label, icon, channel/property refs,
-/// optional value formatter, and detection/alert state for binary/alert sensors.
-/// Used by [SensorDeviceDetail] and [SensorDetailPage].
-class SensorData {
-  final String label;
-  final IconData icon;
-  final ChannelView channel;
-  final ChannelPropertyView? property;
-  final String? Function(ChannelPropertyView)? valueFormatter;
-  final bool? isDetection;
-  final String? detectedLabel;
-  final String? notDetectedLabel;
-  final bool? isAlert;
-  final String? alertLabel;
-
-  SensorData({
-    required this.label,
-    required this.icon,
-    required this.channel,
-    this.property,
-    this.valueFormatter,
-    this.isDetection,
-    this.detectedLabel,
-    this.notDetectedLabel,
-    this.isAlert,
-    this.alertLabel,
-  });
-}
-
-// =============================================================================
-// SENSOR DETAIL PAGE
+// SENSOR DETAIL PAGE (thin wrapper around SensorDetailContent)
 // =============================================================================
 
 /// Full-screen sensor detail with current value, history chart, period selector,
@@ -544,7 +521,9 @@ class SensorData {
 ///
 /// When [contentOnly] is true, only the detail content is built (no scaffold/header).
 /// Use this to embed the detail inside another page (e.g. device detail body).
-class SensorDetailPage extends StatefulWidget {
+///
+/// All rendering and timeseries state is delegated to [SensorDetailContent].
+class SensorDetailPage extends StatelessWidget {
   final SensorData sensor;
   final String? deviceName;
   final bool? isDeviceOnline;
@@ -560,108 +539,17 @@ class SensorDetailPage extends StatefulWidget {
     this.contentOnly = false,
   });
 
-  @override
-  State<SensorDetailPage> createState() => _SensorDetailPageState();
-}
-
-class _SensorDetailPageState extends State<SensorDetailPage> {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-  final PropertyTimeseriesService _timeseriesService =
-      locator<PropertyTimeseriesService>();
-
-  int _selectedPeriod = 1; // 0=1H, 1=24H, 2=7D, 3=30D
-  bool _isLoadingTimeseries = false;
-  PropertyTimeseries? _timeseries;
-
-  // --------------------------------------------------------------------------
-  // DERIVED STATE & TIMESERIES
-  // --------------------------------------------------------------------------
-
-  bool get _isBinary => widget.sensor.isDetection != null;
-  String get _channelId => widget.sensor.channel.id;
-  String? get _propertyId => widget.sensor.property?.id;
-  String get _currentValue {
-    // For binary sensors, use the detection labels
-    if (_isBinary) {
-      return widget.sensor.isDetection!
-          ? (widget.sensor.detectedLabel ?? 'Active')
-          : (widget.sensor.notDetectedLabel ?? 'Inactive');
-    }
-    // For other sensors, use the value formatter or default formatting
-    return widget.sensor.property != null
-        ? (widget.sensor.valueFormatter != null
-            ? (widget.sensor.valueFormatter!(widget.sensor.property!) ?? '--')
-            : ValueUtils.formatValue(widget.sensor.property!) ?? '--')
-        : '--';
-  }
-  String get _unit => widget.sensor.property?.unit ?? '';
-  bool get _isOffline => widget.isDeviceOnline == false;
-  String get _location => widget.deviceName ?? widget.sensor.channel.name;
-
-  TimeRange _getTimeRange() {
-    switch (_selectedPeriod) {
-      case 0:
-        return TimeRange.oneHour;
-      case 1:
-        return TimeRange.oneDay;
-      case 2:
-      case 3:
-        return TimeRange.sevenDays;
-      default:
-        return TimeRange.oneDay;
-    }
-  }
-
-  Future<void> _fetchTimeseries() async {
-    if (_propertyId == null) return;
-    if (!mounted) return;
-    setState(() => _isLoadingTimeseries = true);
-    try {
-      final result = await _timeseriesService.getTimeseries(
-        channelId: _channelId,
-        propertyId: _propertyId!,
-        timeRange: _getTimeRange(),
-      );
-      if (mounted) {
-        setState(() {
-          _timeseries = result;
-          _isLoadingTimeseries = false;
-        });
-      }
-    } catch (e) {
-      if (kDebugMode) debugPrint('[SensorDetailPage] Timeseries error: $e');
-      if (mounted) setState(() => _isLoadingTimeseries = false);
-    }
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    _fetchTimeseries();
-  }
-
-  void _onPeriodChanged(int period) {
-    if (_selectedPeriod != period) {
-      setState(() => _selectedPeriod = period);
-      _fetchTimeseries();
-    }
-  }
-
-  // --------------------------------------------------------------------------
-  // LAYOUT & BUILD
-  // --------------------------------------------------------------------------
-
-  double _scale(double size) =>
-      _screenService.scale(size, density: _visualDensityService.density);
-
   ThemeColors _themeColorForLabel() {
-    final l = widget.sensor.label.toLowerCase();
-    if (l.contains('temperature') || l.contains('pressure')) return ThemeColors.info;
+    final l = sensor.label.toLowerCase();
+    if (l.contains('temperature') || l.contains('pressure')) {
+      return ThemeColors.info;
+    }
     if (l.contains('humidity')) return ThemeColors.success;
-    if (l.contains('motion') || l.contains('occupancy') || l.contains('contact') ||
-        l.contains('leak') || l.contains('smoke')) {
+    if (l.contains('motion') ||
+        l.contains('occupancy') ||
+        l.contains('contact') ||
+        l.contains('leak') ||
+        l.contains('smoke')) {
       return ThemeColors.warning;
     }
     if (l.contains('carbon') || l.contains('co2') || l.contains('co ')) {
@@ -670,751 +558,49 @@ class _SensorDetailPageState extends State<SensorDetailPage> {
     return ThemeColors.primary;
   }
 
-  Color _getCategoryColor(BuildContext context) {
-    final family = ThemeColorFamily.get(
-      Theme.of(context).brightness,
-      _themeColorForLabel(),
-    );
-    return family.base;
-  }
-
-  Widget _buildContent(BuildContext context) {
-    return OrientationBuilder(
-      builder: (context, orientation) {
-        return orientation == Orientation.landscape
-            ? _buildLandscapeLayout(context)
-            : _buildPortraitLayout(context);
-      },
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    if (widget.contentOnly) {
-      return _buildContent(context);
+    final content = SensorDetailContent(
+      sensor: sensor,
+      deviceName: deviceName,
+      isDeviceOnline: isDeviceOnline,
+    );
+
+    if (contentOnly) {
+      return content;
     }
+
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isOffline = isDeviceOnline == false;
+    final location = deviceName ?? sensor.channel.name;
+
     return Scaffold(
       backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
       body: SafeArea(
         child: Column(
           children: [
-            _buildHeader(context),
-            Expanded(
-              child: _buildContent(context),
+            PageHeader(
+              title: sensor.label,
+              subtitle: '$location • ${isOffline ? 'Offline' : 'Online'}',
+              leading: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  HeaderIconButton(
+                    icon: MdiIcons.arrowLeft,
+                    onTap: () => Navigator.pop(context),
+                  ),
+                  AppSpacings.spacingMdHorizontal,
+                  HeaderMainIcon(
+                    icon: sensor.icon,
+                    color: _themeColorForLabel(),
+                  ),
+                ],
+              ),
             ),
+            Expanded(child: content),
           ],
         ),
       ),
     );
   }
-
-  Widget _buildHeader(BuildContext context) {
-    return PageHeader(
-      title: widget.sensor.label,
-      subtitle: '$_location • ${_isOffline ? 'Offline' : 'Online'}',
-      leading: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          HeaderIconButton(
-            icon: MdiIcons.arrowLeft,
-            onTap: () => Navigator.pop(context),
-          ),
-          AppSpacings.spacingMdHorizontal,
-          HeaderMainIcon(
-            icon: widget.sensor.icon,
-            color: _themeColorForLabel(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPortraitLayout(BuildContext context) {
-    return DevicePortraitLayout(
-      scrollable: false,
-      content: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        spacing: AppSpacings.pMd,
-        children: [
-          // Large value section - takes 1 part of available space
-          Expanded(
-            flex: 1,
-            child: Center(child: _buildLargeValue(context)),
-          ),
-          // Bottom section - takes 2 parts of available space
-          Expanded(
-            flex: 2,
-            child: _isBinary
-                ? _buildEventLog(context, flexible: true)
-                : Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _buildStatsRow(context),
-                      SizedBox(height: AppSpacings.pMd),
-                      Expanded(child: _buildChart(context, flexible: true)),
-                    ],
-                  ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLandscapeLayout(BuildContext context) {
-    final landscapeSecondary = _isBinary
-        ? _buildEventLog(context, withMargin: false, withDecoration: false)
-        : _buildChart(context, withMargin: false, withDecoration: false);
-    return DeviceLandscapeLayout(
-      mainContent: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          spacing: AppSpacings.pMd,
-          children: [
-            _buildLargeValue(context),
-            if (!_isBinary) _buildStatsRowCompact(context),
-          ],
-        ),
-      ),
-      secondaryContent: landscapeSecondary,
-      largeSecondaryColumn: true,
-    );
-  }
-
-  Widget _buildLargeValue(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isCompact = _screenService.isSmallScreen;
-    final localizations = AppLocalizations.of(context)!;
-    final channelCategory = widget.sensor.channel.category.json;
-    final displayValue = SensorEnumUtils.translateSensorValue(
-      localizations,
-      _currentValue,
-      channelCategory,
-      short: false,
-    );
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          child: RichText(
-            text: TextSpan(
-              style: TextStyle(
-                fontSize: _scale(isCompact ? 56 : 72),
-                fontWeight: FontWeight.w200,
-                color: _isOffline
-                    ? (isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder)
-                    : _getCategoryColor(context),
-              ),
-              children: [
-                TextSpan(text: displayValue),
-                TextSpan(
-                  text: _unit.isNotEmpty ? ' $_unit' : '',
-                  style: TextStyle(
-                    fontSize: _scale(isCompact ? 18 : 24),
-                    fontWeight: FontWeight.w300,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        AppSpacings.spacingSmVertical,
-        Text(
-          localizations.sensor_ui_current_value(
-            SensorEnumUtils.translateSensorLabel(localizations, widget.sensor.label),
-          ),
-          style: TextStyle(
-            color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
-            fontSize: AppFontSize.base,
-          ),
-        ),
-      ],
-    );
-  }
-
-  // --------------------------------------------------------------------------
-  // STATS ROW & PERIOD
-  // --------------------------------------------------------------------------
-
-  String _getStatsValue(String type) {
-    if (_timeseries == null || _timeseries!.isEmpty) return '--';
-    double value;
-    switch (type) {
-      case 'min':
-        value = _timeseries!.minValue;
-        break;
-      case 'max':
-        value = _timeseries!.maxValue;
-        break;
-      case 'avg':
-        value = _timeseries!.avgValue;
-        break;
-      default:
-        return '--';
-    }
-    return '${NumberFormatUtils.defaultFormat.formatDecimal(value, decimalPlaces: 1)}$_unit';
-  }
-
-  String _getPeriodLabel() {
-    switch (_selectedPeriod) {
-      case 0: return '1h';
-      case 1: return '24h';
-      case 2: return '7d';
-      case 3: return '30d';
-      default: return '24h';
-    }
-  }
-
-  Widget _buildStatsRow(BuildContext context) {
-    final localizations = AppLocalizations.of(context)!;
-    final periodLabel = _getPeriodLabel();
-    return Row(
-      children: [
-        _buildStatCard(context, localizations.sensor_ui_period_min(periodLabel), _getStatsValue('min'), true),
-        AppSpacings.spacingMdHorizontal,
-        _buildStatCard(context, localizations.sensor_ui_period_max(periodLabel), _getStatsValue('max'), false),
-        AppSpacings.spacingMdHorizontal,
-        _buildStatCard(context, localizations.sensor_ui_period_avg(periodLabel), _getStatsValue('avg'), null),
-      ],
-    );
-  }
-
-  Widget _buildStatsRowCompact(BuildContext context) {
-    final localizations = AppLocalizations.of(context)!;
-    return Row(
-      children: [
-        _buildStatCard(context, localizations.sensor_ui_min, _getStatsValue('min'), true),
-        AppSpacings.spacingSmHorizontal,
-        _buildStatCard(context, localizations.sensor_ui_max, _getStatsValue('max'), false),
-        AppSpacings.spacingSmHorizontal,
-        _buildStatCard(context, localizations.sensor_ui_avg, _getStatsValue('avg'), null),
-      ],
-    );
-  }
-
-  Widget _buildStatCard(BuildContext context, String label, String value, bool? isMin) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    Color? valueColor;
-    if (isMin == true) {
-      valueColor = isDark ? AppColorsDark.info : AppColorsLight.info;
-    } else if (isMin == false) {
-      valueColor = isDark ? AppColorsDark.danger : AppColorsLight.danger;
-    }
-    return Expanded(
-      child: Container(
-        padding: AppSpacings.paddingMd,
-        decoration: BoxDecoration(
-          color: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
-          borderRadius: BorderRadius.circular(AppBorderRadius.base),
-          border: Border.all(
-            color: isDark ? AppFillColorDark.light : AppBorderColorLight.light,
-            width: _scale(1),
-          ),
-        ),
-        child: Column(
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
-                fontSize: AppFontSize.extraSmall,
-              ),
-            ),
-            AppSpacings.spacingXsVertical,
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                value,
-                style: TextStyle(
-                  color: valueColor ?? (isDark ? AppTextColorDark.primary : AppTextColorLight.primary),
-                  fontSize: AppFontSize.large,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // --------------------------------------------------------------------------
-  // EVENT LOG (binary sensors)
-  // --------------------------------------------------------------------------
-
-  Widget _buildEventLog(BuildContext context, {
-    bool withMargin = true,
-    bool withDecoration = true,
-    bool flexible = false,
-  }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final localizations = AppLocalizations.of(context)!;
-    Widget contentArea;
-    if (_isLoadingTimeseries) {
-      contentArea = Center(
-        child: SizedBox(
-          width: _scale(24),
-          height: _scale(24),
-          child: CircularProgressIndicator(strokeWidth: 2, color: _getCategoryColor(context)),
-        ),
-      );
-    } else if (_timeseries != null && _timeseries!.isNotEmpty) {
-      contentArea = _buildEventLogEntries(context, inFlex: flexible);
-    } else {
-      contentArea = Center(
-        child: Text(
-          localizations.sensor_empty_no_events,
-          style: TextStyle(
-            color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
-            fontSize: AppFontSize.small,
-          ),
-        ),
-      );
-    }
-    if (flexible) {
-      contentArea = Expanded(child: contentArea);
-    }
-    return Container(
-      padding: withDecoration ? AppSpacings.paddingLg : EdgeInsets.symmetric(horizontal: AppSpacings.pLg),
-      decoration: withDecoration
-          ? BoxDecoration(
-              color: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
-              borderRadius: BorderRadius.circular(AppBorderRadius.base),
-              border: Border.all(
-                color: isDark ? AppFillColorDark.light : AppBorderColorLight.light,
-                width: _scale(1),
-              ),
-            )
-          : null,
-      child: Column(
-        mainAxisSize: flexible ? MainAxisSize.max : MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                localizations.sensor_ui_event_log,
-                style: TextStyle(
-                  color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
-                  fontSize: AppFontSize.base,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              Container(
-                padding: EdgeInsets.all(AppSpacings.pXs),
-                decoration: BoxDecoration(
-                  color: isDark ? AppFillColorDark.base : AppFillColorLight.base,
-                  borderRadius: BorderRadius.circular(AppBorderRadius.base),
-                ),
-                child: Row(
-                  children: [
-                    _buildPeriodButton(context, localizations.sensor_ui_period_1h, 0),
-                    _buildPeriodButton(context, localizations.sensor_ui_period_24h, 1),
-                    _buildPeriodButton(context, localizations.sensor_ui_period_7d, 2),
-                    _buildPeriodButton(context, localizations.sensor_ui_period_30d, 3),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          AppSpacings.spacingMdVertical,
-          contentArea,
-        ],
-      ),
-    );
-  }
-
-  static String _getBinaryLabelLong(String channelCategory, bool isActive) {
-    final category = DevicesModuleChannelCategory.fromJson(channelCategory);
-
-    switch (category) {
-      case DevicesModuleChannelCategory.motion:
-      case DevicesModuleChannelCategory.occupancy:
-        return isActive ? 'Detected' : 'Clear';
-      case DevicesModuleChannelCategory.contact:
-      case DevicesModuleChannelCategory.door:
-      case DevicesModuleChannelCategory.doorbell:
-        return isActive ? 'Open' : 'Closed';
-      case DevicesModuleChannelCategory.smoke:
-        return isActive ? 'Smoke detected' : 'Clear';
-      case DevicesModuleChannelCategory.gas:
-        return isActive ? 'Gas detected' : 'Clear';
-      case DevicesModuleChannelCategory.leak:
-        return isActive ? 'Leak detected' : 'Clear';
-      case DevicesModuleChannelCategory.carbonMonoxide:
-        return isActive ? 'CO detected' : 'Clear';
-      default:
-        return isActive ? 'Active' : 'Inactive';
-    }
-  }
-
-  Widget _buildEventLogEntries(BuildContext context, {bool inFlex = false}) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final localizations = AppLocalizations.of(context)!;
-    final points = _timeseries!.points;
-    final events = <TimeseriesPoint>[];
-    for (int i = 0; i < points.length; i++) {
-      final isActive = points[i].numericValue >= 0.5;
-      if (i == 0 || (points[i - 1].numericValue >= 0.5) != isActive) {
-        events.add(points[i]);
-      }
-    }
-    final reversedEvents = events.reversed.toList();
-    if (reversedEvents.isEmpty) {
-      return inFlex
-          ? Center(
-              child: Text(
-                localizations.sensor_empty_no_state_changes,
-                style: TextStyle(
-                  color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
-                  fontSize: AppFontSize.small,
-                ),
-              ),
-            )
-          : SizedBox(
-              height: _scale(160),
-              child: Center(
-                child: Text(
-                  localizations.sensor_empty_no_state_changes,
-                  style: TextStyle(
-                    color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
-                    fontSize: AppFontSize.small,
-                  ),
-                ),
-              ),
-            );
-    }
-    final channelCategory = widget.sensor.channel.category.json;
-    final useShortDate = _selectedPeriod <= 1;
-    final dateFormat = useShortDate ? DateFormat.Hm() : DateFormat('MMM d, HH:mm');
-    final listView = ListView.separated(
-      shrinkWrap: !inFlex,
-      padding: EdgeInsets.zero,
-      itemCount: reversedEvents.length,
-      separatorBuilder: (_, __) => Divider(
-        height: _scale(1),
-        color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light,
-      ),
-      itemBuilder: (context, index) {
-        final point = reversedEvents[index];
-        final isActive = point.numericValue >= 0.5;
-        final stateLabel = _getBinaryLabelLong(channelCategory ?? '', isActive);
-        final dangerColor = isDark ? AppColorsDark.danger : AppColorsLight.danger;
-        final successColor = isDark ? AppColorsDark.success : AppColorsLight.success;
-        final dotColor = isActive ? dangerColor : successColor;
-        final textColor = isActive ? dangerColor : (isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary);
-        return Padding(
-          padding: EdgeInsets.symmetric(vertical: AppSpacings.pSm),
-          child: Row(
-            children: [
-              Container(
-                width: _scale(8),
-                height: _scale(8),
-                decoration: BoxDecoration(color: dotColor, shape: BoxShape.circle),
-              ),
-              SizedBox(width: AppSpacings.pMd),
-              Expanded(
-                child: Text(
-                  stateLabel,
-                  style: TextStyle(color: textColor, fontSize: AppFontSize.small, fontWeight: FontWeight.w500),
-                ),
-              ),
-              Text(
-                dateFormat.format(point.time.toLocal()),
-                style: TextStyle(
-                  color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
-                  fontSize: AppFontSize.extraSmall,
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-    if (inFlex) {
-      return listView;
-    }
-    return ConstrainedBox(
-      constraints: BoxConstraints(maxHeight: _scale(200)),
-      child: listView,
-    );
-  }
-
-  // --------------------------------------------------------------------------
-  // HISTORY CHART & PERIOD BUTTONS
-  // --------------------------------------------------------------------------
-
-  Widget _buildChart(BuildContext context, {bool withMargin = true, bool withDecoration = true, bool flexible = false}) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final localizations = AppLocalizations.of(context)!;
-
-    Widget buildChartContent(double height) {
-      if (_isLoadingTimeseries) {
-        return Center(
-          child: SizedBox(
-            width: _scale(24),
-            height: _scale(24),
-            child: CircularProgressIndicator(strokeWidth: 2, color: _getCategoryColor(context)),
-          ),
-        );
-      }
-      if (_timeseries != null && _timeseries!.isNotEmpty) {
-        return CustomPaint(
-          size: Size(double.infinity, height),
-          painter: _SensorChartPainter(
-            color: _getCategoryColor(context),
-            labelColor: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
-            fontSize: AppFontSize.extraSmall,
-            timeseries: _timeseries,
-          ),
-        );
-      }
-      return Center(
-        child: Text(
-          localizations.sensor_empty_no_history,
-          style: TextStyle(
-            color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
-            fontSize: AppFontSize.small,
-          ),
-        ),
-      );
-    }
-
-    final chartArea = flexible
-        ? Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) => buildChartContent(constraints.maxHeight),
-            ),
-          )
-        : SizedBox(
-            height: _scale(160),
-            child: buildChartContent(_scale(160)),
-          );
-
-    return Container(
-      padding: withDecoration ? AppSpacings.paddingLg : EdgeInsets.symmetric(horizontal: AppSpacings.pLg),
-      decoration: withDecoration
-          ? BoxDecoration(
-              color: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
-              borderRadius: BorderRadius.circular(AppBorderRadius.base),
-              border: Border.all(
-                color: isDark ? AppFillColorDark.light : AppBorderColorLight.light,
-                width: _scale(1),
-              ),
-            )
-          : null,
-      child: Column(
-        mainAxisSize: flexible ? MainAxisSize.max : MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                localizations.sensor_ui_history,
-                style: TextStyle(
-                  color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
-                  fontSize: AppFontSize.base,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              Container(
-                padding: EdgeInsets.all(AppSpacings.pXs),
-                decoration: BoxDecoration(
-                  color: isDark ? AppFillColorDark.base : AppFillColorLight.base,
-                  borderRadius: BorderRadius.circular(AppBorderRadius.base),
-                ),
-                child: Row(
-                  children: [
-                    _buildPeriodButton(context, localizations.sensor_ui_period_1h, 0),
-                    _buildPeriodButton(context, localizations.sensor_ui_period_24h, 1),
-                    _buildPeriodButton(context, localizations.sensor_ui_period_7d, 2),
-                    _buildPeriodButton(context, localizations.sensor_ui_period_30d, 3),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          _screenService.isLandscape && _screenService.isAtLeastLarge ? AppSpacings.spacingLgVertical : AppSpacings.spacingMdVertical,
-          chartArea,
-          AppSpacings.spacingSmVertical,
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: _getTimeLabels().map((label) => _buildTimeLabel(context, label)).toList(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  List<String> _getTimeLabels() {
-    switch (_selectedPeriod) {
-      case 0: return ['-60m', '-45m', '-30m', '-15m', 'Now'];
-      case 1: return ['00:00', '06:00', '12:00', '18:00', 'Now'];
-      case 2: return ['-7d', '-5d', '-3d', '-1d', 'Now'];
-      case 3: return ['-30d', '-22d', '-15d', '-7d', 'Now'];
-      default: return ['00:00', '06:00', '12:00', '18:00', 'Now'];
-    }
-  }
-
-  Widget _buildTimeLabel(BuildContext context, String text) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Text(
-      text,
-      style: TextStyle(
-        color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
-        fontSize: AppFontSize.extraSmall,
-      ),
-    );
-  }
-
-  Widget _buildPeriodButton(BuildContext context, String label, int index) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isSelected = _selectedPeriod == index;
-    return GestureDetector(
-      onTap: () => _onPeriodChanged(index),
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd, vertical: AppSpacings.pXs),
-        decoration: BoxDecoration(
-          color: isSelected ? (isDark ? AppFillColorDark.light : AppFillColorLight.light) : Colors.transparent,
-          borderRadius: BorderRadius.circular(AppBorderRadius.small),
-          boxShadow: isSelected ? [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 3, offset: const Offset(0, 1))] : null,
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: isSelected ? (isDark ? AppTextColorDark.primary : AppTextColorLight.primary) : (isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary),
-            fontSize: AppFontSize.extraSmall,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// =============================================================================
-// CHART PAINTER (custom line chart for SensorDetailPage)
-// =============================================================================
-
-/// Custom painter for the sensor history line chart. Draws grid, labels, area
-/// fill and line from [PropertyTimeseries] with nice tick computation.
-class _SensorChartPainter extends CustomPainter {
-  final Color color;
-  final Color labelColor;
-  final double fontSize;
-  final PropertyTimeseries? timeseries;
-
-  static const double _labelWidth = 40.0;
-  static const double _labelGap = 6.0;
-
-  _SensorChartPainter({required this.color, required this.labelColor, this.fontSize = 11, this.timeseries});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final chartLeft = _labelWidth + _labelGap;
-    final chartWidth = size.width - chartLeft;
-    final chartHeight = size.height;
-    double niceMin = 0;
-    double niceMax = 1;
-    List<double> ticks = [0, 0.5, 1];
-    if (timeseries != null && timeseries!.isNotEmpty) {
-      ticks = _computeNiceTicks(timeseries!.minValue, timeseries!.maxValue);
-      niceMin = ticks.first;
-      niceMax = ticks.last;
-    }
-    final niceRange = niceMax - niceMin;
-    final gridPaint = Paint()..color = color.withValues(alpha: 0.1)..strokeWidth = 0.5;
-    for (final tick in ticks) {
-      final normalized = niceRange == 0 ? 0.5 : (tick - niceMin) / niceRange;
-      final y = chartHeight * (1 - normalized);
-      canvas.drawLine(Offset(chartLeft, y), Offset(size.width, y), gridPaint);
-      if (timeseries != null && timeseries!.isNotEmpty) {
-        final label = _formatLabel(tick);
-        final textPainter = TextPainter(
-          text: TextSpan(text: label, style: TextStyle(color: labelColor, fontSize: fontSize)),
-          textDirection: TextDirection.ltr,
-        )..layout(maxWidth: _labelWidth);
-        textPainter.paint(canvas, Offset(_labelWidth - textPainter.width, y - textPainter.height / 2));
-      }
-    }
-    final points = <Offset>[];
-    if (timeseries != null && timeseries!.isNotEmpty) {
-      final data = timeseries!.points;
-      for (int i = 0; i < data.length; i++) {
-        final x = chartLeft + chartWidth * i / (data.length - 1).clamp(1, double.infinity);
-        final normalizedValue = niceRange == 0 ? 0.5 : (data[i].numericValue - niceMin) / niceRange;
-        final y = chartHeight * (1 - normalizedValue.clamp(0.0, 1.0));
-        points.add(Offset(x, y));
-      }
-    }
-    if (points.isEmpty) return;
-    final areaPath = Path()..moveTo(chartLeft, chartHeight);
-    for (final point in points) {
-      areaPath.lineTo(point.dx, point.dy);
-    }
-    areaPath.lineTo(points.last.dx, chartHeight);
-    areaPath.close();
-    canvas.drawPath(areaPath, Paint()..color = color.withValues(alpha: 0.1)..style = PaintingStyle.fill);
-    final linePath = Path()..moveTo(points.first.dx, points.first.dy);
-    for (int i = 1; i < points.length; i++) {
-      linePath.lineTo(points[i].dx, points[i].dy);
-    }
-    canvas.drawPath(linePath, Paint()..color = color..strokeWidth = 2..style = PaintingStyle.stroke);
-    if (timeseries != null && timeseries!.isNotEmpty) {
-      canvas.drawCircle(points.last, 4, Paint()..color = color);
-    }
-  }
-
-  static const double ln10 = 2.302585092994046;
-
-  List<double> _computeNiceTicks(double dataMin, double dataMax, {int targetTicks = 5}) {
-    if (dataMin == dataMax) {
-      final v = dataMin;
-      if (v == 0) return [-1, -0.5, 0, 0.5, 1];
-      final offset = v.abs() * 0.1;
-      final step = _niceStep(offset * 2 / (targetTicks - 1));
-      final nMin = ((v - offset) / step).floor() * step;
-      return List.generate(targetTicks, (i) => _roundToStep(nMin + i * step, step));
-    }
-    final rawStep = (dataMax - dataMin) / (targetTicks - 1);
-    final step = _niceStep(rawStep);
-    final niceMin = (dataMin / step).floor() * step;
-    final niceMax = (dataMax / step).ceil() * step;
-    final ticks = <double>[];
-    var tick = niceMin;
-    while (tick <= niceMax + step * 0.5) {
-      ticks.add(_roundToStep(tick, step));
-      tick += step;
-    }
-    return ticks;
-  }
-
-  double _niceStep(double rawStep) {
-    if (rawStep <= 0) return 1;
-    final magnitude = pow(10, (log(rawStep) / ln10).floor().toDouble());
-    final fraction = rawStep / magnitude;
-    double niceFraction = fraction <= 1.5 ? 1 : (fraction <= 3 ? 2 : (fraction <= 7 ? 5 : 10));
-    return niceFraction * magnitude;
-  }
-
-  double _roundToStep(double value, double step) {
-    if (step >= 1) return (value / step).round() * step;
-    final decimals = -(log(step) / ln10).floor();
-    final factor = pow(10, decimals.toDouble());
-    return (value * factor).round() / factor;
-  }
-
-  String _formatLabel(double value) {
-    if (value.abs() >= 1000) return '${(value / 1000).toStringAsFixed(1)}k';
-    if (value == value.roundToDouble()) return value.round().toString();
-    return value.toStringAsFixed(1);
-  }
-
-  @override
-  bool shouldRepaint(covariant _SensorChartPainter oldDelegate) =>
-      oldDelegate.color != color || oldDelegate.timeseries != timeseries;
 }

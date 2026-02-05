@@ -8,3 +8,7 @@ export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media
 export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_info_card.dart';
 export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_remote_card.dart';
 export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_volume_card.dart';
+export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_channel_detail_page.dart';
+export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_chart_painter.dart';
+export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_data.dart';
+export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_detail_content.dart';
