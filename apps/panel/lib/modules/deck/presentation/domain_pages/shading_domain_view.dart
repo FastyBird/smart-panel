@@ -44,6 +44,7 @@ import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
+import 'package:fastybird_smart_panel/core/widgets/intent_mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
@@ -1044,15 +1045,30 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   // MODE SELECTOR
   // --------------------------------------------------------------------------
 
+  /// Compute (activeValue, matchedValue, lastIntentValue) for [IntentModeSelector].
+  (CoversMode?, CoversMode?, CoversMode?) _getCoverModeSelectorValues() {
+    final detectedMode = _coversState?.detectedMode;
+    final lastAppliedMode = _coversState?.lastAppliedMode;
+    final isModeFromIntent = _coversState?.isModeFromIntent ?? false;
+
+    if (detectedMode != null && isModeFromIntent) return (detectedMode, null, null);
+    if (detectedMode != null && !isModeFromIntent) return (null, detectedMode, null);
+    if (lastAppliedMode != null) return (null, null, lastAppliedMode);
+    return (null, null, null);
+  }
+
   /// Horizontal mode selector for portrait layout.
   Widget _buildModeSelector(BuildContext context, AppLocalizations localizations) {
-    return ModeSelector<CoversMode>(
+    final (activeValue, matchedValue, lastIntentValue) = _getCoverModeSelectorValues();
+
+    return IntentModeSelector<CoversMode>(
       modes: _getCoversModeOptions(localizations),
-      selectedValue: _coversState?.detectedMode ?? _coversState?.lastAppliedMode,
+      activeValue: activeValue,
+      matchedValue: matchedValue,
+      lastIntentValue: lastIntentValue,
       onChanged: _setCoversMode,
       orientation: ModeSelectorOrientation.horizontal,
       iconPlacement: ModeSelectorIconPlacement.top,
-      showLabels: true,
     );
   }
 
@@ -1062,9 +1078,13 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     AppLocalizations localizations, {
     bool showLabels = false,
   }) {
-    return ModeSelector<CoversMode>(
+    final (activeValue, matchedValue, lastIntentValue) = _getCoverModeSelectorValues();
+
+    return IntentModeSelector<CoversMode>(
       modes: _getCoversModeOptions(localizations),
-      selectedValue: _coversState?.detectedMode ?? _coversState?.lastAppliedMode,
+      activeValue: activeValue,
+      matchedValue: matchedValue,
+      lastIntentValue: lastIntentValue,
       onChanged: _setCoversMode,
       orientation: ModeSelectorOrientation.vertical,
       iconPlacement: ModeSelectorIconPlacement.top,
