@@ -224,9 +224,16 @@ class SensorUtils {
                 ? channel.name
                 : category.json ?? category.toString()));
 
-    // Resolve unit: property from backend → hardcoded fallback by category
-    final resolvedUnit =
-        resolvedProperty?.unit ?? unitForCategory(category);
+    // Resolve unit: binary/enum/string properties have no unit;
+    // otherwise use property from backend → hardcoded fallback by category
+    final bool isDiscreteProperty = resolvedIsDetection != null ||
+        (resolvedProperty != null &&
+            (resolvedProperty.dataType == DevicesModuleDataType.bool ||
+                resolvedProperty.dataType == DevicesModuleDataType.valueEnum ||
+                resolvedProperty.dataType == DevicesModuleDataType.string));
+    final resolvedUnit = isDiscreteProperty
+        ? ''
+        : (resolvedProperty?.unit ?? unitForCategory(category));
 
     return SensorData(
       label: resolvedLabel,
