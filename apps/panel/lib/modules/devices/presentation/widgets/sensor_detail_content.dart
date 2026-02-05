@@ -6,6 +6,7 @@ import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/utils/sensor_utils.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_colors.dart';
+import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_landscape_layout.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_portrait_layout.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_chart_painter.dart';
@@ -43,31 +44,34 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
       locator<VisualDensityService>();
   final PropertyTimeseriesService _timeseriesService =
       locator<PropertyTimeseriesService>();
+  final DevicesService _devicesService = locator<DevicesService>();
 
   int _selectedPeriod = 1; // 0=1H, 1=24H, 2=7D, 3=30D
   bool _isLoadingTimeseries = false;
   PropertyTimeseries? _timeseries;
 
+  late SensorData _currentSensorData;
+
   // --------------------------------------------------------------------------
   // DERIVED STATE & TIMESERIES
   // --------------------------------------------------------------------------
 
-  bool get _isBinary => widget.sensor.isDetection != null;
-  String get _channelId => widget.sensor.channel.id;
-  String? get _propertyId => widget.sensor.property?.id;
+  bool get _isBinary => _currentSensorData.isDetection != null;
+  String get _channelId => _currentSensorData.channel.id;
+  String? get _propertyId => _currentSensorData.property?.id;
 
   String get _currentValue {
     if (_isBinary) {
-      return widget.sensor.isDetection! ? 'true' : 'false';
+      return _currentSensorData.isDetection! ? 'true' : 'false';
     }
-    return widget.sensor.property != null
-        ? (widget.sensor.valueFormatter != null
-            ? (widget.sensor.valueFormatter!(widget.sensor.property!) ?? '--')
-            : SensorUtils.valueFormatterForCategory(widget.sensor.channel.category)(widget.sensor.property!) ?? '--')
+    return _currentSensorData.property != null
+        ? (_currentSensorData.valueFormatter != null
+            ? (_currentSensorData.valueFormatter!(_currentSensorData.property!) ?? '--')
+            : SensorUtils.valueFormatterForCategory(_currentSensorData.channel.category)(_currentSensorData.property!) ?? '--')
         : '--';
   }
 
-  String get _unit => widget.sensor.property?.unit ?? '';
+  String get _unit => _currentSensorData.property?.unit ?? '';
   bool get _isOffline => widget.isDeviceOnline == false;
 
   TimeRange _getTimeRange() {
@@ -109,7 +113,31 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
   @override
   void initState() {
     super.initState();
+    _currentSensorData = widget.sensor;
+    _devicesService.addListener(_onDataChanged);
     _fetchTimeseries();
+  }
+
+  @override
+  void dispose() {
+    _devicesService.removeListener(_onDataChanged);
+    super.dispose();
+  }
+
+  void _onDataChanged() {
+    if (!mounted) return;
+    final freshChannel = _devicesService.getChannel(widget.sensor.channel.id);
+    if (freshChannel == null) return;
+    setState(() {
+      _currentSensorData = SensorUtils.buildSensorData(
+        freshChannel,
+        label: widget.sensor.label,
+        icon: widget.sensor.icon,
+        valueFormatter: widget.sensor.valueFormatter,
+        isAlert: widget.sensor.isAlert,
+        alertLabel: widget.sensor.alertLabel,
+      );
+    });
   }
 
   void _onPeriodChanged(int period) {
@@ -127,7 +155,7 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
       _screenService.scale(size, density: _visualDensityService.density);
 
   ThemeColors get _themeColor =>
-      SensorColors.themeColorForCategory(widget.sensor.channel.category);
+      SensorColors.themeColorForCategory(_currentSensorData.channel.category);
 
   Color _getCategoryColor(BuildContext context) {
     final family = ThemeColorFamily.get(
@@ -205,7 +233,7 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
     final displayValue = SensorUtils.translateSensorValue(
       localizations,
       _currentValue,
-      widget.sensor.channel.category,
+      _currentSensorData.channel.category,
       short: false,
     );
     return Column(
@@ -241,7 +269,7 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
         Text(
           localizations.sensor_ui_current_value(
             SensorUtils.translateSensorLabel(
-                localizations, widget.sensor.channel.category),
+                localizations, _currentSensorData.channel.category),
           ),
           style: TextStyle(
             color: isDark
@@ -274,7 +302,7 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
       default:
         return '--';
     }
-    return SensorUtils.formatNumericValueWithUnit(value, widget.sensor.channel.category);
+    return SensorUtils.formatNumericValueWithUnit(value, _currentSensorData.channel.category);
   }
 
   String _getPeriodLabel() {
@@ -521,7 +549,7 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
               ),
             );
     }
-    final category = widget.sensor.channel.category;
+    final category = _currentSensorData.channel.category;
     final useShortDate = _selectedPeriod <= 1;
     final dateFormat =
         useShortDate ? DateFormat.Hm() : DateFormat('MMM d, HH:mm');
