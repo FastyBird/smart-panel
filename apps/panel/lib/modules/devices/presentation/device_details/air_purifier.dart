@@ -4,7 +4,7 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
-import 'package:fastybird_smart_panel/core/utils/number_format.dart';
+
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_landscape_layout.dart';
@@ -28,8 +28,7 @@ import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
 import 'package:fastybird_smart_panel/modules/devices/utils/air_quality_utils.dart';
 import 'package:fastybird_smart_panel/modules/devices/utils/fan_utils.dart';
-import 'package:fastybird_smart_panel/modules/devices/utils/filter_utils.dart';
-import 'package:fastybird_smart_panel/modules/devices/presentation/utils/sensor_value_builder.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/utils/sensor_utils.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/channel.dart' show buildChannelIcon;
 import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/air_purifier.dart';
@@ -1155,25 +1154,23 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
         sensors.add(_SensorInfo(
           id: 'co',
           label: localizations.device_co,
-          value: NumberFormatUtils.defaultFormat.formatDecimal(coChannel.concentration, decimalPlaces: 1),
-          unit: 'ppm',
+          value: SensorUtils.formatNumericValue(coChannel.concentration, coChannel.category),
+          unit: SensorUtils.unitForCategory(coChannel.category),
           icon: buildChannelIcon(coChannel.category),
           valueThemeColor: SensorColors.alert,
           isWarning: coChannel.concentration > 35, // Warn if CO exceeds 35 ppm (EPA 1-hour limit)
-          sensorData: SensorValueBuilder.buildSensorData(coChannel, localizations: localizations),
+          sensorData: SensorUtils.buildSensorData(coChannel, localizations: localizations),
         ));
       } else if (coChannel.hasDetected) {
         final isDetected = coChannel.detected;
         sensors.add(_SensorInfo(
           id: 'co',
           label: localizations.device_co,
-          value: isDetected
-              ? localizations.gas_detected
-              : localizations.gas_clear,
+          value: SensorUtils.translateBinaryState(localizations, coChannel.category, isDetected),
           icon: buildChannelIcon(coChannel.category),
           valueThemeColor: SensorColors.alert,
           isWarning: isDetected,
-          sensorData: SensorValueBuilder.buildSensorData(coChannel,
+          sensorData: SensorUtils.buildSensorData(coChannel,
             isAlert: coChannel.detected,
             localizations: localizations,
           ),
@@ -1188,13 +1185,11 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
       sensors.add(_SensorInfo(
         id: 'leak',
         label: localizations.leak_sensor_water,
-        value: isLeaking
-            ? localizations.leak_sensor_detected
-            : localizations.leak_sensor_dry,
+        value: SensorUtils.translateBinaryState(localizations, leakChannel.category, isLeaking),
         icon: buildChannelIcon(leakChannel.category),
         valueThemeColor: SensorColors.alert,
         isWarning: isLeaking,
-        sensorData: SensorValueBuilder.buildSensorData(leakChannel,
+        sensorData: SensorUtils.buildSensorData(leakChannel,
           isAlert: leakChannel.detected,
           localizations: localizations,
         ),
@@ -1213,11 +1208,11 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
         sensors.add(_SensorInfo(
           id: 'pm',
           label: AirQualityUtils.getParticulateLabel(localizations, pmMode),
-          value: NumberFormatUtils.defaultFormat.formatInteger(_pm25),
-          unit: 'µg/m³',
+          value: SensorUtils.formatNumericValue(_pm25, pmChannel.category),
+          unit: SensorUtils.unitForCategory(pmChannel.category),
           icon: buildChannelIcon(pmChannel.category),
           valueThemeColor: SensorColors.airQuality,
-          sensorData: SensorValueBuilder.buildSensorData(pmChannel, localizations: localizations),
+          sensorData: SensorUtils.buildSensorData(pmChannel, localizations: localizations),
         ));
       } else if (pmChannel.hasDetected) {
         final isDetected = pmChannel.detected;
@@ -1274,12 +1269,12 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
       sensors.add(_SensorInfo(
         id: 'co2',
         label: localizations.device_co2,
-        value: NumberFormatUtils.defaultFormat.formatInteger(co2Channel.concentration.toInt()),
-        unit: 'ppm',
+        value: SensorUtils.formatNumericValue(co2Channel.concentration, co2Channel.category),
+        unit: SensorUtils.unitForCategory(co2Channel.category),
         icon: buildChannelIcon(co2Channel.category),
         valueThemeColor: SensorColors.co2,
         isWarning: co2Channel.concentration > 1000, // Warn if CO₂ exceeds 1000 ppm
-        sensorData: SensorValueBuilder.buildSensorData(co2Channel, localizations: localizations),
+        sensorData: SensorUtils.buildSensorData(co2Channel, localizations: localizations),
       ));
     }
 
@@ -1302,8 +1297,8 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
         sensors.add(_SensorInfo(
           id: 'o3',
           label: localizations.device_o3,
-          value: NumberFormatUtils.defaultFormat.formatInteger(o3Channel.concentration.toInt()),
-          unit: 'µg/m³',
+          value: SensorUtils.formatNumericValue(o3Channel.concentration, o3Channel.category),
+          unit: SensorUtils.unitForCategory(o3Channel.category),
           icon: buildChannelIcon(o3Channel.category),
           valueThemeColor: SensorColors.airQuality,
           isWarning: o3Channel.concentration > 100, // Warn if exceeds WHO 8-hour limit
@@ -1313,9 +1308,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
         sensors.add(_SensorInfo(
           id: 'o3',
           label: localizations.device_o3,
-          value: isDetected
-              ? localizations.gas_detected
-              : localizations.gas_clear,
+          value: SensorUtils.translateBinaryState(localizations, o3Channel.category, isDetected),
           icon: buildChannelIcon(o3Channel.category),
           valueThemeColor: SensorColors.airQuality,
           isWarning: isDetected,
@@ -1330,8 +1323,8 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
         sensors.add(_SensorInfo(
           id: 'no2',
           label: localizations.device_no2,
-          value: NumberFormatUtils.defaultFormat.formatInteger(no2Channel.concentration.toInt()),
-          unit: 'µg/m³',
+          value: SensorUtils.formatNumericValue(no2Channel.concentration, no2Channel.category),
+          unit: SensorUtils.unitForCategory(no2Channel.category),
           icon: buildChannelIcon(no2Channel.category),
           valueThemeColor: SensorColors.airQuality,
           isWarning: no2Channel.concentration > 200, // Warn if exceeds WHO 1-hour limit
@@ -1341,9 +1334,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
         sensors.add(_SensorInfo(
           id: 'no2',
           label: localizations.device_no2,
-          value: isDetected
-              ? localizations.gas_detected
-              : localizations.gas_clear,
+          value: SensorUtils.translateBinaryState(localizations, no2Channel.category, isDetected),
           icon: buildChannelIcon(no2Channel.category),
           valueThemeColor: SensorColors.airQuality,
           isWarning: isDetected,
@@ -1366,8 +1357,8 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
         sensors.add(_SensorInfo(
           id: 'so2',
           label: localizations.device_so2,
-          value: NumberFormatUtils.defaultFormat.formatInteger(so2Channel.concentration.toInt()),
-          unit: 'µg/m³',
+          value: SensorUtils.formatNumericValue(so2Channel.concentration, so2Channel.category),
+          unit: SensorUtils.unitForCategory(so2Channel.category),
           icon: buildChannelIcon(so2Channel.category),
           valueThemeColor: SensorColors.airQuality,
           isWarning: so2Channel.concentration > 500, // Warn if exceeds WHO 10-min limit
@@ -1377,9 +1368,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
         sensors.add(_SensorInfo(
           id: 'so2',
           label: localizations.device_so2,
-          value: isDetected
-              ? localizations.gas_detected
-              : localizations.gas_clear,
+          value: SensorUtils.translateBinaryState(localizations, so2Channel.category, isDetected),
           icon: buildChannelIcon(so2Channel.category),
           valueThemeColor: SensorColors.airQuality,
           isWarning: isDetected,
@@ -1398,8 +1387,8 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
         sensors.add(_SensorInfo(
           id: 'filter',
           label: localizations.device_filter_life,
-          value: '${(_filterLife * 100).toInt()}',
-          unit: '%',
+          value: SensorUtils.formatNumericValue(_device.filterLifeRemaining, filterChannel.category),
+          unit: SensorUtils.unitForCategory(filterChannel.category),
           icon: buildChannelIcon(filterChannel.category),
           valueThemeColor: SensorColors.filter,
           isWarning: _filterLife < 0.3 || _device.isFilterNeedsReplacement,
@@ -1408,7 +1397,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
         sensors.add(_SensorInfo(
           id: 'filter',
           label: localizations.device_filter_status,
-          value: FilterUtils.getStatusLabel(localizations, filterChannel.status),
+          value: SensorUtils.translateFilterStatus(localizations, filterChannel.status),
           icon: buildChannelIcon(filterChannel.category),
           valueThemeColor: SensorColors.filter,
           isWarning: _device.isFilterNeedsReplacement,
@@ -1426,14 +1415,11 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
       sensors.add(_SensorInfo(
         id: 'temperature',
         label: localizations.device_temperature,
-        value: NumberFormatUtils.defaultFormat.formatDecimal(
-          tempChannel.temperature,
-          decimalPlaces: 1,
-        ),
-        unit: '°C',
+        value: SensorUtils.formatNumericValue(tempChannel.temperature, tempChannel.category),
+        unit: SensorUtils.unitForCategory(tempChannel.category),
         icon: buildChannelIcon(tempChannel.category),
         valueThemeColor: SensorColors.temperature,
-        sensorData: SensorValueBuilder.buildSensorData(tempChannel, localizations: localizations),
+        sensorData: SensorUtils.buildSensorData(tempChannel, localizations: localizations),
       ));
     }
 
@@ -1443,11 +1429,11 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
       sensors.add(_SensorInfo(
         id: 'humidity',
         label: localizations.device_humidity,
-        value: NumberFormatUtils.defaultFormat.formatInteger(humidityChannel.humidity),
-        unit: '%',
+        value: SensorUtils.formatNumericValue(humidityChannel.humidity, humidityChannel.category),
+        unit: SensorUtils.unitForCategory(humidityChannel.category),
         icon: buildChannelIcon(humidityChannel.category),
         valueThemeColor: SensorColors.humidity,
-        sensorData: SensorValueBuilder.buildSensorData(humidityChannel, localizations: localizations),
+        sensorData: SensorUtils.buildSensorData(humidityChannel, localizations: localizations),
       ));
     }
 
@@ -1457,11 +1443,11 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
       sensors.add(_SensorInfo(
         id: 'pressure',
         label: localizations.device_pressure,
-        value: NumberFormatUtils.defaultFormat.formatDecimal(pressureChannel.pressure, decimalPlaces: 1),
-        unit: 'kPa',
+        value: SensorUtils.formatNumericValue(pressureChannel.pressure, pressureChannel.category),
+        unit: SensorUtils.unitForCategory(pressureChannel.category),
         icon: buildChannelIcon(pressureChannel.category),
         valueThemeColor: SensorColors.pressure,
-        sensorData: SensorValueBuilder.buildSensorData(pressureChannel, localizations: localizations),
+        sensorData: SensorUtils.buildSensorData(pressureChannel, localizations: localizations),
       ));
     }
 

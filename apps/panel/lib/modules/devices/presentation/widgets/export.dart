@@ -12,4 +12,4 @@ export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/senso
 export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_chart_painter.dart';
 export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_data.dart';
 export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_detail_content.dart';
-export 'package:fastybird_smart_panel/modules/devices/presentation/utils/sensor_value_builder.dart';
+export 'package:fastybird_smart_panel/modules/devices/presentation/utils/sensor_utils.dart';

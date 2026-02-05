@@ -52,7 +52,6 @@ import 'package:fastybird_smart_panel/api/models/devices_module_channel_category
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
-import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_banner.dart';
 import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
@@ -67,7 +66,7 @@ import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/deck_service.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/navigate_event.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/sensor_category.dart';
-import 'package:fastybird_smart_panel/modules/devices/presentation/utils/sensor_enum_utils.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/utils/sensor_utils.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/utils/sensor_freshness.dart';
 import 'package:fastybird_smart_panel/modules/devices/export.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_detail_page.dart';
@@ -364,42 +363,13 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     return SensorStatus.normal;
   }
 
-  static const _formatter = NumberFormatUtils.defaultFormat;
-
-  /// Get short label for binary sensor state (for tiles)
-  /// Check if a dynamic value represents a boolean true
-  static bool _isBooleanTrue(dynamic value) {
-    if (value is bool) return value;
-    final strValue = value.toString().toLowerCase();
-    if (strValue == 'true' || strValue == '1') return true;
-    return false;
-  }
-
-  /// Check if value looks like a boolean (true/false, 1/0)
-  static bool _looksLikeBoolean(dynamic value) {
-    if (value is bool) return true;
-    final strValue = value.toString().toLowerCase();
-    return strValue == 'true' || strValue == 'false' || strValue == '1' || strValue == '0';
-  }
 
   /// Format sensor value for display
   String _formatSensorValue(dynamic value, String channelCategory) {
-    if (value == null) return '--';
-
-    // Boolean sensors — store raw state; localized at display time
-    if (_looksLikeBoolean(value)) {
-      return _isBooleanTrue(value) ? 'true' : 'false';
-    }
-
-    // Numeric values
-    if (value is num) {
-      if (value is double) {
-        return _formatter.formatDecimal(value, decimalPlaces: 1);
-      }
-      return _formatter.formatInteger(value.toInt());
-    }
-
-    return value.toString();
+    return SensorUtils.formatRawValue(
+      value,
+      DevicesModuleChannelCategory.fromJson(channelCategory),
+    );
   }
 
 
@@ -907,7 +877,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
 
     if (env?.averageTemperature != null) {
       items.add((
-        name: '${_formatter.formatDecimal(env!.averageTemperature!, decimalPlaces: 1)}°C',
+        name: SensorUtils.formatNumericValueWithUnit(env!.averageTemperature!, DevicesModuleChannelCategory.temperature),
         status: localizations.sensors_domain_avg_temperature,
         icon: MdiIcons.thermometer,
         color: isDark ? AppColorsDark.info : AppColorsLight.info,
@@ -917,7 +887,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
 
     if (env?.averageHumidity != null) {
       items.add((
-        name: '${_formatter.formatInteger(env!.averageHumidity!.round())}%',
+        name: SensorUtils.formatNumericValueWithUnit(env!.averageHumidity!, DevicesModuleChannelCategory.humidity),
         status: localizations.sensors_domain_avg_humidity,
         icon: MdiIcons.waterPercent,
         color: isDark ? AppColorsDark.success : AppColorsLight.success,
@@ -927,7 +897,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
 
     if (env?.averageIlluminance != null) {
       items.add((
-        name: '${_formatter.formatInteger(env!.averageIlluminance!.round())} lux',
+        name: SensorUtils.formatNumericValueWithUnit(env!.averageIlluminance!, DevicesModuleChannelCategory.illuminance),
         status: localizations.sensor_label_illuminance,
         icon: MdiIcons.weatherSunny,
         color: isDark ? AppColorsDark.warning : AppColorsLight.warning,
@@ -935,7 +905,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
       ));
     } else if (env?.averagePressure != null) {
       items.add((
-        name: '${_formatter.formatInteger(env!.averagePressure!.round())} hPa',
+        name: SensorUtils.formatNumericValueWithUnit(env!.averagePressure!, DevicesModuleChannelCategory.pressure),
         status: localizations.sensor_label_pressure,
         icon: MdiIcons.gaugeEmpty,
         color: isDark ? AppColorsDark.info : AppColorsLight.info,
@@ -1225,7 +1195,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
                             ]
                           : [
                               TextSpan(
-                                text: SensorEnumUtils.translateSensorValue(
+                                text: SensorUtils.translateSensorValue(
                                   AppLocalizations.of(context)!,
                                   sensor.value,
                                   sensor.channelCategory,

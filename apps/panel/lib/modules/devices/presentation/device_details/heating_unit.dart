@@ -5,7 +5,7 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
-import 'package:fastybird_smart_panel/core/utils/number_format.dart';
+
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/circular_control_dial.dart';
@@ -23,7 +23,7 @@ import 'package:fastybird_smart_panel/modules/devices/models/property_command.da
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_colors.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_channel_detail_page.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_data.dart';
-import 'package:fastybird_smart_panel/modules/devices/presentation/utils/sensor_value_builder.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/utils/sensor_utils.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/channel.dart' show buildChannelIcon;
@@ -509,14 +509,11 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
     sensors.add(_SensorInfo(
       id: 'temperature',
       label: localizations.device_current_temperature,
-      value: NumberFormatUtils.defaultFormat.formatDecimal(
-        _currentTemperature,
-        decimalPlaces: 1,
-      ),
-      unit: '°C',
+      value: SensorUtils.formatNumericValue(_currentTemperature, temperatureChannel.category),
+      unit: SensorUtils.unitForCategory(temperatureChannel.category),
       icon: buildChannelIcon(temperatureChannel.category),
       themeColor: SensorColors.temperature,
-      sensorData: SensorValueBuilder.buildSensorData(temperatureChannel,
+      sensorData: SensorUtils.buildSensorData(temperatureChannel,
             localizations: localizations),
     ));
 
@@ -524,12 +521,11 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
       sensors.add(_SensorInfo(
         id: 'humidity',
         label: localizations.device_humidity,
-        value: NumberFormatUtils.defaultFormat
-            .formatInteger(humidityChannel.humidity),
-        unit: '%',
+        value: SensorUtils.formatNumericValue(humidityChannel.humidity, humidityChannel.category),
+        unit: SensorUtils.unitForCategory(humidityChannel.category),
         icon: buildChannelIcon(humidityChannel.category),
         themeColor: SensorColors.humidity,
-        sensorData: SensorValueBuilder.buildSensorData(humidityChannel,
+        sensorData: SensorUtils.buildSensorData(humidityChannel,
             localizations: localizations),
       ));
     }
@@ -539,13 +535,11 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
       sensors.add(_SensorInfo(
         id: 'contact',
         label: localizations.contact_sensor_window,
-        value: isOpen
-            ? localizations.contact_sensor_open
-            : localizations.contact_sensor_closed,
+        value: SensorUtils.translateBinaryState(localizations, contactChannel.category, isOpen),
         icon: isOpen ? MdiIcons.doorOpen : MdiIcons.doorClosed,
         themeColor: SensorColors.alert,
         isWarning: isOpen,
-        sensorData: SensorValueBuilder.buildSensorData(contactChannel,
+        sensorData: SensorUtils.buildSensorData(contactChannel,
             localizations: localizations),
       ));
     }

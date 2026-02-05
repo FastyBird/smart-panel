@@ -13,8 +13,7 @@ import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/senso
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_offline_overlay.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_data.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_detail_content.dart';
-import 'package:fastybird_smart_panel/modules/devices/presentation/utils/sensor_enum_utils.dart';
-import 'package:fastybird_smart_panel/modules/devices/presentation/utils/sensor_value_builder.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/utils/sensor_utils.dart';
 import 'package:fastybird_smart_panel/modules/devices/utils/value.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/battery.dart';
@@ -124,7 +123,7 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
   String _getSensorChannelStatus(BuildContext context, SensorData data) {
     if (data.isDetection != null) {
       final l = AppLocalizations.of(context)!;
-      return SensorEnumUtils.translateBinaryState(
+      return SensorUtils.translateBinaryState(
           l, data.channel.category, data.isDetection ?? false);
     }
     if (data.property != null && data.valueFormatter != null) {
@@ -264,22 +263,22 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
     final sensors = <SensorData>[];
 
     if (widget._device.hasTemperature) {
-      sensors.add(SensorValueBuilder.buildSensorData(
+      sensors.add(SensorUtils.buildSensorData(
           widget._device.temperatureChannel!));
     }
 
     if (widget._device.hasHumidity) {
-      sensors.add(SensorValueBuilder.buildSensorData(
+      sensors.add(SensorUtils.buildSensorData(
           widget._device.humidityChannel!));
     }
 
     if (widget._device.hasPressure) {
-      sensors.add(SensorValueBuilder.buildSensorData(
+      sensors.add(SensorUtils.buildSensorData(
           widget._device.pressureChannel!));
     }
 
     if (widget._device.hasIlluminance) {
-      sensors.add(SensorValueBuilder.buildSensorData(
+      sensors.add(SensorUtils.buildSensorData(
           widget._device.illuminanceChannel!));
     }
 
@@ -291,7 +290,7 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
 
     if (widget._device.hasCarbonDioxide) {
       final channel = widget._device.carbonDioxideChannel!;
-      sensors.add(SensorValueBuilder.buildSensorData(channel,
+      sensors.add(SensorUtils.buildSensorData(channel,
         isAlert: channel.detected,
         alertLabel: channel.detected ? 'High Level' : null,
       ));
@@ -299,7 +298,7 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
 
     if (widget._device.hasCarbonMonoxide) {
       final channel = widget._device.carbonMonoxideChannel!;
-      sensors.add(SensorValueBuilder.buildSensorData(channel,
+      sensors.add(SensorUtils.buildSensorData(channel,
         isAlert: channel.detected,
         alertLabel: channel.detected ? 'Detected' : null,
       ));
@@ -307,7 +306,7 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
 
     if (widget._device.hasOzone) {
       final channel = widget._device.ozoneChannel!;
-      sensors.add(SensorValueBuilder.buildSensorData(channel,
+      sensors.add(SensorUtils.buildSensorData(channel,
         isAlert: channel.detected,
         alertLabel: channel.detected ? 'High Level' : null,
       ));
@@ -315,7 +314,7 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
 
     if (widget._device.hasNitrogenDioxide) {
       final channel = widget._device.nitrogenDioxideChannel!;
-      sensors.add(SensorValueBuilder.buildSensorData(channel,
+      sensors.add(SensorUtils.buildSensorData(channel,
         isAlert: channel.detected,
         alertLabel: channel.detected ? 'High Level' : null,
       ));
@@ -323,7 +322,7 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
 
     if (widget._device.hasSulphurDioxide) {
       final channel = widget._device.sulphurDioxideChannel!;
-      sensors.add(SensorValueBuilder.buildSensorData(channel,
+      sensors.add(SensorUtils.buildSensorData(channel,
         isAlert: channel.detected,
         alertLabel: channel.detected ? 'High Level' : null,
       ));
@@ -331,14 +330,14 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
 
     if (widget._device.hasVolatileOrganicCompounds) {
       final channel = widget._device.volatileOrganicCompoundsChannel!;
-      sensors.add(SensorValueBuilder.buildSensorData(channel,
+      sensors.add(SensorUtils.buildSensorData(channel,
         isAlert: channel.detected,
         alertLabel: channel.detected ? 'High Level' : null,
       ));
     }
 
     if (widget._device.hasAirParticulate) {
-      sensors.add(SensorValueBuilder.buildSensorData(
+      sensors.add(SensorUtils.buildSensorData(
           widget._device.airParticulateChannel!));
     }
 
@@ -349,32 +348,32 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
     final sensors = <SensorData>[];
 
     if (widget._device.hasMotion) {
-      sensors.add(SensorValueBuilder.buildSensorData(
+      sensors.add(SensorUtils.buildSensorData(
           widget._device.motionChannel!));
     }
 
     if (widget._device.hasOccupancy) {
-      sensors.add(SensorValueBuilder.buildSensorData(
+      sensors.add(SensorUtils.buildSensorData(
           widget._device.occupancyChannel!));
     }
 
     if (widget._device.hasContact) {
       final channel = widget._device.contactChannel!;
-      sensors.add(SensorValueBuilder.buildSensorData(channel,
+      sensors.add(SensorUtils.buildSensorData(channel,
         icon: channel.detected ? MdiIcons.doorOpen : MdiIcons.doorClosed,
       ));
     }
 
     if (widget._device.hasLeak) {
       final channel = widget._device.leakChannel!;
-      sensors.add(SensorValueBuilder.buildSensorData(channel,
+      sensors.add(SensorUtils.buildSensorData(channel,
         isAlert: channel.detected,
       ));
     }
 
     if (widget._device.hasSmoke) {
       final channel = widget._device.smokeChannel!;
-      sensors.add(SensorValueBuilder.buildSensorData(channel,
+      sensors.add(SensorUtils.buildSensorData(channel,
         isAlert: channel.detected,
       ));
     }
@@ -387,7 +386,7 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
 
     if (widget._device.hasBattery) {
       final channel = widget._device.batteryChannel!;
-      sensors.add(SensorValueBuilder.buildSensorData(channel,
+      sensors.add(SensorUtils.buildSensorData(channel,
         icon: _getBatteryIcon(channel),
         isAlert: channel.isLow,
         alertLabel: channel.isCharging
@@ -467,7 +466,7 @@ class SensorDetailPage extends StatelessWidget {
         child: Column(
           children: [
             PageHeader(
-              title: SensorEnumUtils.translateSensorLabel(
+              title: SensorUtils.translateSensorLabel(
                   AppLocalizations.of(context)!, sensor.channel.category),
               subtitle: '$location • ${isOffline ? 'Offline' : 'Online'}',
               leading: Row(

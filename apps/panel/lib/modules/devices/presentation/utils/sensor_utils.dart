@@ -1,15 +1,334 @@
 import 'package:fastybird_smart_panel/api/models/devices_module_channel_category.dart';
 import 'package:fastybird_smart_panel/api/models/devices_module_property_category.dart';
+import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/devices/mappers/channel.dart'
+    show buildChannelIcon;
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_data.dart';
+import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
+import 'package:fastybird_smart_panel/modules/devices/utils/value.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/channels/view.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
+import 'package:flutter/material.dart';
 
-/// Translates sensor enum string values to localized labels.
+/// Unified sensor utilities — single source of truth for value formatting,
+/// unit strings, decimal scales, SensorData building, and enum/binary translation.
 ///
-/// Use [short] = true for compact tile display, false for detail/long display.
-/// Returns null if no translation is found (caller should fall back to raw value).
-class SensorEnumUtils {
-  SensorEnumUtils._();
+/// Merges the former [SensorValueBuilder] and [SensorEnumUtils] into one class,
+/// and adds centralized numeric formatting methods so device detail views and
+/// domain views no longer need inline [NumberFormatUtils] calls.
+class SensorUtils {
+  SensorUtils._();
 
+  static const _formatter = NumberFormatUtils.defaultFormat;
+
+  // ===========================================================================
+  // SECTION 1: Units per category
+  // ===========================================================================
+
+  /// Canonical display unit for a channel category.
+  ///
+  /// Returns an empty string for binary/enum-only categories (contact, leak, …).
+  static String unitForCategory(DevicesModuleChannelCategory category) {
+    switch (category) {
+      case DevicesModuleChannelCategory.temperature:
+        return '°C';
+      case DevicesModuleChannelCategory.humidity:
+        return '%';
+      case DevicesModuleChannelCategory.pressure:
+        return 'hPa';
+      case DevicesModuleChannelCategory.illuminance:
+        return 'lux';
+      case DevicesModuleChannelCategory.carbonDioxide:
+        return 'ppm';
+      case DevicesModuleChannelCategory.carbonMonoxide:
+        return 'ppm';
+      case DevicesModuleChannelCategory.airParticulate:
+        return 'µg/m³';
+      case DevicesModuleChannelCategory.nitrogenDioxide:
+        return 'µg/m³';
+      case DevicesModuleChannelCategory.ozone:
+        return 'µg/m³';
+      case DevicesModuleChannelCategory.sulphurDioxide:
+        return 'µg/m³';
+      case DevicesModuleChannelCategory.volatileOrganicCompounds:
+        return 'ppb';
+      case DevicesModuleChannelCategory.battery:
+        return '%';
+      case DevicesModuleChannelCategory.filter:
+        return '%';
+      case DevicesModuleChannelCategory.humidifier:
+        return '%';
+      case DevicesModuleChannelCategory.dehumidifier:
+        return '%';
+      default:
+        return '';
+    }
+  }
+
+  // ===========================================================================
+  // SECTION 2: Decimal scale per category
+  // ===========================================================================
+
+  /// Number of decimal places for numeric display of a channel category.
+  ///
+  /// Temperature, carbon monoxide, and pressure use 1 decimal place;
+  /// everything else uses 0 (integer display).
+  static int scaleForCategory(DevicesModuleChannelCategory category) {
+    switch (category) {
+      case DevicesModuleChannelCategory.temperature:
+      case DevicesModuleChannelCategory.carbonMonoxide:
+      case DevicesModuleChannelCategory.pressure:
+        return 1;
+      default:
+        return 0;
+    }
+  }
+
+  // ===========================================================================
+  // SECTION 3: Numeric formatting
+  // ===========================================================================
+
+  /// Format a numeric [value] using the scale for [category].
+  ///
+  /// Returns a locale-formatted string (e.g. "23,5" for temperature,
+  /// "1 013" for CO₂).
+  static String formatNumericValue(
+    num value,
+    DevicesModuleChannelCategory category,
+  ) {
+    final scale = scaleForCategory(category);
+    if (scale > 0) {
+      return _formatter.formatDecimal(value.toDouble(), decimalPlaces: scale);
+    }
+    return _formatter.formatInteger(value.toInt());
+  }
+
+  /// Format a numeric [value] with its unit appended (e.g. "23,5°C", "45%").
+  static String formatNumericValueWithUnit(
+    num value,
+    DevicesModuleChannelCategory category,
+  ) {
+    final formatted = formatNumericValue(value, category);
+    final unit = unitForCategory(category);
+    if (unit.isEmpty) return formatted;
+    return '$formatted$unit';
+  }
+
+  // ===========================================================================
+  // SECTION 4: Value formatter closure (for SensorData / SensorDetailContent)
+  // ===========================================================================
+
+  /// Returns a [valueFormatter] closure with the correct decimal places for
+  /// [category]. Equivalent to `(prop) => ValueUtils.formatValue(prop, scale)`.
+  static String? Function(ChannelPropertyView) valueFormatterForCategory(
+    DevicesModuleChannelCategory category,
+  ) {
+    final scale = scaleForCategory(category);
+    return (prop) => ValueUtils.formatValue(prop, scale);
+  }
+
+  // ===========================================================================
+  // SECTION 5: Raw value formatting (for domain views)
+  // ===========================================================================
+
+  /// Format a raw sensor value for display in domain views where data comes from
+  /// [SpaceStateRepository] rather than typed channel views.
+  ///
+  /// Handles null, boolean, numeric, and fallback-to-string cases.
+  static String formatRawValue(
+    dynamic value,
+    DevicesModuleChannelCategory? category,
+  ) {
+    if (value == null) return '--';
+
+    // Boolean sensors — store raw state; localized at display time
+    if (value is bool) return value ? 'true' : 'false';
+    if (value is String) {
+      final lower = value.toLowerCase();
+      if (lower == 'true' || lower == '1') return 'true';
+      if (lower == 'false' || lower == '0') return 'false';
+    }
+
+    if (value is num) {
+      if (category != null) {
+        return formatNumericValue(value, category);
+      }
+      // No category — use best-effort formatting
+      if (value is double) {
+        return _formatter.formatDecimal(value, decimalPlaces: 1);
+      }
+      return _formatter.formatInteger(value.toInt());
+    }
+
+    return value.toString();
+  }
+
+  // ===========================================================================
+  // SECTION 6: SensorData builder (from SensorValueBuilder)
+  // ===========================================================================
+
+  /// Builds a complete [SensorData] from a [ChannelView].
+  ///
+  /// Resolves the best property to display, sets the icon/label/formatter/
+  /// detection state automatically based on channel category. All fields can
+  /// be overridden for special cases (battery icon, contact icon, alert state).
+  ///
+  /// When [localizations] is provided, the label is localized via
+  /// [translateSensorLabel]. Otherwise the channel name or category json
+  /// identifier is used as a fallback.
+  static SensorData buildSensorData(
+    ChannelView channel, {
+    AppLocalizations? localizations,
+    String? label,
+    IconData? icon,
+    ChannelPropertyView? property,
+    String? Function(ChannelPropertyView)? valueFormatter,
+    bool? isDetection,
+    bool? isAlert,
+    String? alertLabel,
+  }) {
+    final category = channel.category;
+
+    // Resolve property: caller override → auto-resolved from channel
+    final resolvedProperty = property ?? _resolveProperty(channel);
+
+    // Resolve detection state
+    final resolvedIsDetection = isDetection ?? _resolveIsDetection(channel);
+
+    // Resolve label: caller override → localized → channel name → category json
+    final resolvedLabel = label ??
+        (localizations != null
+            ? translateSensorLabel(localizations, category)
+            : (channel.name.isNotEmpty
+                ? channel.name
+                : category.json ?? category.toString()));
+
+    return SensorData(
+      label: resolvedLabel,
+      icon: icon ?? buildChannelIcon(category),
+      channel: channel,
+      property: resolvedProperty,
+      valueFormatter:
+          resolvedIsDetection != null
+              ? null
+              : (valueFormatter ?? valueFormatterForCategory(category)),
+      isDetection: resolvedIsDetection,
+      isAlert: isAlert,
+      alertLabel: alertLabel,
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Property priority resolution (private)
+  // ---------------------------------------------------------------------------
+
+  /// Resolves the best property to display for a channel based on its category
+  /// and available properties. Returns `null` if no matching property found.
+  static ChannelPropertyView? _resolveProperty(ChannelView channel) {
+    final category = channel.category;
+
+    switch (category) {
+      // Environmental: single dedicated property
+      case DevicesModuleChannelCategory.temperature:
+        return _findProp(channel, DevicesModulePropertyCategory.temperature);
+      case DevicesModuleChannelCategory.humidity:
+        return _findProp(channel, DevicesModulePropertyCategory.humidity);
+      case DevicesModuleChannelCategory.pressure:
+        return _findProp(channel, DevicesModulePropertyCategory.pressure);
+      case DevicesModuleChannelCategory.illuminance:
+        return _findProp(channel, DevicesModulePropertyCategory.illuminance);
+
+      // Air quality: concentration > detected
+      case DevicesModuleChannelCategory.airParticulate:
+      case DevicesModuleChannelCategory.carbonDioxide:
+      case DevicesModuleChannelCategory.carbonMonoxide:
+      case DevicesModuleChannelCategory.nitrogenDioxide:
+        return _findProp(
+                channel, DevicesModulePropertyCategory.concentration) ??
+            _findProp(channel, DevicesModulePropertyCategory.detected);
+
+      // Gas sensors with level: level > concentration > detected
+      case DevicesModuleChannelCategory.volatileOrganicCompounds:
+      case DevicesModuleChannelCategory.ozone:
+      case DevicesModuleChannelCategory.sulphurDioxide:
+        return _findProp(channel, DevicesModulePropertyCategory.level) ??
+            _findProp(
+                channel, DevicesModulePropertyCategory.concentration) ??
+            _findProp(channel, DevicesModulePropertyCategory.detected);
+
+      // Detection-only sensors
+      case DevicesModuleChannelCategory.contact:
+      case DevicesModuleChannelCategory.leak:
+      case DevicesModuleChannelCategory.motion:
+      case DevicesModuleChannelCategory.occupancy:
+      case DevicesModuleChannelCategory.smoke:
+        return _findProp(channel, DevicesModulePropertyCategory.detected);
+
+      // Device info
+      case DevicesModuleChannelCategory.battery:
+        return _findProp(channel, DevicesModulePropertyCategory.percentage);
+      case DevicesModuleChannelCategory.filter:
+        return _findProp(
+                channel, DevicesModulePropertyCategory.lifeRemaining) ??
+            _findProp(channel, DevicesModulePropertyCategory.status);
+
+      default:
+        return channel.properties.isNotEmpty ? channel.properties.first : null;
+    }
+  }
+
+  /// Find a property by category in a channel's properties list.
+  static ChannelPropertyView? _findProp(
+    ChannelView channel,
+    DevicesModulePropertyCategory propCategory,
+  ) {
+    try {
+      return channel.properties.firstWhere((p) => p.category == propCategory);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Detection state resolution (private)
+  // ---------------------------------------------------------------------------
+
+  static const _detectionCategories = {
+    DevicesModuleChannelCategory.contact,
+    DevicesModuleChannelCategory.leak,
+    DevicesModuleChannelCategory.motion,
+    DevicesModuleChannelCategory.occupancy,
+    DevicesModuleChannelCategory.smoke,
+  };
+
+  /// Auto-resolves `isDetection` for detection-type channels by reading the
+  /// `detected` property value. Returns `null` for non-detection channels.
+  static bool? _resolveIsDetection(ChannelView channel) {
+    if (!_detectionCategories.contains(channel.category)) return null;
+
+    final detectedProp =
+        _findProp(channel, DevicesModulePropertyCategory.detected);
+    if (detectedProp == null) return null;
+
+    final value = detectedProp.value;
+    if (value is BooleanValueType) return value.value;
+    if (value is StringValueType) {
+      return value.value == 'true' || value.value == '1';
+    }
+
+    return false;
+  }
+
+  // ===========================================================================
+  // SECTION 7: Enum / Binary / Label translation (from SensorEnumUtils)
+  // ===========================================================================
+
+  /// Translates sensor enum string values to localized labels.
+  ///
+  /// Use [short] = true for compact tile display, false for detail/long display.
+  /// Returns null if no translation is found.
   static String? translate(
     AppLocalizations l,
     DevicesModuleChannelCategory channelCategory,
@@ -179,6 +498,18 @@ class SensorEnumUtils {
       default:
         return isActive ? l.sensor_state_active : l.sensor_state_inactive;
     }
+  }
+
+  /// Translate a [FilterStatusValue] enum to a localized label.
+  ///
+  /// Returns a placeholder when [status] is null.
+  static String translateFilterStatus(
+    AppLocalizations l,
+    FilterStatusValue? status, {
+    bool short = true,
+  }) {
+    if (status == null) return '--';
+    return _filterStatus(l, status.value, short: short) ?? status.value;
   }
 
   /// Parses a "true"/"false" string and delegates to [translateBinaryState].
@@ -365,6 +696,10 @@ class SensorEnumUtils {
         return null;
     }
   }
+
+  // ---------------------------------------------------------------------------
+  // Private enum translation methods
+  // ---------------------------------------------------------------------------
 
   static String? _airQualityLevel(AppLocalizations l, String v) {
     final parsed = AirQualityLevelValue.fromValue(v);

@@ -5,8 +5,8 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
-import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/api/models/devices_module_channel_category.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/circular_control_dial.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_landscape_layout.dart';
@@ -27,7 +27,7 @@ import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_colors.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_channel_detail_page.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_data.dart';
-import 'package:fastybird_smart_panel/modules/devices/presentation/utils/sensor_value_builder.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/utils/sensor_utils.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
 import 'package:fastybird_smart_panel/modules/devices/utils/fan_utils.dart';
 import 'package:fastybird_smart_panel/modules/devices/utils/humidifier_utils.dart';
@@ -841,13 +841,11 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
       sensors.add(_SensorInfo(
         id: 'leak',
         label: localizations.leak_sensor_water,
-        value: isLeaking
-            ? localizations.leak_sensor_detected
-            : localizations.leak_sensor_dry,
+        value: SensorUtils.translateBinaryState(localizations, leakChannel.category, isLeaking),
         icon: buildChannelIcon(leakChannel.category),
         valueThemeColor: SensorColors.alert,
         isWarning: isLeaking,
-        sensorData: SensorValueBuilder.buildSensorData(leakChannel,
+        sensorData: SensorUtils.buildSensorData(leakChannel,
           isAlert: leakChannel.detected,
           localizations: localizations,
         ),
@@ -864,11 +862,11 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
     sensors.add(_SensorInfo(
       id: 'humidity',
       label: localizations.device_humidity,
-      value: NumberFormatUtils.defaultFormat.formatInteger(currentHumidity),
-      unit: '%',
+      value: SensorUtils.formatNumericValue(currentHumidity, humidityChannel.category),
+      unit: SensorUtils.unitForCategory(humidityChannel.category),
       icon: buildChannelIcon(humidityChannel.category),
       valueThemeColor: SensorColors.humidity,
-      sensorData: SensorValueBuilder.buildSensorData(humidityChannel, localizations: localizations),
+      sensorData: SensorUtils.buildSensorData(humidityChannel, localizations: localizations),
     ));
 
     // Water tank level
@@ -876,8 +874,8 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
       sensors.add(_SensorInfo(
         id: 'water_tank',
         label: localizations.humidifier_water_tank,
-        value: NumberFormatUtils.defaultFormat.formatInteger(channel.waterTankLevel),
-        unit: '%',
+        value: SensorUtils.formatNumericValue(channel.waterTankLevel, DevicesModuleChannelCategory.humidifier),
+        unit: SensorUtils.unitForCategory(DevicesModuleChannelCategory.humidifier),
         icon: MdiIcons.cup,
         valueThemeColor: SensorColors.alert,
         isWarning: channel.waterTankWarning,
@@ -906,14 +904,11 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
       sensors.add(_SensorInfo(
         id: 'temperature',
         label: localizations.device_current_temperature,
-        value: NumberFormatUtils.defaultFormat.formatDecimal(
-          currentTemp,
-          decimalPlaces: 1,
-        ),
-        unit: '°C',
+        value: SensorUtils.formatNumericValue(currentTemp, tempChannel!.category),
+        unit: SensorUtils.unitForCategory(tempChannel.category),
         icon: buildChannelIcon(tempChannel!.category),
         valueThemeColor: SensorColors.temperature,
-        sensorData: SensorValueBuilder.buildSensorData(tempChannel, localizations: localizations),
+        sensorData: SensorUtils.buildSensorData(tempChannel, localizations: localizations),
       ));
     }
 

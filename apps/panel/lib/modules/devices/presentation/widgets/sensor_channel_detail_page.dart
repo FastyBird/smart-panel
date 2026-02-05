@@ -1,7 +1,7 @@
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
-import 'package:fastybird_smart_panel/modules/devices/presentation/utils/sensor_enum_utils.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/utils/sensor_utils.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_colors.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_data.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_detail_content.dart';
@@ -38,7 +38,7 @@ class SensorChannelDetailPage extends StatelessWidget {
         child: Column(
           children: [
             PageHeader(
-              title: SensorEnumUtils.translateSensorLabel(
+              title: SensorUtils.translateSensorLabel(
                   AppLocalizations.of(context)!, sensor.channel.category),
               subtitle: deviceName,
               leading: Row(

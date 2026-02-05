@@ -5,7 +5,7 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
-import 'package:fastybird_smart_panel/core/utils/number_format.dart';
+
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/circular_control_dial.dart';
@@ -26,11 +26,10 @@ import 'package:fastybird_smart_panel/modules/devices/models/property_command.da
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_colors.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_channel_detail_page.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_data.dart';
-import 'package:fastybird_smart_panel/modules/devices/presentation/utils/sensor_value_builder.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/utils/sensor_utils.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
 import 'package:fastybird_smart_panel/modules/devices/utils/fan_utils.dart';
-import 'package:fastybird_smart_panel/modules/devices/utils/filter_utils.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/channel.dart' show buildChannelIcon;
 import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/air_conditioner.dart';
@@ -987,14 +986,11 @@ class _AirConditionerDeviceDetailState
     sensors.add(_SensorInfo(
       id: 'temperature',
       label: localizations.device_current_temperature,
-      value: NumberFormatUtils.defaultFormat.formatDecimal(
-        _currentTemperature,
-        decimalPlaces: 1,
-      ),
-      unit: '°C',
+      value: SensorUtils.formatNumericValue(_currentTemperature, temperatureChannel.category),
+      unit: SensorUtils.unitForCategory(temperatureChannel.category),
       icon: buildChannelIcon(temperatureChannel.category),
       themeColor: SensorColors.temperature,
-      sensorData: SensorValueBuilder.buildSensorData(temperatureChannel,
+      sensorData: SensorUtils.buildSensorData(temperatureChannel,
             localizations: localizations),
     ));
 
@@ -1003,12 +999,11 @@ class _AirConditionerDeviceDetailState
       sensors.add(_SensorInfo(
         id: 'humidity',
         label: localizations.device_humidity,
-        value: NumberFormatUtils.defaultFormat
-            .formatInteger(humidityChannel.humidity),
-        unit: '%',
+        value: SensorUtils.formatNumericValue(humidityChannel.humidity, humidityChannel.category),
+        unit: SensorUtils.unitForCategory(humidityChannel.category),
         icon: buildChannelIcon(humidityChannel.category),
         themeColor: SensorColors.humidity,
-        sensorData: SensorValueBuilder.buildSensorData(humidityChannel,
+        sensorData: SensorUtils.buildSensorData(humidityChannel,
             localizations: localizations),
       ));
     }
@@ -1019,13 +1014,11 @@ class _AirConditionerDeviceDetailState
       sensors.add(_SensorInfo(
         id: 'contact',
         label: localizations.contact_sensor_window,
-        value: isOpen
-            ? localizations.contact_sensor_open
-            : localizations.contact_sensor_closed,
+        value: SensorUtils.translateBinaryState(localizations, contactChannel.category, isOpen),
         icon: isOpen ? MdiIcons.doorOpen : MdiIcons.doorClosed,
         themeColor: SensorColors.alert,
         isWarning: isOpen,
-        sensorData: SensorValueBuilder.buildSensorData(contactChannel,
+        sensorData: SensorUtils.buildSensorData(contactChannel,
             localizations: localizations),
       ));
     }
@@ -1036,13 +1029,11 @@ class _AirConditionerDeviceDetailState
       sensors.add(_SensorInfo(
         id: 'leak',
         label: localizations.leak_sensor_water,
-        value: isLeaking
-            ? localizations.leak_sensor_detected
-            : localizations.leak_sensor_dry,
+        value: SensorUtils.translateBinaryState(localizations, leakChannel.category, isLeaking),
         icon: buildChannelIcon(leakChannel.category),
         themeColor: SensorColors.alert,
         isWarning: isLeaking,
-        sensorData: SensorValueBuilder.buildSensorData(leakChannel,
+        sensorData: SensorUtils.buildSensorData(leakChannel,
           localizations: localizations,
           isAlert: leakChannel.detected,
         ),
@@ -1052,21 +1043,20 @@ class _AirConditionerDeviceDetailState
     // Filter (optional)
     if (filterChannel != null) {
       if (filterChannel.hasLifeRemaining) {
-        final filterLife = _device.filterLifeRemaining / 100.0;
         sensors.add(_SensorInfo(
           id: 'filter_life',
           label: localizations.device_filter_life,
-          value: '${(filterLife * 100).toInt()}',
-          unit: '%',
+          value: SensorUtils.formatNumericValue(_device.filterLifeRemaining, filterChannel.category),
+          unit: SensorUtils.unitForCategory(filterChannel.category),
           icon: buildChannelIcon(filterChannel.category),
           themeColor: SensorColors.filter,
-          isWarning: filterLife < 0.3 || _device.isFilterNeedsReplacement,
+          isWarning: _device.filterLifeRemaining < 30 || _device.isFilterNeedsReplacement,
         ));
       } else if (filterChannel.hasStatus) {
         sensors.add(_SensorInfo(
           id: 'filter_status',
           label: localizations.device_filter_status,
-          value: FilterUtils.getStatusLabel(localizations, filterChannel.status),
+          value: SensorUtils.translateFilterStatus(localizations, filterChannel.status),
           icon: buildChannelIcon(filterChannel.category),
           themeColor: SensorColors.filter,
           isWarning: _device.isFilterNeedsReplacement,

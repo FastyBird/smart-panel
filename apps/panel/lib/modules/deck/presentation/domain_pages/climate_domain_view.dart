@@ -58,7 +58,6 @@ import 'package:provider/provider.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
-import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/circular_control_dial.dart';
 import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
@@ -685,7 +684,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           id: 'state_temp',
           label: AppLocalizations.of(context)!.device_current_temperature,
           value:
-              '${NumberFormatUtils.defaultFormat.formatDecimal(climateState!.currentTemperature!, decimalPlaces: 1)}°C',
+              SensorUtils.formatNumericValueWithUnit(climateState!.currentTemperature!, DevicesModuleChannelCategory.temperature),
           type: DevicesModuleChannelCategory.temperature,
           isOnline: true,
         ),
@@ -700,7 +699,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           id: 'state_humidity',
           label: AppLocalizations.of(context)!.device_humidity,
           value:
-              '${NumberFormatUtils.defaultFormat.formatInteger(climateState!.currentHumidity!.toInt())}%',
+              SensorUtils.formatNumericValueWithUnit(climateState!.currentHumidity!, DevicesModuleChannelCategory.humidity),
           type: DevicesModuleChannelCategory.humidity,
           isOnline: true,
         ),
@@ -740,24 +739,24 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         if (device is ThermostatDeviceView) {
           final ch = device.temperatureChannel;
           tempValue = ch.temperature;
-          tempSensorData = SensorValueBuilder.buildSensorData(ch);
+          tempSensorData = SensorUtils.buildSensorData(ch);
         } else if (device is HeatingUnitDeviceView) {
           final ch = device.temperatureChannel;
           tempValue = ch.temperature;
-          tempSensorData = SensorValueBuilder.buildSensorData(ch);
+          tempSensorData = SensorUtils.buildSensorData(ch);
         } else if (device is WaterHeaterDeviceView) {
           final ch = device.temperatureChannel;
           tempValue = ch.temperature;
-          tempSensorData = SensorValueBuilder.buildSensorData(ch);
+          tempSensorData = SensorUtils.buildSensorData(ch);
         } else if (device is AirConditionerDeviceView) {
           final ch = device.temperatureChannel;
           tempValue = ch.temperature;
-          tempSensorData = SensorValueBuilder.buildSensorData(ch);
+          tempSensorData = SensorUtils.buildSensorData(ch);
         } else if (device is SensorDeviceView) {
           final ch = device.temperatureChannel;
           tempValue = ch?.temperature;
           if (ch != null) {
-            tempSensorData = SensorValueBuilder.buildSensorData(ch);
+            tempSensorData = SensorUtils.buildSensorData(ch);
           }
         }
 
@@ -766,7 +765,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             id: '${target.id}_temp',
             label: target.displayName,
             value:
-                '${NumberFormatUtils.defaultFormat.formatDecimal(tempValue, decimalPlaces: 1)}°C',
+                SensorUtils.formatNumericValueWithUnit(tempValue, DevicesModuleChannelCategory.temperature),
             type: DevicesModuleChannelCategory.temperature,
             isOnline: device.isOnline,
             sensorData: tempSensorData,
@@ -783,31 +782,31 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           final ch = device.humidityChannel;
           humidityValue = ch?.humidity.toDouble();
           if (ch != null) {
-            humiditySensorData = SensorValueBuilder.buildSensorData(ch);
+            humiditySensorData = SensorUtils.buildSensorData(ch);
           }
         } else if (device is HeatingUnitDeviceView) {
           final ch = device.humidityChannel;
           humidityValue = ch?.humidity.toDouble();
           if (ch != null) {
-            humiditySensorData = SensorValueBuilder.buildSensorData(ch);
+            humiditySensorData = SensorUtils.buildSensorData(ch);
           }
         } else if (device is WaterHeaterDeviceView) {
           final ch = device.humidityChannel;
           humidityValue = ch?.humidity.toDouble();
           if (ch != null) {
-            humiditySensorData = SensorValueBuilder.buildSensorData(ch);
+            humiditySensorData = SensorUtils.buildSensorData(ch);
           }
         } else if (device is AirConditionerDeviceView) {
           final ch = device.humidityChannel;
           humidityValue = ch?.humidity.toDouble();
           if (ch != null) {
-            humiditySensorData = SensorValueBuilder.buildSensorData(ch);
+            humiditySensorData = SensorUtils.buildSensorData(ch);
           }
         } else if (device is SensorDeviceView) {
           final ch = device.humidityChannel;
           humidityValue = ch?.humidity.toDouble();
           if (ch != null) {
-            humiditySensorData = SensorValueBuilder.buildSensorData(ch);
+            humiditySensorData = SensorUtils.buildSensorData(ch);
           }
         }
 
@@ -816,7 +815,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             id: '${target.id}_humidity',
             label: target.displayName,
             value:
-                '${NumberFormatUtils.defaultFormat.formatInteger(humidityValue.toInt())}%',
+                SensorUtils.formatNumericValueWithUnit(humidityValue, DevicesModuleChannelCategory.humidity),
             type: DevicesModuleChannelCategory.humidity,
             isOnline: device.isOnline,
             sensorData: humiditySensorData,
@@ -843,7 +842,6 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     ClimateTargetView target,
     List<ClimateSensor> sensors,
   ) {
-    final formatter = NumberFormatUtils.defaultFormat;
 
     // Air Quality Index (AQI)
     if (target.hasAirQuality) {
@@ -853,7 +851,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         sensors.add(ClimateSensor(
           id: '${target.id}_aqi',
           label: target.displayName,
-          value: formatter.formatInteger(device.airQualityChannel!.aqi),
+          value: SensorUtils.formatNumericValue(device.airQualityChannel!.aqi, DevicesModuleChannelCategory.airQuality),
           type: DevicesModuleChannelCategory.airQuality,
           isOnline: device.isOnline,
         ));
@@ -869,10 +867,10 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             id: '${target.id}_pm',
             label: target.displayName,
             value:
-                '${formatter.formatInteger(pmChannel.concentration.toInt())} µg/m³',
+                SensorUtils.formatNumericValueWithUnit(pmChannel.concentration, DevicesModuleChannelCategory.airParticulate),
             type: DevicesModuleChannelCategory.airParticulate,
             isOnline: device.isOnline,
-            sensorData: SensorValueBuilder.buildSensorData(pmChannel),
+            sensorData: SensorUtils.buildSensorData(pmChannel),
             deviceName: device.name,
           ));
         }
@@ -884,10 +882,10 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             id: '${target.id}_pm',
             label: target.displayName,
             value:
-                '${formatter.formatInteger(pmChannel.concentration.toInt())} µg/m³',
+                SensorUtils.formatNumericValueWithUnit(pmChannel.concentration, DevicesModuleChannelCategory.airParticulate),
             type: DevicesModuleChannelCategory.airParticulate,
             isOnline: device.isOnline,
-            sensorData: SensorValueBuilder.buildSensorData(pmChannel),
+            sensorData: SensorUtils.buildSensorData(pmChannel),
             deviceName: device.name,
           ));
         }
@@ -902,10 +900,10 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           sensors.add(ClimateSensor(
             id: '${target.id}_co2',
             label: target.displayName,
-            value: '${formatter.formatInteger(co2Channel.concentration.toInt())} ppm',
+            value: SensorUtils.formatNumericValueWithUnit(co2Channel.concentration, DevicesModuleChannelCategory.carbonDioxide),
             type: DevicesModuleChannelCategory.carbonDioxide,
             isOnline: device.isOnline,
-            sensorData: SensorValueBuilder.buildSensorData(co2Channel),
+            sensorData: SensorUtils.buildSensorData(co2Channel),
             deviceName: device.name,
           ));
         }
@@ -916,10 +914,10 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           sensors.add(ClimateSensor(
             id: '${target.id}_co2',
             label: target.displayName,
-            value: '${formatter.formatInteger(co2Channel.concentration.toInt())} ppm',
+            value: SensorUtils.formatNumericValueWithUnit(co2Channel.concentration, DevicesModuleChannelCategory.carbonDioxide),
             type: DevicesModuleChannelCategory.carbonDioxide,
             isOnline: device.isOnline,
-            sensorData: SensorValueBuilder.buildSensorData(co2Channel),
+            sensorData: SensorUtils.buildSensorData(co2Channel),
             deviceName: device.name,
           ));
         }
@@ -935,10 +933,10 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           sensors.add(ClimateSensor(
             id: '${target.id}_voc',
             label: target.displayName,
-            value: '${formatter.formatInteger(vocChannel.concentration.toInt())} ppb',
+            value: SensorUtils.formatNumericValueWithUnit(vocChannel.concentration, DevicesModuleChannelCategory.volatileOrganicCompounds),
             type: DevicesModuleChannelCategory.volatileOrganicCompounds,
             isOnline: device.isOnline,
-            sensorData: SensorValueBuilder.buildSensorData(vocChannel),
+            sensorData: SensorUtils.buildSensorData(vocChannel),
             deviceName: device.name,
           ));
         }
@@ -949,10 +947,10 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           sensors.add(ClimateSensor(
             id: '${target.id}_voc',
             label: target.displayName,
-            value: '${formatter.formatInteger(vocChannel.concentration.toInt())} ppb',
+            value: SensorUtils.formatNumericValueWithUnit(vocChannel.concentration, DevicesModuleChannelCategory.volatileOrganicCompounds),
             type: DevicesModuleChannelCategory.volatileOrganicCompounds,
             isOnline: device.isOnline,
-            sensorData: SensorValueBuilder.buildSensorData(vocChannel),
+            sensorData: SensorUtils.buildSensorData(vocChannel),
             deviceName: device.name,
           ));
         }
@@ -967,10 +965,10 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           id: '${target.id}_pressure',
           label: target.displayName,
           value:
-              '${formatter.formatInteger(pressureChannel.pressure.toInt())} hPa',
+              SensorUtils.formatNumericValueWithUnit(pressureChannel.pressure, DevicesModuleChannelCategory.pressure),
           type: DevicesModuleChannelCategory.pressure,
           isOnline: device.isOnline,
-          sensorData: SensorValueBuilder.buildSensorData(pressureChannel),
+          sensorData: SensorUtils.buildSensorData(pressureChannel),
           deviceName: device.name,
         ));
       }

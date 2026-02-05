@@ -4,7 +4,7 @@ import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
-import 'package:fastybird_smart_panel/modules/devices/presentation/utils/sensor_enum_utils.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/utils/sensor_utils.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_colors.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_landscape_layout.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_portrait_layout.dart';
@@ -202,7 +202,7 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isCompact = _screenService.isSmallScreen;
     final localizations = AppLocalizations.of(context)!;
-    final displayValue = SensorEnumUtils.translateSensorValue(
+    final displayValue = SensorUtils.translateSensorValue(
       localizations,
       _currentValue,
       widget.sensor.channel.category,
@@ -240,7 +240,7 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
         AppSpacings.spacingSmVertical,
         Text(
           localizations.sensor_ui_current_value(
-            SensorEnumUtils.translateSensorLabel(
+            SensorUtils.translateSensorLabel(
                 localizations, widget.sensor.channel.category),
           ),
           style: TextStyle(
@@ -536,7 +536,7 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
       itemBuilder: (context, index) {
         final point = reversedEvents[index];
         final isActive = point.numericValue >= 0.5;
-        final stateLabel = SensorEnumUtils.translateBinaryState(
+        final stateLabel = SensorUtils.translateBinaryState(
             localizations, category, isActive, short: false);
         final dangerColor =
             isDark ? AppColorsDark.danger : AppColorsLight.danger;
