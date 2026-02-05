@@ -96,7 +96,6 @@ jest.mock('../../../spec/channels', () => {
 	const common = (format?: any) => ({
 		permissions: ['r', 'w'] as any as PermissionType[],
 		data_type: 'string' as any as DataTypeType,
-		unit: null,
 		format: format ?? null,
 	});
 

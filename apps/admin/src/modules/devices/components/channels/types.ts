@@ -9,7 +9,7 @@ export * from './channel-property-form-invalid.types';
 export * from './channel-property-form-min-max.types';
 export * from './channel-property-form-permissions.types';
 export * from './channel-property-form-step.types';
-export * from './channel-property-form-unit.types';
+
 export * from './channels-filter.types';
 export * from './channels-properties-filter.types';
 export * from './channels-properties-table.types';

@@ -442,7 +442,6 @@ export class ChannelPropertyEntity extends BaseEntity {
 	@Expose()
 	@IsOptional()
 	@IsString()
-	@Column({ nullable: true })
 	unit: string | null;
 
 	@ApiPropertyOptional({

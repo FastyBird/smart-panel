@@ -375,7 +375,6 @@ export class Z2mMappingPreviewService {
 					z2mProperty: prop.z2mProperty,
 					dataType: prop.dataType,
 					permissions: prop.permissions,
-					unit: prop.unit ?? null,
 					format: prop.format ?? null,
 					required: propSpec?.required ?? false,
 					currentValue: this.getCurrentValue(exposeName, currentState, prop.category),
@@ -422,7 +421,6 @@ export class Z2mMappingPreviewService {
 									z2mProperty: `fb.virtual.${vp.category}`, // Virtual marker
 									dataType: vp.dataType,
 									permissions: vp.permissions,
-									unit: vp.unit ?? null,
 									format: vp.format ?? null,
 									required: true,
 									currentValue: vp.value,

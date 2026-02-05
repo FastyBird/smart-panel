@@ -128,7 +128,6 @@ export class DevicesServiceSubscriber {
 						category,
 						permissions: spec.permissions,
 						data_type: spec.data_type,
-						unit: spec.unit,
 						format: spec.format,
 						invalid: spec.invalid,
 						step: spec.step,

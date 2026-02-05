@@ -79,7 +79,6 @@ export const transformAdoptHelperRequest = (data: IAdoptDeviceRequest): object =
 				ha_attribute: prop.haAttribute,
 				data_type: prop.dataType,
 				permissions: prop.permissions,
-				unit: prop.unit ?? null,
 				format: prop.format ?? null,
 				ha_transformer: prop.haTransformer ?? null,
 			})),

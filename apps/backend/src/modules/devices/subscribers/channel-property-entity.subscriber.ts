@@ -7,6 +7,7 @@ import { DEVICES_MODULE_NAME } from '../devices.constants';
 import { ChannelEntity, ChannelPropertyEntity } from '../entities/devices.entity';
 import { DeviceConnectionStateService } from '../services/device-connection-state.service';
 import { PropertyValueService } from '../services/property-value.service';
+import { getPropertyMetadata } from '../utils/schema.utils';
 
 @Injectable()
 export class ChannelPropertyEntitySubscriber implements EntitySubscriberInterface<ChannelPropertyEntity> {
@@ -45,6 +46,9 @@ export class ChannelPropertyEntitySubscriber implements EntitySubscriberInterfac
 	async afterLoad(entity: ChannelPropertyEntity): Promise<void> {
 		const resourceId = this.getResourceId(entity.channel, entity.id);
 
+		// Populate unit from spec based on channel category and property category
+		entity.unit = this.resolveUnitFromSpec(entity);
+
 		try {
 			entity.value = await this.propertyValueService.readLatest(entity);
 
@@ -59,6 +63,35 @@ export class ChannelPropertyEntitySubscriber implements EntitySubscriberInterfac
 				stack: err.stack,
 			});
 		}
+	}
+
+	/**
+	 * Resolve the unit for a property from the spec based on its channel category and property category.
+	 * For multi-datatype properties, matches the entity's dataType to the correct variant.
+	 */
+	private resolveUnitFromSpec(entity: ChannelPropertyEntity): string | null {
+		const channel = entity.channel;
+
+		if (!channel || typeof channel === 'string') {
+			return null;
+		}
+
+		const metadata = getPropertyMetadata(channel.category, entity.category);
+
+		if (!metadata) {
+			return null;
+		}
+
+		// For multi-datatype properties, find the variant matching the entity's dataType
+		if (metadata.hasMultipleDataTypes && metadata.dataTypeVariants) {
+			const matchingVariant = metadata.dataTypeVariants.find((v) => v.data_type === entity.dataType);
+
+			if (matchingVariant) {
+				return matchingVariant.unit;
+			}
+		}
+
+		return metadata.unit;
 	}
 
 	beforeUpdate(event: UpdateEvent<ChannelPropertyEntity>): void {

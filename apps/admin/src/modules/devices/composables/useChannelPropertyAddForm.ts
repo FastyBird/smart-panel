@@ -113,7 +113,6 @@ export const useChannelPropertyAddForm = <TForm extends IChannelPropertyAddForm 
 		name: '',
 		permissions: [] as DevicesModuleChannelPropertyPermissions[],
 		dataType: DevicesModuleChannelPropertyDataType.unknown,
-		unit: null,
 		format: null,
 		invalid: null,
 		step: null,
@@ -259,10 +258,8 @@ export const useChannelPropertyAddForm = <TForm extends IChannelPropertyAddForm 
 
 			initialModel.permissions = spec.permissions;
 			initialModel.dataType = spec.data_type;
-			initialModel.unit = spec.unit;
 			model.permissions = spec.permissions;
 			model.dataType = spec.data_type;
-			model.unit = spec.unit;
 
 			if (typeof spec.invalid !== 'undefined') {
 				initialModel.invalid = spec.invalid;

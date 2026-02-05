@@ -9,7 +9,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -27,7 +26,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -45,7 +43,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -63,7 +60,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -82,7 +78,6 @@
       "ev"
     ],
     "data_type": "enum",
-    "unit": null,
     "format": [
       "connected",
       "disconnected",
@@ -105,7 +100,6 @@
       "rw"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -123,7 +117,6 @@
       "rw"
     ],
     "data_type": "enum",
-    "unit": null,
     "format": [
       "heat",
       "auto",
@@ -145,7 +138,6 @@
       "rw"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -163,7 +155,6 @@
       "ro"
     ],
     "data_type": "enum",
-    "unit": null,
     "format": [
       "celsius",
       "fahrenheit"
@@ -184,7 +175,6 @@
       "ro"
     ],
     "data_type": "float",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -202,7 +192,6 @@
       "ro"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -220,7 +209,6 @@
       "ro"
     ],
     "data_type": "uchar",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -238,7 +226,6 @@
       "ro"
     ],
     "data_type": "uchar",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -256,7 +243,6 @@
       "ro"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -274,7 +260,6 @@
       "ro"
     ],
     "data_type": "uchar",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -292,7 +277,6 @@
       "ro"
     ],
     "data_type": "float",
-    "unit": null,
     "format": [
       15,
       33
@@ -313,7 +297,6 @@
       "ro"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -331,7 +314,6 @@
       "ro"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -349,7 +331,6 @@
       "ro"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -367,7 +348,6 @@
       "ro"
     ],
     "data_type": "uchar",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -385,7 +365,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -403,7 +382,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -421,7 +399,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -439,7 +416,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -458,7 +434,6 @@
       "ev"
     ],
     "data_type": "enum",
-    "unit": null,
     "format": [
       "connected",
       "disconnected",
@@ -482,7 +457,6 @@
       "ev"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "step": null,
@@ -500,7 +474,6 @@
       "ev"
     ],
     "data_type": "uchar",
-    "unit": "%",
     "format": [
       0,
       100
@@ -521,7 +494,6 @@
       "ev"
     ],
     "data_type": "uchar",
-    "unit": null,
     "format": [
       0,
       255
@@ -542,7 +514,6 @@
       "ev"
     ],
     "data_type": "uchar",
-    "unit": null,
     "format": [
       0,
       255
@@ -563,7 +534,6 @@
       "ev"
     ],
     "data_type": "uchar",
-    "unit": null,
     "format": [
       0,
       255
@@ -584,7 +554,6 @@
       "ev"
     ],
     "data_type": "uchar",
-    "unit": null,
     "format": [
       0,
       255
@@ -604,7 +573,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -622,7 +590,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -640,7 +607,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -658,7 +624,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -677,7 +642,6 @@
       "ev"
     ],
     "data_type": "enum",
-    "unit": null,
     "format": [
       "connected",
       "disconnected",
@@ -701,7 +665,6 @@
       "ev"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "step": null,
@@ -719,7 +682,6 @@
       "ev"
     ],
     "data_type": "uchar",
-    "unit": "%",
     "format": [
       0,
       100
@@ -740,7 +702,6 @@
       "ev"
     ],
     "data_type": "uchar",
-    "unit": null,
     "format": [
       0,
       360
@@ -761,7 +722,6 @@
       "ev"
     ],
     "data_type": "uchar",
-    "unit": "%",
     "format": [
       0,
       100
@@ -782,7 +742,6 @@
       "ev"
     ],
     "data_type": "uchar",
-    "unit": null,
     "format": [
       0,
       255
@@ -802,7 +761,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -820,7 +778,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -838,7 +795,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -856,7 +812,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -875,7 +830,6 @@
       "ev"
     ],
     "data_type": "enum",
-    "unit": null,
     "format": [
       "connected",
       "disconnected",
@@ -899,7 +853,6 @@
       "ev"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "step": null,
@@ -916,7 +869,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -934,7 +886,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -952,7 +903,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -970,7 +920,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -989,7 +938,6 @@
       "ev"
     ],
     "data_type": "enum",
-    "unit": null,
     "format": [
       "connected",
       "disconnected",
@@ -1013,7 +961,6 @@
       "ev"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "step": null,
@@ -1031,7 +978,6 @@
       "ev"
     ],
     "data_type": "uchar",
-    "unit": "%",
     "format": [
       0,
       100
@@ -1051,7 +997,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -1069,7 +1014,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -1087,7 +1031,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -1105,7 +1048,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -1124,7 +1066,6 @@
       "ev"
     ],
     "data_type": "enum",
-    "unit": null,
     "format": [
       "connected",
       "disconnected",
@@ -1148,7 +1089,6 @@
       "ev"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "step": null,
@@ -1166,7 +1106,6 @@
       "ev"
     ],
     "data_type": "uchar",
-    "unit": "%",
     "format": [
       0,
       100
@@ -1186,7 +1125,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -1204,7 +1142,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -1222,7 +1159,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -1240,7 +1176,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -1259,7 +1194,6 @@
       "ev"
     ],
     "data_type": "enum",
-    "unit": null,
     "format": [
       "connected",
       "disconnected",
@@ -1283,7 +1217,6 @@
       "ev"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "step": null,
@@ -1301,7 +1234,6 @@
       "ev"
     ],
     "data_type": "uchar",
-    "unit": "%",
     "format": [
       0,
       100
@@ -1321,7 +1253,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -1339,7 +1270,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -1357,7 +1287,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -1375,7 +1304,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -1394,7 +1322,6 @@
       "ev"
     ],
     "data_type": "enum",
-    "unit": null,
     "format": [
       "connected",
       "disconnected",
@@ -1418,7 +1345,6 @@
       "ev"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "step": null,
@@ -1436,7 +1362,6 @@
       "ev"
     ],
     "data_type": "uchar",
-    "unit": "%",
     "format": [
       0,
       100
@@ -1456,7 +1381,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -1474,7 +1398,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -1492,7 +1415,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -1510,7 +1432,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -1529,7 +1450,6 @@
       "ev"
     ],
     "data_type": "enum",
-    "unit": null,
     "format": [
       "connected",
       "disconnected",
@@ -1553,7 +1473,6 @@
       "ev"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "step": null,
@@ -1571,7 +1490,6 @@
       "ev"
     ],
     "data_type": "uchar",
-    "unit": null,
     "format": [
       0,
       100
@@ -1592,7 +1510,6 @@
       "ev"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "step": null,
@@ -1610,7 +1527,6 @@
       "ev"
     ],
     "data_type": "uchar",
-    "unit": null,
     "format": [
       0,
       100
@@ -1630,7 +1546,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -1648,7 +1563,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -1666,7 +1580,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -1684,7 +1597,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -1703,7 +1615,6 @@
       "ev"
     ],
     "data_type": "enum",
-    "unit": null,
     "format": [
       "connected",
       "disconnected",
@@ -1726,7 +1637,6 @@
       "ro"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -1744,7 +1654,6 @@
       "ro"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -1762,7 +1671,6 @@
       "ro"
     ],
     "data_type": "uchar",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -1780,7 +1688,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -1798,7 +1705,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -1816,7 +1722,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -1834,7 +1739,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -1853,7 +1757,6 @@
       "ev"
     ],
     "data_type": "enum",
-    "unit": null,
     "format": [
       "connected",
       "disconnected",
@@ -1877,7 +1780,6 @@
       "ev"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "step": null,
@@ -1895,7 +1797,6 @@
       "ev"
     ],
     "data_type": "uchar",
-    "unit": null,
     "format": [
       0,
       100
@@ -1916,7 +1817,6 @@
       "ev"
     ],
     "data_type": "enum",
-    "unit": null,
     "format": [
       "tv",
       "hdmi-1",
@@ -1939,7 +1839,6 @@
       "ev"
     ],
     "data_type": "enum",
-    "unit": null,
     "format": [
       "rewind",
       "fast-forward",
@@ -1972,7 +1871,6 @@
       "ev"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": [
       0,
       100
@@ -1993,7 +1891,6 @@
       "ev"
     ],
     "data_type": "uchar",
-    "unit": null,
     "format": [
       0,
       100
@@ -2013,7 +1910,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -2031,7 +1927,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -2049,7 +1944,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -2067,7 +1961,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -2086,7 +1979,6 @@
       "ev"
     ],
     "data_type": "enum",
-    "unit": null,
     "format": [
       "connected",
       "disconnected",
@@ -2109,7 +2001,6 @@
       "rw"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -2127,7 +2018,6 @@
       "ro"
     ],
     "data_type": "enum",
-    "unit": null,
     "format": [
       "idle",
       "cleaning",
@@ -2152,7 +2042,6 @@
       "rw"
     ],
     "data_type": "enum",
-    "unit": null,
     "format": [
       "auto",
       "spot",
@@ -2174,7 +2063,6 @@
       "ro"
     ],
     "data_type": "uchar",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -2192,7 +2080,6 @@
       "ro"
     ],
     "data_type": "uchar",
-    "unit": null,
     "format": [
       0,
       100
@@ -2213,7 +2100,6 @@
       "ro"
     ],
     "data_type": "enum",
-    "unit": null,
     "format": [
       "ok",
       "low",
@@ -2235,7 +2121,6 @@
       "ro"
     ],
     "data_type": "uchar",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -2253,7 +2138,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -2271,7 +2155,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -2289,7 +2172,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -2307,7 +2189,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -2326,7 +2207,6 @@
       "ev"
     ],
     "data_type": "enum",
-    "unit": null,
     "format": [
       "connected",
       "disconnected",
@@ -2349,7 +2229,6 @@
       "ro"
     ],
     "data_type": "float",
-    "unit": null,
     "format": [
       15,
       33
@@ -2370,7 +2249,6 @@
       "ro"
     ],
     "data_type": "uchar",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -2388,7 +2266,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -2406,7 +2283,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -2424,7 +2300,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -2442,7 +2317,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -2461,7 +2335,6 @@
       "ev"
     ],
     "data_type": "enum",
-    "unit": null,
     "format": [
       "connected",
       "disconnected",
@@ -2484,7 +2357,6 @@
       "ro"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -2502,7 +2374,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -2520,7 +2391,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -2538,7 +2408,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -2556,7 +2425,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -2575,7 +2443,6 @@
       "ev"
     ],
     "data_type": "enum",
-    "unit": null,
     "format": [
       "connected",
       "disconnected",
@@ -2598,7 +2465,6 @@
       "ro"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -2616,7 +2482,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -2634,7 +2499,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -2652,7 +2516,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -2670,7 +2533,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -2689,7 +2551,6 @@
       "ev"
     ],
     "data_type": "enum",
-    "unit": null,
     "format": [
       "connected",
       "disconnected",
@@ -2712,7 +2573,6 @@
       "ro"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -2730,7 +2590,6 @@
       "ro"
     ],
     "data_type": "enum",
-    "unit": null,
     "format": [
       "open",
       "closed",
@@ -2754,7 +2613,6 @@
       "ro"
     ],
     "data_type": "enum",
-    "unit": null,
     "format": [
       "open",
       "close",
@@ -2776,7 +2634,6 @@
       "ro"
     ],
     "data_type": "enum",
-    "unit": null,
     "format": [
       "curtain",
       "blind",
@@ -2799,7 +2656,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -2817,7 +2673,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -2835,7 +2690,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -2853,7 +2707,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -2872,7 +2725,6 @@
       "ev"
     ],
     "data_type": "enum",
-    "unit": null,
     "format": [
       "connected",
       "disconnected",
@@ -2895,7 +2747,6 @@
       "ro"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -2913,7 +2764,6 @@
       "ro"
     ],
     "data_type": "enum",
-    "unit": null,
     "format": [
       "open",
       "closed",
@@ -2937,7 +2787,6 @@
       "ro"
     ],
     "data_type": "enum",
-    "unit": null,
     "format": [
       "open",
       "close",
@@ -2959,7 +2808,6 @@
       "ro"
     ],
     "data_type": "enum",
-    "unit": null,
     "format": [
       "curtain",
       "blind",
@@ -2982,7 +2830,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -3000,7 +2847,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -3018,7 +2864,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -3036,7 +2881,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -3055,7 +2899,6 @@
       "ev"
     ],
     "data_type": "enum",
-    "unit": null,
     "format": [
       "connected",
       "disconnected",
@@ -3078,7 +2921,6 @@
       "rw"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -3096,7 +2938,6 @@
       "rw"
     ],
     "data_type": "enum",
-    "unit": null,
     "format": [
       "heat",
       "auto",
@@ -3118,7 +2959,6 @@
       "rw"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -3136,7 +2976,6 @@
       "ro"
     ],
     "data_type": "enum",
-    "unit": null,
     "format": [
       "celsius",
       "fahrenheit"
@@ -3157,7 +2996,6 @@
       "ro"
     ],
     "data_type": "float",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -3175,7 +3013,6 @@
       "ro"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -3193,7 +3030,6 @@
       "ro"
     ],
     "data_type": "uchar",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -3211,7 +3047,6 @@
       "ro"
     ],
     "data_type": "uchar",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -3229,7 +3064,6 @@
       "ro"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -3247,7 +3081,6 @@
       "ro"
     ],
     "data_type": "uchar",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -3265,7 +3098,6 @@
       "ro"
     ],
     "data_type": "float",
-    "unit": null,
     "format": [
       15,
       33
@@ -3286,7 +3118,6 @@
       "ro"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -3304,7 +3135,6 @@
       "ro"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -3322,7 +3152,6 @@
       "ro"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -3340,7 +3169,6 @@
       "ro"
     ],
     "data_type": "uchar",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -3358,7 +3186,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -3376,7 +3203,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -3394,7 +3220,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -3412,7 +3237,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -3431,7 +3255,6 @@
       "ev"
     ],
     "data_type": "enum",
-    "unit": null,
     "format": [
       "connected",
       "disconnected",
@@ -3454,7 +3277,6 @@
       "rw"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -3472,7 +3294,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -3490,7 +3311,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -3508,7 +3328,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -3526,7 +3345,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -3545,7 +3363,6 @@
       "ev"
     ],
     "data_type": "enum",
-    "unit": null,
     "format": [
       "connected",
       "disconnected",
@@ -3568,7 +3385,6 @@
       "rw"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -3586,7 +3402,6 @@
       "rw"
     ],
     "data_type": "uchar",
-    "unit": null,
     "format": [
       0,
       100
@@ -3607,7 +3422,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -3625,7 +3439,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -3643,7 +3456,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -3661,7 +3473,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -3680,7 +3491,6 @@
       "ev"
     ],
     "data_type": "enum",
-    "unit": null,
     "format": [
       "connected",
       "disconnected",
@@ -3703,7 +3513,6 @@
       "rw"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -3721,7 +3530,6 @@
       "rw"
     ],
     "data_type": "uchar",
-    "unit": null,
     "format": [
       0,
       100
@@ -3742,7 +3550,6 @@
       "rw"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -3760,7 +3567,6 @@
       "rw"
     ],
     "data_type": "uchar",
-    "unit": null,
     "format": [
       0,
       100
@@ -3781,7 +3587,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -3799,7 +3604,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -3817,7 +3621,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -3835,7 +3638,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -3854,7 +3656,6 @@
       "ev"
     ],
     "data_type": "enum",
-    "unit": null,
     "format": [
       "connected",
       "disconnected",
@@ -3877,7 +3678,6 @@
       "rw"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -3895,7 +3695,6 @@
       "rw"
     ],
     "data_type": "uchar",
-    "unit": null,
     "format": [
       0,
       100
@@ -3916,7 +3715,6 @@
       "rw"
     ],
     "data_type": "uchar",
-    "unit": null,
     "format": [
       2700,
       6500
@@ -3937,7 +3735,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -3955,7 +3752,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -3973,7 +3769,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -3991,7 +3786,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -4010,7 +3804,6 @@
       "ev"
     ],
     "data_type": "enum",
-    "unit": null,
     "format": [
       "connected",
       "disconnected",
@@ -4033,7 +3826,6 @@
       "rw"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -4051,7 +3843,6 @@
       "rw"
     ],
     "data_type": "uchar",
-    "unit": null,
     "format": [
       0,
       100
@@ -4072,7 +3863,6 @@
       "rw"
     ],
     "data_type": "uchar",
-    "unit": null,
     "format": [
       2700,
       6500
@@ -4093,7 +3883,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -4111,7 +3900,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -4129,7 +3917,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -4147,7 +3934,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -4166,7 +3952,6 @@
       "ev"
     ],
     "data_type": "enum",
-    "unit": null,
     "format": [
       "connected",
       "disconnected",
@@ -4189,7 +3974,6 @@
       "rw"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -4207,7 +3991,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -4225,7 +4008,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -4243,7 +4025,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -4261,7 +4042,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -4280,7 +4060,6 @@
       "ev"
     ],
     "data_type": "enum",
-    "unit": null,
     "format": [
       "connected",
       "disconnected",
@@ -4303,7 +4082,6 @@
       "rw"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -4321,7 +4099,6 @@
       "rw"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -4339,7 +4116,6 @@
       "rw"
     ],
     "data_type": "uchar",
-    "unit": null,
     "format": [
       0,
       100
@@ -4360,7 +4136,6 @@
       "rw"
     ],
     "data_type": "enum",
-    "unit": null,
     "format": [
       "clockwise",
       "counter_clockwise"
@@ -4381,7 +4156,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -4399,7 +4173,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -4417,7 +4190,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -4435,7 +4207,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -4454,7 +4225,6 @@
       "ev"
     ],
     "data_type": "enum",
-    "unit": null,
     "format": [
       "connected",
       "disconnected",
@@ -4477,7 +4247,6 @@
       "ro"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -4495,7 +4264,6 @@
       "ro"
     ],
     "data_type": "enum",
-    "unit": null,
     "format": [
       "open",
       "closed",
@@ -4519,7 +4287,6 @@
       "ro"
     ],
     "data_type": "enum",
-    "unit": null,
     "format": [
       "open",
       "close",
@@ -4541,7 +4308,6 @@
       "ro"
     ],
     "data_type": "enum",
-    "unit": null,
     "format": [
       "curtain",
       "blind",
@@ -4564,7 +4330,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -4582,7 +4347,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -4600,7 +4364,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -4618,7 +4381,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -4637,7 +4399,6 @@
       "ev"
     ],
     "data_type": "enum",
-    "unit": null,
     "format": [
       "connected",
       "disconnected",
@@ -4660,7 +4421,6 @@
       "ro"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -4678,7 +4438,6 @@
       "ro"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -4696,7 +4455,6 @@
       "ro"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -4714,7 +4472,6 @@
       "ro"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -4732,7 +4489,6 @@
       "ro"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -4750,7 +4506,6 @@
       "ro"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -4768,7 +4523,6 @@
       "ro"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -4786,7 +4540,6 @@
       "ro"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -4804,7 +4557,6 @@
       "ro"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -4822,7 +4574,6 @@
       "ro"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -4840,7 +4591,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -4858,7 +4608,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -4876,7 +4625,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -4894,7 +4642,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -4913,7 +4660,6 @@
       "ev"
     ],
     "data_type": "enum",
-    "unit": null,
     "format": [
       "connected",
       "disconnected",
@@ -4936,7 +4682,6 @@
       "ro"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -4954,7 +4699,6 @@
       "ro"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -4972,7 +4716,6 @@
       "ro"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -4990,7 +4733,6 @@
       "ro"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -5008,7 +4750,6 @@
       "ro"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -5026,7 +4767,6 @@
       "ro"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -5044,7 +4784,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -5062,7 +4801,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -5080,7 +4818,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -5098,7 +4835,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -5117,7 +4853,6 @@
       "ev"
     ],
     "data_type": "enum",
-    "unit": null,
     "format": [
       "connected",
       "disconnected",
@@ -5140,7 +4875,6 @@
       "ro"
     ],
     "data_type": "float",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -5158,7 +4892,6 @@
       "ro"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -5176,7 +4909,6 @@
       "ro"
     ],
     "data_type": "uchar",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -5194,7 +4926,6 @@
       "ro"
     ],
     "data_type": "uchar",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -5212,7 +4943,6 @@
       "ro"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -5230,7 +4960,6 @@
       "ro"
     ],
     "data_type": "uchar",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -5248,7 +4977,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -5266,7 +4994,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -5284,7 +5011,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -5302,7 +5028,6 @@
       "ro"
     ],
     "data_type": "string",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -5321,7 +5046,6 @@
       "ev"
     ],
     "data_type": "enum",
-    "unit": null,
     "format": [
       "connected",
       "disconnected",
@@ -5344,7 +5068,6 @@
       "ro"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -5362,7 +5085,6 @@
       "ro"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -5380,7 +5102,6 @@
       "ro"
     ],
     "data_type": "uchar",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,
@@ -5398,7 +5119,6 @@
       "ro"
     ],
     "data_type": "bool",
-    "unit": null,
     "format": null,
     "invalid": null,
     "scale": null,

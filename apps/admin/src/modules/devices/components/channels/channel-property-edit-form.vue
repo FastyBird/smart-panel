@@ -107,13 +107,6 @@
 			disabled
 		/>
 
-		<channel-property-form-unit
-			:key="`${channel?.category || DevicesModuleChannelCategory.generic}-${model.category}-unit`"
-			v-model="model.unit"
-			:channel-category="channel?.category || DevicesModuleChannelCategory.generic"
-			:property-category="model.category"
-		/>
-
 		<channel-property-form-min-max
 			v-if="
 				[
@@ -215,7 +208,7 @@ import ChannelPropertyFormInvalid from './channel-property-form-invalid.vue';
 import ChannelPropertyFormMinMax from './channel-property-form-min-max.vue';
 import ChannelPropertyFormPermissions from './channel-property-form-permissions.vue';
 import ChannelPropertyFormStep from './channel-property-form-step.vue';
-import ChannelPropertyFormUnit from './channel-property-form-unit.vue';
+
 
 defineOptions({
 	name: 'ChannelPropertyEditForm',

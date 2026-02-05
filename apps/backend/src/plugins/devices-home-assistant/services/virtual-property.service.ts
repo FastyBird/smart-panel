@@ -67,7 +67,6 @@ export class VirtualPropertyService {
 			dataType: definition.dataType,
 			permissions: definition.permissions,
 			format: definition.format,
-			unit: definition.unit,
 		};
 	}
 

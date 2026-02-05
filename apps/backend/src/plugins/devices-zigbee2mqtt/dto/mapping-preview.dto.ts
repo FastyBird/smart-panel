@@ -114,15 +114,6 @@ export class AdoptPropertyDefinitionDto {
 	permissions: PermissionType[];
 
 	@ApiPropertyOptional({
-		description: 'Property unit',
-		example: '°C',
-	})
-	@Expose()
-	@IsOptional()
-	@IsString()
-	unit?: string | null;
-
-	@ApiPropertyOptional({
 		description: 'Property format',
 	})
 	@Expose()

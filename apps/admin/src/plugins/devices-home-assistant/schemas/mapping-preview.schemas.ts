@@ -126,7 +126,6 @@ export const AdoptPropertyDefinitionSchema = z.object({
 	haAttribute: z.string(),
 	dataType: z.nativeEnum(DevicesModuleChannelPropertyDataType),
 	permissions: z.array(z.nativeEnum(DevicesModuleChannelPropertyPermissions)),
-	unit: z.string().nullable().optional(),
 	format: z
 		.array(z.union([z.string(), z.number()]))
 		.nullable()
