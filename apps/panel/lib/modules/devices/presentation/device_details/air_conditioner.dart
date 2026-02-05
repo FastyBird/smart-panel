@@ -1074,6 +1074,38 @@ class _AirConditionerDeviceDetailState
       }
     }
 
+    // Electrical energy (optional) - energy consumption
+    final electricalEnergyChannel = _device.electricalEnergyChannel;
+    if (electricalEnergyChannel != null) {
+      sensors.add(_SensorInfo(
+        id: 'electrical_energy',
+        label: localizations.electrical_energy_consumption_title,
+        value: SensorUtils.formatNumericValue(
+            _device.electricalEnergyConsumption, electricalEnergyChannel.category),
+        unit: SensorUtils.unitForCategory(electricalEnergyChannel.category),
+        icon: buildChannelIcon(electricalEnergyChannel.category),
+        themeColor: SensorColors.defaultColor,
+        sensorData: SensorUtils.buildSensorData(electricalEnergyChannel,
+            localizations: localizations),
+      ));
+    }
+
+    // Electrical power (optional) - power consumption
+    final electricalPowerChannel = _device.electricalPowerChannel;
+    if (electricalPowerChannel != null) {
+      sensors.add(_SensorInfo(
+        id: 'electrical_power',
+        label: localizations.electrical_power_power_title,
+        value: SensorUtils.formatNumericValue(
+            _device.electricalPowerPower, electricalPowerChannel.category),
+        unit: SensorUtils.unitForCategory(electricalPowerChannel.category),
+        icon: buildChannelIcon(electricalPowerChannel.category),
+        themeColor: SensorColors.defaultColor,
+        sensorData: SensorUtils.buildSensorData(electricalPowerChannel,
+            localizations: localizations),
+      ));
+    }
+
     if (sensors.isEmpty) {
       return const SizedBox.shrink();
     }

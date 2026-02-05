@@ -1282,17 +1282,33 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
 
     // CO₂ tile - carbon dioxide (indoor air quality indicator)
     final co2Channel = _device.carbonDioxideChannel;
-    if (co2Channel != null && co2Channel.hasConcentration) {
-      sensors.add(_SensorInfo(
-        id: 'co2',
-        label: localizations.device_co2,
-        value: SensorUtils.formatNumericValue(co2Channel.concentration, co2Channel.category),
-        unit: SensorUtils.unitForCategory(co2Channel.category),
-        icon: buildChannelIcon(co2Channel.category),
-        valueThemeColor: SensorColors.co2,
-        isWarning: co2Channel.concentration > 1000, // Warn if CO₂ exceeds 1000 ppm
-        sensorData: SensorUtils.buildSensorData(co2Channel, localizations: localizations),
-      ));
+    if (co2Channel != null) {
+      if (co2Channel.hasConcentration) {
+        sensors.add(_SensorInfo(
+          id: 'co2',
+          label: localizations.device_co2,
+          value: SensorUtils.formatNumericValue(co2Channel.concentration, co2Channel.category),
+          unit: SensorUtils.unitForCategory(co2Channel.category),
+          icon: buildChannelIcon(co2Channel.category),
+          valueThemeColor: SensorColors.co2,
+          isWarning: co2Channel.concentration > 1000, // Warn if CO₂ exceeds 1000 ppm
+          sensorData: SensorUtils.buildSensorData(co2Channel, localizations: localizations),
+        ));
+      } else if (co2Channel.hasDetected) {
+        final isDetected = co2Channel.detected;
+        sensors.add(_SensorInfo(
+          id: 'co2',
+          label: localizations.device_co2,
+          value: SensorUtils.translateBinaryState(localizations, co2Channel.category, isDetected),
+          icon: buildChannelIcon(co2Channel.category),
+          valueThemeColor: SensorColors.co2,
+          isWarning: isDetected,
+          sensorData: SensorUtils.buildSensorData(co2Channel,
+            isAlert: isDetected,
+            localizations: localizations,
+          ),
+        ));
+      }
     }
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -1484,6 +1500,42 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
         icon: buildChannelIcon(pressureChannel.category),
         valueThemeColor: SensorColors.pressure,
         sensorData: SensorUtils.buildSensorData(pressureChannel, localizations: localizations),
+      ));
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // PRIORITY 6: ELECTRICAL
+    // ═══════════════════════════════════════════════════════════════════════
+
+    // Electrical energy (optional) - energy consumption
+    final electricalEnergyChannel = _device.electricalEnergyChannel;
+    if (electricalEnergyChannel != null) {
+      sensors.add(_SensorInfo(
+        id: 'electrical_energy',
+        label: localizations.electrical_energy_consumption_title,
+        value: SensorUtils.formatNumericValue(
+            _device.electricalEnergyConsumption, electricalEnergyChannel.category),
+        unit: SensorUtils.unitForCategory(electricalEnergyChannel.category),
+        icon: buildChannelIcon(electricalEnergyChannel.category),
+        valueThemeColor: SensorColors.defaultColor,
+        sensorData: SensorUtils.buildSensorData(electricalEnergyChannel,
+            localizations: localizations),
+      ));
+    }
+
+    // Electrical power (optional) - power consumption
+    final electricalPowerChannel = _device.electricalPowerChannel;
+    if (electricalPowerChannel != null) {
+      sensors.add(_SensorInfo(
+        id: 'electrical_power',
+        label: localizations.electrical_power_power_title,
+        value: SensorUtils.formatNumericValue(
+            _device.electricalPowerPower, electricalPowerChannel.category),
+        unit: SensorUtils.unitForCategory(electricalPowerChannel.category),
+        icon: buildChannelIcon(electricalPowerChannel.category),
+        valueThemeColor: SensorColors.defaultColor,
+        sensorData: SensorUtils.buildSensorData(electricalPowerChannel,
+            localizations: localizations),
       ));
     }
 
