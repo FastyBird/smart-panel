@@ -121,18 +121,36 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
 
   /// Status text for a sensor channel tile (e.g. "23.5 °C" or "Detected").
   String _getSensorChannelStatus(BuildContext context, SensorData data) {
+    final l = AppLocalizations.of(context)!;
+
+    // Binary detection sensors - use long translation variant
     if (data.isDetection != null) {
-      final l = AppLocalizations.of(context)!;
       return SensorUtils.translateBinaryState(
-          l, data.channel.category, data.isDetection ?? false);
+          l, data.channel.category, data.isDetection ?? false, short: false);
     }
+
+    // Get formatted value from property
+    String? formatted;
     if (data.property != null && data.valueFormatter != null) {
-      return data.valueFormatter!(data.property!) ?? '—';
+      formatted = data.valueFormatter!(data.property!);
+    } else if (data.property != null) {
+      formatted = SensorUtils.valueFormatterForCategory(
+          data.channel.category)(data.property!);
     }
-    if (data.property != null) {
-      return SensorUtils.valueFormatterForCategory(data.channel.category)(data.property!) ?? '—';
-    }
-    return '—';
+
+    if (formatted == null) return '—';
+
+    // Translate enum/string values using long variant
+    final translated = SensorUtils.translateSensorValue(
+        l, formatted, data.channel.category, short: false);
+
+    // If translated, it's an enum/bool - return without unit
+    if (translated != formatted) return translated;
+
+    // Numeric value - append unit if available
+    final unit = data.unit;
+    if (unit.isNotEmpty) return '$formatted $unit';
+    return formatted;
   }
 
   /// Builds one channel tile for the channels bottom sheet (horizontal layout).
