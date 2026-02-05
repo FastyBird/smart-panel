@@ -25,9 +25,12 @@ import 'package:fastybird_smart_panel/modules/devices/controllers/devices/air_de
 import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_colors.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_channel_detail_page.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_data.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
 import 'package:fastybird_smart_panel/modules/devices/utils/dehumidifier_utils.dart';
 import 'package:fastybird_smart_panel/modules/devices/utils/fan_utils.dart';
+import 'package:fastybird_smart_panel/modules/devices/utils/value.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/dehumidifier.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/air_dehumidifier.dart';
@@ -45,6 +48,7 @@ class _SensorInfo {
   final IconData icon;
   final ThemeColors? valueThemeColor;
   final bool isWarning;
+  final SensorData? sensorData;
 
   const _SensorInfo({
     required this.id,
@@ -54,6 +58,7 @@ class _SensorInfo {
     this.unit,
     this.valueThemeColor,
     this.isWarning = false,
+    this.sensorData,
   });
 
   /// Returns the formatted display value with unit
@@ -802,6 +807,16 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
         icon: MdiIcons.pipeLeak,
         valueThemeColor: SensorColors.alert,
         isWarning: isLeaking,
+        sensorData: SensorData(
+          label: 'Leak',
+          icon: MdiIcons.waterAlert,
+          channel: leakChannel,
+          property: leakChannel.detectedProp,
+          isDetection: leakChannel.detected,
+          detectedLabel: 'Detected',
+          notDetectedLabel: 'Not Detected',
+          isAlert: leakChannel.detected,
+        ),
       ));
     }
 
@@ -811,6 +826,7 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
 
     // Current humidity from humidity channel (required per spec)
     final currentHumidity = _device.humidityChannel.humidity;
+    final humidityChannel = _device.humidityChannel;
     sensors.add(_SensorInfo(
       id: 'humidity',
       label: localizations.device_humidity,
@@ -818,6 +834,13 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
       unit: '%',
       icon: MdiIcons.waterPercent,
       valueThemeColor: SensorColors.humidity,
+      sensorData: SensorData(
+        label: 'Humidity',
+        icon: MdiIcons.waterPercent,
+        channel: humidityChannel,
+        property: humidityChannel.humidityProp,
+        valueFormatter: (prop) => ValueUtils.formatValue(prop, 0),
+      ),
     ));
 
     // Water tank level
@@ -874,6 +897,13 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
         unit: '°C',
         icon: MdiIcons.thermometer,
         valueThemeColor: SensorColors.temperature,
+        sensorData: SensorData(
+          label: 'Temperature',
+          icon: MdiIcons.thermometer,
+          channel: tempChannel!,
+          property: tempChannel.temperatureProp,
+          valueFormatter: (prop) => ValueUtils.formatValue(prop, 1),
+        ),
       ));
     }
 
@@ -889,6 +919,18 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
 
     final isLandscape = _screenService.isLandscape;
     final isLargeScreen = _screenService.isLargeScreen;
+
+    VoidCallback? sensorTapCallback(_SensorInfo sensor) {
+      final data = sensor.sensorData;
+      if (data == null) return null;
+      return () => Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => SensorChannelDetailPage(
+              sensor: data,
+              deviceName: _device.name,
+              isDeviceOnline: _device.isOnline,
+            ),
+          ));
+    }
 
     // Portrait: Horizontal scroll with HorizontalTileCompact
     if (!isLandscape) {
@@ -907,6 +949,7 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
             status: sensor.label,
             iconAccentColor: sensor.valueThemeColor ?? _getStatusColor(),
             showWarningBadge: sensor.isWarning,
+            onTileTap: sensorTapCallback(sensor),
           );
         },
       );
@@ -928,6 +971,7 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
             status: sensor.label,
             iconAccentColor: sensor.valueThemeColor ?? _getStatusColor(),
             showWarningBadge: sensor.isWarning,
+            onTileTap: sensorTapCallback(sensor),
           );
         }).toList(),
       );
@@ -947,6 +991,7 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
             status: sensor.label,
             iconAccentColor: sensor.valueThemeColor ?? _getStatusColor(),
             showWarningBadge: sensor.isWarning,
+            onTileTap: sensorTapCallback(sensor),
           ),
         );
       }).toList(),

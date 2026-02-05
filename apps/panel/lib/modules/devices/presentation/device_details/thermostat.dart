@@ -22,7 +22,10 @@ import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/controllers/devices/thermostat.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_colors.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_channel_detail_page.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_data.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
+import 'package:fastybird_smart_panel/modules/devices/utils/value.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/thermostat.dart';
@@ -50,6 +53,7 @@ class _SensorInfo {
   final IconData icon;
   final ThemeColors? themeColor;
   final bool isWarning;
+  final SensorData? sensorData;
 
   const _SensorInfo({
     required this.id,
@@ -59,6 +63,7 @@ class _SensorInfo {
     this.unit,
     this.themeColor,
     this.isWarning = false,
+    this.sensorData,
   });
 
   /// Returns the formatted display value with unit
@@ -792,6 +797,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     final sensors = <_SensorInfo>[];
 
     // Temperature (always present)
+    final temperatureChannel = _device.temperatureChannel;
     sensors.add(_SensorInfo(
       id: 'temperature',
       label: localizations.device_current_temperature,
@@ -802,6 +808,13 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
       unit: '°C',
       icon: MdiIcons.thermometer,
       themeColor: SensorColors.temperature,
+      sensorData: SensorData(
+        label: 'Temperature',
+        icon: MdiIcons.thermometer,
+        channel: temperatureChannel,
+        property: temperatureChannel.temperatureProp,
+        valueFormatter: (prop) => ValueUtils.formatValue(prop, 1),
+      ),
     ));
 
     // Humidity (optional)
@@ -814,6 +827,13 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
         unit: '%',
         icon: MdiIcons.waterPercent,
         themeColor: SensorColors.humidity,
+        sensorData: SensorData(
+          label: 'Humidity',
+          icon: MdiIcons.waterPercent,
+          channel: humidityChannel,
+          property: humidityChannel.humidityProp,
+          valueFormatter: (prop) => ValueUtils.formatValue(prop, 0),
+        ),
       ));
     }
 
@@ -830,6 +850,15 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
         icon: MdiIcons.windowOpenVariant,
         themeColor: SensorColors.alert,
         isWarning: isOpen,
+        sensorData: SensorData(
+          label: 'Contact',
+          icon: isOpen ? MdiIcons.doorOpen : MdiIcons.doorClosed,
+          channel: contactChannel,
+          property: contactChannel.detectedProp,
+          isDetection: contactChannel.detected,
+          detectedLabel: 'Open',
+          notDetectedLabel: 'Closed',
+        ),
       ));
     }
 
@@ -885,6 +914,18 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     final isLandscape = _screenService.isLandscape;
     final isLargeScreen = _screenService.isLargeScreen;
 
+    VoidCallback? sensorTapCallback(_SensorInfo sensor) {
+      final data = sensor.sensorData;
+      if (data == null) return null;
+      return () => Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => SensorChannelDetailPage(
+              sensor: data,
+              deviceName: _device.name,
+              isDeviceOnline: _device.isOnline,
+            ),
+          ));
+    }
+
     // Portrait: Horizontal scroll with HorizontalTileCompact
     if (!isLandscape) {
       final tileHeight = _scale(AppTileHeight.horizontal);
@@ -902,6 +943,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
             status: sensor.label,
             iconAccentColor: sensor.themeColor,
             showWarningBadge: sensor.isWarning,
+            onTileTap: sensorTapCallback(sensor),
           );
         },
       );
@@ -923,6 +965,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
             status: sensor.label,
             iconAccentColor: sensor.themeColor,
             showWarningBadge: sensor.isWarning,
+            onTileTap: sensorTapCallback(sensor),
           );
         }).toList(),
       );
@@ -938,6 +981,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
             status: sensor.label,
             iconAccentColor: sensor.themeColor,
             showWarningBadge: sensor.isWarning,
+            onTileTap: sensorTapCallback(sensor),
         );
       }).toList(),
     );
