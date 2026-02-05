@@ -1225,6 +1225,10 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           icon: buildChannelIcon(pmChannel.category),
           valueThemeColor: SensorColors.airQuality,
           isWarning: isDetected,
+          sensorData: SensorUtils.buildSensorData(pmChannel,
+            isAlert: isDetected,
+            localizations: localizations,
+          ),
         ));
       }
     }
@@ -1239,6 +1243,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           value: AirQualityUtils.getVocLevelLabel(localizations, vocChannel.level),
           icon: buildChannelIcon(vocChannel.category),
           valueThemeColor: SensorColors.airQuality,
+          sensorData: SensorUtils.buildSensorData(vocChannel, localizations: localizations),
         ));
       } else if (vocChannel.hasConcentration) {
         sensors.add(_SensorInfo(
@@ -1247,6 +1252,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           value: AirQualityUtils.calculateVocLevelFromConcentration(localizations, vocChannel.concentration),
           icon: buildChannelIcon(vocChannel.category),
           valueThemeColor: SensorColors.airQuality,
+          sensorData: SensorUtils.buildSensorData(vocChannel, localizations: localizations),
         ));
       } else if (vocChannel.hasDetected) {
         final isDetected = vocChannel.detected;
@@ -1259,6 +1265,10 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           icon: buildChannelIcon(vocChannel.category),
           valueThemeColor: SensorColors.airQuality,
           isWarning: isDetected,
+          sensorData: SensorUtils.buildSensorData(vocChannel,
+            isAlert: isDetected,
+            localizations: localizations,
+          ),
         ));
       }
     }
@@ -1292,6 +1302,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           value: AirQualityUtils.getOzoneLevelLabel(localizations, o3Channel.level),
           icon: buildChannelIcon(o3Channel.category),
           valueThemeColor: SensorColors.airQuality,
+          sensorData: SensorUtils.buildSensorData(o3Channel, localizations: localizations),
         ));
       } else if (o3Channel.hasConcentration) {
         sensors.add(_SensorInfo(
@@ -1302,6 +1313,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           icon: buildChannelIcon(o3Channel.category),
           valueThemeColor: SensorColors.airQuality,
           isWarning: o3Channel.concentration > 100, // Warn if exceeds WHO 8-hour limit
+          sensorData: SensorUtils.buildSensorData(o3Channel, localizations: localizations),
         ));
       } else if (o3Channel.hasDetected) {
         final isDetected = o3Channel.detected;
@@ -1312,6 +1324,10 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           icon: buildChannelIcon(o3Channel.category),
           valueThemeColor: SensorColors.airQuality,
           isWarning: isDetected,
+          sensorData: SensorUtils.buildSensorData(o3Channel,
+            isAlert: isDetected,
+            localizations: localizations,
+          ),
         ));
       }
     }
@@ -1328,6 +1344,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           icon: buildChannelIcon(no2Channel.category),
           valueThemeColor: SensorColors.airQuality,
           isWarning: no2Channel.concentration > 200, // Warn if exceeds WHO 1-hour limit
+          sensorData: SensorUtils.buildSensorData(no2Channel, localizations: localizations),
         ));
       } else if (no2Channel.hasDetected) {
         final isDetected = no2Channel.detected;
@@ -1338,6 +1355,10 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           icon: buildChannelIcon(no2Channel.category),
           valueThemeColor: SensorColors.airQuality,
           isWarning: isDetected,
+          sensorData: SensorUtils.buildSensorData(no2Channel,
+            isAlert: isDetected,
+            localizations: localizations,
+          ),
         ));
       }
     }
@@ -1352,6 +1373,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           value: AirQualityUtils.getSulphurDioxideLevelLabel(localizations, so2Channel.level),
           icon: buildChannelIcon(so2Channel.category),
           valueThemeColor: SensorColors.airQuality,
+          sensorData: SensorUtils.buildSensorData(so2Channel, localizations: localizations),
         ));
       } else if (so2Channel.hasConcentration) {
         sensors.add(_SensorInfo(
@@ -1362,6 +1384,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           icon: buildChannelIcon(so2Channel.category),
           valueThemeColor: SensorColors.airQuality,
           isWarning: so2Channel.concentration > 500, // Warn if exceeds WHO 10-min limit
+          sensorData: SensorUtils.buildSensorData(so2Channel, localizations: localizations),
         ));
       } else if (so2Channel.hasDetected) {
         final isDetected = so2Channel.detected;
@@ -1372,6 +1395,10 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           icon: buildChannelIcon(so2Channel.category),
           valueThemeColor: SensorColors.airQuality,
           isWarning: isDetected,
+          sensorData: SensorUtils.buildSensorData(so2Channel,
+            isAlert: isDetected,
+            localizations: localizations,
+          ),
         ));
       }
     }
@@ -1392,6 +1419,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           icon: buildChannelIcon(filterChannel.category),
           valueThemeColor: SensorColors.filter,
           isWarning: _filterLife < 0.3 || _device.isFilterNeedsReplacement,
+          sensorData: SensorUtils.buildSensorData(filterChannel, localizations: localizations),
         ));
       } else if (filterChannel.hasStatus) {
         sensors.add(_SensorInfo(
@@ -1401,6 +1429,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           icon: buildChannelIcon(filterChannel.category),
           valueThemeColor: SensorColors.filter,
           isWarning: _device.isFilterNeedsReplacement,
+          sensorData: SensorUtils.buildSensorData(filterChannel, localizations: localizations),
         ));
       }
     }
