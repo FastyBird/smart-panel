@@ -768,7 +768,7 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
         if (hasChannels)
           HeaderIconButton(
             icon: MdiIcons.lightbulbGroup,
-            onTap: () {
+            onTap: widget._device.isOnline ? () {
               final list = _buildChannelsList();
               DeviceChannelsSection.showChannelsSheet(
                 context,
@@ -780,7 +780,7 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
                 showCountInHeader: false,
                 listenable: _channelListVersion,
               );
-            },
+            } : null,
             color: ThemeColors.primary,
           ),
         if (hasChannels && hasPower) SizedBox(width: AppSpacings.pSm),

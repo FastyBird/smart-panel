@@ -390,7 +390,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
         if (hasChannels)
           HeaderIconButton(
             icon: MdiIcons.layers,
-            onTap: () {
+            onTap: widget._device.isOnline ? () {
               final channelCount = _device.windowCoveringChannels.length;
               DeviceChannelsSection.showChannelsSheet(
                 context,
@@ -415,7 +415,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
                 },
                 showCountInHeader: false,
               );
-            },
+            } : null,
             color: ThemeColors.primary,
           ),
         if (hasChannels && hasObstruction) SizedBox(width: AppSpacings.pSm),
