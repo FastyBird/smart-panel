@@ -119,19 +119,6 @@ export class CreateDeviceChannelPropertyDto {
 	data_type: DataTypeType;
 
 	@ApiPropertyOptional({
-		description: 'Property unit',
-		type: 'string',
-		nullable: true,
-		example: '°C',
-	})
-	@Expose()
-	@IsOptional()
-	@IsNotEmpty({ message: '[{"field":"unit","reason":"Unit must be a valid string."}]' })
-	@IsString({ message: '[{"field":"unit","reason":"Unit must be a valid string."}]' })
-	@ValidateIf((_, value) => value !== null)
-	unit?: string | null;
-
-	@ApiPropertyOptional({
 		description: 'Property format',
 		type: 'array',
 		items: { oneOf: [{ type: 'string' }, { type: 'number' }, { type: 'null' }] },

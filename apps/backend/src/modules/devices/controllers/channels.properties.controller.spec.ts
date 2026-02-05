@@ -81,7 +81,6 @@ describe('ChannelsPropertiesController', () => {
 		identifier: null,
 		permissions: [PermissionType.READ_ONLY],
 		dataType: DataTypeType.STRING,
-		unit: '°C',
 		format: null,
 		invalid: null,
 		step: 0.5,

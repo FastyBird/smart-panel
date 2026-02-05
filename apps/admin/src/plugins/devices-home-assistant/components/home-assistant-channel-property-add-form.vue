@@ -105,13 +105,6 @@
 			:property-category="model.category"
 		/>
 
-		<channel-property-form-unit
-			:key="`${channel?.category || DevicesModuleChannelCategory.generic}-${model.category}-unit`"
-			v-model="model.unit"
-			:channel-category="channel?.category || DevicesModuleChannelCategory.generic"
-			:property-category="model.category"
-		/>
-
 		<channel-property-form-min-max
 			v-if="
 				[
@@ -238,7 +231,6 @@ import {
 	ChannelPropertyFormMinMax,
 	ChannelPropertyFormPermissions,
 	ChannelPropertyFormStep,
-	ChannelPropertyFormUnit,
 	FormResult,
 	type FormResultType,
 	useChannelPropertyAddForm,

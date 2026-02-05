@@ -126,16 +126,6 @@ export class AdoptPropertyDefinitionDto {
 	permissions: PermissionType[];
 
 	@ApiPropertyOptional({
-		description: 'Unit of measurement',
-		type: 'string',
-		nullable: true,
-	})
-	@Expose()
-	@IsOptional()
-	@IsString()
-	unit?: string | null;
-
-	@ApiPropertyOptional({
 		description: 'Format (enum values or numeric range)',
 		type: 'array',
 		items: { oneOf: [{ type: 'string' }, { type: 'number' }] },

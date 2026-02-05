@@ -831,7 +831,6 @@ export class Z2mDeviceMapperService {
 			PropertyCategory.LINK_QUALITY,
 			linkQualityPercent,
 			DataTypeType.UCHAR,
-			'%',
 			[0, 100],
 		);
 	}
@@ -846,7 +845,6 @@ export class Z2mDeviceMapperService {
 		category: PropertyCategory,
 		value: string | number | null,
 		dataType: DataTypeType = DataTypeType.STRING,
-		unit: string | null = null,
 		format: string[] | number[] | null = null,
 	): Promise<void> {
 		const property = await this.channelsPropertiesService.findOneBy<Zigbee2mqttChannelPropertyEntity>(
@@ -864,7 +862,6 @@ export class Z2mDeviceMapperService {
 				category,
 				data_type: dataType,
 				permissions: [PermissionType.READ_ONLY],
-				unit,
 				format,
 				value,
 			};
@@ -1046,7 +1043,6 @@ export class Z2mDeviceMapperService {
 				category: virtualDef.property_category,
 				data_type: virtualDef.data_type,
 				permissions: virtualDef.permissions,
-				unit: virtualDef.unit ?? null,
 				format,
 				value,
 			};
@@ -1143,7 +1139,6 @@ export class Z2mDeviceMapperService {
 				category: mappedProperty.category,
 				data_type: mappedProperty.dataType,
 				permissions: mappedProperty.permissions,
-				unit: mappedProperty.unit ?? null,
 				format,
 				step: mappedProperty.step ?? null,
 				// Static properties have a fixed value that doesn't change

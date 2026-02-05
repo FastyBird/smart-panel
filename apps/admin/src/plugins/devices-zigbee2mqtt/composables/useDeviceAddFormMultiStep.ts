@@ -328,7 +328,6 @@ export const useDeviceAddFormMultiStep = ({ id }: IUseDeviceAddFormMultiStepProp
 							z2mProperty: string;
 							dataType: DevicesModuleChannelPropertyDataType;
 							permissions: DevicesModuleChannelPropertyPermissions[];
-							unit: string | null;
 							format: string[] | number[] | null;
 						}[];
 					}
@@ -376,7 +375,6 @@ export const useDeviceAddFormMultiStep = ({ id }: IUseDeviceAddFormMultiStepProp
 								z2mProperty: prop.z2mProperty,
 								dataType: prop.dataType,
 								permissions: prop.permissions,
-								unit: prop.unit ?? null,
 								format: (prop.format ?? null) as string[] | number[] | null,
 							});
 						}

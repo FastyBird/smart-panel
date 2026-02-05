@@ -484,7 +484,6 @@ export class DeviceManagerService {
 										{
 											data_type: staticProp.dataType,
 											format: staticProp.format,
-											unit: staticProp.unit ?? null,
 										},
 									);
 								}
@@ -519,7 +518,6 @@ export class DeviceManagerService {
 												{
 													data_type: derivedProp.dataType,
 													format: derivedProp.format,
-													unit: derivedProp.unit ?? null,
 												},
 											);
 										}
@@ -1494,7 +1492,6 @@ export class DeviceManagerService {
 												{
 													data_type: derivedProp.dataType,
 													format: derivedProp.format,
-													unit: derivedProp.unit ?? null,
 												},
 											);
 										}
@@ -1970,7 +1967,6 @@ export class DeviceManagerService {
 			data_type?: DataTypeType;
 			format?: string[] | number[];
 			permissions?: PermissionType[];
-			unit?: string | null;
 		},
 		propertyMapping?: ResolvedProperty,
 	): Promise<ShellyNgChannelPropertyEntity> {
@@ -2000,8 +1996,6 @@ export class DeviceManagerService {
 
 		const resolvedDataType =
 			options?.data_type ?? mappingPropertySpec?.data_type ?? schemaPropertySpec?.data_type ?? inferredDataType;
-
-		const resolvedUnit = options?.unit ?? mappingPropertySpec?.unit ?? schemaPropertySpec?.unit ?? null;
 
 		const resolvedPermissions = options?.permissions ??
 			mappingPropertySpec?.permissions ??
@@ -2041,7 +2035,6 @@ export class DeviceManagerService {
 				...{
 					permissions: resolvedPermissions,
 					data_type: resolvedDataType,
-					unit: resolvedUnit,
 					format: resolvedFormat ?? null,
 				},
 				type: DEVICES_SHELLY_NG_TYPE,
@@ -2061,7 +2054,6 @@ export class DeviceManagerService {
 				value: normalizedValue,
 				permissions: resolvedPermissions,
 				data_type: resolvedDataType,
-				unit: resolvedUnit,
 				format: resolvedFormat ?? null,
 			});
 		}

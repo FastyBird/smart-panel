@@ -107,13 +107,6 @@
 			disabled
 		/>
 
-		<channel-property-form-unit
-			:key="`${channel?.category || DevicesModuleChannelCategory.generic}-${model.category}-unit`"
-			v-model="model.unit"
-			:channel-category="channel?.category || DevicesModuleChannelCategory.generic"
-			:property-category="model.category"
-		/>
-
 		<channel-property-form-min-max
 			v-if="
 				[
@@ -240,7 +233,7 @@ import ChannelPropertyFormInvalid from '../../../modules/devices/components/chan
 import ChannelPropertyFormMinMax from '../../../modules/devices/components/channels/channel-property-form-min-max.vue';
 import ChannelPropertyFormPermissions from '../../../modules/devices/components/channels/channel-property-form-permissions.vue';
 import ChannelPropertyFormStep from '../../../modules/devices/components/channels/channel-property-form-step.vue';
-import ChannelPropertyFormUnit from '../../../modules/devices/components/channels/channel-property-form-unit.vue';
+
 import { DevicesModuleChannelCategory, DevicesModuleChannelPropertyDataType } from '../../../openapi.constants';
 import { DEVICE_NO_ENTITY, ENTITY_NO_ATTRIBUTE } from '../devices-home-assistant.constants';
 import type { IHomeAssistantChannelPropertyEditForm } from '../schemas/channels.properties.types';

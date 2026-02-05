@@ -141,7 +141,6 @@ describe('useChannelPropertyAddForm', () => {
 				invalid: null,
 				permissions: [],
 				step: null,
-				unit: null,
 				enumValues: [],
 				maxValue: undefined,
 				minValue: undefined,

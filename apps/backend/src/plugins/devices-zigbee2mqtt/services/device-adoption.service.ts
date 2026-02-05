@@ -452,7 +452,6 @@ export class Z2mDeviceAdoptionService {
 				category: propDef.category,
 				data_type: propDef.dataType,
 				permissions: propDef.permissions,
-				unit: propDef.unit ?? propSpec?.unit ?? null,
 				format: propDef.format ?? propSpec?.format ?? null,
 				invalid: invalidValue,
 				step: propSpec?.step ?? null,

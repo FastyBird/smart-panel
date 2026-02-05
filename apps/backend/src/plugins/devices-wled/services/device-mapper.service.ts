@@ -619,7 +619,6 @@ export class WledDeviceMapperService {
 				category: binding.category,
 				data_type: binding.dataType,
 				permissions: binding.permissions,
-				unit: binding.unit ?? null,
 				format,
 				step: binding.step ?? null,
 			};

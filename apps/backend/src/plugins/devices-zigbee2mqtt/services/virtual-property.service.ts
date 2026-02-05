@@ -64,7 +64,6 @@ export class Z2mVirtualPropertyService {
 					dataType: def.data_type,
 					permissions: def.permissions,
 					format: def.format,
-					unit: def.unit,
 				});
 			}
 		}

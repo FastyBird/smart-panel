@@ -128,7 +128,6 @@ export const ChannelsPropertiesAddActionPayloadSchema = z.object({
 		name: z.string().trim().nullable(),
 		permissions: z.array(z.nativeEnum(DevicesModuleChannelPropertyPermissions)),
 		dataType: z.nativeEnum(DevicesModuleChannelPropertyDataType),
-		unit: z.string().nullable(),
 		format: z.array(z.union([z.string(), z.union([z.number(), z.null()])])).nullable(),
 		invalid: z.union([z.string(), z.number(), z.boolean()]).nullable(),
 		step: z
@@ -147,7 +146,6 @@ export const ChannelsPropertiesEditActionPayloadSchema = z.object({
 		category: z.nativeEnum(DevicesModuleChannelPropertyCategory).optional(),
 		identifier: z.string().trim().nonempty().nullable().optional(),
 		name: z.string().trim().nullable().optional(),
-		unit: z.string().nullable().optional(),
 		format: z
 			.array(z.union([z.string(), z.union([z.number(), z.null()])]))
 			.nullable()
@@ -182,7 +180,6 @@ export const ChannelPropertyCreateReqSchema: ZodType<ApiCreateChannelProperty> =
 	name: z.string().trim().nullable(),
 	permissions: z.array(z.nativeEnum(DevicesModuleChannelPropertyPermissions)),
 	data_type: z.nativeEnum(DevicesModuleChannelPropertyDataType),
-	unit: z.string().nullable(),
 	format: z.array(z.union([z.string(), z.union([z.number(), z.null()])])).nullable(),
 	invalid: z.union([z.string(), z.number(), z.boolean()]).nullable(),
 	step: z.number().nullable(),
@@ -193,7 +190,6 @@ export const ChannelPropertyUpdateReqSchema: ZodType<ApiUpdateChannelProperty> =
 	type: z.string().trim().nonempty(),
 	identifier: z.string().trim().nonempty().nullable().optional(),
 	name: z.string().trim().nullable().optional(),
-	unit: z.string().nullable().optional(),
 	format: z
 		.array(z.union([z.string(), z.union([z.number(), z.null()])]))
 		.nullable()

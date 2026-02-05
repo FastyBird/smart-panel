@@ -65,7 +65,6 @@ interface ApiAdoptDeviceRequestData {
 			z2m_property: string;
 			data_type: string;
 			permissions: string[];
-			unit?: string | null;
 			format?: (string | number)[] | null;
 		}>;
 	}>;
@@ -92,7 +91,6 @@ export const transformAdoptDeviceRequest = (request: IAdoptDeviceRequest): ApiAd
 					z2m_property: prop.z2mProperty,
 					data_type: prop.dataType,
 					permissions: prop.permissions,
-					unit: prop.unit,
 					format: prop.format,
 				})),
 			})),
@@ -130,7 +128,6 @@ interface ApiPropertyMappingPreview {
 	z2m_property: string;
 	data_type: string;
 	permissions: string[];
-	unit?: string | null;
 	format?: (string | number)[] | null;
 	required: boolean;
 	current_value?: string | number | boolean | null;
@@ -186,7 +183,6 @@ const transformPropertyMappingPreview = (prop: ApiPropertyMappingPreview): IProp
 	z2mProperty: prop.z2m_property,
 	dataType: prop.data_type as DevicesModuleChannelPropertyDataType,
 	permissions: prop.permissions as DevicesModuleChannelPropertyPermissions[],
-	unit: prop.unit ?? null,
 	format: prop.format ?? null,
 	required: prop.required,
 	currentValue: prop.current_value ?? null,
@@ -279,7 +275,6 @@ export const buildAdoptDeviceRequest = (
 				z2mProperty: prop.z2mProperty,
 				dataType: prop.dataType,
 				permissions: prop.permissions,
-				unit: prop.unit,
 				format: prop.format,
 			});
 		}

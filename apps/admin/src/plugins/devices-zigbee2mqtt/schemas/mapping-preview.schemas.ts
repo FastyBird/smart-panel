@@ -33,7 +33,6 @@ export const PropertyMappingPreviewSchema = z.object({
 	z2mProperty: z.string(),
 	dataType: z.nativeEnum(DevicesModuleChannelPropertyDataType),
 	permissions: z.array(z.nativeEnum(DevicesModuleChannelPropertyPermissions)),
-	unit: z.string().nullable().optional(),
 	format: z.array(z.union([z.string(), z.number()])).nullable().optional(),
 	required: z.boolean(),
 	currentValue: z.union([z.string(), z.number(), z.boolean()]).nullable().optional(),
@@ -98,7 +97,6 @@ export const AdoptPropertyDefinitionSchema = z.object({
 	z2mProperty: z.string(),
 	dataType: z.nativeEnum(DevicesModuleChannelPropertyDataType),
 	permissions: z.array(z.nativeEnum(DevicesModuleChannelPropertyPermissions)),
-	unit: z.string().nullable().optional(),
 	format: z.array(z.union([z.string(), z.number()])).nullable().optional(),
 });
 

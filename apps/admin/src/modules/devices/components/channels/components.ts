@@ -15,7 +15,7 @@ export { default as ChannelPropertyFormInvalid } from './channel-property-form-i
 export { default as ChannelPropertyFormMinMax } from './channel-property-form-min-max.vue';
 export { default as ChannelPropertyFormPermissions } from './channel-property-form-permissions.vue';
 export { default as ChannelPropertyFormStep } from './channel-property-form-step.vue';
-export { default as ChannelPropertyFormUnit } from './channel-property-form-unit.vue';
+
 export { default as ChannelsPropertiesFilter } from './channels-properties-filter.vue';
 export { default as ChannelsPropertiesTable } from './channels-properties-table.vue';
 export { default as ChannelsPropertiesTableColumnChannel } from './channels-properties-table-column-channel.vue';

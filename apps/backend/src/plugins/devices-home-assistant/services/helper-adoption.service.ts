@@ -268,7 +268,6 @@ export class HelperAdoptionService {
 				name: propDef.category.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
 				data_type: propDef.dataType,
 				permissions: propDef.permissions,
-				unit: propDef.unit ?? null,
 				format: propDef.format ?? null,
 				value: null,
 				ha_entity_id: entityId,

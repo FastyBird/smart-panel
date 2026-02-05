@@ -133,7 +133,6 @@ export class DeviceGeneratorService {
 				name: this.formatPropertyName(propMeta.category),
 				permissions: propMeta.permissions,
 				data_type: propMeta.data_type,
-				unit: propMeta.unit,
 				format: propMeta.format,
 				invalid: propMeta.invalid as string | number | boolean | undefined,
 				step: propMeta.step,

@@ -275,7 +275,6 @@ export class DeviceMapperService {
 			name: string;
 			category: PropertyCategory;
 			dataType: DataTypeType;
-			unit?: string;
 			format?: number[] | string[];
 			value?: string | number | boolean | null;
 		}> = [
@@ -557,7 +556,6 @@ export class DeviceMapperService {
 				category: binding.category,
 				dataType: binding.dataType,
 				permissions: binding.permissions,
-				unit: binding.unit,
 				format: binding.format,
 				value: initialValue !== undefined ? initialValue : null,
 			});
@@ -623,7 +621,6 @@ export class DeviceMapperService {
 				category: requiredPropertyCategory,
 				dataType: propertyMetadata.data_type,
 				permissions: propertyMetadata.permissions,
-				unit: propertyMetadata.unit ?? undefined,
 				format: propertyMetadata.format ?? undefined,
 				value: defaultValue,
 			});
@@ -688,7 +685,6 @@ export class DeviceMapperService {
 				category: syntheticProp.propertyCategory,
 				dataType: propertyMetadata.data_type,
 				permissions: propertyMetadata.permissions,
-				unit: propertyMetadata.unit ?? undefined,
 				format: propertyMetadata.format ?? undefined,
 				value: syntheticValue,
 			});
@@ -706,7 +702,6 @@ export class DeviceMapperService {
 			category: PropertyCategory;
 			dataType: DataTypeType;
 			permissions?: PermissionType[];
-			unit?: string;
 			format?: number[] | string[];
 			value?: string | number | boolean | null;
 		},
@@ -727,7 +722,6 @@ export class DeviceMapperService {
 				category: propDef.category,
 				data_type: propDef.dataType,
 				permissions: propDef.permissions || [PermissionType.READ_ONLY],
-				...(propDef.unit !== undefined && { unit: propDef.unit }),
 				...(propDef.format !== undefined && { format: propDef.format }),
 				...(propDef.value !== undefined && propDef.value !== null && { value: propDef.value }),
 			};
@@ -747,7 +741,6 @@ export class DeviceMapperService {
 					category: propDef.category,
 					data_type: propDef.dataType,
 					permissions: propDef.permissions || [PermissionType.READ_ONLY],
-					...(propDef.unit !== undefined && { unit: propDef.unit }),
 					...(propDef.format !== undefined && { format: propDef.format }),
 					...(propDef.value !== undefined && propDef.value !== null && { value: propDef.value }),
 				}),
