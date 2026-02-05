@@ -1,5 +1,6 @@
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_colors.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_data.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_detail_content.dart';
 import 'package:flutter/material.dart';
@@ -22,24 +23,8 @@ class SensorChannelDetailPage extends StatelessWidget {
     required this.isDeviceOnline,
   });
 
-  ThemeColors _themeColorForLabel() {
-    final l = sensor.label.toLowerCase();
-    if (l.contains('temperature') || l.contains('pressure')) {
-      return ThemeColors.info;
-    }
-    if (l.contains('humidity')) return ThemeColors.success;
-    if (l.contains('motion') ||
-        l.contains('occupancy') ||
-        l.contains('contact') ||
-        l.contains('leak') ||
-        l.contains('smoke')) {
-      return ThemeColors.warning;
-    }
-    if (l.contains('carbon') || l.contains('co2') || l.contains('co ')) {
-      return ThemeColors.error;
-    }
-    return ThemeColors.primary;
-  }
+  ThemeColors get _themeColor =>
+      SensorColors.themeColorForCategory(sensor.channel.category);
 
   @override
   Widget build(BuildContext context) {
@@ -63,7 +48,7 @@ class SensorChannelDetailPage extends StatelessWidget {
                   AppSpacings.spacingMdHorizontal,
                   HeaderMainIcon(
                     icon: sensor.icon,
-                    color: _themeColorForLabel(),
+                    color: _themeColor,
                   ),
                 ],
               ),

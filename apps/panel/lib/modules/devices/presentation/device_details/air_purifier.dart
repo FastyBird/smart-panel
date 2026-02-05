@@ -1233,7 +1233,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           value: NumberFormatUtils.defaultFormat.formatInteger(_pm25),
           unit: 'µg/m³',
           icon: MdiIcons.blur,
-          valueThemeColor: ThemeColors.success,
+          valueThemeColor: SensorColors.airQuality,
           sensorData: SensorData(
             label: 'Particulate Matter',
             icon: MdiIcons.blur,
@@ -1251,7 +1251,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
               ? localizations.air_quality_unhealthy
               : localizations.air_quality_healthy,
           icon: MdiIcons.blur,
-          valueThemeColor: ThemeColors.success,
+          valueThemeColor: SensorColors.airQuality,
           isWarning: isDetected,
         ));
       }
@@ -1266,7 +1266,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           label: localizations.device_voc,
           value: AirQualityUtils.getVocLevelLabel(localizations, vocChannel.level),
           icon: MdiIcons.molecule,
-          valueThemeColor: ThemeColors.success,
+          valueThemeColor: SensorColors.airQuality,
         ));
       } else if (vocChannel.hasConcentration) {
         sensors.add(_SensorInfo(
@@ -1274,7 +1274,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           label: localizations.device_voc,
           value: AirQualityUtils.calculateVocLevelFromConcentration(localizations, vocChannel.concentration),
           icon: MdiIcons.molecule,
-          valueThemeColor: ThemeColors.success,
+          valueThemeColor: SensorColors.airQuality,
         ));
       } else if (vocChannel.hasDetected) {
         final isDetected = vocChannel.detected;
@@ -1285,7 +1285,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
               ? localizations.air_quality_unhealthy
               : localizations.air_quality_healthy,
           icon: MdiIcons.molecule,
-          valueThemeColor: ThemeColors.success,
+          valueThemeColor: SensorColors.airQuality,
           isWarning: isDetected,
         ));
       }
@@ -1300,7 +1300,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
         value: NumberFormatUtils.defaultFormat.formatInteger(co2Channel.concentration.toInt()),
         unit: 'ppm',
         icon: MdiIcons.moleculeCo2,
-        valueThemeColor: ThemeColors.success,
+        valueThemeColor: SensorColors.co2,
         isWarning: co2Channel.concentration > 1000, // Warn if CO₂ exceeds 1000 ppm
         sensorData: SensorData(
           label: 'Carbon Dioxide',
@@ -1325,7 +1325,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           label: localizations.device_o3,
           value: AirQualityUtils.getOzoneLevelLabel(localizations, o3Channel.level),
           icon: MdiIcons.weatherSunny,
-          valueThemeColor: ThemeColors.success,
+          valueThemeColor: SensorColors.airQuality,
         ));
       } else if (o3Channel.hasConcentration) {
         sensors.add(_SensorInfo(
@@ -1334,7 +1334,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           value: NumberFormatUtils.defaultFormat.formatInteger(o3Channel.concentration.toInt()),
           unit: 'µg/m³',
           icon: MdiIcons.weatherSunny,
-          valueThemeColor: ThemeColors.success,
+          valueThemeColor: SensorColors.airQuality,
           isWarning: o3Channel.concentration > 100, // Warn if exceeds WHO 8-hour limit
         ));
       } else if (o3Channel.hasDetected) {
@@ -1346,7 +1346,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
               ? localizations.gas_detected
               : localizations.gas_clear,
           icon: MdiIcons.weatherSunny,
-          valueThemeColor: ThemeColors.success,
+          valueThemeColor: SensorColors.airQuality,
           isWarning: isDetected,
         ));
       }
@@ -1362,7 +1362,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           value: NumberFormatUtils.defaultFormat.formatInteger(no2Channel.concentration.toInt()),
           unit: 'µg/m³',
           icon: MdiIcons.molecule,
-          valueThemeColor: ThemeColors.success,
+          valueThemeColor: SensorColors.airQuality,
           isWarning: no2Channel.concentration > 200, // Warn if exceeds WHO 1-hour limit
         ));
       } else if (no2Channel.hasDetected) {
@@ -1374,7 +1374,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
               ? localizations.gas_detected
               : localizations.gas_clear,
           icon: MdiIcons.molecule,
-          valueThemeColor: ThemeColors.success,
+          valueThemeColor: SensorColors.airQuality,
           isWarning: isDetected,
         ));
       }
@@ -1389,7 +1389,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           label: localizations.device_so2,
           value: AirQualityUtils.getSulphurDioxideLevelLabel(localizations, so2Channel.level),
           icon: MdiIcons.molecule,
-          valueThemeColor: ThemeColors.success,
+          valueThemeColor: SensorColors.airQuality,
         ));
       } else if (so2Channel.hasConcentration) {
         sensors.add(_SensorInfo(
@@ -1398,7 +1398,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           value: NumberFormatUtils.defaultFormat.formatInteger(so2Channel.concentration.toInt()),
           unit: 'µg/m³',
           icon: MdiIcons.molecule,
-          valueThemeColor: ThemeColors.success,
+          valueThemeColor: SensorColors.airQuality,
           isWarning: so2Channel.concentration > 500, // Warn if exceeds WHO 10-min limit
         ));
       } else if (so2Channel.hasDetected) {
@@ -1410,7 +1410,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
               ? localizations.gas_detected
               : localizations.gas_clear,
           icon: MdiIcons.molecule,
-          valueThemeColor: ThemeColors.success,
+          valueThemeColor: SensorColors.airQuality,
           isWarning: isDetected,
         ));
       }
@@ -1430,7 +1430,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           value: '${(_filterLife * 100).toInt()}',
           unit: '%',
           icon: MdiIcons.airFilter,
-          valueThemeColor: SensorColors.alert,
+          valueThemeColor: SensorColors.filter,
           isWarning: _filterLife < 0.3 || _device.isFilterNeedsReplacement,
         ));
       } else if (filterChannel.hasStatus) {
@@ -1439,7 +1439,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           label: localizations.device_filter_status,
           value: FilterUtils.getStatusLabel(localizations, filterChannel.status),
           icon: MdiIcons.airFilter,
-          valueThemeColor: SensorColors.alert,
+          valueThemeColor: SensorColors.filter,
           isWarning: _device.isFilterNeedsReplacement,
         ));
       }
@@ -1501,7 +1501,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
         value: NumberFormatUtils.defaultFormat.formatDecimal(pressureChannel.pressure, decimalPlaces: 1),
         unit: 'kPa',
         icon: MdiIcons.gauge,
-        valueThemeColor: ThemeColors.success,
+        valueThemeColor: SensorColors.pressure,
         sensorData: SensorData(
           label: 'Pressure',
           icon: MdiIcons.gauge,

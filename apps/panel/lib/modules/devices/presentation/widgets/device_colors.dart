@@ -1,48 +1,41 @@
+import 'package:fastybird_smart_panel/api/models/devices_module_channel_category.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-
-/// Sensor type identifiers for color mapping
-class SensorType {
-  static const String temperature = 'temp';
-  static const String humidity = 'humidity';
-  static const String aqi = 'aqi';
-  static const String pm = 'pm';
-  static const String voc = 'voc';
-  static const String co2 = 'co2';
-  static const String pressure = 'pressure';
-  static const String contact = 'contact';
-  static const String leak = 'leak';
-  static const String filter = 'filter';
-}
 
 /// Standardized sensor colors for consistent UI across all sensor displays.
 /// Returns [ThemeColors]; resolve to [Color] via [ThemeColorFamily.get](brightness, color).base where needed.
 class SensorColors {
-  /// Theme color key for a sensor type. Use for tile [activeColor] or [iconAccentColor].
-  /// Returns [ThemeColors.neutral] for unknown types.
-  static ThemeColors themeColorForType(String type) {
-    switch (type) {
-      case SensorType.temperature:
-      case SensorType.pressure:
+  /// Theme color for a channel category. Use for tile [activeColor], [iconAccentColor],
+  /// header icon color, chart line color, etc.
+  /// Returns [ThemeColors.neutral] for unknown/unmapped categories.
+  static ThemeColors themeColorForCategory(DevicesModuleChannelCategory category) {
+    switch (category) {
+      case DevicesModuleChannelCategory.temperature:
+      case DevicesModuleChannelCategory.pressure:
+      case DevicesModuleChannelCategory.illuminance:
         return ThemeColors.info;
-      case SensorType.humidity:
+      case DevicesModuleChannelCategory.humidity:
         return ThemeColors.success;
-      case SensorType.aqi:
-      case SensorType.pm:
-      case SensorType.voc:
-      case SensorType.contact:
-      case SensorType.leak:
+      case DevicesModuleChannelCategory.airQuality:
+      case DevicesModuleChannelCategory.airParticulate:
+      case DevicesModuleChannelCategory.volatileOrganicCompounds:
+      case DevicesModuleChannelCategory.ozone:
+      case DevicesModuleChannelCategory.nitrogenDioxide:
+      case DevicesModuleChannelCategory.sulphurDioxide:
+      case DevicesModuleChannelCategory.contact:
+      case DevicesModuleChannelCategory.leak:
+      case DevicesModuleChannelCategory.smoke:
+      case DevicesModuleChannelCategory.motion:
+      case DevicesModuleChannelCategory.occupancy:
         return ThemeColors.warning;
-      case SensorType.co2:
+      case DevicesModuleChannelCategory.carbonDioxide:
+      case DevicesModuleChannelCategory.carbonMonoxide:
         return ThemeColors.error;
-      case SensorType.filter:
+      case DevicesModuleChannelCategory.filter:
         return ThemeColors.teal;
       default:
         return ThemeColors.neutral;
     }
   }
-
-  /// Alias for [themeColorForType].
-  static ThemeColors forType(String type) => themeColorForType(type);
 
   /// Temperature sensor (info/blue)
   static ThemeColors get temperature => ThemeColors.info;

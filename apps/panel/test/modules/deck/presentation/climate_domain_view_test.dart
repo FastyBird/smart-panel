@@ -1,3 +1,4 @@
+import 'package:fastybird_smart_panel/api/models/devices_module_channel_category.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/climate_domain_view.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -169,12 +170,12 @@ void main() {
   });
 
   group('ClimateSensor', () {
-    test('should return correct icon for temp type', () {
+    test('should return correct icon for temperature type', () {
       const sensor = ClimateSensor(
         id: 't1',
         label: 'Temperature',
         value: '21°C',
-        type: 'temp',
+        type: DevicesModuleChannelCategory.temperature,
       );
       expect(sensor.icon, MdiIcons.thermometer);
     });
@@ -184,47 +185,47 @@ void main() {
         id: 'h1',
         label: 'Humidity',
         value: '50%',
-        type: 'humidity',
+        type: DevicesModuleChannelCategory.humidity,
       );
       expect(sensor.icon, MdiIcons.waterPercent);
     });
 
-    test('should return correct icon for aqi type', () {
+    test('should return correct icon for air quality type', () {
       const sensor = ClimateSensor(
         id: 'a1',
         label: 'Air Quality',
         value: '50',
-        type: 'aqi',
+        type: DevicesModuleChannelCategory.airQuality,
       );
       expect(sensor.icon, MdiIcons.airFilter);
     });
 
-    test('should return correct icon for pm type', () {
+    test('should return correct icon for air particulate type', () {
       const sensor = ClimateSensor(
         id: 'pm1',
         label: 'PM2.5',
         value: '25 µg/m³',
-        type: 'pm',
+        type: DevicesModuleChannelCategory.airParticulate,
       );
       expect(sensor.icon, MdiIcons.blur);
     });
 
-    test('should return correct icon for co2 type', () {
+    test('should return correct icon for carbon dioxide type', () {
       const sensor = ClimateSensor(
         id: 'co2_1',
         label: 'CO2',
         value: '450 ppm',
-        type: 'co2',
+        type: DevicesModuleChannelCategory.carbonDioxide,
       );
       expect(sensor.icon, MdiIcons.moleculeCo2);
     });
 
-    test('should return correct icon for voc type', () {
+    test('should return correct icon for VOC type', () {
       const sensor = ClimateSensor(
         id: 'voc1',
         label: 'VOC',
         value: '100 ppb',
-        type: 'voc',
+        type: DevicesModuleChannelCategory.volatileOrganicCompounds,
       );
       expect(sensor.icon, MdiIcons.molecule);
     });
@@ -234,7 +235,7 @@ void main() {
         id: 'p1',
         label: 'Pressure',
         value: '1013 hPa',
-        type: 'pressure',
+        type: DevicesModuleChannelCategory.pressure,
       );
       expect(sensor.icon, MdiIcons.gauge);
     });
@@ -244,7 +245,7 @@ void main() {
         id: 'u1',
         label: 'Unknown',
         value: '??',
-        type: 'unknown',
+        type: DevicesModuleChannelCategory.generic,
       );
       expect(sensor.icon, MdiIcons.eyeSettings);
     });

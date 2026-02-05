@@ -236,7 +236,7 @@ class ClimateSensor {
   final String id;
   final String label;
   final String value;
-  final String type;
+  final DevicesModuleChannelCategory type;
   final bool isOnline;
   final SensorData? sensorData;
   final String? deviceName;
@@ -253,19 +253,19 @@ class ClimateSensor {
 
   IconData get icon {
     switch (type) {
-      case 'temp':
+      case DevicesModuleChannelCategory.temperature:
         return MdiIcons.thermometer;
-      case 'humidity':
+      case DevicesModuleChannelCategory.humidity:
         return MdiIcons.waterPercent;
-      case 'aqi':
+      case DevicesModuleChannelCategory.airQuality:
         return MdiIcons.airFilter;
-      case 'pm':
+      case DevicesModuleChannelCategory.airParticulate:
         return MdiIcons.blur;
-      case 'co2':
+      case DevicesModuleChannelCategory.carbonDioxide:
         return MdiIcons.moleculeCo2;
-      case 'voc':
+      case DevicesModuleChannelCategory.volatileOrganicCompounds:
         return MdiIcons.molecule;
-      case 'pressure':
+      case DevicesModuleChannelCategory.pressure:
         return MdiIcons.gauge;
       default:
         return MdiIcons.eyeSettings;
@@ -698,7 +698,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
 
     // Add temperature sensor from climate state if not already present
     if (climateState?.currentTemperature != null &&
-        !sensors.any((s) => s.type == 'temp')) {
+        !sensors.any((s) => s.type == DevicesModuleChannelCategory.temperature)) {
       sensors.insert(
         0,
         ClimateSensor(
@@ -706,7 +706,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           label: AppLocalizations.of(context)!.device_current_temperature,
           value:
               '${NumberFormatUtils.defaultFormat.formatDecimal(climateState!.currentTemperature!, decimalPlaces: 1)}°C',
-          type: 'temp',
+          type: DevicesModuleChannelCategory.temperature,
           isOnline: true,
         ),
       );
@@ -714,14 +714,14 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
 
     // Add humidity sensor from climate state if not already present
     if (climateState?.currentHumidity != null &&
-        !sensors.any((s) => s.type == 'humidity')) {
+        !sensors.any((s) => s.type == DevicesModuleChannelCategory.humidity)) {
       sensors.add(
         ClimateSensor(
           id: 'state_humidity',
           label: AppLocalizations.of(context)!.device_humidity,
           value:
               '${NumberFormatUtils.defaultFormat.formatInteger(climateState!.currentHumidity!.toInt())}%',
-          type: 'humidity',
+          type: DevicesModuleChannelCategory.humidity,
           isOnline: true,
         ),
       );
@@ -807,7 +807,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             label: target.displayName,
             value:
                 '${NumberFormatUtils.defaultFormat.formatDecimal(tempValue, decimalPlaces: 1)}°C',
-            type: 'temp',
+            type: DevicesModuleChannelCategory.temperature,
             isOnline: device.isOnline,
             sensorData: tempSensorData,
             deviceName: device.name,
@@ -877,7 +877,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             label: target.displayName,
             value:
                 '${NumberFormatUtils.defaultFormat.formatInteger(humidityValue.toInt())}%',
-            type: 'humidity',
+            type: DevicesModuleChannelCategory.humidity,
             isOnline: device.isOnline,
             sensorData: humiditySensorData,
             deviceName: device.name,
@@ -914,7 +914,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           id: '${target.id}_aqi',
           label: target.displayName,
           value: formatter.formatInteger(device.airQualityChannel!.aqi),
-          type: 'aqi',
+          type: DevicesModuleChannelCategory.airQuality,
           isOnline: device.isOnline,
         ));
       }
@@ -930,7 +930,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             label: target.displayName,
             value:
                 '${formatter.formatInteger(pmChannel.concentration.toInt())} µg/m³',
-            type: 'pm',
+            type: DevicesModuleChannelCategory.airParticulate,
             isOnline: device.isOnline,
             sensorData: SensorData(
               label: 'Particulate Matter', icon: MdiIcons.blur,
@@ -949,7 +949,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             label: target.displayName,
             value:
                 '${formatter.formatInteger(pmChannel.concentration.toInt())} µg/m³',
-            type: 'pm',
+            type: DevicesModuleChannelCategory.airParticulate,
             isOnline: device.isOnline,
             sensorData: SensorData(
               label: 'Particulate Matter', icon: MdiIcons.blur,
@@ -971,7 +971,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             id: '${target.id}_co2',
             label: target.displayName,
             value: '${formatter.formatInteger(co2Channel.concentration.toInt())} ppm',
-            type: 'co2',
+            type: DevicesModuleChannelCategory.carbonDioxide,
             isOnline: device.isOnline,
             sensorData: SensorData(
               label: 'Carbon Dioxide', icon: MdiIcons.moleculeCo2,
@@ -989,7 +989,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             id: '${target.id}_co2',
             label: target.displayName,
             value: '${formatter.formatInteger(co2Channel.concentration.toInt())} ppm',
-            type: 'co2',
+            type: DevicesModuleChannelCategory.carbonDioxide,
             isOnline: device.isOnline,
             sensorData: SensorData(
               label: 'Carbon Dioxide', icon: MdiIcons.moleculeCo2,
@@ -1012,7 +1012,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             id: '${target.id}_voc',
             label: target.displayName,
             value: '${formatter.formatInteger(vocChannel.concentration.toInt())} ppb',
-            type: 'voc',
+            type: DevicesModuleChannelCategory.volatileOrganicCompounds,
             isOnline: device.isOnline,
             sensorData: SensorData(
               label: 'VOC', icon: MdiIcons.molecule,
@@ -1030,7 +1030,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             id: '${target.id}_voc',
             label: target.displayName,
             value: '${formatter.formatInteger(vocChannel.concentration.toInt())} ppb',
-            type: 'voc',
+            type: DevicesModuleChannelCategory.volatileOrganicCompounds,
             isOnline: device.isOnline,
             sensorData: SensorData(
               label: 'VOC', icon: MdiIcons.molecule,
@@ -1052,7 +1052,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           label: target.displayName,
           value:
               '${formatter.formatInteger(pressureChannel.pressure.toInt())} hPa',
-          type: 'pressure',
+          type: DevicesModuleChannelCategory.pressure,
           isOnline: device.isOnline,
           sensorData: SensorData(
             label: 'Pressure', icon: MdiIcons.gauge,
@@ -1247,21 +1247,21 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
 
   /// Sort order for sensor types (lower = earlier in list). Temp first, then
   /// humidity, then AQI/PM/CO2/VOC/pressure.
-  int _sensorTypePriority(String type) {
+  int _sensorTypePriority(DevicesModuleChannelCategory type) {
     switch (type) {
-      case 'temp':
+      case DevicesModuleChannelCategory.temperature:
         return 0;
-      case 'humidity':
+      case DevicesModuleChannelCategory.humidity:
         return 1;
-      case 'aqi':
+      case DevicesModuleChannelCategory.airQuality:
         return 2;
-      case 'pm':
+      case DevicesModuleChannelCategory.airParticulate:
         return 3;
-      case 'co2':
+      case DevicesModuleChannelCategory.carbonDioxide:
         return 4;
-      case 'voc':
+      case DevicesModuleChannelCategory.volatileOrganicCompounds:
         return 5;
-      case 'pressure':
+      case DevicesModuleChannelCategory.pressure:
         return 6;
       default:
         return 99;
@@ -1791,7 +1791,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           icon: sensor.icon,
           name: sensor.isOnline ? sensor.value : _translateSensorLabel(localizations, sensor),
           status: sensor.isOnline ? _translateSensorLabel(localizations, sensor) : localizations.device_status_offline,
-          iconAccentColor: SensorColors.themeColorForType(sensor.type),
+          iconAccentColor: SensorColors.themeColorForCategory(sensor.type),
           isOffline: !sensor.isOnline,
           showWarningBadge: true,
           onTileTap: _sensorTapCallback(sensor),
@@ -1964,7 +1964,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             icon: sensor.icon,
             name: sensor.isOnline ? sensor.value : _translateSensorLabel(localizations, sensor),
             status: sensor.isOnline ? _translateSensorLabel(localizations, sensor) : localizations.device_status_offline,
-            iconAccentColor: SensorColors.themeColorForType(sensor.type),
+            iconAccentColor: SensorColors.themeColorForCategory(sensor.type),
             isOffline: !sensor.isOnline,
             showWarningBadge: true,
             onTileTap: _sensorTapCallback(sensor),
@@ -1986,7 +1986,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             icon: sensor.icon,
             name: sensor.isOnline ? sensor.value : _translateSensorLabel(localizations, sensor),
             status: sensor.isOnline ? _translateSensorLabel(localizations, sensor) : localizations.device_status_offline,
-            iconAccentColor: SensorColors.themeColorForType(sensor.type),
+            iconAccentColor: SensorColors.themeColorForCategory(sensor.type),
             isOffline: !sensor.isOnline,
             showWarningBadge: true,
             onTileTap: _sensorTapCallback(sensor),
@@ -2175,9 +2175,9 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   String _translateSensorLabel(
       AppLocalizations localizations, ClimateSensor sensor) {
     switch (sensor.type) {
-      case 'temp':
+      case DevicesModuleChannelCategory.temperature:
         return localizations.device_temperature;
-      case 'humidity':
+      case DevicesModuleChannelCategory.humidity:
         return localizations.device_humidity;
       default:
         return sensor.label;

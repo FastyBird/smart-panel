@@ -6,6 +6,7 @@ import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/utils/sensor_enum_utils.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_colors.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_landscape_layout.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_portrait_layout.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_chart_painter.dart';
@@ -128,29 +129,13 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
   double _scale(double size) =>
       _screenService.scale(size, density: _visualDensityService.density);
 
-  ThemeColors _themeColorForLabel() {
-    final l = widget.sensor.label.toLowerCase();
-    if (l.contains('temperature') || l.contains('pressure')) {
-      return ThemeColors.info;
-    }
-    if (l.contains('humidity')) return ThemeColors.success;
-    if (l.contains('motion') ||
-        l.contains('occupancy') ||
-        l.contains('contact') ||
-        l.contains('leak') ||
-        l.contains('smoke')) {
-      return ThemeColors.warning;
-    }
-    if (l.contains('carbon') || l.contains('co2') || l.contains('co ')) {
-      return ThemeColors.error;
-    }
-    return ThemeColors.primary;
-  }
+  ThemeColors get _themeColor =>
+      SensorColors.themeColorForCategory(widget.sensor.channel.category);
 
   Color _getCategoryColor(BuildContext context) {
     final family = ThemeColorFamily.get(
       Theme.of(context).brightness,
-      _themeColorForLabel(),
+      _themeColor,
     );
     return family.base;
   }
