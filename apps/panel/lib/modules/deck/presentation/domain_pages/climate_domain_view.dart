@@ -251,26 +251,7 @@ class ClimateSensor {
     this.deviceName,
   });
 
-  IconData get icon {
-    switch (type) {
-      case DevicesModuleChannelCategory.temperature:
-        return MdiIcons.thermometer;
-      case DevicesModuleChannelCategory.humidity:
-        return MdiIcons.waterPercent;
-      case DevicesModuleChannelCategory.airQuality:
-        return MdiIcons.airFilter;
-      case DevicesModuleChannelCategory.airParticulate:
-        return MdiIcons.blur;
-      case DevicesModuleChannelCategory.carbonDioxide:
-        return MdiIcons.moleculeCo2;
-      case DevicesModuleChannelCategory.volatileOrganicCompounds:
-        return MdiIcons.molecule;
-      case DevicesModuleChannelCategory.pressure:
-        return MdiIcons.gauge;
-      default:
-        return MdiIcons.eyeSettings;
-    }
-  }
+  IconData get icon => buildChannelIcon(type);
 }
 
 /// Single derived state for the climate domain page. Built in [_buildState] from
@@ -761,7 +742,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           final ch = device.temperatureChannel;
           tempValue = ch.temperature;
           tempSensorData = SensorData(
-            label: 'Temperature', icon: MdiIcons.thermometer,
+            label: 'Temperature', icon: buildChannelIcon(ch.category),
             channel: ch, property: ch.temperatureProp,
             valueFormatter: (prop) => ValueUtils.formatValue(prop, 1),
           );
@@ -769,7 +750,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           final ch = device.temperatureChannel;
           tempValue = ch.temperature;
           tempSensorData = SensorData(
-            label: 'Temperature', icon: MdiIcons.thermometer,
+            label: 'Temperature', icon: buildChannelIcon(ch.category),
             channel: ch, property: ch.temperatureProp,
             valueFormatter: (prop) => ValueUtils.formatValue(prop, 1),
           );
@@ -777,7 +758,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           final ch = device.temperatureChannel;
           tempValue = ch.temperature;
           tempSensorData = SensorData(
-            label: 'Temperature', icon: MdiIcons.thermometer,
+            label: 'Temperature', icon: buildChannelIcon(ch.category),
             channel: ch, property: ch.temperatureProp,
             valueFormatter: (prop) => ValueUtils.formatValue(prop, 1),
           );
@@ -785,7 +766,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           final ch = device.temperatureChannel;
           tempValue = ch.temperature;
           tempSensorData = SensorData(
-            label: 'Temperature', icon: MdiIcons.thermometer,
+            label: 'Temperature', icon: buildChannelIcon(ch.category),
             channel: ch, property: ch.temperatureProp,
             valueFormatter: (prop) => ValueUtils.formatValue(prop, 1),
           );
@@ -794,7 +775,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           tempValue = ch?.temperature;
           if (ch != null) {
             tempSensorData = SensorData(
-              label: 'Temperature', icon: MdiIcons.thermometer,
+              label: 'Temperature', icon: buildChannelIcon(ch.category),
               channel: ch, property: ch.temperatureProp,
               valueFormatter: (prop) => ValueUtils.formatValue(prop, 1),
             );
@@ -824,7 +805,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           humidityValue = ch?.humidity.toDouble();
           if (ch != null) {
             humiditySensorData = SensorData(
-              label: 'Humidity', icon: MdiIcons.waterPercent,
+              label: 'Humidity', icon: buildChannelIcon(ch.category),
               channel: ch, property: ch.humidityProp,
               valueFormatter: (prop) => ValueUtils.formatValue(prop, 0),
             );
@@ -834,7 +815,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           humidityValue = ch?.humidity.toDouble();
           if (ch != null) {
             humiditySensorData = SensorData(
-              label: 'Humidity', icon: MdiIcons.waterPercent,
+              label: 'Humidity', icon: buildChannelIcon(ch.category),
               channel: ch, property: ch.humidityProp,
               valueFormatter: (prop) => ValueUtils.formatValue(prop, 0),
             );
@@ -844,7 +825,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           humidityValue = ch?.humidity.toDouble();
           if (ch != null) {
             humiditySensorData = SensorData(
-              label: 'Humidity', icon: MdiIcons.waterPercent,
+              label: 'Humidity', icon: buildChannelIcon(ch.category),
               channel: ch, property: ch.humidityProp,
               valueFormatter: (prop) => ValueUtils.formatValue(prop, 0),
             );
@@ -854,7 +835,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           humidityValue = ch?.humidity.toDouble();
           if (ch != null) {
             humiditySensorData = SensorData(
-              label: 'Humidity', icon: MdiIcons.waterPercent,
+              label: 'Humidity', icon: buildChannelIcon(ch.category),
               channel: ch, property: ch.humidityProp,
               valueFormatter: (prop) => ValueUtils.formatValue(prop, 0),
             );
@@ -864,7 +845,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           humidityValue = ch?.humidity.toDouble();
           if (ch != null) {
             humiditySensorData = SensorData(
-              label: 'Humidity', icon: MdiIcons.waterPercent,
+              label: 'Humidity', icon: buildChannelIcon(ch.category),
               channel: ch, property: ch.humidityProp,
               valueFormatter: (prop) => ValueUtils.formatValue(prop, 0),
             );
@@ -933,7 +914,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             type: DevicesModuleChannelCategory.airParticulate,
             isOnline: device.isOnline,
             sensorData: SensorData(
-              label: 'Particulate Matter', icon: MdiIcons.blur,
+              label: 'Particulate Matter', icon: buildChannelIcon(pmChannel.category),
               channel: pmChannel, property: pmChannel.concentrationProp,
               valueFormatter: (prop) => ValueUtils.formatValue(prop, 0),
             ),
@@ -952,7 +933,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             type: DevicesModuleChannelCategory.airParticulate,
             isOnline: device.isOnline,
             sensorData: SensorData(
-              label: 'Particulate Matter', icon: MdiIcons.blur,
+              label: 'Particulate Matter', icon: buildChannelIcon(pmChannel.category),
               channel: pmChannel, property: pmChannel.concentrationProp,
               valueFormatter: (prop) => ValueUtils.formatValue(prop, 0),
             ),
@@ -974,7 +955,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             type: DevicesModuleChannelCategory.carbonDioxide,
             isOnline: device.isOnline,
             sensorData: SensorData(
-              label: 'Carbon Dioxide', icon: MdiIcons.moleculeCo2,
+              label: 'Carbon Dioxide', icon: buildChannelIcon(co2Channel.category),
               channel: co2Channel, property: co2Channel.concentrationProp,
               valueFormatter: (prop) => ValueUtils.formatValue(prop, 0),
             ),
@@ -992,7 +973,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             type: DevicesModuleChannelCategory.carbonDioxide,
             isOnline: device.isOnline,
             sensorData: SensorData(
-              label: 'Carbon Dioxide', icon: MdiIcons.moleculeCo2,
+              label: 'Carbon Dioxide', icon: buildChannelIcon(co2Channel.category),
               channel: co2Channel, property: co2Channel.concentrationProp,
               valueFormatter: (prop) => ValueUtils.formatValue(prop, 0),
             ),
@@ -1015,7 +996,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             type: DevicesModuleChannelCategory.volatileOrganicCompounds,
             isOnline: device.isOnline,
             sensorData: SensorData(
-              label: 'VOC', icon: MdiIcons.molecule,
+              label: 'VOC', icon: buildChannelIcon(vocChannel.category),
               channel: vocChannel, property: vocChannel.concentrationProp,
               valueFormatter: (prop) => ValueUtils.formatValue(prop, 0),
             ),
@@ -1033,7 +1014,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             type: DevicesModuleChannelCategory.volatileOrganicCompounds,
             isOnline: device.isOnline,
             sensorData: SensorData(
-              label: 'VOC', icon: MdiIcons.molecule,
+              label: 'VOC', icon: buildChannelIcon(vocChannel.category),
               channel: vocChannel, property: vocChannel.concentrationProp,
               valueFormatter: (prop) => ValueUtils.formatValue(prop, 0),
             ),
@@ -1055,7 +1036,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           type: DevicesModuleChannelCategory.pressure,
           isOnline: device.isOnline,
           sensorData: SensorData(
-            label: 'Pressure', icon: MdiIcons.gauge,
+            label: 'Pressure', icon: buildChannelIcon(pressureChannel.category),
             channel: pressureChannel, property: pressureChannel.pressureProp,
             valueFormatter: (prop) => ValueUtils.formatValue(prop, 0),
           ),

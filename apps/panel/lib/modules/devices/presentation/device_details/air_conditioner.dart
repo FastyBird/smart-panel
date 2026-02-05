@@ -31,6 +31,7 @@ import 'package:fastybird_smart_panel/modules/devices/services/device_control_st
 import 'package:fastybird_smart_panel/modules/devices/utils/fan_utils.dart';
 import 'package:fastybird_smart_panel/modules/devices/utils/filter_utils.dart';
 import 'package:fastybird_smart_panel/modules/devices/utils/value.dart';
+import 'package:fastybird_smart_panel/modules/devices/mappers/channel.dart' show buildChannelIcon;
 import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/air_conditioner.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
@@ -991,11 +992,11 @@ class _AirConditionerDeviceDetailState
         decimalPlaces: 1,
       ),
       unit: '°C',
-      icon: MdiIcons.thermometer,
+      icon: buildChannelIcon(temperatureChannel.category),
       themeColor: SensorColors.temperature,
       sensorData: SensorData(
         label: 'Temperature',
-        icon: MdiIcons.thermometer,
+        icon: buildChannelIcon(temperatureChannel.category),
         channel: temperatureChannel,
         property: temperatureChannel.temperatureProp,
         valueFormatter: (prop) => ValueUtils.formatValue(prop, 1),
@@ -1010,11 +1011,11 @@ class _AirConditionerDeviceDetailState
         value: NumberFormatUtils.defaultFormat
             .formatInteger(humidityChannel.humidity),
         unit: '%',
-        icon: MdiIcons.waterPercent,
+        icon: buildChannelIcon(humidityChannel.category),
         themeColor: SensorColors.humidity,
         sensorData: SensorData(
           label: 'Humidity',
-          icon: MdiIcons.waterPercent,
+          icon: buildChannelIcon(humidityChannel.category),
           channel: humidityChannel,
           property: humidityChannel.humidityProp,
           valueFormatter: (prop) => ValueUtils.formatValue(prop, 0),
@@ -1031,12 +1032,12 @@ class _AirConditionerDeviceDetailState
         value: isOpen
             ? localizations.contact_sensor_open
             : localizations.contact_sensor_closed,
-        icon: MdiIcons.windowOpenVariant,
+        icon: isOpen ? MdiIcons.doorOpen : MdiIcons.doorClosed,
         themeColor: SensorColors.alert,
         isWarning: isOpen,
         sensorData: SensorData(
           label: 'Contact',
-          icon: isOpen ? MdiIcons.doorOpen : MdiIcons.doorClosed,
+          icon: buildChannelIcon(contactChannel.category),
           channel: contactChannel,
           property: contactChannel.detectedProp,
           isDetection: contactChannel.detected,
@@ -1055,12 +1056,12 @@ class _AirConditionerDeviceDetailState
         value: isLeaking
             ? localizations.leak_sensor_detected
             : localizations.leak_sensor_dry,
-        icon: MdiIcons.pipeLeak,
+        icon: buildChannelIcon(leakChannel.category),
         themeColor: SensorColors.alert,
         isWarning: isLeaking,
         sensorData: SensorData(
           label: 'Leak',
-          icon: MdiIcons.waterAlert,
+          icon: buildChannelIcon(leakChannel.category),
           channel: leakChannel,
           property: leakChannel.detectedProp,
           isDetection: leakChannel.detected,
@@ -1080,7 +1081,7 @@ class _AirConditionerDeviceDetailState
           label: localizations.device_filter_life,
           value: '${(filterLife * 100).toInt()}',
           unit: '%',
-          icon: MdiIcons.airFilter,
+          icon: buildChannelIcon(filterChannel.category),
           themeColor: SensorColors.filter,
           isWarning: filterLife < 0.3 || _device.isFilterNeedsReplacement,
         ));
@@ -1089,7 +1090,7 @@ class _AirConditionerDeviceDetailState
           id: 'filter_status',
           label: localizations.device_filter_status,
           value: FilterUtils.getStatusLabel(localizations, filterChannel.status),
-          icon: MdiIcons.airFilter,
+          icon: buildChannelIcon(filterChannel.category),
           themeColor: SensorColors.filter,
           isWarning: _device.isFilterNeedsReplacement,
         ));

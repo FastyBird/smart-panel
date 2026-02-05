@@ -30,6 +30,7 @@ import 'package:fastybird_smart_panel/modules/devices/utils/air_quality_utils.da
 import 'package:fastybird_smart_panel/modules/devices/utils/fan_utils.dart';
 import 'package:fastybird_smart_panel/modules/devices/utils/filter_utils.dart';
 import 'package:fastybird_smart_panel/modules/devices/utils/value.dart';
+import 'package:fastybird_smart_panel/modules/devices/mappers/channel.dart' show buildChannelIcon;
 import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/air_purifier.dart';
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
@@ -1156,12 +1157,12 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           label: localizations.device_co,
           value: NumberFormatUtils.defaultFormat.formatDecimal(coChannel.concentration, decimalPlaces: 1),
           unit: 'ppm',
-          icon: MdiIcons.moleculeCo,
+          icon: buildChannelIcon(coChannel.category),
           valueThemeColor: SensorColors.alert,
           isWarning: coChannel.concentration > 35, // Warn if CO exceeds 35 ppm (EPA 1-hour limit)
           sensorData: SensorData(
             label: 'Carbon Monoxide',
-            icon: MdiIcons.moleculeCo,
+            icon: buildChannelIcon(coChannel.category),
             channel: coChannel,
             property: coChannel.concentrationProp,
             valueFormatter: (prop) => ValueUtils.formatValue(prop, 1),
@@ -1175,12 +1176,12 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           value: isDetected
               ? localizations.gas_detected
               : localizations.gas_clear,
-          icon: MdiIcons.moleculeCo,
+          icon: buildChannelIcon(coChannel.category),
           valueThemeColor: SensorColors.alert,
           isWarning: isDetected,
           sensorData: SensorData(
             label: 'Carbon Monoxide',
-            icon: MdiIcons.moleculeCo,
+            icon: buildChannelIcon(coChannel.category),
             channel: coChannel,
             property: coChannel.detectedProp,
             isDetection: coChannel.detected,
@@ -1202,12 +1203,12 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
         value: isLeaking
             ? localizations.leak_sensor_detected
             : localizations.leak_sensor_dry,
-        icon: MdiIcons.pipeLeak,
+        icon: buildChannelIcon(leakChannel.category),
         valueThemeColor: SensorColors.alert,
         isWarning: isLeaking,
         sensorData: SensorData(
           label: 'Leak',
-          icon: MdiIcons.waterAlert,
+          icon: buildChannelIcon(leakChannel.category),
           channel: leakChannel,
           property: leakChannel.detectedProp,
           isDetection: leakChannel.detected,
@@ -1232,11 +1233,11 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           label: AirQualityUtils.getParticulateLabel(localizations, pmMode),
           value: NumberFormatUtils.defaultFormat.formatInteger(_pm25),
           unit: 'µg/m³',
-          icon: MdiIcons.blur,
+          icon: buildChannelIcon(pmChannel.category),
           valueThemeColor: SensorColors.airQuality,
           sensorData: SensorData(
             label: 'Particulate Matter',
-            icon: MdiIcons.blur,
+            icon: buildChannelIcon(pmChannel.category),
             channel: pmChannel,
             property: pmChannel.concentrationProp,
             valueFormatter: (prop) => ValueUtils.formatValue(prop, 0),
@@ -1250,7 +1251,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           value: isDetected
               ? localizations.air_quality_unhealthy
               : localizations.air_quality_healthy,
-          icon: MdiIcons.blur,
+          icon: buildChannelIcon(pmChannel.category),
           valueThemeColor: SensorColors.airQuality,
           isWarning: isDetected,
         ));
@@ -1265,7 +1266,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           id: 'voc',
           label: localizations.device_voc,
           value: AirQualityUtils.getVocLevelLabel(localizations, vocChannel.level),
-          icon: MdiIcons.molecule,
+          icon: buildChannelIcon(vocChannel.category),
           valueThemeColor: SensorColors.airQuality,
         ));
       } else if (vocChannel.hasConcentration) {
@@ -1273,7 +1274,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           id: 'voc',
           label: localizations.device_voc,
           value: AirQualityUtils.calculateVocLevelFromConcentration(localizations, vocChannel.concentration),
-          icon: MdiIcons.molecule,
+          icon: buildChannelIcon(vocChannel.category),
           valueThemeColor: SensorColors.airQuality,
         ));
       } else if (vocChannel.hasDetected) {
@@ -1284,7 +1285,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           value: isDetected
               ? localizations.air_quality_unhealthy
               : localizations.air_quality_healthy,
-          icon: MdiIcons.molecule,
+          icon: buildChannelIcon(vocChannel.category),
           valueThemeColor: SensorColors.airQuality,
           isWarning: isDetected,
         ));
@@ -1299,12 +1300,12 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
         label: localizations.device_co2,
         value: NumberFormatUtils.defaultFormat.formatInteger(co2Channel.concentration.toInt()),
         unit: 'ppm',
-        icon: MdiIcons.moleculeCo2,
+        icon: buildChannelIcon(co2Channel.category),
         valueThemeColor: SensorColors.co2,
         isWarning: co2Channel.concentration > 1000, // Warn if CO₂ exceeds 1000 ppm
         sensorData: SensorData(
           label: 'Carbon Dioxide',
-          icon: MdiIcons.moleculeCo2,
+          icon: buildChannelIcon(co2Channel.category),
           channel: co2Channel,
           property: co2Channel.concentrationProp,
           valueFormatter: (prop) => ValueUtils.formatValue(prop, 0),
@@ -1324,7 +1325,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           id: 'o3',
           label: localizations.device_o3,
           value: AirQualityUtils.getOzoneLevelLabel(localizations, o3Channel.level),
-          icon: MdiIcons.weatherSunny,
+          icon: buildChannelIcon(o3Channel.category),
           valueThemeColor: SensorColors.airQuality,
         ));
       } else if (o3Channel.hasConcentration) {
@@ -1333,7 +1334,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           label: localizations.device_o3,
           value: NumberFormatUtils.defaultFormat.formatInteger(o3Channel.concentration.toInt()),
           unit: 'µg/m³',
-          icon: MdiIcons.weatherSunny,
+          icon: buildChannelIcon(o3Channel.category),
           valueThemeColor: SensorColors.airQuality,
           isWarning: o3Channel.concentration > 100, // Warn if exceeds WHO 8-hour limit
         ));
@@ -1345,7 +1346,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           value: isDetected
               ? localizations.gas_detected
               : localizations.gas_clear,
-          icon: MdiIcons.weatherSunny,
+          icon: buildChannelIcon(o3Channel.category),
           valueThemeColor: SensorColors.airQuality,
           isWarning: isDetected,
         ));
@@ -1361,7 +1362,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           label: localizations.device_no2,
           value: NumberFormatUtils.defaultFormat.formatInteger(no2Channel.concentration.toInt()),
           unit: 'µg/m³',
-          icon: MdiIcons.molecule,
+          icon: buildChannelIcon(no2Channel.category),
           valueThemeColor: SensorColors.airQuality,
           isWarning: no2Channel.concentration > 200, // Warn if exceeds WHO 1-hour limit
         ));
@@ -1373,7 +1374,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           value: isDetected
               ? localizations.gas_detected
               : localizations.gas_clear,
-          icon: MdiIcons.molecule,
+          icon: buildChannelIcon(no2Channel.category),
           valueThemeColor: SensorColors.airQuality,
           isWarning: isDetected,
         ));
@@ -1388,7 +1389,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           id: 'so2',
           label: localizations.device_so2,
           value: AirQualityUtils.getSulphurDioxideLevelLabel(localizations, so2Channel.level),
-          icon: MdiIcons.molecule,
+          icon: buildChannelIcon(so2Channel.category),
           valueThemeColor: SensorColors.airQuality,
         ));
       } else if (so2Channel.hasConcentration) {
@@ -1397,7 +1398,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           label: localizations.device_so2,
           value: NumberFormatUtils.defaultFormat.formatInteger(so2Channel.concentration.toInt()),
           unit: 'µg/m³',
-          icon: MdiIcons.molecule,
+          icon: buildChannelIcon(so2Channel.category),
           valueThemeColor: SensorColors.airQuality,
           isWarning: so2Channel.concentration > 500, // Warn if exceeds WHO 10-min limit
         ));
@@ -1409,7 +1410,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           value: isDetected
               ? localizations.gas_detected
               : localizations.gas_clear,
-          icon: MdiIcons.molecule,
+          icon: buildChannelIcon(so2Channel.category),
           valueThemeColor: SensorColors.airQuality,
           isWarning: isDetected,
         ));
@@ -1429,7 +1430,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           label: localizations.device_filter_life,
           value: '${(_filterLife * 100).toInt()}',
           unit: '%',
-          icon: MdiIcons.airFilter,
+          icon: buildChannelIcon(filterChannel.category),
           valueThemeColor: SensorColors.filter,
           isWarning: _filterLife < 0.3 || _device.isFilterNeedsReplacement,
         ));
@@ -1438,7 +1439,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           id: 'filter',
           label: localizations.device_filter_status,
           value: FilterUtils.getStatusLabel(localizations, filterChannel.status),
-          icon: MdiIcons.airFilter,
+          icon: buildChannelIcon(filterChannel.category),
           valueThemeColor: SensorColors.filter,
           isWarning: _device.isFilterNeedsReplacement,
         ));
@@ -1460,11 +1461,11 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           decimalPlaces: 1,
         ),
         unit: '°C',
-        icon: MdiIcons.thermometer,
+        icon: buildChannelIcon(tempChannel.category),
         valueThemeColor: SensorColors.temperature,
         sensorData: SensorData(
           label: 'Temperature',
-          icon: MdiIcons.thermometer,
+          icon: buildChannelIcon(tempChannel.category),
           channel: tempChannel,
           property: tempChannel.temperatureProp,
           valueFormatter: (prop) => ValueUtils.formatValue(prop, 1),
@@ -1480,11 +1481,11 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
         label: localizations.device_humidity,
         value: NumberFormatUtils.defaultFormat.formatInteger(humidityChannel.humidity),
         unit: '%',
-        icon: MdiIcons.waterPercent,
+        icon: buildChannelIcon(humidityChannel.category),
         valueThemeColor: SensorColors.humidity,
         sensorData: SensorData(
           label: 'Humidity',
-          icon: MdiIcons.waterPercent,
+          icon: buildChannelIcon(humidityChannel.category),
           channel: humidityChannel,
           property: humidityChannel.humidityProp,
           valueFormatter: (prop) => ValueUtils.formatValue(prop, 0),
@@ -1500,11 +1501,11 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
         label: localizations.device_pressure,
         value: NumberFormatUtils.defaultFormat.formatDecimal(pressureChannel.pressure, decimalPlaces: 1),
         unit: 'kPa',
-        icon: MdiIcons.gauge,
+        icon: buildChannelIcon(pressureChannel.category),
         valueThemeColor: SensorColors.pressure,
         sensorData: SensorData(
           label: 'Pressure',
-          icon: MdiIcons.gauge,
+          icon: buildChannelIcon(pressureChannel.category),
           channel: pressureChannel,
           property: pressureChannel.pressureProp,
           valueFormatter: (prop) => ValueUtils.formatValue(prop, 0),

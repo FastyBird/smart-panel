@@ -32,6 +32,7 @@ import 'package:fastybird_smart_panel/modules/devices/utils/fan_utils.dart';
 import 'package:fastybird_smart_panel/modules/devices/utils/humidifier_utils.dart';
 import 'package:fastybird_smart_panel/modules/devices/utils/value.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/humidifier.dart';
+import 'package:fastybird_smart_panel/modules/devices/mappers/channel.dart' show buildChannelIcon;
 import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/air_humidifier.dart';
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
@@ -843,12 +844,12 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
         value: isLeaking
             ? localizations.leak_sensor_detected
             : localizations.leak_sensor_dry,
-        icon: MdiIcons.pipeLeak,
+        icon: buildChannelIcon(leakChannel.category),
         valueThemeColor: SensorColors.alert,
         isWarning: isLeaking,
         sensorData: SensorData(
           label: 'Leak',
-          icon: MdiIcons.waterAlert,
+          icon: buildChannelIcon(leakChannel.category),
           channel: leakChannel,
           property: leakChannel.detectedProp,
           isDetection: leakChannel.detected,
@@ -871,11 +872,11 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
       label: localizations.device_humidity,
       value: NumberFormatUtils.defaultFormat.formatInteger(currentHumidity),
       unit: '%',
-      icon: MdiIcons.waterPercent,
+      icon: buildChannelIcon(humidityChannel.category),
       valueThemeColor: SensorColors.humidity,
       sensorData: SensorData(
         label: 'Humidity',
-        icon: MdiIcons.waterPercent,
+        icon: buildChannelIcon(humidityChannel.category),
         channel: humidityChannel,
         property: humidityChannel.humidityProp,
         valueFormatter: (prop) => ValueUtils.formatValue(prop, 0),
@@ -922,12 +923,12 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
           decimalPlaces: 1,
         ),
         unit: '°C',
-        icon: MdiIcons.thermometer,
+        icon: buildChannelIcon(tempChannel!.category),
         valueThemeColor: SensorColors.temperature,
         sensorData: SensorData(
           label: 'Temperature',
-          icon: MdiIcons.thermometer,
-          channel: tempChannel!,
+          icon: buildChannelIcon(tempChannel.category),
+          channel: tempChannel,
           property: tempChannel.temperatureProp,
           valueFormatter: (prop) => ValueUtils.formatValue(prop, 1),
         ),

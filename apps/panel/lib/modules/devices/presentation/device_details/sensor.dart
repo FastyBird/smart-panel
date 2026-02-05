@@ -16,6 +16,7 @@ import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/senso
 import 'package:fastybird_smart_panel/modules/devices/utils/value.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/battery.dart';
+import 'package:fastybird_smart_panel/modules/devices/mappers/channel.dart' show buildChannelIcon;
 import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/sensor.dart';
 import 'package:flutter/material.dart';
@@ -265,7 +266,7 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
       final channel = widget._device.temperatureChannel!;
       sensors.add(SensorData(
         label: 'Temperature',
-        icon: MdiIcons.thermometer,
+        icon: buildChannelIcon(channel.category),
         channel: channel,
         property: channel.temperatureProp,
         valueFormatter: (prop) => ValueUtils.formatValue(prop, 1),
@@ -276,7 +277,7 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
       final channel = widget._device.humidityChannel!;
       sensors.add(SensorData(
         label: 'Humidity',
-        icon: MdiIcons.waterPercent,
+        icon: buildChannelIcon(channel.category),
         channel: channel,
         property: channel.humidityProp,
         valueFormatter: (prop) => ValueUtils.formatValue(prop, 0),
@@ -287,7 +288,7 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
       final channel = widget._device.pressureChannel!;
       sensors.add(SensorData(
         label: 'Pressure',
-        icon: MdiIcons.gauge,
+        icon: buildChannelIcon(channel.category),
         channel: channel,
         property: channel.pressureProp,
         valueFormatter: (prop) => ValueUtils.formatValue(prop, 0),
@@ -298,7 +299,7 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
       final channel = widget._device.illuminanceChannel!;
       sensors.add(SensorData(
         label: 'Illuminance',
-        icon: MdiIcons.brightness6,
+        icon: buildChannelIcon(channel.category),
         channel: channel,
         property: channel.illuminanceProp,
         valueFormatter: (prop) => ValueUtils.formatValue(prop, 0),
@@ -315,7 +316,7 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
       final channel = widget._device.carbonDioxideChannel!;
       sensors.add(SensorData(
         label: 'Carbon Dioxide',
-        icon: MdiIcons.moleculeCo2,
+        icon: buildChannelIcon(channel.category),
         channel: channel,
         property: channel.concentrationProp,
         valueFormatter: (prop) => ValueUtils.formatValue(prop, 0),
@@ -328,7 +329,7 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
       final channel = widget._device.carbonMonoxideChannel!;
       sensors.add(SensorData(
         label: 'Carbon Monoxide',
-        icon: MdiIcons.molecule,
+        icon: buildChannelIcon(channel.category),
         channel: channel,
         property: channel.concentrationProp,
         valueFormatter: (prop) => ValueUtils.formatValue(prop, 0),
@@ -341,7 +342,7 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
       final channel = widget._device.ozoneChannel!;
       sensors.add(SensorData(
         label: 'Ozone',
-        icon: MdiIcons.molecule,
+        icon: buildChannelIcon(channel.category),
         channel: channel,
         property: channel.concentrationProp,
         valueFormatter: (prop) => ValueUtils.formatValue(prop, 0),
@@ -354,7 +355,7 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
       final channel = widget._device.nitrogenDioxideChannel!;
       sensors.add(SensorData(
         label: 'Nitrogen Dioxide',
-        icon: MdiIcons.molecule,
+        icon: buildChannelIcon(channel.category),
         channel: channel,
         property: channel.concentrationProp,
         valueFormatter: (prop) => ValueUtils.formatValue(prop, 0),
@@ -367,7 +368,7 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
       final channel = widget._device.sulphurDioxideChannel!;
       sensors.add(SensorData(
         label: 'Sulphur Dioxide',
-        icon: MdiIcons.molecule,
+        icon: buildChannelIcon(channel.category),
         channel: channel,
         property: channel.concentrationProp,
         valueFormatter: (prop) => ValueUtils.formatValue(prop, 0),
@@ -380,7 +381,7 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
       final channel = widget._device.volatileOrganicCompoundsChannel!;
       sensors.add(SensorData(
         label: 'VOC',
-        icon: MdiIcons.molecule,
+        icon: buildChannelIcon(channel.category),
         channel: channel,
         property: channel.concentrationProp,
         valueFormatter: (prop) => ValueUtils.formatValue(prop, 0),
@@ -393,7 +394,7 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
       final channel = widget._device.airParticulateChannel!;
       sensors.add(SensorData(
         label: 'Particulate Matter',
-        icon: MdiIcons.blur,
+        icon: buildChannelIcon(channel.category),
         channel: channel,
         property: channel.concentrationProp,
         valueFormatter: (prop) => ValueUtils.formatValue(prop, 0),
@@ -410,7 +411,7 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
       final channel = widget._device.motionChannel!;
       sensors.add(SensorData(
         label: 'Motion',
-        icon: MdiIcons.motionSensor,
+        icon: buildChannelIcon(channel.category),
         channel: channel,
         property: channel.detectedProp,
         isDetection: channel.detected,
@@ -423,7 +424,7 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
       final channel = widget._device.occupancyChannel!;
       sensors.add(SensorData(
         label: 'Occupancy',
-        icon: MdiIcons.accountCheck,
+        icon: buildChannelIcon(channel.category),
         channel: channel,
         property: channel.detectedProp,
         isDetection: channel.detected,
@@ -449,7 +450,7 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
       final channel = widget._device.leakChannel!;
       sensors.add(SensorData(
         label: 'Leak',
-        icon: MdiIcons.waterAlert,
+        icon: buildChannelIcon(channel.category),
         channel: channel,
         property: channel.detectedProp,
         isDetection: channel.detected,
@@ -463,7 +464,7 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
       final channel = widget._device.smokeChannel!;
       sensors.add(SensorData(
         label: 'Smoke',
-        icon: MdiIcons.smokingOff,
+        icon: buildChannelIcon(channel.category),
         channel: channel,
         property: channel.detectedProp,
         isDetection: channel.detected,

@@ -1,3 +1,6 @@
+// Mappers
+export 'package:fastybird_smart_panel/modules/devices/mappers/channel.dart' show buildChannelIcon;
+
 // Repositories
 export 'package:fastybird_smart_panel/modules/devices/repositories/channel_controls.dart';
 export 'package:fastybird_smart_panel/modules/devices/repositories/channel_properties.dart';

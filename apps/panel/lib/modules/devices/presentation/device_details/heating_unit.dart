@@ -26,6 +26,7 @@ import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/senso
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/utils/value.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
+import 'package:fastybird_smart_panel/modules/devices/mappers/channel.dart' show buildChannelIcon;
 import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/heating_unit.dart';
 import 'package:flutter/foundation.dart';
@@ -513,11 +514,11 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
         decimalPlaces: 1,
       ),
       unit: '°C',
-      icon: MdiIcons.thermometer,
+      icon: buildChannelIcon(temperatureChannel.category),
       themeColor: SensorColors.temperature,
       sensorData: SensorData(
         label: 'Temperature',
-        icon: MdiIcons.thermometer,
+        icon: buildChannelIcon(temperatureChannel.category),
         channel: temperatureChannel,
         property: temperatureChannel.temperatureProp,
         valueFormatter: (prop) => ValueUtils.formatValue(prop, 1),
@@ -531,11 +532,11 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
         value: NumberFormatUtils.defaultFormat
             .formatInteger(humidityChannel.humidity),
         unit: '%',
-        icon: MdiIcons.waterPercent,
+        icon: buildChannelIcon(humidityChannel.category),
         themeColor: SensorColors.humidity,
         sensorData: SensorData(
           label: 'Humidity',
-          icon: MdiIcons.waterPercent,
+          icon: buildChannelIcon(humidityChannel.category),
           channel: humidityChannel,
           property: humidityChannel.humidityProp,
           valueFormatter: (prop) => ValueUtils.formatValue(prop, 0),
@@ -551,12 +552,12 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
         value: isOpen
             ? localizations.contact_sensor_open
             : localizations.contact_sensor_closed,
-        icon: MdiIcons.windowOpenVariant,
+        icon: isOpen ? MdiIcons.doorOpen : MdiIcons.doorClosed,
         themeColor: SensorColors.alert,
         isWarning: isOpen,
         sensorData: SensorData(
           label: 'Contact',
-          icon: isOpen ? MdiIcons.doorOpen : MdiIcons.doorClosed,
+          icon: buildChannelIcon(contactChannel.category),
           channel: contactChannel,
           property: contactChannel.detectedProp,
           isDetection: contactChannel.detected,
