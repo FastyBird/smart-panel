@@ -1,52 +1,53 @@
-/// Climate domain view: room-level climate control for a single space/room.
-///
-/// **Purpose:** One screen per room showing thermostat-style control (temperature
-/// dial, heat/cool/off mode selector), room sensors (temperature, humidity, AQI,
-/// etc.), and auxiliary devices (fans, purifiers, humidifiers). Climate actuators
-/// (thermostats, heating units, A/C, water heaters) are listed in a bottom sheet
-/// opened from the header.
-///
-/// **Data flow:**
-/// - [SpacesService] provides room climate state and climate targets (which
-///   devices are sensors, auxiliary, or heating/cooling) for the room.
-/// - [DevicesService] provides live device views (thermostats, sensors, etc.)
-///   used to build [ClimateRoomState] and to open device detail pages.
-/// - [DomainControlStateService] drives optimistic UI for mode and setpoint:
-///   when the user changes mode or temperature, the UI shows the desired value
-///   until the backend confirms or a settling timeout passes.
-///
-/// **Key concepts:**
-/// - [ClimateRoomState] is the single derived state for the page (mode, temps,
-///   devices, sensors); it is rebuilt in [_buildState] from SpacesService +
-///   DevicesService + control state locks.
-/// - Mode/setpoint intents are tracked via [IntentsRepository]. When an intent
-///   completes, [_onIntentChanged] notifies the control state service so it can
-///   clear pending state.
-/// - Portrait: dial card + sensors row + auxiliary grid + bottom mode selector.
-///   Landscape: compact dial (or main content), vertical mode selector, optional
-///   column with sensors and auxiliary tiles.
-///
-/// **File structure (for humans and AI):**
-/// Search for the exact section header (e.g. "// CONSTANTS", "// LIFECYCLE") to
-/// jump to that part of the file. Sections appear in this order:
-///
-/// - **CONSTANTS** — [_ClimateControlConstants]: settling windows, channel IDs,
-///   tolerance for [DomainControlStateService].
-/// - **DATA MODELS** — [ClimateMode], [RoomCapability], [ClimateDevice],
-///   [AuxiliaryDevice], [ClimateSensor], [ClimateRoomState]; converters to/from
-///   spaces_climate.
-/// - **CLIMATE DOMAIN VIEW PAGE** — [ClimateDomainViewPage] and state class:
-///   - LIFECYCLE: initState (register services, listeners, fetch), dispose.
-///   - STATE BUILDING: [_buildState] — single source of truth for [_state].
-///   - CONTROL STATE SERVICE CALLBACKS: convergence/lock checks, [_onIntentChanged],
-///     [_onDataChanged].
-///   - HELPERS: [_scale], [_getSetpointRange], [_navigateToHome].
-///   - MODE & SETPOINT ACTIONS: [_setMode], [_setTargetTemp].
-///   - DEVICES BOTTOM SHEET: [_showClimateDevicesSheet], device detail routing.
-///   - THEME & LABELS: mode colors, dial accent, localized strings.
-///   - BUILD: scaffold, header, orientation → portrait/landscape.
-///   - HEADER, PORTRAIT LAYOUT, LANDSCAPE LAYOUT, PRIMARY CONTROL CARD,
-///     SENSORS, AUXILIARY: UI builders and tap handlers.
+// Climate domain view: room-level climate control for a single space/room.
+//
+// **Purpose:** One screen per room showing thermostat-style control (temperature
+// dial, heat/cool/off mode selector), room sensors (temperature, humidity, AQI,
+// etc.), and auxiliary devices (fans, purifiers, humidifiers). Climate actuators
+// (thermostats, heating units, A/C, water heaters) are listed in a bottom sheet
+// opened from the header.
+//
+// **Data flow:**
+// - [SpacesService] provides room climate state and climate targets (which
+//   devices are sensors, auxiliary, or heating/cooling) for the room.
+// - [DevicesService] provides live device views (thermostats, sensors, etc.)
+//   used to build [ClimateRoomState] and to open device detail pages.
+// - [DomainControlStateService] drives optimistic UI for mode and setpoint:
+//   when the user changes mode or temperature, the UI shows the desired value
+//   until the backend confirms or a settling timeout passes.
+//
+// **Key concepts:**
+// - [ClimateRoomState] is the single derived state for the page (mode, temps,
+//   devices, sensors); it is rebuilt in [_buildState] from SpacesService +
+//   DevicesService + control state locks.
+// - Mode/setpoint intents are tracked via [IntentsRepository]. When an intent
+//   completes, [_onIntentChanged] notifies the control state service so it can
+//   clear pending state.
+// - Portrait: dial card + sensors row + auxiliary grid + bottom mode selector.
+//   Landscape: compact dial (or main content), vertical mode selector, optional
+//   column with sensors and auxiliary tiles.
+//
+// **File structure (for humans and AI):**
+// Search for the exact section header (e.g. "// CONSTANTS", "// LIFECYCLE") to
+// jump to that part of the file. Sections appear in this order:
+//
+// - **CONSTANTS** — [_ClimateControlConstants]: settling windows, channel IDs,
+//   tolerance for [DomainControlStateService].
+// - **DATA MODELS** — [ClimateMode], [RoomCapability], [ClimateDevice],
+//   [AuxiliaryDevice], [ClimateSensor], [ClimateRoomState]; converters to/from
+//   spaces_climate.
+// - **CLIMATE DOMAIN VIEW PAGE** — [ClimateDomainViewPage] and state class:
+//   - LIFECYCLE: initState (register services, listeners, fetch), dispose.
+//   - STATE BUILDING: [_buildState] — single source of truth for [_state].
+//   - CONTROL STATE SERVICE CALLBACKS: convergence/lock checks, [_onIntentChanged],
+//     [_onDataChanged].
+//   - HELPERS: [_scale], [_getSetpointRange], [_navigateToHome].
+//   - MODE & SETPOINT ACTIONS: [_setMode], [_setTargetTemp].
+//   - DEVICES BOTTOM SHEET: [_showClimateDevicesSheet], device detail routing.
+//   - THEME & LABELS: mode colors, dial accent, localized strings.
+//   - BUILD: scaffold, header, orientation → portrait/landscape.
+//   - HEADER, PORTRAIT LAYOUT, LANDSCAPE LAYOUT, PRIMARY CONTROL CARD,
+//     SENSORS, AUXILIARY: UI builders and tap handlers.
+
 import 'dart:math' as math;
 
 import 'package:event_bus/event_bus.dart';

@@ -1,45 +1,46 @@
-/// Sensors domain view: room-level list of sensors for a single space/room.
-///
-/// **Purpose:** One screen per room showing sensor readings (temperature,
-/// humidity, air quality, motion, safety, light, energy). Users can filter by
-/// category, see summary cards (avg temp/humidity/illuminance), and open
-/// device detail from a sensor tile or from an alert banner.
-///
-/// **Data flow:**
-/// - [SpaceStateRepository] provides [SensorStateModel] for the room (readings,
-///   environment aggregates). Data is prefetched by [DeckService]; this page
-///   loads from cache in [_loadSensorData].
-/// - [DevicesService] provides device online status. [SpacesService] provides
-///   room name. [DeckService] / [EventBus] for navigation home.
-/// - Local state: _sensors (list of [SensorData]), _selectedCategory,
-///   _isLoading. A periodic timer refreshes the UI so freshness indicators
-///   (fresh/recent/stale) update over time.
-///
-/// **Key concepts:**
-/// - [SensorData] is the view model: id, value, unit, status (normal/warning/
-///   alert/offline), trend, freshness, category. Status is derived from
-///   safety alerts and motion activity.
-/// - Portrait: optional alert banner, summary cards (when "All"), category
-///   selector, sensor grid. Landscape: summary row + grid + vertical category
-///   selector.
-/// - Tapping a sensor opens [DeviceDetailPage] for its device.
-///
-/// **File structure (for humans and AI):**
-/// Search for the exact section header (e.g. "// CONSTANTS", "// DATA MODELS",
-/// "// LIFECYCLE") to jump to that part of the file. Sections appear in this order:
-///
-/// - **CONSTANTS** — [_SensorsViewConstants]: freshness refresh interval.
-/// - **DATA MODELS** — [SensorStatus], [TrendDirection], [SensorData], [_parseTrend].
-/// - **SENSORS DOMAIN VIEW PAGE** — [SensorsDomainViewPage] and state: HELPERS,
-///   LIFECYCLE, LISTENERS, DATA LOADING, NAVIGATION, FILTERING & CATEGORIES, BUILD.
-/// - **EMPTY STATE** — no sensors message.
-/// - **HEADER** — title, subtitle (alert/health counts), home button.
-/// - **CATEGORY SELECTOR** — portrait and landscape mode selectors.
-/// - **LAYOUTS** — portrait and landscape column layout.
-/// - **ALERT BANNER** — single alert CTA when any sensor is in alert.
-/// - **SUMMARY CARDS** — environment averages (temp, humidity, illuminance/pressure).
-/// - **SENSOR GRID** — section title + grid of sensor cards; card builder, freshness dot, trend icon.
-/// - **SENSOR DETAIL** — navigate to device detail.
+// Sensors domain view: room-level list of sensors for a single space/room.
+//
+// **Purpose:** One screen per room showing sensor readings (temperature,
+// humidity, air quality, motion, safety, light, energy). Users can filter by
+// category, see summary cards (avg temp/humidity/illuminance), and open
+// device detail from a sensor tile or from an alert banner.
+//
+// **Data flow:**
+// - [SpaceStateRepository] provides [SensorStateModel] for the room (readings,
+//   environment aggregates). Data is prefetched by [DeckService]; this page
+//   loads from cache in [_loadSensorData].
+// - [DevicesService] provides device online status. [SpacesService] provides
+//   room name. [DeckService] / [EventBus] for navigation home.
+// - Local state: _sensors (list of [SensorData]), _selectedCategory,
+//   _isLoading. A periodic timer refreshes the UI so freshness indicators
+//   (fresh/recent/stale) update over time.
+//
+// **Key concepts:**
+// - [SensorData] is the view model: id, value, unit, status (normal/warning/
+//   alert/offline), trend, freshness, category. Status is derived from
+//   safety alerts and motion activity.
+// - Portrait: optional alert banner, summary cards (when "All"), category
+//   selector, sensor grid. Landscape: summary row + grid + vertical category
+//   selector.
+// - Tapping a sensor opens [DeviceDetailPage] for its device.
+//
+// **File structure (for humans and AI):**
+// Search for the exact section header (e.g. "// CONSTANTS", "// DATA MODELS",
+// "// LIFECYCLE") to jump to that part of the file. Sections appear in this order:
+//
+// - **CONSTANTS** — [_SensorsViewConstants]: freshness refresh interval.
+// - **DATA MODELS** — [SensorStatus], [TrendDirection], [SensorData], [_parseTrend].
+// - **SENSORS DOMAIN VIEW PAGE** — [SensorsDomainViewPage] and state: HELPERS,
+//   LIFECYCLE, LISTENERS, DATA LOADING, NAVIGATION, FILTERING & CATEGORIES, BUILD.
+// - **EMPTY STATE** — no sensors message.
+// - **HEADER** — title, subtitle (alert/health counts), home button.
+// - **CATEGORY SELECTOR** — portrait and landscape mode selectors.
+// - **LAYOUTS** — portrait and landscape column layout.
+// - **ALERT BANNER** — single alert CTA when any sensor is in alert.
+// - **SUMMARY CARDS** — environment averages (temp, humidity, illuminance/pressure).
+// - **SENSOR GRID** — section title + grid of sensor cards; card builder, freshness dot, trend icon.
+// - **SENSOR DETAIL** — navigate to device detail.
+
 import 'dart:async';
 
 import 'package:event_bus/event_bus.dart';

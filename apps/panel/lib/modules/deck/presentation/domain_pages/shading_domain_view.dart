@@ -1,42 +1,43 @@
-/// Shading domain view: room-level control for window coverings in a single space.
-///
-/// **Purpose:** One screen per room showing covers grouped by role (primary,
-/// blackout, sheer, outdoor). Each role card shows position %, slider, and
-/// quick actions (open / stop / close). Mode selector (open, daylight, privacy,
-/// closed) and a devices bottom sheet are available from the header.
-///
-/// **Data flow:**
-/// - [SpacesService] provides covers targets and [CoversStateModel] for the room.
-/// - [DevicesService] provides [WindowCoveringDeviceView] / [WindowCoveringChannelView]
-///   used to build [_CoverRoleData], [_CoverDeviceData], and to open device detail.
-/// - Optimistic UI: [_pendingPositions] holds per-role position until backend
-///   converges (cleared in [_onDataChanged] when within 5% of actual).
-///
-/// **Key concepts:**
-/// - [_CoverRoleData] = one role’s targets and average position; [_CoverDeviceData]
-///   = one device/channel row for the devices sheet.
-/// - Primary role card always shows slider and actions; secondary roles are
-///   expandable via [_expandedRoles].
-/// - Portrait: role cards + horizontal mode selector. Landscape: same content
-///   in [LandscapeViewLayout] with vertical mode selector.
-///
-/// **File structure (for humans and AI):**
-/// Search for the exact section header (e.g. "// DATA MODELS", "// LIFECYCLE")
-/// to jump to that part of the file. Sections appear in this order:
-///
-/// - **DATA MODELS** — [_CoverRoleData], [_CoverDeviceData].
-/// - **SHADING DOMAIN VIEW PAGE** — [ShadingDomainViewPage] and state class:
-///   - LIFECYCLE: initState (services, listeners, fetch), dispose, [_onDataChanged].
-///   - DATA BUILDING: [_buildRoleDataList], [_buildDeviceDataList], role/cover type helpers.
-///   - INTENT METHODS: [_setRolePosition], [_stopCovers], [_setCoversMode], [_showActionFailed].
-///   - HEADER: [_buildHeader].
-///   - LANDSCAPE / PORTRAIT LAYOUT: [_buildLandscapeLayout], [_buildPortraitLayout].
-///   - ROLE CARDS: [_buildRoleCard], slider, quick actions, expand toggle.
-///   - MODE SELECTOR: [_buildModeSelector], [_buildLandscapeModeSelector], [_getCoversModeOptions].
-///   - DEVICES BOTTOM SHEET: [_showShadingDevicesSheet], device tile builders.
-///   - NAVIGATION: [_navigateToHome], [_openDeviceDetail].
-///   - HELPERS: position theme/color/text, [_toStateRole], [_getRolePosition].
-///   - EMPTY STATE: [_buildEmptyState].
+// Shading domain view: room-level control for window coverings in a single space.
+//
+// **Purpose:** One screen per room showing covers grouped by role (primary,
+// blackout, sheer, outdoor). Each role card shows position %, slider, and
+// quick actions (open / stop / close). Mode selector (open, daylight, privacy,
+// closed) and a devices bottom sheet are available from the header.
+//
+// **Data flow:**
+// - [SpacesService] provides covers targets and [CoversStateModel] for the room.
+// - [DevicesService] provides [WindowCoveringDeviceView] / [WindowCoveringChannelView]
+//   used to build [_CoverRoleData], [_CoverDeviceData], and to open device detail.
+// - Optimistic UI: [_pendingPositions] holds per-role position until backend
+//   converges (cleared in [_onDataChanged] when within 5% of actual).
+//
+// **Key concepts:**
+// - [_CoverRoleData] = one role's targets and average position; [_CoverDeviceData]
+//   = one device/channel row for the devices sheet.
+// - Primary role card always shows slider and actions; secondary roles are
+//   expandable via [_expandedRoles].
+// - Portrait: role cards + horizontal mode selector. Landscape: same content
+//   in [LandscapeViewLayout] with vertical mode selector.
+//
+// **File structure (for humans and AI):**
+// Search for the exact section header (e.g. "// DATA MODELS", "// LIFECYCLE")
+// to jump to that part of the file. Sections appear in this order:
+//
+// - **DATA MODELS** — [_CoverRoleData], [_CoverDeviceData].
+// - **SHADING DOMAIN VIEW PAGE** — [ShadingDomainViewPage] and state class:
+//   - LIFECYCLE: initState (services, listeners, fetch), dispose, [_onDataChanged].
+//   - DATA BUILDING: [_buildRoleDataList], [_buildDeviceDataList], role/cover type helpers.
+//   - INTENT METHODS: [_setRolePosition], [_stopCovers], [_setCoversMode], [_showActionFailed].
+//   - HEADER: [_buildHeader].
+//   - LANDSCAPE / PORTRAIT LAYOUT: [_buildLandscapeLayout], [_buildPortraitLayout].
+//   - ROLE CARDS: [_buildRoleCard], slider, quick actions, expand toggle.
+//   - MODE SELECTOR: [_buildModeSelector], [_buildLandscapeModeSelector], [_getCoversModeOptions].
+//   - DEVICES BOTTOM SHEET: [_showShadingDevicesSheet], device tile builders.
+//   - NAVIGATION: [_navigateToHome], [_openDeviceDetail].
+//   - HELPERS: position theme/color/text, [_toStateRole], [_getRolePosition].
+//   - EMPTY STATE: [_buildEmptyState].
+
 import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';

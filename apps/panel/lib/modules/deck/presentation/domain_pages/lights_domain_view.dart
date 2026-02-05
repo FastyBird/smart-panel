@@ -1,45 +1,46 @@
-/// Lights domain view: room-level lighting control for a single space/room.
-///
-/// **Purpose:** One screen per room showing lighting roles (main, task, ambient,
-/// accent, night), "other" lights, scenes, and a mode selector (off/work/relax/night).
-/// Role and device detail are opened via navigation.
-///
-/// **Data flow:**
-/// - [SpacesService] provides light targets and lighting state for the room.
-/// - [DevicesService] provides live device views used to build role/light data.
-/// - [DomainControlStateService] (mode + role channels) drives optimistic UI;
-///   [IntentsRepository] notifies when intents complete so pending state can settle.
-///
-/// **Key concepts:**
-/// - Two [DomainControlStateService] instances: one for mode (off/work/relax/night),
-///   one for role toggles (main, task, ambient, etc.). Both use space-level intent
-///   lock; mode lock blocks role toggles until settling.
-/// - Role data is built in [_buildRoleDataList] from targets + [DevicesService];
-///   "other" lights and scenes are separate lists. Optimistic on/off for single
-///   lights uses [DeviceControlStateService] and [IntentOverlayService].
-///
-/// **File structure (for humans and AI):**
-/// Search for the exact section header (e.g. "// DATA MODELS", "// LIFECYCLE") to
-/// jump to that part of the file. Sections appear in this order:
-///
-/// - **DATA MODELS** — [LightingRoleData], [LightState], [LightingModeUI] (+ extension),
-///   [LightDeviceData]. Channel IDs/settling from [LightingConstants] (constants.dart).
-/// - **LIGHTS DOMAIN VIEW PAGE** — [LightsDomainViewPage] and state class:
-///   - STATE & DEPENDENCIES: _roomId, [_tryLocator], optional services.
-///   - DERIVED STATE & CONVERGENCE HELPERS: [_lightingState], [_currentMode],
-///     [_checkModeConvergence], [_checkRoleConvergence], [_getRolePendingState].
-///   - LIFECYCLE: initState (mode + role control services, listeners, fetch), dispose.
-///   - CONTROL STATE & CALLBACKS: [_onDataChanged], [_groupTargetsByRole],
-///     [_onIntentChanged].
-///   - UTILITIES: [_scale], [_navigateToHome].
-///   - BUILD: scaffold, loading/empty/content; [Consumer] for [DevicesService].
-///   - DATA BUILDING: [_buildRoleDataList], [_buildOtherLights], counts, role names/icons.
-///   - HEADER: [_buildHeader], mode subtitle, status color.
-///   - PORTRAIT LAYOUT, LANDSCAPE LAYOUT: roles, scenes, other lights, mode selector.
-///   - LIGHTING MODE CONTROLS: [_setLightingMode], [_toggleRoleViaIntent],
-///     [_toggleRole], [_toggleLight].
-///   - ROLES GRID, LIGHTS GRID, SCENES, NAVIGATION, EMPTY STATE: UI builders.
-/// - **PRIVATE WIDGETS** — [_RoleCard], [_LightTile], [_SceneTile] (all use [UniversalTile]).
+// Lights domain view: room-level lighting control for a single space/room.
+//
+// **Purpose:** One screen per room showing lighting roles (main, task, ambient,
+// accent, night), "other" lights, scenes, and a mode selector (off/work/relax/night).
+// Role and device detail are opened via navigation.
+//
+// **Data flow:**
+// - [SpacesService] provides light targets and lighting state for the room.
+// - [DevicesService] provides live device views used to build role/light data.
+// - [DomainControlStateService] (mode + role channels) drives optimistic UI;
+//   [IntentsRepository] notifies when intents complete so pending state can settle.
+//
+// **Key concepts:**
+// - Two [DomainControlStateService] instances: one for mode (off/work/relax/night),
+//   one for role toggles (main, task, ambient, etc.). Both use space-level intent
+//   lock; mode lock blocks role toggles until settling.
+// - Role data is built in [_buildRoleDataList] from targets + [DevicesService];
+//   "other" lights and scenes are separate lists. Optimistic on/off for single
+//   lights uses [DeviceControlStateService] and [IntentOverlayService].
+//
+// **File structure (for humans and AI):**
+// Search for the exact section header (e.g. "// DATA MODELS", "// LIFECYCLE") to
+// jump to that part of the file. Sections appear in this order:
+//
+// - **DATA MODELS** — [LightingRoleData], [LightState], [LightingModeUI] (+ extension),
+//   [LightDeviceData]. Channel IDs/settling from [LightingConstants] (constants.dart).
+// - **LIGHTS DOMAIN VIEW PAGE** — [LightsDomainViewPage] and state class:
+//   - STATE & DEPENDENCIES: _roomId, [_tryLocator], optional services.
+//   - DERIVED STATE & CONVERGENCE HELPERS: [_lightingState], [_currentMode],
+//     [_checkModeConvergence], [_checkRoleConvergence], [_getRolePendingState].
+//   - LIFECYCLE: initState (mode + role control services, listeners, fetch), dispose.
+//   - CONTROL STATE & CALLBACKS: [_onDataChanged], [_groupTargetsByRole],
+//     [_onIntentChanged].
+//   - UTILITIES: [_scale], [_navigateToHome].
+//   - BUILD: scaffold, loading/empty/content; [Consumer] for [DevicesService].
+//   - DATA BUILDING: [_buildRoleDataList], [_buildOtherLights], counts, role names/icons.
+//   - HEADER: [_buildHeader], mode subtitle, status color.
+//   - PORTRAIT LAYOUT, LANDSCAPE LAYOUT: roles, scenes, other lights, mode selector.
+//   - LIGHTING MODE CONTROLS: [_setLightingMode], [_toggleRoleViaIntent],
+//     [_toggleRole], [_toggleLight].
+//   - ROLES GRID, LIGHTS GRID, SCENES, NAVIGATION, EMPTY STATE: UI builders.
+// - **PRIVATE WIDGETS** — [_RoleCard], [_LightTile], [_SceneTile] (all use [UniversalTile]).
+
 import 'package:event_bus/event_bus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
