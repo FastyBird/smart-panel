@@ -291,7 +291,7 @@ class DeckService extends ChangeNotifier {
     return items.indexWhere((item) => item.id == id);
   }
 
-  /// Prefetches domain data (lighting and climate) for a room.
+  /// Prefetches domain data (lighting, climate, shading, media, sensors) for a room.
   ///
   /// This is called on app start to ensure domain views load instantly
   /// when navigated to, without waiting for data fetches.
@@ -310,15 +310,21 @@ class DeckService extends ChangeNotifier {
 
       final spacesService = locator<SpacesService>();
 
+      // Try to get MediaActivityService for media prefetch
+      MediaActivityService? mediaService;
+      if (locator.isRegistered<MediaActivityService>()) {
+        mediaService = locator<MediaActivityService>();
+      }
+
       if (kDebugMode) {
         debugPrint(
           '[DECK SERVICE] Prefetching domain data for roomId: $roomId',
         );
       }
 
-      // Prefetch lighting and climate data in parallel (non-blocking)
+      // Prefetch all domain data in parallel (non-blocking)
       // This ensures data is ready when domain views are opened
-      Future.wait([
+      final futures = <Future<void>>[
         // Prefetch lighting data
         spacesService.fetchLightTargetsForSpace(roomId).catchError((e) {
           if (kDebugMode) {
@@ -362,7 +368,39 @@ class DeckService extends ChangeNotifier {
           }
           return null;
         }),
-      ]).then((_) {
+        // Prefetch shading data
+        spacesService.fetchCoversTargetsForSpace(roomId).catchError((e) {
+          if (kDebugMode) {
+            debugPrint(
+              '[DECK SERVICE] Failed to prefetch covers targets: $e',
+            );
+          }
+          return;
+        }),
+        spacesService.fetchCoversState(roomId).catchError((e) {
+          if (kDebugMode) {
+            debugPrint(
+              '[DECK SERVICE] Failed to prefetch covers state: $e',
+            );
+          }
+          return null;
+        }),
+      ];
+
+      // Prefetch media data if service is available
+      if (mediaService != null) {
+        futures.add(
+          mediaService.fetchAllForSpace(roomId).catchError((e) {
+            if (kDebugMode) {
+              debugPrint(
+                '[DECK SERVICE] Failed to prefetch media activity: $e',
+              );
+            }
+          }),
+        );
+      }
+
+      Future.wait(futures).then((_) {
         if (kDebugMode) {
           debugPrint(
             '[DECK SERVICE] Domain data prefetch complete for roomId: $roomId',

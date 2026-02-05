@@ -137,6 +137,24 @@ abstract class AppLocalizations {
   /// **'Action could not be processed'**
   String get action_failed;
 
+  /// Label for retry button
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get action_retry;
+
+  /// Error message when domain data fails to load
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load {domain}'**
+  String domain_data_load_failed(String domain);
+
+  /// Description for domain data load failure
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to retrieve data. Please check your connection and try again.'**
+  String get domain_data_load_failed_description;
+
   /// Displayed when required services are not initialized
   ///
   /// In en, this message translates to:

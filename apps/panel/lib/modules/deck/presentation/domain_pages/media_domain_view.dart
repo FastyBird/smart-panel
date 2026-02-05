@@ -71,7 +71,9 @@ import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/core/widgets/value_selector.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/domain_data_loader.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_item_sheet.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/domain_state_view.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/deck_service.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/navigate_event.dart';
 import 'package:fastybird_smart_panel/modules/deck/utils/lighting.dart';
@@ -132,6 +134,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	DevicesService? _devicesService;
 
 	bool _isLoading = true;
+	bool _hasError = false;
 	bool _isSending = false;
 	bool _wsConnected = false;
 	// Local optimistic state for volume/mute — no server-side aggregated state
@@ -192,25 +195,60 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		if (_socketService != null) _wsConnected = _socketService!.isConnected;
 		_devicesService = _tryLocator<DevicesService>('DevicesService', onSuccess: (s) => s.addListener(_onDevicesChanged));
 
-		WidgetsBinding.instance.addPostFrameCallback((_) => _prefetch());
+		// Fetch data immediately (not deferred)
+		_fetchMediaData();
 	}
 
 	/// Fetches media activity for the room and syncs device state; clears loading.
-	Future<void> _prefetch() async {
-		if (_mediaService == null) return;
+	Future<void> _fetchMediaData() async {
+		if (_mediaService == null) {
+			if (mounted) {
+				setState(() {
+					_isLoading = false;
+					_hasError = false;
+				});
+			}
+			return;
+		}
 		try {
-			await _mediaService!.fetchAllForSpace(_roomId);
-		} finally {
+			// Check if data is already available (cached) before fetching
+			final existingEndpoints = _mediaService!.getEndpoints(_roomId);
+			if (existingEndpoints.isEmpty) {
+				await _mediaService!.fetchAllForSpace(_roomId);
+			}
+
 			if (mounted) {
 				_syncDeviceState();
-				setState(() => _isLoading = false);
+				setState(() {
+					_isLoading = false;
+					_hasError = false;
+				});
+			}
+		} catch (e) {
+			if (kDebugMode) {
+				debugPrint('[MediaDomainViewPage] Failed to fetch media data: $e');
+			}
+			if (mounted) {
+				setState(() {
+					_isLoading = false;
+					_hasError = true;
+				});
 			}
 		}
 	}
 
+	/// Retry loading data after an error.
+	Future<void> _retryLoad() async {
+		setState(() {
+			_isLoading = true;
+			_hasError = false;
+		});
+		await _fetchMediaData();
+	}
+
 	/// Called by RefreshIndicator; re-fetches and syncs state.
 	Future<void> _refresh() async {
-		await _prefetch();
+		await _fetchMediaData();
 	}
 
 	@override
@@ -406,6 +444,24 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 
 	@override
 	Widget build(BuildContext context) {
+		final localizations = AppLocalizations.of(context)!;
+
+		// Handle loading and error states using DomainStateView
+		final loadState = _isLoading
+				? DomainLoadState.loading
+				: _hasError
+						? DomainLoadState.error
+						: DomainLoadState.loaded;
+
+		if (loadState != DomainLoadState.loaded) {
+			return DomainStateView(
+				state: loadState,
+				onRetry: _retryLoad,
+				domainName: localizations.domain_media,
+				child: const SizedBox.shrink(),
+			);
+		}
+
 		return Consumer<MediaActivityService>(
 			builder: (context, mediaService, _) {
 				final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -413,13 +469,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 				final endpoints = mediaService.getEndpoints(_roomId);
 				final roomName = _spacesService?.getSpace(_roomId)?.name ?? '';
 				final hasEndpoints = endpoints.isNotEmpty;
-
-				if (_isLoading) {
-					return Scaffold(
-						backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
-						body: const Center(child: CircularProgressIndicator()),
-					);
-				}
 
 				// No media-capable devices in this space
 				if (!hasEndpoints) {

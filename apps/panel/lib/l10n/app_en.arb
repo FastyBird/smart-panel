@@ -28,6 +28,24 @@
   "@action_failed": {
     "description": "Error message when an action fails"
   },
+  "action_retry": "Retry",
+  "@action_retry": {
+    "description": "Label for retry button"
+  },
+  "domain_data_load_failed": "Failed to load {domain}",
+  "@domain_data_load_failed": {
+    "description": "Error message when domain data fails to load",
+    "placeholders": {
+      "domain": {
+        "type": "String",
+        "example": "Lights"
+      }
+    }
+  },
+  "domain_data_load_failed_description": "Unable to retrieve data. Please check your connection and try again.",
+  "@domain_data_load_failed_description": {
+    "description": "Description for domain data load failure"
+  },
   "services_not_available": "Services not available",
   "@services_not_available": {
     "description": "Displayed when required services are not initialized"

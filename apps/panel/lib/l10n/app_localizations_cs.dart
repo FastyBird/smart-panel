@@ -30,6 +30,17 @@ class AppLocalizationsCs extends AppLocalizations {
   String get action_failed => 'Akci se nepodařilo zpracovat';
 
   @override
+  String get action_retry => 'Retry';
+
+  @override
+  String domain_data_load_failed(String domain) {
+    return 'Failed to load $domain';
+  }
+
+  @override
+  String get domain_data_load_failed_description => 'Unable to retrieve data. Please check your connection and try again.';
+
+  @override
   String get services_not_available => 'Služby nejsou k dispozici';
 
   @override

@@ -48,7 +48,6 @@ import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 import 'package:provider/provider.dart';
 
-import 'package:fastybird_smart_panel/api/models/devices_module_channel_category.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
@@ -63,14 +62,14 @@ import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
 import 'package:fastybird_smart_panel/core/widgets/tile_wrappers.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/domain_data_loader.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/domain_state_view.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/deck_service.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/navigate_event.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/sensor_category.dart';
-import 'package:fastybird_smart_panel/modules/devices/presentation/utils/sensor_utils.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/utils/sensor_freshness.dart';
 import 'package:fastybird_smart_panel/modules/devices/export.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_detail_page.dart';
-import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_colors.dart';
 import 'package:fastybird_smart_panel/modules/spaces/export.dart';
 
 // =============================================================================
@@ -215,6 +214,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
   EventBus? _eventBus;
 
   bool _isLoading = true;
+  bool _hasError = false;
   SensorCategory? _selectedCategory;
   Timer? _freshnessTimer;
 
@@ -259,7 +259,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     _deckService = _tryLocator<DeckService>('DeckService');
     _eventBus = _tryLocator<EventBus>('EventBus');
 
-    _loadSensorData();
+    _fetchSensorData();
 
     _freshnessTimer = Timer.periodic(
       _SensorsViewConstants.freshnessRefreshInterval,
@@ -267,6 +267,45 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
         if (mounted) setState(() {});
       },
     );
+  }
+
+  /// Fetches sensor state if not cached, then loads data.
+  Future<void> _fetchSensorData() async {
+    try {
+      // Check if data is already available (cached) before fetching
+      final existingState = _spaceStateRepository?.getSensorState(_roomId);
+
+      // Only fetch if data is not already available
+      if (existingState == null) {
+        await _spacesService?.fetchSensorState(_roomId);
+      }
+
+      _loadSensorData();
+      if (mounted) {
+        setState(() {
+          _hasError = false;
+        });
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[SensorsDomainViewPage] Failed to fetch sensor data: $e');
+      }
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _hasError = true;
+        });
+      }
+    }
+  }
+
+  /// Retry loading data after an error.
+  Future<void> _retryLoad() async {
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+    });
+    await _fetchSensorData();
   }
 
   @override
@@ -609,16 +648,27 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
 
   @override
   Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
+
+    // Handle loading and error states using DomainStateView
+    final loadState = _isLoading
+        ? DomainLoadState.loading
+        : _hasError
+            ? DomainLoadState.error
+            : DomainLoadState.loaded;
+
+    if (loadState != DomainLoadState.loaded) {
+      return DomainStateView(
+        state: loadState,
+        onRetry: _retryLoad,
+        domainName: localizations.domain_sensors,
+        child: const SizedBox.shrink(),
+      );
+    }
+
     return Consumer<DevicesService>(
       builder: (context, devicesService, _) {
         final isDark = Theme.of(context).brightness == Brightness.dark;
-
-        if (_isLoading) {
-          return Scaffold(
-            backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
-            body: const Center(child: CircularProgressIndicator()),
-          );
-        }
 
         final alertCount =
             _sensors.where((s) => s.status == SensorStatus.alert).length;

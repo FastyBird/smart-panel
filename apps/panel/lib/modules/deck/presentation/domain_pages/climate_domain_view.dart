@@ -69,7 +69,9 @@ import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
 import 'package:fastybird_smart_panel/core/widgets/tile_wrappers.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/domain_data_loader.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_item_sheet.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/domain_state_view.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/deck_service.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/domain_control_state_service.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/navigate_event.dart';
@@ -350,6 +352,8 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   ClimateRoomState _state = const ClimateRoomState(roomName: '');
   /// True until [_fetchClimateData] has run (and [_buildState] applied).
   bool _isLoading = true;
+  /// True when data loading failed.
+  bool _hasError = false;
 
   /// Drives optimistic UI for mode and setpoint: when user changes mode or temp,
   /// we show the desired value until backend confirms or settling timeout.
@@ -471,18 +475,34 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           _spacesService?.fetchClimateState(_roomId) ?? Future.value(),
         ]);
       }
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('[ClimateDomainViewPage] Failed to fetch climate data: $e');
-      }
-    } finally {
+
       _buildState();
       if (mounted) {
         setState(() {
           _isLoading = false;
+          _hasError = false;
+        });
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[ClimateDomainViewPage] Failed to fetch climate data: $e');
+      }
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _hasError = true;
         });
       }
     }
+  }
+
+  /// Retry loading data after an error.
+  Future<void> _retryLoad() async {
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+    });
+    await _fetchClimateData();
   }
 
   // --------------------------------------------------------------------------
@@ -1571,17 +1591,27 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
 
   @override
   Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // Handle loading and error states using DomainStateView
+    final loadState = _isLoading
+        ? DomainLoadState.loading
+        : _hasError
+            ? DomainLoadState.error
+            : DomainLoadState.loaded;
+
+    if (loadState != DomainLoadState.loaded) {
+      return DomainStateView(
+        state: loadState,
+        onRetry: _retryLoad,
+        domainName: localizations.domain_climate,
+        child: const SizedBox.shrink(),
+      );
+    }
+
     return Consumer<DevicesService>(
       builder: (context, devicesService, _) {
-        final isDark = Theme.of(context).brightness == Brightness.dark;
-
-        if (_isLoading) {
-          return Scaffold(
-            backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
-            body: const Center(child: CircularProgressIndicator()),
-          );
-        }
-
         return Scaffold(
           backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
           body: SafeArea(

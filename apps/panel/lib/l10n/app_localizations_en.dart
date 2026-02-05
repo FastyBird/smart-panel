@@ -30,6 +30,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get action_failed => 'Action could not be processed';
 
   @override
+  String get action_retry => 'Retry';
+
+  @override
+  String domain_data_load_failed(String domain) {
+    return 'Failed to load $domain';
+  }
+
+  @override
+  String get domain_data_load_failed_description => 'Unable to retrieve data. Please check your connection and try again.';
+
+  @override
   String get services_not_available => 'Services not available';
 
   @override

@@ -63,6 +63,8 @@ import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/constants.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/domain_data_loader.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/domain_state_view.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/light_role_detail_page.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/deck_service.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/domain_control_state_service.dart';
@@ -245,6 +247,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   IntentOverlayService? _intentOverlayService;
   DeviceControlStateService? _deviceControlStateService;
   bool _isLoading = true;
+  bool _hasError = false;
 
   /// Optimistic UI for mode (off/work/relax/night). Lock blocks role toggles.
   late DomainControlStateService<LightingStateModel> _modeControlStateService;
@@ -505,13 +508,33 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
           _spacesService?.fetchLightingState(_roomId) ?? Future.value(),
         ]);
       }
-    } finally {
+
       if (mounted) {
         setState(() {
           _isLoading = false;
+          _hasError = false;
+        });
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[LightsDomainView] Failed to fetch light targets: $e');
+      }
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _hasError = true;
         });
       }
     }
+  }
+
+  /// Retry loading data after an error.
+  Future<void> _retryLoad() async {
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+    });
+    await _fetchLightTargets();
   }
 
   @override
@@ -712,19 +735,27 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
   @override
   Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
+
+    // Handle loading and error states using DomainStateView
+    final loadState = _isLoading
+        ? DomainLoadState.loading
+        : _hasError
+            ? DomainLoadState.error
+            : DomainLoadState.loaded;
+
+    if (loadState != DomainLoadState.loaded) {
+      return DomainStateView(
+        state: loadState,
+        onRetry: _retryLoad,
+        domainName: localizations.domain_lights,
+        child: const SizedBox.shrink(),
+      );
+    }
+
     return Consumer<DevicesService>(
       builder: (context, devicesService, _) {
-        if (_isLoading) {
-          return Scaffold(
-            backgroundColor: Theme.of(context).brightness == Brightness.dark
-                ? AppBgColorDark.page
-                : AppBgColorLight.page,
-            body: const Center(child: CircularProgressIndicator()),
-          );
-        }
-
         final lightTargets = _spacesService?.getLightTargetsForSpace(_roomId) ?? [];
-        final localizations = AppLocalizations.of(context)!;
 
         if (lightTargets.isEmpty) {
           return _buildEmptyState(context);

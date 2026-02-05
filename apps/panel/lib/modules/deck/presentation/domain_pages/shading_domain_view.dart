@@ -52,7 +52,9 @@ import 'package:fastybird_smart_panel/core/widgets/slider_with_steps.dart';
 import 'package:fastybird_smart_panel/core/widgets/tile_wrappers.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/domain_data_loader.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_item_sheet.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/domain_state_view.dart';
 import 'package:fastybird_smart_panel/modules/devices/export.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_detail_page.dart';
@@ -142,6 +144,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   DeckService? _deckService;
   EventBus? _eventBus;
   bool _isLoading = true;
+  bool _hasError = false;
 
   // Optimistic UI state for slider interaction (per role)
   final Map<CoversTargetRole, int> _pendingPositions = {};
@@ -246,13 +249,33 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
           _spacesService?.fetchCoversState(_roomId) ?? Future.value(),
         ]);
       }
-    } finally {
+
       if (mounted) {
         setState(() {
           _isLoading = false;
+          _hasError = false;
+        });
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[ShadingDomainView] Failed to fetch covers data: $e');
+      }
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _hasError = true;
         });
       }
     }
+  }
+
+  /// Retry loading data after an error.
+  Future<void> _retryLoad() async {
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+    });
+    await _fetchCoversData();
   }
 
   @override
@@ -315,11 +338,21 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final localizations = AppLocalizations.of(context)!;
 
-    if (_isLoading) {
-      return Scaffold(
-        backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
-        body: const Center(child: CircularProgressIndicator()),
+    // Handle loading and error states using DomainStateView
+    final loadState = _isLoading
+        ? DomainLoadState.loading
+        : _hasError
+            ? DomainLoadState.error
+            : DomainLoadState.loaded;
+
+    if (loadState != DomainLoadState.loaded) {
+      return DomainStateView(
+        state: loadState,
+        onRetry: _retryLoad,
+        domainName: localizations.domain_shading,
+        child: const SizedBox.shrink(),
       );
     }
 
