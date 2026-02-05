@@ -14,7 +14,7 @@ import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/devic
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_data.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_detail_content.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/utils/sensor_utils.dart';
-import 'package:fastybird_smart_panel/modules/devices/utils/value.dart';
+
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/battery.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
@@ -130,7 +130,7 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
       return data.valueFormatter!(data.property!) ?? '—';
     }
     if (data.property != null) {
-      return ValueUtils.formatValue(data.property!) ?? '—';
+      return SensorUtils.valueFormatterForCategory(data.channel.category)(data.property!) ?? '—';
     }
     return '—';
   }

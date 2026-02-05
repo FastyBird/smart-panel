@@ -1552,7 +1552,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     }
 
     final climateState = _spacesService?.getClimateState(_roomId);
-    final tempStr = '${_state.targetTemp.toStringAsFixed(0)}°C';
+    final tempStr = SensorUtils.formatNumericValueWithUnit(_state.targetTemp, DevicesModuleChannelCategory.temperature);
 
     if (climateState?.isCooling ?? false) {
       return localizations.thermostat_state_cooling_to(tempStr);

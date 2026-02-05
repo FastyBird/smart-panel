@@ -24,6 +24,7 @@ import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/senso
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_channel_detail_page.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_data.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/utils/sensor_utils.dart';
+import 'package:fastybird_smart_panel/api/models/devices_module_channel_category.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/channel.dart' show buildChannelIcon;
@@ -317,7 +318,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
     if (_currentMode == HeaterMode.off) {
       return localizations.on_state_off;
     }
-    final tempStr = '${_targetSetpoint.toStringAsFixed(0)}°C';
+    final tempStr = SensorUtils.formatNumericValueWithUnit(_targetSetpoint, DevicesModuleChannelCategory.temperature);
     if (_isHeating) {
       return localizations.thermostat_state_heating_to(tempStr);
     }

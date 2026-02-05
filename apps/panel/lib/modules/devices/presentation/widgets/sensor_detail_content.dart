@@ -1,7 +1,7 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
-import 'package:fastybird_smart_panel/core/utils/number_format.dart';
+
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/utils/sensor_utils.dart';
@@ -11,7 +11,7 @@ import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/devic
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_chart_painter.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_data.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/property_timeseries.dart';
-import 'package:fastybird_smart_panel/modules/devices/utils/value.dart';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' show DateFormat;
@@ -63,7 +63,7 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
     return widget.sensor.property != null
         ? (widget.sensor.valueFormatter != null
             ? (widget.sensor.valueFormatter!(widget.sensor.property!) ?? '--')
-            : ValueUtils.formatValue(widget.sensor.property!) ?? '--')
+            : SensorUtils.valueFormatterForCategory(widget.sensor.channel.category)(widget.sensor.property!) ?? '--')
         : '--';
   }
 
@@ -274,7 +274,7 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
       default:
         return '--';
     }
-    return '${NumberFormatUtils.defaultFormat.formatDecimal(value, decimalPlaces: 1)}$_unit';
+    return SensorUtils.formatNumericValueWithUnit(value, widget.sensor.channel.category);
   }
 
   String _getPeriodLabel() {
