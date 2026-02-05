@@ -840,6 +840,7 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
         icon: MdiIcons.cup,
         valueThemeColor: SensorColors.alert,
         isWarning: channel.waterTankWarning,
+        sensorData: SensorUtils.buildSensorData(channel, localizations: localizations),
       ));
     } else if (channel != null && channel.hasWaterTankFull) {
       sensors.add(_SensorInfo(
@@ -851,6 +852,7 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
         icon: MdiIcons.cup,
         valueThemeColor: SensorColors.alert,
         isWarning: channel.waterTankFull,
+        sensorData: SensorUtils.buildSensorData(channel, localizations: localizations),
       ));
     }
 
@@ -863,6 +865,7 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
         icon: MdiIcons.snowflakeMelt,
         valueThemeColor: SensorColors.alert,
         isWarning: true,
+        sensorData: SensorUtils.buildSensorData(channel, localizations: localizations),
       ));
     }
 

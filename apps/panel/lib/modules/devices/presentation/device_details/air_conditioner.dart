@@ -1052,6 +1052,7 @@ class _AirConditionerDeviceDetailState
           icon: buildChannelIcon(filterChannel.category),
           themeColor: SensorColors.filter,
           isWarning: _device.filterLifeRemaining < 30 || _device.isFilterNeedsReplacement,
+          sensorData: SensorUtils.buildSensorData(filterChannel, localizations: localizations),
         ));
       } else if (filterChannel.hasStatus) {
         sensors.add(_SensorInfo(
@@ -1061,6 +1062,7 @@ class _AirConditionerDeviceDetailState
           icon: buildChannelIcon(filterChannel.category),
           themeColor: SensorColors.filter,
           isWarning: _device.isFilterNeedsReplacement,
+          sensorData: SensorUtils.buildSensorData(filterChannel, localizations: localizations),
         ));
       }
     }

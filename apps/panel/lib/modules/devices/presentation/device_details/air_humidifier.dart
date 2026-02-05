@@ -879,6 +879,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
         icon: MdiIcons.cup,
         valueThemeColor: SensorColors.alert,
         isWarning: channel.waterTankWarning,
+        sensorData: SensorUtils.buildSensorData(channel, localizations: localizations),
       ));
     } else if (channel != null && channel.hasWaterTankEmpty) {
       sensors.add(_SensorInfo(
@@ -890,6 +891,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
         icon: MdiIcons.cup,
         valueThemeColor: SensorColors.alert,
         isWarning: channel.waterTankEmpty,
+        sensorData: SensorUtils.buildSensorData(channel, localizations: localizations),
       ));
     }
 
