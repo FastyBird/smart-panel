@@ -21,11 +21,11 @@ import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/controllers/devices/thermostat.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
-import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_colors.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_colors.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_channel_detail_page.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_data.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/utils/sensor_value_builder.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
-import 'package:fastybird_smart_panel/modules/devices/utils/value.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/channel.dart' show buildChannelIcon;
 import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
@@ -809,13 +809,8 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
       unit: '°C',
       icon: buildChannelIcon(temperatureChannel.category),
       themeColor: SensorColors.temperature,
-      sensorData: SensorData(
-        label: 'Temperature',
-        icon: buildChannelIcon(temperatureChannel.category),
-        channel: temperatureChannel,
-        property: temperatureChannel.temperatureProp,
-        valueFormatter: (prop) => ValueUtils.formatValue(prop, 1),
-      ),
+      sensorData: SensorValueBuilder.buildSensorData(temperatureChannel,
+            localizations: localizations),
     ));
 
     // Humidity (optional)
@@ -828,13 +823,8 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
         unit: '%',
         icon: buildChannelIcon(humidityChannel.category),
         themeColor: SensorColors.humidity,
-        sensorData: SensorData(
-          label: 'Humidity',
-          icon: buildChannelIcon(humidityChannel.category),
-          channel: humidityChannel,
-          property: humidityChannel.humidityProp,
-          valueFormatter: (prop) => ValueUtils.formatValue(prop, 0),
-        ),
+        sensorData: SensorValueBuilder.buildSensorData(humidityChannel,
+            localizations: localizations),
       ));
     }
 
@@ -851,15 +841,8 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
         icon: isOpen ? MdiIcons.doorOpen : MdiIcons.doorClosed,
         themeColor: SensorColors.alert,
         isWarning: isOpen,
-        sensorData: SensorData(
-          label: 'Contact',
-          icon: buildChannelIcon(contactChannel.category),
-          channel: contactChannel,
-          property: contactChannel.detectedProp,
-          isDetection: contactChannel.detected,
-          detectedLabel: 'Open',
-          notDetectedLabel: 'Closed',
-        ),
+        sensorData: SensorValueBuilder.buildSensorData(contactChannel,
+            localizations: localizations),
       ));
     }
 

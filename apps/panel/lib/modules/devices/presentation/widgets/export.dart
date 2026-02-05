@@ -2,7 +2,7 @@ export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/devic
 export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_landscape_layout.dart';
 export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_offline_overlay.dart';
 export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_portrait_layout.dart';
-export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_colors.dart';
+export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_colors.dart';
 export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_power_button.dart';
 export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_brightness_card.dart';
 export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_info_card.dart';
@@ -12,3 +12,4 @@ export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/senso
 export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_chart_painter.dart';
 export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_data.dart';
 export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_detail_content.dart';
+export 'package:fastybird_smart_panel/modules/devices/presentation/utils/sensor_value_builder.dart';

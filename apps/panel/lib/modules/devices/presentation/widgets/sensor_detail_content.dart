@@ -1,4 +1,3 @@
-import 'package:fastybird_smart_panel/api/models/devices_module_channel_category.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
@@ -6,7 +5,7 @@ import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/utils/sensor_enum_utils.dart';
-import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_colors.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_colors.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_landscape_layout.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_portrait_layout.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_chart_painter.dart';
@@ -59,9 +58,7 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
 
   String get _currentValue {
     if (_isBinary) {
-      return widget.sensor.isDetection!
-          ? (widget.sensor.detectedLabel ?? 'Active')
-          : (widget.sensor.notDetectedLabel ?? 'Inactive');
+      return widget.sensor.isDetection! ? 'true' : 'false';
     }
     return widget.sensor.property != null
         ? (widget.sensor.valueFormatter != null
@@ -205,11 +202,10 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isCompact = _screenService.isSmallScreen;
     final localizations = AppLocalizations.of(context)!;
-    final channelCategory = widget.sensor.channel.category.json;
     final displayValue = SensorEnumUtils.translateSensorValue(
       localizations,
       _currentValue,
-      channelCategory,
+      widget.sensor.channel.category,
       short: false,
     );
     return Column(
@@ -245,7 +241,7 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
         Text(
           localizations.sensor_ui_current_value(
             SensorEnumUtils.translateSensorLabel(
-                localizations, widget.sensor.label),
+                localizations, widget.sensor.channel.category),
           ),
           style: TextStyle(
             color: isDark
@@ -485,30 +481,6 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
     );
   }
 
-  static String _getBinaryLabelLong(String channelCategory, bool isActive) {
-    final category = DevicesModuleChannelCategory.fromJson(channelCategory);
-
-    switch (category) {
-      case DevicesModuleChannelCategory.motion:
-      case DevicesModuleChannelCategory.occupancy:
-        return isActive ? 'Detected' : 'Clear';
-      case DevicesModuleChannelCategory.contact:
-      case DevicesModuleChannelCategory.door:
-      case DevicesModuleChannelCategory.doorbell:
-        return isActive ? 'Open' : 'Closed';
-      case DevicesModuleChannelCategory.smoke:
-        return isActive ? 'Smoke detected' : 'Clear';
-      case DevicesModuleChannelCategory.gas:
-        return isActive ? 'Gas detected' : 'Clear';
-      case DevicesModuleChannelCategory.leak:
-        return isActive ? 'Leak detected' : 'Clear';
-      case DevicesModuleChannelCategory.carbonMonoxide:
-        return isActive ? 'CO detected' : 'Clear';
-      default:
-        return isActive ? 'Active' : 'Inactive';
-    }
-  }
-
   Widget _buildEventLogEntries(BuildContext context, {bool inFlex = false}) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final localizations = AppLocalizations.of(context)!;
@@ -549,7 +521,7 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
               ),
             );
     }
-    final channelCategory = widget.sensor.channel.category.json;
+    final category = widget.sensor.channel.category;
     final useShortDate = _selectedPeriod <= 1;
     final dateFormat =
         useShortDate ? DateFormat.Hm() : DateFormat('MMM d, HH:mm');
@@ -564,8 +536,8 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
       itemBuilder: (context, index) {
         final point = reversedEvents[index];
         final isActive = point.numericValue >= 0.5;
-        final stateLabel =
-            _getBinaryLabelLong(channelCategory ?? '', isActive);
+        final stateLabel = SensorEnumUtils.translateBinaryState(
+            localizations, category, isActive, short: false);
         final dangerColor =
             isDark ? AppColorsDark.danger : AppColorsLight.danger;
         final successColor =

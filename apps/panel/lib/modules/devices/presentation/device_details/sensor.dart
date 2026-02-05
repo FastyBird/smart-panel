@@ -9,14 +9,15 @@ import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/tile_wrappers.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_channels_section.dart';
-import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_colors.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_colors.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_offline_overlay.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_data.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_detail_content.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/utils/sensor_enum_utils.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/utils/sensor_value_builder.dart';
 import 'package:fastybird_smart_panel/modules/devices/utils/value.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/battery.dart';
-import 'package:fastybird_smart_panel/modules/devices/mappers/channel.dart' show buildChannelIcon;
 import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/sensor.dart';
 import 'package:flutter/material.dart';
@@ -120,11 +121,11 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
   // --------------------------------------------------------------------------
 
   /// Status text for a sensor channel tile (e.g. "23.5 °C" or "Detected").
-  String _getSensorChannelStatus(SensorData data) {
+  String _getSensorChannelStatus(BuildContext context, SensorData data) {
     if (data.isDetection != null) {
-      return (data.isDetection ?? false)
-          ? (data.detectedLabel ?? 'Detected')
-          : (data.notDetectedLabel ?? 'Not Detected');
+      final l = AppLocalizations.of(context)!;
+      return SensorEnumUtils.translateBinaryState(
+          l, data.channel.category, data.isDetection ?? false);
     }
     if (data.property != null && data.valueFormatter != null) {
       return data.valueFormatter!(data.property!) ?? '—';
@@ -142,7 +143,7 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
       icon: data.icon,
       activeIcon: data.icon,
       name: data.channel.name.isNotEmpty ? data.channel.name : data.label,
-      status: _getSensorChannelStatus(data),
+      status: _getSensorChannelStatus(context, data),
       isActive: false,
       isOffline: !widget._device.isOnline,
       isSelected: isSelected,
@@ -263,47 +264,23 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
     final sensors = <SensorData>[];
 
     if (widget._device.hasTemperature) {
-      final channel = widget._device.temperatureChannel!;
-      sensors.add(SensorData(
-        label: 'Temperature',
-        icon: buildChannelIcon(channel.category),
-        channel: channel,
-        property: channel.temperatureProp,
-        valueFormatter: (prop) => ValueUtils.formatValue(prop, 1),
-      ));
+      sensors.add(SensorValueBuilder.buildSensorData(
+          widget._device.temperatureChannel!));
     }
 
     if (widget._device.hasHumidity) {
-      final channel = widget._device.humidityChannel!;
-      sensors.add(SensorData(
-        label: 'Humidity',
-        icon: buildChannelIcon(channel.category),
-        channel: channel,
-        property: channel.humidityProp,
-        valueFormatter: (prop) => ValueUtils.formatValue(prop, 0),
-      ));
+      sensors.add(SensorValueBuilder.buildSensorData(
+          widget._device.humidityChannel!));
     }
 
     if (widget._device.hasPressure) {
-      final channel = widget._device.pressureChannel!;
-      sensors.add(SensorData(
-        label: 'Pressure',
-        icon: buildChannelIcon(channel.category),
-        channel: channel,
-        property: channel.pressureProp,
-        valueFormatter: (prop) => ValueUtils.formatValue(prop, 0),
-      ));
+      sensors.add(SensorValueBuilder.buildSensorData(
+          widget._device.pressureChannel!));
     }
 
     if (widget._device.hasIlluminance) {
-      final channel = widget._device.illuminanceChannel!;
-      sensors.add(SensorData(
-        label: 'Illuminance',
-        icon: buildChannelIcon(channel.category),
-        channel: channel,
-        property: channel.illuminanceProp,
-        valueFormatter: (prop) => ValueUtils.formatValue(prop, 0),
-      ));
+      sensors.add(SensorValueBuilder.buildSensorData(
+          widget._device.illuminanceChannel!));
     }
 
     return sensors;
@@ -314,12 +291,7 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
 
     if (widget._device.hasCarbonDioxide) {
       final channel = widget._device.carbonDioxideChannel!;
-      sensors.add(SensorData(
-        label: 'Carbon Dioxide',
-        icon: buildChannelIcon(channel.category),
-        channel: channel,
-        property: channel.concentrationProp,
-        valueFormatter: (prop) => ValueUtils.formatValue(prop, 0),
+      sensors.add(SensorValueBuilder.buildSensorData(channel,
         isAlert: channel.detected,
         alertLabel: channel.detected ? 'High Level' : null,
       ));
@@ -327,12 +299,7 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
 
     if (widget._device.hasCarbonMonoxide) {
       final channel = widget._device.carbonMonoxideChannel!;
-      sensors.add(SensorData(
-        label: 'Carbon Monoxide',
-        icon: buildChannelIcon(channel.category),
-        channel: channel,
-        property: channel.concentrationProp,
-        valueFormatter: (prop) => ValueUtils.formatValue(prop, 0),
+      sensors.add(SensorValueBuilder.buildSensorData(channel,
         isAlert: channel.detected,
         alertLabel: channel.detected ? 'Detected' : null,
       ));
@@ -340,12 +307,7 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
 
     if (widget._device.hasOzone) {
       final channel = widget._device.ozoneChannel!;
-      sensors.add(SensorData(
-        label: 'Ozone',
-        icon: buildChannelIcon(channel.category),
-        channel: channel,
-        property: channel.concentrationProp,
-        valueFormatter: (prop) => ValueUtils.formatValue(prop, 0),
+      sensors.add(SensorValueBuilder.buildSensorData(channel,
         isAlert: channel.detected,
         alertLabel: channel.detected ? 'High Level' : null,
       ));
@@ -353,12 +315,7 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
 
     if (widget._device.hasNitrogenDioxide) {
       final channel = widget._device.nitrogenDioxideChannel!;
-      sensors.add(SensorData(
-        label: 'Nitrogen Dioxide',
-        icon: buildChannelIcon(channel.category),
-        channel: channel,
-        property: channel.concentrationProp,
-        valueFormatter: (prop) => ValueUtils.formatValue(prop, 0),
+      sensors.add(SensorValueBuilder.buildSensorData(channel,
         isAlert: channel.detected,
         alertLabel: channel.detected ? 'High Level' : null,
       ));
@@ -366,12 +323,7 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
 
     if (widget._device.hasSulphurDioxide) {
       final channel = widget._device.sulphurDioxideChannel!;
-      sensors.add(SensorData(
-        label: 'Sulphur Dioxide',
-        icon: buildChannelIcon(channel.category),
-        channel: channel,
-        property: channel.concentrationProp,
-        valueFormatter: (prop) => ValueUtils.formatValue(prop, 0),
+      sensors.add(SensorValueBuilder.buildSensorData(channel,
         isAlert: channel.detected,
         alertLabel: channel.detected ? 'High Level' : null,
       ));
@@ -379,26 +331,15 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
 
     if (widget._device.hasVolatileOrganicCompounds) {
       final channel = widget._device.volatileOrganicCompoundsChannel!;
-      sensors.add(SensorData(
-        label: 'VOC',
-        icon: buildChannelIcon(channel.category),
-        channel: channel,
-        property: channel.concentrationProp,
-        valueFormatter: (prop) => ValueUtils.formatValue(prop, 0),
+      sensors.add(SensorValueBuilder.buildSensorData(channel,
         isAlert: channel.detected,
         alertLabel: channel.detected ? 'High Level' : null,
       ));
     }
 
     if (widget._device.hasAirParticulate) {
-      final channel = widget._device.airParticulateChannel!;
-      sensors.add(SensorData(
-        label: 'Particulate Matter',
-        icon: buildChannelIcon(channel.category),
-        channel: channel,
-        property: channel.concentrationProp,
-        valueFormatter: (prop) => ValueUtils.formatValue(prop, 0),
-      ));
+      sensors.add(SensorValueBuilder.buildSensorData(
+          widget._device.airParticulateChannel!));
     }
 
     return sensors;
@@ -408,68 +349,32 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
     final sensors = <SensorData>[];
 
     if (widget._device.hasMotion) {
-      final channel = widget._device.motionChannel!;
-      sensors.add(SensorData(
-        label: 'Motion',
-        icon: buildChannelIcon(channel.category),
-        channel: channel,
-        property: channel.detectedProp,
-        isDetection: channel.detected,
-        detectedLabel: 'Detected',
-        notDetectedLabel: 'Not Detected',
-      ));
+      sensors.add(SensorValueBuilder.buildSensorData(
+          widget._device.motionChannel!));
     }
 
     if (widget._device.hasOccupancy) {
-      final channel = widget._device.occupancyChannel!;
-      sensors.add(SensorData(
-        label: 'Occupancy',
-        icon: buildChannelIcon(channel.category),
-        channel: channel,
-        property: channel.detectedProp,
-        isDetection: channel.detected,
-        detectedLabel: 'Detected',
-        notDetectedLabel: 'Not Detected',
-      ));
+      sensors.add(SensorValueBuilder.buildSensorData(
+          widget._device.occupancyChannel!));
     }
 
     if (widget._device.hasContact) {
       final channel = widget._device.contactChannel!;
-      sensors.add(SensorData(
-        label: 'Contact',
+      sensors.add(SensorValueBuilder.buildSensorData(channel,
         icon: channel.detected ? MdiIcons.doorOpen : MdiIcons.doorClosed,
-        channel: channel,
-        property: channel.detectedProp,
-        isDetection: channel.detected,
-        detectedLabel: 'Open',
-        notDetectedLabel: 'Closed',
       ));
     }
 
     if (widget._device.hasLeak) {
       final channel = widget._device.leakChannel!;
-      sensors.add(SensorData(
-        label: 'Leak',
-        icon: buildChannelIcon(channel.category),
-        channel: channel,
-        property: channel.detectedProp,
-        isDetection: channel.detected,
-        detectedLabel: 'Detected',
-        notDetectedLabel: 'Not Detected',
+      sensors.add(SensorValueBuilder.buildSensorData(channel,
         isAlert: channel.detected,
       ));
     }
 
     if (widget._device.hasSmoke) {
       final channel = widget._device.smokeChannel!;
-      sensors.add(SensorData(
-        label: 'Smoke',
-        icon: buildChannelIcon(channel.category),
-        channel: channel,
-        property: channel.detectedProp,
-        isDetection: channel.detected,
-        detectedLabel: 'Detected',
-        notDetectedLabel: 'Not Detected',
+      sensors.add(SensorValueBuilder.buildSensorData(channel,
         isAlert: channel.detected,
       ));
     }
@@ -482,12 +387,8 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
 
     if (widget._device.hasBattery) {
       final channel = widget._device.batteryChannel!;
-      sensors.add(SensorData(
-        label: 'Battery',
+      sensors.add(SensorValueBuilder.buildSensorData(channel,
         icon: _getBatteryIcon(channel),
-        channel: channel,
-        property: channel.percentageProp,
-        valueFormatter: (prop) => ValueUtils.formatValue(prop, 0),
         isAlert: channel.isLow,
         alertLabel: channel.isCharging
             ? 'Charging'
@@ -566,7 +467,8 @@ class SensorDetailPage extends StatelessWidget {
         child: Column(
           children: [
             PageHeader(
-              title: sensor.label,
+              title: SensorEnumUtils.translateSensorLabel(
+                  AppLocalizations.of(context)!, sensor.channel.category),
               subtitle: '$location • ${isOffline ? 'Offline' : 'Online'}',
               leading: Row(
                 mainAxisSize: MainAxisSize.min,

@@ -12,8 +12,6 @@ class SensorData {
   final ChannelPropertyView? property;
   final String? Function(ChannelPropertyView)? valueFormatter;
   final bool? isDetection;
-  final String? detectedLabel;
-  final String? notDetectedLabel;
   final bool? isAlert;
   final String? alertLabel;
 
@@ -24,8 +22,6 @@ class SensorData {
     this.property,
     this.valueFormatter,
     this.isDetection,
-    this.detectedLabel,
-    this.notDetectedLabel,
     this.isAlert,
     this.alertLabel,
   });

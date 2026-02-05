@@ -24,13 +24,13 @@ import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/controllers/devices/air_dehumidifier.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
-import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_colors.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_colors.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_channel_detail_page.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_data.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/utils/sensor_value_builder.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
 import 'package:fastybird_smart_panel/modules/devices/utils/dehumidifier_utils.dart';
 import 'package:fastybird_smart_panel/modules/devices/utils/fan_utils.dart';
-import 'package:fastybird_smart_panel/modules/devices/utils/value.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/dehumidifier.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/channel.dart' show buildChannelIcon;
 import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
@@ -808,15 +808,9 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
         icon: buildChannelIcon(leakChannel.category),
         valueThemeColor: SensorColors.alert,
         isWarning: isLeaking,
-        sensorData: SensorData(
-          label: 'Leak',
-          icon: buildChannelIcon(leakChannel.category),
-          channel: leakChannel,
-          property: leakChannel.detectedProp,
-          isDetection: leakChannel.detected,
-          detectedLabel: 'Detected',
-          notDetectedLabel: 'Not Detected',
+        sensorData: SensorValueBuilder.buildSensorData(leakChannel,
           isAlert: leakChannel.detected,
+          localizations: localizations,
         ),
       ));
     }
@@ -835,13 +829,7 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
       unit: '%',
       icon: buildChannelIcon(humidityChannel.category),
       valueThemeColor: SensorColors.humidity,
-      sensorData: SensorData(
-        label: 'Humidity',
-        icon: buildChannelIcon(humidityChannel.category),
-        channel: humidityChannel,
-        property: humidityChannel.humidityProp,
-        valueFormatter: (prop) => ValueUtils.formatValue(prop, 0),
-      ),
+      sensorData: SensorValueBuilder.buildSensorData(humidityChannel, localizations: localizations),
     ));
 
     // Water tank level
@@ -898,13 +886,7 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
         unit: '°C',
         icon: buildChannelIcon(tempChannel!.category),
         valueThemeColor: SensorColors.temperature,
-        sensorData: SensorData(
-          label: 'Temperature',
-          icon: buildChannelIcon(tempChannel.category),
-          channel: tempChannel,
-          property: tempChannel.temperatureProp,
-          valueFormatter: (prop) => ValueUtils.formatValue(prop, 1),
-        ),
+        sensorData: SensorValueBuilder.buildSensorData(tempChannel, localizations: localizations),
       ));
     }
 

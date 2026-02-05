@@ -1996,17 +1996,29 @@
     "description": "Label for PM10 particulate matter"
   },
 
-  "voc_level_good": "Good",
-  "@voc_level_good": {
-    "description": "VOC level - good/low"
+  "sensor_enum_voc_level_low": "Low",
+  "@sensor_enum_voc_level_low": {
+    "description": "VOC level - low (short)"
   },
-  "voc_level_moderate": "Moderate",
-  "@voc_level_moderate": {
-    "description": "VOC level - moderate/medium"
+  "sensor_enum_voc_level_low_long": "Low VOC",
+  "@sensor_enum_voc_level_low_long": {
+    "description": "VOC level - low (long)"
   },
-  "voc_level_poor": "Poor",
-  "@voc_level_poor": {
-    "description": "VOC level - poor/high"
+  "sensor_enum_voc_level_medium": "Med",
+  "@sensor_enum_voc_level_medium": {
+    "description": "VOC level - medium (short)"
+  },
+  "sensor_enum_voc_level_medium_long": "Medium VOC",
+  "@sensor_enum_voc_level_medium_long": {
+    "description": "VOC level - medium (long)"
+  },
+  "sensor_enum_voc_level_high": "High",
+  "@sensor_enum_voc_level_high": {
+    "description": "VOC level - high (short)"
+  },
+  "sensor_enum_voc_level_high_long": "High VOC",
+  "@sensor_enum_voc_level_high_long": {
+    "description": "VOC level - high (long)"
   },
 
   "fan_mode_auto": "Auto",
@@ -2729,40 +2741,121 @@
     "description": "Retry button text on server error screen"
   },
 
-  "sensor_enum_illuminance_dark": "Dark",
-  "sensor_enum_illuminance_dim": "Dim",
-  "sensor_enum_illuminance_light": "Light",
   "sensor_enum_illuminance_bright": "Bright",
-  "sensor_enum_illuminance_dark_long": "Dark",
-  "sensor_enum_illuminance_dim_long": "Dim",
-  "sensor_enum_illuminance_light_long": "Light",
   "sensor_enum_illuminance_bright_long": "Bright",
+  "sensor_enum_illuminance_moderate": "Moderate",
+  "sensor_enum_illuminance_moderate_long": "Moderate",
+  "sensor_enum_illuminance_dusky": "Dusky",
+  "sensor_enum_illuminance_dusky_long": "Dusky",
+  "sensor_enum_illuminance_dark": "Dark",
+  "sensor_enum_illuminance_dark_long": "Dark",
 
   "sensor_enum_gas_status_normal": "OK",
-  "sensor_enum_gas_status_testing": "Test",
-  "sensor_enum_gas_status_detected": "Gas!",
   "sensor_enum_gas_status_normal_long": "Normal",
-  "sensor_enum_gas_status_testing_long": "Testing",
-  "sensor_enum_gas_status_detected_long": "Gas Detected",
+  "sensor_enum_gas_status_warning": "Warn",
+  "sensor_enum_gas_status_warning_long": "Warning",
+  "sensor_enum_gas_status_alarm": "Alarm",
+  "sensor_enum_gas_status_alarm_long": "Gas Alarm",
 
-  "sensor_enum_leak_none": "Dry",
-  "sensor_enum_leak_detected": "Leak!",
-  "sensor_enum_leak_none_long": "No Leak",
-  "sensor_enum_leak_detected_long": "Leak Detected",
+  "sensor_enum_leak_level_low": "Low",
+  "sensor_enum_leak_level_low_long": "Low Leak",
+  "sensor_enum_leak_level_medium": "Med",
+  "sensor_enum_leak_level_medium_long": "Medium Leak",
+  "sensor_enum_leak_level_high": "High",
+  "sensor_enum_leak_level_high_long": "Severe Leak",
 
-  "sensor_enum_battery_level_normal": "OK",
+  "sensor_enum_battery_level_critical": "Crit",
+  "sensor_enum_battery_level_critical_long": "Critical Battery",
   "sensor_enum_battery_level_low": "Low",
-  "sensor_enum_battery_level_normal_long": "Normal",
   "sensor_enum_battery_level_low_long": "Low Battery",
+  "sensor_enum_battery_level_medium": "Med",
+  "sensor_enum_battery_level_medium_long": "Medium Battery",
+  "sensor_enum_battery_level_high": "High",
+  "sensor_enum_battery_level_high_long": "High Battery",
+  "sensor_enum_battery_level_full": "Full",
+  "sensor_enum_battery_level_full_long": "Full Battery",
 
-  "sensor_enum_battery_status_normal": "OK",
+  "sensor_enum_battery_status_ok": "OK",
+  "sensor_enum_battery_status_ok_long": "Battery OK",
+  "sensor_enum_battery_status_low": "Low",
+  "sensor_enum_battery_status_low_long": "Low Battery",
   "sensor_enum_battery_status_charging": "Chrg",
-  "sensor_enum_battery_status_not_charging": "Idle",
-  "sensor_enum_battery_status_not_chargeable": "N/A",
-  "sensor_enum_battery_status_normal_long": "Normal",
   "sensor_enum_battery_status_charging_long": "Charging",
-  "sensor_enum_battery_status_not_charging_long": "Not Charging",
-  "sensor_enum_battery_status_not_chargeable_long": "Not Chargeable",
+
+  "sensor_enum_alarm_alarm_idle": "Idle",
+  "sensor_enum_alarm_alarm_idle_long": "Alarm Idle",
+  "sensor_enum_alarm_alarm_pending": "Pend",
+  "sensor_enum_alarm_alarm_pending_long": "Alarm Pending",
+  "sensor_enum_alarm_alarm_triggered": "Trig",
+  "sensor_enum_alarm_alarm_triggered_long": "Alarm Triggered",
+  "sensor_enum_alarm_alarm_silenced": "Muted",
+  "sensor_enum_alarm_alarm_silenced_long": "Alarm Silenced",
+
+  "sensor_enum_alarm_disarmed": "Off",
+  "sensor_enum_alarm_disarmed_long": "Disarmed",
+  "sensor_enum_alarm_armed_home": "Home",
+  "sensor_enum_alarm_armed_home_long": "Armed Home",
+  "sensor_enum_alarm_armed_away": "Away",
+  "sensor_enum_alarm_armed_away_long": "Armed Away",
+  "sensor_enum_alarm_armed_night": "Night",
+  "sensor_enum_alarm_armed_night_long": "Armed Night",
+
+  "sensor_enum_filter_good": "Good",
+  "sensor_enum_filter_good_long": "Filter Good",
+  "sensor_enum_filter_replace_soon": "Soon",
+  "sensor_enum_filter_replace_soon_long": "Replace Soon",
+  "sensor_enum_filter_replace_now": "Now!",
+  "sensor_enum_filter_replace_now_long": "Replace Now",
+
+  "sensor_enum_door_opened": "Open",
+  "sensor_enum_door_opened_long": "Door Opened",
+  "sensor_enum_door_closed": "Closed",
+  "sensor_enum_door_closed_long": "Door Closed",
+  "sensor_enum_door_opening": "Opening",
+  "sensor_enum_door_opening_long": "Door Opening",
+  "sensor_enum_door_closing": "Closing",
+  "sensor_enum_door_closing_long": "Door Closing",
+  "sensor_enum_door_stopped": "Stopped",
+  "sensor_enum_door_stopped_long": "Door Stopped",
+
+  "sensor_enum_lock_locked": "Locked",
+  "sensor_enum_lock_locked_long": "Lock Locked",
+  "sensor_enum_lock_unlocked": "Open",
+  "sensor_enum_lock_unlocked_long": "Lock Unlocked",
+
+  "sensor_enum_camera_available": "On",
+  "sensor_enum_camera_available_long": "Camera Available",
+  "sensor_enum_camera_in_use": "In Use",
+  "sensor_enum_camera_in_use_long": "Camera In Use",
+  "sensor_enum_camera_unavailable": "N/A",
+  "sensor_enum_camera_unavailable_long": "Camera Unavailable",
+  "sensor_enum_camera_offline": "Off",
+  "sensor_enum_camera_offline_long": "Camera Offline",
+  "sensor_enum_camera_initializing": "Init",
+  "sensor_enum_camera_initializing_long": "Camera Initializing",
+  "sensor_enum_camera_error": "Err",
+  "sensor_enum_camera_error_long": "Camera Error",
+
+  "sensor_enum_device_info_connected": "On",
+  "sensor_enum_device_info_connected_long": "Connected",
+  "sensor_enum_device_info_disconnected": "Off",
+  "sensor_enum_device_info_disconnected_long": "Disconnected",
+  "sensor_enum_device_info_init": "Init",
+  "sensor_enum_device_info_init_long": "Initializing",
+  "sensor_enum_device_info_ready": "Ready",
+  "sensor_enum_device_info_ready_long": "Ready",
+  "sensor_enum_device_info_running": "Run",
+  "sensor_enum_device_info_running_long": "Running",
+  "sensor_enum_device_info_sleeping": "Sleep",
+  "sensor_enum_device_info_sleeping_long": "Sleeping",
+  "sensor_enum_device_info_stopped": "Stop",
+  "sensor_enum_device_info_stopped_long": "Stopped",
+  "sensor_enum_device_info_lost": "Lost",
+  "sensor_enum_device_info_lost_long": "Connection Lost",
+  "sensor_enum_device_info_alert": "Alert",
+  "sensor_enum_device_info_alert_long": "Alert",
+  "sensor_enum_device_info_unknown": "N/A",
+  "sensor_enum_device_info_unknown_long": "Unknown",
 
   "sensor_freshness_live": "Live",
   "@sensor_freshness_live": {
@@ -3276,6 +3369,13 @@
   "sensor_label_leak": "Leak",
   "sensor_label_smoke": "Smoke",
   "sensor_label_battery": "Battery",
+  "sensor_label_alarm": "Alarm",
+  "sensor_label_door": "Door",
+  "sensor_label_lock": "Lock",
+  "sensor_label_camera": "Camera",
+  "sensor_label_filter": "Filter",
+  "sensor_label_device_info": "Device Info",
+  "sensor_label_gas": "Gas",
 
   "sensor_alert_high_level": "High Level",
   "sensor_alert_low_battery": "Low Battery",

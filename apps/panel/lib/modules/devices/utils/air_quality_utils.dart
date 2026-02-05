@@ -115,11 +115,11 @@ class AirQualityUtils {
     if (level == null) return localizations.air_quality_level_unknown;
     switch (level) {
       case VolatileOrganicCompoundsLevelValue.low:
-        return localizations.voc_level_good;
+        return localizations.sensor_enum_voc_level_low_long;
       case VolatileOrganicCompoundsLevelValue.medium:
-        return localizations.voc_level_moderate;
+        return localizations.sensor_enum_voc_level_medium_long;
       case VolatileOrganicCompoundsLevelValue.high:
-        return localizations.voc_level_poor;
+        return localizations.sensor_enum_voc_level_high_long;
     }
   }
 
@@ -133,9 +133,9 @@ class AirQualityUtils {
     // Good: < 300 µg/m³
     // Moderate: 300-500 µg/m³
     // Poor: > 500 µg/m³
-    if (concentration < 300) return localizations.voc_level_good;
-    if (concentration < 500) return localizations.voc_level_moderate;
-    return localizations.voc_level_poor;
+    if (concentration < 300) return localizations.sensor_enum_voc_level_low_long;
+    if (concentration < 500) return localizations.sensor_enum_voc_level_medium_long;
+    return localizations.sensor_enum_voc_level_high_long;
   }
 
   /// Get human-readable label for ozone level.

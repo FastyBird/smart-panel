@@ -20,7 +20,7 @@ import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/core/widgets/value_selector.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/controllers/devices/air_purifier.dart';
-import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_colors.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_colors.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_power_button.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_channel_detail_page.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_data.dart';
@@ -29,7 +29,7 @@ import 'package:fastybird_smart_panel/modules/devices/services/device_control_st
 import 'package:fastybird_smart_panel/modules/devices/utils/air_quality_utils.dart';
 import 'package:fastybird_smart_panel/modules/devices/utils/fan_utils.dart';
 import 'package:fastybird_smart_panel/modules/devices/utils/filter_utils.dart';
-import 'package:fastybird_smart_panel/modules/devices/utils/value.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/utils/sensor_value_builder.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/channel.dart' show buildChannelIcon;
 import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/air_purifier.dart';
@@ -1160,13 +1160,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           icon: buildChannelIcon(coChannel.category),
           valueThemeColor: SensorColors.alert,
           isWarning: coChannel.concentration > 35, // Warn if CO exceeds 35 ppm (EPA 1-hour limit)
-          sensorData: SensorData(
-            label: 'Carbon Monoxide',
-            icon: buildChannelIcon(coChannel.category),
-            channel: coChannel,
-            property: coChannel.concentrationProp,
-            valueFormatter: (prop) => ValueUtils.formatValue(prop, 1),
-          ),
+          sensorData: SensorValueBuilder.buildSensorData(coChannel, localizations: localizations),
         ));
       } else if (coChannel.hasDetected) {
         final isDetected = coChannel.detected;
@@ -1179,15 +1173,9 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           icon: buildChannelIcon(coChannel.category),
           valueThemeColor: SensorColors.alert,
           isWarning: isDetected,
-          sensorData: SensorData(
-            label: 'Carbon Monoxide',
-            icon: buildChannelIcon(coChannel.category),
-            channel: coChannel,
-            property: coChannel.detectedProp,
-            isDetection: coChannel.detected,
-            detectedLabel: 'Detected',
-            notDetectedLabel: 'Clear',
+          sensorData: SensorValueBuilder.buildSensorData(coChannel,
             isAlert: coChannel.detected,
+            localizations: localizations,
           ),
         ));
       }
@@ -1206,15 +1194,9 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
         icon: buildChannelIcon(leakChannel.category),
         valueThemeColor: SensorColors.alert,
         isWarning: isLeaking,
-        sensorData: SensorData(
-          label: 'Leak',
-          icon: buildChannelIcon(leakChannel.category),
-          channel: leakChannel,
-          property: leakChannel.detectedProp,
-          isDetection: leakChannel.detected,
-          detectedLabel: 'Detected',
-          notDetectedLabel: 'Not Detected',
+        sensorData: SensorValueBuilder.buildSensorData(leakChannel,
           isAlert: leakChannel.detected,
+          localizations: localizations,
         ),
       ));
     }
@@ -1235,13 +1217,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           unit: 'µg/m³',
           icon: buildChannelIcon(pmChannel.category),
           valueThemeColor: SensorColors.airQuality,
-          sensorData: SensorData(
-            label: 'Particulate Matter',
-            icon: buildChannelIcon(pmChannel.category),
-            channel: pmChannel,
-            property: pmChannel.concentrationProp,
-            valueFormatter: (prop) => ValueUtils.formatValue(prop, 0),
-          ),
+          sensorData: SensorValueBuilder.buildSensorData(pmChannel, localizations: localizations),
         ));
       } else if (pmChannel.hasDetected) {
         final isDetected = pmChannel.detected;
@@ -1303,13 +1279,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
         icon: buildChannelIcon(co2Channel.category),
         valueThemeColor: SensorColors.co2,
         isWarning: co2Channel.concentration > 1000, // Warn if CO₂ exceeds 1000 ppm
-        sensorData: SensorData(
-          label: 'Carbon Dioxide',
-          icon: buildChannelIcon(co2Channel.category),
-          channel: co2Channel,
-          property: co2Channel.concentrationProp,
-          valueFormatter: (prop) => ValueUtils.formatValue(prop, 0),
-        ),
+        sensorData: SensorValueBuilder.buildSensorData(co2Channel, localizations: localizations),
       ));
     }
 
@@ -1463,13 +1433,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
         unit: '°C',
         icon: buildChannelIcon(tempChannel.category),
         valueThemeColor: SensorColors.temperature,
-        sensorData: SensorData(
-          label: 'Temperature',
-          icon: buildChannelIcon(tempChannel.category),
-          channel: tempChannel,
-          property: tempChannel.temperatureProp,
-          valueFormatter: (prop) => ValueUtils.formatValue(prop, 1),
-        ),
+        sensorData: SensorValueBuilder.buildSensorData(tempChannel, localizations: localizations),
       ));
     }
 
@@ -1483,13 +1447,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
         unit: '%',
         icon: buildChannelIcon(humidityChannel.category),
         valueThemeColor: SensorColors.humidity,
-        sensorData: SensorData(
-          label: 'Humidity',
-          icon: buildChannelIcon(humidityChannel.category),
-          channel: humidityChannel,
-          property: humidityChannel.humidityProp,
-          valueFormatter: (prop) => ValueUtils.formatValue(prop, 0),
-        ),
+        sensorData: SensorValueBuilder.buildSensorData(humidityChannel, localizations: localizations),
       ));
     }
 
@@ -1503,13 +1461,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
         unit: 'kPa',
         icon: buildChannelIcon(pressureChannel.category),
         valueThemeColor: SensorColors.pressure,
-        sensorData: SensorData(
-          label: 'Pressure',
-          icon: buildChannelIcon(pressureChannel.category),
-          channel: pressureChannel,
-          property: pressureChannel.pressureProp,
-          valueFormatter: (prop) => ValueUtils.formatValue(prop, 0),
-        ),
+        sensorData: SensorValueBuilder.buildSensorData(pressureChannel, localizations: localizations),
       ));
     }
 

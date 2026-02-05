@@ -2873,23 +2873,41 @@ abstract class AppLocalizations {
   /// **'PM10'**
   String get particulate_label_pm10;
 
-  /// VOC level - good/low
+  /// VOC level - low (short)
   ///
   /// In en, this message translates to:
-  /// **'Good'**
-  String get voc_level_good;
+  /// **'Low'**
+  String get sensor_enum_voc_level_low;
 
-  /// VOC level - moderate/medium
+  /// VOC level - low (long)
   ///
   /// In en, this message translates to:
-  /// **'Moderate'**
-  String get voc_level_moderate;
+  /// **'Low VOC'**
+  String get sensor_enum_voc_level_low_long;
 
-  /// VOC level - poor/high
+  /// VOC level - medium (short)
   ///
   /// In en, this message translates to:
-  /// **'Poor'**
-  String get voc_level_poor;
+  /// **'Med'**
+  String get sensor_enum_voc_level_medium;
+
+  /// VOC level - medium (long)
+  ///
+  /// In en, this message translates to:
+  /// **'Medium VOC'**
+  String get sensor_enum_voc_level_medium_long;
+
+  /// VOC level - high (short)
+  ///
+  /// In en, this message translates to:
+  /// **'High'**
+  String get sensor_enum_voc_level_high;
+
+  /// VOC level - high (long)
+  ///
+  /// In en, this message translates to:
+  /// **'High VOC'**
+  String get sensor_enum_voc_level_high_long;
 
   /// Fan mode - automatic
   ///
@@ -3893,47 +3911,11 @@ abstract class AppLocalizations {
   /// **'Try Again'**
   String get connection_server_error_button_retry;
 
-  /// No description provided for @sensor_enum_illuminance_dark.
-  ///
-  /// In en, this message translates to:
-  /// **'Dark'**
-  String get sensor_enum_illuminance_dark;
-
-  /// No description provided for @sensor_enum_illuminance_dim.
-  ///
-  /// In en, this message translates to:
-  /// **'Dim'**
-  String get sensor_enum_illuminance_dim;
-
-  /// No description provided for @sensor_enum_illuminance_light.
-  ///
-  /// In en, this message translates to:
-  /// **'Light'**
-  String get sensor_enum_illuminance_light;
-
   /// No description provided for @sensor_enum_illuminance_bright.
   ///
   /// In en, this message translates to:
   /// **'Bright'**
   String get sensor_enum_illuminance_bright;
-
-  /// No description provided for @sensor_enum_illuminance_dark_long.
-  ///
-  /// In en, this message translates to:
-  /// **'Dark'**
-  String get sensor_enum_illuminance_dark_long;
-
-  /// No description provided for @sensor_enum_illuminance_dim_long.
-  ///
-  /// In en, this message translates to:
-  /// **'Dim'**
-  String get sensor_enum_illuminance_dim_long;
-
-  /// No description provided for @sensor_enum_illuminance_light_long.
-  ///
-  /// In en, this message translates to:
-  /// **'Light'**
-  String get sensor_enum_illuminance_light_long;
 
   /// No description provided for @sensor_enum_illuminance_bright_long.
   ///
@@ -3941,23 +3923,47 @@ abstract class AppLocalizations {
   /// **'Bright'**
   String get sensor_enum_illuminance_bright_long;
 
+  /// No description provided for @sensor_enum_illuminance_moderate.
+  ///
+  /// In en, this message translates to:
+  /// **'Moderate'**
+  String get sensor_enum_illuminance_moderate;
+
+  /// No description provided for @sensor_enum_illuminance_moderate_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Moderate'**
+  String get sensor_enum_illuminance_moderate_long;
+
+  /// No description provided for @sensor_enum_illuminance_dusky.
+  ///
+  /// In en, this message translates to:
+  /// **'Dusky'**
+  String get sensor_enum_illuminance_dusky;
+
+  /// No description provided for @sensor_enum_illuminance_dusky_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Dusky'**
+  String get sensor_enum_illuminance_dusky_long;
+
+  /// No description provided for @sensor_enum_illuminance_dark.
+  ///
+  /// In en, this message translates to:
+  /// **'Dark'**
+  String get sensor_enum_illuminance_dark;
+
+  /// No description provided for @sensor_enum_illuminance_dark_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Dark'**
+  String get sensor_enum_illuminance_dark_long;
+
   /// No description provided for @sensor_enum_gas_status_normal.
   ///
   /// In en, this message translates to:
   /// **'OK'**
   String get sensor_enum_gas_status_normal;
-
-  /// No description provided for @sensor_enum_gas_status_testing.
-  ///
-  /// In en, this message translates to:
-  /// **'Test'**
-  String get sensor_enum_gas_status_testing;
-
-  /// No description provided for @sensor_enum_gas_status_detected.
-  ///
-  /// In en, this message translates to:
-  /// **'Gas!'**
-  String get sensor_enum_gas_status_detected;
 
   /// No description provided for @sensor_enum_gas_status_normal_long.
   ///
@@ -3965,47 +3971,77 @@ abstract class AppLocalizations {
   /// **'Normal'**
   String get sensor_enum_gas_status_normal_long;
 
-  /// No description provided for @sensor_enum_gas_status_testing_long.
+  /// No description provided for @sensor_enum_gas_status_warning.
   ///
   /// In en, this message translates to:
-  /// **'Testing'**
-  String get sensor_enum_gas_status_testing_long;
+  /// **'Warn'**
+  String get sensor_enum_gas_status_warning;
 
-  /// No description provided for @sensor_enum_gas_status_detected_long.
+  /// No description provided for @sensor_enum_gas_status_warning_long.
   ///
   /// In en, this message translates to:
-  /// **'Gas Detected'**
-  String get sensor_enum_gas_status_detected_long;
+  /// **'Warning'**
+  String get sensor_enum_gas_status_warning_long;
 
-  /// No description provided for @sensor_enum_leak_none.
+  /// No description provided for @sensor_enum_gas_status_alarm.
   ///
   /// In en, this message translates to:
-  /// **'Dry'**
-  String get sensor_enum_leak_none;
+  /// **'Alarm'**
+  String get sensor_enum_gas_status_alarm;
 
-  /// No description provided for @sensor_enum_leak_detected.
+  /// No description provided for @sensor_enum_gas_status_alarm_long.
   ///
   /// In en, this message translates to:
-  /// **'Leak!'**
-  String get sensor_enum_leak_detected;
+  /// **'Gas Alarm'**
+  String get sensor_enum_gas_status_alarm_long;
 
-  /// No description provided for @sensor_enum_leak_none_long.
+  /// No description provided for @sensor_enum_leak_level_low.
   ///
   /// In en, this message translates to:
-  /// **'No Leak'**
-  String get sensor_enum_leak_none_long;
+  /// **'Low'**
+  String get sensor_enum_leak_level_low;
 
-  /// No description provided for @sensor_enum_leak_detected_long.
+  /// No description provided for @sensor_enum_leak_level_low_long.
   ///
   /// In en, this message translates to:
-  /// **'Leak Detected'**
-  String get sensor_enum_leak_detected_long;
+  /// **'Low Leak'**
+  String get sensor_enum_leak_level_low_long;
 
-  /// No description provided for @sensor_enum_battery_level_normal.
+  /// No description provided for @sensor_enum_leak_level_medium.
   ///
   /// In en, this message translates to:
-  /// **'OK'**
-  String get sensor_enum_battery_level_normal;
+  /// **'Med'**
+  String get sensor_enum_leak_level_medium;
+
+  /// No description provided for @sensor_enum_leak_level_medium_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Medium Leak'**
+  String get sensor_enum_leak_level_medium_long;
+
+  /// No description provided for @sensor_enum_leak_level_high.
+  ///
+  /// In en, this message translates to:
+  /// **'High'**
+  String get sensor_enum_leak_level_high;
+
+  /// No description provided for @sensor_enum_leak_level_high_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Severe Leak'**
+  String get sensor_enum_leak_level_high_long;
+
+  /// No description provided for @sensor_enum_battery_level_critical.
+  ///
+  /// In en, this message translates to:
+  /// **'Crit'**
+  String get sensor_enum_battery_level_critical;
+
+  /// No description provided for @sensor_enum_battery_level_critical_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Critical Battery'**
+  String get sensor_enum_battery_level_critical_long;
 
   /// No description provided for @sensor_enum_battery_level_low.
   ///
@@ -4013,23 +4049,71 @@ abstract class AppLocalizations {
   /// **'Low'**
   String get sensor_enum_battery_level_low;
 
-  /// No description provided for @sensor_enum_battery_level_normal_long.
-  ///
-  /// In en, this message translates to:
-  /// **'Normal'**
-  String get sensor_enum_battery_level_normal_long;
-
   /// No description provided for @sensor_enum_battery_level_low_long.
   ///
   /// In en, this message translates to:
   /// **'Low Battery'**
   String get sensor_enum_battery_level_low_long;
 
-  /// No description provided for @sensor_enum_battery_status_normal.
+  /// No description provided for @sensor_enum_battery_level_medium.
+  ///
+  /// In en, this message translates to:
+  /// **'Med'**
+  String get sensor_enum_battery_level_medium;
+
+  /// No description provided for @sensor_enum_battery_level_medium_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Medium Battery'**
+  String get sensor_enum_battery_level_medium_long;
+
+  /// No description provided for @sensor_enum_battery_level_high.
+  ///
+  /// In en, this message translates to:
+  /// **'High'**
+  String get sensor_enum_battery_level_high;
+
+  /// No description provided for @sensor_enum_battery_level_high_long.
+  ///
+  /// In en, this message translates to:
+  /// **'High Battery'**
+  String get sensor_enum_battery_level_high_long;
+
+  /// No description provided for @sensor_enum_battery_level_full.
+  ///
+  /// In en, this message translates to:
+  /// **'Full'**
+  String get sensor_enum_battery_level_full;
+
+  /// No description provided for @sensor_enum_battery_level_full_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Full Battery'**
+  String get sensor_enum_battery_level_full_long;
+
+  /// No description provided for @sensor_enum_battery_status_ok.
   ///
   /// In en, this message translates to:
   /// **'OK'**
-  String get sensor_enum_battery_status_normal;
+  String get sensor_enum_battery_status_ok;
+
+  /// No description provided for @sensor_enum_battery_status_ok_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Battery OK'**
+  String get sensor_enum_battery_status_ok_long;
+
+  /// No description provided for @sensor_enum_battery_status_low.
+  ///
+  /// In en, this message translates to:
+  /// **'Low'**
+  String get sensor_enum_battery_status_low;
+
+  /// No description provided for @sensor_enum_battery_status_low_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Low Battery'**
+  String get sensor_enum_battery_status_low_long;
 
   /// No description provided for @sensor_enum_battery_status_charging.
   ///
@@ -4037,41 +4121,419 @@ abstract class AppLocalizations {
   /// **'Chrg'**
   String get sensor_enum_battery_status_charging;
 
-  /// No description provided for @sensor_enum_battery_status_not_charging.
-  ///
-  /// In en, this message translates to:
-  /// **'Idle'**
-  String get sensor_enum_battery_status_not_charging;
-
-  /// No description provided for @sensor_enum_battery_status_not_chargeable.
-  ///
-  /// In en, this message translates to:
-  /// **'N/A'**
-  String get sensor_enum_battery_status_not_chargeable;
-
-  /// No description provided for @sensor_enum_battery_status_normal_long.
-  ///
-  /// In en, this message translates to:
-  /// **'Normal'**
-  String get sensor_enum_battery_status_normal_long;
-
   /// No description provided for @sensor_enum_battery_status_charging_long.
   ///
   /// In en, this message translates to:
   /// **'Charging'**
   String get sensor_enum_battery_status_charging_long;
 
-  /// No description provided for @sensor_enum_battery_status_not_charging_long.
+  /// No description provided for @sensor_enum_alarm_alarm_idle.
   ///
   /// In en, this message translates to:
-  /// **'Not Charging'**
-  String get sensor_enum_battery_status_not_charging_long;
+  /// **'Idle'**
+  String get sensor_enum_alarm_alarm_idle;
 
-  /// No description provided for @sensor_enum_battery_status_not_chargeable_long.
+  /// No description provided for @sensor_enum_alarm_alarm_idle_long.
   ///
   /// In en, this message translates to:
-  /// **'Not Chargeable'**
-  String get sensor_enum_battery_status_not_chargeable_long;
+  /// **'Alarm Idle'**
+  String get sensor_enum_alarm_alarm_idle_long;
+
+  /// No description provided for @sensor_enum_alarm_alarm_pending.
+  ///
+  /// In en, this message translates to:
+  /// **'Pend'**
+  String get sensor_enum_alarm_alarm_pending;
+
+  /// No description provided for @sensor_enum_alarm_alarm_pending_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Alarm Pending'**
+  String get sensor_enum_alarm_alarm_pending_long;
+
+  /// No description provided for @sensor_enum_alarm_alarm_triggered.
+  ///
+  /// In en, this message translates to:
+  /// **'Trig'**
+  String get sensor_enum_alarm_alarm_triggered;
+
+  /// No description provided for @sensor_enum_alarm_alarm_triggered_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Alarm Triggered'**
+  String get sensor_enum_alarm_alarm_triggered_long;
+
+  /// No description provided for @sensor_enum_alarm_alarm_silenced.
+  ///
+  /// In en, this message translates to:
+  /// **'Muted'**
+  String get sensor_enum_alarm_alarm_silenced;
+
+  /// No description provided for @sensor_enum_alarm_alarm_silenced_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Alarm Silenced'**
+  String get sensor_enum_alarm_alarm_silenced_long;
+
+  /// No description provided for @sensor_enum_alarm_disarmed.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get sensor_enum_alarm_disarmed;
+
+  /// No description provided for @sensor_enum_alarm_disarmed_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Disarmed'**
+  String get sensor_enum_alarm_disarmed_long;
+
+  /// No description provided for @sensor_enum_alarm_armed_home.
+  ///
+  /// In en, this message translates to:
+  /// **'Home'**
+  String get sensor_enum_alarm_armed_home;
+
+  /// No description provided for @sensor_enum_alarm_armed_home_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Armed Home'**
+  String get sensor_enum_alarm_armed_home_long;
+
+  /// No description provided for @sensor_enum_alarm_armed_away.
+  ///
+  /// In en, this message translates to:
+  /// **'Away'**
+  String get sensor_enum_alarm_armed_away;
+
+  /// No description provided for @sensor_enum_alarm_armed_away_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Armed Away'**
+  String get sensor_enum_alarm_armed_away_long;
+
+  /// No description provided for @sensor_enum_alarm_armed_night.
+  ///
+  /// In en, this message translates to:
+  /// **'Night'**
+  String get sensor_enum_alarm_armed_night;
+
+  /// No description provided for @sensor_enum_alarm_armed_night_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Armed Night'**
+  String get sensor_enum_alarm_armed_night_long;
+
+  /// No description provided for @sensor_enum_filter_good.
+  ///
+  /// In en, this message translates to:
+  /// **'Good'**
+  String get sensor_enum_filter_good;
+
+  /// No description provided for @sensor_enum_filter_good_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter Good'**
+  String get sensor_enum_filter_good_long;
+
+  /// No description provided for @sensor_enum_filter_replace_soon.
+  ///
+  /// In en, this message translates to:
+  /// **'Soon'**
+  String get sensor_enum_filter_replace_soon;
+
+  /// No description provided for @sensor_enum_filter_replace_soon_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace Soon'**
+  String get sensor_enum_filter_replace_soon_long;
+
+  /// No description provided for @sensor_enum_filter_replace_now.
+  ///
+  /// In en, this message translates to:
+  /// **'Now!'**
+  String get sensor_enum_filter_replace_now;
+
+  /// No description provided for @sensor_enum_filter_replace_now_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace Now'**
+  String get sensor_enum_filter_replace_now_long;
+
+  /// No description provided for @sensor_enum_door_opened.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get sensor_enum_door_opened;
+
+  /// No description provided for @sensor_enum_door_opened_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Door Opened'**
+  String get sensor_enum_door_opened_long;
+
+  /// No description provided for @sensor_enum_door_closed.
+  ///
+  /// In en, this message translates to:
+  /// **'Closed'**
+  String get sensor_enum_door_closed;
+
+  /// No description provided for @sensor_enum_door_closed_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Door Closed'**
+  String get sensor_enum_door_closed_long;
+
+  /// No description provided for @sensor_enum_door_opening.
+  ///
+  /// In en, this message translates to:
+  /// **'Opening'**
+  String get sensor_enum_door_opening;
+
+  /// No description provided for @sensor_enum_door_opening_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Door Opening'**
+  String get sensor_enum_door_opening_long;
+
+  /// No description provided for @sensor_enum_door_closing.
+  ///
+  /// In en, this message translates to:
+  /// **'Closing'**
+  String get sensor_enum_door_closing;
+
+  /// No description provided for @sensor_enum_door_closing_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Door Closing'**
+  String get sensor_enum_door_closing_long;
+
+  /// No description provided for @sensor_enum_door_stopped.
+  ///
+  /// In en, this message translates to:
+  /// **'Stopped'**
+  String get sensor_enum_door_stopped;
+
+  /// No description provided for @sensor_enum_door_stopped_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Door Stopped'**
+  String get sensor_enum_door_stopped_long;
+
+  /// No description provided for @sensor_enum_lock_locked.
+  ///
+  /// In en, this message translates to:
+  /// **'Locked'**
+  String get sensor_enum_lock_locked;
+
+  /// No description provided for @sensor_enum_lock_locked_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Lock Locked'**
+  String get sensor_enum_lock_locked_long;
+
+  /// No description provided for @sensor_enum_lock_unlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get sensor_enum_lock_unlocked;
+
+  /// No description provided for @sensor_enum_lock_unlocked_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Lock Unlocked'**
+  String get sensor_enum_lock_unlocked_long;
+
+  /// No description provided for @sensor_enum_camera_available.
+  ///
+  /// In en, this message translates to:
+  /// **'On'**
+  String get sensor_enum_camera_available;
+
+  /// No description provided for @sensor_enum_camera_available_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera Available'**
+  String get sensor_enum_camera_available_long;
+
+  /// No description provided for @sensor_enum_camera_in_use.
+  ///
+  /// In en, this message translates to:
+  /// **'In Use'**
+  String get sensor_enum_camera_in_use;
+
+  /// No description provided for @sensor_enum_camera_in_use_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera In Use'**
+  String get sensor_enum_camera_in_use_long;
+
+  /// No description provided for @sensor_enum_camera_unavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'N/A'**
+  String get sensor_enum_camera_unavailable;
+
+  /// No description provided for @sensor_enum_camera_unavailable_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera Unavailable'**
+  String get sensor_enum_camera_unavailable_long;
+
+  /// No description provided for @sensor_enum_camera_offline.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get sensor_enum_camera_offline;
+
+  /// No description provided for @sensor_enum_camera_offline_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera Offline'**
+  String get sensor_enum_camera_offline_long;
+
+  /// No description provided for @sensor_enum_camera_initializing.
+  ///
+  /// In en, this message translates to:
+  /// **'Init'**
+  String get sensor_enum_camera_initializing;
+
+  /// No description provided for @sensor_enum_camera_initializing_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera Initializing'**
+  String get sensor_enum_camera_initializing_long;
+
+  /// No description provided for @sensor_enum_camera_error.
+  ///
+  /// In en, this message translates to:
+  /// **'Err'**
+  String get sensor_enum_camera_error;
+
+  /// No description provided for @sensor_enum_camera_error_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera Error'**
+  String get sensor_enum_camera_error_long;
+
+  /// No description provided for @sensor_enum_device_info_connected.
+  ///
+  /// In en, this message translates to:
+  /// **'On'**
+  String get sensor_enum_device_info_connected;
+
+  /// No description provided for @sensor_enum_device_info_connected_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected'**
+  String get sensor_enum_device_info_connected_long;
+
+  /// No description provided for @sensor_enum_device_info_disconnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Off'**
+  String get sensor_enum_device_info_disconnected;
+
+  /// No description provided for @sensor_enum_device_info_disconnected_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Disconnected'**
+  String get sensor_enum_device_info_disconnected_long;
+
+  /// No description provided for @sensor_enum_device_info_init.
+  ///
+  /// In en, this message translates to:
+  /// **'Init'**
+  String get sensor_enum_device_info_init;
+
+  /// No description provided for @sensor_enum_device_info_init_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Initializing'**
+  String get sensor_enum_device_info_init_long;
+
+  /// No description provided for @sensor_enum_device_info_ready.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready'**
+  String get sensor_enum_device_info_ready;
+
+  /// No description provided for @sensor_enum_device_info_ready_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Ready'**
+  String get sensor_enum_device_info_ready_long;
+
+  /// No description provided for @sensor_enum_device_info_running.
+  ///
+  /// In en, this message translates to:
+  /// **'Run'**
+  String get sensor_enum_device_info_running;
+
+  /// No description provided for @sensor_enum_device_info_running_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Running'**
+  String get sensor_enum_device_info_running_long;
+
+  /// No description provided for @sensor_enum_device_info_sleeping.
+  ///
+  /// In en, this message translates to:
+  /// **'Sleep'**
+  String get sensor_enum_device_info_sleeping;
+
+  /// No description provided for @sensor_enum_device_info_sleeping_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Sleeping'**
+  String get sensor_enum_device_info_sleeping_long;
+
+  /// No description provided for @sensor_enum_device_info_stopped.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop'**
+  String get sensor_enum_device_info_stopped;
+
+  /// No description provided for @sensor_enum_device_info_stopped_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Stopped'**
+  String get sensor_enum_device_info_stopped_long;
+
+  /// No description provided for @sensor_enum_device_info_lost.
+  ///
+  /// In en, this message translates to:
+  /// **'Lost'**
+  String get sensor_enum_device_info_lost;
+
+  /// No description provided for @sensor_enum_device_info_lost_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection Lost'**
+  String get sensor_enum_device_info_lost_long;
+
+  /// No description provided for @sensor_enum_device_info_alert.
+  ///
+  /// In en, this message translates to:
+  /// **'Alert'**
+  String get sensor_enum_device_info_alert;
+
+  /// No description provided for @sensor_enum_device_info_alert_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Alert'**
+  String get sensor_enum_device_info_alert_long;
+
+  /// No description provided for @sensor_enum_device_info_unknown.
+  ///
+  /// In en, this message translates to:
+  /// **'N/A'**
+  String get sensor_enum_device_info_unknown;
+
+  /// No description provided for @sensor_enum_device_info_unknown_long.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown'**
+  String get sensor_enum_device_info_unknown_long;
 
   /// Label shown when sensor data is fresh/live
   ///
@@ -4888,6 +5350,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Battery'**
   String get sensor_label_battery;
+
+  /// No description provided for @sensor_label_alarm.
+  ///
+  /// In en, this message translates to:
+  /// **'Alarm'**
+  String get sensor_label_alarm;
+
+  /// No description provided for @sensor_label_door.
+  ///
+  /// In en, this message translates to:
+  /// **'Door'**
+  String get sensor_label_door;
+
+  /// No description provided for @sensor_label_lock.
+  ///
+  /// In en, this message translates to:
+  /// **'Lock'**
+  String get sensor_label_lock;
+
+  /// No description provided for @sensor_label_camera.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera'**
+  String get sensor_label_camera;
+
+  /// No description provided for @sensor_label_filter.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter'**
+  String get sensor_label_filter;
+
+  /// No description provided for @sensor_label_device_info.
+  ///
+  /// In en, this message translates to:
+  /// **'Device Info'**
+  String get sensor_label_device_info;
+
+  /// No description provided for @sensor_label_gas.
+  ///
+  /// In en, this message translates to:
+  /// **'Gas'**
+  String get sensor_label_gas;
 
   /// No description provided for @sensor_alert_high_level.
   ///

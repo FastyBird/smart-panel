@@ -71,7 +71,7 @@ import 'package:fastybird_smart_panel/modules/devices/presentation/utils/sensor_
 import 'package:fastybird_smart_panel/modules/devices/presentation/utils/sensor_freshness.dart';
 import 'package:fastybird_smart_panel/modules/devices/export.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_detail_page.dart';
-import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_colors.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_colors.dart';
 import 'package:fastybird_smart_panel/modules/spaces/export.dart';
 
 // =============================================================================
@@ -120,7 +120,7 @@ class SensorData {
   final TrendDirection trend;
   final DateTime lastUpdated;
   final bool isBinary;
-  final String? channelCategory;
+  final DevicesModuleChannelCategory? channelCategory;
   final List<SensorAdditionalReadingModel> additionalReadings;
   final bool deviceOnline;
 
@@ -367,27 +367,6 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
   static const _formatter = NumberFormatUtils.defaultFormat;
 
   /// Get short label for binary sensor state (for tiles)
-  static String _getBinaryLabel(String channelCategory, bool isActive) {
-    final category = DevicesModuleChannelCategory.fromJson(channelCategory);
-
-    switch (category) {
-      case DevicesModuleChannelCategory.motion:
-      case DevicesModuleChannelCategory.occupancy:
-        return isActive ? 'Detected' : 'Clear';
-      case DevicesModuleChannelCategory.contact:
-      case DevicesModuleChannelCategory.door:
-      case DevicesModuleChannelCategory.doorbell:
-        return isActive ? 'Open' : 'Closed';
-      case DevicesModuleChannelCategory.smoke:
-      case DevicesModuleChannelCategory.gas:
-      case DevicesModuleChannelCategory.leak:
-      case DevicesModuleChannelCategory.carbonMonoxide:
-        return isActive ? 'Detected' : 'Clear';
-      default:
-        return isActive ? 'Active' : 'Inactive';
-    }
-  }
-
   /// Check if a dynamic value represents a boolean true
   static bool _isBooleanTrue(dynamic value) {
     if (value is bool) return value;
@@ -407,9 +386,9 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
   String _formatSensorValue(dynamic value, String channelCategory) {
     if (value == null) return '--';
 
-    // Boolean sensors
+    // Boolean sensors — store raw state; localized at display time
     if (_looksLikeBoolean(value)) {
-      return _getBinaryLabel(channelCategory, _isBooleanTrue(value));
+      return _isBooleanTrue(value) ? 'true' : 'false';
     }
 
     // Numeric values
@@ -495,7 +474,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
           trend: _parseTrend(reading.trend),
           lastUpdated: reading.updatedAt ?? DateTime.now(),
           isBinary: _isDiscreteProperty(reading.propertyId),
-          channelCategory: reading.channelCategory,
+          channelCategory: DevicesModuleChannelCategory.fromJson(reading.channelCategory),
           additionalReadings: reading.additionalReadings,
           deviceOnline: deviceOnline,
         ));
