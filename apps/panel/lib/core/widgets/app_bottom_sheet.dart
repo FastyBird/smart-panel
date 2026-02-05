@@ -132,13 +132,17 @@ class AppBottomSheet extends StatelessWidget {
           top: false,
           child: LayoutBuilder(
             builder: (context, constraints) {
+              // Apply contentPadding if provided, otherwise no padding on content
+              final paddedContent = contentPadding != null
+                  ? Padding(padding: contentPadding!, child: content)
+                  : content;
               final contentArea = scrollable
                   ? ListView(
                       shrinkWrap: true,
                       primary: false,
-                      children: [content],
+                      children: [paddedContent],
                     )
-                  : content;
+                  : paddedContent;
               return Padding(
                 padding: EdgeInsets.only(
                   top: AppSpacings.pMd,
