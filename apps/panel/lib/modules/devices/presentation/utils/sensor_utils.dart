@@ -1,4 +1,5 @@
 import 'package:fastybird_smart_panel/api/models/devices_module_channel_category.dart';
+import 'package:fastybird_smart_panel/api/models/devices_module_data_type.dart';
 import 'package:fastybird_smart_panel/api/models/devices_module_property_category.dart';
 import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
@@ -37,29 +38,30 @@ class SensorUtils {
       case DevicesModuleChannelCategory.humidity:
         return '%';
       case DevicesModuleChannelCategory.pressure:
-        return 'hPa';
+        return 'kPa';
       case DevicesModuleChannelCategory.illuminance:
         return 'lux';
       case DevicesModuleChannelCategory.carbonDioxide:
         return 'ppm';
       case DevicesModuleChannelCategory.carbonMonoxide:
         return 'ppm';
+      case DevicesModuleChannelCategory.gas:
+        return 'ppm';
       case DevicesModuleChannelCategory.airParticulate:
-        return 'µg/m³';
       case DevicesModuleChannelCategory.nitrogenDioxide:
-        return 'µg/m³';
       case DevicesModuleChannelCategory.ozone:
-        return 'µg/m³';
       case DevicesModuleChannelCategory.sulphurDioxide:
-        return 'µg/m³';
       case DevicesModuleChannelCategory.volatileOrganicCompounds:
-        return 'ppb';
+        return 'µg/m³';
+      case DevicesModuleChannelCategory.flow:
+        return 'm³/h';
+      case DevicesModuleChannelCategory.electricalEnergy:
+        return 'kWh';
+      case DevicesModuleChannelCategory.electricalPower:
+        return 'W';
       case DevicesModuleChannelCategory.battery:
-        return '%';
       case DevicesModuleChannelCategory.filter:
-        return '%';
       case DevicesModuleChannelCategory.humidifier:
-        return '%';
       case DevicesModuleChannelCategory.dehumidifier:
         return '%';
       default:
@@ -209,8 +211,10 @@ class SensorUtils {
     // Resolve property: caller override → auto-resolved from channel
     final resolvedProperty = property ?? _resolveProperty(channel);
 
-    // Resolve detection state
-    final resolvedIsDetection = isDetection ?? _resolveIsDetection(channel);
+    // Resolve detection state (pass resolved property so non-detection channels
+    // whose best property is `detected` are treated as binary)
+    final resolvedIsDetection =
+        isDetection ?? _resolveIsDetection(channel, resolvedProperty);
 
     // Resolve label: caller override → localized → channel name → category json
     final resolvedLabel = label ??
@@ -245,7 +249,7 @@ class SensorUtils {
     final category = channel.category;
 
     switch (category) {
-      // Environmental: single dedicated property
+      // Environmental: single dedicated property (numeric)
       case DevicesModuleChannelCategory.temperature:
         return _findProp(channel, DevicesModulePropertyCategory.temperature);
       case DevicesModuleChannelCategory.humidity:
@@ -253,9 +257,26 @@ class SensorUtils {
       case DevicesModuleChannelCategory.pressure:
         return _findProp(channel, DevicesModulePropertyCategory.pressure);
       case DevicesModuleChannelCategory.illuminance:
-        return _findProp(channel, DevicesModulePropertyCategory.illuminance);
+        return _findProp(channel, DevicesModulePropertyCategory.illuminance) ??
+            _findProp(channel, DevicesModulePropertyCategory.level);
+      case DevicesModuleChannelCategory.flow:
+        return _findProp(channel, DevicesModulePropertyCategory.rate);
 
-      // Air quality: concentration > detected
+      // Air quality: numeric aqi > enum level
+      case DevicesModuleChannelCategory.airQuality:
+        return _findProp(channel, DevicesModulePropertyCategory.aqi) ??
+            _findProp(channel, DevicesModulePropertyCategory.level);
+
+      // Air quality gases: numeric concentration > enum level > binary detected
+      case DevicesModuleChannelCategory.volatileOrganicCompounds:
+      case DevicesModuleChannelCategory.ozone:
+      case DevicesModuleChannelCategory.sulphurDioxide:
+        return _findProp(
+                channel, DevicesModulePropertyCategory.concentration) ??
+            _findProp(channel, DevicesModulePropertyCategory.level) ??
+            _findProp(channel, DevicesModulePropertyCategory.detected);
+
+      // Air quality gases (no level property): numeric concentration > binary detected
       case DevicesModuleChannelCategory.airParticulate:
       case DevicesModuleChannelCategory.carbonDioxide:
       case DevicesModuleChannelCategory.carbonMonoxide:
@@ -264,16 +285,21 @@ class SensorUtils {
                 channel, DevicesModulePropertyCategory.concentration) ??
             _findProp(channel, DevicesModulePropertyCategory.detected);
 
-      // Gas sensors with level: level > concentration > detected
-      case DevicesModuleChannelCategory.volatileOrganicCompounds:
-      case DevicesModuleChannelCategory.ozone:
-      case DevicesModuleChannelCategory.sulphurDioxide:
-        return _findProp(channel, DevicesModulePropertyCategory.level) ??
-            _findProp(
+      // Gas: numeric concentration > enum status > binary detected
+      case DevicesModuleChannelCategory.gas:
+        return _findProp(
                 channel, DevicesModulePropertyCategory.concentration) ??
+            _findProp(channel, DevicesModulePropertyCategory.status) ??
             _findProp(channel, DevicesModulePropertyCategory.detected);
 
-      // Detection-only sensors
+      // Alarm: enum state > enum alarmState > binary triggered
+      case DevicesModuleChannelCategory.alarm:
+        return _findProp(channel, DevicesModulePropertyCategory.state) ??
+            _findProp(
+                channel, DevicesModulePropertyCategory.alarmState) ??
+            _findProp(channel, DevicesModulePropertyCategory.triggered);
+
+      // Detection-only sensors (binary)
       case DevicesModuleChannelCategory.contact:
       case DevicesModuleChannelCategory.leak:
       case DevicesModuleChannelCategory.motion:
@@ -281,13 +307,25 @@ class SensorUtils {
       case DevicesModuleChannelCategory.smoke:
         return _findProp(channel, DevicesModulePropertyCategory.detected);
 
+      // Power & energy: numeric with fallbacks
+      case DevicesModuleChannelCategory.electricalEnergy:
+        return _findProp(
+                channel, DevicesModulePropertyCategory.consumption) ??
+            _findProp(channel, DevicesModulePropertyCategory.rate);
+      case DevicesModuleChannelCategory.electricalPower:
+        return _findProp(channel, DevicesModulePropertyCategory.power) ??
+            _findProp(channel, DevicesModulePropertyCategory.voltage) ??
+            _findProp(channel, DevicesModulePropertyCategory.current);
+
       // Device info
       case DevicesModuleChannelCategory.battery:
-        return _findProp(channel, DevicesModulePropertyCategory.percentage);
+        return _findProp(channel, DevicesModulePropertyCategory.percentage) ??
+            _findProp(channel, DevicesModulePropertyCategory.status);
       case DevicesModuleChannelCategory.filter:
         return _findProp(
                 channel, DevicesModulePropertyCategory.lifeRemaining) ??
-            _findProp(channel, DevicesModulePropertyCategory.status);
+            _findProp(channel, DevicesModulePropertyCategory.status) ??
+            _findProp(channel, DevicesModulePropertyCategory.changeNeeded);
 
       default:
         return channel.properties.isNotEmpty ? channel.properties.first : null;
@@ -318,22 +356,58 @@ class SensorUtils {
     DevicesModuleChannelCategory.smoke,
   };
 
-  /// Auto-resolves `isDetection` for detection-type channels by reading the
-  /// `detected` property value. Returns `null` for non-detection channels.
-  static bool? _resolveIsDetection(ChannelView channel) {
-    if (!_detectionCategories.contains(channel.category)) return null;
+  /// Property categories that represent a boolean (binary) value.
+  /// When the resolved best property belongs to one of these categories,
+  /// the sensor detail shows an event log instead of a numeric chart.
+  static const _binaryPropertyCategories = {
+    DevicesModulePropertyCategory.detected,
+    DevicesModulePropertyCategory.changeNeeded,
+    DevicesModulePropertyCategory.triggered,
+  };
 
-    final detectedProp =
-        _findProp(channel, DevicesModulePropertyCategory.detected);
-    if (detectedProp == null) return null;
+  /// Auto-resolves `isDetection` for channels that display a binary property.
+  ///
+  /// Pure detection channels (contact, leak, motion, …) are always binary.
+  /// For other channels (VOC, CO, O₃, …), the sensor is treated as binary
+  /// when their best available property is the `detected` boolean property.
+  /// Returns `null` when the sensor should use numeric display.
+  static bool? _resolveIsDetection(
+    ChannelView channel, [
+    ChannelPropertyView? resolvedProperty,
+  ]) {
+    // Pure detection channels — always binary
+    if (_detectionCategories.contains(channel.category)) {
+      final detectedProp =
+          _findProp(channel, DevicesModulePropertyCategory.detected);
+      if (detectedProp == null) return null;
 
-    final value = detectedProp.value;
-    if (value is BooleanValueType) return value.value;
-    if (value is StringValueType) {
-      return value.value == 'true' || value.value == '1';
+      final value = detectedProp.value;
+      if (value is BooleanValueType) return value.value;
+      if (value is StringValueType) {
+        return value.value == 'true' || value.value == '1';
+      }
+
+      return false;
     }
 
-    return false;
+    // For other channels: if the resolved (best) property is a known binary
+    // category OR has boolean data type, treat as binary.
+    // Examples: VOC with only `detected`, filter with only `change_needed`,
+    // alarm with only `triggered`, or any property with data_type=bool.
+    final prop = resolvedProperty ?? _resolveProperty(channel);
+    if (prop != null &&
+        (_binaryPropertyCategories.contains(prop.category) ||
+            prop.dataType == DevicesModuleDataType.bool)) {
+      final value = prop.value;
+      if (value is BooleanValueType) return value.value;
+      if (value is StringValueType) {
+        return value.value == 'true' || value.value == '1';
+      }
+
+      return false;
+    }
+
+    return null;
   }
 
   // ===========================================================================
@@ -494,22 +568,64 @@ class SensorUtils {
   }) {
     switch (category) {
       case DevicesModuleChannelCategory.motion:
-      case DevicesModuleChannelCategory.occupancy:
         return isActive ? l.sensor_state_detected : l.sensor_state_clear;
+      case DevicesModuleChannelCategory.occupancy:
+        return isActive
+            ? l.sensor_state_occupied
+            : l.sensor_state_unoccupied;
       case DevicesModuleChannelCategory.contact:
       case DevicesModuleChannelCategory.door:
       case DevicesModuleChannelCategory.doorbell:
         return isActive ? l.sensor_state_open : l.sensor_state_closed;
       case DevicesModuleChannelCategory.smoke:
         return isActive
-            ? l.sensor_state_smoke_detected
+            ? (short
+                ? l.sensor_state_detected
+                : l.sensor_state_smoke_detected)
             : l.sensor_state_clear;
       case DevicesModuleChannelCategory.gas:
-        return isActive ? l.sensor_state_gas_detected : l.sensor_state_clear;
+        return isActive
+            ? (short
+                ? l.sensor_state_detected
+                : l.sensor_state_gas_detected)
+            : l.sensor_state_clear;
       case DevicesModuleChannelCategory.leak:
-        return isActive ? l.sensor_state_leak_detected : l.sensor_state_clear;
+        return isActive
+            ? (short
+                ? l.sensor_state_detected
+                : l.sensor_state_leak_detected)
+            : l.sensor_state_clear;
       case DevicesModuleChannelCategory.carbonMonoxide:
-        return isActive ? l.sensor_state_co_detected : l.sensor_state_clear;
+        return isActive
+            ? (short
+                ? l.sensor_state_detected
+                : l.sensor_state_co_detected)
+            : l.sensor_state_clear;
+      case DevicesModuleChannelCategory.volatileOrganicCompounds:
+      case DevicesModuleChannelCategory.carbonDioxide:
+      case DevicesModuleChannelCategory.nitrogenDioxide:
+      case DevicesModuleChannelCategory.ozone:
+      case DevicesModuleChannelCategory.sulphurDioxide:
+      case DevicesModuleChannelCategory.airParticulate:
+        return isActive
+            ? l.air_quality_unhealthy
+            : l.air_quality_healthy;
+      case DevicesModuleChannelCategory.filter:
+        return isActive
+            ? (short
+                ? l.sensor_enum_filter_replace_now
+                : l.sensor_enum_filter_replace_now_long)
+            : (short
+                ? l.sensor_enum_filter_good
+                : l.sensor_enum_filter_good_long);
+      case DevicesModuleChannelCategory.alarm:
+        return isActive
+            ? (short
+                ? l.sensor_enum_alarm_alarm_triggered
+                : l.sensor_enum_alarm_alarm_triggered_long)
+            : (short
+                ? l.sensor_enum_alarm_alarm_idle
+                : l.sensor_enum_alarm_alarm_idle_long);
       default:
         return isActive ? l.sensor_state_active : l.sensor_state_inactive;
     }

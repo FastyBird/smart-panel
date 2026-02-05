@@ -2118,31 +2118,31 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sensor_enum_battery_level_critical => 'Crit';
 
   @override
-  String get sensor_enum_battery_level_critical_long => 'Critical Battery';
+  String get sensor_enum_battery_level_critical_long => 'Critical';
 
   @override
   String get sensor_enum_battery_level_low => 'Low';
 
   @override
-  String get sensor_enum_battery_level_low_long => 'Low Battery';
+  String get sensor_enum_battery_level_low_long => 'Low';
 
   @override
   String get sensor_enum_battery_level_medium => 'Med';
 
   @override
-  String get sensor_enum_battery_level_medium_long => 'Medium Battery';
+  String get sensor_enum_battery_level_medium_long => 'Medium';
 
   @override
   String get sensor_enum_battery_level_high => 'High';
 
   @override
-  String get sensor_enum_battery_level_high_long => 'High Battery';
+  String get sensor_enum_battery_level_high_long => 'High';
 
   @override
   String get sensor_enum_battery_level_full => 'Full';
 
   @override
-  String get sensor_enum_battery_level_full_long => 'Full Battery';
+  String get sensor_enum_battery_level_full_long => 'Full';
 
   @override
   String get sensor_enum_battery_status_ok => 'OK';
@@ -2746,6 +2746,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sensor_state_inactive => 'Inactive';
+
+  @override
+  String get sensor_state_occupied => 'Occupied';
+
+  @override
+  String get sensor_state_unoccupied => 'Unoccupied';
 
   @override
   String get sensor_state_smoke_detected => 'Smoke detected';

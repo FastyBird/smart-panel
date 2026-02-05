@@ -2131,31 +2131,31 @@ class AppLocalizationsCs extends AppLocalizations {
   String get sensor_enum_battery_level_critical => 'Krit.';
 
   @override
-  String get sensor_enum_battery_level_critical_long => 'Kritická baterie';
+  String get sensor_enum_battery_level_critical_long => 'Kritická';
 
   @override
   String get sensor_enum_battery_level_low => 'Nízká';
 
   @override
-  String get sensor_enum_battery_level_low_long => 'Nízká baterie';
+  String get sensor_enum_battery_level_low_long => 'Nízká';
 
   @override
   String get sensor_enum_battery_level_medium => 'Stř.';
 
   @override
-  String get sensor_enum_battery_level_medium_long => 'Střední baterie';
+  String get sensor_enum_battery_level_medium_long => 'Střední';
 
   @override
   String get sensor_enum_battery_level_high => 'Vys.';
 
   @override
-  String get sensor_enum_battery_level_high_long => 'Vysoká baterie';
+  String get sensor_enum_battery_level_high_long => 'Vysoká';
 
   @override
   String get sensor_enum_battery_level_full => 'Plná';
 
   @override
-  String get sensor_enum_battery_level_full_long => 'Plná baterie';
+  String get sensor_enum_battery_level_full_long => 'Plná';
 
   @override
   String get sensor_enum_battery_status_ok => 'OK';
@@ -2762,6 +2762,12 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get sensor_state_inactive => 'Neaktivní';
+
+  @override
+  String get sensor_state_occupied => 'Obsazeno';
+
+  @override
+  String get sensor_state_unoccupied => 'Neobsazeno';
 
   @override
   String get sensor_state_smoke_detected => 'Detekován kouř';

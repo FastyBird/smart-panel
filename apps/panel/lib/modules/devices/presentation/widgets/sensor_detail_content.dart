@@ -1,3 +1,4 @@
+import 'package:fastybird_smart_panel/api/models/devices_module_data_type.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
@@ -57,6 +58,18 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
   // --------------------------------------------------------------------------
 
   bool get _isBinary => _currentSensorData.isDetection != null;
+
+  /// True for any non-numeric property (binary or enum). These sensors show
+  /// an event log instead of a chart and hide min/max/avg stats.
+  bool get _isDiscrete {
+    if (_isBinary) return true;
+    final prop = _currentSensorData.property;
+    if (prop == null) return false;
+    return prop.dataType == DevicesModuleDataType.valueEnum ||
+        prop.dataType == DevicesModuleDataType.string ||
+        prop.dataType == DevicesModuleDataType.bool;
+  }
+
   String get _channelId => _currentSensorData.channel.id;
   String? get _propertyId => _currentSensorData.property?.id;
 
@@ -189,7 +202,7 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
           ),
           Expanded(
             flex: 2,
-            child: _isBinary
+            child: _isDiscrete
                 ? _buildEventLog(context, flexible: true)
                 : Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -206,7 +219,7 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
   }
 
   Widget _buildLandscapeLayout(BuildContext context) {
-    final landscapeSecondary = _isBinary
+    final landscapeSecondary = _isDiscrete
         ? _buildEventLog(context, withMargin: false, withDecoration: false)
         : _buildChart(context, withMargin: false, withDecoration: false);
     return DeviceLandscapeLayout(
@@ -217,7 +230,7 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
           spacing: AppSpacings.pMd,
           children: [
             _buildLargeValue(context),
-            if (!_isBinary) _buildStatsRowCompact(context),
+            if (!_isDiscrete) _buildStatsRowCompact(context),
           ],
         ),
       ),

@@ -4040,7 +4040,7 @@ abstract class AppLocalizations {
   /// No description provided for @sensor_enum_battery_level_critical_long.
   ///
   /// In en, this message translates to:
-  /// **'Critical Battery'**
+  /// **'Critical'**
   String get sensor_enum_battery_level_critical_long;
 
   /// No description provided for @sensor_enum_battery_level_low.
@@ -4052,7 +4052,7 @@ abstract class AppLocalizations {
   /// No description provided for @sensor_enum_battery_level_low_long.
   ///
   /// In en, this message translates to:
-  /// **'Low Battery'**
+  /// **'Low'**
   String get sensor_enum_battery_level_low_long;
 
   /// No description provided for @sensor_enum_battery_level_medium.
@@ -4064,7 +4064,7 @@ abstract class AppLocalizations {
   /// No description provided for @sensor_enum_battery_level_medium_long.
   ///
   /// In en, this message translates to:
-  /// **'Medium Battery'**
+  /// **'Medium'**
   String get sensor_enum_battery_level_medium_long;
 
   /// No description provided for @sensor_enum_battery_level_high.
@@ -4076,7 +4076,7 @@ abstract class AppLocalizations {
   /// No description provided for @sensor_enum_battery_level_high_long.
   ///
   /// In en, this message translates to:
-  /// **'High Battery'**
+  /// **'High'**
   String get sensor_enum_battery_level_high_long;
 
   /// No description provided for @sensor_enum_battery_level_full.
@@ -4088,7 +4088,7 @@ abstract class AppLocalizations {
   /// No description provided for @sensor_enum_battery_level_full_long.
   ///
   /// In en, this message translates to:
-  /// **'Full Battery'**
+  /// **'Full'**
   String get sensor_enum_battery_level_full_long;
 
   /// No description provided for @sensor_enum_battery_status_ok.
@@ -5224,6 +5224,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Inactive'**
   String get sensor_state_inactive;
+
+  /// No description provided for @sensor_state_occupied.
+  ///
+  /// In en, this message translates to:
+  /// **'Occupied'**
+  String get sensor_state_occupied;
+
+  /// No description provided for @sensor_state_unoccupied.
+  ///
+  /// In en, this message translates to:
+  /// **'Unoccupied'**
+  String get sensor_state_unoccupied;
 
   /// No description provided for @sensor_state_smoke_detected.
   ///
