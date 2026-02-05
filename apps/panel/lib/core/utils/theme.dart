@@ -1711,7 +1711,7 @@ class AppOutlinedButtonsDarkThemes {
       hoveredColor: AppColors.white,
       disabledColor: AppColorsDark.infoLight5,
       bgColor: AppColorsDark.infoLight9,
-      pressedBgColor: AppColorsLight.infoDark2,
+      pressedBgColor: AppColorsDark.infoDark2,
       hoveredBgColor: AppColorsDark.info,
       disabledBgColor: AppColorsDark.infoLight9,
       borderColor: AppColorsDark.infoLight5,
