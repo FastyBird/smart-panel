@@ -42,7 +42,7 @@ void showAppBottomSheet(
   /// Whether the sheet can grow to fill the screen (scrollable content). Default true.
   bool isScrollControlled = true,
   /// Max height as a fraction of screen height. Default 0.7.
-  double maxHeightFactor = 0.7,
+  double maxHeightFactor = 0.8,
   /// Padding around the sheet content. When null, default padding is used.
   /// Use [EdgeInsets.zero] for full-bleed content.
   EdgeInsets? contentPadding,

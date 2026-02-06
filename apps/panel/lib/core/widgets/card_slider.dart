@@ -38,6 +38,9 @@ class CardSlider extends StatefulWidget {
   /// Labels to show below the slider (e.g., ['Off', 'Low', 'Med', 'High', 'Max'])
   final List<String> steps;
 
+  /// Whether to show step labels below the slider. Defaults to true.
+  final bool showSteps;
+
   /// When true, the slider snaps to discrete step positions.
   /// When false, the slider allows continuous 0-100% values.
   final bool discrete;
@@ -53,6 +56,24 @@ class CardSlider extends StatefulWidget {
   /// Useful for placing mode selectors or other controls within the slider box.
   final Widget? footer;
 
+  /// Optional widget rendered to the left of the slider (e.g., mute button).
+  final Widget? leading;
+
+  /// Optional widget rendered to the right of the slider (e.g., value label).
+  final Widget? trailing;
+
+  /// Whether to show the value percentage/label in the header. Set to false when
+  /// [trailing] displays the value (e.g., volume card with percentage on the right).
+  final bool showHeaderValue;
+
+  /// Optional card background color. When null, uses the default
+  /// (AppFillColorLight.blank / AppFillColorDark.light).
+  final Color? cardColor;
+
+  /// Optional card border color. When null, uses the default
+  /// (AppBorderColorLight.light / AppBorderColorDark.light).
+  final Color? borderColor;
+
   const CardSlider({
     super.key,
     required this.label,
@@ -61,10 +82,16 @@ class CardSlider extends StatefulWidget {
     this.disabledLabel,
     this.onChanged,
     this.steps = const ['Off', 'Low', 'Med', 'High', 'Max'],
+    this.showSteps = true,
     this.discrete = false,
     this.enabled = true,
     this.themeColor = ThemeColors.primary,
     this.footer,
+    this.leading,
+    this.trailing,
+    this.showHeaderValue = true,
+    this.cardColor,
+    this.borderColor,
   });
 
   @override
@@ -134,8 +161,8 @@ class _CardSliderState extends State<CardSlider> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final colors = (
-      card: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
-      border: isDark ? AppBorderColorDark.light : AppBorderColorLight.light,
+      card: widget.cardColor ?? (isDark ? AppFillColorDark.light : AppFillColorLight.blank),
+      border: widget.borderColor ?? (isDark ? AppBorderColorDark.light : AppBorderColorLight.light),
       text: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
       secondary: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
     );
@@ -160,14 +187,7 @@ class _CardSliderState extends State<CardSlider> {
           children: [
             _buildHeader(context, colors, displayLabel),
             AppSpacings.spacingMdVertical,
-            SliderWithSteps(
-              value: _displayValue,
-              themeColor: widget.themeColor,
-              steps: widget.steps,
-              enabled: widget.enabled,
-              discrete: widget.discrete,
-              onChanged: widget.onChanged,
-            ),
+            _buildSliderRow(context),
             if (widget.footer != null) ...[
               AppSpacings.spacingMdVertical,
               widget.footer!,
@@ -210,15 +230,47 @@ class _CardSliderState extends State<CardSlider> {
             ),
           ],
         ),
-        Text(
-          valueText,
-          style: TextStyle(
-            color: colors.text,
-            fontSize: AppFontSize.extraLarge,
-            fontWeight: FontWeight.w600,
+        if (widget.showHeaderValue)
+          Text(
+            valueText,
+            style: TextStyle(
+              color: colors.text,
+              fontSize: AppFontSize.extraLarge,
+              fontWeight: FontWeight.w600,
+            ),
           ),
-        ),
       ],
     );
+  }
+
+  Widget _buildSliderRow(BuildContext context) {
+    final slider = SliderWithSteps(
+      value: _displayValue,
+      themeColor: widget.themeColor,
+      steps: widget.steps,
+      showSteps: widget.showSteps,
+      enabled: widget.enabled,
+      discrete: widget.discrete,
+      onChanged: widget.onChanged,
+    );
+
+    if (widget.leading != null || widget.trailing != null) {
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          if (widget.leading != null) ...[
+            widget.leading!,
+            AppSpacings.spacingMdHorizontal,
+          ],
+          Expanded(child: slider),
+          if (widget.trailing != null) ...[
+            AppSpacings.spacingMdHorizontal,
+            widget.trailing!,
+          ],
+        ],
+      );
+    }
+
+    return slider;
   }
 }

@@ -9,7 +9,9 @@ class MediaRemoteCard<T extends Enum> extends StatelessWidget {
 	final bool isEnabled;
 	final ValueChanged<T> onKeyPress;
 	final double Function(double) scale;
-	final Color? accentColor;
+	final ThemeColors themeColor;
+	/// When false, hides the card header label (icon + "Remote" text).
+	final bool showLabel;
 
 	const MediaRemoteCard({
 		super.key,
@@ -17,8 +19,71 @@ class MediaRemoteCard<T extends Enum> extends StatelessWidget {
 		required this.isEnabled,
 		required this.onKeyPress,
 		required this.scale,
-		this.accentColor,
+		this.themeColor = ThemeColors.primary,
+		this.showLabel = true,
 	});
+
+	static (FilledButtonThemeData theme, Color foreground) _filledButtonFor(
+		Brightness brightness,
+		ThemeColors key,
+	) {
+		final isDark = brightness == Brightness.dark;
+		if (isDark) {
+			switch (key) {
+				case ThemeColors.primary:
+					return (AppFilledButtonsDarkThemes.primary, AppFilledButtonsDarkThemes.primaryForegroundColor);
+				case ThemeColors.success:
+					return (AppFilledButtonsDarkThemes.success, AppFilledButtonsDarkThemes.successForegroundColor);
+				case ThemeColors.warning:
+					return (AppFilledButtonsDarkThemes.warning, AppFilledButtonsDarkThemes.warningForegroundColor);
+				case ThemeColors.danger:
+					return (AppFilledButtonsDarkThemes.danger, AppFilledButtonsDarkThemes.dangerForegroundColor);
+				case ThemeColors.error:
+					return (AppFilledButtonsDarkThemes.error, AppFilledButtonsDarkThemes.errorForegroundColor);
+				case ThemeColors.info:
+					return (AppFilledButtonsDarkThemes.info, AppFilledButtonsDarkThemes.infoForegroundColor);
+				case ThemeColors.neutral:
+					return (AppFilledButtonsDarkThemes.neutral, AppFilledButtonsDarkThemes.neutralForegroundColor);
+				case ThemeColors.flutter:
+					return (AppFilledButtonsDarkThemes.flutter, AppFilledButtonsDarkThemes.flutterForegroundColor);
+				case ThemeColors.teal:
+					return (AppFilledButtonsDarkThemes.teal, AppFilledButtonsDarkThemes.tealForegroundColor);
+				case ThemeColors.cyan:
+					return (AppFilledButtonsDarkThemes.cyan, AppFilledButtonsDarkThemes.cyanForegroundColor);
+				case ThemeColors.pink:
+					return (AppFilledButtonsDarkThemes.pink, AppFilledButtonsDarkThemes.pinkForegroundColor);
+				case ThemeColors.indigo:
+					return (AppFilledButtonsDarkThemes.indigo, AppFilledButtonsDarkThemes.indigoForegroundColor);
+			}
+		} else {
+			switch (key) {
+				case ThemeColors.primary:
+					return (AppFilledButtonsLightThemes.primary, AppFilledButtonsLightThemes.primaryForegroundColor);
+				case ThemeColors.success:
+					return (AppFilledButtonsLightThemes.success, AppFilledButtonsLightThemes.successForegroundColor);
+				case ThemeColors.warning:
+					return (AppFilledButtonsLightThemes.warning, AppFilledButtonsLightThemes.warningForegroundColor);
+				case ThemeColors.danger:
+					return (AppFilledButtonsLightThemes.danger, AppFilledButtonsLightThemes.dangerForegroundColor);
+				case ThemeColors.error:
+					return (AppFilledButtonsLightThemes.error, AppFilledButtonsLightThemes.errorForegroundColor);
+				case ThemeColors.info:
+					return (AppFilledButtonsLightThemes.info, AppFilledButtonsLightThemes.infoForegroundColor);
+				case ThemeColors.neutral:
+					return (AppFilledButtonsLightThemes.neutral, AppFilledButtonsLightThemes.neutralForegroundColor);
+				case ThemeColors.flutter:
+					return (AppFilledButtonsLightThemes.flutter, AppFilledButtonsLightThemes.flutterForegroundColor);
+				case ThemeColors.teal:
+					return (AppFilledButtonsLightThemes.teal, AppFilledButtonsLightThemes.tealForegroundColor);
+				case ThemeColors.cyan:
+					return (AppFilledButtonsLightThemes.cyan, AppFilledButtonsLightThemes.cyanForegroundColor);
+				case ThemeColors.pink:
+					return (AppFilledButtonsLightThemes.pink, AppFilledButtonsLightThemes.pinkForegroundColor);
+				case ThemeColors.indigo:
+					return (AppFilledButtonsLightThemes.indigo, AppFilledButtonsLightThemes.indigoForegroundColor);
+			}
+		}
+	}
 
 	bool _hasKey(String name) => availableKeys.any((k) => k.name == name);
 
@@ -57,7 +122,7 @@ class MediaRemoteCard<T extends Enum> extends StatelessWidget {
 	Widget build(BuildContext context) {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 		final localizations = AppLocalizations.of(context)!;
-		final cardColor = isDark ? AppFillColorDark.light : AppFillColorLight.light;
+		final cardColor = isDark ? AppFillColorDark.light : AppFillColorLight.blank;
 		final borderColor = isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
 
 		final hasUp = _hasKey('arrowUp');
@@ -94,17 +159,19 @@ class MediaRemoteCard<T extends Enum> extends StatelessWidget {
 				data: themeData,
 				child: Column(
 				children: [
-					Row(
-						children: [
-							Icon(MdiIcons.remote, size: AppFontSize.small, color: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary),
-							AppSpacings.spacingSmHorizontal,
-							Text(
-								localizations.media_remote.toUpperCase(),
-								style: TextStyle(fontSize: AppFontSize.small, fontWeight: FontWeight.bold, color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary),
-							),
-						],
-					),
-					AppSpacings.spacingMdVertical,
+					if (showLabel) ...[
+						Row(
+							children: [
+								Icon(MdiIcons.remote, size: AppFontSize.small, color: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary),
+								AppSpacings.spacingSmHorizontal,
+								Text(
+									localizations.media_remote.toUpperCase(),
+									style: TextStyle(fontSize: AppFontSize.small, fontWeight: FontWeight.bold, color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary),
+								),
+							],
+						),
+						AppSpacings.spacingMdVertical,
+					],
 					if (hasDpad) ...[
 						if (hasUp)
 							_buildDpadButton(
@@ -196,16 +263,16 @@ class MediaRemoteCard<T extends Enum> extends StatelessWidget {
 	}) {
 		final size = scale(isMain ? 44 : 32);
 		final iconSize = scale(isMain ? 22 : 16);
-		final isDark = Theme.of(context).brightness == Brightness.dark;
-		final themeData = isMain
-			? ThemeData(filledButtonTheme: isDark ? AppFilledButtonsDarkThemes.info : AppFilledButtonsLightThemes.info)
-			: (isDark ? ThemeData(filledButtonTheme: AppFilledButtonsDarkThemes.neutral) : ThemeData(filledButtonTheme: AppFilledButtonsLightThemes.neutral));
+		final brightness = Theme.of(context).brightness;
+		final (accentTheme, accentFg) = _filledButtonFor(brightness, themeColor);
+		final (neutralTheme, neutralFg) = _filledButtonFor(brightness, ThemeColors.neutral);
+		final (filledTheme, foregroundColor) = isMain ? (accentTheme, accentFg) : (neutralTheme, neutralFg);
 
 		return SizedBox(
 			width: size,
 			height: size,
 			child: Theme(
-				data: themeData,
+				data: Theme.of(context).copyWith(filledButtonTheme: filledTheme),
 				child: FilledButton(
 					onPressed: onTap == null
 						? null
@@ -224,13 +291,7 @@ class MediaRemoteCard<T extends Enum> extends StatelessWidget {
 					child: Icon(
 						icon,
 						size: iconSize,
-						color: isDark
-							? (isMain
-								? AppFilledButtonsDarkThemes.infoForegroundColor
-								: AppFilledButtonsDarkThemes.neutralForegroundColor)
-							: (isMain
-								? AppFilledButtonsLightThemes.infoForegroundColor
-								: AppFilledButtonsLightThemes.neutralForegroundColor),
+						color: foregroundColor,
 					),
 				),
 			),
@@ -245,16 +306,16 @@ class MediaRemoteCard<T extends Enum> extends StatelessWidget {
 		VoidCallback? onTap,
 	}) {
 		final size = scale(40);
-		final isDark = Theme.of(context).brightness == Brightness.dark;
-		final themeData = isPrimary
-			? ThemeData(filledButtonTheme: isDark ? AppFilledButtonsDarkThemes.info : AppFilledButtonsLightThemes.info)
-			: (isDark ? ThemeData(filledButtonTheme: AppFilledButtonsDarkThemes.neutral) : ThemeData(filledButtonTheme: AppFilledButtonsLightThemes.neutral));
+		final brightness = Theme.of(context).brightness;
+		final (accentTheme, accentFg) = _filledButtonFor(brightness, themeColor);
+		final (neutralTheme, neutralFg) = _filledButtonFor(brightness, ThemeColors.neutral);
+		final (filledTheme, foregroundColor) = isPrimary ? (accentTheme, accentFg) : (neutralTheme, neutralFg);
 
 		return SizedBox(
 			width: size,
 			height: size,
 			child: Theme(
-				data: themeData,
+				data: Theme.of(context).copyWith(filledButtonTheme: filledTheme),
 				child: FilledButton(
 					onPressed: onTap == null
 						? null
@@ -270,19 +331,13 @@ class MediaRemoteCard<T extends Enum> extends StatelessWidget {
 							borderRadius: BorderRadius.circular(AppBorderRadius.base),
 						),
 					),
-				child: icon != null
-					? Icon(
-						icon,
-						size: scale(20),
-						color: isDark
-							? (isPrimary
-								? AppFilledButtonsDarkThemes.infoForegroundColor
-								: AppFilledButtonsDarkThemes.neutralForegroundColor)
-							: (isPrimary
-								? AppFilledButtonsLightThemes.infoForegroundColor
-								: AppFilledButtonsLightThemes.neutralForegroundColor),
-					)
-					: Text(
+					child: icon != null
+						? Icon(
+							icon,
+							size: scale(20),
+							color: foregroundColor,
+						)
+						: Text(
 							label ?? '',
 							style: TextStyle(
 								fontSize: AppFontSize.small,

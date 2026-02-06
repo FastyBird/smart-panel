@@ -11,6 +11,7 @@ import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/devic
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_info_card.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_playback_card.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
@@ -150,19 +151,7 @@ class _GameConsoleDeviceDetailState extends State<GameConsoleDeviceDetail> {
 		return localizations.on_state_on;
 	}
 
-	Color _getAccentColor(bool isDark) {
-		if (_isOn) {
-			return isDark ? AppColorsDark.info : AppColorsLight.info;
-		}
-		return isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
-	}
-
-	Color _getAccentLightColor(bool isDark) {
-		if (_isOn) {
-			return isDark ? AppColorsDark.infoLight5 : AppColorsLight.infoLight5;
-		}
-		return isDark ? AppFillColorDark.darker : AppFillColorLight.darker;
-	}
+	ThemeColors _getThemeColor() => _isOn ? ThemeColors.primary : ThemeColors.neutral;
 
 	// --------------------------------------------------------------------------
 	// BUILD
@@ -209,14 +198,16 @@ class _GameConsoleDeviceDetailState extends State<GameConsoleDeviceDetail> {
 
 	Widget _buildHeader(BuildContext context, bool isDark) {
 		final localizations = AppLocalizations.of(context)!;
-		final accentColor = _getAccentColor(isDark);
 		final secondaryColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
 		final isOn = _isOn;
+		final accentColor = isOn
+			? ThemeColorFamily.get(isDark ? Brightness.dark : Brightness.light, _getThemeColor()).base
+			: secondaryColor;
 
 		return PageHeader(
 			title: _device.name,
 			subtitle: _getStatusLabel(localizations),
-			subtitleColor: isOn ? accentColor : secondaryColor,
+			subtitleColor: accentColor,
 			leading: Row(
 				mainAxisSize: MainAxisSize.min,
 				children: [
@@ -246,33 +237,44 @@ class _GameConsoleDeviceDetailState extends State<GameConsoleDeviceDetail> {
 	// --------------------------------------------------------------------------
 
 	Widget _buildPortraitLayout(BuildContext context, bool isDark) {
-		final accentColor = _getAccentColor(isDark);
-
 		return DevicePortraitLayout(
 			content: Column(
 				crossAxisAlignment: CrossAxisAlignment.start,
+				spacing: AppSpacings.pMd,
 				children: [
 					MediaInfoCard(
 						icon: MdiIcons.gamepadVariant,
-						iconColor: accentColor,
-						iconBgColor: _getAccentLightColor(isDark),
 						name: _device.name,
 						isOn: _isOn,
-						accentColor: accentColor,
+						themeColor: _getThemeColor(),
 						scale: _scale,
-						playbackTrack: _device.hasMediaPlayback ? _device.isMediaPlaybackTrack : null,
-						playbackArtist: _device.hasMediaPlayback ? _device.mediaPlaybackArtist : null,
-						playbackAlbum: _device.hasMediaPlayback ? _device.mediaPlaybackAlbum : null,
-						playbackStatus: _device.hasMediaPlayback ? _effectivePlaybackStatus : null,
-						playbackAvailableCommands: _device.hasMediaPlayback ? _device.mediaPlaybackAvailableCommands : const [],
-						playbackHasPosition: _device.hasMediaPlayback && _device.hasMediaPlaybackPosition,
-						playbackPosition: _device.hasMediaPlayback ? _device.mediaPlaybackPosition : 0,
-						playbackHasDuration: _device.hasMediaPlayback && _device.hasMediaPlaybackDuration,
-						playbackDuration: _device.hasMediaPlayback ? _device.mediaPlaybackDuration : 0,
-						playbackIsPositionWritable: _device.hasMediaPlayback && (_device.mediaPlaybackChannel?.positionProp?.isWritable ?? false),
-						onPlaybackCommand: _device.hasMediaPlayback ? _sendPlaybackCommand : null,
-						onPlaybackSeek: _device.hasMediaPlayback ? _seekPosition : null,
 					),
+					if (_device.hasMediaPlayback &&
+						MediaPlaybackCard.hasContent(
+							playbackTrack: _device.isMediaPlaybackTrack,
+							playbackArtist: _device.mediaPlaybackArtist,
+							playbackAlbum: _device.mediaPlaybackAlbum,
+							playbackAvailableCommands: _device.mediaPlaybackAvailableCommands,
+							playbackHasDuration: _device.hasMediaPlaybackDuration,
+							playbackDuration: _device.mediaPlaybackDuration,
+						))
+						MediaPlaybackCard(
+							playbackTrack: _device.isMediaPlaybackTrack,
+							playbackArtist: _device.mediaPlaybackArtist,
+							playbackAlbum: _device.mediaPlaybackAlbum,
+							playbackStatus: _effectivePlaybackStatus,
+							playbackAvailableCommands: _device.mediaPlaybackAvailableCommands,
+							playbackHasPosition: _device.hasMediaPlaybackPosition,
+							playbackPosition: _device.mediaPlaybackPosition,
+							playbackHasDuration: _device.hasMediaPlaybackDuration,
+							playbackDuration: _device.mediaPlaybackDuration,
+							playbackIsPositionWritable: _device.mediaPlaybackChannel?.positionProp?.isWritable ?? false,
+							onPlaybackCommand: _sendPlaybackCommand,
+							onPlaybackSeek: _seekPosition,
+							themeColor: _getThemeColor(),
+							isEnabled: _isOn,
+							scale: _scale,
+						),
 				],
 			),
 		);
@@ -283,33 +285,44 @@ class _GameConsoleDeviceDetailState extends State<GameConsoleDeviceDetail> {
 	// --------------------------------------------------------------------------
 
 	Widget _buildLandscapeLayout(BuildContext context, bool isDark) {
-		final accentColor = _getAccentColor(isDark);
-
 		return DeviceLandscapeLayout(
 			mainContent: Column(
 				mainAxisAlignment: MainAxisAlignment.center,
+				spacing: AppSpacings.pMd,
 				children: [
 					MediaInfoCard(
 						icon: MdiIcons.gamepadVariant,
-						iconColor: accentColor,
-						iconBgColor: _getAccentLightColor(isDark),
 						name: _device.name,
 						isOn: _isOn,
-						accentColor: accentColor,
+						themeColor: _getThemeColor(),
 						scale: _scale,
-						playbackTrack: _device.hasMediaPlayback ? _device.isMediaPlaybackTrack : null,
-						playbackArtist: _device.hasMediaPlayback ? _device.mediaPlaybackArtist : null,
-						playbackAlbum: _device.hasMediaPlayback ? _device.mediaPlaybackAlbum : null,
-						playbackStatus: _device.hasMediaPlayback ? _effectivePlaybackStatus : null,
-						playbackAvailableCommands: _device.hasMediaPlayback ? _device.mediaPlaybackAvailableCommands : const [],
-						playbackHasPosition: _device.hasMediaPlayback && _device.hasMediaPlaybackPosition,
-						playbackPosition: _device.hasMediaPlayback ? _device.mediaPlaybackPosition : 0,
-						playbackHasDuration: _device.hasMediaPlayback && _device.hasMediaPlaybackDuration,
-						playbackDuration: _device.hasMediaPlayback ? _device.mediaPlaybackDuration : 0,
-						playbackIsPositionWritable: _device.hasMediaPlayback && (_device.mediaPlaybackChannel?.positionProp?.isWritable ?? false),
-						onPlaybackCommand: _device.hasMediaPlayback ? _sendPlaybackCommand : null,
-						onPlaybackSeek: _device.hasMediaPlayback ? _seekPosition : null,
 					),
+					if (_device.hasMediaPlayback &&
+						MediaPlaybackCard.hasContent(
+							playbackTrack: _device.isMediaPlaybackTrack,
+							playbackArtist: _device.mediaPlaybackArtist,
+							playbackAlbum: _device.mediaPlaybackAlbum,
+							playbackAvailableCommands: _device.mediaPlaybackAvailableCommands,
+							playbackHasDuration: _device.hasMediaPlaybackDuration,
+							playbackDuration: _device.mediaPlaybackDuration,
+						))
+						MediaPlaybackCard(
+							playbackTrack: _device.isMediaPlaybackTrack,
+							playbackArtist: _device.mediaPlaybackArtist,
+							playbackAlbum: _device.mediaPlaybackAlbum,
+							playbackStatus: _effectivePlaybackStatus,
+							playbackAvailableCommands: _device.mediaPlaybackAvailableCommands,
+							playbackHasPosition: _device.hasMediaPlaybackPosition,
+							playbackPosition: _device.mediaPlaybackPosition,
+							playbackHasDuration: _device.hasMediaPlaybackDuration,
+							playbackDuration: _device.mediaPlaybackDuration,
+							playbackIsPositionWritable: _device.mediaPlaybackChannel?.positionProp?.isWritable ?? false,
+							onPlaybackCommand: _sendPlaybackCommand,
+							onPlaybackSeek: _seekPosition,
+							themeColor: _getThemeColor(),
+							isEnabled: _isOn,
+							scale: _scale,
+						),
 				],
 			),
 			secondaryContent: const SizedBox.shrink(),

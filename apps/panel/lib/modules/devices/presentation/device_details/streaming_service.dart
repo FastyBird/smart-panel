@@ -11,6 +11,7 @@ import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/devic
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_info_card.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_playback_card.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
@@ -137,13 +138,7 @@ class _StreamingServiceDeviceDetailState extends State<StreamingServiceDeviceDet
 		return localizations.on_state_on;
 	}
 
-	Color _getAccentColor(bool isDark) {
-		return isDark ? AppColorsDark.info : AppColorsLight.info;
-	}
-
-	Color _getAccentLightColor(bool isDark) {
-		return isDark ? AppColorsDark.infoLight5 : AppColorsLight.infoLight5;
-	}
+	ThemeColors _getThemeColor() => ThemeColors.primary;
 
 	// --------------------------------------------------------------------------
 	// BUILD
@@ -190,7 +185,10 @@ class _StreamingServiceDeviceDetailState extends State<StreamingServiceDeviceDet
 
 	Widget _buildHeader(BuildContext context, bool isDark) {
 		final localizations = AppLocalizations.of(context)!;
-		final accentColor = _getAccentColor(isDark);
+		final accentColor = ThemeColorFamily.get(
+			isDark ? Brightness.dark : Brightness.light,
+			_getThemeColor(),
+		).base;
 
 		return PageHeader(
 			title: _device.name,
@@ -218,33 +216,43 @@ class _StreamingServiceDeviceDetailState extends State<StreamingServiceDeviceDet
 	// --------------------------------------------------------------------------
 
 	Widget _buildPortraitLayout(BuildContext context, bool isDark) {
-		final accentColor = _getAccentColor(isDark);
-
 		return DevicePortraitLayout(
 			content: Column(
 				crossAxisAlignment: CrossAxisAlignment.start,
+				spacing: AppSpacings.pMd,
 				children: [
 					MediaInfoCard(
 						icon: MdiIcons.playNetwork,
-						iconColor: accentColor,
-						iconBgColor: _getAccentLightColor(isDark),
 						name: _device.name,
 						isOn: true,
-						accentColor: accentColor,
+						themeColor: _getThemeColor(),
 						scale: _scale,
+					),
+					if (MediaPlaybackCard.hasContent(
 						playbackTrack: _device.isMediaPlaybackTrack,
 						playbackArtist: _device.mediaPlaybackArtist,
 						playbackAlbum: _device.mediaPlaybackAlbum,
-						playbackStatus: _effectivePlaybackStatus,
 						playbackAvailableCommands: _device.mediaPlaybackAvailableCommands,
-						playbackHasPosition: _device.hasMediaPlaybackPosition,
-						playbackPosition: _device.mediaPlaybackPosition,
 						playbackHasDuration: _device.hasMediaPlaybackDuration,
 						playbackDuration: _device.mediaPlaybackDuration,
-						playbackIsPositionWritable: _device.mediaPlaybackChannel.positionProp?.isWritable ?? false,
-						onPlaybackCommand: _sendPlaybackCommand,
-						onPlaybackSeek: _seekPosition,
-					),
+					))
+						MediaPlaybackCard(
+							playbackTrack: _device.isMediaPlaybackTrack,
+							playbackArtist: _device.mediaPlaybackArtist,
+							playbackAlbum: _device.mediaPlaybackAlbum,
+							playbackStatus: _effectivePlaybackStatus,
+							playbackAvailableCommands: _device.mediaPlaybackAvailableCommands,
+							playbackHasPosition: _device.hasMediaPlaybackPosition,
+							playbackPosition: _device.mediaPlaybackPosition,
+							playbackHasDuration: _device.hasMediaPlaybackDuration,
+							playbackDuration: _device.mediaPlaybackDuration,
+							playbackIsPositionWritable: _device.mediaPlaybackChannel.positionProp?.isWritable ?? false,
+							onPlaybackCommand: _sendPlaybackCommand,
+							onPlaybackSeek: _seekPosition,
+							themeColor: _getThemeColor(),
+							isEnabled: true,
+							scale: _scale,
+						),
 				],
 			),
 		);
@@ -255,33 +263,43 @@ class _StreamingServiceDeviceDetailState extends State<StreamingServiceDeviceDet
 	// --------------------------------------------------------------------------
 
 	Widget _buildLandscapeLayout(BuildContext context, bool isDark) {
-		final accentColor = _getAccentColor(isDark);
-
 		return DeviceLandscapeLayout(
 			mainContent: Column(
 				mainAxisAlignment: MainAxisAlignment.center,
+				spacing: AppSpacings.pMd,
 				children: [
 					MediaInfoCard(
 						icon: MdiIcons.playNetwork,
-						iconColor: accentColor,
-						iconBgColor: _getAccentLightColor(isDark),
 						name: _device.name,
 						isOn: true,
-						accentColor: accentColor,
+						themeColor: _getThemeColor(),
 						scale: _scale,
+					),
+					if (MediaPlaybackCard.hasContent(
 						playbackTrack: _device.isMediaPlaybackTrack,
 						playbackArtist: _device.mediaPlaybackArtist,
 						playbackAlbum: _device.mediaPlaybackAlbum,
-						playbackStatus: _effectivePlaybackStatus,
 						playbackAvailableCommands: _device.mediaPlaybackAvailableCommands,
-						playbackHasPosition: _device.hasMediaPlaybackPosition,
-						playbackPosition: _device.mediaPlaybackPosition,
 						playbackHasDuration: _device.hasMediaPlaybackDuration,
 						playbackDuration: _device.mediaPlaybackDuration,
-						playbackIsPositionWritable: _device.mediaPlaybackChannel.positionProp?.isWritable ?? false,
-						onPlaybackCommand: _sendPlaybackCommand,
-						onPlaybackSeek: _seekPosition,
-					),
+					))
+						MediaPlaybackCard(
+							playbackTrack: _device.isMediaPlaybackTrack,
+							playbackArtist: _device.mediaPlaybackArtist,
+							playbackAlbum: _device.mediaPlaybackAlbum,
+							playbackStatus: _effectivePlaybackStatus,
+							playbackAvailableCommands: _device.mediaPlaybackAvailableCommands,
+							playbackHasPosition: _device.hasMediaPlaybackPosition,
+							playbackPosition: _device.mediaPlaybackPosition,
+							playbackHasDuration: _device.hasMediaPlaybackDuration,
+							playbackDuration: _device.mediaPlaybackDuration,
+							playbackIsPositionWritable: _device.mediaPlaybackChannel.positionProp?.isWritable ?? false,
+							onPlaybackCommand: _sendPlaybackCommand,
+							onPlaybackSeek: _seekPosition,
+							themeColor: _getThemeColor(),
+							isEnabled: true,
+							scale: _scale,
+						),
 				],
 			),
 			secondaryContent: const SizedBox.shrink(),
