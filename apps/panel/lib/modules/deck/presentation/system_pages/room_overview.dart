@@ -564,6 +564,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
+        spacing: AppSpacings.pMd,
         children: [
           Icon(
             MdiIcons.alertCircleOutline,
@@ -573,7 +574,6 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
                 ? AppColorsLight.danger
                 : AppColorsDark.danger,
           ),
-          AppSpacings.spacingMdVertical,
           Text(
             _errorMessage!,
             style: TextStyle(
@@ -584,7 +584,6 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
             ),
             textAlign: TextAlign.center,
           ),
-          AppSpacings.spacingMdVertical,
           FilledButton.icon(
             onPressed: _loadRoomData,
             icon: Icon(MdiIcons.refresh),
@@ -602,12 +601,11 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: AppSpacings.pMd,
       children: [
         // Domain tiles section
-        if (model.hasAnyDomain) ...[
+        if (model.hasAnyDomain)
           _buildDomainTilesSection(context, model),
-          AppSpacings.spacingMdVertical,
-        ],
 
         // Quick scenes section
         if (model.hasScenes)
@@ -660,13 +658,13 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
           borderRadius: BorderRadius.circular(AppBorderRadius.base),
         ),
         child: Column(
+          spacing: AppSpacings.pXs,
           children: [
             Icon(
               tile.icon,
               size: iconSize,
               color: Theme.of(context).colorScheme.primary,
             ),
-            AppSpacings.spacingXsVertical,
             Text(
               activeCount != null && activeCount > 0
                   ? '$activeCount/${tile.count}'
@@ -706,6 +704,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
         padding: AppSpacings.paddingMd,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          spacing: AppSpacings.pMd,
           children: [
             Row(
               children: [
@@ -726,7 +725,6 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
                 ),
               ],
             ),
-            AppSpacings.spacingMdVertical,
             Expanded(
               child: _buildScenesGrid(context, model.quickScenes),
             ),
@@ -758,6 +756,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
     return SizedBox(
       width: buttonWidth,
       child: Column(
+        spacing: AppSpacings.pXs,
         children: [
           SizedBox(
             width: buttonHeight,
@@ -817,7 +816,6 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
                     ),
                   ),
           ),
-          AppSpacings.spacingXsVertical,
           Text(
             scene.name,
             style: TextStyle(
@@ -841,6 +839,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: AppSpacings.pSm,
       children: [
         Text(
           'Suggested',
@@ -852,7 +851,6 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
                 : AppTextColorDark.regular,
           ),
         ),
-        AppSpacings.spacingSmVertical,
         Wrap(
           spacing: AppSpacings.pSm,
           runSpacing: AppSpacings.pSm,

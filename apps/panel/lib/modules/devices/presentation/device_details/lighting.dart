@@ -742,12 +742,12 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
       subtitleColor: isOn ? statusColorFamily.base : secondaryColor,
       leading: Row(
         mainAxisSize: MainAxisSize.min,
+        spacing: AppSpacings.pMd,
         children: [
           HeaderIconButton(
             icon: MdiIcons.arrowLeft,
             onTap: () => Navigator.of(context).pop(),
           ),
-          AppSpacings.spacingMdHorizontal,
           HeaderMainIcon(
             icon: buildDeviceIcon(widget._device.category, widget._device.icon),
             color: _getStatusColor(),

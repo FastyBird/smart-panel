@@ -57,13 +57,13 @@ class SectionTitle extends StatelessWidget {
     return Column(
       children: [
         Row(
+          spacing: AppSpacings.pMd,
           children: [
             Icon(
               icon,
               color: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
               size: _scale(18),
             ),
-            AppSpacings.spacingMdHorizontal,
             Expanded(
               child: Text(
                 title,
@@ -137,15 +137,14 @@ class SectionTitleButton extends StatelessWidget {
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
+          spacing: AppSpacings.pSm,
           children: [
-            if (icon != null) ...[
+            if (icon != null)
               Icon(
                 icon,
                 size: AppFontSize.small,
                 color: foregroundColor,
               ),
-              AppSpacings.spacingSmHorizontal,
-            ],
             Text(
               label,
               style: TextStyle(
@@ -236,13 +235,13 @@ class SectionHeader extends StatelessWidget {
         ),
       ),
       child: Row(
+        spacing: AppSpacings.pMd,
         children: [
           Icon(
             icon,
             color: iconColor,
             size: _scale(14),
           ),
-          AppSpacings.spacingMdHorizontal,
           Text(
             title,
             style: TextStyle(
@@ -251,8 +250,7 @@ class SectionHeader extends StatelessWidget {
               fontWeight: FontWeight.w600,
             ),
           ),
-          if (count != null) ...[
-            AppSpacings.spacingMdHorizontal,
+          if (count != null)
             Container(
               padding: EdgeInsets.symmetric(
                 horizontal: AppSpacings.pSm,
@@ -271,7 +269,6 @@ class SectionHeader extends StatelessWidget {
                 ),
               ),
             ),
-          ],
           const Spacer(),
         ],
       ),

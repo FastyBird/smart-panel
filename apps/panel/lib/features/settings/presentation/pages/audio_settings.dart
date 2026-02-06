@@ -110,6 +110,7 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
         padding: AppSpacings.paddingLg,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          spacing: AppSpacings.pMd,
           children: [
             Icon(
               MdiIcons.volumeOff,
@@ -119,7 +120,6 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
               ),
               color: Theme.of(context).disabledColor,
             ),
-            AppSpacings.spacingMdVertical,
             Text(
               localizations.settings_audio_settings_no_support,
               textAlign: TextAlign.center,
@@ -137,6 +137,7 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
   Widget _buildSpeakerSection(AppLocalizations localizations) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: AppSpacings.pMd,
       children: [
         SettingRow(
           icon: MdiIcons.volumeHigh,
@@ -165,7 +166,6 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
             },
           ),
         ),
-        AppSpacings.spacingMdVertical,
         SettingRow(
           icon: MdiIcons.volumeMedium,
           title: Text(
@@ -192,6 +192,7 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
   Widget _buildMicrophoneSection(AppLocalizations localizations) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: AppSpacings.pMd,
       children: [
         SettingRow(
           icon: MdiIcons.microphone,
@@ -220,7 +221,6 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
             },
           ),
         ),
-        AppSpacings.spacingMdVertical,
         SettingRow(
           icon: MdiIcons.microphone,
           title: Text(

@@ -428,6 +428,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
+        spacing: AppSpacings.pMd,
         children: [
           Icon(
             MdiIcons.alertCircleOutline,
@@ -436,7 +437,6 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
                 ? AppColorsLight.danger
                 : AppColorsDark.danger,
           ),
-          AppSpacings.spacingMdVertical,
           Text(
             _errorMessage!,
             style: TextStyle(
@@ -447,7 +447,6 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
             ),
             textAlign: TextAlign.center,
           ),
-          AppSpacings.spacingMdVertical,
           FilledButton.icon(
             onPressed: _loadSecurityData,
             icon: Icon(MdiIcons.refresh),
@@ -461,10 +460,10 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
   Widget _buildContent(BuildContext context, AppLocalizations? localizations) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: AppSpacings.pLg,
       children: [
         // House mode buttons
         _buildHouseModesSection(context, localizations),
-        AppSpacings.spacingLgVertical,
 
         // Security panel
         _buildSecuritySection(context, localizations),
@@ -478,6 +477,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: AppSpacings.pMd,
       children: [
         Row(
           children: [
@@ -498,7 +498,6 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
             ),
           ],
         ),
-        AppSpacings.spacingMdVertical,
         if (_isScenesLoading)
           Center(
             child: SizedBox(
@@ -593,6 +592,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
     );
 
     return Column(
+      spacing: AppSpacings.pXs,
       children: [
         SizedBox(
           width: buttonSize,
@@ -627,7 +627,6 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
             ),
           ),
         ),
-        AppSpacings.spacingXsVertical,
         Text(
           label,
           style: TextStyle(
@@ -664,6 +663,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
     );
 
     return Column(
+      spacing: AppSpacings.pXs,
       children: [
         SizedBox(
           width: buttonSize,
@@ -726,7 +726,6 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
                   ),
                 ),
         ),
-        AppSpacings.spacingXsVertical,
         Text(
           scene.name,
           style: TextStyle(
@@ -763,6 +762,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
           padding: AppSpacings.paddingMd,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            spacing: AppSpacings.pMd,
             children: [
               Row(
                 children: [
@@ -783,7 +783,6 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
                   ),
                 ],
               ),
-              AppSpacings.spacingMdVertical,
               if (!hasSecurityDevices)
                 _buildSecurityEmptyState(context, localizations)
               else
@@ -804,6 +803,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
+        spacing: AppSpacings.pSm,
         children: [
           Icon(
             MdiIcons.shieldOffOutline,
@@ -815,7 +815,6 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
                 ? AppTextColorLight.placeholder
                 : AppTextColorDark.placeholder,
           ),
-          AppSpacings.spacingSmVertical,
           Text(
             localizations?.entry_no_security_devices ?? 'No Security Devices',
             style: TextStyle(

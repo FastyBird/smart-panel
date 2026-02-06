@@ -1780,13 +1780,10 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           rowItems.add(AppSpacings.spacingMdHorizontal);
         }
       }
-      if (rows.isNotEmpty) {
-        rows.add(AppSpacings.spacingMdVertical);
-      }
       rows.add(Row(children: rowItems));
     }
 
-    return Column(children: rows);
+    return Column(spacing: AppSpacings.pMd, children: rows);
   }
 
   // --------------------------------------------------------------------------

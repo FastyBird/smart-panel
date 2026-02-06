@@ -1541,9 +1541,9 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
               return SizedBox(
                 width: tileWidth,
                 child: Column(
+                  spacing: AppSpacings.pMd,
                   children: [
-                    for (var row = 0; row < maxRows; row++) ...[
-                      if (row > 0) AppSpacings.spacingMdVertical,
+                    for (var row = 0; row < maxRows; row++)
                       SizedBox(
                         height: tileHeight,
                         child: Builder(
@@ -1562,7 +1562,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                           },
                         ),
                       ),
-                    ],
                   ],
                 ),
               );

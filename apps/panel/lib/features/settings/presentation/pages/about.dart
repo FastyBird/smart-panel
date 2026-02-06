@@ -155,6 +155,7 @@ class _AboutPageState extends State<AboutPage> {
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+                      spacing: AppSpacings.pSm,
                       children: [
                         Text(
                           localizations.settings_about_license_heading,
@@ -163,7 +164,6 @@ class _AboutPageState extends State<AboutPage> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        AppSpacings.spacingSmVertical,
                         TextButton(
                           onPressed: () {
                             // Navigate to Open Source Licenses page

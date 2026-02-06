@@ -867,9 +867,9 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     return LandscapeViewLayout(
       mainContent: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: AppSpacings.pLg,
         children: [
           if (_selectedCategory == null) _buildSummaryCards(context),
-          if (_selectedCategory == null) AppSpacings.spacingLgVertical,
           _buildSensorGrid(context, crossAxisCount: sensorsPerRow, childAspectRatio: 0.95),
         ],
       ),
@@ -1001,7 +1001,6 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     final cards = <Widget>[];
 
     for (var i = 0; i < items.length; i++) {
-      if (i > 0) cards.add(AppSpacings.spacingMdHorizontal);
       final item = items[i];
       cards.add(Expanded(
         child: _buildSummaryCard(
@@ -1017,6 +1016,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
+        spacing: AppSpacings.pMd,
         children: cards,
       ),
     );
@@ -1043,11 +1043,12 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: AppSpacings.pSm,
         children: [
           Row(
+            spacing: AppSpacings.pSm,
             children: [
               Icon(icon, size: _scale(18), color: color),
-              AppSpacings.spacingSmHorizontal,
               Expanded(
                 child: Text(
                   title,
@@ -1063,7 +1064,6 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
               ),
             ],
           ),
-          AppSpacings.spacingSmVertical,
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,

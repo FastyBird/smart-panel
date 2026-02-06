@@ -419,14 +419,13 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
       ),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
+        spacing: AppSpacings.pMd,
         children: [
-          if (showDevicesButton) ...[
+          if (showDevicesButton)
             HeaderIconButton(
               icon: MdiIcons.windowShutterSettings,
               onTap: _showShadingDevicesSheet,
             ),
-            AppSpacings.spacingMdHorizontal,
-          ],
           HeaderIconButton(
             icon: MdiIcons.homeOutline,
             onTap: _navigateToHome,
@@ -612,6 +611,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     return LandscapeViewLayout(
       mainContent: SingleChildScrollView(
         child: Column(
+          spacing: AppSpacings.pMd,
           children: [
             // Primary Role Card (with slider and actions)
             if (primaryRole != null)
@@ -622,13 +622,11 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
                 showActions: true,
               ),
             // Secondary Role Cards
-            for (final role in secondaryRoles) ...[
-              AppSpacings.spacingMdVertical,
+            for (final role in secondaryRoles)
               _buildRoleCard(
                 context,
                 roleData: role,
               ),
-            ],
           ],
         ),
       ),
@@ -657,6 +655,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     return PortraitViewLayout(
       content: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: AppSpacings.pMd,
         children: [
           // Primary Role Card (with slider and actions)
           if (primaryRole != null)
@@ -667,13 +666,11 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
               showActions: true,
             ),
           // Secondary Role Cards
-          for (final role in secondaryRoles) ...[
-            AppSpacings.spacingMdVertical,
+          for (final role in secondaryRoles)
             _buildRoleCard(
               context,
               roleData: role,
             ),
-          ],
         ],
       ),
       modeSelector: hasCovers ? _buildModeSelector(context, localizations) : null,
@@ -717,6 +714,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
         children: [
           // Header Row
           Row(
+            spacing: AppSpacings.pMd,
             children: [
               // Role icon: background and icon from position state (open=success, closed=info, partial=warning)
               Builder(
@@ -747,7 +745,6 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
                   );
                 },
               ),
-              AppSpacings.spacingMdHorizontal,
               // Title
               Expanded(
                 child: Column(
@@ -845,6 +842,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
         padding: EdgeInsets.symmetric(vertical: AppSpacings.pXs),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
+          spacing: AppSpacings.pXs,
           children: [
             Text(
               isExpanded
@@ -857,7 +855,6 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
                     : AppTextColorDark.secondary,
               ),
             ),
-            AppSpacings.spacingXsHorizontal,
             Icon(
               isExpanded ? MdiIcons.chevronUp : MdiIcons.chevronDown,
               size: _screenService.scale(
@@ -905,6 +902,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
+      spacing: AppSpacings.pSm,
       children: [
         Expanded(
           child: _buildQuickActionButton(
@@ -915,7 +913,6 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
             onTap: () => _setRolePosition(roleData.role, 100),
           ),
         ),
-        AppSpacings.spacingSmHorizontal,
         Expanded(
           child: _buildQuickActionButton(
             context,
@@ -925,7 +922,6 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
             onTap: _stopCovers,
           ),
         ),
-        AppSpacings.spacingSmHorizontal,
         Expanded(
           child: _buildQuickActionButton(
             context,
@@ -974,6 +970,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
+            spacing: AppSpacings.pXs,
             children: [
               Icon(
                 icon,
@@ -986,7 +983,6 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
                         ? AppFilledButtonsLightThemes.primaryForegroundColor
                         : AppFilledButtonsLightThemes.neutralForegroundColor),
               ),
-              AppSpacings.spacingXsHorizontal,
               Text(
                 label,
                 style: TextStyle(

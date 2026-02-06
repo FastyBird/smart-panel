@@ -366,12 +366,12 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
       subtitleColor: statusColorFamily.base,
       leading: Row(
         mainAxisSize: MainAxisSize.min,
+        spacing: AppSpacings.pMd,
         children: [
           HeaderIconButton(
             icon: MdiIcons.arrowLeft,
             onTap: widget.onBack ?? () => Navigator.of(context).pop(),
           ),
-          AppSpacings.spacingMdHorizontal,
           HeaderMainIcon(icon: buildDeviceIcon(_device.category, _device.icon), color: statusColor),
         ],
       ),
@@ -587,15 +587,14 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
       padding: AppSpacings.paddingMd,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
+        spacing: AppSpacings.pMd,
         children: [
           Expanded(
             child: Center(
               child: _buildWindowVisualizationSized(context, visualizationWidth, visualizationHeight),
             ),
           ),
-          AppSpacings.spacingMdVertical,
           _buildPositionSlider(context),
-          AppSpacings.spacingMdVertical,
           _buildQuickActions(context),
         ],
       ),
@@ -623,6 +622,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     return Padding(
       padding: AppSpacings.paddingMd,
       child: Column(
+        spacing: AppSpacings.pMd,
         children: [
           // Top row: visualization (3/4) + buttons (1/4)
           Expanded(
@@ -649,7 +649,6 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
               ],
             ),
           ),
-          AppSpacings.spacingMdVertical,
           // Bottom row: full-width slider
           _buildPositionSlider(context),
         ],
@@ -940,7 +939,6 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     }
 
     if (controller.hasStopCommand) {
-      if (buttons.isNotEmpty) buttons.add(AppSpacings.spacingXsVertical);
       buttons.add(_buildCompactActionIconButton(
         context,
         icon: MdiIcons.stop,
@@ -950,7 +948,6 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     }
 
     if (controller.hasCloseCommand) {
-      if (buttons.isNotEmpty) buttons.add(AppSpacings.spacingXsVertical);
       buttons.add(_buildCompactActionIconButton(
         context,
         icon: MdiIcons.chevronDown,
@@ -965,6 +962,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
+      spacing: AppSpacings.pXs,
       children: buttons,
     );
   }
@@ -1011,13 +1009,10 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     return DevicePortraitLayout(
       content: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: AppSpacings.pMd,
         children: [
           _buildMainControlCard(context),
-          AppSpacings.spacingMdVertical,
-          if (_selectedChannel.hasTilt) ...[
-            _buildTiltCard(context),
-            AppSpacings.spacingMdVertical,
-          ],
+          if (_selectedChannel.hasTilt) _buildTiltCard(context),
           _buildPresetsWithGradient(context),
         ],
       ),
@@ -1104,13 +1099,12 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
+        spacing: AppSpacings.pLg,
         children: [
           // Window Visualization
           _buildWindowVisualization(context),
-          AppSpacings.spacingLgVertical,
           // Position Slider
           _buildPositionSlider(context),
-          AppSpacings.spacingLgVertical,
           // Quick Actions
           _buildQuickActions(context),
         ],
@@ -1200,7 +1194,6 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     }
 
     if (controller.hasStopCommand) {
-      if (buttons.isNotEmpty) buttons.add(AppSpacings.spacingSmHorizontal);
       buttons.add(Expanded(
         child: _buildQuickActionButton(
           context,
@@ -1213,7 +1206,6 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     }
 
     if (controller.hasCloseCommand) {
-      if (buttons.isNotEmpty) buttons.add(AppSpacings.spacingSmHorizontal);
       buttons.add(Expanded(
         child: _buildQuickActionButton(
           context,
@@ -1231,6 +1223,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
+      spacing: AppSpacings.pSm,
       children: buttons,
     );
   }
@@ -1265,9 +1258,9 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
+            spacing: AppSpacings.pXs,
             children: [
               Icon(icon, size: iconSize, color: _getActionIconColor(isActive)),
-              AppSpacings.spacingXsHorizontal,
               Text(
                 label,
                 style: TextStyle(

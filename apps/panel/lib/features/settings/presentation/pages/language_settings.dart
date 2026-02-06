@@ -99,6 +99,7 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
           padding: AppSpacings.paddingMd,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            spacing: AppSpacings.pMd,
             children: [
               SettingRow(
                 icon: MdiIcons.translate,
@@ -150,7 +151,6 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
                   ),
                 ),
               ),
-              AppSpacings.spacingMdVertical,
               SettingRow(
                 icon: MdiIcons.web,
                 title: Text(
@@ -223,7 +223,6 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
                   ),
                 ),
               ),
-              AppSpacings.spacingMdVertical,
               SettingRow(
                 icon: MdiIcons.clockOutline,
                 title: Text(

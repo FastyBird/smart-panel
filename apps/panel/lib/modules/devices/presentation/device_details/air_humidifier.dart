@@ -537,12 +537,12 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
       subtitleColor: isOn ? statusColorFamily.base : secondaryColor,
       leading: Row(
         mainAxisSize: MainAxisSize.min,
+        spacing: AppSpacings.pMd,
         children: [
           HeaderIconButton(
             icon: MdiIcons.arrowLeft,
             onTap: widget.onBack ?? () => Navigator.of(context).pop(),
           ),
-          AppSpacings.spacingMdHorizontal,
           HeaderMainIcon(icon: buildDeviceIcon(_device.category, _device.icon), color: _getStatusColor()),
         ],
       ),
@@ -1091,7 +1091,6 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
     // Fan mode if available (skip if already shown with speed slider)
     if (!skipFanMode && fanChannel != null && fanChannel.hasMode && fanChannel.availableModes.length > 1) {
       children.add(_buildFanModeControl(localizations, activeColor, true, tileHeight));
-      children.add(AppSpacings.spacingMdVertical);
     }
 
     // Oscillation / Swing tile - only show if fan has swing property
@@ -1110,7 +1109,6 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
         showDoubleBorder: false,
         showInactiveBorder: _screenService.isLandscape,
       )));
-      children.add(AppSpacings.spacingMdVertical);
     }
 
     // Direction tile - only show if fan has direction property
@@ -1136,7 +1134,6 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
         showDoubleBorder: false,
         showInactiveBorder: _screenService.isLandscape,
       )));
-      children.add(AppSpacings.spacingMdVertical);
     }
 
     // Natural breeze tile - only show if fan has natural_breeze property
@@ -1155,7 +1152,6 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
         showDoubleBorder: false,
         showInactiveBorder: _screenService.isLandscape,
       )));
-      children.add(AppSpacings.spacingMdVertical);
     }
 
     // Mist level control
@@ -1165,7 +1161,6 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
       } else if (channel.isMistLevelNumeric) {
         children.add(_buildMistLevelNumericControl(localizations, activeColor, useVerticalLayout, tileHeight));
       }
-      children.add(AppSpacings.spacingMdVertical);
     }
 
     // Warm mist toggle
@@ -1184,7 +1179,6 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
         showDoubleBorder: false,
         showInactiveBorder: _screenService.isLandscape,
       )));
-      children.add(AppSpacings.spacingMdVertical);
     }
 
     // Child Lock
@@ -1203,7 +1197,6 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
         showDoubleBorder: false,
         showInactiveBorder: _screenService.isLandscape,
       )));
-      children.add(AppSpacings.spacingMdVertical);
     }
 
     // Timer
@@ -1215,6 +1208,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: AppSpacings.pMd,
       children: children,
     );
   }
@@ -1567,9 +1561,9 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
       );
 
       return Column(
+        spacing: AppSpacings.pMd,
         children: [
           wrapWithHeight(speedWidget),
-          AppSpacings.spacingMdVertical,
         ],
       );
     } else {
@@ -1594,9 +1588,9 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
       );
 
       return Column(
+        spacing: AppSpacings.pMd,
         children: [
           wrapWithHeight(speedWidget),
-          AppSpacings.spacingMdVertical,
         ],
       );
     }

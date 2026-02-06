@@ -161,9 +161,9 @@ class MediaRemoteCard<T extends Enum> extends StatelessWidget {
 				children: [
 					if (showLabel) ...[
 						Row(
+							spacing: AppSpacings.pSm,
 							children: [
 								Icon(MdiIcons.remote, size: AppFontSize.small, color: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary),
-								AppSpacings.spacingSmHorizontal,
 								Text(
 									localizations.media_remote.toUpperCase(),
 									style: TextStyle(fontSize: AppFontSize.small, fontWeight: FontWeight.bold, color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary),
@@ -182,6 +182,7 @@ class MediaRemoteCard<T extends Enum> extends StatelessWidget {
 						AppSpacings.spacingSmVertical,
 						Row(
 							mainAxisSize: MainAxisSize.min,
+							spacing: AppSpacings.pSm,
 							children: [
 								if (hasLeft)
 									_buildDpadButton(
@@ -189,16 +190,13 @@ class MediaRemoteCard<T extends Enum> extends StatelessWidget {
 										icon: MdiIcons.chevronLeft,
 										onTap: isEnabled ? () => _sendKey(_findKey('arrowLeft')!) : null,
 									),
-								if (hasSelect) ...[
-									AppSpacings.spacingSmHorizontal,
+								if (hasSelect)
 									_buildDpadButton(
 										context,
 										label: localizations.media_remote_ok,
 										isPrimary: true,
 										onTap: isEnabled ? () => _sendKey(_findKey('select')!) : null,
 									),
-									AppSpacings.spacingSmHorizontal,
-								],
 								if (hasRight)
 									_buildDpadButton(
 										context,

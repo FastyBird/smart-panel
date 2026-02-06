@@ -297,6 +297,7 @@ class ButtonTileWidget extends StatelessWidget {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    spacing: AppSpacings.pSm,
                     children: [
                       ButtonTileTitle(
                         title: title,
@@ -304,7 +305,6 @@ class ButtonTileWidget extends StatelessWidget {
                         isLoading: isLoading,
                         isDisabled: isDisabled,
                       ),
-                      AppSpacings.spacingSmVertical,
                       SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         child: ButtonTileSubTitle(

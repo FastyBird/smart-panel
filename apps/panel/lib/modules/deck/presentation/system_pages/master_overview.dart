@@ -464,6 +464,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
+        spacing: AppSpacings.pMd,
         children: [
           Icon(
             MdiIcons.alertCircleOutline,
@@ -472,7 +473,6 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
                 ? AppColorsLight.danger
                 : AppColorsDark.danger,
           ),
-          AppSpacings.spacingMdVertical,
           Text(
             _errorMessage!,
             style: TextStyle(
@@ -483,7 +483,6 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
             ),
             textAlign: TextAlign.center,
           ),
-          AppSpacings.spacingMdVertical,
           FilledButton.icon(
             onPressed: _loadHouseData,
             icon: Icon(MdiIcons.refresh),
@@ -497,16 +496,14 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
   Widget _buildContent(BuildContext context, AppLocalizations? localizations) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: AppSpacings.pMd,
       children: [
         // Summary stats
         _buildSummarySection(context, localizations),
-        AppSpacings.spacingMdVertical,
 
         // Global scenes
-        if (_globalScenes.isNotEmpty || _isScenesLoading) ...[
+        if (_globalScenes.isNotEmpty || _isScenesLoading)
           _buildScenesSection(context, localizations),
-          AppSpacings.spacingMdVertical,
-        ],
 
         // Rooms list
         Expanded(
@@ -565,13 +562,13 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
       ),
       child: Column(
+        spacing: AppSpacings.pXs,
         children: [
           Icon(
             icon,
             size: iconSize,
             color: Theme.of(context).colorScheme.primary,
           ),
-          AppSpacings.spacingXsVertical,
           Text(
             value,
             style: TextStyle(
@@ -599,6 +596,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: AppSpacings.pSm,
       children: [
         Row(
           children: [
@@ -619,7 +617,6 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
             ),
           ],
         ),
-        AppSpacings.spacingSmVertical,
         if (_isScenesLoading)
           Center(
             child: SizedBox(
@@ -680,6 +677,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: AppSpacings.pSm,
       children: [
         Row(
           children: [
@@ -700,7 +698,6 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
             ),
           ],
         ),
-        AppSpacings.spacingSmVertical,
         Expanded(
           child: ListView.separated(
             itemCount: _rooms.length,

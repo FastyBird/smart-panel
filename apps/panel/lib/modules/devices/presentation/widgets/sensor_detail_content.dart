@@ -251,6 +251,7 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
     );
     return Column(
       mainAxisSize: MainAxisSize.min,
+      spacing: AppSpacings.pSm,
       children: [
         FittedBox(
           fit: BoxFit.scaleDown,
@@ -278,7 +279,6 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
             ),
           ),
         ),
-        AppSpacings.spacingSmVertical,
         Text(
           localizations.sensor_ui_current_value(
             SensorUtils.translateSensorLabel(
@@ -337,13 +337,12 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
     final localizations = AppLocalizations.of(context)!;
     final periodLabel = _getPeriodLabel();
     return Row(
+      spacing: AppSpacings.pMd,
       children: [
         _buildStatCard(context,
             localizations.sensor_ui_period_min(periodLabel), _getStatsValue('min'), true),
-        AppSpacings.spacingMdHorizontal,
         _buildStatCard(context,
             localizations.sensor_ui_period_max(periodLabel), _getStatsValue('max'), false),
-        AppSpacings.spacingMdHorizontal,
         _buildStatCard(context,
             localizations.sensor_ui_period_avg(periodLabel), _getStatsValue('avg'), null),
       ],
@@ -353,13 +352,12 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
   Widget _buildStatsRowCompact(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
     return Row(
+      spacing: AppSpacings.pSm,
       children: [
         _buildStatCard(
             context, localizations.sensor_ui_min, _getStatsValue('min'), true),
-        AppSpacings.spacingSmHorizontal,
         _buildStatCard(
             context, localizations.sensor_ui_max, _getStatsValue('max'), false),
-        AppSpacings.spacingSmHorizontal,
         _buildStatCard(
             context, localizations.sensor_ui_avg, _getStatsValue('avg'), null),
       ],
@@ -388,6 +386,7 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
           ),
         ),
         child: Column(
+          spacing: AppSpacings.pXs,
           children: [
             Text(
               label,
@@ -398,7 +397,6 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
                 fontSize: AppFontSize.extraSmall,
               ),
             ),
-            AppSpacings.spacingXsVertical,
             FittedBox(
               fit: BoxFit.scaleDown,
               child: Text(
@@ -479,6 +477,7 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
       child: Column(
         mainAxisSize: flexible ? MainAxisSize.max : MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: AppSpacings.pMd,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -515,7 +514,6 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
               ),
             ],
           ),
-          AppSpacings.spacingMdVertical,
           contentArea,
         ],
       ),

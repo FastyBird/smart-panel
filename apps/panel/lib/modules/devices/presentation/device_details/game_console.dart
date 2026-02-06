@@ -210,12 +210,12 @@ class _GameConsoleDeviceDetailState extends State<GameConsoleDeviceDetail> {
 			subtitleColor: accentColor,
 			leading: Row(
 				mainAxisSize: MainAxisSize.min,
+				spacing: AppSpacings.pMd,
 				children: [
 					HeaderIconButton(
 						icon: MdiIcons.arrowLeft,
 						onTap: widget.onBack ?? () => Navigator.of(context).pop(),
 					),
-					AppSpacings.spacingMdHorizontal,
 					HeaderMainIcon(
 						icon: buildDeviceIcon(_device.category, _device.icon),
 						color: isOn ? ThemeColors.primary : ThemeColors.neutral,

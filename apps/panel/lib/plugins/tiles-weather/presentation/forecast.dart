@@ -92,6 +92,7 @@ class ForecastTileWidget extends TileWidget<ForecastWeatherTileView> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.center,
+        spacing: AppSpacings.pSm,
         children: [
           Text(
             DatetimeUtils.getShortDayName(forecast.dayTime),
@@ -103,7 +104,6 @@ class ForecastTileWidget extends TileWidget<ForecastWeatherTileView> {
                   : AppTextColorDark.primary,
             ),
           ),
-          AppSpacings.spacingSmVertical,
           BoxedIcon(
             WeatherConditionMapper.getIcon(forecast.weatherCode),
             color: Theme.of(context).brightness == Brightness.light
@@ -114,7 +114,6 @@ class ForecastTileWidget extends TileWidget<ForecastWeatherTileView> {
               density: _visualDensityService.density,
             ),
           ),
-          AppSpacings.spacingSmVertical,
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.baseline,

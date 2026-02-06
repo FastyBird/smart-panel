@@ -29,12 +29,12 @@ class MediaSourceSelectCard extends StatelessWidget {
 
 		return Column(
 			crossAxisAlignment: CrossAxisAlignment.start,
+			spacing: AppSpacings.pMd,
 			children: [
 				SectionTitle(
 					title: localizations.media_detail_section_source,
 					icon: MdiIcons.videoInputHdmi,
 				),
-				AppSpacings.spacingMdVertical,
 				ModeSelector<String>(
 					modes: availableSources
 						.map((s) => ModeOption<String>(

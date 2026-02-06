@@ -498,12 +498,12 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
       subtitleColor: isOn ? statusColorFamily.base : secondaryColor,
       leading: Row(
         mainAxisSize: MainAxisSize.min,
+        spacing: AppSpacings.pMd,
         children: [
           HeaderIconButton(
             icon: MdiIcons.arrowLeft,
             onTap: widget.onBack ?? () => Navigator.of(context).pop(),
           ),
-          AppSpacings.spacingMdHorizontal,
           HeaderMainIcon(icon: buildDeviceIcon(_device.category, _device.icon), color: _getStatusColor()),
         ],
       ),
@@ -1156,7 +1156,6 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
     // Fan mode if available (skip if already shown with speed slider)
     if (!skipFanMode && fanChannel != null && fanChannel.hasMode && fanChannel.availableModes.length > 1) {
       children.add(_buildFanModeControl(localizations, activeColor, true, tileHeight));
-      children.add(AppSpacings.spacingMdVertical);
     }
 
     // Oscillation / Swing tile - only show if fan has swing property
@@ -1175,7 +1174,6 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
         showDoubleBorder: false,
         showInactiveBorder: _screenService.isLandscape,
       )));
-      children.add(AppSpacings.spacingMdVertical);
     }
 
     // Direction tile - only show if fan has direction property
@@ -1201,7 +1199,6 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
         showDoubleBorder: false,
         showInactiveBorder: _screenService.isLandscape,
       )));
-      children.add(AppSpacings.spacingMdVertical);
     }
 
     // Natural breeze tile - only show if fan has natural_breeze property
@@ -1220,7 +1217,6 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
         showDoubleBorder: false,
         showInactiveBorder: _screenService.isLandscape,
       )));
-      children.add(AppSpacings.spacingMdVertical);
     }
 
     // Child Lock
@@ -1239,7 +1235,6 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
         showDoubleBorder: false,
         showInactiveBorder: _screenService.isLandscape,
       )));
-      children.add(AppSpacings.spacingMdVertical);
     }
 
     // Timer
@@ -1251,6 +1246,7 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: AppSpacings.pMd,
       children: children,
     );
   }
@@ -1347,9 +1343,9 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
       );
 
       return Column(
+        spacing: AppSpacings.pMd,
         children: [
           wrapWithHeight(speedWidget),
-          AppSpacings.spacingMdVertical,
         ],
       );
     } else {
@@ -1374,9 +1370,9 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
       );
 
       return Column(
+        spacing: AppSpacings.pMd,
         children: [
           wrapWithHeight(speedWidget),
-          AppSpacings.spacingMdVertical,
         ],
       );
     }

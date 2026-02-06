@@ -68,6 +68,7 @@ class MediaInfoCard extends StatelessWidget {
 					Row(
 						mainAxisAlignment: MainAxisAlignment.center,
 						mainAxisSize: MainAxisSize.min,
+						spacing: AppSpacings.pSm,
 						children: [
 							Container(
 								width: scale(8),
@@ -79,7 +80,6 @@ class MediaInfoCard extends StatelessWidget {
 									shape: BoxShape.circle,
 								),
 							),
-							AppSpacings.spacingSmHorizontal,
 							Text(
 								isOn ? localizations.on_state_on : localizations.on_state_off,
 								style: TextStyle(

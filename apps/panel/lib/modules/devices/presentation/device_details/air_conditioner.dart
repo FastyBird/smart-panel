@@ -858,12 +858,12 @@ class _AirConditionerDeviceDetailState
       subtitleColor: _isActive ? modeColorFamily.base : secondaryColor,
       leading: Row(
         mainAxisSize: MainAxisSize.min,
+        spacing: AppSpacings.pMd,
         children: [
           HeaderIconButton(
             icon: MdiIcons.arrowLeft,
             onTap: widget.onBack ?? () => Navigator.of(context).pop(),
           ),
-          AppSpacings.spacingMdHorizontal,
           HeaderMainIcon(icon: buildDeviceIcon(_device.category, _device.icon), color: _getModeColor()),
         ],
       ),
@@ -1445,9 +1445,9 @@ class _AirConditionerDeviceDetailState
         if (hasMode) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
+            spacing: AppSpacings.pMd,
             children: [
               speedWidget,
-              AppSpacings.spacingMdVertical,
               _buildFanModeControl(context, localizations, true, tileHeight),
             ],
           );
@@ -1519,9 +1519,9 @@ class _AirConditionerDeviceDetailState
         if (hasMode) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
+            spacing: AppSpacings.pMd,
             children: [
               speedWidget,
-              AppSpacings.spacingMdVertical,
               _buildFanModeControl(context, localizations, true, tileHeight),
             ],
           );

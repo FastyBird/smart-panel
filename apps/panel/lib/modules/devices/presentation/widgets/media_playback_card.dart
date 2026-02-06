@@ -108,16 +108,11 @@ class MediaPlaybackCard extends StatelessWidget {
 					border: Border.all(color: borderColor, width: scale(1)),
 				),
 				child: Column(
+				spacing: AppSpacings.pMd,
 				children: [
 					_buildNowPlaying(context),
-					if (playbackAvailableCommands.isNotEmpty) ...[
-						AppSpacings.spacingMdVertical,
-						_buildPlaybackControl(context),
-					],
-					if (playbackHasDuration && playbackDuration > 0) ...[
-						AppSpacings.spacingMdVertical,
-						_buildProgressBar(context),
-					],
+					if (playbackAvailableCommands.isNotEmpty) _buildPlaybackControl(context),
+					if (playbackHasDuration && playbackDuration > 0) _buildProgressBar(context),
 				],
 			),
 		),
@@ -245,6 +240,7 @@ class MediaPlaybackCard extends StatelessWidget {
 		final timeWidth = scale(_progressTimeWidth);
 
 		return Row(
+			spacing: AppSpacings.pMd,
 			children: [
 				SizedBox(
 					width: timeWidth,
@@ -253,7 +249,6 @@ class MediaPlaybackCard extends StatelessWidget {
 						style: TextStyle(fontSize: AppFontSize.extraSmall, color: secondaryColor),
 					),
 				),
-				AppSpacings.spacingMdHorizontal,
 				Expanded(
 					child: LayoutBuilder(
 						builder: (context, constraints) {
@@ -284,7 +279,6 @@ class MediaPlaybackCard extends StatelessWidget {
 						},
 					),
 				),
-				AppSpacings.spacingMdHorizontal,
 				SizedBox(
 					width: timeWidth,
 					child: Text(

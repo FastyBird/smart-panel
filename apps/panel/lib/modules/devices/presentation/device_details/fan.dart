@@ -425,12 +425,12 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
       subtitleColor: statusColorFamily.base,
       leading: Row(
         mainAxisSize: MainAxisSize.min,
+        spacing: AppSpacings.pMd,
         children: [
           HeaderIconButton(
             icon: MdiIcons.arrowLeft,
             onTap: widget.onBack ?? () => Navigator.of(context).pop(),
           ),
-          AppSpacings.spacingMdHorizontal,
           HeaderMainIcon(icon: buildDeviceIcon(_device.category, _device.icon), color: _getStatusColor()),
         ],
       ),
@@ -796,9 +796,6 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
     final options = <Widget>[];
 
     void addOption(Widget child) {
-      if (options.isNotEmpty) {
-        options.add(AppSpacings.spacingMdVertical);
-      }
       options.add(child);
     }
 
@@ -873,6 +870,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: AppSpacings.pMd,
       children: options,
     );
   }

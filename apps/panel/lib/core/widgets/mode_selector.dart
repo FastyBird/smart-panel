@@ -415,13 +415,13 @@ class _ModeSelectorState<T> extends State<ModeSelector<T>> {
       content = Column(
         mainAxisAlignment: MainAxisAlignment.center,
         mainAxisSize: MainAxisSize.min,
+        spacing: AppSpacings.pXs,
         children: [
           Icon(
             mode.icon,
             color: contentColor,
             size: _scale(18),
           ),
-          AppSpacings.spacingXsVertical,
           Flexible(
             child: Text(
               mode.label,

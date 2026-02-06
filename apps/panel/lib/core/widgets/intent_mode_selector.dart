@@ -322,13 +322,13 @@ class IntentModeSelector<T> extends StatelessWidget {
       content = Column(
         mainAxisAlignment: MainAxisAlignment.center,
         mainAxisSize: MainAxisSize.min,
+        spacing: AppSpacings.pXs,
         children: [
           Icon(
             mode.icon,
             color: contentColor,
             size: _scale(18),
           ),
-          AppSpacings.spacingXsVertical,
           Flexible(
             child: Text(
               mode.label,
@@ -565,13 +565,13 @@ class IntentModeSelector<T> extends StatelessWidget {
       content = Column(
         mainAxisAlignment: MainAxisAlignment.center,
         mainAxisSize: MainAxisSize.min,
+        spacing: AppSpacings.pXs,
         children: [
           Icon(
             mode.icon,
             color: contentColor,
             size: _scale(18),
           ),
-          AppSpacings.spacingXsVertical,
           Flexible(
             child: Text(
               mode.label,

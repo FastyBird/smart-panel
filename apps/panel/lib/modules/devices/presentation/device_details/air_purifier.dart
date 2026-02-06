@@ -682,12 +682,12 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
       subtitleColor: statusColorFamily.base,
       leading: Row(
         mainAxisSize: MainAxisSize.min,
+        spacing: AppSpacings.pMd,
         children: [
           HeaderIconButton(
             icon: MdiIcons.arrowLeft,
             onTap: widget.onBack ?? () => Navigator.of(context).pop(),
           ),
-          AppSpacings.spacingMdHorizontal,
           HeaderMainIcon(icon: buildDeviceIcon(_device.category, _device.icon), color: _getStatusColor()),
         ],
       ),
@@ -1071,6 +1071,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: AppSpacings.pSm,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1092,7 +1093,6 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
             ),
           ],
         ),
-        AppSpacings.spacingSmVertical,
         Container(
           height: _scale(8),
           decoration: BoxDecoration(
@@ -1655,9 +1655,6 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
     final options = <Widget>[];
 
     void addOption(Widget child) {
-      if (options.isNotEmpty) {
-        options.add(AppSpacings.spacingMdVertical);
-      }
       options.add(child);
     }
 
@@ -1750,6 +1747,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: AppSpacings.pMd,
       children: options,
     );
   }
@@ -1771,7 +1769,6 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
     if (fanChannel.hasSpeed) {
       children.add(_buildSpeedControl(
           localizations, isDark, activeColor, useVerticalLayout, tileHeight));
-      children.add(AppSpacings.spacingMdVertical);
     }
 
     final optionsSection = _buildFanOptionsSection(
@@ -1784,6 +1781,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: AppSpacings.pMd,
       children: children,
     );
   }

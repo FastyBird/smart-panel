@@ -2589,6 +2589,7 @@ class LightingMainControl extends StatelessWidget {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
+        spacing: AppSpacings.pLg,
         children: [
           GestureDetector(
             onTap: () {
@@ -2633,13 +2634,13 @@ class LightingMainControl extends StatelessWidget {
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
+                spacing: AppSpacings.pMd,
                 children: [
                   Icon(
                     MdiIcons.power,
                     size: _scale(44),
                     color: isOn ? primaryColor : inactiveColor,
                   ),
-                  AppSpacings.spacingMdVertical,
                   Text(
                     isOn
                         ? localizations.on_state_on
@@ -2654,7 +2655,6 @@ class LightingMainControl extends StatelessWidget {
               ),
             ),
           ),
-          AppSpacings.spacingLgVertical,
           Text(
             infoText,
             style: TextStyle(
@@ -2894,9 +2894,9 @@ class _SliderPanel extends StatelessWidget {
       );
     } else {
       return Column(
+          spacing: AppSpacings.pMd,
           children: [
             Expanded(child: _buildDisplay()),
-            AppSpacings.spacingMdVertical,
             _buildHorizontalSlider(),
           ],
       );
@@ -2925,6 +2925,7 @@ class _SliderPanel extends StatelessWidget {
           fit: BoxFit.scaleDown,
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            spacing: AppSpacings.pSm,
             children: [
               Row(
                 mainAxisSize: MainAxisSize.min,
@@ -2958,8 +2959,7 @@ class _SliderPanel extends StatelessWidget {
                     ),
                 ],
               ),
-              if (sublabel != null) ...[
-                AppSpacings.spacingSmVertical,
+              if (sublabel != null)
                 Text(
                   sublabel!,
                   style: TextStyle(
@@ -2969,7 +2969,6 @@ class _SliderPanel extends StatelessWidget {
                     fontSize: AppFontSize.extraLarge,
                   ),
                 ),
-              ],
             ],
           ),
         ),
@@ -3178,14 +3177,13 @@ class _ColorPanel extends StatelessWidget {
       );
     } else {
       return Column(
+        spacing: AppSpacings.pLg,
         children: [
           Expanded(
             flex: 2,
             child: _buildDisplay(color),
           ),
-          AppSpacings.spacingLgVertical,
           _buildHorizontalHueSlider(),
-          AppSpacings.spacingLgVertical,
           _buildHorizontalSatSlider(),
         ],
       );

@@ -579,14 +579,13 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			),
 			trailing: Row(
 				mainAxisSize: MainAxisSize.min,
+				spacing: AppSpacings.pMd,
 				children: [
-					if (showDevicesButton) ...[
+					if (showDevicesButton)
 						HeaderIconButton(
 							icon: MdiIcons.monitorSpeaker,
 							onTap: _showMediaDevicesSheet,
 						),
-						AppSpacings.spacingMdHorizontal,
-					],
 					HeaderIconButton(
 						icon: MdiIcons.homeOutline,
 						onTap: _navigateToHome,
@@ -676,9 +675,9 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			additionalContent: !showOffContent && !isActivating && !isFailed
 				? Column(
 						crossAxisAlignment: CrossAxisAlignment.start,
+						spacing: AppSpacings.pLg,
 						children: [
 							_buildLandscapeControls(context),
-							AppSpacings.spacingLgVertical,
 						],
 					)
 				: null,
@@ -833,6 +832,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			child: Column(
 				mainAxisAlignment: MainAxisAlignment.center,
 				mainAxisSize: MainAxisSize.min,
+				spacing: AppSpacings.pLg,
 				children: [
 					AnimatedBuilder(
 						animation: _pulseController,
@@ -859,7 +859,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 							);
 						},
 					),
-					AppSpacings.spacingLgVertical,
 					Text(
 						localizations.media_starting_activity(activityName),
 						style: TextStyle(
@@ -925,6 +924,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 					AppSpacings.spacingLgVertical,
 					Row(
 						mainAxisAlignment: MainAxisAlignment.center,
+						spacing: AppSpacings.pMd,
 						children: [
 							Theme(
 								data: ThemeData(
@@ -945,7 +945,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 									child: Text(localizations.media_activity_retry),
 								),
 							),
-							AppSpacings.spacingMdHorizontal,
 							Theme(
 								data: ThemeData(
 									outlinedButtonTheme: isDark ? AppOutlinedButtonsDarkThemes.base : AppOutlinedButtonsLightThemes.base,
@@ -1127,6 +1126,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 					}
 
 					return Row(
+						spacing: AppSpacings.pMd,
 						children: [
 							Container(
 								width: _scale(32),
@@ -1141,7 +1141,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 									color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
 								),
 							),
-							AppSpacings.spacingMdHorizontal,
 							Expanded(
 								child: Column(
 									crossAxisAlignment: CrossAxisAlignment.start,
@@ -1187,6 +1186,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 										),
 										child: Row(
 											mainAxisSize: MainAxisSize.min,
+											spacing: AppSpacings.pXs,
 											children: [
 												Text(
 													mediaInputSourceLabel(context, inputValue),
@@ -1195,7 +1195,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 														fontWeight: FontWeight.w500,
 													),
 												),
-												AppSpacings.spacingXsHorizontal,
 												Icon(
 													MdiIcons.chevronDown,
 													size: AppFontSize.extraSmall,
@@ -1247,6 +1246,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		final columnWidth = _scale(40);
 
 		return Row(
+			spacing: AppSpacings.pMd,
 			children: [
 				SizedBox(
 					width: columnWidth,
@@ -1282,7 +1282,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 						),
 					),
 				),
-				AppSpacings.spacingMdHorizontal,
 				Expanded(
 					child: SliderWithSteps(
 							value: volume / 100,
@@ -1292,7 +1291,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 							onChanged: (val) => _setVolume((val * 100).round()),
 						),
 				),
-				AppSpacings.spacingMdHorizontal,
 				SizedBox(
 					width: columnWidth,
 					child: Text(
@@ -1418,6 +1416,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 				(_devicesService!.getChannelProperty(posId)?.isWritable ?? false);
 
 		return Row(
+			spacing: AppSpacings.pMd,
 			children: [
 				SizedBox(
 					width: timeWidth,
@@ -1429,7 +1428,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 						),
 					),
 				),
-				AppSpacings.spacingMdHorizontal,
 				Expanded(
 					child: LayoutBuilder(
 						builder: (context, constraints) {
@@ -1463,7 +1461,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 						},
 					),
 				),
-				AppSpacings.spacingMdHorizontal,
 				SizedBox(
 					width: timeWidth,
 					child: Text(
@@ -1563,6 +1560,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 					child: Row(
 					mainAxisSize: MainAxisSize.min,
 					mainAxisAlignment: MainAxisAlignment.center,
+					spacing: AppSpacings.pXs,
 					children: [
 						Icon(
 							MdiIcons.remote,
@@ -1571,7 +1569,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 								? AppFilledButtonsDarkThemes.neutralForegroundColor
 								: AppFilledButtonsLightThemes.neutralForegroundColor,
 						),
-						AppSpacings.spacingXsHorizontal,
 						Text(
 							AppLocalizations.of(context)!.media_remote_control,
 								style: TextStyle(
@@ -1603,15 +1600,16 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			),
 			child: Column(
 				crossAxisAlignment: CrossAxisAlignment.start,
+				spacing: AppSpacings.pMd,
 				children: [
 					Row(
+						spacing: AppSpacings.pSm,
 						children: [
 							Icon(
 								MdiIcons.alertCircleOutline,
 								color: errorColor,
 								size: _scale(18),
 							),
-							AppSpacings.spacingSmHorizontal,
 							Expanded(
 								child: Text(
 									AppLocalizations.of(context)!.media_failure_inline(errorCount, warningCount),
@@ -1620,8 +1618,8 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 							),
 						],
 					),
-					AppSpacings.spacingMdVertical,
 					Row(
+						spacing: AppSpacings.pMd,
 						children: [
 							Theme(
 								data: ThemeData(
@@ -1638,7 +1636,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 									),
 								),
 							),
-							AppSpacings.spacingMdHorizontal,
 							Theme(
 								data: ThemeData(
 									outlinedButtonTheme: Theme.of(context).brightness == Brightness.dark
@@ -2560,6 +2557,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
               AppSpacings.spacingSmVertical,
               Row(
                 mainAxisSize: MainAxisSize.min,
+                spacing: AppSpacings.pSm,
                 children: [
                   if (hasLeft)
                     _buildRemoteDpadButton(
@@ -2567,16 +2565,13 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
                       icon: MdiIcons.chevronLeft,
                       onTap: () => _sendRemoteSheetCommand(propId, TelevisionRemoteKeyValue.arrowLeft),
                     ),
-                  if (hasSelect) ...[
-                    AppSpacings.spacingSmHorizontal,
+                  if (hasSelect)
                     _buildRemoteDpadButton(
                       context,
                       label: remoteLocalizations.media_remote_ok,
                       isPrimary: true,
                       onTap: () => _sendRemoteSheetCommand(propId, TelevisionRemoteKeyValue.select),
                     ),
-                    AppSpacings.spacingSmHorizontal,
-                  ],
                   if (hasRight)
                     _buildRemoteDpadButton(
                       context,

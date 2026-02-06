@@ -237,12 +237,12 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
       subtitleColor: secondaryColor,
       leading: Row(
         mainAxisSize: MainAxisSize.min,
+        spacing: AppSpacings.pMd,
         children: [
           HeaderIconButton(
             icon: MdiIcons.arrowLeft,
             onTap: () => Navigator.of(context).pop(),
           ),
-          AppSpacings.spacingMdHorizontal,
           HeaderMainIcon(
             icon: buildDeviceIcon(widget._device.category, widget._device.icon),
             color: ThemeColors.primary,
@@ -489,12 +489,12 @@ class SensorDetailPage extends StatelessWidget {
               subtitle: '$location • ${isOffline ? 'Offline' : 'Online'}',
               leading: Row(
                 mainAxisSize: MainAxisSize.min,
+                spacing: AppSpacings.pMd,
                 children: [
                   HeaderIconButton(
                     icon: MdiIcons.arrowLeft,
                     onTap: () => Navigator.pop(context),
                   ),
-                  AppSpacings.spacingMdHorizontal,
                   HeaderMainIcon(
                     icon: sensor.icon,
                     color: _themeColor,

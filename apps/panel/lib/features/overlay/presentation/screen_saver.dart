@@ -29,6 +29,7 @@ class ScreenSaverScreen extends StatelessWidget {
 
                 return Column(
                   mainAxisAlignment: MainAxisAlignment.center,
+                  spacing: AppSpacings.pMd,
                   children: [
                     FlipClock(
                       startTime: now,
@@ -64,7 +65,6 @@ class ScreenSaverScreen extends StatelessWidget {
                         density: _visualDensityService.density,
                       )),
                     ),
-                    AppSpacings.spacingMdVertical,
                     Text(
                       DatetimeUtils.getFormattedDate(now),
                       style: TextStyle(

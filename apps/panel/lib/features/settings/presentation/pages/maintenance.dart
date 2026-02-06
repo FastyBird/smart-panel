@@ -33,6 +33,7 @@ class MaintenancePage extends StatelessWidget {
           padding: AppSpacings.paddingMd,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            spacing: AppSpacings.pMd,
             children: [
               ListTile(
                 leading: Icon(
@@ -106,7 +107,6 @@ class MaintenancePage extends StatelessWidget {
                   ),
                 ),
               ),
-              AppSpacings.spacingMdVertical,
               ListTile(
                 leading: Icon(
                   MdiIcons.power,
@@ -179,7 +179,6 @@ class MaintenancePage extends StatelessWidget {
                   ),
                 ),
               ),
-              AppSpacings.spacingMdVertical,
               ListTile(
                 leading: Icon(
                   MdiIcons.vacuum,

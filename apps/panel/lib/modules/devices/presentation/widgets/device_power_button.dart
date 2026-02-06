@@ -96,13 +96,13 @@ class DevicePowerButton extends StatelessWidget {
                 ),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
+                  spacing: AppSpacings.pMd,
                   children: [
                     Icon(
                       MdiIcons.power,
                       size: _scale(44),
                       color: isOn ? effectiveActiveColor : inactiveColor,
                     ),
-                    AppSpacings.spacingMdVertical,
                     Text(
                       isOn ? 'On' : 'Off',
                       style: TextStyle(

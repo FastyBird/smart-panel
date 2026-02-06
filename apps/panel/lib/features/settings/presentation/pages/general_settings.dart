@@ -107,6 +107,7 @@ class GeneralSettingsPage extends StatelessWidget {
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
+                spacing: AppSpacings.pMd,
                 children: [
                   Icon(
                     buttons[index].icon,
@@ -115,7 +116,6 @@ class GeneralSettingsPage extends StatelessWidget {
                       density: _visualDensityService.density,
                     ),
                   ),
-                  AppSpacings.spacingMdVertical,
                   SizedBox(
                     height: AppFontSize.small * 2 + AppSpacings.pSm * 2,
                     child: Padding(

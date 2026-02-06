@@ -184,14 +184,11 @@ class _CardSliderState extends State<CardSlider> {
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          spacing: AppSpacings.pMd,
           children: [
             _buildHeader(context, colors, displayLabel),
-            AppSpacings.spacingMdVertical,
             _buildSliderRow(context),
-            if (widget.footer != null) ...[
-              AppSpacings.spacingMdVertical,
-              widget.footer!,
-            ],
+            if (widget.footer != null) widget.footer!,
           ],
         ),
       ),
@@ -211,15 +208,14 @@ class _CardSliderState extends State<CardSlider> {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Row(
+          spacing: AppSpacings.pSm,
           children: [
-            if (widget.icon != null) ...[
+            if (widget.icon != null)
               Icon(
                 widget.icon,
                 size: AppFontSize.small,
                 color: colors.secondary,
               ),
-              AppSpacings.spacingSmHorizontal,
-            ],
             Text(
               displayLabel.toUpperCase(),
               style: TextStyle(
@@ -257,16 +253,11 @@ class _CardSliderState extends State<CardSlider> {
     if (widget.leading != null || widget.trailing != null) {
       return Row(
         crossAxisAlignment: CrossAxisAlignment.center,
+        spacing: AppSpacings.pMd,
         children: [
-          if (widget.leading != null) ...[
-            widget.leading!,
-            AppSpacings.spacingMdHorizontal,
-          ],
+          if (widget.leading != null) widget.leading!,
           Expanded(child: slider),
-          if (widget.trailing != null) ...[
-            AppSpacings.spacingMdHorizontal,
-            widget.trailing!,
-          ],
+          if (widget.trailing != null) widget.trailing!,
         ],
       );
     }

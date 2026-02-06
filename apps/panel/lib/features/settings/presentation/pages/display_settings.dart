@@ -83,6 +83,7 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
             padding: AppSpacings.paddingMd,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              spacing: AppSpacings.pMd,
               children: [
                 SettingRow(
                   icon: MdiIcons.brightness6,
@@ -113,7 +114,6 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
                     },
                   ),
                 ),
-                AppSpacings.spacingMdVertical,
                 SettingRow(
                   icon: MdiIcons.lightbulbOn40,
                   title: Text(
@@ -133,7 +133,6 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
                     },
                   ),
                 ),
-                AppSpacings.spacingMdVertical,
                 SettingRow(
                   icon: MdiIcons.cellphoneLock,
                   title: Text(
@@ -185,7 +184,6 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
                     ),
                   ),
                 ),
-                AppSpacings.spacingMdVertical,
                 SettingRow(
                   icon: MdiIcons.wallpaper,
                   title: Text(
