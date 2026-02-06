@@ -80,21 +80,48 @@ class AuthErrorScreen extends StatelessWidget {
                     SizedBox(height: AppSpacings.pXl),
                     // Reset device button
                     if (isLandscape)
-                      SystemPagePrimaryButton(
-                        label: localizations.connection_auth_error_button_reset,
-                        icon: MdiIcons.restart,
-                        onPressed: onReset,
-                        isDark: isDark,
+                      Theme(
+                        data: Theme.of(context).copyWith(
+                          filledButtonTheme: isDark
+                              ? AppFilledButtonsDarkThemes.primary
+                              : AppFilledButtonsLightThemes.primary,
+                        ),
+                        child: FilledButton.icon(
+                          onPressed: onReset,
+                          icon: Icon(
+                            MdiIcons.restart,
+                            color: isDark
+                                ? AppFilledButtonsDarkThemes
+                                    .primaryForegroundColor
+                                : AppFilledButtonsLightThemes
+                                    .primaryForegroundColor,
+                          ),
+                          label: Text(localizations
+                              .connection_auth_error_button_reset),
+                        ),
                       )
                     else
                       SizedBox(
                         width: double.infinity,
-                        child: SystemPagePrimaryButton(
-                          label: localizations.connection_auth_error_button_reset,
-                          icon: MdiIcons.restart,
-                          onPressed: onReset,
-                          minWidth: double.infinity,
-                          isDark: isDark,
+                        child: Theme(
+                          data: Theme.of(context).copyWith(
+                            filledButtonTheme: isDark
+                                ? AppFilledButtonsDarkThemes.primary
+                                : AppFilledButtonsLightThemes.primary,
+                          ),
+                          child: FilledButton.icon(
+                            onPressed: onReset,
+                            icon: Icon(
+                              MdiIcons.restart,
+                              color: isDark
+                                  ? AppFilledButtonsDarkThemes
+                                      .primaryForegroundColor
+                                  : AppFilledButtonsLightThemes
+                                      .primaryForegroundColor,
+                            ),
+                            label: Text(localizations
+                                .connection_auth_error_button_reset),
+                          ),
                         ),
                       ),
                   ],

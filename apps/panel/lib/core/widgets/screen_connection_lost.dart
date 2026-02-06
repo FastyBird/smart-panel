@@ -78,6 +78,7 @@ class ConnectionLostScreen extends StatelessWidget {
                     SizedBox(height: AppSpacings.pXl),
                     // Buttons
                     _buildButtons(
+                      context: context,
                       screenService: screenService,
                       localizations: localizations,
                       isDark: isDark,
@@ -95,6 +96,7 @@ class ConnectionLostScreen extends StatelessWidget {
 
   /// Builds the action buttons
   Widget _buildButtons({
+    required BuildContext context,
     required ScreenService screenService,
     required AppLocalizations localizations,
     required bool isDark,
@@ -104,18 +106,42 @@ class ConnectionLostScreen extends StatelessWidget {
       return Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          SystemPagePrimaryButton(
-            label: localizations.connection_lost_button_reconnect,
-            icon: MdiIcons.cached,
-            onPressed: onReconnect,
-            isDark: isDark,
+          Theme(
+            data: Theme.of(context).copyWith(
+              filledButtonTheme: isDark
+                  ? AppFilledButtonsDarkThemes.primary
+                  : AppFilledButtonsLightThemes.primary,
+            ),
+            child: FilledButton.icon(
+              onPressed: onReconnect,
+              icon: Icon(
+                MdiIcons.cached,
+                color: isDark
+                    ? AppFilledButtonsDarkThemes.primaryForegroundColor
+                    : AppFilledButtonsLightThemes.primaryForegroundColor,
+              ),
+              label: Text(
+                  localizations.connection_lost_button_reconnect),
+            ),
           ),
           SizedBox(width: AppSpacings.pLg),
-          SystemPageSecondaryButton(
-            label: localizations.connection_lost_button_change_gateway,
-            icon: MdiIcons.wifi,
-            onPressed: onChangeGateway,
-            isDark: isDark,
+          Theme(
+            data: Theme.of(context).copyWith(
+              outlinedButtonTheme: isDark
+                  ? AppOutlinedButtonsDarkThemes.primary
+                  : AppOutlinedButtonsLightThemes.primary,
+            ),
+            child: OutlinedButton.icon(
+              onPressed: onChangeGateway,
+              icon: Icon(
+                MdiIcons.wifi,
+                color: isDark
+                    ? AppOutlinedButtonsDarkThemes.primaryForegroundColor
+                    : AppOutlinedButtonsLightThemes.primaryForegroundColor,
+              ),
+              label: Text(localizations
+                  .connection_lost_button_change_gateway),
+            ),
           ),
         ],
       );
@@ -125,23 +151,45 @@ class ConnectionLostScreen extends StatelessWidget {
       children: [
         SizedBox(
           width: double.infinity,
-          child: SystemPagePrimaryButton(
-            label: localizations.connection_lost_button_reconnect,
-            icon: MdiIcons.cached,
-            onPressed: onReconnect,
-            minWidth: double.infinity,
-            isDark: isDark,
+          child: Theme(
+            data: Theme.of(context).copyWith(
+              filledButtonTheme: isDark
+                  ? AppFilledButtonsDarkThemes.primary
+                  : AppFilledButtonsLightThemes.primary,
+            ),
+            child: FilledButton.icon(
+              onPressed: onReconnect,
+              icon: Icon(
+                MdiIcons.cached,
+                color: isDark
+                    ? AppFilledButtonsDarkThemes.primaryForegroundColor
+                    : AppFilledButtonsLightThemes.primaryForegroundColor,
+              ),
+              label: Text(
+                  localizations.connection_lost_button_reconnect),
+            ),
           ),
         ),
         SizedBox(height: AppSpacings.pMd + AppSpacings.pSm),
         SizedBox(
           width: double.infinity,
-          child: SystemPageSecondaryButton(
-            label: localizations.connection_lost_button_change_gateway,
-            icon: MdiIcons.wifi,
-            onPressed: onChangeGateway,
-            isDark: isDark,
-            minWidth: double.infinity,
+          child: Theme(
+            data: Theme.of(context).copyWith(
+              outlinedButtonTheme: isDark
+                  ? AppOutlinedButtonsDarkThemes.primary
+                  : AppOutlinedButtonsLightThemes.primary,
+            ),
+            child: OutlinedButton.icon(
+              onPressed: onChangeGateway,
+              icon: Icon(
+                MdiIcons.wifi,
+                color: isDark
+                    ? AppOutlinedButtonsDarkThemes.primaryForegroundColor
+                    : AppOutlinedButtonsLightThemes.primaryForegroundColor,
+              ),
+              label: Text(localizations
+                  .connection_lost_button_change_gateway),
+            ),
           ),
         ),
       ],

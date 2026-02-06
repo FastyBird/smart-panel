@@ -105,11 +105,24 @@ class AppError extends StatelessWidget {
                       ],
                       SizedBox(height: AppSpacings.scale(32)),
                       // Restart button
-                      SystemPagePrimaryButton(
-                        label: 'Restart Application',
-                        icon: MdiIcons.refresh,
-                        onPressed: _onRestart,
-                        isDark: isDark,
+                      Theme(
+                        data: Theme.of(context).copyWith(
+                          filledButtonTheme: isDark
+                              ? AppFilledButtonsDarkThemes.primary
+                              : AppFilledButtonsLightThemes.primary,
+                        ),
+                        child: FilledButton.icon(
+                          onPressed: _onRestart,
+                          icon: Icon(
+                            MdiIcons.refresh,
+                            color: isDark
+                                ? AppFilledButtonsDarkThemes
+                                    .primaryForegroundColor
+                                : AppFilledButtonsLightThemes
+                                    .primaryForegroundColor,
+                          ),
+                          label: Text('Restart Application'),
+                        ),
                       ),
                     ],
                   ),

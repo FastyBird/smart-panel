@@ -77,21 +77,48 @@ class NetworkErrorScreen extends StatelessWidget {
                     SizedBox(height: AppSpacings.pXl),
                     // Retry button
                     if (isLandscape)
-                      SystemPagePrimaryButton(
-                        label: localizations.connection_network_error_button_retry,
-                        icon: MdiIcons.refresh,
-                        onPressed: onRetry,
-                        isDark: isDark,
+                      Theme(
+                        data: Theme.of(context).copyWith(
+                          filledButtonTheme: isDark
+                              ? AppFilledButtonsDarkThemes.primary
+                              : AppFilledButtonsLightThemes.primary,
+                        ),
+                        child: FilledButton.icon(
+                          onPressed: onRetry,
+                          icon: Icon(
+                            MdiIcons.refresh,
+                            color: isDark
+                                ? AppFilledButtonsDarkThemes
+                                    .primaryForegroundColor
+                                : AppFilledButtonsLightThemes
+                                    .primaryForegroundColor,
+                          ),
+                          label: Text(localizations
+                              .connection_network_error_button_retry),
+                        ),
                       )
                     else
                       SizedBox(
                         width: double.infinity,
-                        child: SystemPagePrimaryButton(
-                          label: localizations.connection_network_error_button_retry,
-                          icon: MdiIcons.refresh,
-                          onPressed: onRetry,
-                          minWidth: double.infinity,
-                          isDark: isDark,
+                        child: Theme(
+                          data: Theme.of(context).copyWith(
+                            filledButtonTheme: isDark
+                                ? AppFilledButtonsDarkThemes.primary
+                                : AppFilledButtonsLightThemes.primary,
+                          ),
+                          child: FilledButton.icon(
+                            onPressed: onRetry,
+                            icon: Icon(
+                              MdiIcons.refresh,
+                              color: isDark
+                                  ? AppFilledButtonsDarkThemes
+                                      .primaryForegroundColor
+                                  : AppFilledButtonsLightThemes
+                                      .primaryForegroundColor,
+                            ),
+                            label: Text(localizations
+                                .connection_network_error_button_retry),
+                          ),
                         ),
                       ),
                   ],

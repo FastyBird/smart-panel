@@ -92,21 +92,43 @@ class SecurityOverlay extends StatelessWidget {
 										SizedBox(height: AppSpacings.pLg + AppSpacings.pMd),
 										SizedBox(
 											width: double.infinity,
-											child: SystemPagePrimaryButton(
-												label: 'Acknowledge',
-												icon: MdiIcons.check,
-												onPressed: onAcknowledge,
-												isDark: isDark,
+											child: Theme(
+												data: Theme.of(context).copyWith(
+													filledButtonTheme: isDark
+														? AppFilledButtonsDarkThemes.primary
+														: AppFilledButtonsLightThemes.primary,
+												),
+												child: FilledButton.icon(
+													onPressed: onAcknowledge,
+													icon: Icon(
+														MdiIcons.check,
+														color: isDark
+															? AppFilledButtonsDarkThemes.primaryForegroundColor
+															: AppFilledButtonsLightThemes.primaryForegroundColor,
+													),
+													label: Text('Acknowledge'),
+												),
 											),
 										),
 										SizedBox(height: AppSpacings.pMd),
 										SizedBox(
 											width: double.infinity,
-											child: SystemPageSecondaryButton(
-												label: 'Open Security',
-												icon: MdiIcons.shieldAlert,
-												onPressed: onOpenSecurity,
-												isDark: isDark,
+											child: Theme(
+												data: Theme.of(context).copyWith(
+													outlinedButtonTheme: isDark
+														? AppOutlinedButtonsDarkThemes.primary
+														: AppOutlinedButtonsLightThemes.primary,
+												),
+												child: OutlinedButton.icon(
+													onPressed: onOpenSecurity,
+													icon: Icon(
+														MdiIcons.shieldAlert,
+														color: isDark
+															? AppOutlinedButtonsDarkThemes.primaryForegroundColor
+															: AppOutlinedButtonsLightThemes.primaryForegroundColor,
+													),
+													label: Text('Open Security'),
+												),
 											),
 										),
 										],

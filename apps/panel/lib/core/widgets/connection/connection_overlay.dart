@@ -118,14 +118,49 @@ class _ConnectionOverlayState extends State<ConnectionOverlay> {
                 // Retry button
                 SizedBox(
                   width: double.infinity,
-                  child: SystemPagePrimaryButton(
-                    label: _isRetrying
-                        ? localizations.connection_overlay_retrying
-                        : localizations.connection_overlay_retry,
-                    icon: _isRetrying ? null : MdiIcons.refresh,
-                    onPressed: _handleRetry,
-                    isLoading: _isRetrying,
-                    isDark: isDark,
+                  child: Theme(
+                    data: Theme.of(context).copyWith(
+                      filledButtonTheme: isDark
+                          ? AppFilledButtonsDarkThemes.primary
+                          : AppFilledButtonsLightThemes.primary,
+                    ),
+                    child: _isRetrying
+                        ? FilledButton(
+                            onPressed: _handleRetry,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                SizedBox(
+                                  width: AppFontSize.base,
+                                  height: AppFontSize.base,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: isDark
+                                        ? AppFilledButtonsDarkThemes
+                                            .primaryForegroundColor
+                                        : AppFilledButtonsLightThemes
+                                            .primaryForegroundColor,
+                                  ),
+                                ),
+                                SizedBox(width: AppSpacings.pSm),
+                                Text(localizations
+                                    .connection_overlay_retrying),
+                              ],
+                            ),
+                          )
+                        : FilledButton.icon(
+                            onPressed: _handleRetry,
+                            icon: Icon(
+                              MdiIcons.refresh,
+                              color: isDark
+                                  ? AppFilledButtonsDarkThemes
+                                      .primaryForegroundColor
+                                  : AppFilledButtonsLightThemes
+                                      .primaryForegroundColor,
+                            ),
+                            label: Text(
+                                localizations.connection_overlay_retry),
+                          ),
                   ),
                 ),
               ],

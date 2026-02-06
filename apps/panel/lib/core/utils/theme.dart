@@ -1843,6 +1843,120 @@ class AppOutlinedButtonsDarkThemes {
   static Color get indigoForegroundColor => AppColorsDark.indigo;
 }
 
+class AppTextButtonsLightThemes {
+  static TextButtonThemeData get base => TextButtonThemeData(
+    style: createButtonTheme(
+      color: AppTextColorLight.regular,
+      pressedColor: AppColorsLight.primary,
+      hoveredColor: AppColorsLight.primary,
+      disabledColor: AppTextColorLight.placeholder,
+      bgColor: Colors.transparent,
+      pressedBgColor: Colors.transparent,
+      hoveredBgColor: Colors.transparent,
+      disabledBgColor: Colors.transparent,
+      borderColor: Colors.transparent,
+      pressedBorderColor: Colors.transparent,
+      hoveredBorderColor: Colors.transparent,
+      disabledBorderColor: Colors.transparent,
+    ),
+  );
+
+  static TextButtonThemeData get primary => TextButtonThemeData(
+    style: createButtonTheme(
+      color: AppColorsLight.primary,
+      pressedColor: AppColorsLight.primaryDark2,
+      hoveredColor: AppColorsLight.primaryLight3,
+      disabledColor: AppColorsLight.primaryLight5,
+      bgColor: Colors.transparent,
+      pressedBgColor: Colors.transparent,
+      hoveredBgColor: Colors.transparent,
+      disabledBgColor: Colors.transparent,
+      borderColor: Colors.transparent,
+      pressedBorderColor: Colors.transparent,
+      hoveredBorderColor: Colors.transparent,
+      disabledBorderColor: Colors.transparent,
+    ),
+  );
+
+  static TextButtonThemeData get neutral => TextButtonThemeData(
+    style: createButtonTheme(
+      color: AppTextColorLight.regular,
+      pressedColor: AppColorsLight.primary,
+      hoveredColor: AppColorsLight.primary,
+      disabledColor: AppTextColorLight.placeholder,
+      bgColor: Colors.transparent,
+      pressedBgColor: Colors.transparent,
+      hoveredBgColor: Colors.transparent,
+      disabledBgColor: Colors.transparent,
+      borderColor: Colors.transparent,
+      pressedBorderColor: Colors.transparent,
+      hoveredBorderColor: Colors.transparent,
+      disabledBorderColor: Colors.transparent,
+    ),
+  );
+
+  static Color get baseForegroundColor => AppTextColorLight.regular;
+  static Color get primaryForegroundColor => AppColorsLight.primary;
+  static Color get neutralForegroundColor => AppTextColorLight.regular;
+}
+
+class AppTextButtonsDarkThemes {
+  static TextButtonThemeData get base => TextButtonThemeData(
+    style: createButtonTheme(
+      color: AppTextColorDark.regular,
+      pressedColor: AppColorsDark.primary,
+      hoveredColor: AppColorsDark.primary,
+      disabledColor: AppTextColorDark.placeholder,
+      bgColor: Colors.transparent,
+      pressedBgColor: Colors.transparent,
+      hoveredBgColor: Colors.transparent,
+      disabledBgColor: Colors.transparent,
+      borderColor: Colors.transparent,
+      pressedBorderColor: Colors.transparent,
+      hoveredBorderColor: Colors.transparent,
+      disabledBorderColor: Colors.transparent,
+    ),
+  );
+
+  static TextButtonThemeData get primary => TextButtonThemeData(
+    style: createButtonTheme(
+      color: AppColorsDark.primary,
+      pressedColor: AppColorsDark.primaryDark2,
+      hoveredColor: AppColorsDark.primaryLight3,
+      disabledColor: AppColorsDark.primaryLight5,
+      bgColor: Colors.transparent,
+      pressedBgColor: Colors.transparent,
+      hoveredBgColor: Colors.transparent,
+      disabledBgColor: Colors.transparent,
+      borderColor: Colors.transparent,
+      pressedBorderColor: Colors.transparent,
+      hoveredBorderColor: Colors.transparent,
+      disabledBorderColor: Colors.transparent,
+    ),
+  );
+
+  static TextButtonThemeData get neutral => TextButtonThemeData(
+    style: createButtonTheme(
+      color: AppTextColorDark.regular,
+      pressedColor: AppColorsDark.primary,
+      hoveredColor: AppColorsDark.primary,
+      disabledColor: AppTextColorDark.placeholder,
+      bgColor: Colors.transparent,
+      pressedBgColor: Colors.transparent,
+      hoveredBgColor: Colors.transparent,
+      disabledBgColor: Colors.transparent,
+      borderColor: Colors.transparent,
+      pressedBorderColor: Colors.transparent,
+      hoveredBorderColor: Colors.transparent,
+      disabledBorderColor: Colors.transparent,
+    ),
+  );
+
+  static Color get baseForegroundColor => AppTextColorDark.regular;
+  static Color get primaryForegroundColor => AppColorsDark.primary;
+  static Color get neutralForegroundColor => AppTextColorDark.primary;
+}
+
 class AppIconButtonsLightThemes {
   static IconButtonThemeData get base => IconButtonThemeData(
     style: createIconButtonTheme(
