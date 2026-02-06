@@ -586,12 +586,10 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
             ),
             child: FilledButton(
               onPressed: onTap,
-              style: ButtonStyle(
-                padding: WidgetStateProperty.all(EdgeInsets.zero),
-                shape: WidgetStateProperty.all(
-                  RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppBorderRadius.base),
-                  ),
+              style: FilledButton.styleFrom(
+                padding: EdgeInsets.zero,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(AppBorderRadius.base),
                 ),
               ),
               child: Icon(
@@ -672,13 +670,11 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
                   child: FilledButton(
                     onPressed:
                         _isSceneTriggering ? null : () => _triggerHouseMode(scene),
-                    style: ButtonStyle(
-                      padding: WidgetStateProperty.all(EdgeInsets.zero),
-                      shape: WidgetStateProperty.all(
-                        RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(AppBorderRadius.base),
-                        ),
+                    style: FilledButton.styleFrom(
+                      padding: EdgeInsets.zero,
+                      shape: RoundedRectangleBorder(
+                        borderRadius:
+                            BorderRadius.circular(AppBorderRadius.base),
                       ),
                     ),
                     child: Icon(

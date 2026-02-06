@@ -145,20 +145,28 @@ class _AboutPageState extends State<AboutPage> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        TextButton(
-                          onPressed: () {
-                            // Navigate to Open Source Licenses page
-                          },
-                          style: OutlinedButton.styleFrom(
-                            padding: EdgeInsets.symmetric(
-                              vertical: AppSpacings.pSm,
-                              horizontal: AppSpacings.pSm,
-                            ),
+                        Theme(
+                          data: ThemeData(
+                            outlinedButtonTheme:
+                                Theme.of(context).brightness == Brightness.light
+                                    ? AppOutlinedButtonsLightThemes.primary
+                                    : AppOutlinedButtonsDarkThemes.primary,
                           ),
-                          child: Text(
-                            localizations.settings_about_show_license_button,
-                            style: TextStyle(
-                              fontSize: AppFontSize.extraSmall,
+                          child: OutlinedButton(
+                            onPressed: () {
+                              // Navigate to Open Source Licenses page
+                            },
+                            style: OutlinedButton.styleFrom(
+                              padding: EdgeInsets.symmetric(
+                                vertical: AppSpacings.pSm,
+                                horizontal: AppSpacings.pSm,
+                              ),
+                            ),
+                            child: Text(
+                              localizations.settings_about_show_license_button,
+                              style: TextStyle(
+                                fontSize: AppFontSize.extraSmall,
+                              ),
                             ),
                           ),
                         ),

@@ -87,41 +87,49 @@ class GeneralSettingsPage extends StatelessWidget {
           ),
           itemCount: buttons.length,
           itemBuilder: (context, index) {
-            return OutlinedButton(
-              onPressed: () {
-                Navigator.of(context).pushNamed(buttons[index].route);
-              },
-              style: OutlinedButton.styleFrom(
-                padding: AppSpacings.paddingSm,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppBorderRadius.base),
-                ),
+            return Theme(
+              data: ThemeData(
+                outlinedButtonTheme:
+                    Theme.of(context).brightness == Brightness.light
+                        ? AppOutlinedButtonsLightThemes.primary
+                        : AppOutlinedButtonsDarkThemes.primary,
               ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                spacing: AppSpacings.pMd,
-                children: [
-                  Icon(
-                    buttons[index].icon,
-                    size: AppSpacings.scale(28),
+              child: OutlinedButton(
+                onPressed: () {
+                  Navigator.of(context).pushNamed(buttons[index].route);
+                },
+                style: OutlinedButton.styleFrom(
+                  padding: AppSpacings.paddingSm,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(AppBorderRadius.base),
                   ),
-                  SizedBox(
-                    height: AppFontSize.small * 2 + AppSpacings.pSm * 2,
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(
-                        vertical: 0,
-                        horizontal: AppSpacings.pMd,
-                      ),
-                      child: Text(
-                        buttons[index].label,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: AppFontSize.extraSmall,
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  spacing: AppSpacings.pMd,
+                  children: [
+                    Icon(
+                      buttons[index].icon,
+                      size: AppSpacings.scale(28),
+                    ),
+                    SizedBox(
+                      height: AppFontSize.small * 2 + AppSpacings.pSm * 2,
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(
+                          vertical: 0,
+                          horizontal: AppSpacings.pMd,
+                        ),
+                        child: Text(
+                          buttons[index].label,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: AppFontSize.extraSmall,
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             );
           },

@@ -130,45 +130,52 @@ class _ConnectionBannerState extends State<ConnectionBanner>
                   SizedBox(width: AppSpacings.pMd),
                   SizedBox(
                     height: AppSpacings.pLg + AppSpacings.pSm,
-                    child: OutlinedButton(
-                      onPressed: _isRetrying ? null : _handleRetry,
-                      style: OutlinedButton.styleFrom(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: AppSpacings.pSm + AppSpacings.pXs,
-                          vertical: 0,
-                        ),
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        backgroundColor: Colors.transparent,
-                        side: BorderSide(
-                          color: _isRetrying
-                              ? buttonBorderColor.withValues(alpha: 0.5)
-                              : buttonBorderColor,
-                          width: AppSpacings.scale(1),
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(
-                            AppBorderRadius.round,
+                    child: Theme(
+                      data: ThemeData(
+                        outlinedButtonTheme: isDark
+                            ? AppOutlinedButtonsDarkThemes.warning
+                            : AppOutlinedButtonsLightThemes.warning,
+                      ),
+                      child: OutlinedButton(
+                        onPressed: _isRetrying ? null : _handleRetry,
+                        style: OutlinedButton.styleFrom(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: AppSpacings.pSm + AppSpacings.pXs,
+                            vertical: 0,
+                          ),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          backgroundColor: Colors.transparent,
+                          side: BorderSide(
+                            color: _isRetrying
+                                ? buttonBorderColor.withValues(alpha: 0.5)
+                                : buttonBorderColor,
+                            width: AppSpacings.scale(1),
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(
+                              AppBorderRadius.round,
+                            ),
                           ),
                         ),
+                        child: _isRetrying
+                            ? SizedBox(
+                                width: AppFontSize.small,
+                                height: AppFontSize.small,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 1.5,
+                                  color: spinnerColor.withValues(alpha: 0.7),
+                                ),
+                              )
+                            : Text(
+                                localizations.connection_banner_retry,
+                                style: TextStyle(
+                                  color: spinnerColor,
+                                  fontSize: AppFontSize.small,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
                       ),
-                      child: _isRetrying
-                          ? SizedBox(
-                              width: AppFontSize.small,
-                              height: AppFontSize.small,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 1.5,
-                                color: spinnerColor.withValues(alpha: 0.7),
-                              ),
-                            )
-                          : Text(
-                              localizations.connection_banner_retry,
-                              style: TextStyle(
-                                color: spinnerColor,
-                                fontSize: AppFontSize.small,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
                     ),
                   ),
                 ],

@@ -105,24 +105,68 @@ class AlertBanner extends StatelessWidget {
           ),
           if (onTap != null) ...[
             AppSpacings.spacingMdHorizontal,
-            FilledButton(
-              onPressed: onTap,
-              style: FilledButton.styleFrom(
-                backgroundColor: family.base,
-                foregroundColor: Colors.white,
-                side: BorderSide(color: family.base),
-                padding: EdgeInsets.symmetric(
-                  horizontal: AppSpacings.pMd,
-                  vertical: AppSpacings.pSm,
-                ),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            Theme(
+              data: ThemeData(
+                filledButtonTheme: _filledButtonTheme(brightness),
               ),
-              child: const Text('View'),
+              child: FilledButton(
+                onPressed: onTap,
+                style: FilledButton.styleFrom(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: AppSpacings.pMd,
+                    vertical: AppSpacings.pSm,
+                  ),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: const Text('View'),
+              ),
             ),
           ],
         ],
       ),
     );
+  }
+
+  FilledButtonThemeData _filledButtonTheme(Brightness brightness) {
+    final isLight = brightness == Brightness.light;
+    return switch (color) {
+      ThemeColors.primary => isLight
+          ? AppFilledButtonsLightThemes.primary
+          : AppFilledButtonsDarkThemes.primary,
+      ThemeColors.success => isLight
+          ? AppFilledButtonsLightThemes.success
+          : AppFilledButtonsDarkThemes.success,
+      ThemeColors.warning => isLight
+          ? AppFilledButtonsLightThemes.warning
+          : AppFilledButtonsDarkThemes.warning,
+      ThemeColors.danger => isLight
+          ? AppFilledButtonsLightThemes.danger
+          : AppFilledButtonsDarkThemes.danger,
+      ThemeColors.error => isLight
+          ? AppFilledButtonsLightThemes.error
+          : AppFilledButtonsDarkThemes.error,
+      ThemeColors.info => isLight
+          ? AppFilledButtonsLightThemes.info
+          : AppFilledButtonsDarkThemes.info,
+      ThemeColors.neutral => isLight
+          ? AppFilledButtonsLightThemes.neutral
+          : AppFilledButtonsDarkThemes.neutral,
+      ThemeColors.flutter => isLight
+          ? AppFilledButtonsLightThemes.flutter
+          : AppFilledButtonsDarkThemes.flutter,
+      ThemeColors.teal => isLight
+          ? AppFilledButtonsLightThemes.teal
+          : AppFilledButtonsDarkThemes.teal,
+      ThemeColors.cyan => isLight
+          ? AppFilledButtonsLightThemes.cyan
+          : AppFilledButtonsDarkThemes.cyan,
+      ThemeColors.pink => isLight
+          ? AppFilledButtonsLightThemes.pink
+          : AppFilledButtonsDarkThemes.pink,
+      ThemeColors.indigo => isLight
+          ? AppFilledButtonsLightThemes.indigo
+          : AppFilledButtonsDarkThemes.indigo,
+    };
   }
 }

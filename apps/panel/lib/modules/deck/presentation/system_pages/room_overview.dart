@@ -764,13 +764,11 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
                       onPressed: _isSceneTriggering
                           ? null
                           : () => _triggerScene(scene.sceneId),
-                      style: ButtonStyle(
-                        padding: WidgetStateProperty.all(EdgeInsets.zero),
-                        shape: WidgetStateProperty.all(
-                          RoundedRectangleBorder(
-                            borderRadius:
-                                BorderRadius.circular(AppBorderRadius.base),
-                          ),
+                      style: FilledButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        shape: RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.circular(AppBorderRadius.base),
                         ),
                       ),
                       child: Icon(
