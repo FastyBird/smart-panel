@@ -66,7 +66,7 @@ class AuthErrorScreen extends StatelessWidget {
                       ),
                       textAlign: TextAlign.center,
                     ),
-                    SizedBox(height: AppSpacings.pMd),
+                    AppSpacings.spacingMdVertical,
                     // Message
                     Text(
                       localizations.connection_auth_error_message,
@@ -77,7 +77,7 @@ class AuthErrorScreen extends StatelessWidget {
                         height: 1.5,
                       ),
                     ),
-                    SizedBox(height: AppSpacings.pXl),
+                    AppSpacings.spacingXlVertical,
                     // Reset device button
                     if (isLandscape)
                       Theme(

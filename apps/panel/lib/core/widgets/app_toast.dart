@@ -270,7 +270,7 @@ class _ToastWidgetState extends State<_ToastWidget>
                           color: AppColors.white,
                           size: widget.screenService.scale(18),
                         ),
-                        SizedBox(width: AppSpacings.pMd),
+                        AppSpacings.spacingMdHorizontal,
                         Flexible(
                           child: Text(
                             widget.message,

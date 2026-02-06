@@ -62,7 +62,7 @@ class AppError extends StatelessWidget {
                         size: AppSpacings.scale(80),
                         iconSize: AppSpacings.scale(40),
                       ),
-                      SizedBox(height: AppSpacings.scale(24)),
+                      AppSpacings.spacingXlVertical,
                       // Title
                       Text(
                         isLandscape
@@ -75,7 +75,7 @@ class AppError extends StatelessWidget {
                           fontWeight: FontWeight.w500,
                         ),
                       ),
-                      SizedBox(height: AppSpacings.scale(8)),
+                      AppSpacings.spacingMdVertical,
                       // Subtitle/error message
                       // For long errors, show generic message here; details go in error code box
                       Text(
@@ -93,17 +93,17 @@ class AppError extends StatelessWidget {
                       ),
                       // Permit join info card
                       if (hasPermitJoinError) ...[
-                        SizedBox(height: AppSpacings.scale(24)),
+                        AppSpacings.spacingXlVertical,
                         _buildPermitJoinHint(context, isDark),
                       ],
                       // Error details box for long error messages
                       if (_errorMessage != null &&
                           !hasPermitJoinError &&
                           _errorMessage.length > 100) ...[
-                        SizedBox(height: AppSpacings.scale(16)),
+                        AppSpacings.spacingLgVertical,
                         _buildErrorCodeBox(context, isDark),
                       ],
-                      SizedBox(height: AppSpacings.scale(32)),
+                      AppSpacings.spacingXlVertical,
                       // Restart button
                       Theme(
                         data: Theme.of(context).copyWith(
@@ -168,7 +168,7 @@ class AppError extends StatelessWidget {
               size: AppSpacings.scale(22),
             ),
           ),
-          SizedBox(width: AppSpacings.scale(12)),
+          AppSpacings.spacingLgHorizontal,
           Expanded(
             child: Text(
               'Please ask the administrator to activate "Permit Join" in the admin panel, then restart the application.',

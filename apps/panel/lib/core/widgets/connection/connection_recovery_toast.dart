@@ -124,7 +124,7 @@ class _ConnectionRecoveryToastState extends State<ConnectionRecoveryToast>
                         color: AppColors.white,
                         size: screenService.scale(18),
                       ),
-                      SizedBox(width: AppSpacings.pMd),
+                      AppSpacings.spacingMdHorizontal,
                       Text(
                         localizations.connection_recovery_connected,
                         style: TextStyle(

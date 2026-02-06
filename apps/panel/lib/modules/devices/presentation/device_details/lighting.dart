@@ -782,7 +782,7 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
             } : null,
             color: ThemeColors.primary,
           ),
-        if (hasChannels && hasPower) SizedBox(width: AppSpacings.pSm),
+        if (hasChannels && hasPower) AppSpacings.spacingSmHorizontal,
         if (hasPower)
           HeaderIconButton(
             icon: MdiIcons.power,

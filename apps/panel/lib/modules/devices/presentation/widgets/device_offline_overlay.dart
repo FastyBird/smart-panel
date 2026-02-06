@@ -122,7 +122,7 @@ class _DeviceOfflineBanner extends StatelessWidget {
               size: AppSpacings.scale(22),
             ),
           ),
-          SizedBox(width: AppSpacings.scale(12)),
+          AppSpacings.spacingLgHorizontal,
           // Content
           Expanded(
             child: Column(
@@ -151,7 +151,7 @@ class _DeviceOfflineBanner extends StatelessWidget {
                     ],
                   ],
                 ),
-                SizedBox(height: AppSpacings.scale(2)),
+                AppSpacings.spacingXsVertical,
                 Text(
                   localizations.device_offline_description,
                   style: TextStyle(

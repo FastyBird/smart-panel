@@ -63,7 +63,7 @@ class ServerErrorScreen extends StatelessWidget {
                       ),
                       textAlign: TextAlign.center,
                     ),
-                    SizedBox(height: AppSpacings.pMd),
+                    AppSpacings.spacingMdVertical,
                     // Message
                     Text(
                       localizations.connection_server_error_message,
@@ -74,7 +74,7 @@ class ServerErrorScreen extends StatelessWidget {
                         height: 1.5,
                       ),
                     ),
-                    SizedBox(height: AppSpacings.pXl),
+                    AppSpacings.spacingXlVertical,
                     // Retry button
                     if (isLandscape)
                       Theme(

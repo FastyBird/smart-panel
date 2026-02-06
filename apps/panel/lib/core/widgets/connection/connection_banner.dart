@@ -117,7 +117,7 @@ class _ConnectionBannerState extends State<ConnectionBanner>
                     color: spinnerColor,
                   ),
                 ),
-                SizedBox(width: AppSpacings.pMd),
+                AppSpacings.spacingMdHorizontal,
                 Text(
                   localizations.connection_banner_reconnecting,
                   style: TextStyle(
@@ -127,7 +127,7 @@ class _ConnectionBannerState extends State<ConnectionBanner>
                   ),
                 ),
                 if (widget.onRetry != null) ...[
-                  SizedBox(width: AppSpacings.pMd),
+                  AppSpacings.spacingMdHorizontal,
                   SizedBox(
                     height: AppSpacings.pLg + AppSpacings.pSm,
                     child: Theme(

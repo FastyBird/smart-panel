@@ -416,7 +416,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
             } : null,
             color: ThemeColors.primary,
           ),
-        if (hasChannels && hasObstruction) SizedBox(width: AppSpacings.pSm),
+        if (hasChannels && hasObstruction) AppSpacings.spacingSmHorizontal,
         if (hasObstruction) _buildObstructionIcon(isDark),
       ],
     );
@@ -1066,18 +1066,8 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   // --------------------------------------------------------------------------
 
   Widget _buildMainControlCard(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Container(
-      padding: AppSpacings.paddingMd,
-      decoration: BoxDecoration(
-        color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
-        borderRadius: BorderRadius.circular(AppBorderRadius.base),
-        border: Border.all(
-        color: isDark ? AppBorderColorDark.light : AppBorderColorLight.darker,
-        width: AppSpacings.scale(1),
-      ),
-    ),
+    return AppCard(
+      width: double.infinity,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         spacing: AppSpacings.pLg,
@@ -1234,18 +1224,12 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
             HapticFeedback.lightImpact();
             onTap();
           },
-          icon: Icon(icon, size: AppFontSize.small, color: iconColor),
-          label: Text(
-            label,
-            style: TextStyle(
-              fontSize: AppFontSize.small,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
+          icon: Icon(icon, size: AppFontSize.base, color: iconColor),
+          label: Text(label),
           style: FilledButton.styleFrom(
             padding: EdgeInsets.symmetric(
               horizontal: AppSpacings.pMd,
-              vertical: AppSpacings.pSm,
+              vertical: AppSpacings.pMd,
             ),
           ),
         ),

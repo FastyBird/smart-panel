@@ -64,7 +64,7 @@ class SecurityOverlay extends StatelessWidget {
 										mainAxisSize: MainAxisSize.min,
 										children: [
 										_buildIcon(isDark, screenService),
-										SizedBox(height: AppSpacings.pLg),
+										AppSpacings.spacingLgVertical,
 										Text(
 											controller.overlayTitle,
 											style: TextStyle(
@@ -74,7 +74,7 @@ class SecurityOverlay extends StatelessWidget {
 											),
 											textAlign: TextAlign.center,
 										),
-										SizedBox(height: AppSpacings.pMd),
+										AppSpacings.spacingMdVertical,
 										...displayAlerts.map(
 											(alert) => _buildAlertRow(alert, isDark, screenService, context),
 										),
@@ -111,7 +111,7 @@ class SecurityOverlay extends StatelessWidget {
 												),
 											),
 										),
-										SizedBox(height: AppSpacings.pMd),
+										AppSpacings.spacingMdVertical,
 										SizedBox(
 											width: double.infinity,
 											child: Theme(
@@ -177,7 +177,7 @@ class SecurityOverlay extends StatelessWidget {
 						size: screenService.scale(16),
 						color: severityColor(alert.severity, isDark),
 					),
-					SizedBox(width: AppSpacings.pSm),
+					AppSpacings.spacingSmHorizontal,
 					Expanded(
 						child: Text(
 							alert.message ?? alert.type.displayTitle,
@@ -189,7 +189,7 @@ class SecurityOverlay extends StatelessWidget {
 							overflow: TextOverflow.ellipsis,
 						),
 					),
-					SizedBox(width: AppSpacings.pSm),
+					AppSpacings.spacingSmHorizontal,
 					Text(
 						DatetimeUtils.formatTimeAgo(alert.timestamp, localizations),
 						style: TextStyle(

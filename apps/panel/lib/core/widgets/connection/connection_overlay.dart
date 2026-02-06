@@ -92,7 +92,7 @@ class _ConnectionOverlayState extends State<ConnectionOverlay> {
               children: [
                 // Animated icon
                 _buildIcon(isDark, screenService),
-                SizedBox(height: AppSpacings.pLg),
+                AppSpacings.spacingLgVertical,
                 // Title
                 Text(
                   _getTitle(localizations),
@@ -103,7 +103,7 @@ class _ConnectionOverlayState extends State<ConnectionOverlay> {
                   ),
                   textAlign: TextAlign.center,
                 ),
-                SizedBox(height: AppSpacings.pMd),
+                AppSpacings.spacingMdVertical,
                 // Subtitle
                 Text(
                   _getSubtitle(localizations),
@@ -142,7 +142,7 @@ class _ConnectionOverlayState extends State<ConnectionOverlay> {
                                             .primaryForegroundColor,
                                   ),
                                 ),
-                                SizedBox(width: AppSpacings.pSm),
+                                AppSpacings.spacingSmHorizontal,
                                 Text(localizations
                                     .connection_overlay_retrying),
                               ],

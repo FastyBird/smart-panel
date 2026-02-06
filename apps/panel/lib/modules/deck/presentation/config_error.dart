@@ -64,7 +64,7 @@ class ConfigErrorScreen extends StatelessWidget {
                       ),
                       textAlign: TextAlign.center,
                     ),
-                    SizedBox(height: AppSpacings.pMd),
+                    AppSpacings.spacingMdVertical,
                     // Message
                     Text(
                       errorMessage,

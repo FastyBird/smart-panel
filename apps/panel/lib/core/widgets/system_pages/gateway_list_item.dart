@@ -71,7 +71,7 @@ class GatewayListItem extends StatelessWidget {
                 size: AppSpacings.pLg + AppSpacings.pMd,
               ),
             ),
-            SizedBox(width: AppSpacings.pMd),
+            AppSpacings.spacingMdHorizontal,
             // Info
             Expanded(
               child: Column(
@@ -85,7 +85,7 @@ class GatewayListItem extends StatelessWidget {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  SizedBox(height: AppSpacings.pXs),
+                  AppSpacings.spacingXsVertical,
                   Text(
                     backend.displayAddress,
                     style: TextStyle(

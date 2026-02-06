@@ -937,20 +937,14 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
           },
           icon: Icon(
             icon,
-            size: AppFontSize.small,
+            size: AppFontSize.base,
             color: iconColor,
           ),
-          label: Text(
-            label,
-            style: TextStyle(
-              fontSize: AppFontSize.small,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
+          label: Text(label),
           style: FilledButton.styleFrom(
             padding: EdgeInsets.symmetric(
               horizontal: AppSpacings.pMd,
-              vertical: AppSpacings.pSm,
+              vertical: AppSpacings.pMd,
             ),
           ),
         ),

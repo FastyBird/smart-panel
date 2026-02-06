@@ -2009,11 +2009,11 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
           rowItems.add(const Expanded(child: SizedBox()));
         }
         if (j < crossAxisCount - 1) {
-          rowItems.add(SizedBox(width: AppSpacings.pMd));
+          rowItems.add(AppSpacings.spacingMdHorizontal);
         }
       }
       if (rows.isNotEmpty) {
-        rows.add(SizedBox(height: AppSpacings.pMd));
+        rows.add(AppSpacings.spacingMdVertical);
       }
       rows.add(Row(children: rowItems));
     }

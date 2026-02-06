@@ -1219,7 +1219,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
                 children: [
                   if (!sensor.isBinary) ...[
                     _buildTrendIcon(context, sensor.trend, isAlert),
-                    SizedBox(width: AppSpacings.scale(4)),
+                    AppSpacings.spacingSmHorizontal,
                   ],
                   RichText(
                     maxLines: 1,

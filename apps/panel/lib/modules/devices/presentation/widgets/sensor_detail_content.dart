@@ -202,7 +202,7 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       _buildStatsRow(context),
-                      SizedBox(height: AppSpacings.pMd),
+                      AppSpacings.spacingMdVertical,
                       Expanded(child: _buildChart(context, flexible: true)),
                     ],
                   ),
@@ -591,7 +591,7 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
                 decoration:
                     BoxDecoration(color: dotColor, shape: BoxShape.circle),
               ),
-              SizedBox(width: AppSpacings.pMd),
+              AppSpacings.spacingMdHorizontal,
               Expanded(
                 child: Text(
                   stateLabel,

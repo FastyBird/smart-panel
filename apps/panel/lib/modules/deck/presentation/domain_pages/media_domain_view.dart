@@ -1524,9 +1524,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 						},
 					style: FilledButton.styleFrom(
 						padding: AppSpacings.paddingMd,
-						shape: RoundedRectangleBorder(
-							borderRadius: BorderRadius.circular(AppBorderRadius.base),
-						),
 					),
 					child: Row(
 					mainAxisSize: MainAxisSize.min,
@@ -1535,18 +1532,13 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 					children: [
 						Icon(
 							MdiIcons.remote,
-							size: AppSpacings.scale(18),
+							size: AppFontSize.base,
 							color: isDark
 								? AppFilledButtonsDarkThemes.neutralForegroundColor
 								: AppFilledButtonsLightThemes.neutralForegroundColor,
 						),
 						Text(
-							AppLocalizations.of(context)!.media_remote_control,
-								style: TextStyle(
-									fontSize: AppFontSize.small,
-									fontWeight: FontWeight.w500,
-								),
-							),
+							AppLocalizations.of(context)!.media_remote_control),
 						],
 					),
 				),

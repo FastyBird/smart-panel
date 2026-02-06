@@ -382,7 +382,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
                 fontWeight: FontWeight.w500,
               ),
             ),
-            SizedBox(height: AppSpacings.pMd),
+            AppSpacings.spacingMdVertical,
             Text(
               localizations.discovery_searching_description,
               textAlign: TextAlign.center,
@@ -393,7 +393,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
               ),
             ),
             if (_backends.isNotEmpty) ...[
-              SizedBox(height: AppSpacings.pLg),
+              AppSpacings.spacingLgVertical,
               Text(
                 localizations.discovery_found_count(_backends.length),
                 style: TextStyle(
@@ -494,7 +494,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
               fontWeight: FontWeight.w500,
             ),
           ),
-          SizedBox(height: AppSpacings.pSm),
+          AppSpacings.spacingSmVertical,
           Text(
             localizations.discovery_select_description(_backends.length),
             style: TextStyle(
@@ -552,7 +552,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
               ),
             ),
           ),
-          SizedBox(height: AppSpacings.pLg),
+          AppSpacings.spacingLgVertical,
           // Secondary actions
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -648,7 +648,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                SizedBox(height: AppSpacings.pSm),
+                AppSpacings.spacingSmVertical,
                 Text(
                   localizations.discovery_select_description(_backends.length),
                   style: TextStyle(
@@ -712,7 +712,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
                     ),
                   ),
                 ),
-                SizedBox(height: AppSpacings.pLg),
+                AppSpacings.spacingLgVertical,
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -855,7 +855,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
               label: Text(localizations.discovery_button_try_again),
             ),
           ),
-          SizedBox(width: AppSpacings.pLg),
+          AppSpacings.spacingLgHorizontal,
           Theme(
             data: Theme.of(context).copyWith(
               outlinedButtonTheme: isDark
@@ -958,7 +958,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
                 fontWeight: FontWeight.w500,
               ),
             ),
-            SizedBox(height: AppSpacings.pMd),
+            AppSpacings.spacingMdVertical,
             // Message
             Text(
               localizations.discovery_error_description,
@@ -969,7 +969,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
                 height: 1.5,
               ),
             ),
-            SizedBox(height: AppSpacings.pXl),
+            AppSpacings.spacingXlVertical,
             // Buttons
             _buildActionButtons(isDark, isLandscape, localizations),
           ],
@@ -1013,7 +1013,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
                 fontWeight: FontWeight.w500,
               ),
             ),
-            SizedBox(height: AppSpacings.pMd),
+            AppSpacings.spacingMdVertical,
             Text(
               localizations.discovery_connecting_description(address),
               textAlign: TextAlign.center,
@@ -1078,7 +1078,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
               autocorrect: false,
               onSubmitted: (_) => _submitManualUrl(),
             ),
-            SizedBox(height: AppSpacings.pLg),
+            AppSpacings.spacingLgVertical,
             Text(
               localizations.discovery_manual_entry_help,
               style: TextStyle(
@@ -1087,7 +1087,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
               ),
               textAlign: TextAlign.center,
             ),
-            SizedBox(height: AppSpacings.pXl),
+            AppSpacings.spacingXlVertical,
             // Buttons
             _buildManualEntryButtons(isDark, isLandscape, localizations),
           ],
@@ -1125,7 +1125,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
               label: Text(localizations.discovery_button_back),
             ),
           ),
-          SizedBox(width: AppSpacings.pLg),
+          AppSpacings.spacingLgHorizontal,
           Theme(
             data: Theme.of(context).copyWith(
               filledButtonTheme: isDark

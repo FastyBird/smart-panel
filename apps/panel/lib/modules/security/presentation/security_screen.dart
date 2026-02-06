@@ -50,9 +50,9 @@ class SecurityScreen extends StatelessWidget {
 							crossAxisAlignment: CrossAxisAlignment.start,
 							children: [
 								_buildStatusCard(status, isDark, screenService),
-								SizedBox(height: AppSpacings.pLg),
+								AppSpacings.spacingLgVertical,
 								_buildEntryPointsCard(entryPoints, isDark, screenService),
-								SizedBox(height: AppSpacings.pLg),
+								AppSpacings.spacingLgVertical,
 								Row(
 									children: [
 										Expanded(
@@ -85,7 +85,7 @@ class SecurityScreen extends StatelessWidget {
 																size: screenService.scale(14),
 																color: SystemPagesTheme.textSecondary(isDark),
 															),
-															SizedBox(width: AppSpacings.pXs),
+															AppSpacings.spacingXsHorizontal,
 															Text(
 																'Acknowledge all',
 																style: TextStyle(
@@ -100,13 +100,13 @@ class SecurityScreen extends StatelessWidget {
 											),
 									],
 								),
-								SizedBox(height: AppSpacings.pMd),
+								AppSpacings.spacingMdVertical,
 								Expanded(
 									child: totalAlerts == 0
 										? ListView(
 											children: [
 												_buildEmptyState(isDark, screenService),
-												SizedBox(height: AppSpacings.pLg),
+												AppSpacings.spacingLgVertical,
 												_buildRecentEventsSection(
 													eventsRepo,
 													devicesService,
@@ -125,7 +125,7 @@ class SecurityScreen extends StatelessWidget {
 													screenService,
 													localizations,
 												),
-												SizedBox(height: AppSpacings.pLg),
+												AppSpacings.spacingLgVertical,
 												_buildRecentEventsSection(
 													eventsRepo,
 													devicesService,
@@ -170,7 +170,7 @@ class SecurityScreen extends StatelessWidget {
 								size: screenService.scale(16),
 								color: severityColor(severity, isDark),
 							),
-							SizedBox(width: AppSpacings.pSm),
+							AppSpacings.spacingSmHorizontal,
 							Text(
 								_severitySectionTitle(severity),
 								style: TextStyle(
@@ -179,7 +179,7 @@ class SecurityScreen extends StatelessWidget {
 									fontWeight: FontWeight.w600,
 								),
 							),
-							SizedBox(width: AppSpacings.pSm),
+							AppSpacings.spacingSmHorizontal,
 							Text(
 								'(${alerts.length})',
 								style: TextStyle(
@@ -233,7 +233,7 @@ class SecurityScreen extends StatelessWidget {
 									size: screenService.scale(16),
 									color: SystemPagesTheme.success(isDark),
 								),
-								SizedBox(width: AppSpacings.pSm),
+								AppSpacings.spacingSmHorizontal,
 								Text(
 									'All alerts acknowledged',
 									style: TextStyle(
@@ -270,7 +270,7 @@ class SecurityScreen extends StatelessWidget {
 							size: screenService.scale(20),
 							color: SystemPagesTheme.textSecondary(isDark),
 						),
-						SizedBox(width: AppSpacings.pSm),
+						AppSpacings.spacingSmHorizontal,
 						Expanded(
 							child: Text(
 								'Recent Events',
@@ -292,7 +292,7 @@ class SecurityScreen extends StatelessWidget {
 							),
 					],
 				),
-				SizedBox(height: AppSpacings.pMd),
+				AppSpacings.spacingMdVertical,
 				_buildRecentEventsContent(
 					eventsRepo,
 					devicesService,
@@ -368,7 +368,7 @@ class SecurityScreen extends StatelessWidget {
 						size: screenService.scale(18),
 						color: SystemPagesTheme.error(isDark),
 					),
-					SizedBox(width: AppSpacings.pSm),
+					AppSpacings.spacingSmHorizontal,
 					Expanded(
 						child: Text(
 							eventsRepo.errorMessage ?? 'Failed to load events',
@@ -443,7 +443,7 @@ class SecurityScreen extends StatelessWidget {
 						size: screenService.scale(18),
 						color: _eventIconColor(event, isDark),
 					),
-					SizedBox(width: AppSpacings.pMd),
+					AppSpacings.spacingMdHorizontal,
 					Expanded(
 						child: Column(
 							crossAxisAlignment: CrossAxisAlignment.start,
@@ -459,7 +459,7 @@ class SecurityScreen extends StatelessWidget {
 									overflow: TextOverflow.ellipsis,
 								),
 								if (deviceName != null) ...[
-									SizedBox(height: 2),
+									AppSpacings.spacingXsVertical,
 									Text(
 										deviceName,
 										style: TextStyle(
@@ -473,7 +473,7 @@ class SecurityScreen extends StatelessWidget {
 							],
 						),
 					),
-					SizedBox(width: AppSpacings.pSm),
+					AppSpacings.spacingSmHorizontal,
 					Text(
 						DatetimeUtils.formatTimeAgo(event.timestamp, localizations),
 						style: TextStyle(
@@ -538,7 +538,7 @@ class SecurityScreen extends StatelessWidget {
 								size: screenService.scale(22),
 								color: SystemPagesTheme.textSecondary(isDark),
 							),
-							SizedBox(width: AppSpacings.pMd),
+							AppSpacings.spacingMdHorizontal,
 							Expanded(
 								child: Text(
 									'Entry Points',
@@ -551,7 +551,7 @@ class SecurityScreen extends StatelessWidget {
 							),
 						],
 					),
-					SizedBox(height: AppSpacings.pMd),
+					AppSpacings.spacingMdVertical,
 					if (summary.isEmpty)
 						Text(
 							'No entry sensors configured',
@@ -562,7 +562,7 @@ class SecurityScreen extends StatelessWidget {
 						)
 					else ...[
 						_buildEntryPointsCounters(summary, isDark),
-						SizedBox(height: AppSpacings.pMd),
+						AppSpacings.spacingMdVertical,
 						if (summary.openCount > 0)
 							...summary.openItems.map(
 								(ep) => Padding(
@@ -579,7 +579,7 @@ class SecurityScreen extends StatelessWidget {
 										size: screenService.scale(16),
 										color: SystemPagesTheme.success(isDark),
 									),
-									SizedBox(width: AppSpacings.pSm),
+									AppSpacings.spacingSmHorizontal,
 									Text(
 										'All entry points closed',
 										style: TextStyle(
@@ -668,7 +668,7 @@ class SecurityScreen extends StatelessWidget {
 						size: screenService.scale(16),
 						color: SystemPagesTheme.error(isDark),
 					),
-					SizedBox(width: AppSpacings.pSm),
+					AppSpacings.spacingSmHorizontal,
 					Expanded(
 						child: Text(
 							ep.room != null ? '${ep.name} (${ep.room})' : ep.name,
@@ -713,7 +713,7 @@ class SecurityScreen extends StatelessWidget {
 					size: screenService.scale(48),
 					color: SystemPagesTheme.success(isDark),
 				),
-				SizedBox(height: AppSpacings.pMd),
+				AppSpacings.spacingMdVertical,
 				Text(
 					'No active alerts',
 					style: TextStyle(
@@ -722,7 +722,7 @@ class SecurityScreen extends StatelessWidget {
 						fontWeight: FontWeight.w500,
 					),
 				),
-				SizedBox(height: AppSpacings.pXs),
+				AppSpacings.spacingXsVertical,
 				Text(
 					'Your home is secure.',
 					style: TextStyle(
@@ -766,7 +766,7 @@ class SecurityScreen extends StatelessWidget {
 								size: screenService.scale(28),
 								color: headerSeverityColor,
 							),
-							SizedBox(width: AppSpacings.pMd),
+							AppSpacings.spacingMdHorizontal,
 							Expanded(
 								child: Text(
 									'Security',
@@ -781,7 +781,7 @@ class SecurityScreen extends StatelessWidget {
 								_buildSeverityBadge(status.highestSeverity, isDark, infoLabel: 'OK', fontWeight: FontWeight.w700),
 						],
 					),
-					SizedBox(height: AppSpacings.pMd),
+					AppSpacings.spacingMdVertical,
 					Wrap(
 						spacing: AppSpacings.pSm,
 						runSpacing: AppSpacings.pSm,
@@ -838,7 +838,7 @@ class SecurityScreen extends StatelessWidget {
 						size: screenService.scale(14),
 						color: fgColor,
 					),
-					SizedBox(width: AppSpacings.pXs),
+					AppSpacings.spacingXsHorizontal,
 					Text(
 						label,
 						style: TextStyle(
@@ -917,7 +917,7 @@ class SecurityScreen extends StatelessWidget {
 								? SystemPagesTheme.success(isDark)
 								: severityColor(alert.severity, isDark),
 						),
-						SizedBox(width: AppSpacings.pMd),
+						AppSpacings.spacingMdHorizontal,
 						Expanded(
 							child: Column(
 								crossAxisAlignment: CrossAxisAlignment.start,
@@ -931,7 +931,7 @@ class SecurityScreen extends StatelessWidget {
 										),
 									),
 									if (alert.message != null) ...[
-										SizedBox(height: AppSpacings.pXs),
+										AppSpacings.spacingXsVertical,
 										Text(
 											alert.message!,
 											style: TextStyle(
@@ -943,7 +943,7 @@ class SecurityScreen extends StatelessWidget {
 										),
 									],
 									if (isAcknowledged) ...[
-										SizedBox(height: AppSpacings.pXs),
+										AppSpacings.spacingXsVertical,
 										Text(
 											'Acknowledged',
 											style: TextStyle(
@@ -956,12 +956,12 @@ class SecurityScreen extends StatelessWidget {
 								],
 							),
 						),
-						SizedBox(width: AppSpacings.pSm),
+						AppSpacings.spacingSmHorizontal,
 						Column(
 							crossAxisAlignment: CrossAxisAlignment.end,
 							children: [
 								_buildSeverityBadge(alert.severity, isDark),
-								SizedBox(height: AppSpacings.pXs),
+								AppSpacings.spacingXsVertical,
 								Text(
 									DatetimeUtils.formatTimeAgo(alert.timestamp, localizations),
 									style: TextStyle(
@@ -972,7 +972,7 @@ class SecurityScreen extends StatelessWidget {
 							],
 						),
 						if (!isAcknowledged && onAcknowledge != null) ...[
-							SizedBox(width: AppSpacings.pSm),
+							AppSpacings.spacingSmHorizontal,
 							GestureDetector(
 								onTap: onAcknowledge,
 								child: Icon(
