@@ -114,7 +114,7 @@ class ValueSelectorRow<T> extends StatelessWidget {
         ? (isDark ? AppFillColorDark.darker : AppFillColorLight.darker)
         : (isDark ? AppFillColorDark.light : AppFillColorLight.blank);
     final borderColor =
-        isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
+        isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
     final textColor = isDisabled
         ? (isDark ? AppTextColorDark.disabled : AppTextColorLight.disabled)
         : (isDark ? AppTextColorDark.primary : AppTextColorLight.primary);
@@ -397,7 +397,7 @@ class _ValueSelectorSheetState<T> extends State<ValueSelectorSheet<T>> {
         (isDark ? AppColorsDark.primary : AppColorsLight.primary);
     final cardColor = isDark ? AppFillColorDark.light : AppFillColorLight.blank;
     final borderColor =
-        isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
+        isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
     final textColor =
         isDark ? AppTextColorDark.primary : AppTextColorLight.primary;
     final secondaryColor =

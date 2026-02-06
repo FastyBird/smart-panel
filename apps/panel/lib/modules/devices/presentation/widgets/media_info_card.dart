@@ -25,7 +25,7 @@ class MediaInfoCard extends StatelessWidget {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 		final localizations = AppLocalizations.of(context)!;
 		final cardColor = isDark ? AppFillColorDark.light : AppFillColorLight.blank;
-		final borderColor = isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
+		final borderColor = isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
 		final secondaryColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
 		final iconContainer = ThemeColorFamily.get(
 			isDark ? Brightness.dark : Brightness.light,

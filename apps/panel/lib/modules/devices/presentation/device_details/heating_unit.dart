@@ -676,7 +676,8 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
     bool isDark, {
     required double dialSize,
   }) {
-    final borderColor = _getModeColorFamily(context).light7;
+    final borderColor =
+        isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
     final cardColor =
         isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
     final (minSetpoint, maxSetpoint) = _validSetpointRange;
@@ -715,7 +716,8 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
   }
 
   Widget _buildCompactDialWithModes(BuildContext context, bool isDark) {
-    final borderColor = _getModeColorFamily(context).light7;
+    final borderColor =
+        isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
     final cardColor =
         isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
     final (minSetpoint, maxSetpoint) = _validSetpointRange;

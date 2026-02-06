@@ -1133,7 +1133,7 @@ class _LightingSliderPanel extends StatelessWidget {
         border: isDark
             ? null
             : Border.all(
-                color: AppBorderColorLight.light,
+                color: AppBorderColorLight.darker,
                 width: _scale(1),
               ),
       ),
@@ -1234,7 +1234,7 @@ class _LightingSliderPanel extends StatelessWidget {
                 border: isDark
                     ? null
                     : Border.all(
-                        color: AppBorderColorLight.light,
+                        color: AppBorderColorLight.darker,
                         width: _scale(1),
                       ),
               ),
@@ -1296,7 +1296,7 @@ class _LightingSliderPanel extends StatelessWidget {
                 border: isDark
                     ? null
                     : Border.all(
-                        color: AppBorderColorLight.light,
+                        color: AppBorderColorLight.darker,
                         width: _scale(1),
                       ),
               ),
@@ -1461,7 +1461,7 @@ class _LightingColorPanel extends StatelessWidget {
                 border: isDark
                     ? null
                     : Border.all(
-                        color: AppBorderColorLight.light,
+                        color: AppBorderColorLight.darker,
                         width: _scale(1),
                       ),
               ),
@@ -1518,7 +1518,7 @@ class _LightingColorPanel extends StatelessWidget {
                 border: isDark
                     ? null
                     : Border.all(
-                        color: AppBorderColorLight.light,
+                        color: AppBorderColorLight.darker,
                         width: _scale(1),
                       ),
               ),
@@ -1583,7 +1583,7 @@ class _LightingColorPanel extends StatelessWidget {
                 border: isDark
                     ? null
                     : Border.all(
-                        color: AppBorderColorLight.light,
+                        color: AppBorderColorLight.darker,
                         width: _scale(1),
                       ),
               ),
@@ -1638,7 +1638,7 @@ class _LightingColorPanel extends StatelessWidget {
                 border: isDark
                     ? null
                     : Border.all(
-                        color: AppBorderColorLight.light,
+                        color: AppBorderColorLight.darker,
                         width: _scale(1),
                       ),
               ),
@@ -2027,7 +2027,7 @@ class LightingPresetsPanel extends StatelessWidget {
     final localizations = AppLocalizations.of(context)!;
     final swatchSize = _scale(36);
     final borderColor =
-        isDark ? AppBorderColorDark.base : AppBorderColorLight.base;
+        isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       spacing: AppSpacings.pMd,
@@ -2113,7 +2113,7 @@ class LightingPresetsPanel extends StatelessWidget {
     final swatchWidth =
         _screenService.isLargeScreen ? swatchHeight * 2 : swatchHeight;
     final borderColor =
-        isDark ? AppBorderColorDark.base : AppBorderColorLight.base;
+        isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       spacing: AppSpacings.pMd,
@@ -2142,7 +2142,7 @@ class LightingPresetsPanel extends StatelessWidget {
                   borderRadius: BorderRadius.circular(AppBorderRadius.base),
                   border: Border.all(
                     color: isActive ? presetColor : borderColor,
-                    width: isActive ? 3 : 1,
+                    width: isActive ? _scale(3) : _scale(1),
                   ),
                   boxShadow: isActive
                       ? [

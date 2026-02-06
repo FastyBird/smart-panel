@@ -381,7 +381,7 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
           borderRadius: BorderRadius.circular(AppBorderRadius.base),
           border: Border.all(
             color:
-                isDark ? AppFillColorDark.light : AppBorderColorLight.light,
+                isDark ? AppBorderColorDark.light : AppBorderColorLight.darker,
             width: _scale(1),
           ),
         ),
@@ -468,8 +468,8 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
               borderRadius: BorderRadius.circular(AppBorderRadius.base),
               border: Border.all(
                 color: isDark
-                    ? AppFillColorDark.light
-                    : AppBorderColorLight.light,
+                    ? AppBorderColorDark.light
+                    : AppBorderColorLight.darker,
                 width: _scale(1),
               ),
             )
@@ -570,7 +570,7 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
       itemCount: reversedEvents.length,
       separatorBuilder: (_, __) => Divider(
         height: _scale(1),
-        color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light,
+        color: isDark ? AppBorderColorDark.light : AppBorderColorLight.darker,
       ),
       itemBuilder: (context, index) {
         final point = reversedEvents[index];
@@ -703,8 +703,8 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
               borderRadius: BorderRadius.circular(AppBorderRadius.base),
               border: Border.all(
                 color: isDark
-                    ? AppFillColorDark.light
-                    : AppBorderColorLight.light,
+                    ? AppBorderColorDark.light
+                    : AppBorderColorLight.darker,
                 width: _scale(1),
               ),
             )

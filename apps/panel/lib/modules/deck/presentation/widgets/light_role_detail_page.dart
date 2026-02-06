@@ -2608,7 +2608,7 @@ class LightingMainControl extends StatelessWidget {
                       ? primaryColor
                       : (isDark
                           ? AppColors.blank
-                          : AppBorderColorLight.light),
+                          : AppBorderColorLight.darker),
                   width: isOn ? _scale(4) : _scale(1),
                 ),
                 boxShadow: isOn
@@ -2916,7 +2916,7 @@ class _SliderPanel extends StatelessWidget {
         border: isDark
             ? null
             : Border.all(
-                color: AppBorderColorLight.light,
+                color: AppBorderColorLight.darker,
                 width: _scale(1),
               ),
       ),
@@ -3016,7 +3016,7 @@ class _SliderPanel extends StatelessWidget {
                 border: isDark
                     ? null
                     : Border.all(
-                        color: AppBorderColorLight.light,
+                        color: AppBorderColorLight.darker,
                         width: _scale(1),
                       ),
               ),
@@ -3077,7 +3077,7 @@ class _SliderPanel extends StatelessWidget {
                 border: isDark
                     ? null
                     : Border.all(
-                        color: AppBorderColorLight.light,
+                        color: AppBorderColorLight.darker,
                         width: _scale(1),
                       ),
               ),
@@ -3249,7 +3249,7 @@ class _ColorPanel extends StatelessWidget {
                 border: isDark
                     ? null
                     : Border.all(
-                        color: AppBorderColorLight.light,
+                        color: AppBorderColorLight.darker,
                         width: _scale(1),
                       ),
               ),
@@ -3305,7 +3305,7 @@ class _ColorPanel extends StatelessWidget {
                 border: isDark
                     ? null
                     : Border.all(
-                        color: AppBorderColorLight.light,
+                        color: AppBorderColorLight.darker,
                         width: _scale(1),
                       ),
               ),
@@ -3369,7 +3369,7 @@ class _ColorPanel extends StatelessWidget {
                 border: isDark
                     ? null
                     : Border.all(
-                        color: AppBorderColorLight.light,
+                        color: AppBorderColorLight.darker,
                         width: _scale(1),
                       ),
               ),
@@ -3423,7 +3423,7 @@ class _ColorPanel extends StatelessWidget {
                 border: isDark
                     ? null
                     : Border.all(
-                        color: AppBorderColorLight.light,
+                        color: AppBorderColorLight.darker,
                         width: _scale(1),
                       ),
               ),
@@ -3955,7 +3955,7 @@ class LightingPresetsPanel extends StatelessWidget {
     final localizations = AppLocalizations.of(context)!;
     final swatchSize = _scale(36);
     final borderColor =
-        isDark ? AppBorderColorDark.base : AppBorderColorLight.base;
+        isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -4048,7 +4048,7 @@ class LightingPresetsPanel extends StatelessWidget {
     final swatchHeight = _scale(AppTileHeight.horizontal);
     final swatchWidth = _screenService.isLargeScreen ? swatchHeight * 2 : swatchHeight;
     final borderColor =
-        isDark ? AppBorderColorDark.base : AppBorderColorLight.base;
+        isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -4079,7 +4079,7 @@ class LightingPresetsPanel extends StatelessWidget {
                   borderRadius: BorderRadius.circular(AppBorderRadius.base),
                   border: Border.all(
                     color: isActive ? presetColor : borderColor,
-                    width: isActive ? 3 : 1,
+                    width: isActive ? _scale(3) : _scale(1),
                   ),
                   boxShadow: isActive
                       ? [

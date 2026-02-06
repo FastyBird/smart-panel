@@ -1014,7 +1014,8 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     bool isDark, {
     required double dialSize,
   }) {
-    final borderColor = _getModeColorFamily(context).light7;
+    final borderColor =
+        isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
     final cardColor =
         isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
     final (minSetpoint, maxSetpoint) = _validSetpointRange;
@@ -1055,7 +1056,8 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
 
   /// Compact dial with vertical icon-only mode selector on the right
   Widget _buildCompactDialWithModes(BuildContext context, bool isDark) {
-    final borderColor = _getModeColorFamily(context).light7;
+    final borderColor =
+        isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
     final cardColor =
         isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
     final (minSetpoint, maxSetpoint) = _validSetpointRange;

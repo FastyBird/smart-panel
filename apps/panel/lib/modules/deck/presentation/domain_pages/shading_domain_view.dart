@@ -703,11 +703,12 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     return Container(
       padding: AppSpacings.paddingMd,
       decoration: BoxDecoration(
-        color: isLight ? AppFillColorLight.light : AppFillColorDark.light,
+        color: isLight ? AppFillColorLight.light : AppFillColorDark.lighter,
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
-        border: isLight
-            ? Border.all(color: AppBorderColorLight.base)
-            : null,
+        border: Border.all(
+          color: isLight ? AppBorderColorLight.darker : AppBorderColorDark.light,
+          width: _screenService.scale(1),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

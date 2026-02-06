@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:flutter/material.dart';
 
@@ -16,6 +18,8 @@ class FlipClock extends StatelessWidget {
   final Duration duration;
 
   final FlipDirection flipDirection;
+
+  final ScreenService _screenService = locator<ScreenService>();
 
   late DigitBuilder _digitBuilder;
   late Widget _separator;
@@ -40,6 +44,7 @@ class FlipClock extends StatelessWidget {
             borderRadius: borderRadius,
             border: Border.all(
               color: borderColor ?? AppColors.blank,
+              width: _screenService.scale(1),
             ),
           ),
           padding: EdgeInsets.symmetric(
@@ -63,6 +68,7 @@ class FlipClock extends StatelessWidget {
             borderRadius: borderRadius,
             border: Border.all(
               color: borderColor ?? AppColors.blank,
+              width: _screenService.scale(1),
             ),
           ),
           padding: EdgeInsets.symmetric(

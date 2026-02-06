@@ -752,7 +752,7 @@ class SecurityScreen extends StatelessWidget {
 				border: isTriggered
 					? Border.all(
 						color: SystemPagesTheme.error(isDark),
-						width: 2,
+						width: screenService.scale(2),
 					)
 					: null,
 			),
@@ -904,6 +904,7 @@ class SecurityScreen extends StatelessWidget {
 					border: alert.severity == Severity.critical && !isAcknowledged
 						? Border.all(
 							color: SystemPagesTheme.error(isDark).withValues(alpha: 0.5),
+							width: screenService.scale(1),
 						)
 						: null,
 				),

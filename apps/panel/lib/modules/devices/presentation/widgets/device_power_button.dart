@@ -49,7 +49,7 @@ class DevicePowerButton extends StatelessWidget {
     final inactiveColor =
         isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
     final inactiveBorderColor =
-        isDark ? AppColors.blank : AppBorderColorLight.light;
+        isDark ? AppColors.blank : AppBorderColorLight.darker;
 
     final shadowOffset = Offset(0, _scale(4));
     final baseShadow = BoxShadow(

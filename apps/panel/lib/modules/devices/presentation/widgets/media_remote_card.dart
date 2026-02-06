@@ -123,7 +123,7 @@ class MediaRemoteCard<T extends Enum> extends StatelessWidget {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 		final localizations = AppLocalizations.of(context)!;
 		final cardColor = isDark ? AppFillColorDark.light : AppFillColorLight.blank;
-		final borderColor = isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
+		final borderColor = isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
 
 		final hasUp = _hasKey('arrowUp');
 		final hasDown = _hasKey('arrowDown');

@@ -67,11 +67,11 @@ class CardSlider extends StatefulWidget {
   final bool showHeaderValue;
 
   /// Optional card background color. When null, uses the default
-  /// (AppFillColorLight.blank / AppFillColorDark.light).
+  /// (AppFillColorLight.light / AppFillColorDark.lighter), matching control cards.
   final Color? cardColor;
 
   /// Optional card border color. When null, uses the default
-  /// (AppBorderColorLight.light / AppBorderColorDark.light).
+  /// (AppBorderColorLight.darker / AppBorderColorDark.light).
   final Color? borderColor;
 
   const CardSlider({
@@ -161,8 +161,8 @@ class _CardSliderState extends State<CardSlider> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final colors = (
-      card: widget.cardColor ?? (isDark ? AppFillColorDark.light : AppFillColorLight.blank),
-      border: widget.borderColor ?? (isDark ? AppBorderColorDark.light : AppBorderColorLight.light),
+      card: widget.cardColor ?? (isDark ? AppFillColorDark.lighter : AppFillColorLight.light),
+      border: widget.borderColor ?? (isDark ? AppBorderColorDark.light : AppBorderColorLight.darker),
       text: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
       secondary: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
     );
@@ -178,7 +178,7 @@ class _CardSliderState extends State<CardSlider> {
           color: colors.card,
           borderRadius: BorderRadius.circular(AppBorderRadius.base),
           border: Border.all(
-            color: isDark ? colors.card : colors.border,
+            color: colors.border,
             width: _scale(1),
           ),
         ),

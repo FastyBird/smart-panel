@@ -32,8 +32,8 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
         shape: Border(
           bottom: BorderSide(
             color: Theme.of(context).brightness == Brightness.light
-                ? AppBorderColorLight.base
-                : AppBorderColorDark.base,
+                ? AppBorderColorLight.darker
+                : AppBorderColorDark.light,
             width: _screenService.scale(
               1,
               density: _visualDensityService.density,

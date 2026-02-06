@@ -586,7 +586,7 @@ class _CircularControlDialState extends State<CircularControlDial>
     final size = widget.size * 0.12;
     final bgColor = isDark ? AppFillColorDark.darker : AppFillColorLight.darker;
     final borderColor =
-        isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
+        isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
     final iconColor =
         isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
 

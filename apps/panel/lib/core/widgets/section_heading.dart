@@ -210,7 +210,7 @@ class SectionHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final borderColor = accentColor ??
-        (isDark ? AppBorderColorDark.light : AppBorderColorLight.light);
+        (isDark ? AppBorderColorDark.light : AppBorderColorLight.darker);
     final iconColor = accentColor ??
         (isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary);
     final textColor = accentColor ??

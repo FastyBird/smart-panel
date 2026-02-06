@@ -334,7 +334,7 @@ class AppTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppBorderRadius.base),
           side: BorderSide(
-            color: AppBorderColorLight.base,
+            color: AppBorderColorLight.darker,
             width: _screenService.scale(
               1,
               density: _visualDensityService.density,
@@ -391,7 +391,7 @@ class AppTheme {
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(AppBorderRadius.base),
           side: BorderSide(
-            color: AppBorderColorDark.base,
+            color: AppBorderColorDark.light,
             width: _screenService.scale(
               1,
               density: _visualDensityService.density,

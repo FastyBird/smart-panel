@@ -797,7 +797,8 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
     final localizations = AppLocalizations.of(context)!;
     final cardColor =
         isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
-    final borderColor = _getStatusColorFamily(context).light7;
+    final borderColor =
+        isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
 
     return Container(
       padding: AppSpacings.paddingMd,
@@ -1010,7 +1011,8 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
     final localizations = AppLocalizations.of(context)!;
     final cardColor =
         isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
-    final borderColor = _getStatusColorFamily(context).light7;
+    final borderColor =
+        isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
 
     return Container(
       padding: AppSpacings.paddingMd,

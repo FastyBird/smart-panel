@@ -67,7 +67,7 @@ class PageHeader extends StatelessWidget {
     final bgColor = backgroundColor ??
         (isDark ? AppBgColorDark.page : AppBgColorLight.base);
     final defaultBorderColor =
-        isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
+        isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
     final titleColor =
         isDark ? AppTextColorDark.primary : AppTextColorLight.primary;
     final defaultSubtitleColor =

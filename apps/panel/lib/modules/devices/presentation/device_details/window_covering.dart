@@ -541,7 +541,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   Widget _buildLandscapeMainControl(BuildContext context) {
     final bool isLight = Theme.of(context).brightness == Brightness.light;
     final borderColor =
-        isLight ? AppBorderColorLight.base : AppBorderColorDark.base;
+        isLight ? AppBorderColorLight.darker : AppBorderColorDark.light;
     final cardColor =
         isLight ? AppFillColorLight.light : AppFillColorDark.light;
 
@@ -549,7 +549,10 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
       decoration: BoxDecoration(
         color: cardColor,
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
-        border: isLight ? Border.all(color: borderColor) : null,
+        border: Border.all(
+          color: borderColor,
+          width: _scale(1),
+        ),
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -679,7 +682,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
         ),
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
         border: Border.all(
-          color: isLight ? AppBorderColorLight.base : AppBorderColorDark.base,
+          color: isLight ? AppBorderColorLight.darker : AppBorderColorDark.light,
           width: _scale(4),
         ),
       ),
@@ -1095,8 +1098,11 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
       decoration: BoxDecoration(
         color: isLight ? AppFillColorLight.light : AppFillColorDark.light,
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
-        border: isLight ? Border.all(color: AppBorderColorLight.base) : null,
+        border: Border.all(
+        color: isLight ? AppBorderColorLight.darker : AppBorderColorDark.light,
+        width: _scale(1),
       ),
+    ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         spacing: AppSpacings.pLg,

@@ -657,11 +657,8 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
     bool isDark, {
     required double dialSize,
   }) {
-    final statusColorFamily = _getStatusColorFamily(context);
     final borderColor =
-        isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
-    final isOn = _device.isOn;
-    final controlBorderColor = isOn ? statusColorFamily.light7 : borderColor;
+        isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
     final cardColor =
         isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
 
@@ -671,7 +668,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
       decoration: BoxDecoration(
         color: cardColor,
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
-        border: Border.all(color: controlBorderColor, width: _scale(1)),
+        border: Border.all(color: borderColor, width: _scale(1)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -685,11 +682,8 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
   }
 
   Widget _buildCompactControlCard(BuildContext context, bool isDark) {
-    final statusColorFamily = _getStatusColorFamily(context);
     final borderColor =
-        isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
-    final isOn = _device.isOn;
-    final controlBorderColor = isOn ? statusColorFamily.light7 : borderColor;
+        isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
     final cardColor =
         isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
 
@@ -698,7 +692,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
       decoration: BoxDecoration(
         color: cardColor,
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
-        border: Border.all(color: controlBorderColor, width: _scale(1)),
+        border: Border.all(color: borderColor, width: _scale(1)),
       ),
       child: LayoutBuilder(
         builder: (context, constraints) {

@@ -94,7 +94,7 @@ class MediaPlaybackCard extends StatelessWidget {
 
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 		final cardColor = isDark ? AppFillColorDark.light : AppFillColorLight.blank;
-		final borderColor = isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
+		final borderColor = isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
 
 		return AnimatedOpacity(
 			opacity: isEnabled ? 1.0 : 0.5,

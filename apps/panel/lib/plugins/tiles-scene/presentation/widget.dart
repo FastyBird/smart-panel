@@ -37,9 +37,9 @@ class SceneTileWidget extends StatelessWidget {
                   ? AppColorsLight.primary
                   : AppColorsDark.primary)
               : (Theme.of(context).brightness == Brightness.light
-                  ? AppBorderColorLight.base
-                  : AppBorderColorDark.base),
-          width: _tile.isOn ? 2 : 1,
+                  ? AppBorderColorLight.darker
+                  : AppBorderColorDark.light),
+          width: _tile.isOn ? _screenService.scale(2) : _screenService.scale(1),
         ),
       ),
       child: Padding(

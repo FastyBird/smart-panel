@@ -705,7 +705,10 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 				color: isLight ? AppFillColorLight.light : AppFillColorDark.light,
 				borderRadius: BorderRadius.circular(AppBorderRadius.base),
         border: isLight
-            ? Border.all(color: AppBorderColorLight.base)
+            ? Border.all(
+                color: AppBorderColorLight.darker,
+                width: _scale(1),
+              )
             : null,
 			),
 			child: content,
@@ -954,7 +957,10 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 											horizontal: _scale(AppSpacings.pMd),
 											vertical: _scale(AppSpacings.pSm),
 										),
-										side: BorderSide(color: isDark ? AppBorderColorDark.base : AppBorderColorLight.base),
+										side: BorderSide(
+											color: isDark ? AppBorderColorDark.light : AppBorderColorLight.darker,
+											width: _scale(1),
+										),
 										shape: RoundedRectangleBorder(
 											borderRadius: BorderRadius.circular(AppBorderRadius.base),
 										),
@@ -1213,8 +1219,9 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 										borderRadius: BorderRadius.circular(AppBorderRadius.base),
 										border: Border.all(
 											color: isDark
-													? AppBorderColorDark.dark
-													: AppBorderColorLight.dark,
+													? AppBorderColorDark.light
+													: AppBorderColorLight.darker,
+											width: _scale(1),
 										),
 									),
 									child: Text(
@@ -1805,7 +1812,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 				decoration: BoxDecoration(
 					color: backgroundColor,
 					borderRadius: BorderRadius.circular(AppBorderRadius.base),
-					border: Border.all(color: backgroundColor),
+					border: Border.all(color: backgroundColor, width: _scale(1)),
 				),
 				child: Column(
 					crossAxisAlignment: CrossAxisAlignment.start,

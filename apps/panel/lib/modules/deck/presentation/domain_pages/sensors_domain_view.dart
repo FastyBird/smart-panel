@@ -1037,7 +1037,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
         color: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
         border: Border.all(
-          color: isDark ? AppFillColorDark.light : AppBorderColorLight.light,
+          color: isDark ? AppBorderColorDark.light : AppBorderColorLight.darker,
           width: _scale(1),
         ),
       ),
@@ -1156,14 +1156,14 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
             color: isAlert
                 ? dangerColor
                 : (isDark
-                    ? AppFillColorDark.light
-                    : AppBorderColorLight.light),
+                    ? AppBorderColorDark.light
+                    : AppBorderColorLight.darker),
             width: _scale(1),
           ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
-          spacing: AppSpacings.pMd,
+          spacing: AppSpacings.pSm,
           children: [
             // Header: Icon + Freshness/Status dot
             Row(

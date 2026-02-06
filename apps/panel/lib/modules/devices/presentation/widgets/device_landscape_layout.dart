@@ -78,7 +78,7 @@ class DeviceLandscapeLayout extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final borderColor =
-        isDark ? AppBorderColorDark.light : AppBorderColorLight.base;
+        isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
     final secondaryBgColor =
         isDark ? AppFillColorDark.light : AppFillColorLight.light;
 

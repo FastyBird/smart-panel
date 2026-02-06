@@ -84,15 +84,15 @@ class _IconSwitchState extends State<IconSwitch>
                 border: Border.all(
                   color: widget.toggleMode
                       ? (Theme.of(context).brightness == Brightness.light
-                          ? AppBorderColorLight.base
-                          : AppBorderColorDark.base)
+                          ? AppBorderColorLight.darker
+                          : AppBorderColorDark.light)
                       : (switchState
                           ? (Theme.of(context).brightness == Brightness.light
                               ? AppColorsLight.primary
                               : AppColorsDark.primary)
                           : (Theme.of(context).brightness == Brightness.light
-                              ? AppBorderColorLight.base
-                              : AppBorderColorDark.base)),
+                              ? AppBorderColorLight.darker
+                              : AppBorderColorDark.light)),
                   width: screenService.scale(
                     1,
                     density: visualDensityService.density,
@@ -100,15 +100,15 @@ class _IconSwitchState extends State<IconSwitch>
                 ),
                 color: widget.toggleMode
                     ? (Theme.of(context).brightness == Brightness.light
-                        ? AppBorderColorLight.base
-                        : AppBorderColorDark.base)
+                        ? AppBorderColorLight.darker
+                        : AppBorderColorDark.light)
                     : (switchState
                         ? (Theme.of(context).brightness == Brightness.light
                             ? AppColorsLight.primary
                             : AppColorsDark.primary)
                         : (Theme.of(context).brightness == Brightness.light
-                            ? AppBorderColorLight.base
-                            : AppBorderColorDark.base)),
+                            ? AppBorderColorLight.darker
+                            : AppBorderColorDark.light)),
               ),
               width: screenService.scale(
                 55,
@@ -139,15 +139,15 @@ class _IconSwitchState extends State<IconSwitch>
                   border: Border.all(
                     color: widget.toggleMode
                         ? (Theme.of(context).brightness == Brightness.light
-                            ? AppBorderColorLight.base
-                            : AppBorderColorDark.base)
+                            ? AppBorderColorLight.darker
+                            : AppBorderColorDark.light)
                         : (switchState
                             ? (Theme.of(context).brightness == Brightness.light
                                 ? AppColorsLight.primary
                                 : AppColorsDark.primary)
                             : (Theme.of(context).brightness == Brightness.light
-                                ? AppBorderColorLight.base
-                                : AppBorderColorDark.base)),
+                                ? AppBorderColorLight.darker
+                                : AppBorderColorDark.light)),
                     width: screenService.scale(
                       1,
                       density: visualDensityService.density,
@@ -174,8 +174,8 @@ class _IconSwitchState extends State<IconSwitch>
                                 ? AppColorsLight.primary
                                 : AppColorsDark.primary)
                             : (Theme.of(context).brightness == Brightness.light
-                                ? AppBorderColorLight.base
-                                : AppBorderColorDark.base)),
+                                ? AppBorderColorLight.darker
+                                : AppBorderColorDark.light)),
                     size: screenService.scale(
                       18,
                       density: visualDensityService.density,

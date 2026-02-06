@@ -1936,7 +1936,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     final localizations = AppLocalizations.of(context)!;
     final borderColor = _state.mode != ClimateMode.off
         ? _getModeColorFamily(context).light7
-        : (isDark ? AppBorderColorDark.light : AppBorderColorLight.light);
+        : (isDark ? AppBorderColorDark.light : AppBorderColorLight.darker);
 
     // Use darker bg in dark mode for better contrast with dial inner background
     final cardColor =
