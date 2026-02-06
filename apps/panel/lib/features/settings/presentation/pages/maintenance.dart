@@ -1,8 +1,6 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/app/routes.dart';
 import 'package:fastybird_smart_panel/core/services/navigation.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
@@ -12,9 +10,6 @@ import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 class MaintenancePage extends StatelessWidget {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
   final SystemModuleService _systemModuleService =
       locator<SystemModuleService>();
 
@@ -55,10 +50,7 @@ class MaintenancePage extends StatelessWidget {
                     Text(
                       localizations.settings_maintenance_restart_description,
                       style: TextStyle(
-                        fontSize: _screenService.scale(
-                          8,
-                          density: _visualDensityService.density,
-                        ),
+                        fontSize: AppSpacings.scale(8),
                       ),
                     ),
                   ],
@@ -127,10 +119,7 @@ class MaintenancePage extends StatelessWidget {
                     Text(
                       localizations.settings_maintenance_power_off_description,
                       style: TextStyle(
-                        fontSize: _screenService.scale(
-                          8,
-                          density: _visualDensityService.density,
-                        ),
+                        fontSize: AppSpacings.scale(8),
                       ),
                     ),
                   ],
@@ -200,10 +189,7 @@ class MaintenancePage extends StatelessWidget {
                       localizations
                           .settings_maintenance_factory_reset_description,
                       style: TextStyle(
-                        fontSize: _screenService.scale(
-                          8,
-                          density: _visualDensityService.density,
-                        ),
+                        fontSize: AppSpacings.scale(8),
                       ),
                     ),
                   ],

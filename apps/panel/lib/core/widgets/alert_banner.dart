@@ -1,6 +1,3 @@
-import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -26,10 +23,6 @@ import 'package:material_design_icons_flutter/material_design_icons_flutter.dart
 /// )
 /// ```
 class AlertBanner extends StatelessWidget {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
   /// Optional title. When null, only [text] is shown in the content area.
   final String? title;
 
@@ -54,9 +47,6 @@ class AlertBanner extends StatelessWidget {
     this.icon,
   });
 
-  double _scale(double size) =>
-      _screenService.scale(size, density: _visualDensityService.density);
-
   @override
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
@@ -73,8 +63,8 @@ class AlertBanner extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            width: _scale(36),
-            height: _scale(36),
+            width: AppSpacings.scale(36),
+            height: AppSpacings.scale(36),
             decoration: BoxDecoration(
               color: iconBgColor,
               borderRadius: BorderRadius.circular(10),
@@ -82,7 +72,7 @@ class AlertBanner extends StatelessWidget {
             child: Icon(
               icon ?? MdiIcons.alertOutline,
               color: iconColor,
-              size: _scale(20),
+              size: AppSpacings.scale(20),
             ),
           ),
           AppSpacings.spacingMdHorizontal,

@@ -1,6 +1,3 @@
-import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/number.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
@@ -17,10 +14,6 @@ import 'package:material_design_icons_flutter/material_design_icons_flutter.dart
 import 'package:weather_icons/weather_icons.dart';
 
 class WeatherDetailPage extends StatelessWidget {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
   WeatherDetailPage({super.key});
 
   @override
@@ -175,10 +168,7 @@ class WeatherDetailPage extends StatelessWidget {
           children: [
             BoxedIcon(
               weatherIcon,
-              size: _screenService.scale(
-                60,
-                density: _visualDensityService.density,
-              ),
+              size: AppSpacings.scale(60),
               color: Theme.of(context).brightness == Brightness.light
                   ? AppTextColorLight.primary
                   : AppTextColorDark.primary,
@@ -196,10 +186,7 @@ class WeatherDetailPage extends StatelessWidget {
                       currentTemperature,
                       style: TextStyle(
                         fontFamily: 'DIN1451',
-                        fontSize: _screenService.scale(
-                          40,
-                          density: _visualDensityService.density,
-                        ),
+                        fontSize: AppSpacings.scale(40),
                         color: Theme.of(context).brightness == Brightness.light
                             ? AppTextColorLight.primary
                             : AppTextColorDark.primary,
@@ -275,10 +262,7 @@ class WeatherDetailPage extends StatelessWidget {
                 Text(
                   'm/s',
                   style: TextStyle(
-                    fontSize: _screenService.scale(
-                      8,
-                      density: _visualDensityService.density,
-                    ),
+                    fontSize: AppSpacings.scale(8),
                   ),
                 ),
                 AppSpacings.spacingMdHorizontal,
@@ -298,10 +282,7 @@ class WeatherDetailPage extends StatelessWidget {
                 Text(
                   'hPa',
                   style: TextStyle(
-                    fontSize: _screenService.scale(
-                      8,
-                      density: _visualDensityService.density,
-                    ),
+                    fontSize: AppSpacings.scale(8),
                   ),
                 ),
                 AppSpacings.spacingMdHorizontal,
@@ -321,10 +302,7 @@ class WeatherDetailPage extends StatelessWidget {
                 Text(
                   '%',
                   style: TextStyle(
-                    fontSize: _screenService.scale(
-                      8,
-                      density: _visualDensityService.density,
-                    ),
+                    fontSize: AppSpacings.scale(8),
                   ),
                 ),
               ],
@@ -380,10 +358,7 @@ class WeatherDetailPage extends StatelessWidget {
           : AppColorsDark.warning,
       leading: BoxedIcon(
         WeatherConditionMapper.getIcon(forecast.weatherCode),
-        size: _screenService.scale(
-          18,
-          density: _visualDensityService.density,
-        ),
+        size: AppSpacings.scale(18),
       ),
       title: Row(
         spacing: AppSpacings.pSm,
@@ -428,10 +403,7 @@ class WeatherDetailPage extends StatelessWidget {
               Text(
                 wholeNightTemp,
                 style: TextStyle(
-                  fontSize: _screenService.scale(
-                    8,
-                    density: _visualDensityService.density,
-                  ),
+                  fontSize: AppSpacings.scale(8),
                   color: Theme.of(context).brightness == Brightness.light
                       ? AppTextColorLight.secondary
                       : AppTextColorDark.secondary,
@@ -440,29 +412,20 @@ class WeatherDetailPage extends StatelessWidget {
               Text(
                 '/',
                 style: TextStyle(
-                  fontSize: _screenService.scale(
-                    9,
-                    density: _visualDensityService.density,
-                  ),
+                  fontSize: AppSpacings.scale(9),
                 ),
               ),
               Text(
                 wholeDayTemp,
                 style: TextStyle(
-                  fontSize: _screenService.scale(
-                    9,
-                    density: _visualDensityService.density,
-                  ),
+                  fontSize: AppSpacings.scale(9),
                   fontWeight: FontWeight.w600,
                 ),
               ),
               Text(
                 _getUnit(forecast),
                 style: TextStyle(
-                  fontSize: _screenService.scale(
-                    8,
-                    density: _visualDensityService.density,
-                  ),
+                  fontSize: AppSpacings.scale(8),
                 ),
               ),
             ],
@@ -477,10 +440,7 @@ class WeatherDetailPage extends StatelessWidget {
               Text(
                 localizations.weather_forecast_humidity,
                 style: TextStyle(
-                  fontSize: _screenService.scale(
-                    7,
-                    density: _visualDensityService.density,
-                  ),
+                  fontSize: AppSpacings.scale(7),
                   color: Theme.of(context).brightness == Brightness.light
                       ? AppTextColorLight.secondary
                       : AppTextColorDark.secondary,
@@ -489,19 +449,13 @@ class WeatherDetailPage extends StatelessWidget {
               Text(
                 forecast.humidity.toString(),
                 style: TextStyle(
-                  fontSize: _screenService.scale(
-                    7,
-                    density: _visualDensityService.density,
-                  ),
+                  fontSize: AppSpacings.scale(7),
                 ),
               ),
               Text(
                 '%',
                 style: TextStyle(
-                  fontSize: _screenService.scale(
-                    7,
-                    density: _visualDensityService.density,
-                  ),
+                  fontSize: AppSpacings.scale(7),
                 ),
               ),
             ],

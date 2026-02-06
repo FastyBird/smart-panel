@@ -1,7 +1,4 @@
 import 'package:fastybird_smart_panel/api/models/devices_module_device_category.dart';
-import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
@@ -28,12 +25,6 @@ class DeviceDetailPage extends StatelessWidget {
 
   DeviceDetailPage(this.id, {this.initialChannelId, super.key});
 
-  static final ScreenService _screenService = locator<ScreenService>();
-  static final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
-  static double _scale(double value) =>
-      _screenService.scale(value, density: _visualDensityService.density);
 
   @override
   Widget build(BuildContext context) {
@@ -61,15 +52,15 @@ class DeviceDetailPage extends StatelessWidget {
                 spacing: AppSpacings.pMd,
                 children: [
                   Container(
-                    width: _scale(80),
-                    height: _scale(80),
+                    width: AppSpacings.scale(80),
+                    height: AppSpacings.scale(80),
                     decoration: BoxDecoration(
                       color: warningBgColor,
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
                       MdiIcons.alertCircleOutline,
-                      size: _scale(48),
+                      size: AppSpacings.scale(48),
                       color: warningColor,
                     ),
                   ),
@@ -143,45 +134,30 @@ class DeviceDetailPage extends StatelessWidget {
                 children: [
                   Icon(
                     MdiIcons.alert,
-                    size: _screenService.scale(
-                      14,
-                      density: _visualDensityService.density,
-                    ),
+                    size: AppSpacings.scale(14),
                     color: Theme.of(context).warning,
                   ),
                   SizedBox(
-                    width: _screenService.scale(
-                      4,
-                      density: _visualDensityService.density,
-                    ),
+                    width: AppSpacings.scale(4),
                   ),
                   Text(
                     localizations.device_status_offline,
                     style: TextStyle(
-                      fontSize: _screenService.scale(
-                        12,
-                        density: _visualDensityService.density,
-                      ),
+                      fontSize: AppSpacings.scale(12),
                       color: Theme.of(context).warning,
                     ),
                   ),
                 ],
               ),
               SizedBox(
-                width: _screenService.scale(
-                  16,
-                  density: _visualDensityService.density,
-                ),
+                width: AppSpacings.scale(16),
               ),
             ],
             GestureDetector(
               onTap: () => Navigator.pop(context),
               child: Icon(
                 MdiIcons.close,
-                size: _screenService.scale(
-                  16,
-                  density: _visualDensityService.density,
-                ),
+                size: AppSpacings.scale(16),
                 color: Theme.of(context).brightness == Brightness.light
                     ? AppTextColorLight.regular
                     : AppTextColorDark.regular,

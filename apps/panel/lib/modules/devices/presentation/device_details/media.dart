@@ -1,8 +1,6 @@
 import 'dart:async';
 
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_landscape_layout.dart';
@@ -39,8 +37,6 @@ class MediaDeviceDetail extends StatefulWidget {
 }
 
 class _MediaDeviceDetailState extends State<MediaDeviceDetail> {
-	final ScreenService _screenService = locator<ScreenService>();
-	final VisualDensityService _visualDensityService = locator<VisualDensityService>();
 	final DevicesService _devicesService = locator<DevicesService>();
 	DeviceControlStateService? _deviceControlStateService;
 
@@ -127,9 +123,6 @@ class _MediaDeviceDetailState extends State<MediaDeviceDetail> {
 		}
 		return widget._device;
 	}
-
-	double _scale(double value) =>
-		_screenService.scale(value, density: _visualDensityService.density);
 
 	// --------------------------------------------------------------------------
 	// COMMAND HELPERS
@@ -481,7 +474,6 @@ class _MediaDeviceDetailState extends State<MediaDeviceDetail> {
 						isOn: _isOn,
 						displaySource: _getDisplaySource(),
 						themeColor: _getThemeColor(),
-						scale: _scale,
 					),
 					if (_device.hasMediaPlayback &&
 						MediaPlaybackCard.hasContent(
@@ -507,8 +499,7 @@ class _MediaDeviceDetailState extends State<MediaDeviceDetail> {
 							onPlaybackSeek: _seekPosition,
 							themeColor: _getThemeColor(),
 							isEnabled: _isOn,
-							scale: _scale,
-						),
+							),
 					if (_device.hasSpeaker)
 						MediaVolumeCard(
 							volume: _effectiveVolume,
@@ -549,7 +540,6 @@ class _MediaDeviceDetailState extends State<MediaDeviceDetail> {
 						isOn: _isOn,
 						displaySource: _getDisplaySource(),
 						themeColor: _getThemeColor(),
-						scale: _scale,
 					),
 					if (_device.hasMediaPlayback &&
 						MediaPlaybackCard.hasContent(
@@ -575,8 +565,7 @@ class _MediaDeviceDetailState extends State<MediaDeviceDetail> {
 							onPlaybackSeek: _seekPosition,
 							themeColor: _getThemeColor(),
 							isEnabled: _isOn,
-							scale: _scale,
-						),
+							),
 					if (_device.hasSpeaker)
 						MediaVolumeCard(
 							volume: _effectiveVolume,

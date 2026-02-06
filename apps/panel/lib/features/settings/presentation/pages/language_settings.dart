@@ -2,8 +2,6 @@ import 'dart:async';
 
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
@@ -25,9 +23,6 @@ class LanguageSettingsPage extends StatefulWidget {
 }
 
 class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
   final ConfigModuleService _configModule = locator<ConfigModuleService>();
   late final ModuleConfigRepository<SystemConfigModel> _repository =
       _configModule.getModuleRepository<SystemConfigModel>('system-module');
@@ -41,7 +36,7 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
     super.initState();
 
     _syncStateWithRepository();
-    
+
     // If repository data is null, fetch it
     if (_repository.data == null) {
       _repository.fetchConfiguration().then((_) {
@@ -113,10 +108,7 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
                 subtitle: Text(
                   localizations.settings_language_settings_language_description,
                   style: TextStyle(
-                    fontSize: _screenService.scale(
-                      8,
-                      density: _visualDensityService.density,
-                    ),
+                    fontSize: AppSpacings.scale(8),
                   ),
                 ),
                 trailing: DropdownButtonHideUnderline(
@@ -133,17 +125,11 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
                         vertical: 0,
                         horizontal: AppSpacings.pLg,
                       ),
-                      height: _screenService.scale(
-                        35,
-                        density: _visualDensityService.density,
-                      ),
+                      height: AppSpacings.scale(35),
                     ),
                     dropdownStyleData: DropdownStyleData(
                       padding: EdgeInsets.all(0),
-                      maxHeight: _screenService.scale(
-                        200,
-                        density: _visualDensityService.density,
-                      ),
+                      maxHeight: AppSpacings.scale(200),
                     ),
                     iconStyleData: IconStyleData(
                       openMenuIcon: Icon(MdiIcons.menuUp),
@@ -163,10 +149,7 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
                 subtitle: Text(
                   localizations.settings_language_settings_timezone_description,
                   style: TextStyle(
-                    fontSize: _screenService.scale(
-                      8,
-                      density: _visualDensityService.density,
-                    ),
+                    fontSize: AppSpacings.scale(8),
                   ),
                 ),
                 trailing: DropdownButtonHideUnderline(
@@ -182,10 +165,7 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
                       return timezones.map<Widget>((String item) {
                         return Container(
                           alignment: Alignment.centerRight,
-                          width: _screenService.scale(
-                            120,
-                            density: _visualDensityService.density,
-                          ),
+                          width: AppSpacings.scale(120),
                           child: Text(
                             item,
                             textAlign: TextAlign.end,
@@ -201,21 +181,12 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
                         vertical: 0,
                         horizontal: AppSpacings.pLg,
                       ),
-                      height: _screenService.scale(
-                        35,
-                        density: _visualDensityService.density,
-                      ),
+                      height: AppSpacings.scale(35),
                     ),
                     dropdownStyleData: DropdownStyleData(
                       padding: EdgeInsets.all(0),
-                      width: _screenService.scale(
-                        150,
-                        density: _visualDensityService.density,
-                      ),
-                      maxHeight: _screenService.scale(
-                        200,
-                        density: _visualDensityService.density,
-                      ),
+                      width: AppSpacings.scale(150),
+                      maxHeight: AppSpacings.scale(200),
                     ),
                     iconStyleData: IconStyleData(
                       openMenuIcon: Icon(MdiIcons.menuUp),
@@ -236,10 +207,7 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
                   localizations
                       .settings_language_settings_time_format_description,
                   style: TextStyle(
-                    fontSize: _screenService.scale(
-                      8,
-                      density: _visualDensityService.density,
-                    ),
+                    fontSize: AppSpacings.scale(8),
                   ),
                 ),
                 trailing: DropdownButtonHideUnderline(
@@ -256,17 +224,11 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
                         vertical: 0,
                         horizontal: AppSpacings.pLg,
                       ),
-                      height: _screenService.scale(
-                        35,
-                        density: _visualDensityService.density,
-                      ),
+                      height: AppSpacings.scale(35),
                     ),
                     dropdownStyleData: DropdownStyleData(
                       padding: EdgeInsets.all(0),
-                      maxHeight: _screenService.scale(
-                        200,
-                        density: _visualDensityService.density,
-                      ),
+                      maxHeight: AppSpacings.scale(200),
                     ),
                     iconStyleData: IconStyleData(
                       openMenuIcon: Icon(MdiIcons.menuUp),
@@ -489,7 +451,7 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
 
   Future<bool> _updateTimezone(String? timezone) async {
     if (timezone == null) return false;
-    
+
     var current = _repository.data;
     if (current == null) {
       try {

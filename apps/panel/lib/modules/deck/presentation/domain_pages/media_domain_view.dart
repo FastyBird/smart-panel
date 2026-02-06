@@ -56,7 +56,6 @@ import 'package:provider/provider.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_banner.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_card.dart';
@@ -119,10 +118,6 @@ class MediaDomainViewPage extends StatefulWidget {
 class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		with SingleTickerProviderStateMixin {
 	final ScreenService _screenService = locator<ScreenService>();
-	final VisualDensityService _visualDensityService = locator<VisualDensityService>();
-
-	double _scale(double val) =>
-			_screenService.scale(val, density: _visualDensityService.density);
 
 	double? get _portraitContentHeight =>
 			_screenService.isPortrait ? _screenService.screenHeight * 3 / 5 : null;
@@ -488,7 +483,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 													SizedBox(height: AppSpacings.pXl * 2),
 													Icon(
 														MdiIcons.monitorOff,
-														size: _scale(64),
+														size: AppSpacings.scale(64),
 														color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
 													),
 													AppSpacings.spacingLgVertical,
@@ -772,15 +767,15 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 				spacing: AppSpacings.pMd,
 				children: [
 					Container(
-						width: _scale(90),
-						height: _scale(90),
+						width: AppSpacings.scale(90),
+						height: AppSpacings.scale(90),
 						decoration: BoxDecoration(
 							color: isDark ? AppFillColorDark.darker : AppFillColorLight.darker,
 							shape: BoxShape.circle,
 						),
 						child: Icon(
 							MdiIcons.televisionClassic,
-							size: _scale(56),
+							size: AppSpacings.scale(56),
 							color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
 						),
 					),
@@ -829,19 +824,19 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 							return Transform.rotate(
 								angle: _pulseController.value * 2 * math.pi,
 								child: Container(
-									width: _scale(56),
-									height: _scale(56),
+									width: AppSpacings.scale(56),
+									height: AppSpacings.scale(56),
 									decoration: BoxDecoration(
 										shape: BoxShape.circle,
 										border: Border.all(
 											color: modeColorFamily.base.withValues(alpha: 0.2),
-											width: _scale(3),
+											width: AppSpacings.scale(3),
 										),
 									),
 									child: CustomPaint(
 										painter: _SpinnerArcPainter(
 											color: modeColorFamily.base,
-											strokeWidth: _scale(3),
+											strokeWidth: AppSpacings.scale(3),
 										),
 									),
 								),
@@ -882,15 +877,15 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 				spacing: AppSpacings.pMd,
 				children: [
 					Container(
-						width: _scale(90),
-						height: _scale(90),
+						width: AppSpacings.scale(90),
+						height: AppSpacings.scale(90),
 						decoration: BoxDecoration(
 							color: errorBg,
 							shape: BoxShape.circle,
 						),
 						child: Icon(
 							MdiIcons.closeCircleOutline,
-							size: _scale(56),
+							size: AppSpacings.scale(56),
 							color: errorColor,
 						),
 					),
@@ -922,8 +917,8 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 									style: FilledButton.styleFrom(
 										textStyle: TextStyle(fontSize: AppFontSize.small),
 										padding: EdgeInsets.symmetric(
-											horizontal: _scale(AppSpacings.pMd),
-											vertical: _scale(AppSpacings.pSm),
+											horizontal: AppSpacings.scale(AppSpacings.pMd),
+											vertical: AppSpacings.scale(AppSpacings.pSm),
 										),
 										shape: RoundedRectangleBorder(
 											borderRadius: BorderRadius.circular(AppBorderRadius.base),
@@ -941,12 +936,12 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 									style: OutlinedButton.styleFrom(
 										textStyle: TextStyle(fontSize: AppFontSize.small),
 										padding: EdgeInsets.symmetric(
-											horizontal: _scale(AppSpacings.pMd),
-											vertical: _scale(AppSpacings.pSm),
+											horizontal: AppSpacings.scale(AppSpacings.pMd),
+											vertical: AppSpacings.scale(AppSpacings.pSm),
 										),
 										side: BorderSide(
 											color: isDark ? AppBorderColorDark.light : AppBorderColorLight.darker,
-											width: _scale(1),
+											width: AppSpacings.scale(1),
 										),
 										shape: RoundedRectangleBorder(
 											borderRadius: BorderRadius.circular(AppBorderRadius.base),
@@ -1118,15 +1113,15 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 						spacing: AppSpacings.pMd,
 						children: [
 							Container(
-								width: _scale(32),
-								height: _scale(32),
+								width: AppSpacings.scale(32),
+								height: AppSpacings.scale(32),
 								decoration: BoxDecoration(
 									color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
 									borderRadius: BorderRadius.circular(AppBorderRadius.base),
 								),
 								child: Icon(
 									icon,
-									size: _scale(16),
+									size: AppSpacings.scale(16),
 									color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
 								),
 							),
@@ -1207,7 +1202,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 											color: isDark
 													? AppBorderColorDark.light
 													: AppBorderColorLight.darker,
-											width: _scale(1),
+											width: AppSpacings.scale(1),
 										),
 									),
 									child: Text(
@@ -1233,7 +1228,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		final volume = _volume;
 		final isMuted = _isMuted;
 
-		final columnWidth = _scale(40);
+		final columnWidth = AppSpacings.scale(40);
 
 		return Row(
 			spacing: AppSpacings.pMd,
@@ -1329,7 +1324,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 				final mainCount = specs.where((s) => s.$3).length;
 				final regularCount = specs.length - mainCount;
 				final gapCount = specs.length - 1;
-				final defaultTotal = mainCount * _scale(56) + regularCount * _scale(44) + gapCount * AppSpacings.pLg;
+				final defaultTotal = mainCount * AppSpacings.scale(56) + regularCount * AppSpacings.scale(44) + gapCount * AppSpacings.pLg;
 				final compact = constraints.maxWidth < defaultTotal;
 
 				return Row(
@@ -1397,7 +1392,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		final dur = _duration ?? 1;
 		final progress = (pos / dur).clamp(0.0, 1.0);
 
-		final timeWidth = _scale(52);
+		final timeWidth = AppSpacings.scale(52);
 
 		// Check if position property is writable for seek support
 		final targets = _mediaService?.resolveControlTargets(_roomId);
@@ -1426,7 +1421,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 								borderRadius: BorderRadius.circular(AppBorderRadius.base),
 								child: LinearProgressIndicator(
 									value: progress,
-									minHeight: _scale(3),
+									minHeight: AppSpacings.scale(3),
 									backgroundColor: trackColor,
 									valueColor: AlwaysStoppedAnimation<Color>(modeColorFamily.base),
 								),
@@ -1484,8 +1479,8 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		bool compact = false,
 		VoidCallback? onTap,
 	}) {
-		final size = _scale(isMain ? (compact ? 44 : 56) : (compact ? 34 : 44));
-		final iconSize = _scale(isMain ? (compact ? 22 : 28) : (compact ? 16 : 20));
+		final size = AppSpacings.scale(isMain ? (compact ? 44 : 56) : (compact ? 34 : 44));
+		final iconSize = AppSpacings.scale(isMain ? (compact ? 22 : 28) : (compact ? 16 : 20));
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 		final themeData = isActive
 			? ThemeData(filledButtonTheme: isDark ? AppFilledButtonsDarkThemes.primary : AppFilledButtonsLightThemes.primary)
@@ -1554,7 +1549,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 					children: [
 						Icon(
 							MdiIcons.remote,
-							size: _scale(18),
+							size: AppSpacings.scale(18),
 							color: isDark
 								? AppFilledButtonsDarkThemes.neutralForegroundColor
 								: AppFilledButtonsLightThemes.neutralForegroundColor,
@@ -1598,7 +1593,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 							Icon(
 								MdiIcons.alertCircleOutline,
 								color: errorColor,
-								size: _scale(18),
+								size: AppSpacings.scale(18),
 							),
 							Expanded(
 								child: Text(
@@ -1618,7 +1613,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 										: AppFilledButtonsLightThemes.primary,
 								),
 								child: FilledButton.icon(
-									icon: Icon(MdiIcons.refresh, size: _scale(16)),
+									icon: Icon(MdiIcons.refresh, size: AppSpacings.scale(16)),
 									label: Text(AppLocalizations.of(context)!.media_activity_retry),
 									onPressed: () => _retryActivity(state),
 									style: FilledButton.styleFrom(
@@ -1633,7 +1628,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 										: AppOutlinedButtonsLightThemes.base,
 								),
 								child: OutlinedButton.icon(
-									icon: Icon(MdiIcons.stop, size: _scale(16)),
+									icon: Icon(MdiIcons.stop, size: AppSpacings.scale(16)),
 									label: Text(AppLocalizations.of(context)!.media_failure_deactivate),
 									onPressed: _deactivateActivity,
 									style: OutlinedButton.styleFrom(
@@ -1732,7 +1727,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 												: AppFilledButtonsLightThemes.primary,
 										),
 										child: FilledButton.icon(
-											icon: Icon(MdiIcons.refresh, size: _scale(16), color: primaryFg),
+											icon: Icon(MdiIcons.refresh, size: AppSpacings.scale(16), color: primaryFg),
 											label: Text(AppLocalizations.of(context)!.media_failure_retry_activity),
 											onPressed: () {
 												Navigator.pop(sheetContext);
@@ -1754,7 +1749,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 											: AppOutlinedButtonsLightThemes.base,
 									),
 									child: OutlinedButton.icon(
-										icon: Icon(MdiIcons.stopCircleOutline, size: _scale(16), color: baseFg),
+										icon: Icon(MdiIcons.stopCircleOutline, size: AppSpacings.scale(16), color: baseFg),
 										label: Text(AppLocalizations.of(context)!.media_failure_deactivate),
 										onPressed: () {
 											Navigator.pop(sheetContext);
@@ -1798,7 +1793,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 				decoration: BoxDecoration(
 					color: backgroundColor,
 					borderRadius: BorderRadius.circular(AppBorderRadius.base),
-					border: Border.all(color: backgroundColor, width: _scale(1)),
+					border: Border.all(color: backgroundColor, width: AppSpacings.scale(1)),
 				),
 				child: Column(
 					crossAxisAlignment: CrossAxisAlignment.start,
@@ -1841,7 +1836,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		final localizations = AppLocalizations.of(context)!;
 		final modeColorFamily = _getModeColorFamily(context);
 		final targets = _mediaService?.resolveControlTargets(_roomId);
-		final tileHeight = _scale(AppTileHeight.horizontal);
+		final tileHeight = AppSpacings.scale(AppTileHeight.horizontal);
 
 		final controls = <Widget>[];
 
@@ -2127,8 +2122,8 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 					return Padding(
 						padding: EdgeInsets.only(left: AppSpacings.pSm),
 						child: Container(
-							width: _scale(22),
-							height: _scale(22),
+							width: AppSpacings.scale(22),
+							height: AppSpacings.scale(22),
 							decoration: BoxDecoration(
 								color: isActive
 									? modeColorFamily.light5
@@ -2137,7 +2132,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 							),
 							child: Icon(
 								capIcon,
-								size: _scale(12),
+								size: AppSpacings.scale(12),
 								color: isActive
 									? modeColorFamily.dark2
 									: (isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder),
@@ -2323,7 +2318,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		bool isPrimary = false,
 		VoidCallback? onTap,
 	}) {
-		final size = _scale(40);
+		final size = AppSpacings.scale(40);
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 		final themeData = isPrimary
 			? ThemeData(filledButtonTheme: isDark ? AppFilledButtonsDarkThemes.primary : AppFilledButtonsLightThemes.primary)
@@ -2352,7 +2347,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 					child: icon != null
 						? Icon(
 							icon,
-							size: _scale(20),
+							size: AppSpacings.scale(20),
 							color: isDark
 								? (isPrimary
 									? AppFilledButtonsDarkThemes.primaryForegroundColor
@@ -2379,8 +2374,8 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		bool isMain = false,
 		VoidCallback? onTap,
 	}) {
-		final size = _scale(isMain ? 44 : 32);
-		final iconSize = _scale(isMain ? 22 : 16);
+		final size = AppSpacings.scale(isMain ? 44 : 32);
+		final iconSize = AppSpacings.scale(isMain ? 22 : 16);
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 		final themeData = isMain
 			? ThemeData(filledButtonTheme: isDark ? AppFilledButtonsDarkThemes.primary : AppFilledButtonsLightThemes.primary)

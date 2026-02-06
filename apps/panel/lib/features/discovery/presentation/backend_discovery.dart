@@ -352,18 +352,18 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
           children: [
             // Animated icon with pulse rings
             SizedBox(
-              width: _screenService.scale(isCompactLandscape ? 70 : 100),
-              height: _screenService.scale(isCompactLandscape ? 70 : 100),
+              width: AppSpacings.scale(isCompactLandscape ? 70 : 100),
+              height: AppSpacings.scale(isCompactLandscape ? 70 : 100),
               child: Stack(
                 alignment: Alignment.center,
                 children: [
                   PulseRings(
-                    size: _screenService.scale(isCompactLandscape ? 56 : 80),
+                    size: AppSpacings.scale(isCompactLandscape ? 56 : 80),
                     color: accent,
                   ),
                   Icon(
                     MdiIcons.accessPointNetwork,
-                    size: _screenService.scale(isCompactLandscape ? 32 : 48),
+                    size: AppSpacings.scale(isCompactLandscape ? 32 : 48),
                     color: accent,
                   ),
                 ],
@@ -560,7 +560,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
         children: [
           // Left: Header
           SizedBox(
-            width: _screenService.scale(isCompact ? 160 : 240),
+            width: AppSpacings.scale(isCompact ? 160 : 240),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -699,7 +699,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: SystemPagesTheme.textMuted(isDark),
-                fontSize: _screenService.scale(isCompactLandscape ? 12 : 14),
+                fontSize: AppSpacings.scale(isCompactLandscape ? 12 : 14),
                 height: 1.5,
               ),
             ),
@@ -866,7 +866,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
             ),
             SizedBox(height: AppSpacings.pLg + AppSpacings.pMd),
             LoadingSpinner(
-              size: _screenService.scale(48),
+              size: AppSpacings.scale(48),
               color: accent,
             ),
           ],

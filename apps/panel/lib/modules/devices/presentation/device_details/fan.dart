@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_card.dart';
@@ -44,8 +43,6 @@ class FanDeviceDetail extends StatefulWidget {
 
 class _FanDeviceDetailState extends State<FanDeviceDetail> {
   final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
   final DevicesService _devicesService = locator<DevicesService>();
   DeviceControlStateService? _deviceControlStateService;
   FanDeviceController? _controller;
@@ -345,9 +342,6 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
   // UI HELPERS
   // --------------------------------------------------------------------------
 
-  double _scale(double value) =>
-      _screenService.scale(value, density: _visualDensityService.density);
-
   String _getModeLabel(AppLocalizations localizations) {
     final mode = _device.fanChannel.mode;
     if (mode == null) return localizations.fan_mode_auto;
@@ -577,7 +571,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
     }
 
     final activeColor = _getStatusColorFamily(context).base;
-    final tileHeight = _scale(AppTileHeight.horizontal);
+    final tileHeight = AppSpacings.scale(AppTileHeight.horizontal);
 
     if (fanChannel.isSpeedEnum) {
       // Enum-based speed
@@ -763,7 +757,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
         (_screenService.isSmallScreen || _screenService.isMediumScreen);
 
     // Fixed tile height for consistent control sizing
-    final tileHeight = _scale(AppTileHeight.horizontal);
+    final tileHeight = AppSpacings.scale(AppTileHeight.horizontal);
 
     // Helper to wrap control with fixed height
     Widget wrapControl(Widget child) {

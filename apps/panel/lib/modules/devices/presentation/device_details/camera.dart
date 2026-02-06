@@ -1,6 +1,3 @@
-import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/camera.dart';
@@ -8,13 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 class CameraDeviceDetail extends StatelessWidget {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
   final CameraDeviceView device;
 
-  CameraDeviceDetail({
+  const CameraDeviceDetail({
     super.key,
     required this.device,
   });
@@ -33,10 +26,7 @@ class CameraDeviceDetail extends StatelessWidget {
             Icon(
               MdiIcons.alert,
               color: Theme.of(context).warning,
-              size: _screenService.scale(
-                64,
-                density: _visualDensityService.density,
-              ),
+              size: AppSpacings.scale(64),
             ),
             Text(
               localizations.message_error_no_device_detail_preparing_title,

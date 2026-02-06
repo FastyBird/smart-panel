@@ -1,5 +1,4 @@
-import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
+import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:flutter/material.dart';
 
 /// Animated pulse rings that expand outward from center
@@ -21,8 +20,6 @@ class PulseRings extends StatefulWidget {
 }
 
 class _PulseRingsState extends State<PulseRings> with TickerProviderStateMixin {
-  final ScreenService _screenService = locator<ScreenService>();
-
   late List<AnimationController> _controllers;
   late List<Animation<double>> _scaleAnimations;
   late List<Animation<double>> _opacityAnimations;
@@ -88,7 +85,7 @@ class _PulseRingsState extends State<PulseRings> with TickerProviderStateMixin {
                     height: widget.size,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      border: Border.all(color: widget.color, width: _screenService.scale(2)),
+                      border: Border.all(color: widget.color, width: AppSpacings.scale(2)),
                     ),
                   ),
                 ),

@@ -1,8 +1,6 @@
 import 'dart:async';
 
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/icon_switch.dart';
@@ -23,9 +21,6 @@ class AudioSettingsPage extends StatefulWidget {
 }
 
 class _AudioSettingsPageState extends State<AudioSettingsPage> {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
   final DisplayRepository _repository = locator<DisplayRepository>();
 
   late bool _audioOutputSupported;
@@ -114,10 +109,7 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
           children: [
             Icon(
               MdiIcons.volumeOff,
-              size: _screenService.scale(
-                48,
-                density: _visualDensityService.density,
-              ),
+              size: AppSpacings.scale(48),
               color: Theme.of(context).disabledColor,
             ),
             Text(
@@ -151,10 +143,7 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
           subtitle: Text(
             localizations.settings_audio_settings_speaker_description,
             style: TextStyle(
-              fontSize: _screenService.scale(
-                8,
-                density: _visualDensityService.density,
-              ),
+              fontSize: AppSpacings.scale(8),
             ),
           ),
           trailing: IconSwitch(
@@ -206,10 +195,7 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
           subtitle: Text(
             localizations.settings_audio_settings_microphone_description,
             style: TextStyle(
-              fontSize: _screenService.scale(
-                8,
-                density: _visualDensityService.density,
-              ),
+              fontSize: AppSpacings.scale(8),
             ),
           ),
           trailing: IconSwitch(

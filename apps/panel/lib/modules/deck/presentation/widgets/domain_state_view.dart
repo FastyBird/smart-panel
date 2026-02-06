@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
-import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/domain_data_loader.dart';
@@ -41,13 +38,6 @@ class DomainStateView extends StatelessWidget {
     required this.child,
     required this.domainName,
   });
-
-  static final ScreenService _screenService = locator<ScreenService>();
-  static final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
-  static double _scale(double value) =>
-      _screenService.scale(value, density: _visualDensityService.density);
 
   @override
   Widget build(BuildContext context) {
@@ -87,15 +77,15 @@ class DomainStateView extends StatelessWidget {
             spacing: AppSpacings.pMd,
             children: [
               Container(
-                width: _scale(80),
-                height: _scale(80),
+                width: AppSpacings.scale(80),
+                height: AppSpacings.scale(80),
                 decoration: BoxDecoration(
                   color: warningBgColor,
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   MdiIcons.alertCircleOutline,
-                  size: _scale(48),
+                  size: AppSpacings.scale(48),
                   color: warningColor,
                 ),
               ),

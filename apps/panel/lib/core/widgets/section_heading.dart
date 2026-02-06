@@ -1,6 +1,3 @@
-import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:flutter/material.dart';
 
@@ -27,10 +24,6 @@ import 'package:flutter/material.dart';
 /// )
 /// ```
 class SectionTitle extends StatelessWidget {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
   /// The title text to display
   final String title;
 
@@ -40,15 +33,12 @@ class SectionTitle extends StatelessWidget {
   /// Optional trailing widget (e.g., action button)
   final Widget? trailing;
 
-  SectionTitle({
+  const SectionTitle({
     super.key,
     required this.title,
     required this.icon,
     this.trailing,
   });
-
-  double _scale(double size) =>
-      _screenService.scale(size, density: _visualDensityService.density);
 
   @override
   Widget build(BuildContext context) {
@@ -62,7 +52,7 @@ class SectionTitle extends StatelessWidget {
             Icon(
               icon,
               color: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
-              size: _scale(18),
+              size: AppSpacings.scale(18),
             ),
             Expanded(
               child: Text(
@@ -175,10 +165,6 @@ class SectionTitleButton extends StatelessWidget {
 /// )
 /// ```
 class SectionHeader extends StatelessWidget {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
   /// The title text to display
   final String title;
 
@@ -194,7 +180,7 @@ class SectionHeader extends StatelessWidget {
   /// Optional accent color for the header (affects icon, text, border, and background)
   final Color? accentColor;
 
-  SectionHeader({
+  const SectionHeader({
     super.key,
     required this.title,
     required this.icon,
@@ -202,9 +188,6 @@ class SectionHeader extends StatelessWidget {
     this.count,
     this.accentColor,
   });
-
-  double _scale(double size) =>
-      _screenService.scale(size, density: _visualDensityService.density);
 
   @override
   Widget build(BuildContext context) {
@@ -221,7 +204,7 @@ class SectionHeader extends StatelessWidget {
         (isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary);
 
     return Container(
-      height: _scale(36),
+      height: AppSpacings.scale(36),
       padding: EdgeInsets.symmetric(
         horizontal: AppSpacings.pLg,
       ),
@@ -229,9 +212,9 @@ class SectionHeader extends StatelessWidget {
         color: accentColor?.withValues(alpha: 0.1),
         border: Border(
           top: showTopBorder
-              ? BorderSide(color: borderColor, width: _scale(1))
+              ? BorderSide(color: borderColor, width: AppSpacings.scale(1))
               : BorderSide.none,
-          bottom: BorderSide(color: borderColor, width: _scale(1)),
+          bottom: BorderSide(color: borderColor, width: AppSpacings.scale(1)),
         ),
       ),
       child: Row(
@@ -240,7 +223,7 @@ class SectionHeader extends StatelessWidget {
           Icon(
             icon,
             color: iconColor,
-            size: _scale(14),
+            size: AppSpacings.scale(14),
           ),
           Text(
             title,
@@ -254,7 +237,7 @@ class SectionHeader extends StatelessWidget {
             Container(
               padding: EdgeInsets.symmetric(
                 horizontal: AppSpacings.pSm,
-                vertical: _scale(2),
+                vertical: AppSpacings.scale(2),
               ),
               decoration: BoxDecoration(
                 color: badgeBgColor,

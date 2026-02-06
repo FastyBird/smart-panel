@@ -1,6 +1,3 @@
-import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -99,13 +96,6 @@ class AppBottomSheet extends StatelessWidget {
   final EdgeInsets? contentPadding;
   final bool scrollable;
 
-  static final ScreenService _screenService = locator<ScreenService>();
-  static final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
-  static double _scale(double value) =>
-      _screenService.scale(value, density: _visualDensityService.density);
-
   bool get _hasHeader => title != null || titleWidget != null;
 
   @override
@@ -126,7 +116,7 @@ class AppBottomSheet extends StatelessWidget {
         decoration: BoxDecoration(
           color: bgColor,
           borderRadius:
-              BorderRadius.vertical(top: Radius.circular(_scale(24))),
+              BorderRadius.vertical(top: Radius.circular(AppSpacings.scale(24))),
         ),
         child: SafeArea(
           top: false,
@@ -162,7 +152,7 @@ class AppBottomSheet extends StatelessWidget {
                           border: Border(
                             bottom: BorderSide(
                               color: borderColor,
-                              width: _scale(1),
+                              width: AppSpacings.scale(1),
                             ),
                           ),
                         ),
@@ -186,7 +176,7 @@ class AppBottomSheet extends StatelessWidget {
                           border: Border(
                             top: BorderSide(
                               color: borderColor,
-                              width: _scale(1),
+                              width: AppSpacings.scale(1),
                             ),
                           ),
                         ),
@@ -212,8 +202,8 @@ class AppBottomSheet extends StatelessWidget {
   Widget _buildHandle(Color handleColor) {
     return Center(
       child: Container(
-        width: _scale(36),
-        height: _scale(4),
+        width: AppSpacings.scale(36),
+        height: AppSpacings.scale(4),
         decoration: BoxDecoration(
           color: handleColor,
           borderRadius: BorderRadius.circular(AppBorderRadius.small),
@@ -232,7 +222,7 @@ class AppBottomSheet extends StatelessWidget {
                     Icon(
                       titleIcon,
                       color: textColor,
-                      size: _scale(24),
+                      size: AppSpacings.scale(24),
                     ),
                   Text(
                     title!.toUpperCase(),
@@ -272,14 +262,14 @@ class AppBottomSheet extends StatelessWidget {
         },
         style: FilledButton.styleFrom(
           padding: EdgeInsets.zero,
-          minimumSize: Size(_scale(32), _scale(32)),
-          maximumSize: Size(_scale(32), _scale(32)),
+          minimumSize: Size(AppSpacings.scale(32), AppSpacings.scale(32)),
+          maximumSize: Size(AppSpacings.scale(32), AppSpacings.scale(32)),
           shape: const CircleBorder(),
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
         ),
         child: Icon(
           MdiIcons.close,
-          size: _scale(18),
+          size: AppSpacings.scale(18),
           color: isDark
               ? AppFilledButtonsDarkThemes.neutralForegroundColor
               : AppFilledButtonsLightThemes.neutralForegroundColor,

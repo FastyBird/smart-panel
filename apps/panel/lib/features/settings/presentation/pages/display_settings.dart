@@ -2,8 +2,6 @@ import 'dart:async';
 
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/icon_switch.dart';
@@ -24,9 +22,6 @@ class DisplaySettingsPage extends StatefulWidget {
 }
 
 class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
   final DisplayRepository _repository = locator<DisplayRepository>();
 
   late bool _isDarkMode;
@@ -98,10 +93,7 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
                     localizations
                         .settings_display_settings_theme_mode_description,
                     style: TextStyle(
-                      fontSize: _screenService.scale(
-                        8,
-                        density: _visualDensityService.density,
-                      ),
+                      fontSize: AppSpacings.scale(8),
                     ),
                   ),
                   trailing: IconSwitch(
@@ -146,10 +138,7 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
                     localizations
                         .settings_display_settings_screen_lock_description,
                     style: TextStyle(
-                      fontSize: _screenService.scale(
-                        8,
-                        density: _visualDensityService.density,
-                      ),
+                      fontSize: AppSpacings.scale(8),
                     ),
                   ),
                   trailing: DropdownButtonHideUnderline(
@@ -166,17 +155,11 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
                           vertical: 0,
                           horizontal: AppSpacings.pLg,
                         ),
-                        height: _screenService.scale(
-                          35,
-                          density: _visualDensityService.density,
-                        ),
+                        height: AppSpacings.scale(35),
                       ),
                       dropdownStyleData: DropdownStyleData(
                         padding: EdgeInsets.all(0),
-                        maxHeight: _screenService.scale(
-                          120,
-                          density: _visualDensityService.density,
-                        ),
+                        maxHeight: AppSpacings.scale(120),
                       ),
                       iconStyleData: IconStyleData(
                         openMenuIcon: Icon(MdiIcons.menuUp),
@@ -197,10 +180,7 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
                     localizations
                         .settings_display_settings_screen_saver_description,
                     style: TextStyle(
-                      fontSize: _screenService.scale(
-                        8,
-                        density: _visualDensityService.density,
-                      ),
+                      fontSize: AppSpacings.scale(8),
                     ),
                   ),
                   trailing: IconSwitch(

@@ -1,6 +1,4 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
@@ -26,9 +24,6 @@ class WaterHeaterDeviceDetail extends StatefulWidget {
 }
 
 class _WaterHeaterDeviceDetailState extends State<WaterHeaterDeviceDetail> {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
   final DevicesService _devicesService = locator<DevicesService>();
 
   @override
@@ -57,9 +52,6 @@ class _WaterHeaterDeviceDetailState extends State<WaterHeaterDeviceDetail> {
     }
     return widget._device;
   }
-
-  double _scale(double value) =>
-      _screenService.scale(value, density: _visualDensityService.density);
 
   String _getStatusLabel(AppLocalizations localizations) {
     if (_device.isOn) {
@@ -128,7 +120,7 @@ class _WaterHeaterDeviceDetailState extends State<WaterHeaterDeviceDetail> {
             Icon(
               MdiIcons.alert,
               color: Theme.of(context).warning,
-              size: _scale(64),
+              size: AppSpacings.scale(64),
             ),
             Text(
               localizations.message_error_no_device_detail_preparing_title,

@@ -3,7 +3,6 @@ import 'dart:math' as math;
 
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
@@ -102,8 +101,6 @@ class AirConditionerDeviceDetail extends StatefulWidget {
 class _AirConditionerDeviceDetailState
     extends State<AirConditionerDeviceDetail> {
   final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
   final DevicesService _devicesService = locator<DevicesService>();
   DeviceControlStateService? _deviceControlStateService;
   AirConditionerDeviceController? _controller;
@@ -293,9 +290,6 @@ class _AirConditionerDeviceDetailState
     }
     return widget._device;
   }
-
-  double _scale(double value) =>
-      _screenService.scale(value, density: _visualDensityService.density);
 
   // --------------------------------------------------------------------------
   // STATE HELPERS
@@ -879,7 +873,7 @@ class _AirConditionerDeviceDetailState
     final localizations = AppLocalizations.of(context)!;
     final modeColorFamily = _getModeColorFamily(context);
     final statusSection = _buildStatusSection(localizations, isDark);
-    final tileHeight = _scale(AppTileHeight.horizontal);
+    final tileHeight = AppSpacings.scale(AppTileHeight.horizontal);
     final fanChannel = _device.fanChannel;
 
     // Build speed/mode control widget (fan card)
@@ -900,7 +894,7 @@ class _AirConditionerDeviceDetailState
         crossAxisAlignment: CrossAxisAlignment.start,
         spacing: AppSpacings.pMd,
         children: [
-          _buildPrimaryControlCard(context, isDark, dialSize: _scale(DeviceDetailDialSizes.portrait)),
+          _buildPrimaryControlCard(context, isDark, dialSize: AppSpacings.scale(DeviceDetailDialSizes.portrait)),
           if (speedControl != null) speedControl,
           if (statusSection is! SizedBox) ...[
             SectionTitle(
@@ -930,7 +924,7 @@ class _AirConditionerDeviceDetailState
     final isLargeScreen = _screenService.isLargeScreen;
     final modeColorFamily = _getModeColorFamily(context);
     final statusSection = _buildStatusSection(localizations, isDark);
-    final tileHeight = _scale(AppTileHeight.horizontal);
+    final tileHeight = AppSpacings.scale(AppTileHeight.horizontal);
     final fanChannel = _device.fanChannel;
     final useCompactLayout = !isLargeScreen;
 
@@ -948,7 +942,7 @@ class _AirConditionerDeviceDetailState
 
     return DeviceLandscapeLayout(
       mainContent: isLargeScreen
-          ? _buildPrimaryControlCard(context, isDark, dialSize: _scale(DeviceDetailDialSizes.landscape))
+          ? _buildPrimaryControlCard(context, isDark, dialSize: AppSpacings.scale(DeviceDetailDialSizes.landscape))
           : _buildCompactDialWithModes(context, isDark),
       secondaryContent: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1134,7 +1128,7 @@ class _AirConditionerDeviceDetailState
     }
 
     if (!isLandscape) {
-      final tileHeight = _scale(AppTileHeight.horizontal);
+      final tileHeight = AppSpacings.scale(AppTileHeight.horizontal);
       return HorizontalScrollWithGradient(
         height: tileHeight,
         layoutPadding: AppSpacings.pLg,
@@ -1236,7 +1230,7 @@ class _AirConditionerDeviceDetailState
     return AppCard(
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final modeIconsWidth = _scale(50);
+          final modeIconsWidth = AppSpacings.scale(50);
           final spacing = AppSpacings.pXl;
           final availableForDial =
               constraints.maxWidth - modeIconsWidth - spacing;

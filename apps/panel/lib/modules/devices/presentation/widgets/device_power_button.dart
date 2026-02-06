@@ -1,6 +1,3 @@
-import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -26,14 +23,7 @@ class DevicePowerButton extends StatelessWidget {
   final double size;
   final bool showInfoText;
 
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
   static const _animationDuration = Duration(milliseconds: 200);
-
-  double _scale(double value) =>
-      _screenService.scale(value, density: _visualDensityService.density);
 
   @override
   Widget build(BuildContext context) {
@@ -51,17 +41,17 @@ class DevicePowerButton extends StatelessWidget {
     final inactiveBorderColor =
         isDark ? AppColors.blank : AppBorderColorLight.darker;
 
-    final shadowOffset = Offset(0, _scale(4));
+    final shadowOffset = Offset(0, AppSpacings.scale(4));
     final baseShadow = BoxShadow(
       color: AppShadowColor.light,
-      blurRadius: _scale(20),
+      blurRadius: AppSpacings.scale(20),
       offset: shadowOffset,
     );
     final boxShadow = isOn
         ? [
             BoxShadow(
               color: effectiveGlowColor,
-              blurRadius: _scale(40),
+              blurRadius: AppSpacings.scale(40),
               spreadRadius: 0,
             ),
             baseShadow,
@@ -84,14 +74,14 @@ class DevicePowerButton extends StatelessWidget {
               },
               child: AnimatedContainer(
                 duration: _animationDuration,
-                width: _scale(size),
-                height: _scale(size),
+                width: AppSpacings.scale(size),
+                height: AppSpacings.scale(size),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: isOn ? effectiveActiveBgColor : inactiveBgColor,
                   border: Border.all(
                     color: isOn ? effectiveActiveColor : inactiveBorderColor,
-                    width: isOn ? _scale(4) : _scale(1),
+                    width: isOn ? AppSpacings.scale(4) : AppSpacings.scale(1),
                   ),
                   boxShadow: boxShadow,
                 ),
@@ -101,13 +91,13 @@ class DevicePowerButton extends StatelessWidget {
                   children: [
                     Icon(
                       MdiIcons.power,
-                      size: _scale(44),
+                      size: AppSpacings.scale(44),
                       color: isOn ? effectiveActiveColor : inactiveColor,
                     ),
                     Text(
                       isOn ? 'On' : 'Off',
                       style: TextStyle(
-                        fontSize: _scale(26),
+                        fontSize: AppSpacings.scale(26),
                         fontWeight: FontWeight.w300,
                         color: isOn ? effectiveActiveColor : inactiveColor,
                       ),

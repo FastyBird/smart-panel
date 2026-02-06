@@ -1,6 +1,3 @@
-import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -123,10 +120,6 @@ class ModeSelector<T> extends StatefulWidget {
 }
 
 class _ModeSelectorState<T> extends State<ModeSelector<T>> {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
   /// Key used to scroll to the selected item when scrollable and after first frame.
   final GlobalKey _selectedKey = GlobalKey();
 
@@ -198,9 +191,6 @@ class _ModeSelectorState<T> extends State<ModeSelector<T>> {
       curve: Curves.easeInOut,
     );
   }
-
-  double _scale(double value) =>
-      _screenService.scale(value, density: _visualDensityService.density);
 
   @override
   Widget build(BuildContext context) {
@@ -407,7 +397,7 @@ class _ModeSelectorState<T> extends State<ModeSelector<T>> {
         child: Icon(
           mode.icon,
           color: contentColor,
-          size: _scale(20),
+          size: AppSpacings.scale(20),
         ),
       );
     } else if (useTopIcon) {
@@ -420,7 +410,7 @@ class _ModeSelectorState<T> extends State<ModeSelector<T>> {
           Icon(
             mode.icon,
             color: contentColor,
-            size: _scale(18),
+            size: AppSpacings.scale(18),
           ),
           Flexible(
             child: Text(
@@ -458,7 +448,7 @@ class _ModeSelectorState<T> extends State<ModeSelector<T>> {
           Icon(
             mode.icon,
             color: contentColor,
-            size: _scale(18),
+            size: AppSpacings.scale(18),
           ),
           // When scrollable, don't use Flexible (unbounded width)
           isScrollable ? textWidget : Flexible(child: textWidget),
@@ -467,10 +457,10 @@ class _ModeSelectorState<T> extends State<ModeSelector<T>> {
     }
 
     // For vertical layout: fixed height when icon-only, null when showing labels
-    final buttonHeight = isVerticalLayout && !showLabel ? _scale(36) : null;
+    final buttonHeight = isVerticalLayout && !showLabel ? AppSpacings.scale(36) : null;
     // For horizontal layout: fixed width when icon-only and scrollable
     final buttonWidth = !isVerticalLayout && isScrollable && !showLabel && widget.showIcon
-        ? _scale(48)
+        ? AppSpacings.scale(48)
         : null;
 
     // Use transparent white for light theme to avoid dark flash during animation
@@ -514,12 +504,12 @@ class _ModeSelectorState<T> extends State<ModeSelector<T>> {
         children: [
           content,
           Positioned(
-            top: -_scale(5),
-            right: _scale(0),
+            top: -AppSpacings.scale(5),
+            right: AppSpacings.scale(0),
             child: Icon(
               statusIcon.$1,
               color: statusIcon.$2,
-              size: _scale(12),
+              size: AppSpacings.scale(12),
             ),
           ),
         ],
@@ -538,7 +528,7 @@ class _ModeSelectorState<T> extends State<ModeSelector<T>> {
           borderRadius: BorderRadius.circular(AppBorderRadius.base),
           border: Border.all(
             color: borderColor,
-            width: _scale(2),
+            width: AppSpacings.scale(2),
           ),
         ),
         child: finalContent,

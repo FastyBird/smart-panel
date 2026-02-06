@@ -3,7 +3,6 @@ import 'dart:math' as math;
 
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
@@ -93,8 +92,6 @@ class HeatingUnitDeviceDetail extends StatefulWidget {
 
 class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
   final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
   final DevicesService _devicesService = locator<DevicesService>();
   DeviceControlStateService? _deviceControlStateService;
   HeatingUnitDeviceController? _controller;
@@ -204,9 +201,6 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
     }
     return widget._device;
   }
-
-  double _scale(double value) =>
-      _screenService.scale(value, density: _visualDensityService.density);
 
   // --------------------------------------------------------------------------
   // STATE HELPERS
@@ -456,7 +450,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
         crossAxisAlignment: CrossAxisAlignment.start,
         spacing: AppSpacings.pMd,
         children: [
-          _buildPrimaryControlCard(context, isDark, dialSize: _scale(DeviceDetailDialSizes.portrait)),
+          _buildPrimaryControlCard(context, isDark, dialSize: AppSpacings.scale(DeviceDetailDialSizes.portrait)),
           if (statusSection is! SizedBox) ...[
             SectionTitle(
               title: localizations.device_sensors,
@@ -482,7 +476,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
 
     return DeviceLandscapeLayout(
       mainContent: isLargeScreen
-          ? _buildPrimaryControlCard(context, isDark, dialSize: _scale(DeviceDetailDialSizes.landscape))
+          ? _buildPrimaryControlCard(context, isDark, dialSize: AppSpacings.scale(DeviceDetailDialSizes.landscape))
           : _buildCompactDialWithModes(context, isDark),
       secondaryContent: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -612,7 +606,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
     }
 
     if (!isLandscape) {
-      final tileHeight = _scale(AppTileHeight.horizontal);
+      final tileHeight = AppSpacings.scale(AppTileHeight.horizontal);
       return HorizontalScrollWithGradient(
         height: tileHeight,
         layoutPadding: AppSpacings.pLg,
@@ -713,7 +707,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
     return AppCard(
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final modeIconsWidth = _scale(50);
+          final modeIconsWidth = AppSpacings.scale(50);
           final spacing = AppSpacings.pXl;
           final availableForDial =
               constraints.maxWidth - modeIconsWidth - spacing;

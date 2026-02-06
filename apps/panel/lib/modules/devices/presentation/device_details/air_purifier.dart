@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
@@ -88,8 +87,6 @@ class AirPurifierDeviceDetail extends StatefulWidget {
 
 class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
   final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
   final DevicesService _devicesService = locator<DevicesService>();
   DeviceControlStateService? _deviceControlStateService;
   AirPurifierDeviceController? _controller;
@@ -271,9 +268,6 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
     }
     return widget._device;
   }
-
-  double _scale(double value) =>
-      _screenService.scale(value, density: _visualDensityService.density);
 
   // --------------------------------------------------------------------------
   // STATE HELPERS
@@ -768,7 +762,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
               isDark,
               activeColor,
               false,
-              _scale(AppTileHeight.horizontal),
+              AppSpacings.scale(AppTileHeight.horizontal),
             ),
           if (_hasDeviceControlOptions) ...[
             SectionTitle(
@@ -1076,7 +1070,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           ],
         ),
         Container(
-          height: _scale(8),
+          height: AppSpacings.scale(8),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(AppBorderRadius.base),
             color: trackColor,
@@ -1102,11 +1096,11 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
                     ),
                   ),
                   Positioned(
-                    left: position - _scale(2),
-                    top: -_scale(4),
+                    left: position - AppSpacings.scale(2),
+                    top: -AppSpacings.scale(4),
                     child: Container(
-                      width: _scale(4),
-                      height: _scale(16),
+                      width: AppSpacings.scale(4),
+                      height: AppSpacings.scale(16),
                       decoration: BoxDecoration(
                         color: isDark
                             ? AppTextColorDark.primary
@@ -1548,7 +1542,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
 
     // Portrait: Horizontal scroll with HorizontalTileCompact
     if (!isLandscape) {
-      final tileHeight = _scale(AppTileHeight.horizontal);
+      final tileHeight = AppSpacings.scale(AppTileHeight.horizontal);
 
       return HorizontalScrollWithGradient(
         height: tileHeight,
@@ -1622,7 +1616,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
     bool useVerticalLayout,
   ) {
     final fanChannel = _device.fanChannel;
-    final tileHeight = _scale(AppTileHeight.horizontal);
+    final tileHeight = AppSpacings.scale(AppTileHeight.horizontal);
     final statusColor = _getStatusColor();
 
     // Helper to wrap control with fixed height
@@ -1744,7 +1738,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
     final fanChannel = _device.fanChannel;
     final useVerticalLayout =
         _screenService.isSmallScreen || _screenService.isMediumScreen;
-    final tileHeight = _scale(AppTileHeight.horizontal);
+    final tileHeight = AppSpacings.scale(AppTileHeight.horizontal);
 
     final children = <Widget>[];
 

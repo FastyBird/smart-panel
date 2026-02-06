@@ -1,7 +1,5 @@
 import 'package:fastybird_smart_panel/api/models/spaces_module_data_space_category.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
@@ -49,9 +47,6 @@ class MasterOverviewPage extends StatefulWidget {
 }
 
 class _MasterOverviewPageState extends State<MasterOverviewPage> {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
   late final IntentsService _intentsService;
   SpacesService? _spacesService;
   DevicesService? _devicesService;
@@ -354,10 +349,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
   }
 
   Widget _buildDevicesBadge(BuildContext context) {
-    final iconSize = _screenService.scale(
-      14,
-      density: _visualDensityService.density,
-    );
+    final iconSize = AppSpacings.scale(14);
     final allOnline = _onlineDevices == _totalDevices;
 
     return Container(
@@ -410,10 +402,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
   }
 
   Widget _buildAlertsBadge(BuildContext context) {
-    final iconSize = _screenService.scale(
-      14,
-      density: _visualDensityService.density,
-    );
+    final iconSize = AppSpacings.scale(14);
 
     return Container(
       padding: EdgeInsets.symmetric(
@@ -468,7 +457,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
         children: [
           Icon(
             MdiIcons.alertCircleOutline,
-            size: _screenService.scale(64, density: _visualDensityService.density),
+            size: AppSpacings.scale(64),
             color: Theme.of(context).brightness == Brightness.light
                 ? AppColorsLight.danger
                 : AppColorsDark.danger,
@@ -548,10 +537,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
     required String value,
     required String label,
   }) {
-    final iconSize = _screenService.scale(
-      28,
-      density: _visualDensityService.density,
-    );
+    final iconSize = AppSpacings.scale(28);
 
     return Container(
       padding: AppSpacings.paddingSm,
@@ -603,10 +589,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
           children: [
             Icon(
               MdiIcons.movieOpenPlay,
-              size: _screenService.scale(
-                20,
-                density: _visualDensityService.density,
-              ),
+              size: AppSpacings.scale(20),
             ),
             Text(
               localizations?.master_quick_actions ?? 'Quick Actions',
@@ -620,14 +603,8 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
         if (_isScenesLoading)
           Center(
             child: SizedBox(
-              width: _screenService.scale(
-                24,
-                density: _visualDensityService.density,
-              ),
-              height: _screenService.scale(
-                24,
-                density: _visualDensityService.density,
-              ),
+              width: AppSpacings.scale(24),
+              height: AppSpacings.scale(24),
               child: CircularProgressIndicator(
                 strokeWidth: 2,
                 color: Theme.of(context).colorScheme.primary,
@@ -661,10 +638,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
             )
           : Icon(
               scene.iconData,
-              size: _screenService.scale(
-                18,
-                density: _visualDensityService.density,
-              ),
+              size: AppSpacings.scale(18),
             ),
       label: Text(scene.name),
       onPressed: _isSceneTriggering ? null : () => _triggerScene(scene),
@@ -684,10 +658,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
           children: [
             Icon(
               MdiIcons.homeGroup,
-              size: _screenService.scale(
-                20,
-                density: _visualDensityService.density,
-              ),
+              size: AppSpacings.scale(20),
             ),
             Text(
               localizations?.master_rooms ?? 'Rooms',
@@ -710,10 +681,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
   }
 
   Widget _buildRoomCard(BuildContext context, RoomSummary room) {
-    final iconSize = _screenService.scale(
-      32,
-      density: _visualDensityService.density,
-    );
+    final iconSize = AppSpacings.scale(32);
     final allOnline = room.onlineDevices == room.totalDevices;
 
     return InkWell(

@@ -1,7 +1,5 @@
 import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
@@ -35,9 +33,6 @@ class RoomOverviewPage extends StatefulWidget {
 }
 
 class _RoomOverviewPageState extends State<RoomOverviewPage> {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
   final EventBus _eventBus = locator<EventBus>();
 
   late final IntentsService _intentsService;
@@ -452,10 +447,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
     final model = _model;
     final lightsCount = model?.domainCounts.lights ?? 0;
     final isOn = _lightsOnCount > 0;
-    final iconSize = _screenService.scale(
-      14,
-      density: _visualDensityService.density,
-    );
+    final iconSize = AppSpacings.scale(14);
 
     return GestureDetector(
       onTap: () => _navigateToDomainView(DomainType.lights),
@@ -510,10 +502,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
   }
 
   Widget _buildTemperatureBadge(BuildContext context) {
-    final iconSize = _screenService.scale(
-      14,
-      density: _visualDensityService.density,
-    );
+    final iconSize = AppSpacings.scale(14);
 
     return Container(
       padding: EdgeInsets.symmetric(
@@ -568,8 +557,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
         children: [
           Icon(
             MdiIcons.alertCircleOutline,
-            size:
-                _screenService.scale(64, density: _visualDensityService.density),
+            size: AppSpacings.scale(64),
             color: Theme.of(context).brightness == Brightness.light
                 ? AppColorsLight.danger
                 : AppColorsDark.danger,
@@ -634,14 +622,8 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
   }
 
   Widget _buildDomainTile(BuildContext context, DomainTile tile) {
-    final cardWidth = _screenService.scale(
-      100,
-      density: _visualDensityService.density,
-    );
-    final iconSize = _screenService.scale(
-      32,
-      density: _visualDensityService.density,
-    );
+    final cardWidth = AppSpacings.scale(100);
+    final iconSize = AppSpacings.scale(32);
 
     // Get active count for lights domain
     final activeCount = tile.domain == DomainType.lights ? _lightsOnCount : null;
@@ -711,10 +693,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
               children: [
                 Icon(
                   MdiIcons.movieOpenPlay,
-                  size: _screenService.scale(
-                    24,
-                    density: _visualDensityService.density,
-                  ),
+                  size: AppSpacings.scale(24),
                 ),
                 Text(
                   localizations?.space_scenes_title ?? 'Quick Scenes',
@@ -744,14 +723,8 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 
   Widget _buildSceneButton(BuildContext context, QuickScene scene) {
     final isTriggering = _triggeringSceneId == scene.sceneId;
-    final buttonWidth = _screenService.scale(
-      80,
-      density: _visualDensityService.density,
-    );
-    final buttonHeight = _screenService.scale(
-      60,
-      density: _visualDensityService.density,
-    );
+    final buttonWidth = AppSpacings.scale(80);
+    final buttonHeight = AppSpacings.scale(60);
 
     return SizedBox(
       width: buttonWidth,
@@ -771,14 +744,8 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
                     ),
                     child: Center(
                       child: SizedBox(
-                        width: _screenService.scale(
-                          20,
-                          density: _visualDensityService.density,
-                        ),
-                        height: _screenService.scale(
-                          20,
-                          density: _visualDensityService.density,
-                        ),
+                        width: AppSpacings.scale(20),
+                        height: AppSpacings.scale(20),
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
                           color: Theme.of(context).colorScheme.primary,
@@ -808,10 +775,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
                       ),
                       child: Icon(
                         scene.icon,
-                        size: _screenService.scale(
-                          28,
-                          density: _visualDensityService.density,
-                        ),
+                        size: AppSpacings.scale(28),
                       ),
                     ),
                   ),
@@ -869,10 +833,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
     return ActionChip(
       avatar: Icon(
         action.icon,
-        size: _screenService.scale(
-          18,
-          density: _visualDensityService.density,
-        ),
+        size: AppSpacings.scale(18),
       ),
       label: Text(action.label),
       onPressed: () => _handleSuggestedAction(action),
@@ -890,10 +851,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
         children: [
           Icon(
             MdiIcons.homeOffOutline,
-            size: _screenService.scale(
-              64,
-              density: _visualDensityService.density,
-            ),
+            size: AppSpacings.scale(64),
             color: Theme.of(context).brightness == Brightness.light
                 ? AppTextColorLight.placeholder
                 : AppTextColorDark.placeholder,

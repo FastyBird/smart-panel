@@ -1,8 +1,6 @@
 import 'dart:async';
 
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_landscape_layout.dart';
@@ -42,8 +40,6 @@ class TelevisionDeviceDetail extends StatefulWidget {
 }
 
 class _TelevisionDeviceDetailState extends State<TelevisionDeviceDetail> {
-	final ScreenService _screenService = locator<ScreenService>();
-	final VisualDensityService _visualDensityService = locator<VisualDensityService>();
 	final DevicesService _devicesService = locator<DevicesService>();
 	DeviceControlStateService? _deviceControlStateService;
 
@@ -141,9 +137,6 @@ class _TelevisionDeviceDetailState extends State<TelevisionDeviceDetail> {
 		}
 		return widget._device;
 	}
-
-	double _scale(double value) =>
-		_screenService.scale(value, density: _visualDensityService.density);
 
 	// --------------------------------------------------------------------------
 	// COMMAND HELPERS
@@ -574,8 +567,7 @@ class _TelevisionDeviceDetailState extends State<TelevisionDeviceDetail> {
 								availableKeys: _device.televisionAvailableRemoteKeys,
 								isEnabled: _device.isTelevisionOn,
 								onKeyPress: _sendRemoteKey,
-								scale: _scale,
-								themeColor: _getThemeColor(),
+									themeColor: _getThemeColor(),
 								showLabel: hasBrightness,
 							),
 					],
@@ -600,7 +592,6 @@ class _TelevisionDeviceDetailState extends State<TelevisionDeviceDetail> {
 						isOn: _device.isTelevisionOn,
 						displaySource: _getDisplaySource(),
 						themeColor: _getThemeColor(),
-						scale: _scale,
 					),
 					if (_device.hasMediaPlayback &&
 						MediaPlaybackCard.hasContent(
@@ -626,7 +617,6 @@ class _TelevisionDeviceDetailState extends State<TelevisionDeviceDetail> {
 							onPlaybackSeek: _seekPosition,
 							themeColor: _getThemeColor(),
 							isEnabled: _device.isTelevisionOn,
-							scale: _scale,
 						),
 					if (_device.hasSpeaker)
 						MediaVolumeCard(
@@ -668,7 +658,6 @@ class _TelevisionDeviceDetailState extends State<TelevisionDeviceDetail> {
 						isOn: _device.isTelevisionOn,
 						displaySource: _getDisplaySource(),
 						themeColor: _getThemeColor(),
-						scale: _scale,
 					),
 					if (_device.hasMediaPlayback &&
 						MediaPlaybackCard.hasContent(
@@ -694,7 +683,6 @@ class _TelevisionDeviceDetailState extends State<TelevisionDeviceDetail> {
 							onPlaybackSeek: _seekPosition,
 							themeColor: _getThemeColor(),
 							isEnabled: _device.isTelevisionOn,
-							scale: _scale,
 						),
 					if (_device.hasSpeaker)
 						MediaVolumeCard(

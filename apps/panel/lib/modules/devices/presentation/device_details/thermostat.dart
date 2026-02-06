@@ -3,7 +3,6 @@ import 'dart:math' as math;
 
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
@@ -96,8 +95,6 @@ class ThermostatDeviceDetail extends StatefulWidget {
 
 class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
   final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
   final DevicesService _devicesService = locator<DevicesService>();
   DeviceControlStateService? _deviceControlStateService;
   ThermostatDeviceController? _controller;
@@ -239,9 +236,6 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     }
     return widget._device;
   }
-
-  double _scale(double value) =>
-      _screenService.scale(value, density: _visualDensityService.density);
 
   // --------------------------------------------------------------------------
   // STATE HELPERS
@@ -733,7 +727,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
         crossAxisAlignment: CrossAxisAlignment.start,
         spacing: AppSpacings.pMd,
         children: [
-          _buildPrimaryControlCard(context, isDark, dialSize: _scale(DeviceDetailDialSizes.portrait)),
+          _buildPrimaryControlCard(context, isDark, dialSize: AppSpacings.scale(DeviceDetailDialSizes.portrait)),
           if (statusSection is! SizedBox) ...[
             SectionTitle(
               title: localizations.device_sensors,
@@ -766,7 +760,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
 
     return DeviceLandscapeLayout(
       mainContent: isLargeScreen
-          ? _buildPrimaryControlCard(context, isDark, dialSize: _scale(DeviceDetailDialSizes.landscape))
+          ? _buildPrimaryControlCard(context, isDark, dialSize: AppSpacings.scale(DeviceDetailDialSizes.landscape))
           : _buildCompactDialWithModes(context, isDark),
       secondaryContent: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -897,7 +891,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
       return const SizedBox.shrink();
     }
 
-    final tileHeight = _scale(AppTileHeight.horizontal);
+    final tileHeight = AppSpacings.scale(AppTileHeight.horizontal);
 
     return Column(
       children: [
@@ -947,7 +941,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
 
     // Portrait: Horizontal scroll with HorizontalTileCompact
     if (!isLandscape) {
-      final tileHeight = _scale(AppTileHeight.horizontal);
+      final tileHeight = AppSpacings.scale(AppTileHeight.horizontal);
 
       return HorizontalScrollWithGradient(
         height: tileHeight,
@@ -1053,7 +1047,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     return AppCard(
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final modeIconsWidth = _scale(50);
+          final modeIconsWidth = AppSpacings.scale(50);
           final spacing = AppSpacings.pXl;
           final availableForDial =
               constraints.maxWidth - modeIconsWidth - spacing;

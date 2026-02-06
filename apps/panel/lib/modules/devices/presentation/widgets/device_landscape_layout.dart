@@ -1,6 +1,5 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:flutter/material.dart';
@@ -32,11 +31,6 @@ import 'package:flutter/material.dart';
 /// ```
 class DeviceLandscapeLayout extends StatelessWidget {
   static final ScreenService _screenService = locator<ScreenService>();
-  static final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
-  static double _scale(double value) =>
-      _screenService.scale(value, density: _visualDensityService.density);
 
   /// The main control content widget (left column)
   final Widget mainContent;
@@ -86,7 +80,7 @@ class DeviceLandscapeLayout extends StatelessWidget {
     final showModeSelectorLabels = _screenService.isLargeScreen;
 
     // Fixed width for mode selector based on screen size
-    final modeSelectorWidth = _scale(
+    final modeSelectorWidth = AppSpacings.scale(
         showModeSelectorLabels ? _modeSelectorWidthLarge : _modeSelectorWidthCompact);
 
     // Default paddings
@@ -168,7 +162,7 @@ class DeviceLandscapeLayout extends StatelessWidget {
 
         // Right column: Secondary content (optional, flex-based)
         if (secondaryContent != null) ...[
-          Container(width: _scale(1), color: borderColor),
+          Container(width: AppSpacings.scale(1), color: borderColor),
           Expanded(
             flex: secondaryFlex,
             child: Container(

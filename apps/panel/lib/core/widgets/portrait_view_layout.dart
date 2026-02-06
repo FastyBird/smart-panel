@@ -1,6 +1,3 @@
-import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:flutter/material.dart';
@@ -25,10 +22,6 @@ import 'package:flutter/material.dart';
 /// )
 /// ```
 class PortraitViewLayout extends StatelessWidget {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
   /// The main scrollable content
   final Widget content;
 
@@ -76,9 +69,6 @@ class PortraitViewLayout extends StatelessWidget {
     this.showStickyBottomBorder = true,
   });
 
-  double _scale(double value) =>
-      _screenService.scale(value, density: _visualDensityService.density);
-
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -92,7 +82,7 @@ class PortraitViewLayout extends StatelessWidget {
     // Wrap in ScrollView if scrollable
     if (scrollable) {
       // Add bottom padding when no sticky bottom to keep page indicator visible
-      final bottomPadding = effectiveStickyBottom == null ? _scale(24) : 0.0;
+      final bottomPadding = effectiveStickyBottom == null ? AppSpacings.scale(24) : 0.0;
       final defaultPadding = EdgeInsets.only(
         left: AppSpacings.pLg,
         right: AppSpacings.pLg,
@@ -137,7 +127,7 @@ class PortraitViewLayout extends StatelessWidget {
                       color: isDark
                           ? AppBorderColorDark.light
                           : AppBorderColorLight.darker,
-                      width: _scale(1),
+                      width: AppSpacings.scale(1),
                     ),
                   )
                 : null,

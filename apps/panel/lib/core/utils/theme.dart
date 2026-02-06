@@ -782,6 +782,9 @@ class AppSpacings {
   static final VisualDensityService _visualDensityService =
       locator<VisualDensityService>();
 
+  static double scale(double value) =>
+      _screenService.scale(value, density: _visualDensityService.density);
+
   static double get pXs =>
       _screenService.scale(2.0, density: _visualDensityService.density);
 

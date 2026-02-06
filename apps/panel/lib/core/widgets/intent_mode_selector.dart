@@ -1,6 +1,3 @@
-import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:flutter/material.dart';
@@ -31,10 +28,6 @@ enum IntentModeState {
 /// - Matched: info color, status icon with approximately-equal
 /// - Last intent: neutral color, status icon with history
 class IntentModeSelector<T> extends StatelessWidget {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
   /// List of mode options to display
   final List<ModeOption<T>> modes;
 
@@ -87,9 +80,6 @@ class IntentModeSelector<T> extends StatelessWidget {
     this.fixedWidth,
     this.scrollable = false,
   });
-
-  double _scale(double value) =>
-      _screenService.scale(value, density: _visualDensityService.density);
 
   /// Determine the visual state of a mode
   IntentModeState _getModeState(T modeValue) {
@@ -278,19 +268,19 @@ class IntentModeSelector<T> extends StatelessWidget {
         contentColor = primaryColor;
         backgroundColor = primaryBgColor;
         borderColor = primaryColor;
-        borderWidth = _scale(2);
+        borderWidth = AppSpacings.scale(2);
         break;
       case IntentModeState.matched:
         contentColor = infoColor;
         backgroundColor = infoBgColor;
         borderColor = infoColor;
-        borderWidth = _scale(2);
+        borderWidth = AppSpacings.scale(2);
         break;
       case IntentModeState.lastIntent:
         contentColor = neutralColor;
         backgroundColor = neutralBgColor;
         borderColor = neutralColor;
-        borderWidth = _scale(2);
+        borderWidth = AppSpacings.scale(2);
         break;
       case IntentModeState.none:
         contentColor = secondaryColor;
@@ -300,7 +290,7 @@ class IntentModeSelector<T> extends StatelessWidget {
         borderColor = isDark
             ? AppColors.blank
             : AppColors.white.withValues(alpha: 0);
-        borderWidth = _scale(2);
+        borderWidth = AppSpacings.scale(2);
         break;
     }
 
@@ -315,7 +305,7 @@ class IntentModeSelector<T> extends StatelessWidget {
         child: Icon(
           mode.icon,
           color: contentColor,
-          size: _scale(20),
+          size: AppSpacings.scale(20),
         ),
       );
     } else if (useTopIcon) {
@@ -327,7 +317,7 @@ class IntentModeSelector<T> extends StatelessWidget {
           Icon(
             mode.icon,
             color: contentColor,
-            size: _scale(18),
+            size: AppSpacings.scale(18),
           ),
           Flexible(
             child: Text(
@@ -364,16 +354,16 @@ class IntentModeSelector<T> extends StatelessWidget {
           Icon(
             mode.icon,
             color: contentColor,
-            size: _scale(18),
+            size: AppSpacings.scale(18),
           ),
           isScrollable ? textWidget : Flexible(child: textWidget),
         ],
       );
     }
 
-    final buttonSize = isVerticalLayout && !showLabel ? _scale(36) : null;
+    final buttonSize = isVerticalLayout && !showLabel ? AppSpacings.scale(36) : null;
     final scrollableWidth = isScrollable && !isVerticalLayout && !showLabel
-        ? _scale(48)
+        ? AppSpacings.scale(48)
         : null;
 
     EdgeInsetsGeometry? buttonPadding;
@@ -415,7 +405,7 @@ class IntentModeSelector<T> extends StatelessWidget {
       final isIconOnly = !showLabel;
       final needsBackground = isIconOnly && state != IntentModeState.none;
 
-      final iconSize = _scale(12);
+      final iconSize = AppSpacings.scale(12);
 
       // Wrap icon in fixed-size container to ensure consistent sizing across different icons
       Widget statusIcon = SizedBox(
@@ -432,7 +422,7 @@ class IntentModeSelector<T> extends StatelessWidget {
 
       // Wrap with circular background for icon-only mode
       if (needsBackground) {
-        final containerSize = iconSize + _scale(4);
+        final containerSize = iconSize + AppSpacings.scale(4);
         statusIcon = Container(
           width: containerSize,
           height: containerSize,
@@ -444,8 +434,8 @@ class IntentModeSelector<T> extends StatelessWidget {
         );
       }
 
-      final topOffset = -_scale(5);
-      final rightOffset = isIconOnly ? -_scale(5) : _scale(0);
+      final topOffset = -AppSpacings.scale(5);
+      final rightOffset = isIconOnly ? -AppSpacings.scale(5) : AppSpacings.scale(0);
 
       finalContent = Stack(
         clipBehavior: Clip.none,
@@ -521,19 +511,19 @@ class IntentModeSelector<T> extends StatelessWidget {
         contentColor = primaryColor;
         backgroundColor = primaryBgColor;
         borderColor = primaryColor;
-        borderWidth = _scale(2);
+        borderWidth = AppSpacings.scale(2);
         break;
       case IntentModeState.matched:
         contentColor = infoColor;
         backgroundColor = infoBgColor;
         borderColor = infoColor;
-        borderWidth = _scale(2);
+        borderWidth = AppSpacings.scale(2);
         break;
       case IntentModeState.lastIntent:
         contentColor = neutralColor;
         backgroundColor = neutralBgColor;
         borderColor = neutralColor;
-        borderWidth = _scale(2);
+        borderWidth = AppSpacings.scale(2);
         break;
       case IntentModeState.none:
         contentColor = secondaryColor;
@@ -543,7 +533,7 @@ class IntentModeSelector<T> extends StatelessWidget {
         borderColor = isDark
             ? AppColors.blank
             : AppColors.white.withValues(alpha: 0);
-        borderWidth = _scale(2);
+        borderWidth = AppSpacings.scale(2);
         break;
     }
 
@@ -558,7 +548,7 @@ class IntentModeSelector<T> extends StatelessWidget {
         child: Icon(
           mode.icon,
           color: contentColor,
-          size: _scale(20),
+          size: AppSpacings.scale(20),
         ),
       );
     } else if (useTopIcon) {
@@ -570,7 +560,7 @@ class IntentModeSelector<T> extends StatelessWidget {
           Icon(
             mode.icon,
             color: contentColor,
-            size: _scale(18),
+            size: AppSpacings.scale(18),
           ),
           Flexible(
             child: Text(
@@ -607,7 +597,7 @@ class IntentModeSelector<T> extends StatelessWidget {
           Icon(
             mode.icon,
             color: contentColor,
-            size: _scale(18),
+            size: AppSpacings.scale(18),
           ),
           isScrollable ? textWidget : Flexible(child: textWidget),
         ],
@@ -615,14 +605,14 @@ class IntentModeSelector<T> extends StatelessWidget {
     }
 
     // For vertical layout: fixed height when icon-only, null when showing labels
-    final buttonHeight = isVerticalLayout && !showLabel ? _scale(36) : null;
+    final buttonHeight = isVerticalLayout && !showLabel ? AppSpacings.scale(36) : null;
     // For vertical layout: use passed width for proper status icon positioning
     // For horizontal layout: fixed width when icon-only and scrollable
     final double? buttonWidth;
     if (isVerticalLayout && verticalButtonWidth != null) {
       buttonWidth = verticalButtonWidth;
     } else if (!isVerticalLayout && isScrollable && !showLabel) {
-      buttonWidth = _scale(48);
+      buttonWidth = AppSpacings.scale(48);
     } else {
       buttonWidth = null;
     }
@@ -685,7 +675,7 @@ class IntentModeSelector<T> extends StatelessWidget {
       final isIconOnly = !showLabel;
       final needsBackground = isIconOnly && state != IntentModeState.none;
 
-      final iconSize = _scale(12);
+      final iconSize = AppSpacings.scale(12);
 
       // Wrap icon in fixed-size container to ensure consistent sizing across different icons
       Widget statusIcon = SizedBox(
@@ -702,7 +692,7 @@ class IntentModeSelector<T> extends StatelessWidget {
 
       // Wrap with circular background for icon-only mode
       if (needsBackground) {
-        final containerSize = iconSize + _scale(4);
+        final containerSize = iconSize + AppSpacings.scale(4);
         statusIcon = Container(
           width: containerSize,
           height: containerSize,
@@ -715,8 +705,8 @@ class IntentModeSelector<T> extends StatelessWidget {
       }
 
       // Position differs for icon-only vs with-label
-      final statusTop = isIconOnly ? -_scale(5) : _scale(5);
-      final statusRight = isIconOnly ? -_scale(5) : _scale(10);
+      final statusTop = isIconOnly ? -AppSpacings.scale(5) : AppSpacings.scale(5);
+      final statusRight = isIconOnly ? -AppSpacings.scale(5) : AppSpacings.scale(10);
 
       // Use StackFit.loose - the AnimatedContainer inside has explicit dimensions,
       // so Stack sizes to it. StackFit.expand fails with unbounded height in Column.

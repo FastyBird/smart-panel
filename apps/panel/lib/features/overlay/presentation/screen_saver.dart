@@ -1,17 +1,10 @@
-import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/flip_clock.dart';
 import 'package:flutter/material.dart';
 
 class ScreenSaverScreen extends StatelessWidget {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
-  ScreenSaverScreen({super.key});
+  const ScreenSaverScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -45,25 +38,13 @@ class ScreenSaverScreen extends StatelessWidget {
                           Theme.of(context).brightness == Brightness.light
                               ? AppBorderColorLight.darker
                               : AppBorderColorDark.extraLight,
-                      digitSize: _screenService.scale(
-                        44,
-                        density: _visualDensityService.density,
-                      ),
-                      spacing: _screenService.scale(
-                        1,
-                        density: _visualDensityService.density,
-                      ),
+                      digitSize: AppSpacings.scale(44),
+                      spacing: AppSpacings.scale(1),
                       borderRadius: BorderRadius.all(
-                        Radius.circular(_screenService.scale(
-                          4,
-                          density: _visualDensityService.density,
-                        )),
+                        Radius.circular(AppSpacings.scale(4)),
                       ),
                       separator: SizedBox(
-                          width: _screenService.scale(
-                        4,
-                        density: _visualDensityService.density,
-                      )),
+                          width: AppSpacings.scale(4)),
                     ),
                     Text(
                       DatetimeUtils.getFormattedDate(now),

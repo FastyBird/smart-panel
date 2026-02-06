@@ -1,6 +1,3 @@
-import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_bottom_sheet.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
@@ -40,10 +37,6 @@ class ValueOption<T> {
 ///
 /// Use this as a trigger to open [ValueSelectorSheet].
 class ValueSelectorRow<T> extends StatelessWidget {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
   /// Current selected value
   final T? currentValue;
 
@@ -91,9 +84,6 @@ class ValueSelectorRow<T> extends StatelessWidget {
     this.layout = ValueSelectorRowLayout.horizontal,
     this.showChevron = true,
   });
-
-  double _scale(double value) =>
-      _screenService.scale(value, density: _visualDensityService.density);
 
   String _getDisplayValue(AppLocalizations localizations) {
     if (displayFormatter != null) {
@@ -150,7 +140,7 @@ class ValueSelectorRow<T> extends StatelessWidget {
             borderRadius: BorderRadius.circular(AppBorderRadius.base),
             border: Border.all(
               color: borderColor,
-              width: _scale(1),
+              width: AppSpacings.scale(1),
             ),
           ),
           child: Row(
@@ -158,8 +148,8 @@ class ValueSelectorRow<T> extends StatelessWidget {
             children: [
               // Icon with background container (matching UniversalTile style)
               Container(
-                width: _scale(32),
-                height: _scale(32),
+                width: AppSpacings.scale(32),
+                height: AppSpacings.scale(32),
                 decoration: BoxDecoration(
                   color: iconBgColor,
                   borderRadius: BorderRadius.circular(AppBorderRadius.base),
@@ -167,7 +157,7 @@ class ValueSelectorRow<T> extends StatelessWidget {
                 child: Icon(
                   icon,
                   color: iconColor,
-                  size: _scale(18),
+                  size: AppSpacings.scale(18),
                 ),
               ),
               Expanded(
@@ -220,7 +210,7 @@ class ValueSelectorRow<T> extends StatelessWidget {
                 Icon(
                   MdiIcons.chevronRight,
                   color: secondaryColor,
-                  size: _scale(20),
+                  size: AppSpacings.scale(20),
                 ),
             ],
           ),
@@ -363,10 +353,6 @@ class ValueSelectorSheet<T> extends StatefulWidget {
 }
 
 class _ValueSelectorSheetState<T> extends State<ValueSelectorSheet<T>> {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
   late int _selectedIndex;
 
   @override
@@ -385,9 +371,6 @@ class _ValueSelectorSheetState<T> extends State<ValueSelectorSheet<T>> {
     setState(() => _selectedIndex = index);
     widget.selectedIndexNotifier?.value = index;
   }
-
-  double _scale(double value) =>
-      _screenService.scale(value, density: _visualDensityService.density);
 
   @override
   Widget build(BuildContext context) {
@@ -419,7 +402,7 @@ class _ValueSelectorSheetState<T> extends State<ValueSelectorSheet<T>> {
               physics: const ClampingScrollPhysics(),
               child: LayoutBuilder(
                       builder: (context, constraints) {
-                        final spacing = _scale(10);
+                        final spacing = AppSpacings.scale(10);
                         final totalSpacing = spacing * (widget.columns - 1);
                         final itemWidth =
                             (constraints.maxWidth - totalSpacing) / widget.columns;
@@ -498,7 +481,7 @@ class _ValueSelectorSheetState<T> extends State<ValueSelectorSheet<T>> {
                                   border: Border.all(
                                     color:
                                         isSelected ? effectiveActiveColor : borderColor,
-                                    width: _scale(1),
+                                    width: AppSpacings.scale(1),
                                   ),
                                 ),
                                 child: AnimatedContainer(
@@ -511,7 +494,7 @@ class _ValueSelectorSheetState<T> extends State<ValueSelectorSheet<T>> {
                                     border: Border.all(
                                       color:
                                           isSelected ? effectiveActiveColor : innerBgColor,
-                                      width: _scale(1),
+                                      width: AppSpacings.scale(1),
                                     ),
                                   ),
                                   child: Column(
@@ -524,7 +507,7 @@ class _ValueSelectorSheetState<T> extends State<ValueSelectorSheet<T>> {
                                           color: isSelected
                                               ? effectiveActiveColor
                                               : secondaryColor,
-                                          size: _scale(20),
+                                          size: AppSpacings.scale(20),
                                         ),
                                       ],
                                       Text(

@@ -1,6 +1,3 @@
-import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:flutter/material.dart';
 
@@ -36,17 +33,12 @@ class AppCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final screenService = locator<ScreenService>();
-    final visualDensityService = locator<VisualDensityService>();
 
     final resolvedColor =
         color ?? (isDark ? AppFillColorDark.lighter : AppFillColorLight.light);
     final resolvedBorderColor = borderColor ??
         (isDark ? AppBorderColorDark.light : AppBorderColorLight.darker);
-    final borderWidth = screenService.scale(
-      1,
-      density: visualDensityService.density,
-    );
+    final borderWidth = AppSpacings.scale(1);
 
     return Container(
       width: width,

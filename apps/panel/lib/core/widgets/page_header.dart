@@ -1,6 +1,3 @@
-import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -13,10 +10,6 @@ import 'package:material_design_icons_flutter/material_design_icons_flutter.dart
 /// - Trailing widget (actions, toggle, or custom)
 /// - Optional colored bottom border (for error/warning states)
 class PageHeader extends StatelessWidget {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
   /// Title text displayed in header
   final String title;
 
@@ -44,7 +37,7 @@ class PageHeader extends StatelessWidget {
   /// Custom subtitle color (overrides default secondary color)
   final Color? subtitleColor;
 
-  PageHeader({
+  const PageHeader({
     super.key,
     required this.title,
     this.subtitle,
@@ -56,9 +49,6 @@ class PageHeader extends StatelessWidget {
     this.backgroundColor,
     this.subtitleColor,
   });
-
-  double _scale(double size) =>
-      _screenService.scale(size, density: _visualDensityService.density);
 
   @override
   Widget build(BuildContext context) {
@@ -76,15 +66,15 @@ class PageHeader extends StatelessWidget {
 
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: _scale(10),
-        vertical: _scale(8),
+        horizontal: AppSpacings.scale(10),
+        vertical: AppSpacings.scale(8),
       ),
       decoration: BoxDecoration(
         color: bgColor,
         border: Border(
           bottom: BorderSide(
             color: borderColor ?? defaultBorderColor,
-            width: _scale(1),
+            width: AppSpacings.scale(1),
           ),
         ),
       ),
@@ -156,7 +146,7 @@ class PageHeader extends StatelessWidget {
             Icon(
               icon,
               color: iconColor,
-              size: _scale(24),
+              size: AppSpacings.scale(24),
             ),
           ],
         ],
@@ -168,7 +158,7 @@ class PageHeader extends StatelessWidget {
       return Icon(
         icon,
         color: iconColor,
-        size: _scale(24),
+        size: AppSpacings.scale(24),
       );
     }
 
@@ -178,22 +168,15 @@ class PageHeader extends StatelessWidget {
 
 /// Circular icon button for header actions
 class _HeaderIconButton extends StatelessWidget {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
   final IconData icon;
   final VoidCallback? onTap;
   final bool isDark;
 
-  _HeaderIconButton({
+  const _HeaderIconButton({
     required this.icon,
     this.onTap,
     required this.isDark,
   });
-
-  double _scale(double size) =>
-      _screenService.scale(size, density: _visualDensityService.density);
 
   @override
   Widget build(BuildContext context) {
@@ -205,18 +188,18 @@ class _HeaderIconButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: _scale(36),
-        height: _scale(36),
+        width: AppSpacings.scale(36),
+        height: AppSpacings.scale(36),
         decoration: BoxDecoration(
           color: bgColor,
           borderRadius: BorderRadius.circular(AppBorderRadius.round),
           border: borderColor != null
-              ? Border.all(color: borderColor, width: _scale(1))
+              ? Border.all(color: borderColor, width: AppSpacings.scale(1))
               : null,
         ),
         child: Icon(
           icon,
-          size: _scale(18),
+          size: AppSpacings.scale(18),
           color: color,
         ),
       ),
@@ -354,29 +337,22 @@ class HeaderIconButton extends StatelessWidget {
 /// Icon in a colored container for page headers.
 /// Background and icon colors are resolved from [ThemeColorFamily] for [color].
 class HeaderMainIcon extends StatelessWidget {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
   final IconData icon;
   final ThemeColors color;
 
-  HeaderMainIcon({
+  const HeaderMainIcon({
     super.key,
     required this.icon,
     this.color = ThemeColors.primary,
   });
-
-  double _scale(double s) =>
-      _screenService.scale(s, density: _visualDensityService.density);
 
   @override
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
     final family = ThemeColorFamily.get(brightness, color);
     return Container(
-      width: _scale(44),
-      height: _scale(44),
+      width: AppSpacings.scale(44),
+      height: AppSpacings.scale(44),
       decoration: BoxDecoration(
         color: family.light8,
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
@@ -384,7 +360,7 @@ class HeaderMainIcon extends StatelessWidget {
       child: Icon(
         icon,
         color: family.base,
-        size: _scale(24),
+        size: AppSpacings.scale(24),
       ),
     );
   }

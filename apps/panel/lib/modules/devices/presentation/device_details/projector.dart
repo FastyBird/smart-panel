@@ -1,8 +1,6 @@
 import 'dart:async';
 
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_landscape_layout.dart';
@@ -42,8 +40,6 @@ class ProjectorDeviceDetail extends StatefulWidget {
 }
 
 class _ProjectorDeviceDetailState extends State<ProjectorDeviceDetail> {
-	final ScreenService _screenService = locator<ScreenService>();
-	final VisualDensityService _visualDensityService = locator<VisualDensityService>();
 	final DevicesService _devicesService = locator<DevicesService>();
 	DeviceControlStateService? _deviceControlStateService;
 
@@ -143,9 +139,6 @@ class _ProjectorDeviceDetailState extends State<ProjectorDeviceDetail> {
 		}
 		return widget._device;
 	}
-
-	double _scale(double value) =>
-		_screenService.scale(value, density: _visualDensityService.density);
 
 	// --------------------------------------------------------------------------
 	// COMMAND HELPERS
@@ -577,7 +570,6 @@ class _ProjectorDeviceDetailState extends State<ProjectorDeviceDetail> {
 								availableKeys: _device.projectorAvailableRemoteKeys,
 								isEnabled: _device.isProjectorOn,
 								onKeyPress: _sendRemoteKey,
-								scale: _scale,
 								themeColor: _getThemeColor(),
 								showLabel: hasBrightness,
 							),
@@ -603,7 +595,6 @@ class _ProjectorDeviceDetailState extends State<ProjectorDeviceDetail> {
 						isOn: _device.isProjectorOn,
 						displaySource: _getDisplaySource(),
 						themeColor: _getThemeColor(),
-						scale: _scale,
 					),
 					if (_device.hasMediaPlayback &&
 						MediaPlaybackCard.hasContent(
@@ -629,8 +620,7 @@ class _ProjectorDeviceDetailState extends State<ProjectorDeviceDetail> {
 							onPlaybackSeek: _seekPosition,
 							themeColor: _getThemeColor(),
 							isEnabled: _device.isProjectorOn,
-							scale: _scale,
-						),
+							),
 					if (_device.hasSpeaker)
 						MediaVolumeCard(
 							volume: _effectiveVolume,
@@ -671,7 +661,6 @@ class _ProjectorDeviceDetailState extends State<ProjectorDeviceDetail> {
 						isOn: _device.isProjectorOn,
 						displaySource: _getDisplaySource(),
 						themeColor: _getThemeColor(),
-						scale: _scale,
 					),
 					if (_device.hasMediaPlayback &&
 						MediaPlaybackCard.hasContent(
@@ -697,8 +686,7 @@ class _ProjectorDeviceDetailState extends State<ProjectorDeviceDetail> {
 							onPlaybackSeek: _seekPosition,
 							themeColor: _getThemeColor(),
 							isEnabled: _device.isProjectorOn,
-							scale: _scale,
-						),
+							),
 					if (_device.hasSpeaker)
 						MediaVolumeCard(
 							volume: _effectiveVolume,

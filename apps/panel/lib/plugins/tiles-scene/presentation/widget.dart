@@ -1,6 +1,3 @@
-import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/plugins/tiles-scene/views/view.dart';
 import 'package:flutter/material.dart';
@@ -9,18 +6,11 @@ import 'package:material_design_icons_flutter/material_design_icons_flutter.dart
 class SceneTileWidget extends StatelessWidget {
   final SceneTileView _tile;
 
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
-  SceneTileWidget(this._tile, {super.key});
+  const SceneTileWidget(this._tile, {super.key});
 
   @override
   Widget build(BuildContext context) {
-    final iconSize = _screenService.scale(
-      32,
-      density: _visualDensityService.density,
-    );
+    final iconSize = AppSpacings.scale(32);
 
     return Card(
       elevation: _tile.isOn ? 4 : 1,
@@ -39,7 +29,7 @@ class SceneTileWidget extends StatelessWidget {
               : (Theme.of(context).brightness == Brightness.light
                   ? AppBorderColorLight.darker
                   : AppBorderColorDark.light),
-          width: _tile.isOn ? _screenService.scale(2) : _screenService.scale(1),
+          width: _tile.isOn ? AppSpacings.scale(2) : AppSpacings.scale(1),
         ),
       ),
       child: Padding(

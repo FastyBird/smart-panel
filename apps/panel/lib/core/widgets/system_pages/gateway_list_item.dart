@@ -1,21 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
-import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/models/discovered_backend.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/system_pages/theme.dart';
 
 /// List item widget for displaying a discovered backend/gateway
 class GatewayListItem extends StatelessWidget {
-  final ScreenService _screenService = locator<ScreenService>();
   final DiscoveredBackend backend;
   final bool isSelected;
   final VoidCallback? onTap;
   final bool isDark;
 
-  GatewayListItem({
+  const GatewayListItem({
     super.key,
     required this.backend,
     this.isSelected = false,
@@ -57,8 +54,8 @@ class GatewayListItem extends StatelessWidget {
           children: [
             // Icon
             Container(
-              width: _screenService.scale(44),
-              height: _screenService.scale(44),
+              width: AppSpacings.scale(44),
+              height: AppSpacings.scale(44),
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 color: isSelected
@@ -116,7 +113,7 @@ class GatewayListItem extends StatelessWidget {
                     color: SystemPagesTheme.textMuted(isDark),
                     fontSize: AppFontSize.extraSmall,
                     fontWeight: FontWeight.w500,
-                    letterSpacing: _screenService.scale(0.5),
+                    letterSpacing: AppSpacings.scale(0.5),
                   ),
                 ),
               ),

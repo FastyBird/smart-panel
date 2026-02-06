@@ -1,8 +1,6 @@
 import 'package:fastybird_smart_panel/api/models/devices_module_data_type.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
-
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/utils/sensor_utils.dart';
@@ -41,8 +39,6 @@ class SensorDetailContent extends StatefulWidget {
 
 class _SensorDetailContentState extends State<SensorDetailContent> {
   final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
   final PropertyTimeseriesService _timeseriesService =
       locator<PropertyTimeseriesService>();
   final DevicesService _devicesService = locator<DevicesService>();
@@ -164,8 +160,6 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
   // LAYOUT & BUILD
   // --------------------------------------------------------------------------
 
-  double _scale(double size) =>
-      _screenService.scale(size, density: _visualDensityService.density);
 
   ThemeColors get _themeColor =>
       SensorColors.themeColorForCategory(_currentSensorData.channel.category);
@@ -258,7 +252,7 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
           child: RichText(
             text: TextSpan(
               style: TextStyle(
-                fontSize: _scale(isCompact ? 56 : 72),
+                fontSize: AppSpacings.scale(isCompact ? 56 : 72),
                 fontWeight: FontWeight.w200,
                 color: _isOffline
                     ? (isDark
@@ -271,7 +265,7 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
                 TextSpan(
                   text: _unit.isNotEmpty ? ' $_unit' : '',
                   style: TextStyle(
-                    fontSize: _scale(isCompact ? 18 : 24),
+                    fontSize: AppSpacings.scale(isCompact ? 18 : 24),
                     fontWeight: FontWeight.w300,
                   ),
                 ),
@@ -382,7 +376,7 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
           border: Border.all(
             color:
                 isDark ? AppBorderColorDark.light : AppBorderColorLight.darker,
-            width: _scale(1),
+            width: AppSpacings.scale(1),
           ),
         ),
         child: Column(
@@ -433,8 +427,8 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
     if (_isLoadingTimeseries) {
       contentArea = Center(
         child: SizedBox(
-          width: _scale(24),
-          height: _scale(24),
+          width: AppSpacings.scale(24),
+          height: AppSpacings.scale(24),
           child: CircularProgressIndicator(
               strokeWidth: 2, color: _getCategoryColor(context)),
         ),
@@ -470,7 +464,7 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
                 color: isDark
                     ? AppBorderColorDark.light
                     : AppBorderColorLight.darker,
-                width: _scale(1),
+                width: AppSpacings.scale(1),
               ),
             )
           : null,
@@ -546,7 +540,7 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
               ),
             )
           : SizedBox(
-              height: _scale(160),
+              height: AppSpacings.scale(160),
               child: Center(
                 child: Text(
                   localizations.sensor_empty_no_state_changes,
@@ -569,7 +563,7 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
       padding: EdgeInsets.zero,
       itemCount: reversedEvents.length,
       separatorBuilder: (_, __) => Divider(
-        height: _scale(1),
+        height: AppSpacings.scale(1),
         color: isDark ? AppBorderColorDark.light : AppBorderColorLight.darker,
       ),
       itemBuilder: (context, index) {
@@ -592,8 +586,8 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
           child: Row(
             children: [
               Container(
-                width: _scale(8),
-                height: _scale(8),
+                width: AppSpacings.scale(8),
+                height: AppSpacings.scale(8),
                 decoration:
                     BoxDecoration(color: dotColor, shape: BoxShape.circle),
               ),
@@ -625,7 +619,7 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
       return listView;
     }
     return ConstrainedBox(
-      constraints: BoxConstraints(maxHeight: _scale(200)),
+      constraints: BoxConstraints(maxHeight: AppSpacings.scale(200)),
       child: listView,
     );
   }
@@ -647,8 +641,8 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
       if (_isLoadingTimeseries) {
         return Center(
           child: SizedBox(
-            width: _scale(24),
-            height: _scale(24),
+            width: AppSpacings.scale(24),
+            height: AppSpacings.scale(24),
             child: CircularProgressIndicator(
                 strokeWidth: 2, color: _getCategoryColor(context)),
           ),
@@ -688,8 +682,8 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
             ),
           )
         : SizedBox(
-            height: _scale(160),
-            child: buildChartContent(_scale(160)),
+            height: AppSpacings.scale(160),
+            child: buildChartContent(AppSpacings.scale(160)),
           );
 
     return Container(
@@ -705,7 +699,7 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
                 color: isDark
                     ? AppBorderColorDark.light
                     : AppBorderColorLight.darker,
-                width: _scale(1),
+                width: AppSpacings.scale(1),
               ),
             )
           : null,

@@ -1,8 +1,6 @@
 import 'dart:async';
 
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_landscape_layout.dart';
@@ -34,8 +32,6 @@ class StreamingServiceDeviceDetail extends StatefulWidget {
 }
 
 class _StreamingServiceDeviceDetailState extends State<StreamingServiceDeviceDetail> {
-	final ScreenService _screenService = locator<ScreenService>();
-	final VisualDensityService _visualDensityService = locator<VisualDensityService>();
 	final DevicesService _devicesService = locator<DevicesService>();
 
 	Timer? _playbackSettleTimer;
@@ -67,9 +63,6 @@ class _StreamingServiceDeviceDetailState extends State<StreamingServiceDeviceDet
 		}
 		return widget._device;
 	}
-
-	double _scale(double value) =>
-		_screenService.scale(value, density: _visualDensityService.density);
 
 	// --------------------------------------------------------------------------
 	// COMMAND HELPERS
@@ -226,7 +219,6 @@ class _StreamingServiceDeviceDetailState extends State<StreamingServiceDeviceDet
 						name: _device.name,
 						isOn: true,
 						themeColor: _getThemeColor(),
-						scale: _scale,
 					),
 					if (MediaPlaybackCard.hasContent(
 						playbackTrack: _device.isMediaPlaybackTrack,
@@ -251,8 +243,7 @@ class _StreamingServiceDeviceDetailState extends State<StreamingServiceDeviceDet
 							onPlaybackSeek: _seekPosition,
 							themeColor: _getThemeColor(),
 							isEnabled: true,
-							scale: _scale,
-						),
+							),
 				],
 			),
 		);
@@ -273,7 +264,6 @@ class _StreamingServiceDeviceDetailState extends State<StreamingServiceDeviceDet
 						name: _device.name,
 						isOn: true,
 						themeColor: _getThemeColor(),
-						scale: _scale,
 					),
 					if (MediaPlaybackCard.hasContent(
 						playbackTrack: _device.isMediaPlaybackTrack,
@@ -298,8 +288,7 @@ class _StreamingServiceDeviceDetailState extends State<StreamingServiceDeviceDet
 							onPlaybackSeek: _seekPosition,
 							themeColor: _getThemeColor(),
 							isEnabled: true,
-							scale: _scale,
-						),
+							),
 				],
 			),
 			secondaryContent: const SizedBox.shrink(),

@@ -9,7 +9,6 @@ class MediaInfoCard extends StatelessWidget {
 	final bool isOn;
 	final String? displaySource;
 	final ThemeColors themeColor;
-	final double Function(double) scale;
 
 	const MediaInfoCard({
 		super.key,
@@ -18,7 +17,6 @@ class MediaInfoCard extends StatelessWidget {
 		required this.isOn,
 		this.displaySource,
 		this.themeColor = ThemeColors.primary,
-		required this.scale,
 	});
 
 	@override
@@ -37,8 +35,8 @@ class MediaInfoCard extends StatelessWidget {
 				spacing: AppSpacings.pMd,
 				children: [
 					Container(
-						width: scale(64),
-						height: scale(64),
+						width: AppSpacings.scale(64),
+						height: AppSpacings.scale(64),
 						decoration: BoxDecoration(
 							color: iconContainer.backgroundColor,
 							borderRadius: BorderRadius.circular(AppBorderRadius.base),
@@ -46,7 +44,7 @@ class MediaInfoCard extends StatelessWidget {
 						child: Icon(
 							icon,
 							color: iconContainer.iconColor,
-							size: scale(32),
+							size: AppSpacings.scale(32),
 						),
 					),
 					Text(
@@ -63,8 +61,8 @@ class MediaInfoCard extends StatelessWidget {
 						spacing: AppSpacings.pSm,
 						children: [
 							Container(
-								width: scale(8),
-								height: scale(8),
+								width: AppSpacings.scale(8),
+								height: AppSpacings.scale(8),
 								decoration: BoxDecoration(
 									color: isOn
 										? (isDark ? AppColorsDark.success : AppColorsLight.success)

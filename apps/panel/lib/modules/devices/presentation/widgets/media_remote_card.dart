@@ -9,7 +9,6 @@ class MediaRemoteCard<T extends Enum> extends StatelessWidget {
 	final List<T> availableKeys;
 	final bool isEnabled;
 	final ValueChanged<T> onKeyPress;
-	final double Function(double) scale;
 	final ThemeColors themeColor;
 	/// When false, hides the card header label (icon + "Remote" text).
 	final bool showLabel;
@@ -19,7 +18,6 @@ class MediaRemoteCard<T extends Enum> extends StatelessWidget {
 		required this.availableKeys,
 		required this.isEnabled,
 		required this.onKeyPress,
-		required this.scale,
 		this.themeColor = ThemeColors.primary,
 		this.showLabel = true,
 	});
@@ -248,8 +246,8 @@ class MediaRemoteCard<T extends Enum> extends StatelessWidget {
 		bool isMain = false,
 		VoidCallback? onTap,
 	}) {
-		final size = scale(isMain ? 44 : 32);
-		final iconSize = scale(isMain ? 22 : 16);
+		final size = AppSpacings.scale(isMain ? 44 : 32);
+		final iconSize = AppSpacings.scale(isMain ? 22 : 16);
 		final brightness = Theme.of(context).brightness;
 		final (accentTheme, accentFg) = _filledButtonFor(brightness, themeColor);
 		final (neutralTheme, neutralFg) = _filledButtonFor(brightness, ThemeColors.neutral);
@@ -292,7 +290,7 @@ class MediaRemoteCard<T extends Enum> extends StatelessWidget {
 		bool isPrimary = false,
 		VoidCallback? onTap,
 	}) {
-		final size = scale(40);
+		final size = AppSpacings.scale(40);
 		final brightness = Theme.of(context).brightness;
 		final (accentTheme, accentFg) = _filledButtonFor(brightness, themeColor);
 		final (neutralTheme, neutralFg) = _filledButtonFor(brightness, ThemeColors.neutral);
@@ -321,7 +319,7 @@ class MediaRemoteCard<T extends Enum> extends StatelessWidget {
 					child: icon != null
 						? Icon(
 							icon,
-							size: scale(20),
+							size: AppSpacings.scale(20),
 							color: foregroundColor,
 						)
 						: Text(

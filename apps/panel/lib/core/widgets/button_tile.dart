@@ -1,6 +1,3 @@
-import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -8,16 +5,12 @@ import 'package:material_design_icons_flutter/material_design_icons_flutter.dart
 
 /// Container box for button tiles with on/off state styling
 class ButtonTileBox extends StatelessWidget {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
   final GestureTapCallback? onTap;
   final bool isOn;
   final bool isDisabled;
   final Widget child;
 
-  ButtonTileBox({
+  const ButtonTileBox({
     super.key,
     required this.onTap,
     required this.isOn,
@@ -28,18 +21,9 @@ class ButtonTileBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Scale shadow values
-    final shadowBlur = _screenService.scale(
-      4,
-      density: _visualDensityService.density,
-    );
-    final shadowSpread = _screenService.scale(
-      1,
-      density: _visualDensityService.density,
-    );
-    final shadowOffsetY = _screenService.scale(
-      2,
-      density: _visualDensityService.density,
-    );
+    final shadowBlur = AppSpacings.scale(4);
+    final shadowSpread = AppSpacings.scale(1);
+    final shadowOffsetY = AppSpacings.scale(2);
 
     return Container(
       constraints: const BoxConstraints.expand(),
@@ -68,10 +52,7 @@ class ButtonTileBox extends StatelessWidget {
                   : (Theme.of(context).brightness == Brightness.light
                       ? AppColorsLight.infoLight5
                       : AppColorsDark.infoLight5)),
-          width: _screenService.scale(
-            1,
-            density: _visualDensityService.density,
-          ),
+          width: AppSpacings.scale(1),
         ),
         boxShadow: isOn
             ? [
@@ -330,10 +311,6 @@ class ButtonTileWidget extends StatelessWidget {
 
 /// Circular icon button for button tiles
 class ButtonTileIcon extends StatelessWidget {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
   final IconData? icon;
   final GestureTapCallback? onTap;
   final bool isOn;
@@ -346,7 +323,7 @@ class ButtonTileIcon extends StatelessWidget {
   final IconData? alertIcon;
   final Color? alertColor;
 
-  ButtonTileIcon({
+  const ButtonTileIcon({
     super.key,
     this.icon,
     required this.onTap,
@@ -366,15 +343,12 @@ class ButtonTileIcon extends StatelessWidget {
     // Use rawIconSize if provided (already in pixels), otherwise scale iconSize
     // Total size: icon (24) + border (4*2) + padding (4*2) = 40 scaled
     final double iconSize = rawIconSize ??
-        _screenService.scale(
-          this.iconSize ?? 40,
-          density: _visualDensityService.density,
-        );
+        AppSpacings.scale(this.iconSize ?? 40);
 
     // Inner icon glyph size: 60% of container (24/40 ratio)
     final double glyphSize = rawIconSize != null
         ? iconSize * 0.6
-        : _screenService.scale(24, density: _visualDensityService.density);
+        : AppSpacings.scale(24);
 
     final iconButton = SizedBox(
       width: iconSize,
@@ -408,10 +382,7 @@ class ButtonTileIcon extends StatelessWidget {
                     : (Theme.of(context).brightness == Brightness.light
                         ? AppColorsLight.infoLight5
                         : AppColorsDark.infoLight5)),
-            width: _screenService.scale(
-              4,
-              density: _visualDensityService.density,
-            ),
+            width: AppSpacings.scale(4),
           ),
         ),
         child: Container(
@@ -455,10 +426,7 @@ class ButtonTileIcon extends StatelessWidget {
                         ),
                       ),
                       child: CircularProgressIndicator(
-                        strokeWidth: _screenService.scale(
-                          2,
-                          density: _visualDensityService.density,
-                        ),
+                        strokeWidth: AppSpacings.scale(2),
                       ),
                     )
                   : FittedBox(
@@ -500,14 +468,8 @@ class ButtonTileIcon extends StatelessWidget {
         : AppColorsDark.warning;
 
     // Scale alert badge positioning and padding
-    final alertOffset = _screenService.scale(
-      -2,
-      density: _visualDensityService.density,
-    );
-    final alertPadding = _screenService.scale(
-      2,
-      density: _visualDensityService.density,
-    );
+    final alertOffset = AppSpacings.scale(-2);
+    final alertPadding = AppSpacings.scale(2);
 
     return Stack(
       clipBehavior: Clip.none,

@@ -1,6 +1,4 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
@@ -9,9 +7,6 @@ import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 class GeneralSettingsPage extends StatelessWidget {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
   final DisplayRepository _displayRepository = locator<DisplayRepository>();
 
   GeneralSettingsPage({super.key});
@@ -75,10 +70,7 @@ class GeneralSettingsPage extends StatelessWidget {
               ),
               icon: Icon(
                 MdiIcons.close,
-                size: _screenService.scale(
-                  14,
-                  density: _visualDensityService.density,
-                ),
+                size: AppSpacings.scale(14),
               ),
             ),
           )
@@ -111,10 +103,7 @@ class GeneralSettingsPage extends StatelessWidget {
                 children: [
                   Icon(
                     buttons[index].icon,
-                    size: _screenService.scale(
-                      28,
-                      density: _visualDensityService.density,
-                    ),
+                    size: AppSpacings.scale(28),
                   ),
                   SizedBox(
                     height: AppFontSize.small * 2 + AppSpacings.pSm * 2,

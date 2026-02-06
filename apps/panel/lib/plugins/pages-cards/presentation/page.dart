@@ -1,6 +1,3 @@
-import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/mappers/data_source.dart';
@@ -14,13 +11,9 @@ import 'package:material_design_icons_flutter/material_design_icons_flutter.dart
 import 'package:provider/provider.dart';
 
 class CardsPage extends StatelessWidget {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
   final CardsPageView page;
 
-  CardsPage({super.key, required this.page});
+  const CardsPage({super.key, required this.page});
 
   @override
   Widget build(BuildContext context) {
@@ -47,10 +40,7 @@ class CardsPage extends StatelessWidget {
                   Icon(
                     MdiIcons.alert,
                     color: Theme.of(context).warning,
-                    size: _screenService.scale(
-                      64,
-                      density: _visualDensityService.density,
-                    ),
+                    size: AppSpacings.scale(64),
                   ),
                   Text(
                     localizations.message_error_page_not_found_title,
@@ -79,10 +69,7 @@ class CardsPage extends StatelessWidget {
                   Icon(
                     MdiIcons.cardText,
                     color: Theme.of(context).warning,
-                    size: _screenService.scale(
-                      64,
-                      density: _visualDensityService.density,
-                    ),
+                    size: AppSpacings.scale(64),
                   ),
                   Text(
                     localizations.message_error_cards_not_configured_title,

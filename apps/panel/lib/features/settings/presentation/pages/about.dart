@@ -1,6 +1,3 @@
-import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/number.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
@@ -19,10 +16,6 @@ class AboutPage extends StatefulWidget {
 }
 
 class _AboutPageState extends State<AboutPage> {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
   String _appVersion = 'Loading...';
 
   @override
@@ -70,10 +63,7 @@ class _AboutPageState extends State<AboutPage> {
                   children: [
                     Icon(
                       MdiIcons.cogOutline,
-                      size: _screenService.scale(
-                        72,
-                        density: _visualDensityService.density,
-                      ),
+                      size: AppSpacings.scale(72),
                     ),
                     Text(
                       'FastyBird! Smart Panel',
@@ -136,10 +126,7 @@ class _AboutPageState extends State<AboutPage> {
                         Text(
                           'https://fastybird.com',
                           style: TextStyle(
-                            fontSize: _screenService.scale(
-                              8,
-                              density: _visualDensityService.density,
-                            ),
+                            fontSize: AppSpacings.scale(8),
                             color: AppColorsLight.primary,
                           ),
                         ),
@@ -340,10 +327,7 @@ class _AboutPageState extends State<AboutPage> {
                   Text(
                     value,
                     style: TextStyle(
-                      fontSize: _screenService.scale(
-                        8,
-                        density: _visualDensityService.density,
-                      ),
+                      fontSize: AppSpacings.scale(8),
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -352,10 +336,7 @@ class _AboutPageState extends State<AboutPage> {
                       ? Text(
                           unit,
                           style: TextStyle(
-                            fontSize: _screenService.scale(
-                              7,
-                              density: _visualDensityService.density,
-                            ),
+                            fontSize: AppSpacings.scale(7),
                           ),
                         )
                       : null

@@ -1,5 +1,3 @@
-import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -76,8 +74,6 @@ class _DeviceOfflineBackdrop extends StatelessWidget {
 
 /// Banner shown at the top of device detail content when device is offline.
 class _DeviceOfflineBanner extends StatelessWidget {
-  final ScreenService _screenService = locator<ScreenService>();
-
   final bool isDark;
   final String? lastSeenText;
 
@@ -85,8 +81,6 @@ class _DeviceOfflineBanner extends StatelessWidget {
     required this.isDark,
     this.lastSeenText,
   });
-
-  double _scale(double size) => _screenService.scale(size);
 
   Color _textMuted() =>
       isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
@@ -102,33 +96,33 @@ class _DeviceOfflineBanner extends StatelessWidget {
     final localizations = AppLocalizations.of(context)!;
 
     return Container(
-      margin: EdgeInsets.all(_scale(AppSpacings.pLg)),
-      padding: EdgeInsets.all(_scale(16)),
+      margin: EdgeInsets.all(AppSpacings.scale(AppSpacings.pLg)),
+      padding: EdgeInsets.all(AppSpacings.scale(16)),
       decoration: BoxDecoration(
         color: _cardBg(),
-        borderRadius: BorderRadius.circular(_scale(16)),
+        borderRadius: BorderRadius.circular(AppSpacings.scale(16)),
         border: Border.all(
           color: _borderColor(),
-          width: _scale(1),
+          width: AppSpacings.scale(1),
         ),
       ),
       child: Row(
         children: [
           // Icon
           Container(
-            width: _scale(40),
-            height: _scale(40),
+            width: AppSpacings.scale(40),
+            height: AppSpacings.scale(40),
             decoration: BoxDecoration(
               color: _offlineColor.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(_scale(10)),
+              borderRadius: BorderRadius.circular(AppSpacings.scale(10)),
             ),
             child: Icon(
               MdiIcons.wifiOff,
               color: _offlineColor,
-              size: _scale(22),
+              size: AppSpacings.scale(22),
             ),
           ),
-          SizedBox(width: _scale(12)),
+          SizedBox(width: AppSpacings.scale(12)),
           // Content
           Expanded(
             child: Column(
@@ -141,7 +135,7 @@ class _DeviceOfflineBanner extends StatelessWidget {
                       localizations.device_offline_title,
                       style: TextStyle(
                         color: _offlineColor,
-                        fontSize: _scale(14),
+                        fontSize: AppSpacings.scale(14),
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -151,18 +145,18 @@ class _DeviceOfflineBanner extends StatelessWidget {
                         lastSeenText!,
                         style: TextStyle(
                           color: _textMuted(),
-                          fontSize: _scale(12),
+                          fontSize: AppSpacings.scale(12),
                         ),
                       ),
                     ],
                   ],
                 ),
-                SizedBox(height: _scale(2)),
+                SizedBox(height: AppSpacings.scale(2)),
                 Text(
                   localizations.device_offline_description,
                   style: TextStyle(
                     color: _textMuted(),
-                    fontSize: _scale(12),
+                    fontSize: AppSpacings.scale(12),
                   ),
                 ),
               ],

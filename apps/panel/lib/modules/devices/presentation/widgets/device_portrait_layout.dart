@@ -1,6 +1,3 @@
-import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:flutter/material.dart';
@@ -28,12 +25,6 @@ import 'package:flutter/material.dart';
 /// )
 /// ```
 class DevicePortraitLayout extends StatelessWidget {
-  static final ScreenService _screenService = locator<ScreenService>();
-  static final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
-  static double _scale(double value) =>
-      _screenService.scale(value, density: _visualDensityService.density);
 
   /// The main scrollable content
   final Widget content;
@@ -133,7 +124,7 @@ class DevicePortraitLayout extends StatelessWidget {
                       color: isDark
                           ? AppBorderColorDark.light
                           : AppBorderColorLight.darker,
-                      width: _scale(1),
+                      width: AppSpacings.scale(1),
                     ),
                   )
                 : null,

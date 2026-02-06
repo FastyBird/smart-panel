@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_card.dart';
@@ -55,8 +54,6 @@ class WindowCoveringDeviceDetail extends StatefulWidget {
 
 class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail> {
   final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
   final DevicesService _devicesService = locator<DevicesService>();
   DeviceControlStateService? _deviceControlStateService;
 
@@ -431,15 +428,15 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
       ThemeColors.warning,
     );
     return Container(
-      width: _scale(32),
-      height: _scale(32),
+      width: AppSpacings.scale(32),
+      height: AppSpacings.scale(32),
       decoration: BoxDecoration(
         color: warningFamily.light8,
         shape: BoxShape.circle,
       ),
       child: Icon(
         MdiIcons.alertCircle,
-        size: _scale(18),
+        size: AppSpacings.scale(18),
         color: warningFamily.base,
       ),
     );
@@ -448,9 +445,6 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   // --------------------------------------------------------------------------
   // UI HELPERS
   // --------------------------------------------------------------------------
-
-  double _scale(double value) =>
-      _screenService.scale(value, density: _visualDensityService.density);
 
   ThemeData _getActionButtonTheme(bool isActive) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -564,13 +558,13 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     final availableHeight = constraints.maxHeight - padding * 2;
 
     // Calculate visualization size - use most of available height
-    final buttonsHeight = _screenService.scale(44, density: _visualDensityService.density);
-    final sliderHeight = _screenService.scale(60, density: _visualDensityService.density);
+    final buttonsHeight = AppSpacings.scale(44);
+    final sliderHeight = AppSpacings.scale(60);
     final maxVisualizationHeight =
         availableHeight - sliderHeight - buttonsHeight - spacing * 2;
 
     // Allow larger visualization on big screens (up to 280px height)
-    final visualizationHeight = maxVisualizationHeight.clamp(_scale(80), _scale(280));
+    final visualizationHeight = maxVisualizationHeight.clamp(AppSpacings.scale(80), AppSpacings.scale(280));
     final visualizationWidth = visualizationHeight * _visualizationAspectRatio;
 
     return Padding(
@@ -602,12 +596,12 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     final availableWidth = constraints.maxWidth - padding * 2;
 
     // Calculate visualization size for compact layout
-    final sliderHeight = _screenService.scale(60, density: _visualDensityService.density);
+    final sliderHeight = AppSpacings.scale(60);
     final maxVisualizationHeight = availableHeight - sliderHeight - spacing;
 
     // Window takes 2/3 of width, buttons take 1/3
     final visualizationWidth = (availableWidth - spacing) * 2 / 3;
-    var visualizationHeight = (visualizationWidth / _visualizationAspectRatio).clamp(_scale(60), maxVisualizationHeight);
+    var visualizationHeight = (visualizationWidth / _visualizationAspectRatio).clamp(AppSpacings.scale(60), maxVisualizationHeight);
 
     return Padding(
       padding: AppSpacings.paddingMd,
@@ -624,8 +618,8 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
                   child: Center(
                     child: _buildWindowVisualizationSized(
                       context,
-                      visualizationWidth.clamp(_scale(120), _scale(280)),
-                      visualizationHeight.clamp(_scale(100), _scale(240)),
+                      visualizationWidth.clamp(AppSpacings.scale(120), AppSpacings.scale(280)),
+                      visualizationHeight.clamp(AppSpacings.scale(100), AppSpacings.scale(240)),
                     ),
                   ),
                 ),
@@ -670,7 +664,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
         border: Border.all(
           color: isDark ? AppBorderColorDark.light : AppBorderColorLight.darker,
-          width: _scale(4),
+          width: AppSpacings.scale(4),
         ),
       ),
       child: Stack(
@@ -718,7 +712,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     double containerHeight,
   ) {
     // Account for border (4px on each side)
-    final innerHeight = containerHeight - _scale(8);
+    final innerHeight = containerHeight - AppSpacings.scale(8);
 
     try {
       switch (_device.windowCoveringType) {
@@ -742,8 +736,8 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
 
   Widget _buildBlindVisualizationScaled(BuildContext context, double coverHeight, double containerHeight) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final slatHeight = _scale(8);
-    final slatMargin = _scale(2);
+    final slatHeight = AppSpacings.scale(8);
+    final slatMargin = AppSpacings.scale(2);
     final slatTotal = slatHeight + slatMargin;
     final maxSlats = (containerHeight / slatTotal).floor();
     final slatCount = (_position < 90 ? (maxSlats * coverHeight).floor() : 0);
@@ -764,9 +758,9 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
             alignment: Alignment.center,
             child: Container(
               height: slatHeight,
-              margin: EdgeInsets.only(bottom: slatMargin, left: _scale(2), right: _scale(2)),
+              margin: EdgeInsets.only(bottom: slatMargin, left: AppSpacings.scale(2), right: AppSpacings.scale(2)),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(_scale(1)),
+                borderRadius: BorderRadius.circular(AppSpacings.scale(1)),
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
@@ -785,8 +779,8 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   Widget _buildCurtainVisualizationScaled(BuildContext context, double containerWidth, double containerHeight) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final panelWidth = (100 - _position) / 100 * 0.5;
-    final innerWidth = containerWidth - _scale(8);
-    final innerHeight = containerHeight - _scale(8);
+    final innerWidth = containerWidth - AppSpacings.scale(8);
+    final innerHeight = containerHeight - AppSpacings.scale(8);
 
     return SizedBox(
       width: innerWidth,
@@ -831,7 +825,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
 
   Widget _buildRollerVisualizationScaled(BuildContext context, double coverHeight, double containerHeight) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final tubeHeight = _scale(12);
+    final tubeHeight = AppSpacings.scale(12);
     final shadeMaxHeight = containerHeight - tubeHeight;
 
     return Column(
@@ -839,7 +833,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
         Container(
           height: tubeHeight,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.vertical(top: Radius.circular(_scale(4))),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(AppSpacings.scale(4))),
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
@@ -852,9 +846,9 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
         AnimatedContainer(
           duration: const Duration(milliseconds: 300),
           height: (shadeMaxHeight * coverHeight).clamp(0.0, shadeMaxHeight),
-          margin: EdgeInsets.symmetric(horizontal: _scale(2)),
+          margin: EdgeInsets.symmetric(horizontal: AppSpacings.scale(2)),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.vertical(bottom: Radius.circular(_scale(4))),
+            borderRadius: BorderRadius.vertical(bottom: Radius.circular(AppSpacings.scale(4))),
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
@@ -870,8 +864,8 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
 
   Widget _buildOutdoorBlindVisualizationScaled(BuildContext context, double coverHeight, double containerHeight) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final slatHeight = _scale(10);
-    final slatMargin = _scale(3);
+    final slatHeight = AppSpacings.scale(10);
+    final slatMargin = AppSpacings.scale(3);
     final slatTotal = slatHeight + slatMargin;
     final maxSlats = (containerHeight / slatTotal).floor();
     final slatCount = (_position < 90 ? (maxSlats * coverHeight).floor() : 0);
@@ -892,9 +886,9 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
             alignment: Alignment.center,
             child: Container(
               height: slatHeight,
-              margin: EdgeInsets.only(bottom: slatMargin, left: _scale(3), right: _scale(3)),
+              margin: EdgeInsets.only(bottom: slatMargin, left: AppSpacings.scale(3), right: AppSpacings.scale(3)),
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(_scale(2)),
+                borderRadius: BorderRadius.circular(AppSpacings.scale(2)),
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
@@ -963,8 +957,8 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     required bool isActive,
     required VoidCallback onTap,
   }) {
-    final iconSize = _screenService.scale(18, density: _visualDensityService.density);
-    final buttonSize = _screenService.scale(36, density: _visualDensityService.density);
+    final iconSize = AppSpacings.scale(18);
+    final buttonSize = AppSpacings.scale(36);
 
     return SizedBox(
       width: buttonSize,
@@ -1041,7 +1035,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   Widget _buildPresetsWithGradient(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
 
-    final tileHeight = _scale(AppTileHeight.horizontal);
+    final tileHeight = AppSpacings.scale(AppTileHeight.horizontal);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1087,7 +1081,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
         border: Border.all(
         color: isDark ? AppBorderColorDark.light : AppBorderColorLight.darker,
-        width: _scale(1),
+        width: AppSpacings.scale(1),
       ),
     ),
       child: Column(
@@ -1106,8 +1100,8 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   }
 
   Widget _buildWindowVisualization(BuildContext context) {
-    final width = _screenService.scale(180, density: _visualDensityService.density);
-    final height = _screenService.scale(160, density: _visualDensityService.density);
+    final width = AppSpacings.scale(180);
+    final height = AppSpacings.scale(160);
     return _buildWindowVisualizationSized(context, width, height);
   }
 
@@ -1115,7 +1109,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     return CustomPaint(
       painter: _CurtainFoldsPainter(
         isDark: isDark,
-        scaleFactor: _scale(1),
+        scaleFactor: AppSpacings.scale(1),
       ),
       size: Size.infinite,
     );
@@ -1228,7 +1222,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     required bool isActive,
     required VoidCallback onTap,
   }) {
-    final iconSize = _screenService.scale(20, density: _visualDensityService.density);
+    final iconSize = AppSpacings.scale(20);
 
     return SizedBox(
       width: double.infinity,

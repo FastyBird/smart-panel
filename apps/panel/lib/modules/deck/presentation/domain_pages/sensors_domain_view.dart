@@ -51,7 +51,6 @@ import 'package:provider/provider.dart';
 
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_banner.dart';
 import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
@@ -205,8 +204,6 @@ class SensorsDomainViewPage extends StatefulWidget {
 
 class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
   final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
 
   SpacesService? _spacesService;
   SpaceStateRepository? _spaceStateRepository;
@@ -226,9 +223,6 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
   // --------------------------------------------------------------------------
   // HELPERS
   // --------------------------------------------------------------------------
-
-  double _scale(double size) =>
-      _screenService.scale(size, density: _visualDensityService.density);
 
   /// Resolves service from [locator]; optional [onSuccess] adds listener. Returns null on failure.
   T? _tryLocator<T extends Object>(String debugLabel, {void Function(T)? onSuccess}) {
@@ -719,15 +713,15 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
           spacing: AppSpacings.pMd,
           children: [
             Container(
-              width: _scale(80),
-              height: _scale(80),
+              width: AppSpacings.scale(80),
+              height: AppSpacings.scale(80),
               decoration: BoxDecoration(
                 color: warningBgColor,
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 MdiIcons.accessPointNetworkOff,
-                size: _scale(48),
+                size: AppSpacings.scale(48),
                 color: warningColor,
               ),
             ),
@@ -976,7 +970,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
 
     // Compact: horizontal scroll tiles (small portrait)
     if (compact) {
-      final tileHeight = _scale(AppTileHeight.horizontal);
+      final tileHeight = AppSpacings.scale(AppTileHeight.horizontal);
 
       return HorizontalScrollWithGradient(
         height: tileHeight,
@@ -1037,8 +1031,8 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
         color: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
         border: Border.all(
-          color: isDark ? AppBorderColorDark.light : AppBorderColorLight.darker,
-          width: _scale(1),
+          color: isDark ? AppFillColorDark.light : AppBorderColorLight.darker,
+          width: AppSpacings.scale(1),
         ),
       ),
       child: Column(
@@ -1048,7 +1042,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
           Row(
             spacing: AppSpacings.pSm,
             children: [
-              Icon(icon, size: _scale(18), color: color),
+              Icon(icon, size: AppSpacings.scale(18), color: color),
               Expanded(
                 child: Text(
                   title,
@@ -1071,7 +1065,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
               value,
               style: TextStyle(
                 color: color,
-                fontSize: _scale(28),
+                fontSize: AppSpacings.scale(28),
                 fontWeight: FontWeight.w300,
               ),
               maxLines: 1,
@@ -1156,9 +1150,9 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
             color: isAlert
                 ? dangerColor
                 : (isDark
-                    ? AppBorderColorDark.light
+                    ? AppFillColorDark.light
                     : AppBorderColorLight.darker),
-            width: _scale(1),
+            width: AppSpacings.scale(1),
           ),
         ),
         child: Column(
@@ -1170,15 +1164,15 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Container(
-                  width: _scale(36),
-                  height: _scale(36),
+                  width: AppSpacings.scale(36),
+                  height: AppSpacings.scale(36),
                   decoration: BoxDecoration(
                     color: cardIconBg,
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(AppBorderRadius.base),
                   ),
                   child: Icon(
                     sensor.icon,
-                    size: _scale(20),
+                    size: AppSpacings.scale(20),
                     color: cardIconColor,
                   ),
                 ),
@@ -1225,13 +1219,13 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
                 children: [
                   if (!sensor.isBinary) ...[
                     _buildTrendIcon(context, sensor.trend, isAlert),
-                    SizedBox(width: _scale(4)),
+                    SizedBox(width: AppSpacings.scale(4)),
                   ],
                   RichText(
                     maxLines: 1,
                     text: TextSpan(
                       style: TextStyle(
-                        fontSize: _scale(24),
+                        fontSize: AppSpacings.scale(24),
                         fontWeight: FontWeight.w300,
                         color: sensor.isOffline
                             ? (isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder)
@@ -1291,8 +1285,8 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     }
 
     return Container(
-      width: _scale(8),
-      height: _scale(8),
+      width: AppSpacings.scale(8),
+      height: AppSpacings.scale(8),
       decoration: BoxDecoration(
         color: dotColor,
         shape: BoxShape.circle,
@@ -1328,7 +1322,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
         break;
     }
 
-    return Icon(icon, size: _scale(14), color: color);
+    return Icon(icon, size: AppSpacings.scale(14), color: color);
   }
 
   // =============================================================================

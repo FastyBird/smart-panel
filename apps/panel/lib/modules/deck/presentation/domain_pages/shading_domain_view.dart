@@ -41,7 +41,6 @@
 import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_card.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
@@ -138,8 +137,6 @@ class ShadingDomainViewPage extends StatefulWidget {
 
 class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
 
   SpacesService? _spacesService;
   DevicesService? _devicesService;
@@ -716,14 +713,8 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
                   final (iconColor: iconColor, backgroundColor: iconBgColor) =
                       positionColorFamily.iconContainer;
                   return Container(
-                    width: _screenService.scale(
-                      48,
-                      density: _visualDensityService.density,
-                    ),
-                    height: _screenService.scale(
-                      48,
-                      density: _visualDensityService.density,
-                    ),
+                    width: AppSpacings.scale(48),
+                    height: AppSpacings.scale(48),
                     decoration: BoxDecoration(
                       color: iconBgColor,
                       borderRadius: BorderRadius.circular(AppBorderRadius.base),
@@ -731,10 +722,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
                     child: Icon(
                       roleData.icon,
                       color: iconColor,
-                      size: _screenService.scale(
-                        24,
-                        density: _visualDensityService.density,
-                      ),
+                      size: AppSpacings.scale(24),
                     ),
                   );
                 },
@@ -773,10 +761,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
                   Text(
                     '$position%',
                     style: TextStyle(
-                      fontSize: _screenService.scale(
-                        28,
-                        density: _visualDensityService.density,
-                      ),
+                      fontSize: AppSpacings.scale(28),
                       fontWeight: FontWeight.w300,
                       color: isDark
                             ? AppTextColorDark.regular
@@ -847,10 +832,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
             ),
             Icon(
               isExpanded ? MdiIcons.chevronUp : MdiIcons.chevronDown,
-              size: _screenService.scale(
-                16,
-                density: _visualDensityService.density,
-              ),
+              size: AppSpacings.scale(16),
               color: isDark
                   ? AppTextColorDark.secondary
                   : AppTextColorLight.secondary,
@@ -937,7 +919,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     final themeData = isActive
         ? ThemeData(filledButtonTheme: isDark ? AppFilledButtonsDarkThemes.primary : AppFilledButtonsLightThemes.primary)
         : (isDark ? ThemeData(filledButtonTheme: AppFilledButtonsDarkThemes.neutral) : ThemeData(filledButtonTheme: AppFilledButtonsLightThemes.neutral));
-    final iconSize = _screenService.scale(18, density: _visualDensityService.density);
+    final iconSize = AppSpacings.scale(18);
 
     return SizedBox(
       width: double.infinity,
@@ -1282,10 +1264,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
                       Icon(
                         MdiIcons.blindsHorizontalClosed,
                         color: secondaryColor,
-                        size: _screenService.scale(
-                          64,
-                          density: _visualDensityService.density,
-                        ),
+                        size: AppSpacings.scale(64),
                       ),
                       Text(
                         localizations.domain_shading_empty_title,

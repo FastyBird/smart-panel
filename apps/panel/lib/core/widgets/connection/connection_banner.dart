@@ -2,9 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 
@@ -30,13 +27,6 @@ class ConnectionBanner extends StatefulWidget {
 
 class _ConnectionBannerState extends State<ConnectionBanner>
     with SingleTickerProviderStateMixin {
-  static final ScreenService _screenService = locator<ScreenService>();
-  static final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
-  static double _scale(double value) =>
-      _screenService.scale(value, density: _visualDensityService.density);
-
   late final AnimationController _controller;
   late final Animation<Offset> _slideAnimation;
   bool _isRetrying = false;
@@ -154,7 +144,7 @@ class _ConnectionBannerState extends State<ConnectionBanner>
                           color: _isRetrying
                               ? buttonBorderColor.withValues(alpha: 0.5)
                               : buttonBorderColor,
-                          width: _scale(1),
+                          width: AppSpacings.scale(1),
                         ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(

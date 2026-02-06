@@ -1,7 +1,5 @@
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/setting_row.dart';
@@ -20,9 +18,6 @@ class WeatherSettingsPage extends StatefulWidget {
 }
 
 class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
   final WeatherService _weatherService = locator<WeatherService>();
 
   String? _selectedLocationId;
@@ -77,10 +72,7 @@ class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
                   localizations
                       .settings_weather_settings_temperature_location_description,
                   style: TextStyle(
-                    fontSize: _screenService.scale(
-                      8,
-                      density: _visualDensityService.density,
-                    ),
+                    fontSize: AppSpacings.scale(8),
                   ),
                 ),
                 trailing: _locations.length > 1
@@ -97,10 +89,7 @@ class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
                             return _locations.map<Widget>((location) {
                               return Container(
                                 alignment: Alignment.centerRight,
-                                width: _screenService.scale(
-                                  80,
-                                  density: _visualDensityService.density,
-                                ),
+                                width: AppSpacings.scale(80),
                                 child: Text(
                                   location.name,
                                   textAlign: TextAlign.end,
@@ -117,17 +106,11 @@ class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
                               vertical: 0,
                               horizontal: AppSpacings.pLg,
                             ),
-                            height: _screenService.scale(
-                              35,
-                              density: _visualDensityService.density,
-                            ),
+                            height: AppSpacings.scale(35),
                           ),
                           dropdownStyleData: DropdownStyleData(
                             padding: EdgeInsets.all(0),
-                            maxHeight: _screenService.scale(
-                              250,
-                              density: _visualDensityService.density,
-                            ),
+                            maxHeight: AppSpacings.scale(250),
                           ),
                           iconStyleData: IconStyleData(
                             openMenuIcon: Icon(MdiIcons.menuUp),

@@ -1,6 +1,5 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -30,8 +29,6 @@ enum TileLayout {
 /// channel tiles, role tiles, etc.
 class UniversalTile extends StatelessWidget {
   final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
 
   // Layout
   final TileLayout layout;
@@ -102,9 +99,6 @@ class UniversalTile extends StatelessWidget {
     this.accessories,
   });
 
-  double _scale(double size) =>
-      _screenService.scale(size, density: _visualDensityService.density);
-
   @override
   Widget build(BuildContext context) {
     return layout == TileLayout.vertical
@@ -134,8 +128,8 @@ class UniversalTile extends StatelessWidget {
               ? [
                   BoxShadow(
                     color: colors.accentColorLight5.withValues(alpha: 0.35),
-                    blurRadius: _scale(8),
-                    spreadRadius: _scale(1),
+                    blurRadius: AppSpacings.scale(8),
+                    spreadRadius: AppSpacings.scale(1),
                   ),
                 ]
               : [],
@@ -223,11 +217,11 @@ class UniversalTile extends StatelessWidget {
               // Selection indicator
               if (isSelected && showSelectionIndicator)
                 Positioned(
-                  top: _scale(4),
-                  right: _scale(4),
+                  top: AppSpacings.scale(4),
+                  right: AppSpacings.scale(4),
                   child: Icon(
                     MdiIcons.checkCircle,
-                    size: _scale(14),
+                    size: AppSpacings.scale(14),
                     color: isActive
                         ? colors.accentColor
                         : (Theme.of(context).brightness == Brightness.dark
@@ -268,8 +262,8 @@ class UniversalTile extends StatelessWidget {
               ? [
                   BoxShadow(
                     color: colors.accentColorLight5.withValues(alpha: 0.35),
-                    blurRadius: _scale(6),
-                    spreadRadius: _scale(1),
+                    blurRadius: AppSpacings.scale(6),
+                    spreadRadius: AppSpacings.scale(1),
                   ),
                 ]
               : [],
@@ -282,8 +276,8 @@ class UniversalTile extends StatelessWidget {
             _buildIconButton(
               context,
               colors,
-              _scale(32),
-              _scale(18),
+              AppSpacings.scale(32),
+              AppSpacings.scale(18),
             ),
 
             // Text content
@@ -331,7 +325,7 @@ class UniversalTile extends StatelessWidget {
                 padding: EdgeInsets.only(left: AppSpacings.pSm),
                 child: Icon(
                   MdiIcons.checkCircle,
-                  size: _scale(16),
+                  size: AppSpacings.scale(16),
                   color: isActive
                       ? colors.accentColor
                       : (Theme.of(context).brightness == Brightness.dark
@@ -375,11 +369,11 @@ class UniversalTile extends StatelessWidget {
         // Warning badge for offline devices
         if (isOffline && showWarningBadge)
           Positioned(
-            right: -_scale(2),
-            bottom: -_scale(2),
+            right: -AppSpacings.scale(2),
+            bottom: -AppSpacings.scale(2),
             child: Icon(
               MdiIcons.alert,
-              size: _scale(14),
+              size: AppSpacings.scale(14),
               color: colors.warningColor,
             ),
           ),
@@ -404,7 +398,7 @@ class UniversalTile extends StatelessWidget {
   _TileColors _getTileColors(BuildContext context) {
     final brightness = Theme.of(context).brightness;
     final isDark = brightness == Brightness.dark;
-    final borderWidth = _scale(1);
+    final borderWidth = AppSpacings.scale(1);
 
     // Resolve theme color family (no alpha modifiers)
     final colorKey = activeColor ?? ThemeColors.primary;

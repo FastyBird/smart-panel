@@ -3,7 +3,6 @@ import 'dart:math' as math;
 
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/api/models/devices_module_channel_category.dart';
@@ -91,8 +90,6 @@ class AirHumidifierDeviceDetail extends StatefulWidget {
 
 class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
   final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
   final DevicesService _devicesService = locator<DevicesService>();
   DeviceControlStateService? _deviceControlStateService;
   AirHumidifierDeviceController? _controller;
@@ -303,9 +300,6 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
   // --------------------------------------------------------------------------
   // STATE HELPERS
   // --------------------------------------------------------------------------
-
-  double _scale(double value) =>
-      _screenService.scale(value, density: _visualDensityService.density);
 
   AirHumidifierDeviceView get _device {
     final updated = _devicesService.getDevice(widget._device.id);
@@ -577,7 +571,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
         crossAxisAlignment: CrossAxisAlignment.start,
         spacing: AppSpacings.pMd,
         children: [
-          _buildPrimaryControlCard(context, isDark, dialSize: _scale(DeviceDetailDialSizes.portrait)),
+          _buildPrimaryControlCard(context, isDark, dialSize: AppSpacings.scale(DeviceDetailDialSizes.portrait)),
           if (hasSpeed)
             _buildSpeedSliderForPortrait(localizations, isDark),
           if (statusSection is! SizedBox) ...[
@@ -612,7 +606,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
 
     return DeviceLandscapeLayout(
       mainContent: isLargeScreen
-          ? _buildPrimaryControlCard(context, isDark, dialSize: _scale(DeviceDetailDialSizes.landscape))
+          ? _buildPrimaryControlCard(context, isDark, dialSize: AppSpacings.scale(DeviceDetailDialSizes.landscape))
           : _buildCompactControlCard(context, isDark),
       secondaryContent: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -675,7 +669,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
     return AppCard(
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final modeIconsWidth = _scale(50);
+          final modeIconsWidth = AppSpacings.scale(50);
           final spacing = AppSpacings.pXl;
           final availableForDial =
               constraints.maxWidth - modeIconsWidth - spacing;
@@ -1048,7 +1042,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
     final activeColor = _getStatusColorFamily(context).base;
     final channel = _humidifierChannel;
     final fanChannel = _device.fanChannel;
-    final tileHeight = _scale(AppTileHeight.horizontal);
+    final tileHeight = AppSpacings.scale(AppTileHeight.horizontal);
 
     // Helper to wrap control with fixed height
     Widget wrapControl(Widget child) {
@@ -1195,7 +1189,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
     final activeColor = _getStatusColorFamily(context).base;
     final fanChannel = _device.fanChannel;
     final useVerticalLayout = _screenService.isSmallScreen || _screenService.isMediumScreen;
-    final tileHeight = _scale(AppTileHeight.horizontal);
+    final tileHeight = AppSpacings.scale(AppTileHeight.horizontal);
 
     final children = <Widget>[];
 
@@ -1242,7 +1236,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
 
     // Portrait: Horizontal scroll with HorizontalTileCompact
     if (!isLandscape) {
-      final tileHeight = _scale(AppTileHeight.horizontal);
+      final tileHeight = AppSpacings.scale(AppTileHeight.horizontal);
 
       return HorizontalScrollWithGradient(
         height: tileHeight,

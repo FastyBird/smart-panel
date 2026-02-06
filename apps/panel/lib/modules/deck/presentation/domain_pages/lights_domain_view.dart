@@ -50,7 +50,6 @@ import 'package:provider/provider.dart';
 import 'package:fastybird_smart_panel/api/models/scenes_module_data_scene_category.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/intent_mode_selector.dart';
@@ -234,8 +233,6 @@ class LightsDomainViewPage extends StatefulWidget {
 
 class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
 
   /// Optional services: resolved in initState via [_tryLocator]. Listeners
   /// registered for Spaces, Devices, Scenes, Intents; others used ad hoc.
@@ -712,9 +709,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   // UTILITIES
   // --------------------------------------------------------------------------
 
-  double _scale(double size) =>
-      _screenService.scale(size, density: _visualDensityService.density);
-
   /// Navigate to the home page in the deck
   void _navigateToHome() {
     final deck = _deckService?.deck;
@@ -1179,7 +1173,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             // Use horizontal scroll when other lights present (less vertical space)
             if (hasOtherLights)
               SizedBox(
-                height: _scale(70),
+                height: AppSpacings.scale(70),
                 child: _buildPortraitScenesRow(
                   context,
                   tilesPerRow: scenesPerRow,
@@ -1413,7 +1407,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     final isModeLocked = _modeControlStateService.isLocked(LightingConstants.modeChannelId);
 
     // Fixed width matching landscape layout constants (100 large, 64 compact)
-    final selectorWidth = _scale(showLabels ? 100.0 : 64.0);
+    final selectorWidth = AppSpacings.scale(showLabels ? 100.0 : 64.0);
 
     return IgnorePointer(
       ignoring: isModeLocked,
@@ -2185,7 +2179,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                 color: isDark
                     ? AppTextColorDark.secondary
                     : AppTextColorLight.secondary,
-                size: _scale(64),
+                size: AppSpacings.scale(64),
               ),
               Text(
                 localizations.domain_lights_empty_title,

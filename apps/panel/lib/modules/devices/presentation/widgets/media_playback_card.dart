@@ -46,7 +46,6 @@ class MediaPlaybackCard extends StatelessWidget {
 	final ValueChanged<int>? onPlaybackSeek;
 	final ThemeColors themeColor;
 	final bool isEnabled;
-	final double Function(double) scale;
 
 	const MediaPlaybackCard({
 		super.key,
@@ -64,7 +63,6 @@ class MediaPlaybackCard extends StatelessWidget {
 		this.onPlaybackSeek,
 		this.themeColor = ThemeColors.primary,
 		required this.isEnabled,
-		required this.scale,
 	});
 
 	bool get _hasPlaybackContent =>
@@ -178,9 +176,9 @@ class MediaPlaybackCard extends StatelessWidget {
 				final mainCount = specs.where((s) => s.$3).length;
 				final regularCount = specs.length - mainCount;
 				final gapCount = specs.length - 1;
-				final defaultTotal = mainCount * scale(_mainDefault) + regularCount * scale(_regularDefault) + gapCount * AppSpacings.pLg;
-				final mediumCompactTotal = mainCount * scale(_mainCompactExpanded) + regularCount * scale(_regularCompactExpanded) + gapCount * AppSpacings.pSm;
-				final mediumTotal = mainCount * scale(_mainExpanded) + regularCount * scale(_regularExpanded) + gapCount * AppSpacings.pLg;
+				final defaultTotal = mainCount * AppSpacings.scale(_mainDefault) + regularCount * AppSpacings.scale(_regularDefault) + gapCount * AppSpacings.pLg;
+				final mediumCompactTotal = mainCount * AppSpacings.scale(_mainCompactExpanded) + regularCount * AppSpacings.scale(_regularCompactExpanded) + gapCount * AppSpacings.pSm;
+				final mediumTotal = mainCount * AppSpacings.scale(_mainExpanded) + regularCount * AppSpacings.scale(_regularExpanded) + gapCount * AppSpacings.pLg;
 				final isAtLeastMedium = locator<ScreenService>().isAtLeastMedium;
 				final compact = constraints.maxWidth < defaultTotal;
 				final compactExpanded = compact && isAtLeastMedium && constraints.maxWidth >= mediumCompactTotal;
@@ -228,7 +226,7 @@ class MediaPlaybackCard extends StatelessWidget {
 		final pos = playbackPosition.toDouble();
 		final dur = playbackDuration > 0 ? playbackDuration.toDouble() : 1.0;
 		final progress = (pos / dur).clamp(0.0, 1.0);
-		final timeWidth = scale(_progressTimeWidth);
+		final timeWidth = AppSpacings.scale(_progressTimeWidth);
 
 		return Row(
 			spacing: AppSpacings.pMd,
@@ -248,7 +246,7 @@ class MediaPlaybackCard extends StatelessWidget {
 								borderRadius: BorderRadius.circular(AppBorderRadius.base),
 								child: LinearProgressIndicator(
 									value: progress,
-									minHeight: scale(_progressBarMinHeight),
+									minHeight: AppSpacings.scale(_progressBarMinHeight),
 									backgroundColor: trackColor,
 									valueColor: AlwaysStoppedAnimation<Color>(accentColor),
 								),
@@ -292,10 +290,10 @@ class MediaPlaybackCard extends StatelessWidget {
 		bool expanded = false,
 		VoidCallback? onTap,
 	}) {
-		final size = scale(isMain
+		final size = AppSpacings.scale(isMain
 			? (compact ? (compactExpanded ? _mainCompactExpanded : _mainCompact) : (expanded ? _mainExpanded : _mainDefault))
 			: (compact ? (compactExpanded ? _regularCompactExpanded : _regularCompact) : (expanded ? _regularExpanded : _regularDefault)));
-		final iconSize = scale(isMain
+		final iconSize = AppSpacings.scale(isMain
 			? (compact ? (compactExpanded ? _iconMainCompactExpanded : _iconMainCompact) : (expanded ? _iconMainExpanded : _iconMainDefault))
 			: (compact ? (compactExpanded ? _iconRegularCompactExpanded : _iconRegularCompact) : (expanded ? _iconRegularExpanded : _iconRegularDefault)));
 		final isDark = Theme.of(context).brightness == Brightness.dark;

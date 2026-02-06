@@ -3,7 +3,6 @@ import 'dart:math' as math;
 
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/color.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
@@ -2490,10 +2489,6 @@ class LightingChannelData {
 /// For simple devices (power-only), shows a large power button.
 /// For other capabilities, shows the appropriate slider or picker.
 class LightingMainControl extends StatelessWidget {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
   /// Currently selected capability to display
   final LightCapability selectedCapability;
 
@@ -2554,9 +2549,6 @@ class LightingMainControl extends StatelessWidget {
     this.onWhiteChannelChanged,
   });
 
-  double _scale(double s) =>
-      _screenService.scale(s, density: _visualDensityService.density);
-
   /// Check if this is a simple device (only power capability)
   bool get _isSimple =>
       capabilities.length == 1 && capabilities.contains(LightCapability.power);
@@ -2598,8 +2590,8 @@ class LightingMainControl extends StatelessWidget {
             },
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              width: _scale(160),
-              height: _scale(160),
+              width: AppSpacings.scale(160),
+              height: AppSpacings.scale(160),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: isOn ? primaryBgColor : inactiveBgColor,
@@ -2609,26 +2601,26 @@ class LightingMainControl extends StatelessWidget {
                       : (isDark
                           ? AppColors.blank
                           : AppBorderColorLight.darker),
-                  width: isOn ? _scale(4) : _scale(1),
+                  width: isOn ? AppSpacings.scale(4) : AppSpacings.scale(1),
                 ),
                 boxShadow: isOn
                     ? [
                         BoxShadow(
                           color: primaryColor.withValues(alpha: 0.3),
-                          blurRadius: _scale(40),
+                          blurRadius: AppSpacings.scale(40),
                           spreadRadius: 0,
                         ),
                         BoxShadow(
                           color: AppShadowColor.light,
-                          blurRadius: _scale(20),
-                          offset: Offset(0, _scale(4)),
+                          blurRadius: AppSpacings.scale(20),
+                          offset: Offset(0, AppSpacings.scale(4)),
                         ),
                       ]
                     : [
                         BoxShadow(
                           color: AppShadowColor.light,
-                          blurRadius: _scale(20),
-                          offset: Offset(0, _scale(4)),
+                          blurRadius: AppSpacings.scale(20),
+                          offset: Offset(0, AppSpacings.scale(4)),
                         ),
                       ],
               ),
@@ -2638,7 +2630,7 @@ class LightingMainControl extends StatelessWidget {
                 children: [
                   Icon(
                     MdiIcons.power,
-                    size: _scale(44),
+                    size: AppSpacings.scale(44),
                     color: isOn ? primaryColor : inactiveColor,
                   ),
                   Text(
@@ -2646,7 +2638,7 @@ class LightingMainControl extends StatelessWidget {
                         ? localizations.on_state_on
                         : localizations.on_state_off,
                     style: TextStyle(
-                      fontSize: _scale(26),
+                      fontSize: AppSpacings.scale(26),
                       fontWeight: FontWeight.w300,
                       color: isOn ? primaryColor : inactiveColor,
                     ),
@@ -2850,10 +2842,6 @@ class _WhitePanel extends StatelessWidget {
 // ============================================================================
 
 class _SliderPanel extends StatelessWidget {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
   final bool isLandscape;
   final bool isDark;
   final int value;
@@ -2877,9 +2865,6 @@ class _SliderPanel extends StatelessWidget {
     this.thumbColor = AppColors.white,
     required this.onChanged,
   });
-
-  double _scale(double s) =>
-      _screenService.scale(s, density: _visualDensityService.density);
 
   @override
   Widget build(BuildContext context) {
@@ -2917,7 +2902,7 @@ class _SliderPanel extends StatelessWidget {
             ? null
             : Border.all(
                 color: AppBorderColorLight.darker,
-                width: _scale(1),
+                width: AppSpacings.scale(1),
               ),
       ),
       child: Center(
@@ -2936,7 +2921,7 @@ class _SliderPanel extends StatelessWidget {
                     valueText,
                     style: TextStyle(
                       fontFamily: 'DIN1451',
-                      fontSize: _scale(60),
+                      fontSize: AppSpacings.scale(60),
                       fontWeight: FontWeight.w100,
                       height: 1.0,
                       color: isDark
@@ -2949,7 +2934,7 @@ class _SliderPanel extends StatelessWidget {
                       unitText,
                       style: TextStyle(
                         fontFamily: 'DIN1451',
-                        fontSize: _scale(25),
+                        fontSize: AppSpacings.scale(25),
                         fontWeight: FontWeight.w100,
                         height: 1.0,
                         color: isDark
@@ -2977,12 +2962,12 @@ class _SliderPanel extends StatelessWidget {
   }
 
   Widget _buildVerticalSlider() {
-    final thumbSize = _scale(44);
+    final thumbSize = AppSpacings.scale(44);
     final padding = AppSpacings.pSm;
     final progress = (value - minValue) / (maxValue - minValue);
 
     return SizedBox(
-      width: _scale(52),
+      width: AppSpacings.scale(52),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final trackHeight = math.max(1.0, constraints.maxHeight - thumbSize - padding * 2);
@@ -3017,7 +3002,7 @@ class _SliderPanel extends StatelessWidget {
                     ? null
                     : Border.all(
                         color: AppBorderColorLight.darker,
-                        width: _scale(1),
+                        width: AppSpacings.scale(1),
                       ),
               ),
               child: Stack(
@@ -3038,12 +3023,12 @@ class _SliderPanel extends StatelessWidget {
   }
 
   Widget _buildHorizontalSlider() {
-    final thumbSize = _scale(44);
+    final thumbSize = AppSpacings.scale(44);
     final padding = AppSpacings.pSm;
     final progress = (value - minValue) / (maxValue - minValue);
 
     return SizedBox(
-      height: _scale(52),
+      height: AppSpacings.scale(52),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final trackWidth = math.max(1.0, constraints.maxWidth - thumbSize - padding * 2);
@@ -3078,7 +3063,7 @@ class _SliderPanel extends StatelessWidget {
                     ? null
                     : Border.all(
                         color: AppBorderColorLight.darker,
-                        width: _scale(1),
+                        width: AppSpacings.scale(1),
                       ),
               ),
               child: Stack(
@@ -3110,13 +3095,13 @@ class _SliderPanel extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
         border: Border.all(
           color: borderColor,
-          width: _scale(3),
+          width: AppSpacings.scale(3),
         ),
         boxShadow: [
           BoxShadow(
             color: AppShadowColor.medium,
-            blurRadius: _scale(8),
-            offset: Offset(0, _scale(2)),
+            blurRadius: AppSpacings.scale(8),
+            offset: Offset(0, AppSpacings.scale(2)),
           ),
         ],
       ),
@@ -3139,10 +3124,6 @@ class _SliderPanel extends StatelessWidget {
 // ============================================================================
 
 class _ColorPanel extends StatelessWidget {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
   final bool isLandscape;
   final bool isDark;
   final double hue;
@@ -3156,9 +3137,6 @@ class _ColorPanel extends StatelessWidget {
     required this.saturation,
     required this.onChanged,
   });
-
-  double _scale(double s) =>
-      _screenService.scale(s, density: _visualDensityService.density);
 
   @override
   Widget build(BuildContext context) {
@@ -3197,8 +3175,8 @@ class _ColorPanel extends StatelessWidget {
         boxShadow: [
           BoxShadow(
             color: color.withValues(alpha: 0.4),
-            blurRadius: _scale(20),
-            spreadRadius: _scale(2),
+            blurRadius: AppSpacings.scale(20),
+            spreadRadius: AppSpacings.scale(2),
           ),
         ],
       ),
@@ -3206,12 +3184,12 @@ class _ColorPanel extends StatelessWidget {
   }
 
   Widget _buildVerticalHueSlider() {
-    final thumbSize = _scale(44);
+    final thumbSize = AppSpacings.scale(44);
     final padding = AppSpacings.pSm;
     final progress = hue / 360;
 
     return SizedBox(
-      width: _scale(52),
+      width: AppSpacings.scale(52),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final trackHeight = math.max(1.0, constraints.maxHeight - thumbSize - padding * 2);
@@ -3250,7 +3228,7 @@ class _ColorPanel extends StatelessWidget {
                     ? null
                     : Border.all(
                         color: AppBorderColorLight.darker,
-                        width: _scale(1),
+                        width: AppSpacings.scale(1),
                       ),
               ),
               child: Stack(
@@ -3272,12 +3250,12 @@ class _ColorPanel extends StatelessWidget {
   }
 
   Widget _buildVerticalSatSlider() {
-    final thumbSize = _scale(44);
+    final thumbSize = AppSpacings.scale(44);
     final padding = AppSpacings.pSm;
     final currentColor = HSVColor.fromAHSV(1, hue, 1, 1).toColor();
 
     return SizedBox(
-      width: _scale(52),
+      width: AppSpacings.scale(52),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final trackHeight = math.max(1.0, constraints.maxHeight - thumbSize - padding * 2);
@@ -3306,7 +3284,7 @@ class _ColorPanel extends StatelessWidget {
                     ? null
                     : Border.all(
                         color: AppBorderColorLight.darker,
-                        width: _scale(1),
+                        width: AppSpacings.scale(1),
                       ),
               ),
               child: Stack(
@@ -3328,12 +3306,12 @@ class _ColorPanel extends StatelessWidget {
   }
 
   Widget _buildHorizontalHueSlider() {
-    final thumbSize = _scale(44);
+    final thumbSize = AppSpacings.scale(44);
     final padding = AppSpacings.pSm;
     final progress = hue / 360;
 
     return SizedBox(
-      height: _scale(52),
+      height: AppSpacings.scale(52),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final trackWidth = math.max(1.0, constraints.maxWidth - thumbSize - padding * 2);
@@ -3370,7 +3348,7 @@ class _ColorPanel extends StatelessWidget {
                     ? null
                     : Border.all(
                         color: AppBorderColorLight.darker,
-                        width: _scale(1),
+                        width: AppSpacings.scale(1),
                       ),
               ),
               child: Stack(
@@ -3392,12 +3370,12 @@ class _ColorPanel extends StatelessWidget {
   }
 
   Widget _buildHorizontalSatSlider() {
-    final thumbSize = _scale(44);
+    final thumbSize = AppSpacings.scale(44);
     final padding = AppSpacings.pSm;
     final currentColor = HSVColor.fromAHSV(1, hue, 1, 1).toColor();
 
     return SizedBox(
-      height: _scale(52),
+      height: AppSpacings.scale(52),
       child: LayoutBuilder(
         builder: (context, constraints) {
           final trackWidth = math.max(1.0, constraints.maxWidth - thumbSize - padding * 2);
@@ -3424,7 +3402,7 @@ class _ColorPanel extends StatelessWidget {
                     ? null
                     : Border.all(
                         color: AppBorderColorLight.darker,
-                        width: _scale(1),
+                        width: AppSpacings.scale(1),
                       ),
               ),
               child: Stack(
@@ -3457,13 +3435,13 @@ class _ColorPanel extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
         border: Border.all(
           color: borderColor,
-          width: _scale(3),
+          width: AppSpacings.scale(3),
         ),
         boxShadow: [
           BoxShadow(
             color: AppShadowColor.medium,
-            blurRadius: _scale(8),
-            offset: Offset(0, _scale(2)),
+            blurRadius: AppSpacings.scale(8),
+            offset: Offset(0, AppSpacings.scale(2)),
           ),
         ],
       ),
@@ -3615,8 +3593,6 @@ class LightingModeSelector extends StatelessWidget {
 /// Supports both portrait (horizontal scroll) and landscape (grid) layouts.
 class LightingPresetsPanel extends StatelessWidget {
   final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
 
   /// Currently selected capability (determines which presets to show)
   final LightCapability selectedCapability;
@@ -3661,9 +3637,6 @@ class LightingPresetsPanel extends StatelessWidget {
     this.onColorChanged,
     this.onWhiteChannelChanged,
   });
-
-  double _scale(double s) =>
-      _screenService.scale(s, density: _visualDensityService.density);
 
   @override
   Widget build(BuildContext context) {
@@ -3953,7 +3926,7 @@ class LightingPresetsPanel extends StatelessWidget {
     List<_LightPreset> presets,
   ) {
     final localizations = AppLocalizations.of(context)!;
-    final swatchSize = _scale(36);
+    final swatchSize = AppSpacings.scale(36);
     final borderColor =
         isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
 
@@ -3986,7 +3959,7 @@ class LightingPresetsPanel extends StatelessWidget {
                   borderRadius: BorderRadius.circular(AppBorderRadius.base),
                   border: Border.all(
                     color: isActive ? presetColor : borderColor,
-                    width: isActive ? _scale(3) : _scale(1),
+                    width: isActive ? AppSpacings.scale(3) : AppSpacings.scale(1),
                   ),
                 ),
               ),
@@ -4007,7 +3980,7 @@ class LightingPresetsPanel extends StatelessWidget {
     List<_LightPreset> presets,
     AppLocalizations localizations,
   ) {
-    final tileHeight = _scale(AppTileHeight.horizontal);
+    final tileHeight = AppSpacings.scale(AppTileHeight.horizontal);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -4045,7 +4018,7 @@ class LightingPresetsPanel extends StatelessWidget {
     List<_LightPreset> presets,
   ) {
     final localizations = AppLocalizations.of(context)!;
-    final swatchHeight = _scale(AppTileHeight.horizontal);
+    final swatchHeight = AppSpacings.scale(AppTileHeight.horizontal);
     final swatchWidth = _screenService.isLargeScreen ? swatchHeight * 2 : swatchHeight;
     final borderColor =
         isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
@@ -4079,7 +4052,7 @@ class LightingPresetsPanel extends StatelessWidget {
                   borderRadius: BorderRadius.circular(AppBorderRadius.base),
                   border: Border.all(
                     color: isActive ? presetColor : borderColor,
-                    width: isActive ? _scale(3) : _scale(1),
+                    width: isActive ? AppSpacings.scale(3) : AppSpacings.scale(1),
                   ),
                   boxShadow: isActive
                       ? [

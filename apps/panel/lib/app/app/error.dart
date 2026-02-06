@@ -2,19 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
-import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/system_pages/export.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/system/types/configuration.dart';
 
 class AppError extends StatelessWidget {
-  final ScreenService _screenService = locator<ScreenService>();
   final Function() _onRestart;
   final String? _errorMessage;
 
-  AppError({
+  const AppError({
     required Function() onRestart,
     String? errorMessage,
     super.key,
@@ -52,8 +49,8 @@ class AppError extends StatelessWidget {
                 child: Padding(
                   padding: EdgeInsets.symmetric(
                     horizontal: isLandscape
-                        ? _screenService.scale(80)
-                        : _screenService.scale(40),
+                        ? AppSpacings.scale(80)
+                        : AppSpacings.scale(40),
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -62,10 +59,10 @@ class AppError extends StatelessWidget {
                       IconContainer(
                         icon: MdiIcons.alertCircle,
                         color: SystemPagesTheme.error(isDark),
-                        size: _screenService.scale(80),
-                        iconSize: _screenService.scale(40),
+                        size: AppSpacings.scale(80),
+                        iconSize: AppSpacings.scale(40),
                       ),
-                      SizedBox(height: _screenService.scale(24)),
+                      SizedBox(height: AppSpacings.scale(24)),
                       // Title
                       Text(
                         isLandscape
@@ -78,7 +75,7 @@ class AppError extends StatelessWidget {
                           fontWeight: FontWeight.w500,
                         ),
                       ),
-                      SizedBox(height: _screenService.scale(8)),
+                      SizedBox(height: AppSpacings.scale(8)),
                       // Subtitle/error message
                       // For long errors, show generic message here; details go in error code box
                       Text(
@@ -90,23 +87,23 @@ class AppError extends StatelessWidget {
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: SystemPagesTheme.textMuted(isDark),
-                          fontSize: _screenService.scale(14),
+                          fontSize: AppSpacings.scale(14),
                           height: 1.5,
                         ),
                       ),
                       // Permit join info card
                       if (hasPermitJoinError) ...[
-                        SizedBox(height: _screenService.scale(24)),
+                        SizedBox(height: AppSpacings.scale(24)),
                         _buildPermitJoinHint(context, isDark),
                       ],
                       // Error details box for long error messages
                       if (_errorMessage != null &&
                           !hasPermitJoinError &&
                           _errorMessage.length > 100) ...[
-                        SizedBox(height: _screenService.scale(16)),
+                        SizedBox(height: AppSpacings.scale(16)),
                         _buildErrorCodeBox(context, isDark),
                       ],
-                      SizedBox(height: _screenService.scale(32)),
+                      SizedBox(height: AppSpacings.scale(32)),
                       // Restart button
                       SystemPagePrimaryButton(
                         label: 'Restart Application',
@@ -127,7 +124,7 @@ class AppError extends StatelessWidget {
 
   Widget _buildPermitJoinHint(BuildContext context, bool isDark) {
     return Container(
-      padding: EdgeInsets.all(_screenService.scale(16)),
+      padding: EdgeInsets.all(AppSpacings.scale(16)),
       decoration: BoxDecoration(
         color: SystemPagesTheme.card(isDark),
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
@@ -144,8 +141,8 @@ class AppError extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            width: _screenService.scale(40),
-            height: _screenService.scale(40),
+            width: AppSpacings.scale(40),
+            height: AppSpacings.scale(40),
             alignment: Alignment.center,
             decoration: BoxDecoration(
               color: SystemPagesTheme.infoLight(isDark),
@@ -154,16 +151,16 @@ class AppError extends StatelessWidget {
             child: Icon(
               MdiIcons.informationOutline,
               color: SystemPagesTheme.info(isDark),
-              size: _screenService.scale(22),
+              size: AppSpacings.scale(22),
             ),
           ),
-          SizedBox(width: _screenService.scale(12)),
+          SizedBox(width: AppSpacings.scale(12)),
           Expanded(
             child: Text(
               'Please ask the administrator to activate "Permit Join" in the admin panel, then restart the application.',
               style: TextStyle(
                 color: SystemPagesTheme.info(isDark),
-                fontSize: _screenService.scale(14),
+                fontSize: AppSpacings.scale(14),
               ),
             ),
           ),
@@ -180,8 +177,8 @@ class AppError extends StatelessWidget {
 
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: _screenService.scale(16),
-        vertical: _screenService.scale(8),
+        horizontal: AppSpacings.scale(16),
+        vertical: AppSpacings.scale(8),
       ),
       decoration: BoxDecoration(
         color: SystemPagesTheme.card(isDark),
@@ -192,7 +189,7 @@ class AppError extends StatelessWidget {
         textAlign: TextAlign.center,
         style: TextStyle(
           color: SystemPagesTheme.textMuted(isDark),
-          fontSize: _screenService.scale(12),
+          fontSize: AppSpacings.scale(12),
           fontFamily: 'monospace',
         ),
       ),

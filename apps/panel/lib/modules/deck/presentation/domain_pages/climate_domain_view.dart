@@ -58,7 +58,6 @@ import 'package:provider/provider.dart';
 
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_card.dart';
 import 'package:fastybird_smart_panel/core/widgets/circular_control_dial.dart';
@@ -338,8 +337,6 @@ class ClimateDomainViewPage extends StatefulWidget {
 
 class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
 
   /// Optional services; resolved in initState. Listeners on Spaces, Devices, Intents.
   SpacesService? _spacesService;
@@ -1324,9 +1321,6 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   // --------------------------------------------------------------------------
   // Scaling, setpoint range from API, and navigation (home / device sheets).
 
-  double _scale(double size) =>
-      _screenService.scale(size, density: _visualDensityService.density);
-
   /// Min/max setpoint from [climateState] with safe defaults and normalized order.
   (double, double) _getSetpointRange(spaces_climate.ClimateStateModel? climateState) {
     final rawMin = climateState?.minSetpoint ?? 16.0;
@@ -1694,7 +1688,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         spacing: AppSpacings.pMd,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildPrimaryControlCard(context, dialSize: _scale(DeviceDetailDialSizes.portrait)),
+          _buildPrimaryControlCard(context, dialSize: AppSpacings.scale(DeviceDetailDialSizes.portrait)),
           // Sensors section - horizontal scroll like presets on window_covering.dart
           if (hasSensors) ...[
             SectionTitle(
@@ -1719,7 +1713,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
 
   Widget _buildSensorsWithGradient(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
-    final tileHeight = _scale(AppTileHeight.horizontal);
+    final tileHeight = AppSpacings.scale(AppTileHeight.horizontal);
 
     return HorizontalScrollWithGradient(
       height: tileHeight,

@@ -1,8 +1,6 @@
 import 'dart:async';
 
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_landscape_layout.dart';
@@ -34,8 +32,6 @@ class GameConsoleDeviceDetail extends StatefulWidget {
 }
 
 class _GameConsoleDeviceDetailState extends State<GameConsoleDeviceDetail> {
-	final ScreenService _screenService = locator<ScreenService>();
-	final VisualDensityService _visualDensityService = locator<VisualDensityService>();
 	final DevicesService _devicesService = locator<DevicesService>();
 
 	Timer? _playbackSettleTimer;
@@ -67,9 +63,6 @@ class _GameConsoleDeviceDetailState extends State<GameConsoleDeviceDetail> {
 		}
 		return widget._device;
 	}
-
-	double _scale(double value) =>
-		_screenService.scale(value, density: _visualDensityService.density);
 
 	// --------------------------------------------------------------------------
 	// COMMAND HELPERS
@@ -247,8 +240,7 @@ class _GameConsoleDeviceDetailState extends State<GameConsoleDeviceDetail> {
 						name: _device.name,
 						isOn: _isOn,
 						themeColor: _getThemeColor(),
-						scale: _scale,
-					),
+						),
 					if (_device.hasMediaPlayback &&
 						MediaPlaybackCard.hasContent(
 							playbackTrack: _device.isMediaPlaybackTrack,
@@ -273,8 +265,7 @@ class _GameConsoleDeviceDetailState extends State<GameConsoleDeviceDetail> {
 							onPlaybackSeek: _seekPosition,
 							themeColor: _getThemeColor(),
 							isEnabled: _isOn,
-							scale: _scale,
-						),
+								),
 				],
 			),
 		);
@@ -295,8 +286,7 @@ class _GameConsoleDeviceDetailState extends State<GameConsoleDeviceDetail> {
 						name: _device.name,
 						isOn: _isOn,
 						themeColor: _getThemeColor(),
-						scale: _scale,
-					),
+						),
 					if (_device.hasMediaPlayback &&
 						MediaPlaybackCard.hasContent(
 							playbackTrack: _device.isMediaPlaybackTrack,
@@ -321,8 +311,7 @@ class _GameConsoleDeviceDetailState extends State<GameConsoleDeviceDetail> {
 							onPlaybackSeek: _seekPosition,
 							themeColor: _getThemeColor(),
 							isEnabled: _isOn,
-							scale: _scale,
-						),
+								),
 				],
 			),
 			secondaryContent: const SizedBox.shrink(),
