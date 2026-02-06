@@ -847,7 +847,7 @@ mixin DeviceMediaInputMixin {
     }
   }
 
-  bool get hasMediaInputSourceLabel => mediaInputChannel?.hasSourceLabel ?? false;
+  bool get hasMediaInputSourceLabel => mediaInputSourceLabel != null;
 
   String? get mediaInputSourceLabel => mediaInputChannel?.sourceLabel;
 

@@ -30,6 +30,17 @@ class AppLocalizationsCs extends AppLocalizations {
   String get action_failed => 'Akci se nepodařilo zpracovat';
 
   @override
+  String get action_retry => 'Retry';
+
+  @override
+  String domain_data_load_failed(String domain) {
+    return 'Failed to load $domain';
+  }
+
+  @override
+  String get domain_data_load_failed_description => 'Unable to retrieve data. Please check your connection and try again.';
+
+  @override
   String get services_not_available => 'Služby nejsou k dispozici';
 
   @override
@@ -1532,13 +1543,22 @@ class AppLocalizationsCs extends AppLocalizations {
   String get particulate_label_pm10 => 'PM10';
 
   @override
-  String get voc_level_good => 'Dobrá';
+  String get sensor_enum_voc_level_low => 'Nízká';
 
   @override
-  String get voc_level_moderate => 'Střední';
+  String get sensor_enum_voc_level_low_long => 'Nízká úroveň VOC';
 
   @override
-  String get voc_level_poor => 'Špatná';
+  String get sensor_enum_voc_level_medium => 'Stř.';
+
+  @override
+  String get sensor_enum_voc_level_medium_long => 'Střední úroveň VOC';
+
+  @override
+  String get sensor_enum_voc_level_high => 'Vys.';
+
+  @override
+  String get sensor_enum_voc_level_high_long => 'Vysoká úroveň VOC';
 
   @override
   String get fan_mode_auto => 'Automatický';
@@ -2059,94 +2079,316 @@ class AppLocalizationsCs extends AppLocalizations {
   String get connection_server_error_button_retry => 'Zkusit znovu';
 
   @override
-  String get sensor_enum_illuminance_dark => 'Tma';
-
-  @override
-  String get sensor_enum_illuminance_dim => 'Šero';
-
-  @override
-  String get sensor_enum_illuminance_light => 'Světlo';
-
-  @override
   String get sensor_enum_illuminance_bright => 'Jasno';
-
-  @override
-  String get sensor_enum_illuminance_dark_long => 'Tma';
-
-  @override
-  String get sensor_enum_illuminance_dim_long => 'Šero';
-
-  @override
-  String get sensor_enum_illuminance_light_long => 'Světlo';
 
   @override
   String get sensor_enum_illuminance_bright_long => 'Jasno';
 
   @override
+  String get sensor_enum_illuminance_moderate => 'Střední';
+
+  @override
+  String get sensor_enum_illuminance_moderate_long => 'Střední osvětlení';
+
+  @override
+  String get sensor_enum_illuminance_dusky => 'Šero';
+
+  @override
+  String get sensor_enum_illuminance_dusky_long => 'Šero';
+
+  @override
+  String get sensor_enum_illuminance_dark => 'Tma';
+
+  @override
+  String get sensor_enum_illuminance_dark_long => 'Tma';
+
+  @override
   String get sensor_enum_gas_status_normal => 'OK';
-
-  @override
-  String get sensor_enum_gas_status_testing => 'Test';
-
-  @override
-  String get sensor_enum_gas_status_detected => 'Plyn!';
 
   @override
   String get sensor_enum_gas_status_normal_long => 'Normální';
 
   @override
-  String get sensor_enum_gas_status_testing_long => 'Testování';
+  String get sensor_enum_gas_status_warning => 'Var.';
 
   @override
-  String get sensor_enum_gas_status_detected_long => 'Plyn detekován';
+  String get sensor_enum_gas_status_warning_long => 'Varování';
 
   @override
-  String get sensor_enum_leak_none => 'Sucho';
+  String get sensor_enum_gas_status_alarm => 'Alarm';
 
   @override
-  String get sensor_enum_leak_detected => 'Únik!';
+  String get sensor_enum_gas_status_alarm_long => 'Alarm plynu';
 
   @override
-  String get sensor_enum_leak_none_long => 'Žádný únik';
+  String get sensor_enum_leak_level_low => 'Nízký';
 
   @override
-  String get sensor_enum_leak_detected_long => 'Únik detekován';
+  String get sensor_enum_leak_level_low_long => 'Nízký únik';
 
   @override
-  String get sensor_enum_battery_level_normal => 'OK';
+  String get sensor_enum_leak_level_medium => 'Stř.';
+
+  @override
+  String get sensor_enum_leak_level_medium_long => 'Střední únik';
+
+  @override
+  String get sensor_enum_leak_level_high => 'Vys.';
+
+  @override
+  String get sensor_enum_leak_level_high_long => 'Závažný únik';
+
+  @override
+  String get sensor_enum_battery_level_critical => 'Krit.';
+
+  @override
+  String get sensor_enum_battery_level_critical_long => 'Kritická';
 
   @override
   String get sensor_enum_battery_level_low => 'Nízká';
 
   @override
-  String get sensor_enum_battery_level_normal_long => 'Normální';
+  String get sensor_enum_battery_level_low_long => 'Nízká';
 
   @override
-  String get sensor_enum_battery_level_low_long => 'Nízká baterie';
+  String get sensor_enum_battery_level_medium => 'Stř.';
 
   @override
-  String get sensor_enum_battery_status_normal => 'OK';
+  String get sensor_enum_battery_level_medium_long => 'Střední';
+
+  @override
+  String get sensor_enum_battery_level_high => 'Vys.';
+
+  @override
+  String get sensor_enum_battery_level_high_long => 'Vysoká';
+
+  @override
+  String get sensor_enum_battery_level_full => 'Plná';
+
+  @override
+  String get sensor_enum_battery_level_full_long => 'Plná';
+
+  @override
+  String get sensor_enum_battery_status_ok => 'OK';
+
+  @override
+  String get sensor_enum_battery_status_ok_long => 'Baterie OK';
+
+  @override
+  String get sensor_enum_battery_status_low => 'Nízká';
+
+  @override
+  String get sensor_enum_battery_status_low_long => 'Nízká baterie';
 
   @override
   String get sensor_enum_battery_status_charging => 'Nabíjí';
 
   @override
-  String get sensor_enum_battery_status_not_charging => 'Nečinná';
-
-  @override
-  String get sensor_enum_battery_status_not_chargeable => 'N/A';
-
-  @override
-  String get sensor_enum_battery_status_normal_long => 'Normální';
-
-  @override
   String get sensor_enum_battery_status_charging_long => 'Nabíjení';
 
   @override
-  String get sensor_enum_battery_status_not_charging_long => 'Nenabíjí se';
+  String get sensor_enum_alarm_alarm_idle => 'Klid';
 
   @override
-  String get sensor_enum_battery_status_not_chargeable_long => 'Nelze nabíjet';
+  String get sensor_enum_alarm_alarm_idle_long => 'Alarm v klidu';
+
+  @override
+  String get sensor_enum_alarm_alarm_pending => 'Čeká';
+
+  @override
+  String get sensor_enum_alarm_alarm_pending_long => 'Alarm čeká';
+
+  @override
+  String get sensor_enum_alarm_alarm_triggered => 'Spuš.';
+
+  @override
+  String get sensor_enum_alarm_alarm_triggered_long => 'Alarm spuštěn';
+
+  @override
+  String get sensor_enum_alarm_alarm_silenced => 'Ticho';
+
+  @override
+  String get sensor_enum_alarm_alarm_silenced_long => 'Alarm ztišen';
+
+  @override
+  String get sensor_enum_alarm_disarmed => 'Vyp.';
+
+  @override
+  String get sensor_enum_alarm_disarmed_long => 'Deaktivován';
+
+  @override
+  String get sensor_enum_alarm_armed_home => 'Doma';
+
+  @override
+  String get sensor_enum_alarm_armed_home_long => 'Aktivní doma';
+
+  @override
+  String get sensor_enum_alarm_armed_away => 'Pryč';
+
+  @override
+  String get sensor_enum_alarm_armed_away_long => 'Aktivní pryč';
+
+  @override
+  String get sensor_enum_alarm_armed_night => 'Noc';
+
+  @override
+  String get sensor_enum_alarm_armed_night_long => 'Aktivní noc';
+
+  @override
+  String get sensor_enum_filter_good => 'Dobrý';
+
+  @override
+  String get sensor_enum_filter_good_long => 'Filtr dobrý';
+
+  @override
+  String get sensor_enum_filter_replace_soon => 'Brzy';
+
+  @override
+  String get sensor_enum_filter_replace_soon_long => 'Brzy vyměnit';
+
+  @override
+  String get sensor_enum_filter_replace_now => 'Teď!';
+
+  @override
+  String get sensor_enum_filter_replace_now_long => 'Vyměnit nyní';
+
+  @override
+  String get sensor_enum_door_opened => 'Otev.';
+
+  @override
+  String get sensor_enum_door_opened_long => 'Dveře otevřeny';
+
+  @override
+  String get sensor_enum_door_closed => 'Zavř.';
+
+  @override
+  String get sensor_enum_door_closed_long => 'Dveře zavřeny';
+
+  @override
+  String get sensor_enum_door_opening => 'Otev.';
+
+  @override
+  String get sensor_enum_door_opening_long => 'Dveře se otevírají';
+
+  @override
+  String get sensor_enum_door_closing => 'Zavír.';
+
+  @override
+  String get sensor_enum_door_closing_long => 'Dveře se zavírají';
+
+  @override
+  String get sensor_enum_door_stopped => 'Stop';
+
+  @override
+  String get sensor_enum_door_stopped_long => 'Dveře zastaveny';
+
+  @override
+  String get sensor_enum_lock_locked => 'Zamč.';
+
+  @override
+  String get sensor_enum_lock_locked_long => 'Zamčeno';
+
+  @override
+  String get sensor_enum_lock_unlocked => 'Otev.';
+
+  @override
+  String get sensor_enum_lock_unlocked_long => 'Odemčeno';
+
+  @override
+  String get sensor_enum_camera_available => 'Zap.';
+
+  @override
+  String get sensor_enum_camera_available_long => 'Kamera dostupná';
+
+  @override
+  String get sensor_enum_camera_in_use => 'Použ.';
+
+  @override
+  String get sensor_enum_camera_in_use_long => 'Kamera používána';
+
+  @override
+  String get sensor_enum_camera_unavailable => 'N/A';
+
+  @override
+  String get sensor_enum_camera_unavailable_long => 'Kamera nedostupná';
+
+  @override
+  String get sensor_enum_camera_offline => 'Vyp.';
+
+  @override
+  String get sensor_enum_camera_offline_long => 'Kamera offline';
+
+  @override
+  String get sensor_enum_camera_initializing => 'Init';
+
+  @override
+  String get sensor_enum_camera_initializing_long => 'Kamera se inicializuje';
+
+  @override
+  String get sensor_enum_camera_error => 'Chyba';
+
+  @override
+  String get sensor_enum_camera_error_long => 'Chyba kamery';
+
+  @override
+  String get sensor_enum_device_info_connected => 'Zap.';
+
+  @override
+  String get sensor_enum_device_info_connected_long => 'Připojeno';
+
+  @override
+  String get sensor_enum_device_info_disconnected => 'Vyp.';
+
+  @override
+  String get sensor_enum_device_info_disconnected_long => 'Odpojeno';
+
+  @override
+  String get sensor_enum_device_info_init => 'Init';
+
+  @override
+  String get sensor_enum_device_info_init_long => 'Inicializace';
+
+  @override
+  String get sensor_enum_device_info_ready => 'Připr.';
+
+  @override
+  String get sensor_enum_device_info_ready_long => 'Připraveno';
+
+  @override
+  String get sensor_enum_device_info_running => 'Běží';
+
+  @override
+  String get sensor_enum_device_info_running_long => 'Běží';
+
+  @override
+  String get sensor_enum_device_info_sleeping => 'Spí';
+
+  @override
+  String get sensor_enum_device_info_sleeping_long => 'Spí';
+
+  @override
+  String get sensor_enum_device_info_stopped => 'Stop';
+
+  @override
+  String get sensor_enum_device_info_stopped_long => 'Zastaveno';
+
+  @override
+  String get sensor_enum_device_info_lost => 'Ztr.';
+
+  @override
+  String get sensor_enum_device_info_lost_long => 'Spojení ztraceno';
+
+  @override
+  String get sensor_enum_device_info_alert => 'Alert';
+
+  @override
+  String get sensor_enum_device_info_alert_long => 'Alert';
+
+  @override
+  String get sensor_enum_device_info_unknown => 'N/A';
+
+  @override
+  String get sensor_enum_device_info_unknown_long => 'Neznámý';
 
   @override
   String get sensor_freshness_live => 'Živě';
@@ -2494,4 +2736,289 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get media_detail_menu => 'Menu';
+
+  @override
+  String get media_playback => 'Přehrávání';
+
+  @override
+  String get filter_all => 'Vše';
+
+  @override
+  String sensor_alert_high_title(String name) {
+    return 'Výstraha: vysoká hodnota $name';
+  }
+
+  @override
+  String sensor_alert_exceeded_threshold(String name) {
+    return '$name překročil prahovou hodnotu';
+  }
+
+  @override
+  String get sensor_state_detected => 'Detekováno';
+
+  @override
+  String get sensor_state_not_detected => 'Nedetekováno';
+
+  @override
+  String get sensor_state_clear => 'V pořádku';
+
+  @override
+  String get sensor_state_open => 'Otevřeno';
+
+  @override
+  String get sensor_state_closed => 'Zavřeno';
+
+  @override
+  String get sensor_state_active => 'Aktivní';
+
+  @override
+  String get sensor_state_inactive => 'Neaktivní';
+
+  @override
+  String get sensor_state_occupied => 'Obsazeno';
+
+  @override
+  String get sensor_state_unoccupied => 'Neobsazeno';
+
+  @override
+  String get sensor_state_smoke_detected => 'Detekován kouř';
+
+  @override
+  String get sensor_state_gas_detected => 'Detekován plyn';
+
+  @override
+  String get sensor_state_leak_detected => 'Detekován únik';
+
+  @override
+  String get sensor_state_co_detected => 'Detekován CO';
+
+  @override
+  String get sensor_label_temperature => 'Teplota';
+
+  @override
+  String get sensor_label_humidity => 'Vlhkost';
+
+  @override
+  String get sensor_label_pressure => 'Tlak';
+
+  @override
+  String get sensor_label_illuminance => 'Osvětlení';
+
+  @override
+  String get sensor_label_carbon_dioxide => 'Oxid uhličitý';
+
+  @override
+  String get sensor_label_carbon_monoxide => 'Oxid uhelnatý';
+
+  @override
+  String get sensor_label_ozone => 'Ozón';
+
+  @override
+  String get sensor_label_nitrogen_dioxide => 'Oxid dusičitý';
+
+  @override
+  String get sensor_label_sulphur_dioxide => 'Oxid siřičitý';
+
+  @override
+  String get sensor_label_voc => 'VOC';
+
+  @override
+  String get sensor_label_particulate_matter => 'Pevné částice';
+
+  @override
+  String get sensor_label_motion => 'Pohyb';
+
+  @override
+  String get sensor_label_occupancy => 'Přítomnost';
+
+  @override
+  String get sensor_label_contact => 'Kontakt';
+
+  @override
+  String get sensor_label_leak => 'Únik';
+
+  @override
+  String get sensor_label_smoke => 'Kouř';
+
+  @override
+  String get sensor_label_battery => 'Baterie';
+
+  @override
+  String get sensor_label_alarm => 'Alarm';
+
+  @override
+  String get sensor_label_door => 'Dveře';
+
+  @override
+  String get sensor_label_lock => 'Zámek';
+
+  @override
+  String get sensor_label_camera => 'Kamera';
+
+  @override
+  String get sensor_label_filter => 'Filtr';
+
+  @override
+  String get sensor_label_device_info => 'Info o zařízení';
+
+  @override
+  String get sensor_label_gas => 'Plyn';
+
+  @override
+  String get sensor_alert_high_level => 'Vysoká úroveň';
+
+  @override
+  String get sensor_alert_low_battery => 'Slabá baterie';
+
+  @override
+  String get sensor_alert_charging => 'Nabíjení';
+
+  @override
+  String get sensor_category_temperature => 'Teplota';
+
+  @override
+  String get sensor_category_humidity => 'Vlhkost';
+
+  @override
+  String get sensor_category_air_quality => 'Kvalita vzduchu';
+
+  @override
+  String get sensor_category_motion => 'Pohyb';
+
+  @override
+  String get sensor_category_safety => 'Bezpečnost';
+
+  @override
+  String get sensor_category_light => 'Světlo';
+
+  @override
+  String get sensor_category_energy => 'Energie';
+
+  @override
+  String get sensor_ui_event_log => 'Historie událostí';
+
+  @override
+  String get sensor_ui_history => 'Historie';
+
+  @override
+  String get sensor_ui_current => 'Aktuální';
+
+  @override
+  String sensor_ui_current_value(String name) {
+    return 'Aktuální $name';
+  }
+
+  @override
+  String get sensor_ui_min => 'Min';
+
+  @override
+  String get sensor_ui_max => 'Max';
+
+  @override
+  String get sensor_ui_avg => 'Prům';
+
+  @override
+  String sensor_ui_period_min(String period) {
+    return '$period Min';
+  }
+
+  @override
+  String sensor_ui_period_max(String period) {
+    return '$period Max';
+  }
+
+  @override
+  String sensor_ui_period_avg(String period) {
+    return '$period Prům';
+  }
+
+  @override
+  String get sensor_ui_online => 'Online';
+
+  @override
+  String get sensor_ui_offline => 'Offline';
+
+  @override
+  String get sensor_ui_period_1h => '1H';
+
+  @override
+  String get sensor_ui_period_24h => '24H';
+
+  @override
+  String get sensor_ui_period_7d => '7D';
+
+  @override
+  String get sensor_ui_period_30d => '30D';
+
+  @override
+  String get sensor_empty_no_events => 'Žádné zaznamenané události';
+
+  @override
+  String get sensor_empty_no_state_changes => 'Žádné změny stavu';
+
+  @override
+  String get sensor_empty_no_history => 'Žádná historická data';
+
+  @override
+  String get sensor_empty_no_data => 'Žádná data';
+
+  @override
+  String get sensor_status_loading => 'Načítání dat...';
+
+  @override
+  String get sensor_status_failed => 'Načítání dat selhalo';
+
+  @override
+  String get sensor_status_retry => 'Opakovat';
+
+  @override
+  String get sensors_domain_title => 'Senzory';
+
+  @override
+  String get sensors_domain_empty_title => 'Žádné senzory';
+
+  @override
+  String get sensors_domain_empty_description => 'V této místnosti zatím nejsou přiřazeny žádné senzory.';
+
+  @override
+  String sensors_domain_alerts_active(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Aktivních výstrah',
+      few: 'Aktivní výstrahy',
+      one: 'Aktivní výstraha',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get sensors_domain_no_sensors => 'Žádné senzory';
+
+  @override
+  String sensors_domain_health_stale(int count) {
+    return '$count zastaralých';
+  }
+
+  @override
+  String sensors_domain_health_offline(int count) {
+    return '$count offline';
+  }
+
+  @override
+  String get sensors_domain_health_normal => 'Vše v pořádku';
+
+  @override
+  String get sensors_domain_avg_temperature => 'Prům. teplota';
+
+  @override
+  String get sensors_domain_avg_humidity => 'Prům. vlhkost';
+
+  @override
+  String get sensors_domain_all_sensors => 'Všechny senzory';
+
+  @override
+  String sensors_domain_sensor_count(int count) {
+    return '$count senzorů';
+  }
 }

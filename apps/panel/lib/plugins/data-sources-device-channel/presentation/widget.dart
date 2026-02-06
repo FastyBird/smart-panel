@@ -5,7 +5,7 @@ import 'package:fastybird_smart_panel/modules/dashboard/presentation/widgets/dat
 import 'package:fastybird_smart_panel/modules/devices/mappers/property.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
-import 'package:fastybird_smart_panel/modules/devices/utils/value.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/utils/sensor_utils.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/view.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/view.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
@@ -50,9 +50,8 @@ class DeviceChannelDataSourceWidget
           _getIcon(property),
           size: AppFontSize.small,
         ),
-        AppSpacings.spacingSmHorizontal,
         Text(
-          _getValue(property, context),
+          _getValue(property, channel, context),
           style: TextStyle(
             fontFamily: 'DIN1451',
             fontSize: AppFontSize.small,
@@ -75,6 +74,7 @@ class DeviceChannelDataSourceWidget
       }
 
       return Row(
+        spacing: AppSpacings.pSm,
         crossAxisAlignment: CrossAxisAlignment.center,
         mainAxisAlignment: MainAxisAlignment.start,
         children: parts,
@@ -92,7 +92,7 @@ class DeviceChannelDataSourceWidget
     return buildChannelPropertyIcon(property.category);
   }
 
-  String _getValue(ChannelPropertyView property, BuildContext context) {
+  String _getValue(ChannelPropertyView property, ChannelView channel, BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
 
     final value = property.value;
@@ -109,7 +109,7 @@ class DeviceChannelDataSourceWidget
               : localizations.on_state_off;
         }
 
-        return ValueUtils.formatValue(property) ??
+        return SensorUtils.valueFormatterForCategory(channel.category)(property) ??
             localizations.value_not_available;
     }
   }
@@ -118,6 +118,7 @@ class DeviceChannelDataSourceWidget
     final localizations = AppLocalizations.of(context)!;
 
     return Row(
+      spacing: AppSpacings.pSm,
       crossAxisAlignment: CrossAxisAlignment.center,
       mainAxisAlignment: MainAxisAlignment.start,
       children: [
@@ -136,7 +137,6 @@ class DeviceChannelDataSourceWidget
             child: const CircularProgressIndicator(strokeWidth: 2),
           ),
         ),
-        AppSpacings.spacingSmHorizontal,
         Text(
           localizations.value_loading,
           style: TextStyle(
@@ -152,6 +152,7 @@ class DeviceChannelDataSourceWidget
     final localizations = AppLocalizations.of(context)!;
 
     return Row(
+      spacing: AppSpacings.pSm,
       crossAxisAlignment: CrossAxisAlignment.center,
       mainAxisAlignment: MainAxisAlignment.start,
       children: [
@@ -159,7 +160,6 @@ class DeviceChannelDataSourceWidget
           MdiIcons.alertCircle,
           size: AppFontSize.small,
         ),
-        AppSpacings.spacingSmHorizontal,
         Text(
           localizations.value_not_available,
           style: TextStyle(

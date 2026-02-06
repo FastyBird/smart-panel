@@ -78,7 +78,7 @@ class _ConnectionOverlayState extends State<ConnectionOverlay> {
             ),
             decoration: BoxDecoration(
               color: SystemPagesTheme.card(isDark),
-              borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+              borderRadius: BorderRadius.circular(AppBorderRadius.base),
               boxShadow: [
                 BoxShadow(
                   color: AppShadowColor.strong,
@@ -92,7 +92,7 @@ class _ConnectionOverlayState extends State<ConnectionOverlay> {
               children: [
                 // Animated icon
                 _buildIcon(isDark, screenService),
-                SizedBox(height: AppSpacings.pLg),
+                AppSpacings.spacingLgVertical,
                 // Title
                 Text(
                   _getTitle(localizations),
@@ -103,7 +103,7 @@ class _ConnectionOverlayState extends State<ConnectionOverlay> {
                   ),
                   textAlign: TextAlign.center,
                 ),
-                SizedBox(height: AppSpacings.pMd),
+                AppSpacings.spacingMdVertical,
                 // Subtitle
                 Text(
                   _getSubtitle(localizations),
@@ -118,14 +118,50 @@ class _ConnectionOverlayState extends State<ConnectionOverlay> {
                 // Retry button
                 SizedBox(
                   width: double.infinity,
-                  child: SystemPagePrimaryButton(
-                    label: _isRetrying
-                        ? localizations.connection_overlay_retrying
-                        : localizations.connection_overlay_retry,
-                    icon: _isRetrying ? null : MdiIcons.refresh,
-                    onPressed: _handleRetry,
-                    isLoading: _isRetrying,
-                    isDark: isDark,
+                  child: Theme(
+                    data: Theme.of(context).copyWith(
+                      filledButtonTheme: isDark
+                          ? AppFilledButtonsDarkThemes.primary
+                          : AppFilledButtonsLightThemes.primary,
+                    ),
+                    child: _isRetrying
+                        ? FilledButton(
+                            onPressed: _handleRetry,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                SizedBox(
+                                  width: AppFontSize.base,
+                                  height: AppFontSize.base,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: isDark
+                                        ? AppFilledButtonsDarkThemes
+                                            .primaryForegroundColor
+                                        : AppFilledButtonsLightThemes
+                                            .primaryForegroundColor,
+                                  ),
+                                ),
+                                AppSpacings.spacingSmHorizontal,
+                                Text(localizations
+                                    .connection_overlay_retrying),
+                              ],
+                            ),
+                          )
+                        : FilledButton.icon(
+                            onPressed: _handleRetry,
+                            icon: Icon(
+                              MdiIcons.refresh,
+                              size: AppFontSize.base,
+                              color: isDark
+                                  ? AppFilledButtonsDarkThemes
+                                      .primaryForegroundColor
+                                  : AppFilledButtonsLightThemes
+                                      .primaryForegroundColor,
+                            ),
+                            label: Text(
+                                localizations.connection_overlay_retry),
+                          ),
                   ),
                 ),
               ],

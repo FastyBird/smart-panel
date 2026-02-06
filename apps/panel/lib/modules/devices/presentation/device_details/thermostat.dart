@@ -3,27 +3,33 @@ import 'dart:math' as math;
 
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
-import 'package:fastybird_smart_panel/core/utils/number_format.dart';
+
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_card.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/circular_control_dial.dart';
-import 'package:fastybird_smart_panel/core/widgets/device_detail_landscape_layout.dart';
-import 'package:fastybird_smart_panel/core/widgets/device_detail_portrait_layout.dart';
-import 'package:fastybird_smart_panel/core/widgets/device_offline_overlay.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_landscape_layout.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_portrait_layout.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_offline_overlay.dart';
 import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
-import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
+import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
 import 'package:fastybird_smart_panel/core/widgets/tile_wrappers.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/controllers/devices/thermostat.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
-import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_colors.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_colors.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_channel_detail_page.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_data.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/utils/sensor_utils.dart';
+import 'package:fastybird_smart_panel/api/models/devices_module_channel_category.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
+import 'package:fastybird_smart_panel/modules/devices/mappers/channel.dart' show buildChannelIcon;
+import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/thermostat.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
 import 'package:flutter/foundation.dart';
@@ -47,8 +53,9 @@ class _SensorInfo {
   final String value;
   final String? unit;
   final IconData icon;
-  final Color? valueColor;
+  final ThemeColors? themeColor;
   final bool isWarning;
+  final SensorData? sensorData;
 
   const _SensorInfo({
     required this.id,
@@ -56,12 +63,20 @@ class _SensorInfo {
     required this.value,
     required this.icon,
     this.unit,
-    this.valueColor,
+    this.themeColor,
     this.isWarning = false,
+    this.sensorData,
   });
 
   /// Returns the formatted display value with unit
-  String get displayValue => unit != null ? '$value$unit' : value;
+  /// Uses the backend-provided unit from [sensorData] when available,
+  /// falling back to the explicit [unit] field.
+  String get displayValue {
+    final u = (sensorData != null && sensorData!.unit.isNotEmpty)
+        ? sensorData!.unit
+        : unit;
+    return (u != null && u.isNotEmpty) ? '$value$u' : value;
+  }
 }
 
 class ThermostatDeviceDetail extends StatefulWidget {
@@ -80,8 +95,6 @@ class ThermostatDeviceDetail extends StatefulWidget {
 
 class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
   final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
   final DevicesService _devicesService = locator<DevicesService>();
   DeviceControlStateService? _deviceControlStateService;
   ThermostatDeviceController? _controller;
@@ -127,7 +140,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
 
     final localizations = AppLocalizations.of(context);
     if (mounted && localizations != null) {
-      AlertBar.showError(context, message: localizations.action_failed);
+      AppToast.showError(context, message: localizations.action_failed);
     }
 
     if (mounted) {
@@ -223,9 +236,6 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     }
     return widget._device;
   }
-
-  double _scale(double value) =>
-      _screenService.scale(value, density: _visualDensityService.density);
 
   // --------------------------------------------------------------------------
   // STATE HELPERS
@@ -325,6 +335,17 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
         // Use heater max as default for display
         return _device.heaterChannel?.maxTemperature ?? 30.0;
     }
+  }
+
+  /// Valid min/max setpoint range; uses safe defaults if API returns malformed data.
+  (double, double) get _validSetpointRange {
+    var min = _minSetpoint;
+    var max = _maxSetpoint;
+    if (min >= max) {
+      min = 16.0;
+      max = 30.0;
+    }
+    return (min, max);
   }
 
   ChannelPropertyView? get _activeSetpointProp {
@@ -478,7 +499,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
           if (mounted) {
             final localizations = AppLocalizations.of(context);
             if (localizations != null) {
-              AlertBar.showError(context, message: localizations.action_failed);
+              AppToast.showError(context, message: localizations.action_failed);
             }
             setState(() {});
           }
@@ -546,7 +567,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     if (_currentMode == ThermostatMode.off) {
       return localizations.on_state_off;
     }
-    final tempStr = '${_targetSetpoint.toStringAsFixed(0)}°C';
+    final tempStr = SensorUtils.formatNumericValueWithUnit(_targetSetpoint, DevicesModuleChannelCategory.temperature);
     if (_isCooling) {
       return localizations.thermostat_state_cooling_to(tempStr);
     }
@@ -556,53 +577,35 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     return localizations.thermostat_state_idle_at(tempStr);
   }
 
-  Color _getModeColor(bool isDark) {
-    switch (_currentMode) {
-      case ThermostatMode.heat:
-        return isDark ? AppColorsDark.warning : AppColorsLight.warning;
-      case ThermostatMode.cool:
-        return isDark ? AppColorsDark.info : AppColorsLight.info;
-      case ThermostatMode.auto:
-        return isDark ? AppColorsDark.success : AppColorsLight.success;
-      case ThermostatMode.off:
-        return isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
-    }
-  }
+  /// Theme color for the current mode. Single source for all mode-based colors.
+  ThemeColors _getModeColor() => _themeColorForMode(_currentMode);
 
-  Color _getModeLightColor(bool isDark) {
-    switch (_currentMode) {
-      case ThermostatMode.heat:
-        return isDark
-            ? AppColorsDark.warningLight5
-            : AppColorsLight.warningLight5;
-      case ThermostatMode.cool:
-        return isDark ? AppColorsDark.infoLight5 : AppColorsLight.infoLight5;
-      case ThermostatMode.auto:
-        return isDark
-            ? AppColorsDark.successLight5
-            : AppColorsLight.successLight5;
-      case ThermostatMode.off:
-        return isDark ? AppFillColorDark.light : AppFillColorLight.light;
-    }
-  }
+  /// Theme color family for the current mode. Use for borders, bases, etc.
+  ThemeColorFamily _getModeColorFamily(BuildContext context) =>
+      ThemeColorFamily.get(Theme.of(context).brightness, _getModeColor());
 
-  Color _getModeBorderColor(bool isDark) {
-    final modeColor = _getModeColor(isDark);
-    if (_currentMode == ThermostatMode.off) {
-      return isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
+  static ThemeColors _themeColorForMode(ThermostatMode mode) {
+    switch (mode) {
+      case ThermostatMode.heat:
+        return ThemeColors.warning;
+      case ThermostatMode.cool:
+        return ThemeColors.info;
+      case ThermostatMode.auto:
+        return ThemeColors.success;
+      case ThermostatMode.off:
+        return ThemeColors.neutral;
     }
-    return modeColor.withValues(alpha: 0.3);
   }
 
   DialAccentColor _getDialAccentColor() {
-    switch (_currentMode) {
-      case ThermostatMode.heat:
+    switch (_getModeColor()) {
+      case ThemeColors.warning:
         return DialAccentColor.warning;
-      case ThermostatMode.cool:
+      case ThemeColors.info:
         return DialAccentColor.info;
-      case ThermostatMode.auto:
-        return DialAccentColor.neutral;
-      case ThermostatMode.off:
+      case ThemeColors.success:
+        return DialAccentColor.success;
+      default:
         return DialAccentColor.neutral;
     }
   }
@@ -618,7 +621,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
         value: ThermostatMode.heat,
         icon: MdiIcons.fireCircle,
         label: localizations.thermostat_mode_heat,
-        color: ModeSelectorColor.warning,
+        color: _themeColorForMode(ThermostatMode.heat),
       ));
     }
 
@@ -627,26 +630,16 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
         value: ThermostatMode.cool,
         icon: MdiIcons.snowflake,
         label: localizations.thermostat_mode_cool,
-        color: ModeSelectorColor.info,
+        color: _themeColorForMode(ThermostatMode.cool),
       ));
     }
-
-    // Auto mode hidden for now - will be implemented in future
-    // if (hasHeater && hasCooler) {
-    //   modes.add(ModeOption(
-    //     value: ThermostatMode.auto,
-    //     icon: MdiIcons.autorenew,
-    //     label: localizations.thermostat_mode_auto,
-    //     color: ModeSelectorColor.success,
-    //   ));
-    // }
 
     // Always add OFF mode
     modes.add(ModeOption(
       value: ThermostatMode.off,
       icon: MdiIcons.power,
       label: localizations.thermostat_mode_off,
-      color: ModeSelectorColor.neutral,
+      color: _themeColorForMode(ThermostatMode.off),
     ));
 
     return modes;
@@ -697,42 +690,23 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
 
   Widget _buildHeader(BuildContext context, bool isDark) {
     final localizations = AppLocalizations.of(context)!;
-    final modeColor = _getModeColor(isDark);
+    final modeColorFamily = _getModeColorFamily(context);
     final secondaryColor =
         isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
-    final mutedColor =
-        isDark ? AppTextColorDark.disabled : AppTextColorLight.disabled;
 
     return PageHeader(
       title: _device.name,
       subtitle: _getStatusLabel(localizations),
-      subtitleColor: _isActive ? modeColor : secondaryColor,
-      backgroundColor: AppColors.blank,
+      subtitleColor: _isActive ? modeColorFamily.base : secondaryColor,
       leading: Row(
         mainAxisSize: MainAxisSize.min,
+        spacing: AppSpacings.pMd,
         children: [
           HeaderIconButton(
             icon: MdiIcons.arrowLeft,
             onTap: widget.onBack ?? () => Navigator.of(context).pop(),
           ),
-          AppSpacings.spacingMdHorizontal,
-          Container(
-            width: _scale(44),
-            height: _scale(44),
-            decoration: BoxDecoration(
-              color: _isActive
-                  ? _getModeLightColor(isDark)
-                  : (isDark
-                      ? AppFillColorDark.darker
-                      : AppFillColorLight.darker),
-              borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-            ),
-            child: Icon(
-              MdiIcons.thermostat,
-              color: _isActive ? modeColor : mutedColor,
-              size: _scale(24),
-            ),
-          ),
+          HeaderMainIcon(icon: buildDeviceIcon(_device.category, _device.icon), color: _getModeColor()),
         ],
       ),
     );
@@ -744,31 +718,28 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
 
   Widget _buildPortraitLayout(BuildContext context, bool isDark) {
     final localizations = AppLocalizations.of(context)!;
-    final modeColor = _getModeColor(isDark);
-    final statusSection = _buildStatusSection(localizations, isDark, modeColor);
-    final controlsSection = _buildControlsSection(localizations, isDark, modeColor);
+    final modeColorFamily = _getModeColorFamily(context);
+    final statusSection = _buildStatusSection(localizations, isDark, modeColorFamily.base);
+    final controlsSection = _buildControlsSection(localizations, isDark, _getModeColor());
 
-    return DeviceDetailPortraitLayout(
+    return DevicePortraitLayout(
       content: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: AppSpacings.pMd,
         children: [
-          _buildPrimaryControlCard(context, isDark, dialSize: _scale(200)),
+          _buildPrimaryControlCard(context, isDark, dialSize: AppSpacings.scale(DeviceDetailDialSizes.portrait)),
           if (statusSection is! SizedBox) ...[
-            AppSpacings.spacingLgVertical,
             SectionTitle(
               title: localizations.device_sensors,
               icon: MdiIcons.eyeSettings,
             ),
-            AppSpacings.spacingMdVertical,
             statusSection,
           ],
           if (controlsSection is! SizedBox) ...[
-            AppSpacings.spacingLgVertical,
             SectionTitle(
               title: localizations.device_controls,
               icon: MdiIcons.tuneVertical,
             ),
-            AppSpacings.spacingMdVertical,
             controlsSection,
           ],
         ],
@@ -783,32 +754,30 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
   Widget _buildLandscapeLayout(BuildContext context, bool isDark) {
     final localizations = AppLocalizations.of(context)!;
     final isLargeScreen = _screenService.isLargeScreen;
-    final modeColor = _getModeColor(isDark);
-    final statusSection = _buildStatusSection(localizations, isDark, modeColor);
-    final controlsSection = _buildControlsSection(localizations, isDark, modeColor);
+    final modeColorFamily = _getModeColorFamily(context);
+    final statusSection = _buildStatusSection(localizations, isDark, modeColorFamily.base);
+    final controlsSection = _buildControlsSection(localizations, isDark, _getModeColor());
 
-    return DeviceDetailLandscapeLayout(
+    return DeviceLandscapeLayout(
       mainContent: isLargeScreen
-          ? _buildPrimaryControlCard(context, isDark, dialSize: _scale(200))
+          ? _buildPrimaryControlCard(context, isDark, dialSize: AppSpacings.scale(DeviceDetailDialSizes.landscape))
           : _buildCompactDialWithModes(context, isDark),
       secondaryContent: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: AppSpacings.pMd,
         children: [
           if (statusSection is! SizedBox) ...[
             SectionTitle(
               title: localizations.device_sensors,
               icon: MdiIcons.eyeSettings,
             ),
-            AppSpacings.spacingMdVertical,
             statusSection,
           ],
           if (controlsSection is! SizedBox) ...[
-            if (statusSection is! SizedBox) AppSpacings.spacingLgVertical,
             SectionTitle(
               title: localizations.device_controls,
               icon: MdiIcons.tuneVertical,
             ),
-            AppSpacings.spacingMdVertical,
             controlsSection,
           ],
         ],
@@ -832,16 +801,16 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     final sensors = <_SensorInfo>[];
 
     // Temperature (always present)
+    final temperatureChannel = _device.temperatureChannel;
     sensors.add(_SensorInfo(
       id: 'temperature',
       label: localizations.device_current_temperature,
-      value: NumberFormatUtils.defaultFormat.formatDecimal(
-        _currentTemperature,
-        decimalPlaces: 1,
-      ),
-      unit: '°C',
-      icon: MdiIcons.thermometer,
-      valueColor: SensorColors.temperature(isDark),
+      value: SensorUtils.formatNumericValue(_currentTemperature, temperatureChannel.category),
+      unit: SensorUtils.unitForCategory(temperatureChannel.category),
+      icon: buildChannelIcon(temperatureChannel.category),
+      themeColor: SensorColors.temperature,
+      sensorData: SensorUtils.buildSensorData(temperatureChannel,
+            localizations: localizations),
     ));
 
     // Humidity (optional)
@@ -849,11 +818,12 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
       sensors.add(_SensorInfo(
         id: 'humidity',
         label: localizations.device_humidity,
-        value: NumberFormatUtils.defaultFormat
-            .formatInteger(humidityChannel.humidity),
-        unit: '%',
-        icon: MdiIcons.waterPercent,
-        valueColor: SensorColors.humidity(isDark),
+        value: SensorUtils.formatNumericValue(humidityChannel.humidity, humidityChannel.category),
+        unit: SensorUtils.unitForCategory(humidityChannel.category),
+        icon: buildChannelIcon(humidityChannel.category),
+        themeColor: SensorColors.humidity,
+        sensorData: SensorUtils.buildSensorData(humidityChannel,
+            localizations: localizations),
       ));
     }
 
@@ -864,12 +834,44 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
       sensors.add(_SensorInfo(
         id: 'contact',
         label: localizations.contact_sensor_window,
-        value: isOpen
-            ? localizations.contact_sensor_open
-            : localizations.contact_sensor_closed,
-        icon: MdiIcons.windowOpenVariant,
-        valueColor: SensorColors.alert(isDark),
+        value: SensorUtils.translateBinaryState(localizations, contactChannel.category, isOpen),
+        icon: isOpen ? MdiIcons.doorOpen : MdiIcons.doorClosed,
+        themeColor: SensorColors.alert,
         isWarning: isOpen,
+        sensorData: SensorUtils.buildSensorData(contactChannel,
+            localizations: localizations),
+      ));
+    }
+
+    // Electrical energy (optional) - energy consumption
+    final electricalEnergyChannel = _device.electricalEnergyChannel;
+    if (electricalEnergyChannel != null) {
+      sensors.add(_SensorInfo(
+        id: 'electrical_energy',
+        label: localizations.electrical_energy_consumption_title,
+        value: SensorUtils.formatNumericValue(
+            _device.electricalEnergyConsumption, electricalEnergyChannel.category),
+        unit: SensorUtils.unitForCategory(electricalEnergyChannel.category),
+        icon: buildChannelIcon(electricalEnergyChannel.category),
+        themeColor: SensorColors.defaultColor,
+        sensorData: SensorUtils.buildSensorData(electricalEnergyChannel,
+            localizations: localizations),
+      ));
+    }
+
+    // Electrical power (optional) - power consumption
+    final electricalPowerChannel = _device.electricalPowerChannel;
+    if (electricalPowerChannel != null) {
+      sensors.add(_SensorInfo(
+        id: 'electrical_power',
+        label: localizations.electrical_power_power_title,
+        value: SensorUtils.formatNumericValue(
+            _device.electricalPowerPower, electricalPowerChannel.category),
+        unit: SensorUtils.unitForCategory(electricalPowerChannel.category),
+        icon: buildChannelIcon(electricalPowerChannel.category),
+        themeColor: SensorColors.defaultColor,
+        sensorData: SensorUtils.buildSensorData(electricalPowerChannel,
+            localizations: localizations),
       ));
     }
 
@@ -877,19 +879,19 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
       return const SizedBox.shrink();
     }
 
-    return _buildSensorsSection(isDark, sensors, modeColor);
+    return _buildSensorsSection(isDark, sensors);
   }
 
   Widget _buildControlsSection(
     AppLocalizations localizations,
     bool isDark,
-    Color modeColor,
+    ThemeColors? modeThemeColor,
   ) {
     if (!_device.hasThermostatLock) {
       return const SizedBox.shrink();
     }
 
-    final tileHeight = _scale(AppTileHeight.horizontal);
+    final tileHeight = AppSpacings.scale(AppTileHeight.horizontal);
 
     return Column(
       children: [
@@ -904,11 +906,11 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
                 ? localizations.thermostat_lock_locked
                 : localizations.thermostat_lock_unlocked,
             isActive: _device.isThermostatLocked,
-            activeColor: modeColor,
+            activeColor: modeThemeColor,
             onTileTap: () => _setThermostatLocked(!_device.isThermostatLocked),
             showGlow: false,
             showDoubleBorder: false,
-            showInactiveBorder: true,
+            showInactiveBorder: _screenService.isLandscape,
           ),
         ),
       ],
@@ -919,15 +921,27 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
   /// - Portrait: HorizontalScrollWithGradient with HorizontalTileCompact
   /// - Landscape large: GridView.count with VerticalTileLarge
   /// - Landscape small/medium: Column with HorizontalTileStretched
-  Widget _buildSensorsSection(bool isDark, List<_SensorInfo> sensors, Color accentColor) {
+  Widget _buildSensorsSection(bool isDark, List<_SensorInfo> sensors) {
     if (sensors.isEmpty) return const SizedBox.shrink();
 
     final isLandscape = _screenService.isLandscape;
     final isLargeScreen = _screenService.isLargeScreen;
 
+    VoidCallback? sensorTapCallback(_SensorInfo sensor) {
+      final data = sensor.sensorData;
+      if (data == null) return null;
+      return () => Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => SensorChannelDetailPage(
+              sensor: data,
+              deviceName: _device.name,
+              isDeviceOnline: _device.isOnline,
+            ),
+          ));
+    }
+
     // Portrait: Horizontal scroll with HorizontalTileCompact
     if (!isLandscape) {
-      final tileHeight = _scale(AppTileHeight.horizontal);
+      final tileHeight = AppSpacings.scale(AppTileHeight.horizontal);
 
       return HorizontalScrollWithGradient(
         height: tileHeight,
@@ -940,8 +954,9 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
             icon: sensor.icon,
             name: sensor.displayValue,
             status: sensor.label,
-            iconAccentColor: sensor.valueColor ?? accentColor,
+            iconAccentColor: sensor.themeColor,
             showWarningBadge: sensor.isWarning,
+            onTileTap: sensorTapCallback(sensor),
           );
         },
       );
@@ -961,8 +976,9 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
             icon: sensor.icon,
             name: sensor.displayValue,
             status: sensor.label,
-            iconAccentColor: sensor.valueColor ?? accentColor,
+            iconAccentColor: sensor.themeColor,
             showWarningBadge: sensor.isWarning,
+            onTileTap: sensorTapCallback(sensor),
           );
         }).toList(),
       );
@@ -970,19 +986,15 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
 
     // Landscape small/medium: Column with HorizontalTileStretched
     return Column(
-      children: sensors.asMap().entries.map((entry) {
-        final index = entry.key;
-        final sensor = entry.value;
-        final isLast = index == sensors.length - 1;
-        return Padding(
-          padding: EdgeInsets.only(bottom: isLast ? 0 : AppSpacings.pMd),
-          child: HorizontalTileStretched(
+      spacing: AppSpacings.pMd,
+      children: sensors.map((sensor) {
+        return HorizontalTileStretched(
             icon: sensor.icon,
             name: sensor.displayValue,
             status: sensor.label,
-            iconAccentColor: sensor.valueColor ?? accentColor,
+            iconAccentColor: sensor.themeColor,
             showWarningBadge: sensor.isWarning,
-          ),
+            onTileTap: sensorTapCallback(sensor),
         );
       }).toList(),
     );
@@ -997,31 +1009,14 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     bool isDark, {
     required double dialSize,
   }) {
-    final borderColor = _getModeBorderColor(isDark);
-    final cardColor =
-        isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
-
-    // Validate min/max - CircularControlDial asserts maxValue > minValue
-    var minSetpoint = _minSetpoint;
-    var maxSetpoint = _maxSetpoint;
-    if (minSetpoint >= maxSetpoint) {
-      // Use safe defaults if API returns malformed data
-      minSetpoint = 16.0;
-      maxSetpoint = 30.0;
-    }
-
-    // Clamp target to valid range
+    final (minSetpoint, maxSetpoint) = _validSetpointRange;
     final targetSetpoint = _targetSetpoint.clamp(minSetpoint, maxSetpoint);
 
-    return Container(
-      padding: AppSpacings.paddingLg,
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(AppBorderRadius.round),
-        border: Border.all(color: borderColor, width: _scale(1)),
-      ),
+    return AppCard(
+      width: double.infinity,
       child: Column(
         mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           CircularControlDial(
             value: targetSetpoint,
@@ -1038,7 +1033,6 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
             displayFormat: DialDisplayFormat.temperature,
             onChanged: _onSetpointChanged,
           ),
-          AppSpacings.spacingMdVertical,
           _buildModeSelector(context, ModeSelectorOrientation.horizontal),
         ],
       ),
@@ -1047,32 +1041,13 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
 
   /// Compact dial with vertical icon-only mode selector on the right
   Widget _buildCompactDialWithModes(BuildContext context, bool isDark) {
-    final borderColor = _getModeBorderColor(isDark);
-    final cardColor =
-        isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
-
-    // Validate min/max - CircularControlDial asserts maxValue > minValue
-    var minSetpoint = _minSetpoint;
-    var maxSetpoint = _maxSetpoint;
-    if (minSetpoint >= maxSetpoint) {
-      // Use safe defaults if API returns malformed data
-      minSetpoint = 16.0;
-      maxSetpoint = 30.0;
-    }
-
-    // Clamp target to valid range
+    final (minSetpoint, maxSetpoint) = _validSetpointRange;
     final targetSetpoint = _targetSetpoint.clamp(minSetpoint, maxSetpoint);
 
-    return Container(
-      padding: AppSpacings.paddingLg,
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(AppBorderRadius.round),
-        border: Border.all(color: borderColor, width: _scale(1)),
-      ),
+    return AppCard(
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final modeIconsWidth = _scale(50);
+          final modeIconsWidth = AppSpacings.scale(50);
           final spacing = AppSpacings.pXl;
           final availableForDial =
               constraints.maxWidth - modeIconsWidth - spacing;
@@ -1083,24 +1058,26 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
           return Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              CircularControlDial(
-                value: targetSetpoint,
-                currentValue: _currentTemperature,
-                minValue: minSetpoint,
-                maxValue: maxSetpoint,
-                step: 0.5,
-                size: dialSize,
-                accentType: _getDialAccentColor(),
-                isActive: _isActive,
-                enabled: _currentMode == ThermostatMode.heat ||
-                _currentMode == ThermostatMode.cool,
-                modeLabel: _currentMode.value,
-                displayFormat: DialDisplayFormat.temperature,
-                onChanged: _onSetpointChanged,
+              Expanded(
+                child: Center(
+                  child: CircularControlDial(
+                    value: targetSetpoint,
+                    currentValue: _currentTemperature,
+                    minValue: minSetpoint,
+                    maxValue: maxSetpoint,
+                    step: 0.5,
+                    size: dialSize,
+                    accentType: _getDialAccentColor(),
+                    isActive: _isActive,
+                    enabled: _currentMode == ThermostatMode.heat ||
+                    _currentMode == ThermostatMode.cool,
+                    modeLabel: _currentMode.value,
+                    displayFormat: DialDisplayFormat.temperature,
+                    onChanged: _onSetpointChanged,
+                  ),
+                ),
               ),
-              AppSpacings.spacingXlHorizontal,
-              _buildModeSelector(context, ModeSelectorOrientation.vertical,
-                  showLabels: false),
+              _buildVerticalModeSelector(context),
             ],
           );
         },
@@ -1121,6 +1098,19 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
       orientation: orientation,
       iconPlacement: ModeSelectorIconPlacement.left,
       showLabels: showLabels,
+    );
+  }
+
+  Widget _buildVerticalModeSelector(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
+
+    return ModeSelector<ThermostatMode>(
+      modes: _getModeOptions(localizations),
+      selectedValue: _currentMode,
+      onChanged: _onModeChanged,
+      orientation: ModeSelectorOrientation.vertical,
+      showLabels: false,
+      scrollable: true,
     );
   }
 }

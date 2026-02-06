@@ -1,23 +1,24 @@
 import 'dart:async';
 
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/device_detail_landscape_layout.dart';
-import 'package:fastybird_smart_panel/core/widgets/device_detail_portrait_layout.dart';
-import 'package:fastybird_smart_panel/core/widgets/device_offline_overlay.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_landscape_layout.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_portrait_layout.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_offline_overlay.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_bottom_sheet.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/utils/media_input_source_label.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_brightness_card.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_info_card.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_playback_card.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_source_select_card.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_remote_card.dart';
-import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_source_card.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_volume_card.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
+import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/projector.dart';
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 import 'package:flutter/foundation.dart';
@@ -39,13 +40,13 @@ class ProjectorDeviceDetail extends StatefulWidget {
 }
 
 class _ProjectorDeviceDetailState extends State<ProjectorDeviceDetail> {
-	final ScreenService _screenService = locator<ScreenService>();
-	final VisualDensityService _visualDensityService = locator<VisualDensityService>();
 	final DevicesService _devicesService = locator<DevicesService>();
 	DeviceControlStateService? _deviceControlStateService;
 
 	Timer? _volumeDebounceTimer;
 	Timer? _brightnessDebounceTimer;
+	Timer? _playbackSettleTimer;
+	MediaPlaybackStatusValue? _optimisticPlaybackStatus;
 	static const _debounceDuration = Duration(milliseconds: 300);
 
 	@override
@@ -67,6 +68,7 @@ class _ProjectorDeviceDetailState extends State<ProjectorDeviceDetail> {
 	void dispose() {
 		_volumeDebounceTimer?.cancel();
 		_brightnessDebounceTimer?.cancel();
+		_playbackSettleTimer?.cancel();
 		_devicesService.removeListener(_onDeviceChanged);
 		_deviceControlStateService?.removeListener(_onControlStateChanged);
 		super.dispose();
@@ -74,6 +76,7 @@ class _ProjectorDeviceDetailState extends State<ProjectorDeviceDetail> {
 
 	void _onDeviceChanged() {
 		if (!mounted) return;
+		if (_playbackSettleTimer != null && _playbackSettleTimer!.isActive) return;
 		_checkConvergence();
 		setState(() {});
 	}
@@ -137,9 +140,6 @@ class _ProjectorDeviceDetailState extends State<ProjectorDeviceDetail> {
 		return widget._device;
 	}
 
-	double _scale(double value) =>
-		_screenService.scale(value, density: _visualDensityService.density);
-
 	// --------------------------------------------------------------------------
 	// COMMAND HELPERS
 	// --------------------------------------------------------------------------
@@ -200,6 +200,49 @@ class _ProjectorDeviceDetailState extends State<ProjectorDeviceDetail> {
 			);
 			setState(() {});
 		});
+	}
+
+	void _sendPlaybackCommand(MediaPlaybackCommandValue command) {
+		final channel = _device.mediaPlaybackChannel;
+		if (channel == null || !channel.hasCommand) return;
+
+		final optimisticStatus = switch (command) {
+			MediaPlaybackCommandValue.play => MediaPlaybackStatusValue.playing,
+			MediaPlaybackCommandValue.pause => MediaPlaybackStatusValue.paused,
+			MediaPlaybackCommandValue.stop => MediaPlaybackStatusValue.stopped,
+			_ => null,
+		};
+
+		if (optimisticStatus != null) {
+			setState(() => _optimisticPlaybackStatus = optimisticStatus);
+		}
+
+		_playbackSettleTimer?.cancel();
+		_playbackSettleTimer = Timer(const Duration(seconds: 3), () {
+			if (!mounted) return;
+			setState(() => _optimisticPlaybackStatus = null);
+		});
+
+		_devicesService.setPropertyValueWithContext(
+			deviceId: _device.id,
+			channelId: channel.id,
+			propertyId: channel.commandProp!.id,
+			value: command.value,
+		);
+	}
+
+	void _seekPosition(int position) {
+		final channel = _device.mediaPlaybackChannel;
+		if (channel == null || !channel.hasPosition) return;
+		final prop = channel.positionProp;
+		if (prop == null || !prop.isWritable) return;
+
+		_devicesService.setPropertyValueWithContext(
+			deviceId: _device.id,
+			channelId: channel.id,
+			propertyId: prop.id,
+			value: position,
+		);
 	}
 
 	void _sendRemoteKey(ProjectorRemoteKeyValue key) {
@@ -333,6 +376,9 @@ class _ProjectorDeviceDetailState extends State<ProjectorDeviceDetail> {
 		}
 	}
 
+	MediaPlaybackStatusValue? get _effectivePlaybackStatus =>
+		_optimisticPlaybackStatus ?? _device.mediaPlaybackStatus;
+
 	bool get _effectiveMuted {
 		final speakerChannel = _device.speakerChannel;
 		final controlState = _deviceControlStateService;
@@ -396,19 +442,8 @@ class _ProjectorDeviceDetailState extends State<ProjectorDeviceDetail> {
 		return source;
 	}
 
-	Color _getAccentColor(bool isDark) {
-		if (_device.isProjectorOn) {
-			return isDark ? AppColorsDark.info : AppColorsLight.info;
-		}
-		return isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
-	}
-
-	Color _getAccentLightColor(bool isDark) {
-		if (_device.isProjectorOn) {
-			return isDark ? AppColorsDark.infoLight5 : AppColorsLight.infoLight5;
-		}
-		return isDark ? AppFillColorDark.darker : AppFillColorLight.darker;
-	}
+	ThemeColors _getThemeColor() =>
+		_device.isProjectorOn ? ThemeColors.primary : ThemeColors.neutral;
 
 	// --------------------------------------------------------------------------
 	// BUILD
@@ -455,63 +490,90 @@ class _ProjectorDeviceDetailState extends State<ProjectorDeviceDetail> {
 
 	Widget _buildHeader(BuildContext context, bool isDark) {
 		final localizations = AppLocalizations.of(context)!;
-		final accentColor = _getAccentColor(isDark);
 		final secondaryColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
-		final mutedColor = isDark ? AppTextColorDark.disabled : AppTextColorLight.disabled;
 		final isOn = _device.isProjectorOn;
+		final hasBrightness = _device.projectorChannel.brightnessProp != null;
+		final hasRemote = _device.hasProjectorRemoteKey;
+		final hasSettings = hasBrightness || hasRemote;
+		final settingsIcon = hasBrightness ? MdiIcons.cogOutline : MdiIcons.remote;
+		final accentColor = isOn
+			? ThemeColorFamily.get(isDark ? Brightness.dark : Brightness.light, _getThemeColor()).base
+			: secondaryColor;
 
 		return PageHeader(
 			title: _device.name,
 			subtitle: _getStatusLabel(localizations),
-			subtitleColor: isOn ? accentColor : secondaryColor,
-			backgroundColor: AppColors.blank,
+			subtitleColor: accentColor,
 			leading: Row(
 				mainAxisSize: MainAxisSize.min,
+				spacing: AppSpacings.pMd,
 				children: [
 					HeaderIconButton(
 						icon: MdiIcons.arrowLeft,
 						onTap: widget.onBack ?? () => Navigator.of(context).pop(),
 					),
-					AppSpacings.spacingMdHorizontal,
-					Container(
-						width: _scale(44),
-						height: _scale(44),
-						decoration: BoxDecoration(
-							color: isOn
-								? _getAccentLightColor(isDark)
-								: (isDark ? AppFillColorDark.darker : AppFillColorLight.darker),
-							borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-						),
-						child: Icon(
-							MdiIcons.projector,
-							color: isOn ? accentColor : mutedColor,
-							size: _scale(24),
-						),
+					HeaderMainIcon(
+						icon: buildDeviceIcon(_device.category, _device.icon),
+						color: isOn ? ThemeColors.primary : ThemeColors.neutral,
 					),
 				],
 			),
-			trailing: GestureDetector(
-				onTap: _togglePower,
-				child: AnimatedContainer(
-					duration: const Duration(milliseconds: 200),
-					width: _scale(48),
-					height: _scale(32),
-					decoration: BoxDecoration(
-						color: isOn
-							? accentColor
-							: (isDark ? AppFillColorDark.light : AppFillColorLight.light),
-						borderRadius: BorderRadius.circular(AppBorderRadius.round),
-						border: (!isOn && !isDark)
-							? Border.all(color: AppBorderColorLight.base, width: _scale(1))
-							: null,
+			trailing: Row(
+				mainAxisSize: MainAxisSize.min,
+				spacing: AppSpacings.pMd,
+				children: [
+					if (hasSettings)
+						HeaderIconButton(
+							icon: settingsIcon,
+							onTap: _showSettingsSheet,
+							color: ThemeColors.neutral,
+						),
+					HeaderIconButton(
+						icon: MdiIcons.power,
+						onTap: _togglePower,
+						color: isOn ? ThemeColors.primary : ThemeColors.neutral,
 					),
-					child: Icon(
-						MdiIcons.power,
-						size: _scale(18),
-						color: isOn
-							? AppColors.white
-							: (isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary),
-					),
+				],
+			),
+		);
+	}
+
+	void _showSettingsSheet() {
+		final hasBrightness = _device.projectorChannel.brightnessProp != null;
+		final hasRemote = _device.hasProjectorRemoteKey;
+		if (!hasBrightness && !hasRemote) return;
+
+		final localizations = AppLocalizations.of(context)!;
+		final settingsIcon = hasBrightness ? MdiIcons.cogOutline : MdiIcons.remote;
+		final settingsTitle = hasBrightness ? localizations.settings_general_settings_title : localizations.media_remote_control;
+
+		showAppBottomSheet(
+			context,
+			title: settingsTitle,
+			titleIcon: settingsIcon,
+			content: Padding(
+				padding: AppSpacings.paddingMd,
+				child: Column(
+					mainAxisSize: MainAxisSize.min,
+					crossAxisAlignment: CrossAxisAlignment.stretch,
+					spacing: AppSpacings.pMd,
+					children: [
+						if (hasBrightness)
+							MediaBrightnessCard(
+								brightness: _effectiveBrightness,
+								isEnabled: _device.isProjectorOn,
+								themeColor: _getThemeColor(),
+								onBrightnessChanged: _setBrightness,
+							),
+						if (hasRemote)
+							MediaRemoteCard<ProjectorRemoteKeyValue>(
+								availableKeys: _device.projectorAvailableRemoteKeys,
+								isEnabled: _device.isProjectorOn,
+								onKeyPress: _sendRemoteKey,
+								themeColor: _getThemeColor(),
+								showLabel: hasBrightness,
+							),
+					],
 				),
 			),
 		);
@@ -522,66 +584,62 @@ class _ProjectorDeviceDetailState extends State<ProjectorDeviceDetail> {
 	// --------------------------------------------------------------------------
 
 	Widget _buildPortraitLayout(BuildContext context, bool isDark) {
-		final accentColor = _getAccentColor(isDark);
-
-		return DeviceDetailPortraitLayout(
+		return DevicePortraitLayout(
 			content: Column(
 				crossAxisAlignment: CrossAxisAlignment.start,
+				spacing: AppSpacings.pMd,
 				children: [
 					MediaInfoCard(
 						icon: MdiIcons.projector,
-						iconColor: accentColor,
-						iconBgColor: _getAccentLightColor(isDark),
 						name: _device.name,
 						isOn: _device.isProjectorOn,
 						displaySource: _getDisplaySource(),
-						accentColor: accentColor,
-						scale: _scale,
+						themeColor: _getThemeColor(),
 					),
-					if (_device.hasSpeaker) ...[
-						AppSpacings.spacingLgVertical,
+					if (_device.hasMediaPlayback &&
+						MediaPlaybackCard.hasContent(
+							playbackTrack: _device.isMediaPlaybackTrack,
+							playbackArtist: _device.mediaPlaybackArtist,
+							playbackAlbum: _device.mediaPlaybackAlbum,
+							playbackAvailableCommands: _device.mediaPlaybackAvailableCommands,
+							playbackHasDuration: _device.hasMediaPlaybackDuration,
+							playbackDuration: _device.mediaPlaybackDuration,
+						))
+						MediaPlaybackCard(
+							playbackTrack: _device.isMediaPlaybackTrack,
+							playbackArtist: _device.mediaPlaybackArtist,
+							playbackAlbum: _device.mediaPlaybackAlbum,
+							playbackStatus: _effectivePlaybackStatus,
+							playbackAvailableCommands: _device.mediaPlaybackAvailableCommands,
+							playbackHasPosition: _device.hasMediaPlaybackPosition,
+							playbackPosition: _device.mediaPlaybackPosition,
+							playbackHasDuration: _device.hasMediaPlaybackDuration,
+							playbackDuration: _device.mediaPlaybackDuration,
+							playbackIsPositionWritable: _device.mediaPlaybackChannel?.positionProp?.isWritable ?? false,
+							onPlaybackCommand: _sendPlaybackCommand,
+							onPlaybackSeek: _seekPosition,
+							themeColor: _getThemeColor(),
+							isEnabled: _device.isProjectorOn,
+							),
+					if (_device.hasSpeaker)
 						MediaVolumeCard(
 							volume: _effectiveVolume,
 							isMuted: _effectiveMuted,
 							hasMute: _device.hasSpeakerMute || (_device.speakerChannel?.hasActive ?? false),
 							isEnabled: _device.isProjectorOn,
-							accentColor: accentColor,
+							themeColor: _getThemeColor(),
 							onVolumeChanged: _setVolume,
 							onMuteToggle: _toggleMute,
-							scale: _scale,
 						),
-					],
-					if (_device.mediaInputAvailableSources.isNotEmpty) ...[
-						AppSpacings.spacingLgVertical,
-						MediaSourceCard(
-							currentSource: _device.mediaInputSource,
+					if (_device.mediaInputAvailableSources.isNotEmpty)
+						MediaSourceSelectCard(
 							availableSources: _device.mediaInputAvailableSources,
-							isEnabled: _device.isProjectorOn,
+							currentSource: _device.mediaInputSource,
 							sourceLabel: (s) => mediaInputSourceLabel(context, s),
 							onSourceChanged: _setSource,
-							scale: _scale,
-						),
-					],
-					if (_device.projectorChannel.brightnessProp != null) ...[
-						AppSpacings.spacingLgVertical,
-						MediaBrightnessCard(
-							brightness: _effectiveBrightness,
 							isEnabled: _device.isProjectorOn,
-							accentColor: accentColor,
-							onBrightnessChanged: _setBrightness,
-							scale: _scale,
+							themeColor: _getThemeColor(),
 						),
-					],
-					if (_device.hasProjectorRemoteKey) ...[
-						AppSpacings.spacingLgVertical,
-						MediaRemoteCard<ProjectorRemoteKeyValue>(
-							availableKeys: _device.projectorAvailableRemoteKeys,
-							isEnabled: _device.isProjectorOn,
-							onKeyPress: _sendRemoteKey,
-							scale: _scale,
-							accentColor: accentColor,
-						),
-					],
 				],
 			),
 		);
@@ -592,69 +650,68 @@ class _ProjectorDeviceDetailState extends State<ProjectorDeviceDetail> {
 	// --------------------------------------------------------------------------
 
 	Widget _buildLandscapeLayout(BuildContext context, bool isDark) {
-		final accentColor = _getAccentColor(isDark);
-
-		return DeviceDetailLandscapeLayout(
+		return DeviceLandscapeLayout(
 			mainContent: Column(
 				mainAxisAlignment: MainAxisAlignment.center,
+				spacing: AppSpacings.pMd,
 				children: [
 					MediaInfoCard(
 						icon: MdiIcons.projector,
-						iconColor: accentColor,
-						iconBgColor: _getAccentLightColor(isDark),
 						name: _device.name,
 						isOn: _device.isProjectorOn,
 						displaySource: _getDisplaySource(),
-						accentColor: accentColor,
-						scale: _scale,
+						themeColor: _getThemeColor(),
 					),
-					if (_device.hasSpeaker) ...[
-						AppSpacings.spacingMdVertical,
+					if (_device.hasMediaPlayback &&
+						MediaPlaybackCard.hasContent(
+							playbackTrack: _device.isMediaPlaybackTrack,
+							playbackArtist: _device.mediaPlaybackArtist,
+							playbackAlbum: _device.mediaPlaybackAlbum,
+							playbackAvailableCommands: _device.mediaPlaybackAvailableCommands,
+							playbackHasDuration: _device.hasMediaPlaybackDuration,
+							playbackDuration: _device.mediaPlaybackDuration,
+						))
+						MediaPlaybackCard(
+							playbackTrack: _device.isMediaPlaybackTrack,
+							playbackArtist: _device.mediaPlaybackArtist,
+							playbackAlbum: _device.mediaPlaybackAlbum,
+							playbackStatus: _effectivePlaybackStatus,
+							playbackAvailableCommands: _device.mediaPlaybackAvailableCommands,
+							playbackHasPosition: _device.hasMediaPlaybackPosition,
+							playbackPosition: _device.mediaPlaybackPosition,
+							playbackHasDuration: _device.hasMediaPlaybackDuration,
+							playbackDuration: _device.mediaPlaybackDuration,
+							playbackIsPositionWritable: _device.mediaPlaybackChannel?.positionProp?.isWritable ?? false,
+							onPlaybackCommand: _sendPlaybackCommand,
+							onPlaybackSeek: _seekPosition,
+							themeColor: _getThemeColor(),
+							isEnabled: _device.isProjectorOn,
+							),
+					if (_device.hasSpeaker)
 						MediaVolumeCard(
 							volume: _effectiveVolume,
 							isMuted: _effectiveMuted,
 							hasMute: _device.hasSpeakerMute || (_device.speakerChannel?.hasActive ?? false),
 							isEnabled: _device.isProjectorOn,
-							accentColor: accentColor,
+							themeColor: _getThemeColor(),
 							onVolumeChanged: _setVolume,
 							onMuteToggle: _toggleMute,
-							scale: _scale,
 						),
-					],
 				],
 			),
 			secondaryContent: Column(
 				crossAxisAlignment: CrossAxisAlignment.start,
+				spacing: AppSpacings.pMd,
 				children: [
 					if (_device.mediaInputAvailableSources.isNotEmpty)
-						MediaSourceCard(
-							currentSource: _device.mediaInputSource,
+						MediaSourceSelectCard(
 							availableSources: _device.mediaInputAvailableSources,
-							isEnabled: _device.isProjectorOn,
+							currentSource: _device.mediaInputSource,
 							sourceLabel: (s) => mediaInputSourceLabel(context, s),
 							onSourceChanged: _setSource,
-							scale: _scale,
-						),
-					if (_device.projectorChannel.brightnessProp != null) ...[
-						if (_device.mediaInputAvailableSources.isNotEmpty) AppSpacings.spacingLgVertical,
-						MediaBrightnessCard(
-							brightness: _effectiveBrightness,
 							isEnabled: _device.isProjectorOn,
-							accentColor: accentColor,
-							onBrightnessChanged: _setBrightness,
-							scale: _scale,
+							themeColor: _getThemeColor(),
 						),
-					],
-					if (_device.hasProjectorRemoteKey) ...[
-						if (_device.projectorChannel.brightnessProp != null || _device.mediaInputAvailableSources.isNotEmpty) AppSpacings.spacingLgVertical,
-						MediaRemoteCard<ProjectorRemoteKeyValue>(
-							availableKeys: _device.projectorAvailableRemoteKeys,
-							isEnabled: _device.isProjectorOn,
-							onKeyPress: _sendRemoteKey,
-							scale: _scale,
-							accentColor: accentColor,
-						),
-					],
 				],
 			),
 		);

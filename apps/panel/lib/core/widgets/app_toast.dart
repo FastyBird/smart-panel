@@ -201,6 +201,19 @@ class _ToastWidgetState extends State<_ToastWidget>
   Color _getBackgroundColor() {
     switch (widget.type) {
       case ToastType.success:
+        return widget.isDark ? AppColorsDark.successLight9 : AppColorsLight.successLight9;
+      case ToastType.info:
+        return widget.isDark ? AppColorsDark.infoLight9 : AppColorsLight.infoLight9;
+      case ToastType.warning:
+        return widget.isDark ? AppColorsDark.warningLight9 : AppColorsLight.warningLight9;
+      case ToastType.error:
+        return widget.isDark ? AppColorsDark.errorLight9 : AppColorsLight.errorLight9;
+    }
+  }
+
+  Color _getTextColor() {
+    switch (widget.type) {
+      case ToastType.success:
         return widget.isDark ? AppColorsDark.success : AppColorsLight.success;
       case ToastType.info:
         return widget.isDark ? AppColorsDark.info : AppColorsLight.info;
@@ -267,15 +280,15 @@ class _ToastWidgetState extends State<_ToastWidget>
                       children: [
                         Icon(
                           iconToUse,
-                          color: AppColors.white,
+                          color: _getTextColor(),
                           size: widget.screenService.scale(18),
                         ),
-                        SizedBox(width: AppSpacings.pMd),
+                        AppSpacings.spacingMdHorizontal,
                         Flexible(
                           child: Text(
                             widget.message,
                             style: TextStyle(
-                              color: AppColors.white,
+                              color: _getTextColor(),
                               fontSize: AppFontSize.base,
                               fontWeight: FontWeight.w500,
                             ),

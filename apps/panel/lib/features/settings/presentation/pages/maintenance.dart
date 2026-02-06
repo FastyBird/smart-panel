@@ -1,10 +1,8 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/app/routes.dart';
 import 'package:fastybird_smart_panel/core/services/navigation.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/system/module.dart';
@@ -12,9 +10,6 @@ import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 class MaintenancePage extends StatelessWidget {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
   final SystemModuleService _systemModuleService =
       locator<SystemModuleService>();
 
@@ -33,6 +28,7 @@ class MaintenancePage extends StatelessWidget {
           padding: AppSpacings.paddingMd,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            spacing: AppSpacings.pMd,
             children: [
               ListTile(
                 leading: Icon(
@@ -54,10 +50,7 @@ class MaintenancePage extends StatelessWidget {
                     Text(
                       localizations.settings_maintenance_restart_description,
                       style: TextStyle(
-                        fontSize: _screenService.scale(
-                          8,
-                          density: _visualDensityService.density,
-                        ),
+                        fontSize: AppSpacings.scale(8),
                       ),
                     ),
                   ],
@@ -99,14 +92,13 @@ class MaintenancePage extends StatelessWidget {
                     ),
                     child: Icon(
                       MdiIcons.play,
-                      color: Theme.of(context).brightness == Brightness.light
-                          ? AppColorsLight.primary
-                          : AppColorsDark.primary,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? AppOutlinedButtonsDarkThemes.primaryForegroundColor
+                          : AppOutlinedButtonsLightThemes.primaryForegroundColor,
                     ),
                   ),
                 ),
               ),
-              AppSpacings.spacingMdVertical,
               ListTile(
                 leading: Icon(
                   MdiIcons.power,
@@ -127,10 +119,7 @@ class MaintenancePage extends StatelessWidget {
                     Text(
                       localizations.settings_maintenance_power_off_description,
                       style: TextStyle(
-                        fontSize: _screenService.scale(
-                          8,
-                          density: _visualDensityService.density,
-                        ),
+                        fontSize: AppSpacings.scale(8),
                       ),
                     ),
                   ],
@@ -172,14 +161,13 @@ class MaintenancePage extends StatelessWidget {
                     ),
                     child: Icon(
                       MdiIcons.play,
-                      color: Theme.of(context).brightness == Brightness.light
-                          ? AppColorsLight.primary
-                          : AppColorsDark.primary,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? AppOutlinedButtonsDarkThemes.primaryForegroundColor
+                          : AppOutlinedButtonsLightThemes.primaryForegroundColor,
                     ),
                   ),
                 ),
               ),
-              AppSpacings.spacingMdVertical,
               ListTile(
                 leading: Icon(
                   MdiIcons.vacuum,
@@ -201,10 +189,7 @@ class MaintenancePage extends StatelessWidget {
                       localizations
                           .settings_maintenance_factory_reset_description,
                       style: TextStyle(
-                        fontSize: _screenService.scale(
-                          8,
-                          density: _visualDensityService.density,
-                        ),
+                        fontSize: AppSpacings.scale(8),
                       ),
                     ),
                   ],
@@ -246,9 +231,9 @@ class MaintenancePage extends StatelessWidget {
                     ),
                     child: Icon(
                       MdiIcons.play,
-                      color: Theme.of(context).brightness == Brightness.light
-                          ? AppColorsLight.primary
-                          : AppColorsDark.primary,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? AppOutlinedButtonsDarkThemes.primaryForegroundColor
+                          : AppOutlinedButtonsLightThemes.primaryForegroundColor,
                     ),
                   ),
                 ),
@@ -284,12 +269,20 @@ class MaintenancePage extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
           ),
           actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(
-                localizations.button_cancel.toUpperCase(),
-                style: TextStyle(
-                  fontSize: AppFontSize.extraSmall,
+            Theme(
+              data: ThemeData(
+                outlinedButtonTheme:
+                    Theme.of(context).brightness == Brightness.light
+                        ? AppOutlinedButtonsLightThemes.primary
+                        : AppOutlinedButtonsDarkThemes.primary,
+              ),
+              child: OutlinedButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text(
+                  localizations.button_cancel.toUpperCase(),
+                  style: TextStyle(
+                    fontSize: AppFontSize.extraSmall,
+                  ),
                 ),
               ),
             ),
@@ -306,7 +299,7 @@ class MaintenancePage extends StatelessWidget {
                   Navigator.of(context).pop();
                   onConfirm();
                 },
-                style: OutlinedButton.styleFrom(
+                style: FilledButton.styleFrom(
                   padding: EdgeInsets.symmetric(
                     vertical: AppSpacings.pSm,
                     horizontal: AppSpacings.pMd,
@@ -339,7 +332,7 @@ class MaintenancePage extends StatelessWidget {
         // Hide he processing screen
         Navigator.of(context, rootNavigator: true).pop();
 
-        AlertBar.showError(
+        AppToast.showError(
           context,
           message: localizations.action_failed,
         );

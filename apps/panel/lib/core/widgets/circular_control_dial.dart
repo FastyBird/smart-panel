@@ -3,12 +3,9 @@ import 'dart:math' as math;
 
 import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/swipe_event.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -59,6 +56,18 @@ enum DialAccentColor {
 
   /// Neutral/secondary color (grey) - use for off/disabled state
   neutral,
+}
+
+/// Base design sizes for [CircularControlDial] in device detail screens.
+/// Scale with [ScreenService.scale] before passing to the dial.
+class DeviceDetailDialSizes {
+  DeviceDetailDialSizes._();
+
+  /// Portrait layout (primary control card).
+  static const double portrait = 190;
+
+  /// Landscape layout on large screen (primary control card).
+  static const double landscape = 220;
 }
 
 /// A reusable circular control dial widget similar to a Nest thermostat.
@@ -145,9 +154,6 @@ class CircularControlDial extends StatefulWidget {
 
 class _CircularControlDialState extends State<CircularControlDial>
     with SingleTickerProviderStateMixin {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
   final EventBus _eventBus = locator<EventBus>();
 
   late double _value;
@@ -159,9 +165,6 @@ class _CircularControlDialState extends State<CircularControlDial>
   static const int _buttonDebounceDuration = 500;
 
   final Map<Type, GestureRecognizerFactory> _gestures = {};
-
-  double _scale(double size) =>
-      _screenService.scale(size, density: _visualDensityService.density);
 
   /// Resolves the accent color from the theme based on accentType,
   /// or returns the custom accentColor if provided.
@@ -280,8 +283,8 @@ class _CircularControlDialState extends State<CircularControlDial>
     final dy = localPosition.dy - center.dy;
     final touchDistance = math.sqrt(dx * dx + dy * dy);
 
-    final minRadius = radius - _scale(30);
-    final maxRadius = radius + _scale(30);
+    final minRadius = radius - AppSpacings.scale(30);
+    final maxRadius = radius + AppSpacings.scale(30);
     return touchDistance >= minRadius && touchDistance <= maxRadius;
   }
 
@@ -305,9 +308,6 @@ class _CircularControlDialState extends State<CircularControlDial>
   }
 
   void _handleDragStart(Offset localPosition) {
-    if (kDebugMode) {
-      debugPrint('[CircularControlDial] _handleDragStart: localPosition=$localPosition, enabled=${widget.enabled}');
-    }
     if (!widget.enabled) return;
     setState(() => _isDragging = true);
     _eventBus.fire(PageSwipeBlockEvent(blocked: true));
@@ -320,9 +320,6 @@ class _CircularControlDialState extends State<CircularControlDial>
   }
 
   void _handleDragEnd() {
-    if (kDebugMode) {
-      debugPrint('[CircularControlDial] _handleDragEnd: _isDragging=$_isDragging, value=$_value');
-    }
     if (_isDragging) {
       // Fire unblock event before setState to ensure it fires even if widget is disposed
       _eventBus.fire(PageSwipeBlockEvent(blocked: false));
@@ -465,19 +462,20 @@ class _CircularControlDialState extends State<CircularControlDial>
                       boxShadow: [
                         BoxShadow(
                           color: AppShadowColor.light,
-                          blurRadius: _scale(16),
-                          offset: Offset(0, _scale(4)),
+                          blurRadius: AppSpacings.scale(16),
+                          offset: Offset(0, AppSpacings.scale(4)),
                         ),
                         if (_showActiveGlow)
                           BoxShadow(
                             color: glowColor,
-                            blurRadius: _scale(24),
-                            spreadRadius: _scale(4),
+                            blurRadius: AppSpacings.scale(24),
+                            spreadRadius: AppSpacings.scale(4),
                           ),
                       ],
                     ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
+                      spacing: AppSpacings.pMd,
                       children: [
                         Text(
                           _formatValue(_value),
@@ -490,8 +488,8 @@ class _CircularControlDialState extends State<CircularControlDial>
                         if (widget.modeLabel != null)
                           Container(
                             padding: EdgeInsets.symmetric(
-                              horizontal: _scale(10),
-                              vertical: _scale(3),
+                              horizontal: AppSpacings.scale(10),
+                              vertical: AppSpacings.scale(3),
                             ),
                             decoration: BoxDecoration(
                               color: widget.enabled
@@ -513,7 +511,6 @@ class _CircularControlDialState extends State<CircularControlDial>
                             ),
                           ),
                         if (widget.showButtons) ...[
-                          AppSpacings.spacingMdVertical,
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
@@ -532,31 +529,31 @@ class _CircularControlDialState extends State<CircularControlDial>
                 // Draggable thumb on the ring
                 if (widget.enabled)
                   Positioned(
-                    left: thumbPosition.dx - _scale(14),
-                    top: thumbPosition.dy - _scale(14),
+                    left: thumbPosition.dx - AppSpacings.scale(14),
+                    top: thumbPosition.dy - AppSpacings.scale(14),
                     child: AnimatedContainer(
                       duration: _isDragging
                           ? Duration.zero
                           : const Duration(milliseconds: 200),
-                      width: _scale(28),
-                      height: _scale(28),
+                      width: AppSpacings.scale(28),
+                      height: AppSpacings.scale(28),
                       decoration: BoxDecoration(
                         color: cardColor,
                         shape: BoxShape.circle,
                         border:
-                            Border.all(color: displayColor, width: _scale(3)),
+                            Border.all(color: displayColor, width: AppSpacings.scale(3)),
                         boxShadow: [
                           BoxShadow(
                             color: glowColor,
-                            blurRadius: _isDragging ? _scale(12) : _scale(8),
-                            spreadRadius: _isDragging ? _scale(2) : 0,
+                            blurRadius: _isDragging ? AppSpacings.scale(12) : AppSpacings.scale(8),
+                            spreadRadius: _isDragging ? AppSpacings.scale(2) : 0,
                           ),
                         ],
                       ),
                       child: Center(
                         child: Container(
-                          width: _scale(10),
-                          height: _scale(10),
+                          width: AppSpacings.scale(10),
+                          height: AppSpacings.scale(10),
                           decoration: BoxDecoration(
                             color: displayColor,
                             shape: BoxShape.circle,
@@ -578,7 +575,7 @@ class _CircularControlDialState extends State<CircularControlDial>
     final size = widget.size * 0.12;
     final bgColor = isDark ? AppFillColorDark.darker : AppFillColorLight.darker;
     final borderColor =
-        isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
+        isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
     final iconColor =
         isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
 
@@ -590,7 +587,7 @@ class _CircularControlDialState extends State<CircularControlDial>
         decoration: BoxDecoration(
           color: widget.enabled ? bgColor : bgColor.withValues(alpha: 0.5),
           shape: BoxShape.circle,
-          border: Border.all(color: borderColor, width: _scale(1)),
+          border: Border.all(color: borderColor, width: AppSpacings.scale(1)),
         ),
         child: Icon(
           icon,
@@ -762,9 +759,6 @@ class _DialDragGestureRecognizer extends OneSequenceGestureRecognizer {
   @override
   void addPointer(PointerDownEvent event) {
     final onTrack = isOnTrack(event.localPosition);
-    if (kDebugMode) {
-      debugPrint('[_DialDragGestureRecognizer] addPointer: localPosition=${event.localPosition}, onTrack=$onTrack');
-    }
     if (onTrack) {
       startTrackingPointer(event.pointer, event.transform);
       resolve(GestureDisposition.accepted);

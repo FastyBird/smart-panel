@@ -1,7 +1,5 @@
-import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_bottom_sheet.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -39,10 +37,6 @@ class ValueOption<T> {
 ///
 /// Use this as a trigger to open [ValueSelectorSheet].
 class ValueSelectorRow<T> extends StatelessWidget {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
   /// Current selected value
   final T? currentValue;
 
@@ -91,9 +85,6 @@ class ValueSelectorRow<T> extends StatelessWidget {
     this.showChevron = true,
   });
 
-  double _scale(double value) =>
-      _screenService.scale(value, density: _visualDensityService.density);
-
   String _getDisplayValue(AppLocalizations localizations) {
     if (displayFormatter != null) {
       return displayFormatter!(currentValue);
@@ -113,7 +104,7 @@ class ValueSelectorRow<T> extends StatelessWidget {
         ? (isDark ? AppFillColorDark.darker : AppFillColorLight.darker)
         : (isDark ? AppFillColorDark.light : AppFillColorLight.blank);
     final borderColor =
-        isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
+        isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
     final textColor = isDisabled
         ? (isDark ? AppTextColorDark.disabled : AppTextColorLight.disabled)
         : (isDark ? AppTextColorDark.primary : AppTextColorLight.primary);
@@ -129,7 +120,7 @@ class ValueSelectorRow<T> extends StatelessWidget {
 
     return Material(
       color: cardColor,
-      borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+      borderRadius: BorderRadius.circular(AppBorderRadius.base),
       child: InkWell(
         onTap: onChanged != null
             ? () {
@@ -137,7 +128,7 @@ class ValueSelectorRow<T> extends StatelessWidget {
                 _showSelectorSheet(context, isDark);
               }
             : null,
-        borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+        borderRadius: BorderRadius.circular(AppBorderRadius.base),
         child: Container(
           padding: EdgeInsets.symmetric(
             horizontal: AppSpacings.pMd,
@@ -146,18 +137,19 @@ class ValueSelectorRow<T> extends StatelessWidget {
                 : AppSpacings.pMd,
           ),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+            borderRadius: BorderRadius.circular(AppBorderRadius.base),
             border: Border.all(
               color: borderColor,
-              width: _scale(1),
+              width: AppSpacings.scale(1),
             ),
           ),
           child: Row(
+            spacing: AppSpacings.pMd,
             children: [
               // Icon with background container (matching UniversalTile style)
               Container(
-                width: _scale(32),
-                height: _scale(32),
+                width: AppSpacings.scale(32),
+                height: AppSpacings.scale(32),
                 decoration: BoxDecoration(
                   color: iconBgColor,
                   borderRadius: BorderRadius.circular(AppBorderRadius.base),
@@ -165,10 +157,9 @@ class ValueSelectorRow<T> extends StatelessWidget {
                 child: Icon(
                   icon,
                   color: iconColor,
-                  size: _scale(18),
+                  size: AppSpacings.scale(18),
                 ),
               ),
-              AppSpacings.spacingMdHorizontal,
               Expanded(
                 child: layout == ValueSelectorRowLayout.compact
                     ? Column(
@@ -214,13 +205,12 @@ class ValueSelectorRow<T> extends StatelessWidget {
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                if (showChevron) AppSpacings.spacingXsHorizontal,
               ],
               if (showChevron)
                 Icon(
                   MdiIcons.chevronRight,
                   color: secondaryColor,
-                  size: _scale(20),
+                  size: AppSpacings.scale(20),
                 ),
             ],
           ),
@@ -232,27 +222,93 @@ class ValueSelectorRow<T> extends StatelessWidget {
   void _showSelectorSheet(BuildContext context, bool isDark) {
     final effectiveActiveColor =
         activeColor ?? (isDark ? AppColorsDark.primary : AppColorsLight.primary);
+    final found = options.indexWhere((o) => o.value == currentValue);
+    final initialIndex = options.isEmpty
+        ? -1
+        : (found < 0 ? 0 : found.clamp(0, options.length - 1));
+    final selectedIndexNotifier = ValueNotifier<int>(initialIndex);
 
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: AppColors.blank,
-      builder: (context) => ValueSelectorSheet<T>(
+    showAppBottomSheet(
+      context,
+      title: sheetTitle,
+      scrollable: false,
+      content: ValueSelectorSheet<T>(
         currentValue: currentValue,
         options: options,
         title: sheetTitle,
         activeColor: effectiveActiveColor,
         columns: columns,
-        onConfirm: (value) {
-          Navigator.pop(context);
-          onChanged?.call(value);
-        },
+        selectedIndexNotifier: selectedIndexNotifier,
       ),
+      bottomSection: _buildDoneButton(
+        context,
+        isDark,
+        selectedIndexNotifier,
+      ),
+    );
+  }
+
+  Widget _buildDoneButton(
+    BuildContext context,
+    bool isDark,
+    ValueNotifier<int> selectedIndexNotifier,
+  ) {
+    final localizations = AppLocalizations.of(context)!;
+    return ValueListenableBuilder<int>(
+      valueListenable: selectedIndexNotifier,
+      builder: (context, index, _) {
+        return SizedBox(
+          width: double.infinity,
+          child: Theme(
+            data: isDark
+                ? ThemeData(
+                    brightness: Brightness.dark,
+                    filledButtonTheme: AppFilledButtonsDarkThemes.primary,
+                  )
+                : ThemeData(
+                    filledButtonTheme: AppFilledButtonsLightThemes.primary,
+                  ),
+            child: FilledButton(
+              onPressed: options.isEmpty || index < 0
+                  ? null
+                  : () {
+                      Navigator.pop(context);
+                      onChanged?.call(options[index].value);
+                    },
+              style: FilledButton.styleFrom(
+                padding: EdgeInsets.symmetric(vertical: AppSpacings.pMd),
+                shape: RoundedRectangleBorder(
+                  borderRadius:
+                      BorderRadius.circular(AppBorderRadius.base),
+                ),
+              ),
+              child: Text(
+                localizations.button_done,
+                style: TextStyle(
+                  fontSize: AppFontSize.base,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
 
+/// How options are rendered in [ValueSelectorSheet].
+enum ValueSelectorOptionStyle {
+  /// Grid of tappable cards (default)
+  grid,
+
+  /// OutlinedButton for unselected, OutlinedButton (primary) for selected
+  buttons,
+}
+
 /// A bottom sheet widget for selecting a value from a grid of options.
+/// When used with [showAppBottomSheet], pass [selectedIndexNotifier] so the
+/// Done button in [bottomSection] can read the current selection.
 class ValueSelectorSheet<T> extends StatefulWidget {
   /// Currently selected value
   final T? currentValue;
@@ -266,11 +322,19 @@ class ValueSelectorSheet<T> extends StatefulWidget {
   /// Accent color for selection
   final Color? activeColor;
 
-  /// Callback when selection is confirmed
+  /// Callback when selection is confirmed (used when sheet has its own button).
   final ValueChanged<T?>? onConfirm;
+
+  /// Notifier for the selected option index. When provided, the sheet does not
+  /// build a Done button; the caller should use [bottomSection] and read from this.
+  final ValueNotifier<int>? selectedIndexNotifier;
 
   /// Number of columns in the grid
   final int columns;
+
+  /// How to render options: [ValueSelectorOptionStyle.grid] (cards) or
+  /// [ValueSelectorOptionStyle.buttons] (outlined / primary filled).
+  final ValueSelectorOptionStyle optionStyle;
 
   const ValueSelectorSheet({
     super.key,
@@ -279,7 +343,9 @@ class ValueSelectorSheet<T> extends StatefulWidget {
     required this.title,
     this.activeColor,
     this.onConfirm,
+    this.selectedIndexNotifier,
     this.columns = 4,
+    this.optionStyle = ValueSelectorOptionStyle.grid,
   });
 
   @override
@@ -287,25 +353,24 @@ class ValueSelectorSheet<T> extends StatefulWidget {
 }
 
 class _ValueSelectorSheetState<T> extends State<ValueSelectorSheet<T>> {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
   late int _selectedIndex;
 
   @override
   void initState() {
     super.initState();
     if (widget.options.isEmpty) {
-      _selectedIndex = -1; // No selection when options is empty
+      _selectedIndex = -1;
     } else {
       final index = widget.options.indexWhere((o) => o.value == widget.currentValue);
       _selectedIndex = index < 0 ? 0 : index.clamp(0, widget.options.length - 1);
     }
+    widget.selectedIndexNotifier?.value = _selectedIndex;
   }
 
-  double _scale(double value) =>
-      _screenService.scale(value, density: _visualDensityService.density);
+  void _setSelectedIndex(int index) {
+    setState(() => _selectedIndex = index);
+    widget.selectedIndexNotifier?.value = index;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -315,185 +380,177 @@ class _ValueSelectorSheetState<T> extends State<ValueSelectorSheet<T>> {
         (isDark ? AppColorsDark.primary : AppColorsLight.primary);
     final cardColor = isDark ? AppFillColorDark.light : AppFillColorLight.blank;
     final borderColor =
-        isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
+        isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
     final textColor =
         isDark ? AppTextColorDark.primary : AppTextColorLight.primary;
     final secondaryColor =
         isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
-    final handleColor =
-        isDark ? AppFillColorDark.darker : AppFillColorLight.darker;
 
-    final maxHeight = MediaQuery.of(context).size.height * 0.7;
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        vertical: AppSpacings.pMd,
+        horizontal: AppSpacings.pLg,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: AppSpacings.pMd,
+        children: [
+          // Options Grid or Buttons
+          Flexible(
+            child: SingleChildScrollView(
+              physics: const ClampingScrollPhysics(),
+              child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final spacing = AppSpacings.scale(10);
+                        final totalSpacing = spacing * (widget.columns - 1);
+                        final itemWidth =
+                            (constraints.maxWidth - totalSpacing) / widget.columns;
 
-    return ConstrainedBox(
-      constraints: BoxConstraints(maxHeight: maxHeight),
-      child: Container(
-        decoration: BoxDecoration(
-          color: isDark ? AppFillColorDark.base : AppFillColorLight.blank,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(_scale(24))),
-        ),
-        child: SafeArea(
-          top: false,
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(
-              AppSpacings.pLg,
-              _scale(12),
-              AppSpacings.pLg,
-              AppSpacings.pXl,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-              // Handle
-              Center(
-                child: Container(
-                  width: _scale(36),
-                  height: _scale(4),
-                  decoration: BoxDecoration(
-                    color: handleColor,
-                    borderRadius: BorderRadius.circular(AppBorderRadius.small),
-                  ),
-                ),
-              ),
-              AppSpacings.spacingMdVertical,
+                        if (widget.optionStyle == ValueSelectorOptionStyle.buttons) {
+                          return Wrap(
+                            spacing: spacing,
+                            runSpacing: spacing,
+                            children: List.generate(widget.options.length, (index) {
+                              final option = widget.options[index];
+                              final isSelected = _selectedIndex == index;
+                              final isDark = Theme.of(context).brightness == Brightness.dark;
+                              final themeData = isSelected
+                                  ? (isDark
+                                      ? ThemeData(brightness: Brightness.dark, outlinedButtonTheme: AppOutlinedButtonsDarkThemes.primary)
+                                      : ThemeData(outlinedButtonTheme: AppOutlinedButtonsLightThemes.primary))
+                                  : (isDark
+                                      ? ThemeData(brightness: Brightness.dark, outlinedButtonTheme: AppOutlinedButtonsDarkThemes.base)
+                                      : ThemeData(outlinedButtonTheme: AppOutlinedButtonsLightThemes.base));
 
-              // Header
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    widget.title,
-                    style: TextStyle(
-                      color: textColor,
-                      fontSize: AppFontSize.extraLarge,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: () => Navigator.pop(context),
-                    child: Container(
-                      width: _scale(32),
-                      height: _scale(32),
-                      decoration: BoxDecoration(
-                        color: handleColor,
-                        borderRadius: BorderRadius.circular(_scale(16)),
-                      ),
-                      child: Icon(
-                        MdiIcons.close,
-                        color: secondaryColor,
-                        size: _scale(18),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              AppSpacings.spacingLgVertical,
-
-              // Options Grid
-              Flexible(
-                child: SingleChildScrollView(
-                  child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final spacing = _scale(10);
-                  final totalSpacing = spacing * (widget.columns - 1);
-                  final itemWidth =
-                      (constraints.maxWidth - totalSpacing) / widget.columns;
-
-                  return Wrap(
-                    spacing: spacing,
-                    runSpacing: spacing,
-                    children: List.generate(widget.options.length, (index) {
-                      final option = widget.options[index];
-                      final isSelected = _selectedIndex == index;
-
-                      // Double-border technique to prevent UI jumping on selection
-                      final innerBgColor = isSelected
-                          ? effectiveActiveColor.withValues(alpha: 0.12)
-                          : cardColor;
-
-                      return GestureDetector(
-                        onTap: () => setState(() => _selectedIndex = index),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          width: itemWidth,
-                          decoration: BoxDecoration(
-                            borderRadius:
-                                BorderRadius.circular(AppBorderRadius.base),
-                            border: Border.all(
-                              color:
-                                  isSelected ? effectiveActiveColor : borderColor,
-                              width: _scale(1),
-                            ),
-                          ),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            padding: EdgeInsets.symmetric(vertical: AppSpacings.pMd),
-                            decoration: BoxDecoration(
-                              color: innerBgColor,
-                              borderRadius:
-                                  BorderRadius.circular(AppBorderRadius.base - 1),
-                              border: Border.all(
-                                color:
-                                    isSelected ? effectiveActiveColor : innerBgColor,
-                                width: _scale(1),
-                              ),
-                            ),
-                            child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (option.icon != null) ...[
-                                Icon(
-                                  option.icon,
-                                  color: isSelected
-                                      ? effectiveActiveColor
-                                      : secondaryColor,
-                                  size: _scale(20),
-                                ),
-                                AppSpacings.spacingXsVertical,
-                              ],
-                              Text(
+                              final buttonChild = Text(
                                 option.label,
                                 style: TextStyle(
-                                  color: isSelected
-                                      ? effectiveActiveColor
-                                      : textColor,
                                   fontSize: AppFontSize.small,
-                                  fontWeight: isSelected
-                                      ? FontWeight.w600
-                                      : FontWeight.w500,
+                                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
                                 ),
                                 textAlign: TextAlign.center,
-                              ),
-                            ],
-                          ),
-                          ),
-                        ),
-                      );
-                    }),
-                  );
-                },
-              ),
-                ),
-              ),
-              AppSpacings.spacingLgVertical,
+                              );
 
-              // Confirm Button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
+                              return SizedBox(
+                                width: itemWidth,
+                                child: Theme(
+                                  data: themeData,
+                                  child: OutlinedButton(
+                                    onPressed: () {
+                                      HapticFeedback.lightImpact();
+                                      _setSelectedIndex(index);
+                                    },
+                                    style: OutlinedButton.styleFrom(
+                                      padding: EdgeInsets.symmetric(vertical: AppSpacings.pMd),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(AppBorderRadius.base),
+                                      ),
+                                    ),
+                                    child: buttonChild,
+                                  )
+                                ),
+                              );
+                            }),
+                          );
+                        }
+
+                        return Wrap(
+                          spacing: spacing,
+                          runSpacing: spacing,
+                          children: List.generate(widget.options.length, (index) {
+                            final option = widget.options[index];
+                            final isSelected = _selectedIndex == index;
+
+                            // Double-border technique to prevent UI jumping on selection
+                            final innerBgColor = isSelected
+                                ? effectiveActiveColor.withValues(alpha: 0.12)
+                                : cardColor;
+
+                            return GestureDetector(
+                              onTap: () {
+                                HapticFeedback.lightImpact();
+                                _setSelectedIndex(index);
+                              },
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                width: itemWidth,
+                                decoration: BoxDecoration(
+                                  borderRadius:
+                                      BorderRadius.circular(AppBorderRadius.base),
+                                  border: Border.all(
+                                    color:
+                                        isSelected ? effectiveActiveColor : borderColor,
+                                    width: AppSpacings.scale(1),
+                                  ),
+                                ),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  padding: EdgeInsets.symmetric(vertical: AppSpacings.pMd),
+                                  decoration: BoxDecoration(
+                                    color: innerBgColor,
+                                    borderRadius:
+                                        BorderRadius.circular(AppBorderRadius.base - 1),
+                                    border: Border.all(
+                                      color:
+                                          isSelected ? effectiveActiveColor : innerBgColor,
+                                      width: AppSpacings.scale(1),
+                                    ),
+                                  ),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    spacing: AppSpacings.pMd,
+                                    children: [
+                                      if (option.icon != null) ...[
+                                        Icon(
+                                          option.icon,
+                                          color: isSelected
+                                              ? effectiveActiveColor
+                                              : secondaryColor,
+                                          size: AppSpacings.scale(20),
+                                        ),
+                                      ],
+                                      Text(
+                                        option.label,
+                                        style: TextStyle(
+                                          color: isSelected
+                                              ? effectiveActiveColor
+                                              : textColor,
+                                          fontSize: AppFontSize.small,
+                                          fontWeight: isSelected
+                                              ? FontWeight.w600
+                                              : FontWeight.w500,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          }),
+                        );
+                      },
+                    ),
+                  ),
+          ),
+          if (widget.selectedIndexNotifier == null) ...[
+            SizedBox(
+              width: double.infinity,
+              child: Theme(
+                data: isDark
+                    ? ThemeData(brightness: Brightness.dark, filledButtonTheme: AppFilledButtonsDarkThemes.primary)
+                    : ThemeData(filledButtonTheme: AppFilledButtonsLightThemes.primary),
+                child: FilledButton(
                   onPressed: widget.options.isEmpty || _selectedIndex < 0
                       ? null
                       : () => widget.onConfirm?.call(widget.options[_selectedIndex].value),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: effectiveActiveColor,
-                    foregroundColor: AppColors.white,
+                  style: FilledButton.styleFrom(
                     padding: EdgeInsets.symmetric(vertical: AppSpacings.pMd),
                     shape: RoundedRectangleBorder(
                       borderRadius:
-                          BorderRadius.circular(AppBorderRadius.medium),
+                          BorderRadius.circular(AppBorderRadius.base),
                     ),
-                    elevation: 0,
                   ),
                   child: Text(
                     localizations.button_done,
@@ -504,10 +561,9 @@ class _ValueSelectorSheetState<T> extends State<ValueSelectorSheet<T>> {
                   ),
                 ),
               ),
-            ],
-          ),
-        ),
-      ),
+            ),
+          ],
+        ],
       ),
     );
   }

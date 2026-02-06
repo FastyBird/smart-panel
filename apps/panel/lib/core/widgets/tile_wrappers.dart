@@ -1,6 +1,5 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:flutter/material.dart';
@@ -22,8 +21,8 @@ class VerticalTileLarge extends StatelessWidget {
   final bool isSelected;
   final bool showSelectionIndicator;
   final bool showWarningBadge;
-  final Color? activeColor;
-  final Color? iconAccentColor;
+  final ThemeColors? activeColor;
+  final ThemeColors? iconAccentColor;
   final VoidCallback? onIconTap;
   final VoidCallback? onTileTap;
 
@@ -75,10 +74,6 @@ class VerticalTileLarge extends StatelessWidget {
 ///
 /// Source of truth: climate_domain_view.dart - sensors section (landscape small/medium)
 class HorizontalTileStretched extends StatelessWidget {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
   final IconData icon;
   final IconData? activeIcon;
   final String name;
@@ -88,12 +83,12 @@ class HorizontalTileStretched extends StatelessWidget {
   final bool isSelected;
   final bool showSelectionIndicator;
   final bool showWarningBadge;
-  final Color? activeColor;
-  final Color? iconAccentColor;
+  final ThemeColors? activeColor;
+  final ThemeColors? iconAccentColor;
   final VoidCallback? onIconTap;
   final VoidCallback? onTileTap;
 
-  HorizontalTileStretched({
+  const HorizontalTileStretched({
     super.key,
     required this.icon,
     this.activeIcon,
@@ -112,10 +107,7 @@ class HorizontalTileStretched extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tileHeight = _screenService.scale(
-      AppTileHeight.horizontal,
-      density: _visualDensityService.density,
-    );
+    final tileHeight = AppSpacings.scale(AppTileHeight.horizontal);
 
     return SizedBox(
       height: tileHeight,
@@ -148,7 +140,6 @@ class HorizontalTileStretched extends StatelessWidget {
 ///
 /// Source of truth: climate_domain_view.dart - sensors section (portrait)
 class HorizontalTileCompact extends StatelessWidget {
-  final ScreenService _screenService = locator<ScreenService>();
 
   final IconData icon;
   final IconData? activeIcon;
@@ -158,12 +149,12 @@ class HorizontalTileCompact extends StatelessWidget {
   final bool isOffline;
   final bool isSelected;
   final bool showWarningBadge;
-  final Color? activeColor;
-  final Color? iconAccentColor;
+  final ThemeColors? activeColor;
+  final ThemeColors? iconAccentColor;
   final VoidCallback? onIconTap;
   final VoidCallback? onTileTap;
 
-  HorizontalTileCompact({
+  const HorizontalTileCompact({
     super.key,
     required this.icon,
     this.activeIcon,
@@ -179,13 +170,11 @@ class HorizontalTileCompact extends StatelessWidget {
     this.onTileTap,
   });
 
-  double _scale(double size) => _screenService.scale(size);
-
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: _scale(AppTileWidth.horizontalMedium),
-      height: _scale(AppTileHeight.horizontal),
+      width: AppSpacings.scale(AppTileWidth.horizontalMedium),
+      height: AppSpacings.scale(AppTileHeight.horizontal),
       child: UniversalTile(
         layout: TileLayout.horizontal,
         icon: icon,
@@ -216,7 +205,6 @@ class HorizontalTileCompact extends StatelessWidget {
 /// Source of truth: lighting_control_panel.dart - channels section (portrait)
 class VerticalTileCompact extends StatelessWidget {
   final ScreenService _screenService = locator<ScreenService>();
-
   final IconData icon;
   final IconData? activeIcon;
   final String name;
@@ -226,8 +214,9 @@ class VerticalTileCompact extends StatelessWidget {
   final bool isSelected;
   final bool showSelectionIndicator;
   final bool showWarningBadge;
-  final Color? activeColor;
-  final Color? iconAccentColor;
+  final bool showInactiveBorder;
+  final ThemeColors? activeColor;
+  final ThemeColors? iconAccentColor;
   final VoidCallback? onIconTap;
   final VoidCallback? onTileTap;
 
@@ -242,13 +231,12 @@ class VerticalTileCompact extends StatelessWidget {
     this.isSelected = false,
     this.showSelectionIndicator = false,
     this.showWarningBadge = false,
+    this.showInactiveBorder = true,
     this.activeColor,
     this.iconAccentColor,
     this.onIconTap,
     this.onTileTap,
   });
-
-  double _scale(double size) => _screenService.scale(size);
 
   @override
   Widget build(BuildContext context) {
@@ -258,7 +246,7 @@ class VerticalTileCompact extends StatelessWidget {
         : AppTileWidth.verticalLarge;
 
     return SizedBox(
-      width: _scale(tileWidth),
+      width: AppSpacings.scale(tileWidth),
       child: UniversalTile(
         layout: TileLayout.vertical,
         icon: icon,
@@ -275,7 +263,7 @@ class VerticalTileCompact extends StatelessWidget {
         showGlow: false,
         showDoubleBorder: false,
         showWarningBadge: showWarningBadge,
-        showInactiveBorder: true,
+        showInactiveBorder: showInactiveBorder,
         showSelectionIndicator: showSelectionIndicator,
       ),
     );
@@ -289,10 +277,6 @@ class VerticalTileCompact extends StatelessWidget {
 ///
 /// Source of truth: climate_domain_view.dart - auxiliary devices (landscape)
 class DeviceTileLandscape extends StatelessWidget {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
   final IconData icon;
   final IconData? activeIcon;
   final String name;
@@ -301,13 +285,13 @@ class DeviceTileLandscape extends StatelessWidget {
   final bool isOffline;
   final bool isSelected;
   final bool showSelectionIndicator;
-  final Color? activeColor;
-  final Color? iconAccentColor;
+  final ThemeColors? activeColor;
+  final ThemeColors? iconAccentColor;
   final VoidCallback? onIconTap;
   final VoidCallback? onTileTap;
   final Widget? accessories;
 
-  DeviceTileLandscape({
+  const DeviceTileLandscape({
     super.key,
     required this.icon,
     this.activeIcon,
@@ -326,10 +310,7 @@ class DeviceTileLandscape extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tileHeight = _screenService.scale(
-      AppTileHeight.horizontal,
-      density: _visualDensityService.density,
-    );
+    final tileHeight = AppSpacings.scale(AppTileHeight.horizontal);
 
     return SizedBox(
       height: tileHeight,
@@ -364,9 +345,6 @@ class DeviceTileLandscape extends StatelessWidget {
 ///
 /// Source of truth: climate_domain_view.dart - auxiliary devices (portrait)
 class DeviceTilePortrait extends StatelessWidget {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
 
   final IconData icon;
   final IconData? activeIcon;
@@ -375,13 +353,13 @@ class DeviceTilePortrait extends StatelessWidget {
   final bool isActive;
   final bool isOffline;
   final bool isSelected;
-  final Color? activeColor;
-  final Color? iconAccentColor;
+  final ThemeColors? activeColor;
+  final ThemeColors? iconAccentColor;
   final VoidCallback? onIconTap;
   final VoidCallback? onTileTap;
   final Widget? accessories;
 
-  DeviceTilePortrait({
+  const DeviceTilePortrait({
     super.key,
     required this.icon,
     this.activeIcon,
@@ -399,10 +377,7 @@ class DeviceTilePortrait extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tileHeight = _screenService.scale(
-      AppTileHeight.horizontal,
-      density: _visualDensityService.density,
-    );
+    final tileHeight = AppSpacings.scale(AppTileHeight.horizontal);
 
     return SizedBox(
       height: tileHeight,

@@ -123,6 +123,23 @@ class DevicesService extends ChangeNotifier {
         .toList();
   }
 
+  /// Whether the device has at least one writable property with category [DevicesModulePropertyCategory.valueOn].
+  bool deviceSupportsPowerOn(String id) {
+    final DeviceView? device = getDevice(id);
+    if (device == null) return false;
+    final properties = device.channels
+        .expand(
+          (channel) => _channelPropertiesRepository.getItems(
+            channel.properties.map((property) => property.id).toList(),
+          ),
+        )
+        .where(
+            (property) =>
+                property.category == DevicesModulePropertyCategory.valueOn)
+        .toList();
+    return properties.isNotEmpty;
+  }
+
   Future<bool> toggleDeviceOnState(String id) async {
     final DeviceView? device = getDevice(id);
 

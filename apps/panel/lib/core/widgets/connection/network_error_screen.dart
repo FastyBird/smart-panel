@@ -63,7 +63,7 @@ class NetworkErrorScreen extends StatelessWidget {
                       ),
                       textAlign: TextAlign.center,
                     ),
-                    SizedBox(height: AppSpacings.pMd),
+                    AppSpacings.spacingMdVertical,
                     // Message
                     Text(
                       localizations.connection_network_error_message,
@@ -74,24 +74,52 @@ class NetworkErrorScreen extends StatelessWidget {
                         height: 1.5,
                       ),
                     ),
-                    SizedBox(height: AppSpacings.pXl),
+                    AppSpacings.spacingXlVertical,
                     // Retry button
                     if (isLandscape)
-                      SystemPagePrimaryButton(
-                        label: localizations.connection_network_error_button_retry,
-                        icon: MdiIcons.refresh,
-                        onPressed: onRetry,
-                        isDark: isDark,
+                      Theme(
+                        data: Theme.of(context).copyWith(
+                          filledButtonTheme: isDark
+                              ? AppFilledButtonsDarkThemes.primary
+                              : AppFilledButtonsLightThemes.primary,
+                        ),
+                        child: FilledButton.icon(
+                          onPressed: onRetry,
+                          icon: Icon(
+                            MdiIcons.refresh,
+                            size: AppFontSize.base,
+                            color: isDark
+                                ? AppFilledButtonsDarkThemes
+                                    .primaryForegroundColor
+                                : AppFilledButtonsLightThemes
+                                    .primaryForegroundColor,
+                          ),
+                          label: Text(localizations
+                              .connection_network_error_button_retry),
+                        ),
                       )
                     else
                       SizedBox(
                         width: double.infinity,
-                        child: SystemPagePrimaryButton(
-                          label: localizations.connection_network_error_button_retry,
-                          icon: MdiIcons.refresh,
-                          onPressed: onRetry,
-                          minWidth: double.infinity,
-                          isDark: isDark,
+                        child: Theme(
+                          data: Theme.of(context).copyWith(
+                            filledButtonTheme: isDark
+                                ? AppFilledButtonsDarkThemes.primary
+                                : AppFilledButtonsLightThemes.primary,
+                          ),
+                          child: FilledButton.icon(
+                            onPressed: onRetry,
+                            icon: Icon(
+                              MdiIcons.refresh,
+                              color: isDark
+                                  ? AppFilledButtonsDarkThemes
+                                      .primaryForegroundColor
+                                  : AppFilledButtonsLightThemes
+                                      .primaryForegroundColor,
+                            ),
+                            label: Text(localizations
+                                .connection_network_error_button_retry),
+                          ),
                         ),
                       ),
                   ],

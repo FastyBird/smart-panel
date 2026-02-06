@@ -1,12 +1,65 @@
+// Climate domain view: room-level climate control for a single space/room.
+//
+// **Purpose:** One screen per room showing thermostat-style control (temperature
+// dial, heat/cool/off mode selector), room sensors (temperature, humidity, AQI,
+// etc.), and auxiliary devices (fans, purifiers, humidifiers). Climate actuators
+// (thermostats, heating units, A/C, water heaters) are listed in a bottom sheet
+// opened from the header.
+//
+// **Data flow:**
+// - [SpacesService] provides room climate state and climate targets (which
+//   devices are sensors, auxiliary, or heating/cooling) for the room.
+// - [DevicesService] provides live device views (thermostats, sensors, etc.)
+//   used to build [ClimateRoomState] and to open device detail pages.
+// - [DomainControlStateService] drives optimistic UI for mode and setpoint:
+//   when the user changes mode or temperature, the UI shows the desired value
+//   until the backend confirms or a settling timeout passes.
+//
+// **Key concepts:**
+// - [ClimateRoomState] is the single derived state for the page (mode, temps,
+//   devices, sensors); it is rebuilt in [_buildState] from SpacesService +
+//   DevicesService + control state locks.
+// - Mode/setpoint intents are tracked via [IntentsRepository]. When an intent
+//   completes, [_onIntentChanged] notifies the control state service so it can
+//   clear pending state.
+// - Portrait: dial card + sensors row + auxiliary grid + bottom mode selector.
+//   Landscape: compact dial (or main content), vertical mode selector, optional
+//   column with sensors and auxiliary tiles.
+//
+// **File structure (for humans and AI):**
+// Search for the exact section header (e.g. "// CONSTANTS", "// LIFECYCLE") to
+// jump to that part of the file. Sections appear in this order:
+//
+// - **CONSTANTS** — [_ClimateControlConstants]: settling windows, channel IDs,
+//   tolerance for [DomainControlStateService].
+// - **DATA MODELS** — [ClimateMode], [RoomCapability], [ClimateDevice],
+//   [AuxiliaryDevice], [ClimateSensor], [ClimateRoomState]; converters to/from
+//   spaces_climate.
+// - **CLIMATE DOMAIN VIEW PAGE** — [ClimateDomainViewPage] and state class:
+//   - LIFECYCLE: initState (register services, listeners, fetch), dispose.
+//   - STATE BUILDING: [_buildState] — single source of truth for [_state].
+//   - CONTROL STATE SERVICE CALLBACKS: convergence/lock checks, [_onIntentChanged],
+//     [_onDataChanged].
+//   - HELPERS: [_scale], [_getSetpointRange], [_navigateToHome].
+//   - MODE & SETPOINT ACTIONS: [_setMode], [_setTargetTemp].
+//   - DEVICES BOTTOM SHEET: [_showClimateDevicesSheet], device detail routing.
+//   - THEME & LABELS: mode colors, dial accent, localized strings.
+//   - BUILD: scaffold, header, orientation → portrait/landscape.
+//   - HEADER, PORTRAIT LAYOUT, LANDSCAPE LAYOUT, PRIMARY CONTROL CARD,
+//     SENSORS, AUXILIARY: UI builders and tap handlers.
+
 import 'dart:math' as math;
 
 import 'package:event_bus/event_bus.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
+import 'package:provider/provider.dart';
+
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
-import 'package:fastybird_smart_panel/core/utils/number_format.dart';
-import 'package:fastybird_smart_panel/core/utils/color.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_card.dart';
 import 'package:fastybird_smart_panel/core/widgets/circular_control_dial.dart';
 import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
@@ -17,37 +70,43 @@ import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
 import 'package:fastybird_smart_panel/core/widgets/tile_wrappers.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/domain_data_loader.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_item_sheet.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/domain_state_view.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/deck_service.dart';
-import 'package:fastybird_smart_panel/modules/deck/utils/lighting.dart';
-import 'package:fastybird_smart_panel/modules/deck/views/climate_role_detail_page.dart';
+import 'package:fastybird_smart_panel/modules/deck/services/domain_control_state_service.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/navigate_event.dart';
+import 'package:fastybird_smart_panel/modules/deck/utils/lighting.dart';
+import 'package:fastybird_smart_panel/modules/devices/export.dart';
+import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
+import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/air_conditioner.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/heating_unit.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/thermostat.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/water_heater.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/air_conditioner.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/air_dehumidifier.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/air_humidifier.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/air_purifier.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/fan.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/heating_unit.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/devices/water_heater.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/sensor.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/thermostat.dart';
-import 'package:fastybird_smart_panel/modules/deck/services/domain_control_state_service.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/devices/water_heater.dart';
+import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
 import 'package:fastybird_smart_panel/modules/intents/repositories/intents.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/climate_state/climate_state.dart'
     as spaces_climate;
 import 'package:fastybird_smart_panel/modules/spaces/service.dart';
 import 'package:fastybird_smart_panel/modules/spaces/utils/intent_result_handler.dart';
 import 'package:fastybird_smart_panel/modules/spaces/views/climate_targets/view.dart';
-import 'package:fastybird_smart_panel/modules/devices/export.dart';
-import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
-import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
-import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
-import 'package:provider/provider.dart';
 
-// ============================================================================
-// CLIMATE CONTROL CONSTANTS
-// ============================================================================
+// =============================================================================
+// CONSTANTS
+// =============================================================================
+// Used by [DomainControlStateService] for optimistic mode/setpoint. Settling
+// windows (ms) and tolerance control when the UI can clear "pending" state.
+// Channel IDs identify mode vs setpoint in the control state machine.
 
 class _ClimateControlConstants {
   /// Settling window for mode changes (ms)
@@ -64,13 +123,15 @@ class _ClimateControlConstants {
   static const String setpointChannelId = 'setpoint';
 }
 
-// ============================================================================
+// =============================================================================
 // DATA MODELS
-// ============================================================================
+// =============================================================================
+// Local enums and view models for the climate domain. Mapped to/from
+// spaces_climate (SpacesService) and used to build UI (dial, mode selector, lists).
 
 enum ClimateMode { off, heat, cool, auto }
 
-/// Convert local ClimateMode to the one used by the spaces service
+/// Converts local [ClimateMode] to [spaces_climate.ClimateMode] for API calls.
 spaces_climate.ClimateMode _toServiceClimateMode(ClimateMode mode) {
   switch (mode) {
     case ClimateMode.off:
@@ -84,8 +145,26 @@ spaces_climate.ClimateMode _toServiceClimateMode(ClimateMode mode) {
   }
 }
 
+/// Converts [spaces_climate.ClimateMode] from API/state to local [ClimateMode].
+ClimateMode _fromServiceClimateMode(spaces_climate.ClimateMode? mode) {
+  switch (mode) {
+    case spaces_climate.ClimateMode.heat:
+      return ClimateMode.heat;
+    case spaces_climate.ClimateMode.cool:
+      return ClimateMode.cool;
+    case spaces_climate.ClimateMode.auto:
+      return ClimateMode.auto;
+    case spaces_climate.ClimateMode.off:
+    case null:
+      return ClimateMode.off;
+  }
+}
+
+/// What the room hardware supports (from climate state); determines which
+/// mode options are shown (e.g. heat only if heaterOnly).
 enum RoomCapability { none, heaterOnly, coolerOnly, heaterAndCooler }
 
+/// View model for one climate actuator in the room (thermostat, A/C, heating unit, etc.).
 class ClimateDevice {
   final String id;
   final String name;
@@ -123,6 +202,7 @@ class ClimateDevice {
 
 enum AuxiliaryType { fan, purifier, humidifier, dehumidifier }
 
+/// View model for one auxiliary climate device (fan, purifier, humidifier, dehumidifier).
 class AuxiliaryDevice {
   final String id;
   final String name;
@@ -150,17 +230,17 @@ class AuxiliaryDevice {
         return MdiIcons.airHumidifierOff;
     }
   }
-
-  bool get isHumidityControl =>
-      type == AuxiliaryType.humidifier || type == AuxiliaryType.dehumidifier;
 }
 
+/// View model for one climate sensor (temp, humidity, AQI, PM, CO2, VOC, pressure).
 class ClimateSensor {
   final String id;
   final String label;
   final String value;
-  final String type;
+  final DevicesModuleChannelCategory type;
   final bool isOnline;
+  final SensorData? sensorData;
+  final String? deviceName;
 
   const ClimateSensor({
     required this.id,
@@ -168,30 +248,16 @@ class ClimateSensor {
     required this.value,
     required this.type,
     this.isOnline = true,
+    this.sensorData,
+    this.deviceName,
   });
 
-  IconData get icon {
-    switch (type) {
-      case 'temp':
-        return MdiIcons.thermometer;
-      case 'humidity':
-        return MdiIcons.waterPercent;
-      case 'aqi':
-        return MdiIcons.airFilter;
-      case 'pm':
-        return MdiIcons.blur;
-      case 'co2':
-        return MdiIcons.moleculeCo2;
-      case 'voc':
-        return MdiIcons.molecule;
-      case 'pressure':
-        return MdiIcons.gauge;
-      default:
-        return MdiIcons.eyeSettings;
-    }
-  }
+  IconData get icon => buildChannelIcon(type);
 }
 
+/// Single derived state for the climate domain page. Built in [_buildState] from
+/// [SpacesService] climate state/targets, [DevicesService] device views, and
+/// [DomainControlStateService] lock state (for optimistic mode/setpoint).
 class ClimateRoomState {
   final String roomName;
   final ClimateMode mode;
@@ -250,19 +316,15 @@ class ClimateRoomState {
       sensors: sensors ?? this.sensors,
     );
   }
-
-  List<AuxiliaryDevice> get humidityDevices =>
-      auxiliaryDevices.where((d) => d.isHumidityControl).toList();
-
-  List<AuxiliaryDevice> get otherAuxiliary =>
-      auxiliaryDevices.where((d) => !d.isHumidityControl).toList();
-
-  bool get hasHumidityControl => humidityDevices.isNotEmpty;
 }
 
-// ============================================================================
+// =============================================================================
 // CLIMATE DOMAIN VIEW PAGE
-// ============================================================================
+// =============================================================================
+// Stateful page for one room's climate. State class: holds [_state] (built in
+// [_buildState]), [_controlStateService], optional services; listens to
+// SpacesService, DevicesService, IntentsRepository; drives optimistic UI for
+// mode and setpoint via [DomainControlStateService].
 
 class ClimateDomainViewPage extends StatefulWidget {
   final DomainViewItem viewItem;
@@ -275,9 +337,8 @@ class ClimateDomainViewPage extends StatefulWidget {
 
 class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
 
+  /// Optional services; resolved in initState. Listeners on Spaces, Devices, Intents.
   SpacesService? _spacesService;
   DevicesService? _devicesService;
   DeckService? _deckService;
@@ -286,18 +347,31 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   IntentOverlayService? _intentOverlayService;
   DeviceControlStateService? _deviceControlStateService;
 
+  /// Single derived state for the page; rebuilt in [_buildState] on data/intent changes.
   ClimateRoomState _state = const ClimateRoomState(roomName: '');
+  /// True until [_fetchClimateData] has run (and [_buildState] applied).
   bool _isLoading = true;
+  /// True when data loading failed.
+  bool _hasError = false;
 
-  // Control state service for optimistic UI
+  /// Drives optimistic UI for mode and setpoint: when user changes mode or temp,
+  /// we show the desired value until backend confirms or settling timeout.
   late DomainControlStateService<spaces_climate.ClimateStateModel>
       _controlStateService;
 
-  // Track which space intent we're waiting for
+  /// True when we are waiting for a space intent to complete; used in
+  /// [_onIntentChanged] to call [DomainControlStateService.onIntentCompleted].
   bool _modeWasLocked = false;
   bool _setpointWasLocked = false;
 
   String get _roomId => widget.viewItem.roomId;
+
+  // --------------------------------------------------------------------------
+  // LIFECYCLE
+  // --------------------------------------------------------------------------
+  // initState: register control state service, listeners (Spaces, Devices,
+  // Intents), then fetch climate data. dispose: remove listeners and dispose
+  // control state service.
 
   @override
   void initState() {
@@ -385,6 +459,8 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     _fetchClimateData();
   }
 
+  /// Fetches climate targets and climate state for the room if not already
+  /// cached; then builds state and clears loading.
   Future<void> _fetchClimateData() async {
     try {
       // Check if data is already available (cached) before fetching
@@ -398,19 +474,43 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           _spacesService?.fetchClimateState(_roomId) ?? Future.value(),
         ]);
       }
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('[ClimateDomainViewPage] Failed to fetch climate data: $e');
-      }
-    } finally {
+
       _buildState();
       if (mounted) {
         setState(() {
           _isLoading = false;
+          _hasError = false;
+        });
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[ClimateDomainViewPage] Failed to fetch climate data: $e');
+      }
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _hasError = true;
         });
       }
     }
   }
+
+  /// Retry loading data after an error.
+  Future<void> _retryLoad() async {
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+    });
+    await _fetchClimateData();
+  }
+
+  // --------------------------------------------------------------------------
+  // STATE BUILDING
+  // --------------------------------------------------------------------------
+  // [_buildState] is the single place that computes [ClimateRoomState] from
+  // SpacesService (climate state + targets), DevicesService (device views), and
+  // control state locks. When mode/setpoint is locked we show desired value;
+  // capability is preserved across stale API responses to avoid UI flicker.
 
   void _buildState() {
     final roomName = _spacesService?.getSpace(_roomId)?.name ?? '';
@@ -436,21 +536,8 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           ?.toInt();
       if (desiredModeIndex != null &&
           desiredModeIndex < spaces_climate.ClimateMode.values.length) {
-        final desiredMode = spaces_climate.ClimateMode.values[desiredModeIndex];
-        switch (desiredMode) {
-          case spaces_climate.ClimateMode.heat:
-            mode = ClimateMode.heat;
-            break;
-          case spaces_climate.ClimateMode.cool:
-            mode = ClimateMode.cool;
-            break;
-          case spaces_climate.ClimateMode.auto:
-            mode = ClimateMode.auto;
-            break;
-          case spaces_climate.ClimateMode.off:
-            mode = ClimateMode.off;
-            break;
-        }
+        mode = _fromServiceClimateMode(
+            spaces_climate.ClimateMode.values[desiredModeIndex]);
       }
     } else if (setpointIsLocked && _state.mode != ClimateMode.off) {
       // Preserve current mode when setpoint is locked to avoid mode switching
@@ -461,21 +548,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
       // Note: lastAppliedMode is the last mode explicitly set by the user, but it
       // can be stale (from hours/days ago). The 'mode' field reflects the actual
       // current state which is more reliable for display purposes.
-      switch (climateState.mode) {
-        case spaces_climate.ClimateMode.heat:
-          mode = ClimateMode.heat;
-          break;
-        case spaces_climate.ClimateMode.cool:
-          mode = ClimateMode.cool;
-          break;
-        case spaces_climate.ClimateMode.auto:
-          mode = ClimateMode.auto;
-          break;
-        case spaces_climate.ClimateMode.off:
-        case null:
-          mode = ClimateMode.off;
-          break;
-      }
+      mode = _fromServiceClimateMode(climateState.mode);
     }
 
     // Determine capability from climate state
@@ -529,15 +602,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     }
 
     // Get temperature values from climate state
-    final rawMinSetpoint = climateState?.minSetpoint ?? 16.0;
-    final rawMaxSetpoint = climateState?.maxSetpoint ?? 30.0;
-    // Ensure min < max to prevent clamp() ArgumentError and satisfy
-    // CircularControlDial assertion (maxValue > minValue requires strict inequality)
-    var minSetpoint = math.min(rawMinSetpoint, rawMaxSetpoint);
-    var maxSetpoint = math.max(rawMinSetpoint, rawMaxSetpoint);
-    if (maxSetpoint <= minSetpoint) {
-      maxSetpoint = minSetpoint + 1.0;
-    }
+    final (minSetpoint, maxSetpoint) = _getSetpointRange(climateState);
 
     // Get the appropriate target temperature based on mode
     // When mode is locked (user just changed it), use the setpoint for the NEW mode
@@ -631,15 +696,15 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
 
     // Add temperature sensor from climate state if not already present
     if (climateState?.currentTemperature != null &&
-        !sensors.any((s) => s.type == 'temp')) {
+        !sensors.any((s) => s.type == DevicesModuleChannelCategory.temperature)) {
       sensors.insert(
         0,
         ClimateSensor(
           id: 'state_temp',
-          label: 'Temperature',
+          label: AppLocalizations.of(context)!.device_current_temperature,
           value:
-              '${NumberFormatUtils.defaultFormat.formatDecimal(climateState!.currentTemperature!, decimalPlaces: 1)}°C',
-          type: 'temp',
+              SensorUtils.formatNumericValueWithUnit(climateState!.currentTemperature!, DevicesModuleChannelCategory.temperature),
+          type: DevicesModuleChannelCategory.temperature,
           isOnline: true,
         ),
       );
@@ -647,14 +712,14 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
 
     // Add humidity sensor from climate state if not already present
     if (climateState?.currentHumidity != null &&
-        !sensors.any((s) => s.type == 'humidity')) {
+        !sensors.any((s) => s.type == DevicesModuleChannelCategory.humidity)) {
       sensors.add(
         ClimateSensor(
           id: 'state_humidity',
-          label: 'Humidity',
+          label: AppLocalizations.of(context)!.device_humidity,
           value:
-              '${NumberFormatUtils.defaultFormat.formatInteger(climateState!.currentHumidity!.toInt())}%',
-          type: 'humidity',
+              SensorUtils.formatNumericValueWithUnit(climateState!.currentHumidity!, DevicesModuleChannelCategory.humidity),
+          type: DevicesModuleChannelCategory.humidity,
           isOnline: true,
         ),
       );
@@ -679,26 +744,39 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     );
   }
 
+  /// Appends temperature/humidity (and via [_buildAdditionalSensors] AQI, PM,
+  /// CO2, VOC, pressure) sensors from [device] for [target] into [sensors].
   void _buildSensorsFromDevice(
     DeviceView device,
     ClimateTargetView target,
     List<ClimateSensor> sensors,
   ) {
-    // Wrap in try-catch to handle devices with missing required channels
     try {
-      // Check if device has temperature
       if (target.hasTemperature) {
         double? tempValue;
+        SensorData? tempSensorData;
         if (device is ThermostatDeviceView) {
-          tempValue = device.temperatureChannel.temperature;
+          final ch = device.temperatureChannel;
+          tempValue = ch.temperature;
+          tempSensorData = SensorUtils.buildSensorData(ch);
         } else if (device is HeatingUnitDeviceView) {
-          tempValue = device.temperatureChannel.temperature;
+          final ch = device.temperatureChannel;
+          tempValue = ch.temperature;
+          tempSensorData = SensorUtils.buildSensorData(ch);
         } else if (device is WaterHeaterDeviceView) {
-          tempValue = device.temperatureChannel.temperature;
+          final ch = device.temperatureChannel;
+          tempValue = ch.temperature;
+          tempSensorData = SensorUtils.buildSensorData(ch);
         } else if (device is AirConditionerDeviceView) {
-          tempValue = device.temperatureChannel.temperature;
+          final ch = device.temperatureChannel;
+          tempValue = ch.temperature;
+          tempSensorData = SensorUtils.buildSensorData(ch);
         } else if (device is SensorDeviceView) {
-          tempValue = device.temperatureChannel?.temperature;
+          final ch = device.temperatureChannel;
+          tempValue = ch?.temperature;
+          if (ch != null) {
+            tempSensorData = SensorUtils.buildSensorData(ch);
+          }
         }
 
         if (tempValue != null) {
@@ -706,9 +784,11 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             id: '${target.id}_temp',
             label: target.displayName,
             value:
-                '${NumberFormatUtils.defaultFormat.formatDecimal(tempValue, decimalPlaces: 1)}°C',
-            type: 'temp',
+                SensorUtils.formatNumericValueWithUnit(tempValue, DevicesModuleChannelCategory.temperature),
+            type: DevicesModuleChannelCategory.temperature,
             isOnline: device.isOnline,
+            sensorData: tempSensorData,
+            deviceName: device.name,
           ));
         }
       }
@@ -716,16 +796,37 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
       // Check if device has humidity
       if (target.hasHumidity) {
         double? humidityValue;
+        SensorData? humiditySensorData;
         if (device is ThermostatDeviceView) {
-          humidityValue = device.humidityChannel?.humidity.toDouble();
+          final ch = device.humidityChannel;
+          humidityValue = ch?.humidity.toDouble();
+          if (ch != null) {
+            humiditySensorData = SensorUtils.buildSensorData(ch);
+          }
         } else if (device is HeatingUnitDeviceView) {
-          humidityValue = device.humidityChannel?.humidity.toDouble();
+          final ch = device.humidityChannel;
+          humidityValue = ch?.humidity.toDouble();
+          if (ch != null) {
+            humiditySensorData = SensorUtils.buildSensorData(ch);
+          }
         } else if (device is WaterHeaterDeviceView) {
-          humidityValue = device.humidityChannel?.humidity.toDouble();
+          final ch = device.humidityChannel;
+          humidityValue = ch?.humidity.toDouble();
+          if (ch != null) {
+            humiditySensorData = SensorUtils.buildSensorData(ch);
+          }
         } else if (device is AirConditionerDeviceView) {
-          humidityValue = device.humidityChannel?.humidity.toDouble();
+          final ch = device.humidityChannel;
+          humidityValue = ch?.humidity.toDouble();
+          if (ch != null) {
+            humiditySensorData = SensorUtils.buildSensorData(ch);
+          }
         } else if (device is SensorDeviceView) {
-          humidityValue = device.humidityChannel?.humidity.toDouble();
+          final ch = device.humidityChannel;
+          humidityValue = ch?.humidity.toDouble();
+          if (ch != null) {
+            humiditySensorData = SensorUtils.buildSensorData(ch);
+          }
         }
 
         if (humidityValue != null) {
@@ -733,9 +834,11 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             id: '${target.id}_humidity',
             label: target.displayName,
             value:
-                '${NumberFormatUtils.defaultFormat.formatInteger(humidityValue.toInt())}%',
-            type: 'humidity',
+                SensorUtils.formatNumericValueWithUnit(humidityValue, DevicesModuleChannelCategory.humidity),
+            type: DevicesModuleChannelCategory.humidity,
             isOnline: device.isOnline,
+            sensorData: humiditySensorData,
+            deviceName: device.name,
           ));
         }
       }
@@ -751,14 +854,13 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     }
   }
 
-  /// Builds additional climate sensors (AQI, PM, CO2, VOC, Pressure)
-  /// using backend flags to determine which sensor type this target represents.
+  /// Appends AQI, PM, CO2, VOC, pressure sensors when [target] flags and
+  /// [device] has the corresponding channels.
   void _buildAdditionalSensors(
     DeviceView device,
     ClimateTargetView target,
     List<ClimateSensor> sensors,
   ) {
-    final formatter = NumberFormatUtils.defaultFormat;
 
     // Air Quality Index (AQI)
     if (target.hasAirQuality) {
@@ -768,8 +870,8 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         sensors.add(ClimateSensor(
           id: '${target.id}_aqi',
           label: target.displayName,
-          value: formatter.formatInteger(device.airQualityChannel!.aqi),
-          type: 'aqi',
+          value: SensorUtils.formatNumericValue(device.airQualityChannel!.aqi, DevicesModuleChannelCategory.airQuality),
+          type: DevicesModuleChannelCategory.airQuality,
           isOnline: device.isOnline,
         ));
       }
@@ -784,9 +886,11 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             id: '${target.id}_pm',
             label: target.displayName,
             value:
-                '${formatter.formatInteger(pmChannel.concentration.toInt())} µg/m³',
-            type: 'pm',
+                SensorUtils.formatNumericValueWithUnit(pmChannel.concentration, DevicesModuleChannelCategory.airParticulate),
+            type: DevicesModuleChannelCategory.airParticulate,
             isOnline: device.isOnline,
+            sensorData: SensorUtils.buildSensorData(pmChannel),
+            deviceName: device.name,
           ));
         }
       } else if (device is AirPurifierDeviceView &&
@@ -797,9 +901,11 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             id: '${target.id}_pm',
             label: target.displayName,
             value:
-                '${formatter.formatInteger(pmChannel.concentration.toInt())} µg/m³',
-            type: 'pm',
+                SensorUtils.formatNumericValueWithUnit(pmChannel.concentration, DevicesModuleChannelCategory.airParticulate),
+            type: DevicesModuleChannelCategory.airParticulate,
             isOnline: device.isOnline,
+            sensorData: SensorUtils.buildSensorData(pmChannel),
+            deviceName: device.name,
           ));
         }
       }
@@ -813,9 +919,11 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           sensors.add(ClimateSensor(
             id: '${target.id}_co2',
             label: target.displayName,
-            value: '${formatter.formatInteger(co2Channel.concentration.toInt())} ppm',
-            type: 'co2',
+            value: SensorUtils.formatNumericValueWithUnit(co2Channel.concentration, DevicesModuleChannelCategory.carbonDioxide),
+            type: DevicesModuleChannelCategory.carbonDioxide,
             isOnline: device.isOnline,
+            sensorData: SensorUtils.buildSensorData(co2Channel),
+            deviceName: device.name,
           ));
         }
       } else if (device is AirPurifierDeviceView &&
@@ -825,9 +933,11 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           sensors.add(ClimateSensor(
             id: '${target.id}_co2',
             label: target.displayName,
-            value: '${formatter.formatInteger(co2Channel.concentration.toInt())} ppm',
-            type: 'co2',
+            value: SensorUtils.formatNumericValueWithUnit(co2Channel.concentration, DevicesModuleChannelCategory.carbonDioxide),
+            type: DevicesModuleChannelCategory.carbonDioxide,
             isOnline: device.isOnline,
+            sensorData: SensorUtils.buildSensorData(co2Channel),
+            deviceName: device.name,
           ));
         }
       }
@@ -842,9 +952,11 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           sensors.add(ClimateSensor(
             id: '${target.id}_voc',
             label: target.displayName,
-            value: '${formatter.formatInteger(vocChannel.concentration.toInt())} ppb',
-            type: 'voc',
+            value: SensorUtils.formatNumericValueWithUnit(vocChannel.concentration, DevicesModuleChannelCategory.volatileOrganicCompounds),
+            type: DevicesModuleChannelCategory.volatileOrganicCompounds,
             isOnline: device.isOnline,
+            sensorData: SensorUtils.buildSensorData(vocChannel),
+            deviceName: device.name,
           ));
         }
       } else if (device is AirPurifierDeviceView &&
@@ -854,9 +966,11 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           sensors.add(ClimateSensor(
             id: '${target.id}_voc',
             label: target.displayName,
-            value: '${formatter.formatInteger(vocChannel.concentration.toInt())} ppb',
-            type: 'voc',
+            value: SensorUtils.formatNumericValueWithUnit(vocChannel.concentration, DevicesModuleChannelCategory.volatileOrganicCompounds),
+            type: DevicesModuleChannelCategory.volatileOrganicCompounds,
             isOnline: device.isOnline,
+            sensorData: SensorUtils.buildSensorData(vocChannel),
+            deviceName: device.name,
           ));
         }
       }
@@ -870,57 +984,50 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           id: '${target.id}_pressure',
           label: target.displayName,
           value:
-              '${formatter.formatInteger(pressureChannel.pressure.toInt())} hPa',
-          type: 'pressure',
+              SensorUtils.formatNumericValueWithUnit(pressureChannel.pressure, DevicesModuleChannelCategory.pressure),
+          type: DevicesModuleChannelCategory.pressure,
           isOnline: device.isOnline,
+          sensorData: SensorUtils.buildSensorData(pressureChannel),
+          deviceName: device.name,
         ));
       }
     }
   }
 
+  /// Resolves effective on/off for an auxiliary device: if a control or intent
+  /// overlay is locked, returns the desired/overlay value; otherwise [fallback].
+  bool _getAuxiliaryDeviceIsActive(
+    String deviceId,
+    String channelId,
+    String propertyId,
+    bool fallback,
+  ) {
+    if (_deviceControlStateService != null &&
+        _deviceControlStateService!.isLocked(deviceId, channelId, propertyId)) {
+      final desiredValue =
+          _deviceControlStateService!.getDesiredValue(deviceId, channelId, propertyId);
+      if (desiredValue is bool) return desiredValue;
+    }
+    if (_intentOverlayService != null &&
+        _intentOverlayService!.isLocked(deviceId, channelId, propertyId)) {
+      final overlayValue =
+          _intentOverlayService!.getOverlayValue(deviceId, channelId, propertyId);
+      if (overlayValue is bool) return overlayValue;
+    }
+    return fallback;
+  }
+
+  /// If [device] is a supported auxiliary type (fan, purifier, humidifier,
+  /// dehumidifier), appends one [AuxiliaryDevice] to [auxiliaryDevices].
   void _buildAuxiliaryFromDevice(
     DeviceView device,
     List<AuxiliaryDevice> auxiliaryDevices,
     String roomName,
   ) {
-    // Wrap in try-catch to handle devices with missing required channels
-    // Some devices may not have all expected channels configured
     try {
-      String? channelId;
-      String? propertyId;
-      bool isActive = false;
-
       if (device is FanDeviceView) {
         final channel = device.fanChannel;
-        channelId = channel.id;
-        final onProp = channel.onProp;
-        propertyId = onProp.id;
-
-        // Use DeviceControlStateService first for optimistic UI (most reliable)
-        // Fall back to IntentOverlayService, then actual device state
-        isActive = channel.on;
-        if (_deviceControlStateService != null &&
-            _deviceControlStateService!.isLocked(device.id, channelId, propertyId)) {
-          final desiredValue = _deviceControlStateService!.getDesiredValue(
-            device.id,
-            channelId,
-            propertyId,
-          );
-          if (desiredValue is bool) {
-            isActive = desiredValue;
-          }
-        } else if (_intentOverlayService != null &&
-            _intentOverlayService!.isLocked(device.id, channelId, propertyId)) {
-          final overlayValue = _intentOverlayService!.getOverlayValue(
-            device.id,
-            channelId,
-            propertyId,
-          );
-          if (overlayValue is bool) {
-            isActive = overlayValue;
-          }
-        }
-
+        final isActive = _getAuxiliaryDeviceIsActive(device.id, channel.id, channel.onProp.id, channel.on);
         auxiliaryDevices.add(AuxiliaryDevice(
           id: device.id,
           name: stripRoomNameFromDevice(device.name, roomName),
@@ -930,35 +1037,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         ));
       } else if (device is AirPurifierDeviceView) {
         final channel = device.fanChannel;
-        channelId = channel.id;
-        final onProp = channel.onProp;
-        propertyId = onProp.id;
-
-        // Use DeviceControlStateService first for optimistic UI (most reliable)
-        // Fall back to IntentOverlayService, then actual device state
-        isActive = channel.on;
-        if (_deviceControlStateService != null &&
-            _deviceControlStateService!.isLocked(device.id, channelId, propertyId)) {
-          final desiredValue = _deviceControlStateService!.getDesiredValue(
-            device.id,
-            channelId,
-            propertyId,
-          );
-          if (desiredValue is bool) {
-            isActive = desiredValue;
-          }
-        } else if (_intentOverlayService != null &&
-            _intentOverlayService!.isLocked(device.id, channelId, propertyId)) {
-          final overlayValue = _intentOverlayService!.getOverlayValue(
-            device.id,
-            channelId,
-            propertyId,
-          );
-          if (overlayValue is bool) {
-            isActive = overlayValue;
-          }
-        }
-
+        final isActive = _getAuxiliaryDeviceIsActive(device.id, channel.id, channel.onProp.id, channel.on);
         auxiliaryDevices.add(AuxiliaryDevice(
           id: device.id,
           name: stripRoomNameFromDevice(device.name, roomName),
@@ -968,35 +1047,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         ));
       } else if (device is AirHumidifierDeviceView) {
         final channel = device.humidifierChannel;
-        channelId = channel.id;
-        final onProp = channel.onProp;
-        propertyId = onProp.id;
-
-        // Use DeviceControlStateService first for optimistic UI (most reliable)
-        // Fall back to IntentOverlayService, then actual device state
-        isActive = channel.on;
-        if (_deviceControlStateService != null &&
-            _deviceControlStateService!.isLocked(device.id, channelId, propertyId)) {
-          final desiredValue = _deviceControlStateService!.getDesiredValue(
-            device.id,
-            channelId,
-            propertyId,
-          );
-          if (desiredValue is bool) {
-            isActive = desiredValue;
-          }
-        } else if (_intentOverlayService != null &&
-            _intentOverlayService!.isLocked(device.id, channelId, propertyId)) {
-          final overlayValue = _intentOverlayService!.getOverlayValue(
-            device.id,
-            channelId,
-            propertyId,
-          );
-          if (overlayValue is bool) {
-            isActive = overlayValue;
-          }
-        }
-
+        final isActive = _getAuxiliaryDeviceIsActive(device.id, channel.id, channel.onProp.id, channel.on);
         auxiliaryDevices.add(AuxiliaryDevice(
           id: device.id,
           name: stripRoomNameFromDevice(device.name, roomName),
@@ -1006,35 +1057,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         ));
       } else if (device is AirDehumidifierDeviceView) {
         final channel = device.dehumidifierChannel;
-        channelId = channel.id;
-        final onProp = channel.onProp;
-        propertyId = onProp.id;
-
-        // Use DeviceControlStateService first for optimistic UI (most reliable)
-        // Fall back to IntentOverlayService, then actual device state
-        isActive = channel.on;
-        if (_deviceControlStateService != null &&
-            _deviceControlStateService!.isLocked(device.id, channelId, propertyId)) {
-          final desiredValue = _deviceControlStateService!.getDesiredValue(
-            device.id,
-            channelId,
-            propertyId,
-          );
-          if (desiredValue is bool) {
-            isActive = desiredValue;
-          }
-        } else if (_intentOverlayService != null &&
-            _intentOverlayService!.isLocked(device.id, channelId, propertyId)) {
-          final overlayValue = _intentOverlayService!.getOverlayValue(
-            device.id,
-            channelId,
-            propertyId,
-          );
-          if (overlayValue is bool) {
-            isActive = overlayValue;
-          }
-        }
-
+        final isActive = _getAuxiliaryDeviceIsActive(device.id, channel.id, channel.onProp.id, channel.on);
         auxiliaryDevices.add(AuxiliaryDevice(
           id: device.id,
           name: stripRoomNameFromDevice(device.name, roomName),
@@ -1052,6 +1075,8 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     }
   }
 
+  /// If [device] is a supported climate actuator (thermostat, heating unit,
+  /// water heater, A/C), appends one [ClimateDevice] to [climateDevices].
   void _buildClimateDeviceFromTarget(
     DeviceView device,
     ClimateTargetView target,
@@ -1059,7 +1084,6 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     ClimateMode currentMode,
     String roomName,
   ) {
-    // Wrap in try-catch to handle devices with missing required channels
     try {
       String deviceType = 'thermostat';
       bool isActive = false;
@@ -1150,22 +1174,23 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     }
   }
 
-  /// Returns sort priority for sensor types (lower = higher priority)
-  int _sensorTypePriority(String type) {
+  /// Sort order for sensor types (lower = earlier in list). Temp first, then
+  /// humidity, then AQI/PM/CO2/VOC/pressure.
+  int _sensorTypePriority(DevicesModuleChannelCategory type) {
     switch (type) {
-      case 'temp':
+      case DevicesModuleChannelCategory.temperature:
         return 0;
-      case 'humidity':
+      case DevicesModuleChannelCategory.humidity:
         return 1;
-      case 'aqi':
+      case DevicesModuleChannelCategory.airQuality:
         return 2;
-      case 'pm':
+      case DevicesModuleChannelCategory.airParticulate:
         return 3;
-      case 'co2':
+      case DevicesModuleChannelCategory.carbonDioxide:
         return 4;
-      case 'voc':
+      case DevicesModuleChannelCategory.volatileOrganicCompounds:
         return 5;
-      case 'pressure':
+      case DevicesModuleChannelCategory.pressure:
         return 6;
       default:
         return 99;
@@ -1182,11 +1207,13 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     super.dispose();
   }
 
-  // ============================================================================
+  // --------------------------------------------------------------------------
   // CONTROL STATE SERVICE CALLBACKS
-  // ============================================================================
+  // --------------------------------------------------------------------------
+  // Used by [DomainControlStateService] to decide when to clear pending state:
+  // convergence = backend state matches desired; intent lock = space has active intent.
 
-  /// Check if climate mode has converged to desired value.
+  /// True when the first target's mode equals the desired mode (by index).
   bool _checkModeConvergence(
     List<spaces_climate.ClimateStateModel> targets,
     double desiredValue,
@@ -1199,7 +1226,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     return actual.mode == desiredMode;
   }
 
-  /// Check if setpoint has converged to desired value.
+  /// True when effective target temperature is within [tolerance] of [desiredValue].
   bool _checkSetpointConvergence(
     List<spaces_climate.ClimateStateModel> targets,
     double desiredValue,
@@ -1212,12 +1239,12 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     return (actualTemp - desiredValue).abs() <= tolerance;
   }
 
-  /// Check if any climate mode intent is active for this space.
+  /// True if [IntentsRepository] reports this space as locked (any intent in flight).
   bool _isModeLocked(List<spaces_climate.ClimateStateModel> targets) {
     return _intentsRepository?.isSpaceLocked(_roomId) ?? false;
   }
 
-  /// Check if any setpoint intent is active for this space.
+  /// Same as [_isModeLocked]; space lock covers both mode and setpoint intents.
   bool _isSetpointLocked(List<spaces_climate.ClimateStateModel> targets) {
     return _intentsRepository?.isSpaceLocked(_roomId) ?? false;
   }
@@ -1227,6 +1254,8 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     setState(() {});
   }
 
+  /// When an intent for this space completes (lock goes false), notifies
+  /// control state service so it can clear pending mode/setpoint.
   void _onIntentChanged() {
     if (!mounted) return;
 
@@ -1257,9 +1286,10 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     _setpointWasLocked = isNowLocked;
   }
 
+  /// Called when SpacesService or DevicesService notifies. Rebuilds state then
+  /// checks convergence so control state can clear pending when backend catches up.
   void _onDataChanged() {
     if (!mounted) return;
-    // Rebuild state and update UI
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         // Build state FIRST with current lock status
@@ -1286,8 +1316,20 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     });
   }
 
-  double _scale(double size) =>
-      _screenService.scale(size, density: _visualDensityService.density);
+  // --------------------------------------------------------------------------
+  // HELPERS
+  // --------------------------------------------------------------------------
+  // Scaling, setpoint range from API, and navigation (home / device sheets).
+
+  /// Min/max setpoint from [climateState] with safe defaults and normalized order.
+  (double, double) _getSetpointRange(spaces_climate.ClimateStateModel? climateState) {
+    final rawMin = climateState?.minSetpoint ?? 16.0;
+    final rawMax = climateState?.maxSetpoint ?? 30.0;
+    var minSp = math.min(rawMin, rawMax);
+    var maxSp = math.max(rawMin, rawMax);
+    if (maxSp <= minSp) maxSp = minSp + 1.0;
+    return (minSp, maxSp);
+  }
 
   void _navigateToHome() {
     final deck = _deckService?.deck;
@@ -1303,23 +1345,14 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     }
   }
 
+  // --------------------------------------------------------------------------
+  // MODE & SETPOINT ACTIONS
+  // --------------------------------------------------------------------------
+  // User changes mode or setpoint: set pending in control state, optimistic
+  // UI update, then call SpacesService API. Intent completion clears pending.
+
   void _setMode(ClimateMode mode) {
-    // Convert to API mode
-    spaces_climate.ClimateMode apiMode;
-    switch (mode) {
-      case ClimateMode.heat:
-        apiMode = spaces_climate.ClimateMode.heat;
-        break;
-      case ClimateMode.cool:
-        apiMode = spaces_climate.ClimateMode.cool;
-        break;
-      case ClimateMode.auto:
-        apiMode = spaces_climate.ClimateMode.auto;
-        break;
-      case ClimateMode.off:
-        apiMode = spaces_climate.ClimateMode.off;
-        break;
-    }
+    final apiMode = _toServiceClimateMode(mode);
 
     // Set pending state in control service (will lock UI to show desired value)
     _controlStateService.setPending(
@@ -1371,25 +1404,9 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   }
 
   void _setTargetTemp(double temp) {
-    if (kDebugMode) {
-      debugPrint('[ClimateDomainViewPage] _setTargetTemp called with temp=$temp');
-    }
-
     final climateState = _spacesService?.getClimateState(_roomId);
-    final rawMinSetpoint = climateState?.minSetpoint ?? 16.0;
-    final rawMaxSetpoint = climateState?.maxSetpoint ?? 30.0;
-    // Ensure min < max to prevent clamp() ArgumentError from malformed API data
-    var minSetpoint = math.min(rawMinSetpoint, rawMaxSetpoint);
-    var maxSetpoint = math.max(rawMinSetpoint, rawMaxSetpoint);
-    if (maxSetpoint <= minSetpoint) {
-      maxSetpoint = minSetpoint + 1.0;
-    }
+    final (minSetpoint, maxSetpoint) = _getSetpointRange(climateState);
     final clampedTemp = temp.clamp(minSetpoint, maxSetpoint);
-
-    if (kDebugMode) {
-      debugPrint(
-          '[ClimateDomainViewPage] _setTargetTemp: clampedTemp=$clampedTemp, roomId=$_roomId, spacesService=${_spacesService != null}');
-    }
 
     // Set pending state in control service (will lock UI to show desired value)
     _controlStateService.setPending(
@@ -1408,80 +1425,127 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         ?.setSetpoint(_roomId, clampedTemp,
             mode: _toServiceClimateMode(_state.mode))
         .then((result) {
-      if (kDebugMode) {
-        debugPrint(
-            '[ClimateDomainViewPage] setSetpoint result: affected=${result?.affectedDevices}, failed=${result?.failedDevices}');
-      }
       if (mounted) {
         IntentResultHandler.showOfflineAlertIfNeededForClimate(context, result);
-      }
-    }).catchError((e) {
-      if (kDebugMode) {
-        debugPrint('[ClimateDomainViewPage] setSetpoint error: $e');
       }
     });
   }
 
-  void _navigateToDetail() {
-    Navigator.push(
+  // --------------------------------------------------------------------------
+  // DEVICES BOTTOM SHEET
+  // --------------------------------------------------------------------------
+  // Sheet listing climate actuators; tiles open device detail (thermostat,
+  // heating unit, water heater, A/C). Auxiliary devices use [_openAuxiliaryDeviceDetail].
+
+  void _showClimateDevicesSheet() {
+    if (_state.climateDevices.isEmpty) return;
+    final localizations = AppLocalizations.of(context)!;
+
+    DeckItemSheet.showItemSheet(
       context,
-      MaterialPageRoute(
-        builder: (context) => ClimateRoleDetailPage(
-          roomId: _roomId,
-          roomName: _state.roomName,
-          initialMode: _state.mode,
-          initialCapability: _state.capability,
-          initialTargetTemp: _state.targetTemp,
-          currentTemp: _state.currentTemp,
-          minSetpoint: _state.minSetpoint,
-          maxSetpoint: _state.maxSetpoint,
-          climateDevices: _state.climateDevices,
-        ),
-      ),
+      title: localizations.climate_devices_section,
+      icon: MdiIcons.homeThermometer,
+      itemCount: _state.climateDevices.length,
+      itemBuilder: (context, index) =>
+          _buildClimateDeviceTileForSheet(context, _state.climateDevices[index]),
     );
   }
 
-  // Theme-aware color getters
-  Color _getModeColor(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    switch (_state.mode) {
-      case ClimateMode.off:
-        return isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
-      case ClimateMode.heat:
-        return isDark ? AppColorsDark.warning : AppColorsLight.warning;
-      case ClimateMode.cool:
-        return isDark ? AppColorsDark.info : AppColorsLight.info;
-      case ClimateMode.auto:
-        return isDark ? AppColorsDark.success : AppColorsLight.success;
+  Widget _buildClimateDeviceTileForSheet(
+    BuildContext context,
+    ClimateDevice device,
+  ) {
+    final localizations = AppLocalizations.of(context)!;
+    final deviceView = _devicesService?.getDevice(device.id);
+    final isOffline = deviceView != null && !deviceView.isOnline;
+    final tileIcon = deviceView != null
+        ? buildDeviceIcon(deviceView.category, deviceView.icon)
+        : device.icon;
+
+    return HorizontalTileStretched(
+      icon: tileIcon,
+      name: device.name,
+      status: isOffline
+          ? localizations.device_status_offline
+          : _translateDeviceStatus(localizations, device.status, device.isActive),
+      isActive: device.isActive,
+      isOffline: isOffline,
+      showWarningBadge: true,
+      activeColor: device.isActive ? _getModeColor() : null,
+      onTileTap: () {
+        Navigator.of(context).pop();
+        _openClimateDeviceDetail(device);
+      },
+    );
+  }
+
+  void _openClimateDeviceDetail(ClimateDevice climateDevice) {
+    final devicesService = locator<DevicesService>();
+    final deviceView = devicesService.getDevice(climateDevice.id);
+
+    Widget? detailPage;
+
+    if (deviceView is ThermostatDeviceView) {
+      detailPage = ThermostatDeviceDetail(device: deviceView);
+    } else if (deviceView is HeatingUnitDeviceView) {
+      detailPage = HeatingUnitDeviceDetail(device: deviceView);
+    } else if (deviceView is WaterHeaterDeviceView) {
+      detailPage = WaterHeaterDeviceDetail(device: deviceView);
+    } else if (deviceView is AirConditionerDeviceView) {
+      detailPage = AirConditionerDeviceDetail(device: deviceView);
+    }
+
+    if (detailPage != null) {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => detailPage!),
+      );
     }
   }
 
-  Color _getModeLightColor(BuildContext context) {
-    return getSemanticBackgroundColor(context, _getModeColor(context));
+  // --------------------------------------------------------------------------
+  // THEME & LABELS
+  // --------------------------------------------------------------------------
+  // Mode → theme color (warning/info/success/neutral), dial accent, and
+  // localized mode/status strings for header and dial.
+
+  /// Theme color for current or given mode. Use this (and [_getModeColorFamily])
+  /// for all mode-based colors; avoid using [ThemeColors] directly.
+  ThemeColors _getModeColor([ClimateMode? mode]) {
+    final m = mode ?? _state.mode;
+    switch (m) {
+      case ClimateMode.off:
+        return ThemeColors.neutral;
+      case ClimateMode.heat:
+        return ThemeColors.warning;
+      case ClimateMode.cool:
+        return ThemeColors.info;
+      case ClimateMode.auto:
+        return ThemeColors.success;
+    }
   }
 
-  Color _getSensorColor(BuildContext context, String type) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return SensorColors.forType(type, isDark);
-  }
+  /// Resolved colors for current mode (used for header subtitle and dial border).
+  ThemeColorFamily _getModeColorFamily(BuildContext context) =>
+      ThemeColorFamily.get(Theme.of(context).brightness, _getModeColor());
 
+  /// Dial glow/accent from current mode.
   DialAccentColor _getDialAccentType() {
-    switch (_state.mode) {
-      case ClimateMode.off:
-        return DialAccentColor.neutral;
-      case ClimateMode.heat:
+    switch (_getModeColor()) {
+      case ThemeColors.warning:
         return DialAccentColor.warning;
-      case ClimateMode.cool:
+      case ThemeColors.info:
         return DialAccentColor.info;
-      case ClimateMode.auto:
+      case ThemeColors.success:
         return DialAccentColor.success;
+      default:
+        return DialAccentColor.neutral;
     }
   }
 
+  /// True when room is actively heating or cooling (for dial glow and header color).
   bool _isDialActive() {
     final climateState = _spacesService?.getClimateState(_roomId);
     if (climateState == null) return false;
-    // Use actual device activity status from backend
     return climateState.isHeating || climateState.isCooling;
   }
 
@@ -1504,7 +1568,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     }
 
     final climateState = _spacesService?.getClimateState(_roomId);
-    final tempStr = '${_state.targetTemp.toStringAsFixed(0)}°C';
+    final tempStr = SensorUtils.formatNumericValueWithUnit(_state.targetTemp, DevicesModuleChannelCategory.temperature);
 
     if (climateState?.isCooling ?? false) {
       return localizations.thermostat_state_cooling_to(tempStr);
@@ -1515,19 +1579,35 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     return localizations.thermostat_state_idle_at(tempStr);
   }
 
+  // --------------------------------------------------------------------------
+  // BUILD
+  // --------------------------------------------------------------------------
+  // Scaffold with header; body is OrientationBuilder → portrait or landscape
+  // layout. Consumer<DevicesService> so list updates when devices change.
+
   @override
   Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    // Handle loading and error states using DomainStateView
+    final loadState = _isLoading
+        ? DomainLoadState.loading
+        : _hasError
+            ? DomainLoadState.error
+            : DomainLoadState.loaded;
+
+    if (loadState != DomainLoadState.loaded) {
+      return DomainStateView(
+        state: loadState,
+        onRetry: _retryLoad,
+        domainName: localizations.domain_climate,
+        child: const SizedBox.shrink(),
+      );
+    }
+
     return Consumer<DevicesService>(
       builder: (context, devicesService, _) {
-        final isDark = Theme.of(context).brightness == Brightness.dark;
-
-        if (_isLoading) {
-          return Scaffold(
-            backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
-            body: const Center(child: CircularProgressIndicator()),
-          );
-        }
-
         return Scaffold(
           backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
           body: SafeArea(
@@ -1554,63 +1634,37 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   // --------------------------------------------------------------------------
   // HEADER
   // --------------------------------------------------------------------------
+  // Title "Climate", status subtitle, thermostat icon; trailing: devices sheet
+  // (if >1 climate device), home button.
 
   Widget _buildHeader(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final modeColor = _getModeColor(context);
+    final modeColorFamily = _getModeColorFamily(context);
     final secondaryColor =
         isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
     final localizations = AppLocalizations.of(context)!;
+    final showDetailButton = _state.climateDevices.length > 1;
 
     return PageHeader(
       title: localizations.domain_climate,
       subtitle: _getStatusLabel(localizations),
-      subtitleColor: _isDialActive() ? modeColor : secondaryColor,
-      backgroundColor: AppColors.blank,
-      leading: HeaderDeviceIcon(
+      subtitleColor: _isDialActive() ? modeColorFamily.base : secondaryColor,
+      leading: HeaderMainIcon(
         icon: MdiIcons.thermostat,
-        backgroundColor: _getModeLightColor(context),
-        iconColor: modeColor,
+        color: _getModeColor(),
       ),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Current temperature display
-          Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: AppSpacings.pMd,
-              vertical: AppSpacings.pSm,
+          if (showDetailButton) ...[
+            HeaderIconButton(
+              icon: MdiIcons.homeThermometer,
+              onTap: _showClimateDevicesSheet,
             ),
-            decoration: BoxDecoration(
-              color: isDark ? AppFillColorDark.light : AppFillColorLight.darker,
-              borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  MdiIcons.thermometer,
-                  size: _scale(16),
-                  color: isDark
-                      ? AppTextColorDark.secondary
-                      : AppTextColorLight.secondary,
-                ),
-                AppSpacings.spacingXsHorizontal,
-                Text(
-                  '${NumberFormatUtils.defaultFormat.formatDecimal(_state.currentTemp, decimalPlaces: 1)}°C',
-                  style: TextStyle(
-                    color: isDark
-                        ? AppTextColorDark.primary
-                        : AppTextColorLight.primary,
-                    fontSize: AppFontSize.base,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          AppSpacings.spacingMdHorizontal,
-          HeaderHomeButton(
+            AppSpacings.spacingMdHorizontal,
+          ],
+          HeaderIconButton(
+            icon: MdiIcons.homeOutline,
             onTap: _navigateToHome,
           ),
         ],
@@ -1621,6 +1675,8 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   // --------------------------------------------------------------------------
   // PORTRAIT LAYOUT
   // --------------------------------------------------------------------------
+  // Primary dial card, optional sensors row, optional auxiliary grid; bottom
+  // mode selector via [PortraitViewLayout.modeSelector].
 
   Widget _buildPortraitLayout(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
@@ -1629,19 +1685,17 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
 
     return PortraitViewLayout(
       content: Column(
+        spacing: AppSpacings.pMd,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildPrimaryControlCard(context, dialSize: _scale(200)),
-          AppSpacings.spacingLgVertical,
+          _buildPrimaryControlCard(context, dialSize: AppSpacings.scale(DeviceDetailDialSizes.portrait)),
           // Sensors section - horizontal scroll like presets on window_covering.dart
           if (hasSensors) ...[
             SectionTitle(
               title: localizations.device_sensors,
               icon: MdiIcons.eyeSettings,
             ),
-            AppSpacings.spacingMdVertical,
             _buildSensorsWithGradient(context),
-            AppSpacings.spacingLgVertical,
           ],
           // Auxiliary section - same as devices on covering domain
           if (hasAuxiliary) ...[
@@ -1649,20 +1703,17 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
               title: localizations.climate_role_auxiliary,
               icon: MdiIcons.devices,
             ),
-            AppSpacings.spacingMdVertical,
             _buildPortraitAuxiliaryGrid(context),
           ],
         ],
       ),
-      // No mode selector - climate uses integrated mode control in dial
+      modeSelector: _buildModeSelector(context),
     );
   }
 
-  /// Builds the sensors horizontal scroll with edge gradients.
-  /// Matches the presets pattern from window_covering.dart.
   Widget _buildSensorsWithGradient(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
-    final tileHeight = _scale(AppTileHeight.horizontal);
+    final tileHeight = AppSpacings.scale(AppTileHeight.horizontal);
 
     return HorizontalScrollWithGradient(
       height: tileHeight,
@@ -1676,19 +1727,15 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           icon: sensor.icon,
           name: sensor.isOnline ? sensor.value : _translateSensorLabel(localizations, sensor),
           status: sensor.isOnline ? _translateSensorLabel(localizations, sensor) : localizations.device_status_offline,
-          iconAccentColor: _getSensorColor(context, sensor.type),
+          iconAccentColor: SensorColors.themeColorForCategory(sensor.type),
           isOffline: !sensor.isOnline,
           showWarningBadge: true,
-          onTileTap: () {
-            // TODO: Sensor detail
-          },
+          onTileTap: _sensorTapCallback(sensor),
         );
       },
     );
   }
 
-  /// Builds a grid of auxiliary device tiles with fixed height.
-  /// Matches the devices pattern from covering domain view.
   Widget _buildPortraitAuxiliaryGrid(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
     final devices = _state.auxiliaryDevices;
@@ -1704,11 +1751,14 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           final device = devices[index];
           final deviceView = _devicesService?.getDevice(device.id);
           final isOffline = deviceView != null && !deviceView.isOnline;
+          final tileIcon = deviceView != null
+              ? buildDeviceIcon(deviceView.category, deviceView.icon)
+              : device.icon;
 
           rowItems.add(
             Expanded(
               child: DeviceTilePortrait(
-                icon: device.icon,
+                icon: tileIcon,
                 name: device.name,
                 status: _translateDeviceStatus(localizations, device.status, device.isActive),
                 isActive: device.isActive,
@@ -1721,39 +1771,39 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         } else {
           rowItems.add(const Expanded(child: SizedBox()));
         }
-        if (j < crossAxisCount - 1) {
-          rowItems.add(SizedBox(width: AppSpacings.pMd));
-        }
       }
-      if (rows.isNotEmpty) {
-        rows.add(SizedBox(height: AppSpacings.pMd));
-      }
-      rows.add(Row(children: rowItems));
+      rows.add(Row(spacing: AppSpacings.pMd, children: rowItems));
     }
 
-    return Column(children: rows);
+    return Column(spacing: AppSpacings.pMd, children: rows);
   }
 
   // --------------------------------------------------------------------------
   // LANDSCAPE LAYOUT
   // --------------------------------------------------------------------------
+  // [LandscapeViewLayout]: main = compact dial (or full dial on large);
+  // mode selector on side; optional additional column = sensors + auxiliary.
 
   Widget _buildLandscapeLayout(BuildContext context) {
     final hasSensors = _state.sensors.isNotEmpty;
     final hasAuxiliary = _state.auxiliaryDevices.isNotEmpty;
     final hasAdditionalContent = hasSensors || hasAuxiliary;
 
+    final isLargeScreen = _screenService.isLargeScreen;
+
     return LandscapeViewLayout(
       mainContent: _buildLandscapeMainContent(context),
+      modeSelector: _buildLandscapeModeSelector(context, showLabels: isLargeScreen),
+      modeSelectorShowLabels: isLargeScreen,
       additionalContent: hasAdditionalContent
           ? _buildLandscapeAdditionalColumn(context)
           : null,
     );
   }
 
+  /// Main content in landscape: compact dial; mode selector is in layout slot.
   Widget _buildLandscapeMainContent(BuildContext context) {
-    // All sizes: compact dial with integrated mode selector that fills space
-    return _buildCompactDialWithModes(context);
+    return _buildCompactDial(context);
   }
 
   Widget _buildLandscapeAdditionalColumn(BuildContext context) {
@@ -1767,25 +1817,31 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     // Sensors section - displayed as a card (like presets on window_covering.dart)
     if (hasSensors) {
       contentWidgets.add(
-        SectionTitle(title: localizations.device_sensors, icon: MdiIcons.eyeSettings),
+        Column(
+          spacing: AppSpacings.pMd,
+          children: [
+            SectionTitle(title: localizations.device_sensors, icon: MdiIcons.eyeSettings),
+            _buildLandscapeSensorsCard(context),
+          ],
+        ),
       );
-      contentWidgets.add(_buildLandscapeSensorsCard(context));
     }
 
     // Auxiliary section - displayed as individual tiles (like devices on covering domain)
     if (hasAuxiliary) {
-      contentWidgets.add(
-        SectionTitle(title: localizations.climate_role_auxiliary, icon: MdiIcons.devices),
-      );
+      final auxiliaryDevices = <Widget>[];
 
       // Add each auxiliary device as an individual tile
       for (final device in _state.auxiliaryDevices) {
         final deviceView = _devicesService?.getDevice(device.id);
         final isOffline = deviceView != null && !deviceView.isOnline;
+        final tileIcon = deviceView != null
+            ? buildDeviceIcon(deviceView.category, deviceView.icon)
+            : device.icon;
 
-        contentWidgets.add(
+        auxiliaryDevices.add(
           DeviceTileLandscape(
-            icon: device.icon,
+            icon: tileIcon,
             name: device.name,
             status: _translateDeviceStatus(localizations, device.status, device.isActive),
             isActive: device.isActive,
@@ -1795,22 +1851,30 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           ),
         );
       }
+
+      contentWidgets.add(
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          spacing: AppSpacings.pMd,
+          children: [
+            SectionTitle(title: localizations.climate_role_auxiliary, icon: MdiIcons.devices),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              spacing: AppSpacings.pMd,
+              children: auxiliaryDevices,
+            ),
+          ],
+        ),
+      );
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        for (int i = 0; i < contentWidgets.length; i++) ...[
-          if (i > 0) SizedBox(height: AppSpacings.pMd),
-          contentWidgets[i],
-        ],
-      ],
+      spacing: AppSpacings.pMd,
+      children: contentWidgets,
     );
   }
 
-  /// Build sensors card matching the presets pattern from window_covering.dart.
-  /// Large screens: 2 vertical tiles per row (square).
-  /// Small/medium screens: Column of fixed-height horizontal tiles.
   Widget _buildLandscapeSensorsCard(BuildContext context) {
     final isLargeScreen = _screenService.isLargeScreen;
     final localizations = AppLocalizations.of(context)!;
@@ -1830,12 +1894,10 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             icon: sensor.icon,
             name: sensor.isOnline ? sensor.value : _translateSensorLabel(localizations, sensor),
             status: sensor.isOnline ? _translateSensorLabel(localizations, sensor) : localizations.device_status_offline,
-            iconAccentColor: _getSensorColor(context, sensor.type),
+            iconAccentColor: SensorColors.themeColorForCategory(sensor.type),
             isOffline: !sensor.isOnline,
             showWarningBadge: true,
-            onTileTap: () {
-              // TODO: Sensor detail
-            },
+            onTileTap: _sensorTapCallback(sensor),
           );
         }).toList(),
       );
@@ -1854,132 +1916,54 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             icon: sensor.icon,
             name: sensor.isOnline ? sensor.value : _translateSensorLabel(localizations, sensor),
             status: sensor.isOnline ? _translateSensorLabel(localizations, sensor) : localizations.device_status_offline,
-            iconAccentColor: _getSensorColor(context, sensor.type),
+            iconAccentColor: SensorColors.themeColorForCategory(sensor.type),
             isOffline: !sensor.isOnline,
             showWarningBadge: true,
-            onTileTap: () {
-              // TODO: Sensor detail
-            },
+            onTileTap: _sensorTapCallback(sensor),
           ),
         );
       }).toList(),
     );
   }
 
-  /// Compact dial with vertical icon-only mode selector on the right
-  Widget _buildCompactDialWithModes(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+  Widget _buildCompactDial(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
-    final modeColor = _getModeColor(context);
-    final borderColor = _state.mode != ClimateMode.off
-        ? modeColor.withValues(alpha: 0.3)
-        : (isDark ? AppBorderColorDark.light : AppBorderColorLight.light);
+    return AppCard(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final dialSize =
+              math.min(constraints.maxWidth, constraints.maxHeight).clamp(120.0, 400.0);
 
-    // Use darker bg in dark mode for better contrast with dial inner background
-    final cardColor =
-        isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
-
-    // Only show "tap for details" when there are multiple climate devices
-    final showDetailHint = _state.climateDevices.length > 1;
-
-    // Use less bottom padding on small/medium to fit hint text
-    final cardPadding = _screenService.isLargeScreen || !showDetailHint
-        ? AppSpacings.paddingLg
-        : EdgeInsets.fromLTRB(
-            AppSpacings.pLg, AppSpacings.pLg, AppSpacings.pLg, AppSpacings.pSm);
-
-    return GestureDetector(
-      onTap: showDetailHint ? _navigateToDetail : null,
-      child: Container(
-        padding: cardPadding,
-        decoration: BoxDecoration(
-          color: cardColor,
-          borderRadius: BorderRadius.circular(AppBorderRadius.round),
-          border: Border.all(color: borderColor, width: _scale(1)),
-        ),
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final modeIconsWidth = _scale(50);
-            final spacing = AppSpacings.pXl;
-            final availableForDial =
-                constraints.maxWidth - modeIconsWidth - spacing;
-            // Reserve space for hint text + spacing on small/medium devices
-            final hintHeight = _screenService.isLargeScreen || !showDetailHint
-                ? 0.0
-                : _scale(16) + AppSpacings.pXs;
-            final maxDialHeight = constraints.maxHeight - hintHeight;
-            final dialSize =
-                math.min(availableForDial, maxDialHeight).clamp(120.0, 500.0);
-
-            final hintSpacing =
-                _screenService.isLargeScreen ? AppSpacings.pSm : AppSpacings.pXs;
-
-            return Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    CircularControlDial(
-                      value: _state.targetTemp,
-                      currentValue: _state.currentTemp,
-                      minValue: _state.minSetpoint,
-                      maxValue: _state.maxSetpoint,
-                      step: 0.5,
-                      size: dialSize,
-                      accentType: _getDialAccentType(),
-                      isActive: _isDialActive(),
-                      enabled: _state.mode != ClimateMode.off,
-                      modeLabel: _getModeLabel(localizations),
-                      displayFormat: DialDisplayFormat.temperature,
-                      onChanged: _setTargetTemp,
-                    ),
-                    AppSpacings.spacingXlHorizontal,
-                    _buildVerticalModeIcons(context),
-                  ],
-                ),
-                if (showDetailHint) ...[
-                  SizedBox(height: hintSpacing),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        localizations.climate_tap_for_details,
-                        style: TextStyle(
-                          color: isDark
-                              ? AppTextColorDark.secondary
-                              : AppTextColorLight.secondary,
-                          fontSize: AppFontSize.extraSmall,
-                        ),
-                      ),
-                      AppSpacings.spacingXsHorizontal,
-                      Icon(
-                        MdiIcons.chevronRight,
-                        color: isDark
-                            ? AppTextColorDark.secondary
-                            : AppTextColorLight.secondary,
-                        size: _scale(14),
-                      ),
-                    ],
-                  ),
-                ],
-              ],
-            );
-          },
-        ),
+          return Center(
+            child: CircularControlDial(
+              value: _state.targetTemp,
+              currentValue: _state.currentTemp,
+              minValue: _state.minSetpoint,
+              maxValue: _state.maxSetpoint,
+              step: 0.5,
+              size: dialSize,
+              accentType: _getDialAccentType(),
+              isActive: _isDialActive(),
+              enabled: _state.mode != ClimateMode.off,
+              modeLabel: _getModeLabel(localizations),
+              displayFormat: DialDisplayFormat.temperature,
+              onChanged: _setTargetTemp,
+            ),
+          );
+        },
       ),
     );
   }
 
-  /// Vertical column of icon-only mode buttons
-  Widget _buildVerticalModeIcons(BuildContext context) {
+  Widget _buildLandscapeModeSelector(BuildContext context, {bool showLabels = false}) {
     final localizations = AppLocalizations.of(context)!;
     return ModeSelector<ClimateMode>(
       modes: _getClimateModeOptions(localizations),
       selectedValue: _state.mode,
       onChanged: _setMode,
       orientation: ModeSelectorOrientation.vertical,
-      showLabels: false,
+      iconPlacement: ModeSelectorIconPlacement.top,
+      showLabels: showLabels,
     );
   }
 
@@ -1994,7 +1978,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     //     value: ClimateMode.auto,
     //     icon: MdiIcons.thermometerAuto,
     //     label: localizations.thermostat_mode_auto,
-    //     color: ModeSelectorColor.success,
+    //     color: _getModeColor(ClimateMode.auto),
     //   ));
     // }
     if (_state.capability == RoomCapability.heaterOnly ||
@@ -2003,7 +1987,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         value: ClimateMode.heat,
         icon: MdiIcons.fireCircle,
         label: localizations.thermostat_mode_heat,
-        color: ModeSelectorColor.warning,
+        color: _getModeColor(ClimateMode.heat),
       ));
     }
     if (_state.capability == RoomCapability.coolerOnly ||
@@ -2012,14 +1996,14 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         value: ClimateMode.cool,
         icon: MdiIcons.snowflake,
         label: localizations.thermostat_mode_cool,
-        color: ModeSelectorColor.info,
+        color: _getModeColor(ClimateMode.cool),
       ));
     }
     modes.add(ModeOption(
       value: ClimateMode.off,
       icon: MdiIcons.power,
       label: localizations.thermostat_mode_off,
-      color: ModeSelectorColor.neutral,
+      color: _getModeColor(ClimateMode.off),
     ));
 
     return modes;
@@ -2028,79 +2012,33 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   // --------------------------------------------------------------------------
   // PRIMARY CONTROL CARD
   // --------------------------------------------------------------------------
+  // Portrait: card with [CircularControlDial] only. Landscape uses [_buildCompactDial].
 
   Widget _buildPrimaryControlCard(
     BuildContext context, {
     required double dialSize,
   }) {
     final localizations = AppLocalizations.of(context)!;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final modeColor = _getModeColor(context);
-    final borderColor = _state.mode != ClimateMode.off
-        ? modeColor.withValues(alpha: 0.3)
-        : (isDark ? AppBorderColorDark.light : AppBorderColorLight.light);
-    // Use darker bg in dark mode for better contrast with dial inner background
-    final cardColor =
-        isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
-
-    // Only show "tap for details" when there are multiple climate devices
-    final showDetailHint = _state.climateDevices.length > 1;
-
-    return GestureDetector(
-      onTap: showDetailHint ? _navigateToDetail : null,
-      child: Container(
-        padding: AppSpacings.paddingLg,
-        decoration: BoxDecoration(
-          color: cardColor,
-          borderRadius: BorderRadius.circular(AppBorderRadius.round),
-          border: Border.all(color: borderColor, width: _scale(1)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircularControlDial(
-              value: _state.targetTemp,
-              currentValue: _state.currentTemp,
-              minValue: _state.minSetpoint,
-              maxValue: _state.maxSetpoint,
-              step: 0.5,
-              size: dialSize,
-              accentType: _getDialAccentType(),
-              isActive: _isDialActive(),
-              enabled: _state.mode != ClimateMode.off,
-              modeLabel: _getModeLabel(localizations),
-              displayFormat: DialDisplayFormat.temperature,
-              onChanged: _setTargetTemp,
-            ),
-            AppSpacings.spacingMdVertical,
-            _buildModeSelector(context),
-            if (showDetailHint) ...[
-              AppSpacings.spacingSmVertical,
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    localizations.climate_tap_for_details,
-                    style: TextStyle(
-                      color: isDark
-                          ? AppTextColorDark.secondary
-                          : AppTextColorLight.secondary,
-                      fontSize: AppFontSize.extraSmall,
-                    ),
-                  ),
-                  AppSpacings.spacingXsHorizontal,
-                  Icon(
-                    MdiIcons.chevronRight,
-                    color: isDark
-                        ? AppTextColorDark.secondary
-                        : AppTextColorLight.secondary,
-                    size: _scale(14),
-                  ),
-                ],
-              ),
-            ],
-          ],
-        ),
+    return AppCard(
+      width: double.infinity,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircularControlDial(
+            value: _state.targetTemp,
+            currentValue: _state.currentTemp,
+            minValue: _state.minSetpoint,
+            maxValue: _state.maxSetpoint,
+            step: 0.5,
+            size: dialSize,
+            accentType: _getDialAccentType(),
+            isActive: _isDialActive(),
+            enabled: _state.mode != ClimateMode.off,
+            modeLabel: _getModeLabel(localizations),
+            displayFormat: DialDisplayFormat.temperature,
+            onChanged: _setTargetTemp,
+          ),
+        ],
       ),
     );
   }
@@ -2112,21 +2050,37 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
       selectedValue: _state.mode,
       onChanged: _setMode,
       orientation: ModeSelectorOrientation.horizontal,
-      iconPlacement: ModeSelectorIconPlacement.left,
+      iconPlacement: ModeSelectorIconPlacement.top,
+      showLabels: true,
     );
   }
 
   // --------------------------------------------------------------------------
   // SENSORS
   // --------------------------------------------------------------------------
+  // Localized labels for sensor tiles (temp, humidity, etc.).
 
-  /// Translates sensor label based on type
+  /// Returns a tap callback that navigates to [SensorChannelDetailPage] if the
+  /// sensor has associated [SensorData]; otherwise returns null (no tap action).
+  VoidCallback? _sensorTapCallback(ClimateSensor sensor) {
+    final data = sensor.sensorData;
+    if (data == null) return null;
+    return () => Navigator.of(context).push(MaterialPageRoute(
+          builder: (_) => SensorChannelDetailPage(
+            sensor: data,
+            deviceName: sensor.deviceName ?? '',
+            isDeviceOnline: sensor.isOnline,
+          ),
+        ));
+  }
+
+  /// Localized label for sensor type (e.g. temperature, humidity) or [sensor.label].
   String _translateSensorLabel(
       AppLocalizations localizations, ClimateSensor sensor) {
     switch (sensor.type) {
-      case 'temp':
+      case DevicesModuleChannelCategory.temperature:
         return localizations.device_temperature;
-      case 'humidity':
+      case DevicesModuleChannelCategory.humidity:
         return localizations.device_humidity;
       default:
         return sensor.label;
@@ -2136,8 +2090,9 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   // --------------------------------------------------------------------------
   // AUXILIARY
   // --------------------------------------------------------------------------
+  // Device status localization, toggle handler, and navigation to device detail.
 
-  /// Translates device status string to localized version
+  /// Maps raw status string (Off, On, Heating, etc.) to localized label.
   String _translateDeviceStatus(
       AppLocalizations localizations, String? status, bool isActive) {
     if (status == null) {
@@ -2163,7 +2118,8 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     }
   }
 
-  /// Toggles the on/off state of an auxiliary device
+  /// Toggles on/off for [auxiliaryDevice]: optimistic UI via DeviceControlStateService
+  /// and IntentOverlayService, then [DevicesService.setMultiplePropertyValues].
   Future<void> _toggleAuxiliaryDevice(AuxiliaryDevice auxiliaryDevice) async {
     final devicesService = _devicesService;
     if (devicesService == null) return;
@@ -2279,7 +2235,6 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     );
   }
 
-  /// Opens the detail page for an auxiliary device
   void _openAuxiliaryDeviceDetail(AuxiliaryDevice auxiliaryDevice) {
     final devicesService = locator<DevicesService>();
     final deviceView = devicesService.getDevice(auxiliaryDevice.id);

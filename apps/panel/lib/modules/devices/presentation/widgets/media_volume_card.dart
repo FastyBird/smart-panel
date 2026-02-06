@@ -1,7 +1,11 @@
+import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
+import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/slider_with_steps.dart';
+import 'package:fastybird_smart_panel/core/widgets/card_slider.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 class MediaVolumeCard extends StatelessWidget {
@@ -9,10 +13,9 @@ class MediaVolumeCard extends StatelessWidget {
 	final bool isMuted;
 	final bool hasMute;
 	final bool isEnabled;
-	final Color accentColor;
+	final ThemeColors themeColor;
 	final ValueChanged<int> onVolumeChanged;
 	final VoidCallback? onMuteToggle;
-	final double Function(double) scale;
 
 	const MediaVolumeCard({
 		super.key,
@@ -20,99 +23,129 @@ class MediaVolumeCard extends StatelessWidget {
 		required this.isMuted,
 		required this.hasMute,
 		required this.isEnabled,
-		required this.accentColor,
+		this.themeColor = ThemeColors.primary,
 		required this.onVolumeChanged,
 		this.onMuteToggle,
-		required this.scale,
 	});
+
+	static (FilledButtonThemeData theme, Color foreground) _filledButtonFor(
+		Brightness brightness,
+		ThemeColors key,
+	) {
+		final isDark = brightness == Brightness.dark;
+		if (isDark) {
+			switch (key) {
+				case ThemeColors.primary:
+					return (AppFilledButtonsDarkThemes.primary, AppFilledButtonsDarkThemes.primaryForegroundColor);
+				case ThemeColors.success:
+					return (AppFilledButtonsDarkThemes.success, AppFilledButtonsDarkThemes.successForegroundColor);
+				case ThemeColors.warning:
+					return (AppFilledButtonsDarkThemes.warning, AppFilledButtonsDarkThemes.warningForegroundColor);
+				case ThemeColors.danger:
+					return (AppFilledButtonsDarkThemes.danger, AppFilledButtonsDarkThemes.dangerForegroundColor);
+				case ThemeColors.error:
+					return (AppFilledButtonsDarkThemes.error, AppFilledButtonsDarkThemes.errorForegroundColor);
+				case ThemeColors.info:
+					return (AppFilledButtonsDarkThemes.info, AppFilledButtonsDarkThemes.infoForegroundColor);
+				case ThemeColors.neutral:
+					return (AppFilledButtonsDarkThemes.neutral, AppFilledButtonsDarkThemes.neutralForegroundColor);
+				case ThemeColors.flutter:
+					return (AppFilledButtonsDarkThemes.flutter, AppFilledButtonsDarkThemes.flutterForegroundColor);
+				case ThemeColors.teal:
+					return (AppFilledButtonsDarkThemes.teal, AppFilledButtonsDarkThemes.tealForegroundColor);
+				case ThemeColors.cyan:
+					return (AppFilledButtonsDarkThemes.cyan, AppFilledButtonsDarkThemes.cyanForegroundColor);
+				case ThemeColors.pink:
+					return (AppFilledButtonsDarkThemes.pink, AppFilledButtonsDarkThemes.pinkForegroundColor);
+				case ThemeColors.indigo:
+					return (AppFilledButtonsDarkThemes.indigo, AppFilledButtonsDarkThemes.indigoForegroundColor);
+			}
+		} else {
+			switch (key) {
+				case ThemeColors.primary:
+					return (AppFilledButtonsLightThemes.primary, AppFilledButtonsLightThemes.primaryForegroundColor);
+				case ThemeColors.success:
+					return (AppFilledButtonsLightThemes.success, AppFilledButtonsLightThemes.successForegroundColor);
+				case ThemeColors.warning:
+					return (AppFilledButtonsLightThemes.warning, AppFilledButtonsLightThemes.warningForegroundColor);
+				case ThemeColors.danger:
+					return (AppFilledButtonsLightThemes.danger, AppFilledButtonsLightThemes.dangerForegroundColor);
+				case ThemeColors.error:
+					return (AppFilledButtonsLightThemes.error, AppFilledButtonsLightThemes.errorForegroundColor);
+				case ThemeColors.info:
+					return (AppFilledButtonsLightThemes.info, AppFilledButtonsLightThemes.infoForegroundColor);
+				case ThemeColors.neutral:
+					return (AppFilledButtonsLightThemes.neutral, AppFilledButtonsLightThemes.neutralForegroundColor);
+				case ThemeColors.flutter:
+					return (AppFilledButtonsLightThemes.flutter, AppFilledButtonsLightThemes.flutterForegroundColor);
+				case ThemeColors.teal:
+					return (AppFilledButtonsLightThemes.teal, AppFilledButtonsLightThemes.tealForegroundColor);
+				case ThemeColors.cyan:
+					return (AppFilledButtonsLightThemes.cyan, AppFilledButtonsLightThemes.cyanForegroundColor);
+				case ThemeColors.pink:
+					return (AppFilledButtonsLightThemes.pink, AppFilledButtonsLightThemes.pinkForegroundColor);
+				case ThemeColors.indigo:
+					return (AppFilledButtonsLightThemes.indigo, AppFilledButtonsLightThemes.indigoForegroundColor);
+			}
+		}
+	}
 
 	@override
 	Widget build(BuildContext context) {
-		final isDark = Theme.of(context).brightness == Brightness.dark;
 		final localizations = AppLocalizations.of(context)!;
-		final cardColor = isDark ? AppFillColorDark.light : AppFillColorLight.light;
-		final borderColor = isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
+		final brightness = Theme.of(context).brightness;
+		final isDark = brightness == Brightness.dark;
+		final screenService = locator<ScreenService>();
+		final visualDensityService = locator<VisualDensityService>();
+		final scale = (double v) => screenService.scale(v, density: visualDensityService.density);
 		final columnWidth = scale(40);
+		final textColor = isDark ? AppTextColorDark.primary : AppTextColorLight.primary;
 
-		return Container(
-			padding: AppSpacings.paddingLg,
-			decoration: BoxDecoration(
-				color: cardColor,
-				borderRadius: BorderRadius.circular(AppBorderRadius.round),
-				border: Border.all(color: borderColor, width: scale(1)),
-			),
-			child: Column(
-				crossAxisAlignment: CrossAxisAlignment.start,
-				children: [
-					Row(
-						children: [
-							Icon(MdiIcons.speaker, size: AppFontSize.small, color: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary),
-							AppSpacings.spacingSmHorizontal,
-							Text(
-								localizations.media_volume.toUpperCase(),
-								style: TextStyle(fontSize: AppFontSize.small, fontWeight: FontWeight.bold, color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary),
+		final (muteTheme, muteFg) = _filledButtonFor(brightness, isMuted ? themeColor : ThemeColors.neutral);
+
+		final leading = hasMute
+			? SizedBox(
+					width: columnWidth,
+					child: Theme(
+						data: Theme.of(context).copyWith(filledButtonTheme: muteTheme),
+						child: FilledButton(
+							onPressed: isEnabled ? () { HapticFeedback.lightImpact(); onMuteToggle?.call(); } : null,
+							style: FilledButton.styleFrom(padding: AppSpacings.paddingMd),
+							child: Icon(
+								isMuted ? MdiIcons.volumeOff : MdiIcons.volumeHigh,
+								size: AppFontSize.large,
+								color: muteFg,
 							),
-						],
+						),
 					),
-					AppSpacings.spacingMdVertical,
-					Row(
-						children: [
-							if (hasMute) ...[
-								SizedBox(
-									width: columnWidth,
-									child: Material(
-										color: isMuted
-											? (isDark ? AppColorsDark.infoLight5 : AppColorsLight.infoLight9)
-											: (isDark ? AppFillColorDark.base : AppFillColorLight.base),
-										borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-										child: InkWell(
-											onTap: isEnabled ? onMuteToggle : null,
-											borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-											child: Container(
-												padding: EdgeInsets.all(AppSpacings.pMd),
-												decoration: BoxDecoration(
-													border: isMuted || isDark ? null : Border.all(color: AppBorderColorLight.base),
-													borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-												),
-												child: Icon(
-													isMuted ? MdiIcons.volumeOff : MdiIcons.volumeHigh,
-													size: AppFontSize.large,
-													color: isMuted
-														? accentColor
-														: (isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary),
-												),
-											),
-										),
-									),
-								),
-								AppSpacings.spacingMdHorizontal,
-							],
-							Expanded(
-								child: SliderWithSteps(
-									value: volume / 100,
-									activeColor: accentColor,
-									showSteps: false,
-									enabled: isEnabled,
-									onChanged: (val) => onVolumeChanged((val * 100).round()),
-								),
-							),
-							AppSpacings.spacingMdHorizontal,
-							SizedBox(
-								width: columnWidth,
-								child: Text(
-									localizations.media_volume_percent(volume),
-									style: TextStyle(
-										fontSize: AppFontSize.small,
-										fontWeight: FontWeight.w600,
-										color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
-									),
-									textAlign: TextAlign.right,
-								),
-							),
-						],
-					),
-				],
+				)
+			: null;
+
+		final trailing = SizedBox(
+			width: columnWidth,
+			child: Text(
+				localizations.media_volume_percent(volume),
+				style: TextStyle(
+					fontSize: AppFontSize.small,
+					fontWeight: FontWeight.w600,
+					color: textColor,
+				),
+				textAlign: TextAlign.right,
 			),
+		);
+
+		return CardSlider(
+			label: localizations.media_volume,
+			icon: MdiIcons.speaker,
+			value: volume / 100,
+			onChanged: (val) => onVolumeChanged((val * 100).round()),
+			discrete: false,
+			showSteps: false,
+			showHeaderValue: false,
+			enabled: isEnabled,
+			themeColor: themeColor,
+			leading: leading,
+			trailing: trailing,
 		);
 	}
 }

@@ -1,3 +1,4 @@
+import 'package:fastybird_smart_panel/api/models/devices_module_channel_category.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/climate_domain_view.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -145,36 +146,15 @@ void main() {
       expect(device.icon, MdiIcons.airHumidifierOff);
     });
 
-    test('should identify humidity control devices', () {
-      const humidifier = AuxiliaryDevice(
-        id: 'h1',
-        name: 'Humidifier',
-        type: AuxiliaryType.humidifier,
-      );
-      const dehumidifier = AuxiliaryDevice(
-        id: 'd1',
-        name: 'Dehumidifier',
-        type: AuxiliaryType.dehumidifier,
-      );
-      const fan = AuxiliaryDevice(
-        id: 'f1',
-        name: 'Fan',
-        type: AuxiliaryType.fan,
-      );
-
-      expect(humidifier.isHumidityControl, true);
-      expect(dehumidifier.isHumidityControl, true);
-      expect(fan.isHumidityControl, false);
-    });
   });
 
   group('ClimateSensor', () {
-    test('should return correct icon for temp type', () {
+    test('should return correct icon for temperature type', () {
       const sensor = ClimateSensor(
         id: 't1',
         label: 'Temperature',
         value: '21°C',
-        type: 'temp',
+        type: DevicesModuleChannelCategory.temperature,
       );
       expect(sensor.icon, MdiIcons.thermometer);
     });
@@ -184,47 +164,47 @@ void main() {
         id: 'h1',
         label: 'Humidity',
         value: '50%',
-        type: 'humidity',
+        type: DevicesModuleChannelCategory.humidity,
       );
       expect(sensor.icon, MdiIcons.waterPercent);
     });
 
-    test('should return correct icon for aqi type', () {
+    test('should return correct icon for air quality type', () {
       const sensor = ClimateSensor(
         id: 'a1',
         label: 'Air Quality',
         value: '50',
-        type: 'aqi',
+        type: DevicesModuleChannelCategory.airQuality,
       );
       expect(sensor.icon, MdiIcons.airFilter);
     });
 
-    test('should return correct icon for pm type', () {
+    test('should return correct icon for air particulate type', () {
       const sensor = ClimateSensor(
         id: 'pm1',
         label: 'PM2.5',
         value: '25 µg/m³',
-        type: 'pm',
+        type: DevicesModuleChannelCategory.airParticulate,
       );
       expect(sensor.icon, MdiIcons.blur);
     });
 
-    test('should return correct icon for co2 type', () {
+    test('should return correct icon for carbon dioxide type', () {
       const sensor = ClimateSensor(
         id: 'co2_1',
         label: 'CO2',
         value: '450 ppm',
-        type: 'co2',
+        type: DevicesModuleChannelCategory.carbonDioxide,
       );
       expect(sensor.icon, MdiIcons.moleculeCo2);
     });
 
-    test('should return correct icon for voc type', () {
+    test('should return correct icon for VOC type', () {
       const sensor = ClimateSensor(
         id: 'voc1',
         label: 'VOC',
         value: '100 ppb',
-        type: 'voc',
+        type: DevicesModuleChannelCategory.volatileOrganicCompounds,
       );
       expect(sensor.icon, MdiIcons.molecule);
     });
@@ -234,7 +214,7 @@ void main() {
         id: 'p1',
         label: 'Pressure',
         value: '1013 hPa',
-        type: 'pressure',
+        type: DevicesModuleChannelCategory.pressure,
       );
       expect(sensor.icon, MdiIcons.gauge);
     });
@@ -244,44 +224,16 @@ void main() {
         id: 'u1',
         label: 'Unknown',
         value: '??',
-        type: 'unknown',
+        type: DevicesModuleChannelCategory.generic,
       );
-      expect(sensor.icon, MdiIcons.eyeSettings);
+      expect(sensor.icon, MdiIcons.chip);
     });
   });
 
   group('ClimateRoomState', () {
     // Note: modeLabel tests removed - mode labels are now localized via _getModeLabel()
-
-    test('should filter humidity devices correctly', () {
-      const state = ClimateRoomState(
-        roomName: 'Test Room',
-        auxiliaryDevices: [
-          AuxiliaryDevice(
-              id: 'h1', name: 'Humidifier', type: AuxiliaryType.humidifier),
-          AuxiliaryDevice(
-              id: 'd1', name: 'Dehumidifier', type: AuxiliaryType.dehumidifier),
-          AuxiliaryDevice(id: 'f1', name: 'Fan', type: AuxiliaryType.fan),
-          AuxiliaryDevice(
-              id: 'p1', name: 'Purifier', type: AuxiliaryType.purifier),
-        ],
-      );
-
-      expect(state.humidityDevices.length, 2);
-      expect(state.otherAuxiliary.length, 2);
-      expect(state.hasHumidityControl, true);
-    });
-
-    test('should return hasHumidityControl false when no humidity devices', () {
-      const state = ClimateRoomState(
-        roomName: 'Test Room',
-        auxiliaryDevices: [
-          AuxiliaryDevice(id: 'f1', name: 'Fan', type: AuxiliaryType.fan),
-        ],
-      );
-
-      expect(state.hasHumidityControl, false);
-    });
+    // Note: humidity filtering tests removed - humidityDevices/otherAuxiliary/hasHumidityControl
+    //       properties were removed from ClimateRoomState
 
     test('should copy state correctly', () {
       const state = ClimateRoomState(

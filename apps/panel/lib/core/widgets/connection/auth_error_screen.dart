@@ -66,7 +66,7 @@ class AuthErrorScreen extends StatelessWidget {
                       ),
                       textAlign: TextAlign.center,
                     ),
-                    SizedBox(height: AppSpacings.pMd),
+                    AppSpacings.spacingMdVertical,
                     // Message
                     Text(
                       localizations.connection_auth_error_message,
@@ -77,24 +77,52 @@ class AuthErrorScreen extends StatelessWidget {
                         height: 1.5,
                       ),
                     ),
-                    SizedBox(height: AppSpacings.pXl),
+                    AppSpacings.spacingXlVertical,
                     // Reset device button
                     if (isLandscape)
-                      SystemPagePrimaryButton(
-                        label: localizations.connection_auth_error_button_reset,
-                        icon: MdiIcons.restart,
-                        onPressed: onReset,
-                        isDark: isDark,
+                      Theme(
+                        data: Theme.of(context).copyWith(
+                          filledButtonTheme: isDark
+                              ? AppFilledButtonsDarkThemes.primary
+                              : AppFilledButtonsLightThemes.primary,
+                        ),
+                        child: FilledButton.icon(
+                          onPressed: onReset,
+                          icon: Icon(
+                            MdiIcons.restart,
+                            size: AppFontSize.base,
+                            color: isDark
+                                ? AppFilledButtonsDarkThemes
+                                    .primaryForegroundColor
+                                : AppFilledButtonsLightThemes
+                                    .primaryForegroundColor,
+                          ),
+                          label: Text(localizations
+                              .connection_auth_error_button_reset),
+                        ),
                       )
                     else
                       SizedBox(
                         width: double.infinity,
-                        child: SystemPagePrimaryButton(
-                          label: localizations.connection_auth_error_button_reset,
-                          icon: MdiIcons.restart,
-                          onPressed: onReset,
-                          minWidth: double.infinity,
-                          isDark: isDark,
+                        child: Theme(
+                          data: Theme.of(context).copyWith(
+                            filledButtonTheme: isDark
+                                ? AppFilledButtonsDarkThemes.primary
+                                : AppFilledButtonsLightThemes.primary,
+                          ),
+                          child: FilledButton.icon(
+                            onPressed: onReset,
+                            icon: Icon(
+                              MdiIcons.restart,
+                              color: isDark
+                                  ? AppFilledButtonsDarkThemes
+                                      .primaryForegroundColor
+                                  : AppFilledButtonsLightThemes
+                                      .primaryForegroundColor,
+                            ),
+                            label: Text(localizations
+                                .connection_auth_error_button_reset),
+                          ),
                         ),
                       ),
                   ],

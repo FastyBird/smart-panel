@@ -40,6 +40,7 @@ class FlipClock extends StatelessWidget {
             borderRadius: borderRadius,
             border: Border.all(
               color: borderColor ?? AppColors.blank,
+              width: AppSpacings.scale(1),
             ),
           ),
           padding: EdgeInsets.symmetric(
@@ -63,6 +64,7 @@ class FlipClock extends StatelessWidget {
             borderRadius: borderRadius,
             border: Border.all(
               color: borderColor ?? AppColors.blank,
+              width: AppSpacings.scale(1),
             ),
           ),
           padding: EdgeInsets.symmetric(

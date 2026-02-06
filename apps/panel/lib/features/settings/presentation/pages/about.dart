@@ -1,6 +1,3 @@
-import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/number.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
@@ -19,10 +16,6 @@ class AboutPage extends StatefulWidget {
 }
 
 class _AboutPageState extends State<AboutPage> {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
   String _appVersion = 'Loading...';
 
   @override
@@ -61,19 +54,17 @@ class _AboutPageState extends State<AboutPage> {
           padding: AppSpacings.paddingMd,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            spacing: AppSpacings.pMd,
             children: [
               // App Icon and Title
               Center(
                 child: Column(
+                  spacing: AppSpacings.pMd,
                   children: [
                     Icon(
                       MdiIcons.cogOutline,
-                      size: _screenService.scale(
-                        72,
-                        density: _visualDensityService.density,
-                      ),
+                      size: AppSpacings.scale(72),
                     ),
-                    AppSpacings.spacingLgVertical,
                     Text(
                       'FastyBird! Smart Panel',
                       style: TextStyle(
@@ -81,7 +72,6 @@ class _AboutPageState extends State<AboutPage> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    AppSpacings.spacingSmVertical,
                     Text(
                       'Version $_appVersion',
                       style: TextStyle(
@@ -95,8 +85,6 @@ class _AboutPageState extends State<AboutPage> {
                 ),
               ),
 
-              AppSpacings.spacingLgVertical,
-
               Text(
                 localizations.settings_about_about_heading,
                 style: TextStyle(
@@ -104,7 +92,6 @@ class _AboutPageState extends State<AboutPage> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              AppSpacings.spacingSmVertical,
               Text(
                 localizations.settings_about_about_info,
                 textAlign: TextAlign.justify,
@@ -113,8 +100,6 @@ class _AboutPageState extends State<AboutPage> {
                 ),
               ),
 
-              AppSpacings.spacingLgVertical,
-
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.start,
@@ -122,6 +107,7 @@ class _AboutPageState extends State<AboutPage> {
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+                      spacing: AppSpacings.pMd,
                       children: [
                         Text(
                           localizations.settings_about_developed_by_heading,
@@ -130,7 +116,6 @@ class _AboutPageState extends State<AboutPage> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        AppSpacings.spacingMdVertical,
                         Text(
                           'FastyBird Team',
                           style: TextStyle(
@@ -138,14 +123,10 @@ class _AboutPageState extends State<AboutPage> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        AppSpacings.spacingSmVertical,
                         Text(
                           'https://fastybird.com',
                           style: TextStyle(
-                            fontSize: _screenService.scale(
-                              8,
-                              density: _visualDensityService.density,
-                            ),
+                            fontSize: AppSpacings.scale(8),
                             color: AppColorsLight.primary,
                           ),
                         ),
@@ -155,6 +136,7 @@ class _AboutPageState extends State<AboutPage> {
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+                      spacing: AppSpacings.pSm,
                       children: [
                         Text(
                           localizations.settings_about_license_heading,
@@ -163,21 +145,28 @@ class _AboutPageState extends State<AboutPage> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        AppSpacings.spacingSmVertical,
-                        TextButton(
-                          onPressed: () {
-                            // Navigate to Open Source Licenses page
-                          },
-                          style: OutlinedButton.styleFrom(
-                            padding: EdgeInsets.symmetric(
-                              vertical: AppSpacings.pSm,
-                              horizontal: AppSpacings.pSm,
-                            ),
+                        Theme(
+                          data: ThemeData(
+                            outlinedButtonTheme:
+                                Theme.of(context).brightness == Brightness.light
+                                    ? AppOutlinedButtonsLightThemes.primary
+                                    : AppOutlinedButtonsDarkThemes.primary,
                           ),
-                          child: Text(
-                            localizations.settings_about_show_license_button,
-                            style: TextStyle(
-                              fontSize: AppFontSize.extraSmall,
+                          child: OutlinedButton(
+                            onPressed: () {
+                              // Navigate to Open Source Licenses page
+                            },
+                            style: OutlinedButton.styleFrom(
+                              padding: EdgeInsets.symmetric(
+                                vertical: AppSpacings.pSm,
+                                horizontal: AppSpacings.pSm,
+                              ),
+                            ),
+                            child: Text(
+                              localizations.settings_about_show_license_button,
+                              style: TextStyle(
+                                fontSize: AppFontSize.extraSmall,
+                              ),
                             ),
                           ),
                         ),
@@ -187,8 +176,6 @@ class _AboutPageState extends State<AboutPage> {
                 ],
               ),
 
-              AppSpacings.spacingLgVertical,
-
               // Device Info Section
               Text(
                 localizations.settings_about_device_information_heading,
@@ -197,8 +184,6 @@ class _AboutPageState extends State<AboutPage> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-
-              AppSpacings.spacingSmVertical,
 
               Wrap(
                 spacing: AppSpacings.pSm,
@@ -350,10 +335,7 @@ class _AboutPageState extends State<AboutPage> {
                   Text(
                     value,
                     style: TextStyle(
-                      fontSize: _screenService.scale(
-                        8,
-                        density: _visualDensityService.density,
-                      ),
+                      fontSize: AppSpacings.scale(8),
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -362,10 +344,7 @@ class _AboutPageState extends State<AboutPage> {
                       ? Text(
                           unit,
                           style: TextStyle(
-                            fontSize: _screenService.scale(
-                              7,
-                              density: _visualDensityService.density,
-                            ),
+                            fontSize: AppSpacings.scale(7),
                           ),
                         )
                       : null

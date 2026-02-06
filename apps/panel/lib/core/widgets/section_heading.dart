@@ -1,6 +1,3 @@
-import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:flutter/material.dart';
 
@@ -27,10 +24,6 @@ import 'package:flutter/material.dart';
 /// )
 /// ```
 class SectionTitle extends StatelessWidget {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
   /// The title text to display
   final String title;
 
@@ -40,40 +33,41 @@ class SectionTitle extends StatelessWidget {
   /// Optional trailing widget (e.g., action button)
   final Widget? trailing;
 
-  SectionTitle({
+  const SectionTitle({
     super.key,
     required this.title,
     required this.icon,
     this.trailing,
   });
 
-  double _scale(double size) =>
-      _screenService.scale(size, density: _visualDensityService.density);
-
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Row(
+    return Column(
       children: [
-        Icon(
-          icon,
-          color: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
-          size: _scale(18),
-        ),
-        AppSpacings.spacingMdHorizontal,
-        Expanded(
-          child: Text(
-            title,
-            style: TextStyle(
+        Row(
+          spacing: AppSpacings.pMd,
+          children: [
+            Icon(
+              icon,
               color: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
-              fontSize: AppFontSize.base,
-              fontWeight: FontWeight.w600,
-              letterSpacing: 0.5,
+              size: AppSpacings.scale(18),
             ),
-          ),
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  color: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
+                  fontSize: AppFontSize.base,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+            if (trailing != null) trailing!,
+          ],
         ),
-        if (trailing != null) trailing!,
       ],
     );
   }
@@ -81,7 +75,8 @@ class SectionTitle extends StatelessWidget {
 
 /// Action button for use in SectionTitle trailing slot.
 ///
-/// Styled as a small pill-shaped button with optional icon and text.
+/// Uses filled button neutral theme. Styled as a small button with optional
+/// icon and text.
 ///
 /// Example:
 /// ```dart
@@ -92,10 +87,6 @@ class SectionTitle extends StatelessWidget {
 /// )
 /// ```
 class SectionTitleButton extends StatelessWidget {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
   /// Button label text
   final String label;
 
@@ -105,55 +96,65 @@ class SectionTitleButton extends StatelessWidget {
   /// Callback when button is tapped
   final VoidCallback? onTap;
 
-  SectionTitleButton({
+  const SectionTitleButton({
     super.key,
     required this.label,
     this.icon,
     this.onTap,
   });
 
-  double _scale(double size) =>
-      _screenService.scale(size, density: _visualDensityService.density);
-
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final contentColor =
-        isDark ? AppTextColorDark.secondary : AppTextColorLight.primary;
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: AppSpacings.pMd,
-          vertical: AppSpacings.pSm,
-        ),
-        decoration: BoxDecoration(
-          color: isDark ? AppFillColorDark.light : AppFillColorLight.darker,
-          borderRadius: BorderRadius.circular(AppBorderRadius.round),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (icon != null) ...[
-              Icon(
+    final neutralTheme = isDark
+        ? AppFilledButtonsDarkThemes.neutral
+        : AppFilledButtonsLightThemes.neutral;
+    return Theme(
+      data: Theme.of(context).copyWith(filledButtonTheme: neutralTheme),
+      child: icon != null
+          ? FilledButton.icon(
+              onPressed: onTap,
+              icon: Icon(
                 icon,
-                size: _scale(14),
-                color: contentColor,
+                size: AppFontSize.extraSmall,
+                color: isDark
+                    ? AppFilledButtonsDarkThemes.neutralForegroundColor
+                    : AppFilledButtonsLightThemes.neutralForegroundColor,
               ),
-              AppSpacings.spacingSmHorizontal,
-            ],
-            Text(
-              label,
-              style: TextStyle(
-                color: contentColor,
-                fontSize: AppFontSize.extraSmall,
-                fontWeight: FontWeight.w500,
+              label: Text(
+                label,
+                style: TextStyle(
+                  fontSize: AppFontSize.extraSmall,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              style: FilledButton.styleFrom(
+                padding: EdgeInsets.symmetric(
+                  horizontal: AppSpacings.pMd,
+                  vertical: AppSpacings.pSm,
+                ),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            )
+          : FilledButton(
+              onPressed: onTap,
+              style: FilledButton.styleFrom(
+                padding: EdgeInsets.symmetric(
+                  horizontal: AppSpacings.pMd,
+                  vertical: AppSpacings.pSm,
+                ),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: AppFontSize.extraSmall,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
-          ],
-        ),
-      ),
     );
   }
 }
@@ -173,10 +174,6 @@ class SectionTitleButton extends StatelessWidget {
 /// )
 /// ```
 class SectionHeader extends StatelessWidget {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
   /// The title text to display
   final String title;
 
@@ -192,7 +189,7 @@ class SectionHeader extends StatelessWidget {
   /// Optional accent color for the header (affects icon, text, border, and background)
   final Color? accentColor;
 
-  SectionHeader({
+  const SectionHeader({
     super.key,
     required this.title,
     required this.icon,
@@ -201,14 +198,11 @@ class SectionHeader extends StatelessWidget {
     this.accentColor,
   });
 
-  double _scale(double size) =>
-      _screenService.scale(size, density: _visualDensityService.density);
-
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final borderColor = accentColor ??
-        (isDark ? AppBorderColorDark.light : AppBorderColorLight.light);
+        (isDark ? AppBorderColorDark.light : AppBorderColorLight.darker);
     final iconColor = accentColor ??
         (isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary);
     final textColor = accentColor ??
@@ -219,7 +213,7 @@ class SectionHeader extends StatelessWidget {
         (isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary);
 
     return Container(
-      height: _scale(36),
+      height: AppSpacings.scale(36),
       padding: EdgeInsets.symmetric(
         horizontal: AppSpacings.pLg,
       ),
@@ -227,19 +221,19 @@ class SectionHeader extends StatelessWidget {
         color: accentColor?.withValues(alpha: 0.1),
         border: Border(
           top: showTopBorder
-              ? BorderSide(color: borderColor, width: _scale(1))
+              ? BorderSide(color: borderColor, width: AppSpacings.scale(1))
               : BorderSide.none,
-          bottom: BorderSide(color: borderColor, width: _scale(1)),
+          bottom: BorderSide(color: borderColor, width: AppSpacings.scale(1)),
         ),
       ),
       child: Row(
+        spacing: AppSpacings.pMd,
         children: [
           Icon(
             icon,
             color: iconColor,
-            size: _scale(14),
+            size: AppSpacings.scale(14),
           ),
-          AppSpacings.spacingMdHorizontal,
           Text(
             title,
             style: TextStyle(
@@ -248,16 +242,15 @@ class SectionHeader extends StatelessWidget {
               fontWeight: FontWeight.w600,
             ),
           ),
-          if (count != null) ...[
-            AppSpacings.spacingMdHorizontal,
+          if (count != null)
             Container(
               padding: EdgeInsets.symmetric(
                 horizontal: AppSpacings.pSm,
-                vertical: _scale(2),
+                vertical: AppSpacings.scale(2),
               ),
               decoration: BoxDecoration(
                 color: badgeBgColor,
-                borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+                borderRadius: BorderRadius.circular(AppBorderRadius.base),
               ),
               child: Text(
                 '$count',
@@ -268,7 +261,6 @@ class SectionHeader extends StatelessWidget {
                 ),
               ),
             ),
-          ],
           const Spacer(),
         ],
       ),

@@ -277,160 +277,119 @@ ChannelView buildChannelView(
   }
 }
 
-Map<DevicesModuleChannelCategory, IconData Function()> channelIconMappers = {
-  DevicesModuleChannelCategory.generic: () {
-    return MdiIcons.chip;
-  },
-  DevicesModuleChannelCategory.airParticulate: () {
-    return MdiIcons.chip;
-  },
-  DevicesModuleChannelCategory.airQuality: () {
-    return MdiIcons.chip;
-  },
-  DevicesModuleChannelCategory.alarm: () {
-    return MdiIcons.chip;
-  },
-  DevicesModuleChannelCategory.battery: () {
-    return MdiIcons.chip;
-  },
-  DevicesModuleChannelCategory.camera: () {
-    return MdiIcons.chip;
-  },
-  DevicesModuleChannelCategory.carbonDioxide: () {
-    return MdiIcons.chip;
-  },
-  DevicesModuleChannelCategory.carbonMonoxide: () {
-    return MdiIcons.chip;
-  },
-  DevicesModuleChannelCategory.contact: () {
-    return MdiIcons.chip;
-  },
-  DevicesModuleChannelCategory.cooler: () {
-    return MdiIcons.chip;
-  },
-  DevicesModuleChannelCategory.dehumidifier: () {
-    return MdiIcons.chip;
-  },
-  DevicesModuleChannelCategory.deviceInformation: () {
-    return MdiIcons.chip;
-  },
-  DevicesModuleChannelCategory.door: () {
-    return MdiIcons.chip;
-  },
-  DevicesModuleChannelCategory.doorbell: () {
-    return MdiIcons.chip;
-  },
-  DevicesModuleChannelCategory.electricalEnergy: () {
-    return MdiIcons.chip;
-  },
-  DevicesModuleChannelCategory.electricalPower: () {
-    return MdiIcons.chip;
-  },
-  DevicesModuleChannelCategory.fan: () {
-    return MdiIcons.chip;
-  },
-  DevicesModuleChannelCategory.filter: () {
-    return MdiIcons.chip;
-  },
-  DevicesModuleChannelCategory.flow: () {
-    return MdiIcons.chip;
-  },
-  DevicesModuleChannelCategory.gas: () {
-    return MdiIcons.chip;
-  },
-  DevicesModuleChannelCategory.heater: () {
-    return MdiIcons.chip;
-  },
-  DevicesModuleChannelCategory.humidifier: () {
-    return MdiIcons.chip;
-  },
-  DevicesModuleChannelCategory.humidity: () {
-    return MdiIcons.chip;
-  },
-  DevicesModuleChannelCategory.illuminance: () {
-    return MdiIcons.chip;
-  },
-  DevicesModuleChannelCategory.leak: () {
-    return MdiIcons.chip;
-  },
-  DevicesModuleChannelCategory.light: () {
-    return MdiIcons.chip;
-  },
-  DevicesModuleChannelCategory.lock: () {
-    return MdiIcons.chip;
-  },
-  DevicesModuleChannelCategory.mediaInput: () {
-    return MdiIcons.chip;
-  },
-  DevicesModuleChannelCategory.mediaPlayback: () {
-    return MdiIcons.chip;
-  },
-  DevicesModuleChannelCategory.microphone: () {
-    return MdiIcons.chip;
-  },
-  DevicesModuleChannelCategory.motion: () {
-    return MdiIcons.chip;
-  },
-  DevicesModuleChannelCategory.nitrogenDioxide: () {
-    return MdiIcons.chip;
-  },
-  DevicesModuleChannelCategory.occupancy: () {
-    return MdiIcons.chip;
-  },
-  DevicesModuleChannelCategory.outlet: () {
-    return MdiIcons.chip;
-  },
-  DevicesModuleChannelCategory.ozone: () {
-    return MdiIcons.chip;
-  },
-  DevicesModuleChannelCategory.pressure: () {
-    return MdiIcons.chip;
-  },
-  DevicesModuleChannelCategory.robotVacuum: () {
-    return MdiIcons.chip;
-  },
-  DevicesModuleChannelCategory.smoke: () {
-    return MdiIcons.chip;
-  },
-  DevicesModuleChannelCategory.speaker: () {
-    return MdiIcons.chip;
-  },
-  DevicesModuleChannelCategory.sulphurDioxide: () {
-    return MdiIcons.chip;
-  },
-  DevicesModuleChannelCategory.switcher: () {
-    return MdiIcons.chip;
-  },
-  DevicesModuleChannelCategory.television: () {
-    return MdiIcons.chip;
-  },
-  DevicesModuleChannelCategory.projector: () {
-    return MdiIcons.chip;
-  },
-  DevicesModuleChannelCategory.temperature: () {
-    return MdiIcons.chip;
-  },
-  DevicesModuleChannelCategory.thermostat: () {
-    return MdiIcons.chip;
-  },
-  DevicesModuleChannelCategory.valve: () {
-    return MdiIcons.chip;
-  },
-  DevicesModuleChannelCategory.volatileOrganicCompounds: () {
-    return MdiIcons.chip;
-  },
-  DevicesModuleChannelCategory.windowCovering: () {
-    return MdiIcons.chip;
-  },
-};
-
+/// Returns the canonical icon for a channel category.
+///
+/// This is the single source of truth for channel/sensor icons.
+/// Use this instead of hardcoding [MdiIcons] for sensor types.
 IconData buildChannelIcon(DevicesModuleChannelCategory category) {
-  final builder = channelIconMappers[category];
+  switch (category) {
+    // Environmental sensors
+    case DevicesModuleChannelCategory.temperature:
+      return MdiIcons.thermometer;
+    case DevicesModuleChannelCategory.humidity:
+      return MdiIcons.waterPercent;
+    case DevicesModuleChannelCategory.pressure:
+      return MdiIcons.gauge;
+    case DevicesModuleChannelCategory.illuminance:
+      return MdiIcons.brightness6;
 
-  if (builder != null) {
-    return builder();
-  } else {
-    // Fallback to generic icon
-    return MdiIcons.chip;
+    // Air quality sensors
+    case DevicesModuleChannelCategory.airParticulate:
+      return MdiIcons.blur;
+    case DevicesModuleChannelCategory.airQuality:
+      return MdiIcons.airFilter;
+    case DevicesModuleChannelCategory.carbonDioxide:
+      return MdiIcons.moleculeCo2;
+    case DevicesModuleChannelCategory.carbonMonoxide:
+      return MdiIcons.moleculeCo;
+    case DevicesModuleChannelCategory.volatileOrganicCompounds:
+      return MdiIcons.molecule;
+    case DevicesModuleChannelCategory.ozone:
+      return MdiIcons.weatherSunny;
+    case DevicesModuleChannelCategory.nitrogenDioxide:
+      return MdiIcons.molecule;
+    case DevicesModuleChannelCategory.sulphurDioxide:
+      return MdiIcons.molecule;
+
+    // Safety & detection sensors
+    case DevicesModuleChannelCategory.contact:
+      return MdiIcons.doorOpen;
+    case DevicesModuleChannelCategory.leak:
+      return MdiIcons.pipeLeak;
+    case DevicesModuleChannelCategory.motion:
+      return MdiIcons.motionSensor;
+    case DevicesModuleChannelCategory.occupancy:
+      return MdiIcons.accountCheck;
+    case DevicesModuleChannelCategory.smoke:
+      return MdiIcons.smokeDetector;
+    case DevicesModuleChannelCategory.alarm:
+      return MdiIcons.bellAlert;
+    case DevicesModuleChannelCategory.gas:
+      return MdiIcons.gasCylinder;
+
+    // Actuators & controls
+    case DevicesModuleChannelCategory.fan:
+      return MdiIcons.fan;
+    case DevicesModuleChannelCategory.cooler:
+      return MdiIcons.snowflake;
+    case DevicesModuleChannelCategory.heater:
+      return MdiIcons.radiator;
+    case DevicesModuleChannelCategory.dehumidifier:
+      return MdiIcons.waterOff;
+    case DevicesModuleChannelCategory.humidifier:
+      return MdiIcons.waterPlus;
+    case DevicesModuleChannelCategory.thermostat:
+      return MdiIcons.thermostat;
+    case DevicesModuleChannelCategory.valve:
+      return MdiIcons.valve;
+    case DevicesModuleChannelCategory.filter:
+      return MdiIcons.airFilter;
+    case DevicesModuleChannelCategory.light:
+      return MdiIcons.lightbulbOutline;
+    case DevicesModuleChannelCategory.outlet:
+      return MdiIcons.powerPlugOutline;
+    case DevicesModuleChannelCategory.switcher:
+      return MdiIcons.toggleSwitch;
+    case DevicesModuleChannelCategory.windowCovering:
+      return MdiIcons.blindsHorizontal;
+    case DevicesModuleChannelCategory.robotVacuum:
+      return MdiIcons.robotVacuum;
+    case DevicesModuleChannelCategory.lock:
+      return MdiIcons.lock;
+    case DevicesModuleChannelCategory.door:
+      return MdiIcons.door;
+    case DevicesModuleChannelCategory.doorbell:
+      return MdiIcons.doorbell;
+    case DevicesModuleChannelCategory.flow:
+      return MdiIcons.waves;
+
+    // Media
+    case DevicesModuleChannelCategory.television:
+      return MdiIcons.television;
+    case DevicesModuleChannelCategory.projector:
+      return MdiIcons.projector;
+    case DevicesModuleChannelCategory.speaker:
+      return MdiIcons.speaker;
+    case DevicesModuleChannelCategory.mediaInput:
+      return MdiIcons.videoInputHdmi;
+    case DevicesModuleChannelCategory.mediaPlayback:
+      return MdiIcons.play;
+    case DevicesModuleChannelCategory.microphone:
+      return MdiIcons.microphone;
+    case DevicesModuleChannelCategory.camera:
+      return MdiIcons.cctv;
+
+    // System
+    case DevicesModuleChannelCategory.battery:
+      return MdiIcons.battery;
+    case DevicesModuleChannelCategory.deviceInformation:
+      return MdiIcons.informationOutline;
+    case DevicesModuleChannelCategory.electricalEnergy:
+      return MdiIcons.flashTriangle;
+    case DevicesModuleChannelCategory.electricalPower:
+      return MdiIcons.flash;
+
+    default:
+      return MdiIcons.chip;
   }
 }

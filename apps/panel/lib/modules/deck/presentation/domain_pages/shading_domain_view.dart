@@ -1,12 +1,51 @@
+// Shading domain view: room-level control for window coverings in a single space.
+//
+// **Purpose:** One screen per room showing covers grouped by role (primary,
+// blackout, sheer, outdoor). Each role card shows position %, slider, and
+// quick actions (open / stop / close). Mode selector (open, daylight, privacy,
+// closed) and a devices bottom sheet are available from the header.
+//
+// **Data flow:**
+// - [SpacesService] provides covers targets and [CoversStateModel] for the room.
+// - [DevicesService] provides [WindowCoveringDeviceView] / [WindowCoveringChannelView]
+//   used to build [_CoverRoleData], [_CoverDeviceData], and to open device detail.
+// - Optimistic UI: [_pendingPositions] holds per-role position until backend
+//   converges (cleared in [_onDataChanged] when within 5% of actual).
+//
+// **Key concepts:**
+// - [_CoverRoleData] = one role's targets and average position; [_CoverDeviceData]
+//   = one device/channel row for the devices sheet.
+// - Primary role card always shows slider and actions; secondary roles are
+//   expandable via [_expandedRoles].
+// - Portrait: role cards + horizontal mode selector. Landscape: same content
+//   in [LandscapeViewLayout] with vertical mode selector.
+//
+// **File structure (for humans and AI):**
+// Search for the exact section header (e.g. "// DATA MODELS", "// LIFECYCLE")
+// to jump to that part of the file. Sections appear in this order:
+//
+// - **DATA MODELS** — [_CoverRoleData], [_CoverDeviceData].
+// - **SHADING DOMAIN VIEW PAGE** — [ShadingDomainViewPage] and state class:
+//   - LIFECYCLE: initState (services, listeners, fetch), dispose, [_onDataChanged].
+//   - DATA BUILDING: [_buildRoleDataList], [_buildDeviceDataList], role/cover type helpers.
+//   - INTENT METHODS: [_setRolePosition], [_stopCovers], [_setCoversMode], [_showActionFailed].
+//   - HEADER: [_buildHeader].
+//   - LANDSCAPE / PORTRAIT LAYOUT: [_buildLandscapeLayout], [_buildPortraitLayout].
+//   - ROLE CARDS: [_buildRoleCard], slider, quick actions, expand toggle.
+//   - MODE SELECTOR: [_buildModeSelector], [_buildLandscapeModeSelector], [_getCoversModeOptions].
+//   - DEVICES BOTTOM SHEET: [_showShadingDevicesSheet], device tile builders.
+//   - NAVIGATION: [_navigateToHome], [_openDeviceDetail].
+//   - HELPERS: position theme/color/text, [_toStateRole], [_getRolePosition].
+//   - EMPTY STATE: [_buildEmptyState].
+
 import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
-import 'package:fastybird_smart_panel/core/utils/color.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
-import 'package:fastybird_smart_panel/core/widgets/intent_mode_selector.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_card.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
+import 'package:fastybird_smart_panel/core/widgets/intent_mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
@@ -14,7 +53,11 @@ import 'package:fastybird_smart_panel/core/widgets/slider_with_steps.dart';
 import 'package:fastybird_smart_panel/core/widgets/tile_wrappers.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/domain_data_loader.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_item_sheet.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/domain_state_view.dart';
 import 'package:fastybird_smart_panel/modules/devices/export.dart';
+import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_detail_page.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/window_covering.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/window_covering.dart';
@@ -24,13 +67,17 @@ import 'package:fastybird_smart_panel/modules/spaces/utils/intent_result_handler
 import 'package:fastybird_smart_panel/modules/spaces/views/covers_targets/view.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
-// ============================================================================
+// =============================================================================
 // DATA MODELS
-// ============================================================================
+// =============================================================================
 
-/// Represents aggregated data for a group of covers with the same role.
+// View models for the shading domain. [_CoverRoleData] groups targets by role;
+// [_CoverDeviceData] is one device/channel row for the devices bottom sheet.
+
+/// Aggregated data for a group of covers with the same role (primary, blackout, etc.).
 class _CoverRoleData {
   final CoversTargetRole role;
   final String name;
@@ -68,17 +115,17 @@ class _CoverDeviceData {
     required this.position,
     this.isOnline = true,
   });
+
+  bool get isActive => isOnline && position > 0;
 }
 
-// ============================================================================
+// =============================================================================
 // SHADING DOMAIN VIEW PAGE
-// ============================================================================
+// =============================================================================
+// Stateful page for one room's shading. State class: holds optional services,
+// [_pendingPositions] for optimistic UI, [_expandedRoles] for secondary cards;
+// listens to SpacesService and DevicesService.
 
-/// Shading domain view page - shows window covering devices in a room.
-///
-/// Connects to [SpacesService] for covers targets and state, and [DevicesService]
-/// for individual device data. Displays covers grouped by role with position
-/// sliders, quick actions, presets, and device tiles.
 class ShadingDomainViewPage extends StatefulWidget {
   final DomainViewItem viewItem;
 
@@ -90,14 +137,13 @@ class ShadingDomainViewPage extends StatefulWidget {
 
 class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
 
   SpacesService? _spacesService;
   DevicesService? _devicesService;
   DeckService? _deckService;
   EventBus? _eventBus;
   bool _isLoading = true;
+  bool _hasError = false;
 
   // Optimistic UI state for slider interaction (per role)
   final Map<CoversTargetRole, int> _pendingPositions = {};
@@ -107,14 +153,14 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
 
   String get _roomId => widget.viewItem.roomId;
 
-  /// Get covers state from backend (cached)
+  /// Covers state from backend (cached).
   CoversStateModel? get _coversState => _spacesService?.getCoversState(_roomId);
 
-  /// Get covers targets for the current room
+  /// Covers targets for the current room.
   List<CoversTargetView> get _coversTargets =>
       _spacesService?.getCoversTargetsForSpace(_roomId) ?? [];
 
-  /// Get position for a specific role (pending or actual)
+  /// Position for a role: pending value if set, otherwise actual average.
   int _getRolePosition(_CoverRoleData roleData) {
     // Check for pending position first
     if (_pendingPositions.containsKey(roleData.role)) {
@@ -124,7 +170,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     return roleData.averagePosition;
   }
 
-  /// Convert CoversTargetRole to CoversStateRole for backend calls
+  /// Maps [CoversTargetRole] to [CoversStateRole] for SpacesService API calls.
   CoversStateRole? _toStateRole(CoversTargetRole role) {
     switch (role) {
       case CoversTargetRole.primary:
@@ -139,6 +185,12 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
         return CoversStateRole.hidden;
     }
   }
+
+  // --------------------------------------------------------------------------
+  // LIFECYCLE
+  // --------------------------------------------------------------------------
+  // initState: resolve services, add listeners (Spaces, Devices), fetch covers
+  // data. dispose: remove listeners.
 
   @override
   void initState() {
@@ -196,13 +248,33 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
           _spacesService?.fetchCoversState(_roomId) ?? Future.value(),
         ]);
       }
-    } finally {
+
       if (mounted) {
         setState(() {
           _isLoading = false;
+          _hasError = false;
+        });
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[ShadingDomainView] Failed to fetch covers data: $e');
+      }
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _hasError = true;
         });
       }
     }
+  }
+
+  /// Retry loading data after an error.
+  Future<void> _retryLoad() async {
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+    });
+    await _fetchCoversData();
   }
 
   @override
@@ -212,6 +284,8 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     super.dispose();
   }
 
+  /// Called when SpacesService or DevicesService notifies; clears converged
+  /// pending positions and calls setState.
   void _onDataChanged() {
     if (!mounted) return;
     // Use addPostFrameCallback to avoid "setState during build" errors
@@ -241,7 +315,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     });
   }
 
-  /// Navigate to the home page in the deck
+  /// Navigate to deck home item via [EventBus].
   void _navigateToHome() {
     final deck = _deckService?.deck;
     if (deck == null || deck.items.isEmpty) {
@@ -256,14 +330,28 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     }
   }
 
+  // --------------------------------------------------------------------------
+  // BUILD
+  // --------------------------------------------------------------------------
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final localizations = AppLocalizations.of(context)!;
 
-    if (_isLoading) {
-      return Scaffold(
-        backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
-        body: const Center(child: CircularProgressIndicator()),
+    // Handle loading and error states using DomainStateView
+    final loadState = _isLoading
+        ? DomainLoadState.loading
+        : _hasError
+            ? DomainLoadState.error
+            : DomainLoadState.loaded;
+
+    if (loadState != DomainLoadState.loaded) {
+      return DomainStateView(
+        state: loadState,
+        onRetry: _retryLoad,
+        domainName: localizations.domain_shading,
+        child: const SizedBox.shrink(),
       );
     }
 
@@ -272,9 +360,8 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
       return _buildEmptyState(context);
     }
 
-    // Build role and device data from actual sources
+    // Build role data from actual sources
     final roleDataList = _buildRoleDataList(targets);
-    final deviceDataList = _buildDeviceDataList(targets);
     final totalDevices = targets.length;
 
     return Scaffold(
@@ -288,8 +375,8 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
                 builder: (context, orientation) {
                   final isLandscape = orientation == Orientation.landscape;
                   return isLandscape
-                      ? _buildLandscapeLayout(context, roleDataList, deviceDataList)
-                      : _buildPortraitLayout(context, roleDataList, deviceDataList);
+                      ? _buildLandscapeLayout(context, roleDataList)
+                      : _buildPortraitLayout(context, roleDataList);
                 },
               ),
             ),
@@ -299,18 +386,14 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     );
   }
 
-  // ===========================================================================
+  // --------------------------------------------------------------------------
   // HEADER
-  // ===========================================================================
+  // --------------------------------------------------------------------------
 
   Widget _buildHeader(BuildContext context, int totalDevices) {
     final localizations = AppLocalizations.of(context)!;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final position = _coversState?.averagePosition ?? 0;
-
-    // Determine state color based on position
-    final stateColor = _getPositionColor(position, !isDark);
-    final stateBgColor = getSemanticBackgroundColor(context, stateColor);
+    final positionColorFamily = _getPositionColorFamily(context, position);
 
     // Build subtitle
     String subtitle;
@@ -322,27 +405,41 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
       subtitle = '$position% \u2022 $totalDevices';
     }
 
+    final showDevicesButton = totalDevices > 0;
+
     return PageHeader(
       title: localizations.domain_shading,
       subtitle: subtitle,
-      subtitleColor: position > 0 ? stateColor : null,
-      backgroundColor: AppColors.blank,
-      leading: HeaderDeviceIcon(
+      subtitleColor: position > 0 ? positionColorFamily.base : null,
+      leading: HeaderMainIcon(
         icon: position > 0 ? MdiIcons.blindsHorizontal : MdiIcons.blindsHorizontalClosed,
-        backgroundColor: stateBgColor,
-        iconColor: stateColor,
+        color: _getPositionThemeColor(position),
       ),
-      trailing: HeaderHomeButton(
-        onTap: _navigateToHome,
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        spacing: AppSpacings.pMd,
+        children: [
+          if (showDevicesButton)
+            HeaderIconButton(
+              icon: MdiIcons.windowShutterSettings,
+              onTap: _showShadingDevicesSheet,
+            ),
+          HeaderIconButton(
+            icon: MdiIcons.homeOutline,
+            onTap: _navigateToHome,
+          ),
+        ],
       ),
     );
   }
 
-  // ===========================================================================
+  // --------------------------------------------------------------------------
   // DATA BUILDING
-  // ===========================================================================
+  // --------------------------------------------------------------------------
+  // [_buildRoleDataList] groups targets by role and computes average position
+  // from DevicesService. [_buildDeviceDataList] builds rows for the devices sheet.
 
-  /// Build role data list from covers targets
+  /// Builds role data list from covers targets (grouped by role, avg position from devices).
   List<_CoverRoleData> _buildRoleDataList(List<CoversTargetView> targets) {
     final Map<CoversTargetRole, List<CoversTargetView>> grouped = {};
 
@@ -386,11 +483,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     return roles;
   }
 
-  /// Build device data list from covers targets
-  ///
-  /// Each target represents a channel. If a device has multiple window covering
-  /// channels, each becomes a separate tile with the channel name. If a device
-  /// has only one channel, the device name is used instead.
+  /// Device/channel rows for the devices sheet; multi-channel devices use channel name.
   List<_CoverDeviceData> _buildDeviceDataList(List<CoversTargetView> targets) {
     final List<_CoverDeviceData> devices = [];
     final roomName = _spacesService?.getSpace(_roomId)?.name ?? '';
@@ -434,6 +527,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     return devices;
   }
 
+  /// Localized label for a covers role (primary, blackout, sheer, outdoor).
   String _getRoleName(CoversTargetRole role) {
     final localizations = AppLocalizations.of(context)!;
     switch (role) {
@@ -450,6 +544,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     }
   }
 
+  /// Icon for a covers role.
   IconData _getRoleIcon(CoversTargetRole role) {
     switch (role) {
       case CoversTargetRole.primary:
@@ -465,6 +560,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     }
   }
 
+  /// Localized cover type name (curtain, blind, roller, etc.).
   String _getCoverTypeName(String? coverType) {
     final localizations = AppLocalizations.of(context)!;
     switch (coverType) {
@@ -481,6 +577,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     }
   }
 
+  /// Icon for cover type.
   IconData _getCoverTypeIcon(String? coverType) {
     switch (coverType) {
       case 'curtain':
@@ -496,23 +593,23 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     }
   }
 
-  // ===========================================================================
+  // --------------------------------------------------------------------------
   // LANDSCAPE LAYOUT
-  // ===========================================================================
+  // --------------------------------------------------------------------------
 
   Widget _buildLandscapeLayout(
     BuildContext context,
     List<_CoverRoleData> roleDataList,
-    List<_CoverDeviceData> deviceDataList,
   ) {
     final localizations = AppLocalizations.of(context)!;
     final primaryRole = roleDataList.isNotEmpty ? roleDataList.first : null;
     final secondaryRoles = roleDataList.length > 1 ? roleDataList.skip(1).toList() : [];
-    final hasDevices = deviceDataList.isNotEmpty;
+    final isLargeScreen = _screenService.isLargeScreen;
 
     return LandscapeViewLayout(
       mainContent: SingleChildScrollView(
         child: Column(
+          spacing: AppSpacings.pMd,
           children: [
             // Primary Role Card (with slider and actions)
             if (primaryRole != null)
@@ -523,69 +620,30 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
                 showActions: true,
               ),
             // Secondary Role Cards
-            for (final role in secondaryRoles) ...[
-              AppSpacings.spacingMdVertical,
+            for (final role in secondaryRoles)
               _buildRoleCard(
                 context,
                 roleData: role,
               ),
-            ],
           ],
         ),
       ),
-      modeSelector: _buildLandscapeModeSelector(context, localizations),
-      additionalContent: hasDevices
-          ? _buildLandscapeDevicesColumn(context, deviceDataList, localizations)
-          : null,
+      modeSelector: _buildLandscapeModeSelector(
+        context,
+        localizations,
+        showLabels: isLargeScreen,
+      ),
+      modeSelectorShowLabels: isLargeScreen,
     );
   }
 
-  Widget _buildLandscapeDevicesColumn(
-    BuildContext context,
-    List<_CoverDeviceData> deviceDataList,
-    AppLocalizations localizations,
-  ) {
-    // Build list of device tile widgets using DeviceTileLandscape wrapper
-    final deviceWidgets = deviceDataList.map((device) {
-      final isActive = device.isOnline && device.position > 0;
-      final status = _getDeviceStatus(device, localizations);
-
-      return DeviceTileLandscape(
-        icon: device.position > 0
-            ? MdiIcons.blindsHorizontal
-            : MdiIcons.blindsHorizontalClosed,
-        name: device.name,
-        status: status,
-        isActive: isActive,
-        isOffline: !device.isOnline,
-        onTileTap: () => _openDeviceDetail(context, device),
-      );
-    }).toList();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildSectionTitle(
-          context,
-          localizations.shading_devices_title,
-          MdiIcons.viewGrid,
-        ),
-        for (final widget in deviceWidgets) ...[
-          SizedBox(height: AppSpacings.pMd),
-          widget,
-        ],
-      ],
-    );
-  }
-
-  // ===========================================================================
+  // --------------------------------------------------------------------------
   // PORTRAIT LAYOUT
-  // ===========================================================================
+  // --------------------------------------------------------------------------
 
   Widget _buildPortraitLayout(
     BuildContext context,
     List<_CoverRoleData> roleDataList,
-    List<_CoverDeviceData> deviceDataList,
   ) {
     final localizations = AppLocalizations.of(context)!;
     final primaryRole = roleDataList.isNotEmpty ? roleDataList.first : null;
@@ -595,6 +653,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     return PortraitViewLayout(
       content: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: AppSpacings.pMd,
         children: [
           // Primary Role Card (with slider and actions)
           if (primaryRole != null)
@@ -605,36 +664,21 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
               showActions: true,
             ),
           // Secondary Role Cards
-          for (final role in secondaryRoles) ...[
-            AppSpacings.spacingMdVertical,
+          for (final role in secondaryRoles)
             _buildRoleCard(
               context,
               roleData: role,
             ),
-          ],
-
-          // Devices Section
-          if (deviceDataList.isNotEmpty) ...[
-            AppSpacings.spacingLgVertical,
-            _buildSectionTitle(
-                context, localizations.shading_devices_title, MdiIcons.viewGrid),
-            AppSpacings.spacingMdVertical,
-            _buildDevicesGrid(
-              context,
-              deviceDataList,
-              localizations,
-              crossAxisCount: 2,
-            ),
-          ],
         ],
       ),
       modeSelector: hasCovers ? _buildModeSelector(context, localizations) : null,
     );
   }
 
-  // ===========================================================================
+  // --------------------------------------------------------------------------
   // ROLE CARDS
-  // ===========================================================================
+  // --------------------------------------------------------------------------
+  // Primary role: slider + quick actions always visible. Secondary: expandable.
 
   Widget _buildRoleCard(
     BuildContext context, {
@@ -642,10 +686,9 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     bool showSlider = false,
     bool showActions = false,
   }) {
-    final bool isLight = Theme.of(context).brightness == Brightness.light;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final position = _getRolePosition(roleData);
-    final Color stateColor = _getPositionColor(position, isLight);
-    final Color stateColorLight = getSemanticBackgroundColor(context, stateColor);
+    final positionColorFamily = _getPositionColorFamily(context, position);
     final localizations = AppLocalizations.of(context)!;
 
     // Determine if this card is expandable (secondary roles without forced controls)
@@ -655,45 +698,35 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     // Show controls if forced OR expanded
     final bool shouldShowControls = showSlider || showActions || isExpanded;
 
-    return Container(
-      padding: AppSpacings.paddingMd,
-      decoration: BoxDecoration(
-        color: isLight ? AppFillColorLight.light : AppFillColorDark.light,
-        borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-        border: isLight
-            ? Border.all(color: AppBorderColorLight.base)
-            : null,
-      ),
+    return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: AppSpacings.pMd,
         children: [
           // Header Row
           Row(
+            spacing: AppSpacings.pMd,
             children: [
-              // Role Icon
-              Container(
-                width: _screenService.scale(
-                  48,
-                  density: _visualDensityService.density,
-                ),
-                height: _screenService.scale(
-                  48,
-                  density: _visualDensityService.density,
-                ),
-                decoration: BoxDecoration(
-                  color: stateColorLight,
-                  borderRadius: BorderRadius.circular(AppBorderRadius.base),
-                ),
-                child: Icon(
-                  roleData.icon,
-                  color: stateColor,
-                  size: _screenService.scale(
-                    24,
-                    density: _visualDensityService.density,
-                  ),
-                ),
+              // Role icon: background and icon from position state (open=success, closed=info, partial=warning)
+              Builder(
+                builder: (context) {
+                  final (iconColor: iconColor, backgroundColor: iconBgColor) =
+                      positionColorFamily.iconContainer;
+                  return Container(
+                    width: AppSpacings.scale(48),
+                    height: AppSpacings.scale(48),
+                    decoration: BoxDecoration(
+                      color: iconBgColor,
+                      borderRadius: BorderRadius.circular(AppBorderRadius.base),
+                    ),
+                    child: Icon(
+                      roleData.icon,
+                      color: iconColor,
+                      size: AppSpacings.scale(24),
+                    ),
+                  );
+                },
               ),
-              AppSpacings.spacingMdHorizontal,
               // Title
               Expanded(
                 child: Column(
@@ -704,18 +737,18 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
                       style: TextStyle(
                         fontSize: AppFontSize.large,
                         fontWeight: FontWeight.w600,
-                        color: isLight
-                            ? AppTextColorLight.regular
-                            : AppTextColorDark.regular,
+                        color: isDark
+                            ? AppTextColorDark.regular
+                            : AppTextColorLight.regular,
                       ),
                     ),
                     Text(
                       localizations.shading_devices_count(roleData.deviceCount),
                       style: TextStyle(
                         fontSize: AppFontSize.small,
-                        color: isLight
-                            ? AppTextColorLight.secondary
-                            : AppTextColorDark.secondary,
+                        color: isDark
+                            ? AppTextColorDark.secondary
+                            : AppTextColorLight.secondary,
                       ),
                     ),
                   ],
@@ -728,23 +761,20 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
                   Text(
                     '$position%',
                     style: TextStyle(
-                      fontSize: _screenService.scale(
-                        28,
-                        density: _visualDensityService.density,
-                      ),
+                      fontSize: AppSpacings.scale(28),
                       fontWeight: FontWeight.w300,
-                      color: isLight
-                          ? AppColorsLight.primary
-                          : AppColorsDark.primary,
+                      color: isDark
+                            ? AppTextColorDark.regular
+                            : AppTextColorLight.regular,
                     ),
                   ),
                   Text(
                     _getPositionText(position, localizations),
                     style: TextStyle(
                       fontSize: AppFontSize.extraSmall,
-                      color: isLight
-                          ? AppTextColorLight.placeholder
-                          : AppTextColorDark.placeholder,
+                      color: isDark
+                          ? AppTextColorDark.placeholder
+                          : AppTextColorLight.placeholder,
                     ),
                   ),
                 ],
@@ -753,29 +783,25 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
           ),
           // Expandable Controls (Slider + Quick Actions)
           if (shouldShowControls) ...[
-            AppSpacings.spacingMdVertical,
             _buildPositionSlider(context, roleData),
-            AppSpacings.spacingMdVertical,
             _buildQuickActions(context, roleData),
           ],
           // Expand/Collapse Toggle for secondary roles
-          if (isExpandable) ...[
-            AppSpacings.spacingSmVertical,
+          if (isExpandable)
             _buildExpandToggle(context, roleData, isExpanded, localizations),
-          ],
         ],
       ),
     );
   }
 
-  /// Build the expand/collapse toggle for secondary role cards
+  /// Expand/collapse toggle for secondary role cards (show/hide slider and actions).
   Widget _buildExpandToggle(
     BuildContext context,
     _CoverRoleData roleData,
     bool isExpanded,
     AppLocalizations localizations,
   ) {
-    final bool isLight = Theme.of(context).brightness == Brightness.light;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return GestureDetector(
       onTap: () {
@@ -791,6 +817,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
         padding: EdgeInsets.symmetric(vertical: AppSpacings.pXs),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
+          spacing: AppSpacings.pXs,
           children: [
             Text(
               isExpanded
@@ -798,21 +825,17 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
                   : localizations.shading_tap_for_controls,
               style: TextStyle(
                 fontSize: AppFontSize.small,
-                color: isLight
-                    ? AppTextColorLight.secondary
-                    : AppTextColorDark.secondary,
+                color: isDark
+                    ? AppTextColorDark.secondary
+                    : AppTextColorLight.secondary,
               ),
             ),
-            AppSpacings.spacingXsHorizontal,
             Icon(
               isExpanded ? MdiIcons.chevronUp : MdiIcons.chevronDown,
-              size: _screenService.scale(
-                16,
-                density: _visualDensityService.density,
-              ),
-              color: isLight
-                  ? AppTextColorLight.secondary
-                  : AppTextColorDark.secondary,
+              size: AppSpacings.scale(16),
+              color: isDark
+                  ? AppTextColorDark.secondary
+                  : AppTextColorLight.secondary,
             ),
           ],
         ),
@@ -822,13 +845,12 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
 
   Widget _buildPositionSlider(BuildContext context, _CoverRoleData roleData) {
     final localizations = AppLocalizations.of(context)!;
-    final bool isLight = Theme.of(context).brightness == Brightness.light;
     final position = _getRolePosition(roleData);
     final normalizedValue = position / 100.0;
 
     return SliderWithSteps(
       value: normalizedValue,
-      activeColor: isLight ? AppColorsLight.primary : AppColorsDark.primary,
+      themeColor: ThemeColors.primary,
       steps: [
         localizations.shading_state_closed,
         '25%',
@@ -852,6 +874,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
+      spacing: AppSpacings.pSm,
       children: [
         Expanded(
           child: _buildQuickActionButton(
@@ -862,7 +885,6 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
             onTap: () => _setRolePosition(roleData.role, 100),
           ),
         ),
-        AppSpacings.spacingSmHorizontal,
         Expanded(
           child: _buildQuickActionButton(
             context,
@@ -872,7 +894,6 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
             onTap: _stopCovers,
           ),
         ),
-        AppSpacings.spacingSmHorizontal,
         Expanded(
           child: _buildQuickActionButton(
             context,
@@ -886,9 +907,66 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     );
   }
 
-  // ===========================================================================
+  /// Single quick action button (open/stop/close); themed by [isActive].
+  Widget _buildQuickActionButton(
+    BuildContext context, {
+    required String label,
+    required IconData icon,
+    required bool isActive,
+    required VoidCallback onTap,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final themeData = isActive
+        ? ThemeData(filledButtonTheme: isDark ? AppFilledButtonsDarkThemes.primary : AppFilledButtonsLightThemes.primary)
+        : (isDark ? ThemeData(filledButtonTheme: AppFilledButtonsDarkThemes.neutral) : ThemeData(filledButtonTheme: AppFilledButtonsLightThemes.neutral));
+    final iconColor = isActive
+        ? (isDark
+            ? AppFilledButtonsDarkThemes.primaryForegroundColor
+            : AppFilledButtonsLightThemes.primaryForegroundColor)
+        : (isDark
+            ? AppFilledButtonsDarkThemes.neutralForegroundColor
+            : AppFilledButtonsLightThemes.neutralForegroundColor);
+    return SizedBox(
+      width: double.infinity,
+      child: Theme(
+        data: themeData,
+        child: FilledButton.icon(
+          onPressed: () {
+            HapticFeedback.lightImpact();
+            onTap();
+          },
+          icon: Icon(
+            icon,
+            size: AppFontSize.base,
+            color: iconColor,
+          ),
+          label: Text(label),
+          style: FilledButton.styleFrom(
+            padding: EdgeInsets.symmetric(
+              horizontal: AppSpacings.pMd,
+              vertical: AppSpacings.pMd,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // --------------------------------------------------------------------------
   // INTENT METHODS
-  // ===========================================================================
+  // --------------------------------------------------------------------------
+  // [_setRolePosition], [_stopCovers], [_setCoversMode] call SpacesService;
+  // [_showActionFailed] shows toast and optionally clears pending position.
+
+  void _showActionFailed({CoversTargetRole? clearPendingRole}) {
+    if (!mounted) return;
+    final localizations = AppLocalizations.of(context)!;
+    AppToast.showError(context, message: localizations.action_failed);
+    if (clearPendingRole != null) {
+      _pendingPositions.remove(clearPendingRole);
+      setState(() {});
+    }
+  }
 
   /// Set position for covers with a specific role
   Future<void> _setRolePosition(CoversTargetRole role, int position) async {
@@ -905,21 +983,13 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
 
       final result = await _spacesService?.setRolePosition(_roomId, stateRole, position);
       if (result == null && mounted) {
-        final localizations = AppLocalizations.of(context)!;
-        AlertBar.showError(context, message: localizations.action_failed);
-        _pendingPositions.remove(role);
-        setState(() {});
+        _showActionFailed(clearPendingRole: role);
       }
     } catch (e) {
       if (kDebugMode) {
         debugPrint('[ShadingDomainView] Failed to set role position: $e');
       }
-      if (mounted) {
-        final localizations = AppLocalizations.of(context)!;
-        AlertBar.showError(context, message: localizations.action_failed);
-        _pendingPositions.remove(role);
-        setState(() {});
-      }
+      if (mounted) _showActionFailed(clearPendingRole: role);
     }
   }
 
@@ -927,18 +997,12 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   Future<void> _stopCovers() async {
     try {
       final result = await _spacesService?.stopCovers(_roomId);
-      if (result == null && mounted) {
-        final localizations = AppLocalizations.of(context)!;
-        AlertBar.showError(context, message: localizations.action_failed);
-      }
+      if (result == null && mounted) _showActionFailed();
     } catch (e) {
       if (kDebugMode) {
         debugPrint('[ShadingDomainView] Failed to stop covers: $e');
       }
-      if (mounted) {
-        final localizations = AppLocalizations.of(context)!;
-        AlertBar.showError(context, message: localizations.action_failed);
-      }
+      if (mounted) _showActionFailed();
     }
   }
 
@@ -952,183 +1016,54 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
       }
 
       if (result == null || result.failedDevices > 0) {
-        if (mounted) {
-          final localizations = AppLocalizations.of(context)!;
-          AlertBar.showError(context, message: localizations.action_failed);
-        }
+        if (mounted) _showActionFailed();
       }
     } catch (e) {
       if (kDebugMode) {
         debugPrint('[ShadingDomainView] Failed to set covers mode: $e');
       }
-      if (mounted) {
-        final localizations = AppLocalizations.of(context)!;
-        AlertBar.showError(context, message: localizations.action_failed);
-      }
+      if (mounted) _showActionFailed();
     }
   }
 
-  Widget _buildQuickActionButton(
-    BuildContext context, {
-    required String label,
-    required IconData icon,
-    required bool isActive,
-    required VoidCallback onTap,
-  }) {
-    final bool isLight = Theme.of(context).brightness == Brightness.light;
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: AppSpacings.pMd,
-          vertical: AppSpacings.pSm,
-        ),
-        decoration: BoxDecoration(
-          color: isActive
-              ? (isLight ? AppColorsLight.primary : AppColorsDark.primary)
-              : (isLight
-                  ? AppFillColorLight.base
-                  : AppFillColorDark.base),
-          borderRadius: BorderRadius.circular(AppBorderRadius.base),
-          border: isActive || !isLight
-              ? null
-              : Border.all(color: AppBorderColorLight.base),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: _screenService.scale(
-                18,
-                density: _visualDensityService.density,
-              ),
-              color: isActive
-                  ? AppColors.white
-                  : (isLight
-                      ? AppTextColorLight.regular
-                      : AppTextColorDark.regular),
-            ),
-            AppSpacings.spacingXsHorizontal,
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: AppFontSize.small,
-                fontWeight: FontWeight.w500,
-                color: isActive
-                    ? AppColors.white
-                    : (isLight
-                        ? AppTextColorLight.regular
-                        : AppTextColorDark.regular),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ===========================================================================
+  // --------------------------------------------------------------------------
   // MODE SELECTOR
-  // ===========================================================================
+  // --------------------------------------------------------------------------
 
-  /// Build the mode selector widget for portrait/horizontal layout.
-  Widget _buildModeSelector(BuildContext context, AppLocalizations localizations) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    // Determine activeValue, matchedValue, and lastIntentValue based on state:
-    // - activeValue: mode explicitly set by intent AND still matches (2px border, mode color)
-    // - matchedValue: mode detected by user manually setting devices (1px border, mode color)
-    // - lastIntentValue: last applied intent when no mode matches (1px border, neutral color)
-    final CoversMode? activeValue;
-    final CoversMode? matchedValue;
-    final CoversMode? lastIntentValue;
-
+  /// Compute (activeValue, matchedValue, lastIntentValue) for [IntentModeSelector].
+  (CoversMode?, CoversMode?, CoversMode?) _getCoverModeSelectorValues() {
     final detectedMode = _coversState?.detectedMode;
     final lastAppliedMode = _coversState?.lastAppliedMode;
     final isModeFromIntent = _coversState?.isModeFromIntent ?? false;
 
-    if (detectedMode != null && isModeFromIntent) {
-      // Mode was set by intent and still matches: show as active
-      activeValue = detectedMode;
-      matchedValue = null;
-      lastIntentValue = null;
-    } else if (detectedMode != null && !isModeFromIntent) {
-      // Mode detected but not from intent (user manually matched): show as matched
-      activeValue = null;
-      matchedValue = detectedMode;
-      lastIntentValue = null;
-    } else if (lastAppliedMode != null) {
-      // No mode matches, but we have a last applied intent: show as last intent
-      activeValue = null;
-      matchedValue = null;
-      lastIntentValue = lastAppliedMode;
-    } else {
-      // No mode at all
-      activeValue = null;
-      matchedValue = null;
-      lastIntentValue = null;
-    }
+    if (detectedMode != null && isModeFromIntent) return (detectedMode, null, null);
+    if (detectedMode != null && !isModeFromIntent) return (null, detectedMode, null);
+    if (lastAppliedMode != null) return (null, null, lastAppliedMode);
+    return (null, null, null);
+  }
 
-    return Container(
-      padding: AppSpacings.paddingMd,
-      decoration: BoxDecoration(
-        color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
-        borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-        border: Border.all(
-          color: isDark ? AppFillColorDark.light : AppBorderColorLight.light,
-          width: 1,
-        ),
-      ),
-      child: IntentModeSelector<CoversMode>(
-        modes: _getCoversModeOptions(localizations),
-        activeValue: activeValue,
-        matchedValue: matchedValue,
-        lastIntentValue: lastIntentValue,
-        onChanged: _setCoversMode,
-        orientation: ModeSelectorOrientation.horizontal,
-        iconPlacement: ModeSelectorIconPlacement.top,
-      ),
+  /// Horizontal mode selector for portrait layout.
+  Widget _buildModeSelector(BuildContext context, AppLocalizations localizations) {
+    final (activeValue, matchedValue, lastIntentValue) = _getCoverModeSelectorValues();
+
+    return IntentModeSelector<CoversMode>(
+      modes: _getCoversModeOptions(localizations),
+      activeValue: activeValue,
+      matchedValue: matchedValue,
+      lastIntentValue: lastIntentValue,
+      onChanged: _setCoversMode,
+      orientation: ModeSelectorOrientation.horizontal,
+      iconPlacement: ModeSelectorIconPlacement.top,
     );
   }
 
-  /// Build vertical mode selector for landscape layout
-  Widget _buildLandscapeModeSelector(BuildContext context, AppLocalizations localizations) {
-    // Determine activeValue, matchedValue, and lastIntentValue based on state:
-    // - activeValue: mode explicitly set by intent AND still matches (2px border, mode color)
-    // - matchedValue: mode detected by user manually setting devices (1px border, mode color)
-    // - lastIntentValue: last applied intent when no mode matches (1px border, neutral color)
-    final CoversMode? activeValue;
-    final CoversMode? matchedValue;
-    final CoversMode? lastIntentValue;
-
-    final detectedMode = _coversState?.detectedMode;
-    final lastAppliedMode = _coversState?.lastAppliedMode;
-    final isModeFromIntent = _coversState?.isModeFromIntent ?? false;
-
-    if (detectedMode != null && isModeFromIntent) {
-      // Mode was set by intent and still matches: show as active
-      activeValue = detectedMode;
-      matchedValue = null;
-      lastIntentValue = null;
-    } else if (detectedMode != null && !isModeFromIntent) {
-      // Mode detected but not from intent (user manually matched): show as matched
-      activeValue = null;
-      matchedValue = detectedMode;
-      lastIntentValue = null;
-    } else if (lastAppliedMode != null) {
-      // No mode matches, but we have a last applied intent: show as last intent
-      activeValue = null;
-      matchedValue = null;
-      lastIntentValue = lastAppliedMode;
-    } else {
-      // No mode at all
-      activeValue = null;
-      matchedValue = null;
-      lastIntentValue = null;
-    }
+  /// Vertical mode selector for landscape layout; [showLabels] from screen size.
+  Widget _buildLandscapeModeSelector(
+    BuildContext context,
+    AppLocalizations localizations, {
+    bool showLabels = false,
+  }) {
+    final (activeValue, matchedValue, lastIntentValue) = _getCoverModeSelectorValues();
 
     return IntentModeSelector<CoversMode>(
       modes: _getCoversModeOptions(localizations),
@@ -1138,10 +1073,11 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
       onChanged: _setCoversMode,
       orientation: ModeSelectorOrientation.vertical,
       iconPlacement: ModeSelectorIconPlacement.top,
+      showLabels: showLabels,
     );
   }
 
-  /// Get mode options for the mode selector
+  /// Mode options for [ModeSelector] (open, daylight, privacy, closed).
   List<ModeOption<CoversMode>> _getCoversModeOptions(
     AppLocalizations localizations,
   ) {
@@ -1150,83 +1086,42 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
         value: CoversMode.open,
         icon: MdiIcons.blindsHorizontal,
         label: localizations.covers_mode_open,
-        color: ModeSelectorColor.primary,
+        color: ThemeColors.primary,
       ),
       ModeOption(
         value: CoversMode.daylight,
         icon: MdiIcons.weatherSunny,
         label: localizations.covers_mode_daylight,
-        color: ModeSelectorColor.warning,
+        color: ThemeColors.warning,
       ),
       ModeOption(
         value: CoversMode.privacy,
         icon: MdiIcons.eyeOff,
         label: localizations.covers_mode_privacy,
-        color: ModeSelectorColor.info,
+        color: ThemeColors.info,
       ),
       ModeOption(
         value: CoversMode.closed,
         icon: MdiIcons.blindsHorizontalClosed,
         label: localizations.covers_mode_closed,
-        color: ModeSelectorColor.neutral,
+        color: ThemeColors.neutral,
       ),
     ];
   }
 
-  // ===========================================================================
-  // DEVICES
-  // ===========================================================================
+  // --------------------------------------------------------------------------
+  // DEVICES BOTTOM SHEET
+  // --------------------------------------------------------------------------
+  // [_showShadingDevicesSheet] opens [DeckItemSheet] with tiles; tap opens detail.
 
-  /// Builds a grid of device tiles that fill the available width.
-  /// Uses DeviceTilePortrait wrapper for portrait mode.
-  Widget _buildDevicesGrid(
-    BuildContext context,
-    List<_CoverDeviceData> deviceDataList,
-    AppLocalizations localizations, {
-    int crossAxisCount = 2,
-  }) {
-    // Build device tiles using DeviceTilePortrait wrapper
-    final items = deviceDataList.map((device) {
-      final isActive = device.isOnline && device.position > 0;
-      final status = _getDeviceStatus(device, localizations);
-
-      return DeviceTilePortrait(
-        icon: device.position > 0
-            ? MdiIcons.blindsHorizontal
-            : MdiIcons.blindsHorizontalClosed,
-        name: device.name,
-        status: status,
-        isActive: isActive,
-        isOffline: !device.isOnline,
-        onTileTap: () => _openDeviceDetail(context, device),
-      );
-    }).toList();
-
-    // Build rows of tiles
-    final List<Widget> rows = [];
-    for (var i = 0; i < items.length; i += crossAxisCount) {
-      final rowItems = <Widget>[];
-      for (var j = 0; j < crossAxisCount; j++) {
-        final index = i + j;
-        if (index < items.length) {
-          rowItems.add(Expanded(child: items[index]));
-        } else {
-          rowItems.add(const Expanded(child: SizedBox()));
-        }
-        if (j < crossAxisCount - 1) {
-          rowItems.add(SizedBox(width: AppSpacings.pMd));
-        }
-      }
-      if (rows.isNotEmpty) {
-        rows.add(SizedBox(height: AppSpacings.pMd));
-      }
-      rows.add(Row(children: rowItems));
-    }
-
-    return Column(children: rows);
+  /// Icon for device tile (open vs closed).
+  IconData _getDeviceTileIcon(_CoverDeviceData device) {
+    return device.position > 0
+        ? MdiIcons.blindsHorizontal
+        : MdiIcons.blindsHorizontalClosed;
   }
 
-  /// Get localized status text for a device
+  /// Localized status text for a device (offline / open / closed / %).
   String _getDeviceStatus(_CoverDeviceData device, AppLocalizations localizations) {
     if (!device.isOnline) return localizations.device_status_offline;
     if (device.position == 100) return localizations.shading_state_open;
@@ -1234,9 +1129,50 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     return '${device.position}%';
   }
 
-  // ===========================================================================
+  void _showShadingDevicesSheet() {
+    final targets = _coversTargets;
+    final deviceDataList = _buildDeviceDataList(targets);
+    if (deviceDataList.isEmpty) return;
+    final localizations = AppLocalizations.of(context)!;
+
+    DeckItemSheet.showItemSheet(
+      context,
+      title: localizations.shading_devices_title,
+      icon: MdiIcons.windowShutterSettings,
+      itemCount: deviceDataList.length,
+      itemBuilder: (context, index) =>
+          _buildShadingDeviceTileForSheet(context, deviceDataList[index]),
+    );
+  }
+
+  Widget _buildShadingDeviceTileForSheet(
+    BuildContext context,
+    _CoverDeviceData device,
+  ) {
+    final localizations = AppLocalizations.of(context)!;
+    final deviceView = _devicesService?.getDevice(device.deviceId);
+    final tileIcon = deviceView != null
+        ? buildDeviceIcon(deviceView.category, deviceView.icon)
+        : _getDeviceTileIcon(device);
+
+    return HorizontalTileStretched(
+      icon: tileIcon,
+      name: device.name,
+      status: _getDeviceStatus(device, localizations),
+      isActive: device.isActive,
+      isOffline: !device.isOnline,
+      showWarningBadge: true,
+      activeColor: device.isActive ? _getPositionThemeColor(device.position) : null,
+      onTileTap: () {
+        Navigator.of(context).pop();
+        _openDeviceDetail(context, device);
+      },
+    );
+  }
+
+  // --------------------------------------------------------------------------
   // NAVIGATION
-  // ===========================================================================
+  // --------------------------------------------------------------------------
 
   void _openDeviceDetail(BuildContext context, _CoverDeviceData device) {
     Navigator.push(
@@ -1250,85 +1186,53 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     );
   }
 
-  // ===========================================================================
-  // COMMON WIDGETS
-  // ===========================================================================
+  // --------------------------------------------------------------------------
+  // HELPERS (THEME & POSITION LABELS)
+  // --------------------------------------------------------------------------
+  // Use [_getPositionThemeColor] / [_getPositionColorFamily] for position-based
+  // colors; [_getPositionText] for localized open/closed/partial.
 
-  Widget _buildSectionTitle(BuildContext context, String title, IconData icon) {
-    final bool isLight = Theme.of(context).brightness == Brightness.light;
-
-    return Row(
-      children: [
-        Icon(
-          icon,
-          color: isLight
-              ? AppTextColorLight.secondary
-              : AppTextColorDark.secondary,
-          size: _screenService.scale(
-            18,
-            density: _visualDensityService.density,
-          ),
-        ),
-        AppSpacings.spacingSmHorizontal,
-        Text(
-          title.toUpperCase(),
-          style: TextStyle(
-            fontSize: AppFontSize.small,
-            fontWeight: FontWeight.w600,
-            color: isLight
-                ? AppTextColorLight.secondary
-                : AppTextColorDark.secondary,
-            letterSpacing: 0.5,
-          ),
-        ),
-      ],
-    );
+  /// Theme color for position (success=open, info=closed, warning=partial).
+  ThemeColors _getPositionThemeColor(int position) {
+    if (position == 100) return ThemeColors.success;
+    if (position == 0) return ThemeColors.info;
+    return ThemeColors.warning;
   }
 
-  // ===========================================================================
-  // HELPERS
-  // ===========================================================================
+  /// Color family for position (header subtitle, role icons).
+  ThemeColorFamily _getPositionColorFamily(BuildContext context, int position) =>
+      ThemeColorFamily.get(Theme.of(context).brightness, _getPositionThemeColor(position));
 
-  Color _getPositionColor(int position, bool isLight) {
-    if (position == 100) {
-      return isLight ? AppColorsLight.success : AppColorsDark.success;
-    }
-    if (position == 0) {
-      return isLight ? AppColorsLight.info : AppColorsDark.info;
-    }
-    return isLight ? AppColorsLight.warning : AppColorsDark.warning;
-  }
-
+  /// Localized position label (open / closed / partial).
   String _getPositionText(int position, AppLocalizations localizations) {
     if (position == 100) return localizations.shading_state_open;
     if (position == 0) return localizations.shading_state_closed;
     return localizations.shading_state_partial(position);
   }
 
-  // ===========================================================================
+  // --------------------------------------------------------------------------
   // EMPTY STATE
-  // ===========================================================================
+  // --------------------------------------------------------------------------
 
   Widget _buildEmptyState(BuildContext context) {
-    final bool isLight = Theme.of(context).brightness == Brightness.light;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final localizations = AppLocalizations.of(context)!;
-    final secondaryColor = isLight ? AppTextColorLight.secondary : AppTextColorDark.secondary;
+    final secondaryColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
 
     return Scaffold(
-      backgroundColor: isLight ? AppBgColorLight.page : AppBgColorDark.page,
+      backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
       body: SafeArea(
         child: Column(
           children: [
             PageHeader(
               title: localizations.domain_shading,
               subtitle: localizations.domain_shading_empty_title,
-              backgroundColor: AppColors.blank,
-              leading: HeaderDeviceIcon(
+              leading: HeaderMainIcon(
                 icon: MdiIcons.blindsHorizontalClosed,
-                backgroundColor: isLight ? AppFillColorLight.light : AppFillColorDark.light,
-                iconColor: secondaryColor,
+                color: ThemeColors.neutral,
               ),
-              trailing: HeaderHomeButton(
+              trailing: HeaderIconButton(
+                icon: MdiIcons.homeOutline,
                 onTap: _navigateToHome,
               ),
             ),
@@ -1338,28 +1242,24 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
                   padding: AppSpacings.paddingLg,
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
+                    spacing: AppSpacings.pMd,
                     children: [
                       Icon(
                         MdiIcons.blindsHorizontalClosed,
                         color: secondaryColor,
-                        size: _screenService.scale(
-                          64,
-                          density: _visualDensityService.density,
-                        ),
+                        size: AppSpacings.scale(64),
                       ),
-                      AppSpacings.spacingMdVertical,
                       Text(
                         localizations.domain_shading_empty_title,
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: AppFontSize.extraLarge,
                           fontWeight: FontWeight.w600,
-                          color: isLight
-                              ? AppTextColorLight.primary
-                              : AppTextColorDark.primary,
+                          color: isDark
+                              ? AppTextColorDark.primary
+                              : AppTextColorLight.primary,
                         ),
                       ),
-                      AppSpacings.spacingSmVertical,
                       Text(
                         localizations.domain_shading_empty_description,
                         textAlign: TextAlign.center,

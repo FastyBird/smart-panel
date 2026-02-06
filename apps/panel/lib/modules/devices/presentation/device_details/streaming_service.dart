@@ -1,19 +1,18 @@
 import 'dart:async';
 
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/device_detail_landscape_layout.dart';
-import 'package:fastybird_smart_panel/core/widgets/device_detail_portrait_layout.dart';
-import 'package:fastybird_smart_panel/core/widgets/device_offline_overlay.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_landscape_layout.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_portrait_layout.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_offline_overlay.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_info_card.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_playback_card.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
+import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/streaming_service.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -33,8 +32,6 @@ class StreamingServiceDeviceDetail extends StatefulWidget {
 }
 
 class _StreamingServiceDeviceDetailState extends State<StreamingServiceDeviceDetail> {
-	final ScreenService _screenService = locator<ScreenService>();
-	final VisualDensityService _visualDensityService = locator<VisualDensityService>();
 	final DevicesService _devicesService = locator<DevicesService>();
 
 	Timer? _playbackSettleTimer;
@@ -66,9 +63,6 @@ class _StreamingServiceDeviceDetailState extends State<StreamingServiceDeviceDet
 		}
 		return widget._device;
 	}
-
-	double _scale(double value) =>
-		_screenService.scale(value, density: _visualDensityService.density);
 
 	// --------------------------------------------------------------------------
 	// COMMAND HELPERS
@@ -137,13 +131,7 @@ class _StreamingServiceDeviceDetailState extends State<StreamingServiceDeviceDet
 		return localizations.on_state_on;
 	}
 
-	Color _getAccentColor(bool isDark) {
-		return isDark ? AppColorsDark.info : AppColorsLight.info;
-	}
-
-	Color _getAccentLightColor(bool isDark) {
-		return isDark ? AppColorsDark.infoLight5 : AppColorsLight.infoLight5;
-	}
+	ThemeColors _getThemeColor() => ThemeColors.primary;
 
 	// --------------------------------------------------------------------------
 	// BUILD
@@ -190,33 +178,26 @@ class _StreamingServiceDeviceDetailState extends State<StreamingServiceDeviceDet
 
 	Widget _buildHeader(BuildContext context, bool isDark) {
 		final localizations = AppLocalizations.of(context)!;
-		final accentColor = _getAccentColor(isDark);
+		final accentColor = ThemeColorFamily.get(
+			isDark ? Brightness.dark : Brightness.light,
+			_getThemeColor(),
+		).base;
 
 		return PageHeader(
 			title: _device.name,
 			subtitle: _getStatusLabel(localizations),
 			subtitleColor: accentColor,
-			backgroundColor: AppColors.blank,
 			leading: Row(
 				mainAxisSize: MainAxisSize.min,
+				spacing: AppSpacings.pMd,
 				children: [
 					HeaderIconButton(
 						icon: MdiIcons.arrowLeft,
 						onTap: widget.onBack ?? () => Navigator.of(context).pop(),
 					),
-					AppSpacings.spacingMdHorizontal,
-					Container(
-						width: _scale(44),
-						height: _scale(44),
-						decoration: BoxDecoration(
-							color: _getAccentLightColor(isDark),
-							borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-						),
-						child: Icon(
-							MdiIcons.playNetwork,
-							color: accentColor,
-							size: _scale(24),
-						),
+					HeaderMainIcon(
+						icon: buildDeviceIcon(_device.category, _device.icon),
+						color: ThemeColors.primary,
 					),
 				],
 			),
@@ -228,23 +209,41 @@ class _StreamingServiceDeviceDetailState extends State<StreamingServiceDeviceDet
 	// --------------------------------------------------------------------------
 
 	Widget _buildPortraitLayout(BuildContext context, bool isDark) {
-		final accentColor = _getAccentColor(isDark);
-
-		return DeviceDetailPortraitLayout(
+		return DevicePortraitLayout(
 			content: Column(
 				crossAxisAlignment: CrossAxisAlignment.start,
+				spacing: AppSpacings.pMd,
 				children: [
 					MediaInfoCard(
 						icon: MdiIcons.playNetwork,
-						iconColor: accentColor,
-						iconBgColor: _getAccentLightColor(isDark),
 						name: _device.name,
 						isOn: true,
-						accentColor: accentColor,
-						scale: _scale,
+						themeColor: _getThemeColor(),
 					),
-					AppSpacings.spacingLgVertical,
-					_buildPlaybackCard(isDark),
+					if (MediaPlaybackCard.hasContent(
+						playbackTrack: _device.isMediaPlaybackTrack,
+						playbackArtist: _device.mediaPlaybackArtist,
+						playbackAlbum: _device.mediaPlaybackAlbum,
+						playbackAvailableCommands: _device.mediaPlaybackAvailableCommands,
+						playbackHasDuration: _device.hasMediaPlaybackDuration,
+						playbackDuration: _device.mediaPlaybackDuration,
+					))
+						MediaPlaybackCard(
+							playbackTrack: _device.isMediaPlaybackTrack,
+							playbackArtist: _device.mediaPlaybackArtist,
+							playbackAlbum: _device.mediaPlaybackAlbum,
+							playbackStatus: _effectivePlaybackStatus,
+							playbackAvailableCommands: _device.mediaPlaybackAvailableCommands,
+							playbackHasPosition: _device.hasMediaPlaybackPosition,
+							playbackPosition: _device.mediaPlaybackPosition,
+							playbackHasDuration: _device.hasMediaPlaybackDuration,
+							playbackDuration: _device.mediaPlaybackDuration,
+							playbackIsPositionWritable: _device.mediaPlaybackChannel.positionProp?.isWritable ?? false,
+							onPlaybackCommand: _sendPlaybackCommand,
+							onPlaybackSeek: _seekPosition,
+							themeColor: _getThemeColor(),
+							isEnabled: true,
+							),
 				],
 			),
 		);
@@ -255,49 +254,45 @@ class _StreamingServiceDeviceDetailState extends State<StreamingServiceDeviceDet
 	// --------------------------------------------------------------------------
 
 	Widget _buildLandscapeLayout(BuildContext context, bool isDark) {
-		final accentColor = _getAccentColor(isDark);
-
-		return DeviceDetailLandscapeLayout(
+		return DeviceLandscapeLayout(
 			mainContent: Column(
 				mainAxisAlignment: MainAxisAlignment.center,
+				spacing: AppSpacings.pMd,
 				children: [
 					MediaInfoCard(
 						icon: MdiIcons.playNetwork,
-						iconColor: accentColor,
-						iconBgColor: _getAccentLightColor(isDark),
 						name: _device.name,
 						isOn: true,
-						accentColor: accentColor,
-						scale: _scale,
+						themeColor: _getThemeColor(),
 					),
-					AppSpacings.spacingMdVertical,
-					_buildPlaybackCard(isDark),
+					if (MediaPlaybackCard.hasContent(
+						playbackTrack: _device.isMediaPlaybackTrack,
+						playbackArtist: _device.mediaPlaybackArtist,
+						playbackAlbum: _device.mediaPlaybackAlbum,
+						playbackAvailableCommands: _device.mediaPlaybackAvailableCommands,
+						playbackHasDuration: _device.hasMediaPlaybackDuration,
+						playbackDuration: _device.mediaPlaybackDuration,
+					))
+						MediaPlaybackCard(
+							playbackTrack: _device.isMediaPlaybackTrack,
+							playbackArtist: _device.mediaPlaybackArtist,
+							playbackAlbum: _device.mediaPlaybackAlbum,
+							playbackStatus: _effectivePlaybackStatus,
+							playbackAvailableCommands: _device.mediaPlaybackAvailableCommands,
+							playbackHasPosition: _device.hasMediaPlaybackPosition,
+							playbackPosition: _device.mediaPlaybackPosition,
+							playbackHasDuration: _device.hasMediaPlaybackDuration,
+							playbackDuration: _device.mediaPlaybackDuration,
+							playbackIsPositionWritable: _device.mediaPlaybackChannel.positionProp?.isWritable ?? false,
+							onPlaybackCommand: _sendPlaybackCommand,
+							onPlaybackSeek: _seekPosition,
+							themeColor: _getThemeColor(),
+							isEnabled: true,
+							),
 				],
 			),
 			secondaryContent: const SizedBox.shrink(),
 		);
 	}
 
-	Widget _buildPlaybackCard(bool isDark) {
-		final accentColor = _getAccentColor(isDark);
-		final positionProp = _device.mediaPlaybackChannel.positionProp;
-
-		return MediaPlaybackCard(
-			track: _device.isMediaPlaybackTrack,
-			artist: _device.mediaPlaybackArtist,
-			album: _device.mediaPlaybackAlbum,
-			status: _effectivePlaybackStatus,
-			availableCommands: _device.mediaPlaybackAvailableCommands,
-			hasPosition: _device.hasMediaPlaybackPosition,
-			position: _device.mediaPlaybackPosition,
-			hasDuration: _device.hasMediaPlaybackDuration,
-			duration: _device.mediaPlaybackDuration,
-			isPositionWritable: positionProp?.isWritable ?? false,
-			isEnabled: true,
-			accentColor: accentColor,
-			scale: _scale,
-			onCommand: _sendPlaybackCommand,
-			onSeek: _seekPosition,
-		);
-	}
 }

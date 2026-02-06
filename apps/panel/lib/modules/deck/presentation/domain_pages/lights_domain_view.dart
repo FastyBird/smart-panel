@@ -1,11 +1,57 @@
+// Lights domain view: room-level lighting control for a single space/room.
+//
+// **Purpose:** One screen per room showing lighting roles (main, task, ambient,
+// accent, night), "other" lights, scenes, and a mode selector (off/work/relax/night).
+// Role and device detail are opened via navigation.
+//
+// **Data flow:**
+// - [SpacesService] provides light targets and lighting state for the room.
+// - [DevicesService] provides live device views used to build role/light data.
+// - [DomainControlStateService] (mode + role channels) drives optimistic UI;
+//   [IntentsRepository] notifies when intents complete so pending state can settle.
+//
+// **Key concepts:**
+// - Two [DomainControlStateService] instances: one for mode (off/work/relax/night),
+//   one for role toggles (main, task, ambient, etc.). Both use space-level intent
+//   lock; mode lock blocks role toggles until settling.
+// - Role data is built in [_buildRoleDataList] from targets + [DevicesService];
+//   "other" lights and scenes are separate lists. Optimistic on/off for single
+//   lights uses [DeviceControlStateService] and [IntentOverlayService].
+//
+// **File structure (for humans and AI):**
+// Search for the exact section header (e.g. "// DATA MODELS", "// LIFECYCLE") to
+// jump to that part of the file. Sections appear in this order:
+//
+// - **DATA MODELS** — [LightingRoleData], [LightState], [LightingModeUI] (+ extension),
+//   [LightDeviceData]. Channel IDs/settling from [LightingConstants] (constants.dart).
+// - **LIGHTS DOMAIN VIEW PAGE** — [LightsDomainViewPage] and state class:
+//   - STATE & DEPENDENCIES: _roomId, [_tryLocator], optional services.
+//   - DERIVED STATE & CONVERGENCE HELPERS: [_lightingState], [_currentMode],
+//     [_checkModeConvergence], [_checkRoleConvergence], [_getRolePendingState].
+//   - LIFECYCLE: initState (mode + role control services, listeners, fetch), dispose.
+//   - CONTROL STATE & CALLBACKS: [_onDataChanged], [_groupTargetsByRole],
+//     [_onIntentChanged].
+//   - UTILITIES: [_scale], [_navigateToHome].
+//   - BUILD: scaffold, loading/empty/content; [Consumer] for [DevicesService].
+//   - DATA BUILDING: [_buildRoleDataList], [_buildOtherLights], counts, role names/icons.
+//   - HEADER: [_buildHeader], mode subtitle, status color.
+//   - PORTRAIT LAYOUT, LANDSCAPE LAYOUT: roles, scenes, other lights, mode selector.
+//   - LIGHTING MODE CONTROLS: [_setLightingMode], [_toggleRoleViaIntent],
+//     [_toggleRole], [_toggleLight].
+//   - ROLES GRID, LIGHTS GRID, SCENES, NAVIGATION, EMPTY STATE: UI builders.
+// - **PRIVATE WIDGETS** — [_RoleCard], [_LightTile], [_SceneTile] (all use [UniversalTile]).
+
 import 'package:event_bus/event_bus.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
+import 'package:provider/provider.dart';
+
 import 'package:fastybird_smart_panel/api/models/scenes_module_data_scene_category.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
-import 'package:fastybird_smart_panel/core/utils/color.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/intent_mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
@@ -17,16 +63,18 @@ import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/constants.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/domain_data_loader.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/domain_state_view.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/light_role_detail_page.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/deck_service.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/domain_control_state_service.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/navigate_event.dart';
-import 'package:fastybird_smart_panel/modules/deck/views/light_role_detail_page.dart';
-import 'package:fastybird_smart_panel/modules/devices/presentation/device_detail_page.dart';
 import 'package:fastybird_smart_panel/modules/deck/utils/lighting.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/channels/light.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/devices/lighting.dart';
 import 'package:fastybird_smart_panel/modules/devices/export.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_detail_page.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/channels/light.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/devices/lighting.dart';
 import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
 import 'package:fastybird_smart_panel/modules/intents/repositories/intents.dart';
 import 'package:fastybird_smart_panel/modules/scenes/service.dart';
@@ -35,14 +83,13 @@ import 'package:fastybird_smart_panel/modules/spaces/models/lighting_state/light
 import 'package:fastybird_smart_panel/modules/spaces/service.dart';
 import 'package:fastybird_smart_panel/modules/spaces/utils/intent_result_handler.dart';
 import 'package:fastybird_smart_panel/modules/spaces/views/light_targets/view.dart';
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
-import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
-import 'package:provider/provider.dart';
 
-// ============================================================================
+// =============================================================================
 // DATA MODELS
-// ============================================================================
+// =============================================================================
+// View models and enums for the lights domain. [LightingRoleData] and
+// [LightDeviceData] are built from [SpacesService] targets + [DevicesService];
+// [LightingModeUI] maps to backend [LightingMode] via [LightingModeUIExtension].
 
 class LightingRoleData {
   final LightTargetRole role;
@@ -164,50 +211,17 @@ class LightDeviceData {
   }
 }
 
-// ============================================================================
+// =============================================================================
 // LIGHTS DOMAIN VIEW PAGE
-// ============================================================================
+// =============================================================================
+// Stateful page and [_LightsDomainViewPageState]. State holds two control
+// services (mode + role), optional services (Spaces, Devices, Scenes, Intents,
+// Deck, etc.), and cached role grouping. Build uses Consumer<DevicesService>.
 
 /// Domain view page for controlling lighting in a space.
 ///
-/// ## Optimistic UI State Flow
-///
-/// This page uses [DomainControlStateService] for optimistic UI updates. The
-/// state machine handles two types of controls:
-///
-/// ### Mode Control Flow
-/// ```
-/// User taps mode (e.g., "Work") →
-///   _setLightingMode() called →
-///   setPending('mode', modeIndex) → UI shows "Work" immediately →
-///   Backend intent sent →
-///   _onIntentChanged() detects unlock →
-///   onIntentCompleted() → starts settling timer →
-///   _onDataChanged() checks convergence →
-///   If converged: setIdle() → UI shows actual state
-///   If timeout: setMixed() → UI shows actual state (may differ from requested)
-/// ```
-///
-/// ### Role Toggle Flow
-/// ```
-/// User taps role tile (e.g., "Ambient") →
-///   _toggleRoleViaIntent() called →
-///   setPending('role_ambient', newState) → UI shows toggle immediately →
-///   Backend intent sent →
-///   _onIntentChanged() checks isLocked(channelId) →
-///   Only completes if this specific role was pending →
-///   Settling and convergence same as mode flow
-/// ```
-///
-/// ### Mode Change → Role Toggle Interaction
-/// Mode changes block role toggles because:
-/// - Mode changes affect all roles (e.g., "Work" turns on main+task)
-/// - Concurrent role toggles could conflict with mode intent
-/// - User should wait for mode to settle before fine-tuning roles
-///
-/// Role toggles do NOT block mode changes because:
-/// - Individual role toggles are superseded by mode changes
-/// - Mode change intent will override any pending role state
+/// Uses [DomainControlStateService] for optimistic UI (mode + role channels).
+/// Mode changes block role toggles until settling; role toggles do not block mode.
 class LightsDomainViewPage extends StatefulWidget {
   final DomainViewItem viewItem;
 
@@ -219,9 +233,9 @@ class LightsDomainViewPage extends StatefulWidget {
 
 class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
 
+  /// Optional services: resolved in initState via [_tryLocator]. Listeners
+  /// registered for Spaces, Devices, Scenes, Intents; others used ad hoc.
   SpacesService? _spacesService;
   DevicesService? _devicesService;
   ScenesService? _scenesService;
@@ -231,27 +245,51 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   IntentOverlayService? _intentOverlayService;
   DeviceControlStateService? _deviceControlStateService;
   bool _isLoading = true;
+  bool _hasError = false;
 
-  // Control state service for optimistic UI (mode control)
+  /// Optimistic UI for mode (off/work/relax/night). Lock blocks role toggles.
   late DomainControlStateService<LightingStateModel> _modeControlStateService;
 
-  // Control state service for optimistic UI (role toggles)
+  /// Optimistic UI for role toggles (main, task, ambient, etc.). Per-role lock.
   late DomainControlStateService<LightTargetView> _roleControlStateService;
 
-  /// Tracks if the space intent was locked in the previous update.
-  /// Used to detect when an intent unlocks (completes) to trigger settling.
+  /// True when a mode intent was in flight last frame; used in [_onIntentChanged]
+  /// to call [onIntentCompleted] when space intent unlocks.
   bool _modeWasLocked = false;
 
-  /// Tracks if the space intent was locked in the previous update (for role toggles).
-  /// Used to detect when role toggle intents unlock (complete) to trigger settling.
+  /// True when space had an intent lock last frame (any lighting intent).
+  /// Used to detect role-toggle intent completion when space unlocks.
   bool _spaceWasLocked = false;
 
-  /// Cached grouped targets by role for performance optimization.
-  /// Invalidated when light targets change (based on content hash).
+  /// Cached result of [_groupTargetsByRole]; invalidated via [_cachedTargetsHash].
   Map<LightTargetRole, List<LightTargetView>>? _cachedRoleGroups;
   int _cachedTargetsHash = 0;
 
+  // --------------------------------------------------------------------------
+  // STATE & DEPENDENCIES
+  // --------------------------------------------------------------------------
+  // Room id from [DomainViewItem]; [_tryLocator] resolves optional services
+  // and registers listeners without throwing.
+
   String get _roomId => widget.viewItem.roomId;
+
+  T? _tryLocator<T extends Object>(String debugLabel, {void Function(T)? onSuccess}) {
+    try {
+      final s = locator<T>();
+      onSuccess?.call(s);
+      return s;
+    } catch (e) {
+      if (kDebugMode) debugPrint('[LightsDomainView] Failed to get $debugLabel: $e');
+      return null;
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // DERIVED STATE & CONVERGENCE HELPERS
+  // --------------------------------------------------------------------------
+  // [_lightingState], [_currentMode] (with optimistic override). Convergence
+  // and lock callbacks for [DomainControlStateService]; [_getRolePendingState]
+  // for optimistic role tile state.
 
   /// Get lighting state from backend (cached)
   LightingStateModel? get _lightingState =>
@@ -352,7 +390,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     return true;
   }
 
-
   /// Get the optimistic on/off state for a role.
   /// Returns null if no pending state (use actual device state).
   bool? _getRolePendingState(LightTargetRole role) {
@@ -365,6 +402,13 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     }
     return null;
   }
+
+  // --------------------------------------------------------------------------
+  // LIFECYCLE
+  // --------------------------------------------------------------------------
+  // initState: create mode + role [DomainControlStateService], register
+  // listeners (Spaces, Devices, Scenes, Intents), then [_fetchLightTargets].
+  // dispose: remove listeners and dispose both control services.
 
   @override
   void initState() {
@@ -433,55 +477,16 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     );
     _roleControlStateService.addListener(_onControlStateChanged);
 
-    try {
-      _spacesService = locator<SpacesService>();
-      _spacesService?.addListener(_onDataChanged);
-    } catch (e) {
-      if (kDebugMode) debugPrint('[LightsDomainView] Failed to get SpacesService: $e');
-    }
-
-    try {
-      _devicesService = locator<DevicesService>();
-      _devicesService?.addListener(_onDataChanged);
-    } catch (e) {
-      if (kDebugMode) debugPrint('[LightsDomainView] Failed to get DevicesService: $e');
-    }
-
-    try {
-      _scenesService = locator<ScenesService>();
-      _scenesService?.addListener(_onDataChanged);
-    } catch (e) {
-      if (kDebugMode) debugPrint('[LightsDomainView] Failed to get ScenesService: $e');
-    }
-
-    try {
-      _deckService = locator<DeckService>();
-    } catch (e) {
-      if (kDebugMode) debugPrint('[LightsDomainView] Failed to get DeckService: $e');
-    }
-
-    try {
-      _eventBus = locator<EventBus>();
-    } catch (e) {
-      if (kDebugMode) debugPrint('[LightsDomainView] Failed to get EventBus: $e');
-    }
-
-    try {
-      _intentsRepository = locator<IntentsRepository>();
-      _intentsRepository?.addListener(_onIntentChanged);
-    } catch (e) {
-      if (kDebugMode) debugPrint('[LightsDomainView] Failed to get IntentsRepository: $e');
-    }
-
+    _spacesService = _tryLocator<SpacesService>('SpacesService', onSuccess: (s) => s.addListener(_onDataChanged));
+    _devicesService = _tryLocator<DevicesService>('DevicesService', onSuccess: (s) => s.addListener(_onDataChanged));
+    _scenesService = _tryLocator<ScenesService>('ScenesService', onSuccess: (s) => s.addListener(_onDataChanged));
+    _deckService = _tryLocator<DeckService>('DeckService');
+    _eventBus = _tryLocator<EventBus>('EventBus');
+    _intentsRepository = _tryLocator<IntentsRepository>('IntentsRepository', onSuccess: (s) => s.addListener(_onIntentChanged));
     if (locator.isRegistered<IntentOverlayService>()) {
       _intentOverlayService = locator<IntentOverlayService>();
     }
-
-    try {
-      _deviceControlStateService = locator<DeviceControlStateService>();
-    } catch (e) {
-      if (kDebugMode) debugPrint('[LightsDomainView] Failed to get DeviceControlStateService: $e');
-    }
+    _deviceControlStateService = _tryLocator<DeviceControlStateService>('DeviceControlStateService');
 
     // Fetch light targets for this space
     _fetchLightTargets();
@@ -501,13 +506,33 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
           _spacesService?.fetchLightingState(_roomId) ?? Future.value(),
         ]);
       }
-    } finally {
+
       if (mounted) {
         setState(() {
           _isLoading = false;
+          _hasError = false;
+        });
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[LightsDomainView] Failed to fetch light targets: $e');
+      }
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _hasError = true;
         });
       }
     }
+  }
+
+  /// Retry loading data after an error.
+  Future<void> _retryLoad() async {
+    setState(() {
+      _isLoading = true;
+      _hasError = false;
+    });
+    await _fetchLightTargets();
   }
 
   @override
@@ -522,6 +547,14 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     _roleControlStateService.dispose();
     super.dispose();
   }
+
+  // --------------------------------------------------------------------------
+  // CONTROL STATE & CALLBACKS
+  // --------------------------------------------------------------------------
+  // [_onDataChanged]: check convergence for mode and role channels, then
+  // setState. [_groupTargetsByRole] caches by content hash. [_onIntentChanged]:
+  // when space intent unlocks, call onIntentCompleted for mode/role so pending
+  // state can settle.
 
   void _onDataChanged() {
     if (!mounted) return;
@@ -672,8 +705,9 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     _spaceWasLocked = isNowLocked;
   }
 
-  double _scale(double size) =>
-      _screenService.scale(size, density: _visualDensityService.density);
+  // --------------------------------------------------------------------------
+  // UTILITIES
+  // --------------------------------------------------------------------------
 
   /// Navigate to the home page in the deck
   void _navigateToHome() {
@@ -690,21 +724,33 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     }
   }
 
+  // --------------------------------------------------------------------------
+  // BUILD
+  // --------------------------------------------------------------------------
+
   @override
   Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
+
+    // Handle loading and error states using DomainStateView
+    final loadState = _isLoading
+        ? DomainLoadState.loading
+        : _hasError
+            ? DomainLoadState.error
+            : DomainLoadState.loaded;
+
+    if (loadState != DomainLoadState.loaded) {
+      return DomainStateView(
+        state: loadState,
+        onRetry: _retryLoad,
+        domainName: localizations.domain_lights,
+        child: const SizedBox.shrink(),
+      );
+    }
+
     return Consumer<DevicesService>(
       builder: (context, devicesService, _) {
-        if (_isLoading) {
-          return Scaffold(
-            backgroundColor: Theme.of(context).brightness == Brightness.dark
-                ? AppBgColorDark.page
-                : AppBgColorLight.page,
-            body: const Center(child: CircularProgressIndicator()),
-          );
-        }
-
         final lightTargets = _spacesService?.getLightTargetsForSpace(_roomId) ?? [];
-        final localizations = AppLocalizations.of(context)!;
 
         if (lightTargets.isEmpty) {
           return _buildEmptyState(context);
@@ -766,6 +812,10 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   // --------------------------------------------------------------------------
   // DATA BUILDING
   // --------------------------------------------------------------------------
+  // [_buildRoleDataList]: group targets by role, compute onCount/brightness
+  // (with optional lookup maps for large lists). [_buildOtherLights],
+  // [_countLightsOn], [_getRoleName], [_getRoleIcon]. [_getLightOptimisticOn]
+  // for single-light optimistic on/off.
 
   /// Builds a list of [LightingRoleData] from the given targets.
   ///
@@ -873,6 +923,25 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     return roles;
   }
 
+  bool _getLightOptimisticOn(
+    String deviceId,
+    String channelId,
+    String propertyId,
+    bool fallback,
+  ) {
+    if (_deviceControlStateService != null &&
+        _deviceControlStateService!.isLocked(deviceId, channelId, propertyId)) {
+      final v = _deviceControlStateService!.getDesiredValue(deviceId, channelId, propertyId);
+      if (v is bool) return v;
+    }
+    if (_intentOverlayService != null &&
+        _intentOverlayService!.isLocked(deviceId, channelId, propertyId)) {
+      final v = _intentOverlayService!.getOverlayValue(deviceId, channelId, propertyId);
+      if (v is bool) return v;
+    }
+    return fallback;
+  }
+
   List<LightDeviceData> _buildOtherLights(
     List<LightTargetView> targets,
     DevicesService devicesService,
@@ -888,36 +957,12 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         (c) => c.id == target.channelId,
         orElse: () => device.lightChannels.first,
       );
-
-      // Use DeviceControlStateService first for optimistic UI (most reliable)
-      // Fall back to IntentOverlayService, then actual device state
-      bool isOn = channel.on;
-      final controlStateService = _deviceControlStateService;
-      final onProp = channel.onProp;
-
-      if (controlStateService != null &&
-          controlStateService.isLocked(target.deviceId, target.channelId, onProp.id)) {
-        // Use desired value from control state service (immediate, no listener delay)
-        final desiredValue = controlStateService.getDesiredValue(
-          target.deviceId,
-          target.channelId,
-          onProp.id,
-        );
-        if (desiredValue is bool) {
-          isOn = desiredValue;
-        }
-      } else if (_intentOverlayService != null &&
-          _intentOverlayService!.isLocked(target.deviceId, target.channelId, onProp.id)) {
-        // Fall back to intent overlay service
-        final overlayValue = _intentOverlayService!.getOverlayValue(
-          target.deviceId,
-          target.channelId,
-          onProp.id,
-        );
-        if (overlayValue is bool) {
-          isOn = overlayValue;
-        }
-      }
+      final isOn = _getLightOptimisticOn(
+        target.deviceId,
+        target.channelId,
+        channel.onProp.id,
+        channel.on,
+      );
 
       LightState state;
       if (!device.isOnline) {
@@ -997,6 +1042,22 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   // HEADER
   // --------------------------------------------------------------------------
 
+  /// Single source of theme color for the page based on lights on/off state.
+  /// - All on: success; all off: neutral; mixed: warning.
+  ThemeColors _getStatusColor(BuildContext context) {
+    final targets = _spacesService?.getLightTargetsForSpace(_roomId) ?? [];
+    final devicesService = context.read<DevicesService>();
+    final totalLights = targets.length;
+    final lightsOn = _countLightsOn(targets, devicesService);
+    if (lightsOn == totalLights && totalLights > 0) return ThemeColors.success;
+    if (lightsOn == 0) return ThemeColors.neutral;
+    return ThemeColors.warning;
+  }
+
+  /// Resolved color family for the current status color and brightness.
+  ThemeColorFamily _getStatusColorFamily(BuildContext context) =>
+      ThemeColorFamily.get(Theme.of(context).brightness, _getStatusColor(context));
+
   Widget _buildHeader(
     BuildContext context,
     String roomName,
@@ -1004,10 +1065,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     int totalLights,
   ) {
     final localizations = AppLocalizations.of(context)!;
-
-    // Get state-based colors (consistent with shading domain)
-    final stateColor = _getLightStateColor(context, lightsOn, totalLights);
-    final stateBgColor = getSemanticBackgroundColor(context, stateColor);
+    final statusColorFamily = _getStatusColorFamily(context);
 
     // Build subtitle based on mode and lights state
     final mode = _currentMode;
@@ -1025,36 +1083,16 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     return PageHeader(
       title: localizations.domain_lights,
       subtitle: subtitle,
-      subtitleColor: hasLightsOn ? stateColor : null,
-      backgroundColor: AppColors.blank,
-      leading: HeaderDeviceIcon(
+      subtitleColor: hasLightsOn ? statusColorFamily.base : null,
+      leading: HeaderMainIcon(
         icon: hasLightsOn ? MdiIcons.lightbulbOn : MdiIcons.lightbulbOutline,
-        backgroundColor: stateBgColor,
-        iconColor: stateColor,
+        color: _getStatusColor(context),
       ),
-      trailing: HeaderHomeButton(
+      trailing: HeaderIconButton(
+        icon: MdiIcons.homeOutline,
         onTap: _navigateToHome,
       ),
     );
-  }
-
-  /// Get color based on lights on/off state (consistent with shading domain).
-  ///
-  /// - All lights on: Success/Green
-  /// - All lights off: Info/Blue
-  /// - Some lights on (mixed): Warning/Yellow
-  Color _getLightStateColor(BuildContext context, int lightsOn, int totalLights) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    if (lightsOn == totalLights && totalLights > 0) {
-      // All on
-      return isDark ? AppColorsDark.success : AppColorsLight.success;
-    }
-    if (lightsOn == 0) {
-      // All off
-      return isDark ? AppColorsDark.info : AppColorsLight.info;
-    }
-    // Mixed (some on, some off)
-    return isDark ? AppColorsDark.warning : AppColorsLight.warning;
   }
 
   /// Get localized name for lighting mode
@@ -1069,6 +1107,31 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       case LightingModeUI.night:
         return localizations.space_lighting_mode_night;
     }
+  }
+
+  LightingModeUI? _toLightingModeUI(LightingMode? mode) {
+    if (mode == null) return null;
+    return LightingModeUI.values.firstWhere(
+      (m) => m.name == mode.name,
+      orElse: () => LightingModeUI.off,
+    );
+  }
+
+  (LightingModeUI? activeValue, LightingModeUI? matchedValue, LightingModeUI? lastIntentValue)
+      _getLightingModeSelectorValues() {
+    final mode = _currentMode;
+    if (_modeControlStateService.isLocked(LightingConstants.modeChannelId)) {
+      return (mode, null, null);
+    }
+    final detectedMode = _lightingState?.detectedMode;
+    final lastAppliedMode = _lightingState?.lastAppliedMode;
+    final isModeFromIntent = _lightingState?.isModeFromIntent ?? false;
+    final detectedModeUI = _toLightingModeUI(detectedMode);
+    final lastAppliedModeUI = _toLightingModeUI(lastAppliedMode);
+    if (detectedModeUI != null && isModeFromIntent) return (detectedModeUI, null, null);
+    if (detectedModeUI != null && !isModeFromIntent) return (null, detectedModeUI, null);
+    if (lastAppliedModeUI != null) return (null, null, lastAppliedModeUI);
+    return (mode == LightingModeUI.off ? LightingModeUI.off : null, null, null);
   }
 
   // --------------------------------------------------------------------------
@@ -1096,6 +1159,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     return PortraitViewLayout(
       content: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: AppSpacings.pMd,
         children: [
           // Roles Grid
           if (hasRoles)
@@ -1103,15 +1167,13 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
           // Quick Scenes Section
           if (hasScenes) ...[
-            if (hasRoles) AppSpacings.spacingLgVertical,
             SectionTitle(
                 title: localizations.space_scenes_title,
                 icon: MdiIcons.autoFix),
-            AppSpacings.spacingMdVertical,
             // Use horizontal scroll when other lights present (less vertical space)
             if (hasOtherLights)
               SizedBox(
-                height: _scale(70),
+                height: AppSpacings.scale(70),
                 child: _buildPortraitScenesRow(
                   context,
                   tilesPerRow: scenesPerRow,
@@ -1123,9 +1185,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
           // Other Lights Section
           if (hasOtherLights) ...[
-            if (hasRoles || hasScenes) AppSpacings.spacingLgVertical,
             _buildOtherLightsTitle(otherLights, otherTargets, localizations),
-            AppSpacings.spacingMdVertical,
             _buildLightsGrid(
               context,
               otherLights,
@@ -1149,86 +1209,19 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   /// (`_modeControlStateService`). The shared widget handles the
   /// generic mode selection UI, while this view handles the domain logic.
   Widget _buildModeSelector(BuildContext context, AppLocalizations localizations) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final mode = _currentMode;
+    final (activeValue, matchedValue, lastIntentValue) = _getLightingModeSelectorValues();
     final isModeLocked = _modeControlStateService.isLocked(LightingConstants.modeChannelId);
 
-    // Determine activeValue, matchedValue, and lastIntentValue based on state:
-    // - activeValue: mode explicitly set by intent AND still matches (2px border, mode color)
-    // - matchedValue: mode detected by user manually setting devices (1px border, mode color)
-    // - lastIntentValue: last applied intent when no mode matches (1px border, neutral color)
-    final LightingModeUI? activeValue;
-    final LightingModeUI? matchedValue;
-    final LightingModeUI? lastIntentValue;
-
-    if (isModeLocked) {
-      // Optimistic UI: show pending mode as active
-      activeValue = mode;
-      matchedValue = null;
-      lastIntentValue = null;
-    } else {
-      final detectedMode = _lightingState?.detectedMode;
-      final lastAppliedMode = _lightingState?.lastAppliedMode;
-      final isModeFromIntent = _lightingState?.isModeFromIntent ?? false;
-
-      // Convert backend LightingMode to UI LightingModeUI
-      final LightingModeUI? detectedModeUI = detectedMode != null
-          ? LightingModeUI.values.firstWhere(
-              (m) => m.name == detectedMode.name,
-              orElse: () => LightingModeUI.off,
-            )
-          : null;
-      final LightingModeUI? lastAppliedModeUI = lastAppliedMode != null
-          ? LightingModeUI.values.firstWhere(
-              (m) => m.name == lastAppliedMode.name,
-              orElse: () => LightingModeUI.off,
-            )
-          : null;
-
-      if (detectedModeUI != null && isModeFromIntent) {
-        // Mode was set by intent and still matches: show as active
-        activeValue = detectedModeUI;
-        matchedValue = null;
-        lastIntentValue = null;
-      } else if (detectedModeUI != null && !isModeFromIntent) {
-        // Mode detected but not from intent (user manually matched): show as matched
-        activeValue = null;
-        matchedValue = detectedModeUI;
-        lastIntentValue = null;
-      } else if (lastAppliedModeUI != null) {
-        // No mode matches, but we have a last applied intent: show as last intent
-        activeValue = null;
-        matchedValue = null;
-        lastIntentValue = lastAppliedModeUI;
-      } else {
-        // No mode at all - check if all lights are off
-        activeValue = mode == LightingModeUI.off ? LightingModeUI.off : null;
-        matchedValue = null;
-        lastIntentValue = null;
-      }
-    }
-
-    return Container(
-      padding: AppSpacings.paddingMd,
-      decoration: BoxDecoration(
-        color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
-        borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-        border: Border.all(
-          color: isDark ? AppFillColorDark.light : AppBorderColorLight.light,
-          width: 1,
-        ),
-      ),
-      child: IgnorePointer(
-        ignoring: isModeLocked,
-        child: IntentModeSelector<LightingModeUI>(
-          modes: _getLightingModeOptions(localizations),
-          activeValue: activeValue,
-          matchedValue: matchedValue,
-          lastIntentValue: lastIntentValue,
-          onChanged: _setLightingMode,
-          orientation: ModeSelectorOrientation.horizontal,
-          iconPlacement: ModeSelectorIconPlacement.top,
-        ),
+    return IgnorePointer(
+      ignoring: isModeLocked,
+      child: IntentModeSelector<LightingModeUI>(
+        modes: _getLightingModeOptions(context, localizations),
+        activeValue: activeValue,
+        matchedValue: matchedValue,
+        lastIntentValue: lastIntentValue,
+        onChanged: _setLightingMode,
+        orientation: ModeSelectorOrientation.horizontal,
+        iconPlacement: ModeSelectorIconPlacement.top,
       ),
     );
   }
@@ -1267,10 +1260,10 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
           ? _buildLandscapeModeSelector(
               context,
               localizations,
-              showLabels: !hasScenes && isLargeScreen,
+              showLabels: isLargeScreen,
             )
           : null,
-      modeSelectorShowLabels: !hasScenes && isLargeScreen,
+      modeSelectorShowLabels: isLargeScreen,
       additionalContent: hasScenes
           ? _buildLandscapeScenesColumn(context, localizations)
           : null,
@@ -1292,6 +1285,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: AppSpacings.pMd,
       children: [
         // Roles + Other Lights layout
         if (hasRoles && hasOtherLights) ...[
@@ -1302,10 +1296,8 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             devicesService,
             tilesPerRow: tilesPerRow,
           ),
-          AppSpacings.spacingLgVertical,
           // Other Lights header
           _buildOtherLightsTitle(otherLights, otherTargets, localizations),
-          AppSpacings.spacingMdVertical,
           // Other Lights grid
           _buildLandscapeLightsGrid(
             context,
@@ -1327,7 +1319,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         ] else if (hasOtherLights) ...[
           // Only other lights, no roles
           _buildOtherLightsTitle(otherLights, otherTargets, localizations),
-          AppSpacings.spacingMdVertical,
           _buildLandscapeLightsGrid(
             context,
             otherLights,
@@ -1346,12 +1337,12 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: AppSpacings.pMd,
       children: [
         SectionTitle(
           title: localizations.space_scenes_title,
           icon: MdiIcons.autoFix,
         ),
-        SizedBox(height: AppSpacings.pMd),
         _buildLandscapeScenesCard(context),
       ],
     );
@@ -1361,9 +1352,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   /// Large screens: 2 vertical tiles per row (square).
   /// Small/medium screens: Column of fixed-height horizontal tiles.
   Widget _buildLandscapeScenesCard(BuildContext context) {
-    final bool isLight = Theme.of(context).brightness == Brightness.light;
-    final primaryColor =
-        isLight ? AppColorsLight.primary : AppColorsDark.primary;
     final isLargeScreen = _screenService.isLargeScreen;
     final scenes = _lightingScenes;
 
@@ -1381,7 +1369,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             icon: _getSceneIcon(scene),
             name: scene.name,
             isActive: false,
-            activeColor: primaryColor,
+            activeColor: _getStatusColor(context),
             onTileTap: () => _activateScene(scene),
           );
         }).toList(),
@@ -1401,7 +1389,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             icon: _getSceneIcon(scene),
             name: scene.name,
             isActive: false,
-            activeColor: primaryColor,
+            activeColor: _getStatusColor(context),
             onTileTap: () => _activateScene(scene),
           ),
         );
@@ -1415,68 +1403,16 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     AppLocalizations localizations, {
     bool showLabels = false,
   }) {
-    final mode = _currentMode;
+    final (activeValue, matchedValue, lastIntentValue) = _getLightingModeSelectorValues();
     final isModeLocked = _modeControlStateService.isLocked(LightingConstants.modeChannelId);
 
-    // Determine activeValue, matchedValue, and lastIntentValue based on state:
-    // - activeValue: mode explicitly set by intent AND still matches (2px border, mode color)
-    // - matchedValue: mode detected by user manually setting devices (1px border, mode color)
-    // - lastIntentValue: last applied intent when no mode matches (1px border, neutral color)
-    final LightingModeUI? activeValue;
-    final LightingModeUI? matchedValue;
-    final LightingModeUI? lastIntentValue;
-
-    if (isModeLocked) {
-      // Optimistic UI: show pending mode as active
-      activeValue = mode;
-      matchedValue = null;
-      lastIntentValue = null;
-    } else {
-      final detectedMode = _lightingState?.detectedMode;
-      final lastAppliedMode = _lightingState?.lastAppliedMode;
-      final isModeFromIntent = _lightingState?.isModeFromIntent ?? false;
-
-      // Convert backend LightingMode to UI LightingModeUI
-      final LightingModeUI? detectedModeUI = detectedMode != null
-          ? LightingModeUI.values.firstWhere(
-              (m) => m.name == detectedMode.name,
-              orElse: () => LightingModeUI.off,
-            )
-          : null;
-      final LightingModeUI? lastAppliedModeUI = lastAppliedMode != null
-          ? LightingModeUI.values.firstWhere(
-              (m) => m.name == lastAppliedMode.name,
-              orElse: () => LightingModeUI.off,
-            )
-          : null;
-
-      if (detectedModeUI != null && isModeFromIntent) {
-        // Mode was set by intent and still matches: show as active
-        activeValue = detectedModeUI;
-        matchedValue = null;
-        lastIntentValue = null;
-      } else if (detectedModeUI != null && !isModeFromIntent) {
-        // Mode detected but not from intent (user manually matched): show as matched
-        activeValue = null;
-        matchedValue = detectedModeUI;
-        lastIntentValue = null;
-      } else if (lastAppliedModeUI != null) {
-        // No mode matches, but we have a last applied intent: show as last intent
-        activeValue = null;
-        matchedValue = null;
-        lastIntentValue = lastAppliedModeUI;
-      } else {
-        // No mode at all - check if all lights are off
-        activeValue = mode == LightingModeUI.off ? LightingModeUI.off : null;
-        matchedValue = null;
-        lastIntentValue = null;
-      }
-    }
+    // Fixed width matching landscape layout constants (100 large, 64 compact)
+    final selectorWidth = AppSpacings.scale(showLabels ? 100.0 : 64.0);
 
     return IgnorePointer(
       ignoring: isModeLocked,
       child: IntentModeSelector<LightingModeUI>(
-        modes: _getLightingModeOptions(localizations),
+        modes: _getLightingModeOptions(context, localizations),
         activeValue: activeValue,
         matchedValue: matchedValue,
         lastIntentValue: lastIntentValue,
@@ -1484,6 +1420,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         orientation: ModeSelectorOrientation.vertical,
         iconPlacement: ModeSelectorIconPlacement.top,
         showLabels: showLabels,
+        fixedWidth: selectorWidth,
         scrollable: showLabels, // Enable scroll when labels shown (takes more space)
       ),
     );
@@ -1596,26 +1533,27 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
               return SizedBox(
                 width: tileWidth,
                 child: Column(
+                  spacing: AppSpacings.pMd,
                   children: [
-                    for (var row = 0; row < maxRows; row++) ...[
-                      if (row > 0) AppSpacings.spacingMdVertical,
+                    for (var row = 0; row < maxRows; row++)
                       SizedBox(
                         height: tileHeight,
-                        child: () {
-                          final index = colIndex * maxRows + row;
-                          if (index < lights.length) {
-                            return _LightTile(
-                              light: lights[index],
-                              localizations: localizations,
-                              onTap: () => _openDeviceDetail(context, lights[index]),
-                              onIconTap: () => _toggleLight(lights[index]),
-                              isVertical: true,
-                            );
-                          }
-                          return const SizedBox.shrink();
-                        }(),
+                        child: Builder(
+                          builder: (_) {
+                            final index = colIndex * maxRows + row;
+                            if (index < lights.length) {
+                              return _LightTile(
+                                light: lights[index],
+                                localizations: localizations,
+                                onTap: () => _openDeviceDetail(context, lights[index]),
+                                onIconTap: () => _toggleLight(lights[index]),
+                                isVertical: true,
+                              );
+                            }
+                            return const SizedBox.shrink();
+                          },
+                        ),
                       ),
-                    ],
                   ],
                 ),
               );
@@ -1673,8 +1611,12 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   }
 
   // --------------------------------------------------------------------------
-  // LIGHTING MODE CONTROLS (Backend Intents)
+  // LIGHTING MODE CONTROLS (BACKEND INTENTS)
   // --------------------------------------------------------------------------
+  // [_setLightingMode]: setPending → API (turn off or set mode) → onIntentCompleted
+  // when IntentsRepository unlocks. [_toggleRoleViaIntent]: same for role
+  // on/off; falls back to [_toggleRole] if no backend intents. [_toggleLight]:
+  // direct device control with DeviceControlStateService + IntentOverlay.
 
   /// Set lighting mode via backend intent
   Future<void> _setLightingMode(LightingModeUI mode) async {
@@ -1742,7 +1684,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         }
         // If intents repository is available, _onIntentChanged will handle completion
       } else if (!success && mounted) {
-        AlertBar.showError(context, message: localizations.action_failed);
+        AppToast.showError(context, message: localizations.action_failed);
         _modeControlStateService.setIdle(LightingConstants.modeChannelId);
         _modeWasLocked = false; // Reset to prevent inconsistent state
       }
@@ -1752,7 +1694,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         debugPrint('[LightsDomainView] Failed to set lighting mode: $e');
       }
       if (mounted) {
-        AlertBar.showError(context, message: localizations.action_failed);
+        AppToast.showError(context, message: localizations.action_failed);
         _modeControlStateService.setIdle(LightingConstants.modeChannelId);
         _modeWasLocked = false; // Reset to prevent inconsistent state
       }
@@ -1843,7 +1785,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         }
         // If intents repository is available, _onIntentChanged will handle completion
       } else if (!success && mounted) {
-        AlertBar.showError(
+        AppToast.showError(
           context,
           message: localizations.action_failed,
         );
@@ -1856,7 +1798,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         debugPrint('[LightsDomainView] Failed to toggle role: $e');
       }
       if (mounted) {
-        AlertBar.showError(
+        AppToast.showError(
           context,
           message: localizations.action_failed,
         );
@@ -1866,32 +1808,36 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     }
   }
 
-  /// Get mode options for the mode selector
-  List<ModeOption<LightingModeUI>> _getLightingModeOptions(AppLocalizations localizations) {
+  /// Get mode options for the mode selector (uses page status color for all modes).
+  List<ModeOption<LightingModeUI>> _getLightingModeOptions(
+    BuildContext context,
+    AppLocalizations localizations,
+  ) {
+    final statusColor = _getStatusColor(context);
     return [
       ModeOption(
         value: LightingModeUI.work,
         icon: MdiIcons.lightbulbOn,
         label: localizations.space_lighting_mode_work,
-        color: ModeSelectorColor.primary,
+        color: statusColor,
       ),
       ModeOption(
         value: LightingModeUI.relax,
         icon: MdiIcons.sofaSingleOutline,
         label: localizations.space_lighting_mode_relax,
-        color: ModeSelectorColor.warning,
+        color: statusColor,
       ),
       ModeOption(
         value: LightingModeUI.night,
         icon: MdiIcons.weatherNight,
         label: localizations.space_lighting_mode_night,
-        color: ModeSelectorColor.info,
+        color: statusColor,
       ),
       ModeOption(
         value: LightingModeUI.off,
         icon: MdiIcons.power,
         label: localizations.space_lighting_mode_off,
-        color: ModeSelectorColor.neutral,
+        color: statusColor,
       ),
     ];
   }
@@ -2030,10 +1976,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   // LIGHTS GRID
   // --------------------------------------------------------------------------
 
-  /// Builds a grid of light tiles that fill the available width.
-  /// Uses fixed tile height (AppTileHeight.horizontal) for consistency
-  /// with other domain views (e.g., shading domain devices grid).
-  /// Builds a grid of light device tiles using DeviceTilePortrait wrapper.
+  /// Builds a grid of light tiles (other lights) using [DeviceTilePortrait].
   Widget _buildLightsGrid(
     BuildContext context,
     List<LightDeviceData> lights,
@@ -2066,11 +2009,11 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
           rowItems.add(const Expanded(child: SizedBox()));
         }
         if (j < crossAxisCount - 1) {
-          rowItems.add(SizedBox(width: AppSpacings.pMd));
+          rowItems.add(AppSpacings.spacingMdHorizontal);
         }
       }
       if (rows.isNotEmpty) {
-        rows.add(SizedBox(height: AppSpacings.pMd));
+        rows.add(AppSpacings.spacingMdVertical);
       }
       rows.add(Row(children: rowItems));
     }
@@ -2093,7 +2036,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   }
 
   // --------------------------------------------------------------------------
-  // SCENES GRID
+  // SCENES
   // --------------------------------------------------------------------------
 
   /// Get lighting scenes for the current room
@@ -2143,30 +2086,16 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     return MdiIcons.lightbulbGroup;
   }
 
-  Widget _buildScenesGrid(
-    BuildContext context, {
-    required int crossAxisCount,
-    int? maxItems,
-    bool scrollable = false,
-    TileLayout tileLayout = TileLayout.vertical,
-    bool showInactiveBorder = false,
-  }) {
-    final allScenes = _lightingScenes;
-    final scenes = maxItems != null && allScenes.length > maxItems
-        ? allScenes.take(maxItems).toList()
-        : allScenes;
-
-    // Use different aspect ratio for horizontal tiles
-    final aspectRatio = tileLayout == TileLayout.horizontal ? 3.0 : 1.0;
-
+  Widget _buildScenesGrid(BuildContext context, {required int crossAxisCount}) {
+    final scenes = _lightingScenes;
     return GridView.builder(
-      shrinkWrap: !scrollable,
-      physics: scrollable ? null : const NeverScrollableScrollPhysics(),
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: crossAxisCount,
         crossAxisSpacing: AppSpacings.pMd,
         mainAxisSpacing: AppSpacings.pMd,
-        childAspectRatio: aspectRatio,
+        childAspectRatio: 1.0,
       ),
       itemCount: scenes.length,
       itemBuilder: (context, index) {
@@ -2174,8 +2103,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
           scene: scenes[index],
           icon: _getSceneIcon(scenes[index]),
           onTap: () => _activateScene(scenes[index]),
-          layout: tileLayout,
-          showInactiveBorder: showInactiveBorder,
         );
       },
     );
@@ -2245,15 +2172,15 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
           padding: AppSpacings.paddingLg,
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
+            spacing: AppSpacings.pMd,
             children: [
               Icon(
                 MdiIcons.lightbulbOffOutline,
                 color: isDark
                     ? AppTextColorDark.secondary
                     : AppTextColorLight.secondary,
-                size: _scale(64),
+                size: AppSpacings.scale(64),
               ),
-              AppSpacings.spacingMdVertical,
               Text(
                 localizations.domain_lights_empty_title,
                 textAlign: TextAlign.center,
@@ -2265,7 +2192,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                       : AppTextColorLight.primary,
                 ),
               ),
-              AppSpacings.spacingSmVertical,
               Text(
                 localizations.domain_lights_empty_description,
                 textAlign: TextAlign.center,
@@ -2284,9 +2210,11 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   }
 }
 
-// ============================================================================
-// ROLE CARD (uses UniversalTile)
-// ============================================================================
+// =============================================================================
+// PRIVATE WIDGETS — ROLE CARD
+// =============================================================================
+// One role tile (main, task, ambient, etc.). Shows name, on/total count,
+// optional brightness; [pendingState] overrides for optimistic UI.
 
 class _RoleCard extends StatelessWidget {
   final LightingRoleData role;
@@ -2321,9 +2249,11 @@ class _RoleCard extends StatelessWidget {
   }
 }
 
-// ============================================================================
-// LIGHT TILE (uses UniversalTile)
-// ============================================================================
+// =============================================================================
+// PRIVATE WIDGETS — LIGHT TILE
+// =============================================================================
+// Single light in "other lights" list. Vertical or horizontal [UniversalTile];
+// tap opens device detail, icon tap toggles via [_toggleLight].
 
 class _LightTile extends StatelessWidget {
   final LightDeviceData light;
@@ -2370,36 +2300,33 @@ class _LightTile extends StatelessWidget {
   }
 }
 
-// ============================================================================
-// SCENE TILE (uses UniversalTile)
-// ============================================================================
+// =============================================================================
+// PRIVATE WIDGETS — SCENE TILE
+// =============================================================================
+// One lighting scene. No active state; tap triggers scene via [ScenesService].
 
 class _SceneTile extends StatelessWidget {
   final SceneView scene;
   final IconData icon;
   final VoidCallback? onTap;
-  final TileLayout layout;
-  final bool showInactiveBorder;
 
   const _SceneTile({
     required this.scene,
     required this.icon,
     this.onTap,
-    this.layout = TileLayout.vertical,
-    this.showInactiveBorder = false,
   });
 
   @override
   Widget build(BuildContext context) {
     return UniversalTile(
-      layout: layout,
+      layout: TileLayout.vertical,
       icon: icon,
       name: scene.name,
       isActive: false,
       onTileTap: onTap,
       showGlow: false,
       showWarningBadge: false,
-      showInactiveBorder: showInactiveBorder,
+      showInactiveBorder: false,
     );
   }
 }

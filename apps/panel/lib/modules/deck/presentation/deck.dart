@@ -2,8 +2,6 @@ import 'dart:async';
 
 import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/export.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
@@ -30,9 +28,6 @@ class DeckDashboardScreen extends StatefulWidget {
 }
 
 class _DeckDashboardScreenState extends State<DeckDashboardScreen> {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
   final DashboardService _dashboardService = locator<DashboardService>();
   final EventBus _eventBus = locator<EventBus>();
 
@@ -187,34 +182,50 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen> {
   }
 
   Widget _buildEmptyState(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final warningColor = isDark ? AppColorsDark.warning : AppColorsLight.warning;
+    final warningBgColor =
+        isDark ? AppColorsDark.warningLight9 : AppColorsLight.warningLight9;
+
     return Scaffold(
       body: Center(
         child: Padding(
-          padding: AppSpacings.paddingMd,
+          padding: AppSpacings.paddingXl,
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
+            spacing: AppSpacings.pMd,
             children: [
-              Icon(
-                MdiIcons.alert,
-                color: Theme.of(context).brightness == Brightness.light
-                    ? AppColorsLight.warning
-                    : AppColorsDark.warning,
-                size: _screenService.scale(
-                  64,
-                  density: _visualDensityService.density,
+              Container(
+                width: AppSpacings.scale(80),
+                height: AppSpacings.scale(80),
+                decoration: BoxDecoration(
+                  color: warningBgColor,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  MdiIcons.alertCircleOutline,
+                  size: AppSpacings.scale(48),
+                  color: warningColor,
                 ),
               ),
-              AppSpacings.spacingMdVertical,
-              const Text(
+              Text(
                 'No pages configured',
-                textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontWeight: FontWeight.bold,
+                  fontSize: AppFontSize.large,
+                  fontWeight: FontWeight.w600,
+                  color:
+                      isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
                 ),
+                textAlign: TextAlign.center,
               ),
-              AppSpacings.spacingSmVertical,
-              const Text(
+              Text(
                 'Please configure your dashboard in Admin.',
+                style: TextStyle(
+                  fontSize: AppFontSize.base,
+                  color: isDark
+                      ? AppTextColorDark.secondary
+                      : AppTextColorLight.secondary,
+                ),
                 textAlign: TextAlign.center,
               ),
             ],
@@ -228,10 +239,7 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen> {
     final items = deckService.items;
 
     return Positioned(
-      bottom: _screenService.scale(
-        4,
-        density: _visualDensityService.density,
-      ),
+      bottom: AppSpacings.scale(4),
       left: 0,
       right: 0,
       child: Row(
@@ -251,24 +259,12 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen> {
     return AnimatedContainer(
       duration: const Duration(milliseconds: DeckConstants.dotAnimationMs),
       margin: EdgeInsets.symmetric(
-        horizontal: _screenService.scale(
-          4,
-          density: _visualDensityService.density,
-        ),
+        horizontal: AppSpacings.scale(4),
       ),
-      height: _screenService.scale(
-        6,
-        density: _visualDensityService.density,
-      ),
+      height: AppSpacings.scale(6),
       width: isActive
-          ? _screenService.scale(
-              16,
-              density: _visualDensityService.density,
-            )
-          : _screenService.scale(
-              6,
-              density: _visualDensityService.density,
-            ),
+          ? AppSpacings.scale(16)
+          : AppSpacings.scale(6),
       decoration: BoxDecoration(
         color: isActive
             ? (Theme.of(context).brightness == Brightness.light
@@ -282,10 +278,7 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen> {
                     ? AppTextColorLight.disabled
                     : AppTextColorDark.disabled)),
         borderRadius: BorderRadius.circular(
-          _screenService.scale(
-            4,
-            density: _visualDensityService.density,
-          ),
+          AppSpacings.scale(4),
         ),
       ),
     );

@@ -1,28 +1,4 @@
-import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:flutter/material.dart';
-
-/// Maps a semantic color to its Light5 background variant for header icons.
-Color getSemanticBackgroundColor(BuildContext context, Color semanticColor) {
-  final isDark = Theme.of(context).brightness == Brightness.dark;
-
-  if (semanticColor == (isDark ? AppColorsDark.success : AppColorsLight.success)) {
-    return isDark ? AppColorsDark.successLight5 : AppColorsLight.successLight5;
-  }
-  if (semanticColor == (isDark ? AppColorsDark.info : AppColorsLight.info)) {
-    return isDark ? AppColorsDark.infoLight5 : AppColorsLight.infoLight5;
-  }
-  if (semanticColor == (isDark ? AppColorsDark.warning : AppColorsLight.warning)) {
-    return isDark ? AppColorsDark.warningLight5 : AppColorsLight.warningLight5;
-  }
-  if (semanticColor == (isDark ? AppColorsDark.danger : AppColorsLight.danger)) {
-    return isDark ? AppColorsDark.dangerLight5 : AppColorsLight.dangerLight5;
-  }
-  if (semanticColor == (isDark ? AppColorsDark.primary : AppColorsLight.primary)) {
-    return isDark ? AppColorsDark.primaryLight5 : AppColorsLight.primaryLight5;
-  }
-  // Fallback
-  return isDark ? AppFillColorDark.light : AppFillColorLight.light;
-}
 
 class ColorUtils {
   /// Convert RGB to Flutter Color

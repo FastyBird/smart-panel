@@ -1,8 +1,6 @@
-import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 
 /// Defines the orientation of the mode selector
 enum ModeSelectorOrientation {
@@ -22,20 +20,6 @@ enum ModeSelectorIconPlacement {
   top,
 }
 
-/// Semantic color names that map to theme colors
-enum ModeSelectorColor {
-  primary,
-  success,
-  warning,
-  danger,
-  info,
-  neutral,
-  teal,
-  cyan,
-  pink,
-  indigo,
-}
-
 /// Represents a single mode option in the selector
 class ModeOption<T> {
   /// The value this option represents
@@ -49,7 +33,7 @@ class ModeOption<T> {
 
   /// Optional override color for this specific mode
   /// If null, uses the selector's default color
-  final ModeSelectorColor? color;
+  final ThemeColors? color;
 
   const ModeOption({
     required this.value,
@@ -67,11 +51,8 @@ class ModeOption<T> {
 /// - Automatic text hiding when space is limited
 /// - Theme-aware colors using semantic color names
 /// - Smooth animations on selection change
-class ModeSelector<T> extends StatelessWidget {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
+/// - When scrollable, scrolls to the selected item when loaded
+class ModeSelector<T> extends StatefulWidget {
   /// List of mode options to display
   final List<ModeOption<T>> modes;
 
@@ -88,15 +69,21 @@ class ModeSelector<T> extends StatelessWidget {
   final ModeSelectorIconPlacement iconPlacement;
 
   /// Default color for all modes (can be overridden per mode)
-  final ModeSelectorColor color;
+  final ThemeColors color;
 
   /// Whether to show labels (if false, only icons are shown)
   /// When null, labels are shown/hidden automatically based on available space
   final bool? showLabels;
 
-  /// Minimum width for each mode button in horizontal orientation
-  /// Used to determine if labels should be hidden
+  /// Minimum width for each mode button in horizontal orientation.
+  /// When [scrollable] is true, this is enforced so labels don't shrink to ellipsis;
+  /// otherwise used only to decide if labels should be hidden when space is tight.
   final double minButtonWidth;
+
+  /// Minimum height for each mode button in vertical scrollable orientation.
+  /// When [scrollable] is true and orientation is vertical, this is enforced
+  /// so items maintain consistent sizing.
+  final double minButtonHeight;
 
   /// Whether the selector should be scrollable when content doesn't fit
   /// When true, enables horizontal scroll for horizontal orientation
@@ -112,28 +99,103 @@ class ModeSelector<T> extends StatelessWidget {
   /// the icon will be shown with the specified color.
   final Map<T, (IconData, Color)>? statusIcons;
 
-  ModeSelector({
+  const ModeSelector({
     super.key,
     required this.modes,
     required this.selectedValue,
     required this.onChanged,
     this.orientation = ModeSelectorOrientation.horizontal,
     this.iconPlacement = ModeSelectorIconPlacement.left,
-    this.color = ModeSelectorColor.primary,
+    this.color = ThemeColors.primary,
     this.showLabels,
     this.showIcon = true,
     this.minButtonWidth = 80.0,
+    this.minButtonHeight = 56.0,
     this.scrollable = false,
     this.statusIcons,
   });
 
-  double _scale(double value) =>
-      _screenService.scale(value, density: _visualDensityService.density);
+  @override
+  State<ModeSelector<T>> createState() => _ModeSelectorState<T>();
+}
+
+class _ModeSelectorState<T> extends State<ModeSelector<T>> {
+  /// Key used to scroll to the selected item when scrollable and after first frame.
+  final GlobalKey _selectedKey = GlobalKey();
+
+  ScrollController? _scrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.scrollable) {
+      _scrollController = ScrollController();
+      _scheduleScrollToSelected();
+    }
+  }
+
+  @override
+  void didUpdateWidget(ModeSelector<T> oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.scrollable &&
+        (widget.selectedValue != oldWidget.selectedValue ||
+            widget.modes != oldWidget.modes)) {
+      _scheduleScrollToSelected();
+    }
+  }
+
+  void _scheduleScrollToSelected() {
+    if (widget.scrollable && widget.selectedValue != null) {
+      WidgetsBinding.instance.addPostFrameCallback(_scrollToSelected);
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController?.dispose();
+    super.dispose();
+  }
+
+  /// Scroll only the selector's list to center the selected item (does not scroll the page).
+  void _scrollToSelected(_) {
+    final ctx = _selectedKey.currentContext;
+    if (ctx == null || !mounted || _scrollController == null) return;
+
+    final box = ctx.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize || box.parent == null) return;
+
+    // Find the scrollable content (Row or Column) so we measure offset within it, not the immediate parent.
+    RenderObject? contentAncestor = box.parent;
+    while (contentAncestor != null && contentAncestor is! RenderFlex) {
+      contentAncestor = contentAncestor.parent;
+    }
+    if (contentAncestor == null) return;
+
+    final position = _scrollController!.position;
+    final viewportDimension = position.viewportDimension;
+    final maxScrollExtent = position.maxScrollExtent;
+
+    final isHorizontal = widget.orientation == ModeSelectorOrientation.horizontal;
+    final itemOffsetInContent =
+        box.localToGlobal(Offset.zero, ancestor: contentAncestor);
+    final itemOffset =
+        isHorizontal ? itemOffsetInContent.dx : itemOffsetInContent.dy;
+    final itemSize = isHorizontal ? box.size.width : box.size.height;
+
+    final scrollOffset = (itemOffset + itemSize / 2 - viewportDimension / 2)
+        .clamp(0.0, maxScrollExtent);
+
+    _scrollController!.animateTo(
+      scrollOffset,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     // Guard against empty modes to prevent division by zero
-    if (modes.isEmpty) return const SizedBox.shrink();
+    if (widget.modes.isEmpty) return const SizedBox.shrink();
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -141,9 +203,9 @@ class ModeSelector<T> extends StatelessWidget {
       padding: EdgeInsets.all(AppSpacings.pSm),
       decoration: BoxDecoration(
         color: isDark ? AppFillColorDark.darker : AppFillColorLight.darker,
-        borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+        borderRadius: BorderRadius.circular(AppBorderRadius.base),
       ),
-      child: orientation == ModeSelectorOrientation.horizontal
+      child: widget.orientation == ModeSelectorOrientation.horizontal
           ? _buildHorizontal(context, isDark)
           : _buildVertical(context, isDark),
     );
@@ -154,17 +216,24 @@ class ModeSelector<T> extends StatelessWidget {
       builder: (context, constraints) {
         // Determine if we should show labels based on available space
         final availableWidth = constraints.maxWidth;
-        final buttonCount = modes.length;
+        final buttonCount = widget.modes.length;
         final widthPerButton = availableWidth / buttonCount;
-        final shouldShowLabels = !showIcon ? true : (showLabels ?? (widthPerButton >= minButtonWidth));
+        final shouldShowLabels = !widget.showIcon
+            ? true
+            : (widget.showLabels ?? (widthPerButton >= widget.minButtonWidth));
 
-        final buttons = modes.asMap().entries.map((entry) {
+        final selectedIndex = widget.selectedValue != null
+            ? widget.modes.indexWhere((m) => m.value == widget.selectedValue)
+            : -1;
+
+        final buttons = widget.modes.asMap().entries.map((entry) {
           final index = entry.key;
           final mode = entry.value;
-          final isSelected = selectedValue == mode.value;
-          final modeColor = mode.color ?? color;
-          final colors = _getColors(isDark, modeColor);
-          final statusIcon = statusIcons?[mode.value];
+          final isSelected = widget.selectedValue == mode.value;
+          final modeColor = mode.color ?? widget.color;
+          final colors = _getColors(
+              isDark ? Brightness.dark : Brightness.light, modeColor);
+          final statusIcon = widget.statusIcons?[mode.value];
 
           final button = _buildModeButton(
             context,
@@ -173,24 +242,35 @@ class ModeSelector<T> extends StatelessWidget {
             isSelected: isSelected,
             colors: colors,
             showLabel: shouldShowLabels,
-            useTopIcon: iconPlacement == ModeSelectorIconPlacement.top,
-            isScrollable: scrollable,
+            useTopIcon: widget.iconPlacement == ModeSelectorIconPlacement.top,
+            isScrollable: widget.scrollable,
             statusIcon: statusIcon,
           );
 
-          if (scrollable) {
-            return Padding(
-              padding: EdgeInsets.only(
-                right: index < modes.length - 1 ? AppSpacings.pSm : 0,
-              ),
-              child: button,
-            );
+          Widget wrapped = Padding(
+            padding: EdgeInsets.only(
+              right: index < widget.modes.length - 1 ? AppSpacings.pSm : 0,
+            ),
+            child: button,
+          );
+          if (widget.scrollable && index == selectedIndex) {
+            wrapped = KeyedSubtree(key: _selectedKey, child: wrapped);
           }
-          return Expanded(child: button);
+
+          // In horizontal scrollable layout, enforce minimum width so labels don't shrink to ellipsis
+          if (widget.scrollable) {
+            wrapped = ConstrainedBox(
+              constraints: BoxConstraints(minWidth: widget.minButtonWidth),
+              child: wrapped,
+            );
+            return wrapped;
+          }
+          return Expanded(child: wrapped);
         }).toList();
 
-        if (scrollable) {
+        if (widget.scrollable) {
           return SingleChildScrollView(
+            controller: _scrollController,
             scrollDirection: Axis.horizontal,
             child: Row(children: buttons),
           );
@@ -202,44 +282,74 @@ class ModeSelector<T> extends StatelessWidget {
   }
 
   Widget _buildVertical(BuildContext context, bool isDark) {
-    final buttons = modes.asMap().entries.map((entry) {
+    final selectedIndex = widget.selectedValue != null
+        ? widget.modes.indexWhere((m) => m.value == widget.selectedValue)
+        : -1;
+
+    final buttons = widget.modes.asMap().entries.map((entry) {
       final index = entry.key;
       final mode = entry.value;
-      final isSelected = selectedValue == mode.value;
-      final modeColor = mode.color ?? color;
-      final colors = _getColors(isDark, modeColor);
-      final statusIcon = statusIcons?[mode.value];
+      final isSelected = widget.selectedValue == mode.value;
+      final modeColor = mode.color ?? widget.color;
+      final colors = _getColors(
+          isDark ? Brightness.dark : Brightness.light, modeColor);
+      final statusIcon = widget.statusIcons?[mode.value];
 
-      return Padding(
-        padding: EdgeInsets.only(
-          bottom: index < modes.length - 1 ? AppSpacings.pSm : 0,
-        ),
-        child: _buildModeButton(
-          context,
-          isDark: isDark,
-          mode: mode,
-          isSelected: isSelected,
-          colors: colors,
-          showLabel: !showIcon ? true : (showLabels ?? false),
-          useTopIcon: true,
-          isVerticalLayout: true,
-          statusIcon: statusIcon,
-        ),
+      final button = _buildModeButton(
+        context,
+        isDark: isDark,
+        mode: mode,
+        isSelected: isSelected,
+        colors: colors,
+        showLabel: !widget.showIcon ? true : (widget.showLabels ?? false),
+        useTopIcon: true,
+        isVerticalLayout: true,
+        isScrollable: widget.scrollable,
+        statusIcon: statusIcon,
       );
+
+      Widget wrapped = Padding(
+        padding: EdgeInsets.only(
+          bottom: index < widget.modes.length - 1 ? AppSpacings.pSm : 0,
+        ),
+        child: button,
+      );
+
+      if (widget.scrollable && index == selectedIndex) {
+        wrapped = KeyedSubtree(key: _selectedKey, child: wrapped);
+      }
+
+      // In vertical scrollable layout, enforce minimum height
+      if (widget.scrollable) {
+        wrapped = ConstrainedBox(
+          constraints: BoxConstraints(minHeight: widget.minButtonHeight),
+          child: wrapped,
+        );
+      }
+
+      return wrapped;
     }).toList();
 
-    if (scrollable) {
+    if (widget.scrollable) {
       return SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: buttons,
+        controller: _scrollController,
+        child: IntrinsicWidth(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: buttons,
+          ),
         ),
       );
     }
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: buttons,
+    // Non-scrollable: center content vertically, stretch items to fill width
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: buttons,
+      ),
     );
   }
 
@@ -266,7 +376,7 @@ class ModeSelector<T> extends StatelessWidget {
 
     Widget content;
 
-    if (!showIcon) {
+    if (!widget.showIcon) {
       // Label only (no icon)
       content = Center(
         child: Text(
@@ -287,7 +397,7 @@ class ModeSelector<T> extends StatelessWidget {
         child: Icon(
           mode.icon,
           color: contentColor,
-          size: _scale(20),
+          size: AppSpacings.scale(20),
         ),
       );
     } else if (useTopIcon) {
@@ -295,13 +405,13 @@ class ModeSelector<T> extends StatelessWidget {
       content = Column(
         mainAxisAlignment: MainAxisAlignment.center,
         mainAxisSize: MainAxisSize.min,
+        spacing: AppSpacings.pXs,
         children: [
           Icon(
             mode.icon,
             color: contentColor,
-            size: _scale(18),
+            size: AppSpacings.scale(18),
           ),
-          AppSpacings.spacingXsVertical,
           Flexible(
             child: Text(
               mode.label,
@@ -331,28 +441,26 @@ class ModeSelector<T> extends StatelessWidget {
       );
 
       content = Row(
+        spacing: AppSpacings.pSm,
         mainAxisAlignment: MainAxisAlignment.center,
         mainAxisSize: isScrollable ? MainAxisSize.min : MainAxisSize.max,
         children: [
           Icon(
             mode.icon,
             color: contentColor,
-            size: _scale(18),
+            size: AppSpacings.scale(18),
           ),
-          AppSpacings.spacingSmHorizontal,
           // When scrollable, don't use Flexible (unbounded width)
           isScrollable ? textWidget : Flexible(child: textWidget),
         ],
       );
     }
 
-    // For vertical layout: fixed size when icon-only, flexible when showing labels
-    final buttonSize = isVerticalLayout && !showLabel ? _scale(36) : null;
-    // When scrollable in horizontal mode:
-    // - With labels: use intrinsic width (null) so content determines size
-    // - Icon only: use fixed minimum size
-    final scrollableWidth = isScrollable && !isVerticalLayout && !showLabel && showIcon
-        ? _scale(48)
+    // For vertical layout: fixed height when icon-only, null when showing labels
+    final buttonHeight = isVerticalLayout && !showLabel ? AppSpacings.scale(36) : null;
+    // For horizontal layout: fixed width when icon-only and scrollable
+    final buttonWidth = !isVerticalLayout && isScrollable && !showLabel && widget.showIcon
+        ? AppSpacings.scale(48)
         : null;
 
     // Use transparent white for light theme to avoid dark flash during animation
@@ -373,12 +481,12 @@ class ModeSelector<T> extends StatelessWidget {
     }
 
     // Padding based on layout mode
-    EdgeInsetsGeometry? buttonPadding;
+    EdgeInsetsGeometry buttonPadding;
     if (isVerticalLayout) {
-      // Vertical layout: more padding when showing labels
+      // Vertical layout: symmetric padding, more when showing labels
       buttonPadding = showLabel
           ? EdgeInsets.symmetric(vertical: AppSpacings.pMd, horizontal: AppSpacings.pLg)
-          : null; // Icon-only uses fixed buttonSize
+          : EdgeInsets.symmetric(vertical: AppSpacings.pSm, horizontal: AppSpacings.pMd);
     } else {
       // Horizontal layout
       buttonPadding = EdgeInsets.symmetric(
@@ -396,12 +504,12 @@ class ModeSelector<T> extends StatelessWidget {
         children: [
           content,
           Positioned(
-            top: -_scale(5),
-            right: _scale(0),
+            top: -AppSpacings.scale(5),
+            right: AppSpacings.scale(0),
             child: Icon(
               statusIcon.$1,
               color: statusIcon.$2,
-              size: _scale(12),
+              size: AppSpacings.scale(12),
             ),
           ),
         ],
@@ -409,18 +517,18 @@ class ModeSelector<T> extends StatelessWidget {
     }
 
     return GestureDetector(
-      onTap: () => onChanged(mode.value),
+      onTap: () => widget.onChanged(mode.value),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        width: buttonSize ?? scrollableWidth,
-        height: buttonSize,
+        width: buttonWidth,
+        height: buttonHeight,
         padding: buttonPadding,
         decoration: BoxDecoration(
           color: backgroundColor,
           borderRadius: BorderRadius.circular(AppBorderRadius.base),
           border: Border.all(
             color: borderColor,
-            width: _scale(2),
+            width: AppSpacings.scale(2),
           ),
         ),
         child: finalContent,
@@ -428,69 +536,12 @@ class ModeSelector<T> extends StatelessWidget {
     );
   }
 
-  _ModeColors _getColors(bool isDark, ModeSelectorColor colorName) {
-    switch (colorName) {
-      case ModeSelectorColor.primary:
-        return _ModeColors(
-          active: isDark ? AppColorsDark.primary : AppColorsLight.primary,
-          background:
-              isDark ? AppColorsDark.primaryLight9 : AppColorsLight.primaryLight9,
-        );
-      case ModeSelectorColor.success:
-        return _ModeColors(
-          active: isDark ? AppColorsDark.success : AppColorsLight.success,
-          background:
-              isDark ? AppColorsDark.successLight9 : AppColorsLight.successLight9,
-        );
-      case ModeSelectorColor.warning:
-        return _ModeColors(
-          active: isDark ? AppColorsDark.warning : AppColorsLight.warning,
-          background:
-              isDark ? AppColorsDark.warningLight9 : AppColorsLight.warningLight9,
-        );
-      case ModeSelectorColor.danger:
-        return _ModeColors(
-          active: isDark ? AppColorsDark.danger : AppColorsLight.danger,
-          background:
-              isDark ? AppColorsDark.dangerLight9 : AppColorsLight.dangerLight9,
-        );
-      case ModeSelectorColor.info:
-        return _ModeColors(
-          active: isDark ? AppColorsDark.info : AppColorsLight.info,
-          background:
-              isDark ? AppColorsDark.infoLight9 : AppColorsLight.infoLight9,
-        );
-      case ModeSelectorColor.neutral:
-        return _ModeColors(
-          active: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
-          background:
-              isDark ? AppColorsDark.neutralLight9 : AppColorsLight.neutralLight9,
-        );
-      case ModeSelectorColor.teal:
-        return _ModeColors(
-          active: isDark ? AppColorsDark.teal : AppColorsLight.teal,
-          background:
-              isDark ? AppColorsDark.tealLight9 : AppColorsLight.tealLight9,
-        );
-      case ModeSelectorColor.cyan:
-        return _ModeColors(
-          active: isDark ? AppColorsDark.cyan : AppColorsLight.cyan,
-          background:
-              isDark ? AppColorsDark.cyanLight9 : AppColorsLight.cyanLight9,
-        );
-      case ModeSelectorColor.pink:
-        return _ModeColors(
-          active: isDark ? AppColorsDark.pink : AppColorsLight.pink,
-          background:
-              isDark ? AppColorsDark.pinkLight9 : AppColorsLight.pinkLight9,
-        );
-      case ModeSelectorColor.indigo:
-        return _ModeColors(
-          active: isDark ? AppColorsDark.indigo : AppColorsLight.indigo,
-          background:
-              isDark ? AppColorsDark.indigoLight9 : AppColorsLight.indigoLight9,
-        );
-    }
+  _ModeColors _getColors(Brightness brightness, ThemeColors key) {
+    final family = ThemeColorFamily.get(brightness, key);
+    return _ModeColors(
+      active: family.base,
+      background: family.light9,
+    );
   }
 }
 

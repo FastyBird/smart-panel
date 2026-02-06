@@ -1,17 +1,15 @@
-export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_colors.dart';
-
-export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_mode_button.dart';
-export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_mode_selector.dart';
+export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_channels_section.dart';
+export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_landscape_layout.dart';
+export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_offline_overlay.dart';
+export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_portrait_layout.dart';
+export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_colors.dart';
 export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_power_button.dart';
-export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_status_bar.dart';
-export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_toggle_row.dart';
-export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_toggle_switch.dart';
-export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/light_channel_tile.dart';
-export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/light_mode_navigation.dart';
-export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/light_state_display.dart';
 export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_brightness_card.dart';
 export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_info_card.dart';
-export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_playback_card.dart';
 export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_remote_card.dart';
-export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_source_card.dart';
 export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_volume_card.dart';
+export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_channel_detail_page.dart';
+export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_chart_painter.dart';
+export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_data.dart';
+export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_detail_content.dart';
+export 'package:fastybird_smart_panel/modules/devices/presentation/utils/sensor_utils.dart';

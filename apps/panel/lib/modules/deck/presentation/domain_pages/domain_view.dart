@@ -1,6 +1,3 @@
-import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
@@ -21,10 +18,6 @@ class DomainViewPage extends StatefulWidget {
 }
 
 class _DomainViewPageState extends State<DomainViewPage> {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
   @override
   Widget build(BuildContext context) {
     final domain = widget.viewItem.domainType;
@@ -50,16 +43,13 @@ class _DomainViewPageState extends State<DomainViewPage> {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
+        spacing: AppSpacings.pMd,
         children: [
           Icon(
             domain.icon,
-            size: _screenService.scale(
-              80,
-              density: _visualDensityService.density,
-            ),
+            size: AppSpacings.scale(80),
             color: Theme.of(context).colorScheme.primary,
           ),
-          AppSpacings.spacingLgVertical,
           Text(
             widget.viewItem.title,
             style: TextStyle(
@@ -67,7 +57,6 @@ class _DomainViewPageState extends State<DomainViewPage> {
               fontWeight: FontWeight.bold,
             ),
           ),
-          AppSpacings.spacingSmVertical,
           Text(
             '$deviceCount ${deviceCount == 1 ? 'device' : 'devices'}',
             style: TextStyle(
@@ -77,7 +66,6 @@ class _DomainViewPageState extends State<DomainViewPage> {
                   : AppTextColorDark.regular,
             ),
           ),
-          AppSpacings.spacingLgVertical,
           _buildDomainHint(context, domain),
         ],
       ),
@@ -120,17 +108,14 @@ class _DomainViewPageState extends State<DomainViewPage> {
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
       ),
       child: Row(
+        spacing: AppSpacings.pSm,
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
             hintIcon,
-            size: _screenService.scale(
-              24,
-              density: _visualDensityService.density,
-            ),
+            size: AppSpacings.scale(24),
             color: Theme.of(context).colorScheme.primary,
           ),
-          AppSpacings.spacingSmHorizontal,
           Text(
             hint,
             style: TextStyle(

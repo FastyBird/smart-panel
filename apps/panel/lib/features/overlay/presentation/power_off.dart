@@ -24,6 +24,7 @@ class PowerOffScreen extends StatelessWidget {
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
+            spacing: AppSpacings.pMd,
             children: [
               SizedBox(
                 width: screenService.scale(
@@ -36,7 +37,6 @@ class PowerOffScreen extends StatelessWidget {
                 ),
                 child: const CircularProgressIndicator(),
               ),
-              AppSpacings.spacingLgVertical,
               Text(
                 localizations.message_info_app_power_off_title,
                 textAlign: TextAlign.center,
@@ -44,7 +44,6 @@ class PowerOffScreen extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              AppSpacings.spacingSmVertical,
               Text(
                 localizations.message_info_app_power_off_description,
                 textAlign: TextAlign.justify,

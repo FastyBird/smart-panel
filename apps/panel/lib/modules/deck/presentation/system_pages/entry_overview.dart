@@ -1,9 +1,7 @@
 import 'package:fastybird_smart_panel/api/models/scenes_module_data_scene_category.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
@@ -28,9 +26,6 @@ class EntryOverviewPage extends StatefulWidget {
 }
 
 class _EntryOverviewPageState extends State<EntryOverviewPage> {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
   late final IntentsService _intentsService;
   DevicesService? _devicesService;
   ScenesService? _scenesService;
@@ -231,20 +226,20 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
         });
 
         final localizations = AppLocalizations.of(context);
-        AlertBar.showSuccess(
+        AppToast.showSuccess(
           context,
           message: localizations?.entry_mode_activated ?? 'Mode activated',
         );
       } else if (result.isPartialSuccess) {
         final localizations = AppLocalizations.of(context);
-        AlertBar.showInfo(
+        AppToast.showInfo(
           context,
           message: localizations?.space_scene_partial_success ??
               'Mode partially activated',
         );
       } else {
         final localizations = AppLocalizations.of(context);
-        AlertBar.showError(
+        AppToast.showError(
           context,
           message: result.message ?? localizations?.action_failed ?? 'Failed',
         );
@@ -258,7 +253,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
       });
 
       final localizations = AppLocalizations.of(context);
-      AlertBar.showError(
+      AppToast.showError(
         context,
         message: localizations?.action_failed ?? 'Failed to activate mode',
       );
@@ -306,10 +301,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
   }
 
   Widget _buildLocksBadge(BuildContext context) {
-    final iconSize = _screenService.scale(
-      14,
-      density: _visualDensityService.density,
-    );
+    final iconSize = AppSpacings.scale(14);
     final allLocked = _locksLockedCount == _locksCount;
 
     return Container(
@@ -328,6 +320,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
       ),
       child: Row(
+        spacing: AppSpacings.pXs,
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
@@ -341,7 +334,6 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
                     ? AppColorsLight.warning
                     : AppColorsDark.warning),
           ),
-          AppSpacings.spacingXsHorizontal,
           Text(
             allLocked ? 'Locked' : '$_locksLockedCount/$_locksCount',
             style: TextStyle(
@@ -362,10 +354,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
   }
 
   Widget _buildAlarmBadge(BuildContext context) {
-    final iconSize = _screenService.scale(
-      14,
-      density: _visualDensityService.density,
-    );
+    final iconSize = AppSpacings.scale(14);
 
     return Container(
       padding: EdgeInsets.symmetric(
@@ -383,6 +372,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
       ),
       child: Row(
+        spacing: AppSpacings.pXs,
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
@@ -396,7 +386,6 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
                     ? AppTextColorLight.placeholder
                     : AppTextColorDark.placeholder),
           ),
-          AppSpacings.spacingXsHorizontal,
           Text(
             _alarmArmed ? 'Armed' : 'Disarmed',
             style: TextStyle(
@@ -428,15 +417,15 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
+        spacing: AppSpacings.pMd,
         children: [
           Icon(
             MdiIcons.alertCircleOutline,
-            size: _screenService.scale(64, density: _visualDensityService.density),
+            size: AppSpacings.scale(64),
             color: Theme.of(context).brightness == Brightness.light
                 ? AppColorsLight.danger
                 : AppColorsDark.danger,
           ),
-          AppSpacings.spacingMdVertical,
           Text(
             _errorMessage!,
             style: TextStyle(
@@ -447,11 +436,23 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
             ),
             textAlign: TextAlign.center,
           ),
-          AppSpacings.spacingMdVertical,
-          FilledButton.icon(
-            onPressed: _loadSecurityData,
-            icon: Icon(MdiIcons.refresh),
-            label: const Text('Retry'),
+          Theme(
+            data: ThemeData(
+              filledButtonTheme: Theme.of(context).brightness == Brightness.dark
+                  ? AppFilledButtonsDarkThemes.primary
+                  : AppFilledButtonsLightThemes.primary,
+            ),
+            child: FilledButton.icon(
+              onPressed: _loadSecurityData,
+              icon: Icon(
+                MdiIcons.refresh,
+                size: AppFontSize.base,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? AppFilledButtonsDarkThemes.primaryForegroundColor
+                    : AppFilledButtonsLightThemes.primaryForegroundColor,
+              ),
+              label: const Text('Retry'),
+            ),
           ),
         ],
       ),
@@ -461,10 +462,10 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
   Widget _buildContent(BuildContext context, AppLocalizations? localizations) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: AppSpacings.pLg,
       children: [
         // House mode buttons
         _buildHouseModesSection(context, localizations),
-        AppSpacings.spacingLgVertical,
 
         // Security panel
         _buildSecuritySection(context, localizations),
@@ -478,17 +479,15 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: AppSpacings.pMd,
       children: [
         Row(
+          spacing: AppSpacings.pSm,
           children: [
             Icon(
               MdiIcons.homeSwitch,
-              size: _screenService.scale(
-                20,
-                density: _visualDensityService.density,
-              ),
+              size: AppSpacings.scale(20),
             ),
-            AppSpacings.spacingSmHorizontal,
             Text(
               localizations?.entry_house_modes ?? 'House Mode',
               style: TextStyle(
@@ -498,18 +497,11 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
             ),
           ],
         ),
-        AppSpacings.spacingMdVertical,
         if (_isScenesLoading)
           Center(
             child: SizedBox(
-              width: _screenService.scale(
-                24,
-                density: _visualDensityService.density,
-              ),
-              height: _screenService.scale(
-                24,
-                density: _visualDensityService.density,
-              ),
+              width: AppSpacings.scale(24),
+              height: AppSpacings.scale(24),
               child: CircularProgressIndicator(
                 strokeWidth: 2,
                 color: Theme.of(context).colorScheme.primary,
@@ -587,12 +579,10 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
     required bool isActive,
     required VoidCallback onTap,
   }) {
-    final buttonSize = _screenService.scale(
-      70,
-      density: _visualDensityService.density,
-    );
+    final buttonSize = AppSpacings.scale(70);
 
     return Column(
+      spacing: AppSpacings.pXs,
       children: [
         SizedBox(
           width: buttonSize,
@@ -609,25 +599,23 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
             ),
             child: FilledButton(
               onPressed: onTap,
-              style: ButtonStyle(
-                padding: WidgetStateProperty.all(EdgeInsets.zero),
-                shape: WidgetStateProperty.all(
-                  RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppBorderRadius.base),
-                  ),
-                ),
+              style: FilledButton.styleFrom(
+                padding: EdgeInsets.zero,
               ),
               child: Icon(
                 icon,
-                size: _screenService.scale(
-                  32,
-                  density: _visualDensityService.density,
-                ),
+                size: AppSpacings.scale(32),
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? (isActive
+                        ? AppFilledButtonsDarkThemes.primaryForegroundColor
+                        : AppFilledButtonsDarkThemes.infoForegroundColor)
+                    : (isActive
+                        ? AppFilledButtonsLightThemes.primaryForegroundColor
+                        : AppFilledButtonsLightThemes.infoForegroundColor),
               ),
             ),
           ),
         ),
-        AppSpacings.spacingXsVertical,
         Text(
           label,
           style: TextStyle(
@@ -658,12 +646,10 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
   Widget _buildSceneHouseModeButton(BuildContext context, SceneView scene) {
     final isTriggering = _triggeringSceneId == scene.id;
     final isActive = _activeHouseMode == scene.category;
-    final buttonSize = _screenService.scale(
-      70,
-      density: _visualDensityService.density,
-    );
+    final buttonSize = AppSpacings.scale(70);
 
     return Column(
+      spacing: AppSpacings.pXs,
       children: [
         SizedBox(
           width: buttonSize,
@@ -678,14 +664,8 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
                   ),
                   child: Center(
                     child: SizedBox(
-                      width: _screenService.scale(
-                        24,
-                        density: _visualDensityService.density,
-                      ),
-                      height: _screenService.scale(
-                        24,
-                        density: _visualDensityService.density,
-                      ),
+                      width: AppSpacings.scale(24),
+                      height: AppSpacings.scale(24),
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
                         color: Theme.of(context).colorScheme.primary,
@@ -707,26 +687,23 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
                   child: FilledButton(
                     onPressed:
                         _isSceneTriggering ? null : () => _triggerHouseMode(scene),
-                    style: ButtonStyle(
-                      padding: WidgetStateProperty.all(EdgeInsets.zero),
-                      shape: WidgetStateProperty.all(
-                        RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(AppBorderRadius.base),
-                        ),
-                      ),
+                    style: FilledButton.styleFrom(
+                      padding: EdgeInsets.zero,
                     ),
                     child: Icon(
                       scene.iconData,
-                      size: _screenService.scale(
-                        32,
-                        density: _visualDensityService.density,
-                      ),
+                      size: AppSpacings.scale(32),
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? (isActive
+                              ? AppFilledButtonsDarkThemes.primaryForegroundColor
+                              : AppFilledButtonsDarkThemes.infoForegroundColor)
+                          : (isActive
+                              ? AppFilledButtonsLightThemes.primaryForegroundColor
+                              : AppFilledButtonsLightThemes.infoForegroundColor),
                     ),
                   ),
                 ),
         ),
-        AppSpacings.spacingXsVertical,
         Text(
           scene.name,
           style: TextStyle(
@@ -763,17 +740,15 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
           padding: AppSpacings.paddingMd,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            spacing: AppSpacings.pMd,
             children: [
               Row(
+                spacing: AppSpacings.pSm,
                 children: [
                   Icon(
                     MdiIcons.shieldHome,
-                    size: _screenService.scale(
-                      24,
-                      density: _visualDensityService.density,
-                    ),
+                    size: AppSpacings.scale(24),
                   ),
-                  AppSpacings.spacingSmHorizontal,
                   Text(
                     localizations?.entry_security ?? 'Security',
                     style: TextStyle(
@@ -783,7 +758,6 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
                   ),
                 ],
               ),
-              AppSpacings.spacingMdVertical,
               if (!hasSecurityDevices)
                 _buildSecurityEmptyState(context, localizations)
               else
@@ -804,18 +778,15 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
+        spacing: AppSpacings.pSm,
         children: [
           Icon(
             MdiIcons.shieldOffOutline,
-            size: _screenService.scale(
-              48,
-              density: _visualDensityService.density,
-            ),
+            size: AppSpacings.scale(48),
             color: Theme.of(context).brightness == Brightness.light
                 ? AppTextColorLight.placeholder
                 : AppTextColorDark.placeholder,
           ),
-          AppSpacings.spacingSmVertical,
           Text(
             localizations?.entry_no_security_devices ?? 'No Security Devices',
             style: TextStyle(
@@ -876,14 +847,12 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
     required String status,
     required bool isSecure,
   }) {
-    final iconSize = _screenService.scale(
-      28,
-      density: _visualDensityService.density,
-    );
+    final iconSize = AppSpacings.scale(28);
 
     return Padding(
       padding: EdgeInsets.symmetric(vertical: AppSpacings.pSm),
       child: Row(
+        spacing: AppSpacings.pMd,
         children: [
           Icon(
             icon,
@@ -896,7 +865,6 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
                     ? AppColorsLight.warning
                     : AppColorsDark.warning),
           ),
-          AppSpacings.spacingMdHorizontal,
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

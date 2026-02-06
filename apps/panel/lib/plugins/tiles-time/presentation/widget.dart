@@ -1,6 +1,3 @@
-import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/presentation/widgets/tiles/tile.dart';
@@ -8,10 +5,6 @@ import 'package:fastybird_smart_panel/plugins/tiles-time/views/view.dart';
 import 'package:flutter/material.dart';
 
 class TimeTileWidget extends TileWidget<TimeTileView> {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
   TimeTileWidget(super.tile, {super.key});
 
   @override
@@ -35,10 +28,7 @@ class TimeTileWidget extends TileWidget<TimeTileView> {
                         DatetimeUtils.getFormattedTime(now),
                         style: TextStyle(
                           fontFamily: 'DIN1451',
-                          fontSize: _screenService.scale(
-                            90,
-                            density: _visualDensityService.density,
-                          ),
+                          fontSize: AppSpacings.scale(90),
                           color:
                               Theme.of(context).brightness == Brightness.light
                                   ? AppTextColorLight.primary
@@ -51,10 +41,7 @@ class TimeTileWidget extends TileWidget<TimeTileView> {
                         DatetimeUtils.getFormattedDate(now),
                         style: TextStyle(
                           fontFamily: 'DIN1451',
-                          fontSize: _screenService.scale(
-                            25,
-                            density: _visualDensityService.density,
-                          ),
+                          fontSize: AppSpacings.scale(25),
                           color:
                               Theme.of(context).brightness == Brightness.light
                                   ? AppTextColorLight.secondary

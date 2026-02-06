@@ -139,6 +139,16 @@ class SpacesModuleService {
     _coversTargetsRepository.clearAll();
     _spaceStateRepository.clearAll();
     _mediaActivityRepository.clearAll();
+
+    // Unregister from GetIt to allow re-registration on restart
+    locator.unregister<SpacesService>();
+    locator.unregister<MediaActivityService>();
+    locator.unregister<MediaActivityRepository>();
+    locator.unregister<SpaceStateRepository>();
+    locator.unregister<CoversTargetsRepository>();
+    locator.unregister<ClimateTargetsRepository>();
+    locator.unregister<LightTargetsRepository>();
+    locator.unregister<SpacesRepository>();
   }
 
   /// ////////////////

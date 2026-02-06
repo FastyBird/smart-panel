@@ -1,134 +1,123 @@
-import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
-/// Power Button Widget for device control
+/// Power button widget for device control.
 class DevicePowerButton extends StatelessWidget {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
-  final bool isOn;
-  final Color? activeColor;
-  final Color? activeBgColor;
-  final Color? glowColor;
-  final VoidCallback? onTap;
-  final double size;
-  final bool showInfoText;
+  /// Size for compact layouts (e.g. landscape on small/medium screens).
+  static const double compactSize = 130;
 
   DevicePowerButton({
     super.key,
     required this.isOn,
-    this.activeColor,
-    this.activeBgColor,
-    this.glowColor,
+    this.themeColor,
     this.onTap,
     this.size = 160,
     this.showInfoText = true,
   });
 
-  double _scale(double value) =>
-      _screenService.scale(value, density: _visualDensityService.density);
+  final bool isOn;
+  final ThemeColors? themeColor;
+  final VoidCallback? onTap;
+  final double size;
+  final bool showInfoText;
+
+  static const _animationDuration = Duration(milliseconds: 200);
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final effectiveActiveColor =
-        activeColor ?? (isDark ? AppColorsDark.primary : AppColorsLight.primary);
-    final effectiveActiveBgColor = activeBgColor ??
-        (isDark ? AppColorsDark.primaryLight9 : AppColorsLight.primaryLight9);
-    final effectiveGlowColor = glowColor ??
-        (isDark ? AppColorsDark.primaryLight5 : AppColorsLight.primaryLight5);
+    final brightness = Theme.of(context).brightness;
+    final isDark = brightness == Brightness.dark;
+    final colorFamily =
+        ThemeColorFamily.get(brightness, themeColor ?? ThemeColors.primary);
+    final effectiveActiveColor = colorFamily.base;
+    final effectiveActiveBgColor = colorFamily.light9;
+    final effectiveGlowColor = colorFamily.light5;
     final inactiveBgColor =
         isDark ? AppFillColorDark.light : AppFillColorLight.light;
     final inactiveColor =
         isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
+    final inactiveBorderColor =
+        isDark ? AppColors.blank : AppBorderColorLight.darker;
 
-    final infoText = isOn ? 'Tap to turn off' : 'Tap to turn on';
+    final shadowOffset = Offset(0, AppSpacings.scale(4));
+    final baseShadow = BoxShadow(
+      color: AppShadowColor.light,
+      blurRadius: AppSpacings.scale(20),
+      offset: shadowOffset,
+    );
+    final boxShadow = isOn
+        ? [
+            BoxShadow(
+              color: effectiveGlowColor,
+              blurRadius: AppSpacings.scale(40),
+              spreadRadius: 0,
+            ),
+            baseShadow,
+          ]
+        : [baseShadow];
 
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          GestureDetector(
-            onTap: () {
-              HapticFeedback.mediumImpact();
-              onTap?.call();
-            },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: _scale(size),
-              height: _scale(size),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: isOn ? effectiveActiveBgColor : inactiveBgColor,
-                border: Border.all(
-                  color: isOn
-                      ? effectiveActiveColor
-                      : (isDark
-                          ? AppColors.blank
-                          : AppBorderColorLight.light),
-                  width: isOn ? _scale(4) : _scale(1),
-                ),
-                boxShadow: isOn
-                    ? [
-                        BoxShadow(
-                          color: effectiveGlowColor,
-                          blurRadius: _scale(40),
-                          spreadRadius: 0,
-                        ),
-                        BoxShadow(
-                          color: AppShadowColor.light,
-                          blurRadius: _scale(20),
-                          offset: Offset(0, _scale(4)),
-                        ),
-                      ]
-                    : [
-                        BoxShadow(
-                          color: AppShadowColor.light,
-                          blurRadius: _scale(20),
-                          offset: Offset(0, _scale(4)),
-                        ),
-                      ],
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    MdiIcons.power,
-                    size: _scale(44),
-                    color: isOn ? effectiveActiveColor : inactiveColor,
+    return Padding(
+      padding: AppSpacings.paddingLg,
+      child: Center(
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            spacing: AppSpacings.pMd,
+            children: [
+              GestureDetector(
+              onTap: () {
+                HapticFeedback.mediumImpact();
+                onTap?.call();
+              },
+              child: AnimatedContainer(
+                duration: _animationDuration,
+                width: AppSpacings.scale(size),
+                height: AppSpacings.scale(size),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isOn ? effectiveActiveBgColor : inactiveBgColor,
+                  border: Border.all(
+                    color: isOn ? effectiveActiveColor : inactiveBorderColor,
+                    width: isOn ? AppSpacings.scale(4) : AppSpacings.scale(1),
                   ),
-                  AppSpacings.spacingMdVertical,
-                  Text(
-                    isOn ? 'On' : 'Off',
-                    style: TextStyle(
-                      fontSize: _scale(26),
-                      fontWeight: FontWeight.w300,
+                  boxShadow: boxShadow,
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  spacing: AppSpacings.pMd,
+                  children: [
+                    Icon(
+                      MdiIcons.power,
+                      size: AppSpacings.scale(44),
                       color: isOn ? effectiveActiveColor : inactiveColor,
                     ),
-                  ),
-                ],
+                    Text(
+                      isOn ? 'On' : 'Off',
+                      style: TextStyle(
+                        fontSize: AppSpacings.scale(26),
+                        fontWeight: FontWeight.w300,
+                        color: isOn ? effectiveActiveColor : inactiveColor,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-          if (showInfoText) ...[
-            AppSpacings.spacingLgVertical,
-            Text(
-              infoText,
-              style: TextStyle(
-                fontSize: AppFontSize.small,
-                color: isDark
-                    ? AppTextColorDark.secondary
-                    : AppTextColorLight.secondary,
+            if (showInfoText) ...[
+              Text(
+                isOn ? 'Tap to turn off' : 'Tap to turn on',
+                style: TextStyle(
+                  fontSize: AppFontSize.small,
+                  color: inactiveColor,
+                ),
               ),
-            ),
+            ],
           ],
-        ],
+        ),
+        ),
       ),
     );
   }

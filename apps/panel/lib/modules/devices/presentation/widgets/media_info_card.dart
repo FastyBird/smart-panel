@@ -1,61 +1,52 @@
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_card.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 
 class MediaInfoCard extends StatelessWidget {
 	final IconData icon;
-	final Color iconColor;
-	final Color iconBgColor;
 	final String name;
 	final bool isOn;
 	final String? displaySource;
-	final Color accentColor;
-	final double Function(double) scale;
+	final ThemeColors themeColor;
 
 	const MediaInfoCard({
 		super.key,
 		required this.icon,
-		required this.iconColor,
-		required this.iconBgColor,
 		required this.name,
 		required this.isOn,
 		this.displaySource,
-		required this.accentColor,
-		required this.scale,
+		this.themeColor = ThemeColors.primary,
 	});
 
 	@override
 	Widget build(BuildContext context) {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 		final localizations = AppLocalizations.of(context)!;
-		final cardColor = isDark ? AppFillColorDark.light : AppFillColorLight.light;
-		final borderColor = isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
 		final secondaryColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
+		final iconContainer = ThemeColorFamily.get(
+			isDark ? Brightness.dark : Brightness.light,
+			themeColor,
+		).iconContainer;
 
-		return Container(
+		return AppCard(
 			width: double.infinity,
-			padding: AppSpacings.paddingLg,
-			decoration: BoxDecoration(
-				color: cardColor,
-				borderRadius: BorderRadius.circular(AppBorderRadius.round),
-				border: Border.all(color: borderColor, width: scale(1)),
-			),
 			child: Column(
+				spacing: AppSpacings.pMd,
 				children: [
 					Container(
-						width: scale(64),
-						height: scale(64),
+						width: AppSpacings.scale(64),
+						height: AppSpacings.scale(64),
 						decoration: BoxDecoration(
-							color: iconBgColor,
-							borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+							color: iconContainer.backgroundColor,
+							borderRadius: BorderRadius.circular(AppBorderRadius.base),
 						),
 						child: Icon(
 							icon,
-							color: iconColor,
-							size: scale(32),
+							color: iconContainer.iconColor,
+							size: AppSpacings.scale(32),
 						),
 					),
-					AppSpacings.spacingMdVertical,
 					Text(
 						name,
 						style: TextStyle(
@@ -64,14 +55,14 @@ class MediaInfoCard extends StatelessWidget {
 							color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
 						),
 					),
-					AppSpacings.spacingSmVertical,
 					Row(
 						mainAxisAlignment: MainAxisAlignment.center,
 						mainAxisSize: MainAxisSize.min,
+						spacing: AppSpacings.pSm,
 						children: [
 							Container(
-								width: scale(8),
-								height: scale(8),
+								width: AppSpacings.scale(8),
+								height: AppSpacings.scale(8),
 								decoration: BoxDecoration(
 									color: isOn
 										? (isDark ? AppColorsDark.success : AppColorsLight.success)
@@ -79,7 +70,6 @@ class MediaInfoCard extends StatelessWidget {
 									shape: BoxShape.circle,
 								),
 							),
-							AppSpacings.spacingSmHorizontal,
 							Text(
 								isOn ? localizations.on_state_on : localizations.on_state_off,
 								style: TextStyle(

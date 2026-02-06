@@ -1,10 +1,8 @@
 import 'package:fastybird_smart_panel/api/models/spaces_module_data_space_category.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
@@ -49,9 +47,6 @@ class MasterOverviewPage extends StatefulWidget {
 }
 
 class _MasterOverviewPageState extends State<MasterOverviewPage> {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
   late final IntentsService _intentsService;
   SpacesService? _spacesService;
   DevicesService? _devicesService;
@@ -273,20 +268,20 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
 
       if (result.isSuccess) {
         final localizations = AppLocalizations.of(context);
-        AlertBar.showSuccess(
+        AppToast.showSuccess(
           context,
           message: localizations?.space_scene_triggered ?? 'Scene activated',
         );
       } else if (result.isPartialSuccess) {
         final localizations = AppLocalizations.of(context);
-        AlertBar.showInfo(
+        AppToast.showInfo(
           context,
           message: localizations?.space_scene_partial_success ??
               'Scene partially activated',
         );
       } else {
         final localizations = AppLocalizations.of(context);
-        AlertBar.showError(
+        AppToast.showError(
           context,
           message: result.message ?? localizations?.action_failed ?? 'Failed',
         );
@@ -300,7 +295,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
       });
 
       final localizations = AppLocalizations.of(context);
-      AlertBar.showError(
+      AppToast.showError(
         context,
         message: localizations?.action_failed ?? 'Failed to activate scene',
       );
@@ -354,10 +349,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
   }
 
   Widget _buildDevicesBadge(BuildContext context) {
-    final iconSize = _screenService.scale(
-      14,
-      density: _visualDensityService.density,
-    );
+    final iconSize = AppSpacings.scale(14);
     final allOnline = _onlineDevices == _totalDevices;
 
     return Container(
@@ -376,6 +368,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
       ),
       child: Row(
+        spacing: AppSpacings.pXs,
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
@@ -389,7 +382,6 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
                     ? AppColorsLight.warning
                     : AppColorsDark.warning),
           ),
-          AppSpacings.spacingXsHorizontal,
           Text(
             '$_onlineDevices/$_totalDevices',
             style: TextStyle(
@@ -410,10 +402,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
   }
 
   Widget _buildAlertsBadge(BuildContext context) {
-    final iconSize = _screenService.scale(
-      14,
-      density: _visualDensityService.density,
-    );
+    final iconSize = AppSpacings.scale(14);
 
     return Container(
       padding: EdgeInsets.symmetric(
@@ -427,6 +416,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
       ),
       child: Row(
+        spacing: AppSpacings.pXs,
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
@@ -436,7 +426,6 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
                 ? AppColorsLight.danger
                 : AppColorsDark.danger,
           ),
-          AppSpacings.spacingXsHorizontal,
           Text(
             '$_alertsCount',
             style: TextStyle(
@@ -464,15 +453,15 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
+        spacing: AppSpacings.pMd,
         children: [
           Icon(
             MdiIcons.alertCircleOutline,
-            size: _screenService.scale(64, density: _visualDensityService.density),
+            size: AppSpacings.scale(64),
             color: Theme.of(context).brightness == Brightness.light
                 ? AppColorsLight.danger
                 : AppColorsDark.danger,
           ),
-          AppSpacings.spacingMdVertical,
           Text(
             _errorMessage!,
             style: TextStyle(
@@ -483,11 +472,23 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
             ),
             textAlign: TextAlign.center,
           ),
-          AppSpacings.spacingMdVertical,
-          FilledButton.icon(
-            onPressed: _loadHouseData,
-            icon: Icon(MdiIcons.refresh),
-            label: const Text('Retry'),
+          Theme(
+            data: ThemeData(
+              filledButtonTheme: Theme.of(context).brightness == Brightness.dark
+                  ? AppFilledButtonsDarkThemes.primary
+                  : AppFilledButtonsLightThemes.primary,
+            ),
+            child: FilledButton.icon(
+              onPressed: _loadHouseData,
+              icon: Icon(
+                MdiIcons.refresh,
+                size: AppFontSize.base,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? AppFilledButtonsDarkThemes.primaryForegroundColor
+                    : AppFilledButtonsLightThemes.primaryForegroundColor,
+              ),
+              label: const Text('Retry'),
+            ),
           ),
         ],
       ),
@@ -497,16 +498,14 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
   Widget _buildContent(BuildContext context, AppLocalizations? localizations) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: AppSpacings.pMd,
       children: [
         // Summary stats
         _buildSummarySection(context, localizations),
-        AppSpacings.spacingMdVertical,
 
         // Global scenes
-        if (_globalScenes.isNotEmpty || _isScenesLoading) ...[
+        if (_globalScenes.isNotEmpty || _isScenesLoading)
           _buildScenesSection(context, localizations),
-          AppSpacings.spacingMdVertical,
-        ],
 
         // Rooms list
         Expanded(
@@ -551,10 +550,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
     required String value,
     required String label,
   }) {
-    final iconSize = _screenService.scale(
-      28,
-      density: _visualDensityService.density,
-    );
+    final iconSize = AppSpacings.scale(28);
 
     return Container(
       padding: AppSpacings.paddingSm,
@@ -565,13 +561,13 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
       ),
       child: Column(
+        spacing: AppSpacings.pXs,
         children: [
           Icon(
             icon,
             size: iconSize,
             color: Theme.of(context).colorScheme.primary,
           ),
-          AppSpacings.spacingXsVertical,
           Text(
             value,
             style: TextStyle(
@@ -599,17 +595,15 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: AppSpacings.pSm,
       children: [
         Row(
+          spacing: AppSpacings.pSm,
           children: [
             Icon(
               MdiIcons.movieOpenPlay,
-              size: _screenService.scale(
-                20,
-                density: _visualDensityService.density,
-              ),
+              size: AppSpacings.scale(20),
             ),
-            AppSpacings.spacingSmHorizontal,
             Text(
               localizations?.master_quick_actions ?? 'Quick Actions',
               style: TextStyle(
@@ -619,18 +613,11 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
             ),
           ],
         ),
-        AppSpacings.spacingSmVertical,
         if (_isScenesLoading)
           Center(
             child: SizedBox(
-              width: _screenService.scale(
-                24,
-                density: _visualDensityService.density,
-              ),
-              height: _screenService.scale(
-                24,
-                density: _visualDensityService.density,
-              ),
+              width: AppSpacings.scale(24),
+              height: AppSpacings.scale(24),
               child: CircularProgressIndicator(
                 strokeWidth: 2,
                 color: Theme.of(context).colorScheme.primary,
@@ -664,10 +651,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
             )
           : Icon(
               scene.iconData,
-              size: _screenService.scale(
-                18,
-                density: _visualDensityService.density,
-              ),
+              size: AppSpacings.scale(18),
             ),
       label: Text(scene.name),
       onPressed: _isSceneTriggering ? null : () => _triggerScene(scene),
@@ -680,17 +664,15 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: AppSpacings.pSm,
       children: [
         Row(
+          spacing: AppSpacings.pSm,
           children: [
             Icon(
               MdiIcons.homeGroup,
-              size: _screenService.scale(
-                20,
-                density: _visualDensityService.density,
-              ),
+              size: AppSpacings.scale(20),
             ),
-            AppSpacings.spacingSmHorizontal,
             Text(
               localizations?.master_rooms ?? 'Rooms',
               style: TextStyle(
@@ -700,7 +682,6 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
             ),
           ],
         ),
-        AppSpacings.spacingSmVertical,
         Expanded(
           child: ListView.separated(
             itemCount: _rooms.length,
@@ -713,10 +694,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
   }
 
   Widget _buildRoomCard(BuildContext context, RoomSummary room) {
-    final iconSize = _screenService.scale(
-      32,
-      density: _visualDensityService.density,
-    );
+    final iconSize = AppSpacings.scale(32);
     final allOnline = room.onlineDevices == room.totalDevices;
 
     return InkWell(

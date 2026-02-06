@@ -38,21 +38,6 @@ class LandscapeViewLayout extends StatelessWidget {
   /// If null, the right column is hidden
   final Widget? additionalContent;
 
-  /// Padding for the main content column
-  final EdgeInsetsGeometry? mainContentPadding;
-
-  /// Padding for the mode selector column
-  final EdgeInsetsGeometry? modeSelectorPadding;
-
-  /// Padding for the additional content column
-  final EdgeInsetsGeometry? additionalContentPadding;
-
-  /// Flex value for the main content column (default: 2)
-  final int mainContentFlex;
-
-  /// Flex value for the additional content column (default: 1)
-  final int additionalContentFlex;
-
   /// Whether the mode selector should show labels (for large screens)
   final bool? modeSelectorShowLabels;
 
@@ -64,20 +49,24 @@ class LandscapeViewLayout extends StatelessWidget {
   /// Default: true
   final bool additionalContentScrollable;
 
+  final bool fullHeight;
+
   LandscapeViewLayout({
     super.key,
     required this.mainContent,
     this.modeSelector,
     this.additionalContent,
-    this.mainContentPadding,
-    this.modeSelectorPadding,
-    this.additionalContentPadding,
-    this.mainContentFlex = 2,
-    this.additionalContentFlex = 1,
     this.modeSelectorShowLabels,
     this.mainContentScrollable = false,
+    this.fullHeight = false,
     this.additionalContentScrollable = true,
   });
+
+  /// Fixed width for mode selector column on large screens (icon + label)
+  static const double _modeSelectorWidthLarge = 100.0;
+
+  /// Fixed width for mode selector column on medium/small screens (icon only)
+  static const double _modeSelectorWidthCompact = 64.0;
 
   @override
   Widget build(BuildContext context) {
@@ -86,17 +75,42 @@ class LandscapeViewLayout extends StatelessWidget {
         isDark ? AppBorderColorDark.light : AppBorderColorLight.base;
     final isLargeScreen = _screenService.isLargeScreen;
 
-    // Determine if mode selector should show labels
-    final showLabels =
-        modeSelectorShowLabels ?? (isLargeScreen && additionalContent == null);
+    // Determine if mode selector should show labels (large screens only)
+    final showLabels = modeSelectorShowLabels ?? isLargeScreen;
 
-    return Row(
+    // Fixed width for mode selector based on screen size
+    final modeSelectorWidth =
+        AppSpacings.scale(showLabels ? _modeSelectorWidthLarge : _modeSelectorWidthCompact);
+
+    // Default paddings
+    final defaultMainPadding = modeSelector != null
+        ? EdgeInsets.only(
+            top: AppSpacings.pMd,
+            bottom: fullHeight ? AppSpacings.pMd : AppSpacings.pLg,
+            left: AppSpacings.pLg,
+          )
+        : AppSpacings.paddingLg;
+    final defaultModeSelectorPadding = EdgeInsets.only(
+      top: AppSpacings.pMd,
+      bottom: fullHeight ? AppSpacings.pMd : AppSpacings.pLg,
+      left: AppSpacings.pMd,
+      right: AppSpacings.pMd,
+    );
+    final defaultAdditionalPadding = AppSpacings.paddingMd;
+    final additionalBgColor =
+        isDark ? AppFillColorDark.light : AppFillColorLight.light;
+
+    // Add right padding when mode selector exists but no additional content
+    final needsOuterPadding =
+        modeSelector != null && additionalContent == null;
+
+    final content = Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         // Left column(s): Main content + optional mode selector (flex-based together)
         // This ensures additional column width stays consistent with or without mode selector
         Expanded(
-          flex: mainContentFlex,
+          flex: 2,
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -104,26 +118,25 @@ class LandscapeViewLayout extends StatelessWidget {
               Expanded(
                 child: mainContentScrollable
                     ? VerticalScrollWithGradient(
-                        gradientHeight: AppSpacings.pLg,
-                        padding: mainContentPadding ?? AppSpacings.paddingLg,
+                        gradientHeight: AppSpacings.pMd,
+                        padding: defaultMainPadding,
                         itemCount: 1,
                         separatorHeight: 0,
                         itemBuilder: (context, index) => mainContent,
                       )
                     : Padding(
-                        padding: mainContentPadding ?? AppSpacings.paddingLg,
+                        padding: defaultMainPadding,
                         child: mainContent,
                       ),
               ),
-              // Mode selector (optional) - intrinsic width within main flex
+              // Mode selector (optional) - fixed width based on screen size
               if (modeSelector != null)
-                Container(
-                  padding: modeSelectorPadding ??
-                      EdgeInsets.symmetric(
-                        vertical: AppSpacings.pLg,
-                        horizontal: showLabels ? AppSpacings.pLg : AppSpacings.pMd,
-                      ),
-                  child: Center(child: modeSelector),
+                SizedBox(
+                  width: modeSelectorWidth,
+                  child: Padding(
+                    padding: defaultModeSelectorPadding,
+                    child: modeSelector,
+                  ),
                 ),
             ],
           ),
@@ -131,22 +144,22 @@ class LandscapeViewLayout extends StatelessWidget {
 
         // Right column: Additional content (optional) - flex-based
         if (additionalContent != null) ...[
-          Container(width: 1, color: borderColor),
+          Container(width: AppSpacings.scale(1), color: borderColor),
           Expanded(
-            flex: additionalContentFlex,
+            flex: 1,
             child: Container(
-              color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
+              color: additionalBgColor,
               child: additionalContentScrollable
                   ? VerticalScrollWithGradient(
-                      gradientHeight: AppSpacings.pLg,
-                      padding: additionalContentPadding ?? EdgeInsets.all(AppSpacings.pLg),
-                      backgroundColor: isDark ? AppFillColorDark.light : AppFillColorLight.light,
+                      gradientHeight: AppSpacings.pMd,
+                      padding: defaultAdditionalPadding,
+                      backgroundColor: additionalBgColor,
                       itemCount: 1,
                       separatorHeight: 0,
                       itemBuilder: (context, index) => additionalContent!,
                     )
                   : Padding(
-                      padding: additionalContentPadding ?? EdgeInsets.all(AppSpacings.pLg),
+                      padding: defaultAdditionalPadding,
                       child: additionalContent,
                     ),
             ),
@@ -154,5 +167,13 @@ class LandscapeViewLayout extends StatelessWidget {
         ],
       ],
     );
+
+    // Wrap with padding only when needed to avoid unnecessary widget
+    return needsOuterPadding
+        ? Padding(
+            padding: EdgeInsets.only(right: AppSpacings.pMd),
+            child: content,
+          )
+        : content;
   }
 }

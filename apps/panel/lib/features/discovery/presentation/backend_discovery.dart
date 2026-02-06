@@ -9,7 +9,6 @@ import 'package:fastybird_smart_panel/core/models/discovered_backend.dart';
 import 'package:fastybird_smart_panel/core/services/mdns_discovery.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/system_pages/export.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
@@ -163,7 +162,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
           _state = DiscoveryState.error;
         });
         final localizations = AppLocalizations.of(context)!;
-        AlertBar.showError(
+        AppToast.showError(
           context,
           message: localizations.discovery_error_failed(e.toString()),
         );
@@ -245,7 +244,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
     final localizations = AppLocalizations.of(context)!;
 
     if (url.isEmpty) {
-      AlertBar.showWarning(
+      AppToast.showWarning(
         context,
         message: localizations.discovery_validation_empty,
       );
@@ -253,7 +252,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
     }
 
     if (!_isValidAddress(url)) {
-      AlertBar.showError(
+      AppToast.showError(
         context,
         message: localizations.discovery_validation_invalid,
       );
@@ -353,18 +352,18 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
           children: [
             // Animated icon with pulse rings
             SizedBox(
-              width: _screenService.scale(isCompactLandscape ? 70 : 100),
-              height: _screenService.scale(isCompactLandscape ? 70 : 100),
+              width: AppSpacings.scale(isCompactLandscape ? 70 : 100),
+              height: AppSpacings.scale(isCompactLandscape ? 70 : 100),
               child: Stack(
                 alignment: Alignment.center,
                 children: [
                   PulseRings(
-                    size: _screenService.scale(isCompactLandscape ? 56 : 80),
+                    size: AppSpacings.scale(isCompactLandscape ? 56 : 80),
                     color: accent,
                   ),
                   Icon(
                     MdiIcons.accessPointNetwork,
-                    size: _screenService.scale(isCompactLandscape ? 32 : 48),
+                    size: AppSpacings.scale(isCompactLandscape ? 32 : 48),
                     color: accent,
                   ),
                 ],
@@ -383,7 +382,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
                 fontWeight: FontWeight.w500,
               ),
             ),
-            SizedBox(height: AppSpacings.pMd),
+            AppSpacings.spacingMdVertical,
             Text(
               localizations.discovery_searching_description,
               textAlign: TextAlign.center,
@@ -394,7 +393,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
               ),
             ),
             if (_backends.isNotEmpty) ...[
-              SizedBox(height: AppSpacings.pLg),
+              AppSpacings.spacingLgVertical,
               Text(
                 localizations.discovery_found_count(_backends.length),
                 style: TextStyle(
@@ -422,11 +421,23 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
     AppLocalizations localizations,
   ) {
     return Center(
-      child: SystemPageSecondaryButton(
-        label: localizations.discovery_button_cancel,
-        icon: MdiIcons.close,
-        onPressed: _cancelDiscovery,
-        isDark: isDark,
+      child: Theme(
+        data: Theme.of(context).copyWith(
+          outlinedButtonTheme: isDark
+              ? AppOutlinedButtonsDarkThemes.primary
+              : AppOutlinedButtonsLightThemes.primary,
+        ),
+        child: OutlinedButton.icon(
+          onPressed: _cancelDiscovery,
+          icon: Icon(
+            MdiIcons.close,
+            size: AppFontSize.base,
+            color: isDark
+                ? AppOutlinedButtonsDarkThemes.primaryForegroundColor
+                : AppOutlinedButtonsLightThemes.primaryForegroundColor,
+          ),
+          label: Text(localizations.discovery_button_cancel),
+        ),
       ),
     );
   }
@@ -483,7 +494,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
               fontWeight: FontWeight.w500,
             ),
           ),
-          SizedBox(height: AppSpacings.pSm),
+          AppSpacings.spacingSmVertical,
           Text(
             localizations.discovery_select_description(_backends.length),
             style: TextStyle(
@@ -513,30 +524,86 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
           // Connect button
           SizedBox(
             width: double.infinity,
-            child: SystemPagePrimaryButton(
-              label: localizations.discovery_button_connect_selected,
-              icon: MdiIcons.arrowRight,
-              onPressed: _selectedBackend != null ? _confirmSelection : null,
-              minWidth: double.infinity,
-              isDark: isDark,
+            child: Theme(
+              data: Theme.of(context).copyWith(
+                filledButtonTheme: isDark
+                    ? AppFilledButtonsDarkThemes.primary
+                    : AppFilledButtonsLightThemes.primary,
+              ),
+              child: FilledButton.icon(
+                onPressed:
+                    _selectedBackend != null ? _confirmSelection : null,
+                icon: Icon(
+                  MdiIcons.arrowRight,
+                  size: AppFontSize.base,
+                  color: isDark
+                      ? AppFilledButtonsDarkThemes.primaryForegroundColor
+                      : AppFilledButtonsLightThemes.primaryForegroundColor,
+                ),
+                label: Text(
+                    localizations.discovery_button_connect_selected
+                ),
+                style: FilledButton.styleFrom(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: AppSpacings.pMd,
+                    vertical: AppSpacings.pMd,
+                  ),
+                ),
+              ),
             ),
           ),
-          SizedBox(height: AppSpacings.pLg),
+          AppSpacings.spacingLgVertical,
           // Secondary actions
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              SystemPageGhostButton(
-                label: localizations.discovery_button_rescan,
-                icon: MdiIcons.cached,
-                onPressed: _startDiscovery,
-                isDark: isDark,
+              Theme(
+                data: Theme.of(context).copyWith(
+                  textButtonTheme: isDark
+                      ? AppTextButtonsDarkThemes.neutral
+                      : AppTextButtonsLightThemes.neutral,
+                ),
+                child: TextButton.icon(
+                  onPressed: _startDiscovery,
+                  icon: Icon(
+                    MdiIcons.cached,
+                    size: AppFontSize.base,
+                    color: isDark
+                        ? AppTextButtonsDarkThemes.neutralForegroundColor
+                        : AppTextButtonsLightThemes.neutralForegroundColor,
+                  ),
+                  label: Text(localizations.discovery_button_rescan),
+                  style: FilledButton.styleFrom(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: AppSpacings.pMd,
+                      vertical: AppSpacings.pMd,
+                    ),
+                  ),
+                ),
               ),
-              SystemPageGhostButton(
-                label: localizations.discovery_button_manual,
-                icon: MdiIcons.pencilOutline,
-                onPressed: _showManualEntryForm,
-                isDark: isDark,
+              Theme(
+                data: Theme.of(context).copyWith(
+                  textButtonTheme: isDark
+                      ? AppTextButtonsDarkThemes.neutral
+                      : AppTextButtonsLightThemes.neutral,
+                ),
+                child: TextButton.icon(
+                  onPressed: _showManualEntryForm,
+                  icon: Icon(
+                    MdiIcons.pencilOutline,
+                    size: AppFontSize.base,
+                    color: isDark
+                        ? AppTextButtonsDarkThemes.neutralForegroundColor
+                        : AppTextButtonsLightThemes.neutralForegroundColor,
+                  ),
+                  label: Text(localizations.discovery_button_manual),
+                  style: FilledButton.styleFrom(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: AppSpacings.pMd,
+                      vertical: AppSpacings.pMd,
+                    ),
+                  ),
+                ),
               ),
             ],
           ),
@@ -561,7 +628,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
         children: [
           // Left: Header
           SizedBox(
-            width: _screenService.scale(isCompact ? 160 : 240),
+            width: AppSpacings.scale(isCompact ? 160 : 240),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -581,7 +648,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                SizedBox(height: AppSpacings.pSm),
+                AppSpacings.spacingSmVertical,
                 Text(
                   localizations.discovery_select_description(_backends.length),
                   style: TextStyle(
@@ -622,30 +689,74 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
                 // Actions
                 SizedBox(
                   width: double.infinity,
-                  child: SystemPagePrimaryButton(
-                    label: localizations.discovery_button_connect_selected,
-                    icon: MdiIcons.arrowRight,
-                    onPressed:
-                        _selectedBackend != null ? _confirmSelection : null,
-                    minWidth: double.infinity,
-                    isDark: isDark,
+                  child: Theme(
+                    data: Theme.of(context).copyWith(
+                      filledButtonTheme: isDark
+                          ? AppFilledButtonsDarkThemes.primary
+                          : AppFilledButtonsLightThemes.primary,
+                    ),
+                    child: FilledButton.icon(
+                      onPressed:
+                          _selectedBackend != null ? _confirmSelection : null,
+                      icon: Icon(
+                        MdiIcons.arrowRight,
+                        size: AppFontSize.base,
+                        color: isDark
+                            ? AppFilledButtonsDarkThemes
+                                .primaryForegroundColor
+                            : AppFilledButtonsLightThemes
+                                .primaryForegroundColor,
+                      ),
+                      label: Text(
+                          localizations.discovery_button_connect_selected),
+                    ),
                   ),
                 ),
-                SizedBox(height: AppSpacings.pLg),
+                AppSpacings.spacingLgVertical,
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    SystemPageGhostButton(
-                      label: localizations.discovery_button_rescan,
-                      icon: MdiIcons.cached,
-                      onPressed: _startDiscovery,
-                      isDark: isDark,
+                    Theme(
+                      data: Theme.of(context).copyWith(
+                        textButtonTheme: isDark
+                            ? AppTextButtonsDarkThemes.primary
+                            : AppTextButtonsLightThemes.primary,
+                      ),
+                      child: TextButton.icon(
+                        onPressed: _startDiscovery,
+                        icon: Icon(
+                          MdiIcons.cached,
+                          size: AppFontSize.base,
+                          color: isDark
+                              ? AppTextButtonsDarkThemes
+                                  .primaryForegroundColor
+                              : AppTextButtonsLightThemes
+                                  .primaryForegroundColor,
+                        ),
+                        label:
+                            Text(localizations.discovery_button_rescan),
+                      ),
                     ),
-                    SystemPageGhostButton(
-                      label: localizations.discovery_button_manual,
-                      icon: MdiIcons.pencilOutline,
-                      onPressed: _showManualEntryForm,
-                      isDark: isDark,
+                    Theme(
+                      data: Theme.of(context).copyWith(
+                        textButtonTheme: isDark
+                            ? AppTextButtonsDarkThemes.primary
+                            : AppTextButtonsLightThemes.primary,
+                      ),
+                      child: TextButton.icon(
+                        onPressed: _showManualEntryForm,
+                        icon: Icon(
+                          MdiIcons.pencilOutline,
+                          size: AppFontSize.base,
+                          color: isDark
+                              ? AppTextButtonsDarkThemes
+                                  .primaryForegroundColor
+                              : AppTextButtonsLightThemes
+                                  .primaryForegroundColor,
+                        ),
+                        label:
+                            Text(localizations.discovery_button_manual),
+                      ),
                     ),
                   ],
                 ),
@@ -700,7 +811,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: SystemPagesTheme.textMuted(isDark),
-                fontSize: _screenService.scale(isCompactLandscape ? 12 : 14),
+                fontSize: AppSpacings.scale(isCompactLandscape ? 12 : 14),
                 height: 1.5,
               ),
             ),
@@ -726,18 +837,42 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
       return Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          SystemPagePrimaryButton(
-            label: localizations.discovery_button_try_again,
-            icon: MdiIcons.cached,
-            onPressed: _startDiscovery,
-            isDark: isDark,
+          Theme(
+            data: Theme.of(context).copyWith(
+              filledButtonTheme: isDark
+                  ? AppFilledButtonsDarkThemes.primary
+                  : AppFilledButtonsLightThemes.primary,
+            ),
+            child: FilledButton.icon(
+              onPressed: _startDiscovery,
+              icon: Icon(
+                MdiIcons.cached,
+                size: AppFontSize.base,
+                color: isDark
+                    ? AppFilledButtonsDarkThemes.primaryForegroundColor
+                    : AppFilledButtonsLightThemes.primaryForegroundColor,
+              ),
+              label: Text(localizations.discovery_button_try_again),
+            ),
           ),
-          SizedBox(width: AppSpacings.pLg),
-          SystemPageSecondaryButton(
-            label: localizations.discovery_button_manual,
-            icon: MdiIcons.pencilOutline,
-            onPressed: _showManualEntryForm,
-            isDark: isDark,
+          AppSpacings.spacingLgHorizontal,
+          Theme(
+            data: Theme.of(context).copyWith(
+              outlinedButtonTheme: isDark
+                  ? AppOutlinedButtonsDarkThemes.primary
+                  : AppOutlinedButtonsLightThemes.primary,
+            ),
+            child: OutlinedButton.icon(
+              onPressed: _showManualEntryForm,
+              icon: Icon(
+                MdiIcons.pencilOutline,
+                size: AppFontSize.base,
+                color: isDark
+                    ? AppOutlinedButtonsDarkThemes.primaryForegroundColor
+                    : AppOutlinedButtonsLightThemes.primaryForegroundColor,
+              ),
+              label: Text(localizations.discovery_button_manual),
+            ),
           ),
         ],
       );
@@ -747,23 +882,45 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
       children: [
         SizedBox(
           width: double.infinity,
-          child: SystemPagePrimaryButton(
-            label: localizations.discovery_button_try_again,
-            icon: MdiIcons.cached,
-            onPressed: _startDiscovery,
-            minWidth: double.infinity,
-            isDark: isDark,
+          child: Theme(
+            data: Theme.of(context).copyWith(
+              filledButtonTheme: isDark
+                  ? AppFilledButtonsDarkThemes.primary
+                  : AppFilledButtonsLightThemes.primary,
+            ),
+            child: FilledButton.icon(
+              onPressed: _startDiscovery,
+              icon: Icon(
+                MdiIcons.cached,
+                size: AppFontSize.base,
+                color: isDark
+                    ? AppFilledButtonsDarkThemes.primaryForegroundColor
+                    : AppFilledButtonsLightThemes.primaryForegroundColor,
+              ),
+              label: Text(localizations.discovery_button_try_again),
+            ),
           ),
         ),
         SizedBox(height: AppSpacings.pMd + AppSpacings.pSm),
         SizedBox(
           width: double.infinity,
-          child: SystemPageSecondaryButton(
-            label: localizations.discovery_button_manual,
-            icon: MdiIcons.pencilOutline,
-            onPressed: _showManualEntryForm,
-            isDark: isDark,
-            minWidth: double.infinity,
+          child: Theme(
+            data: Theme.of(context).copyWith(
+              outlinedButtonTheme: isDark
+                  ? AppOutlinedButtonsDarkThemes.primary
+                  : AppOutlinedButtonsLightThemes.primary,
+            ),
+            child: OutlinedButton.icon(
+              onPressed: _showManualEntryForm,
+              icon: Icon(
+                MdiIcons.pencilOutline,
+                size: AppFontSize.base,
+                color: isDark
+                    ? AppOutlinedButtonsDarkThemes.primaryForegroundColor
+                    : AppOutlinedButtonsLightThemes.primaryForegroundColor,
+              ),
+              label: Text(localizations.discovery_button_manual),
+            ),
           ),
         ),
       ],
@@ -801,7 +958,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
                 fontWeight: FontWeight.w500,
               ),
             ),
-            SizedBox(height: AppSpacings.pMd),
+            AppSpacings.spacingMdVertical,
             // Message
             Text(
               localizations.discovery_error_description,
@@ -812,7 +969,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
                 height: 1.5,
               ),
             ),
-            SizedBox(height: AppSpacings.pXl),
+            AppSpacings.spacingXlVertical,
             // Buttons
             _buildActionButtons(isDark, isLandscape, localizations),
           ],
@@ -856,7 +1013,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
                 fontWeight: FontWeight.w500,
               ),
             ),
-            SizedBox(height: AppSpacings.pMd),
+            AppSpacings.spacingMdVertical,
             Text(
               localizations.discovery_connecting_description(address),
               textAlign: TextAlign.center,
@@ -867,7 +1024,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
             ),
             SizedBox(height: AppSpacings.pLg + AppSpacings.pMd),
             LoadingSpinner(
-              size: _screenService.scale(48),
+              size: AppSpacings.scale(48),
               color: accent,
             ),
           ],
@@ -921,7 +1078,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
               autocorrect: false,
               onSubmitted: (_) => _submitManualUrl(),
             ),
-            SizedBox(height: AppSpacings.pLg),
+            AppSpacings.spacingLgVertical,
             Text(
               localizations.discovery_manual_entry_help,
               style: TextStyle(
@@ -930,7 +1087,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
               ),
               textAlign: TextAlign.center,
             ),
-            SizedBox(height: AppSpacings.pXl),
+            AppSpacings.spacingXlVertical,
             // Buttons
             _buildManualEntryButtons(isDark, isLandscape, localizations),
           ],
@@ -950,18 +1107,42 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
       return Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          SystemPageSecondaryButton(
-            label: localizations.discovery_button_back,
-            icon: MdiIcons.arrowLeft,
-            onPressed: _backToDiscovery,
-            isDark: isDark,
+          Theme(
+            data: Theme.of(context).copyWith(
+              outlinedButtonTheme: isDark
+                  ? AppOutlinedButtonsDarkThemes.primary
+                  : AppOutlinedButtonsLightThemes.primary,
+            ),
+            child: OutlinedButton.icon(
+              onPressed: _backToDiscovery,
+              icon: Icon(
+                MdiIcons.arrowLeft,
+                size: AppFontSize.base,
+                color: isDark
+                    ? AppOutlinedButtonsDarkThemes.primaryForegroundColor
+                    : AppOutlinedButtonsLightThemes.primaryForegroundColor,
+              ),
+              label: Text(localizations.discovery_button_back),
+            ),
           ),
-          SizedBox(width: AppSpacings.pLg),
-          SystemPagePrimaryButton(
-            label: localizations.discovery_button_connect,
-            icon: MdiIcons.arrowRight,
-            onPressed: hasText ? _submitManualUrl : null,
-            isDark: isDark,
+          AppSpacings.spacingLgHorizontal,
+          Theme(
+            data: Theme.of(context).copyWith(
+              filledButtonTheme: isDark
+                  ? AppFilledButtonsDarkThemes.primary
+                  : AppFilledButtonsLightThemes.primary,
+            ),
+            child: FilledButton.icon(
+              onPressed: hasText ? _submitManualUrl : null,
+              icon: Icon(
+                MdiIcons.arrowRight,
+                size: AppFontSize.base,
+                color: isDark
+                    ? AppFilledButtonsDarkThemes.primaryForegroundColor
+                    : AppFilledButtonsLightThemes.primaryForegroundColor,
+              ),
+              label: Text(localizations.discovery_button_connect),
+            ),
           ),
         ],
       );
@@ -971,23 +1152,45 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
       children: [
         SizedBox(
           width: double.infinity,
-          child: SystemPagePrimaryButton(
-            label: localizations.discovery_button_connect,
-            icon: MdiIcons.arrowRight,
-            onPressed: hasText ? _submitManualUrl : null,
-            minWidth: double.infinity,
-            isDark: isDark,
+          child: Theme(
+            data: Theme.of(context).copyWith(
+              filledButtonTheme: isDark
+                  ? AppFilledButtonsDarkThemes.primary
+                  : AppFilledButtonsLightThemes.primary,
+            ),
+            child: FilledButton.icon(
+              onPressed: hasText ? _submitManualUrl : null,
+              icon: Icon(
+                MdiIcons.arrowRight,
+                size: AppFontSize.base,
+                color: isDark
+                    ? AppFilledButtonsDarkThemes.primaryForegroundColor
+                    : AppFilledButtonsLightThemes.primaryForegroundColor,
+              ),
+              label: Text(localizations.discovery_button_connect),
+            ),
           ),
         ),
         SizedBox(height: AppSpacings.pMd + AppSpacings.pSm),
         SizedBox(
           width: double.infinity,
-          child: SystemPageSecondaryButton(
-            label: localizations.discovery_button_back,
-            icon: MdiIcons.arrowLeft,
-            onPressed: _backToDiscovery,
-            isDark: isDark,
-            minWidth: double.infinity,
+          child: Theme(
+            data: Theme.of(context).copyWith(
+              outlinedButtonTheme: isDark
+                  ? AppOutlinedButtonsDarkThemes.primary
+                  : AppOutlinedButtonsLightThemes.primary,
+            ),
+            child: OutlinedButton.icon(
+              onPressed: _backToDiscovery,
+              icon: Icon(
+                MdiIcons.arrowLeft,
+                size: AppFontSize.base,
+                color: isDark
+                    ? AppOutlinedButtonsDarkThemes.primaryForegroundColor
+                    : AppOutlinedButtonsLightThemes.primaryForegroundColor,
+              ),
+              label: Text(localizations.discovery_button_back),
+            ),
           ),
         ),
       ],

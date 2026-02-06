@@ -1,0 +1,169 @@
+import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:flutter/material.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
+
+// Offline status colors
+const Color _offlineColor = Color(0xFF78909C);
+
+/// Combined widget that shows both the backdrop and banner for offline devices.
+///
+/// Use this as a single widget in a Stack to show the offline state.
+///
+/// Example usage:
+/// ```dart
+/// Stack(
+///   children: [
+///     // Main content
+///     DevicePortraitLayout(...),
+///     // Offline state
+///     if (!device.isOnline)
+///       DeviceOfflineState(
+///         isDark: isDark,
+///         lastSeenText: lastSeenText,
+///       ),
+///   ],
+/// )
+/// ```
+class DeviceOfflineState extends StatelessWidget {
+  final bool isDark;
+  final String? lastSeenText;
+
+  const DeviceOfflineState({
+    super.key,
+    required this.isDark,
+    this.lastSeenText,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        _DeviceOfflineBackdrop(isDark: isDark),
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: _DeviceOfflineBanner(
+            isDark: isDark,
+            lastSeenText: lastSeenText,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Semi-transparent backdrop that covers the content area when device is offline.
+class _DeviceOfflineBackdrop extends StatelessWidget {
+  final bool isDark;
+
+  const _DeviceOfflineBackdrop({
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: isDark
+          ? AppBgColorDark.pageOverlay50
+          : AppBgColorLight.pageOverlay50,
+    );
+  }
+}
+
+/// Banner shown at the top of device detail content when device is offline.
+class _DeviceOfflineBanner extends StatelessWidget {
+  final bool isDark;
+  final String? lastSeenText;
+
+  _DeviceOfflineBanner({
+    required this.isDark,
+    this.lastSeenText,
+  });
+
+  Color _textMuted() =>
+      isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
+
+  Color _cardBg() =>
+      isDark ? AppColorsDark.infoLight9 : AppColorsLight.infoLight9;
+
+  Color _borderColor() =>
+      isDark ? AppColorsDark.infoLight7 : AppColorsLight.infoLight7;
+
+  @override
+  Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
+
+    return Container(
+      margin: EdgeInsets.all(AppSpacings.scale(AppSpacings.pLg)),
+      padding: EdgeInsets.all(AppSpacings.scale(16)),
+      decoration: BoxDecoration(
+        color: _cardBg(),
+        borderRadius: BorderRadius.circular(AppSpacings.scale(16)),
+        border: Border.all(
+          color: _borderColor(),
+          width: AppSpacings.scale(1),
+        ),
+      ),
+      child: Row(
+        children: [
+          // Icon
+          Container(
+            width: AppSpacings.scale(40),
+            height: AppSpacings.scale(40),
+            decoration: BoxDecoration(
+              color: _offlineColor.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(AppSpacings.scale(10)),
+            ),
+            child: Icon(
+              MdiIcons.wifiOff,
+              color: _offlineColor,
+              size: AppSpacings.scale(22),
+            ),
+          ),
+          AppSpacings.spacingLgHorizontal,
+          // Content
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      localizations.device_offline_title,
+                      style: TextStyle(
+                        color: _offlineColor,
+                        fontSize: AppSpacings.scale(14),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    if (lastSeenText != null) ...[
+                      const Spacer(),
+                      Text(
+                        lastSeenText!,
+                        style: TextStyle(
+                          color: _textMuted(),
+                          fontSize: AppSpacings.scale(12),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                AppSpacings.spacingXsVertical,
+                Text(
+                  localizations.device_offline_description,
+                  style: TextStyle(
+                    color: _textMuted(),
+                    fontSize: AppSpacings.scale(12),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

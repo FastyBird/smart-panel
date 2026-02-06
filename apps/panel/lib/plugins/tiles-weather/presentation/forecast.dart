@@ -1,6 +1,3 @@
-import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/number.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
@@ -17,10 +14,6 @@ import 'package:provider/provider.dart';
 import 'package:weather_icons/weather_icons.dart';
 
 class ForecastTileWidget extends TileWidget<ForecastWeatherTileView> {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
   ForecastTileWidget(super.tile, {super.key});
 
   @override
@@ -85,13 +78,11 @@ class ForecastTileWidget extends TileWidget<ForecastWeatherTileView> {
         : NumberUtils.formatUnavailableNumber(1);
 
     return SizedBox(
-      width: _screenService.scale(
-        70,
-        density: _visualDensityService.density,
-      ),
+      width: AppSpacings.scale(70),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.center,
+        spacing: AppSpacings.pSm,
         children: [
           Text(
             DatetimeUtils.getShortDayName(forecast.dayTime),
@@ -103,19 +94,15 @@ class ForecastTileWidget extends TileWidget<ForecastWeatherTileView> {
                   : AppTextColorDark.primary,
             ),
           ),
-          AppSpacings.spacingSmVertical,
           BoxedIcon(
             WeatherConditionMapper.getIcon(forecast.weatherCode),
             color: Theme.of(context).brightness == Brightness.light
                 ? AppColorsLight.warning
                 : AppColorsDark.warning,
-            size: _screenService.scale(
-              20,
-              density: _visualDensityService.density,
-            ),
+            size: AppSpacings.scale(20),
           ),
-          AppSpacings.spacingSmVertical,
           Row(
+            spacing: AppSpacings.pXs,
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
@@ -130,7 +117,6 @@ class ForecastTileWidget extends TileWidget<ForecastWeatherTileView> {
                       : AppTextColorDark.secondary,
                 ),
               ),
-              AppSpacings.spacingXsHorizontal,
               Text(
                 '/',
                 style: TextStyle(
@@ -141,7 +127,6 @@ class ForecastTileWidget extends TileWidget<ForecastWeatherTileView> {
                       : AppTextColorDark.secondary,
                 ),
               ),
-              AppSpacings.spacingXsHorizontal,
               Text(
                 wholeNightTemp,
                 style: TextStyle(
@@ -152,7 +137,6 @@ class ForecastTileWidget extends TileWidget<ForecastWeatherTileView> {
                       : AppTextColorDark.secondary,
                 ),
               ),
-              AppSpacings.spacingXsHorizontal,
               Text(
                 _getUnit(forecast),
                 style: TextStyle(

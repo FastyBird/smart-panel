@@ -1,19 +1,18 @@
 import 'dart:async';
 
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/device_detail_landscape_layout.dart';
-import 'package:fastybird_smart_panel/core/widgets/device_detail_portrait_layout.dart';
-import 'package:fastybird_smart_panel/core/widgets/device_offline_overlay.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_landscape_layout.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_portrait_layout.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_offline_overlay.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_info_card.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_playback_card.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
+import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/game_console.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -33,8 +32,6 @@ class GameConsoleDeviceDetail extends StatefulWidget {
 }
 
 class _GameConsoleDeviceDetailState extends State<GameConsoleDeviceDetail> {
-	final ScreenService _screenService = locator<ScreenService>();
-	final VisualDensityService _visualDensityService = locator<VisualDensityService>();
 	final DevicesService _devicesService = locator<DevicesService>();
 
 	Timer? _playbackSettleTimer;
@@ -66,9 +63,6 @@ class _GameConsoleDeviceDetailState extends State<GameConsoleDeviceDetail> {
 		}
 		return widget._device;
 	}
-
-	double _scale(double value) =>
-		_screenService.scale(value, density: _visualDensityService.density);
 
 	// --------------------------------------------------------------------------
 	// COMMAND HELPERS
@@ -150,19 +144,7 @@ class _GameConsoleDeviceDetailState extends State<GameConsoleDeviceDetail> {
 		return localizations.on_state_on;
 	}
 
-	Color _getAccentColor(bool isDark) {
-		if (_isOn) {
-			return isDark ? AppColorsDark.info : AppColorsLight.info;
-		}
-		return isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
-	}
-
-	Color _getAccentLightColor(bool isDark) {
-		if (_isOn) {
-			return isDark ? AppColorsDark.infoLight5 : AppColorsLight.infoLight5;
-		}
-		return isDark ? AppFillColorDark.darker : AppFillColorLight.darker;
-	}
+	ThemeColors _getThemeColor() => _isOn ? ThemeColors.primary : ThemeColors.neutral;
 
 	// --------------------------------------------------------------------------
 	// BUILD
@@ -209,65 +191,35 @@ class _GameConsoleDeviceDetailState extends State<GameConsoleDeviceDetail> {
 
 	Widget _buildHeader(BuildContext context, bool isDark) {
 		final localizations = AppLocalizations.of(context)!;
-		final accentColor = _getAccentColor(isDark);
 		final secondaryColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
-		final mutedColor = isDark ? AppTextColorDark.disabled : AppTextColorLight.disabled;
 		final isOn = _isOn;
+		final accentColor = isOn
+			? ThemeColorFamily.get(isDark ? Brightness.dark : Brightness.light, _getThemeColor()).base
+			: secondaryColor;
 
 		return PageHeader(
 			title: _device.name,
 			subtitle: _getStatusLabel(localizations),
-			subtitleColor: isOn ? accentColor : secondaryColor,
-			backgroundColor: AppColors.blank,
+			subtitleColor: accentColor,
 			leading: Row(
 				mainAxisSize: MainAxisSize.min,
+				spacing: AppSpacings.pMd,
 				children: [
 					HeaderIconButton(
 						icon: MdiIcons.arrowLeft,
 						onTap: widget.onBack ?? () => Navigator.of(context).pop(),
 					),
-					AppSpacings.spacingMdHorizontal,
-					Container(
-						width: _scale(44),
-						height: _scale(44),
-						decoration: BoxDecoration(
-							color: isOn
-								? _getAccentLightColor(isDark)
-								: (isDark ? AppFillColorDark.darker : AppFillColorLight.darker),
-							borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-						),
-						child: Icon(
-							MdiIcons.gamepadVariant,
-							color: isOn ? accentColor : mutedColor,
-							size: _scale(24),
-						),
+					HeaderMainIcon(
+						icon: buildDeviceIcon(_device.category, _device.icon),
+						color: isOn ? ThemeColors.primary : ThemeColors.neutral,
 					),
 				],
 			),
 			trailing: _device.hasSwitcher
-				? GestureDetector(
+				? HeaderIconButton(
+					icon: MdiIcons.power,
 					onTap: _togglePower,
-					child: AnimatedContainer(
-						duration: const Duration(milliseconds: 200),
-						width: _scale(48),
-						height: _scale(32),
-						decoration: BoxDecoration(
-							color: isOn
-								? accentColor
-								: (isDark ? AppFillColorDark.light : AppFillColorLight.light),
-							borderRadius: BorderRadius.circular(AppBorderRadius.round),
-							border: (!isOn && !isDark)
-								? Border.all(color: AppBorderColorLight.base, width: _scale(1))
-								: null,
-						),
-						child: Icon(
-							MdiIcons.power,
-							size: _scale(18),
-							color: isOn
-								? AppColors.white
-								: (isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary),
-						),
-					),
+					color: isOn ? ThemeColors.primary : ThemeColors.neutral,
 				)
 				: null,
 		);
@@ -278,25 +230,42 @@ class _GameConsoleDeviceDetailState extends State<GameConsoleDeviceDetail> {
 	// --------------------------------------------------------------------------
 
 	Widget _buildPortraitLayout(BuildContext context, bool isDark) {
-		final accentColor = _getAccentColor(isDark);
-
-		return DeviceDetailPortraitLayout(
+		return DevicePortraitLayout(
 			content: Column(
 				crossAxisAlignment: CrossAxisAlignment.start,
+				spacing: AppSpacings.pMd,
 				children: [
 					MediaInfoCard(
 						icon: MdiIcons.gamepadVariant,
-						iconColor: accentColor,
-						iconBgColor: _getAccentLightColor(isDark),
 						name: _device.name,
 						isOn: _isOn,
-						accentColor: accentColor,
-						scale: _scale,
-					),
-					if (_device.hasMediaPlayback) ...[
-						AppSpacings.spacingLgVertical,
-						_buildPlaybackCard(isDark),
-					],
+						themeColor: _getThemeColor(),
+						),
+					if (_device.hasMediaPlayback &&
+						MediaPlaybackCard.hasContent(
+							playbackTrack: _device.isMediaPlaybackTrack,
+							playbackArtist: _device.mediaPlaybackArtist,
+							playbackAlbum: _device.mediaPlaybackAlbum,
+							playbackAvailableCommands: _device.mediaPlaybackAvailableCommands,
+							playbackHasDuration: _device.hasMediaPlaybackDuration,
+							playbackDuration: _device.mediaPlaybackDuration,
+						))
+						MediaPlaybackCard(
+							playbackTrack: _device.isMediaPlaybackTrack,
+							playbackArtist: _device.mediaPlaybackArtist,
+							playbackAlbum: _device.mediaPlaybackAlbum,
+							playbackStatus: _effectivePlaybackStatus,
+							playbackAvailableCommands: _device.mediaPlaybackAvailableCommands,
+							playbackHasPosition: _device.hasMediaPlaybackPosition,
+							playbackPosition: _device.mediaPlaybackPosition,
+							playbackHasDuration: _device.hasMediaPlaybackDuration,
+							playbackDuration: _device.mediaPlaybackDuration,
+							playbackIsPositionWritable: _device.mediaPlaybackChannel?.positionProp?.isWritable ?? false,
+							onPlaybackCommand: _sendPlaybackCommand,
+							onPlaybackSeek: _seekPosition,
+							themeColor: _getThemeColor(),
+							isEnabled: _isOn,
+								),
 				],
 			),
 		);
@@ -307,51 +276,46 @@ class _GameConsoleDeviceDetailState extends State<GameConsoleDeviceDetail> {
 	// --------------------------------------------------------------------------
 
 	Widget _buildLandscapeLayout(BuildContext context, bool isDark) {
-		final accentColor = _getAccentColor(isDark);
-
-		return DeviceDetailLandscapeLayout(
+		return DeviceLandscapeLayout(
 			mainContent: Column(
 				mainAxisAlignment: MainAxisAlignment.center,
+				spacing: AppSpacings.pMd,
 				children: [
 					MediaInfoCard(
 						icon: MdiIcons.gamepadVariant,
-						iconColor: accentColor,
-						iconBgColor: _getAccentLightColor(isDark),
 						name: _device.name,
 						isOn: _isOn,
-						accentColor: accentColor,
-						scale: _scale,
-					),
-					if (_device.hasMediaPlayback) ...[
-						AppSpacings.spacingMdVertical,
-						_buildPlaybackCard(isDark),
-					],
+						themeColor: _getThemeColor(),
+						),
+					if (_device.hasMediaPlayback &&
+						MediaPlaybackCard.hasContent(
+							playbackTrack: _device.isMediaPlaybackTrack,
+							playbackArtist: _device.mediaPlaybackArtist,
+							playbackAlbum: _device.mediaPlaybackAlbum,
+							playbackAvailableCommands: _device.mediaPlaybackAvailableCommands,
+							playbackHasDuration: _device.hasMediaPlaybackDuration,
+							playbackDuration: _device.mediaPlaybackDuration,
+						))
+						MediaPlaybackCard(
+							playbackTrack: _device.isMediaPlaybackTrack,
+							playbackArtist: _device.mediaPlaybackArtist,
+							playbackAlbum: _device.mediaPlaybackAlbum,
+							playbackStatus: _effectivePlaybackStatus,
+							playbackAvailableCommands: _device.mediaPlaybackAvailableCommands,
+							playbackHasPosition: _device.hasMediaPlaybackPosition,
+							playbackPosition: _device.mediaPlaybackPosition,
+							playbackHasDuration: _device.hasMediaPlaybackDuration,
+							playbackDuration: _device.mediaPlaybackDuration,
+							playbackIsPositionWritable: _device.mediaPlaybackChannel?.positionProp?.isWritable ?? false,
+							onPlaybackCommand: _sendPlaybackCommand,
+							onPlaybackSeek: _seekPosition,
+							themeColor: _getThemeColor(),
+							isEnabled: _isOn,
+								),
 				],
 			),
 			secondaryContent: const SizedBox.shrink(),
 		);
 	}
 
-	Widget _buildPlaybackCard(bool isDark) {
-		final accentColor = _getAccentColor(isDark);
-		final positionProp = _device.mediaPlaybackChannel?.positionProp;
-
-		return MediaPlaybackCard(
-			track: _device.isMediaPlaybackTrack,
-			artist: _device.mediaPlaybackArtist,
-			album: _device.mediaPlaybackAlbum,
-			status: _effectivePlaybackStatus,
-			availableCommands: _device.mediaPlaybackAvailableCommands,
-			hasPosition: _device.hasMediaPlaybackPosition,
-			position: _device.mediaPlaybackPosition,
-			hasDuration: _device.hasMediaPlaybackDuration,
-			duration: _device.mediaPlaybackDuration,
-			isPositionWritable: positionProp?.isWritable ?? false,
-			isEnabled: _isOn,
-			accentColor: accentColor,
-			scale: _scale,
-			onCommand: _sendPlaybackCommand,
-			onSeek: _seekPosition,
-		);
-	}
 }

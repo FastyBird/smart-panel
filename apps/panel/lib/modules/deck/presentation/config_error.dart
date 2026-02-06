@@ -64,7 +64,7 @@ class ConfigErrorScreen extends StatelessWidget {
                       ),
                       textAlign: TextAlign.center,
                     ),
-                    SizedBox(height: AppSpacings.pMd),
+                    AppSpacings.spacingMdVertical,
                     // Message
                     Text(
                       errorMessage,
@@ -122,7 +122,7 @@ class ConfigErrorScreen extends StatelessWidget {
         ),
         decoration: BoxDecoration(
           color: SystemPagesTheme.card(isDark),
-          borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+          borderRadius: BorderRadius.circular(AppBorderRadius.base),
           boxShadow: isDark
               ? null
               : [

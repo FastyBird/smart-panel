@@ -1,15 +1,14 @@
 import 'package:fastybird_smart_panel/api/models/devices_module_device_category.dart';
-import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/lighting.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/sensor.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/window_covering.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/lighting.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/devices/sensor.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/window_covering.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -21,14 +20,11 @@ bool _hasCustomDetailWidget(DevicesModuleDeviceCategory category) =>
     deviceWidgetMappers.containsKey(category);
 
 class DeviceDetailPage extends StatelessWidget {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
   final String id;
   final String? initialChannelId;
 
   DeviceDetailPage(this.id, {this.initialChannelId, super.key});
+
 
   @override
   Widget build(BuildContext context) {
@@ -41,30 +37,51 @@ class DeviceDetailPage extends StatelessWidget {
 
       if (device == null) {
         final localizations = AppLocalizations.of(context)!;
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+
+        final warningColor = isDark ? AppColorsDark.warning : AppColorsLight.warning;
+        final warningBgColor =
+            isDark ? AppColorsDark.warningLight9 : AppColorsLight.warningLight9;
 
         return Scaffold(
           body: Center(
             child: Padding(
-              padding: AppSpacings.paddingMd,
+              padding: AppSpacings.paddingXl,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
+                spacing: AppSpacings.pMd,
                 children: [
-                  Icon(
-                    MdiIcons.alert,
-                    color: Theme.of(context).warning,
-                    size: _screenService.scale(
-                      64,
-                      density: _visualDensityService.density,
+                  Container(
+                    width: AppSpacings.scale(80),
+                    height: AppSpacings.scale(80),
+                    decoration: BoxDecoration(
+                      color: warningBgColor,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      MdiIcons.alertCircleOutline,
+                      size: AppSpacings.scale(48),
+                      color: warningColor,
                     ),
                   ),
-                  AppSpacings.spacingMdVertical,
                   Text(
                     localizations.message_error_device_not_found_title,
+                    style: TextStyle(
+                      fontSize: AppFontSize.large,
+                      fontWeight: FontWeight.w600,
+                      color:
+                          isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
+                    ),
                     textAlign: TextAlign.center,
                   ),
-                  AppSpacings.spacingSmVertical,
                   Text(
                     localizations.message_error_device_not_found_description,
+                    style: TextStyle(
+                      fontSize: AppFontSize.base,
+                      color: isDark
+                          ? AppTextColorDark.secondary
+                          : AppTextColorLight.secondary,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                 ],
@@ -92,6 +109,14 @@ class DeviceDetailPage extends StatelessWidget {
             initialChannelId: initialChannelId,
           );
         }
+        // For sensor devices, pass initial channel ID to preselect the sensor
+        if (device.category == DevicesModuleDeviceCategory.sensor &&
+            device is SensorDeviceView) {
+          return SensorDeviceDetail(
+            device: device,
+            initialChannelId: initialChannelId,
+          );
+        }
         return buildDeviceWidget(device);
       }
 
@@ -109,45 +134,30 @@ class DeviceDetailPage extends StatelessWidget {
                 children: [
                   Icon(
                     MdiIcons.alert,
-                    size: _screenService.scale(
-                      14,
-                      density: _visualDensityService.density,
-                    ),
+                    size: AppSpacings.scale(14),
                     color: Theme.of(context).warning,
                   ),
                   SizedBox(
-                    width: _screenService.scale(
-                      4,
-                      density: _visualDensityService.density,
-                    ),
+                    width: AppSpacings.scale(4),
                   ),
                   Text(
                     localizations.device_status_offline,
                     style: TextStyle(
-                      fontSize: _screenService.scale(
-                        12,
-                        density: _visualDensityService.density,
-                      ),
+                      fontSize: AppSpacings.scale(12),
                       color: Theme.of(context).warning,
                     ),
                   ),
                 ],
               ),
               SizedBox(
-                width: _screenService.scale(
-                  16,
-                  density: _visualDensityService.density,
-                ),
+                width: AppSpacings.scale(16),
               ),
             ],
             GestureDetector(
               onTap: () => Navigator.pop(context),
               child: Icon(
                 MdiIcons.close,
-                size: _screenService.scale(
-                  16,
-                  density: _visualDensityService.density,
-                ),
+                size: AppSpacings.scale(16),
                 color: Theme.of(context).brightness == Brightness.light
                     ? AppTextColorLight.regular
                     : AppTextColorDark.regular,

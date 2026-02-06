@@ -1,15 +1,8 @@
-import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
   final String title;
   final IconData? icon;
   final List<Widget> actions;
@@ -32,12 +25,9 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
         shape: Border(
           bottom: BorderSide(
             color: Theme.of(context).brightness == Brightness.light
-                ? AppBorderColorLight.base
-                : AppBorderColorDark.base,
-            width: _screenService.scale(
-              1,
-              density: _visualDensityService.density,
-            ),
+                ? AppBorderColorLight.darker
+                : AppBorderColorDark.light,
+            width: AppSpacings.scale(1),
           ),
         ),
         clipBehavior: Clip.antiAlias,
@@ -57,10 +47,7 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
                           padding: EdgeInsets.only(left: AppSpacings.pMd),
                           child: IconTheme(
                             data: IconThemeData(
-                              size: _screenService.scale(
-                                16,
-                                density: _visualDensityService.density,
-                              ),
+                              size: AppSpacings.scale(16),
                               color: Theme.of(context).brightness ==
                                       Brightness.light
                                   ? AppTextColorLight.regular
@@ -76,10 +63,7 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
                                 padding: EdgeInsets.only(left: AppSpacings.pMd),
                                 child: IconTheme(
                                   data: IconThemeData(
-                                    size: _screenService.scale(
-                                      16,
-                                      density: _visualDensityService.density,
-                                    ),
+                                    size: AppSpacings.scale(16),
                                     color: Theme.of(context).brightness ==
                                             Brightness.light
                                         ? AppTextColorLight.regular
@@ -129,10 +113,7 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Size get preferredSize => Size.fromHeight(
-        _screenService.scale(
-              40.0,
-              density: _visualDensityService.density,
-            ) +
+        AppSpacings.scale(40.0) +
             (bottom != null ? kTextTabBarHeight : 0),
       );
 }

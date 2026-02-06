@@ -1,10 +1,8 @@
 import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
@@ -35,9 +33,6 @@ class RoomOverviewPage extends StatefulWidget {
 }
 
 class _RoomOverviewPageState extends State<RoomOverviewPage> {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
   final EventBus _eventBus = locator<EventBus>();
 
   late final IntentsService _intentsService;
@@ -308,18 +303,18 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
       final localizations = AppLocalizations.of(context);
 
       if (result.isSuccess) {
-        AlertBar.showSuccess(
+        AppToast.showSuccess(
           context,
           message: localizations?.space_scene_triggered ?? 'Scene activated',
         );
       } else if (result.isPartialSuccess) {
-        AlertBar.showInfo(
+        AppToast.showInfo(
           context,
           message: localizations?.space_scene_partial_success ??
               'Scene partially activated',
         );
       } else {
-        AlertBar.showError(
+        AppToast.showError(
           context,
           message: result.message ?? localizations?.action_failed ?? 'Failed',
         );
@@ -333,7 +328,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
       });
 
       final localizations = AppLocalizations.of(context);
-      AlertBar.showError(
+      AppToast.showError(
         context,
         message: localizations?.action_failed ?? 'Failed to activate scene',
       );
@@ -387,17 +382,17 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
     // Show feedback - get localizations after mounted check
     final feedbackLocalizations = AppLocalizations.of(context);
     if (failCount == 0 && successCount > 0) {
-      AlertBar.showSuccess(
+      AppToast.showSuccess(
         context,
         message: 'Lights turned off',
       );
     } else if (successCount > 0) {
-      AlertBar.showInfo(
+      AppToast.showInfo(
         context,
         message: 'Some lights turned off',
       );
     } else if (failCount > 0) {
-      AlertBar.showError(
+      AppToast.showError(
         context,
         message: feedbackLocalizations?.action_failed ?? 'Failed to turn off lights',
       );
@@ -452,10 +447,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
     final model = _model;
     final lightsCount = model?.domainCounts.lights ?? 0;
     final isOn = _lightsOnCount > 0;
-    final iconSize = _screenService.scale(
-      14,
-      density: _visualDensityService.density,
-    );
+    final iconSize = AppSpacings.scale(14);
 
     return GestureDetector(
       onTap: () => _navigateToDomainView(DomainType.lights),
@@ -475,6 +467,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
           borderRadius: BorderRadius.circular(AppBorderRadius.base),
         ),
         child: Row(
+          spacing: AppSpacings.pXs,
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
@@ -488,7 +481,6 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
                       ? AppTextColorLight.placeholder
                       : AppTextColorDark.placeholder),
             ),
-            AppSpacings.spacingXsHorizontal,
             Text(
               isOn ? '$_lightsOnCount/$lightsCount' : 'Off',
               style: TextStyle(
@@ -510,10 +502,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
   }
 
   Widget _buildTemperatureBadge(BuildContext context) {
-    final iconSize = _screenService.scale(
-      14,
-      density: _visualDensityService.density,
-    );
+    final iconSize = AppSpacings.scale(14);
 
     return Container(
       padding: EdgeInsets.symmetric(
@@ -527,6 +516,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
       ),
       child: Row(
+        spacing: AppSpacings.pXs,
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
@@ -536,7 +526,6 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
                 ? AppColorsLight.info
                 : AppColorsDark.info,
           ),
-          AppSpacings.spacingXsHorizontal,
           Text(
             '${NumberFormatUtils.defaultFormat.formatDecimal(_temperature!, decimalPlaces: 1)}°',
             style: TextStyle(
@@ -564,16 +553,15 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
+        spacing: AppSpacings.pMd,
         children: [
           Icon(
             MdiIcons.alertCircleOutline,
-            size:
-                _screenService.scale(64, density: _visualDensityService.density),
+            size: AppSpacings.scale(64),
             color: Theme.of(context).brightness == Brightness.light
                 ? AppColorsLight.danger
                 : AppColorsDark.danger,
           ),
-          AppSpacings.spacingMdVertical,
           Text(
             _errorMessage!,
             style: TextStyle(
@@ -584,11 +572,23 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
             ),
             textAlign: TextAlign.center,
           ),
-          AppSpacings.spacingMdVertical,
-          FilledButton.icon(
-            onPressed: _loadRoomData,
-            icon: Icon(MdiIcons.refresh),
-            label: const Text('Retry'),
+          Theme(
+            data: ThemeData(
+              filledButtonTheme: Theme.of(context).brightness == Brightness.dark
+                  ? AppFilledButtonsDarkThemes.primary
+                  : AppFilledButtonsLightThemes.primary,
+            ),
+            child: FilledButton.icon(
+              onPressed: _loadRoomData,
+              icon: Icon(
+                MdiIcons.refresh,
+                size: AppFontSize.base,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? AppFilledButtonsDarkThemes.primaryForegroundColor
+                    : AppFilledButtonsLightThemes.primaryForegroundColor,
+              ),
+              label: const Text('Retry'),
+            ),
           ),
         ],
       ),
@@ -602,12 +602,11 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: AppSpacings.pMd,
       children: [
         // Domain tiles section
-        if (model.hasAnyDomain) ...[
+        if (model.hasAnyDomain)
           _buildDomainTilesSection(context, model),
-          AppSpacings.spacingMdVertical,
-        ],
 
         // Quick scenes section
         if (model.hasScenes)
@@ -636,14 +635,8 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
   }
 
   Widget _buildDomainTile(BuildContext context, DomainTile tile) {
-    final cardWidth = _screenService.scale(
-      100,
-      density: _visualDensityService.density,
-    );
-    final iconSize = _screenService.scale(
-      32,
-      density: _visualDensityService.density,
-    );
+    final cardWidth = AppSpacings.scale(100);
+    final iconSize = AppSpacings.scale(32);
 
     // Get active count for lights domain
     final activeCount = tile.domain == DomainType.lights ? _lightsOnCount : null;
@@ -660,13 +653,13 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
           borderRadius: BorderRadius.circular(AppBorderRadius.base),
         ),
         child: Column(
+          spacing: AppSpacings.pXs,
           children: [
             Icon(
               tile.icon,
               size: iconSize,
               color: Theme.of(context).colorScheme.primary,
             ),
-            AppSpacings.spacingXsVertical,
             Text(
               activeCount != null && activeCount > 0
                   ? '$activeCount/${tile.count}'
@@ -706,17 +699,15 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
         padding: AppSpacings.paddingMd,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          spacing: AppSpacings.pMd,
           children: [
             Row(
+              spacing: AppSpacings.pSm,
               children: [
                 Icon(
                   MdiIcons.movieOpenPlay,
-                  size: _screenService.scale(
-                    24,
-                    density: _visualDensityService.density,
-                  ),
+                  size: AppSpacings.scale(24),
                 ),
-                AppSpacings.spacingSmHorizontal,
                 Text(
                   localizations?.space_scenes_title ?? 'Quick Scenes',
                   style: TextStyle(
@@ -726,7 +717,6 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
                 ),
               ],
             ),
-            AppSpacings.spacingMdVertical,
             Expanded(
               child: _buildScenesGrid(context, model.quickScenes),
             ),
@@ -746,18 +736,13 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 
   Widget _buildSceneButton(BuildContext context, QuickScene scene) {
     final isTriggering = _triggeringSceneId == scene.sceneId;
-    final buttonWidth = _screenService.scale(
-      80,
-      density: _visualDensityService.density,
-    );
-    final buttonHeight = _screenService.scale(
-      60,
-      density: _visualDensityService.density,
-    );
+    final buttonWidth = AppSpacings.scale(80);
+    final buttonHeight = AppSpacings.scale(60);
 
     return SizedBox(
       width: buttonWidth,
       child: Column(
+        spacing: AppSpacings.pXs,
         children: [
           SizedBox(
             width: buttonHeight,
@@ -772,14 +757,8 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
                     ),
                     child: Center(
                       child: SizedBox(
-                        width: _screenService.scale(
-                          20,
-                          density: _visualDensityService.density,
-                        ),
-                        height: _screenService.scale(
-                          20,
-                          density: _visualDensityService.density,
-                        ),
+                        width: AppSpacings.scale(20),
+                        height: AppSpacings.scale(20),
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
                           color: Theme.of(context).colorScheme.primary,
@@ -798,26 +777,19 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
                       onPressed: _isSceneTriggering
                           ? null
                           : () => _triggerScene(scene.sceneId),
-                      style: ButtonStyle(
-                        padding: WidgetStateProperty.all(EdgeInsets.zero),
-                        shape: WidgetStateProperty.all(
-                          RoundedRectangleBorder(
-                            borderRadius:
-                                BorderRadius.circular(AppBorderRadius.base),
-                          ),
-                        ),
+                      style: FilledButton.styleFrom(
+                        padding: EdgeInsets.zero,
                       ),
                       child: Icon(
                         scene.icon,
-                        size: _screenService.scale(
-                          28,
-                          density: _visualDensityService.density,
-                        ),
+                        size: AppSpacings.scale(28),
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? AppFilledButtonsDarkThemes.primaryForegroundColor
+                            : AppFilledButtonsLightThemes.primaryForegroundColor,
                       ),
                     ),
                   ),
           ),
-          AppSpacings.spacingXsVertical,
           Text(
             scene.name,
             style: TextStyle(
@@ -841,6 +813,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: AppSpacings.pSm,
       children: [
         Text(
           'Suggested',
@@ -852,7 +825,6 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
                 : AppTextColorDark.regular,
           ),
         ),
-        AppSpacings.spacingSmVertical,
         Wrap(
           spacing: AppSpacings.pSm,
           runSpacing: AppSpacings.pSm,
@@ -871,10 +843,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
     return ActionChip(
       avatar: Icon(
         action.icon,
-        size: _screenService.scale(
-          18,
-          density: _visualDensityService.density,
-        ),
+        size: AppSpacings.scale(18),
       ),
       label: Text(action.label),
       onPressed: () => _handleSuggestedAction(action),
@@ -888,18 +857,15 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
+        spacing: AppSpacings.pMd,
         children: [
           Icon(
             MdiIcons.homeOffOutline,
-            size: _screenService.scale(
-              64,
-              density: _visualDensityService.density,
-            ),
+            size: AppSpacings.scale(64),
             color: Theme.of(context).brightness == Brightness.light
                 ? AppTextColorLight.placeholder
                 : AppTextColorDark.placeholder,
           ),
-          AppSpacings.spacingMdVertical,
           Text(
             localizations?.space_empty_state_title ?? 'No Devices',
             style: TextStyle(
@@ -911,7 +877,6 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
             ),
             textAlign: TextAlign.center,
           ),
-          AppSpacings.spacingSmVertical,
           Text(
             localizations?.space_empty_state_description ??
                 'Assign devices to this room in Admin',

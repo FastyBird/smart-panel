@@ -30,6 +30,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get action_failed => 'Action could not be processed';
 
   @override
+  String get action_retry => 'Retry';
+
+  @override
+  String domain_data_load_failed(String domain) {
+    return 'Failed to load $domain';
+  }
+
+  @override
+  String get domain_data_load_failed_description => 'Unable to retrieve data. Please check your connection and try again.';
+
+  @override
   String get services_not_available => 'Services not available';
 
   @override
@@ -1520,13 +1531,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get particulate_label_pm10 => 'PM10';
 
   @override
-  String get voc_level_good => 'Good';
+  String get sensor_enum_voc_level_low => 'Low';
 
   @override
-  String get voc_level_moderate => 'Moderate';
+  String get sensor_enum_voc_level_low_long => 'Low VOC';
 
   @override
-  String get voc_level_poor => 'Poor';
+  String get sensor_enum_voc_level_medium => 'Med';
+
+  @override
+  String get sensor_enum_voc_level_medium_long => 'Medium VOC';
+
+  @override
+  String get sensor_enum_voc_level_high => 'High';
+
+  @override
+  String get sensor_enum_voc_level_high_long => 'High VOC';
 
   @override
   String get fan_mode_auto => 'Auto';
@@ -2046,94 +2066,316 @@ class AppLocalizationsEn extends AppLocalizations {
   String get connection_server_error_button_retry => 'Try Again';
 
   @override
-  String get sensor_enum_illuminance_dark => 'Dark';
-
-  @override
-  String get sensor_enum_illuminance_dim => 'Dim';
-
-  @override
-  String get sensor_enum_illuminance_light => 'Light';
-
-  @override
   String get sensor_enum_illuminance_bright => 'Bright';
-
-  @override
-  String get sensor_enum_illuminance_dark_long => 'Dark';
-
-  @override
-  String get sensor_enum_illuminance_dim_long => 'Dim';
-
-  @override
-  String get sensor_enum_illuminance_light_long => 'Light';
 
   @override
   String get sensor_enum_illuminance_bright_long => 'Bright';
 
   @override
+  String get sensor_enum_illuminance_moderate => 'Moderate';
+
+  @override
+  String get sensor_enum_illuminance_moderate_long => 'Moderate';
+
+  @override
+  String get sensor_enum_illuminance_dusky => 'Dusky';
+
+  @override
+  String get sensor_enum_illuminance_dusky_long => 'Dusky';
+
+  @override
+  String get sensor_enum_illuminance_dark => 'Dark';
+
+  @override
+  String get sensor_enum_illuminance_dark_long => 'Dark';
+
+  @override
   String get sensor_enum_gas_status_normal => 'OK';
-
-  @override
-  String get sensor_enum_gas_status_testing => 'Test';
-
-  @override
-  String get sensor_enum_gas_status_detected => 'Gas!';
 
   @override
   String get sensor_enum_gas_status_normal_long => 'Normal';
 
   @override
-  String get sensor_enum_gas_status_testing_long => 'Testing';
+  String get sensor_enum_gas_status_warning => 'Warn';
 
   @override
-  String get sensor_enum_gas_status_detected_long => 'Gas Detected';
+  String get sensor_enum_gas_status_warning_long => 'Warning';
 
   @override
-  String get sensor_enum_leak_none => 'Dry';
+  String get sensor_enum_gas_status_alarm => 'Alarm';
 
   @override
-  String get sensor_enum_leak_detected => 'Leak!';
+  String get sensor_enum_gas_status_alarm_long => 'Gas Alarm';
 
   @override
-  String get sensor_enum_leak_none_long => 'No Leak';
+  String get sensor_enum_leak_level_low => 'Low';
 
   @override
-  String get sensor_enum_leak_detected_long => 'Leak Detected';
+  String get sensor_enum_leak_level_low_long => 'Low Leak';
 
   @override
-  String get sensor_enum_battery_level_normal => 'OK';
+  String get sensor_enum_leak_level_medium => 'Med';
+
+  @override
+  String get sensor_enum_leak_level_medium_long => 'Medium Leak';
+
+  @override
+  String get sensor_enum_leak_level_high => 'High';
+
+  @override
+  String get sensor_enum_leak_level_high_long => 'Severe Leak';
+
+  @override
+  String get sensor_enum_battery_level_critical => 'Crit';
+
+  @override
+  String get sensor_enum_battery_level_critical_long => 'Critical';
 
   @override
   String get sensor_enum_battery_level_low => 'Low';
 
   @override
-  String get sensor_enum_battery_level_normal_long => 'Normal';
+  String get sensor_enum_battery_level_low_long => 'Low';
 
   @override
-  String get sensor_enum_battery_level_low_long => 'Low Battery';
+  String get sensor_enum_battery_level_medium => 'Med';
 
   @override
-  String get sensor_enum_battery_status_normal => 'OK';
+  String get sensor_enum_battery_level_medium_long => 'Medium';
+
+  @override
+  String get sensor_enum_battery_level_high => 'High';
+
+  @override
+  String get sensor_enum_battery_level_high_long => 'High';
+
+  @override
+  String get sensor_enum_battery_level_full => 'Full';
+
+  @override
+  String get sensor_enum_battery_level_full_long => 'Full';
+
+  @override
+  String get sensor_enum_battery_status_ok => 'OK';
+
+  @override
+  String get sensor_enum_battery_status_ok_long => 'Battery OK';
+
+  @override
+  String get sensor_enum_battery_status_low => 'Low';
+
+  @override
+  String get sensor_enum_battery_status_low_long => 'Low Battery';
 
   @override
   String get sensor_enum_battery_status_charging => 'Chrg';
 
   @override
-  String get sensor_enum_battery_status_not_charging => 'Idle';
-
-  @override
-  String get sensor_enum_battery_status_not_chargeable => 'N/A';
-
-  @override
-  String get sensor_enum_battery_status_normal_long => 'Normal';
-
-  @override
   String get sensor_enum_battery_status_charging_long => 'Charging';
 
   @override
-  String get sensor_enum_battery_status_not_charging_long => 'Not Charging';
+  String get sensor_enum_alarm_alarm_idle => 'Idle';
 
   @override
-  String get sensor_enum_battery_status_not_chargeable_long => 'Not Chargeable';
+  String get sensor_enum_alarm_alarm_idle_long => 'Alarm Idle';
+
+  @override
+  String get sensor_enum_alarm_alarm_pending => 'Pend';
+
+  @override
+  String get sensor_enum_alarm_alarm_pending_long => 'Alarm Pending';
+
+  @override
+  String get sensor_enum_alarm_alarm_triggered => 'Trig';
+
+  @override
+  String get sensor_enum_alarm_alarm_triggered_long => 'Alarm Triggered';
+
+  @override
+  String get sensor_enum_alarm_alarm_silenced => 'Muted';
+
+  @override
+  String get sensor_enum_alarm_alarm_silenced_long => 'Alarm Silenced';
+
+  @override
+  String get sensor_enum_alarm_disarmed => 'Off';
+
+  @override
+  String get sensor_enum_alarm_disarmed_long => 'Disarmed';
+
+  @override
+  String get sensor_enum_alarm_armed_home => 'Home';
+
+  @override
+  String get sensor_enum_alarm_armed_home_long => 'Armed Home';
+
+  @override
+  String get sensor_enum_alarm_armed_away => 'Away';
+
+  @override
+  String get sensor_enum_alarm_armed_away_long => 'Armed Away';
+
+  @override
+  String get sensor_enum_alarm_armed_night => 'Night';
+
+  @override
+  String get sensor_enum_alarm_armed_night_long => 'Armed Night';
+
+  @override
+  String get sensor_enum_filter_good => 'Good';
+
+  @override
+  String get sensor_enum_filter_good_long => 'Filter Good';
+
+  @override
+  String get sensor_enum_filter_replace_soon => 'Soon';
+
+  @override
+  String get sensor_enum_filter_replace_soon_long => 'Replace Soon';
+
+  @override
+  String get sensor_enum_filter_replace_now => 'Now!';
+
+  @override
+  String get sensor_enum_filter_replace_now_long => 'Replace Now';
+
+  @override
+  String get sensor_enum_door_opened => 'Open';
+
+  @override
+  String get sensor_enum_door_opened_long => 'Door Opened';
+
+  @override
+  String get sensor_enum_door_closed => 'Closed';
+
+  @override
+  String get sensor_enum_door_closed_long => 'Door Closed';
+
+  @override
+  String get sensor_enum_door_opening => 'Opening';
+
+  @override
+  String get sensor_enum_door_opening_long => 'Door Opening';
+
+  @override
+  String get sensor_enum_door_closing => 'Closing';
+
+  @override
+  String get sensor_enum_door_closing_long => 'Door Closing';
+
+  @override
+  String get sensor_enum_door_stopped => 'Stopped';
+
+  @override
+  String get sensor_enum_door_stopped_long => 'Door Stopped';
+
+  @override
+  String get sensor_enum_lock_locked => 'Locked';
+
+  @override
+  String get sensor_enum_lock_locked_long => 'Lock Locked';
+
+  @override
+  String get sensor_enum_lock_unlocked => 'Open';
+
+  @override
+  String get sensor_enum_lock_unlocked_long => 'Lock Unlocked';
+
+  @override
+  String get sensor_enum_camera_available => 'On';
+
+  @override
+  String get sensor_enum_camera_available_long => 'Camera Available';
+
+  @override
+  String get sensor_enum_camera_in_use => 'In Use';
+
+  @override
+  String get sensor_enum_camera_in_use_long => 'Camera In Use';
+
+  @override
+  String get sensor_enum_camera_unavailable => 'N/A';
+
+  @override
+  String get sensor_enum_camera_unavailable_long => 'Camera Unavailable';
+
+  @override
+  String get sensor_enum_camera_offline => 'Off';
+
+  @override
+  String get sensor_enum_camera_offline_long => 'Camera Offline';
+
+  @override
+  String get sensor_enum_camera_initializing => 'Init';
+
+  @override
+  String get sensor_enum_camera_initializing_long => 'Camera Initializing';
+
+  @override
+  String get sensor_enum_camera_error => 'Err';
+
+  @override
+  String get sensor_enum_camera_error_long => 'Camera Error';
+
+  @override
+  String get sensor_enum_device_info_connected => 'On';
+
+  @override
+  String get sensor_enum_device_info_connected_long => 'Connected';
+
+  @override
+  String get sensor_enum_device_info_disconnected => 'Off';
+
+  @override
+  String get sensor_enum_device_info_disconnected_long => 'Disconnected';
+
+  @override
+  String get sensor_enum_device_info_init => 'Init';
+
+  @override
+  String get sensor_enum_device_info_init_long => 'Initializing';
+
+  @override
+  String get sensor_enum_device_info_ready => 'Ready';
+
+  @override
+  String get sensor_enum_device_info_ready_long => 'Ready';
+
+  @override
+  String get sensor_enum_device_info_running => 'Run';
+
+  @override
+  String get sensor_enum_device_info_running_long => 'Running';
+
+  @override
+  String get sensor_enum_device_info_sleeping => 'Sleep';
+
+  @override
+  String get sensor_enum_device_info_sleeping_long => 'Sleeping';
+
+  @override
+  String get sensor_enum_device_info_stopped => 'Stop';
+
+  @override
+  String get sensor_enum_device_info_stopped_long => 'Stopped';
+
+  @override
+  String get sensor_enum_device_info_lost => 'Lost';
+
+  @override
+  String get sensor_enum_device_info_lost_long => 'Connection Lost';
+
+  @override
+  String get sensor_enum_device_info_alert => 'Alert';
+
+  @override
+  String get sensor_enum_device_info_alert_long => 'Alert';
+
+  @override
+  String get sensor_enum_device_info_unknown => 'N/A';
+
+  @override
+  String get sensor_enum_device_info_unknown_long => 'Unknown';
 
   @override
   String get sensor_freshness_live => 'Live';
@@ -2478,4 +2720,288 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get media_detail_menu => 'Menu';
+
+  @override
+  String get media_playback => 'Playback';
+
+  @override
+  String get filter_all => 'All';
+
+  @override
+  String sensor_alert_high_title(String name) {
+    return 'High $name Alert';
+  }
+
+  @override
+  String sensor_alert_exceeded_threshold(String name) {
+    return '$name exceeded threshold';
+  }
+
+  @override
+  String get sensor_state_detected => 'Detected';
+
+  @override
+  String get sensor_state_not_detected => 'Not Detected';
+
+  @override
+  String get sensor_state_clear => 'Clear';
+
+  @override
+  String get sensor_state_open => 'Open';
+
+  @override
+  String get sensor_state_closed => 'Closed';
+
+  @override
+  String get sensor_state_active => 'Active';
+
+  @override
+  String get sensor_state_inactive => 'Inactive';
+
+  @override
+  String get sensor_state_occupied => 'Occupied';
+
+  @override
+  String get sensor_state_unoccupied => 'Unoccupied';
+
+  @override
+  String get sensor_state_smoke_detected => 'Smoke detected';
+
+  @override
+  String get sensor_state_gas_detected => 'Gas detected';
+
+  @override
+  String get sensor_state_leak_detected => 'Leak detected';
+
+  @override
+  String get sensor_state_co_detected => 'CO detected';
+
+  @override
+  String get sensor_label_temperature => 'Temperature';
+
+  @override
+  String get sensor_label_humidity => 'Humidity';
+
+  @override
+  String get sensor_label_pressure => 'Pressure';
+
+  @override
+  String get sensor_label_illuminance => 'Illuminance';
+
+  @override
+  String get sensor_label_carbon_dioxide => 'Carbon Dioxide';
+
+  @override
+  String get sensor_label_carbon_monoxide => 'Carbon Monoxide';
+
+  @override
+  String get sensor_label_ozone => 'Ozone';
+
+  @override
+  String get sensor_label_nitrogen_dioxide => 'Nitrogen Dioxide';
+
+  @override
+  String get sensor_label_sulphur_dioxide => 'Sulphur Dioxide';
+
+  @override
+  String get sensor_label_voc => 'VOC';
+
+  @override
+  String get sensor_label_particulate_matter => 'Particulate Matter';
+
+  @override
+  String get sensor_label_motion => 'Motion';
+
+  @override
+  String get sensor_label_occupancy => 'Occupancy';
+
+  @override
+  String get sensor_label_contact => 'Contact';
+
+  @override
+  String get sensor_label_leak => 'Leak';
+
+  @override
+  String get sensor_label_smoke => 'Smoke';
+
+  @override
+  String get sensor_label_battery => 'Battery';
+
+  @override
+  String get sensor_label_alarm => 'Alarm';
+
+  @override
+  String get sensor_label_door => 'Door';
+
+  @override
+  String get sensor_label_lock => 'Lock';
+
+  @override
+  String get sensor_label_camera => 'Camera';
+
+  @override
+  String get sensor_label_filter => 'Filter';
+
+  @override
+  String get sensor_label_device_info => 'Device Info';
+
+  @override
+  String get sensor_label_gas => 'Gas';
+
+  @override
+  String get sensor_alert_high_level => 'High Level';
+
+  @override
+  String get sensor_alert_low_battery => 'Low Battery';
+
+  @override
+  String get sensor_alert_charging => 'Charging';
+
+  @override
+  String get sensor_category_temperature => 'Temperature';
+
+  @override
+  String get sensor_category_humidity => 'Humidity';
+
+  @override
+  String get sensor_category_air_quality => 'Air Quality';
+
+  @override
+  String get sensor_category_motion => 'Motion';
+
+  @override
+  String get sensor_category_safety => 'Safety';
+
+  @override
+  String get sensor_category_light => 'Light';
+
+  @override
+  String get sensor_category_energy => 'Energy';
+
+  @override
+  String get sensor_ui_event_log => 'Event Log';
+
+  @override
+  String get sensor_ui_history => 'History';
+
+  @override
+  String get sensor_ui_current => 'Current';
+
+  @override
+  String sensor_ui_current_value(String name) {
+    return 'Current $name';
+  }
+
+  @override
+  String get sensor_ui_min => 'Min';
+
+  @override
+  String get sensor_ui_max => 'Max';
+
+  @override
+  String get sensor_ui_avg => 'Avg';
+
+  @override
+  String sensor_ui_period_min(String period) {
+    return '$period Min';
+  }
+
+  @override
+  String sensor_ui_period_max(String period) {
+    return '$period Max';
+  }
+
+  @override
+  String sensor_ui_period_avg(String period) {
+    return '$period Avg';
+  }
+
+  @override
+  String get sensor_ui_online => 'Online';
+
+  @override
+  String get sensor_ui_offline => 'Offline';
+
+  @override
+  String get sensor_ui_period_1h => '1H';
+
+  @override
+  String get sensor_ui_period_24h => '24H';
+
+  @override
+  String get sensor_ui_period_7d => '7D';
+
+  @override
+  String get sensor_ui_period_30d => '30D';
+
+  @override
+  String get sensor_empty_no_events => 'No events recorded';
+
+  @override
+  String get sensor_empty_no_state_changes => 'No state changes';
+
+  @override
+  String get sensor_empty_no_history => 'No history data available';
+
+  @override
+  String get sensor_empty_no_data => 'No data available';
+
+  @override
+  String get sensor_status_loading => 'Loading data...';
+
+  @override
+  String get sensor_status_failed => 'Failed to load data';
+
+  @override
+  String get sensor_status_retry => 'Retry';
+
+  @override
+  String get sensors_domain_title => 'Sensors';
+
+  @override
+  String get sensors_domain_empty_title => 'No Sensors';
+
+  @override
+  String get sensors_domain_empty_description => 'No sensors are assigned to this room yet.';
+
+  @override
+  String sensors_domain_alerts_active(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Alerts Active',
+      one: 'Alert Active',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get sensors_domain_no_sensors => 'No sensors configured';
+
+  @override
+  String sensors_domain_health_stale(int count) {
+    return '$count stale';
+  }
+
+  @override
+  String sensors_domain_health_offline(int count) {
+    return '$count offline';
+  }
+
+  @override
+  String get sensors_domain_health_normal => 'All normal';
+
+  @override
+  String get sensors_domain_avg_temperature => 'Avg Temperature';
+
+  @override
+  String get sensors_domain_avg_humidity => 'Avg Humidity';
+
+  @override
+  String get sensors_domain_all_sensors => 'All sensors';
+
+  @override
+  String sensors_domain_sensor_count(int count) {
+    return '$count sensors';
+  }
 }

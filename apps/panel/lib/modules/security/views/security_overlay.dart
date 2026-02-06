@@ -50,7 +50,7 @@ class SecurityOverlay extends StatelessWidget {
 								),
 								decoration: BoxDecoration(
 									color: SystemPagesTheme.card(isDark),
-									borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+									borderRadius: BorderRadius.circular(AppBorderRadius.base),
 									boxShadow: [
 										BoxShadow(
 											color: AppShadowColor.strong,
@@ -59,11 +59,12 @@ class SecurityOverlay extends StatelessWidget {
 										),
 									],
 								),
-								child: Column(
-									mainAxisSize: MainAxisSize.min,
-									children: [
+								child: SingleChildScrollView(
+									child: Column(
+										mainAxisSize: MainAxisSize.min,
+										children: [
 										_buildIcon(isDark, screenService),
-										SizedBox(height: AppSpacings.pLg),
+										AppSpacings.spacingLgVertical,
 										Text(
 											controller.overlayTitle,
 											style: TextStyle(
@@ -73,7 +74,7 @@ class SecurityOverlay extends StatelessWidget {
 											),
 											textAlign: TextAlign.center,
 										),
-										SizedBox(height: AppSpacings.pMd),
+										AppSpacings.spacingMdVertical,
 										...displayAlerts.map(
 											(alert) => _buildAlertRow(alert, isDark, screenService, context),
 										),
@@ -91,24 +92,49 @@ class SecurityOverlay extends StatelessWidget {
 										SizedBox(height: AppSpacings.pLg + AppSpacings.pMd),
 										SizedBox(
 											width: double.infinity,
-											child: SystemPagePrimaryButton(
-												label: 'Acknowledge',
-												icon: MdiIcons.check,
-												onPressed: onAcknowledge,
-												isDark: isDark,
+											child: Theme(
+												data: Theme.of(context).copyWith(
+													filledButtonTheme: isDark
+														? AppFilledButtonsDarkThemes.primary
+														: AppFilledButtonsLightThemes.primary,
+												),
+												child: FilledButton.icon(
+													onPressed: onAcknowledge,
+													icon: Icon(
+														MdiIcons.check,
+														size: AppFontSize.base,
+														color: isDark
+															? AppFilledButtonsDarkThemes.primaryForegroundColor
+															: AppFilledButtonsLightThemes.primaryForegroundColor,
+													),
+													label: Text('Acknowledge'),
+												),
 											),
 										),
-										SizedBox(height: AppSpacings.pMd),
+										AppSpacings.spacingMdVertical,
 										SizedBox(
 											width: double.infinity,
-											child: SystemPageSecondaryButton(
-												label: 'Open Security',
-												icon: MdiIcons.shieldAlert,
-												onPressed: onOpenSecurity,
-												isDark: isDark,
+											child: Theme(
+												data: Theme.of(context).copyWith(
+													outlinedButtonTheme: isDark
+														? AppOutlinedButtonsDarkThemes.primary
+														: AppOutlinedButtonsLightThemes.primary,
+												),
+												child: OutlinedButton.icon(
+													onPressed: onOpenSecurity,
+													icon: Icon(
+														MdiIcons.shieldAlert,
+														size: AppFontSize.base,
+														color: isDark
+															? AppOutlinedButtonsDarkThemes.primaryForegroundColor
+															: AppOutlinedButtonsLightThemes.primaryForegroundColor,
+													),
+													label: Text('Open Security'),
+												),
 											),
 										),
-									],
+										],
+									),
 								),
 							),
 						),
@@ -151,7 +177,7 @@ class SecurityOverlay extends StatelessWidget {
 						size: screenService.scale(16),
 						color: severityColor(alert.severity, isDark),
 					),
-					SizedBox(width: AppSpacings.pSm),
+					AppSpacings.spacingSmHorizontal,
 					Expanded(
 						child: Text(
 							alert.message ?? alert.type.displayTitle,
@@ -163,7 +189,7 @@ class SecurityOverlay extends StatelessWidget {
 							overflow: TextOverflow.ellipsis,
 						),
 					),
-					SizedBox(width: AppSpacings.pSm),
+					AppSpacings.spacingSmHorizontal,
 					Text(
 						DatetimeUtils.formatTimeAgo(alert.timestamp, localizations),
 						style: TextStyle(

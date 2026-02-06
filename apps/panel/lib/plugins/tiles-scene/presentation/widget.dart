@@ -1,6 +1,3 @@
-import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/plugins/tiles-scene/views/view.dart';
 import 'package:flutter/material.dart';
@@ -9,18 +6,11 @@ import 'package:material_design_icons_flutter/material_design_icons_flutter.dart
 class SceneTileWidget extends StatelessWidget {
   final SceneTileView _tile;
 
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
-  SceneTileWidget(this._tile, {super.key});
+  const SceneTileWidget(this._tile, {super.key});
 
   @override
   Widget build(BuildContext context) {
-    final iconSize = _screenService.scale(
-      32,
-      density: _visualDensityService.density,
-    );
+    final iconSize = AppSpacings.scale(32);
 
     return Card(
       elevation: _tile.isOn ? 4 : 1,
@@ -37,15 +27,16 @@ class SceneTileWidget extends StatelessWidget {
                   ? AppColorsLight.primary
                   : AppColorsDark.primary)
               : (Theme.of(context).brightness == Brightness.light
-                  ? AppBorderColorLight.base
-                  : AppBorderColorDark.base),
-          width: _tile.isOn ? 2 : 1,
+                  ? AppBorderColorLight.darker
+                  : AppBorderColorDark.light),
+          width: _tile.isOn ? AppSpacings.scale(2) : AppSpacings.scale(1),
         ),
       ),
       child: Padding(
         padding: AppSpacings.paddingSm,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          spacing: AppSpacings.pMd,
           children: [
             Icon(
               _tile.icon ?? MdiIcons.movieOpen,
@@ -58,7 +49,6 @@ class SceneTileWidget extends StatelessWidget {
                       ? AppTextColorLight.regular
                       : AppTextColorDark.regular),
             ),
-            AppSpacings.spacingSmVertical,
             Text(
               _tile.label,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -68,7 +58,6 @@ class SceneTileWidget extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-            AppSpacings.spacingXsVertical,
             Text(
               _tile.status,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(

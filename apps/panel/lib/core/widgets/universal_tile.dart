@@ -1,6 +1,5 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -30,8 +29,6 @@ enum TileLayout {
 /// channel tiles, role tiles, etc.
 class UniversalTile extends StatelessWidget {
   final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
 
   // Layout
   final TileLayout layout;
@@ -49,12 +46,14 @@ class UniversalTile extends StatelessWidget {
   final bool isOffline;
   final bool isSelected;
 
-  // Colors (optional overrides for custom theming like sensor types)
-  final Color? activeColor;
+  /// Optional theme color key for active/accent. When set, only theme colors are used
+  /// (no alpha modifiers). Light/dark is chosen from current theme.
+  /// When set but [isActive] is false, only the icon (and icon bg) use this color.
+  final ThemeColors? activeColor;
 
   // Icon-only accent color (colors icon/icon bg without affecting tile active state)
   // Useful for sensors where icon color indicates type but tile isn't "active"
-  final Color? iconAccentColor;
+  final ThemeColors? iconAccentColor;
 
   // Interactions
   final VoidCallback? onIconTap;
@@ -100,9 +99,6 @@ class UniversalTile extends StatelessWidget {
     this.accessories,
   });
 
-  double _scale(double size) =>
-      _screenService.scale(size, density: _visualDensityService.density);
-
   @override
   Widget build(BuildContext context) {
     return layout == TileLayout.vertical
@@ -123,7 +119,7 @@ class UniversalTile extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+          borderRadius: BorderRadius.circular(AppBorderRadius.base),
           border: Border.all(
             color: colors.outerBorderColor,
             width: colors.borderWidth,
@@ -131,9 +127,9 @@ class UniversalTile extends StatelessWidget {
           boxShadow: (isActive && showGlow && !isOffline)
               ? [
                   BoxShadow(
-                    color: colors.accentColor.withValues(alpha: 0.2),
-                    blurRadius: _scale(8),
-                    spreadRadius: _scale(1),
+                    color: colors.accentColorLight5.withValues(alpha: 0.35),
+                    blurRadius: AppSpacings.scale(8),
+                    spreadRadius: AppSpacings.scale(1),
                   ),
                 ]
               : [],
@@ -143,7 +139,7 @@ class UniversalTile extends StatelessWidget {
           decoration: BoxDecoration(
             color: colors.tileBgColor,
             borderRadius: BorderRadius.circular(
-              AppBorderRadius.medium - colors.borderWidth,
+              AppBorderRadius.base - colors.borderWidth,
             ),
             border: showDoubleBorder
                 ? Border.all(
@@ -160,6 +156,7 @@ class UniversalTile extends StatelessWidget {
                   vertical: AppSpacings.pSm,
                 ),
                 child: Column(
+                  spacing: AppSpacings.pMd,
                   children: [
                     // Icon - takes available space
                     Expanded(
@@ -177,7 +174,6 @@ class UniversalTile extends StatelessWidget {
                         ),
                       ),
                     ),
-                    AppSpacings.spacingSmVertical,
 
                     // Name
                     Text(
@@ -195,7 +191,6 @@ class UniversalTile extends StatelessWidget {
 
                     // Status (optional)
                     if (status != null) ...[
-                      AppSpacings.spacingXsVertical,
                       Text(
                         status!,
                         style: TextStyle(
@@ -213,7 +208,6 @@ class UniversalTile extends StatelessWidget {
 
                     // Accessories (optional)
                     if (accessories != null) ...[
-                      AppSpacings.spacingXsVertical,
                       accessories!,
                     ],
                   ],
@@ -223,11 +217,11 @@ class UniversalTile extends StatelessWidget {
               // Selection indicator
               if (isSelected && showSelectionIndicator)
                 Positioned(
-                  top: _scale(4),
-                  right: _scale(4),
+                  top: AppSpacings.scale(4),
+                  right: AppSpacings.scale(4),
                   child: Icon(
                     MdiIcons.checkCircle,
-                    size: _scale(14),
+                    size: AppSpacings.scale(14),
                     color: isActive
                         ? colors.accentColor
                         : (Theme.of(context).brightness == Brightness.dark
@@ -259,7 +253,7 @@ class UniversalTile extends StatelessWidget {
         ),
         decoration: BoxDecoration(
           color: colors.tileBgColor,
-          borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+          borderRadius: BorderRadius.circular(AppBorderRadius.base),
           border: Border.all(
             color: colors.outerBorderColor,
             width: colors.borderWidth,
@@ -267,24 +261,24 @@ class UniversalTile extends StatelessWidget {
           boxShadow: (isActive && showGlow && !isOffline)
               ? [
                   BoxShadow(
-                    color: colors.accentColor.withValues(alpha: 0.15),
-                    blurRadius: _scale(6),
-                    spreadRadius: _scale(1),
+                    color: colors.accentColorLight5.withValues(alpha: 0.35),
+                    blurRadius: AppSpacings.scale(6),
+                    spreadRadius: AppSpacings.scale(1),
                   ),
                 ]
               : [],
         ),
         child: Row(
+          spacing: AppSpacings.pMd,
           mainAxisSize: MainAxisSize.min,
           children: [
             // Icon
             _buildIconButton(
               context,
               colors,
-              _scale(32),
-              _scale(18),
+              AppSpacings.scale(32),
+              AppSpacings.scale(18),
             ),
-            AppSpacings.spacingMdHorizontal,
 
             // Text content
             Expanded(
@@ -331,7 +325,7 @@ class UniversalTile extends StatelessWidget {
                 padding: EdgeInsets.only(left: AppSpacings.pSm),
                 child: Icon(
                   MdiIcons.checkCircle,
-                  size: _scale(16),
+                  size: AppSpacings.scale(16),
                   color: isActive
                       ? colors.accentColor
                       : (Theme.of(context).brightness == Brightness.dark
@@ -375,11 +369,11 @@ class UniversalTile extends StatelessWidget {
         // Warning badge for offline devices
         if (isOffline && showWarningBadge)
           Positioned(
-            right: -_scale(2),
-            bottom: -_scale(2),
+            right: -AppSpacings.scale(2),
+            bottom: -AppSpacings.scale(2),
             child: Icon(
               MdiIcons.alert,
-              size: _scale(14),
+              size: AppSpacings.scale(14),
               color: colors.warningColor,
             ),
           ),
@@ -402,30 +396,24 @@ class UniversalTile extends StatelessWidget {
   // ============================================================================
 
   _TileColors _getTileColors(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final borderWidth = _scale(1);
+    final brightness = Theme.of(context).brightness;
+    final isDark = brightness == Brightness.dark;
+    final borderWidth = AppSpacings.scale(1);
 
-    // Use custom active color or default primary
-    final accentColor = activeColor ??
-        (isDark ? AppColorsDark.primary : AppColorsLight.primary);
-
-    final accentColorDark2 = activeColor?.withValues(alpha: 0.3) ??
-        (isDark ? AppColorsDark.primaryDark2 : AppColorsLight.primaryDark2);
-
-    final accentColorLight5 = activeColor?.withValues(alpha: 0.3) ??
-        (isDark ? AppColorsDark.primaryLight5 : AppColorsLight.primaryLight5);
-
-    final accentColorLight9 = activeColor?.withValues(alpha: 0.1) ??
-        (isDark ? AppColorsDark.primaryLight9 : AppColorsLight.primaryLight9);
+    // Resolve theme color family (no alpha modifiers)
+    final colorKey = activeColor ?? ThemeColors.primary;
+    final family = ThemeColorFamily.get(brightness, colorKey);
+    final accentColor = family.base;
+    final accentColorDark2 = family.dark2;
+    final accentColorLight5 = family.light5;
+    final accentColorLight9 = family.light9;
 
     // Tile background
     final Color tileBgColor;
     if (isOffline) {
       tileBgColor = isDark ? AppFillColorDark.darker : AppFillColorLight.darker;
     } else if (isActive) {
-      tileBgColor = activeColor != null
-          ? activeColor!.withValues(alpha: 0.1)
-          : accentColorLight9;
+      tileBgColor = accentColorLight9;
     } else {
       tileBgColor = isDark ? AppFillColorDark.light : AppFillColorLight.blank;
     }
@@ -439,13 +427,9 @@ class UniversalTile extends StatelessWidget {
           isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
       innerBorderColor = tileBgColor;
     } else if (isActive) {
-      outerBorderColor = activeColor != null
-          ? activeColor!.withValues(alpha: 0.3)
-          : accentColorLight5;
+      outerBorderColor = accentColorLight5;
       innerBorderColor = outerBorderColor;
     } else {
-      // Light theme: always show border for inactive tiles
-      // Dark theme: only show border when showInactiveBorder is true (on colored backgrounds)
       outerBorderColor = (!isDark || showInactiveBorder)
           ? (isDark ? AppBorderColorDark.light : AppBorderColorLight.light)
           : tileBgColor;
@@ -457,12 +441,9 @@ class UniversalTile extends StatelessWidget {
     if (isOffline) {
       iconBgColor = isDark ? AppFillColorDark.light : AppFillColorLight.light;
     } else if (iconAccentColor != null) {
-      // Icon-only accent: color icon bg without full active state
-      iconBgColor = iconAccentColor!.withValues(alpha: 0.12);
+      iconBgColor = ThemeColorFamily.get(brightness, iconAccentColor!).light5;
     } else if (isActive) {
-      iconBgColor = activeColor != null
-          ? activeColor!.withValues(alpha: 0.15)
-          : accentColorLight5;
+      iconBgColor = accentColorLight5;
     } else {
       iconBgColor = isDark ? AppFillColorDark.darker : AppFillColorLight.light;
     }
@@ -472,8 +453,7 @@ class UniversalTile extends StatelessWidget {
     if (isOffline) {
       iconColor = isDark ? AppTextColorDark.disabled : AppTextColorLight.disabled;
     } else if (iconAccentColor != null) {
-      // Icon-only accent: color icon without full active state
-      iconColor = iconAccentColor!;
+      iconColor = ThemeColorFamily.get(brightness, iconAccentColor!).base;
     } else if (isActive) {
       iconColor = accentColor;
     } else {
@@ -496,7 +476,7 @@ class UniversalTile extends StatelessWidget {
       subtitleColor =
           isDark ? AppTextColorDark.disabled : AppTextColorLight.disabled;
     } else if (isActive) {
-      subtitleColor = (activeColor ?? accentColorDark2).withValues(alpha: 0.8);
+      subtitleColor = accentColorDark2;
     } else {
       subtitleColor =
           isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
@@ -515,6 +495,7 @@ class UniversalTile extends StatelessWidget {
       subtitleColor: subtitleColor,
       warningColor: warningColor,
       accentColor: accentColor,
+      accentColorLight5: accentColorLight5,
       borderWidth: borderWidth,
     );
   }
@@ -531,6 +512,7 @@ class _TileColors {
   final Color subtitleColor;
   final Color warningColor;
   final Color accentColor;
+  final Color accentColorLight5;
   final double borderWidth;
 
   const _TileColors({
@@ -543,6 +525,7 @@ class _TileColors {
     required this.subtitleColor,
     required this.warningColor,
     required this.accentColor,
+    required this.accentColorLight5,
     required this.borderWidth,
   });
 }

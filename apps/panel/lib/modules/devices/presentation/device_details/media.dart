@@ -1,23 +1,22 @@
 import 'dart:async';
 
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/device_detail_landscape_layout.dart';
-import 'package:fastybird_smart_panel/core/widgets/device_detail_portrait_layout.dart';
-import 'package:fastybird_smart_panel/core/widgets/device_offline_overlay.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_landscape_layout.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_portrait_layout.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_offline_overlay.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/utils/media_input_source_label.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_info_card.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_playback_card.dart';
-import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_source_card.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_source_select_card.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_volume_card.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
+import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/media.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -38,8 +37,6 @@ class MediaDeviceDetail extends StatefulWidget {
 }
 
 class _MediaDeviceDetailState extends State<MediaDeviceDetail> {
-	final ScreenService _screenService = locator<ScreenService>();
-	final VisualDensityService _visualDensityService = locator<VisualDensityService>();
 	final DevicesService _devicesService = locator<DevicesService>();
 	DeviceControlStateService? _deviceControlStateService;
 
@@ -126,9 +123,6 @@ class _MediaDeviceDetailState extends State<MediaDeviceDetail> {
 		}
 		return widget._device;
 	}
-
-	double _scale(double value) =>
-		_screenService.scale(value, density: _visualDensityService.density);
 
 	// --------------------------------------------------------------------------
 	// COMMAND HELPERS
@@ -383,19 +377,7 @@ class _MediaDeviceDetailState extends State<MediaDeviceDetail> {
 		return source;
 	}
 
-	Color _getAccentColor(bool isDark) {
-		if (_isOn) {
-			return isDark ? AppColorsDark.info : AppColorsLight.info;
-		}
-		return isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
-	}
-
-	Color _getAccentLightColor(bool isDark) {
-		if (_isOn) {
-			return isDark ? AppColorsDark.infoLight5 : AppColorsLight.infoLight5;
-		}
-		return isDark ? AppFillColorDark.darker : AppFillColorLight.darker;
-	}
+	ThemeColors _getThemeColor() => _isOn ? ThemeColors.primary : ThemeColors.neutral;
 
 	// --------------------------------------------------------------------------
 	// BUILD
@@ -442,65 +424,35 @@ class _MediaDeviceDetailState extends State<MediaDeviceDetail> {
 
 	Widget _buildHeader(BuildContext context, bool isDark) {
 		final localizations = AppLocalizations.of(context)!;
-		final accentColor = _getAccentColor(isDark);
 		final secondaryColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
-		final mutedColor = isDark ? AppTextColorDark.disabled : AppTextColorLight.disabled;
 		final isOn = _isOn;
+		final accentColor = isOn
+			? ThemeColorFamily.get(isDark ? Brightness.dark : Brightness.light, _getThemeColor()).base
+			: secondaryColor;
 
 		return PageHeader(
 			title: _device.name,
 			subtitle: _getStatusLabel(localizations),
-			subtitleColor: isOn ? accentColor : secondaryColor,
-			backgroundColor: AppColors.blank,
+			subtitleColor: accentColor,
 			leading: Row(
 				mainAxisSize: MainAxisSize.min,
+				spacing: AppSpacings.pMd,
 				children: [
 					HeaderIconButton(
 						icon: MdiIcons.arrowLeft,
 						onTap: widget.onBack ?? () => Navigator.of(context).pop(),
 					),
-					AppSpacings.spacingMdHorizontal,
-					Container(
-						width: _scale(44),
-						height: _scale(44),
-						decoration: BoxDecoration(
-							color: isOn
-								? _getAccentLightColor(isDark)
-								: (isDark ? AppFillColorDark.darker : AppFillColorLight.darker),
-							borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-						),
-						child: Icon(
-							MdiIcons.musicNote,
-							color: isOn ? accentColor : mutedColor,
-							size: _scale(24),
-						),
+					HeaderMainIcon(
+						icon: buildDeviceIcon(_device.category, _device.icon),
+						color: isOn ? ThemeColors.primary : ThemeColors.neutral,
 					),
 				],
 			),
 			trailing: _device.hasSwitcher
-				? GestureDetector(
+				? HeaderIconButton(
+					icon: MdiIcons.power,
 					onTap: _togglePower,
-					child: AnimatedContainer(
-						duration: const Duration(milliseconds: 200),
-						width: _scale(48),
-						height: _scale(32),
-						decoration: BoxDecoration(
-							color: isOn
-								? accentColor
-								: (isDark ? AppFillColorDark.light : AppFillColorLight.light),
-							borderRadius: BorderRadius.circular(AppBorderRadius.round),
-							border: (!isOn && !isDark)
-								? Border.all(color: AppBorderColorLight.base, width: _scale(1))
-								: null,
-						),
-						child: Icon(
-							MdiIcons.power,
-							size: _scale(18),
-							color: isOn
-								? AppColors.white
-								: (isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary),
-						),
-					),
+					color: isOn ? ThemeColors.primary : ThemeColors.neutral,
 				)
 				: null,
 		);
@@ -511,48 +463,62 @@ class _MediaDeviceDetailState extends State<MediaDeviceDetail> {
 	// --------------------------------------------------------------------------
 
 	Widget _buildPortraitLayout(BuildContext context, bool isDark) {
-		final accentColor = _getAccentColor(isDark);
-
-		return DeviceDetailPortraitLayout(
+		return DevicePortraitLayout(
 			content: Column(
 				crossAxisAlignment: CrossAxisAlignment.start,
+				spacing: AppSpacings.pMd,
 				children: [
 					MediaInfoCard(
 						icon: MdiIcons.musicNote,
-						iconColor: accentColor,
-						iconBgColor: _getAccentLightColor(isDark),
 						name: _device.name,
 						isOn: _isOn,
 						displaySource: _getDisplaySource(),
-						accentColor: accentColor,
-						scale: _scale,
+						themeColor: _getThemeColor(),
 					),
-					AppSpacings.spacingLgVertical,
-					_buildPlaybackCard(isDark),
-					if (_device.hasSpeaker) ...[
-						AppSpacings.spacingLgVertical,
+					if (_device.hasMediaPlayback &&
+						MediaPlaybackCard.hasContent(
+							playbackTrack: _device.isMediaPlaybackTrack,
+						playbackArtist: _device.mediaPlaybackArtist,
+						playbackAlbum: _device.mediaPlaybackAlbum,
+						playbackAvailableCommands: _device.mediaPlaybackAvailableCommands,
+						playbackHasDuration: _device.hasMediaPlaybackDuration,
+						playbackDuration: _device.mediaPlaybackDuration,
+					))
+						MediaPlaybackCard(
+							playbackTrack: _device.isMediaPlaybackTrack,
+							playbackArtist: _device.mediaPlaybackArtist,
+							playbackAlbum: _device.mediaPlaybackAlbum,
+							playbackStatus: _effectivePlaybackStatus,
+							playbackAvailableCommands: _device.mediaPlaybackAvailableCommands,
+							playbackHasPosition: _device.hasMediaPlaybackPosition,
+							playbackPosition: _device.mediaPlaybackPosition,
+							playbackHasDuration: _device.hasMediaPlaybackDuration,
+							playbackDuration: _device.mediaPlaybackDuration,
+							playbackIsPositionWritable: _device.mediaPlaybackChannel.positionProp?.isWritable ?? false,
+							onPlaybackCommand: _sendPlaybackCommand,
+							onPlaybackSeek: _seekPosition,
+							themeColor: _getThemeColor(),
+							isEnabled: _isOn,
+							),
+					if (_device.hasSpeaker)
 						MediaVolumeCard(
 							volume: _effectiveVolume,
 							isMuted: _effectiveMuted,
 							hasMute: _device.hasSpeakerMute || (_device.speakerChannel?.hasActive ?? false),
 							isEnabled: _isOn,
-							accentColor: accentColor,
+							themeColor: _getThemeColor(),
 							onVolumeChanged: _setVolume,
 							onMuteToggle: _toggleMute,
-							scale: _scale,
 						),
-					],
-					if (_device.mediaInputAvailableSources.isNotEmpty) ...[
-						AppSpacings.spacingLgVertical,
-						MediaSourceCard(
-							currentSource: _device.mediaInputSource,
+					if (_device.mediaInputAvailableSources.isNotEmpty)
+						MediaSourceSelectCard(
 							availableSources: _device.mediaInputAvailableSources,
-							isEnabled: _isOn,
+							currentSource: _device.mediaInputSource,
 							sourceLabel: (s) => mediaInputSourceLabel(context, s),
 							onSourceChanged: _setSource,
-							scale: _scale,
+							isEnabled: _isOn,
+							themeColor: _getThemeColor(),
 						),
-					],
 				],
 			),
 		);
@@ -563,76 +529,69 @@ class _MediaDeviceDetailState extends State<MediaDeviceDetail> {
 	// --------------------------------------------------------------------------
 
 	Widget _buildLandscapeLayout(BuildContext context, bool isDark) {
-		final accentColor = _getAccentColor(isDark);
-
-		return DeviceDetailLandscapeLayout(
+		return DeviceLandscapeLayout(
 			mainContent: Column(
 				mainAxisAlignment: MainAxisAlignment.center,
+				spacing: AppSpacings.pMd,
 				children: [
 					MediaInfoCard(
 						icon: MdiIcons.musicNote,
-						iconColor: accentColor,
-						iconBgColor: _getAccentLightColor(isDark),
 						name: _device.name,
 						isOn: _isOn,
 						displaySource: _getDisplaySource(),
-						accentColor: accentColor,
-						scale: _scale,
+						themeColor: _getThemeColor(),
 					),
-					AppSpacings.spacingMdVertical,
-					_buildPlaybackCard(isDark),
-					if (_device.hasSpeaker) ...[
-						AppSpacings.spacingMdVertical,
+					if (_device.hasMediaPlayback &&
+						MediaPlaybackCard.hasContent(
+							playbackTrack: _device.isMediaPlaybackTrack,
+						playbackArtist: _device.mediaPlaybackArtist,
+						playbackAlbum: _device.mediaPlaybackAlbum,
+						playbackAvailableCommands: _device.mediaPlaybackAvailableCommands,
+						playbackHasDuration: _device.hasMediaPlaybackDuration,
+						playbackDuration: _device.mediaPlaybackDuration,
+					))
+						MediaPlaybackCard(
+							playbackTrack: _device.isMediaPlaybackTrack,
+							playbackArtist: _device.mediaPlaybackArtist,
+							playbackAlbum: _device.mediaPlaybackAlbum,
+							playbackStatus: _effectivePlaybackStatus,
+							playbackAvailableCommands: _device.mediaPlaybackAvailableCommands,
+							playbackHasPosition: _device.hasMediaPlaybackPosition,
+							playbackPosition: _device.mediaPlaybackPosition,
+							playbackHasDuration: _device.hasMediaPlaybackDuration,
+							playbackDuration: _device.mediaPlaybackDuration,
+							playbackIsPositionWritable: _device.mediaPlaybackChannel.positionProp?.isWritable ?? false,
+							onPlaybackCommand: _sendPlaybackCommand,
+							onPlaybackSeek: _seekPosition,
+							themeColor: _getThemeColor(),
+							isEnabled: _isOn,
+							),
+					if (_device.hasSpeaker)
 						MediaVolumeCard(
 							volume: _effectiveVolume,
 							isMuted: _effectiveMuted,
 							hasMute: _device.hasSpeakerMute || (_device.speakerChannel?.hasActive ?? false),
 							isEnabled: _isOn,
-							accentColor: accentColor,
+							themeColor: _getThemeColor(),
 							onVolumeChanged: _setVolume,
 							onMuteToggle: _toggleMute,
-							scale: _scale,
 						),
-					],
-				],
-			),
-			secondaryContent: Column(
-				crossAxisAlignment: CrossAxisAlignment.start,
-				children: [
 					if (_device.mediaInputAvailableSources.isNotEmpty)
-						MediaSourceCard(
-							currentSource: _device.mediaInputSource,
+						MediaSourceSelectCard(
 							availableSources: _device.mediaInputAvailableSources,
-							isEnabled: _isOn,
+							currentSource: _device.mediaInputSource,
 							sourceLabel: (s) => mediaInputSourceLabel(context, s),
 							onSourceChanged: _setSource,
-							scale: _scale,
+							isEnabled: _isOn,
+							themeColor: _getThemeColor(),
 						),
 				],
+			),
+			secondaryContent: const Column(
+				crossAxisAlignment: CrossAxisAlignment.start,
+				children: [],
 			),
 		);
 	}
 
-	Widget _buildPlaybackCard(bool isDark) {
-		final accentColor = _getAccentColor(isDark);
-		final positionProp = _device.mediaPlaybackChannel.positionProp;
-
-		return MediaPlaybackCard(
-			track: _device.isMediaPlaybackTrack,
-			artist: _device.mediaPlaybackArtist,
-			album: _device.mediaPlaybackAlbum,
-			status: _effectivePlaybackStatus,
-			availableCommands: _device.mediaPlaybackAvailableCommands,
-			hasPosition: _device.hasMediaPlaybackPosition,
-			position: _device.mediaPlaybackPosition,
-			hasDuration: _device.hasMediaPlaybackDuration,
-			duration: _device.mediaPlaybackDuration,
-			isPositionWritable: positionProp?.isWritable ?? false,
-			isEnabled: _isOn,
-			accentColor: accentColor,
-			scale: _scale,
-			onCommand: _sendPlaybackCommand,
-			onSeek: _seekPosition,
-		);
-	}
 }

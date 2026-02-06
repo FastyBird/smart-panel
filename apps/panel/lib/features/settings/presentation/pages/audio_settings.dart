@@ -1,10 +1,8 @@
 import 'dart:async';
 
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/icon_switch.dart';
 import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/setting_row.dart';
@@ -23,9 +21,6 @@ class AudioSettingsPage extends StatefulWidget {
 }
 
 class _AudioSettingsPageState extends State<AudioSettingsPage> {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
   final DisplayRepository _repository = locator<DisplayRepository>();
 
   late bool _audioOutputSupported;
@@ -87,13 +82,13 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
           padding: AppSpacings.paddingMd,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            spacing: AppSpacings.pMd,
             children: [
               if (!_audioOutputSupported && !_audioInputSupported)
                 _buildNoAudioSupportMessage(localizations)
               else ...[
                 if (_audioOutputSupported) ...[
                   _buildSpeakerSection(localizations),
-                  if (_audioInputSupported) AppSpacings.spacingMdVertical,
                 ],
                 if (_audioInputSupported) _buildMicrophoneSection(localizations),
               ],
@@ -110,16 +105,13 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
         padding: AppSpacings.paddingLg,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          spacing: AppSpacings.pMd,
           children: [
             Icon(
               MdiIcons.volumeOff,
-              size: _screenService.scale(
-                48,
-                density: _visualDensityService.density,
-              ),
+              size: AppSpacings.scale(48),
               color: Theme.of(context).disabledColor,
             ),
-            AppSpacings.spacingMdVertical,
             Text(
               localizations.settings_audio_settings_no_support,
               textAlign: TextAlign.center,
@@ -137,6 +129,7 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
   Widget _buildSpeakerSection(AppLocalizations localizations) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: AppSpacings.pMd,
       children: [
         SettingRow(
           icon: MdiIcons.volumeHigh,
@@ -150,10 +143,7 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
           subtitle: Text(
             localizations.settings_audio_settings_speaker_description,
             style: TextStyle(
-              fontSize: _screenService.scale(
-                8,
-                density: _visualDensityService.density,
-              ),
+              fontSize: AppSpacings.scale(8),
             ),
           ),
           trailing: IconSwitch(
@@ -165,7 +155,6 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
             },
           ),
         ),
-        AppSpacings.spacingMdVertical,
         SettingRow(
           icon: MdiIcons.volumeMedium,
           title: Text(
@@ -192,6 +181,7 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
   Widget _buildMicrophoneSection(AppLocalizations localizations) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: AppSpacings.pMd,
       children: [
         SettingRow(
           icon: MdiIcons.microphone,
@@ -205,10 +195,7 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
           subtitle: Text(
             localizations.settings_audio_settings_microphone_description,
             style: TextStyle(
-              fontSize: _screenService.scale(
-                8,
-                density: _visualDensityService.density,
-              ),
+              fontSize: AppSpacings.scale(8),
             ),
           ),
           trailing: IconSwitch(
@@ -220,7 +207,6 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
             },
           ),
         ),
-        AppSpacings.spacingMdVertical,
         SettingRow(
           icon: MdiIcons.microphone,
           title: Text(
@@ -269,7 +255,7 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
             _hasSpeakerEnabled = !_hasSpeakerEnabled;
           });
 
-          AlertBar.showError(context, message: 'Save settings failed.');
+          AppToast.showError(context, message: 'Save settings failed.');
         }
       },
     );
@@ -316,7 +302,7 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
               _speakerVolume = _speakerVolumeBackup ?? 50;
             });
 
-            AlertBar.showError(
+            AppToast.showError(
               context,
               message: 'Save settings failed.',
             );
@@ -351,7 +337,7 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
             _hasMicrophoneEnabled = !_hasMicrophoneEnabled;
           });
 
-          AlertBar.showError(context, message: 'Save settings failed.');
+          AppToast.showError(context, message: 'Save settings failed.');
         }
       },
     );
@@ -398,7 +384,7 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
               _microphoneVolume = _microphoneVolumeBackup ?? 50;
             });
 
-            AlertBar.showError(
+            AppToast.showError(
               context,
               message: 'Save settings failed.',
             );

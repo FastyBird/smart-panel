@@ -1,8 +1,5 @@
-import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/alert_bar.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/button_tile.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/mappers/data_source.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/presentation/widgets/tiles/tile.dart';
@@ -16,10 +13,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 class DevicePreviewTileWidget extends TileWidget<DevicePreviewTileView> {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
   DevicePreviewTileWidget(super.tile, {super.key});
 
   @override
@@ -61,7 +54,7 @@ class DevicePreviewTileWidget extends TileWidget<DevicePreviewTileView> {
                 );
 
                 if (!res && context.mounted) {
-                  AlertBar.showError(
+                  AppToast.showError(
                     context,
                     message: localizations.action_failed,
                   );
@@ -121,10 +114,7 @@ class DevicePreviewTileWidget extends TileWidget<DevicePreviewTileView> {
           color: Theme.of(context).brightness == Brightness.light
               ? AppColorsLight.infoLight5
               : AppColorsDark.infoLight5,
-          width: _screenService.scale(
-            1,
-            density: _visualDensityService.density,
-          ),
+          width: AppSpacings.scale(1),
         ),
       ),
       child: Column(
