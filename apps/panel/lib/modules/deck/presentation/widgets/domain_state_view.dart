@@ -117,7 +117,13 @@ class DomainStateView extends StatelessWidget {
                 ),
                 child: FilledButton.icon(
                   onPressed: onRetry,
-                  icon: Icon(MdiIcons.refresh),
+                  icon: Icon(
+                    MdiIcons.refresh,
+                    size: AppFontSize.base,
+                    color: isDark
+                        ? AppFilledButtonsDarkThemes.primaryForegroundColor
+                        : AppFilledButtonsLightThemes.primaryForegroundColor,
+                  ),
                   label: Text(localizations.action_retry),
                 ),
               ),

@@ -572,10 +572,23 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
             ),
             textAlign: TextAlign.center,
           ),
-          FilledButton.icon(
-            onPressed: _loadRoomData,
-            icon: Icon(MdiIcons.refresh),
-            label: const Text('Retry'),
+          Theme(
+            data: ThemeData(
+              filledButtonTheme: Theme.of(context).brightness == Brightness.dark
+                  ? AppFilledButtonsDarkThemes.primary
+                  : AppFilledButtonsLightThemes.primary,
+            ),
+            child: FilledButton.icon(
+              onPressed: _loadRoomData,
+              icon: Icon(
+                MdiIcons.refresh,
+                size: AppFontSize.base,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? AppFilledButtonsDarkThemes.primaryForegroundColor
+                    : AppFilledButtonsLightThemes.primaryForegroundColor,
+              ),
+              label: const Text('Retry'),
+            ),
           ),
         ],
       ),
@@ -770,6 +783,9 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
                       child: Icon(
                         scene.icon,
                         size: AppSpacings.scale(28),
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? AppFilledButtonsDarkThemes.primaryForegroundColor
+                            : AppFilledButtonsLightThemes.primaryForegroundColor,
                       ),
                     ),
                   ),

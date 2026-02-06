@@ -108,6 +108,9 @@ class GeneralSettingsPage extends StatelessWidget {
                     Icon(
                       buttons[index].icon,
                       size: AppSpacings.scale(28),
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? AppOutlinedButtonsDarkThemes.primaryForegroundColor
+                          : AppOutlinedButtonsLightThemes.primaryForegroundColor,
                     ),
                     SizedBox(
                       height: AppFontSize.small * 2 + AppSpacings.pSm * 2,

@@ -90,7 +90,12 @@ class MaintenancePage extends StatelessWidget {
                     style: OutlinedButton.styleFrom(
                       padding: AppSpacings.paddingSm,
                     ),
-                    child: Icon(MdiIcons.play),
+                    child: Icon(
+                      MdiIcons.play,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? AppOutlinedButtonsDarkThemes.primaryForegroundColor
+                          : AppOutlinedButtonsLightThemes.primaryForegroundColor,
+                    ),
                   ),
                 ),
               ),
@@ -154,7 +159,12 @@ class MaintenancePage extends StatelessWidget {
                     style: OutlinedButton.styleFrom(
                       padding: AppSpacings.paddingSm,
                     ),
-                    child: Icon(MdiIcons.play),
+                    child: Icon(
+                      MdiIcons.play,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? AppOutlinedButtonsDarkThemes.primaryForegroundColor
+                          : AppOutlinedButtonsLightThemes.primaryForegroundColor,
+                    ),
                   ),
                 ),
               ),
@@ -219,7 +229,12 @@ class MaintenancePage extends StatelessWidget {
                     style: OutlinedButton.styleFrom(
                       padding: AppSpacings.paddingSm,
                     ),
-                    child: Icon(MdiIcons.play),
+                    child: Icon(
+                      MdiIcons.play,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? AppOutlinedButtonsDarkThemes.primaryForegroundColor
+                          : AppOutlinedButtonsLightThemes.primaryForegroundColor,
+                    ),
                   ),
                 ),
               ),

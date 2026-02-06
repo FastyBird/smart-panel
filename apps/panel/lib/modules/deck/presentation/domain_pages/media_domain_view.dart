@@ -1599,7 +1599,13 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 										: AppFilledButtonsLightThemes.primary,
 								),
 								child: FilledButton.icon(
-									icon: Icon(MdiIcons.refresh, size: AppSpacings.scale(16)),
+									icon: Icon(
+										MdiIcons.refresh,
+										size: AppFontSize.small,
+										color: Theme.of(context).brightness == Brightness.dark
+											? AppFilledButtonsDarkThemes.primaryForegroundColor
+											: AppFilledButtonsLightThemes.primaryForegroundColor,
+									),
 									label: Text(AppLocalizations.of(context)!.media_activity_retry),
 									onPressed: () => _retryActivity(state),
 									style: FilledButton.styleFrom(
@@ -1614,7 +1620,13 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 										: AppOutlinedButtonsLightThemes.base,
 								),
 								child: OutlinedButton.icon(
-									icon: Icon(MdiIcons.stop, size: AppSpacings.scale(16)),
+									icon: Icon(
+										MdiIcons.stop,
+										size: AppFontSize.small,
+										color: Theme.of(context).brightness == Brightness.dark
+											? AppOutlinedButtonsDarkThemes.baseForegroundColor
+											: AppOutlinedButtonsLightThemes.baseForegroundColor,
+									),
 									label: Text(AppLocalizations.of(context)!.media_failure_deactivate),
 									onPressed: _deactivateActivity,
 									style: OutlinedButton.styleFrom(
@@ -1699,8 +1711,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			bottomSection: Builder(
 				builder: (sheetContext) {
 					final isDark = Theme.of(sheetContext).brightness == Brightness.dark;
-					final primaryFg = isDark ? AppFilledButtonsDarkThemes.primaryForegroundColor : AppFilledButtonsLightThemes.primaryForegroundColor;
-					final baseFg = isDark ? AppOutlinedButtonsDarkThemes.baseForegroundColor : AppOutlinedButtonsLightThemes.baseForegroundColor;
 					return Row(
 						spacing: AppSpacings.pMd,
 						children: [
@@ -1713,7 +1723,13 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 												: AppFilledButtonsLightThemes.primary,
 										),
 										child: FilledButton.icon(
-											icon: Icon(MdiIcons.refresh, size: AppSpacings.scale(16), color: primaryFg),
+											icon: Icon(
+												MdiIcons.refresh,
+												size: AppFontSize.small,
+												color: isDark
+													? AppFilledButtonsDarkThemes.primaryForegroundColor
+													: AppFilledButtonsLightThemes.primaryForegroundColor,
+											),
 											label: Text(AppLocalizations.of(context)!.media_failure_retry_activity),
 											onPressed: () {
 												Navigator.pop(sheetContext);
@@ -1735,7 +1751,13 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 											: AppOutlinedButtonsLightThemes.base,
 									),
 									child: OutlinedButton.icon(
-										icon: Icon(MdiIcons.stopCircleOutline, size: AppSpacings.scale(16), color: baseFg),
+										icon: Icon(
+											MdiIcons.stopCircleOutline,
+											size: AppFontSize.small,
+											color: isDark
+												? AppOutlinedButtonsDarkThemes.baseForegroundColor
+												: AppOutlinedButtonsLightThemes.baseForegroundColor,
+										),
 										label: Text(AppLocalizations.of(context)!.media_failure_deactivate),
 										onPressed: () {
 											Navigator.pop(sheetContext);

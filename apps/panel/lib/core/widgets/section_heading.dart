@@ -109,43 +109,52 @@ class SectionTitleButton extends StatelessWidget {
     final neutralTheme = isDark
         ? AppFilledButtonsDarkThemes.neutral
         : AppFilledButtonsLightThemes.neutral;
-    final foregroundColor = isDark
-        ? AppFilledButtonsDarkThemes.neutralForegroundColor
-        : AppFilledButtonsLightThemes.neutralForegroundColor;
-
     return Theme(
       data: Theme.of(context).copyWith(filledButtonTheme: neutralTheme),
-      child: FilledButton(
-        onPressed: onTap,
-        style: FilledButton.styleFrom(
-          padding: EdgeInsets.symmetric(
-            horizontal: AppSpacings.pMd,
-            vertical: AppSpacings.pSm,
-          ),
-          minimumSize: Size.zero,
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          spacing: AppSpacings.pSm,
-          children: [
-            if (icon != null)
-              Icon(
+      child: icon != null
+          ? FilledButton.icon(
+              onPressed: onTap,
+              icon: Icon(
                 icon,
-                size: AppFontSize.small,
-                color: foregroundColor,
+                size: AppFontSize.extraSmall,
+                color: isDark
+                    ? AppFilledButtonsDarkThemes.neutralForegroundColor
+                    : AppFilledButtonsLightThemes.neutralForegroundColor,
               ),
-            Text(
-              label,
-              style: TextStyle(
-                color: foregroundColor,
-                fontSize: AppFontSize.extraSmall,
-                fontWeight: FontWeight.w500,
+              label: Text(
+                label,
+                style: TextStyle(
+                  fontSize: AppFontSize.extraSmall,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              style: FilledButton.styleFrom(
+                padding: EdgeInsets.symmetric(
+                  horizontal: AppSpacings.pMd,
+                  vertical: AppSpacings.pSm,
+                ),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+            )
+          : FilledButton(
+              onPressed: onTap,
+              style: FilledButton.styleFrom(
+                padding: EdgeInsets.symmetric(
+                  horizontal: AppSpacings.pMd,
+                  vertical: AppSpacings.pSm,
+                ),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: AppFontSize.extraSmall,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
-          ],
-        ),
-      ),
     );
   }
 }

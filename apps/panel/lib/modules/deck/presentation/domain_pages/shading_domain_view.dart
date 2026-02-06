@@ -919,50 +919,39 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     final themeData = isActive
         ? ThemeData(filledButtonTheme: isDark ? AppFilledButtonsDarkThemes.primary : AppFilledButtonsLightThemes.primary)
         : (isDark ? ThemeData(filledButtonTheme: AppFilledButtonsDarkThemes.neutral) : ThemeData(filledButtonTheme: AppFilledButtonsLightThemes.neutral));
-    final iconSize = AppSpacings.scale(18);
-
+    final iconColor = isActive
+        ? (isDark
+            ? AppFilledButtonsDarkThemes.primaryForegroundColor
+            : AppFilledButtonsLightThemes.primaryForegroundColor)
+        : (isDark
+            ? AppFilledButtonsDarkThemes.neutralForegroundColor
+            : AppFilledButtonsLightThemes.neutralForegroundColor);
     return SizedBox(
       width: double.infinity,
       child: Theme(
         data: themeData,
-        child: FilledButton(
+        child: FilledButton.icon(
           onPressed: () {
             HapticFeedback.lightImpact();
             onTap();
           },
+          icon: Icon(
+            icon,
+            size: AppFontSize.small,
+            color: iconColor,
+          ),
+          label: Text(
+            label,
+            style: TextStyle(
+              fontSize: AppFontSize.small,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
           style: FilledButton.styleFrom(
             padding: EdgeInsets.symmetric(
               horizontal: AppSpacings.pMd,
               vertical: AppSpacings.pSm,
             ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppBorderRadius.base),
-            ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            spacing: AppSpacings.pXs,
-            children: [
-              Icon(
-                icon,
-                size: iconSize,
-                color: isDark
-                    ? (isActive
-                        ? AppFilledButtonsDarkThemes.primaryForegroundColor
-                        : AppFilledButtonsDarkThemes.neutralForegroundColor)
-                    : (isActive
-                        ? AppFilledButtonsLightThemes.primaryForegroundColor
-                        : AppFilledButtonsLightThemes.neutralForegroundColor),
-              ),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: AppFontSize.small,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
           ),
         ),
       ),

@@ -436,10 +436,23 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
             ),
             textAlign: TextAlign.center,
           ),
-          FilledButton.icon(
-            onPressed: _loadSecurityData,
-            icon: Icon(MdiIcons.refresh),
-            label: const Text('Retry'),
+          Theme(
+            data: ThemeData(
+              filledButtonTheme: Theme.of(context).brightness == Brightness.dark
+                  ? AppFilledButtonsDarkThemes.primary
+                  : AppFilledButtonsLightThemes.primary,
+            ),
+            child: FilledButton.icon(
+              onPressed: _loadSecurityData,
+              icon: Icon(
+                MdiIcons.refresh,
+                size: AppFontSize.base,
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? AppFilledButtonsDarkThemes.primaryForegroundColor
+                    : AppFilledButtonsLightThemes.primaryForegroundColor,
+              ),
+              label: const Text('Retry'),
+            ),
           ),
         ],
       ),
@@ -592,6 +605,13 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
               child: Icon(
                 icon,
                 size: AppSpacings.scale(32),
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? (isActive
+                        ? AppFilledButtonsDarkThemes.primaryForegroundColor
+                        : AppFilledButtonsDarkThemes.infoForegroundColor)
+                    : (isActive
+                        ? AppFilledButtonsLightThemes.primaryForegroundColor
+                        : AppFilledButtonsLightThemes.infoForegroundColor),
               ),
             ),
           ),
@@ -673,6 +693,13 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
                     child: Icon(
                       scene.iconData,
                       size: AppSpacings.scale(32),
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? (isActive
+                              ? AppFilledButtonsDarkThemes.primaryForegroundColor
+                              : AppFilledButtonsDarkThemes.infoForegroundColor)
+                          : (isActive
+                              ? AppFilledButtonsLightThemes.primaryForegroundColor
+                              : AppFilledButtonsLightThemes.infoForegroundColor),
                     ),
                   ),
                 ),

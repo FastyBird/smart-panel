@@ -454,16 +454,6 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     return ThemeData(filledButtonTheme: filledTheme);
   }
 
-  Color _getActionIconColor(bool isActive) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return isDark
-        ? (isActive
-            ? AppFilledButtonsDarkThemes.primaryForegroundColor
-            : AppFilledButtonsDarkThemes.neutralForegroundColor)
-        : (isActive
-            ? AppFilledButtonsLightThemes.primaryForegroundColor
-            : AppFilledButtonsLightThemes.neutralForegroundColor);
-  }
 
   String _getStatusLabel(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
@@ -957,8 +947,16 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     required bool isActive,
     required VoidCallback onTap,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final iconSize = AppSpacings.scale(18);
     final buttonSize = AppSpacings.scale(36);
+    final iconColor = isActive
+        ? (isDark
+            ? AppFilledButtonsDarkThemes.primaryForegroundColor
+            : AppFilledButtonsLightThemes.primaryForegroundColor)
+        : (isDark
+            ? AppFilledButtonsDarkThemes.neutralForegroundColor
+            : AppFilledButtonsLightThemes.neutralForegroundColor);
 
     return SizedBox(
       width: buttonSize,
@@ -974,12 +972,8 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
             padding: EdgeInsets.zero,
             minimumSize: Size(buttonSize, buttonSize),
             maximumSize: Size(buttonSize, buttonSize),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppBorderRadius.base),
-            ),
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
-          child: Icon(icon, size: iconSize, color: _getActionIconColor(isActive)),
+          child: Icon(icon, size: iconSize, color: iconColor),
         ),
       ),
     );
@@ -1222,40 +1216,37 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     required bool isActive,
     required VoidCallback onTap,
   }) {
-    final iconSize = AppSpacings.scale(20);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final iconColor = isActive
+        ? (isDark
+            ? AppFilledButtonsDarkThemes.primaryForegroundColor
+            : AppFilledButtonsLightThemes.primaryForegroundColor)
+        : (isDark
+            ? AppFilledButtonsDarkThemes.neutralForegroundColor
+            : AppFilledButtonsLightThemes.neutralForegroundColor);
 
     return SizedBox(
       width: double.infinity,
       child: Theme(
         data: _getActionButtonTheme(isActive),
-        child: FilledButton(
+        child: FilledButton.icon(
           onPressed: () {
             HapticFeedback.lightImpact();
             onTap();
           },
+          icon: Icon(icon, size: AppFontSize.small, color: iconColor),
+          label: Text(
+            label,
+            style: TextStyle(
+              fontSize: AppFontSize.small,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
           style: FilledButton.styleFrom(
             padding: EdgeInsets.symmetric(
               horizontal: AppSpacings.pMd,
               vertical: AppSpacings.pSm,
             ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppBorderRadius.base),
-            ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            spacing: AppSpacings.pXs,
-            children: [
-              Icon(icon, size: iconSize, color: _getActionIconColor(isActive)),
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: AppFontSize.small,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
           ),
         ),
       ),
