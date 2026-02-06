@@ -418,16 +418,14 @@ class _CircularControlDialState extends State<CircularControlDial>
     final glowColor = accentColor.withValues(alpha: 0.35);
     final thumbPosition = _getThumbPosition();
 
-    return Padding(
-      padding: AppSpacings.paddingMd,
-      child: RawGestureDetector(
-        gestures: _gestures,
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTapUp: (details) => _handleTap(details.localPosition),
-          child: SizedBox(
-            width: widget.size,
-            height: widget.size,
+    return RawGestureDetector(
+      gestures: _gestures,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapUp: (details) => _handleTap(details.localPosition),
+        child: SizedBox(
+          width: widget.size,
+          height: widget.size,
           child: AnimatedBuilder(
             animation: _glowController,
             builder: (context, child) {
@@ -569,7 +567,6 @@ class _CircularControlDialState extends State<CircularControlDial>
           ),
         ),
       ),
-    ),
     );
   }
 
