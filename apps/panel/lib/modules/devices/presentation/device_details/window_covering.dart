@@ -539,11 +539,9 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   /// On large displays: uses portrait-style horizontal buttons below slider.
   /// On small/medium displays: uses vertical icon-only buttons on the side.
   Widget _buildLandscapeMainControl(BuildContext context) {
-    final bool isLight = Theme.of(context).brightness == Brightness.light;
-    final borderColor =
-        isLight ? AppBorderColorLight.darker : AppBorderColorDark.light;
-    final cardColor =
-        isLight ? AppFillColorLight.light : AppFillColorDark.light;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final borderColor = isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
+    final cardColor = isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
 
     return Container(
       decoration: BoxDecoration(
@@ -665,7 +663,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     double width,
     double height,
   ) {
-    final bool isLight = Theme.of(context).brightness == Brightness.light;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final coverHeight = (100 - _position) / 100;
 
     return Container(
@@ -676,13 +674,13 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: isLight
-              ? [_VisualizationColorsLight.skyTop, _VisualizationColorsLight.skyBottom]
-              : [_VisualizationColorsDark.skyTop, _VisualizationColorsDark.skyBottom],
+          colors: isDark
+              ? [_VisualizationColorsDark.skyTop, _VisualizationColorsDark.skyBottom]
+              : [_VisualizationColorsLight.skyTop, _VisualizationColorsLight.skyBottom],
         ),
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
         border: Border.all(
-          color: isLight ? AppBorderColorLight.darker : AppBorderColorDark.light,
+          color: isDark ? AppBorderColorDark.light : AppBorderColorLight.darker,
           width: _scale(4),
         ),
       ),
@@ -700,9 +698,9 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
                   vertical: AppSpacings.pXs,
                 ),
                 decoration: BoxDecoration(
-                  color: isLight
-                      ? AppColors.white.withValues(alpha: 0.9)
-                      : AppColors.black.withValues(alpha: 0.5),
+                  color: isDark
+                      ? AppColors.black.withValues(alpha: 0.5)
+                      : AppColors.white.withValues(alpha: 0.9),
                   borderRadius: BorderRadius.circular(AppBorderRadius.small),
                 ),
                 child: Text(
@@ -710,9 +708,9 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
                   style: TextStyle(
                     fontSize: AppFontSize.extraSmall,
                     fontWeight: FontWeight.w500,
-                    color: isLight
-                        ? AppTextColorLight.regular
-                        : AppTextColorDark.regular,
+                    color: isDark
+                        ? AppTextColorDark.regular
+                        : AppTextColorLight.regular,
                   ),
                 ),
               ),
@@ -754,7 +752,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   }
 
   Widget _buildBlindVisualizationScaled(BuildContext context, double coverHeight, double containerHeight) {
-    final bool isLight = Theme.of(context).brightness == Brightness.light;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final slatHeight = _scale(8);
     final slatMargin = _scale(2);
     final slatTotal = slatHeight + slatMargin;
@@ -783,9 +781,9 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: isLight
-                      ? [_VisualizationColorsLight.metalSlatTop, _VisualizationColorsLight.metalSlatBottom]
-                      : [_VisualizationColorsDark.metalSlatTop, _VisualizationColorsDark.metalSlatBottom],
+                  colors: isDark
+                      ? [_VisualizationColorsDark.metalSlatTop, _VisualizationColorsDark.metalSlatBottom]
+                      : [_VisualizationColorsLight.metalSlatTop, _VisualizationColorsLight.metalSlatBottom],
                 ),
               ),
             ),
@@ -796,7 +794,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   }
 
   Widget _buildCurtainVisualizationScaled(BuildContext context, double containerWidth, double containerHeight) {
-    final bool isLight = Theme.of(context).brightness == Brightness.light;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final panelWidth = (100 - _position) / 100 * 0.5;
     final innerWidth = containerWidth - _scale(8);
     final innerHeight = containerHeight - _scale(8);
@@ -815,12 +813,12 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
               gradient: LinearGradient(
                 begin: Alignment.centerLeft,
                 end: Alignment.centerRight,
-                colors: isLight
-                    ? [_VisualizationColorsLight.fabricLight, _VisualizationColorsLight.fabricMedium, _VisualizationColorsLight.fabricDark]
-                    : [_VisualizationColorsDark.fabricLight, _VisualizationColorsDark.fabricMedium, _VisualizationColorsDark.fabricDark],
+                colors: isDark
+                    ? [_VisualizationColorsDark.fabricLight, _VisualizationColorsDark.fabricMedium, _VisualizationColorsDark.fabricDark]
+                    : [_VisualizationColorsLight.fabricLight, _VisualizationColorsLight.fabricMedium, _VisualizationColorsLight.fabricDark],
               ),
             ),
-            child: _buildCurtainFolds(isLight),
+            child: _buildCurtainFolds(isDark),
           ),
           AnimatedContainer(
             duration: const Duration(milliseconds: 300),
@@ -830,12 +828,12 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
               gradient: LinearGradient(
                 begin: Alignment.centerRight,
                 end: Alignment.centerLeft,
-                colors: isLight
-                    ? [_VisualizationColorsLight.fabricLight, _VisualizationColorsLight.fabricMedium, _VisualizationColorsLight.fabricDark]
-                    : [_VisualizationColorsDark.fabricLight, _VisualizationColorsDark.fabricMedium, _VisualizationColorsDark.fabricDark],
+                colors: isDark
+                    ? [_VisualizationColorsDark.fabricLight, _VisualizationColorsDark.fabricMedium, _VisualizationColorsDark.fabricDark]
+                    : [_VisualizationColorsLight.fabricLight, _VisualizationColorsLight.fabricMedium, _VisualizationColorsLight.fabricDark],
               ),
             ),
-            child: _buildCurtainFolds(isLight),
+            child: _buildCurtainFolds(isDark),
           ),
         ],
       ),
@@ -843,7 +841,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   }
 
   Widget _buildRollerVisualizationScaled(BuildContext context, double coverHeight, double containerHeight) {
-    final bool isLight = Theme.of(context).brightness == Brightness.light;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final tubeHeight = _scale(12);
     final shadeMaxHeight = containerHeight - tubeHeight;
 
@@ -856,9 +854,9 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: isLight
-                  ? [_VisualizationColorsLight.metalTubeTop, _VisualizationColorsLight.metalTubeBottom]
-                  : [_VisualizationColorsDark.metalTubeTop, _VisualizationColorsDark.metalTubeBottom],
+              colors: isDark
+                  ? [_VisualizationColorsDark.metalTubeTop, _VisualizationColorsDark.metalTubeBottom]
+                  : [_VisualizationColorsLight.metalTubeTop, _VisualizationColorsLight.metalTubeBottom],
             ),
           ),
         ),
@@ -871,9 +869,9 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: isLight
-                  ? [_VisualizationColorsLight.shadeFabricTop, _VisualizationColorsLight.shadeFabricBottom]
-                  : [_VisualizationColorsDark.shadeFabricTop, _VisualizationColorsDark.shadeFabricBottom],
+              colors: isDark
+                  ? [_VisualizationColorsDark.shadeFabricTop, _VisualizationColorsDark.shadeFabricBottom]
+                  : [_VisualizationColorsLight.shadeFabricTop, _VisualizationColorsLight.shadeFabricBottom],
             ),
           ),
         ),
@@ -882,7 +880,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   }
 
   Widget _buildOutdoorBlindVisualizationScaled(BuildContext context, double coverHeight, double containerHeight) {
-    final bool isLight = Theme.of(context).brightness == Brightness.light;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final slatHeight = _scale(10);
     final slatMargin = _scale(3);
     final slatTotal = slatHeight + slatMargin;
@@ -911,9 +909,9 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: isLight
-                      ? [_VisualizationColorsLight.woodSlatTop, _VisualizationColorsLight.woodSlatBottom]
-                      : [_VisualizationColorsDark.woodSlatTop, _VisualizationColorsDark.woodSlatBottom],
+                  colors: isDark
+                      ? [_VisualizationColorsDark.woodSlatTop, _VisualizationColorsDark.woodSlatBottom]
+                      : [_VisualizationColorsLight.woodSlatTop, _VisualizationColorsLight.woodSlatBottom],
                 ),
               ),
             ),
@@ -1091,15 +1089,15 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   // --------------------------------------------------------------------------
 
   Widget _buildMainControlCard(BuildContext context) {
-    final bool isLight = Theme.of(context).brightness == Brightness.light;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
       padding: AppSpacings.paddingMd,
       decoration: BoxDecoration(
-        color: isLight ? AppFillColorLight.light : AppFillColorDark.light,
+        color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
         border: Border.all(
-        color: isLight ? AppBorderColorLight.darker : AppBorderColorDark.light,
+        color: isDark ? AppBorderColorDark.light : AppBorderColorLight.darker,
         width: _scale(1),
       ),
     ),
@@ -1124,10 +1122,10 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     return _buildWindowVisualizationSized(context, width, height);
   }
 
-  Widget _buildCurtainFolds(bool isLight) {
+  Widget _buildCurtainFolds(bool isDark) {
     return CustomPaint(
       painter: _CurtainFoldsPainter(
-        isLight: isLight,
+        isDark: isDark,
         scaleFactor: _scale(1),
       ),
       size: Size.infinite,
@@ -1529,15 +1527,15 @@ class _Preset {
 
 /// CustomPainter that draws vertical fold lines for curtain visualization.
 class _CurtainFoldsPainter extends CustomPainter {
-  final bool isLight;
+  final bool isDark;
   final double scaleFactor;
 
-  _CurtainFoldsPainter({required this.isLight, required this.scaleFactor});
+  _CurtainFoldsPainter({required this.isDark, required this.scaleFactor});
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = AppColors.black.withValues(alpha: isLight ? 0.05 : 0.15)
+      ..color = AppColors.black.withValues(alpha: isDark ? 0.15 : 0.05)
       ..strokeWidth = scaleFactor
       ..style = PaintingStyle.stroke;
 
@@ -1554,7 +1552,7 @@ class _CurtainFoldsPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _CurtainFoldsPainter oldDelegate) =>
-      oldDelegate.isLight != isLight || oldDelegate.scaleFactor != scaleFactor;
+      oldDelegate.isDark != isDark || oldDelegate.scaleFactor != scaleFactor;
 }
 
 // --------------------------------------------------------------------------

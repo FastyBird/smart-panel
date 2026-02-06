@@ -693,23 +693,24 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		MediaActiveStateModel? activeState,
 	) {
 		// Off, deactivating, activating and failed are handled at layout level; this is only for active.
-		final isLight = Theme.of(context).brightness == Brightness.light;
+		final isDark = Theme.of(context).brightness == Brightness.dark;
 
 		final content = _buildActiveCard(context, activeState!);
+
+    final borderColor = isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
+    final cardColor = isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
 
 		return Container(
 			width: double.infinity,
 			height: _screenService.isLandscape ? double.infinity : null,
 			padding: AppSpacings.paddingMd,
 			decoration: BoxDecoration(
-				color: isLight ? AppFillColorLight.light : AppFillColorDark.light,
+				color: cardColor,
 				borderRadius: BorderRadius.circular(AppBorderRadius.base),
-        border: isLight
-            ? Border.all(
-                color: AppBorderColorLight.darker,
-                width: _scale(1),
-              )
-            : null,
+        border: Border.all(
+          color: borderColor,
+          width: _scale(1),
+        ),
 			),
 			child: content,
 		);
@@ -1097,7 +1098,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 
 	Widget _buildCompositionPreview(BuildContext context, List<_CompositionDisplayItem> items) {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
-		final isLight = !isDark;
 		final warningColor = isDark ? AppColorsDark.warning : AppColorsLight.warning;
 
 		return Container(
@@ -1112,7 +1112,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 					final icon = _roleIcon(item.role);
 					final nameText = item.isOnline ? item.displayName : '${item.displayName} (offline)';
 					final nameColor = item.isOnline
-							? (isLight ? AppTextColorLight.primary : AppTextColorDark.primary)
+							? (isDark ? AppTextColorDark.primary : AppTextColorLight.primary)
 							: warningColor;
 
 					// Resolve input source value and format
@@ -1154,7 +1154,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 												style: TextStyle(
 													fontSize: AppFontSize.extraSmall,
 													fontWeight: FontWeight.w500,
-													color: isLight ? AppTextColorLight.secondary : AppTextColorDark.placeholder,
+													color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.secondary,
 													letterSpacing: 0.5,
 												),
 											),

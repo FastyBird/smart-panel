@@ -688,7 +688,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     bool showSlider = false,
     bool showActions = false,
   }) {
-    final bool isLight = Theme.of(context).brightness == Brightness.light;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final position = _getRolePosition(roleData);
     final positionColorFamily = _getPositionColorFamily(context, position);
     final localizations = AppLocalizations.of(context)!;
@@ -700,13 +700,16 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     // Show controls if forced OR expanded
     final bool shouldShowControls = showSlider || showActions || isExpanded;
 
+    final borderColor = isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
+    final cardColor = isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
+
     return Container(
       padding: AppSpacings.paddingMd,
       decoration: BoxDecoration(
-        color: isLight ? AppFillColorLight.light : AppFillColorDark.lighter,
+        color: cardColor,
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
         border: Border.all(
-          color: isLight ? AppBorderColorLight.darker : AppBorderColorDark.light,
+          color: borderColor,
           width: _screenService.scale(1),
         ),
       ),
@@ -757,18 +760,18 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
                       style: TextStyle(
                         fontSize: AppFontSize.large,
                         fontWeight: FontWeight.w600,
-                        color: isLight
-                            ? AppTextColorLight.regular
-                            : AppTextColorDark.regular,
+                        color: isDark
+                            ? AppTextColorDark.regular
+                            : AppTextColorLight.regular,
                       ),
                     ),
                     Text(
                       localizations.shading_devices_count(roleData.deviceCount),
                       style: TextStyle(
                         fontSize: AppFontSize.small,
-                        color: isLight
-                            ? AppTextColorLight.secondary
-                            : AppTextColorDark.secondary,
+                        color: isDark
+                            ? AppTextColorDark.secondary
+                            : AppTextColorLight.secondary,
                       ),
                     ),
                   ],
@@ -786,18 +789,18 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
                         density: _visualDensityService.density,
                       ),
                       fontWeight: FontWeight.w300,
-                      color: isLight
-                            ? AppTextColorLight.regular
-                            : AppTextColorDark.regular,
+                      color: isDark
+                            ? AppTextColorDark.regular
+                            : AppTextColorLight.regular,
                     ),
                   ),
                   Text(
                     _getPositionText(position, localizations),
                     style: TextStyle(
                       fontSize: AppFontSize.extraSmall,
-                      color: isLight
-                          ? AppTextColorLight.placeholder
-                          : AppTextColorDark.placeholder,
+                      color: isDark
+                          ? AppTextColorDark.placeholder
+                          : AppTextColorLight.placeholder,
                     ),
                   ),
                 ],
@@ -824,7 +827,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     bool isExpanded,
     AppLocalizations localizations,
   ) {
-    final bool isLight = Theme.of(context).brightness == Brightness.light;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return GestureDetector(
       onTap: () {
@@ -848,9 +851,9 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
                   : localizations.shading_tap_for_controls,
               style: TextStyle(
                 fontSize: AppFontSize.small,
-                color: isLight
-                    ? AppTextColorLight.secondary
-                    : AppTextColorDark.secondary,
+                color: isDark
+                    ? AppTextColorDark.secondary
+                    : AppTextColorLight.secondary,
               ),
             ),
             Icon(
@@ -859,9 +862,9 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
                 16,
                 density: _visualDensityService.density,
               ),
-              color: isLight
-                  ? AppTextColorLight.secondary
-                  : AppTextColorDark.secondary,
+              color: isDark
+                  ? AppTextColorDark.secondary
+                  : AppTextColorLight.secondary,
             ),
           ],
         ),
@@ -1258,12 +1261,12 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   // --------------------------------------------------------------------------
 
   Widget _buildEmptyState(BuildContext context) {
-    final bool isLight = Theme.of(context).brightness == Brightness.light;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final localizations = AppLocalizations.of(context)!;
-    final secondaryColor = isLight ? AppTextColorLight.secondary : AppTextColorDark.secondary;
+    final secondaryColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
 
     return Scaffold(
-      backgroundColor: isLight ? AppBgColorLight.page : AppBgColorDark.page,
+      backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
       body: SafeArea(
         child: Column(
           children: [
@@ -1301,9 +1304,9 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
                         style: TextStyle(
                           fontSize: AppFontSize.extraLarge,
                           fontWeight: FontWeight.w600,
-                          color: isLight
-                              ? AppTextColorLight.primary
-                              : AppTextColorDark.primary,
+                          color: isDark
+                              ? AppTextColorDark.primary
+                              : AppTextColorLight.primary,
                         ),
                       ),
                       Text(
