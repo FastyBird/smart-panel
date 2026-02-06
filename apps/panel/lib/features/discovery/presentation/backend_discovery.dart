@@ -431,6 +431,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
           onPressed: _cancelDiscovery,
           icon: Icon(
             MdiIcons.close,
+            size: AppFontSize.base,
             color: isDark
                 ? AppOutlinedButtonsDarkThemes.primaryForegroundColor
                 : AppOutlinedButtonsLightThemes.primaryForegroundColor,
@@ -534,12 +535,20 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
                     _selectedBackend != null ? _confirmSelection : null,
                 icon: Icon(
                   MdiIcons.arrowRight,
+                  size: AppFontSize.base,
                   color: isDark
                       ? AppFilledButtonsDarkThemes.primaryForegroundColor
                       : AppFilledButtonsLightThemes.primaryForegroundColor,
                 ),
                 label: Text(
-                    localizations.discovery_button_connect_selected),
+                    localizations.discovery_button_connect_selected
+                ),
+                style: FilledButton.styleFrom(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: AppSpacings.pMd,
+                    vertical: AppSpacings.pMd,
+                  ),
+                ),
               ),
             ),
           ),
@@ -551,35 +560,49 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
               Theme(
                 data: Theme.of(context).copyWith(
                   textButtonTheme: isDark
-                      ? AppTextButtonsDarkThemes.primary
-                      : AppTextButtonsLightThemes.primary,
+                      ? AppTextButtonsDarkThemes.neutral
+                      : AppTextButtonsLightThemes.neutral,
                 ),
                 child: TextButton.icon(
                   onPressed: _startDiscovery,
                   icon: Icon(
                     MdiIcons.cached,
+                    size: AppFontSize.base,
                     color: isDark
-                        ? AppTextButtonsDarkThemes.primaryForegroundColor
-                        : AppTextButtonsLightThemes.primaryForegroundColor,
+                        ? AppTextButtonsDarkThemes.neutralForegroundColor
+                        : AppTextButtonsLightThemes.neutralForegroundColor,
                   ),
                   label: Text(localizations.discovery_button_rescan),
+                  style: FilledButton.styleFrom(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: AppSpacings.pMd,
+                      vertical: AppSpacings.pMd,
+                    ),
+                  ),
                 ),
               ),
               Theme(
                 data: Theme.of(context).copyWith(
                   textButtonTheme: isDark
-                      ? AppTextButtonsDarkThemes.primary
-                      : AppTextButtonsLightThemes.primary,
+                      ? AppTextButtonsDarkThemes.neutral
+                      : AppTextButtonsLightThemes.neutral,
                 ),
                 child: TextButton.icon(
                   onPressed: _showManualEntryForm,
                   icon: Icon(
                     MdiIcons.pencilOutline,
+                    size: AppFontSize.base,
                     color: isDark
-                        ? AppTextButtonsDarkThemes.primaryForegroundColor
-                        : AppTextButtonsLightThemes.primaryForegroundColor,
+                        ? AppTextButtonsDarkThemes.neutralForegroundColor
+                        : AppTextButtonsLightThemes.neutralForegroundColor,
                   ),
                   label: Text(localizations.discovery_button_manual),
+                  style: FilledButton.styleFrom(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: AppSpacings.pMd,
+                      vertical: AppSpacings.pMd,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -677,6 +700,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
                           _selectedBackend != null ? _confirmSelection : null,
                       icon: Icon(
                         MdiIcons.arrowRight,
+                        size: AppFontSize.base,
                         color: isDark
                             ? AppFilledButtonsDarkThemes
                                 .primaryForegroundColor
@@ -702,6 +726,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
                         onPressed: _startDiscovery,
                         icon: Icon(
                           MdiIcons.cached,
+                          size: AppFontSize.base,
                           color: isDark
                               ? AppTextButtonsDarkThemes
                                   .primaryForegroundColor
@@ -722,6 +747,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
                         onPressed: _showManualEntryForm,
                         icon: Icon(
                           MdiIcons.pencilOutline,
+                          size: AppFontSize.base,
                           color: isDark
                               ? AppTextButtonsDarkThemes
                                   .primaryForegroundColor
@@ -821,6 +847,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
               onPressed: _startDiscovery,
               icon: Icon(
                 MdiIcons.cached,
+                size: AppFontSize.base,
                 color: isDark
                     ? AppFilledButtonsDarkThemes.primaryForegroundColor
                     : AppFilledButtonsLightThemes.primaryForegroundColor,
@@ -839,6 +866,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
               onPressed: _showManualEntryForm,
               icon: Icon(
                 MdiIcons.pencilOutline,
+                size: AppFontSize.base,
                 color: isDark
                     ? AppOutlinedButtonsDarkThemes.primaryForegroundColor
                     : AppOutlinedButtonsLightThemes.primaryForegroundColor,
@@ -864,6 +892,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
               onPressed: _startDiscovery,
               icon: Icon(
                 MdiIcons.cached,
+                size: AppFontSize.base,
                 color: isDark
                     ? AppFilledButtonsDarkThemes.primaryForegroundColor
                     : AppFilledButtonsLightThemes.primaryForegroundColor,
@@ -885,6 +914,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
               onPressed: _showManualEntryForm,
               icon: Icon(
                 MdiIcons.pencilOutline,
+                size: AppFontSize.base,
                 color: isDark
                     ? AppOutlinedButtonsDarkThemes.primaryForegroundColor
                     : AppOutlinedButtonsLightThemes.primaryForegroundColor,
@@ -1087,6 +1117,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
               onPressed: _backToDiscovery,
               icon: Icon(
                 MdiIcons.arrowLeft,
+                size: AppFontSize.base,
                 color: isDark
                     ? AppOutlinedButtonsDarkThemes.primaryForegroundColor
                     : AppOutlinedButtonsLightThemes.primaryForegroundColor,
@@ -1105,6 +1136,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
               onPressed: hasText ? _submitManualUrl : null,
               icon: Icon(
                 MdiIcons.arrowRight,
+                size: AppFontSize.base,
                 color: isDark
                     ? AppFilledButtonsDarkThemes.primaryForegroundColor
                     : AppFilledButtonsLightThemes.primaryForegroundColor,
@@ -1130,6 +1162,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
               onPressed: hasText ? _submitManualUrl : null,
               icon: Icon(
                 MdiIcons.arrowRight,
+                size: AppFontSize.base,
                 color: isDark
                     ? AppFilledButtonsDarkThemes.primaryForegroundColor
                     : AppFilledButtonsLightThemes.primaryForegroundColor,
@@ -1151,6 +1184,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
               onPressed: _backToDiscovery,
               icon: Icon(
                 MdiIcons.arrowLeft,
+                size: AppFontSize.base,
                 color: isDark
                     ? AppOutlinedButtonsDarkThemes.primaryForegroundColor
                     : AppOutlinedButtonsLightThemes.primaryForegroundColor,

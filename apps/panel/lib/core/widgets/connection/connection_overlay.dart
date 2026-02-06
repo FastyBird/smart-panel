@@ -152,6 +152,7 @@ class _ConnectionOverlayState extends State<ConnectionOverlay> {
                             onPressed: _handleRetry,
                             icon: Icon(
                               MdiIcons.refresh,
+                              size: AppFontSize.base,
                               color: isDark
                                   ? AppFilledButtonsDarkThemes
                                       .primaryForegroundColor

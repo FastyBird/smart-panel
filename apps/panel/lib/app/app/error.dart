@@ -115,6 +115,7 @@ class AppError extends StatelessWidget {
                           onPressed: _onRestart,
                           icon: Icon(
                             MdiIcons.refresh,
+                            size: AppFontSize.base,
                             color: isDark
                                 ? AppFilledButtonsDarkThemes
                                     .primaryForegroundColor

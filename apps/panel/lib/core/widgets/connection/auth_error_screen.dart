@@ -90,6 +90,7 @@ class AuthErrorScreen extends StatelessWidget {
                           onPressed: onReset,
                           icon: Icon(
                             MdiIcons.restart,
+                            size: AppFontSize.base,
                             color: isDark
                                 ? AppFilledButtonsDarkThemes
                                     .primaryForegroundColor

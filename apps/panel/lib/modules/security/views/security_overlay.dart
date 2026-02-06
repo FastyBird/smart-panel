@@ -102,6 +102,7 @@ class SecurityOverlay extends StatelessWidget {
 													onPressed: onAcknowledge,
 													icon: Icon(
 														MdiIcons.check,
+														size: AppFontSize.base,
 														color: isDark
 															? AppFilledButtonsDarkThemes.primaryForegroundColor
 															: AppFilledButtonsLightThemes.primaryForegroundColor,
@@ -123,6 +124,7 @@ class SecurityOverlay extends StatelessWidget {
 													onPressed: onOpenSecurity,
 													icon: Icon(
 														MdiIcons.shieldAlert,
+														size: AppFontSize.base,
 														color: isDark
 															? AppOutlinedButtonsDarkThemes.primaryForegroundColor
 															: AppOutlinedButtonsLightThemes.primaryForegroundColor,

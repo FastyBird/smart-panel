@@ -116,6 +116,7 @@ class ConnectionLostScreen extends StatelessWidget {
               onPressed: onReconnect,
               icon: Icon(
                 MdiIcons.cached,
+                size: AppFontSize.base,
                 color: isDark
                     ? AppFilledButtonsDarkThemes.primaryForegroundColor
                     : AppFilledButtonsLightThemes.primaryForegroundColor,
@@ -135,6 +136,7 @@ class ConnectionLostScreen extends StatelessWidget {
               onPressed: onChangeGateway,
               icon: Icon(
                 MdiIcons.wifi,
+                size: AppFontSize.base,
                 color: isDark
                     ? AppOutlinedButtonsDarkThemes.primaryForegroundColor
                     : AppOutlinedButtonsLightThemes.primaryForegroundColor,
@@ -161,6 +163,7 @@ class ConnectionLostScreen extends StatelessWidget {
               onPressed: onReconnect,
               icon: Icon(
                 MdiIcons.cached,
+                size: AppFontSize.base,
                 color: isDark
                     ? AppFilledButtonsDarkThemes.primaryForegroundColor
                     : AppFilledButtonsLightThemes.primaryForegroundColor,
@@ -183,6 +186,7 @@ class ConnectionLostScreen extends StatelessWidget {
               onPressed: onChangeGateway,
               icon: Icon(
                 MdiIcons.wifi,
+                size: AppFontSize.base,
                 color: isDark
                     ? AppOutlinedButtonsDarkThemes.primaryForegroundColor
                     : AppOutlinedButtonsLightThemes.primaryForegroundColor,

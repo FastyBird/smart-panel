@@ -87,6 +87,7 @@ class ServerErrorScreen extends StatelessWidget {
                           onPressed: onRetry,
                           icon: Icon(
                             MdiIcons.refresh,
+                            size: AppFontSize.base,
                             color: isDark
                                 ? AppFilledButtonsDarkThemes
                                     .primaryForegroundColor
