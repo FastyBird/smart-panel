@@ -7,6 +7,7 @@ import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_card.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/circular_control_dial.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_landscape_layout.dart';
@@ -676,21 +677,11 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
     bool isDark, {
     required double dialSize,
   }) {
-    final borderColor =
-        isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
-    final cardColor =
-        isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
     final (minSetpoint, maxSetpoint) = _validSetpointRange;
     final targetSetpoint = _targetSetpoint.clamp(minSetpoint, maxSetpoint);
 
-    return Container(
+    return AppCard(
       width: double.infinity,
-      padding: AppSpacings.paddingMd,
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(AppBorderRadius.base),
-        border: Border.all(color: borderColor, width: _scale(1)),
-      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -716,20 +707,10 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
   }
 
   Widget _buildCompactDialWithModes(BuildContext context, bool isDark) {
-    final borderColor =
-        isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
-    final cardColor =
-        isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
     final (minSetpoint, maxSetpoint) = _validSetpointRange;
     final targetSetpoint = _targetSetpoint.clamp(minSetpoint, maxSetpoint);
 
-    return Container(
-      padding: AppSpacings.paddingMd,
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(AppBorderRadius.base),
-        border: Border.all(color: borderColor, width: _scale(1)),
-      ),
+    return AppCard(
       child: LayoutBuilder(
         builder: (context, constraints) {
           final modeIconsWidth = _scale(50);

@@ -6,6 +6,7 @@ import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_card.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_landscape_layout.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_portrait_layout.dart';
@@ -795,18 +796,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
   Widget _buildControlCard(
       BuildContext context, bool isDark, Color airColor) {
     final localizations = AppLocalizations.of(context)!;
-    final cardColor =
-        isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
-    final borderColor =
-        isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
-
-    return Container(
-      padding: AppSpacings.paddingMd,
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(AppBorderRadius.base),
-        border: Border.all(color: borderColor, width: _scale(1)),
-      ),
+    return AppCard(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1009,18 +999,8 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
   Widget _buildCompactControlCard(
       BuildContext context, bool isDark, Color airColor) {
     final localizations = AppLocalizations.of(context)!;
-    final cardColor =
-        isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
-    final borderColor =
-        isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
 
-    return Container(
-      padding: AppSpacings.paddingMd,
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(AppBorderRadius.base),
-        border: Border.all(color: borderColor, width: _scale(1)),
-      ),
+    return AppCard(
       child: LayoutBuilder(
         builder: (context, constraints) {
           return Row(

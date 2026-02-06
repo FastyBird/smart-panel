@@ -59,6 +59,7 @@ import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_banner.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_card.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_bottom_sheet.dart';
 import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
@@ -693,25 +694,10 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		MediaActiveStateModel? activeState,
 	) {
 		// Off, deactivating, activating and failed are handled at layout level; this is only for active.
-		final isDark = Theme.of(context).brightness == Brightness.dark;
-
 		final content = _buildActiveCard(context, activeState!);
 
-    final borderColor = isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
-    final cardColor = isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
-
-		return Container(
+		return AppCard(
 			width: double.infinity,
-			height: _screenService.isLandscape ? double.infinity : null,
-			padding: AppSpacings.paddingMd,
-			decoration: BoxDecoration(
-				color: cardColor,
-				borderRadius: BorderRadius.circular(AppBorderRadius.base),
-        border: Border.all(
-          color: borderColor,
-          width: _scale(1),
-        ),
-			),
 			child: content,
 		);
 	}

@@ -5,6 +5,7 @@ import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_card.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_landscape_layout.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_portrait_layout.dart';
@@ -539,19 +540,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   /// On large displays: uses portrait-style horizontal buttons below slider.
   /// On small/medium displays: uses vertical icon-only buttons on the side.
   Widget _buildLandscapeMainControl(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final borderColor = isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
-    final cardColor = isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
-
-    return Container(
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(AppBorderRadius.base),
-        border: Border.all(
-          color: borderColor,
-          width: _scale(1),
-        ),
-      ),
+    return AppCard(
       child: LayoutBuilder(
         builder: (context, constraints) {
           // Use screen service breakpoints for consistent behavior

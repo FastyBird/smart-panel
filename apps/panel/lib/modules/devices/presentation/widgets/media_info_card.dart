@@ -1,4 +1,5 @@
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_card.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 
@@ -24,22 +25,14 @@ class MediaInfoCard extends StatelessWidget {
 	Widget build(BuildContext context) {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 		final localizations = AppLocalizations.of(context)!;
-		final cardColor = isDark ? AppFillColorDark.light : AppFillColorLight.blank;
-		final borderColor = isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
 		final secondaryColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
 		final iconContainer = ThemeColorFamily.get(
 			isDark ? Brightness.dark : Brightness.light,
 			themeColor,
 		).iconContainer;
 
-		return Container(
+		return AppCard(
 			width: double.infinity,
-			padding: AppSpacings.paddingLg,
-			decoration: BoxDecoration(
-				color: cardColor,
-				borderRadius: BorderRadius.circular(AppBorderRadius.base),
-				border: Border.all(color: borderColor, width: scale(1)),
-			),
 			child: Column(
 				spacing: AppSpacings.pMd,
 				children: [

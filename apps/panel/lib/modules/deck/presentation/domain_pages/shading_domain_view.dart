@@ -43,6 +43,7 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_card.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/intent_mode_selector.dart';
@@ -700,19 +701,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     // Show controls if forced OR expanded
     final bool shouldShowControls = showSlider || showActions || isExpanded;
 
-    final borderColor = isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
-    final cardColor = isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
-
-    return Container(
-      padding: AppSpacings.paddingMd,
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(AppBorderRadius.base),
-        border: Border.all(
-          color: borderColor,
-          width: _screenService.scale(1),
-        ),
-      ),
+    return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         spacing: AppSpacings.pMd,

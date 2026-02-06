@@ -1,7 +1,5 @@
-import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
-import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_card.dart';
 import 'package:fastybird_smart_panel/core/widgets/slider_with_steps.dart';
 import 'package:flutter/material.dart';
 
@@ -103,11 +101,6 @@ class CardSlider extends StatefulWidget {
 // -----------------------------------------------------------------------------
 
 class _CardSliderState extends State<CardSlider> {
-  // --- Dependencies ---
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
   // --- Value sync state ---
   /// Displayed value to prevent jumps during state changes.
   double _displayValue = 0.0;
@@ -144,9 +137,6 @@ class _CardSliderState extends State<CardSlider> {
 
   // --- Helpers ---
 
-  double _scale(double val) =>
-      _screenService.scale(val, density: _visualDensityService.density);
-
   String _getCurrentStepLabel() {
     if (widget.steps.isEmpty) return '';
     final clamped = _displayValue.clamp(0.0, 1.0);
@@ -161,8 +151,6 @@ class _CardSliderState extends State<CardSlider> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final colors = (
-      card: widget.cardColor ?? (isDark ? AppFillColorDark.lighter : AppFillColorLight.light),
-      border: widget.borderColor ?? (isDark ? AppBorderColorDark.light : AppBorderColorLight.darker),
       text: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
       secondary: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
     );
@@ -172,16 +160,9 @@ class _CardSliderState extends State<CardSlider> {
     return AnimatedOpacity(
       opacity: widget.enabled ? 1.0 : 0.5,
       duration: const Duration(milliseconds: 200),
-      child: Container(
-        padding: AppSpacings.paddingMd,
-        decoration: BoxDecoration(
-          color: colors.card,
-          borderRadius: BorderRadius.circular(AppBorderRadius.base),
-          border: Border.all(
-            color: colors.border,
-            width: _scale(1),
-          ),
-        ),
+      child: AppCard(
+        color: widget.cardColor,
+        borderColor: widget.borderColor,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           spacing: AppSpacings.pMd,
@@ -197,7 +178,7 @@ class _CardSliderState extends State<CardSlider> {
 
   Widget _buildHeader(
     BuildContext context,
-    ({Color card, Color border, Color text, Color secondary}) colors,
+    ({Color text, Color secondary}) colors,
     String displayLabel,
   ) {
     final valueText = widget.discrete

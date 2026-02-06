@@ -60,6 +60,7 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_card.dart';
 import 'package:fastybird_smart_panel/core/widgets/circular_control_dial.dart';
 import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
@@ -1932,23 +1933,8 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   }
 
   Widget _buildCompactDial(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final localizations = AppLocalizations.of(context)!;
-    final borderColor = _state.mode != ClimateMode.off
-        ? _getModeColorFamily(context).light7
-        : (isDark ? AppBorderColorDark.light : AppBorderColorLight.darker);
-
-    // Use darker bg in dark mode for better contrast with dial inner background
-    final cardColor =
-        isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
-
-    return Container(
-      padding: AppSpacings.paddingLg,
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(AppBorderRadius.base),
-        border: Border.all(color: borderColor, width: _scale(1)),
-      ),
+    return AppCard(
       child: LayoutBuilder(
         builder: (context, constraints) {
           final dialSize =
@@ -2039,20 +2025,8 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     required double dialSize,
   }) {
     final localizations = AppLocalizations.of(context)!;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final borderColor = _getModeColorFamily(context).light7;
-    // Use darker bg in dark mode for better contrast with dial inner background
-    final cardColor =
-        isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
-
-    return Container(
+    return AppCard(
       width: double.infinity,
-      padding: AppSpacings.paddingMd,
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(AppBorderRadius.base),
-        border: Border.all(color: borderColor, width: _scale(1)),
-      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [

@@ -1,6 +1,7 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_card.dart';
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -92,21 +93,11 @@ class MediaPlaybackCard extends StatelessWidget {
 	Widget build(BuildContext context) {
 		if (!_hasPlaybackContent) return const SizedBox.shrink();
 
-		final isDark = Theme.of(context).brightness == Brightness.dark;
-		final cardColor = isDark ? AppFillColorDark.light : AppFillColorLight.blank;
-		final borderColor = isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
-
 		return AnimatedOpacity(
 			opacity: isEnabled ? 1.0 : 0.5,
 			duration: const Duration(milliseconds: 200),
-			child: Container(
+			child: AppCard(
 				width: double.infinity,
-				padding: AppSpacings.paddingMd,
-				decoration: BoxDecoration(
-					color: cardColor,
-					borderRadius: BorderRadius.circular(AppBorderRadius.base),
-					border: Border.all(color: borderColor, width: scale(1)),
-				),
 				child: Column(
 				spacing: AppSpacings.pMd,
 				children: [
