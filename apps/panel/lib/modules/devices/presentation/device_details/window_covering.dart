@@ -710,8 +710,9 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
         case WindowCoveringTypeValue.venetianBlind:
           return _buildBlindVisualizationScaled(context, coverHeight, innerHeight);
         case WindowCoveringTypeValue.curtain:
-        case WindowCoveringTypeValue.verticalBlind:
           return _buildCurtainVisualizationScaled(context, containerWidth, containerHeight);
+        case WindowCoveringTypeValue.verticalBlind:
+          return _buildSheersVisualizationScaled(context, containerWidth, containerHeight);
         case WindowCoveringTypeValue.roller:
         case WindowCoveringTypeValue.awning:
           return _buildRollerVisualizationScaled(context, coverHeight, innerHeight);
@@ -849,6 +850,55 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildSheersVisualizationScaled(BuildContext context, double containerWidth, double containerHeight) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final panelWidth = (100 - _position) / 100 * 0.5;
+    final innerWidth = containerWidth - AppSpacings.scale(8);
+    final innerHeight = containerHeight - AppSpacings.scale(8);
+
+    return SizedBox(
+      width: innerWidth,
+      height: innerHeight,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            width: innerWidth * panelWidth,
+            height: innerHeight,
+            decoration: BoxDecoration(
+              color: isDark
+                  ? _VisualizationColorsDark.sheersPanel
+                  : _VisualizationColorsLight.sheersPanel,
+            ),
+            child: _buildSheersFolds(isDark),
+          ),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            width: innerWidth * panelWidth,
+            height: innerHeight,
+            decoration: BoxDecoration(
+              color: isDark
+                  ? _VisualizationColorsDark.sheersPanel
+                  : _VisualizationColorsLight.sheersPanel,
+            ),
+            child: _buildSheersFolds(isDark),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSheersFolds(bool isDark) {
+    return CustomPaint(
+      painter: _SheersFoldsPainter(
+        isDark: isDark,
+        scaleFactor: AppSpacings.scale(1),
+      ),
+      size: Size.infinite,
     );
   }
 
@@ -1514,6 +1564,41 @@ class _CurtainFoldsPainter extends CustomPainter {
 }
 
 // --------------------------------------------------------------------------
+// SHEERS FOLDS PAINTER
+// --------------------------------------------------------------------------
+
+/// CustomPainter that draws lighter, more closely-spaced vertical fold lines
+/// for sheers / vertical blind visualization.
+class _SheersFoldsPainter extends CustomPainter {
+  final bool isDark;
+  final double scaleFactor;
+
+  _SheersFoldsPainter({required this.isDark, required this.scaleFactor});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = AppColors.white.withValues(alpha: isDark ? 0.2 : 0.3)
+      ..strokeWidth = scaleFactor
+      ..style = PaintingStyle.stroke;
+
+    // Sheers have finer, closer fold lines than curtains
+    final spacing = 4 * scaleFactor;
+    for (double x = 2 * scaleFactor; x < size.width; x += spacing) {
+      canvas.drawLine(
+        Offset(x, 0),
+        Offset(x, size.height),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _SheersFoldsPainter oldDelegate) =>
+      oldDelegate.isDark != isDark || oldDelegate.scaleFactor != scaleFactor;
+}
+
+// --------------------------------------------------------------------------
 // VISUALIZATION COLORS
 // --------------------------------------------------------------------------
 
@@ -1533,6 +1618,7 @@ class _VisualizationColorsLight {
   static const Color shadeFabricBottom = Color(0xFFCFD8DC);
   static const Color woodSlatTop = Color(0xFFA1887F);
   static const Color woodSlatBottom = Color(0xFF8D6E63);
+  static const Color sheersPanel = Color(0xB3FFFFFF); // white 70%
 }
 
 class _VisualizationColorsDark {
@@ -1549,4 +1635,5 @@ class _VisualizationColorsDark {
   static const Color shadeFabricBottom = Color(0xFF37474F);
   static const Color woodSlatTop = Color(0xFF6D4C41);
   static const Color woodSlatBottom = Color(0xFF5D4037);
+  static const Color sheersPanel = Color(0x26FFFFFF); // white 15%
 }
