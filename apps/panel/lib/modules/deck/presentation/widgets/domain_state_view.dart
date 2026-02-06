@@ -84,6 +84,7 @@ class DomainStateView extends StatelessWidget {
           padding: AppSpacings.paddingXl,
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
+            spacing: AppSpacings.pMd,
             children: [
               Container(
                 width: _scale(80),
@@ -98,7 +99,6 @@ class DomainStateView extends StatelessWidget {
                   color: warningColor,
                 ),
               ),
-              AppSpacings.spacingLgVertical,
               Text(
                 localizations.domain_data_load_failed(domainName),
                 style: TextStyle(
@@ -109,7 +109,6 @@ class DomainStateView extends StatelessWidget {
                 ),
                 textAlign: TextAlign.center,
               ),
-              AppSpacings.spacingSmVertical,
               Text(
                 localizations.domain_data_load_failed_description,
                 style: TextStyle(
@@ -120,7 +119,6 @@ class DomainStateView extends StatelessWidget {
                 ),
                 textAlign: TextAlign.center,
               ),
-              AppSpacings.spacingLgVertical,
               Theme(
                 data: ThemeData(
                   filledButtonTheme: isDark

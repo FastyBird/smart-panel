@@ -1776,11 +1776,8 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         } else {
           rowItems.add(const Expanded(child: SizedBox()));
         }
-        if (j < crossAxisCount - 1) {
-          rowItems.add(AppSpacings.spacingMdHorizontal);
-        }
       }
-      rows.add(Row(children: rowItems));
+      rows.add(Row(spacing: AppSpacings.pMd, children: rowItems));
     }
 
     return Column(spacing: AppSpacings.pMd, children: rows);

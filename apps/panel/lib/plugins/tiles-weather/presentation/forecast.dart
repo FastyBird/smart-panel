@@ -115,6 +115,7 @@ class ForecastTileWidget extends TileWidget<ForecastWeatherTileView> {
             ),
           ),
           Row(
+            spacing: AppSpacings.pXs,
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.baseline,
             textBaseline: TextBaseline.alphabetic,
@@ -129,7 +130,6 @@ class ForecastTileWidget extends TileWidget<ForecastWeatherTileView> {
                       : AppTextColorDark.secondary,
                 ),
               ),
-              AppSpacings.spacingXsHorizontal,
               Text(
                 '/',
                 style: TextStyle(
@@ -140,7 +140,6 @@ class ForecastTileWidget extends TileWidget<ForecastWeatherTileView> {
                       : AppTextColorDark.secondary,
                 ),
               ),
-              AppSpacings.spacingXsHorizontal,
               Text(
                 wholeNightTemp,
                 style: TextStyle(
@@ -151,7 +150,6 @@ class ForecastTileWidget extends TileWidget<ForecastWeatherTileView> {
                       : AppTextColorDark.secondary,
                 ),
               ),
-              AppSpacings.spacingXsHorizontal,
               Text(
                 _getUnit(forecast),
                 style: TextStyle(

@@ -328,6 +328,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
       ),
       child: Row(
+        spacing: AppSpacings.pXs,
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
@@ -341,7 +342,6 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
                     ? AppColorsLight.warning
                     : AppColorsDark.warning),
           ),
-          AppSpacings.spacingXsHorizontal,
           Text(
             allLocked ? 'Locked' : '$_locksLockedCount/$_locksCount',
             style: TextStyle(
@@ -383,6 +383,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
       ),
       child: Row(
+        spacing: AppSpacings.pXs,
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
@@ -396,7 +397,6 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
                     ? AppTextColorLight.placeholder
                     : AppTextColorDark.placeholder),
           ),
-          AppSpacings.spacingXsHorizontal,
           Text(
             _alarmArmed ? 'Armed' : 'Disarmed',
             style: TextStyle(
@@ -480,6 +480,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
       spacing: AppSpacings.pMd,
       children: [
         Row(
+          spacing: AppSpacings.pSm,
           children: [
             Icon(
               MdiIcons.homeSwitch,
@@ -488,7 +489,6 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
                 density: _visualDensityService.density,
               ),
             ),
-            AppSpacings.spacingSmHorizontal,
             Text(
               localizations?.entry_house_modes ?? 'House Mode',
               style: TextStyle(
@@ -765,6 +765,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
             spacing: AppSpacings.pMd,
             children: [
               Row(
+                spacing: AppSpacings.pSm,
                 children: [
                   Icon(
                     MdiIcons.shieldHome,
@@ -773,7 +774,6 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
                       density: _visualDensityService.density,
                     ),
                   ),
-                  AppSpacings.spacingSmHorizontal,
                   Text(
                     localizations?.entry_security ?? 'Security',
                     style: TextStyle(
@@ -883,6 +883,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
     return Padding(
       padding: EdgeInsets.symmetric(vertical: AppSpacings.pSm),
       child: Row(
+        spacing: AppSpacings.pMd,
         children: [
           Icon(
             icon,
@@ -895,7 +896,6 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
                     ? AppColorsLight.warning
                     : AppColorsDark.warning),
           ),
-          AppSpacings.spacingMdHorizontal,
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

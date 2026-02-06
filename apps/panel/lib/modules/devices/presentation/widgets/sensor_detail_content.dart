@@ -712,6 +712,7 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
       child: Column(
         mainAxisSize: flexible ? MainAxisSize.max : MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: AppSpacings.pMd,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -748,11 +749,7 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
               ),
             ],
           ),
-          _screenService.isLandscape && _screenService.isAtLeastLarge
-              ? AppSpacings.spacingLgVertical
-              : AppSpacings.spacingMdVertical,
           chartArea,
-          AppSpacings.spacingSmVertical,
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: _getTimeLabels()

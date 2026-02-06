@@ -57,6 +57,7 @@ class WeatherTileWidget extends TileWidget<DayWeatherTileView> {
           child: FittedBox(
             fit: BoxFit.scaleDown,
             child: Row(
+              spacing: AppSpacings.pMd,
               children: [
                 BoxedIcon(
                   weatherIcon,
@@ -68,12 +69,12 @@ class WeatherTileWidget extends TileWidget<DayWeatherTileView> {
                       ? AppTextColorLight.primary
                       : AppTextColorDark.primary,
                 ),
-                AppSpacings.spacingMdHorizontal,
                 Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
+                      spacing: AppSpacings.pSm,
                       mainAxisAlignment: MainAxisAlignment.start,
                       crossAxisAlignment: CrossAxisAlignment.baseline,
                       textBaseline: TextBaseline.alphabetic,
@@ -93,7 +94,6 @@ class WeatherTileWidget extends TileWidget<DayWeatherTileView> {
                             height: 0.95,
                           ),
                         ),
-                        AppSpacings.spacingSmHorizontal,
                         Text(
                           _getUnit(currentWeather),
                           style: TextStyle(

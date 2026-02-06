@@ -42,13 +42,13 @@ class SensorChannelDetailPage extends StatelessWidget {
                   AppLocalizations.of(context)!, sensor.channel.category),
               subtitle: deviceName,
               leading: Row(
+                spacing: AppSpacings.pMd,
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   HeaderIconButton(
                     icon: MdiIcons.arrowLeft,
                     onTap: () => Navigator.pop(context),
                   ),
-                  AppSpacings.spacingMdHorizontal,
                   HeaderMainIcon(
                     icon: sensor.icon,
                     color: _themeColor,

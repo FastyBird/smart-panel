@@ -357,6 +357,7 @@ class IntentModeSelector<T> extends StatelessWidget {
       );
 
       content = Row(
+        spacing: AppSpacings.pSm,
         mainAxisAlignment: MainAxisAlignment.center,
         mainAxisSize: isScrollable ? MainAxisSize.min : MainAxisSize.max,
         children: [
@@ -365,7 +366,6 @@ class IntentModeSelector<T> extends StatelessWidget {
             color: contentColor,
             size: _scale(18),
           ),
-          AppSpacings.spacingSmHorizontal,
           isScrollable ? textWidget : Flexible(child: textWidget),
         ],
       );
@@ -600,6 +600,7 @@ class IntentModeSelector<T> extends StatelessWidget {
       );
 
       content = Row(
+        spacing: AppSpacings.pSm,
         mainAxisAlignment: MainAxisAlignment.center,
         mainAxisSize: isScrollable ? MainAxisSize.min : MainAxisSize.max,
         children: [
@@ -608,7 +609,6 @@ class IntentModeSelector<T> extends StatelessWidget {
             color: contentColor,
             size: _scale(18),
           ),
-          AppSpacings.spacingSmHorizontal,
           isScrollable ? textWidget : Flexible(child: textWidget),
         ],
       );

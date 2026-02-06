@@ -46,6 +46,7 @@ class SceneTileWidget extends StatelessWidget {
         padding: AppSpacings.paddingSm,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          spacing: AppSpacings.pMd,
           children: [
             Icon(
               _tile.icon ?? MdiIcons.movieOpen,
@@ -58,7 +59,6 @@ class SceneTileWidget extends StatelessWidget {
                       ? AppTextColorLight.regular
                       : AppTextColorDark.regular),
             ),
-            AppSpacings.spacingSmVertical,
             Text(
               _tile.label,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -68,7 +68,6 @@ class SceneTileWidget extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-            AppSpacings.spacingXsVertical,
             Text(
               _tile.status,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(

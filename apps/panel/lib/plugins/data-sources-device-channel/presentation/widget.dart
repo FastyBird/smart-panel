@@ -50,7 +50,6 @@ class DeviceChannelDataSourceWidget
           _getIcon(property),
           size: AppFontSize.small,
         ),
-        AppSpacings.spacingSmHorizontal,
         Text(
           _getValue(property, channel, context),
           style: TextStyle(
@@ -75,6 +74,7 @@ class DeviceChannelDataSourceWidget
       }
 
       return Row(
+        spacing: AppSpacings.pSm,
         crossAxisAlignment: CrossAxisAlignment.center,
         mainAxisAlignment: MainAxisAlignment.start,
         children: parts,
@@ -118,6 +118,7 @@ class DeviceChannelDataSourceWidget
     final localizations = AppLocalizations.of(context)!;
 
     return Row(
+      spacing: AppSpacings.pSm,
       crossAxisAlignment: CrossAxisAlignment.center,
       mainAxisAlignment: MainAxisAlignment.start,
       children: [
@@ -136,7 +137,6 @@ class DeviceChannelDataSourceWidget
             child: const CircularProgressIndicator(strokeWidth: 2),
           ),
         ),
-        AppSpacings.spacingSmHorizontal,
         Text(
           localizations.value_loading,
           style: TextStyle(
@@ -152,6 +152,7 @@ class DeviceChannelDataSourceWidget
     final localizations = AppLocalizations.of(context)!;
 
     return Row(
+      spacing: AppSpacings.pSm,
       crossAxisAlignment: CrossAxisAlignment.center,
       mainAxisAlignment: MainAxisAlignment.start,
       children: [
@@ -159,7 +160,6 @@ class DeviceChannelDataSourceWidget
           MdiIcons.alertCircle,
           size: AppFontSize.small,
         ),
-        AppSpacings.spacingSmHorizontal,
         Text(
           localizations.value_not_available,
           style: TextStyle(

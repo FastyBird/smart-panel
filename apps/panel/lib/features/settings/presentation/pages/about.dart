@@ -61,10 +61,12 @@ class _AboutPageState extends State<AboutPage> {
           padding: AppSpacings.paddingMd,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            spacing: AppSpacings.pMd,
             children: [
               // App Icon and Title
               Center(
                 child: Column(
+                  spacing: AppSpacings.pMd,
                   children: [
                     Icon(
                       MdiIcons.cogOutline,
@@ -73,7 +75,6 @@ class _AboutPageState extends State<AboutPage> {
                         density: _visualDensityService.density,
                       ),
                     ),
-                    AppSpacings.spacingLgVertical,
                     Text(
                       'FastyBird! Smart Panel',
                       style: TextStyle(
@@ -81,7 +82,6 @@ class _AboutPageState extends State<AboutPage> {
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    AppSpacings.spacingSmVertical,
                     Text(
                       'Version $_appVersion',
                       style: TextStyle(
@@ -95,8 +95,6 @@ class _AboutPageState extends State<AboutPage> {
                 ),
               ),
 
-              AppSpacings.spacingLgVertical,
-
               Text(
                 localizations.settings_about_about_heading,
                 style: TextStyle(
@@ -104,7 +102,6 @@ class _AboutPageState extends State<AboutPage> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              AppSpacings.spacingSmVertical,
               Text(
                 localizations.settings_about_about_info,
                 textAlign: TextAlign.justify,
@@ -113,8 +110,6 @@ class _AboutPageState extends State<AboutPage> {
                 ),
               ),
 
-              AppSpacings.spacingLgVertical,
-
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.start,
@@ -122,6 +117,7 @@ class _AboutPageState extends State<AboutPage> {
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
+                      spacing: AppSpacings.pMd,
                       children: [
                         Text(
                           localizations.settings_about_developed_by_heading,
@@ -130,7 +126,6 @@ class _AboutPageState extends State<AboutPage> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        AppSpacings.spacingMdVertical,
                         Text(
                           'FastyBird Team',
                           style: TextStyle(
@@ -138,7 +133,6 @@ class _AboutPageState extends State<AboutPage> {
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        AppSpacings.spacingSmVertical,
                         Text(
                           'https://fastybird.com',
                           style: TextStyle(
@@ -187,8 +181,6 @@ class _AboutPageState extends State<AboutPage> {
                 ],
               ),
 
-              AppSpacings.spacingLgVertical,
-
               // Device Info Section
               Text(
                 localizations.settings_about_device_information_heading,
@@ -197,8 +189,6 @@ class _AboutPageState extends State<AboutPage> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-
-              AppSpacings.spacingSmVertical,
 
               Wrap(
                 spacing: AppSpacings.pSm,

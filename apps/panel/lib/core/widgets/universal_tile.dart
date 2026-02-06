@@ -162,6 +162,7 @@ class UniversalTile extends StatelessWidget {
                   vertical: AppSpacings.pSm,
                 ),
                 child: Column(
+                  spacing: AppSpacings.pMd,
                   children: [
                     // Icon - takes available space
                     Expanded(
@@ -179,7 +180,6 @@ class UniversalTile extends StatelessWidget {
                         ),
                       ),
                     ),
-                    AppSpacings.spacingSmVertical,
 
                     // Name
                     Text(
@@ -197,7 +197,6 @@ class UniversalTile extends StatelessWidget {
 
                     // Status (optional)
                     if (status != null) ...[
-                      AppSpacings.spacingXsVertical,
                       Text(
                         status!,
                         style: TextStyle(
@@ -215,7 +214,6 @@ class UniversalTile extends StatelessWidget {
 
                     // Accessories (optional)
                     if (accessories != null) ...[
-                      AppSpacings.spacingXsVertical,
                       accessories!,
                     ],
                   ],
@@ -277,6 +275,7 @@ class UniversalTile extends StatelessWidget {
               : [],
         ),
         child: Row(
+          spacing: AppSpacings.pMd,
           mainAxisSize: MainAxisSize.min,
           children: [
             // Icon
@@ -286,7 +285,6 @@ class UniversalTile extends StatelessWidget {
               _scale(32),
               _scale(18),
             ),
-            AppSpacings.spacingMdHorizontal,
 
             // Text content
             Expanded(

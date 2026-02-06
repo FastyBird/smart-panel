@@ -38,7 +38,6 @@ class WeatherCurrentDataSourceWidget
           icon,
           size: AppFontSize.small,
         ),
-        AppSpacings.spacingSmHorizontal,
         Text(
           value,
           style: TextStyle(
@@ -64,6 +63,7 @@ class WeatherCurrentDataSourceWidget
       }
 
       return Row(
+        spacing: AppSpacings.pSm,
         crossAxisAlignment: CrossAxisAlignment.center,
         mainAxisAlignment: MainAxisAlignment.start,
         children: parts,
@@ -147,6 +147,7 @@ class WeatherCurrentDataSourceWidget
     final localizations = AppLocalizations.of(context)!;
 
     return Row(
+      spacing: AppSpacings.pSm,
       crossAxisAlignment: CrossAxisAlignment.center,
       mainAxisAlignment: MainAxisAlignment.start,
       children: [
@@ -165,7 +166,6 @@ class WeatherCurrentDataSourceWidget
             child: const CircularProgressIndicator(strokeWidth: 2),
           ),
         ),
-        AppSpacings.spacingSmHorizontal,
         Text(
           localizations.value_loading,
           style: TextStyle(

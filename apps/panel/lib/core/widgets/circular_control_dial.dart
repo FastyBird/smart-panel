@@ -485,6 +485,7 @@ class _CircularControlDialState extends State<CircularControlDial>
                     ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
+                      spacing: AppSpacings.pMd,
                       children: [
                         Text(
                           _formatValue(_value),
@@ -520,7 +521,6 @@ class _CircularControlDialState extends State<CircularControlDial>
                             ),
                           ),
                         if (widget.showButtons) ...[
-                          AppSpacings.spacingMdVertical,
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [

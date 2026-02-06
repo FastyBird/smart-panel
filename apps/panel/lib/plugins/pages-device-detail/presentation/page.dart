@@ -39,6 +39,7 @@ class DeviceDetailPage extends StatelessWidget {
               padding: AppSpacings.paddingMd,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
+                spacing: AppSpacings.pMd,
                 children: [
                   Icon(
                     MdiIcons.alert,
@@ -48,12 +49,10 @@ class DeviceDetailPage extends StatelessWidget {
                       density: _visualDensityService.density,
                     ),
                   ),
-                  AppSpacings.spacingMdVertical,
                   Text(
                     localizations.message_error_device_not_found_title,
                     textAlign: TextAlign.center,
                   ),
-                  AppSpacings.spacingSmVertical,
                   Text(
                     localizations.message_error_device_not_found_description,
                     textAlign: TextAlign.center,

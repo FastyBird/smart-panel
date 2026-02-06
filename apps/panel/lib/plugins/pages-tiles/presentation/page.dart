@@ -45,6 +45,7 @@ class TilesPage extends StatelessWidget {
               padding: AppSpacings.paddingMd,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
+                spacing: AppSpacings.pMd,
                 children: [
                   Icon(
                     MdiIcons.alert,
@@ -54,12 +55,10 @@ class TilesPage extends StatelessWidget {
                       density: _visualDensityService.density,
                     ),
                   ),
-                  AppSpacings.spacingMdVertical,
                   Text(
                     localizations.message_error_page_not_found_title,
                     textAlign: TextAlign.center,
                   ),
-                  AppSpacings.spacingSmVertical,
                   Text(
                     localizations.message_error_page_not_found_description,
                     textAlign: TextAlign.center,
@@ -78,6 +77,7 @@ class TilesPage extends StatelessWidget {
               padding: AppSpacings.paddingMd,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
+                spacing: AppSpacings.pMd,
                 children: [
                   Icon(
                     MdiIcons.viewDashboardVariant,
@@ -87,12 +87,10 @@ class TilesPage extends StatelessWidget {
                       density: _visualDensityService.density,
                     ),
                   ),
-                  AppSpacings.spacingMdVertical,
                   Text(
                     localizations.message_error_tiles_not_configured_title,
                     textAlign: TextAlign.center,
                   ),
-                  AppSpacings.spacingSmVertical,
                   Text(
                     localizations
                         .message_error_tiles_not_configured_description,

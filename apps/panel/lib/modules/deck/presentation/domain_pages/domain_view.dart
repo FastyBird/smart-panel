@@ -50,6 +50,7 @@ class _DomainViewPageState extends State<DomainViewPage> {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
+        spacing: AppSpacings.pMd,
         children: [
           Icon(
             domain.icon,
@@ -59,7 +60,6 @@ class _DomainViewPageState extends State<DomainViewPage> {
             ),
             color: Theme.of(context).colorScheme.primary,
           ),
-          AppSpacings.spacingLgVertical,
           Text(
             widget.viewItem.title,
             style: TextStyle(
@@ -67,7 +67,6 @@ class _DomainViewPageState extends State<DomainViewPage> {
               fontWeight: FontWeight.bold,
             ),
           ),
-          AppSpacings.spacingSmVertical,
           Text(
             '$deviceCount ${deviceCount == 1 ? 'device' : 'devices'}',
             style: TextStyle(
@@ -77,7 +76,6 @@ class _DomainViewPageState extends State<DomainViewPage> {
                   : AppTextColorDark.regular,
             ),
           ),
-          AppSpacings.spacingLgVertical,
           _buildDomainHint(context, domain),
         ],
       ),
@@ -120,6 +118,7 @@ class _DomainViewPageState extends State<DomainViewPage> {
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
       ),
       child: Row(
+        spacing: AppSpacings.pSm,
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
@@ -130,7 +129,6 @@ class _DomainViewPageState extends State<DomainViewPage> {
             ),
             color: Theme.of(context).colorScheme.primary,
           ),
-          AppSpacings.spacingSmHorizontal,
           Text(
             hint,
             style: TextStyle(

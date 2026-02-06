@@ -158,6 +158,7 @@ class MediaRemoteCard<T extends Enum> extends StatelessWidget {
 			child: Theme(
 				data: themeData,
 				child: Column(
+				spacing: AppSpacings.pMd,
 				children: [
 					if (showLabel) ...[
 						Row(
@@ -170,7 +171,6 @@ class MediaRemoteCard<T extends Enum> extends StatelessWidget {
 								),
 							],
 						),
-						AppSpacings.spacingMdVertical,
 					],
 					if (hasDpad) ...[
 						if (hasUp)
@@ -179,7 +179,6 @@ class MediaRemoteCard<T extends Enum> extends StatelessWidget {
 								icon: MdiIcons.chevronUp,
 								onTap: isEnabled ? () => _sendKey(_findKey('arrowUp')!) : null,
 							),
-						AppSpacings.spacingSmVertical,
 						Row(
 							mainAxisSize: MainAxisSize.min,
 							spacing: AppSpacings.pSm,
@@ -205,7 +204,6 @@ class MediaRemoteCard<T extends Enum> extends StatelessWidget {
 									),
 							],
 						),
-						AppSpacings.spacingSmVertical,
 						if (hasDown)
 							_buildDpadButton(
 								context,
@@ -214,7 +212,6 @@ class MediaRemoteCard<T extends Enum> extends StatelessWidget {
 							),
 					],
 					if (transportActions.isNotEmpty) ...[
-						AppSpacings.spacingLgVertical,
 						Row(
 							mainAxisAlignment: MainAxisAlignment.center,
 							children: transportActions.map((key) {
@@ -232,7 +229,6 @@ class MediaRemoteCard<T extends Enum> extends StatelessWidget {
 						),
 					],
 					if (navActions.isNotEmpty) ...[
-						AppSpacings.spacingLgVertical,
 						Row(
 							mainAxisAlignment: MainAxisAlignment.center,
 							children: navActions.map((key) {

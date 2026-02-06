@@ -376,6 +376,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
       ),
       child: Row(
+        spacing: AppSpacings.pXs,
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
@@ -389,7 +390,6 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
                     ? AppColorsLight.warning
                     : AppColorsDark.warning),
           ),
-          AppSpacings.spacingXsHorizontal,
           Text(
             '$_onlineDevices/$_totalDevices',
             style: TextStyle(
@@ -427,6 +427,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
       ),
       child: Row(
+        spacing: AppSpacings.pXs,
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
@@ -436,7 +437,6 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
                 ? AppColorsLight.danger
                 : AppColorsDark.danger,
           ),
-          AppSpacings.spacingXsHorizontal,
           Text(
             '$_alertsCount',
             style: TextStyle(
@@ -599,6 +599,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
       spacing: AppSpacings.pSm,
       children: [
         Row(
+          spacing: AppSpacings.pSm,
           children: [
             Icon(
               MdiIcons.movieOpenPlay,
@@ -607,7 +608,6 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
                 density: _visualDensityService.density,
               ),
             ),
-            AppSpacings.spacingSmHorizontal,
             Text(
               localizations?.master_quick_actions ?? 'Quick Actions',
               style: TextStyle(
@@ -680,6 +680,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
       spacing: AppSpacings.pSm,
       children: [
         Row(
+          spacing: AppSpacings.pSm,
           children: [
             Icon(
               MdiIcons.homeGroup,
@@ -688,7 +689,6 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
                 density: _visualDensityService.density,
               ),
             ),
-            AppSpacings.spacingSmHorizontal,
             Text(
               localizations?.master_rooms ?? 'Rooms',
               style: TextStyle(

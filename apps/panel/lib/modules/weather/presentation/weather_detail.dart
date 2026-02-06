@@ -187,6 +187,7 @@ class WeatherDetailPage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Row(
+                  spacing: AppSpacings.pSm,
                   mainAxisAlignment: MainAxisAlignment.end,
                   crossAxisAlignment: CrossAxisAlignment.baseline,
                   textBaseline: TextBaseline.alphabetic,
@@ -204,7 +205,6 @@ class WeatherDetailPage extends StatelessWidget {
                             : AppTextColorDark.primary,
                       ),
                     ),
-                    AppSpacings.spacingSmHorizontal,
                     Text(
                       _getUnit(currentDay),
                       style: TextStyle(
@@ -386,6 +386,7 @@ class WeatherDetailPage extends StatelessWidget {
         ),
       ),
       title: Row(
+        spacing: AppSpacings.pSm,
         mainAxisAlignment: MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.baseline,
         textBaseline: TextBaseline.alphabetic,
@@ -397,7 +398,6 @@ class WeatherDetailPage extends StatelessWidget {
               fontWeight: FontWeight.w600,
             ),
           ),
-          AppSpacings.spacingSmHorizontal,
           Text(
             DatetimeUtils.getShortMonthDay(forecast.dayTime),
             style: TextStyle(

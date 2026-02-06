@@ -24,6 +24,7 @@ class RebootScreen extends StatelessWidget {
           ),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
+            spacing: AppSpacings.pMd,
             children: [
               SizedBox(
                 width: screenService.scale(
@@ -36,7 +37,6 @@ class RebootScreen extends StatelessWidget {
                 ),
                 child: const CircularProgressIndicator(),
               ),
-              AppSpacings.spacingLgVertical,
               Text(
                 localizations.message_info_app_reboot_title,
                 textAlign: TextAlign.center,
@@ -44,7 +44,6 @@ class RebootScreen extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              AppSpacings.spacingSmVertical,
               Text(
                 localizations.message_info_app_reboot_description,
                 textAlign: TextAlign.justify,

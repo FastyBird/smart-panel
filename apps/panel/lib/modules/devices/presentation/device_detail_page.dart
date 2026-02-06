@@ -23,14 +23,17 @@ bool _hasCustomDetailWidget(DevicesModuleDeviceCategory category) =>
     deviceWidgetMappers.containsKey(category);
 
 class DeviceDetailPage extends StatelessWidget {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
-
   final String id;
   final String? initialChannelId;
 
   DeviceDetailPage(this.id, {this.initialChannelId, super.key});
+
+  static final ScreenService _screenService = locator<ScreenService>();
+  static final VisualDensityService _visualDensityService =
+      locator<VisualDensityService>();
+
+  static double _scale(double value) =>
+      _screenService.scale(value, density: _visualDensityService.density);
 
   @override
   Widget build(BuildContext context) {
@@ -43,30 +46,51 @@ class DeviceDetailPage extends StatelessWidget {
 
       if (device == null) {
         final localizations = AppLocalizations.of(context)!;
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+
+        final warningColor = isDark ? AppColorsDark.warning : AppColorsLight.warning;
+        final warningBgColor =
+            isDark ? AppColorsDark.warningLight9 : AppColorsLight.warningLight9;
 
         return Scaffold(
           body: Center(
             child: Padding(
-              padding: AppSpacings.paddingMd,
+              padding: AppSpacings.paddingXl,
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
+                spacing: AppSpacings.pMd,
                 children: [
-                  Icon(
-                    MdiIcons.alert,
-                    color: Theme.of(context).warning,
-                    size: _screenService.scale(
-                      64,
-                      density: _visualDensityService.density,
+                  Container(
+                    width: _scale(80),
+                    height: _scale(80),
+                    decoration: BoxDecoration(
+                      color: warningBgColor,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      MdiIcons.alertCircleOutline,
+                      size: _scale(48),
+                      color: warningColor,
                     ),
                   ),
-                  AppSpacings.spacingMdVertical,
                   Text(
                     localizations.message_error_device_not_found_title,
+                    style: TextStyle(
+                      fontSize: AppFontSize.large,
+                      fontWeight: FontWeight.w600,
+                      color:
+                          isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
+                    ),
                     textAlign: TextAlign.center,
                   ),
-                  AppSpacings.spacingSmVertical,
                   Text(
                     localizations.message_error_device_not_found_description,
+                    style: TextStyle(
+                      fontSize: AppFontSize.base,
+                      color: isDark
+                          ? AppTextColorDark.secondary
+                          : AppTextColorLight.secondary,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                 ],

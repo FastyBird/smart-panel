@@ -87,13 +87,13 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
           padding: AppSpacings.paddingMd,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            spacing: AppSpacings.pMd,
             children: [
               if (!_audioOutputSupported && !_audioInputSupported)
                 _buildNoAudioSupportMessage(localizations)
               else ...[
                 if (_audioOutputSupported) ...[
                   _buildSpeakerSection(localizations),
-                  if (_audioInputSupported) AppSpacings.spacingMdVertical,
                 ],
                 if (_audioInputSupported) _buildMicrophoneSection(localizations),
               ],

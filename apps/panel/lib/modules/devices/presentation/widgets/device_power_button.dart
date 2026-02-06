@@ -75,6 +75,7 @@ class DevicePowerButton extends StatelessWidget {
           fit: BoxFit.scaleDown,
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            spacing: AppSpacings.pMd,
             children: [
               GestureDetector(
               onTap: () {
@@ -116,7 +117,6 @@ class DevicePowerButton extends StatelessWidget {
               ),
             ),
             if (showInfoText) ...[
-              AppSpacings.spacingLgVertical,
               Text(
                 isOn ? 'Tap to turn off' : 'Tap to turn on',
                 style: TextStyle(

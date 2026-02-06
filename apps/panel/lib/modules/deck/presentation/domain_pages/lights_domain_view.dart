@@ -1291,6 +1291,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: AppSpacings.pMd,
       children: [
         // Roles + Other Lights layout
         if (hasRoles && hasOtherLights) ...[
@@ -1301,10 +1302,8 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             devicesService,
             tilesPerRow: tilesPerRow,
           ),
-          AppSpacings.spacingLgVertical,
           // Other Lights header
           _buildOtherLightsTitle(otherLights, otherTargets, localizations),
-          AppSpacings.spacingMdVertical,
           // Other Lights grid
           _buildLandscapeLightsGrid(
             context,
@@ -1326,7 +1325,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         ] else if (hasOtherLights) ...[
           // Only other lights, no roles
           _buildOtherLightsTitle(otherLights, otherTargets, localizations),
-          AppSpacings.spacingMdVertical,
           _buildLandscapeLightsGrid(
             context,
             otherLights,
@@ -2180,6 +2178,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
           padding: AppSpacings.paddingLg,
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
+            spacing: AppSpacings.pMd,
             children: [
               Icon(
                 MdiIcons.lightbulbOffOutline,
@@ -2188,7 +2187,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                     : AppTextColorLight.secondary,
                 size: _scale(64),
               ),
-              AppSpacings.spacingMdVertical,
               Text(
                 localizations.domain_lights_empty_title,
                 textAlign: TextAlign.center,
@@ -2200,7 +2198,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                       : AppTextColorLight.primary,
                 ),
               ),
-              AppSpacings.spacingSmVertical,
               Text(
                 localizations.domain_lights_empty_description,
                 textAlign: TextAlign.center,

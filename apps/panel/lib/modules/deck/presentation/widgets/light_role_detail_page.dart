@@ -2316,13 +2316,13 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
       subtitle: _getLightStateSubtitle(roleMixedState),
       subtitleColor: subtitleColor,
       leading: Row(
+        spacing: AppSpacings.pMd,
         mainAxisSize: MainAxisSize.min,
         children: [
           HeaderIconButton(
             icon: MdiIcons.arrowLeft,
             onTap: () => Navigator.pop(context),
           ),
-          AppSpacings.spacingMdHorizontal,
           HeaderMainIcon(
             icon: getLightRoleIcon(widget.role),
             color: statusColor,
@@ -2885,10 +2885,10 @@ class _SliderPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     if (isLandscape) {
       return Row(
+        spacing: AppSpacings.pMd,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Expanded(child: _buildDisplay()),
-          AppSpacings.spacingMdHorizontal,
           _buildVerticalSlider(),
         ],
       );
@@ -3166,12 +3166,11 @@ class _ColorPanel extends StatelessWidget {
 
     if (isLandscape) {
       return Row(
+        spacing: AppSpacings.pMd,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Expanded(child: _buildDisplay(color)),
-          AppSpacings.spacingMdHorizontal,
           _buildVerticalHueSlider(),
-          AppSpacings.spacingMdHorizontal,
           _buildVerticalSatSlider(),
         ],
       );

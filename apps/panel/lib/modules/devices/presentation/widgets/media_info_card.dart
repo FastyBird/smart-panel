@@ -41,6 +41,7 @@ class MediaInfoCard extends StatelessWidget {
 				border: Border.all(color: borderColor, width: scale(1)),
 			),
 			child: Column(
+				spacing: AppSpacings.pMd,
 				children: [
 					Container(
 						width: scale(64),
@@ -55,7 +56,6 @@ class MediaInfoCard extends StatelessWidget {
 							size: scale(32),
 						),
 					),
-					AppSpacings.spacingMdVertical,
 					Text(
 						name,
 						style: TextStyle(
@@ -64,7 +64,6 @@ class MediaInfoCard extends StatelessWidget {
 							color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
 						),
 					),
-					AppSpacings.spacingSmVertical,
 					Row(
 						mainAxisAlignment: MainAxisAlignment.center,
 						mainAxisSize: MainAxisSize.min,

@@ -111,7 +111,6 @@ class PageHeader extends StatelessWidget {
                   maxLines: 1,
                 ),
                 if (subtitle != null) ...[
-                  AppSpacings.spacingXsVertical,
                   Text(
                     subtitle!,
                     style: TextStyle(

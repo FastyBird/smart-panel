@@ -475,6 +475,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
           borderRadius: BorderRadius.circular(AppBorderRadius.base),
         ),
         child: Row(
+          spacing: AppSpacings.pXs,
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
@@ -488,7 +489,6 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
                       ? AppTextColorLight.placeholder
                       : AppTextColorDark.placeholder),
             ),
-            AppSpacings.spacingXsHorizontal,
             Text(
               isOn ? '$_lightsOnCount/$lightsCount' : 'Off',
               style: TextStyle(
@@ -527,6 +527,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
       ),
       child: Row(
+        spacing: AppSpacings.pXs,
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
@@ -536,7 +537,6 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
                 ? AppColorsLight.info
                 : AppColorsDark.info,
           ),
-          AppSpacings.spacingXsHorizontal,
           Text(
             '${NumberFormatUtils.defaultFormat.formatDecimal(_temperature!, decimalPlaces: 1)}°',
             style: TextStyle(
@@ -707,6 +707,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
           spacing: AppSpacings.pMd,
           children: [
             Row(
+              spacing: AppSpacings.pSm,
               children: [
                 Icon(
                   MdiIcons.movieOpenPlay,
@@ -715,7 +716,6 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
                     density: _visualDensityService.density,
                   ),
                 ),
-                AppSpacings.spacingSmHorizontal,
                 Text(
                   localizations?.space_scenes_title ?? 'Quick Scenes',
                   style: TextStyle(
@@ -886,6 +886,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
+        spacing: AppSpacings.pMd,
         children: [
           Icon(
             MdiIcons.homeOffOutline,
@@ -897,7 +898,6 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
                 ? AppTextColorLight.placeholder
                 : AppTextColorDark.placeholder,
           ),
-          AppSpacings.spacingMdVertical,
           Text(
             localizations?.space_empty_state_title ?? 'No Devices',
             style: TextStyle(
@@ -909,7 +909,6 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
             ),
             textAlign: TextAlign.center,
           ),
-          AppSpacings.spacingSmVertical,
           Text(
             localizations?.space_empty_state_description ??
                 'Assign devices to this room in Admin',

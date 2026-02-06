@@ -451,6 +451,7 @@ class _ModeSelectorState<T> extends State<ModeSelector<T>> {
       );
 
       content = Row(
+        spacing: AppSpacings.pSm,
         mainAxisAlignment: MainAxisAlignment.center,
         mainAxisSize: isScrollable ? MainAxisSize.min : MainAxisSize.max,
         children: [
@@ -459,7 +460,6 @@ class _ModeSelectorState<T> extends State<ModeSelector<T>> {
             color: contentColor,
             size: _scale(18),
           ),
-          AppSpacings.spacingSmHorizontal,
           // When scrollable, don't use Flexible (unbounded width)
           isScrollable ? textWidget : Flexible(child: textWidget),
         ],

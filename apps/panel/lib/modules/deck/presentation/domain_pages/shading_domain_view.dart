@@ -711,6 +711,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: AppSpacings.pMd,
         children: [
           // Header Row
           Row(
@@ -804,16 +805,12 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
           ),
           // Expandable Controls (Slider + Quick Actions)
           if (shouldShowControls) ...[
-            AppSpacings.spacingMdVertical,
             _buildPositionSlider(context, roleData),
-            AppSpacings.spacingMdVertical,
             _buildQuickActions(context, roleData),
           ],
           // Expand/Collapse Toggle for secondary roles
-          if (isExpandable) ...[
-            AppSpacings.spacingSmVertical,
+          if (isExpandable)
             _buildExpandToggle(context, roleData, isExpanded, localizations),
-          ],
         ],
       ),
     );
@@ -1287,6 +1284,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
                   padding: AppSpacings.paddingLg,
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
+                    spacing: AppSpacings.pMd,
                     children: [
                       Icon(
                         MdiIcons.blindsHorizontalClosed,
@@ -1296,7 +1294,6 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
                           density: _visualDensityService.density,
                         ),
                       ),
-                      AppSpacings.spacingMdVertical,
                       Text(
                         localizations.domain_shading_empty_title,
                         textAlign: TextAlign.center,
@@ -1308,7 +1305,6 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
                               : AppTextColorDark.primary,
                         ),
                       ),
-                      AppSpacings.spacingSmVertical,
                       Text(
                         localizations.domain_shading_empty_description,
                         textAlign: TextAlign.center,

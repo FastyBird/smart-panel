@@ -30,9 +30,6 @@ class DeckDashboardScreen extends StatefulWidget {
 }
 
 class _DeckDashboardScreenState extends State<DeckDashboardScreen> {
-  final ScreenService _screenService = locator<ScreenService>();
-  final VisualDensityService _visualDensityService =
-      locator<VisualDensityService>();
   final DashboardService _dashboardService = locator<DashboardService>();
   final EventBus _eventBus = locator<EventBus>();
 
@@ -43,6 +40,13 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen> {
 
   StreamSubscription<NavigateToDeckItemEvent>? _deckNavigateSubscription;
   StreamSubscription<PageSwipeBlockEvent>? _swipeBlockSubscription;
+
+  static final ScreenService _screenService = locator<ScreenService>();
+  static final VisualDensityService _visualDensityService =
+      locator<VisualDensityService>();
+
+  static double _scale(double value) =>
+      _screenService.scale(value, density: _visualDensityService.density);
 
   @override
   void initState() {
@@ -187,34 +191,50 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen> {
   }
 
   Widget _buildEmptyState(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final warningColor = isDark ? AppColorsDark.warning : AppColorsLight.warning;
+    final warningBgColor =
+        isDark ? AppColorsDark.warningLight9 : AppColorsLight.warningLight9;
+
     return Scaffold(
       body: Center(
         child: Padding(
-          padding: AppSpacings.paddingMd,
+          padding: AppSpacings.paddingXl,
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
+            spacing: AppSpacings.pMd,
             children: [
-              Icon(
-                MdiIcons.alert,
-                color: Theme.of(context).brightness == Brightness.light
-                    ? AppColorsLight.warning
-                    : AppColorsDark.warning,
-                size: _screenService.scale(
-                  64,
-                  density: _visualDensityService.density,
+              Container(
+                width: _scale(80),
+                height: _scale(80),
+                decoration: BoxDecoration(
+                  color: warningBgColor,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  MdiIcons.alertCircleOutline,
+                  size: _scale(48),
+                  color: warningColor,
                 ),
               ),
-              AppSpacings.spacingMdVertical,
-              const Text(
+              Text(
                 'No pages configured',
-                textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontWeight: FontWeight.bold,
+                  fontSize: AppFontSize.large,
+                  fontWeight: FontWeight.w600,
+                  color:
+                      isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
                 ),
+                textAlign: TextAlign.center,
               ),
-              AppSpacings.spacingSmVertical,
-              const Text(
+              Text(
                 'Please configure your dashboard in Admin.',
+                style: TextStyle(
+                  fontSize: AppFontSize.base,
+                  color: isDark
+                      ? AppTextColorDark.secondary
+                      : AppTextColorLight.secondary,
+                ),
                 textAlign: TextAlign.center,
               ),
             ],

@@ -150,10 +150,10 @@ class AppBottomSheet extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  spacing: AppSpacings.pMd,
                   children: [
                     if (showHandle) ...[
                       _buildHandle(handleColor),
-                      AppSpacings.spacingMdVertical,
                     ],
                     if (_hasHeader) ...[
                       Container(

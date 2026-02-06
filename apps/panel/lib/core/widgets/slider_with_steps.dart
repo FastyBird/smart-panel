@@ -91,6 +91,7 @@ class SliderWithSteps extends StatelessWidget {
 
     return Column(
       mainAxisSize: MainAxisSize.min,
+      spacing: AppSpacings.pMd,
       children: [
         SliderTheme(
             data: SliderTheme.of(context).copyWith(
@@ -116,7 +117,6 @@ class SliderWithSteps extends StatelessWidget {
             ),
           ),
           if (showSteps) ...[
-            AppSpacings.spacingXsVertical,
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: steps

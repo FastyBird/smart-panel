@@ -485,13 +485,13 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
           : _buildCompactDialWithModes(context, isDark),
       secondaryContent: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: AppSpacings.pMd,
         children: [
           if (statusSection is! SizedBox) ...[
             SectionTitle(
               title: localizations.device_sensors,
               icon: MdiIcons.eyeSettings,
             ),
-            AppSpacings.spacingMdVertical,
             statusSection,
           ],
         ],

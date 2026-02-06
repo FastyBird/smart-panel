@@ -28,6 +28,7 @@ class PumpDeviceDetail extends StatelessWidget {
         padding: AppSpacings.paddingMd,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          spacing: AppSpacings.pMd,
           children: [
             Icon(
               MdiIcons.alert,
@@ -37,12 +38,10 @@ class PumpDeviceDetail extends StatelessWidget {
                 density: _visualDensityService.density,
               ),
             ),
-            AppSpacings.spacingMdVertical,
             Text(
               localizations.message_error_no_device_detail_preparing_title,
               textAlign: TextAlign.center,
             ),
-            AppSpacings.spacingSmVertical,
             Text(
               localizations
                   .message_error_no_device_detail_preparing_description,

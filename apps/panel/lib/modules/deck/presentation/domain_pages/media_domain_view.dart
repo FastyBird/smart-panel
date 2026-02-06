@@ -779,6 +779,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			child: Column(
 				mainAxisAlignment: MainAxisAlignment.center,
 				mainAxisSize: MainAxisSize.min,
+				spacing: AppSpacings.pMd,
 				children: [
 					Container(
 						width: _scale(90),
@@ -793,7 +794,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 							color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
 						),
 					),
-					AppSpacings.spacingLgVertical,
 					Text(
 						AppLocalizations.of(context)!.media_off_title,
 						style: TextStyle(
@@ -802,7 +802,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 							color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
 						),
 					),
-					AppSpacings.spacingSmVertical,
 					Text(
 						AppLocalizations.of(context)!.media_off_subtitle,
 						style: TextStyle(
@@ -890,6 +889,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			child: Column(
 				mainAxisAlignment: MainAxisAlignment.center,
 				mainAxisSize: MainAxisSize.min,
+				spacing: AppSpacings.pMd,
 				children: [
 					Container(
 						width: _scale(90),
@@ -904,7 +904,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 							color: errorColor,
 						),
 					),
-					AppSpacings.spacingLgVertical,
 					Text(
 						localizations.media_activity_failed(activityName),
 						style: TextStyle(
@@ -913,7 +912,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 							color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
 						),
 					),
-					AppSpacings.spacingSmVertical,
 					Text(
 						localizations.media_activity_failed_description,
 						style: TextStyle(
@@ -921,7 +919,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 							color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
 						),
 					),
-					AppSpacings.spacingLgVertical,
 					Row(
 						mainAxisAlignment: MainAxisAlignment.center,
 						spacing: AppSpacings.pMd,
@@ -1672,6 +1669,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
+          spacing: AppSpacings.pMd,
           children: [
             if (lastResult != null) ...[
               Wrap(
@@ -1684,7 +1682,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
                   _summaryChip(AppLocalizations.of(context)!.media_failure_summary_warnings, lastResult.warningCount, (isDark ? AppColorsDark.warning : AppColorsLight.warning), (isDark ? AppColorsDark.warningLight9 : AppColorsLight.warningLight9)),
                 ],
               ),
-              AppSpacings.spacingLgVertical,
             ],
             if (errors.isNotEmpty) ...[
               Text(
@@ -1695,9 +1692,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
                   fontSize: AppFontSize.small,
                 ),
               ),
-              AppSpacings.spacingSmVertical,
               ...errors.map((f) => _failureRow(f, isDark ? AppColorsDark.error : AppColorsLight.error, _getModeColorFamily(context).light9)),
-              AppSpacings.spacingMdVertical,
             ],
             if (warnings.isNotEmpty) ...[
               Text(
@@ -1708,9 +1703,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
                   fontSize: AppFontSize.small,
                 ),
               ),
-              AppSpacings.spacingSmVertical,
               ...warnings.map((f) => _failureRow(f, isDark ? AppColorsDark.warning : AppColorsLight.warning, _getModeColorFamily(context).light9)),
-              AppSpacings.spacingMdVertical,
             ],
             if (state.warnings.isNotEmpty && warnings.isEmpty) ...[
               Text(
@@ -1721,12 +1714,10 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
                   fontSize: AppFontSize.small,
                 ),
               ),
-              AppSpacings.spacingSmVertical,
               ...state.warnings.map((w) => Padding(
                 padding: EdgeInsets.only(bottom: AppSpacings.pSm),
                 child: Text('- $w', style: TextStyle(fontSize: AppFontSize.small)),
               )),
-              AppSpacings.spacingMdVertical,
             ],
           ],
         ),
@@ -2546,6 +2537,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
         padding: EdgeInsets.symmetric(vertical: AppSpacings.pMd),
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          spacing: AppSpacings.pMd,
           children: [
             if (hasDpad) ...[
               if (hasUp)
@@ -2554,7 +2546,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
                   icon: MdiIcons.chevronUp,
                   onTap: () => _sendRemoteSheetCommand(propId, TelevisionRemoteKeyValue.arrowUp),
                 ),
-              AppSpacings.spacingSmVertical,
               Row(
                 mainAxisSize: MainAxisSize.min,
                 spacing: AppSpacings.pSm,
@@ -2580,7 +2571,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
                     ),
                 ],
               ),
-              AppSpacings.spacingSmVertical,
               if (hasDown)
                 _buildRemoteDpadButton(
                   context,
@@ -2589,7 +2579,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
                 ),
             ],
             if (transportActions.isNotEmpty) ...[
-              AppSpacings.spacingLgVertical,
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: transportActions.map((key) {
@@ -2607,7 +2596,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
               ),
             ],
             if (navActions.isNotEmpty) ...[
-              AppSpacings.spacingLgVertical,
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: navActions.map((key) {

@@ -154,6 +154,7 @@ class ValueSelectorRow<T> extends StatelessWidget {
             ),
           ),
           child: Row(
+            spacing: AppSpacings.pMd,
             children: [
               // Icon with background container (matching UniversalTile style)
               Container(
@@ -169,7 +170,6 @@ class ValueSelectorRow<T> extends StatelessWidget {
                   size: _scale(18),
                 ),
               ),
-              AppSpacings.spacingMdHorizontal,
               Expanded(
                 child: layout == ValueSelectorRowLayout.compact
                     ? Column(
@@ -215,7 +215,6 @@ class ValueSelectorRow<T> extends StatelessWidget {
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                if (showChevron) AppSpacings.spacingXsHorizontal,
               ],
               if (showChevron)
                 Icon(
@@ -412,6 +411,7 @@ class _ValueSelectorSheetState<T> extends State<ValueSelectorSheet<T>> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: AppSpacings.pMd,
         children: [
           // Options Grid or Buttons
           Flexible(
@@ -516,6 +516,7 @@ class _ValueSelectorSheetState<T> extends State<ValueSelectorSheet<T>> {
                                   ),
                                   child: Column(
                                     mainAxisSize: MainAxisSize.min,
+                                    spacing: AppSpacings.pMd,
                                     children: [
                                       if (option.icon != null) ...[
                                         Icon(
@@ -525,7 +526,6 @@ class _ValueSelectorSheetState<T> extends State<ValueSelectorSheet<T>> {
                                               : secondaryColor,
                                           size: _scale(20),
                                         ),
-                                        AppSpacings.spacingXsVertical,
                                       ],
                                       Text(
                                         option.label,
@@ -552,7 +552,6 @@ class _ValueSelectorSheetState<T> extends State<ValueSelectorSheet<T>> {
                   ),
           ),
           if (widget.selectedIndexNotifier == null) ...[
-            AppSpacings.spacingLgVertical,
             SizedBox(
               width: double.infinity,
               child: Theme(

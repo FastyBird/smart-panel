@@ -252,15 +252,14 @@ class ButtonTileWidget extends StatelessWidget {
               if (!isButton) {
                 parts.add(
                   Column(
+                    spacing: AppSpacings.pMd,
                     children: [
-                      AppSpacings.spacingMdVertical,
                       ButtonTileTitle(
                         title: title,
                         isOn: isOn,
                         isLoading: isLoading,
                         isDisabled: isDisabled,
                       ),
-                      AppSpacings.spacingSmVertical,
                       SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         child: ButtonTileSubTitle(

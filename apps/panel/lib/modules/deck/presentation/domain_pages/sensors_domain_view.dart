@@ -707,49 +707,49 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
   Widget _buildEmptyState(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final localizations = AppLocalizations.of(context)!;
+    final warningColor = isDark ? AppColorsDark.warning : AppColorsLight.warning;
+    final warningBgColor =
+        isDark ? AppColorsDark.warningLight9 : AppColorsLight.warningLight9;
 
     return Center(
       child: Padding(
         padding: AppSpacings.paddingXl,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
+          spacing: AppSpacings.pMd,
           children: [
             Container(
               width: _scale(80),
               height: _scale(80),
               decoration: BoxDecoration(
-                color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
-                borderRadius: BorderRadius.circular(AppBorderRadius.round),
+                color: warningBgColor,
+                shape: BoxShape.circle,
               ),
               child: Icon(
                 MdiIcons.accessPointNetworkOff,
-                size: _scale(40),
-                color: isDark
-                    ? AppTextColorDark.placeholder
-                    : AppTextColorLight.placeholder,
+                size: _scale(48),
+                color: warningColor,
               ),
             ),
-            AppSpacings.spacingLgVertical,
             Text(
               localizations.sensors_domain_empty_title,
               style: TextStyle(
-                color: isDark
-                    ? AppTextColorDark.primary
-                    : AppTextColorLight.primary,
                 fontSize: AppFontSize.large,
                 fontWeight: FontWeight.w600,
+                color:
+                    isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
               ),
+              textAlign: TextAlign.center,
             ),
-            AppSpacings.spacingSmVertical,
             Text(
               localizations.sensors_domain_empty_description,
-              textAlign: TextAlign.center,
               style: TextStyle(
+                fontSize: AppFontSize.base,
                 color: isDark
                     ? AppTextColorDark.secondary
                     : AppTextColorLight.secondary,
-                fontSize: AppFontSize.base,
               ),
+              textAlign: TextAlign.center,
             ),
           ],
         ),
@@ -1163,6 +1163,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          spacing: AppSpacings.pMd,
           children: [
             // Header: Icon + Freshness/Status dot
             Row(
@@ -1184,7 +1185,6 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
                 _buildFreshnessDot(context, sensor),
               ],
             ),
-            AppSpacings.spacingMdVertical,
 
             // Name
             Text(
@@ -1214,7 +1214,6 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-            AppSpacings.spacingSmVertical,
 
             // Value + trend icon
             FittedBox(

@@ -1142,6 +1142,7 @@ class _LightingSliderPanel extends StatelessWidget {
           fit: BoxFit.scaleDown,
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            spacing: AppSpacings.pMd,
             children: [
               Row(
                 mainAxisSize: MainAxisSize.min,
@@ -1175,8 +1176,7 @@ class _LightingSliderPanel extends StatelessWidget {
                     ),
                 ],
               ),
-              if (sublabel != null) ...[
-                AppSpacings.spacingSmVertical,
+              if (sublabel != null)
                 Text(
                   sublabel!,
                   style: TextStyle(
@@ -1186,7 +1186,6 @@ class _LightingSliderPanel extends StatelessWidget {
                     fontSize: AppFontSize.extraLarge,
                   ),
                 ),
-              ],
             ],
           ),
         ),
