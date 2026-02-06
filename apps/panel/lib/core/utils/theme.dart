@@ -2389,7 +2389,6 @@ ButtonStyle createButtonTheme({
           density: visualDensityService.density,
         ),
         fontWeight: FontWeight.w500,
-        color: color,
       ),
     ),
     shape: WidgetStateProperty.all(

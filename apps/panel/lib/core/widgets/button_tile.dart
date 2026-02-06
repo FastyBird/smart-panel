@@ -252,7 +252,7 @@ class ButtonTileWidget extends StatelessWidget {
               if (!isButton) {
                 parts.add(
                   Column(
-                    spacing: AppSpacings.pMd,
+                    spacing: AppSpacings.pSm,
                     children: [
                       ButtonTileTitle(
                         title: title,
