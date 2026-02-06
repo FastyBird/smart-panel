@@ -766,10 +766,6 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
                           : () => _triggerScene(scene.sceneId),
                       style: FilledButton.styleFrom(
                         padding: EdgeInsets.zero,
-                        shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(AppBorderRadius.base),
-                        ),
                       ),
                       child: Icon(
                         scene.icon,

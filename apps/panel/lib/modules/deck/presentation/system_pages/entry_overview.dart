@@ -588,9 +588,6 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
               onPressed: onTap,
               style: FilledButton.styleFrom(
                 padding: EdgeInsets.zero,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppBorderRadius.base),
-                ),
               ),
               child: Icon(
                 icon,
@@ -672,10 +669,6 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
                         _isSceneTriggering ? null : () => _triggerHouseMode(scene),
                     style: FilledButton.styleFrom(
                       padding: EdgeInsets.zero,
-                      shape: RoundedRectangleBorder(
-                        borderRadius:
-                            BorderRadius.circular(AppBorderRadius.base),
-                      ),
                     ),
                     child: Icon(
                       scene.iconData,

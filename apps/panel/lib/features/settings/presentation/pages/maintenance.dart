@@ -90,12 +90,7 @@ class MaintenancePage extends StatelessWidget {
                     style: OutlinedButton.styleFrom(
                       padding: AppSpacings.paddingSm,
                     ),
-                    child: Icon(
-                      MdiIcons.play,
-                      color: Theme.of(context).brightness == Brightness.light
-                          ? AppColorsLight.primary
-                          : AppColorsDark.primary,
-                    ),
+                    child: Icon(MdiIcons.play),
                   ),
                 ),
               ),
@@ -159,12 +154,7 @@ class MaintenancePage extends StatelessWidget {
                     style: OutlinedButton.styleFrom(
                       padding: AppSpacings.paddingSm,
                     ),
-                    child: Icon(
-                      MdiIcons.play,
-                      color: Theme.of(context).brightness == Brightness.light
-                          ? AppColorsLight.primary
-                          : AppColorsDark.primary,
-                    ),
+                    child: Icon(MdiIcons.play),
                   ),
                 ),
               ),
@@ -229,12 +219,7 @@ class MaintenancePage extends StatelessWidget {
                     style: OutlinedButton.styleFrom(
                       padding: AppSpacings.paddingSm,
                     ),
-                    child: Icon(
-                      MdiIcons.play,
-                      color: Theme.of(context).brightness == Brightness.light
-                          ? AppColorsLight.primary
-                          : AppColorsDark.primary,
-                    ),
+                    child: Icon(MdiIcons.play),
                   ),
                 ),
               ),
@@ -269,12 +254,20 @@ class MaintenancePage extends StatelessWidget {
             borderRadius: BorderRadius.circular(12),
           ),
           actions: <Widget>[
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text(
-                localizations.button_cancel.toUpperCase(),
-                style: TextStyle(
-                  fontSize: AppFontSize.extraSmall,
+            Theme(
+              data: ThemeData(
+                outlinedButtonTheme:
+                    Theme.of(context).brightness == Brightness.light
+                        ? AppOutlinedButtonsLightThemes.primary
+                        : AppOutlinedButtonsDarkThemes.primary,
+              ),
+              child: OutlinedButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text(
+                  localizations.button_cancel.toUpperCase(),
+                  style: TextStyle(
+                    fontSize: AppFontSize.extraSmall,
+                  ),
                 ),
               ),
             ),
@@ -291,7 +284,7 @@ class MaintenancePage extends StatelessWidget {
                   Navigator.of(context).pop();
                   onConfirm();
                 },
-                style: OutlinedButton.styleFrom(
+                style: FilledButton.styleFrom(
                   padding: EdgeInsets.symmetric(
                     vertical: AppSpacings.pSm,
                     horizontal: AppSpacings.pMd,

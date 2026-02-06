@@ -100,9 +100,6 @@ class GeneralSettingsPage extends StatelessWidget {
                 },
                 style: OutlinedButton.styleFrom(
                   padding: AppSpacings.paddingSm,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppBorderRadius.base),
-                  ),
                 ),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,

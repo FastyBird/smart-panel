@@ -920,9 +920,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 											horizontal: AppSpacings.scale(AppSpacings.pMd),
 											vertical: AppSpacings.scale(AppSpacings.pSm),
 										),
-										shape: RoundedRectangleBorder(
-											borderRadius: BorderRadius.circular(AppBorderRadius.base),
-										),
 									),
 									child: Text(localizations.media_activity_retry),
 								),
@@ -938,13 +935,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 										padding: EdgeInsets.symmetric(
 											horizontal: AppSpacings.scale(AppSpacings.pMd),
 											vertical: AppSpacings.scale(AppSpacings.pSm),
-										),
-										side: BorderSide(
-											color: isDark ? AppBorderColorDark.light : AppBorderColorLight.darker,
-											width: AppSpacings.scale(1),
-										),
-										shape: RoundedRectangleBorder(
-											borderRadius: BorderRadius.circular(AppBorderRadius.base),
 										),
 									),
 									child: Text(localizations.media_activity_turn_off),
@@ -1248,10 +1238,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 								padding: AppSpacings.paddingMd,
 								minimumSize: Size(columnWidth, columnWidth),
 								maximumSize: Size(columnWidth, columnWidth),
-								shape: RoundedRectangleBorder(
-									borderRadius: BorderRadius.circular(AppBorderRadius.base),
-								),
-								tapTargetSize: MaterialTapTargetSize.shrinkWrap,
 							),
 							child: Icon(
 								isMuted ? MdiIcons.volumeOff : MdiIcons.volumeHigh,
