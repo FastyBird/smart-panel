@@ -408,6 +408,10 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 
 	Future<void> _onActivitySelected(MediaActivityKey key) async {
 		if (_mediaService == null || _isSending) return;
+
+		// Skip if the selected activity is already active
+		final activeState = _mediaService!.getActiveState(_roomId);
+		if (activeState != null && activeState.isActive && activeState.activityKey == key) return;
 		setState(() {
 			_isSending = true;
 			// Reset local state when switching activities
@@ -816,7 +820,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			child: Column(
 				mainAxisAlignment: MainAxisAlignment.center,
 				mainAxisSize: MainAxisSize.min,
-				spacing: AppSpacings.pLg,
 				children: [
 					AnimatedBuilder(
 						animation: _pulseController,
@@ -843,6 +846,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 							);
 						},
 					),
+					SizedBox(height: AppSpacings.pLg),
 					Text(
 						localizations.media_starting_activity(activityName),
 						style: TextStyle(
@@ -851,7 +855,104 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 							color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
 						),
 					),
-			],
+					if (activeState.planSteps.isNotEmpty) ...[
+						SizedBox(height: AppSpacings.pLg),
+						Center(
+							child: IntrinsicWidth(
+								child: Column(
+									crossAxisAlignment: CrossAxisAlignment.start,
+									children: activeState.planSteps
+											.map((step) => _buildActivationStep(context, step, modeColorFamily))
+											.toList(),
+								),
+							),
+						),
+					],
+				],
+			),
+		);
+	}
+
+	String _translateStepLabel(BuildContext context, String label) {
+		final roomName = _spacesService?.getSpace(_roomId)?.name ?? '';
+
+		// Translate input source values: "Set display input to hdmi1" → "Set display input to HDMI 1"
+		final inputMatch = RegExp(r'^(Set \w+ input to )(.+)$').firstMatch(label);
+		if (inputMatch != null) {
+			return '${inputMatch.group(1)}${mediaInputSourceLabel(context, inputMatch.group(2)!)}';
+		}
+
+		// Strip room name and endpoint type suffix from device names:
+		// "Power on Living Room Samsung TV (Display)" → "Power on Samsung TV"
+		final powerMatch = RegExp(r'^(Power on )(.+)$').firstMatch(label);
+		if (powerMatch != null) {
+			var deviceName = powerMatch.group(2)!;
+			deviceName = _stripEndpointTypeSuffix(deviceName);
+			return '${powerMatch.group(1)}${stripRoomNameFromDevice(deviceName, roomName)}';
+		}
+
+		return label;
+	}
+
+	String _stripEndpointTypeSuffix(String name) {
+		return name.replaceFirst(RegExp(r'\s*\((Display|Audio Output|Source|Remote Target)\)$'), '');
+	}
+
+	Widget _buildActivationStep(BuildContext context, MediaActivationPlanStepModel step, ThemeColorFamily modeColorFamily) {
+		final isDark = Theme.of(context).brightness == Brightness.dark;
+
+		final Color iconColor;
+		final IconData iconData;
+		final Color textColor;
+
+		switch (step.status) {
+			case MediaStepStatus.succeeded:
+				iconColor = isDark ? AppColorsDark.success : AppColorsLight.success;
+				iconData = Icons.check;
+				textColor = isDark ? AppTextColorDark.primary : AppTextColorLight.primary;
+			case MediaStepStatus.failed:
+				iconColor = isDark ? AppColorsDark.error : AppColorsLight.error;
+				iconData = Icons.close;
+				textColor = isDark ? AppTextColorDark.primary : AppTextColorLight.primary;
+			case MediaStepStatus.executing:
+				iconColor = modeColorFamily.base;
+				iconData = Icons.circle;
+				textColor = isDark ? AppTextColorDark.primary : AppTextColorLight.primary;
+			case MediaStepStatus.pending:
+				iconColor = isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder;
+				iconData = Icons.circle_outlined;
+				textColor = isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder;
+		}
+
+		return Padding(
+			padding: EdgeInsets.symmetric(
+				vertical: AppSpacings.pXs,
+				horizontal: AppSpacings.pLg,
+			),
+			child: Row(
+				children: [
+					AnimatedBuilder(
+						animation: _pulseController,
+						builder: (context, child) {
+							return Opacity(
+								opacity: step.status == MediaStepStatus.executing
+										? 0.5 + 0.5 * math.sin(_pulseController.value * 2 * math.pi)
+										: 1.0,
+								child: Icon(iconData, size: AppSpacings.scale(16), color: iconColor),
+							);
+						},
+					),
+					SizedBox(width: AppSpacings.pMd),
+					Expanded(
+						child: Text(
+							_translateStepLabel(context, step.label),
+							style: TextStyle(
+								fontSize: AppFontSize.small,
+								color: textColor,
+							),
+						),
+					),
+				],
 			),
 		);
 	}
