@@ -48,6 +48,7 @@ devices:
   - name: "Entry Door Lock"
     category: lock
     room: reception
+    behavior_mode: realistic
     channels:
       - category: lock
         properties:
@@ -82,6 +83,7 @@ devices:
     room: main-office
     auto_simulate: true
     simulate_interval: 60000
+    behavior_mode: realistic
     channels:
       - category: temperature
         properties:
@@ -140,6 +142,7 @@ devices:
   - name: "Meeting Room Display"
     category: television
     room: meeting-room
+    behavior_mode: realistic
     channels:
       - category: television
         properties:
@@ -188,6 +191,7 @@ devices:
     category: air_conditioner
     room: server-room
     auto_simulate: true
+    behavior_mode: realistic
     channels:
       - category: cooler
         properties:

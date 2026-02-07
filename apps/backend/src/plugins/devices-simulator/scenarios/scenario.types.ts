@@ -59,6 +59,10 @@ export interface ScenarioRoomDefinition {
 	id: string;
 	/** Display name for the room */
 	name: string;
+	/** Space type: 'room' or 'zone' (defaults to 'room') */
+	type?: 'room' | 'zone';
+	/** Space category matching the type (e.g., 'living_room', 'outdoor_backyard') */
+	category?: string;
 }
 
 /**

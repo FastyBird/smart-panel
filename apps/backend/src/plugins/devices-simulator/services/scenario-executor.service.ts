@@ -25,7 +25,7 @@ import {
 	getRequiredProperties,
 } from '../../../modules/devices/utils/schema.utils';
 import { SpacesService } from '../../../modules/spaces/services/spaces.service';
-import { SpaceType } from '../../../modules/spaces/spaces.constants';
+import { SpaceCategory, SpaceType } from '../../../modules/spaces/spaces.constants';
 import { DEVICES_SIMULATOR_PLUGIN_NAME, DEVICES_SIMULATOR_TYPE } from '../devices-simulator.constants';
 import { SimulatorDeviceEntity } from '../entities/devices-simulator.entity';
 import {
@@ -101,6 +101,7 @@ export class ScenarioExecutorService {
 		const deviceIds: string[] = [];
 		const roomIds: string[] = [];
 		const roomIdMap = new Map<string, string>(); // scenario room id -> database room id
+		const zoneIds = new Set<string>(); // scenario room ids that are zones
 
 		this.logger.log(`Executing scenario: ${config.name}`);
 
@@ -113,15 +114,22 @@ export class ScenarioExecutorService {
 				}
 
 				try {
+					const spaceType = roomDef.type === 'zone' ? SpaceType.ZONE : SpaceType.ROOM;
+
 					const room = await this.spacesService.create({
 						name: roomDef.name,
-						type: SpaceType.ROOM,
+						type: spaceType,
+						...(roomDef.category ? { category: roomDef.category as SpaceCategory } : {}),
 					});
 
 					roomIdMap.set(roomDef.id, room.id);
+
+					if (roomDef.type === 'zone') {
+						zoneIds.add(roomDef.id);
+					}
 					roomIds.push(room.id);
 
-					this.logger.log(`Created room: ${roomDef.name} (${room.id})`);
+					this.logger.log(`Created ${roomDef.type ?? 'room'}: ${roomDef.name} (${room.id})`);
 				} catch (error) {
 					const message = error instanceof Error ? error.message : String(error);
 					errors.push(`Failed to create room '${roomDef.name}': ${message}`);
@@ -138,13 +146,19 @@ export class ScenarioExecutorService {
 			}
 
 			try {
-				// Resolve room ID
+				// Resolve space assignment - rooms use room_id, zones use zone_ids
 				let roomId: string | null = null;
+				let deviceZoneIds: string[] = [];
 				if (deviceDef.room) {
-					roomId = roomIdMap.get(deviceDef.room) ?? null;
+					const resolvedId = roomIdMap.get(deviceDef.room) ?? null;
+					if (resolvedId && zoneIds.has(deviceDef.room)) {
+						deviceZoneIds = [resolvedId];
+					} else {
+						roomId = resolvedId;
+					}
 				}
 
-				const device = await this.createDevice(deviceDef, roomId);
+				const device = await this.createDevice(deviceDef, roomId, deviceZoneIds);
 				deviceIds.push(device.id);
 
 				this.logger.log(`Created device: ${deviceDef.name} (${device.id})`);
@@ -179,6 +193,7 @@ export class ScenarioExecutorService {
 	private async createDevice(
 		deviceDef: ScenarioDeviceDefinition,
 		roomId: string | null,
+		zoneIds: string[] = [],
 	): Promise<SimulatorDeviceEntity> {
 		const deviceCategory = this.scenarioLoader.resolveDeviceCategory(deviceDef.category);
 
@@ -197,6 +212,7 @@ export class ScenarioExecutorService {
 			name: deviceDef.name,
 			description: deviceDef.description ?? null,
 			room_id: roomId,
+			...(zoneIds.length > 0 ? { zone_ids: zoneIds } : {}),
 			auto_simulate: deviceDef.auto_simulate ?? false,
 			simulate_interval: deviceDef.simulate_interval ?? 5000,
 			behavior_mode: deviceDef.behavior_mode ?? 'default',

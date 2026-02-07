@@ -23,6 +23,8 @@ rooms:
     name: "Hallway"
   - id: terrace
     name: "Terrace"
+    type: zone
+    category: outdoor_terrace
 
 devices:
   # Living Room
@@ -91,6 +93,7 @@ devices:
     category: air_conditioner
     room: living-room
     auto_simulate: true
+    behavior_mode: realistic
     channels:
       - category: cooler
         properties:
@@ -108,6 +111,7 @@ devices:
   - name: "Living Room TV"
     category: television
     room: living-room
+    behavior_mode: realistic
     channels:
       - category: television
         properties:
@@ -128,6 +132,7 @@ devices:
     category: window_covering
     room: living-room
     auto_simulate: true
+    behavior_mode: realistic
     channels:
       - category: window_covering
         properties:
@@ -181,6 +186,7 @@ devices:
     category: window_covering
     room: master-bedroom
     auto_simulate: true
+    behavior_mode: realistic
     channels:
       - category: window_covering
         properties:
@@ -430,6 +436,7 @@ devices:
   - name: "Front Door Lock"
     category: lock
     room: hallway
+    behavior_mode: realistic
     channels:
       - category: lock
         properties:
@@ -460,6 +467,7 @@ devices:
     room: hallway
     auto_simulate: true
     simulate_interval: 60000
+    behavior_mode: realistic
     channels:
       - category: temperature
         properties:

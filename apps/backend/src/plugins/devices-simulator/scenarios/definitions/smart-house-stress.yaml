@@ -35,8 +35,12 @@ rooms:
   name: Hallway
 - id: patio
   name: Patio
+  type: zone
+  category: outdoor_terrace
 - id: backyard
   name: Backyard
+  type: zone
+  category: outdoor_backyard
 devices:
 - name: Living Room Ceiling Light
   category: lighting
@@ -145,6 +149,7 @@ devices:
   category: window_covering
   room: living-room
   auto_simulate: true
+  behavior_mode: realistic
   channels:
   - category: window_covering
     properties:
@@ -160,6 +165,7 @@ devices:
   category: window_covering
   room: living-room
   auto_simulate: true
+  behavior_mode: realistic
   channels:
   - category: window_covering
     properties:
@@ -209,6 +215,7 @@ devices:
 - name: Family Room TV
   category: television
   room: family-room
+  behavior_mode: realistic
   channels:
   - category: television
     properties:
@@ -227,6 +234,7 @@ devices:
 - name: Family Room Soundbar
   category: speaker
   room: family-room
+  behavior_mode: realistic
   channels:
   - category: speaker
     properties:
@@ -259,6 +267,7 @@ devices:
 - name: Family Room Motorized Blinds
   category: window_covering
   room: family-room
+  behavior_mode: realistic
   channels:
   - category: window_covering
     properties:
@@ -352,6 +361,7 @@ devices:
   category: air_conditioner
   room: master-bedroom
   auto_simulate: true
+  behavior_mode: realistic
   channels:
   - category: cooler
     properties:
@@ -371,6 +381,7 @@ devices:
   category: air_humidifier
   room: master-bedroom
   auto_simulate: true
+  behavior_mode: realistic
   channels:
   - category: humidifier
     properties:
@@ -390,6 +401,7 @@ devices:
   category: window_covering
   room: master-bedroom
   auto_simulate: true
+  behavior_mode: realistic
   channels:
   - category: window_covering
     properties:
@@ -404,6 +416,7 @@ devices:
 - name: Master Bedroom Sheer Curtains
   category: window_covering
   room: master-bedroom
+  behavior_mode: realistic
   channels:
   - category: window_covering
     properties:
@@ -476,6 +489,7 @@ devices:
 - name: Bedroom 2 Roller Shade
   category: window_covering
   room: bedroom-2
+  behavior_mode: realistic
   channels:
   - category: window_covering
     properties:
@@ -522,6 +536,7 @@ devices:
 - name: Bedroom 3 Roller Shade
   category: window_covering
   room: bedroom-3
+  behavior_mode: realistic
   channels:
   - category: window_covering
     properties:
@@ -768,6 +783,7 @@ devices:
 - name: Kitchen Roller Blind
   category: window_covering
   room: kitchen
+  behavior_mode: realistic
   channels:
   - category: window_covering
     properties:
@@ -813,6 +829,7 @@ devices:
 - name: Dining Room Curtains
   category: window_covering
   room: dining-room
+  behavior_mode: realistic
   channels:
   - category: window_covering
     properties:
@@ -882,6 +899,7 @@ devices:
 - name: Office Roller Shade
   category: window_covering
   room: home-office
+  behavior_mode: realistic
   channels:
   - category: window_covering
     properties:
@@ -1039,6 +1057,7 @@ devices:
 - name: Front Door Lock
   category: lock
   room: foyer
+  behavior_mode: realistic
   channels:
   - category: lock
     properties:
@@ -1106,6 +1125,7 @@ devices:
   room: hallway
   auto_simulate: true
   simulate_interval: 60000
+  behavior_mode: realistic
   channels:
   - category: temperature
     properties:
@@ -1196,6 +1216,7 @@ devices:
 - name: Patio Door Lock
   category: lock
   room: patio
+  behavior_mode: realistic
   channels:
   - category: lock
     properties:
@@ -1220,6 +1241,7 @@ devices:
 - name: Patio Outdoor Blind
   category: window_covering
   room: patio
+  behavior_mode: realistic
   channels:
   - category: window_covering
     properties:
@@ -1345,6 +1367,7 @@ devices:
   room: living-room
   auto_simulate: true
   simulate_interval: 60000
+  behavior_mode: realistic
   channels:
   - category: cooler
     properties:
@@ -1431,13 +1454,16 @@ devices:
   room: living-room
   auto_simulate: true
   simulate_interval: 20000
+  behavior_mode: realistic
   channels:
   - category: television
     properties:
     - category: 'on'
       value: true
+  - category: media_input
+    properties:
     - category: source
-      value: hdmi_1
+      value: hdmi1
   - category: speaker
     properties:
     - category: active
@@ -1915,6 +1941,7 @@ devices:
 - name: Garage Side Door Lock
   category: lock
   room: garage
+  behavior_mode: realistic
   channels:
   - category: lock
     properties:
@@ -1929,6 +1956,7 @@ devices:
   room: living-room
   auto_simulate: true
   simulate_interval: 20000
+  behavior_mode: realistic
   channels:
   - category: speaker
     properties:
@@ -1945,6 +1973,7 @@ devices:
 - name: Kitchen Smart Speaker
   category: speaker
   room: kitchen
+  behavior_mode: realistic
   channels:
   - category: speaker
     properties:
@@ -1961,6 +1990,7 @@ devices:
 - name: Patio Speaker
   category: speaker
   room: patio
+  behavior_mode: realistic
   channels:
   - category: speaker
     properties:
@@ -5961,6 +5991,7 @@ devices:
   room: living-room
   auto_simulate: true
   simulate_interval: 20000
+  behavior_mode: realistic
   channels:
   - category: speaker
     properties:
@@ -5979,6 +6010,7 @@ devices:
   room: living-room
   auto_simulate: true
   simulate_interval: 20000
+  behavior_mode: realistic
   channels:
   - category: speaker
     properties:
@@ -5997,6 +6029,7 @@ devices:
   room: living-room
   auto_simulate: true
   simulate_interval: 60000
+  behavior_mode: realistic
   channels:
   - category: window_covering
     properties:
@@ -6013,6 +6046,7 @@ devices:
   room: living-room
   auto_simulate: true
   simulate_interval: 60000
+  behavior_mode: realistic
   channels:
   - category: window_covering
     properties:
@@ -6217,6 +6251,7 @@ devices:
   room: family-room
   auto_simulate: true
   simulate_interval: 20000
+  behavior_mode: realistic
   channels:
   - category: speaker
     properties:
@@ -6235,6 +6270,7 @@ devices:
   room: family-room
   auto_simulate: true
   simulate_interval: 20000
+  behavior_mode: realistic
   channels:
   - category: speaker
     properties:
@@ -6253,6 +6289,7 @@ devices:
   room: family-room
   auto_simulate: true
   simulate_interval: 60000
+  behavior_mode: realistic
   channels:
   - category: window_covering
     properties:
@@ -6271,6 +6308,7 @@ devices:
   room: family-room
   auto_simulate: true
   simulate_interval: 60000
+  behavior_mode: realistic
   channels:
   - category: window_covering
     properties:
@@ -6477,6 +6515,7 @@ devices:
   room: kitchen
   auto_simulate: true
   simulate_interval: 20000
+  behavior_mode: realistic
   channels:
   - category: speaker
     properties:
@@ -6495,6 +6534,7 @@ devices:
   room: kitchen
   auto_simulate: true
   simulate_interval: 20000
+  behavior_mode: realistic
   channels:
   - category: speaker
     properties:
@@ -6513,6 +6553,7 @@ devices:
   room: kitchen
   auto_simulate: true
   simulate_interval: 60000
+  behavior_mode: realistic
   channels:
   - category: window_covering
     properties:
@@ -6529,6 +6570,7 @@ devices:
   room: kitchen
   auto_simulate: true
   simulate_interval: 60000
+  behavior_mode: realistic
   channels:
   - category: window_covering
     properties:
@@ -6733,6 +6775,7 @@ devices:
   room: home-office
   auto_simulate: true
   simulate_interval: 20000
+  behavior_mode: realistic
   channels:
   - category: speaker
     properties:
@@ -6751,6 +6794,7 @@ devices:
   room: home-office
   auto_simulate: true
   simulate_interval: 20000
+  behavior_mode: realistic
   channels:
   - category: speaker
     properties:
@@ -6769,6 +6813,7 @@ devices:
   room: home-office
   auto_simulate: true
   simulate_interval: 60000
+  behavior_mode: realistic
   channels:
   - category: window_covering
     properties:
@@ -6785,6 +6830,7 @@ devices:
   room: home-office
   auto_simulate: true
   simulate_interval: 60000
+  behavior_mode: realistic
   channels:
   - category: window_covering
     properties:
@@ -6985,6 +7031,7 @@ devices:
   room: master-bedroom
   auto_simulate: true
   simulate_interval: 20000
+  behavior_mode: realistic
   channels:
   - category: speaker
     properties:
@@ -7003,6 +7050,7 @@ devices:
   room: master-bedroom
   auto_simulate: true
   simulate_interval: 20000
+  behavior_mode: realistic
   channels:
   - category: speaker
     properties:
@@ -7021,6 +7069,7 @@ devices:
   room: master-bedroom
   auto_simulate: true
   simulate_interval: 60000
+  behavior_mode: realistic
   channels:
   - category: window_covering
     properties:
@@ -7039,6 +7088,7 @@ devices:
   room: master-bedroom
   auto_simulate: true
   simulate_interval: 60000
+  behavior_mode: realistic
   channels:
   - category: window_covering
     properties:
@@ -7615,6 +7665,7 @@ devices:
   room: patio
   auto_simulate: true
   simulate_interval: 20000
+  behavior_mode: realistic
   channels:
   - category: speaker
     properties:
@@ -7633,6 +7684,7 @@ devices:
   room: patio
   auto_simulate: true
   simulate_interval: 20000
+  behavior_mode: realistic
   channels:
   - category: speaker
     properties:
@@ -8181,6 +8233,7 @@ devices:
 - name: Patio Secondary Door Lock
   category: lock
   room: patio
+  behavior_mode: realistic
   channels:
   - category: lock
     properties:
@@ -8193,6 +8246,7 @@ devices:
 - name: Garage Internal Door Lock
   category: lock
   room: garage
+  behavior_mode: realistic
   channels:
   - category: lock
     properties:
@@ -8205,6 +8259,7 @@ devices:
 - name: Front Door Lock (Backup)
   category: lock
   room: foyer
+  behavior_mode: realistic
   channels:
   - category: lock
     properties:

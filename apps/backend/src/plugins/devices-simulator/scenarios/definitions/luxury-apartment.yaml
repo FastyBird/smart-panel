@@ -23,6 +23,8 @@ rooms:
     name: "Hallway"
   - id: balcony
     name: "Balcony"
+    type: zone
+    category: outdoor_balcony
 
 devices:
   # ============================================================================
@@ -86,6 +88,7 @@ devices:
   - name: "Living Room TV"
     category: television
     room: living-room
+    behavior_mode: realistic
     channels:
       - category: television
         properties:
@@ -105,6 +108,7 @@ devices:
   - name: "Living Room Soundbar"
     category: speaker
     room: living-room
+    behavior_mode: realistic
     channels:
       - category: speaker
         properties:
@@ -160,6 +164,7 @@ devices:
     category: window_covering
     room: living-room
     auto_simulate: true
+    behavior_mode: realistic
     channels:
       - category: window_covering
         properties:
@@ -176,6 +181,7 @@ devices:
     category: window_covering
     room: living-room
     auto_simulate: true
+    behavior_mode: realistic
     channels:
       - category: window_covering
         properties:
@@ -296,6 +302,7 @@ devices:
     category: air_conditioner
     room: master-bedroom
     auto_simulate: true
+    behavior_mode: realistic
     channels:
       - category: cooler
         properties:
@@ -322,6 +329,7 @@ devices:
     category: air_humidifier
     room: master-bedroom
     auto_simulate: true
+    behavior_mode: realistic
     channels:
       - category: humidifier
         properties:
@@ -342,6 +350,7 @@ devices:
     category: window_covering
     room: master-bedroom
     auto_simulate: true
+    behavior_mode: realistic
     channels:
       - category: window_covering
         properties:
@@ -358,6 +367,7 @@ devices:
     category: window_covering
     room: master-bedroom
     auto_simulate: true
+    behavior_mode: realistic
     channels:
       - category: window_covering
         properties:
@@ -439,6 +449,7 @@ devices:
   - name: "Guest Bedroom Roller Shade"
     category: window_covering
     room: guest-bedroom
+    behavior_mode: realistic
     channels:
       - category: window_covering
         properties:
@@ -706,6 +717,7 @@ devices:
   - name: "Kitchen Roller Blind"
     category: window_covering
     room: kitchen
+    behavior_mode: realistic
     channels:
       - category: window_covering
         properties:
@@ -761,6 +773,7 @@ devices:
   - name: "Dining Room Curtains"
     category: window_covering
     room: dining-room
+    behavior_mode: realistic
     channels:
       - category: window_covering
         properties:
@@ -855,6 +868,7 @@ devices:
     category: window_covering
     room: home-office
     auto_simulate: true
+    behavior_mode: realistic
     channels:
       - category: window_covering
         properties:
@@ -908,6 +922,7 @@ devices:
   - name: "Front Door Lock"
     category: lock
     room: hallway
+    behavior_mode: realistic
     channels:
       - category: lock
         properties:
@@ -964,6 +979,7 @@ devices:
     room: hallway
     auto_simulate: true
     simulate_interval: 60000
+    behavior_mode: realistic
     channels:
       - category: temperature
         properties:
@@ -1043,6 +1059,7 @@ devices:
   - name: "Balcony Outdoor Blind"
     category: window_covering
     room: balcony
+    behavior_mode: realistic
     channels:
       - category: window_covering
         properties:

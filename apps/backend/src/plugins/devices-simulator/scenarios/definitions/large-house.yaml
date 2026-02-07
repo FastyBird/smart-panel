@@ -48,12 +48,20 @@ rooms:
   # Outdoor
   - id: front-porch
     name: "Front Porch"
+    type: zone
+    category: outdoor_walkway
   - id: back-patio
     name: "Back Patio"
+    type: zone
+    category: outdoor_terrace
   - id: pool-area
     name: "Pool Area"
+    type: zone
+    category: outdoor_garden
   - id: backyard
     name: "Backyard"
+    type: zone
+    category: outdoor_backyard
 
 devices:
   # ============================================================================
@@ -95,6 +103,7 @@ devices:
   - name: "Front Door Lock"
     category: lock
     room: foyer
+    behavior_mode: realistic
     channels:
       - category: lock
         properties:
@@ -151,6 +160,7 @@ devices:
     room: foyer
     auto_simulate: true
     simulate_interval: 60000
+    behavior_mode: realistic
     channels:
       - category: temperature
         properties:
@@ -297,6 +307,7 @@ devices:
     category: window_covering
     room: living-room
     auto_simulate: true
+    behavior_mode: realistic
     channels:
       - category: window_covering
         properties:
@@ -312,6 +323,7 @@ devices:
   - name: "Living Room Sheer Curtains Right"
     category: window_covering
     room: living-room
+    behavior_mode: realistic
     channels:
       - category: window_covering
         properties:
@@ -328,6 +340,7 @@ devices:
     category: window_covering
     room: living-room
     auto_simulate: true
+    behavior_mode: realistic
     channels:
       - category: window_covering
         properties:
@@ -398,6 +411,7 @@ devices:
   - name: "Family Room TV"
     category: television
     room: family-room
+    behavior_mode: realistic
     channels:
       - category: television
         properties:
@@ -417,6 +431,7 @@ devices:
   - name: "Family Room Soundbar"
     category: speaker
     room: family-room
+    behavior_mode: realistic
     channels:
       - category: speaker
         properties:
@@ -451,6 +466,7 @@ devices:
   - name: "Family Room Motorized Blinds"
     category: window_covering
     room: family-room
+    behavior_mode: realistic
     channels:
       - category: window_covering
         properties:
@@ -468,6 +484,7 @@ devices:
   - name: "Family Room Blackout Shades"
     category: window_covering
     room: family-room
+    behavior_mode: realistic
     channels:
       - category: window_covering
         properties:
@@ -641,6 +658,7 @@ devices:
   - name: "Kitchen Roman Shades"
     category: window_covering
     room: kitchen
+    behavior_mode: realistic
     channels:
       - category: window_covering
         properties:
@@ -692,6 +710,7 @@ devices:
   - name: "Dining Room Curtains"
     category: window_covering
     room: dining-room
+    behavior_mode: realistic
     channels:
       - category: window_covering
         properties:
@@ -787,6 +806,7 @@ devices:
   - name: "Office Roller Shade"
     category: window_covering
     room: office
+    behavior_mode: realistic
     channels:
       - category: window_covering
         properties:
@@ -851,6 +871,7 @@ devices:
   - name: "Side Door Lock"
     category: lock
     room: mudroom
+    behavior_mode: realistic
     channels:
       - category: lock
         properties:
@@ -1085,6 +1106,7 @@ devices:
     room: upper-hallway
     auto_simulate: true
     simulate_interval: 60000
+    behavior_mode: realistic
     channels:
       - category: temperature
         properties:
@@ -1189,6 +1211,7 @@ devices:
   - name: "Master Bedroom TV"
     category: television
     room: master-suite
+    behavior_mode: realistic
     channels:
       - category: television
         properties:
@@ -1227,6 +1250,7 @@ devices:
     category: air_conditioner
     room: master-suite
     auto_simulate: true
+    behavior_mode: realistic
     channels:
       - category: cooler
         properties:
@@ -1247,6 +1271,7 @@ devices:
     category: air_humidifier
     room: master-suite
     auto_simulate: true
+    behavior_mode: realistic
     channels:
       - category: humidifier
         properties:
@@ -1267,6 +1292,7 @@ devices:
     category: window_covering
     room: master-suite
     auto_simulate: true
+    behavior_mode: realistic
     channels:
       - category: window_covering
         properties:
@@ -1282,6 +1308,7 @@ devices:
   - name: "Master Bedroom Sheer Curtains"
     category: window_covering
     room: master-suite
+    behavior_mode: realistic
     channels:
       - category: window_covering
         properties:
@@ -1508,6 +1535,7 @@ devices:
   - name: "Bedroom 2 Roller Shade"
     category: window_covering
     room: bedroom-2
+    behavior_mode: realistic
     channels:
       - category: window_covering
         properties:
@@ -1571,6 +1599,7 @@ devices:
   - name: "Bedroom 3 Roller Shade"
     category: window_covering
     room: bedroom-3
+    behavior_mode: realistic
     channels:
       - category: window_covering
         properties:
@@ -1623,6 +1652,7 @@ devices:
   - name: "Bedroom 4 Roller Shade"
     category: window_covering
     room: bedroom-4
+    behavior_mode: realistic
     channels:
       - category: window_covering
         properties:
@@ -1751,6 +1781,7 @@ devices:
   - name: "Bonus Room TV"
     category: television
     room: bonus-room
+    behavior_mode: realistic
     channels:
       - category: television
         properties:
@@ -1870,6 +1901,7 @@ devices:
   - name: "Patio Door Lock"
     category: lock
     room: back-patio
+    behavior_mode: realistic
     channels:
       - category: lock
         properties:
@@ -1896,6 +1928,7 @@ devices:
   - name: "Patio Motorized Awning"
     category: window_covering
     room: back-patio
+    behavior_mode: realistic
     channels:
       - category: window_covering
         properties:
