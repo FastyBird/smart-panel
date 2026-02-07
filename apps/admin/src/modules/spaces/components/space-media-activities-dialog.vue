@@ -360,6 +360,7 @@ import {
 
 import { useFlashMessage } from '../../../common';
 import {
+	getActivityIcon,
 	type IDerivedMediaEndpoint,
 	type IMediaActivityBinding,
 	type MediaActivationState,
@@ -563,21 +564,6 @@ const endpointDisplayName = (ep: IDerivedMediaEndpoint): string => {
 };
 
 // Status helpers
-const getActivityIcon = (key: string): string => {
-	switch (key) {
-		case MediaActivityKey.watch:
-			return 'mdi:television-play';
-		case MediaActivityKey.listen:
-			return 'mdi:music';
-		case MediaActivityKey.gaming:
-			return 'mdi:controller';
-		case MediaActivityKey.background:
-			return 'mdi:music-note';
-		default:
-			return 'mdi:help-circle';
-	}
-};
-
 const getStateTagType = (state: string): 'primary' | 'success' | 'warning' | 'info' | 'danger' => {
 	switch (state) {
 		case 'active':

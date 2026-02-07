@@ -222,6 +222,7 @@ import { useI18n } from 'vue-i18n';
 
 import { useFlashMessage } from '../../../common';
 import {
+	getActivityIcon,
 	type IMediaActivityBinding,
 	type IMediaDryRunPreview,
 	type IDerivedMediaEndpoint,
@@ -257,7 +258,6 @@ const {
 	preview,
 } = useSpaceMedia(spaceIdRef);
 
-const loading = ref(false);
 const hasEndpoints = ref(false);
 
 // Preview dialog state
@@ -279,21 +279,6 @@ const activityKeys = [
 	MediaActivityKey.gaming,
 	MediaActivityKey.background,
 ];
-
-const getActivityIcon = (key: string): string => {
-	switch (key) {
-		case MediaActivityKey.watch:
-			return 'mdi:television-play';
-		case MediaActivityKey.listen:
-			return 'mdi:music';
-		case MediaActivityKey.gaming:
-			return 'mdi:controller';
-		case MediaActivityKey.background:
-			return 'mdi:music-note';
-		default:
-			return 'mdi:help-circle';
-	}
-};
 
 const getBindingTagType = (binding: IMediaActivityBinding): 'success' | 'warning' | 'info' => {
 	const hasSlots = !!(binding.displayEndpointId || binding.audioEndpointId || binding.sourceEndpointId || binding.remoteEndpointId);
@@ -410,13 +395,11 @@ const onPreviewActivity = async (activityKey: string): Promise<void> => {
 const loadData = async (): Promise<void> => {
 	if (!props.space?.id) return;
 
-	loading.value = true;
-
 	try {
 		await Promise.all([fetchEndpoints(), fetchBindings(), fetchActiveState()]);
 		hasEndpoints.value = endpoints.value.length > 0;
-	} finally {
-		loading.value = false;
+	} catch {
+		// ignore fetch errors — summary degrades gracefully
 	}
 };
 

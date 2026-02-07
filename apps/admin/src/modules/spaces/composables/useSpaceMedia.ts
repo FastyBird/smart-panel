@@ -349,6 +349,21 @@ const transformActiveEntity = (raw: Record<string, unknown>): IMediaActiveState 
 	};
 };
 
+export const getActivityIcon = (key: string): string => {
+	switch (key) {
+		case 'watch':
+			return 'mdi:television-play';
+		case 'listen':
+			return 'mdi:music';
+		case 'gaming':
+			return 'mdi:controller';
+		case 'background':
+			return 'mdi:music-note';
+		default:
+			return 'mdi:help-circle';
+	}
+};
+
 export const useSpaceMedia = (spaceId: Ref<string | undefined>): IUseSpaceMedia => {
 	const backend = useBackend();
 
