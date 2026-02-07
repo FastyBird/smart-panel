@@ -410,7 +410,9 @@ const {
 	endpointsByType,
 } = useSpaceMedia(spaceIdRef);
 
-const activityKeys = [
+type ConfiguredActivityKey = MediaActivityKey.watch | MediaActivityKey.listen | MediaActivityKey.gaming | MediaActivityKey.background;
+
+const activityKeys: ConfiguredActivityKey[] = [
 	MediaActivityKey.watch,
 	MediaActivityKey.listen,
 	MediaActivityKey.gaming,
@@ -445,14 +447,14 @@ const createEmptyForm = (): IFormState => ({
 	audioVolumePreset: 30,
 });
 
-const forms = reactive<Record<string, IFormState>>({
+const forms = reactive<Record<ConfiguredActivityKey, IFormState>>({
 	[MediaActivityKey.watch]: createEmptyForm(),
 	[MediaActivityKey.listen]: createEmptyForm(),
 	[MediaActivityKey.gaming]: createEmptyForm(),
 	[MediaActivityKey.background]: createEmptyForm(),
 });
 
-const snapshots = reactive<Record<string, IFormState>>({
+const snapshots = reactive<Record<ConfiguredActivityKey, IFormState>>({
 	[MediaActivityKey.watch]: createEmptyForm(),
 	[MediaActivityKey.listen]: createEmptyForm(),
 	[MediaActivityKey.gaming]: createEmptyForm(),
@@ -460,14 +462,14 @@ const snapshots = reactive<Record<string, IFormState>>({
 });
 
 // Per-activity autosave state
-const autoSaving = reactive<Record<string, boolean>>({
+const autoSaving = reactive<Record<ConfiguredActivityKey, boolean>>({
 	[MediaActivityKey.watch]: false,
 	[MediaActivityKey.listen]: false,
 	[MediaActivityKey.gaming]: false,
 	[MediaActivityKey.background]: false,
 });
 
-const activityErrors = reactive<Record<string, string | null>>({
+const activityErrors = reactive<Record<ConfiguredActivityKey, string | null>>({
 	[MediaActivityKey.watch]: null,
 	[MediaActivityKey.listen]: null,
 	[MediaActivityKey.gaming]: null,
@@ -481,7 +483,7 @@ const sourceEndpoints = endpointsByType(MediaEndpointType.source);
 const remoteEndpoints = endpointsByType(MediaEndpointType.remote_target);
 
 // Load a binding into a specific activity form
-const loadBindingIntoForm = (key: string, binding: IMediaActivityBinding | undefined): void => {
+const loadBindingIntoForm = (key: ConfiguredActivityKey, binding: IMediaActivityBinding | undefined): void => {
 	forms[key].displayEndpointId = binding?.displayEndpointId ?? '';
 	forms[key].audioEndpointId = binding?.audioEndpointId ?? '';
 	forms[key].sourceEndpointId = binding?.sourceEndpointId ?? '';
@@ -503,7 +505,7 @@ const initAllForms = (): void => {
 };
 
 // Dirty detection
-const isFormDirty = (key: string): boolean => {
+const isFormDirty = (key: ConfiguredActivityKey): boolean => {
 	const form = forms[key];
 	const snap = snapshots[key];
 	return (
@@ -519,14 +521,14 @@ const isFormDirty = (key: string): boolean => {
 };
 
 // Override visibility helpers
-const hasInputSelect = (activityKey: string, endpointField: 'displayEndpointId' | 'audioEndpointId' | 'sourceEndpointId'): boolean => {
+const hasInputSelect = (activityKey: ConfiguredActivityKey, endpointField: 'displayEndpointId' | 'audioEndpointId' | 'sourceEndpointId'): boolean => {
 	const epId = forms[activityKey][endpointField];
 	if (!epId) return false;
 	const ep = endpoints.value.find((e) => e.endpointId === epId);
 	return ep?.capabilities.inputSelect ?? false;
 };
 
-const hasVolume = (activityKey: string): boolean => {
+const hasVolume = (activityKey: ConfiguredActivityKey): boolean => {
 	const epId = forms[activityKey].audioEndpointId;
 	if (!epId) return false;
 	const ep = endpoints.value.find((e) => e.endpointId === epId);
@@ -626,7 +628,7 @@ const getActivityStatusLabel = (key: MediaActivityKey): string => {
 // Autosave with debounce
 const pendingSaves = new Map<string, ReturnType<typeof setTimeout>>();
 
-const buildPayload = (activityKey: string) => {
+const buildPayload = (activityKey: ConfiguredActivityKey) => {
 	const form = forms[activityKey];
 	return {
 		displayEndpointId: form.displayEndpointId || null,
@@ -640,7 +642,7 @@ const buildPayload = (activityKey: string) => {
 	};
 };
 
-const performAutoSave = async (key: MediaActivityKey): Promise<void> => {
+const performAutoSave = async (key: ConfiguredActivityKey): Promise<void> => {
 	if (autoSaving[key]) return;
 
 	autoSaving[key] = true;
@@ -665,7 +667,7 @@ const performAutoSave = async (key: MediaActivityKey): Promise<void> => {
 	}
 };
 
-const debouncedAutoSave = (key: MediaActivityKey): void => {
+const debouncedAutoSave = (key: ConfiguredActivityKey): void => {
 	const existing = pendingSaves.get(key);
 	if (existing) clearTimeout(existing);
 

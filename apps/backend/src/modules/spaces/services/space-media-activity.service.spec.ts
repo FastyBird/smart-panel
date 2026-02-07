@@ -508,13 +508,13 @@ describe('SpaceMediaActivityService', () => {
 
 			await service.activate(spaceId, MediaActivityKey.WATCH);
 
-			const activatingCall = mockEventEmitter.emit.mock.calls.find(
+			const activatingCall = (mockEventEmitter.emit.mock.calls as unknown[][]).find(
 				(call: unknown[]) => call[0] === EventType.MEDIA_ACTIVITY_ACTIVATING,
 			);
 
 			expect(activatingCall).toBeDefined();
 
-			const payload = activatingCall![1] as Record<string, unknown>;
+			const payload = activatingCall?.[1] as Record<string, unknown>;
 
 			expect(payload.steps).toBeDefined();
 			expect(Array.isArray(payload.steps)).toBe(true);
@@ -572,7 +572,7 @@ describe('SpaceMediaActivityService', () => {
 			await service.activate(spaceId, MediaActivityKey.WATCH);
 
 			// Filter STEP_PROGRESS events
-			const stepProgressCalls = mockEventEmitter.emit.mock.calls.filter(
+			const stepProgressCalls = (mockEventEmitter.emit.mock.calls as unknown[][]).filter(
 				(call: unknown[]) => call[0] === EventType.MEDIA_ACTIVITY_STEP_PROGRESS,
 			);
 
@@ -619,18 +619,14 @@ describe('SpaceMediaActivityService', () => {
 
 			await service.activate(spaceId, MediaActivityKey.WATCH);
 
-			const stepProgressCalls = mockEventEmitter.emit.mock.calls.filter(
+			const stepProgressCalls = (mockEventEmitter.emit.mock.calls as unknown[][]).filter(
 				(call: unknown[]) => call[0] === EventType.MEDIA_ACTIVITY_STEP_PROGRESS,
 			);
 
 			// 1 step: executing + failed = 2 events
 			expect(stepProgressCalls.length).toBe(2);
-			expect(stepProgressCalls[0][1]).toEqual(
-				expect.objectContaining({ step_index: 0, status: 'executing' }),
-			);
-			expect(stepProgressCalls[1][1]).toEqual(
-				expect.objectContaining({ step_index: 0, status: 'failed' }),
-			);
+			expect(stepProgressCalls[0][1]).toEqual(expect.objectContaining({ step_index: 0, status: 'executing' }));
+			expect(stepProgressCalls[1][1]).toEqual(expect.objectContaining({ step_index: 0, status: 'failed' }));
 		});
 
 		it('should set FAILED state and emit event when executePlan throws unexpected error', async () => {

@@ -18,8 +18,7 @@ export class CreateMediaActivityBindingDto {
 	})
 	@Expose({ name: 'activity_key' })
 	@IsEnum(MediaActivityKey, {
-		message:
-			'[{"field":"activity_key","reason":"Activity key must be one of: watch, listen, gaming, background."}]',
+		message: '[{"field":"activity_key","reason":"Activity key must be one of: watch, listen, gaming, background."}]',
 	})
 	@Transform(
 		({ obj }: { obj: { activity_key?: string; activityKey?: string } }) => obj.activity_key ?? obj.activityKey,
@@ -147,8 +146,7 @@ export class CreateMediaActivityBindingDto {
 		message: '[{"field":"audio_input_id","reason":"Audio input ID must not exceed 50 characters."}]',
 	})
 	@Transform(
-		({ obj }: { obj: { audio_input_id?: string; audioInputId?: string } }) =>
-			obj.audio_input_id ?? obj.audioInputId,
+		({ obj }: { obj: { audio_input_id?: string; audioInputId?: string } }) => obj.audio_input_id ?? obj.audioInputId,
 		{ toClassOnly: true },
 	)
 	audioInputId?: string;
@@ -346,8 +344,7 @@ export class UpdateMediaActivityBindingDto {
 		message: '[{"field":"audio_input_id","reason":"Audio input ID must not exceed 50 characters."}]',
 	})
 	@Transform(
-		({ obj }: { obj: Record<string, unknown> }) =>
-			'audio_input_id' in obj ? obj.audio_input_id : obj.audioInputId,
+		({ obj }: { obj: Record<string, unknown> }) => ('audio_input_id' in obj ? obj.audio_input_id : obj.audioInputId),
 		{ toClassOnly: true },
 	)
 	audioInputId?: string | null;
@@ -368,8 +365,7 @@ export class UpdateMediaActivityBindingDto {
 		message: '[{"field":"source_input_id","reason":"Source input ID must not exceed 50 characters."}]',
 	})
 	@Transform(
-		({ obj }: { obj: Record<string, unknown> }) =>
-			'source_input_id' in obj ? obj.source_input_id : obj.sourceInputId,
+		({ obj }: { obj: Record<string, unknown> }) => ('source_input_id' in obj ? obj.source_input_id : obj.sourceInputId),
 		{ toClassOnly: true },
 	)
 	sourceInputId?: string | null;

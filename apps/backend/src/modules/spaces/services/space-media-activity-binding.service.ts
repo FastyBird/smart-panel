@@ -8,7 +8,12 @@ import { DeviceCategory } from '../../devices/devices.constants';
 import { CreateMediaActivityBindingDto, UpdateMediaActivityBindingDto } from '../dto/media-activity-binding.dto';
 import { SpaceMediaActivityBindingEntity } from '../entities/space-media-activity-binding.entity';
 import { DerivedMediaEndpointModel } from '../models/derived-media-endpoint.model';
-import { CONFIGURABLE_ACTIVITY_KEYS, MediaActivityKey, MediaEndpointType, SPACES_MODULE_NAME } from '../spaces.constants';
+import {
+	CONFIGURABLE_ACTIVITY_KEYS,
+	MediaActivityKey,
+	MediaEndpointType,
+	SPACES_MODULE_NAME,
+} from '../spaces.constants';
 import { SpacesValidationException } from '../spaces.exceptions';
 
 import { DerivedMediaEndpointService } from './derived-media-endpoint.service';
@@ -547,13 +552,9 @@ export class SpaceMediaActivityBindingService {
 					? normalizeEndpointId(dto.displayInputId)
 					: (binding.displayInputId ?? undefined),
 			audioInputId:
-				dto.audioInputId !== undefined
-					? normalizeEndpointId(dto.audioInputId)
-					: (binding.audioInputId ?? undefined),
+				dto.audioInputId !== undefined ? normalizeEndpointId(dto.audioInputId) : (binding.audioInputId ?? undefined),
 			sourceInputId:
-				dto.sourceInputId !== undefined
-					? normalizeEndpointId(dto.sourceInputId)
-					: (binding.sourceInputId ?? undefined),
+				dto.sourceInputId !== undefined ? normalizeEndpointId(dto.sourceInputId) : (binding.sourceInputId ?? undefined),
 			audioVolumePreset:
 				dto.audioVolumePreset !== undefined
 					? (dto.audioVolumePreset ?? undefined)

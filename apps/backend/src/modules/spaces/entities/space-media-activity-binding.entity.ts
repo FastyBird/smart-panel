@@ -148,7 +148,8 @@ export class SpaceMediaActivityBindingEntity extends BaseEntity {
 
 	@ApiPropertyOptional({
 		name: 'audio_input_id',
-		description: 'Input to select on the audio endpoint (e.g. HDMI1, Optical). Only valid if audio supports inputSelect.',
+		description:
+			'Input to select on the audio endpoint (e.g. HDMI1, Optical). Only valid if audio supports inputSelect.',
 		type: 'string',
 		maxLength: 50,
 		example: 'HDMI1',
@@ -158,8 +159,7 @@ export class SpaceMediaActivityBindingEntity extends BaseEntity {
 	@IsString()
 	@MaxLength(50)
 	@Transform(
-		({ obj }: { obj: { audio_input_id?: string; audioInputId?: string } }) =>
-			obj.audio_input_id ?? obj.audioInputId,
+		({ obj }: { obj: { audio_input_id?: string; audioInputId?: string } }) => obj.audio_input_id ?? obj.audioInputId,
 		{ toClassOnly: true },
 	)
 	@Column({ type: 'varchar', length: 50, nullable: true })
@@ -167,7 +167,8 @@ export class SpaceMediaActivityBindingEntity extends BaseEntity {
 
 	@ApiPropertyOptional({
 		name: 'source_input_id',
-		description: 'Input to select on the source endpoint (e.g. HDMI1, Mode). Only valid if source supports inputSelect.',
+		description:
+			'Input to select on the source endpoint (e.g. HDMI1, Mode). Only valid if source supports inputSelect.',
 		type: 'string',
 		maxLength: 50,
 		example: 'HDMI1',
