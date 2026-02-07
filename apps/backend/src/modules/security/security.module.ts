@@ -1,6 +1,7 @@
 import { Module, OnModuleInit } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
+import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
 import { DevicesModule } from '../devices/devices.module';
 import { ExtensionsModule } from '../extensions/extensions.module';
 import { ExtensionsService } from '../extensions/services/extensions.service';
@@ -11,8 +12,10 @@ import { SwaggerModule } from '../swagger/swagger.module';
 import { SecurityAlertsController } from './controllers/security-alerts.controller';
 import { SecurityEventsController } from './controllers/security-events.controller';
 import { SecurityController } from './controllers/security.controller';
+import { UpdateSecurityConfigDto } from './dto/update-config.dto';
 import { SecurityAlertAckEntity } from './entities/security-alert-ack.entity';
 import { SecurityEventEntity } from './entities/security-event.entity';
+import { SecurityConfigModel } from './models/config.model';
 import { AlarmSecurityProvider } from './providers/alarm-security.provider';
 import { DefaultSecurityProvider } from './providers/default-security.provider';
 import { SecuritySensorsProvider } from './providers/security-sensors.provider';
@@ -65,12 +68,19 @@ export class SecurityModule implements OnModuleInit {
 	constructor(
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly extensionsService: ExtensionsService,
+		private readonly modulesMapperService: ModulesTypeMapperService,
 	) {}
 
 	onModuleInit() {
 		for (const model of SECURITY_SWAGGER_EXTRA_MODELS) {
 			this.swaggerRegistry.register(model);
 		}
+
+		this.modulesMapperService.registerMapping<SecurityConfigModel, UpdateSecurityConfigDto>({
+			type: SECURITY_MODULE_NAME,
+			class: SecurityConfigModel,
+			configDto: UpdateSecurityConfigDto,
+		});
 
 		this.extensionsService.registerModuleMetadata({
 			type: SECURITY_MODULE_NAME,

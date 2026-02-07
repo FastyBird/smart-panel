@@ -1,0 +1,21 @@
+import type { App } from 'vue';
+
+import { type IModule, type ModuleInjectionKey, injectModulesManager } from '../../common';
+
+import { SECURITY_MODULE_NAME } from './security.constants';
+
+const securityAdminModuleKey: ModuleInjectionKey<IModule> = Symbol('FB-Module-Security');
+
+export default {
+	install: (app: App): void => {
+		const modulesManager = injectModulesManager(app);
+
+		modulesManager.addModule(securityAdminModuleKey, {
+			type: SECURITY_MODULE_NAME,
+			name: 'Security',
+			description: 'Security monitoring with armed state, alarm state, and active alerts management',
+			elements: [],
+			isCore: true,
+		});
+	},
+};
