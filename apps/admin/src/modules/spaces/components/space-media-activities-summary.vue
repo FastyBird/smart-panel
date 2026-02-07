@@ -20,10 +20,10 @@
 					<div class="flex items-center gap-1">
 						<icon :icon="summary.icon" />
 						{{ t(`spacesModule.media.activityLabels.${summary.activityKey}`) }}
-						<icon
-							v-if="summary.incomplete"
-							icon="mdi:alert-circle-outline"
-							class="w[12px] h[12px] opacity-70"
+						<el-badge
+							:value="summary.routeCount"
+							:type="summary.tagType"
+							class="ml-1"
 						/>
 					</div>
 				</el-tag>
@@ -222,7 +222,7 @@
 import { computed, onMounted, ref, watch } from 'vue';
 
 import { Icon } from '@iconify/vue';
-import { ElAlert, ElButton, ElCard, ElDialog, ElTable, ElTableColumn, ElTag, vLoading } from 'element-plus';
+import { ElAlert, ElBadge, ElButton, ElCard, ElDialog, ElTable, ElTableColumn, ElTag, vLoading } from 'element-plus';
 import { useI18n } from 'vue-i18n';
 
 import { useFlashMessage } from '../../../common';
@@ -276,7 +276,7 @@ interface IActivitySummary {
 	activityKey: string;
 	icon: string;
 	tagType: 'primary' | 'success' | 'warning' | 'info' | 'danger';
-	incomplete: boolean;
+	routeCount: number;
 }
 
 const activityKeys = [
@@ -286,6 +286,10 @@ const activityKeys = [
 	MediaActivityKey.background,
 ];
 
+const countRoutes = (binding: { displayEndpointId: string | null; audioEndpointId: string | null; sourceEndpointId: string | null; remoteEndpointId: string | null }): number => {
+	return [binding.displayEndpointId, binding.audioEndpointId, binding.sourceEndpointId, binding.remoteEndpointId].filter(Boolean).length;
+};
+
 const activitySummaries = computed<IActivitySummary[]>(() => {
 	const summaries: IActivitySummary[] = [];
 
@@ -293,13 +297,11 @@ const activitySummaries = computed<IActivitySummary[]>(() => {
 		const binding = findBindingByActivity(key);
 		if (!binding) continue;
 
-		const hasSlots = !!(binding.displayEndpointId || binding.audioEndpointId || binding.sourceEndpointId || binding.remoteEndpointId);
-
 		summaries.push({
 			activityKey: key,
 			icon: getActivityIcon(key),
 			tagType: getActivityColor(key),
-			incomplete: !hasSlots,
+			routeCount: countRoutes(binding),
 		});
 	}
 
