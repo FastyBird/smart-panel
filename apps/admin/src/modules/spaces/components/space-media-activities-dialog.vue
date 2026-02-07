@@ -360,6 +360,7 @@ import {
 
 import { useFlashMessage } from '../../../common';
 import {
+	getActivityColor,
 	getActivityIcon,
 	type IDerivedMediaEndpoint,
 	type IMediaActivityBinding,
@@ -588,14 +589,14 @@ const getActivityContext = (key: MediaActivityKey): { isActive: boolean; state?:
 };
 
 const getActivityTagType = (key: MediaActivityKey): 'primary' | 'success' | 'warning' | 'info' | 'danger' => {
-	const { isActive, state, binding, hasSlots } = getActivityContext(key);
+	const { isActive, state } = getActivityContext(key);
 
+	// Runtime activation state overrides static color
 	if (isActive && state) {
 		return getStateTagType(state);
 	}
 
-	if (!binding) return 'info';
-	return hasSlots ? 'success' : 'warning';
+	return getActivityColor(key);
 };
 
 const getActivityStatusLabel = (key: MediaActivityKey): string => {

@@ -20,6 +20,11 @@
 					<div class="flex items-center gap-1">
 						<icon :icon="summary.icon" />
 						{{ t(`spacesModule.media.activityLabels.${summary.activityKey}`) }}
+						<icon
+							v-if="summary.incomplete"
+							icon="mdi:alert-circle-outline"
+							class="w[12px] h[12px] opacity-70"
+						/>
 					</div>
 				</el-tag>
 			</div>
@@ -222,8 +227,8 @@ import { useI18n } from 'vue-i18n';
 
 import { useFlashMessage } from '../../../common';
 import {
+	getActivityColor,
 	getActivityIcon,
-	type IMediaActivityBinding,
 	type IMediaDryRunPreview,
 	type IDerivedMediaEndpoint,
 	MediaActivityKey,
@@ -270,7 +275,8 @@ const previewActivityKey = ref<string | null>(null);
 interface IActivitySummary {
 	activityKey: string;
 	icon: string;
-	tagType: 'success' | 'warning' | 'info';
+	tagType: 'primary' | 'success' | 'warning' | 'info' | 'danger';
+	incomplete: boolean;
 }
 
 const activityKeys = [
@@ -280,11 +286,6 @@ const activityKeys = [
 	MediaActivityKey.background,
 ];
 
-const getBindingTagType = (binding: IMediaActivityBinding): 'success' | 'warning' | 'info' => {
-	const hasSlots = !!(binding.displayEndpointId || binding.audioEndpointId || binding.sourceEndpointId || binding.remoteEndpointId);
-	return hasSlots ? 'success' : 'warning';
-};
-
 const activitySummaries = computed<IActivitySummary[]>(() => {
 	const summaries: IActivitySummary[] = [];
 
@@ -292,10 +293,13 @@ const activitySummaries = computed<IActivitySummary[]>(() => {
 		const binding = findBindingByActivity(key);
 		if (!binding) continue;
 
+		const hasSlots = !!(binding.displayEndpointId || binding.audioEndpointId || binding.sourceEndpointId || binding.remoteEndpointId);
+
 		summaries.push({
 			activityKey: key,
 			icon: getActivityIcon(key),
-			tagType: getBindingTagType(binding),
+			tagType: getActivityColor(key),
+			incomplete: !hasSlots,
 		});
 	}
 

@@ -349,6 +349,21 @@ const transformActiveEntity = (raw: Record<string, unknown>): IMediaActiveState 
 	};
 };
 
+export const getActivityColor = (key: string): 'primary' | 'success' | 'warning' | 'info' | 'danger' => {
+	switch (key) {
+		case 'watch':
+			return 'primary';
+		case 'listen':
+			return 'success';
+		case 'gaming':
+			return 'danger';
+		case 'background':
+			return 'info';
+		default:
+			return 'info';
+	}
+};
+
 export const getActivityIcon = (key: string): string => {
 	switch (key) {
 		case 'watch':
