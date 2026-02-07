@@ -488,7 +488,8 @@ export const useSpaceMedia = (spaceId: Ref<string | undefined>): IUseSpaceMedia 
 					params: { path: { id: spaceId.value } },
 					body: {
 						data: {
-							activity_key: activityKey,
+							// eslint-disable-next-line @typescript-eslint/no-explicit-any
+						activity_key: activityKey as any,
 							display_endpoint_id: payload.displayEndpointId ?? undefined,
 							audio_endpoint_id: payload.audioEndpointId ?? undefined,
 							source_endpoint_id: payload.sourceEndpointId ?? undefined,
