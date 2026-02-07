@@ -61,9 +61,7 @@
 				:space="space"
 				@saved="onSaved"
 				@cancel="onCancel"
-				@manage-devices="onManageDevices"
-				@manage-displays="onManageDisplays"
-			/>
+				/>
 		</el-scrollbar>
 
 		<div
@@ -278,22 +276,6 @@ const onCancel = (): void => {
 			router.push({ name: RouteNames.SPACES });
 		}
 	}
-};
-
-const onManageDevices = (): void => {
-	router.push({
-		name: RouteNames.SPACE,
-		params: { id: spaceId.value },
-		state: { activeTab: 'devices' },
-	});
-};
-
-const onManageDisplays = (): void => {
-	router.push({
-		name: RouteNames.SPACE,
-		params: { id: spaceId.value },
-		state: { activeTab: 'displays' },
-	});
 };
 
 onBeforeMount(async (): Promise<void> => {

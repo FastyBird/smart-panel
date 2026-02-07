@@ -151,6 +151,8 @@ void main() {
 				'source_endpoint_id': null,
 				'remote_endpoint_id': null,
 				'display_input_id': 'HDMI1',
+				'audio_input_id': 'OPTICAL',
+				'source_input_id': null,
 				'audio_volume_preset': 30,
 			};
 
@@ -162,6 +164,8 @@ void main() {
 			expect(binding.sourceEndpointId, isNull);
 			expect(binding.remoteEndpointId, isNull);
 			expect(binding.displayInputId, 'HDMI1');
+			expect(binding.audioInputId, 'OPTICAL');
+			expect(binding.sourceInputId, isNull);
 			expect(binding.audioVolumePreset, 30);
 		});
 	});

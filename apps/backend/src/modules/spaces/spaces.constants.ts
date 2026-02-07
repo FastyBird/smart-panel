@@ -30,6 +30,7 @@ export enum EventType {
 	MEDIA_ACTIVITY_ACTIVATED = 'SpacesModule.MediaActivity.Activated',
 	MEDIA_ACTIVITY_FAILED = 'SpacesModule.MediaActivity.Failed',
 	MEDIA_ACTIVITY_DEACTIVATED = 'SpacesModule.MediaActivity.Deactivated',
+	MEDIA_ACTIVITY_STEP_PROGRESS = 'SpacesModule.MediaActivity.StepProgress',
 	// Sensor state change events
 	SENSOR_STATE_CHANGED = 'SpacesModule.Space.SensorStateChanged',
 	// Sensor role events
@@ -1686,9 +1687,21 @@ export enum MediaActivityKey {
 	GAMING = 'gaming',
 	/** Background activity - ambient audio at low volume */
 	BACKGROUND = 'background',
-	/** Off activity - all media devices powered off */
+	/** Off activity - deactivates all media (no binding needed, triggers deactivation) */
 	OFF = 'off',
 }
+
+/**
+ * Activity keys that have configurable bindings (endpoint slots).
+ * OFF is excluded because activating "off" triggers deactivation directly
+ * and never consults a binding.
+ */
+export const CONFIGURABLE_ACTIVITY_KEYS = [
+	MediaActivityKey.WATCH,
+	MediaActivityKey.LISTEN,
+	MediaActivityKey.GAMING,
+	MediaActivityKey.BACKGROUND,
+] as const;
 
 /**
  * Media Activation State - state of the active routing

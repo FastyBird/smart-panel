@@ -83,6 +83,12 @@
 				:space="space"
 				@edit="showSensorRolesDialog = true"
 			/>
+			<!-- Media activities summary -->
+			<space-media-activities-summary
+				ref="mediaActivitiesSummaryRef"
+				:space="space"
+				@edit="showMediaActivitiesDialog = true"
+			/>
 			<!-- Inline Floor selector (Room only) -->
 			<dt
 				v-if="space.type === SpaceType.ROOM"
@@ -174,6 +180,13 @@
 		:space="space"
 		@roles-changed="onSensorRolesChanged"
 	/>
+
+	<!-- Media activities dialog -->
+	<space-media-activities-dialog
+		v-model:visible="showMediaActivitiesDialog"
+		:space="space"
+		@bindings-changed="onMediaActivitiesChanged"
+	/>
 </template>
 
 <script setup lang="ts">
@@ -194,6 +207,8 @@ import SpaceCoversRolesDialog from './space-covers-roles-dialog.vue';
 import SpaceCoversRolesSummary from './space-covers-roles-summary.vue';
 import SpaceLightingRolesDialog from './space-lighting-roles-dialog.vue';
 import SpaceLightingRolesSummary from './space-lighting-roles-summary.vue';
+import SpaceMediaActivitiesDialog from './space-media-activities-dialog.vue';
+import SpaceMediaActivitiesSummary from './space-media-activities-summary.vue';
 import SpaceSensorRolesDialog from './space-sensor-roles-dialog.vue';
 import SpaceSensorRolesSummary from './space-sensor-roles-summary.vue';
 
@@ -216,10 +231,12 @@ const showLightingRolesDialog = ref(false);
 const showClimateRolesDialog = ref(false);
 const showCoversRolesDialog = ref(false);
 const showSensorRolesDialog = ref(false);
+const showMediaActivitiesDialog = ref(false);
 const lightingRolesSummaryRef = ref<InstanceType<typeof SpaceLightingRolesSummary> | null>(null);
 const climateRolesSummaryRef = ref<InstanceType<typeof SpaceClimateRolesSummary> | null>(null);
 const coversRolesSummaryRef = ref<InstanceType<typeof SpaceCoversRolesSummary> | null>(null);
 const sensorRolesSummaryRef = ref<InstanceType<typeof SpaceSensorRolesSummary> | null>(null);
+const mediaActivitiesSummaryRef = ref<InstanceType<typeof SpaceMediaActivitiesSummary> | null>(null);
 
 // Ensure all spaces are loaded when component mounts (needed for floor selector)
 onMounted(async () => {
@@ -355,6 +372,10 @@ const onCoversRolesChanged = (): void => {
 
 const onSensorRolesChanged = (): void => {
 	sensorRolesSummaryRef.value?.reload();
+};
+
+const onMediaActivitiesChanged = (): void => {
+	mediaActivitiesSummaryRef.value?.reload();
 };
 </script>
 

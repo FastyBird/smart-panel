@@ -52,6 +52,8 @@ class SpacesModuleConstants {
       'SpacesModule.MediaActivity.Failed';
   static const String mediaActivityDeactivatedEvent =
       'SpacesModule.MediaActivity.Deactivated';
+  static const String mediaActivityStepProgressEvent =
+      'SpacesModule.MediaActivity.StepProgress';
 }
 
 /// WebSocket command handler names for spaces module intents

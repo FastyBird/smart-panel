@@ -357,6 +357,9 @@
 		},
 		"sensorRoles": {
 			"title": "Edit Sensor Roles"
+		},
+		"mediaActivities": {
+			"title": "Edit Media Activities"
 		}
 	},
 	"buttons": {
@@ -440,6 +443,10 @@
 			"sensorsAssigned": "Sensors assigned",
 			"noRolesAssigned": "No roles assigned yet"
 		},
+		"mediaActivities": {
+			"title": "Media Activities",
+			"noActivities": "No activities configured yet"
+		},
 		"info": {
 			"title": "Space information",
 			"name": "Name",
@@ -486,7 +493,6 @@
 			"removeCanceled": "Display removal was canceled."
 		},
 		"media": {
-			"endpoints": "Media Endpoints",
 			"activities": "Media Activities"
 		},
 		"scenes": {
@@ -517,19 +523,6 @@
 		}
 	},
 	"media": {
-		"endpoints": {
-			"filterPlaceholder": "Filter by type",
-			"loading": "Loading media endpoints...",
-			"columns": {
-				"name": "Name",
-				"type": "Type",
-				"capabilities": "Capabilities"
-			},
-			"empty": {
-				"title": "No media endpoints detected",
-				"subtitle": "This space has no media-capable devices. Add a TV, speaker, receiver, or streamer to enable the Media domain."
-			}
-		},
 		"endpointTypes": {
 			"display": "Display",
 			"audio_output": "Audio Output",
@@ -554,7 +547,9 @@
 		},
 		"activities": {
 			"loading": "Loading media configuration...",
+			"description": "Assign display, audio, source, and remote devices to each media activity. Changes are saved automatically.",
 			"applyDefaults": "Apply defaults",
+			"applyDefaultsHint": "Auto-assigns endpoints based on device types and capabilities",
 			"defaultsApplied": "Default bindings have been applied.",
 			"defaultsFailed": "Failed to apply default bindings.",
 			"selectPrompt": "Select an activity from the list to configure its bindings.",
@@ -572,7 +567,47 @@
 			"overrides": {
 				"displayInput": "Display input preset",
 				"displayInputPlaceholder": "e.g. HDMI1, Apps",
+				"audioInput": "Audio input preset",
+				"audioInputPlaceholder": "e.g. HDMI1, ARC",
+				"sourceInput": "Source input preset",
+				"sourceInputPlaceholder": "e.g. HDMI1, Apps",
 				"audioVolume": "Audio volume preset"
+			},
+			"mediaInputSources": {
+				"hdmi1": "HDMI 1",
+				"hdmi2": "HDMI 2",
+				"hdmi3": "HDMI 3",
+				"hdmi4": "HDMI 4",
+				"hdmi5": "HDMI 5",
+				"hdmi6": "HDMI 6",
+				"arc": "ARC",
+				"earc": "eARC",
+				"tv": "TV",
+				"cable": "Cable",
+				"satellite": "Satellite",
+				"antenna": "Antenna",
+				"av1": "AV 1",
+				"av2": "AV 2",
+				"component": "Component",
+				"vga": "VGA",
+				"dvi": "DVI",
+				"usb": "USB",
+				"bluetooth": "Bluetooth",
+				"wifi": "Wi-Fi",
+				"airplay": "AirPlay",
+				"cast": "Chromecast",
+				"dlna": "DLNA",
+				"miracast": "Miracast",
+				"app_netflix": "Netflix",
+				"app_youtube": "YouTube",
+				"app_spotify": "Spotify",
+				"app_prime_video": "Prime Video",
+				"app_disney_plus": "Disney+",
+				"app_hbo_max": "HBO Max",
+				"app_apple_tv": "Apple TV",
+				"app_plex": "Plex",
+				"app_kodi": "Kodi",
+				"other": "Other"
 			},
 			"status": {
 				"configured": "Configured",

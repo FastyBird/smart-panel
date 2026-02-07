@@ -147,6 +147,45 @@ export class SpaceMediaActivityBindingEntity extends BaseEntity {
 	displayInputId: string | null;
 
 	@ApiPropertyOptional({
+		name: 'audio_input_id',
+		description:
+			'Input to select on the audio endpoint (e.g. HDMI1, Optical). Only valid if audio supports inputSelect.',
+		type: 'string',
+		maxLength: 50,
+		example: 'HDMI1',
+	})
+	@Expose({ name: 'audio_input_id' })
+	@IsOptional()
+	@IsString()
+	@MaxLength(50)
+	@Transform(
+		({ obj }: { obj: { audio_input_id?: string; audioInputId?: string } }) => obj.audio_input_id ?? obj.audioInputId,
+		{ toClassOnly: true },
+	)
+	@Column({ type: 'varchar', length: 50, nullable: true })
+	audioInputId: string | null;
+
+	@ApiPropertyOptional({
+		name: 'source_input_id',
+		description:
+			'Input to select on the source endpoint (e.g. HDMI1, Mode). Only valid if source supports inputSelect.',
+		type: 'string',
+		maxLength: 50,
+		example: 'HDMI1',
+	})
+	@Expose({ name: 'source_input_id' })
+	@IsOptional()
+	@IsString()
+	@MaxLength(50)
+	@Transform(
+		({ obj }: { obj: { source_input_id?: string; sourceInputId?: string } }) =>
+			obj.source_input_id ?? obj.sourceInputId,
+		{ toClassOnly: true },
+	)
+	@Column({ type: 'varchar', length: 50, nullable: true })
+	sourceInputId: string | null;
+
+	@ApiPropertyOptional({
 		name: 'audio_volume_preset',
 		description: 'Default volume level (0-100) when activating this activity',
 		type: 'integer',

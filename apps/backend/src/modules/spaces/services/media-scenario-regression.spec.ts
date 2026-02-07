@@ -377,6 +377,8 @@ describe('Media Regression – Default Bindings Quality', () => {
 				sourceEndpointId: null,
 				remoteEndpointId: null,
 				displayInputId: null,
+				audioInputId: null,
+				sourceInputId: null,
 				audioVolumePreset: null,
 			};
 			harness.savedBindings = [existing];
@@ -384,8 +386,8 @@ describe('Media Regression – Default Bindings Quality', () => {
 
 			await service.applyDefaults(SPACE_ID);
 
-			// Watch should not be re-created (4 new, not 5)
-			expect(harness.mockBindingRepository.save).toHaveBeenCalledTimes(4);
+			// Watch should not be re-created (3 new, not 4; off is excluded)
+			expect(harness.mockBindingRepository.save).toHaveBeenCalledTimes(3);
 			const watchBindings = harness.savedBindings.filter(
 				(b) => b.activityKey === MediaActivityKey.WATCH && b.displayEndpointId === 'custom-ep',
 			);
@@ -499,6 +501,7 @@ describe('Media Regression – Default Bindings Quality', () => {
 // 3.3 – Activation behavior
 // ==========================================================================
 
+// Activation tests include inter-step delays (STEP_PRE_DELAY_MS + STEP_POST_DELAY_MS per step)
 describe('Media Regression – Activation Behavior', () => {
 	let service: SpaceMediaActivityService;
 	let harness: MediaTestHarness;
@@ -580,7 +583,7 @@ describe('Media Regression – Activation Behavior', () => {
 			expect(result.resolved?.displayDeviceId).toBe(DEVICE_TV);
 			expect(result.summary?.stepsTotal).toBeGreaterThanOrEqual(2);
 			expect(result.summary?.stepsSucceeded).toBeGreaterThanOrEqual(2);
-		});
+		}, 15_000);
 	});
 
 	describe('Listen activation with speaker', () => {
@@ -633,7 +636,7 @@ describe('Media Regression – Activation Behavior', () => {
 			expect(result.state).toBe(MediaActivationState.ACTIVE);
 			expect(result.activityKey).toBe(MediaActivityKey.LISTEN);
 			expect(result.resolved?.audioDeviceId).toBe(DEVICE_SPEAKER);
-		});
+		}, 15_000);
 	});
 
 	describe('Gaming activation with full rig', () => {
@@ -703,7 +706,7 @@ describe('Media Regression – Activation Behavior', () => {
 			expect(result.activityKey).toBe(MediaActivityKey.GAMING);
 			expect(result.resolved?.displayDeviceId).toBe(DEVICE_TV);
 			expect(result.resolved?.audioDeviceId).toBe(DEVICE_AVR);
-		});
+		}, 15_000);
 	});
 });
 
@@ -780,7 +783,7 @@ describe('Media Regression – Failure Model', () => {
 		expect(result.state).toBe(MediaActivationState.ACTIVE);
 		expect(result.summary?.stepsFailed).toBeGreaterThan(0);
 		expect(result.warnings).toBeDefined();
-	});
+	}, 15_000);
 
 	it('critical failure (display device not found) → state becomes FAILED', async () => {
 		const scenario = mediaTvOnly();
@@ -814,7 +817,7 @@ describe('Media Regression – Failure Model', () => {
 		expect(result.state).toBe(MediaActivationState.FAILED);
 		expect(result.summary?.stepsFailed).toBeGreaterThan(0);
 		expect(result.summary?.failures?.[0].reason).toContain('not found');
-	});
+	}, 15_000);
 });
 
 // ==========================================================================
@@ -895,7 +898,7 @@ describe('Media Regression – WS Events', () => {
 		expect(activatedEvents[0]).toEqual(
 			expect.objectContaining({ space_id: SPACE_ID, activity_key: MediaActivityKey.WATCH }),
 		);
-	});
+	}, 15_000);
 
 	it('failed activation emits: activating → failed', async () => {
 		const scenario = mediaTvOnly();
@@ -938,7 +941,7 @@ describe('Media Regression – WS Events', () => {
 		// No activated event
 		const activatedEvents = harness.getEmittedEvents(EventType.MEDIA_ACTIVITY_ACTIVATED);
 		expect(activatedEvents.length).toBe(0);
-	});
+	}, 15_000);
 
 	it('deactivation emits deactivated event', async () => {
 		harness.loadScenario(mediaTvOnly());
@@ -1021,5 +1024,5 @@ describe('Media Regression – WS Events', () => {
 		const deactivatedIdx = allCalls.indexOf(EventType.MEDIA_ACTIVITY_DEACTIVATED);
 		expect(activatingIdx).toBeLessThan(activatedIdx);
 		expect(activatedIdx).toBeLessThan(deactivatedIdx);
-	});
+	}, 15_000);
 });

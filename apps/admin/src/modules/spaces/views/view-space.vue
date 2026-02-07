@@ -172,37 +172,6 @@
 							/>
 						</el-scrollbar>
 					</el-tab-pane>
-					<el-tab-pane
-						name="media-endpoints"
-						class="h-full overflow-hidden"
-					>
-						<template #label>
-							<div class="flex items-center gap-2 px-4">
-								<icon icon="mdi:cast-connected" />
-								{{ t('spacesModule.detail.media.endpoints') }}
-							</div>
-						</template>
-
-						<el-scrollbar class="h-full">
-							<space-media-endpoints :space-id="space.id" />
-						</el-scrollbar>
-					</el-tab-pane>
-
-					<el-tab-pane
-						name="media-activities"
-						class="h-full overflow-hidden"
-					>
-						<template #label>
-							<div class="flex items-center gap-2 px-4">
-								<icon icon="mdi:play-box-multiple-outline" />
-								{{ t('spacesModule.detail.media.activities') }}
-							</div>
-						</template>
-
-						<el-scrollbar class="h-full">
-							<space-media-activities :space-id="space.id" />
-						</el-scrollbar>
-					</el-tab-pane>
 				</el-tabs>
 			</el-card>
 		</template>
@@ -331,8 +300,6 @@ import {
 	SpaceDetail,
 	SpaceDevicesSection,
 	SpaceDisplaysSection,
-	SpaceMediaActivities,
-	SpaceMediaEndpoints,
 	SpaceScenesSection,
 } from '../components/components';
 import { useSpace } from '../composables';

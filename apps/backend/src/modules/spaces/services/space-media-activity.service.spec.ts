@@ -55,11 +55,16 @@ function buildBinding(activityKey: MediaActivityKey, overrides: Record<string, s
 		sourceEndpointId: (overrides.sourceEndpointId as string) ?? null,
 		remoteEndpointId: (overrides.remoteEndpointId as string) ?? null,
 		displayInputId: (overrides.displayInputId as string) ?? null,
+		audioInputId: (overrides.audioInputId as string) ?? null,
+		sourceInputId: (overrides.sourceInputId as string) ?? null,
 		audioVolumePreset: (overrides.audioVolumePreset as number) ?? null,
 	};
 }
 
+// Activation includes inter-step delays (STEP_PRE_DELAY_MS + STEP_POST_DELAY_MS per step)
 describe('SpaceMediaActivityService', () => {
+	jest.setTimeout(15_000);
+
 	let service: SpaceMediaActivityService;
 	let mockActiveRepository: {
 		findOne: jest.Mock;
@@ -458,6 +463,170 @@ describe('SpaceMediaActivityService', () => {
 			expect(result.summary?.stepsSucceeded).toBe(1);
 			expect(result.summary?.stepsFailed).toBe(1);
 			expect(result.warnings).toBeDefined();
+		});
+
+		it('should include steps array in ACTIVATING event payload', async () => {
+			const displayEndpointId = `${spaceId}:display:${deviceTvId}`;
+			const binding = buildBinding(MediaActivityKey.WATCH, {
+				displayEndpointId,
+				displayInputId: 'HDMI1',
+			});
+
+			mockBindingService.findBySpace.mockResolvedValue([binding]);
+
+			const displayEndpoint = buildEndpoint(
+				MediaEndpointType.DISPLAY,
+				deviceTvId,
+				{ power: true, inputSelect: true },
+				{
+					power: { propertyId: powerPropertyId },
+					inputSelect: { propertyId: inputPropertyId },
+				},
+			);
+
+			mockDerivedEndpointService.buildEndpointsForSpace.mockResolvedValue({
+				spaceId,
+				endpoints: [displayEndpoint],
+			});
+
+			const mockDevice = {
+				id: deviceTvId,
+				type: 'test-platform',
+				channels: [
+					{
+						id: uuid(),
+						properties: [
+							{ id: powerPropertyId, value: false },
+							{ id: inputPropertyId, value: 'HDMI2' },
+						],
+					},
+				],
+			};
+
+			mockSpacesService.findDevicesByIds.mockResolvedValue([mockDevice]);
+			mockPlatformRegistry.get.mockReturnValue({ processBatch: jest.fn().mockResolvedValue(true) });
+
+			await service.activate(spaceId, MediaActivityKey.WATCH);
+
+			const activatingCall = (mockEventEmitter.emit.mock.calls as unknown[][]).find(
+				(call: unknown[]) => call[0] === EventType.MEDIA_ACTIVITY_ACTIVATING,
+			);
+
+			expect(activatingCall).toBeDefined();
+
+			const payload = activatingCall?.[1] as Record<string, unknown>;
+
+			expect(payload.steps).toBeDefined();
+			expect(Array.isArray(payload.steps)).toBe(true);
+
+			const steps = payload.steps as { index: number; label: string; critical: boolean }[];
+
+			expect(steps.length).toBe(2); // power + input
+			expect(steps[0]).toEqual(expect.objectContaining({ index: 0, critical: true }));
+			expect(steps[0].label).toContain('Power on');
+			expect(steps[1]).toEqual(expect.objectContaining({ index: 1, critical: true }));
+			expect(steps[1].label).toContain('input');
+		});
+
+		it('should emit STEP_PROGRESS events per step during execution', async () => {
+			const displayEndpointId = `${spaceId}:display:${deviceTvId}`;
+			const binding = buildBinding(MediaActivityKey.WATCH, {
+				displayEndpointId,
+				displayInputId: 'HDMI1',
+			});
+
+			mockBindingService.findBySpace.mockResolvedValue([binding]);
+
+			const displayEndpoint = buildEndpoint(
+				MediaEndpointType.DISPLAY,
+				deviceTvId,
+				{ power: true, inputSelect: true },
+				{
+					power: { propertyId: powerPropertyId },
+					inputSelect: { propertyId: inputPropertyId },
+				},
+			);
+
+			mockDerivedEndpointService.buildEndpointsForSpace.mockResolvedValue({
+				spaceId,
+				endpoints: [displayEndpoint],
+			});
+
+			const mockDevice = {
+				id: deviceTvId,
+				type: 'test-platform',
+				channels: [
+					{
+						id: uuid(),
+						properties: [
+							{ id: powerPropertyId, value: false },
+							{ id: inputPropertyId, value: 'HDMI2' },
+						],
+					},
+				],
+			};
+
+			mockSpacesService.findDevicesByIds.mockResolvedValue([mockDevice]);
+			mockPlatformRegistry.get.mockReturnValue({ processBatch: jest.fn().mockResolvedValue(true) });
+
+			await service.activate(spaceId, MediaActivityKey.WATCH);
+
+			// Filter STEP_PROGRESS events
+			const stepProgressCalls = (mockEventEmitter.emit.mock.calls as unknown[][]).filter(
+				(call: unknown[]) => call[0] === EventType.MEDIA_ACTIVITY_STEP_PROGRESS,
+			);
+
+			// 2 steps × 2 events each (executing + succeeded) = 4
+			expect(stepProgressCalls.length).toBe(4);
+
+			// Step 0: executing then succeeded
+			expect(stepProgressCalls[0][1]).toEqual(
+				expect.objectContaining({ step_index: 0, status: 'executing', steps_total: 2 }),
+			);
+			expect(stepProgressCalls[1][1]).toEqual(
+				expect.objectContaining({ step_index: 0, status: 'succeeded', steps_total: 2 }),
+			);
+
+			// Step 1: executing then succeeded
+			expect(stepProgressCalls[2][1]).toEqual(
+				expect.objectContaining({ step_index: 1, status: 'executing', steps_total: 2 }),
+			);
+			expect(stepProgressCalls[3][1]).toEqual(
+				expect.objectContaining({ step_index: 1, status: 'succeeded', steps_total: 2 }),
+			);
+		});
+
+		it('should emit failed STEP_PROGRESS when step fails', async () => {
+			const displayEndpointId = `${spaceId}:display:${deviceTvId}`;
+			const binding = buildBinding(MediaActivityKey.WATCH, { displayEndpointId });
+
+			mockBindingService.findBySpace.mockResolvedValue([binding]);
+
+			const displayEndpoint = buildEndpoint(
+				MediaEndpointType.DISPLAY,
+				deviceTvId,
+				{ power: true },
+				{ power: { propertyId: powerPropertyId } },
+			);
+
+			mockDerivedEndpointService.buildEndpointsForSpace.mockResolvedValue({
+				spaceId,
+				endpoints: [displayEndpoint],
+			});
+
+			// Device not found → step fails immediately
+			mockSpacesService.findDevicesByIds.mockResolvedValue([]);
+
+			await service.activate(spaceId, MediaActivityKey.WATCH);
+
+			const stepProgressCalls = (mockEventEmitter.emit.mock.calls as unknown[][]).filter(
+				(call: unknown[]) => call[0] === EventType.MEDIA_ACTIVITY_STEP_PROGRESS,
+			);
+
+			// 1 step: executing + failed = 2 events
+			expect(stepProgressCalls.length).toBe(2);
+			expect(stepProgressCalls[0][1]).toEqual(expect.objectContaining({ step_index: 0, status: 'executing' }));
+			expect(stepProgressCalls[1][1]).toEqual(expect.objectContaining({ step_index: 0, status: 'failed' }));
 		});
 
 		it('should set FAILED state and emit event when executePlan throws unexpected error', async () => {

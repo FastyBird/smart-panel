@@ -1,9 +1,9 @@
 import { Expose, Transform, Type } from 'class-transformer';
-import { IsEnum, IsInt, IsOptional, IsString, Max, MaxLength, Min, ValidateIf, ValidateNested } from 'class-validator';
+import { IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min, ValidateIf, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
-import { MediaActivityKey } from '../spaces.constants';
+import { CONFIGURABLE_ACTIVITY_KEYS, MediaActivityKey } from '../spaces.constants';
 
 /**
  * DTO for creating a media activity binding
@@ -12,14 +12,13 @@ import { MediaActivityKey } from '../spaces.constants';
 export class CreateMediaActivityBindingDto {
 	@ApiProperty({
 		name: 'activity_key',
-		description: 'The activity this binding configures',
-		enum: MediaActivityKey,
+		description: 'The activity this binding configures (off is not configurable)',
+		enum: CONFIGURABLE_ACTIVITY_KEYS,
 		example: MediaActivityKey.WATCH,
 	})
 	@Expose({ name: 'activity_key' })
-	@IsEnum(MediaActivityKey, {
-		message:
-			'[{"field":"activity_key","reason":"Activity key must be one of: watch, listen, gaming, background, off."}]',
+	@IsIn([...CONFIGURABLE_ACTIVITY_KEYS], {
+		message: '[{"field":"activity_key","reason":"Activity key must be one of: watch, listen, gaming, background."}]',
 	})
 	@Transform(
 		({ obj }: { obj: { activity_key?: string; activityKey?: string } }) => obj.activity_key ?? obj.activityKey,
@@ -131,6 +130,47 @@ export class CreateMediaActivityBindingDto {
 		{ toClassOnly: true },
 	)
 	displayInputId?: string;
+
+	@ApiPropertyOptional({
+		name: 'audio_input_id',
+		description: 'Input to select on the audio endpoint (e.g. HDMI1). Only valid if audio supports inputSelect.',
+		type: 'string',
+		maxLength: 50,
+	})
+	@Expose({ name: 'audio_input_id' })
+	@IsOptional()
+	@IsString({
+		message: '[{"field":"audio_input_id","reason":"Audio input ID must be a string."}]',
+	})
+	@MaxLength(50, {
+		message: '[{"field":"audio_input_id","reason":"Audio input ID must not exceed 50 characters."}]',
+	})
+	@Transform(
+		({ obj }: { obj: { audio_input_id?: string; audioInputId?: string } }) => obj.audio_input_id ?? obj.audioInputId,
+		{ toClassOnly: true },
+	)
+	audioInputId?: string;
+
+	@ApiPropertyOptional({
+		name: 'source_input_id',
+		description: 'Input to select on the source endpoint (e.g. HDMI1). Only valid if source supports inputSelect.',
+		type: 'string',
+		maxLength: 50,
+	})
+	@Expose({ name: 'source_input_id' })
+	@IsOptional()
+	@IsString({
+		message: '[{"field":"source_input_id","reason":"Source input ID must be a string."}]',
+	})
+	@MaxLength(50, {
+		message: '[{"field":"source_input_id","reason":"Source input ID must not exceed 50 characters."}]',
+	})
+	@Transform(
+		({ obj }: { obj: { source_input_id?: string; sourceInputId?: string } }) =>
+			obj.source_input_id ?? obj.sourceInputId,
+		{ toClassOnly: true },
+	)
+	sourceInputId?: string;
 
 	@ApiPropertyOptional({
 		name: 'audio_volume_preset',
@@ -287,6 +327,48 @@ export class UpdateMediaActivityBindingDto {
 		{ toClassOnly: true },
 	)
 	displayInputId?: string | null;
+
+	@ApiPropertyOptional({
+		name: 'audio_input_id',
+		description: 'Input to select on the audio endpoint',
+		type: 'string',
+		maxLength: 50,
+	})
+	@Expose({ name: 'audio_input_id' })
+	@IsOptional()
+	@ValidateIf((_, value) => value !== null)
+	@IsString({
+		message: '[{"field":"audio_input_id","reason":"Audio input ID must be a string."}]',
+	})
+	@MaxLength(50, {
+		message: '[{"field":"audio_input_id","reason":"Audio input ID must not exceed 50 characters."}]',
+	})
+	@Transform(
+		({ obj }: { obj: Record<string, unknown> }) => ('audio_input_id' in obj ? obj.audio_input_id : obj.audioInputId),
+		{ toClassOnly: true },
+	)
+	audioInputId?: string | null;
+
+	@ApiPropertyOptional({
+		name: 'source_input_id',
+		description: 'Input to select on the source endpoint',
+		type: 'string',
+		maxLength: 50,
+	})
+	@Expose({ name: 'source_input_id' })
+	@IsOptional()
+	@ValidateIf((_, value) => value !== null)
+	@IsString({
+		message: '[{"field":"source_input_id","reason":"Source input ID must be a string."}]',
+	})
+	@MaxLength(50, {
+		message: '[{"field":"source_input_id","reason":"Source input ID must not exceed 50 characters."}]',
+	})
+	@Transform(
+		({ obj }: { obj: Record<string, unknown> }) => ('source_input_id' in obj ? obj.source_input_id : obj.sourceInputId),
+		{ toClassOnly: true },
+	)
+	sourceInputId?: string | null;
 
 	@ApiPropertyOptional({
 		name: 'audio_volume_preset',

@@ -146,34 +146,7 @@
 				</div>
 			</el-collapse-item>
 
-			<!-- 3. Devices & Displays Section (or just Devices for zones) -->
-			<el-collapse-item name="devicesDisplays">
-				<template #title>
-					<div class="flex items-center gap-2">
-						<el-icon :size="20">
-							<icon icon="mdi:devices" />
-						</el-icon>
-						<span class="font-medium">{{
-							model.type === SpaceType.ROOM
-								? t('spacesModule.edit.sections.devicesDisplays.title')
-								: t('spacesModule.edit.sections.devicesDisplays.titleDevicesOnly')
-						}}</span>
-					</div>
-				</template>
-
-				<div class="px-2">
-					<space-edit-summary-section
-						:space-id="props.space.id"
-						:space-type="model.type"
-						:device-count="deviceCount"
-						:display-count="displayCount"
-						@manage-devices="emit('manage-devices')"
-						@manage-displays="emit('manage-displays')"
-					/>
-				</div>
-			</el-collapse-item>
-
-			<!-- 4. Smart Overrides Section -->
+			<!-- 3. Smart Overrides Section -->
 			<el-collapse-item name="smartOverrides">
 				<template #title>
 					<div class="flex items-center gap-2">
@@ -193,30 +166,7 @@
 						show-icon
 					/>
 
-					<!-- Lighting Roles -->
-					<template v-if="hasLightingDevices">
-						<space-lighting-roles :space="props.space" />
-					</template>
-
-					<!-- Climate Roles -->
-					<template v-if="hasClimateDevices">
-						<space-climate-roles :space="props.space" />
-					</template>
-
-					<!-- Covers Roles -->
-					<template v-if="hasCoversDevices">
-						<space-covers-roles :space="props.space" />
-					</template>
-
-					<!-- Sensor Roles -->
-					<template v-if="hasSensorDevices">
-						<space-sensor-roles :space="props.space" />
-					</template>
-
 					<!-- Smart Suggestions -->
-					<el-divider content-position="left" class="mt-6!">
-						{{ t('spacesModule.edit.sections.smartOverrides.smartSuggestions') }}
-					</el-divider>
 
 					<el-form-item
 						prop="suggestionsEnabled"
@@ -258,7 +208,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 
 import { Icon } from '@iconify/vue';
 import {
@@ -266,7 +216,6 @@ import {
 	ElButton,
 	ElCollapse,
 	ElCollapseItem,
-	ElDivider,
 	ElForm,
 	ElFormItem,
 	ElIcon,
@@ -283,11 +232,6 @@ import {
 import { useI18n } from 'vue-i18n';
 
 import { IconPicker } from '../../../common';
-import { DevicesModuleDeviceCategory } from '../../../openapi.constants';
-import { useDevices } from '../../devices/composables/composables';
-import type { IDevice } from '../../devices/store/devices.store.types';
-import { useDisplays } from '../../displays/composables/composables';
-import type { IDisplay } from '../../displays/store/displays.store.types';
 import { useSpaceCategories, useSpaceEditForm, useSpaces } from '../composables';
 import {
 	FormResult,
@@ -296,11 +240,6 @@ import {
 	SpaceType,
 } from '../spaces.constants';
 
-import SpaceClimateRoles from './space-climate-roles.vue';
-import SpaceCoversRoles from './space-covers-roles.vue';
-import SpaceEditSummarySection from './space-edit-summary-section.vue';
-import SpaceLightingRoles from './space-lighting-roles.vue';
-import SpaceSensorRoles from './space-sensor-roles.vue';
 import { type ISpaceEditFormProps, spaceEditFormEmits } from './space-edit-form.types';
 
 const props = withDefaults(defineProps<ISpaceEditFormProps>(), {
@@ -312,8 +251,6 @@ const emit = defineEmits(spaceEditFormEmits);
 const { t } = useI18n();
 
 const { zoneSpaces, findById } = useSpaces();
-const { devices: allDevices, loaded: devicesLoaded, fetchDevices } = useDevices();
-const { displays: allDisplays, isLoaded: displaysLoaded, fetchDisplays } = useDisplays();
 
 // Use the form composable - pass space as computed to enable reactivity when prop changes
 const {
@@ -333,27 +270,6 @@ watch(formRef, (newVal) => {
 
 // Collapse state - General and Organization open by default
 const activeCollapses = ref<string[]>(['general', 'organization']);
-
-// Devices filtered by this space (room or zone)
-const spaceDevices = computed<IDevice[]>(() => {
-	if (!props.space?.id) return [];
-	if (props.space.type === SpaceType.ROOM) {
-		return allDevices.value.filter((device) => device.roomId === props.space.id);
-	} else {
-		// For zones: filter devices where zoneIds includes this zone
-		return allDevices.value.filter((device) => device.zoneIds.includes(props.space.id));
-	}
-});
-
-// Displays filtered by this space (room only - displays can only belong to rooms)
-const spaceDisplays = computed<IDisplay[]>(() => {
-	if (!props.space?.id || props.space.type !== SpaceType.ROOM) return [];
-	return allDisplays.value.filter((display) => display.roomId === props.space.id);
-});
-
-// Device and display counts for summary section
-const deviceCount = computed<number>(() => spaceDevices.value.length);
-const displayCount = computed<number>(() => spaceDisplays.value.length);
 
 // Track values that were auto-populated from templates (not manually entered)
 const autoPopulatedValues = reactive({
@@ -431,36 +347,6 @@ const rules = computed<FormRules>(() => ({
 	],
 }));
 
-// Check if there are lighting devices in this space
-const hasLightingDevices = computed(() =>
-	spaceDevices.value.some((d) => d.category === DevicesModuleDeviceCategory.lighting)
-);
-
-// Climate device categories for role assignment
-const climateDeviceCategories = [
-	DevicesModuleDeviceCategory.thermostat,
-	DevicesModuleDeviceCategory.heating_unit,
-	DevicesModuleDeviceCategory.air_conditioner,
-	DevicesModuleDeviceCategory.fan,
-	DevicesModuleDeviceCategory.air_humidifier,
-	DevicesModuleDeviceCategory.air_dehumidifier,
-	DevicesModuleDeviceCategory.air_purifier,
-	DevicesModuleDeviceCategory.sensor,
-];
-
-// Check if there are climate devices in this space (for role assignment)
-const hasClimateDevices = computed(() =>
-	spaceDevices.value.some((d) => climateDeviceCategories.includes(d.category as DevicesModuleDeviceCategory))
-);
-
-// Check if there are covers devices in this space
-const hasCoversDevices = computed(() =>
-	spaceDevices.value.some((d) => d.category === DevicesModuleDeviceCategory.window_covering)
-);
-
-// Sensor roles apply when any devices are present in the space (many devices expose sensor channels)
-const hasSensorDevices = computed(() => spaceDevices.value.length > 0);
-
 watch(
 	(): boolean => formChanged.value,
 	(val: boolean): void => {
@@ -480,17 +366,6 @@ watch(
 		}
 	}
 );
-
-onMounted(async () => {
-	// Fetch devices if not already loaded
-	if (!devicesLoaded.value) {
-		await fetchDevices();
-	}
-	// Fetch displays if not already loaded
-	if (!displaysLoaded.value) {
-		await fetchDisplays();
-	}
-});
 
 const onSubmit = async (): Promise<void> => {
 	try {

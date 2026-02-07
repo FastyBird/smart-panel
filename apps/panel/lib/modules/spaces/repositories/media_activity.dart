@@ -154,13 +154,61 @@ class MediaActivityRepository extends ChangeNotifier {
 	/// Update active state from WebSocket event data.
 	void updateActiveState(String spaceId, Map<String, dynamic> json) {
 		try {
-			final state = MediaActiveStateModel.fromJson(json, spaceId: spaceId);
-			_activeStates[spaceId] = state;
+			final newState = MediaActiveStateModel.fromJson(json, spaceId: spaceId);
+
+			// Preserve planSteps from existing activating state when the incoming
+			// event doesn't include steps (e.g. ACTIVATED/FAILED final events).
+			final existing = _activeStates[spaceId];
+			if (existing != null &&
+					existing.planSteps.isNotEmpty &&
+					newState.planSteps.isEmpty &&
+					newState.state == MediaActivationState.activating) {
+				_activeStates[spaceId] = MediaActiveStateModel(
+					id: newState.id,
+					spaceId: spaceId,
+					activityKey: newState.activityKey,
+					state: newState.state,
+					activatedAt: newState.activatedAt,
+					resolved: newState.resolved,
+					lastResult: newState.lastResult,
+					warnings: newState.warnings,
+					planSteps: existing.planSteps,
+				);
+			} else {
+				_activeStates[spaceId] = newState;
+			}
+
 			notifyListeners();
 		} catch (e) {
 			if (kDebugMode) {
 				debugPrint(
 					'[MEDIA ACTIVITY] Failed to parse active state update: $e',
+				);
+			}
+		}
+	}
+
+	/// Update a single step's progress from a STEP_PROGRESS WebSocket event.
+	void updateStepProgress(String spaceId, Map<String, dynamic> json) {
+		try {
+			final current = _activeStates[spaceId];
+
+			// Guard: only update if currently activating
+			if (current == null || !current.isActivating) return;
+
+			final stepIndex = json['step_index'] as int?;
+			final statusStr = json['status'] as String?;
+
+			if (stepIndex == null || statusStr == null) return;
+
+			final newStatus = mediaStepStatusFromString(statusStr);
+
+			_activeStates[spaceId] = current.copyWithStepStatus(stepIndex, newStatus);
+			notifyListeners();
+		} catch (e) {
+			if (kDebugMode) {
+				debugPrint(
+					'[MEDIA ACTIVITY] Failed to parse step progress update: $e',
 				);
 			}
 		}
@@ -174,11 +222,29 @@ class MediaActivityRepository extends ChangeNotifier {
 		String spaceId,
 		MediaActivityKey activityKey,
 	) async {
-		// Optimistic update: set activating state immediately
+		// Fetch preview to get plan steps before the optimistic update
+		List<MediaActivationPlanStepModel> previewSteps = [];
+		try {
+			final preview = await previewActivity(spaceId, activityKey);
+			if (preview != null) {
+				previewSteps = preview.plan.asMap().entries.map((e) =>
+					MediaActivationPlanStepModel(
+						index: e.key,
+						label: e.value.label ?? 'Step ${e.key + 1}',
+						critical: e.value.critical,
+					),
+				).toList();
+			}
+		} catch (_) {
+			// Preview failure is non-critical — proceed without steps
+		}
+
+		// Optimistic update: set activating state immediately with plan steps
 		_activeStates[spaceId] = MediaActiveStateModel(
 			spaceId: spaceId,
 			activityKey: activityKey,
 			state: MediaActivationState.activating,
+			planSteps: previewSteps,
 		);
 		notifyListeners();
 

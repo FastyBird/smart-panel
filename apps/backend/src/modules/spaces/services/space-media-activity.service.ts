@@ -34,6 +34,7 @@ import { SpaceMediaActivityBindingService } from './space-media-activity-binding
 import { SpacesService } from './spaces.service';
 
 const STEP_TIMEOUT_MS = 5000;
+const STEP_DELAY_MS = 600;
 
 /**
  * Shared diagnostic checks for a binding against a set of derived endpoints.
@@ -46,6 +47,8 @@ function diagnoseBinding(
 		sourceEndpointId: string | null;
 		remoteEndpointId: string | null;
 		displayInputId: string | null;
+		audioInputId: string | null;
+		sourceInputId: string | null;
 		audioVolumePreset: number | null;
 	},
 	endpointMap: Map<string, DerivedMediaEndpointModel>,
@@ -77,6 +80,14 @@ function diagnoseBinding(
 
 	if (displayEndpoint && binding.displayInputId && !displayEndpoint.capabilities.inputSelect) {
 		diagnostics.push(`Display input preset skipped (${displayEndpoint.name} has no input select capability)`);
+	}
+
+	if (audioEndpoint && binding.audioInputId && !audioEndpoint.capabilities.inputSelect) {
+		diagnostics.push(`Audio input preset skipped (${audioEndpoint.name} has no input select capability)`);
+	}
+
+	if (sourceEndpoint && binding.sourceInputId && !sourceEndpoint.capabilities.inputSelect) {
+		diagnostics.push(`Source input preset skipped (${sourceEndpoint.name} has no input select capability)`);
 	}
 
 	// Missing power capabilities
@@ -223,8 +234,22 @@ export class SpaceMediaActivityService {
 
 		await this.activeRepository.save(record);
 
-		// Emit activating event
-		this.emitEvent(EventType.MEDIA_ACTIVITY_ACTIVATING, spaceId, activityKey, plan.resolved);
+		// Emit activating event with step plan for real-time progress tracking
+		const planSteps = plan.steps.map((step, index) => ({
+			index,
+			label: step.label ?? `Step ${index + 1}`,
+			critical: step.critical,
+		}));
+
+		this.emitEvent(
+			EventType.MEDIA_ACTIVITY_ACTIVATING,
+			spaceId,
+			activityKey,
+			plan.resolved,
+			undefined,
+			undefined,
+			planSteps,
+		);
 
 		// Execute plan — wrapped in try-catch to ensure state is updated to FAILED on unexpected errors
 		try {
@@ -452,6 +477,8 @@ export class SpaceMediaActivityService {
 			sourceEndpointId: string | null;
 			remoteEndpointId: string | null;
 			displayInputId: string | null;
+			audioInputId: string | null;
+			sourceInputId: string | null;
 			audioVolumePreset: number | null;
 		},
 		endpointMap: Map<string, DerivedMediaEndpointModel>,
@@ -533,6 +560,44 @@ export class SpaceMediaActivityService {
 			});
 		}
 
+		// Set audio input (if configured)
+		if (
+			audioEndpoint &&
+			binding.audioInputId &&
+			audioEndpoint.capabilities.inputSelect &&
+			audioEndpoint.links.inputSelect
+		) {
+			steps.push({
+				targetDeviceId: audioEndpoint.deviceId,
+				action: {
+					kind: 'setProperty',
+					propertyId: audioEndpoint.links.inputSelect.propertyId,
+					value: binding.audioInputId,
+				},
+				critical: true,
+				label: `Set audio input to ${binding.audioInputId}`,
+			});
+		}
+
+		// Set source input (if configured)
+		if (
+			sourceEndpoint &&
+			binding.sourceInputId &&
+			sourceEndpoint.capabilities.inputSelect &&
+			sourceEndpoint.links.inputSelect
+		) {
+			steps.push({
+				targetDeviceId: sourceEndpoint.deviceId,
+				action: {
+					kind: 'setProperty',
+					propertyId: sourceEndpoint.links.inputSelect.propertyId,
+					value: binding.sourceInputId,
+				},
+				critical: true,
+				label: `Set source input to ${binding.sourceInputId}`,
+			});
+		}
+
 		// Step 3: Apply volume preset (non-critical)
 		if (
 			audioEndpoint &&
@@ -573,6 +638,8 @@ export class SpaceMediaActivityService {
 			sourceEndpointId: string | null;
 			remoteEndpointId: string | null;
 			displayInputId: string | null;
+			audioInputId: string | null;
+			sourceInputId: string | null;
 			audioVolumePreset: number | null;
 		},
 		endpointMap: Map<string, DerivedMediaEndpointModel>,
@@ -586,7 +653,7 @@ export class SpaceMediaActivityService {
 	}
 
 	/**
-	 * Execute a plan with timeouts and partial success
+	 * Execute a plan with timeouts and partial success, emitting step progress events
 	 */
 	private async executePlan(plan: MediaActivityExecutionPlanModel): Promise<ExecutionResult> {
 		let succeeded = 0;
@@ -599,9 +666,16 @@ export class SpaceMediaActivityService {
 
 		for (let i = 0; i < plan.steps.length; i++) {
 			const step = plan.steps[i];
+			const stepLabel = step.label ?? `Step ${i + 1}`;
 			const device = deviceMap.get(step.targetDeviceId);
 
+			// Emit executing status, then wait so the UI shows the spinner before the action runs
+			this.emitStepProgress(plan.spaceId, plan.activityKey, i, plan.steps.length, 'executing', stepLabel);
+			await new Promise((resolve) => setTimeout(resolve, STEP_DELAY_MS));
+
 			if (!device) {
+				this.emitStepProgress(plan.spaceId, plan.activityKey, i, plan.steps.length, 'failed', stepLabel);
+
 				failures.push({
 					stepIndex: i,
 					reason: `Device ${step.targetDeviceId} not found`,
@@ -624,6 +698,8 @@ export class SpaceMediaActivityService {
 			const platform = this.platformRegistryService.get(device);
 
 			if (!platform) {
+				this.emitStepProgress(plan.spaceId, plan.activityKey, i, plan.steps.length, 'failed', stepLabel);
+
 				failures.push({
 					stepIndex: i,
 					reason: `No platform for device ${step.targetDeviceId}`,
@@ -644,6 +720,8 @@ export class SpaceMediaActivityService {
 			}
 
 			if (step.action.kind !== 'setProperty' || !step.action.propertyId) {
+				this.emitStepProgress(plan.spaceId, plan.activityKey, i, plan.steps.length, 'failed', stepLabel);
+
 				failures.push({
 					stepIndex: i,
 					reason: `Unsupported action kind: ${step.action.kind}`,
@@ -680,6 +758,8 @@ export class SpaceMediaActivityService {
 			}
 
 			if (!foundChannel || !foundProperty) {
+				this.emitStepProgress(plan.spaceId, plan.activityKey, i, plan.steps.length, 'failed', stepLabel);
+
 				failures.push({
 					stepIndex: i,
 					reason: `Property ${step.action.propertyId} not found on device`,
@@ -714,7 +794,10 @@ export class SpaceMediaActivityService {
 
 				if (result) {
 					succeeded++;
+					this.emitStepProgress(plan.spaceId, plan.activityKey, i, plan.steps.length, 'succeeded', stepLabel);
 				} else {
+					this.emitStepProgress(plan.spaceId, plan.activityKey, i, plan.steps.length, 'failed', stepLabel);
+
 					failures.push({
 						stepIndex: i,
 						reason: 'Command execution returned false',
@@ -733,6 +816,8 @@ export class SpaceMediaActivityService {
 				}
 			} catch (error) {
 				const err = error as Error;
+
+				this.emitStepProgress(plan.spaceId, plan.activityKey, i, plan.steps.length, 'failed', stepLabel);
 
 				failures.push({
 					stepIndex: i,
@@ -977,6 +1062,7 @@ export class SpaceMediaActivityService {
 		resolved?: MediaActivityResolvedModel,
 		summary?: MediaActivityLastResultModel,
 		warnings?: string[],
+		steps?: { index: number; label: string; critical: boolean }[],
 	): void {
 		const stateMap: Record<string, MediaActivationState> = {
 			[EventType.MEDIA_ACTIVITY_ACTIVATING]: MediaActivationState.ACTIVATING,
@@ -1004,8 +1090,40 @@ export class SpaceMediaActivityService {
 			payload.warnings = warnings;
 		}
 
+		if (steps && steps.length > 0) {
+			payload.steps = steps;
+		}
+
 		this.eventEmitter.emit(eventType, payload);
 
 		this.logger.debug(`Emitted ${eventType} for space=${spaceId} activity=${activityKey}`);
+	}
+
+	/**
+	 * Emit a step progress event for real-time activation tracking
+	 */
+	private emitStepProgress(
+		spaceId: string,
+		activityKey: MediaActivityKey,
+		stepIndex: number,
+		stepsTotal: number,
+		status: 'executing' | 'succeeded' | 'failed',
+		label: string,
+	): void {
+		const payload = {
+			space_id: spaceId,
+			activity_key: activityKey,
+			step_index: stepIndex,
+			steps_total: stepsTotal,
+			status,
+			label,
+			timestamp: new Date().toISOString(),
+		};
+
+		this.eventEmitter.emit(EventType.MEDIA_ACTIVITY_STEP_PROGRESS, payload);
+
+		this.logger.debug(
+			`Step progress: space=${spaceId} activity=${activityKey} step=${stepIndex}/${stepsTotal} status=${status}`,
+		);
 	}
 }

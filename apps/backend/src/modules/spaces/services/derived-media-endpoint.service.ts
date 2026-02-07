@@ -250,7 +250,16 @@ export class DerivedMediaEndpointService {
 
 		const addLink = (cap: MediaCapabilityMappingModel | undefined, field: string): void => {
 			if (cap) {
-				(links as Record<string, unknown>)[field] = { propertyId: cap.propertyId };
+				const link: Record<string, unknown> = { propertyId: cap.propertyId };
+
+				if (cap.dataType) {
+					link.dataType = cap.dataType;
+				}
+				if (cap.format) {
+					link.format = cap.format;
+				}
+
+				(links as Record<string, unknown>)[field] = link;
 			}
 		};
 
