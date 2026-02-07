@@ -731,14 +731,28 @@ const onDialogOpen = async (): Promise<void> => {
 	autoSaveReady.value = true;
 };
 
-const onClose = (): void => {
+const onClose = async (): Promise<void> => {
 	autoSaveReady.value = false;
 
-	// Clear pending autosave timers
+	// Flush pending debounced saves so no edits are lost
+	const flushPromises: Promise<void>[] = [];
+
 	for (const [key, timer] of pendingSaves) {
 		clearTimeout(timer);
 		pendingSaves.delete(key);
+		flushPromises.push(performAutoSave(key as ConfiguredActivityKey));
 	}
+
+	// Also flush any dirty forms without a pending timer
+	for (const key of activityKeys) {
+		if (!flushPromises.length || !pendingSaves.has(key)) {
+			if (isFormDirty(key)) {
+				flushPromises.push(performAutoSave(key));
+			}
+		}
+	}
+
+	await Promise.allSettled(flushPromises);
 
 	emit('bindings-changed');
 	visible.value = false;
