@@ -30,7 +30,8 @@ export { default as SpaceAddSceneDialog } from './space-add-scene-dialog.vue';
 export { default as SpaceAddDisplayDialog } from './space-add-display-dialog.vue';
 
 // Space media sections
-export { default as SpaceMediaActivities } from './space-media-activities.vue';
+export { default as SpaceMediaActivitiesSummary } from './space-media-activities-summary.vue';
+export { default as SpaceMediaActivitiesDialog } from './space-media-activities-dialog.vue';
 
 // Deprecated - use ListSpaces instead
 export { default as SpacesList } from './spaces-list.vue';

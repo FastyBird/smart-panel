@@ -752,14 +752,4 @@ const onClose = (): void => {
 	emit('bindings-changed');
 	visible.value = false;
 };
-
-// Re-init forms when visible changes to true (fallback for programmatic open)
-watch(
-	() => props.visible,
-	(val) => {
-		if (val) {
-			onDialogOpen();
-		}
-	}
-);
 </script>
