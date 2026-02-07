@@ -50,6 +50,7 @@ describe('SecurityService', () => {
 			findByIds: jest.fn().mockResolvedValue([]),
 			acknowledge: jest.fn(),
 			acknowledgeAll: jest.fn(),
+			resetAcknowledgement: jest.fn(),
 			updateLastEventAt: jest.fn(),
 			cleanupStale: jest.fn(),
 		} as any;
@@ -93,7 +94,7 @@ describe('SecurityService', () => {
 			expect(result.activeAlerts[0].acknowledged).toBe(true);
 		});
 
-		it('should preserve ack when alert timestamp is newer than stored lastEventAt', async () => {
+		it('should reset ack when alert timestamp is newer than stored lastEventAt', async () => {
 			const alert = makeAlert('sensor:dev1:smoke', '2025-01-02T00:00:00Z');
 			aggregator.aggregate.mockResolvedValue(makeStatus([alert]));
 
@@ -107,11 +108,11 @@ describe('SecurityService', () => {
 			ackService.findByIds.mockResolvedValue([ackRecord]);
 
 			const result = await service.getStatus();
-			expect(result.activeAlerts[0].acknowledged).toBe(true);
-			expect(ackService.updateLastEventAt).toHaveBeenCalledWith('sensor:dev1:smoke', new Date('2025-01-02T00:00:00Z'));
+			expect(result.activeAlerts[0].acknowledged).toBe(false);
+			expect(ackService.resetAcknowledgement).toHaveBeenCalledWith('sensor:dev1:smoke', new Date('2025-01-02T00:00:00Z'));
 		});
 
-		it('should not call updateLastEventAt for alerts with invalid timestamps', async () => {
+		it('should apply stored ack state for alerts with invalid timestamps', async () => {
 			const alert = makeAlert('sensor:dev1:smoke', 'not-a-date');
 			aggregator.aggregate.mockResolvedValue(makeStatus([alert]));
 
@@ -126,10 +127,11 @@ describe('SecurityService', () => {
 
 			const result = await service.getStatus();
 			expect(result.activeAlerts[0].acknowledged).toBe(true);
+			expect(ackService.resetAcknowledgement).not.toHaveBeenCalled();
 			expect(ackService.updateLastEventAt).not.toHaveBeenCalled();
 		});
 
-		it('should preserve acknowledged state when initializing lastEventAt', async () => {
+		it('should reset ack when lastEventAt is null (first occurrence tracking)', async () => {
 			const alert = makeAlert('sensor:dev1:smoke', '2025-01-01T00:00:00Z');
 			aggregator.aggregate.mockResolvedValue(makeStatus([alert]));
 
@@ -143,8 +145,8 @@ describe('SecurityService', () => {
 			ackService.findByIds.mockResolvedValue([ackRecord]);
 
 			const result = await service.getStatus();
-			expect(result.activeAlerts[0].acknowledged).toBe(true);
-			expect(ackService.updateLastEventAt).toHaveBeenCalledWith('sensor:dev1:smoke', new Date('2025-01-01T00:00:00Z'));
+			expect(result.activeAlerts[0].acknowledged).toBe(false);
+			expect(ackService.resetAcknowledgement).toHaveBeenCalledWith('sensor:dev1:smoke', new Date('2025-01-01T00:00:00Z'));
 		});
 
 		it('should cleanup stale ack records', async () => {
@@ -153,6 +155,47 @@ describe('SecurityService', () => {
 
 			await service.getStatus();
 			expect(ackService.cleanupStale).toHaveBeenCalledWith(['sensor:dev1:smoke']);
+		});
+
+		it('should show acknowledged=true after acking an alert at timestamp T1', async () => {
+			const T1 = '2025-01-01T00:00:00Z';
+			const alert = makeAlert('sensor:dev1:smoke', T1);
+			aggregator.aggregate.mockResolvedValue(makeStatus([alert]));
+
+			// Ack record exists with matching lastEventAt — same event occurrence
+			const ackRecord = {
+				id: 'sensor:dev1:smoke',
+				acknowledged: true,
+				acknowledgedAt: new Date(T1),
+				lastEventAt: new Date(T1),
+				updatedAt: new Date(),
+			} as SecurityAlertAckEntity;
+			ackService.findByIds.mockResolvedValue([ackRecord]);
+
+			const result = await service.getStatus();
+			expect(result.activeAlerts[0].acknowledged).toBe(true);
+			expect(ackService.resetAcknowledgement).not.toHaveBeenCalled();
+		});
+
+		it('should reset acknowledged=false when same alert reappears with newer timestamp', async () => {
+			const T1 = '2025-01-01T00:00:00Z';
+			const T2 = '2025-01-02T00:00:00Z';
+			const alert = makeAlert('sensor:dev1:smoke', T2);
+			aggregator.aggregate.mockResolvedValue(makeStatus([alert]));
+
+			// Ack record was created at T1 — alert now has newer timestamp T2
+			const ackRecord = {
+				id: 'sensor:dev1:smoke',
+				acknowledged: true,
+				acknowledgedAt: new Date(T1),
+				lastEventAt: new Date(T1),
+				updatedAt: new Date(),
+			} as SecurityAlertAckEntity;
+			ackService.findByIds.mockResolvedValue([ackRecord]);
+
+			const result = await service.getStatus();
+			expect(result.activeAlerts[0].acknowledged).toBe(false);
+			expect(ackService.resetAcknowledgement).toHaveBeenCalledWith('sensor:dev1:smoke', new Date(T2));
 		});
 	});
 
