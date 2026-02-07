@@ -77,6 +77,7 @@ devices:
   - name: "Living Room TV"
     category: television
     room: living-room
+    behavior_mode: realistic
     channels:
       - category: television
         properties:
@@ -306,6 +307,7 @@ devices:
   - name: "Front Door Lock"
     category: lock
     room: hallway
+    behavior_mode: realistic
     channels:
       - category: lock
         properties:
@@ -336,6 +338,7 @@ devices:
     room: hallway
     auto_simulate: true
     simulate_interval: 60000
+    behavior_mode: realistic
     channels:
       - category: temperature
         properties:

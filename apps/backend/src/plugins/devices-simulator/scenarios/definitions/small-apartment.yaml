@@ -57,6 +57,7 @@ devices:
   - name: "Smart TV"
     category: television
     room: living-room
+    behavior_mode: realistic
     channels:
       - category: television
         properties:
@@ -157,6 +158,7 @@ devices:
   - name: "Front Door Lock"
     category: lock
     room: hallway
+    behavior_mode: realistic
     channels:
       - category: lock
         properties:
