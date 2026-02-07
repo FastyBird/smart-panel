@@ -638,14 +638,17 @@ const performAutoSave = async (key: ConfiguredActivityKey): Promise<void> => {
 		const existingBinding = findBindingByActivity(key);
 		const payload = buildPayload(key);
 
+		// Capture the form state that corresponds to what we're about to save,
+		// so edits made during the HTTP request aren't silently marked as saved.
+		const savedSnapshot = { ...forms[key] };
+
 		if (existingBinding) {
 			await saveBinding(existingBinding.id, payload);
 		} else {
 			await createBinding(key, payload);
 		}
 
-		// Snapshot saved state (don't reload form to avoid overwriting pending user edits)
-		Object.assign(snapshots[key], { ...forms[key] });
+		Object.assign(snapshots[key], savedSnapshot);
 	} catch (e: unknown) {
 		activityErrors[key] = e instanceof Error ? e.message : 'Failed to save';
 	} finally {
