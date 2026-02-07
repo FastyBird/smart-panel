@@ -357,6 +357,9 @@
 		},
 		"sensorRoles": {
 			"title": "Edit Sensor Roles"
+		},
+		"mediaActivities": {
+			"title": "Edit Media Activities"
 		}
 	},
 	"buttons": {
@@ -439,6 +442,10 @@
 			"title": "Sensor roles",
 			"sensorsAssigned": "Sensors assigned",
 			"noRolesAssigned": "No roles assigned yet"
+		},
+		"mediaActivities": {
+			"title": "Media Activities",
+			"noActivities": "No activities configured yet"
 		},
 		"info": {
 			"title": "Space information",
@@ -540,7 +547,9 @@
 		},
 		"activities": {
 			"loading": "Loading media configuration...",
+			"description": "Assign display, audio, source, and remote devices to each media activity. Changes are saved automatically.",
 			"applyDefaults": "Apply defaults",
+			"applyDefaultsHint": "Auto-assigns endpoints based on device types and capabilities",
 			"defaultsApplied": "Default bindings have been applied.",
 			"defaultsFailed": "Failed to apply default bindings.",
 			"selectPrompt": "Select an activity from the list to configure its bindings.",
