@@ -149,8 +149,8 @@ class _AppBodyState extends State<AppBody> {
 
     // Sync offline state to security overlay controller
     _securityOverlayController.setConnectionOffline(
-      severity == ConnectionUISeverity.fullScreen ||
-      severity == ConnectionUISeverity.overlay,
+      currentState != SocketConnectionState.online &&
+      currentState != SocketConnectionState.initializing,
     );
 
     _previousSocketConnectionState = currentState;

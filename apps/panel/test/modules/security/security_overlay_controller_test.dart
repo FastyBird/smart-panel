@@ -886,6 +886,89 @@ void main() {
 		});
 	});
 
+	group('SecurityOverlayController - offline/online lifecycle', () {
+		late SecurityOverlayController controller;
+
+		setUp(() {
+			controller = SecurityOverlayController();
+		});
+
+		tearDown(() {
+			controller.dispose();
+		});
+
+		test('offline hides overlay; coming back online restores it when alerts unacked', () async {
+			// Critical alert → overlay showing
+			controller.updateStatus(_makeStatus(
+				hasCriticalAlert: true,
+				activeAlerts: [_makeAlert(id: 'a')],
+			));
+			expect(controller.shouldShowOverlay, true);
+
+			// Go offline → overlay hidden
+			controller.setConnectionOffline(true);
+			expect(controller.shouldShowOverlay, false);
+
+			// Come back online → overlay restored (alerts still unacked)
+			controller.setConnectionOffline(false);
+			expect(controller.shouldShowOverlay, true);
+
+			// Acknowledge alerts → overlay hidden
+			await controller.acknowledgeCurrentAlerts();
+			expect(controller.shouldShowOverlay, false);
+		});
+
+		test('acknowledge is blocked while offline but succeeds after reconnection', () async {
+			// Critical alert → overlay showing
+			controller.updateStatus(_makeStatus(
+				hasCriticalAlert: true,
+				activeAlerts: [_makeAlert(id: 'a')],
+			));
+			expect(controller.shouldShowOverlay, true);
+
+			// Go offline → acknowledge returns false, alert stays unacked
+			controller.setConnectionOffline(true);
+			final result = await controller.acknowledgeCurrentAlerts();
+			expect(result, false);
+			expect(controller.isAlertAcknowledged('a'), false);
+
+			// Come back online → acknowledge succeeds
+			controller.setConnectionOffline(false);
+			final result2 = await controller.acknowledgeCurrentAlerts();
+			expect(result2, true);
+			expect(controller.shouldShowOverlay, false);
+		});
+
+		test('offline hides overlay; online resumes if new unacked alert arrived', () async {
+			// Critical alert A, acknowledge it → overlay hidden
+			controller.updateStatus(_makeStatus(
+				hasCriticalAlert: true,
+				activeAlerts: [_makeAlert(id: 'a')],
+			));
+			await controller.acknowledgeCurrentAlerts();
+			expect(controller.shouldShowOverlay, false);
+
+			// Go offline
+			controller.setConnectionOffline(true);
+
+			// Update status with new unacked alert B (simulating cached/queued data)
+			controller.updateStatus(_makeStatus(
+				hasCriticalAlert: true,
+				activeAlerts: [
+					_makeAlert(id: 'a', acknowledged: true),
+					_makeAlert(id: 'b', acknowledged: false),
+				],
+			));
+
+			// Still offline → overlay hidden regardless of alerts
+			expect(controller.shouldShowOverlay, false);
+
+			// Come back online → overlay should show (alert B is unacked)
+			controller.setConnectionOffline(false);
+			expect(controller.shouldShowOverlay, true);
+		});
+	});
+
 	group('SecurityOverlayController - overlay suppression with ack', () {
 		late SecurityOverlayController controller;
 
