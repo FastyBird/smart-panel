@@ -1,0 +1,62 @@
+sensors:
+  smoke:
+    alert_type: smoke
+    severity: critical
+    properties:
+      - property: detected
+        operator: eq
+        value: true
+
+  carbon_monoxide:
+    alert_type: co
+    severity: critical
+    properties:
+      - property: detected
+        operator: eq
+        value: true
+      - property: concentration
+        operator: gt
+        value: 35
+
+  leak:
+    alert_type: water_leak
+    severity: critical
+    properties:
+      - property: detected
+        operator: eq
+        value: true
+
+  gas:
+    alert_type: gas
+    severity: critical
+    properties:
+      - property: detected
+        operator: eq
+        value: true
+      - property: status
+        operator: in
+        value: [warning, alarm]
+
+  motion:
+    alert_type: intrusion
+    severity: warning
+    properties:
+      - property: detected
+        operator: eq
+        value: true
+
+  occupancy:
+    alert_type: intrusion
+    severity: warning
+    properties:
+      - property: detected
+        operator: eq
+        value: true
+
+  contact:
+    alert_type: entry_open
+    severity: info
+    properties:
+      - property: detected
+        operator: eq
+        value: true

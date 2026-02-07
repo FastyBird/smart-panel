@@ -30,6 +30,7 @@ import { SecurityAggregatorService } from './services/security-aggregator.servic
 import { SecurityAlertAckService } from './services/security-alert-ack.service';
 import { SecurityEventsService } from './services/security-events.service';
 import { SecurityService } from './services/security.service';
+import { DetectionRulesLoaderService } from './spec/detection-rules-loader.service';
 
 @ApiTag({
 	tagName: SECURITY_MODULE_NAME,
@@ -45,6 +46,7 @@ import { SecurityService } from './services/security.service';
 	],
 	controllers: [SecurityController, SecurityAlertsController, SecurityEventsController],
 	providers: [
+		DetectionRulesLoaderService,
 		DefaultSecurityProvider,
 		AlarmSecurityProvider,
 		SecuritySensorsProvider,
