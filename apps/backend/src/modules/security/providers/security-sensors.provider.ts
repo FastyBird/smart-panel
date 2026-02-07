@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 
-import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
+import { ChannelCategory, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity } from '../../devices/entities/devices.entity';
 import { PropertyValueState } from '../../devices/models/property-value-state.model';
 import { DevicesService } from '../../devices/services/devices.service';
@@ -46,11 +46,9 @@ export class SecuritySensorsProvider implements SecurityStateProviderInterface {
 	private async buildSignals(): Promise<SecuritySignal> {
 		const devices = await this.devicesService.findAll();
 
-		const sensorDevices = devices.filter((device) => device.category === DeviceCategory.SENSOR);
-
 		const alerts: SecurityAlert[] = [];
 
-		for (const device of sensorDevices) {
+		for (const device of devices) {
 			const channels = device.channels ?? [];
 
 			for (const channel of channels) {
