@@ -34,7 +34,7 @@ import { SpaceMediaActivityBindingService } from './space-media-activity-binding
 import { SpacesService } from './spaces.service';
 
 const STEP_TIMEOUT_MS = 5000;
-const STEP_DELAY_MS = 2000;
+const STEP_DELAY_MS = 600;
 
 /**
  * Shared diagnostic checks for a binding against a set of derived endpoints.
