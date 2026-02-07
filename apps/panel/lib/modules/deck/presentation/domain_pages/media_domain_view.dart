@@ -411,7 +411,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 
 		// Skip if the selected activity is already active
 		final activeState = _mediaService!.getActiveState(_roomId);
-		if (activeState != null && activeState.isActive && activeState.activityKey == key) return;
+		if (activeState != null && (activeState.isActive || activeState.isActivating) && activeState.activityKey == key) return;
 		setState(() {
 			_isSending = true;
 			// Reset local state when switching activities
