@@ -33,8 +33,12 @@ rooms:
     name: "Hallway"
   - id: patio
     name: "Patio"
+    type: zone
+    category: outdoor_terrace
   - id: backyard
     name: "Backyard"
+    type: zone
+    category: outdoor_backyard
 
 devices:
   # ============================================================================

@@ -23,6 +23,8 @@ rooms:
     name: "Hallway"
   - id: terrace
     name: "Terrace"
+    type: zone
+    category: outdoor_terrace
 
 devices:
   # Living Room

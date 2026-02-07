@@ -48,12 +48,20 @@ rooms:
   # Outdoor
   - id: front-porch
     name: "Front Porch"
+    type: zone
+    category: outdoor_walkway
   - id: back-patio
     name: "Back Patio"
+    type: zone
+    category: outdoor_terrace
   - id: pool-area
     name: "Pool Area"
+    type: zone
+    category: outdoor_garden
   - id: backyard
     name: "Backyard"
+    type: zone
+    category: outdoor_backyard
 
 devices:
   # ============================================================================

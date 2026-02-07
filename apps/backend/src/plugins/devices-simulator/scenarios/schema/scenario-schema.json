@@ -57,6 +57,16 @@
 					"minLength": 1,
 					"maxLength": 100,
 					"description": "Room display name"
+				},
+				"type": {
+					"type": "string",
+					"enum": ["room", "zone"],
+					"default": "room",
+					"description": "Space type: 'room' for physical rooms, 'zone' for outdoor areas or logical groupings"
+				},
+				"category": {
+					"type": "string",
+					"description": "Space category matching the type (e.g., living_room for rooms, outdoor_backyard for zones)"
 				}
 			}
 		},

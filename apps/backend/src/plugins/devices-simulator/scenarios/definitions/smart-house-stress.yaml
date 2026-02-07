@@ -35,8 +35,12 @@ rooms:
   name: Hallway
 - id: patio
   name: Patio
+  type: zone
+  category: outdoor_terrace
 - id: backyard
   name: Backyard
+  type: zone
+  category: outdoor_backyard
 devices:
 - name: Living Room Ceiling Light
   category: lighting
@@ -1436,8 +1440,10 @@ devices:
     properties:
     - category: 'on'
       value: true
+  - category: media_input
+    properties:
     - category: source
-      value: hdmi_1
+      value: hdmi1
   - category: speaker
     properties:
     - category: active

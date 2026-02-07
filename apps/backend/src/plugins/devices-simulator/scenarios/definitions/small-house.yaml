@@ -19,6 +19,8 @@ rooms:
     name: "Hallway"
   - id: backyard
     name: "Backyard"
+    type: zone
+    category: outdoor_backyard
 
 devices:
   # Living Room

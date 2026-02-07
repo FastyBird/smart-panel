@@ -23,6 +23,8 @@ rooms:
     name: "Hallway"
   - id: balcony
     name: "Balcony"
+    type: zone
+    category: outdoor_balcony
 
 devices:
   # ============================================================================
