@@ -181,6 +181,52 @@ describe('SecurityEventsService', () => {
 
 			expect(repo.save).not.toHaveBeenCalled();
 		});
+
+		it('should generate exactly one alert_raised when previousActive is empty and currentActive contains A', async () => {
+			// Seed with empty alerts
+			await service.recordAlertTransitions([], ArmedState.DISARMED, AlarmState.IDLE);
+			expect(repo.save).not.toHaveBeenCalled();
+
+			// Alert A appears
+			const alertA = makeAlert({ id: 'sensor:dev1:smoke' });
+			await service.recordAlertTransitions([alertA], ArmedState.DISARMED, AlarmState.IDLE);
+
+			expect(repo.save).toHaveBeenCalledTimes(1);
+			const savedEvents = repo.save.mock.calls[0][0] as SecurityEventEntity[];
+			expect(savedEvents).toHaveLength(1);
+			expect(savedEvents[0]).toEqual(
+				expect.objectContaining({
+					eventType: SecurityEventType.ALERT_RAISED,
+					alertId: 'sensor:dev1:smoke',
+					severity: Severity.CRITICAL,
+					alertType: SecurityAlertType.SMOKE,
+					sourceDeviceId: 'dev1',
+				}),
+			);
+		});
+
+		it('should generate exactly one alert_resolved when previousActive contains A and currentActive is empty', async () => {
+			// Seed with alert A active
+			const alertA = makeAlert({ id: 'sensor:dev1:smoke' });
+			await service.recordAlertTransitions([alertA], ArmedState.DISARMED, AlarmState.IDLE);
+			expect(repo.save).not.toHaveBeenCalled();
+
+			// Alert A disappears
+			await service.recordAlertTransitions([], ArmedState.DISARMED, AlarmState.IDLE);
+
+			expect(repo.save).toHaveBeenCalledTimes(1);
+			const savedEvents = repo.save.mock.calls[0][0] as SecurityEventEntity[];
+			expect(savedEvents).toHaveLength(1);
+			expect(savedEvents[0]).toEqual(
+				expect.objectContaining({
+					eventType: SecurityEventType.ALERT_RESOLVED,
+					alertId: 'sensor:dev1:smoke',
+					severity: Severity.CRITICAL,
+					alertType: SecurityAlertType.SMOKE,
+					sourceDeviceId: 'dev1',
+				}),
+			);
+		});
 	});
 
 	describe('recordAcknowledgement', () => {
