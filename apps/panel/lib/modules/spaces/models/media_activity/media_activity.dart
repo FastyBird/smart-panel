@@ -335,6 +335,8 @@ class MediaActivityBindingModel {
 	final String? sourceEndpointId;
 	final String? remoteEndpointId;
 	final String? displayInputId;
+	final String? audioInputId;
+	final String? sourceInputId;
 	final int? audioVolumePreset;
 
 	const MediaActivityBindingModel({
@@ -346,6 +348,8 @@ class MediaActivityBindingModel {
 		this.sourceEndpointId,
 		this.remoteEndpointId,
 		this.displayInputId,
+		this.audioInputId,
+		this.sourceInputId,
 		this.audioVolumePreset,
 	});
 
@@ -359,6 +363,8 @@ class MediaActivityBindingModel {
 			sourceEndpointId: json['source_endpoint_id'] as String?,
 			remoteEndpointId: json['remote_endpoint_id'] as String?,
 			displayInputId: json['display_input_id'] as String?,
+			audioInputId: json['audio_input_id'] as String?,
+			sourceInputId: json['source_input_id'] as String?,
 			audioVolumePreset: json['audio_volume_preset'] as int?,
 		);
 	}

@@ -4,7 +4,7 @@ Type: feature
 Scope: backend
 Size: large
 Parent: FEATURE-SPACE-MEDIA-DOMAIN-V2
-Status: in-progress
+Status: done
 
 ## 1. Business goal
 
@@ -46,16 +46,16 @@ I want the system to resolve an activity binding into an execution plan, execute
 
 ## 4. Acceptance criteria
 
-- [ ] Activate endpoint builds plan from binding + derived endpoints and executes it
-- [ ] Active state is persisted per space and retrievable via GET
-- [ ] WS events are emitted for activation lifecycle (activating, activated, failed, deactivated)
-- [ ] Critical step failure results in `failed` state with actionable failure payload
-- [ ] Non-critical step failure allows partial success with warnings
-- [ ] Deactivate resets active state and optionally sends best-effort stop
-- [ ] Activating same activity twice returns current state (idempotent)
-- [ ] Missing binding returns 409 with guidance to run apply-defaults
-- [ ] Unit tests for resolver plan ordering and critical flags
-- [ ] Executor tests: success, non-critical failure, critical failure
+- [x] Activate endpoint builds plan from binding + derived endpoints and executes it
+- [x] Active state is persisted per space and retrievable via GET
+- [x] WS events are emitted for activation lifecycle (activating, activated, failed, deactivated)
+- [x] Critical step failure results in `failed` state with actionable failure payload
+- [x] Non-critical step failure allows partial success with warnings
+- [x] Deactivate resets active state and optionally sends best-effort stop
+- [x] Activating same activity twice returns current state (idempotent)
+- [x] Missing binding returns 409 with guidance to run apply-defaults
+- [x] Unit tests for resolver plan ordering and critical flags
+- [x] Executor tests: success, non-critical failure, critical failure
 
 ## 5. Example scenarios
 

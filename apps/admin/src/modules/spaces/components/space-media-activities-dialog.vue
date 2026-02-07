@@ -737,19 +737,20 @@ const onClose = async (): Promise<void> => {
 
 	// Flush pending debounced saves so no edits are lost
 	const flushPromises: Promise<void>[] = [];
+	const flushedKeys = new Set<string>();
 
 	for (const [key, timer] of pendingSaves) {
 		clearTimeout(timer);
-		pendingSaves.delete(key);
+		flushedKeys.add(key);
 		flushPromises.push(performAutoSave(key as ConfiguredActivityKey));
 	}
 
+	pendingSaves.clear();
+
 	// Also flush any dirty forms without a pending timer
 	for (const key of activityKeys) {
-		if (!flushPromises.length || !pendingSaves.has(key)) {
-			if (isFormDirty(key)) {
-				flushPromises.push(performAutoSave(key));
-			}
+		if (!flushedKeys.has(key) && isFormDirty(key)) {
+			flushPromises.push(performAutoSave(key));
 		}
 	}
 

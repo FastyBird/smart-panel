@@ -4,7 +4,7 @@ Type: feature
 Scope: backend, admin, panel
 Size: medium
 Parent: (none)
-Status: in-progress
+Status: done
 
 ## 1. Business goal
 
@@ -39,15 +39,15 @@ I want to **preview the exact execution plan before activating a media activity*
 
 ## 4. Acceptance criteria
 
-- [ ] `dryRun=true` never triggers executor
-- [ ] No state changes or WS events occur during dry-run
-- [ ] Returned plan matches real activation plan 1:1
-- [ ] Plan includes readable labels and skip warnings
-- [ ] Admin Preview button works for all activities
-- [ ] Admin modal shows plan, resolved devices, warnings
-- [ ] Preview does not affect active state
-- [ ] Preview is fast (<200ms typical)
-- [ ] No duplication of resolver logic
+- [x] `dryRun=true` never triggers executor
+- [x] No state changes or WS events occur during dry-run
+- [x] Returned plan matches real activation plan 1:1
+- [x] Plan includes readable labels and skip warnings
+- [x] Admin Preview button works for all activities
+- [x] Admin modal shows plan, resolved devices, warnings
+- [x] Preview does not affect active state
+- [ ] Preview is fast (<200ms typical) — to be validated in staging
+- [x] No duplication of resolver logic
 
 ## 5. Example scenarios (optional, Gherkin-style)
 
