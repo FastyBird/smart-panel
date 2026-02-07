@@ -1,5 +1,5 @@
 import { Expose, Transform, Type } from 'class-transformer';
-import { IsEnum, IsInt, IsOptional, IsString, Max, MaxLength, Min, ValidateIf, ValidateNested } from 'class-validator';
+import { IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min, ValidateIf, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -17,7 +17,7 @@ export class CreateMediaActivityBindingDto {
 		example: MediaActivityKey.WATCH,
 	})
 	@Expose({ name: 'activity_key' })
-	@IsEnum(MediaActivityKey, {
+	@IsIn([...CONFIGURABLE_ACTIVITY_KEYS], {
 		message: '[{"field":"activity_key","reason":"Activity key must be one of: watch, listen, gaming, background."}]',
 	})
 	@Transform(
