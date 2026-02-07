@@ -8,7 +8,7 @@ import { DeviceCategory } from '../../devices/devices.constants';
 import { CreateMediaActivityBindingDto, UpdateMediaActivityBindingDto } from '../dto/media-activity-binding.dto';
 import { SpaceMediaActivityBindingEntity } from '../entities/space-media-activity-binding.entity';
 import { DerivedMediaEndpointModel } from '../models/derived-media-endpoint.model';
-import { MediaActivityKey, MediaEndpointType, SPACES_MODULE_NAME } from '../spaces.constants';
+import { CONFIGURABLE_ACTIVITY_KEYS, MediaActivityKey, MediaEndpointType, SPACES_MODULE_NAME } from '../spaces.constants';
 import { SpacesValidationException } from '../spaces.exceptions';
 
 import { DerivedMediaEndpointService } from './derived-media-endpoint.service';
@@ -101,6 +101,13 @@ export class SpaceMediaActivityBindingService {
 	async create(spaceId: string, dto: CreateMediaActivityBindingDto): Promise<SpaceMediaActivityBindingEntity> {
 		await this.spacesService.getOneOrThrow(spaceId);
 
+		// OFF is not configurable — it triggers deactivation directly
+		if (dto.activityKey === MediaActivityKey.OFF) {
+			throw new SpacesValidationException(
+				'The "off" activity does not support bindings. Activating "off" triggers deactivation directly.',
+			);
+		}
+
 		// Check for existing binding with same activity key
 		const existing = await this.repository.findOne({
 			where: { spaceId, activityKey: dto.activityKey },
@@ -118,12 +125,22 @@ export class SpaceMediaActivityBindingService {
 		const sourceEndpointId = normalizeEndpointId(dto.sourceEndpointId);
 		const remoteEndpointId = normalizeEndpointId(dto.remoteEndpointId);
 		const displayInputId = normalizeEndpointId(dto.displayInputId);
+		const audioInputId = normalizeEndpointId(dto.audioInputId);
+		const sourceInputId = normalizeEndpointId(dto.sourceInputId);
 
 		// Validate endpoint IDs and overrides
 		const endpoints = await this.buildEndpointMap(spaceId);
 		this.validateSlots({ displayEndpointId, audioEndpointId, sourceEndpointId, remoteEndpointId }, endpoints);
 		this.validateOverrides(
-			{ displayEndpointId, audioEndpointId, displayInputId, audioVolumePreset: dto.audioVolumePreset },
+			{
+				displayEndpointId,
+				audioEndpointId,
+				sourceEndpointId,
+				displayInputId,
+				audioInputId,
+				sourceInputId,
+				audioVolumePreset: dto.audioVolumePreset,
+			},
 			endpoints,
 		);
 
@@ -135,6 +152,8 @@ export class SpaceMediaActivityBindingService {
 			sourceEndpointId,
 			remoteEndpointId,
 			displayInputId,
+			audioInputId,
+			sourceInputId,
 			audioVolumePreset: dto.audioVolumePreset ?? null,
 		});
 
@@ -200,7 +219,8 @@ export class SpaceMediaActivityBindingService {
 	 * - Listen: playback-capable audio, playback source, source remote
 	 * - Gaming: display w/ inputSelect, AVR audio, game console source, display remote
 	 * - Background: playback-capable audio, volume preset 20
-	 * - Off: empty
+	 *
+	 * Note: OFF is excluded — it has no binding (triggers deactivation directly).
 	 */
 	async applyDefaults(spaceId: string): Promise<SpaceMediaActivityBindingEntity[]> {
 		await this.spacesService.getOneOrThrow(spaceId);
@@ -282,7 +302,7 @@ export class SpaceMediaActivityBindingService {
 		const bestDisplay = sortedDisplays[0];
 
 		const defaults: Record<
-			MediaActivityKey,
+			(typeof CONFIGURABLE_ACTIVITY_KEYS)[number],
 			Partial<SpaceMediaActivityBindingEntity> & { audioVolumePreset?: number | null }
 		> = {
 			[MediaActivityKey.WATCH]: {
@@ -315,18 +335,11 @@ export class SpaceMediaActivityBindingService {
 				remoteEndpointId: null,
 				audioVolumePreset: bestListenAudio ? 20 : null,
 			},
-			[MediaActivityKey.OFF]: {
-				displayEndpointId: null,
-				audioEndpointId: null,
-				sourceEndpointId: null,
-				remoteEndpointId: null,
-				audioVolumePreset: null,
-			},
 		};
 
 		const created: SpaceMediaActivityBindingEntity[] = [];
 
-		for (const key of Object.values(MediaActivityKey)) {
+		for (const key of CONFIGURABLE_ACTIVITY_KEYS) {
 			if (existingKeys.has(key)) {
 				continue;
 			}
@@ -341,6 +354,8 @@ export class SpaceMediaActivityBindingService {
 					sourceEndpointId: def.sourceEndpointId ?? null,
 					remoteEndpointId: def.remoteEndpointId ?? null,
 					displayInputId: null,
+					audioInputId: null,
+					sourceInputId: null,
 					audioVolumePreset: def.audioVolumePreset ?? null,
 				});
 
@@ -442,6 +457,30 @@ export class SpaceMediaActivityBindingService {
 				}
 			}
 
+			if (binding.audioInputId && binding.audioEndpointId) {
+				const ep = endpoints.get(binding.audioEndpointId);
+
+				if (ep && !ep.capabilities.inputSelect) {
+					issues.push({
+						slot: 'audioInputId',
+						severity: 'error',
+						message: 'Audio endpoint does not support input selection',
+					});
+				}
+			}
+
+			if (binding.sourceInputId && binding.sourceEndpointId) {
+				const ep = endpoints.get(binding.sourceEndpointId);
+
+				if (ep && !ep.capabilities.inputSelect) {
+					issues.push({
+						slot: 'sourceInputId',
+						severity: 'error',
+						message: 'Source endpoint does not support input selection',
+					});
+				}
+			}
+
 			if (binding.audioVolumePreset !== null && binding.audioEndpointId) {
 				const ep = endpoints.get(binding.audioEndpointId);
 
@@ -462,8 +501,8 @@ export class SpaceMediaActivityBindingService {
 			});
 		}
 
-		// Report missing bindings
-		for (const key of Object.values(MediaActivityKey)) {
+		// Report missing bindings (OFF excluded — it has no binding)
+		for (const key of CONFIGURABLE_ACTIVITY_KEYS) {
 			if (!bindings.find((b) => b.activityKey === key)) {
 				reports.push({
 					activityKey: key,
@@ -507,6 +546,14 @@ export class SpaceMediaActivityBindingService {
 				dto.displayInputId !== undefined
 					? normalizeEndpointId(dto.displayInputId)
 					: (binding.displayInputId ?? undefined),
+			audioInputId:
+				dto.audioInputId !== undefined
+					? normalizeEndpointId(dto.audioInputId)
+					: (binding.audioInputId ?? undefined),
+			sourceInputId:
+				dto.sourceInputId !== undefined
+					? normalizeEndpointId(dto.sourceInputId)
+					: (binding.sourceInputId ?? undefined),
 			audioVolumePreset:
 				dto.audioVolumePreset !== undefined
 					? (dto.audioVolumePreset ?? undefined)
@@ -519,6 +566,10 @@ export class SpaceMediaActivityBindingService {
 		}
 		if (effective.audioEndpointId === null) {
 			effective.audioVolumePreset = undefined;
+			effective.audioInputId = undefined;
+		}
+		if (effective.sourceEndpointId === null) {
+			effective.sourceInputId = undefined;
 		}
 
 		const endpoints = await this.buildEndpointMap(binding.spaceId);
@@ -538,7 +589,7 @@ export class SpaceMediaActivityBindingService {
 		if (dto.remoteEndpointId !== undefined) {
 			binding.remoteEndpointId = normalizeEndpointId(dto.remoteEndpointId);
 		}
-		// Apply dependent override from dto only if parent endpoint is not being cleared;
+		// Apply dependent overrides from dto only if parent endpoint is not being cleared;
 		// otherwise force-clear the override to maintain the invariant
 		if (effective.displayEndpointId === null) {
 			binding.displayInputId = null;
@@ -547,8 +598,19 @@ export class SpaceMediaActivityBindingService {
 		}
 		if (effective.audioEndpointId === null) {
 			binding.audioVolumePreset = null;
-		} else if (dto.audioVolumePreset !== undefined) {
-			binding.audioVolumePreset = dto.audioVolumePreset ?? null;
+			binding.audioInputId = null;
+		} else {
+			if (dto.audioVolumePreset !== undefined) {
+				binding.audioVolumePreset = dto.audioVolumePreset ?? null;
+			}
+			if (dto.audioInputId !== undefined) {
+				binding.audioInputId = normalizeEndpointId(dto.audioInputId);
+			}
+		}
+		if (effective.sourceEndpointId === null) {
+			binding.sourceInputId = null;
+		} else if (dto.sourceInputId !== undefined) {
+			binding.sourceInputId = normalizeEndpointId(dto.sourceInputId);
 		}
 
 		const saved = await this.repository.save(binding);
@@ -619,7 +681,10 @@ export class SpaceMediaActivityBindingService {
 		dto: {
 			displayEndpointId?: string | null;
 			audioEndpointId?: string | null;
+			sourceEndpointId?: string | null;
 			displayInputId?: string | null;
+			audioInputId?: string | null;
+			sourceInputId?: string | null;
 			audioVolumePreset?: number;
 		},
 		endpoints: Map<string, DerivedMediaEndpointModel>,
@@ -635,6 +700,36 @@ export class SpaceMediaActivityBindingService {
 			if (display && !display.capabilities.inputSelect) {
 				throw new SpacesValidationException(
 					`Display endpoint "${dto.displayEndpointId}" does not support input selection (inputSelect capability required)`,
+				);
+			}
+		}
+
+		// audioInputId requires audio endpoint with inputSelect capability
+		if (dto.audioInputId) {
+			if (!dto.audioEndpointId) {
+				throw new SpacesValidationException('audio_input_id requires an audio_endpoint_id to be set');
+			}
+
+			const audio = endpoints.get(dto.audioEndpointId);
+
+			if (audio && !audio.capabilities.inputSelect) {
+				throw new SpacesValidationException(
+					`Audio endpoint "${dto.audioEndpointId}" does not support input selection (inputSelect capability required)`,
+				);
+			}
+		}
+
+		// sourceInputId requires source endpoint with inputSelect capability
+		if (dto.sourceInputId) {
+			if (!dto.sourceEndpointId) {
+				throw new SpacesValidationException('source_input_id requires a source_endpoint_id to be set');
+			}
+
+			const source = endpoints.get(dto.sourceEndpointId);
+
+			if (source && !source.capabilities.inputSelect) {
+				throw new SpacesValidationException(
+					`Source endpoint "${dto.sourceEndpointId}" does not support input selection (inputSelect capability required)`,
 				);
 			}
 		}

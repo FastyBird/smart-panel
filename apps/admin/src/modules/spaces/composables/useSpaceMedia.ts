@@ -21,6 +21,17 @@ export interface IDerivedMediaCapabilities {
 	remoteCommands: boolean;
 }
 
+export interface IDerivedMediaPropertyLink {
+	propertyId: string;
+	dataType?: string;
+	format?: (string | number)[] | null;
+}
+
+export interface IDerivedMediaLinks {
+	inputSelect?: IDerivedMediaPropertyLink;
+	[key: string]: IDerivedMediaPropertyLink | { commands: Record<string, string> } | undefined;
+}
+
 export interface IDerivedMediaEndpoint {
 	endpointId: string;
 	spaceId: string;
@@ -28,6 +39,7 @@ export interface IDerivedMediaEndpoint {
 	type: SpacesModuleDataMediaCapabilitySummarySuggested_endpoint_types;
 	name: string;
 	capabilities: IDerivedMediaCapabilities;
+	links?: IDerivedMediaLinks;
 }
 
 export interface IMediaActivityBinding {
@@ -39,6 +51,8 @@ export interface IMediaActivityBinding {
 	sourceEndpointId: string | null;
 	remoteEndpointId: string | null;
 	displayInputId: string | null;
+	audioInputId: string | null;
+	sourceInputId: string | null;
 	audioVolumePreset: number | null;
 	createdAt: string;
 	updatedAt: string | null;
@@ -50,6 +64,8 @@ export interface IBindingSavePayload {
 	sourceEndpointId?: string | null;
 	remoteEndpointId?: string | null;
 	displayInputId?: string | null;
+	audioInputId?: string | null;
+	sourceInputId?: string | null;
 	audioVolumePreset?: number | null;
 }
 
@@ -159,8 +175,23 @@ export interface IUseSpaceMedia {
 	) => IMediaActivityBinding | undefined;
 }
 
+const transformPropertyLink = (raw: Record<string, unknown>): IDerivedMediaPropertyLink => ({
+	propertyId: (raw.property_id as string) ?? (raw.propertyId as string),
+	dataType: (raw.data_type as string | undefined) ?? (raw.dataType as string | undefined),
+	format: (raw.format as (string | number)[] | null | undefined) ?? null,
+});
+
 const transformEndpoint = (raw: Record<string, unknown>): IDerivedMediaEndpoint => {
 	const caps = (raw.capabilities as Record<string, boolean> | null | undefined) ?? {};
+	const rawLinks = (raw.links as Record<string, unknown> | null | undefined) ?? {};
+
+	const links: IDerivedMediaLinks = {};
+
+	if (rawLinks.input_select || rawLinks.inputSelect) {
+		links.inputSelect = transformPropertyLink(
+			(rawLinks.input_select ?? rawLinks.inputSelect) as Record<string, unknown>,
+		);
+	}
 
 	return {
 		endpointId: raw.endpoint_id as string,
@@ -177,6 +208,7 @@ const transformEndpoint = (raw: Record<string, unknown>): IDerivedMediaEndpoint 
 			inputSelect: caps.input_select ?? false,
 			remoteCommands: caps.remote_commands ?? false,
 		},
+		links,
 	};
 };
 
@@ -191,6 +223,8 @@ const transformBinding = (raw: Record<string, unknown>): IMediaActivityBinding =
 		sourceEndpointId: (raw.source_endpoint_id as string) ?? null,
 		remoteEndpointId: (raw.remote_endpoint_id as string) ?? null,
 		displayInputId: (raw.display_input_id as string) ?? null,
+		audioInputId: (raw.audio_input_id as string) ?? null,
+		sourceInputId: (raw.source_input_id as string) ?? null,
 		audioVolumePreset: (raw.audio_volume_preset as number) ?? null,
 		createdAt: raw.created_at as string,
 		updatedAt: (raw.updated_at as string) ?? null,
@@ -407,6 +441,8 @@ export const useSpaceMedia = (spaceId: Ref<string | undefined>): IUseSpaceMedia 
 							source_endpoint_id: payload.sourceEndpointId,
 							remote_endpoint_id: payload.remoteEndpointId,
 							display_input_id: payload.displayInputId,
+							audio_input_id: payload.audioInputId,
+							source_input_id: payload.sourceInputId,
 							audio_volume_preset: payload.audioVolumePreset,
 						} as Record<string, string | number | null | undefined>,
 					},
@@ -458,6 +494,8 @@ export const useSpaceMedia = (spaceId: Ref<string | undefined>): IUseSpaceMedia 
 							source_endpoint_id: payload.sourceEndpointId ?? undefined,
 							remote_endpoint_id: payload.remoteEndpointId ?? undefined,
 							display_input_id: payload.displayInputId ?? undefined,
+							audio_input_id: payload.audioInputId ?? undefined,
+							source_input_id: payload.sourceInputId ?? undefined,
 							audio_volume_preset: payload.audioVolumePreset ?? undefined,
 						},
 					},

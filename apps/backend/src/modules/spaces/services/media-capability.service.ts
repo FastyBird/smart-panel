@@ -173,7 +173,13 @@ export class MediaCapabilityService {
 
 				if (isInput && property.category === PropertyCategory.SOURCE) {
 					if (!capabilities.input) {
-						capabilities.input = { propertyId: property.id, channelId: channel.id, permission };
+						capabilities.input = {
+							propertyId: property.id,
+							channelId: channel.id,
+							permission,
+							dataType: property.dataType,
+							format: property.format,
+						};
 					}
 				}
 

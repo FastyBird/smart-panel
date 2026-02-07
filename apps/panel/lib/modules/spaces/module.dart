@@ -233,6 +233,13 @@ class SpacesModuleService {
         _spaceStateRepository.updateSensorState(spaceId, stateData);
       }
 
+      /// Media Activity step progress event
+    } else if (event == SpacesModuleConstants.mediaActivityStepProgressEvent) {
+      final spaceId = payload['space_id'] as String?;
+      if (spaceId != null) {
+        _mediaActivityRepository.updateStepProgress(spaceId, payload);
+      }
+
       /// Media Activity lifecycle events
     } else if (event == SpacesModuleConstants.mediaActivityActivatingEvent ||
         event == SpacesModuleConstants.mediaActivityActivatedEvent ||

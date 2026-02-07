@@ -138,10 +138,10 @@ describe('SpaceMediaActivityBindingService', () => {
 				]);
 			});
 
-			it('should create bindings for all 5 activity keys', async () => {
+			it('should create bindings for all 4 configurable activity keys (off excluded)', async () => {
 				await service.applyDefaults(spaceId);
 
-				expect(mockRepository.save).toHaveBeenCalledTimes(5);
+				expect(mockRepository.save).toHaveBeenCalledTimes(4);
 			});
 
 			it('should assign TV display for Watch', async () => {
@@ -165,16 +165,12 @@ describe('SpaceMediaActivityBindingService', () => {
 				expect(listenBinding.audioEndpointId).toBe(`${spaceId}:audio_output:${tvDeviceId}`);
 			});
 
-			it('should create empty Off binding', async () => {
+			it('should not create a binding for off', async () => {
 				await service.applyDefaults(spaceId);
 
 				const offBinding = savedBindings.find((b) => b.activityKey === MediaActivityKey.OFF);
 
-				expect(offBinding).toBeDefined();
-				expect(offBinding.displayEndpointId).toBeNull();
-				expect(offBinding.audioEndpointId).toBeNull();
-				expect(offBinding.sourceEndpointId).toBeNull();
-				expect(offBinding.remoteEndpointId).toBeNull();
+				expect(offBinding).toBeUndefined();
 			});
 		});
 
@@ -377,6 +373,8 @@ describe('SpaceMediaActivityBindingService', () => {
 				sourceEndpointId: null,
 				remoteEndpointId: null,
 				displayInputId: null,
+				audioInputId: null,
+				sourceInputId: null,
 				audioVolumePreset: null,
 			} as unknown as SpaceMediaActivityBindingEntity;
 
@@ -392,8 +390,8 @@ describe('SpaceMediaActivityBindingService', () => {
 
 			await service.applyDefaults(spaceId);
 
-			// Should create 4 (not 5) since WATCH already exists
-			expect(mockRepository.save).toHaveBeenCalledTimes(4);
+			// Should create 3 (not 4) since WATCH already exists, and OFF is excluded
+			expect(mockRepository.save).toHaveBeenCalledTimes(3);
 
 			// The existing watch binding should not be touched
 			const watchSaves = savedBindings.filter(
@@ -411,7 +409,7 @@ describe('SpaceMediaActivityBindingService', () => {
 
 			const reports = await service.validateBindings(spaceId);
 
-			expect(reports).toHaveLength(5); // One per activity key
+			expect(reports).toHaveLength(4); // One per configurable activity key (off excluded)
 			expect(reports.every((r) => r.bindingId === null)).toBe(true);
 			expect(reports.every((r) => r.valid)).toBe(true); // Missing is info, not error
 		});
@@ -426,6 +424,8 @@ describe('SpaceMediaActivityBindingService', () => {
 				sourceEndpointId: null,
 				remoteEndpointId: null,
 				displayInputId: null,
+				audioInputId: null,
+				sourceInputId: null,
 				audioVolumePreset: null,
 			};
 
@@ -450,6 +450,8 @@ describe('SpaceMediaActivityBindingService', () => {
 				sourceEndpointId: null,
 				remoteEndpointId: null,
 				displayInputId: null,
+				audioInputId: null,
+				sourceInputId: null,
 				audioVolumePreset: null,
 			};
 

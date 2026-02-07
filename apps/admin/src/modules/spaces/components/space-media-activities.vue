@@ -348,7 +348,7 @@
 								size="small"
 								circle
 								:loading="previewing && previewingKey === activity"
-								:disabled="activating || deactivating || previewing || activity === MediaActivityKey.off"
+								:disabled="activating || deactivating || previewing"
 								:title="t('spacesModule.media.activities.preview')"
 								@click.stop="onPreview(activity)"
 							>
@@ -433,7 +433,22 @@
 							v-if="selectedDisplayHasInputSelect"
 							:label="t('spacesModule.media.activities.overrides.displayInput')"
 						>
+							<el-select
+								v-if="form.displayEndpointId && getInputSelectOptions(form.displayEndpointId).type === 'select'"
+								v-model="form.displayInputId"
+								:placeholder="t('spacesModule.media.activities.overrides.displayInputPlaceholder')"
+								clearable
+								class="w-full"
+							>
+								<el-option
+									v-for="opt in (getInputSelectOptions(form.displayEndpointId) as { type: 'select'; options: (string | number)[] }).options"
+									:key="String(opt)"
+									:label="mediaInputSourceLabel(opt)"
+									:value="String(opt)"
+								/>
+							</el-select>
 							<el-input
+								v-else
 								v-model="form.displayInputId"
 								:placeholder="t('spacesModule.media.activities.overrides.displayInputPlaceholder')"
 								clearable
@@ -464,6 +479,13 @@
 											>
 												{{ t('spacesModule.media.capabilities.volume') }}
 											</el-tag>
+											<el-tag
+												v-if="ep.capabilities.inputSelect"
+												size="small"
+												type="info"
+											>
+												{{ t('spacesModule.media.capabilities.input') }}
+											</el-tag>
 										</div>
 									</div>
 								</el-option>
@@ -483,6 +505,33 @@
 							/>
 						</el-form-item>
 
+						<!-- Audio input override (only if selected audio supports inputSelect) -->
+						<el-form-item
+							v-if="selectedAudioHasInputSelect"
+							:label="t('spacesModule.media.activities.overrides.audioInput')"
+						>
+							<el-select
+								v-if="form.audioEndpointId && getInputSelectOptions(form.audioEndpointId).type === 'select'"
+								v-model="form.audioInputId"
+								:placeholder="t('spacesModule.media.activities.overrides.audioInputPlaceholder')"
+								clearable
+								class="w-full"
+							>
+								<el-option
+									v-for="opt in (getInputSelectOptions(form.audioEndpointId) as { type: 'select'; options: (string | number)[] }).options"
+									:key="String(opt)"
+									:label="mediaInputSourceLabel(opt)"
+									:value="String(opt)"
+								/>
+							</el-select>
+							<el-input
+								v-else
+								v-model="form.audioInputId"
+								:placeholder="t('spacesModule.media.activities.overrides.audioInputPlaceholder')"
+								clearable
+							/>
+						</el-form-item>
+
 						<!-- Source slot -->
 						<el-form-item :label="t('spacesModule.media.activities.slots.source')">
 							<el-select
@@ -496,8 +545,48 @@
 									:key="ep.endpointId"
 									:label="ep.name"
 									:value="ep.endpointId"
+								>
+									<div class="flex items-center justify-between w-full">
+										<span>{{ ep.name }}</span>
+										<div class="flex gap-1 ml-2">
+											<el-tag
+												v-if="ep.capabilities.inputSelect"
+												size="small"
+												type="info"
+											>
+												{{ t('spacesModule.media.capabilities.input') }}
+											</el-tag>
+										</div>
+									</div>
+								</el-option>
+							</el-select>
+						</el-form-item>
+
+						<!-- Source input override (only if selected source supports inputSelect) -->
+						<el-form-item
+							v-if="selectedSourceHasInputSelect"
+							:label="t('spacesModule.media.activities.overrides.sourceInput')"
+						>
+							<el-select
+								v-if="form.sourceEndpointId && getInputSelectOptions(form.sourceEndpointId).type === 'select'"
+								v-model="form.sourceInputId"
+								:placeholder="t('spacesModule.media.activities.overrides.sourceInputPlaceholder')"
+								clearable
+								class="w-full"
+							>
+								<el-option
+									v-for="opt in (getInputSelectOptions(form.sourceEndpointId) as { type: 'select'; options: (string | number)[] }).options"
+									:key="String(opt)"
+									:label="mediaInputSourceLabel(opt)"
+									:value="String(opt)"
 								/>
 							</el-select>
+							<el-input
+								v-else
+								v-model="form.sourceInputId"
+								:placeholder="t('spacesModule.media.activities.overrides.sourceInputPlaceholder')"
+								clearable
+							/>
 						</el-form-item>
 
 						<!-- Remote target slot -->
@@ -757,7 +846,6 @@ const activityKeys = [
 	MediaActivityKey.listen,
 	MediaActivityKey.gaming,
 	MediaActivityKey.background,
-	MediaActivityKey.off,
 ];
 
 const selectedActivity = ref<MediaActivityKey | null>(null);
@@ -772,6 +860,8 @@ const form = reactive<{
 	sourceEndpointId: string;
 	remoteEndpointId: string;
 	displayInputId: string;
+	audioInputId: string;
+	sourceInputId: string;
 	audioVolumePreset: number;
 }>({
 	displayEndpointId: '',
@@ -779,6 +869,8 @@ const form = reactive<{
 	sourceEndpointId: '',
 	remoteEndpointId: '',
 	displayInputId: '',
+	audioInputId: '',
+	sourceInputId: '',
 	audioVolumePreset: 30,
 });
 
@@ -822,6 +914,34 @@ const selectedAudioHasVolume = computed(() => {
 	return ep?.capabilities.volume ?? false;
 });
 
+const selectedAudioHasInputSelect = computed(() => {
+	if (!form.audioEndpointId) return false;
+	const ep = endpoints.value.find((e) => e.endpointId === form.audioEndpointId);
+	return ep?.capabilities.inputSelect ?? false;
+});
+
+const selectedSourceHasInputSelect = computed(() => {
+	if (!form.sourceEndpointId) return false;
+	const ep = endpoints.value.find((e) => e.endpointId === form.sourceEndpointId);
+	return ep?.capabilities.inputSelect ?? false;
+});
+
+const getInputSelectOptions = (endpointId: string): { type: 'select'; options: (string | number)[] } | { type: 'text' } => {
+	const ep = endpoints.value.find((e) => e.endpointId === endpointId);
+
+	if (ep?.links?.inputSelect?.dataType === 'enum' && Array.isArray(ep.links.inputSelect.format) && ep.links.inputSelect.format.length > 0) {
+		return { type: 'select', options: ep.links.inputSelect.format };
+	}
+
+	return { type: 'text' };
+};
+
+const mediaInputSourceLabel = (source: string | number): string => {
+	const key = `spacesModule.media.activities.mediaInputSources.${source}`;
+	const translated = t(key);
+	return translated !== key ? translated : String(source);
+};
+
 const formChanged = computed(() => {
 	if (!lastLoadedForm.value) return false;
 	return (
@@ -830,6 +950,8 @@ const formChanged = computed(() => {
 		form.sourceEndpointId !== lastLoadedForm.value.sourceEndpointId ||
 		form.remoteEndpointId !== lastLoadedForm.value.remoteEndpointId ||
 		form.displayInputId !== lastLoadedForm.value.displayInputId ||
+		form.audioInputId !== lastLoadedForm.value.audioInputId ||
+		form.sourceInputId !== lastLoadedForm.value.sourceInputId ||
 		form.audioVolumePreset !== lastLoadedForm.value.audioVolumePreset
 	);
 });
@@ -936,6 +1058,8 @@ const loadBindingIntoForm = (binding: IMediaActivityBinding | undefined): void =
 	form.sourceEndpointId = binding?.sourceEndpointId ?? '';
 	form.remoteEndpointId = binding?.remoteEndpointId ?? '';
 	form.displayInputId = binding?.displayInputId ?? '';
+	form.audioInputId = binding?.audioInputId ?? '';
+	form.sourceInputId = binding?.sourceInputId ?? '';
 	form.audioVolumePreset = binding?.audioVolumePreset ?? 30;
 
 	lastLoadedForm.value = { ...form };
@@ -957,6 +1081,8 @@ const onSave = async (): Promise<void> => {
 		sourceEndpointId: form.sourceEndpointId || null,
 		remoteEndpointId: form.remoteEndpointId || null,
 		displayInputId: selectedDisplayHasInputSelect.value ? form.displayInputId || null : null,
+		audioInputId: selectedAudioHasInputSelect.value ? form.audioInputId || null : null,
+		sourceInputId: selectedSourceHasInputSelect.value ? form.sourceInputId || null : null,
 		audioVolumePreset: selectedAudioHasVolume.value ? form.audioVolumePreset : null,
 	};
 

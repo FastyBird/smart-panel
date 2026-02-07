@@ -136,6 +136,63 @@ MediaCapability? mediaCapabilityFromString(String? value) {
 }
 
 // ============================================================================
+// STEP PROGRESS MODELS
+// ============================================================================
+
+/// Status of a single activation step for real-time progress tracking.
+enum MediaStepStatus {
+	pending,
+	executing,
+	succeeded,
+	failed,
+}
+
+MediaStepStatus mediaStepStatusFromString(String? value) {
+	switch (value) {
+		case 'executing':
+			return MediaStepStatus.executing;
+		case 'succeeded':
+			return MediaStepStatus.succeeded;
+		case 'failed':
+			return MediaStepStatus.failed;
+		default:
+			return MediaStepStatus.pending;
+	}
+}
+
+/// A single step in the activation plan, used for real-time progress display.
+class MediaActivationPlanStepModel {
+	final int index;
+	final String label;
+	final bool critical;
+	final MediaStepStatus status;
+
+	const MediaActivationPlanStepModel({
+		required this.index,
+		required this.label,
+		this.critical = false,
+		this.status = MediaStepStatus.pending,
+	});
+
+	factory MediaActivationPlanStepModel.fromJson(Map<String, dynamic> json) {
+		return MediaActivationPlanStepModel(
+			index: json['index'] as int? ?? 0,
+			label: json['label'] as String? ?? 'Step',
+			critical: json['critical'] as bool? ?? false,
+		);
+	}
+
+	MediaActivationPlanStepModel copyWith({MediaStepStatus? status}) {
+		return MediaActivationPlanStepModel(
+			index: index,
+			label: label,
+			critical: critical,
+			status: status ?? this.status,
+		);
+	}
+}
+
+// ============================================================================
 // DATA MODELS
 // ============================================================================
 
@@ -450,6 +507,7 @@ class MediaActiveStateModel {
 	final MediaActivityResolvedModel? resolved;
 	final MediaActivityLastResultModel? lastResult;
 	final List<String> warnings;
+	final List<MediaActivationPlanStepModel> planSteps;
 
 	const MediaActiveStateModel({
 		this.id,
@@ -460,6 +518,7 @@ class MediaActiveStateModel {
 		this.resolved,
 		this.lastResult,
 		this.warnings = const [],
+		this.planSteps = const [],
 	});
 
 	bool get isActive => state == MediaActivationState.active;
@@ -505,6 +564,16 @@ class MediaActiveStateModel {
 			}
 		}
 
+		// Parse plan steps from ACTIVATING event payload
+		List<MediaActivationPlanStepModel> planSteps = [];
+		final stepsRaw = json['steps'];
+		if (stepsRaw is List) {
+			planSteps = stepsRaw
+					.whereType<Map<String, dynamic>>()
+					.map((e) => MediaActivationPlanStepModel.fromJson(e))
+					.toList();
+		}
+
 		return MediaActiveStateModel(
 			id: json['id'] as String?,
 			spaceId: spaceId,
@@ -514,6 +583,7 @@ class MediaActiveStateModel {
 			resolved: resolved,
 			lastResult: lastResult,
 			warnings: (json['warnings'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+			planSteps: planSteps,
 		);
 	}
 
@@ -522,6 +592,28 @@ class MediaActiveStateModel {
 		return MediaActiveStateModel(
 			spaceId: spaceId,
 			state: MediaActivationState.deactivated,
+		);
+	}
+
+	/// Create a copy with an updated step status (immutable update).
+	MediaActiveStateModel copyWithStepStatus(int stepIndex, MediaStepStatus newStatus) {
+		final updatedSteps = planSteps.map((step) {
+			if (step.index == stepIndex) {
+				return step.copyWith(status: newStatus);
+			}
+			return step;
+		}).toList();
+
+		return MediaActiveStateModel(
+			id: id,
+			spaceId: spaceId,
+			activityKey: activityKey,
+			state: state,
+			activatedAt: activatedAt,
+			resolved: resolved,
+			lastResult: lastResult,
+			warnings: warnings,
+			planSteps: updatedSteps,
 		);
 	}
 }

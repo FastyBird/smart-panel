@@ -17,6 +17,22 @@ export class DerivedMediaPropertyLinkModel {
 	})
 	@Expose({ name: 'property_id' })
 	propertyId: string;
+
+	@ApiPropertyOptional({
+		name: 'data_type',
+		description: 'Data type of the property (e.g. enum, string)',
+		type: 'string',
+	})
+	@Expose({ name: 'data_type' })
+	dataType?: string;
+
+	@ApiPropertyOptional({
+		description: 'Format constraints (e.g. enum values)',
+		type: 'array',
+		items: { oneOf: [{ type: 'string' }, { type: 'number' }] },
+	})
+	@Expose()
+	format?: string[] | number[] | null;
 }
 
 /**

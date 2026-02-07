@@ -139,6 +139,8 @@ export class MediaTestHarness {
 			sourceEndpointId: (overrides.sourceEndpointId as string) ?? null,
 			remoteEndpointId: (overrides.remoteEndpointId as string) ?? null,
 			displayInputId: (overrides.displayInputId as string) ?? null,
+			audioInputId: (overrides.audioInputId as string) ?? null,
+			sourceInputId: (overrides.sourceInputId as string) ?? null,
 			audioVolumePreset: (overrides.audioVolumePreset as number) ?? null,
 		};
 	}
