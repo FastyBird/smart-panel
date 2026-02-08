@@ -158,6 +158,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
 		required bool isDark,
 		required ScreenService screenService,
 		required AppLocalizations localizations,
+		bool isLandscape = false,
 	}) {
 		switch (_selectedTab) {
 			case _SecurityTab.entryPoints:
@@ -166,6 +167,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
 					isDark: isDark,
 					screenService: screenService,
 					isCritical: _isCriticalStatus(status),
+					isLandscape: isLandscape,
 				);
 			case _SecurityTab.alerts:
 				return _AlertStream(
@@ -175,6 +177,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
 					isDark: isDark,
 					screenService: screenService,
 					localizations: localizations,
+					isLandscape: isLandscape,
 				);
 			case _SecurityTab.events:
 				return _EventsFeed(
@@ -184,6 +187,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
 					screenService: screenService,
 					localizations: localizations,
 					maxEvents: _maxDisplayedEvents,
+					isLandscape: isLandscape,
 				);
 		}
 	}
@@ -302,6 +306,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
 				isDark: isDark,
 				screenService: screenService,
 				localizations: localizations,
+				isLandscape: true,
 			),
 		);
 	}
@@ -744,12 +749,14 @@ class _EntryPointGrid extends StatelessWidget {
 	final bool isDark;
 	final ScreenService screenService;
 	final bool isCritical;
+	final bool isLandscape;
 
 	const _EntryPointGrid({
 		required this.entryPoints,
 		required this.isDark,
 		required this.screenService,
 		this.isCritical = false,
+		this.isLandscape = false,
 	});
 
 	@override
@@ -769,6 +776,46 @@ class _EntryPointGrid extends StatelessWidget {
 		final rowCount = (items.length / crossAxisCount).ceil();
 		final fillColor = isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
 
+		Widget buildRow(int rowIndex) {
+			final start = rowIndex * crossAxisCount;
+			final end = (start + crossAxisCount).clamp(0, items.length);
+			final rowItems = items.sublist(start, end);
+
+			return Row(
+				spacing: AppSpacings.pMd,
+				children: [
+					for (final ep in rowItems)
+						Expanded(
+							child: AspectRatio(
+								aspectRatio: AppTileAspectRatio.square,
+								child: _entryTile(context, ep, isCritical && ep.isOpen == true),
+							),
+						),
+					for (var i = rowItems.length; i < crossAxisCount; i++)
+						const Expanded(child: SizedBox()),
+				],
+			);
+		}
+
+		if (isLandscape) {
+			return Column(
+				mainAxisSize: MainAxisSize.min,
+				crossAxisAlignment: CrossAxisAlignment.start,
+				children: [
+					SectionTitle(
+						title: 'Entry Points',
+						icon: MdiIcons.home,
+						trailing: _Badge(label: badgeText, color: badgeColor),
+					),
+					AppSpacings.spacingMdVertical,
+					for (int i = 0; i < rowCount; i++) ...[
+						if (i > 0) SizedBox(height: AppSpacings.pMd),
+						buildRow(i),
+					],
+				],
+			);
+		}
+
 		return Column(
 			crossAxisAlignment: CrossAxisAlignment.start,
 			children: [
@@ -785,27 +832,7 @@ class _EntryPointGrid extends StatelessWidget {
 						itemCount: rowCount,
 						separatorHeight: AppSpacings.pMd,
 						padding: EdgeInsets.symmetric(vertical: AppSpacings.pMd),
-						itemBuilder: (context, rowIndex) {
-							final start = rowIndex * crossAxisCount;
-							final end = (start + crossAxisCount).clamp(0, items.length);
-							final rowItems = items.sublist(start, end);
-
-							return Row(
-								spacing: AppSpacings.pMd,
-								children: [
-									for (final ep in rowItems)
-										Expanded(
-											child: AspectRatio(
-												aspectRatio: AppTileAspectRatio.square,
-												child: _entryTile(context, ep, isCritical && ep.isOpen == true),
-											),
-										),
-									// Fill remaining slots with empty spacers
-									for (var i = rowItems.length; i < crossAxisCount; i++)
-										const Expanded(child: SizedBox()),
-								],
-							);
-						},
+						itemBuilder: (context, rowIndex) => buildRow(rowIndex),
 					),
 				),
 			],
@@ -866,6 +893,7 @@ class _AlertStream extends StatelessWidget {
 	final bool isDark;
 	final ScreenService screenService;
 	final AppLocalizations localizations;
+	final bool isLandscape;
 
 	const _AlertStream({
 		required this.status,
@@ -874,6 +902,7 @@ class _AlertStream extends StatelessWidget {
 		required this.isDark,
 		required this.screenService,
 		required this.localizations,
+		this.isLandscape = false,
 	});
 
 	Color get _accentColor {
@@ -895,62 +924,94 @@ class _AlertStream extends StatelessWidget {
 	@override
 	Widget build(BuildContext context) {
 		final sortedAlerts = controller.sortedAlerts;
+		final dividerColor = isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
+
+		final headerTrailing = Row(
+			mainAxisSize: MainAxisSize.min,
+			children: [
+				_Badge(label: '${sortedAlerts.length}', color: _accentColor),
+				if (_hasUnacked && !controller.isConnectionOffline) ...[
+					AppSpacings.spacingMdHorizontal,
+					_AckAllButton(
+						isDark: isDark,
+						onPressed: () => controller.acknowledgeAllAlerts(),
+					),
+				],
+			],
+		);
+
+		Widget buildAlertItem(int index) => _AlertItem(
+			key: ValueKey(sortedAlerts[index].id),
+			alert: sortedAlerts[index],
+			controller: controller,
+			devicesService: devicesService,
+			isDark: isDark,
+			localizations: localizations,
+		);
+
+		final emptyState = Text(
+			'No active alerts',
+			style: TextStyle(
+				fontSize: AppFontSize.small,
+				color: SystemPagesTheme.textMuted(isDark),
+			),
+		);
+
+		if (isLandscape) {
+			return AppCard(
+				color: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
+				borderColor: _accentColor,
+				headerIcon: MdiIcons.alertOutline,
+				headerTitle: 'Alerts',
+				headerTrailing: headerTrailing,
+				headerLine: true,
+				child: sortedAlerts.isEmpty
+					? Padding(
+						padding: EdgeInsets.symmetric(vertical: AppSpacings.pMd),
+						child: Center(child: emptyState),
+					)
+					: ListView.separated(
+						shrinkWrap: true,
+						physics: const NeverScrollableScrollPhysics(),
+						padding: EdgeInsets.zero,
+						itemCount: sortedAlerts.length,
+						separatorBuilder: (_, __) => Divider(
+							height: AppSpacings.scale(1),
+							thickness: AppSpacings.scale(1),
+							color: dividerColor,
+						),
+						itemBuilder: (context, index) => buildAlertItem(index),
+					),
+			);
+		}
 
 		return AppCard(
-      color: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
+			color: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
 			borderColor: _accentColor,
 			expanded: true,
 			headerIcon: MdiIcons.alertOutline,
 			headerTitle: 'Alerts',
-			headerTrailing: Row(
-				mainAxisSize: MainAxisSize.min,
-				children: [
-					_Badge(label: '${sortedAlerts.length}', color: _accentColor),
-					if (_hasUnacked && !controller.isConnectionOffline) ...[
-						AppSpacings.spacingMdHorizontal,
-						_AckAllButton(
-							isDark: isDark,
-							onPressed: () => controller.acknowledgeAllAlerts(),
-						),
-					],
-				],
-			),
-      headerLine: true,
+			headerTrailing: headerTrailing,
+			headerLine: true,
 			child: Expanded(
 				child: sortedAlerts.isEmpty
-					? Center(
-						child: Text(
-							'No active alerts',
-							style: TextStyle(
-								fontSize: AppFontSize.small,
-								color: SystemPagesTheme.textMuted(isDark),
-							),
-						),
-					)
+					? Center(child: emptyState)
 					: VerticalScrollWithGradient(
 						gradientHeight: AppSpacings.pMd,
 						backgroundColor: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
 						itemCount: sortedAlerts.length,
 						separatorHeight: AppSpacings.scale(1),
-						separatorColor: isDark ? AppBorderColorDark.light : AppBorderColorLight.darker,
-            padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
+						separatorColor: dividerColor,
+						padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
 						borderRadius: BorderRadius.only(
 							bottomLeft: Radius.circular(AppBorderRadius.base),
 							bottomRight: Radius.circular(AppBorderRadius.base),
 						),
-						itemBuilder: (context, index) => _AlertItem(
-							key: ValueKey(sortedAlerts[index].id),
-							alert: sortedAlerts[index],
-							controller: controller,
-							devicesService: devicesService,
-							isDark: isDark,
-							localizations: localizations,
-						),
+						itemBuilder: (context, index) => buildAlertItem(index),
 					),
 			),
 		);
 	}
-
 }
 
 class _AlertItem extends StatelessWidget {
@@ -1160,6 +1221,7 @@ class _EventsFeed extends StatelessWidget {
 	final ScreenService screenService;
 	final AppLocalizations localizations;
 	final int maxEvents;
+	final bool isLandscape;
 
 	const _EventsFeed({
 		required this.eventsRepo,
@@ -1168,120 +1230,166 @@ class _EventsFeed extends StatelessWidget {
 		required this.screenService,
 		required this.localizations,
 		required this.maxEvents,
+		this.isLandscape = false,
 	});
 
 	@override
 	Widget build(BuildContext context) {
+		final headerTrailing = _RefreshButton(
+			isDark: isDark,
+			onPressed: eventsRepo.state != SecurityEventsState.loading
+				? () => eventsRepo.fetchEvents()
+				: null,
+		);
+
+		if (isLandscape) {
+			return AppCard(
+				color: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
+				headerIcon: MdiIcons.history,
+				headerTitle: 'Recent Events',
+				headerTrailing: headerTrailing,
+				headerLine: true,
+				child: _buildContent(context),
+			);
+		}
+
 		return AppCard(
-      color: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
+			color: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
 			expanded: true,
 			headerIcon: MdiIcons.history,
 			headerTitle: 'Recent Events',
-			headerTrailing: _RefreshButton(
-				isDark: isDark,
-				onPressed: eventsRepo.state != SecurityEventsState.loading
-					? () => eventsRepo.fetchEvents()
-					: null,
-			),
-      headerLine: true,
+			headerTrailing: headerTrailing,
+			headerLine: true,
 			child: Expanded(child: _buildContent(context)),
 		);
 	}
 
 	Widget _buildContent(BuildContext context) {
+		final dividerColor = isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
+
+		Widget buildEventItem(int index, List<SecurityEventModel> events) => _EventItem(
+			key: ValueKey('event-${events[index].id}'),
+			event: events[index],
+			devicesService: devicesService,
+			isDark: isDark,
+			localizations: localizations,
+		);
+
 		switch (eventsRepo.state) {
 			case SecurityEventsState.initial:
 			case SecurityEventsState.loading:
-				return Center(
-					child: SizedBox(
-						width: screenService.scale(20),
-						height: screenService.scale(20),
-						child: CircularProgressIndicator(
-							strokeWidth: 2,
-							color: SystemPagesTheme.textMuted(isDark),
-						),
+				final loader = SizedBox(
+					width: screenService.scale(20),
+					height: screenService.scale(20),
+					child: CircularProgressIndicator(
+						strokeWidth: 2,
+						color: SystemPagesTheme.textMuted(isDark),
 					),
 				);
+				return isLandscape
+					? Padding(
+						padding: EdgeInsets.symmetric(vertical: AppSpacings.pMd),
+						child: Center(child: loader),
+					)
+					: Center(child: loader);
 
 			case SecurityEventsState.error:
-				return Center(
-					child: Column(
-						mainAxisSize: MainAxisSize.min,
-						spacing: AppSpacings.pMd,
-						children: [
-							Text(
-								eventsRepo.errorMessage ?? 'Failed to load events',
-								style: TextStyle(
-									fontSize: AppFontSize.base,
-									color: SystemPagesTheme.textMuted(isDark),
-								),
-							),
-							Theme(
-								data: Theme.of(context).copyWith(
-									filledButtonTheme: isDark
-										? AppFilledButtonsDarkThemes.primary
-										: AppFilledButtonsLightThemes.primary,
-								),
-								child: FilledButton.icon(
-									onPressed: () => eventsRepo.fetchEvents(),
-									style: FilledButton.styleFrom(
-										padding: EdgeInsets.symmetric(
-											horizontal: AppSpacings.scale(AppSpacings.pMd),
-											vertical: AppSpacings.scale(AppSpacings.pSm),
-										),
-									),
-									icon: Icon(
-										MdiIcons.refresh,
-										size: AppFontSize.small,
-										color: isDark
-											? AppFilledButtonsDarkThemes.primaryForegroundColor
-											: AppFilledButtonsLightThemes.primaryForegroundColor,
-									),
-									label: Text(
-                    'Retry',
-                    style: TextStyle(
-                      fontSize: AppFontSize.small,
-                    ),
-                  ),
-								),
-							),
-						],
-					),
-				);
-
-			case SecurityEventsState.loaded:
-				if (eventsRepo.events.isEmpty) {
-					return Center(
-						child: Text(
-							'No recent events',
+				final errorContent = Column(
+					mainAxisSize: MainAxisSize.min,
+					spacing: AppSpacings.pMd,
+					children: [
+						Text(
+							eventsRepo.errorMessage ?? 'Failed to load events',
 							style: TextStyle(
-								fontSize: AppFontSize.small,
+								fontSize: AppFontSize.base,
 								color: SystemPagesTheme.textMuted(isDark),
 							),
 						),
+						Theme(
+							data: Theme.of(context).copyWith(
+								filledButtonTheme: isDark
+									? AppFilledButtonsDarkThemes.primary
+									: AppFilledButtonsLightThemes.primary,
+							),
+							child: FilledButton.icon(
+								onPressed: () => eventsRepo.fetchEvents(),
+								style: FilledButton.styleFrom(
+									padding: EdgeInsets.symmetric(
+										horizontal: AppSpacings.scale(AppSpacings.pMd),
+										vertical: AppSpacings.scale(AppSpacings.pSm),
+									),
+								),
+								icon: Icon(
+									MdiIcons.refresh,
+									size: AppFontSize.small,
+									color: isDark
+										? AppFilledButtonsDarkThemes.primaryForegroundColor
+										: AppFilledButtonsLightThemes.primaryForegroundColor,
+								),
+								label: Text(
+									'Retry',
+									style: TextStyle(
+										fontSize: AppFontSize.small,
+									),
+								),
+							),
+						),
+					],
+				);
+				return isLandscape
+					? Padding(
+						padding: EdgeInsets.symmetric(vertical: AppSpacings.pMd),
+						child: Center(child: errorContent),
+					)
+					: Center(child: errorContent);
+
+			case SecurityEventsState.loaded:
+				if (eventsRepo.events.isEmpty) {
+					final emptyState = Text(
+						'No recent events',
+						style: TextStyle(
+							fontSize: AppFontSize.small,
+							color: SystemPagesTheme.textMuted(isDark),
+						),
+					);
+					return isLandscape
+						? Padding(
+							padding: EdgeInsets.symmetric(vertical: AppSpacings.pMd),
+							child: Center(child: emptyState),
+						)
+						: Center(child: emptyState);
+				}
+
+				final displayEvents = eventsRepo.events.take(maxEvents).toList();
+
+				if (isLandscape) {
+					return ListView.separated(
+						shrinkWrap: true,
+						physics: const NeverScrollableScrollPhysics(),
+						padding: EdgeInsets.zero,
+						itemCount: displayEvents.length,
+						separatorBuilder: (_, __) => Divider(
+							height: AppSpacings.scale(1),
+							thickness: AppSpacings.scale(1),
+							color: dividerColor,
+						),
+						itemBuilder: (context, index) => buildEventItem(index, displayEvents),
 					);
 				}
 
 				final fillColor = isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
-				final displayEvents = eventsRepo.events.take(maxEvents).toList();
 				return VerticalScrollWithGradient(
 					gradientHeight: AppSpacings.pMd,
 					backgroundColor: fillColor,
 					itemCount: displayEvents.length,
 					separatorHeight: AppSpacings.scale(1),
-					separatorColor: isDark ? AppBorderColorDark.light : AppBorderColorLight.darker,
-          padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
+					separatorColor: dividerColor,
+					padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
 					borderRadius: BorderRadius.only(
 						bottomLeft: Radius.circular(AppBorderRadius.base),
 						bottomRight: Radius.circular(AppBorderRadius.base),
 					),
-					itemBuilder: (context, index) => _EventItem(
-						key: ValueKey('event-${displayEvents[index].id}'),
-						event: displayEvents[index],
-						devicesService: devicesService,
-						isDark: isDark,
-						localizations: localizations,
-					),
+					itemBuilder: (context, index) => buildEventItem(index, displayEvents),
 				);
 		}
 	}
