@@ -1820,7 +1820,6 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           ],
         ],
       ),
-      modeSelector: null,
     );
   }
 

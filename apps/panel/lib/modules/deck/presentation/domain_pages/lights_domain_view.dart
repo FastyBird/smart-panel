@@ -1333,7 +1333,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
           ],
         ],
       ),
-      modeSelector: null,
     );
   }
 

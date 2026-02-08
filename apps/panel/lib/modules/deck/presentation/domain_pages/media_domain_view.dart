@@ -758,7 +758,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		return PortraitViewLayout(
 			content: content,
 			scrollable: !showOffContent && !isActivating && !isFailed,
-			modeSelector: null,
 		);
 	}
 

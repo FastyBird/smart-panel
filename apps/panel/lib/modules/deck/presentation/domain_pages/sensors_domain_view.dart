@@ -947,7 +947,6 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
           _buildSensorGrid(context, crossAxisCount: sensorsPerRow, childAspectRatio: isSmallScreen ? 1.0 : 0.9),
         ],
       ),
-      modeSelector: null,
     );
   }
 

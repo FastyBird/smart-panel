@@ -800,7 +800,6 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
             ),
         ],
       ),
-      modeSelector: null,
     );
   }
 
