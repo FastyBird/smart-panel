@@ -1,6 +1,7 @@
 import type { App } from 'vue';
 
-import { type IModule, type IModuleOptions, type ModuleInjectionKey, injectModulesManager } from '../../common';
+import type { IModuleOptions } from '../../app.types';
+import { type IModule, type ModuleInjectionKey, injectModulesManager } from '../../common';
 
 import { SECURITY_MODULE_NAME } from './security.constants';
 
