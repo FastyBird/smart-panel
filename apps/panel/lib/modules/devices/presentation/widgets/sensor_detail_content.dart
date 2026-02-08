@@ -693,6 +693,29 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
       );
     }
 
+    final periodSelector = Container(
+      padding: EdgeInsets.all(AppSpacings.pXs),
+      decoration: BoxDecoration(
+        color: isDark ? AppFillColorDark.base : AppFillColorLight.base,
+        borderRadius: BorderRadius.circular(AppBorderRadius.base),
+      ),
+      child: Row(
+        children: [
+          _buildPeriodButton(context, localizations.sensor_ui_period_1h, 0),
+          _buildPeriodButton(context, localizations.sensor_ui_period_24h, 1),
+          _buildPeriodButton(context, localizations.sensor_ui_period_7d, 2),
+          _buildPeriodButton(context, localizations.sensor_ui_period_30d, 3),
+        ],
+      ),
+    );
+
+    final timeLabelsRow = Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: _getTimeLabels()
+          .map((label) => _buildTimeLabel(context, label))
+          .toList(),
+    );
+
     final chartArea = flexible
         ? Expanded(
             child: LayoutBuilder(
@@ -705,72 +728,58 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
             child: buildChartContent(AppSpacings.scale(160)),
           );
 
-    return Container(
-      padding: withDecoration
-          ? AppSpacings.paddingLg
-          : EdgeInsets.symmetric(horizontal: AppSpacings.pLg),
-      decoration: withDecoration
-          ? BoxDecoration(
-              color:
-                  isDark ? AppFillColorDark.light : AppFillColorLight.blank,
-              borderRadius: BorderRadius.circular(AppBorderRadius.base),
-              border: Border.all(
-                color: isDark
-                    ? AppBorderColorDark.light
-                    : AppBorderColorLight.darker,
-                width: AppSpacings.scale(1),
-              ),
-            )
-          : null,
-      child: Column(
-        mainAxisSize: flexible ? MainAxisSize.max : MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        spacing: AppSpacings.pMd,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                localizations.sensor_ui_history,
-                style: TextStyle(
-                  color: isDark
-                      ? AppTextColorDark.primary
-                      : AppTextColorLight.primary,
-                  fontSize: AppFontSize.base,
-                  fontWeight: FontWeight.w600,
+    if (!withDecoration) {
+      return Padding(
+        padding: EdgeInsets.symmetric(horizontal: AppSpacings.pLg),
+        child: Column(
+          mainAxisSize: flexible ? MainAxisSize.max : MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          spacing: AppSpacings.pMd,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  localizations.sensor_ui_history,
+                  style: TextStyle(
+                    color: isDark
+                        ? AppTextColorDark.primary
+                        : AppTextColorLight.primary,
+                    fontSize: AppFontSize.base,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              ),
-              Container(
-                padding: EdgeInsets.all(AppSpacings.pXs),
-                decoration: BoxDecoration(
-                  color:
-                      isDark ? AppFillColorDark.base : AppFillColorLight.base,
-                  borderRadius: BorderRadius.circular(AppBorderRadius.base),
-                ),
-                child: Row(
-                  children: [
-                    _buildPeriodButton(
-                        context, localizations.sensor_ui_period_1h, 0),
-                    _buildPeriodButton(
-                        context, localizations.sensor_ui_period_24h, 1),
-                    _buildPeriodButton(
-                        context, localizations.sensor_ui_period_7d, 2),
-                    _buildPeriodButton(
-                        context, localizations.sensor_ui_period_30d, 3),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          chartArea,
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: _getTimeLabels()
-                .map((label) => _buildTimeLabel(context, label))
-                .toList(),
-          ),
-        ],
-      ),
+                periodSelector,
+              ],
+            ),
+            chartArea,
+            timeLabelsRow,
+          ],
+        ),
+      );
+    }
+
+    Widget cardChild = Column(
+      mainAxisSize: flexible ? MainAxisSize.max : MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: AppSpacings.pMd,
+      children: [
+        chartArea,
+        timeLabelsRow,
+      ],
+    );
+    if (flexible) {
+      cardChild = Expanded(child: cardChild);
+    }
+
+    return AppCard(
+      color: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
+      expanded: flexible,
+      headerTitle: localizations.sensor_ui_history,
+      headerTrailing: periodSelector,
+      headerLine: true,
+      padding: AppSpacings.paddingMd,
+      child: cardChild,
     );
   }
 
