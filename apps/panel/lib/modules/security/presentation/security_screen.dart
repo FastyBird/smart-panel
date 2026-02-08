@@ -1,7 +1,11 @@
+import 'dart:math' as math;
+
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_card.dart';
+import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/system_pages/export.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/export.dart';
@@ -14,14 +18,27 @@ import 'package:fastybird_smart_panel/modules/security/types/security.dart';
 import 'package:fastybird_smart_panel/modules/security/utils/entry_points.dart';
 import 'package:fastybird_smart_panel/modules/security/utils/security_event_ui.dart';
 import 'package:fastybird_smart_panel/modules/security/utils/security_ui.dart';
+import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
+import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
+import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
+import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 import 'package:provider/provider.dart';
 
-class SecurityScreen extends StatelessWidget {
+enum _SecurityTab { entryPoints, alerts, events }
+
+class SecurityScreen extends StatefulWidget {
 	const SecurityScreen({super.key});
 
+	@override
+	State<SecurityScreen> createState() => _SecurityScreenState();
+}
+
+class _SecurityScreenState extends State<SecurityScreen> {
 	static const int _maxDisplayedEvents = 10;
+
+	_SecurityTab _selectedTab = _SecurityTab.entryPoints;
 
 	@override
 	Widget build(BuildContext context) {
@@ -32,109 +49,73 @@ class SecurityScreen extends StatelessWidget {
 		return Consumer3<SecurityOverlayController, DevicesService, SecurityEventsRepository>(
 			builder: (context, controller, devicesService, eventsRepo, _) {
 				final status = controller.status;
-				final groupedAlerts = controller.groupedAlerts;
-				final totalAlerts = status.activeAlerts.length;
 				final entryPoints = buildEntryPointsSummary(devicesService);
 
+				final ringColor = _overallRingColor(status, isDark);
+				final ringBgColor = ringColor.withValues(alpha: 0.25);
+				final ringProgress = _ringProgress(status);
+				final isTriggered = status.alarmState == AlarmState.triggered;
+				final statusSummary = _statusSummary(status, entryPoints);
+
 				return Scaffold(
-					backgroundColor: SystemPagesTheme.background(isDark),
-					appBar: AppBar(
-						title: Text('Security'),
-						backgroundColor: SystemPagesTheme.background(isDark),
-						foregroundColor: SystemPagesTheme.textPrimary(isDark),
-						elevation: 0,
-					),
-					body: Padding(
-						padding: EdgeInsets.all(AppSpacings.pLg),
+					backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
+					body: SafeArea(
 						child: Column(
-							crossAxisAlignment: CrossAxisAlignment.start,
 							children: [
-								_buildStatusCard(status, isDark, screenService),
-								AppSpacings.spacingLgVertical,
-								_buildEntryPointsCard(entryPoints, isDark, screenService),
-								AppSpacings.spacingLgVertical,
-								Row(
-									children: [
-										Expanded(
-											child: Text(
-												'Active Alerts ($totalAlerts)',
-												style: TextStyle(
-													color: SystemPagesTheme.textPrimary(isDark),
-													fontSize: AppFontSize.large,
-													fontWeight: FontWeight.w600,
-												),
-											),
-										),
-										if (totalAlerts > 0 && !controller.isConnectionOffline)
-											GestureDetector(
-												onTap: () => controller.acknowledgeAllAlerts(),
-												child: Container(
-													padding: EdgeInsets.symmetric(
-														horizontal: AppSpacings.pSm,
-														vertical: AppSpacings.pXs,
-													),
-													decoration: BoxDecoration(
-														color: SystemPagesTheme.cardSecondary(isDark),
-														borderRadius: BorderRadius.circular(AppBorderRadius.small),
-													),
-													child: Row(
-														mainAxisSize: MainAxisSize.min,
-														children: [
-															Icon(
-																MdiIcons.checkAll,
-																size: screenService.scale(14),
-																color: SystemPagesTheme.textSecondary(isDark),
-															),
-															AppSpacings.spacingXsHorizontal,
-															Text(
-																'Acknowledge all',
-																style: TextStyle(
-																	color: SystemPagesTheme.textSecondary(isDark),
-																	fontSize: AppFontSize.extraSmall,
-																	fontWeight: FontWeight.w500,
-																),
-															),
-														],
-													),
-												),
-											),
-									],
+								PageHeader(
+									title: 'Security',
+									onBack: () => Navigator.pop(context),
+									leading: HeaderMainIcon(
+										icon: MdiIcons.shieldHome,
+										color: _isCriticalStatus(status)
+											? ThemeColors.error
+											: ThemeColors.success,
+									),
+									trailing: HeaderIconButton(
+										icon: MdiIcons.homeOutline,
+										onTap: () => Navigator.pop(context),
+									),
 								),
-								AppSpacings.spacingMdVertical,
 								Expanded(
-									child: totalAlerts == 0
-										? ListView(
-											children: [
-												_buildEmptyState(isDark, screenService),
-												AppSpacings.spacingLgVertical,
-												_buildRecentEventsSection(
-													eventsRepo,
-													devicesService,
-													isDark,
-													screenService,
-													localizations,
-												),
-											],
-										)
-										: ListView(
-											children: [
-												..._buildGroupedAlertsWidgets(
-													groupedAlerts,
-													controller,
-													isDark,
-													screenService,
-													localizations,
-												),
-												AppSpacings.spacingLgVertical,
-												_buildRecentEventsSection(
-													eventsRepo,
-													devicesService,
-													isDark,
-													screenService,
-													localizations,
-												),
-											],
-										),
+									child: LayoutBuilder(
+										builder: (context, constraints) {
+											final isLandscape = constraints.maxWidth > constraints.maxHeight;
+
+											if (isLandscape) {
+												return _buildLandscape(
+													status: status,
+													controller: controller,
+													devicesService: devicesService,
+													eventsRepo: eventsRepo,
+													entryPoints: entryPoints,
+													isDark: isDark,
+													screenService: screenService,
+													localizations: localizations,
+													ringColor: ringColor,
+													ringBgColor: ringBgColor,
+													ringProgress: ringProgress,
+													isTriggered: isTriggered,
+													statusSummary: statusSummary,
+												);
+											}
+
+											return _buildPortrait(
+												status: status,
+												controller: controller,
+												devicesService: devicesService,
+												eventsRepo: eventsRepo,
+												entryPoints: entryPoints,
+												isDark: isDark,
+												screenService: screenService,
+												localizations: localizations,
+												ringColor: ringColor,
+												ringBgColor: ringBgColor,
+												ringProgress: ringProgress,
+												isTriggered: isTriggered,
+												statusSummary: statusSummary,
+											);
+										},
+									),
 								),
 							],
 						),
@@ -144,848 +125,447 @@ class SecurityScreen extends StatelessWidget {
 		);
 	}
 
-	List<Widget> _buildGroupedAlertsWidgets(
-		Map<Severity, List<SecurityAlertModel>> groupedAlerts,
-		SecurityOverlayController controller,
-		bool isDark,
-		ScreenService screenService,
-		AppLocalizations localizations,
-	) {
-		final sections = <Widget>[];
-
-		for (final entry in groupedAlerts.entries) {
-			final severity = entry.key;
-			final alerts = entry.value;
-
-			sections.add(
-				Padding(
-					padding: EdgeInsets.only(
-						top: sections.isEmpty ? 0 : AppSpacings.pMd,
-						bottom: AppSpacings.pSm,
-					),
-					child: Row(
-						children: [
-							Icon(
-								_severitySectionIcon(severity),
-								size: screenService.scale(16),
-								color: severityColor(severity, isDark),
-							),
-							AppSpacings.spacingSmHorizontal,
-							Text(
-								_severitySectionTitle(severity),
-								style: TextStyle(
-									color: severityColor(severity, isDark),
-									fontSize: AppFontSize.base,
-									fontWeight: FontWeight.w600,
-								),
-							),
-							AppSpacings.spacingSmHorizontal,
-							Text(
-								'(${alerts.length})',
-								style: TextStyle(
-									color: SystemPagesTheme.textMuted(isDark),
-									fontSize: AppFontSize.small,
-								),
-							),
-						],
-					),
-				),
-			);
-
-			for (final alert in alerts) {
-				final isAcked = controller.isAlertAcknowledged(alert.id);
-				sections.add(
-					Padding(
-						padding: EdgeInsets.only(bottom: AppSpacings.pSm),
-						child: _buildAlertCard(
-							alert,
-							isDark,
-							screenService,
-							localizations,
-							isAcknowledged: isAcked,
-							onAcknowledge: controller.isConnectionOffline
-								? null
-								: () => controller.acknowledgeAlert(alert.id),
-							key: ValueKey(alert.id),
-						),
-					),
-				);
-			}
-		}
-
-		// "All alerts acknowledged" banner
-		if (controller.allAlertsAcknowledged) {
-			sections.add(
-				Padding(
-					padding: EdgeInsets.only(top: AppSpacings.pMd),
-					child: Container(
-						width: double.infinity,
-						padding: EdgeInsets.all(AppSpacings.pMd),
-						decoration: BoxDecoration(
-							color: SystemPagesTheme.successLight(isDark),
-							borderRadius: BorderRadius.circular(AppBorderRadius.small),
-						),
-						child: Row(
-							mainAxisAlignment: MainAxisAlignment.center,
-							children: [
-								Icon(
-									MdiIcons.checkCircle,
-									size: screenService.scale(16),
-									color: SystemPagesTheme.success(isDark),
-								),
-								AppSpacings.spacingSmHorizontal,
-								Text(
-									'All alerts acknowledged',
-									style: TextStyle(
-										color: SystemPagesTheme.success(isDark),
-										fontSize: AppFontSize.small,
-										fontWeight: FontWeight.w500,
-									),
-								),
-							],
-						),
-					),
-				),
-			);
-		}
-
-		return sections;
-	}
-
-	Widget _buildRecentEventsSection(
-		SecurityEventsRepository eventsRepo,
-		DevicesService devicesService,
-		bool isDark,
-		ScreenService screenService,
-		AppLocalizations localizations,
-	) {
-		return Column(
-			crossAxisAlignment: CrossAxisAlignment.start,
-			mainAxisSize: MainAxisSize.min,
-			children: [
-				Row(
-					children: [
-						Icon(
-							MdiIcons.history,
-							size: screenService.scale(20),
-							color: SystemPagesTheme.textSecondary(isDark),
-						),
-						AppSpacings.spacingSmHorizontal,
-						Expanded(
-							child: Text(
-								'Recent Events',
-								style: TextStyle(
-									color: SystemPagesTheme.textPrimary(isDark),
-									fontSize: AppFontSize.large,
-									fontWeight: FontWeight.w600,
-								),
-							),
-						),
-						if (eventsRepo.state != SecurityEventsState.loading)
-							GestureDetector(
-								onTap: () => eventsRepo.fetchEvents(),
-								child: Icon(
-									MdiIcons.refresh,
-									size: screenService.scale(18),
-									color: SystemPagesTheme.textSecondary(isDark),
-								),
-							),
-					],
-				),
-				AppSpacings.spacingMdVertical,
-				_buildRecentEventsContent(
-					eventsRepo,
-					devicesService,
-					isDark,
-					screenService,
-					localizations,
-				),
-			],
-		);
-	}
-
-	Widget _buildRecentEventsContent(
-		SecurityEventsRepository eventsRepo,
-		DevicesService devicesService,
-		bool isDark,
-		ScreenService screenService,
-		AppLocalizations localizations,
-	) {
-		switch (eventsRepo.state) {
-			case SecurityEventsState.initial:
-			case SecurityEventsState.loading:
-				return _buildEventsLoading(isDark, screenService);
-			case SecurityEventsState.error:
-				return _buildEventsError(eventsRepo, isDark, screenService);
-			case SecurityEventsState.loaded:
-				if (eventsRepo.events.isEmpty) {
-					return _buildEventsEmpty(isDark);
-				}
-				final displayEvents = eventsRepo.events.take(_maxDisplayedEvents).toList();
-				return Column(
-					mainAxisSize: MainAxisSize.min,
-					children: displayEvents.map((event) => Padding(
-						key: ValueKey('event-${event.id}'),
-						padding: EdgeInsets.only(bottom: AppSpacings.pSm),
-						child: _buildEventRow(event, devicesService, isDark, screenService, localizations),
-					)).toList(),
-				);
-		}
-	}
-
-	Widget _buildEventsLoading(bool isDark, ScreenService screenService) {
-		return Column(
-			mainAxisSize: MainAxisSize.min,
-			children: List.generate(3, (index) => Padding(
-				padding: EdgeInsets.only(bottom: AppSpacings.pSm),
-				child: Container(
-					height: screenService.scale(48),
-					decoration: BoxDecoration(
-						color: SystemPagesTheme.cardSecondary(isDark),
-						borderRadius: BorderRadius.circular(AppBorderRadius.small),
-					),
-				),
-			)),
-		);
-	}
-
-	Widget _buildEventsError(
-		SecurityEventsRepository eventsRepo,
-		bool isDark,
-		ScreenService screenService,
-	) {
-		return Container(
-			width: double.infinity,
-			padding: EdgeInsets.all(AppSpacings.pMd),
-			decoration: BoxDecoration(
-				color: SystemPagesTheme.errorLight(isDark),
-				borderRadius: BorderRadius.circular(AppBorderRadius.small),
+	List<ModeOption<_SecurityTab>> _buildTabModes() {
+		return [
+			ModeOption(
+				value: _SecurityTab.entryPoints,
+				icon: MdiIcons.home,
+				label: 'Entry Points',
 			),
-			child: Row(
-				children: [
-					Icon(
-						MdiIcons.alertCircleOutline,
-						size: screenService.scale(18),
-						color: SystemPagesTheme.error(isDark),
-					),
-					AppSpacings.spacingSmHorizontal,
-					Expanded(
-						child: Text(
-							eventsRepo.errorMessage ?? 'Failed to load events',
-							style: TextStyle(
-								color: SystemPagesTheme.error(isDark),
-								fontSize: AppFontSize.small,
-							),
-						),
-					),
-					GestureDetector(
-						onTap: () => eventsRepo.fetchEvents(),
-						child: Container(
-							padding: EdgeInsets.symmetric(
-								horizontal: AppSpacings.pSm,
-								vertical: AppSpacings.pXs,
-							),
-							decoration: BoxDecoration(
-								color: SystemPagesTheme.error(isDark).withValues(alpha: 0.15),
-								borderRadius: BorderRadius.circular(AppBorderRadius.small),
-							),
-							child: Text(
-								'Retry',
-								style: TextStyle(
-									color: SystemPagesTheme.error(isDark),
-									fontSize: AppFontSize.extraSmall,
-									fontWeight: FontWeight.w600,
-								),
-							),
-						),
-					),
-				],
+			ModeOption(
+				value: _SecurityTab.alerts,
+				icon: MdiIcons.alertOutline,
+				label: 'Alerts',
 			),
-		);
+			ModeOption(
+				value: _SecurityTab.events,
+				icon: MdiIcons.history,
+				label: 'Events',
+			),
+		];
 	}
 
-	Widget _buildEventsEmpty(bool isDark) {
-		return Padding(
-			padding: EdgeInsets.symmetric(vertical: AppSpacings.pMd),
-			child: Text(
-				'No recent events',
-				style: TextStyle(
-					color: SystemPagesTheme.textMuted(isDark),
-					fontSize: AppFontSize.small,
-				),
-			),
-		);
-	}
-
-	Widget _buildEventRow(
-		SecurityEventModel event,
-		DevicesService devicesService,
-		bool isDark,
-		ScreenService screenService,
-		AppLocalizations localizations,
-	) {
-		final icon = securityEventIcon(event);
-		final title = securityEventTitle(event);
-		final deviceName = event.sourceDeviceId != null
-			? devicesService.getDevice(event.sourceDeviceId!)?.name
-			: null;
-
-		return Container(
-			padding: EdgeInsets.all(AppSpacings.pMd),
-			decoration: BoxDecoration(
-				color: SystemPagesTheme.card(isDark),
-				borderRadius: BorderRadius.circular(AppBorderRadius.small),
-			),
-			child: Row(
-				children: [
-					Icon(
-						icon,
-						size: screenService.scale(18),
-						color: _eventIconColor(event, isDark),
-					),
-					AppSpacings.spacingMdHorizontal,
-					Expanded(
-						child: Column(
-							crossAxisAlignment: CrossAxisAlignment.start,
-							children: [
-								Text(
-									title,
-									style: TextStyle(
-										color: SystemPagesTheme.textPrimary(isDark),
-										fontSize: AppFontSize.small,
-										fontWeight: FontWeight.w500,
-									),
-									maxLines: 1,
-									overflow: TextOverflow.ellipsis,
-								),
-								if (deviceName != null) ...[
-									AppSpacings.spacingXsVertical,
-									Text(
-										deviceName,
-										style: TextStyle(
-											color: SystemPagesTheme.textMuted(isDark),
-											fontSize: AppFontSize.extraSmall,
-										),
-										maxLines: 1,
-										overflow: TextOverflow.ellipsis,
-									),
-								],
-							],
-						),
-					),
-					AppSpacings.spacingSmHorizontal,
-					Text(
-						DatetimeUtils.formatTimeAgo(event.timestamp, localizations),
-						style: TextStyle(
-							color: SystemPagesTheme.textMuted(isDark),
-							fontSize: AppFontSize.extraSmall,
-						),
-					),
-				],
-			),
-		);
-	}
-
-	Color _eventIconColor(SecurityEventModel event, bool isDark) {
-		if (event.severity != null) {
-			return severityColor(event.severity!, isDark);
-		}
-
-		return switch (event.eventType) {
-			SecurityEventType.alertRaised => SystemPagesTheme.error(isDark),
-			SecurityEventType.alertResolved => SystemPagesTheme.success(isDark),
-			SecurityEventType.alertAcknowledged => SystemPagesTheme.success(isDark),
-			SecurityEventType.alarmStateChanged => SystemPagesTheme.warning(isDark),
-			SecurityEventType.armedStateChanged => SystemPagesTheme.info(isDark),
-		};
-	}
-
-	String _severitySectionTitle(Severity severity) {
-		return switch (severity) {
-			Severity.critical => 'Critical',
-			Severity.warning => 'Warnings',
-			Severity.info => 'Info',
-		};
-	}
-
-	IconData _severitySectionIcon(Severity severity) {
-		return switch (severity) {
-			Severity.critical => MdiIcons.alertCircle,
-			Severity.warning => MdiIcons.alert,
-			Severity.info => MdiIcons.informationOutline,
-		};
-	}
-
-	Widget _buildEntryPointsCard(
-		EntryPointsSummary summary,
-		bool isDark,
-		ScreenService screenService,
-	) {
-		return Container(
-			width: double.infinity,
-			padding: EdgeInsets.all(AppSpacings.pLg),
-			decoration: BoxDecoration(
-				color: SystemPagesTheme.card(isDark),
-				borderRadius: BorderRadius.circular(AppBorderRadius.base),
-			),
-			child: Column(
-				crossAxisAlignment: CrossAxisAlignment.start,
-				children: [
-					Row(
-						children: [
-							Icon(
-								MdiIcons.doorOpen,
-								size: screenService.scale(22),
-								color: SystemPagesTheme.textSecondary(isDark),
-							),
-							AppSpacings.spacingMdHorizontal,
-							Expanded(
-								child: Text(
-									'Entry Points',
-									style: TextStyle(
-										color: SystemPagesTheme.textPrimary(isDark),
-										fontSize: AppFontSize.large,
-										fontWeight: FontWeight.w600,
-									),
-								),
-							),
-						],
-					),
-					AppSpacings.spacingMdVertical,
-					if (summary.isEmpty)
-						Text(
-							'No entry sensors configured',
-							style: TextStyle(
-								color: SystemPagesTheme.textMuted(isDark),
-								fontSize: AppFontSize.small,
-							),
-						)
-					else ...[
-						_buildEntryPointsCounters(summary, isDark),
-						AppSpacings.spacingMdVertical,
-						if (summary.openCount > 0)
-							...summary.openItems.map(
-								(ep) => Padding(
-									key: ValueKey('ep-${ep.deviceId}'),
-									padding: EdgeInsets.only(bottom: AppSpacings.pSm),
-									child: _buildEntryPointRow(ep, isDark, screenService),
-								),
-							)
-						else if (summary.allClosed)
-							Row(
-								children: [
-									Icon(
-										MdiIcons.checkCircle,
-										size: screenService.scale(16),
-										color: SystemPagesTheme.success(isDark),
-									),
-									AppSpacings.spacingSmHorizontal,
-									Text(
-										'All entry points closed',
-										style: TextStyle(
-											color: SystemPagesTheme.success(isDark),
-											fontSize: AppFontSize.small,
-											fontWeight: FontWeight.w500,
-										),
-									),
-								],
-							),
-					],
-				],
-			),
-		);
-	}
-
-	Widget _buildEntryPointsCounters(
-		EntryPointsSummary summary,
-		bool isDark,
-	) {
-		return Wrap(
-			spacing: AppSpacings.pMd,
-			runSpacing: AppSpacings.pSm,
-			children: [
-				if (summary.openCount > 0)
-					_buildCounterChip(
-						'Open: ${summary.openCount}',
-						SystemPagesTheme.error(isDark),
-						SystemPagesTheme.errorLight(isDark),
-					),
-				if (summary.closedCount > 0)
-					_buildCounterChip(
-						'Closed: ${summary.closedCount}',
-						SystemPagesTheme.success(isDark),
-						SystemPagesTheme.successLight(isDark),
-					),
-				if (summary.unknownCount > 0)
-					_buildCounterChip(
-						'Unknown: ${summary.unknownCount}',
-						SystemPagesTheme.textMuted(isDark),
-						SystemPagesTheme.cardSecondary(isDark),
-					),
-			],
-		);
-	}
-
-	Widget _buildCounterChip(String label, Color fgColor, Color bgColor) {
-		return Container(
-			padding: EdgeInsets.symmetric(
-				horizontal: AppSpacings.pSm,
-				vertical: AppSpacings.pXs,
-			),
-			decoration: BoxDecoration(
-				color: bgColor,
-				borderRadius: BorderRadius.circular(AppBorderRadius.small),
-			),
-			child: Text(
-				label,
-				style: TextStyle(
-					color: fgColor,
-					fontSize: AppFontSize.extraSmall,
-					fontWeight: FontWeight.w600,
-				),
-			),
-		);
-	}
-
-	Widget _buildEntryPointRow(
-		EntryPointData ep,
-		bool isDark,
-		ScreenService screenService,
-	) {
-		return Container(
-			padding: EdgeInsets.symmetric(
-				horizontal: AppSpacings.pMd,
-				vertical: AppSpacings.pSm,
-			),
-			decoration: BoxDecoration(
-				color: SystemPagesTheme.errorLight(isDark),
-				borderRadius: BorderRadius.circular(AppBorderRadius.small),
-			),
-			child: Row(
-				children: [
-					Icon(
-						ep.isDoor ? MdiIcons.doorOpen : MdiIcons.windowOpenVariant,
-						size: screenService.scale(16),
-						color: SystemPagesTheme.error(isDark),
-					),
-					AppSpacings.spacingSmHorizontal,
-					Expanded(
-						child: Text(
-							ep.room != null ? '${ep.name} (${ep.room})' : ep.name,
-							style: TextStyle(
-								color: SystemPagesTheme.textPrimary(isDark),
-								fontSize: AppFontSize.small,
-								fontWeight: FontWeight.w500,
-							),
-							maxLines: 1,
-							overflow: TextOverflow.ellipsis,
-						),
-					),
-					Container(
-						padding: EdgeInsets.symmetric(
-							horizontal: AppSpacings.pXs,
-							vertical: 2,
-						),
-						decoration: BoxDecoration(
-							color: SystemPagesTheme.error(isDark).withValues(alpha: 0.15),
-							borderRadius: BorderRadius.circular(AppBorderRadius.small),
-						),
-						child: Text(
-							'Open',
-							style: TextStyle(
-								color: SystemPagesTheme.error(isDark),
-								fontSize: AppFontSize.extraSmall,
-								fontWeight: FontWeight.w600,
-							),
-						),
-					),
-				],
-			),
-		);
-	}
-
-	Widget _buildEmptyState(bool isDark, ScreenService screenService) {
-		return Column(
-			mainAxisSize: MainAxisSize.min,
-			children: [
-				Icon(
-					MdiIcons.shieldCheck,
-					size: screenService.scale(48),
-					color: SystemPagesTheme.success(isDark),
-				),
-				AppSpacings.spacingMdVertical,
-				Text(
-					'No active alerts',
-					style: TextStyle(
-						color: SystemPagesTheme.textPrimary(isDark),
-						fontSize: AppFontSize.large,
-						fontWeight: FontWeight.w500,
-					),
-				),
-				AppSpacings.spacingXsVertical,
-				Text(
-					'Your home is secure.',
-					style: TextStyle(
-						color: SystemPagesTheme.textMuted(isDark),
-						fontSize: AppFontSize.base,
-					),
-				),
-			],
-		);
-	}
-
-	Widget _buildStatusCard(
-		SecurityStatusModel status,
-		bool isDark,
-		ScreenService screenService,
-	) {
-		final isTriggered = status.alarmState == AlarmState.triggered;
-		final headerSeverityColor = _overallSeverityColor(status, isDark);
-		final headerSeverityIcon = _overallSeverityIcon(status);
-
-		return Container(
-			width: double.infinity,
-			padding: EdgeInsets.all(AppSpacings.pLg),
-			decoration: BoxDecoration(
-				color: SystemPagesTheme.card(isDark),
-				borderRadius: BorderRadius.circular(AppBorderRadius.base),
-				border: isTriggered
-					? Border.all(
-						color: SystemPagesTheme.error(isDark),
-						width: screenService.scale(2),
-					)
-					: null,
-			),
-			child: Column(
-				crossAxisAlignment: CrossAxisAlignment.start,
-				children: [
-					Row(
-						children: [
-							Icon(
-								headerSeverityIcon,
-								size: screenService.scale(28),
-								color: headerSeverityColor,
-							),
-							AppSpacings.spacingMdHorizontal,
-							Expanded(
-								child: Text(
-									'Security',
-									style: TextStyle(
-										color: SystemPagesTheme.textPrimary(isDark),
-										fontSize: AppFontSize.large,
-										fontWeight: FontWeight.w600,
-									),
-								),
-							),
-							if (status.hasCriticalAlert || status.highestSeverity != Severity.info)
-								_buildSeverityBadge(status.highestSeverity, isDark, infoLabel: 'OK', fontWeight: FontWeight.w700),
-						],
-					),
-					AppSpacings.spacingMdVertical,
-					Wrap(
-						spacing: AppSpacings.pSm,
-						runSpacing: AppSpacings.pSm,
-						children: [
-							_buildStatusChip(
-								label: _armedLabel(status.armedState),
-								icon: _armedIcon(status.armedState),
-								isDark: isDark,
-								screenService: screenService,
-							),
-							_buildStatusChip(
-								label: _alarmLabel(status.alarmState),
-								icon: _alarmIcon(status.alarmState),
-								isDark: isDark,
-								screenService: screenService,
-								isAlert: status.alarmState == AlarmState.triggered ||
-									status.alarmState == AlarmState.pending,
-							),
-						],
-					),
-				],
-			),
-		);
-	}
-
-	Widget _buildStatusChip({
-		required String label,
-		required IconData icon,
+	Widget _buildTabContent({
+		required SecurityStatusModel status,
+		required SecurityOverlayController controller,
+		required DevicesService devicesService,
+		required SecurityEventsRepository eventsRepo,
+		required EntryPointsSummary entryPoints,
 		required bool isDark,
 		required ScreenService screenService,
-		bool isAlert = false,
+		required AppLocalizations localizations,
 	}) {
-		final bgColor = isAlert
-			? SystemPagesTheme.errorLight(isDark)
-			: SystemPagesTheme.cardSecondary(isDark);
-		final fgColor = isAlert
-			? SystemPagesTheme.error(isDark)
-			: SystemPagesTheme.textSecondary(isDark);
+		switch (_selectedTab) {
+			case _SecurityTab.entryPoints:
+				return _EntryPointGrid(
+					entryPoints: entryPoints,
+					isDark: isDark,
+					screenService: screenService,
+					isCritical: _isCriticalStatus(status),
+				);
+			case _SecurityTab.alerts:
+				return _AlertStream(
+					status: status,
+					controller: controller,
+					devicesService: devicesService,
+					isDark: isDark,
+					screenService: screenService,
+					localizations: localizations,
+				);
+			case _SecurityTab.events:
+				return _EventsFeed(
+					eventsRepo: eventsRepo,
+					devicesService: devicesService,
+					isDark: isDark,
+					screenService: screenService,
+					localizations: localizations,
+					maxEvents: _maxDisplayedEvents,
+				);
+		}
+	}
 
-		return Container(
-			padding: EdgeInsets.symmetric(
-				horizontal: AppSpacings.pMd,
-				vertical: AppSpacings.pXs,
+	Widget _buildModeSelector() {
+		return ModeSelector<_SecurityTab>(
+			modes: _buildTabModes(),
+			selectedValue: _selectedTab,
+			onChanged: (tab) => setState(() => _selectedTab = tab),
+			orientation: ModeSelectorOrientation.horizontal,
+			iconPlacement: ModeSelectorIconPlacement.left,
+			color: ThemeColors.primary,
+		);
+	}
+
+	Widget _buildLandscapeModeSelector() {
+		return ModeSelector<_SecurityTab>(
+			modes: _buildTabModes(),
+			selectedValue: _selectedTab,
+			onChanged: (tab) => setState(() => _selectedTab = tab),
+			orientation: ModeSelectorOrientation.vertical,
+			showLabels: false,
+			color: ThemeColors.primary,
+		);
+	}
+
+	Widget _buildPortrait({
+		required SecurityStatusModel status,
+		required SecurityOverlayController controller,
+		required DevicesService devicesService,
+		required SecurityEventsRepository eventsRepo,
+		required EntryPointsSummary entryPoints,
+		required bool isDark,
+		required ScreenService screenService,
+		required AppLocalizations localizations,
+		required Color ringColor,
+		required Color ringBgColor,
+		required double ringProgress,
+		required bool isTriggered,
+		required String statusSummary,
+	}) {
+		return PortraitViewLayout(
+			scrollable: false,
+			contentPadding: EdgeInsets.only(
+				left: AppSpacings.pLg,
+				right: AppSpacings.pLg,
+				top: AppSpacings.pMd,
+				bottom: AppSpacings.pMd,
 			),
-			decoration: BoxDecoration(
-				color: bgColor,
-				borderRadius: BorderRadius.circular(AppBorderRadius.small),
+			content: Column(
+				children: [
+					_StatusRingHero(
+						ringColor: ringColor,
+						ringBgColor: ringBgColor,
+						progress: ringProgress,
+						armedState: status.armedState,
+						alarmState: status.alarmState,
+						summary: statusSummary,
+						isTriggered: isTriggered,
+						isDark: isDark,
+						isCritical: _isCriticalStatus(status),
+					),
+					Expanded(
+						child: _buildTabContent(
+							status: status,
+							controller: controller,
+							devicesService: devicesService,
+							eventsRepo: eventsRepo,
+							entryPoints: entryPoints,
+							isDark: isDark,
+							screenService: screenService,
+							localizations: localizations,
+						),
+					),
+				],
 			),
-			child: Row(
+			modeSelector: _buildModeSelector(),
+		);
+	}
+
+	Widget _buildLandscape({
+		required SecurityStatusModel status,
+		required SecurityOverlayController controller,
+		required DevicesService devicesService,
+		required SecurityEventsRepository eventsRepo,
+		required EntryPointsSummary entryPoints,
+		required bool isDark,
+		required ScreenService screenService,
+		required AppLocalizations localizations,
+		required Color ringColor,
+		required Color ringBgColor,
+		required double ringProgress,
+		required bool isTriggered,
+		required String statusSummary,
+	}) {
+		return LandscapeViewLayout(
+			mainContent: _StatusRingHero(
+				ringColor: ringColor,
+				ringBgColor: ringBgColor,
+				progress: ringProgress,
+				armedState: status.armedState,
+				alarmState: status.alarmState,
+				summary: statusSummary,
+				isTriggered: isTriggered,
+				isDark: isDark,
+				isCritical: _isCriticalStatus(status),
+				compact: true,
+			),
+			modeSelector: _buildLandscapeModeSelector(),
+			additionalContent: _buildTabContent(
+				status: status,
+				controller: controller,
+				devicesService: devicesService,
+				eventsRepo: eventsRepo,
+				entryPoints: entryPoints,
+				isDark: isDark,
+				screenService: screenService,
+				localizations: localizations,
+			),
+		);
+	}
+
+	Color _overallRingColor(SecurityStatusModel status, bool isDark) {
+		if (status.hasCriticalAlert || status.alarmState == AlarmState.triggered) {
+			return SystemPagesTheme.error(isDark);
+		}
+		if (status.highestSeverity == Severity.warning) {
+			return SystemPagesTheme.warning(isDark);
+		}
+		return SystemPagesTheme.success(isDark);
+	}
+
+	double _ringProgress(SecurityStatusModel status) {
+		if (status.activeAlerts.isEmpty) return 1.0;
+		return (status.activeAlerts.length / 20).clamp(0.25, 1.0);
+	}
+
+	bool _isCriticalStatus(SecurityStatusModel status) {
+		return status.hasCriticalAlert ||
+			status.alarmState == AlarmState.triggered ||
+			status.highestSeverity == Severity.critical;
+	}
+
+	String _statusSummary(SecurityStatusModel status, EntryPointsSummary entryPoints) {
+		final openCount = entryPoints.openCount;
+		final alertCount = status.activeAlerts.length;
+
+		if (alertCount == 0 && openCount == 0) {
+			return 'All clear · ${entryPoints.all.length} entry points secured';
+		}
+
+		final parts = <String>[];
+		if (alertCount > 0) parts.add('$alertCount alerts');
+		if (openCount > 0) parts.add('$openCount entry points open');
+
+		return parts.join(' · ');
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STATUS RING PAINTER
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _StatusRingPainter extends CustomPainter {
+	final double progress;
+	final Color ringColor;
+	final Color ringBgColor;
+	final double strokeWidth;
+
+	_StatusRingPainter({
+		required this.progress,
+		required this.ringColor,
+		required this.ringBgColor,
+		this.strokeWidth = 6.0,
+	});
+
+	@override
+	void paint(Canvas canvas, Size size) {
+		final center = Offset(size.width / 2, size.height / 2);
+		final radius = (size.shortestSide / 2) - strokeWidth;
+		const startAngle = -math.pi / 2;
+
+		final bgPaint = Paint()
+			..color = ringBgColor
+			..style = PaintingStyle.stroke
+			..strokeWidth = strokeWidth
+			..strokeCap = StrokeCap.round;
+
+		canvas.drawCircle(center, radius, bgPaint);
+
+		final fgPaint = Paint()
+			..color = ringColor
+			..style = PaintingStyle.stroke
+			..strokeWidth = strokeWidth
+			..strokeCap = StrokeCap.round;
+
+		canvas.drawArc(
+			Rect.fromCircle(center: center, radius: radius),
+			startAngle,
+			2 * math.pi * progress.clamp(0.0, 1.0),
+			false,
+			fgPaint,
+		);
+	}
+
+	@override
+	bool shouldRepaint(_StatusRingPainter oldDelegate) =>
+		oldDelegate.progress != progress ||
+		oldDelegate.ringColor != ringColor ||
+		oldDelegate.ringBgColor != ringBgColor;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STATUS RING HERO
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _StatusRingHero extends StatefulWidget {
+	final Color ringColor;
+	final Color ringBgColor;
+	final double progress;
+	final ArmedState? armedState;
+	final AlarmState? alarmState;
+	final String summary;
+	final bool isTriggered;
+	final bool isDark;
+	final bool isCritical;
+	final bool compact;
+
+	const _StatusRingHero({
+		required this.ringColor,
+		required this.ringBgColor,
+		required this.progress,
+		required this.armedState,
+		required this.alarmState,
+		required this.summary,
+		this.isTriggered = false,
+		required this.isDark,
+		this.isCritical = false,
+		this.compact = false,
+	});
+
+	@override
+	State<_StatusRingHero> createState() => _StatusRingHeroState();
+}
+
+class _StatusRingHeroState extends State<_StatusRingHero>
+	with SingleTickerProviderStateMixin {
+	late AnimationController _pulseCtrl;
+	late Animation<double> _pulseAnim;
+
+	@override
+	void initState() {
+		super.initState();
+		_pulseCtrl = AnimationController(
+			vsync: this,
+			duration: const Duration(milliseconds: 1500),
+		);
+		_pulseAnim = Tween<double>(begin: 1.0, end: 0.6).animate(
+			CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut),
+		);
+		if (widget.isTriggered) _pulseCtrl.repeat(reverse: true);
+	}
+
+	@override
+	void didUpdateWidget(covariant _StatusRingHero oldWidget) {
+		super.didUpdateWidget(oldWidget);
+		if (widget.isTriggered && !_pulseCtrl.isAnimating) {
+			_pulseCtrl.repeat(reverse: true);
+		} else if (!widget.isTriggered && _pulseCtrl.isAnimating) {
+			_pulseCtrl.stop();
+			_pulseCtrl.value = 0;
+		}
+	}
+
+	@override
+	void dispose() {
+		_pulseCtrl.dispose();
+		super.dispose();
+	}
+
+	@override
+	Widget build(BuildContext context) {
+		final screenService = locator<ScreenService>();
+		final ringSize = widget.compact ? screenService.scale(90) : screenService.scale(120);
+		final iconSize = widget.compact ? screenService.scale(24) : screenService.scale(28);
+		final labelFontSize = widget.compact ? AppFontSize.extraExtraSmall : AppFontSize.extraSmall;
+		final strokeWidth = widget.compact ? screenService.scale(5) : screenService.scale(6);
+
+		final severityLabel = _severityLabel;
+		final severityIcon = _severityIcon;
+
+		return Padding(
+			padding: EdgeInsets.symmetric(vertical: widget.compact ? AppSpacings.pMd : AppSpacings.pMd),
+			child: Column(
 				mainAxisSize: MainAxisSize.min,
 				children: [
-					Icon(
-						icon,
-						size: screenService.scale(14),
-						color: fgColor,
-					),
-					AppSpacings.spacingXsHorizontal,
-					Text(
-						label,
-						style: TextStyle(
-							color: fgColor,
-							fontSize: AppFontSize.small,
-							fontWeight: FontWeight.w500,
+					// Ring
+					AnimatedBuilder(
+						animation: _pulseAnim,
+						builder: (context, child) {
+							return Opacity(
+								opacity: widget.isTriggered ? _pulseAnim.value : 1.0,
+								child: child,
+							);
+						},
+						child: SizedBox(
+							width: ringSize,
+							height: ringSize,
+							child: CustomPaint(
+								painter: _StatusRingPainter(
+									progress: widget.progress,
+									ringColor: widget.ringColor,
+									ringBgColor: widget.ringBgColor,
+									strokeWidth: strokeWidth,
+								),
+								child: Center(
+									child: Column(
+										mainAxisSize: MainAxisSize.min,
+										children: [
+											Icon(
+												severityIcon,
+												size: iconSize,
+												color: widget.ringColor,
+											),
+											SizedBox(height: screenService.scale(2)),
+											Text(
+												severityLabel,
+												style: TextStyle(
+													fontSize: labelFontSize,
+													fontWeight: FontWeight.w700,
+													letterSpacing: 0.5,
+													color: widget.ringColor,
+												),
+											),
+										],
+									),
+								),
+							),
 						),
+					),
+					AppSpacings.spacingMdVertical,
+					// Chips
+					Row(
+						mainAxisSize: MainAxisSize.min,
+						children: [
+							_StatusChip(
+								label: _armedLabel(widget.armedState),
+								color: _armedChipColor(widget.armedState, widget.isDark),
+								bgColor: _armedChipBgColor(widget.armedState, widget.isDark),
+							),
+							SizedBox(width: AppSpacings.scale(6)),
+							_StatusChip(
+								label: _alarmLabel(widget.alarmState),
+								color: _alarmChipColor(widget.alarmState, widget.isDark),
+								bgColor: _alarmChipBgColor(widget.alarmState, widget.isDark),
+								pulseDot: widget.alarmState == AlarmState.triggered,
+							),
+						],
+					),
+					SizedBox(height: AppSpacings.scale(6)),
+					// Summary
+					Text(
+						widget.summary,
+						style: TextStyle(
+							fontSize: AppFontSize.small,
+							color: widget.isCritical
+								? SystemPagesTheme.error(widget.isDark)
+								: SystemPagesTheme.textMuted(widget.isDark),
+						),
+						textAlign: TextAlign.center,
 					),
 				],
 			),
 		);
 	}
 
-	Widget _buildSeverityBadge(
-		Severity severity,
-		bool isDark, {
-		String? infoLabel,
-		FontWeight fontWeight = FontWeight.w600,
-	}) {
-		final label = switch (severity) {
-			Severity.critical => 'CRITICAL',
-			Severity.warning => 'WARNING',
-			Severity.info => infoLabel ?? 'INFO',
-		};
-
-		return Container(
-			padding: EdgeInsets.symmetric(
-				horizontal: AppSpacings.pSm,
-				vertical: AppSpacings.pXs,
-			),
-			decoration: BoxDecoration(
-				color: severityBgColor(severity, isDark),
-				borderRadius: BorderRadius.circular(AppBorderRadius.small),
-			),
-			child: Text(
-				label,
-				style: TextStyle(
-					color: severityColor(severity, isDark),
-					fontSize: AppFontSize.extraSmall,
-					fontWeight: fontWeight,
-				),
-			),
-		);
+	String get _severityLabel {
+		if (widget.isCritical) return 'Triggered';
+		if (widget.ringColor == SystemPagesTheme.warning(widget.isDark)) return 'Warning';
+		return 'Secure';
 	}
 
-	Widget _buildAlertCard(
-		SecurityAlertModel alert,
-		bool isDark,
-		ScreenService screenService,
-		AppLocalizations localizations, {
-		bool isAcknowledged = false,
-		VoidCallback? onAcknowledge,
-		Key? key,
-	}) {
-		return Opacity(
-			opacity: isAcknowledged ? 0.5 : 1.0,
-			child: Container(
-				key: key,
-				padding: EdgeInsets.all(AppSpacings.pMd),
-				decoration: BoxDecoration(
-					color: SystemPagesTheme.card(isDark),
-					borderRadius: BorderRadius.circular(AppBorderRadius.small),
-					border: alert.severity == Severity.critical && !isAcknowledged
-						? Border.all(
-							color: SystemPagesTheme.error(isDark).withValues(alpha: 0.5),
-							width: screenService.scale(1),
-						)
-						: null,
-				),
-				child: Row(
-					children: [
-						Icon(
-							isAcknowledged ? MdiIcons.checkCircle : alertTypeIcon(alert.type),
-							size: screenService.scale(20),
-							color: isAcknowledged
-								? SystemPagesTheme.success(isDark)
-								: severityColor(alert.severity, isDark),
-						),
-						AppSpacings.spacingMdHorizontal,
-						Expanded(
-							child: Column(
-								crossAxisAlignment: CrossAxisAlignment.start,
-								children: [
-									Text(
-										alert.type.displayTitle,
-										style: TextStyle(
-											color: SystemPagesTheme.textPrimary(isDark),
-											fontSize: AppFontSize.base,
-											fontWeight: FontWeight.w500,
-										),
-									),
-									if (alert.message != null) ...[
-										AppSpacings.spacingXsVertical,
-										Text(
-											alert.message!,
-											style: TextStyle(
-												color: SystemPagesTheme.textMuted(isDark),
-												fontSize: AppFontSize.small,
-											),
-											maxLines: 1,
-											overflow: TextOverflow.ellipsis,
-										),
-									],
-									if (isAcknowledged) ...[
-										AppSpacings.spacingXsVertical,
-										Text(
-											'Acknowledged',
-											style: TextStyle(
-												color: SystemPagesTheme.success(isDark),
-												fontSize: AppFontSize.extraSmall,
-												fontWeight: FontWeight.w500,
-											),
-										),
-									],
-								],
-							),
-						),
-						AppSpacings.spacingSmHorizontal,
-						Column(
-							crossAxisAlignment: CrossAxisAlignment.end,
-							children: [
-								_buildSeverityBadge(alert.severity, isDark),
-								AppSpacings.spacingXsVertical,
-								Text(
-									DatetimeUtils.formatTimeAgo(alert.timestamp, localizations),
-									style: TextStyle(
-										color: SystemPagesTheme.textMuted(isDark),
-										fontSize: AppFontSize.extraSmall,
-									),
-								),
-							],
-						),
-						if (!isAcknowledged && onAcknowledge != null) ...[
-							AppSpacings.spacingSmHorizontal,
-							GestureDetector(
-								onTap: onAcknowledge,
-								child: Icon(
-									MdiIcons.check,
-									size: screenService.scale(20),
-									color: SystemPagesTheme.textSecondary(isDark),
-								),
-							),
-						],
-					],
-				),
-			),
-		);
+	IconData get _severityIcon {
+		if (widget.isCritical) return MdiIcons.shieldAlert;
+		if (widget.ringColor == SystemPagesTheme.warning(widget.isDark)) return MdiIcons.shieldAlert;
+		return MdiIcons.shieldCheck;
 	}
 
 	String _armedLabel(ArmedState? state) {
@@ -995,16 +575,6 @@ class SecurityScreen extends StatelessWidget {
 			ArmedState.armedAway => 'Armed Away',
 			ArmedState.armedNight => 'Armed Night',
 			_ => 'Unknown',
-		};
-	}
-
-	IconData _armedIcon(ArmedState? state) {
-		return switch (state) {
-			ArmedState.disarmed => MdiIcons.shieldOff,
-			ArmedState.armedHome => MdiIcons.shieldHome,
-			ArmedState.armedAway => MdiIcons.shieldLock,
-			ArmedState.armedNight => MdiIcons.shieldMoon,
-			_ => MdiIcons.shieldOutline,
 		};
 	}
 
@@ -1018,21 +588,355 @@ class SecurityScreen extends StatelessWidget {
 		};
 	}
 
-	IconData _alarmIcon(AlarmState? state) {
+	Color _armedChipColor(ArmedState? state, bool isDark) {
 		return switch (state) {
-			AlarmState.triggered => MdiIcons.alarmLight,
-			AlarmState.pending => MdiIcons.alarmLight,
-			AlarmState.silenced => MdiIcons.volumeOff,
-			AlarmState.idle => MdiIcons.bellOutline,
-			_ => MdiIcons.bellOutline,
+			ArmedState.disarmed => SystemPagesTheme.textSecondary(isDark),
+			ArmedState.armedHome ||
+			ArmedState.armedAway ||
+			ArmedState.armedNight => SystemPagesTheme.success(isDark),
+			_ => SystemPagesTheme.textSecondary(isDark),
 		};
 	}
 
-	Color _overallSeverityColor(SecurityStatusModel status, bool isDark) {
-		if (status.alarmState == AlarmState.triggered || status.hasCriticalAlert) {
-			return SystemPagesTheme.error(isDark);
+	Color _armedChipBgColor(ArmedState? state, bool isDark) {
+		return switch (state) {
+			ArmedState.disarmed => SystemPagesTheme.cardSecondary(isDark),
+			ArmedState.armedHome ||
+			ArmedState.armedAway ||
+			ArmedState.armedNight => SystemPagesTheme.successLight(isDark),
+			_ => SystemPagesTheme.cardSecondary(isDark),
+		};
+	}
+
+	Color _alarmChipColor(AlarmState? state, bool isDark) {
+		return switch (state) {
+			AlarmState.triggered => SystemPagesTheme.error(isDark),
+			AlarmState.pending => SystemPagesTheme.warning(isDark),
+			_ => SystemPagesTheme.textSecondary(isDark),
+		};
+	}
+
+	Color _alarmChipBgColor(AlarmState? state, bool isDark) {
+		return switch (state) {
+			AlarmState.triggered => SystemPagesTheme.errorLight(isDark),
+			AlarmState.pending => SystemPagesTheme.warningLight(isDark),
+			_ => SystemPagesTheme.cardSecondary(isDark),
+		};
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STATUS CHIP
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _StatusChip extends StatefulWidget {
+	final String label;
+	final Color color;
+	final Color bgColor;
+	final bool pulseDot;
+
+	const _StatusChip({
+		required this.label,
+		required this.color,
+		required this.bgColor,
+		this.pulseDot = false,
+	});
+
+	@override
+	State<_StatusChip> createState() => _StatusChipState();
+}
+
+class _StatusChipState extends State<_StatusChip>
+	with SingleTickerProviderStateMixin {
+	late AnimationController _ctrl;
+
+	@override
+	void initState() {
+		super.initState();
+		_ctrl = AnimationController(
+			vsync: this,
+			duration: const Duration(milliseconds: 1200),
+		);
+		if (widget.pulseDot) _ctrl.repeat(reverse: true);
+	}
+
+	@override
+	void didUpdateWidget(covariant _StatusChip old) {
+		super.didUpdateWidget(old);
+		if (widget.pulseDot && !_ctrl.isAnimating) {
+			_ctrl.repeat(reverse: true);
+		} else if (!widget.pulseDot) {
+			_ctrl.stop();
+			_ctrl.value = 0;
 		}
-		if (status.highestSeverity == Severity.critical) {
+	}
+
+	@override
+	void dispose() {
+		_ctrl.dispose();
+		super.dispose();
+	}
+
+	@override
+	Widget build(BuildContext context) {
+		final screenService = locator<ScreenService>();
+
+		return Container(
+			padding: EdgeInsets.symmetric(
+				horizontal: AppSpacings.scale(10),
+				vertical: AppSpacings.pSm,
+			),
+			decoration: BoxDecoration(
+				color: widget.bgColor,
+				borderRadius: BorderRadius.circular(AppBorderRadius.round),
+			),
+			child: Row(
+				mainAxisSize: MainAxisSize.min,
+				children: [
+					AnimatedBuilder(
+						animation: _ctrl,
+						builder: (_, __) {
+							return Container(
+								width: screenService.scale(6),
+								height: screenService.scale(6),
+								decoration: BoxDecoration(
+									shape: BoxShape.circle,
+									color: widget.color,
+									boxShadow: widget.pulseDot
+										? [
+											BoxShadow(
+												color: widget.color.withValues(alpha: 0.6 * _ctrl.value),
+												blurRadius: 6,
+												spreadRadius: 1,
+											),
+										]
+										: null,
+								),
+							);
+						},
+					),
+					SizedBox(width: AppSpacings.scale(5)),
+					Text(
+						widget.label,
+						style: TextStyle(
+							fontSize: AppFontSize.small,
+							fontWeight: FontWeight.w600,
+							color: widget.color,
+							letterSpacing: 0.3,
+						),
+					),
+				],
+			),
+		);
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ENTRY POINT GRID
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _EntryPointGrid extends StatelessWidget {
+	final EntryPointsSummary entryPoints;
+	final bool isDark;
+	final ScreenService screenService;
+	final bool isCritical;
+
+	const _EntryPointGrid({
+		required this.entryPoints,
+		required this.isDark,
+		required this.screenService,
+		this.isCritical = false,
+	});
+
+	@override
+	Widget build(BuildContext context) {
+		final badgeColor = entryPoints.openCount > 0
+			? (isCritical
+				? SystemPagesTheme.error(isDark)
+				: SystemPagesTheme.warning(isDark))
+			: SystemPagesTheme.success(isDark);
+
+		final badgeText = entryPoints.openCount > 0
+			? '${entryPoints.openCount} Open'
+			: 'All Secure';
+
+		return AppCard(
+			headerIcon: MdiIcons.home,
+			headerTitle: 'Entry Points',
+			headerTrailing: _Badge(label: badgeText, color: badgeColor),
+			child: entryPoints.isEmpty
+				? Padding(
+					padding: EdgeInsets.all(AppSpacings.pMd),
+					child: Center(
+						child: Text(
+							'No entry sensors configured',
+							style: TextStyle(
+								fontSize: AppFontSize.small,
+								color: SystemPagesTheme.textMuted(isDark),
+							),
+						),
+					),
+				)
+				: GridView.builder(
+					shrinkWrap: true,
+					physics: const NeverScrollableScrollPhysics(),
+					gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+						crossAxisCount: 4,
+						crossAxisSpacing: AppSpacings.scale(6),
+						mainAxisSpacing: AppSpacings.scale(6),
+						childAspectRatio: 0.85,
+					),
+					itemCount: entryPoints.all.length,
+					itemBuilder: (context, index) {
+						final ep = entryPoints.all[index];
+						return _EntryTile(
+							entryPoint: ep,
+							isDark: isDark,
+							screenService: screenService,
+							isCritical: isCritical && ep.isOpen == true,
+						);
+					},
+				),
+		);
+	}
+}
+
+class _EntryTile extends StatelessWidget {
+	final EntryPointData entryPoint;
+	final bool isDark;
+	final ScreenService screenService;
+	final bool isCritical;
+
+	const _EntryTile({
+		required this.entryPoint,
+		required this.isDark,
+		required this.screenService,
+		this.isCritical = false,
+	});
+
+	@override
+	Widget build(BuildContext context) {
+		final isOpen = entryPoint.isOpen == true;
+		final isUnknown = entryPoint.isOpen == null;
+
+		Color bgColor;
+		Color iconBg;
+		Color iconColor;
+		Color? iconBorder;
+		String statusText;
+		Color statusColor;
+
+		if (isCritical) {
+			bgColor = SystemPagesTheme.errorLight(isDark);
+			iconBg = SystemPagesTheme.errorLight(isDark);
+			iconColor = SystemPagesTheme.error(isDark);
+			iconBorder = SystemPagesTheme.error(isDark).withValues(alpha: 0.25);
+			statusText = 'BREACH';
+			statusColor = SystemPagesTheme.error(isDark);
+		} else if (isOpen) {
+			bgColor = SystemPagesTheme.warningLight(isDark);
+			iconBg = SystemPagesTheme.warningLight(isDark);
+			iconColor = SystemPagesTheme.warning(isDark);
+			iconBorder = SystemPagesTheme.warning(isDark).withValues(alpha: 0.25);
+			statusText = 'OPEN';
+			statusColor = SystemPagesTheme.warning(isDark);
+		} else if (isUnknown) {
+			bgColor = Colors.transparent;
+			iconBg = SystemPagesTheme.cardSecondary(isDark);
+			iconColor = SystemPagesTheme.textMuted(isDark);
+			iconBorder = null;
+			statusText = 'Unknown';
+			statusColor = SystemPagesTheme.textMuted(isDark);
+		} else {
+			bgColor = Colors.transparent;
+			iconBg = SystemPagesTheme.successLight(isDark);
+			iconColor = SystemPagesTheme.success(isDark);
+			iconBorder = null;
+			statusText = 'Closed';
+			statusColor = SystemPagesTheme.success(isDark).withValues(alpha: 0.7);
+		}
+
+		return Container(
+			padding: EdgeInsets.symmetric(
+				vertical: AppSpacings.pMd,
+				horizontal: AppSpacings.pSm,
+			),
+			decoration: BoxDecoration(
+				color: bgColor,
+				borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+			),
+			child: Column(
+				mainAxisSize: MainAxisSize.min,
+				mainAxisAlignment: MainAxisAlignment.center,
+				children: [
+					Container(
+						width: screenService.scale(28),
+						height: screenService.scale(28),
+						decoration: BoxDecoration(
+							color: iconBg,
+							borderRadius: BorderRadius.circular(AppBorderRadius.base),
+							border: iconBorder != null
+								? Border.all(color: iconBorder, width: screenService.scale(1))
+								: null,
+						),
+						child: Icon(
+							entryPoint.isDoor ? MdiIcons.doorOpen : MdiIcons.windowOpenVariant,
+							size: screenService.scale(14),
+							color: iconColor,
+						),
+					),
+					SizedBox(height: AppSpacings.scale(4)),
+					Text(
+						entryPoint.name,
+						style: TextStyle(
+							fontSize: AppFontSize.extraExtraSmall,
+							fontWeight: FontWeight.w500,
+							color: SystemPagesTheme.textSecondary(isDark),
+							height: 1.2,
+						),
+						textAlign: TextAlign.center,
+						maxLines: 1,
+						overflow: TextOverflow.ellipsis,
+					),
+					SizedBox(height: AppSpacings.scale(2)),
+					Text(
+						statusText,
+						style: TextStyle(
+							fontSize: AppFontSize.extraExtraSmall,
+							fontWeight: FontWeight.w700,
+							color: statusColor,
+							letterSpacing: 0.3,
+						),
+					),
+				],
+			),
+		);
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ALERT STREAM
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _AlertStream extends StatelessWidget {
+	final SecurityStatusModel status;
+	final SecurityOverlayController controller;
+	final DevicesService devicesService;
+	final bool isDark;
+	final ScreenService screenService;
+	final AppLocalizations localizations;
+
+	const _AlertStream({
+		required this.status,
+		required this.controller,
+		required this.devicesService,
+		required this.isDark,
+		required this.screenService,
+		required this.localizations,
+	});
+
+	Color get _accentColor {
+		if (status.hasCriticalAlert || status.alarmState == AlarmState.triggered) {
 			return SystemPagesTheme.error(isDark);
 		}
 		if (status.highestSeverity == Severity.warning) {
@@ -1041,19 +945,605 @@ class SecurityScreen extends StatelessWidget {
 		return SystemPagesTheme.success(isDark);
 	}
 
-	IconData _overallSeverityIcon(SecurityStatusModel status) {
-		if (status.alarmState == AlarmState.triggered) {
-			return MdiIcons.alarmLight;
+	bool get _hasUnacked {
+		return status.activeAlerts.any(
+			(a) => !controller.isAlertAcknowledged(a.id),
+		);
+	}
+
+	@override
+	Widget build(BuildContext context) {
+		final sortedAlerts = controller.sortedAlerts;
+
+		return AppCard(
+			borderColor: _accentColor,
+			headerIcon: MdiIcons.alertOutline,
+			headerTitle: 'Alerts',
+			headerTrailing: Row(
+				mainAxisSize: MainAxisSize.min,
+				children: [
+					_Badge(label: '${sortedAlerts.length}', color: _accentColor),
+					if (_hasUnacked && !controller.isConnectionOffline) ...[
+						AppSpacings.spacingMdHorizontal,
+						_AckAllButton(
+							isDark: isDark,
+							onPressed: () => controller.acknowledgeAllAlerts(),
+						),
+					],
+				],
+			),
+			child: sortedAlerts.isEmpty
+				? Center(
+					child: Text(
+						'No active alerts',
+						style: TextStyle(
+							fontSize: AppFontSize.small,
+							color: SystemPagesTheme.textMuted(isDark),
+						),
+					),
+				)
+				: Column(
+					mainAxisSize: MainAxisSize.min,
+					children: sortedAlerts.map((alert) => _AlertItem(
+						key: ValueKey(alert.id),
+						alert: alert,
+						controller: controller,
+						devicesService: devicesService,
+						isDark: isDark,
+						screenService: screenService,
+						localizations: localizations,
+					)).toList(),
+				),
+		);
+	}
+
+}
+
+class _AlertItem extends StatelessWidget {
+	final SecurityAlertModel alert;
+	final SecurityOverlayController controller;
+	final DevicesService devicesService;
+	final bool isDark;
+	final ScreenService screenService;
+	final AppLocalizations localizations;
+
+	const _AlertItem({
+		super.key,
+		required this.alert,
+		required this.controller,
+		required this.devicesService,
+		required this.isDark,
+		required this.screenService,
+		required this.localizations,
+	});
+
+	@override
+	Widget build(BuildContext context) {
+		final isAcked = controller.isAlertAcknowledged(alert.id);
+		final deviceName = alert.sourceDeviceId != null
+			? devicesService.getDevice(alert.sourceDeviceId!)?.name
+			: null;
+
+		return Opacity(
+			opacity: isAcked ? 0.5 : 1.0,
+			child: Container(
+				decoration: BoxDecoration(
+					border: Border(
+						top: BorderSide(
+							color: SystemPagesTheme.border(isDark),
+							width: screenService.scale(1),
+						),
+					),
+				),
+				padding: EdgeInsets.symmetric(
+					horizontal: AppSpacings.scale(14),
+					vertical: AppSpacings.scale(10),
+				),
+				child: Row(
+					crossAxisAlignment: CrossAxisAlignment.center,
+					children: [
+						// Color bar
+						Container(
+							width: screenService.scale(3),
+							height: screenService.scale(32),
+							decoration: BoxDecoration(
+								color: severityColor(alert.severity, isDark),
+								borderRadius: BorderRadius.circular(AppSpacings.scale(2)),
+							),
+						),
+						SizedBox(width: AppSpacings.scale(10)),
+						// Body
+						Expanded(
+							child: Column(
+								crossAxisAlignment: CrossAxisAlignment.start,
+								children: [
+									Text(
+										alert.type.displayTitle,
+										style: TextStyle(
+											fontSize: AppFontSize.small,
+											fontWeight: FontWeight.w600,
+											color: SystemPagesTheme.textPrimary(isDark),
+											height: 1.3,
+										),
+										maxLines: 2,
+										overflow: TextOverflow.ellipsis,
+									),
+									if (deviceName != null) ...[
+										SizedBox(height: screenService.scale(1)),
+										Text(
+											deviceName,
+											style: TextStyle(
+												fontSize: AppFontSize.extraSmall,
+												color: SystemPagesTheme.textMuted(isDark),
+											),
+											maxLines: 1,
+											overflow: TextOverflow.ellipsis,
+										),
+									],
+								],
+							),
+						),
+						AppSpacings.spacingMdHorizontal,
+						// Right: time + ack
+						Column(
+							crossAxisAlignment: CrossAxisAlignment.end,
+							mainAxisSize: MainAxisSize.min,
+							children: [
+								Text(
+									DatetimeUtils.formatTimeAgo(alert.timestamp, localizations),
+									style: TextStyle(
+										fontSize: AppFontSize.extraSmall,
+										color: SystemPagesTheme.textMuted(isDark),
+									),
+								),
+								SizedBox(height: AppSpacings.scale(4)),
+								_AckButton(
+									isDark: isDark,
+									acknowledged: isAcked,
+									onPressed: controller.isConnectionOffline
+										? null
+										: () => controller.acknowledgeAlert(alert.id),
+								),
+							],
+						),
+					],
+				),
+			),
+		);
+	}
+}
+
+class _AckButton extends StatelessWidget {
+	final bool isDark;
+	final bool acknowledged;
+	final VoidCallback? onPressed;
+
+	const _AckButton({
+		required this.isDark,
+		required this.acknowledged,
+		this.onPressed,
+	});
+
+	@override
+	Widget build(BuildContext context) {
+		final screenService = locator<ScreenService>();
+
+		return GestureDetector(
+			onTap: acknowledged ? null : onPressed,
+			child: Container(
+				width: screenService.scale(24),
+				height: screenService.scale(24),
+				decoration: BoxDecoration(
+					borderRadius: BorderRadius.circular(AppBorderRadius.base),
+					border: Border.all(
+						color: acknowledged
+							? SystemPagesTheme.success(isDark)
+							: SystemPagesTheme.border(isDark),
+					),
+					color: acknowledged
+						? SystemPagesTheme.successLight(isDark)
+						: Colors.transparent,
+				),
+				child: Icon(
+					Icons.check,
+					size: screenService.scale(12),
+					color: acknowledged
+						? SystemPagesTheme.success(isDark)
+						: SystemPagesTheme.textMuted(isDark),
+				),
+			),
+		);
+	}
+}
+
+class _AckAllButton extends StatelessWidget {
+	final bool isDark;
+	final VoidCallback? onPressed;
+
+	const _AckAllButton({required this.isDark, this.onPressed});
+
+	@override
+	Widget build(BuildContext context) {
+		final screenService = locator<ScreenService>();
+
+		return GestureDetector(
+			onTap: onPressed,
+			child: Container(
+				padding: EdgeInsets.symmetric(
+					horizontal: AppSpacings.pMd,
+					vertical: AppSpacings.pSm,
+				),
+				decoration: BoxDecoration(
+					borderRadius: BorderRadius.circular(AppBorderRadius.base),
+					border: Border.all(color: SystemPagesTheme.border(isDark)),
+				),
+				child: Row(
+					mainAxisSize: MainAxisSize.min,
+					children: [
+						Icon(
+							MdiIcons.checkAll,
+							size: screenService.scale(11),
+							color: SystemPagesTheme.textSecondary(isDark),
+						),
+						SizedBox(width: AppSpacings.scale(4)),
+						Text(
+							'Ack All',
+							style: TextStyle(
+								fontSize: AppFontSize.extraSmall,
+								fontWeight: FontWeight.w600,
+								color: SystemPagesTheme.textSecondary(isDark),
+							),
+						),
+					],
+				),
+			),
+		);
+	}
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EVENTS FEED
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _EventsFeed extends StatelessWidget {
+	final SecurityEventsRepository eventsRepo;
+	final DevicesService devicesService;
+	final bool isDark;
+	final ScreenService screenService;
+	final AppLocalizations localizations;
+	final int maxEvents;
+
+	const _EventsFeed({
+		required this.eventsRepo,
+		required this.devicesService,
+		required this.isDark,
+		required this.screenService,
+		required this.localizations,
+		required this.maxEvents,
+	});
+
+	@override
+	Widget build(BuildContext context) {
+		final fillColor = isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
+		final borderColor = isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
+		final secondaryColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
+
+		return Container(
+			decoration: BoxDecoration(
+				color: fillColor,
+				borderRadius: BorderRadius.circular(AppBorderRadius.base),
+				border: Border.all(color: borderColor, width: AppSpacings.scale(1)),
+			),
+			padding: AppSpacings.paddingMd,
+			child: Column(
+				crossAxisAlignment: CrossAxisAlignment.start,
+				children: [
+					// Header row
+					Row(
+						mainAxisAlignment: MainAxisAlignment.spaceBetween,
+						children: [
+							Row(
+								spacing: AppSpacings.pSm,
+								children: [
+									Icon(
+										MdiIcons.history,
+										size: AppFontSize.small,
+										color: secondaryColor,
+									),
+									Text(
+										'Recent Events',
+										style: TextStyle(
+											color: secondaryColor,
+											fontSize: AppFontSize.small,
+											fontWeight: FontWeight.bold,
+										),
+									),
+								],
+							),
+							if (eventsRepo.state != SecurityEventsState.loading)
+								_RefreshButton(
+									isDark: isDark,
+									onPressed: () => eventsRepo.fetchEvents(),
+								),
+						],
+					),
+					// Content
+					Expanded(child: _buildContent(context)),
+				],
+			),
+		);
+	}
+
+	Widget _buildContent(BuildContext context) {
+		switch (eventsRepo.state) {
+			case SecurityEventsState.initial:
+			case SecurityEventsState.loading:
+				return Center(
+					child: SizedBox(
+						width: screenService.scale(20),
+						height: screenService.scale(20),
+						child: CircularProgressIndicator(
+							strokeWidth: 2,
+							color: SystemPagesTheme.textMuted(isDark),
+						),
+					),
+				);
+
+			case SecurityEventsState.error:
+				return Center(
+					child: Column(
+						mainAxisSize: MainAxisSize.min,
+						spacing: AppSpacings.pMd,
+						children: [
+							Text(
+								eventsRepo.errorMessage ?? 'Failed to load events',
+								style: TextStyle(
+									fontSize: AppFontSize.base,
+									color: SystemPagesTheme.textMuted(isDark),
+								),
+							),
+							Theme(
+								data: Theme.of(context).copyWith(
+									filledButtonTheme: isDark
+										? AppFilledButtonsDarkThemes.primary
+										: AppFilledButtonsLightThemes.primary,
+								),
+								child: FilledButton.icon(
+									onPressed: () => eventsRepo.fetchEvents(),
+									style: FilledButton.styleFrom(
+										padding: EdgeInsets.symmetric(
+											horizontal: AppSpacings.scale(AppSpacings.pMd),
+											vertical: AppSpacings.scale(AppSpacings.pSm),
+										),
+									),
+									icon: Icon(
+										MdiIcons.refresh,
+										size: AppFontSize.small,
+										color: isDark
+											? AppFilledButtonsDarkThemes.primaryForegroundColor
+											: AppFilledButtonsLightThemes.primaryForegroundColor,
+									),
+									label: Text(
+                    'Retry',
+                    style: TextStyle(
+                      fontSize: AppFontSize.small,
+                    ),
+                  ),
+								),
+							),
+						],
+					),
+				);
+
+			case SecurityEventsState.loaded:
+				if (eventsRepo.events.isEmpty) {
+					return Center(
+						child: Text(
+							'No recent events',
+							style: TextStyle(
+								fontSize: AppFontSize.small,
+								color: SystemPagesTheme.textMuted(isDark),
+							),
+						),
+					);
+				}
+
+				final fillColor = isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
+				final displayEvents = eventsRepo.events.take(maxEvents).toList();
+				return VerticalScrollWithGradient(
+					gradientHeight: AppSpacings.pMd,
+					backgroundColor: fillColor,
+					itemCount: displayEvents.length,
+					separatorHeight: AppSpacings.scale(1),
+					itemBuilder: (context, index) => _EventItem(
+						key: ValueKey('event-${displayEvents[index].id}'),
+						event: displayEvents[index],
+						devicesService: devicesService,
+						isDark: isDark,
+						localizations: localizations,
+					),
+				);
 		}
-		if (status.hasCriticalAlert || status.highestSeverity == Severity.critical) {
-			return MdiIcons.shieldAlert;
+	}
+}
+
+class _EventItem extends StatelessWidget {
+	final SecurityEventModel event;
+	final DevicesService devicesService;
+	final bool isDark;
+	final AppLocalizations localizations;
+
+	const _EventItem({
+		super.key,
+		required this.event,
+		required this.devicesService,
+		required this.isDark,
+		required this.localizations,
+	});
+
+	@override
+	Widget build(BuildContext context) {
+		final name = securityEventName(event);
+		final detail = securityEventDetail(event);
+		final deviceName = event.sourceDeviceId != null
+			? devicesService.getDevice(event.sourceDeviceId!)?.name
+			: null;
+		final dotColor = _eventDotColor(event, isDark);
+		final textColor = _eventTextColor(event, isDark);
+		final mutedColor = isDark
+			? AppTextColorDark.placeholder
+			: AppTextColorLight.placeholder;
+
+		final dotWidth = AppSpacings.scale(8);
+		final dotSpacing = AppSpacings.pMd;
+
+		// Build detail parts: "Intrusion · Front Door" or "Idle → Triggered"
+		final detailParts = <String>[
+			if (detail != null) detail,
+			if (deviceName != null) deviceName,
+		];
+		final detailText = detailParts.isNotEmpty ? detailParts.join(' · ') : null;
+
+		return Padding(
+			padding: EdgeInsets.symmetric(vertical: AppSpacings.pSm),
+			child: Column(
+				mainAxisSize: MainAxisSize.min,
+				children: [
+					// Row 1: dot · event name · time
+					Row(
+						children: [
+							Container(
+								width: dotWidth,
+								height: dotWidth,
+								decoration: BoxDecoration(
+									color: dotColor,
+									shape: BoxShape.circle,
+								),
+							),
+							SizedBox(width: dotSpacing),
+							Expanded(
+								child: Text(
+									name,
+									style: TextStyle(
+										fontSize: AppFontSize.small,
+										fontWeight: FontWeight.w500,
+										color: textColor,
+									),
+								),
+							),
+							Text(
+								DatetimeUtils.formatTimeAgo(event.timestamp, localizations),
+								style: TextStyle(
+									fontSize: AppFontSize.extraSmall,
+									color: mutedColor,
+								),
+							),
+						],
+					),
+					// Row 2: (indent) · detail text
+					if (detailText != null)
+						Padding(
+							padding: EdgeInsets.only(left: dotWidth + dotSpacing, top: AppSpacings.pXs),
+							child: Align(
+								alignment: Alignment.centerLeft,
+								child: Text(
+									detailText,
+									style: TextStyle(
+										fontSize: AppFontSize.extraSmall,
+										color: mutedColor,
+									),
+								),
+							),
+						),
+				],
+			),
+		);
+	}
+
+	Color _eventDotColor(SecurityEventModel event, bool isDark) {
+		if (event.severity != null) {
+			return severityColor(event.severity!, isDark);
 		}
-		if (status.highestSeverity == Severity.warning) {
-			return MdiIcons.shieldAlert;
+
+		return switch (event.eventType) {
+			SecurityEventType.alertRaised =>
+				isDark ? AppColorsDark.danger : AppColorsLight.danger,
+			SecurityEventType.alertResolved ||
+			SecurityEventType.alertAcknowledged =>
+				isDark ? AppColorsDark.success : AppColorsLight.success,
+			SecurityEventType.alarmStateChanged =>
+				isDark ? AppColorsDark.warning : AppColorsLight.warning,
+			SecurityEventType.armedStateChanged =>
+				isDark ? AppColorsDark.info : AppColorsLight.info,
+		};
+	}
+
+	Color _eventTextColor(SecurityEventModel event, bool isDark) {
+		if (event.eventType == SecurityEventType.alertRaised) {
+			return isDark ? AppColorsDark.danger : AppColorsLight.danger;
 		}
-		if (status.armedState == ArmedState.disarmed || status.armedState == null) {
-			return MdiIcons.shieldOff;
-		}
-		return MdiIcons.shieldCheck;
+		return isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
+	}
+}
+
+class _RefreshButton extends StatelessWidget {
+	final bool isDark;
+	final VoidCallback? onPressed;
+
+	const _RefreshButton({required this.isDark, this.onPressed});
+
+	@override
+	Widget build(BuildContext context) {
+		return Theme(
+			data: Theme.of(context).copyWith(
+				filledButtonTheme: isDark
+					? AppFilledButtonsDarkThemes.neutral
+					: AppFilledButtonsLightThemes.neutral,
+			),
+			child: FilledButton(
+				onPressed: onPressed,
+				style: FilledButton.styleFrom(
+					padding: EdgeInsets.all(AppSpacings.pSm),
+					minimumSize: Size.zero,
+				),
+				child: Icon(
+					MdiIcons.refresh,
+					size: AppFontSize.small,
+					color: isDark
+						? AppFilledButtonsDarkThemes.neutralForegroundColor
+						: AppFilledButtonsLightThemes.neutralForegroundColor,
+				),
+			),
+		);
+	}
+}
+
+class _Badge extends StatelessWidget {
+	final String label;
+	final Color color;
+
+	const _Badge({required this.label, required this.color});
+
+	@override
+	Widget build(BuildContext context) {
+		return Container(
+			padding: EdgeInsets.symmetric(
+				horizontal: AppSpacings.pMd,
+				vertical: AppSpacings.pXs,
+			),
+			decoration: BoxDecoration(
+				color: color.withValues(alpha: 0.12),
+				borderRadius: BorderRadius.circular(AppBorderRadius.base),
+			),
+			child: Text(
+				label,
+				style: TextStyle(
+					fontSize: AppFontSize.extraSmall,
+					fontWeight: FontWeight.w700,
+					color: color,
+					letterSpacing: 0.3,
+				),
+			),
+		);
 	}
 }

@@ -41,6 +41,37 @@ String securityEventTitle(SecurityEventModel event) {
 	};
 }
 
+/// Returns a short event name (row 1) for the two-row event layout.
+String securityEventName(SecurityEventModel event) {
+	return switch (event.eventType) {
+		SecurityEventType.alertRaised => 'Alert Raised',
+		SecurityEventType.alertResolved => 'Alert Resolved',
+		SecurityEventType.alertAcknowledged => 'Alert Acknowledged',
+		SecurityEventType.alarmStateChanged => 'Alarm State Changed',
+		SecurityEventType.armedStateChanged => 'Arming Mode Changed',
+	};
+}
+
+/// Returns event detail text (row 2) for the two-row event layout.
+///
+/// Examples: "Intrusion", "Idle → Triggered", "Disarmed → Armed Away"
+String? securityEventDetail(SecurityEventModel event) {
+	switch (event.eventType) {
+		case SecurityEventType.alertRaised:
+		case SecurityEventType.alertResolved:
+		case SecurityEventType.alertAcknowledged:
+			return _alertTypeLabel(event.alertType);
+		case SecurityEventType.alarmStateChanged:
+			final from = _formatState(event.payload?['from'] as String?);
+			final to = _formatState(event.payload?['to'] as String?);
+			return '$from → $to';
+		case SecurityEventType.armedStateChanged:
+			final from = _formatState(event.payload?['from'] as String?);
+			final to = _formatState(event.payload?['to'] as String?);
+			return '$from → $to';
+	}
+}
+
 String _alertTypeLabel(SecurityAlertType? type) {
 	if (type == null) return 'Unknown';
 	return type.displayTitle;
