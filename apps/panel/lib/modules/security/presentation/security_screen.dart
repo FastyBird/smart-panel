@@ -70,6 +70,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
 							children: [
 								PageHeader(
 									title: 'Security',
+									subtitle: _headerSubtitle(status, localizations),
 									onBack: widget.embedded ? null : () => Navigator.pop(context),
 									leading: HeaderMainIcon(
 										icon: MdiIcons.shieldHome,
@@ -262,8 +263,6 @@ class _SecurityScreenState extends State<SecurityScreen> {
 						ringColor: ringColor,
 						ringBgColor: ringBgColor,
 						progress: ringProgress,
-						armedState: status.armedState,
-						alarmState: status.alarmState,
 						summary: statusSummary,
 						isTriggered: isTriggered,
 						isDark: isDark,
@@ -309,8 +308,6 @@ class _SecurityScreenState extends State<SecurityScreen> {
 				ringColor: ringColor,
 				ringBgColor: ringBgColor,
 				progress: ringProgress,
-				armedState: status.armedState,
-				alarmState: status.alarmState,
 				summary: statusSummary,
 				isTriggered: isTriggered,
 				isDark: isDark,
@@ -352,6 +349,24 @@ class _SecurityScreenState extends State<SecurityScreen> {
 		return status.hasCriticalAlert ||
 			status.alarmState == AlarmState.triggered ||
 			status.highestSeverity == Severity.critical;
+	}
+
+	String _headerSubtitle(SecurityStatusModel status, AppLocalizations localizations) {
+		final armed = switch (status.armedState) {
+			ArmedState.disarmed => localizations.security_armed_disarmed,
+			ArmedState.armedHome => localizations.security_armed_home,
+			ArmedState.armedAway => localizations.security_armed_away,
+			ArmedState.armedNight => localizations.security_armed_night,
+			_ => localizations.security_armed_unknown,
+		};
+		final alarm = switch (status.alarmState) {
+			AlarmState.idle => localizations.security_alarm_idle,
+			AlarmState.pending => localizations.security_alarm_pending,
+			AlarmState.triggered => localizations.security_alarm_triggered,
+			AlarmState.silenced => localizations.security_alarm_silenced,
+			_ => localizations.security_alarm_unknown,
+		};
+		return '$armed · $alarm';
 	}
 
 	String _statusSummary(SecurityStatusModel status, EntryPointsSummary entryPoints, AppLocalizations localizations) {
@@ -431,8 +446,6 @@ class _StatusRingHero extends StatefulWidget {
 	final Color ringColor;
 	final Color ringBgColor;
 	final double progress;
-	final ArmedState? armedState;
-	final AlarmState? alarmState;
 	final String summary;
 	final bool isTriggered;
 	final bool isDark;
@@ -444,8 +457,6 @@ class _StatusRingHero extends StatefulWidget {
 		required this.ringColor,
 		required this.ringBgColor,
 		required this.progress,
-		required this.armedState,
-		required this.alarmState,
 		required this.summary,
 		this.isTriggered = false,
 		required this.isDark,
@@ -554,25 +565,6 @@ class _StatusRingHeroState extends State<_StatusRingHero>
 						),
 					),
 					AppSpacings.spacingMdVertical,
-					// Chips
-					Row(
-						mainAxisSize: MainAxisSize.min,
-						children: [
-							_StatusChip(
-								label: _armedLabel(widget.armedState),
-								color: _armedChipColor(widget.armedState, widget.isDark),
-								bgColor: _armedChipBgColor(widget.armedState, widget.isDark),
-							),
-							SizedBox(width: AppSpacings.scale(6)),
-							_StatusChip(
-								label: _alarmLabel(widget.alarmState),
-								color: _alarmChipColor(widget.alarmState, widget.isDark),
-								bgColor: _alarmChipBgColor(widget.alarmState, widget.isDark),
-								pulseDot: widget.alarmState == AlarmState.triggered,
-							),
-						],
-					),
-					SizedBox(height: AppSpacings.scale(6)),
 					// Summary
 					Text(
 						widget.summary,
@@ -599,168 +591,6 @@ class _StatusRingHeroState extends State<_StatusRingHero>
 		if (widget.isCritical) return MdiIcons.shieldAlert;
 		if (widget.ringColor == SystemPagesTheme.warning(widget.isDark)) return MdiIcons.shieldAlert;
 		return MdiIcons.shieldCheck;
-	}
-
-	String _armedLabel(ArmedState? state) {
-		return switch (state) {
-			ArmedState.disarmed => widget.localizations.security_armed_disarmed,
-			ArmedState.armedHome => widget.localizations.security_armed_home,
-			ArmedState.armedAway => widget.localizations.security_armed_away,
-			ArmedState.armedNight => widget.localizations.security_armed_night,
-			_ => widget.localizations.security_armed_unknown,
-		};
-	}
-
-	String _alarmLabel(AlarmState? state) {
-		return switch (state) {
-			AlarmState.idle => widget.localizations.security_alarm_idle,
-			AlarmState.pending => widget.localizations.security_alarm_pending,
-			AlarmState.triggered => widget.localizations.security_alarm_triggered,
-			AlarmState.silenced => widget.localizations.security_alarm_silenced,
-			_ => widget.localizations.security_alarm_unknown,
-		};
-	}
-
-	Color _armedChipColor(ArmedState? state, bool isDark) {
-		return switch (state) {
-			ArmedState.disarmed => SystemPagesTheme.textSecondary(isDark),
-			ArmedState.armedHome ||
-			ArmedState.armedAway ||
-			ArmedState.armedNight => SystemPagesTheme.success(isDark),
-			_ => SystemPagesTheme.textSecondary(isDark),
-		};
-	}
-
-	Color _armedChipBgColor(ArmedState? state, bool isDark) {
-		return switch (state) {
-			ArmedState.disarmed => SystemPagesTheme.cardSecondary(isDark),
-			ArmedState.armedHome ||
-			ArmedState.armedAway ||
-			ArmedState.armedNight => SystemPagesTheme.successLight(isDark),
-			_ => SystemPagesTheme.cardSecondary(isDark),
-		};
-	}
-
-	Color _alarmChipColor(AlarmState? state, bool isDark) {
-		return switch (state) {
-			AlarmState.triggered => SystemPagesTheme.error(isDark),
-			AlarmState.pending => SystemPagesTheme.warning(isDark),
-			_ => SystemPagesTheme.textSecondary(isDark),
-		};
-	}
-
-	Color _alarmChipBgColor(AlarmState? state, bool isDark) {
-		return switch (state) {
-			AlarmState.triggered => SystemPagesTheme.errorLight(isDark),
-			AlarmState.pending => SystemPagesTheme.warningLight(isDark),
-			_ => SystemPagesTheme.cardSecondary(isDark),
-		};
-	}
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// STATUS CHIP
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _StatusChip extends StatefulWidget {
-	final String label;
-	final Color color;
-	final Color bgColor;
-	final bool pulseDot;
-
-	const _StatusChip({
-		required this.label,
-		required this.color,
-		required this.bgColor,
-		this.pulseDot = false,
-	});
-
-	@override
-	State<_StatusChip> createState() => _StatusChipState();
-}
-
-class _StatusChipState extends State<_StatusChip>
-	with SingleTickerProviderStateMixin {
-	late AnimationController _ctrl;
-
-	@override
-	void initState() {
-		super.initState();
-		_ctrl = AnimationController(
-			vsync: this,
-			duration: const Duration(milliseconds: 1200),
-		);
-		if (widget.pulseDot) _ctrl.repeat(reverse: true);
-	}
-
-	@override
-	void didUpdateWidget(covariant _StatusChip old) {
-		super.didUpdateWidget(old);
-		if (widget.pulseDot && !_ctrl.isAnimating) {
-			_ctrl.repeat(reverse: true);
-		} else if (!widget.pulseDot) {
-			_ctrl.stop();
-			_ctrl.value = 0;
-		}
-	}
-
-	@override
-	void dispose() {
-		_ctrl.dispose();
-		super.dispose();
-	}
-
-	@override
-	Widget build(BuildContext context) {
-		final screenService = locator<ScreenService>();
-
-		return Container(
-			padding: EdgeInsets.symmetric(
-				horizontal: AppSpacings.scale(10),
-				vertical: AppSpacings.pSm,
-			),
-			decoration: BoxDecoration(
-				color: widget.bgColor,
-				borderRadius: BorderRadius.circular(AppBorderRadius.round),
-			),
-			child: Row(
-				mainAxisSize: MainAxisSize.min,
-				children: [
-					AnimatedBuilder(
-						animation: _ctrl,
-						builder: (_, __) {
-							return Container(
-								width: screenService.scale(6),
-								height: screenService.scale(6),
-								decoration: BoxDecoration(
-									shape: BoxShape.circle,
-									color: widget.color,
-									boxShadow: widget.pulseDot
-										? [
-											BoxShadow(
-												color: widget.color.withValues(alpha: 0.6 * _ctrl.value),
-												blurRadius: 6,
-												spreadRadius: 1,
-											),
-										]
-										: null,
-								),
-							);
-						},
-					),
-					SizedBox(width: AppSpacings.scale(5)),
-					Text(
-						widget.label,
-						style: TextStyle(
-							fontSize: AppFontSize.small,
-							fontWeight: FontWeight.w600,
-							color: widget.color,
-							letterSpacing: 0.3,
-						),
-					),
-				],
-			),
-		);
 	}
 }
 
