@@ -202,8 +202,12 @@ class _ModeSelectorState<T> extends State<ModeSelector<T>> {
     return Container(
       padding: EdgeInsets.all(AppSpacings.pSm),
       decoration: BoxDecoration(
-        color: isDark ? AppFillColorDark.darker : AppFillColorLight.darker,
+        color: isDark ? AppFillColorDark.darker : AppFillColorLight.lighter,
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
+        border: Border.all(
+          color: isDark ? AppFillColorDark.darker : AppBorderColorLight.dark,
+          width: AppSpacings.scale(1),
+        ),
       ),
       child: widget.orientation == ModeSelectorOrientation.horizontal
           ? _buildHorizontal(context, isDark)
@@ -526,10 +530,6 @@ class _ModeSelectorState<T> extends State<ModeSelector<T>> {
         decoration: BoxDecoration(
           color: backgroundColor,
           borderRadius: BorderRadius.circular(AppBorderRadius.base),
-          border: Border.all(
-            color: borderColor,
-            width: AppSpacings.scale(2),
-          ),
         ),
         child: finalContent,
       ),
