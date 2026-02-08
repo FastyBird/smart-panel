@@ -127,7 +127,20 @@ class _SecurityScreenState extends State<SecurityScreen> {
 		);
 	}
 
-	List<ModeOption<_SecurityTab>> _buildTabModes({required bool hasEntryPoints, required AppLocalizations localizations}) {
+	List<ModeOption<_SecurityTab>> _buildTabModes({
+		required bool hasEntryPoints,
+		required SecurityStatusModel status,
+		required AppLocalizations localizations,
+	}) {
+		final IconData alertIcon;
+		if (_isCriticalStatus(status)) {
+			alertIcon = MdiIcons.alertCircle;
+		} else if (status.activeAlerts.isNotEmpty) {
+			alertIcon = MdiIcons.alert;
+		} else {
+			alertIcon = MdiIcons.alertOutline;
+		}
+
 		return [
 			if (hasEntryPoints)
 				ModeOption(
@@ -137,7 +150,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
 				),
 			ModeOption(
 				value: _SecurityTab.alerts,
-				icon: MdiIcons.alertOutline,
+				icon: alertIcon,
 				label: localizations.security_tab_alerts,
 			),
 			ModeOption(
@@ -192,25 +205,31 @@ class _SecurityScreenState extends State<SecurityScreen> {
 		}
 	}
 
-	Widget _buildModeSelector({required bool hasEntryPoints, required AppLocalizations localizations}) {
+	ThemeColors _modeSelectorColor(SecurityStatusModel status) {
+		if (_isCriticalStatus(status)) return ThemeColors.error;
+		if (status.activeAlerts.isNotEmpty) return ThemeColors.warning;
+		return ThemeColors.success;
+	}
+
+	Widget _buildModeSelector({required bool hasEntryPoints, required SecurityStatusModel status, required AppLocalizations localizations}) {
 		return ModeSelector<_SecurityTab>(
-			modes: _buildTabModes(hasEntryPoints: hasEntryPoints, localizations: localizations),
+			modes: _buildTabModes(hasEntryPoints: hasEntryPoints, status: status, localizations: localizations),
 			selectedValue: _selectedTab,
 			onChanged: (tab) => setState(() => _selectedTab = tab),
 			orientation: ModeSelectorOrientation.horizontal,
 			iconPlacement: ModeSelectorIconPlacement.left,
-			color: ThemeColors.primary,
+			color: _modeSelectorColor(status),
 		);
 	}
 
-	Widget _buildLandscapeModeSelector({required bool hasEntryPoints, required AppLocalizations localizations}) {
+	Widget _buildLandscapeModeSelector({required bool hasEntryPoints, required SecurityStatusModel status, required AppLocalizations localizations}) {
 		return ModeSelector<_SecurityTab>(
-			modes: _buildTabModes(hasEntryPoints: hasEntryPoints, localizations: localizations),
+			modes: _buildTabModes(hasEntryPoints: hasEntryPoints, status: status, localizations: localizations),
 			selectedValue: _selectedTab,
 			onChanged: (tab) => setState(() => _selectedTab = tab),
 			orientation: ModeSelectorOrientation.vertical,
 			showLabels: false,
-			color: ThemeColors.primary,
+			color: _modeSelectorColor(status),
 		);
 	}
 
@@ -251,7 +270,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
 						isCritical: _isCriticalStatus(status),
 						localizations: localizations,
 					),
-					_buildModeSelector(hasEntryPoints: !entryPoints.isEmpty, localizations: localizations),
+					_buildModeSelector(hasEntryPoints: !entryPoints.isEmpty, status: status, localizations: localizations),
 					AppSpacings.spacingSmVertical,
 					Expanded(
 						child: _buildTabContent(
@@ -299,7 +318,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
 				compact: true,
 				localizations: localizations,
 			),
-			modeSelector: _buildLandscapeModeSelector(hasEntryPoints: !entryPoints.isEmpty, localizations: localizations),
+			modeSelector: _buildLandscapeModeSelector(hasEntryPoints: !entryPoints.isEmpty, status: status, localizations: localizations),
 			additionalContent: _buildTabContent(
 				status: status,
 				controller: controller,
