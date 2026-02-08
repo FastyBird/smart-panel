@@ -955,83 +955,53 @@ class _AlertStream extends StatelessWidget {
 	Widget build(BuildContext context) {
 		final sortedAlerts = controller.sortedAlerts;
 		final fillColor = isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
-		final secondaryColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
 
-		return Container(
-			decoration: BoxDecoration(
-				color: fillColor,
-				borderRadius: BorderRadius.circular(AppBorderRadius.base),
-				border: Border.all(color: _accentColor, width: AppSpacings.scale(1)),
-			),
-			padding: AppSpacings.paddingMd,
-			child: Column(
-				crossAxisAlignment: CrossAxisAlignment.start,
+		return AppCard(
+			color: fillColor,
+			borderColor: _accentColor,
+			expanded: true,
+			headerIcon: MdiIcons.alertOutline,
+			headerTitle: 'Alerts',
+			headerTrailing: Row(
+				mainAxisSize: MainAxisSize.min,
 				children: [
-					// Header row
-					Row(
-						mainAxisAlignment: MainAxisAlignment.spaceBetween,
-						children: [
-							Row(
-								spacing: AppSpacings.pSm,
-								children: [
-									Icon(
-										MdiIcons.alertOutline,
-										size: AppFontSize.small,
-										color: secondaryColor,
-									),
-									Text(
-										'Alerts',
-										style: TextStyle(
-											color: secondaryColor,
-											fontSize: AppFontSize.small,
-											fontWeight: FontWeight.bold,
-										),
-									),
-								],
-							),
-							Row(
-								mainAxisSize: MainAxisSize.min,
-								children: [
-									_Badge(label: '${sortedAlerts.length}', color: _accentColor),
-									if (_hasUnacked && !controller.isConnectionOffline) ...[
-										AppSpacings.spacingMdHorizontal,
-										_AckAllButton(
-											isDark: isDark,
-											onPressed: () => controller.acknowledgeAllAlerts(),
-										),
-									],
-								],
-							),
-						],
-					),
-					// Content
-					Expanded(
-						child: sortedAlerts.isEmpty
-							? Center(
-								child: Text(
-									'No active alerts',
-									style: TextStyle(
-										fontSize: AppFontSize.small,
-										color: SystemPagesTheme.textMuted(isDark),
-									),
-								),
-							)
-							: VerticalScrollWithGradient(
-								gradientHeight: AppSpacings.pMd,
-								backgroundColor: fillColor,
-								itemCount: sortedAlerts.length,
-								separatorHeight: AppSpacings.scale(1),
-								itemBuilder: (context, index) => _AlertItem(
-									key: ValueKey(sortedAlerts[index].id),
-									alert: sortedAlerts[index],
-									controller: controller,
-									devicesService: devicesService,
-									isDark: isDark,
-									localizations: localizations,
-								),
-							),
-					),
+					_Badge(label: '${sortedAlerts.length}', color: _accentColor),
+					if (_hasUnacked && !controller.isConnectionOffline) ...[
+						AppSpacings.spacingMdHorizontal,
+						_AckAllButton(
+							isDark: isDark,
+							onPressed: () => controller.acknowledgeAllAlerts(),
+						),
+					],
 				],
+			),
+      headerLine: true,
+			child: Expanded(
+				child: sortedAlerts.isEmpty
+					? Center(
+						child: Text(
+							'No active alerts',
+							style: TextStyle(
+								fontSize: AppFontSize.small,
+								color: SystemPagesTheme.textMuted(isDark),
+							),
+						),
+					)
+					: VerticalScrollWithGradient(
+						gradientHeight: AppSpacings.pMd,
+						backgroundColor: fillColor,
+						itemCount: sortedAlerts.length,
+						separatorHeight: AppSpacings.scale(1),
+            padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
+						itemBuilder: (context, index) => _AlertItem(
+							key: ValueKey(sortedAlerts[index].id),
+							alert: sortedAlerts[index],
+							controller: controller,
+							devicesService: devicesService,
+							isDark: isDark,
+							localizations: localizations,
+						),
+					),
 			),
 		);
 	}
@@ -1257,53 +1227,18 @@ class _EventsFeed extends StatelessWidget {
 
 	@override
 	Widget build(BuildContext context) {
-		final fillColor = isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
-		final borderColor = isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
-		final secondaryColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
-
-		return Container(
-			decoration: BoxDecoration(
-				color: fillColor,
-				borderRadius: BorderRadius.circular(AppBorderRadius.base),
-				border: Border.all(color: borderColor, width: AppSpacings.scale(1)),
+		return AppCard(
+			expanded: true,
+			headerIcon: MdiIcons.history,
+			headerTitle: 'Recent Events',
+			headerTrailing: _RefreshButton(
+				isDark: isDark,
+				onPressed: eventsRepo.state != SecurityEventsState.loading
+					? () => eventsRepo.fetchEvents()
+					: null,
 			),
-			padding: AppSpacings.paddingMd,
-			child: Column(
-				crossAxisAlignment: CrossAxisAlignment.start,
-				children: [
-					// Header row
-					Row(
-						mainAxisAlignment: MainAxisAlignment.spaceBetween,
-						children: [
-							Row(
-								spacing: AppSpacings.pSm,
-								children: [
-									Icon(
-										MdiIcons.history,
-										size: AppFontSize.small,
-										color: secondaryColor,
-									),
-									Text(
-										'Recent Events',
-										style: TextStyle(
-											color: secondaryColor,
-											fontSize: AppFontSize.small,
-											fontWeight: FontWeight.bold,
-										),
-									),
-								],
-							),
-							if (eventsRepo.state != SecurityEventsState.loading)
-								_RefreshButton(
-									isDark: isDark,
-									onPressed: () => eventsRepo.fetchEvents(),
-								),
-						],
-					),
-					// Content
-					Expanded(child: _buildContent(context)),
-				],
-			),
+      headerLine: true,
+			child: Expanded(child: _buildContent(context)),
 		);
 	}
 
@@ -1388,6 +1323,7 @@ class _EventsFeed extends StatelessWidget {
 					backgroundColor: fillColor,
 					itemCount: displayEvents.length,
 					separatorHeight: AppSpacings.scale(1),
+          padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
 					itemBuilder: (context, index) => _EventItem(
 						key: ValueKey('event-${displayEvents[index].id}'),
 						event: displayEvents[index],
