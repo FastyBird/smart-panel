@@ -9,6 +9,7 @@ import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/system_pages/export.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/export.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/device_detail_page.dart';
 import 'package:fastybird_smart_panel/modules/security/models/security_alert.dart';
 import 'package:fastybird_smart_panel/modules/security/models/security_event.dart';
 import 'package:fastybird_smart_panel/modules/security/models/security_status.dart';
@@ -796,7 +797,7 @@ class _EntryPointGrid extends StatelessWidget {
 										Expanded(
 											child: AspectRatio(
 												aspectRatio: AppTileAspectRatio.square,
-												child: _entryTile(ep, isCritical && ep.isOpen == true),
+												child: _entryTile(context, ep, isCritical && ep.isOpen == true),
 											),
 										),
 									// Fill remaining slots with empty spacers
@@ -811,7 +812,7 @@ class _EntryPointGrid extends StatelessWidget {
 		);
 	}
 
-	UniversalTile _entryTile(EntryPointData ep, bool critical) {
+	UniversalTile _entryTile(BuildContext context, EntryPointData ep, bool critical) {
 		final isOpen = ep.isOpen == true;
 		final isUnknown = ep.isOpen == null;
 
@@ -842,6 +843,14 @@ class _EntryPointGrid extends StatelessWidget {
 			showGlow: false,
 			showDoubleBorder: false,
 			showInactiveBorder: true,
+			onTileTap: () {
+				Navigator.push(
+					context,
+					MaterialPageRoute(
+						builder: (context) => DeviceDetailPage(ep.deviceId),
+					),
+				);
+			},
 		);
 	}
 }
