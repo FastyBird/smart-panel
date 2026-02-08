@@ -568,6 +568,15 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
     final mainContent = Column(
       spacing: AppSpacings.pMd,
       children: [
+        if (showModeSelector)
+          LightingModeSelector(
+            capabilities: _capabilities,
+            selectedCapability: _selectedCapability,
+            onCapabilityChanged: (value) {
+              setState(() => _selectedCapability = value);
+            },
+            isVertical: false,
+          ),
         Expanded(
           child: LightingMainControl(
             selectedCapability: _selectedCapability,
@@ -608,16 +617,6 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
     return DevicePortraitLayout(
       scrollable: false,
       content: mainContent,
-      stickyBottom: showModeSelector ?
-        LightingModeSelector(
-          capabilities: _capabilities,
-          selectedCapability: _selectedCapability,
-          onCapabilityChanged: (value) {
-            setState(() => _selectedCapability = value);
-          },
-          isVertical: false,
-        ) : null,
-      useStickyBottomPadding: false,
     );
   }
 
