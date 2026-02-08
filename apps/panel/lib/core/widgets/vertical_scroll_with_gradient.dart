@@ -29,6 +29,9 @@ class VerticalScrollWithGradient extends StatelessWidget {
   /// Height of separator between items
   final double separatorHeight;
 
+  /// When set, draws a divider line between items using this color.
+  final Color? separatorColor;
+
   /// Optional background color for gradients (defaults to page background)
   final Color? backgroundColor;
 
@@ -39,15 +42,21 @@ class VerticalScrollWithGradient extends StatelessWidget {
   /// Optional scroll controller for programmatic scroll control
   final ScrollController? controller;
 
+  /// Optional border radius to clip the widget, preventing gradient overlays
+  /// from covering parent container's rounded corners.
+  final BorderRadius? borderRadius;
+
   const VerticalScrollWithGradient({
     super.key,
     required this.gradientHeight,
     required this.itemCount,
     required this.itemBuilder,
     this.separatorHeight = 0,
+    this.separatorColor,
     this.backgroundColor,
     this.padding = EdgeInsets.zero,
     this.controller,
+    this.borderRadius,
   });
 
   @override
@@ -59,14 +68,20 @@ class VerticalScrollWithGradient extends StatelessWidget {
     // Resolve padding to get individual values
     final resolvedPadding = padding.resolve(TextDirection.ltr);
 
-    return Stack(
+    final stack = Stack(
       children: [
         // Scrollable list
         ListView.separated(
           controller: controller,
           scrollDirection: Axis.vertical,
           itemCount: itemCount,
-          separatorBuilder: (_, __) => SizedBox(height: separatorHeight),
+          separatorBuilder: (_, __) => separatorColor != null
+              ? Divider(
+                  height: separatorHeight,
+                  thickness: AppSpacings.scale(1),
+                  color: separatorColor,
+                )
+              : SizedBox(height: separatorHeight),
           itemBuilder: (context, index) {
             final isFirst = index == 0;
             final isLast = index == itemCount - 1;
@@ -130,5 +145,14 @@ class VerticalScrollWithGradient extends StatelessWidget {
         ),
       ],
     );
+
+    if (borderRadius != null) {
+      return ClipRRect(
+        borderRadius: borderRadius!,
+        child: stack,
+      );
+    }
+
+    return stack;
   }
 }

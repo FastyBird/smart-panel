@@ -895,10 +895,9 @@ class _AlertStream extends StatelessWidget {
 	@override
 	Widget build(BuildContext context) {
 		final sortedAlerts = controller.sortedAlerts;
-		final fillColor = isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
 
 		return AppCard(
-			color: fillColor,
+      color: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
 			borderColor: _accentColor,
 			expanded: true,
 			headerIcon: MdiIcons.alertOutline,
@@ -930,10 +929,15 @@ class _AlertStream extends StatelessWidget {
 					)
 					: VerticalScrollWithGradient(
 						gradientHeight: AppSpacings.pMd,
-						backgroundColor: fillColor,
+						backgroundColor: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
 						itemCount: sortedAlerts.length,
 						separatorHeight: AppSpacings.scale(1),
+						separatorColor: isDark ? AppBorderColorDark.light : AppBorderColorLight.darker,
             padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
+						borderRadius: BorderRadius.only(
+							bottomLeft: Radius.circular(AppBorderRadius.base),
+							bottomRight: Radius.circular(AppBorderRadius.base),
+						),
 						itemBuilder: (context, index) => _AlertItem(
 							key: ValueKey(sortedAlerts[index].id),
 							alert: sortedAlerts[index],
@@ -1169,6 +1173,7 @@ class _EventsFeed extends StatelessWidget {
 	@override
 	Widget build(BuildContext context) {
 		return AppCard(
+      color: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
 			expanded: true,
 			headerIcon: MdiIcons.history,
 			headerTitle: 'Recent Events',
@@ -1264,7 +1269,12 @@ class _EventsFeed extends StatelessWidget {
 					backgroundColor: fillColor,
 					itemCount: displayEvents.length,
 					separatorHeight: AppSpacings.scale(1),
+					separatorColor: isDark ? AppBorderColorDark.light : AppBorderColorLight.darker,
           padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
+					borderRadius: BorderRadius.only(
+						bottomLeft: Radius.circular(AppBorderRadius.base),
+						bottomRight: Radius.circular(AppBorderRadius.base),
+					),
 					itemBuilder: (context, index) => _EventItem(
 						key: ValueKey('event-${displayEvents[index].id}'),
 						event: displayEvents[index],
