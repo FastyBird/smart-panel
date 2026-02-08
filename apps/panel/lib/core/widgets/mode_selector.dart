@@ -473,16 +473,9 @@ class _ModeSelectorState<T> extends State<ModeSelector<T>> {
         ? AppColors.blank
         : AppColors.white.withValues(alpha: 0);
 
-    // Determine background and border colors based on selection state
-    final Color backgroundColor;
-    final Color borderColor;
-    if (isSelected) {
-      backgroundColor = colors.background;
-      borderColor = colors.active;
-    } else {
-      backgroundColor = transparentColor;
-      borderColor = transparentColor;
-    }
+    // Determine background color based on selection state
+    final Color backgroundColor =
+        isSelected ? colors.background : transparentColor;
 
     // Padding based on layout mode
     EdgeInsetsGeometry buttonPadding;
