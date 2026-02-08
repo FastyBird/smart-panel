@@ -366,7 +366,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
 			AlarmState.silenced => localizations.security_alarm_silenced,
 			_ => localizations.security_alarm_unknown,
 		};
-		return '$armed · $alarm';
+		return '$armed • $alarm';
 	}
 
 	String _statusSummary(SecurityStatusModel status, EntryPointsSummary entryPoints, AppLocalizations localizations) {
