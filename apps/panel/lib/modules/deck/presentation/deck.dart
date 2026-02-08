@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/app/routes.dart';
+import 'package:fastybird_smart_panel/core/services/navigation.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/export.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
@@ -174,6 +176,29 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen> {
               ),
               if (_shouldShowPageIndicator(currentItem))
                 _buildPageIndicator(context, deckService),
+              // DEBUG: Test button to open security screen
+              Positioned(
+                top: AppSpacings.scale(8),
+                right: AppSpacings.scale(8),
+                child: SizedBox(
+                  width: AppSpacings.scale(36),
+                  height: AppSpacings.scale(36),
+                  child: FloatingActionButton(
+                    mini: true,
+                    backgroundColor:
+                        Theme.of(context).colorScheme.error.withValues(alpha: 0.85),
+                    onPressed: () {
+                      locator<NavigationService>()
+                          .navigateTo(AppRouteNames.security);
+                    },
+                    child: Icon(
+                      MdiIcons.shieldAlert,
+                      size: AppSpacings.scale(18),
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
         );

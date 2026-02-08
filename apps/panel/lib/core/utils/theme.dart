@@ -1386,7 +1386,7 @@ class AppOutlinedButtonsLightThemes {
   static OutlinedButtonThemeData get primary => OutlinedButtonThemeData(
     style: createButtonTheme(
       color: AppColorsLight.primary,
-      pressedColor: AppColorsLight.primaryDark2,
+      pressedColor: AppColors.white,
       hoveredColor: AppColorsLight.primary,
       disabledColor: AppColorsLight.primaryLight5,
       bgColor: AppColorsLight.primaryLight9,
