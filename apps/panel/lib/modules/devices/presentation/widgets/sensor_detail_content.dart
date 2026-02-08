@@ -759,14 +759,17 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
       );
     }
 
-    Widget cardChild = Column(
-      mainAxisSize: flexible ? MainAxisSize.max : MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      spacing: AppSpacings.pMd,
-      children: [
-        chartArea,
-        timeLabelsRow,
-      ],
+    Widget cardChild = Padding(
+      padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
+      child: Column(
+        mainAxisSize: flexible ? MainAxisSize.max : MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: AppSpacings.pMd,
+        children: [
+          chartArea,
+          timeLabelsRow,
+        ],
+      ),
     );
     if (flexible) {
       cardChild = Expanded(child: cardChild);
