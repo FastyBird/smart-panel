@@ -630,8 +630,8 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             isLocked: isModeLocked,
             onTap: () {
               _setLightingMode(mode.value);
-              dismiss();
               _registerModeConfig();
+              dismiss();
             },
           ),
       ],

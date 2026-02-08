@@ -378,8 +378,8 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
             isActive: _selectedCategory == mode.value,
             onTap: () {
               setState(() => _selectedCategory = mode.value);
-              dismiss();
               _registerModeConfig();
+              dismiss();
             },
           ),
       ],

@@ -95,12 +95,13 @@ void main() {
 
         final result = buildDeck(input);
 
-        expect(result.items.length, 1);
+        expect(result.items.length, 2); // system view + security view
         expect(result.items.first, isA<SystemViewItem>());
         final systemView = result.items.first as SystemViewItem;
         expect(systemView.viewType, SystemViewType.room);
         expect(systemView.roomId, 'space-123');
         expect(systemView.title, 'Room Overview');
+        expect(result.items[1], isA<SecurityViewItem>());
       });
 
       test('should create master system view for master role', () {
@@ -113,7 +114,7 @@ void main() {
 
         final result = buildDeck(input);
 
-        expect(result.items.length, 1);
+        expect(result.items.length, 2); // system view + security view
         final systemView = result.items.first as SystemViewItem;
         expect(systemView.viewType, SystemViewType.master);
         expect(systemView.title, 'Home Overview');
@@ -129,7 +130,7 @@ void main() {
 
         final result = buildDeck(input);
 
-        expect(result.items.length, 1);
+        expect(result.items.length, 2); // system view + security view
         final systemView = result.items.first as SystemViewItem;
         expect(systemView.viewType, SystemViewType.entry);
         expect(systemView.title, 'Entry');
@@ -155,11 +156,12 @@ void main() {
 
         final result = buildDeck(input);
 
-        // 1 system view + 2 domain views
-        expect(result.items.length, 3);
+        // 1 system view + 2 domain views + 1 security view
+        expect(result.items.length, 4);
         expect(result.items[0], isA<SystemViewItem>());
         expect(result.items[1], isA<DomainViewItem>());
         expect(result.items[2], isA<DomainViewItem>());
+        expect(result.items[3], isA<SecurityViewItem>());
 
         final lightsView = result.items[1] as DomainViewItem;
         expect(lightsView.domainType, DomainType.lights);
@@ -185,7 +187,7 @@ void main() {
 
         final result = buildDeck(input);
 
-        expect(result.items.length, 1);
+        expect(result.items.length, 2); // system view + security view
         expect(result.items.first, isA<SystemViewItem>());
         expect(result.domainCounts, isNull);
       });
@@ -202,7 +204,7 @@ void main() {
 
         final result = buildDeck(input);
 
-        expect(result.items.length, 1);
+        expect(result.items.length, 2); // system view + security view
         expect(result.items.first, isA<SystemViewItem>());
         expect(result.domainCounts, isNull);
       });
@@ -223,11 +225,12 @@ void main() {
 
         final result = buildDeck(input);
 
-        // system view, lights domain, page
-        expect(result.items.length, 3);
+        // system view, lights domain, security view, page
+        expect(result.items.length, 4);
         expect(result.items[0], isA<SystemViewItem>());
         expect(result.items[1], isA<DomainViewItem>());
-        expect(result.items[2], isA<DashboardPageItem>());
+        expect(result.items[2], isA<SecurityViewItem>());
+        expect(result.items[3], isA<DashboardPageItem>());
       });
 
       test('should include domainCounts for ROOM role', () {
@@ -302,8 +305,8 @@ void main() {
 
         final result = buildDeck(input);
 
-        expect(result.indexByViewKey['page:$_uuid1'], 1);
-        expect(result.indexByViewKey['page:$_uuid2'], 2);
+        expect(result.indexByViewKey['page:$_uuid1'], 2); // after system + security
+        expect(result.indexByViewKey['page:$_uuid2'], 3);
       });
 
       test('getIndexByViewKey should return -1 for unknown key', () {
@@ -328,11 +331,12 @@ void main() {
 
         final result = buildDeck(input);
 
-        expect(result.items.length, 4); // 1 system view + 3 pages
+        expect(result.items.length, 5); // 1 system view + 1 security view + 3 pages
         expect(result.items[0], isA<SystemViewItem>());
-        expect((result.items[1] as DashboardPageItem).id, _uuid1);
-        expect((result.items[2] as DashboardPageItem).id, _uuid2);
-        expect((result.items[3] as DashboardPageItem).id, _uuid3);
+        expect(result.items[1], isA<SecurityViewItem>());
+        expect((result.items[2] as DashboardPageItem).id, _uuid1);
+        expect((result.items[3] as DashboardPageItem).id, _uuid2);
+        expect((result.items[4] as DashboardPageItem).id, _uuid3);
       });
     });
 
@@ -370,7 +374,7 @@ void main() {
 
         final result = buildDeck(input);
 
-        expect(result.startIndex, 2); // Index 0 = system view, 1 = page-1, 2 = page-2
+        expect(result.startIndex, 3); // Index 0 = system view, 1 = security, 2 = page-1, 3 = page-2
         expect(result.didFallback, false);
         expect((result.startItem as DashboardPageItem).id, _uuid2);
       });
@@ -430,7 +434,7 @@ void main() {
 
         final result = buildDeck(input);
 
-        expect(result.startIndex, 1); // page-1 is at index 1
+        expect(result.startIndex, 2); // page-1 is at index 2 (after system + security)
         expect(result.didFallback, false);
       });
     });

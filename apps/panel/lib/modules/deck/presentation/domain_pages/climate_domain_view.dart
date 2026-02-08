@@ -1277,8 +1277,8 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             isActive: _state.mode == mode.value,
             onTap: () {
               _setMode(mode.value);
-              dismiss();
               _registerModeConfig();
+              dismiss();
             },
           ),
       ],

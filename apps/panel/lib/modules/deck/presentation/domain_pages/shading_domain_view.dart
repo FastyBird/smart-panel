@@ -306,7 +306,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     }
   }
 
-  void _registerModeConfig() {
+  void _registerModeConfig({CoversMode? modeOverride}) {
     if (!_isActivePage || _isLoading) return;
 
     final targets = _coversTargets;
@@ -319,7 +319,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     final localizations = AppLocalizations.of(context)!;
     final modeOptions = _getCoversModeOptions(localizations);
     final (activeValue, matchedValue, lastIntentValue) = _getCoverModeSelectorValues();
-    final currentMode = activeValue ?? matchedValue ?? lastIntentValue ?? CoversMode.open;
+    final currentMode = modeOverride ?? activeValue ?? matchedValue ?? lastIntentValue ?? CoversMode.open;
 
     final currentOption = modeOptions.firstWhere(
       (o) => o.value == currentMode,
@@ -365,8 +365,8 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
             isLastIntent: lastIntentValue == mode.value,
             onTap: () {
               _setCoversMode(mode.value);
+              _registerModeConfig(modeOverride: mode.value);
               dismiss();
-              _registerModeConfig();
             },
           ),
       ],

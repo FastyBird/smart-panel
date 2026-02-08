@@ -141,14 +141,11 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen>
     if (index >= 0 && index < items.length) {
       final item = items[index];
 
-      // Clear mode notifier before firing event if the active item is not a
-      // domain view. This ensures the UI updates synchronously while domain
-      // views handle their own registration via the event.
-      if (item is! DomainViewItem) {
-        try {
-          locator<BottomNavModeNotifier>().clear();
-        } catch (_) {}
-      }
+      // Clear mode notifier before firing event so stale config from the
+      // previous domain is never visible while the new domain is loading.
+      try {
+        locator<BottomNavModeNotifier>().clear();
+      } catch (_) {}
 
       // Update security overlay: suppress when viewing the security page
       try {
