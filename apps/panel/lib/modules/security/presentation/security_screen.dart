@@ -251,6 +251,8 @@ class _SecurityScreenState extends State<SecurityScreen> {
 						isCritical: _isCriticalStatus(status),
 						localizations: localizations,
 					),
+					_buildModeSelector(hasEntryPoints: !entryPoints.isEmpty, localizations: localizations),
+					AppSpacings.spacingSmVertical,
 					Expanded(
 						child: _buildTabContent(
 							status: status,
@@ -265,7 +267,6 @@ class _SecurityScreenState extends State<SecurityScreen> {
 					),
 				],
 			),
-			modeSelector: _buildModeSelector(hasEntryPoints: !entryPoints.isEmpty, localizations: localizations),
 		);
 	}
 
