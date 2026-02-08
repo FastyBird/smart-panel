@@ -954,46 +954,85 @@ class _AlertStream extends StatelessWidget {
 	@override
 	Widget build(BuildContext context) {
 		final sortedAlerts = controller.sortedAlerts;
+		final fillColor = isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
+		final secondaryColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
 
-		return AppCard(
-			borderColor: _accentColor,
-			headerIcon: MdiIcons.alertOutline,
-			headerTitle: 'Alerts',
-			headerTrailing: Row(
-				mainAxisSize: MainAxisSize.min,
+		return Container(
+			decoration: BoxDecoration(
+				color: fillColor,
+				borderRadius: BorderRadius.circular(AppBorderRadius.base),
+				border: Border.all(color: _accentColor, width: AppSpacings.scale(1)),
+			),
+			padding: AppSpacings.paddingMd,
+			child: Column(
+				crossAxisAlignment: CrossAxisAlignment.start,
 				children: [
-					_Badge(label: '${sortedAlerts.length}', color: _accentColor),
-					if (_hasUnacked && !controller.isConnectionOffline) ...[
-						AppSpacings.spacingMdHorizontal,
-						_AckAllButton(
-							isDark: isDark,
-							onPressed: () => controller.acknowledgeAllAlerts(),
-						),
-					],
+					// Header row
+					Row(
+						mainAxisAlignment: MainAxisAlignment.spaceBetween,
+						children: [
+							Row(
+								spacing: AppSpacings.pSm,
+								children: [
+									Icon(
+										MdiIcons.alertOutline,
+										size: AppFontSize.small,
+										color: secondaryColor,
+									),
+									Text(
+										'Alerts',
+										style: TextStyle(
+											color: secondaryColor,
+											fontSize: AppFontSize.small,
+											fontWeight: FontWeight.bold,
+										),
+									),
+								],
+							),
+							Row(
+								mainAxisSize: MainAxisSize.min,
+								children: [
+									_Badge(label: '${sortedAlerts.length}', color: _accentColor),
+									if (_hasUnacked && !controller.isConnectionOffline) ...[
+										AppSpacings.spacingMdHorizontal,
+										_AckAllButton(
+											isDark: isDark,
+											onPressed: () => controller.acknowledgeAllAlerts(),
+										),
+									],
+								],
+							),
+						],
+					),
+					// Content
+					Expanded(
+						child: sortedAlerts.isEmpty
+							? Center(
+								child: Text(
+									'No active alerts',
+									style: TextStyle(
+										fontSize: AppFontSize.small,
+										color: SystemPagesTheme.textMuted(isDark),
+									),
+								),
+							)
+							: VerticalScrollWithGradient(
+								gradientHeight: AppSpacings.pMd,
+								backgroundColor: fillColor,
+								itemCount: sortedAlerts.length,
+								separatorHeight: AppSpacings.scale(1),
+								itemBuilder: (context, index) => _AlertItem(
+									key: ValueKey(sortedAlerts[index].id),
+									alert: sortedAlerts[index],
+									controller: controller,
+									devicesService: devicesService,
+									isDark: isDark,
+									localizations: localizations,
+								),
+							),
+					),
 				],
 			),
-			child: sortedAlerts.isEmpty
-				? Center(
-					child: Text(
-						'No active alerts',
-						style: TextStyle(
-							fontSize: AppFontSize.small,
-							color: SystemPagesTheme.textMuted(isDark),
-						),
-					),
-				)
-				: Column(
-					mainAxisSize: MainAxisSize.min,
-					children: sortedAlerts.map((alert) => _AlertItem(
-						key: ValueKey(alert.id),
-						alert: alert,
-						controller: controller,
-						devicesService: devicesService,
-						isDark: isDark,
-						screenService: screenService,
-						localizations: localizations,
-					)).toList(),
-				),
 		);
 	}
 
@@ -1004,7 +1043,6 @@ class _AlertItem extends StatelessWidget {
 	final SecurityOverlayController controller;
 	final DevicesService devicesService;
 	final bool isDark;
-	final ScreenService screenService;
 	final AppLocalizations localizations;
 
 	const _AlertItem({
@@ -1013,7 +1051,6 @@ class _AlertItem extends StatelessWidget {
 		required this.controller,
 		required this.devicesService,
 		required this.isDark,
-		required this.screenService,
 		required this.localizations,
 	});
 
@@ -1023,80 +1060,61 @@ class _AlertItem extends StatelessWidget {
 		final deviceName = alert.sourceDeviceId != null
 			? devicesService.getDevice(alert.sourceDeviceId!)?.name
 			: null;
+		final barColor = severityColor(alert.severity, isDark);
+		final mutedColor = isDark
+			? AppTextColorDark.placeholder
+			: AppTextColorLight.placeholder;
+		final textColor = alert.severity == Severity.critical
+			? (isDark ? AppColorsDark.danger : AppColorsLight.danger)
+			: (isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary);
+
+		final barWidth = AppSpacings.scale(3);
+		final barSpacing = AppSpacings.pMd;
+
+		// Build detail parts: device name, message
+		final detailParts = <String>[
+			if (deviceName != null) deviceName,
+			if (alert.message != null) alert.message!,
+		];
+		final detailText = detailParts.isNotEmpty ? detailParts.join(' · ') : null;
 
 		return Opacity(
 			opacity: isAcked ? 0.5 : 1.0,
-			child: Container(
-				decoration: BoxDecoration(
-					border: Border(
-						top: BorderSide(
-							color: SystemPagesTheme.border(isDark),
-							width: screenService.scale(1),
-						),
-					),
-				),
-				padding: EdgeInsets.symmetric(
-					horizontal: AppSpacings.scale(14),
-					vertical: AppSpacings.scale(10),
-				),
-				child: Row(
-					crossAxisAlignment: CrossAxisAlignment.center,
+			child: Padding(
+				padding: EdgeInsets.symmetric(vertical: AppSpacings.pSm),
+				child: Column(
+					mainAxisSize: MainAxisSize.min,
 					children: [
-						// Color bar
-						Container(
-							width: screenService.scale(3),
-							height: screenService.scale(32),
-							decoration: BoxDecoration(
-								color: severityColor(alert.severity, isDark),
-								borderRadius: BorderRadius.circular(AppSpacings.scale(2)),
-							),
-						),
-						SizedBox(width: AppSpacings.scale(10)),
-						// Body
-						Expanded(
-							child: Column(
-								crossAxisAlignment: CrossAxisAlignment.start,
-								children: [
-									Text(
+						// Row 1: severity bar · alert title · time · ack button
+						Row(
+							children: [
+								Container(
+									width: barWidth,
+									height: AppSpacings.scale(16),
+									decoration: BoxDecoration(
+										color: barColor,
+										borderRadius: BorderRadius.circular(AppSpacings.scale(2)),
+									),
+								),
+								SizedBox(width: barSpacing),
+								Expanded(
+									child: Text(
 										alert.type.displayTitle,
 										style: TextStyle(
 											fontSize: AppFontSize.small,
-											fontWeight: FontWeight.w600,
-											color: SystemPagesTheme.textPrimary(isDark),
-											height: 1.3,
+											fontWeight: FontWeight.w500,
+											color: textColor,
 										),
-										maxLines: 2,
-										overflow: TextOverflow.ellipsis,
 									),
-									if (deviceName != null) ...[
-										SizedBox(height: screenService.scale(1)),
-										Text(
-											deviceName,
-											style: TextStyle(
-												fontSize: AppFontSize.extraSmall,
-												color: SystemPagesTheme.textMuted(isDark),
-											),
-											maxLines: 1,
-											overflow: TextOverflow.ellipsis,
-										),
-									],
-								],
-							),
-						),
-						AppSpacings.spacingMdHorizontal,
-						// Right: time + ack
-						Column(
-							crossAxisAlignment: CrossAxisAlignment.end,
-							mainAxisSize: MainAxisSize.min,
-							children: [
+								),
 								Text(
 									DatetimeUtils.formatTimeAgo(alert.timestamp, localizations),
 									style: TextStyle(
 										fontSize: AppFontSize.extraSmall,
-										color: SystemPagesTheme.textMuted(isDark),
+										color: mutedColor,
 									),
 								),
-								SizedBox(height: AppSpacings.scale(4)),
+								SizedBox(width: AppSpacings.pSm),
 								_AckButton(
 									isDark: isDark,
 									acknowledged: isAcked,
@@ -1106,6 +1124,21 @@ class _AlertItem extends StatelessWidget {
 								),
 							],
 						),
+						// Row 2: (indent) · detail text
+						if (detailText != null)
+							Padding(
+								padding: EdgeInsets.only(left: barWidth + barSpacing, top: AppSpacings.pXs),
+								child: Align(
+									alignment: Alignment.centerLeft,
+									child: Text(
+										detailText,
+										style: TextStyle(
+											fontSize: AppFontSize.extraSmall,
+											color: mutedColor,
+										),
+									),
+								),
+							),
 					],
 				),
 			),
@@ -1126,30 +1159,33 @@ class _AckButton extends StatelessWidget {
 
 	@override
 	Widget build(BuildContext context) {
-		final screenService = locator<ScreenService>();
-
-		return GestureDetector(
-			onTap: acknowledged ? null : onPressed,
-			child: Container(
-				width: screenService.scale(24),
-				height: screenService.scale(24),
-				decoration: BoxDecoration(
-					borderRadius: BorderRadius.circular(AppBorderRadius.base),
-					border: Border.all(
-						color: acknowledged
-							? SystemPagesTheme.success(isDark)
-							: SystemPagesTheme.border(isDark),
-					),
-					color: acknowledged
-						? SystemPagesTheme.successLight(isDark)
-						: Colors.transparent,
+		return Theme(
+			data: Theme.of(context).copyWith(
+				filledButtonTheme: acknowledged
+					? (isDark
+						? AppFilledButtonsDarkThemes.success
+						: AppFilledButtonsLightThemes.success)
+					: (isDark
+						? AppFilledButtonsDarkThemes.neutral
+						: AppFilledButtonsLightThemes.neutral),
+			),
+			child: FilledButton(
+				onPressed: acknowledged ? null : onPressed,
+				style: FilledButton.styleFrom(
+					padding: EdgeInsets.all(AppSpacings.pSm),
+					minimumSize: Size.zero,
+					tapTargetSize: MaterialTapTargetSize.shrinkWrap,
 				),
 				child: Icon(
 					Icons.check,
-					size: screenService.scale(12),
+					size: AppFontSize.small,
 					color: acknowledged
-						? SystemPagesTheme.success(isDark)
-						: SystemPagesTheme.textMuted(isDark),
+						? (isDark
+							? AppFilledButtonsDarkThemes.successForegroundColor
+							: AppFilledButtonsLightThemes.successForegroundColor)
+						: (isDark
+							? AppFilledButtonsDarkThemes.neutralForegroundColor
+							: AppFilledButtonsLightThemes.neutralForegroundColor),
 				),
 			),
 		);
@@ -1164,37 +1200,34 @@ class _AckAllButton extends StatelessWidget {
 
 	@override
 	Widget build(BuildContext context) {
-		final screenService = locator<ScreenService>();
-
-		return GestureDetector(
-			onTap: onPressed,
-			child: Container(
-				padding: EdgeInsets.symmetric(
-					horizontal: AppSpacings.pMd,
-					vertical: AppSpacings.pSm,
+		return Theme(
+			data: Theme.of(context).copyWith(
+				filledButtonTheme: isDark
+					? AppFilledButtonsDarkThemes.neutral
+					: AppFilledButtonsLightThemes.neutral,
+			),
+			child: FilledButton.icon(
+				onPressed: onPressed,
+				style: FilledButton.styleFrom(
+					padding: EdgeInsets.symmetric(
+						horizontal: AppSpacings.pMd,
+						vertical: AppSpacings.pSm,
+					),
+					minimumSize: Size.zero,
+					tapTargetSize: MaterialTapTargetSize.shrinkWrap,
 				),
-				decoration: BoxDecoration(
-					borderRadius: BorderRadius.circular(AppBorderRadius.base),
-					border: Border.all(color: SystemPagesTheme.border(isDark)),
+				icon: Icon(
+					MdiIcons.checkAll,
+					size: AppFontSize.small,
+					color: isDark
+						? AppFilledButtonsDarkThemes.neutralForegroundColor
+						: AppFilledButtonsLightThemes.neutralForegroundColor,
 				),
-				child: Row(
-					mainAxisSize: MainAxisSize.min,
-					children: [
-						Icon(
-							MdiIcons.checkAll,
-							size: screenService.scale(11),
-							color: SystemPagesTheme.textSecondary(isDark),
-						),
-						SizedBox(width: AppSpacings.scale(4)),
-						Text(
-							'Ack All',
-							style: TextStyle(
-								fontSize: AppFontSize.extraSmall,
-								fontWeight: FontWeight.w600,
-								color: SystemPagesTheme.textSecondary(isDark),
-							),
-						),
-					],
+				label: Text(
+					'Ack All',
+					style: TextStyle(
+						fontSize: AppFontSize.extraSmall,
+					),
 				),
 			),
 		);
