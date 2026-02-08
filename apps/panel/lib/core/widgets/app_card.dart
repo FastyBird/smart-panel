@@ -120,9 +120,9 @@ class AppCard extends StatelessWidget {
             ),
           ),
           if (headerLine) ...[
-            AppSpacings.spacingSmVertical,
+            AppSpacings.spacingMdVertical,
             Divider(
-              height: AppSpacings.pMd,
+              height: expanded ? AppSpacings.scale(1) : AppSpacings.pMd,
               thickness: AppSpacings.scale(1),
               color: resolvedBorderColor,
             ),
