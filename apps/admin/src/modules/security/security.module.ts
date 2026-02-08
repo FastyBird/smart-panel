@@ -7,7 +7,8 @@ import { SECURITY_MODULE_NAME } from './security.constants';
 const securityAdminModuleKey: ModuleInjectionKey<IModule> = Symbol('FB-Module-Security');
 
 export default {
-	install: (app: App, _options: IModuleOptions): void => {
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+	install: (app: App, options: IModuleOptions): void => {
 		const modulesManager = injectModulesManager(app);
 
 		modulesManager.addModule(securityAdminModuleKey, {
