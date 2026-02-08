@@ -150,12 +150,16 @@ class _CardSliderState extends State<CardSlider> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final colors = (
-      text: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
-      secondary: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
-    );
+    final textColor =
+        isDark ? AppTextColorDark.primary : AppTextColorLight.primary;
+    final secondaryColor =
+        isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
     final displayLabel =
         widget.enabled ? widget.label : (widget.disabledLabel ?? widget.label);
+
+    final valueText = widget.discrete
+        ? _getCurrentStepLabel()
+        : '${(_displayValue * 100).toInt()}%';
 
     return AnimatedOpacity(
       opacity: widget.enabled ? 1.0 : 0.5,
@@ -163,60 +167,28 @@ class _CardSliderState extends State<CardSlider> {
       child: AppCard(
         color: widget.cardColor,
         borderColor: widget.borderColor,
+        headerIcon: widget.icon,
+        headerTitle: displayLabel.toUpperCase(),
+        headerTitleColor: secondaryColor,
+        headerTrailing: widget.showHeaderValue
+            ? Text(
+                valueText,
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: AppFontSize.extraLarge,
+                  fontWeight: FontWeight.w600,
+                ),
+              )
+            : null,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           spacing: AppSpacings.pMd,
           children: [
-            _buildHeader(context, colors, displayLabel),
             _buildSliderRow(context),
             if (widget.footer != null) widget.footer!,
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildHeader(
-    BuildContext context,
-    ({Color text, Color secondary}) colors,
-    String displayLabel,
-  ) {
-    final valueText = widget.discrete
-        ? _getCurrentStepLabel()
-        : '${(_displayValue * 100).toInt()}%';
-
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Row(
-          spacing: AppSpacings.pSm,
-          children: [
-            if (widget.icon != null)
-              Icon(
-                widget.icon,
-                size: AppFontSize.small,
-                color: colors.secondary,
-              ),
-            Text(
-              displayLabel.toUpperCase(),
-              style: TextStyle(
-                color: colors.secondary,
-                fontSize: AppFontSize.small,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
-        ),
-        if (widget.showHeaderValue)
-          Text(
-            valueText,
-            style: TextStyle(
-              color: colors.text,
-              fontSize: AppFontSize.extraLarge,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-      ],
     );
   }
 

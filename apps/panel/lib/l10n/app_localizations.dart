@@ -5692,6 +5692,336 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count} sensors'**
   String sensors_domain_sensor_count(int count);
+
+  /// Tab label for the entry points section on the security screen
+  ///
+  /// In en, this message translates to:
+  /// **'Entry Points'**
+  String get security_tab_entry_points;
+
+  /// Tab label for the alerts section on the security screen
+  ///
+  /// In en, this message translates to:
+  /// **'Alerts'**
+  String get security_tab_alerts;
+
+  /// Tab label for the events section on the security screen
+  ///
+  /// In en, this message translates to:
+  /// **'Events'**
+  String get security_tab_events;
+
+  /// Header title for the recent events card on the security screen
+  ///
+  /// In en, this message translates to:
+  /// **'Recent Events'**
+  String get security_header_recent_events;
+
+  /// Status ring label when the alarm is in triggered/critical state
+  ///
+  /// In en, this message translates to:
+  /// **'Triggered'**
+  String get security_status_triggered;
+
+  /// Status ring label when there are warning-level alerts
+  ///
+  /// In en, this message translates to:
+  /// **'Warning'**
+  String get security_status_warning;
+
+  /// Status ring label when everything is secure
+  ///
+  /// In en, this message translates to:
+  /// **'Secure'**
+  String get security_status_secure;
+
+  /// Armed state label when the system is disarmed
+  ///
+  /// In en, this message translates to:
+  /// **'Disarmed'**
+  String get security_armed_disarmed;
+
+  /// Armed state label when the system is armed in home mode
+  ///
+  /// In en, this message translates to:
+  /// **'Armed Home'**
+  String get security_armed_home;
+
+  /// Armed state label when the system is armed in away mode
+  ///
+  /// In en, this message translates to:
+  /// **'Armed Away'**
+  String get security_armed_away;
+
+  /// Armed state label when the system is armed in night mode
+  ///
+  /// In en, this message translates to:
+  /// **'Armed Night'**
+  String get security_armed_night;
+
+  /// Armed state label when the armed state is unknown
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown'**
+  String get security_armed_unknown;
+
+  /// Alarm state label when the alarm is idle
+  ///
+  /// In en, this message translates to:
+  /// **'Idle'**
+  String get security_alarm_idle;
+
+  /// Alarm state label when the alarm is pending
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get security_alarm_pending;
+
+  /// Alarm state label when the alarm is triggered
+  ///
+  /// In en, this message translates to:
+  /// **'Triggered'**
+  String get security_alarm_triggered;
+
+  /// Alarm state label when the alarm is silenced
+  ///
+  /// In en, this message translates to:
+  /// **'Silenced'**
+  String get security_alarm_silenced;
+
+  /// Alarm state label when the alarm state is unknown
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown'**
+  String get security_alarm_unknown;
+
+  /// Badge label showing how many entry points are open
+  ///
+  /// In en, this message translates to:
+  /// **'{count} Open'**
+  String security_entry_open_count(int count);
+
+  /// Badge label when all entry points are secure
+  ///
+  /// In en, this message translates to:
+  /// **'All Secure'**
+  String get security_entry_all_secure;
+
+  /// Entry point status when a breach is detected
+  ///
+  /// In en, this message translates to:
+  /// **'Breach'**
+  String get security_entry_status_breach;
+
+  /// Entry point status when the entry point is open
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get security_entry_status_open;
+
+  /// Entry point status when the state is unknown
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown'**
+  String get security_entry_status_unknown;
+
+  /// Entry point status when the entry point is closed
+  ///
+  /// In en, this message translates to:
+  /// **'Closed'**
+  String get security_entry_status_closed;
+
+  /// Status summary when there are no alerts and all entry points are secure
+  ///
+  /// In en, this message translates to:
+  /// **'All clear · {count} entry points secured'**
+  String security_summary_all_clear(int count);
+
+  /// Status summary part showing the number of active alerts
+  ///
+  /// In en, this message translates to:
+  /// **'{count} alerts'**
+  String security_summary_alerts(int count);
+
+  /// Status summary part showing the number of open entry points
+  ///
+  /// In en, this message translates to:
+  /// **'{count} entry points open'**
+  String security_summary_entry_points_open(int count);
+
+  /// Message displayed when there are no active security alerts
+  ///
+  /// In en, this message translates to:
+  /// **'No active alerts'**
+  String get security_no_active_alerts;
+
+  /// Button label to acknowledge all alerts
+  ///
+  /// In en, this message translates to:
+  /// **'Ack All'**
+  String get security_ack_all;
+
+  /// Message displayed when there are no recent security events
+  ///
+  /// In en, this message translates to:
+  /// **'No recent events'**
+  String get security_no_recent_events;
+
+  /// Error message when security events fail to load
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load events'**
+  String get security_events_load_failed;
+
+  /// Button label to retry loading security events
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get security_retry;
+
+  /// Alert type label for intrusion detection
+  ///
+  /// In en, this message translates to:
+  /// **'Intrusion detected'**
+  String get security_alert_type_intrusion;
+
+  /// Alert type label for an open entry point
+  ///
+  /// In en, this message translates to:
+  /// **'Entry open'**
+  String get security_alert_type_entry_open;
+
+  /// Alert type label for smoke detection
+  ///
+  /// In en, this message translates to:
+  /// **'Smoke detected'**
+  String get security_alert_type_smoke;
+
+  /// Alert type label for carbon monoxide detection
+  ///
+  /// In en, this message translates to:
+  /// **'CO detected'**
+  String get security_alert_type_co;
+
+  /// Alert type label for water leak detection
+  ///
+  /// In en, this message translates to:
+  /// **'Water leak'**
+  String get security_alert_type_water_leak;
+
+  /// Alert type label for gas detection
+  ///
+  /// In en, this message translates to:
+  /// **'Gas detected'**
+  String get security_alert_type_gas;
+
+  /// Alert type label for tamper detection
+  ///
+  /// In en, this message translates to:
+  /// **'Tamper detected'**
+  String get security_alert_type_tamper;
+
+  /// Alert type label for a system fault
+  ///
+  /// In en, this message translates to:
+  /// **'System fault'**
+  String get security_alert_type_fault;
+
+  /// Alert type label for a device going offline
+  ///
+  /// In en, this message translates to:
+  /// **'Device offline'**
+  String get security_alert_type_device_offline;
+
+  /// Alert type label when the alert type is unknown
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown'**
+  String get security_alert_type_unknown;
+
+  /// Short event name for an alert being raised
+  ///
+  /// In en, this message translates to:
+  /// **'Alert Raised'**
+  String get security_event_alert_raised;
+
+  /// Short event name for an alert being resolved
+  ///
+  /// In en, this message translates to:
+  /// **'Alert Resolved'**
+  String get security_event_alert_resolved;
+
+  /// Short event name for an alert being acknowledged
+  ///
+  /// In en, this message translates to:
+  /// **'Alert Acknowledged'**
+  String get security_event_alert_acknowledged;
+
+  /// Short event name for an alarm state change
+  ///
+  /// In en, this message translates to:
+  /// **'Alarm State Changed'**
+  String get security_event_alarm_state_changed;
+
+  /// Short event name for an arming mode change
+  ///
+  /// In en, this message translates to:
+  /// **'Arming Mode Changed'**
+  String get security_event_arming_mode_changed;
+
+  /// Full event title for an alert being raised
+  ///
+  /// In en, this message translates to:
+  /// **'Alert raised: {alertType}'**
+  String security_event_title_alert_raised(String alertType);
+
+  /// Full event title for an alert being resolved
+  ///
+  /// In en, this message translates to:
+  /// **'Alert resolved: {alertType}'**
+  String security_event_title_alert_resolved(String alertType);
+
+  /// Full event title for an alert being acknowledged
+  ///
+  /// In en, this message translates to:
+  /// **'Alert acknowledged: {alertType}'**
+  String security_event_title_alert_acknowledged(String alertType);
+
+  /// Full event title for an alarm state change with from/to states
+  ///
+  /// In en, this message translates to:
+  /// **'Alarm state changed: {from} → {to}'**
+  String security_event_title_alarm_state_changed(String from, String to);
+
+  /// Full event title for an arming mode change with from/to states
+  ///
+  /// In en, this message translates to:
+  /// **'Arming mode changed: {from} → {to}'**
+  String security_event_title_arming_mode_changed(String from, String to);
+
+  /// State transition format showing from and to states
+  ///
+  /// In en, this message translates to:
+  /// **'{from} → {to}'**
+  String security_state_transition(String from, String to);
+
+  /// Label for an unknown state in state transitions
+  ///
+  /// In en, this message translates to:
+  /// **'unknown'**
+  String get security_state_unknown;
+
+  /// Overlay title when the alarm is triggered but there is no top alert
+  ///
+  /// In en, this message translates to:
+  /// **'Alarm triggered'**
+  String get security_overlay_alarm_triggered;
+
+  /// Default overlay title when no specific alert type is available
+  ///
+  /// In en, this message translates to:
+  /// **'Security alert'**
+  String get security_overlay_default_title;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

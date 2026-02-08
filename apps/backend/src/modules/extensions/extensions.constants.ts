@@ -7,6 +7,7 @@ import { INFLUXDB_MODULE_NAME } from '../influxdb/influxdb.constants';
 import { INTENTS_MODULE_NAME } from '../intents/intents.constants';
 import { MDNS_MODULE_NAME } from '../mdns/mdns.constants';
 import { SCENES_MODULE_NAME } from '../scenes/scenes.constants';
+import { SECURITY_MODULE_NAME } from '../security/security.constants';
 import { SPACES_MODULE_NAME } from '../spaces/spaces.constants';
 import { SYSTEM_MODULE_NAME } from '../system/system.constants';
 import { USERS_MODULE_NAME } from '../users/users.constants';
@@ -41,6 +42,7 @@ export const NON_TOGGLEABLE_MODULES: readonly string[] = [
 	USERS_MODULE_NAME,
 	WEATHER_MODULE_NAME,
 	INTENTS_MODULE_NAME,
+	SECURITY_MODULE_NAME,
 ] as const;
 
 export enum ExtensionKind {

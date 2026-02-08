@@ -1,28 +1,23 @@
 import { Injectable, Logger } from '@nestjs/common';
 
-import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
+import { PropertyCategory } from '../../devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity } from '../../devices/entities/devices.entity';
 import { PropertyValueState } from '../../devices/models/property-value-state.model';
 import { DevicesService } from '../../devices/services/devices.service';
 import { SecurityAlert, SecuritySignal } from '../contracts/security-signal.type';
 import { SecurityStateProviderInterface } from '../contracts/security-state-provider.interface';
-import { SEVERITY_RANK, SecurityAlertType, Severity } from '../security.constants';
-
-const CHANNEL_ALERT_MAP: Partial<Record<ChannelCategory, { type: SecurityAlertType; severity: Severity }>> = {
-	[ChannelCategory.SMOKE]: { type: SecurityAlertType.SMOKE, severity: Severity.CRITICAL },
-	[ChannelCategory.CARBON_MONOXIDE]: { type: SecurityAlertType.CO, severity: Severity.CRITICAL },
-	[ChannelCategory.LEAK]: { type: SecurityAlertType.WATER_LEAK, severity: Severity.CRITICAL },
-	[ChannelCategory.GAS]: { type: SecurityAlertType.GAS, severity: Severity.CRITICAL },
-	[ChannelCategory.MOTION]: { type: SecurityAlertType.INTRUSION, severity: Severity.WARNING },
-	[ChannelCategory.OCCUPANCY]: { type: SecurityAlertType.INTRUSION, severity: Severity.WARNING },
-	[ChannelCategory.CONTACT]: { type: SecurityAlertType.ENTRY_OPEN, severity: Severity.INFO },
-};
+import { SEVERITY_RANK, Severity } from '../security.constants';
+import { DetectionRulesLoaderService } from '../spec/detection-rules-loader.service';
+import { ResolvedPropertyCheck, ResolvedSensorRule } from '../spec/detection-rules.types';
 
 @Injectable()
 export class SecuritySensorsProvider implements SecurityStateProviderInterface {
 	private readonly logger = new Logger(SecuritySensorsProvider.name);
 
-	constructor(private readonly devicesService: DevicesService) {}
+	constructor(
+		private readonly devicesService: DevicesService,
+		private readonly detectionRulesLoader: DetectionRulesLoaderService,
+	) {}
 
 	getKey(): string {
 		return 'security_sensors';
@@ -45,12 +40,11 @@ export class SecuritySensorsProvider implements SecurityStateProviderInterface {
 
 	private async buildSignals(): Promise<SecuritySignal> {
 		const devices = await this.devicesService.findAll();
-
-		const sensorDevices = devices.filter((device) => device.category === DeviceCategory.SENSOR);
+		const rules = this.detectionRulesLoader.getSensorRules();
 
 		const alerts: SecurityAlert[] = [];
 
-		for (const device of sensorDevices) {
+		for (const device of devices) {
 			const channels = device.channels ?? [];
 
 			for (const channel of channels) {
@@ -58,21 +52,21 @@ export class SecuritySensorsProvider implements SecurityStateProviderInterface {
 					continue;
 				}
 
-				const alertDef = CHANNEL_ALERT_MAP[channel.category];
+				const rule = rules.get(channel.category);
 
-				if (!alertDef) {
+				if (!rule) {
 					continue;
 				}
 
-				const detectedResult = this.getDetectedState(channel);
+				const result = this.evaluateRule(channel, rule);
 
-				if (detectedResult.triggered) {
+				if (result.triggered) {
 					alerts.push({
-						id: `sensor:${device.id}:${alertDef.type}`,
-						type: alertDef.type,
-						severity: alertDef.severity,
+						id: `sensor:${device.id}:${rule.alertType}`,
+						type: rule.alertType,
+						severity: rule.severity,
 						sourceDeviceId: device.id,
-						timestamp: detectedResult.lastUpdated ?? new Date().toISOString(),
+						timestamp: result.lastUpdated ?? new Date().toISOString(),
 						acknowledged: false,
 					});
 				}
@@ -117,19 +111,18 @@ export class SecuritySensorsProvider implements SecurityStateProviderInterface {
 		};
 	}
 
-	private getDetectedState(channel: ChannelEntity): { triggered: boolean; lastUpdated: string | null } {
-		const properties = channel.properties ?? [];
+	private evaluateRule(
+		channel: ChannelEntity,
+		rule: ResolvedSensorRule,
+	): { triggered: boolean; lastUpdated: string | null } {
+		for (const check of rule.properties) {
+			const prop = this.findProperty(channel, check.property);
 
-		for (const property of properties) {
-			if (!(property instanceof ChannelPropertyEntity)) {
+			if (!prop) {
 				continue;
 			}
 
-			if (property.category !== PropertyCategory.DETECTED) {
-				continue;
-			}
-
-			const valueState = property.value;
+			const valueState = prop.value;
 
 			if (valueState == null) {
 				continue;
@@ -138,11 +131,50 @@ export class SecuritySensorsProvider implements SecurityStateProviderInterface {
 			const actual = valueState instanceof PropertyValueState ? valueState.value : valueState;
 			const lastUpdated = valueState instanceof PropertyValueState ? (valueState.lastUpdated ?? null) : null;
 
-			if (actual === true || actual === 'true' || actual === 1 || actual === '1') {
+			if (this.matchesCondition(actual, check)) {
 				return { triggered: true, lastUpdated };
 			}
 		}
 
 		return { triggered: false, lastUpdated: null };
+	}
+
+	private findProperty(channel: ChannelEntity, category: PropertyCategory): ChannelPropertyEntity | null {
+		const properties = channel.properties ?? [];
+
+		for (const property of properties) {
+			if (!(property instanceof ChannelPropertyEntity)) {
+				continue;
+			}
+
+			if (property.category === category) {
+				return property;
+			}
+		}
+
+		return null;
+	}
+
+	private matchesCondition(actual: unknown, check: ResolvedPropertyCheck): boolean {
+		switch (check.operator) {
+			case 'eq':
+				if (typeof check.value === 'boolean') {
+					const truthy = actual === true || actual === 'true' || actual === 1 || actual === '1';
+
+					return check.value ? truthy : !truthy;
+				}
+
+				return actual === check.value || `${actual as string}` === `${check.value as string}`;
+			case 'gt':
+				return typeof actual === 'number' ? actual > (check.value as number) : Number(actual) > (check.value as number);
+			case 'gte':
+				return typeof actual === 'number'
+					? actual >= (check.value as number)
+					: Number(actual) >= (check.value as number);
+			case 'in':
+				return Array.isArray(check.value) && check.value.includes(`${actual as string}`);
+			default:
+				return false;
+		}
 	}
 }

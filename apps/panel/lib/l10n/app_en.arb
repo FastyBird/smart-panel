@@ -3501,5 +3501,297 @@
         "type": "int"
       }
     }
+  },
+
+  "security_tab_entry_points": "Entry Points",
+  "@security_tab_entry_points": {
+    "description": "Tab label for the entry points section on the security screen"
+  },
+  "security_tab_alerts": "Alerts",
+  "@security_tab_alerts": {
+    "description": "Tab label for the alerts section on the security screen"
+  },
+  "security_tab_events": "Events",
+  "@security_tab_events": {
+    "description": "Tab label for the events section on the security screen"
+  },
+  "security_header_recent_events": "Recent Events",
+  "@security_header_recent_events": {
+    "description": "Header title for the recent events card on the security screen"
+  },
+
+  "security_status_triggered": "Triggered",
+  "@security_status_triggered": {
+    "description": "Status ring label when the alarm is in triggered/critical state"
+  },
+  "security_status_warning": "Warning",
+  "@security_status_warning": {
+    "description": "Status ring label when there are warning-level alerts"
+  },
+  "security_status_secure": "Secure",
+  "@security_status_secure": {
+    "description": "Status ring label when everything is secure"
+  },
+
+  "security_armed_disarmed": "Disarmed",
+  "@security_armed_disarmed": {
+    "description": "Armed state label when the system is disarmed"
+  },
+  "security_armed_home": "Armed Home",
+  "@security_armed_home": {
+    "description": "Armed state label when the system is armed in home mode"
+  },
+  "security_armed_away": "Armed Away",
+  "@security_armed_away": {
+    "description": "Armed state label when the system is armed in away mode"
+  },
+  "security_armed_night": "Armed Night",
+  "@security_armed_night": {
+    "description": "Armed state label when the system is armed in night mode"
+  },
+  "security_armed_unknown": "Unknown",
+  "@security_armed_unknown": {
+    "description": "Armed state label when the armed state is unknown"
+  },
+
+  "security_alarm_idle": "Idle",
+  "@security_alarm_idle": {
+    "description": "Alarm state label when the alarm is idle"
+  },
+  "security_alarm_pending": "Pending",
+  "@security_alarm_pending": {
+    "description": "Alarm state label when the alarm is pending"
+  },
+  "security_alarm_triggered": "Triggered",
+  "@security_alarm_triggered": {
+    "description": "Alarm state label when the alarm is triggered"
+  },
+  "security_alarm_silenced": "Silenced",
+  "@security_alarm_silenced": {
+    "description": "Alarm state label when the alarm is silenced"
+  },
+  "security_alarm_unknown": "Unknown",
+  "@security_alarm_unknown": {
+    "description": "Alarm state label when the alarm state is unknown"
+  },
+
+  "security_entry_open_count": "{count} Open",
+  "@security_entry_open_count": {
+    "description": "Badge label showing how many entry points are open",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "security_entry_all_secure": "All Secure",
+  "@security_entry_all_secure": {
+    "description": "Badge label when all entry points are secure"
+  },
+  "security_entry_status_breach": "Breach",
+  "@security_entry_status_breach": {
+    "description": "Entry point status when a breach is detected"
+  },
+  "security_entry_status_open": "Open",
+  "@security_entry_status_open": {
+    "description": "Entry point status when the entry point is open"
+  },
+  "security_entry_status_unknown": "Unknown",
+  "@security_entry_status_unknown": {
+    "description": "Entry point status when the state is unknown"
+  },
+  "security_entry_status_closed": "Closed",
+  "@security_entry_status_closed": {
+    "description": "Entry point status when the entry point is closed"
+  },
+
+  "security_summary_all_clear": "All clear · {count} entry points secured",
+  "@security_summary_all_clear": {
+    "description": "Status summary when there are no alerts and all entry points are secure",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "security_summary_alerts": "{count} alerts",
+  "@security_summary_alerts": {
+    "description": "Status summary part showing the number of active alerts",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "security_summary_entry_points_open": "{count} entry points open",
+  "@security_summary_entry_points_open": {
+    "description": "Status summary part showing the number of open entry points",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+
+  "security_no_active_alerts": "No active alerts",
+  "@security_no_active_alerts": {
+    "description": "Message displayed when there are no active security alerts"
+  },
+  "security_ack_all": "Ack All",
+  "@security_ack_all": {
+    "description": "Button label to acknowledge all alerts"
+  },
+
+  "security_no_recent_events": "No recent events",
+  "@security_no_recent_events": {
+    "description": "Message displayed when there are no recent security events"
+  },
+  "security_events_load_failed": "Failed to load events",
+  "@security_events_load_failed": {
+    "description": "Error message when security events fail to load"
+  },
+  "security_retry": "Retry",
+  "@security_retry": {
+    "description": "Button label to retry loading security events"
+  },
+
+  "security_alert_type_intrusion": "Intrusion detected",
+  "@security_alert_type_intrusion": {
+    "description": "Alert type label for intrusion detection"
+  },
+  "security_alert_type_entry_open": "Entry open",
+  "@security_alert_type_entry_open": {
+    "description": "Alert type label for an open entry point"
+  },
+  "security_alert_type_smoke": "Smoke detected",
+  "@security_alert_type_smoke": {
+    "description": "Alert type label for smoke detection"
+  },
+  "security_alert_type_co": "CO detected",
+  "@security_alert_type_co": {
+    "description": "Alert type label for carbon monoxide detection"
+  },
+  "security_alert_type_water_leak": "Water leak",
+  "@security_alert_type_water_leak": {
+    "description": "Alert type label for water leak detection"
+  },
+  "security_alert_type_gas": "Gas detected",
+  "@security_alert_type_gas": {
+    "description": "Alert type label for gas detection"
+  },
+  "security_alert_type_tamper": "Tamper detected",
+  "@security_alert_type_tamper": {
+    "description": "Alert type label for tamper detection"
+  },
+  "security_alert_type_fault": "System fault",
+  "@security_alert_type_fault": {
+    "description": "Alert type label for a system fault"
+  },
+  "security_alert_type_device_offline": "Device offline",
+  "@security_alert_type_device_offline": {
+    "description": "Alert type label for a device going offline"
+  },
+  "security_alert_type_unknown": "Unknown",
+  "@security_alert_type_unknown": {
+    "description": "Alert type label when the alert type is unknown"
+  },
+
+  "security_event_alert_raised": "Alert Raised",
+  "@security_event_alert_raised": {
+    "description": "Short event name for an alert being raised"
+  },
+  "security_event_alert_resolved": "Alert Resolved",
+  "@security_event_alert_resolved": {
+    "description": "Short event name for an alert being resolved"
+  },
+  "security_event_alert_acknowledged": "Alert Acknowledged",
+  "@security_event_alert_acknowledged": {
+    "description": "Short event name for an alert being acknowledged"
+  },
+  "security_event_alarm_state_changed": "Alarm State Changed",
+  "@security_event_alarm_state_changed": {
+    "description": "Short event name for an alarm state change"
+  },
+  "security_event_arming_mode_changed": "Arming Mode Changed",
+  "@security_event_arming_mode_changed": {
+    "description": "Short event name for an arming mode change"
+  },
+
+  "security_event_title_alert_raised": "Alert raised: {alertType}",
+  "@security_event_title_alert_raised": {
+    "description": "Full event title for an alert being raised",
+    "placeholders": {
+      "alertType": {
+        "type": "String"
+      }
+    }
+  },
+  "security_event_title_alert_resolved": "Alert resolved: {alertType}",
+  "@security_event_title_alert_resolved": {
+    "description": "Full event title for an alert being resolved",
+    "placeholders": {
+      "alertType": {
+        "type": "String"
+      }
+    }
+  },
+  "security_event_title_alert_acknowledged": "Alert acknowledged: {alertType}",
+  "@security_event_title_alert_acknowledged": {
+    "description": "Full event title for an alert being acknowledged",
+    "placeholders": {
+      "alertType": {
+        "type": "String"
+      }
+    }
+  },
+  "security_event_title_alarm_state_changed": "Alarm state changed: {from} → {to}",
+  "@security_event_title_alarm_state_changed": {
+    "description": "Full event title for an alarm state change with from/to states",
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "security_event_title_arming_mode_changed": "Arming mode changed: {from} → {to}",
+  "@security_event_title_arming_mode_changed": {
+    "description": "Full event title for an arming mode change with from/to states",
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+
+  "security_state_transition": "{from} → {to}",
+  "@security_state_transition": {
+    "description": "State transition format showing from and to states",
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "security_state_unknown": "unknown",
+  "@security_state_unknown": {
+    "description": "Label for an unknown state in state transitions"
+  },
+
+  "security_overlay_alarm_triggered": "Alarm triggered",
+  "@security_overlay_alarm_triggered": {
+    "description": "Overlay title when the alarm is triggered but there is no top alert"
+  },
+  "security_overlay_default_title": "Security alert",
+  "@security_overlay_default_title": {
+    "description": "Default overlay title when no specific alert type is available"
   }
 }

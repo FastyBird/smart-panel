@@ -3021,4 +3021,189 @@ class AppLocalizationsCs extends AppLocalizations {
   String sensors_domain_sensor_count(int count) {
     return '$count senzorů';
   }
+
+  @override
+  String get security_tab_entry_points => 'Vstupní body';
+
+  @override
+  String get security_tab_alerts => 'Upozornění';
+
+  @override
+  String get security_tab_events => 'Události';
+
+  @override
+  String get security_header_recent_events => 'Nedávné události';
+
+  @override
+  String get security_status_triggered => 'Spuštěno';
+
+  @override
+  String get security_status_warning => 'Varování';
+
+  @override
+  String get security_status_secure => 'Zabezpečeno';
+
+  @override
+  String get security_armed_disarmed => 'Deaktivováno';
+
+  @override
+  String get security_armed_home => 'Aktivní doma';
+
+  @override
+  String get security_armed_away => 'Aktivní pryč';
+
+  @override
+  String get security_armed_night => 'Aktivní noc';
+
+  @override
+  String get security_armed_unknown => 'Neznámý';
+
+  @override
+  String get security_alarm_idle => 'Klidový';
+
+  @override
+  String get security_alarm_pending => 'Čekající';
+
+  @override
+  String get security_alarm_triggered => 'Spuštěno';
+
+  @override
+  String get security_alarm_silenced => 'Ztlumeno';
+
+  @override
+  String get security_alarm_unknown => 'Neznámý';
+
+  @override
+  String security_entry_open_count(int count) {
+    return '$count otevřeno';
+  }
+
+  @override
+  String get security_entry_all_secure => 'Vše zabezpečeno';
+
+  @override
+  String get security_entry_status_breach => 'Průnik';
+
+  @override
+  String get security_entry_status_open => 'Otevřeno';
+
+  @override
+  String get security_entry_status_unknown => 'Neznámý';
+
+  @override
+  String get security_entry_status_closed => 'Zavřeno';
+
+  @override
+  String security_summary_all_clear(int count) {
+    return 'Vše v pořádku · $count vstupních bodů zabezpečeno';
+  }
+
+  @override
+  String security_summary_alerts(int count) {
+    return '$count upozornění';
+  }
+
+  @override
+  String security_summary_entry_points_open(int count) {
+    return '$count vstupních bodů otevřeno';
+  }
+
+  @override
+  String get security_no_active_alerts => 'Žádná aktivní upozornění';
+
+  @override
+  String get security_ack_all => 'Potvrdit vše';
+
+  @override
+  String get security_no_recent_events => 'Žádné nedávné události';
+
+  @override
+  String get security_events_load_failed => 'Nepodařilo se načíst události';
+
+  @override
+  String get security_retry => 'Opakovat';
+
+  @override
+  String get security_alert_type_intrusion => 'Detekován průnik';
+
+  @override
+  String get security_alert_type_entry_open => 'Vstup otevřen';
+
+  @override
+  String get security_alert_type_smoke => 'Detekován kouř';
+
+  @override
+  String get security_alert_type_co => 'Detekován CO';
+
+  @override
+  String get security_alert_type_water_leak => 'Únik vody';
+
+  @override
+  String get security_alert_type_gas => 'Detekován plyn';
+
+  @override
+  String get security_alert_type_tamper => 'Detekována manipulace';
+
+  @override
+  String get security_alert_type_fault => 'Chyba systému';
+
+  @override
+  String get security_alert_type_device_offline => 'Zařízení offline';
+
+  @override
+  String get security_alert_type_unknown => 'Neznámý';
+
+  @override
+  String get security_event_alert_raised => 'Upozornění vyvoláno';
+
+  @override
+  String get security_event_alert_resolved => 'Upozornění vyřešeno';
+
+  @override
+  String get security_event_alert_acknowledged => 'Upozornění potvrzeno';
+
+  @override
+  String get security_event_alarm_state_changed => 'Stav alarmu změněn';
+
+  @override
+  String get security_event_arming_mode_changed => 'Režim zabezpečení změněn';
+
+  @override
+  String security_event_title_alert_raised(String alertType) {
+    return 'Upozornění vyvoláno: $alertType';
+  }
+
+  @override
+  String security_event_title_alert_resolved(String alertType) {
+    return 'Upozornění vyřešeno: $alertType';
+  }
+
+  @override
+  String security_event_title_alert_acknowledged(String alertType) {
+    return 'Upozornění potvrzeno: $alertType';
+  }
+
+  @override
+  String security_event_title_alarm_state_changed(String from, String to) {
+    return 'Stav alarmu změněn: $from → $to';
+  }
+
+  @override
+  String security_event_title_arming_mode_changed(String from, String to) {
+    return 'Režim zabezpečení změněn: $from → $to';
+  }
+
+  @override
+  String security_state_transition(String from, String to) {
+    return '$from → $to';
+  }
+
+  @override
+  String get security_state_unknown => 'neznámý';
+
+  @override
+  String get security_overlay_alarm_triggered => 'Alarm spuštěn';
+
+  @override
+  String get security_overlay_default_title => 'Bezpečnostní upozornění';
 }

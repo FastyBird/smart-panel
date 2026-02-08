@@ -99,15 +99,4 @@ enum SecurityAlertType {
 		};
 	}
 
-	String get displayTitle => switch (this) {
-		SecurityAlertType.intrusion => 'Intrusion detected',
-		SecurityAlertType.entryOpen => 'Entry open',
-		SecurityAlertType.smoke => 'Smoke detected',
-		SecurityAlertType.co => 'CO detected',
-		SecurityAlertType.waterLeak => 'Water leak',
-		SecurityAlertType.gas => 'Gas detected',
-		SecurityAlertType.tamper => 'Tamper detected',
-		SecurityAlertType.fault => 'System fault',
-		SecurityAlertType.deviceOffline => 'Device offline',
-	};
 }

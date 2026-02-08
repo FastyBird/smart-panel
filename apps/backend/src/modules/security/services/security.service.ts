@@ -113,14 +113,14 @@ export class SecurityService {
 			const alertTime = new Date(alert.timestamp);
 			const alertTimeValid = !Number.isNaN(alertTime.getTime());
 
-			// Keep lastEventAt in sync — do NOT reset acknowledged based on timestamp
-			// changes. Stale ack records are cleaned up when alerts disappear, so a
-			// returning alert will naturally start as unacknowledged.
-			if (alertTimeValid) {
-				await this.ackService.updateLastEventAt(alert.id, alertTime);
+			if (alertTimeValid && (record.lastEventAt == null || alertTime > record.lastEventAt)) {
+				// New event occurrence — reset acknowledgement and update timestamp
+				await this.ackService.resetAcknowledgement(alert.id, alertTime);
+				alert.acknowledged = false;
+			} else {
+				// Same or older event — apply stored ack state
+				alert.acknowledged = record.acknowledged;
 			}
-
-			alert.acknowledged = record.acknowledged;
 		}
 	}
 

@@ -1,8 +1,12 @@
+import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/l10n/app_localizations_en.dart';
 import 'package:fastybird_smart_panel/modules/security/models/security_alert.dart';
 import 'package:fastybird_smart_panel/modules/security/models/security_status.dart';
 import 'package:fastybird_smart_panel/modules/security/services/security_overlay_controller.dart';
 import 'package:fastybird_smart_panel/modules/security/types/security.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+final AppLocalizations _localizations = AppLocalizationsEn();
 
 SecurityAlertModel _makeAlert({
 	required String id,
@@ -439,14 +443,14 @@ void main() {
 					_makeAlert(id: 'a', type: SecurityAlertType.co),
 				],
 			));
-			expect(controller.overlayTitle, 'CO detected');
+			expect(controller.overlayTitle(_localizations), 'CO detected');
 		});
 
 		test('overlayTitle shows alarm triggered when no alerts', () {
 			controller.updateStatus(_makeStatus(
 				alarmState: AlarmState.triggered,
 			));
-			expect(controller.overlayTitle, 'Alarm triggered');
+			expect(controller.overlayTitle(_localizations), 'Alarm triggered');
 		});
 
 		test('overlayAlerts returns max 3', () {
@@ -883,6 +887,89 @@ void main() {
 
 			final result = await controller.acknowledgeCurrentAlerts();
 			expect(result, false);
+		});
+	});
+
+	group('SecurityOverlayController - offline/online lifecycle', () {
+		late SecurityOverlayController controller;
+
+		setUp(() {
+			controller = SecurityOverlayController();
+		});
+
+		tearDown(() {
+			controller.dispose();
+		});
+
+		test('offline hides overlay; coming back online restores it when alerts unacked', () async {
+			// Critical alert → overlay showing
+			controller.updateStatus(_makeStatus(
+				hasCriticalAlert: true,
+				activeAlerts: [_makeAlert(id: 'a')],
+			));
+			expect(controller.shouldShowOverlay, true);
+
+			// Go offline → overlay hidden
+			controller.setConnectionOffline(true);
+			expect(controller.shouldShowOverlay, false);
+
+			// Come back online → overlay restored (alerts still unacked)
+			controller.setConnectionOffline(false);
+			expect(controller.shouldShowOverlay, true);
+
+			// Acknowledge alerts → overlay hidden
+			await controller.acknowledgeCurrentAlerts();
+			expect(controller.shouldShowOverlay, false);
+		});
+
+		test('acknowledge is blocked while offline but succeeds after reconnection', () async {
+			// Critical alert → overlay showing
+			controller.updateStatus(_makeStatus(
+				hasCriticalAlert: true,
+				activeAlerts: [_makeAlert(id: 'a')],
+			));
+			expect(controller.shouldShowOverlay, true);
+
+			// Go offline → acknowledge returns false, alert stays unacked
+			controller.setConnectionOffline(true);
+			final result = await controller.acknowledgeCurrentAlerts();
+			expect(result, false);
+			expect(controller.isAlertAcknowledged('a'), false);
+
+			// Come back online → acknowledge succeeds
+			controller.setConnectionOffline(false);
+			final result2 = await controller.acknowledgeCurrentAlerts();
+			expect(result2, true);
+			expect(controller.shouldShowOverlay, false);
+		});
+
+		test('offline hides overlay; online resumes if new unacked alert arrived', () async {
+			// Critical alert A, acknowledge it → overlay hidden
+			controller.updateStatus(_makeStatus(
+				hasCriticalAlert: true,
+				activeAlerts: [_makeAlert(id: 'a')],
+			));
+			await controller.acknowledgeCurrentAlerts();
+			expect(controller.shouldShowOverlay, false);
+
+			// Go offline
+			controller.setConnectionOffline(true);
+
+			// Update status with new unacked alert B (simulating cached/queued data)
+			controller.updateStatus(_makeStatus(
+				hasCriticalAlert: true,
+				activeAlerts: [
+					_makeAlert(id: 'a', acknowledged: true),
+					_makeAlert(id: 'b', acknowledged: false),
+				],
+			));
+
+			// Still offline → overlay hidden regardless of alerts
+			expect(controller.shouldShowOverlay, false);
+
+			// Come back online → overlay should show (alert B is unacked)
+			controller.setConnectionOffline(false);
+			expect(controller.shouldShowOverlay, true);
 		});
 	});
 

@@ -981,5 +981,73 @@
   "sensors_domain_avg_temperature": "Prům. teplota",
   "sensors_domain_avg_humidity": "Prům. vlhkost",
   "sensors_domain_all_sensors": "Všechny senzory",
-  "sensors_domain_sensor_count": "{count} senzorů"
+  "sensors_domain_sensor_count": "{count} senzorů",
+
+  "security_tab_entry_points": "Vstupní body",
+  "security_tab_alerts": "Upozornění",
+  "security_tab_events": "Události",
+  "security_header_recent_events": "Nedávné události",
+
+  "security_status_triggered": "Spuštěno",
+  "security_status_warning": "Varování",
+  "security_status_secure": "Zabezpečeno",
+
+  "security_armed_disarmed": "Deaktivováno",
+  "security_armed_home": "Aktivní doma",
+  "security_armed_away": "Aktivní pryč",
+  "security_armed_night": "Aktivní noc",
+  "security_armed_unknown": "Neznámý",
+
+  "security_alarm_idle": "Klidový",
+  "security_alarm_pending": "Čekající",
+  "security_alarm_triggered": "Spuštěno",
+  "security_alarm_silenced": "Ztlumeno",
+  "security_alarm_unknown": "Neznámý",
+
+  "security_entry_open_count": "{count} otevřeno",
+  "security_entry_all_secure": "Vše zabezpečeno",
+  "security_entry_status_breach": "Průnik",
+  "security_entry_status_open": "Otevřeno",
+  "security_entry_status_unknown": "Neznámý",
+  "security_entry_status_closed": "Zavřeno",
+
+  "security_summary_all_clear": "Vše v pořádku · {count} vstupních bodů zabezpečeno",
+  "security_summary_alerts": "{count} upozornění",
+  "security_summary_entry_points_open": "{count} vstupních bodů otevřeno",
+
+  "security_no_active_alerts": "Žádná aktivní upozornění",
+  "security_ack_all": "Potvrdit vše",
+
+  "security_no_recent_events": "Žádné nedávné události",
+  "security_events_load_failed": "Nepodařilo se načíst události",
+  "security_retry": "Opakovat",
+
+  "security_alert_type_intrusion": "Detekován průnik",
+  "security_alert_type_entry_open": "Vstup otevřen",
+  "security_alert_type_smoke": "Detekován kouř",
+  "security_alert_type_co": "Detekován CO",
+  "security_alert_type_water_leak": "Únik vody",
+  "security_alert_type_gas": "Detekován plyn",
+  "security_alert_type_tamper": "Detekována manipulace",
+  "security_alert_type_fault": "Chyba systému",
+  "security_alert_type_device_offline": "Zařízení offline",
+  "security_alert_type_unknown": "Neznámý",
+
+  "security_event_alert_raised": "Upozornění vyvoláno",
+  "security_event_alert_resolved": "Upozornění vyřešeno",
+  "security_event_alert_acknowledged": "Upozornění potvrzeno",
+  "security_event_alarm_state_changed": "Stav alarmu změněn",
+  "security_event_arming_mode_changed": "Režim zabezpečení změněn",
+
+  "security_event_title_alert_raised": "Upozornění vyvoláno: {alertType}",
+  "security_event_title_alert_resolved": "Upozornění vyřešeno: {alertType}",
+  "security_event_title_alert_acknowledged": "Upozornění potvrzeno: {alertType}",
+  "security_event_title_alarm_state_changed": "Stav alarmu změněn: {from} → {to}",
+  "security_event_title_arming_mode_changed": "Režim zabezpečení změněn: {from} → {to}",
+
+  "security_state_transition": "{from} → {to}",
+  "security_state_unknown": "neznámý",
+
+  "security_overlay_alarm_triggered": "Alarm spuštěn",
+  "security_overlay_default_title": "Bezpečnostní upozornění"
 }

@@ -3004,4 +3004,189 @@ class AppLocalizationsEn extends AppLocalizations {
   String sensors_domain_sensor_count(int count) {
     return '$count sensors';
   }
+
+  @override
+  String get security_tab_entry_points => 'Entry Points';
+
+  @override
+  String get security_tab_alerts => 'Alerts';
+
+  @override
+  String get security_tab_events => 'Events';
+
+  @override
+  String get security_header_recent_events => 'Recent Events';
+
+  @override
+  String get security_status_triggered => 'Triggered';
+
+  @override
+  String get security_status_warning => 'Warning';
+
+  @override
+  String get security_status_secure => 'Secure';
+
+  @override
+  String get security_armed_disarmed => 'Disarmed';
+
+  @override
+  String get security_armed_home => 'Armed Home';
+
+  @override
+  String get security_armed_away => 'Armed Away';
+
+  @override
+  String get security_armed_night => 'Armed Night';
+
+  @override
+  String get security_armed_unknown => 'Unknown';
+
+  @override
+  String get security_alarm_idle => 'Idle';
+
+  @override
+  String get security_alarm_pending => 'Pending';
+
+  @override
+  String get security_alarm_triggered => 'Triggered';
+
+  @override
+  String get security_alarm_silenced => 'Silenced';
+
+  @override
+  String get security_alarm_unknown => 'Unknown';
+
+  @override
+  String security_entry_open_count(int count) {
+    return '$count Open';
+  }
+
+  @override
+  String get security_entry_all_secure => 'All Secure';
+
+  @override
+  String get security_entry_status_breach => 'Breach';
+
+  @override
+  String get security_entry_status_open => 'Open';
+
+  @override
+  String get security_entry_status_unknown => 'Unknown';
+
+  @override
+  String get security_entry_status_closed => 'Closed';
+
+  @override
+  String security_summary_all_clear(int count) {
+    return 'All clear · $count entry points secured';
+  }
+
+  @override
+  String security_summary_alerts(int count) {
+    return '$count alerts';
+  }
+
+  @override
+  String security_summary_entry_points_open(int count) {
+    return '$count entry points open';
+  }
+
+  @override
+  String get security_no_active_alerts => 'No active alerts';
+
+  @override
+  String get security_ack_all => 'Ack All';
+
+  @override
+  String get security_no_recent_events => 'No recent events';
+
+  @override
+  String get security_events_load_failed => 'Failed to load events';
+
+  @override
+  String get security_retry => 'Retry';
+
+  @override
+  String get security_alert_type_intrusion => 'Intrusion detected';
+
+  @override
+  String get security_alert_type_entry_open => 'Entry open';
+
+  @override
+  String get security_alert_type_smoke => 'Smoke detected';
+
+  @override
+  String get security_alert_type_co => 'CO detected';
+
+  @override
+  String get security_alert_type_water_leak => 'Water leak';
+
+  @override
+  String get security_alert_type_gas => 'Gas detected';
+
+  @override
+  String get security_alert_type_tamper => 'Tamper detected';
+
+  @override
+  String get security_alert_type_fault => 'System fault';
+
+  @override
+  String get security_alert_type_device_offline => 'Device offline';
+
+  @override
+  String get security_alert_type_unknown => 'Unknown';
+
+  @override
+  String get security_event_alert_raised => 'Alert Raised';
+
+  @override
+  String get security_event_alert_resolved => 'Alert Resolved';
+
+  @override
+  String get security_event_alert_acknowledged => 'Alert Acknowledged';
+
+  @override
+  String get security_event_alarm_state_changed => 'Alarm State Changed';
+
+  @override
+  String get security_event_arming_mode_changed => 'Arming Mode Changed';
+
+  @override
+  String security_event_title_alert_raised(String alertType) {
+    return 'Alert raised: $alertType';
+  }
+
+  @override
+  String security_event_title_alert_resolved(String alertType) {
+    return 'Alert resolved: $alertType';
+  }
+
+  @override
+  String security_event_title_alert_acknowledged(String alertType) {
+    return 'Alert acknowledged: $alertType';
+  }
+
+  @override
+  String security_event_title_alarm_state_changed(String from, String to) {
+    return 'Alarm state changed: $from → $to';
+  }
+
+  @override
+  String security_event_title_arming_mode_changed(String from, String to) {
+    return 'Arming mode changed: $from → $to';
+  }
+
+  @override
+  String security_state_transition(String from, String to) {
+    return '$from → $to';
+  }
+
+  @override
+  String get security_state_unknown => 'unknown';
+
+  @override
+  String get security_overlay_alarm_triggered => 'Alarm triggered';
+
+  @override
+  String get security_overlay_default_title => 'Security alert';
 }

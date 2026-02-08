@@ -2,6 +2,8 @@ import 'package:fastybird_smart_panel/api/models/devices_module_data_type.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_card.dart';
+import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/utils/sensor_utils.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_colors.dart';
@@ -451,66 +453,61 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
     if (flexible) {
       contentArea = Expanded(child: contentArea);
     }
-    return Container(
-      padding: withDecoration
-          ? AppSpacings.paddingLg
-          : EdgeInsets.symmetric(horizontal: AppSpacings.pLg),
-      decoration: withDecoration
-          ? BoxDecoration(
-              color:
-                  isDark ? AppFillColorDark.light : AppFillColorLight.blank,
-              borderRadius: BorderRadius.circular(AppBorderRadius.base),
-              border: Border.all(
-                color: isDark
-                    ? AppBorderColorDark.light
-                    : AppBorderColorLight.darker,
-                width: AppSpacings.scale(1),
-              ),
-            )
-          : null,
-      child: Column(
-        mainAxisSize: flexible ? MainAxisSize.max : MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        spacing: AppSpacings.pMd,
+
+    final periodSelector = Container(
+      padding: EdgeInsets.all(AppSpacings.pXs),
+      decoration: BoxDecoration(
+        color: isDark ? AppFillColorDark.base : AppFillColorLight.base,
+        borderRadius: BorderRadius.circular(AppBorderRadius.base),
+      ),
+      child: Row(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                localizations.sensor_ui_event_log,
-                style: TextStyle(
-                  color: isDark
-                      ? AppTextColorDark.primary
-                      : AppTextColorLight.primary,
-                  fontSize: AppFontSize.base,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              Container(
-                padding: EdgeInsets.all(AppSpacings.pXs),
-                decoration: BoxDecoration(
-                  color:
-                      isDark ? AppFillColorDark.base : AppFillColorLight.base,
-                  borderRadius: BorderRadius.circular(AppBorderRadius.base),
-                ),
-                child: Row(
-                  children: [
-                    _buildPeriodButton(
-                        context, localizations.sensor_ui_period_1h, 0),
-                    _buildPeriodButton(
-                        context, localizations.sensor_ui_period_24h, 1),
-                    _buildPeriodButton(
-                        context, localizations.sensor_ui_period_7d, 2),
-                    _buildPeriodButton(
-                        context, localizations.sensor_ui_period_30d, 3),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          contentArea,
+          _buildPeriodButton(context, localizations.sensor_ui_period_1h, 0),
+          _buildPeriodButton(context, localizations.sensor_ui_period_24h, 1),
+          _buildPeriodButton(context, localizations.sensor_ui_period_7d, 2),
+          _buildPeriodButton(context, localizations.sensor_ui_period_30d, 3),
         ],
       ),
+    );
+
+    if (!withDecoration) {
+      return Padding(
+        padding: EdgeInsets.symmetric(horizontal: AppSpacings.pLg),
+        child: Column(
+          mainAxisSize: flexible ? MainAxisSize.max : MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          spacing: AppSpacings.pMd,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  localizations.sensor_ui_event_log,
+                  style: TextStyle(
+                    color: isDark
+                        ? AppTextColorDark.primary
+                        : AppTextColorLight.primary,
+                    fontSize: AppFontSize.base,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                periodSelector,
+              ],
+            ),
+            contentArea,
+          ],
+        ),
+      );
+    }
+
+    return AppCard(
+      color: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
+      expanded: flexible,
+      headerTitle: localizations.sensor_ui_event_log,
+      headerTrailing: periodSelector,
+      headerLine: true,
+      padding: AppSpacings.paddingMd,
+      child: contentArea,
     );
   }
 
@@ -558,69 +555,91 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
     final useShortDate = _selectedPeriod <= 1;
     final dateFormat =
         useShortDate ? DateFormat.Hm() : DateFormat('MMM d, HH:mm');
-    final listView = ListView.separated(
-      shrinkWrap: !inFlex,
+    final fillColor =
+        isDark ? AppFillColorDark.light : AppFillColorLight.blank;
+
+    Widget buildItem(BuildContext context, int index) {
+      final point = reversedEvents[index];
+      final isActive = point.numericValue >= 0.5;
+      final stateLabel = SensorUtils.translateBinaryState(
+          localizations, category, isActive, short: false);
+      final dangerColor =
+          isDark ? AppColorsDark.danger : AppColorsLight.danger;
+      final successColor =
+          isDark ? AppColorsDark.success : AppColorsLight.success;
+      final dotColor = isActive ? dangerColor : successColor;
+      final textColor = isActive
+          ? dangerColor
+          : (isDark
+              ? AppTextColorDark.secondary
+              : AppTextColorLight.secondary);
+      return Padding(
+        padding: EdgeInsets.symmetric(vertical: AppSpacings.pSm),
+        child: Row(
+          children: [
+            Container(
+              width: AppSpacings.scale(8),
+              height: AppSpacings.scale(8),
+              decoration:
+                  BoxDecoration(color: dotColor, shape: BoxShape.circle),
+            ),
+            AppSpacings.spacingMdHorizontal,
+            Expanded(
+              child: Text(
+                stateLabel,
+                style: TextStyle(
+                    color: textColor,
+                    fontSize: AppFontSize.small,
+                    fontWeight: FontWeight.w500),
+              ),
+            ),
+            Text(
+              dateFormat.format(point.time.toLocal()),
+              style: TextStyle(
+                color: isDark
+                    ? AppTextColorDark.placeholder
+                    : AppTextColorLight.placeholder,
+                fontSize: AppFontSize.extraSmall,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    final dividerColor =
+        isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
+
+    final bottomRadius = BorderRadius.only(
+      bottomLeft: Radius.circular(AppBorderRadius.base),
+      bottomRight: Radius.circular(AppBorderRadius.base),
+    );
+
+    if (inFlex) {
+      return VerticalScrollWithGradient(
+        gradientHeight: AppSpacings.pMd,
+        backgroundColor: fillColor,
+        itemCount: reversedEvents.length,
+        separatorHeight: AppSpacings.scale(1),
+        separatorColor: dividerColor,
+        padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
+        borderRadius: bottomRadius,
+        itemBuilder: buildItem,
+      );
+    }
+    // Non-flex: used inside parent-managed scroll (e.g. landscape layout).
+    // Use shrinkWrap ListView so parent handles scrolling.
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       padding: EdgeInsets.zero,
       itemCount: reversedEvents.length,
       separatorBuilder: (_, __) => Divider(
         height: AppSpacings.scale(1),
-        color: isDark ? AppBorderColorDark.light : AppBorderColorLight.darker,
+        thickness: AppSpacings.scale(1),
+        color: dividerColor,
       ),
-      itemBuilder: (context, index) {
-        final point = reversedEvents[index];
-        final isActive = point.numericValue >= 0.5;
-        final stateLabel = SensorUtils.translateBinaryState(
-            localizations, category, isActive, short: false);
-        final dangerColor =
-            isDark ? AppColorsDark.danger : AppColorsLight.danger;
-        final successColor =
-            isDark ? AppColorsDark.success : AppColorsLight.success;
-        final dotColor = isActive ? dangerColor : successColor;
-        final textColor = isActive
-            ? dangerColor
-            : (isDark
-                ? AppTextColorDark.secondary
-                : AppTextColorLight.secondary);
-        return Padding(
-          padding: EdgeInsets.symmetric(vertical: AppSpacings.pSm),
-          child: Row(
-            children: [
-              Container(
-                width: AppSpacings.scale(8),
-                height: AppSpacings.scale(8),
-                decoration:
-                    BoxDecoration(color: dotColor, shape: BoxShape.circle),
-              ),
-              AppSpacings.spacingMdHorizontal,
-              Expanded(
-                child: Text(
-                  stateLabel,
-                  style: TextStyle(
-                      color: textColor,
-                      fontSize: AppFontSize.small,
-                      fontWeight: FontWeight.w500),
-                ),
-              ),
-              Text(
-                dateFormat.format(point.time.toLocal()),
-                style: TextStyle(
-                  color: isDark
-                      ? AppTextColorDark.placeholder
-                      : AppTextColorLight.placeholder,
-                  fontSize: AppFontSize.extraSmall,
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-    if (inFlex) {
-      return listView;
-    }
-    return ConstrainedBox(
-      constraints: BoxConstraints(maxHeight: AppSpacings.scale(200)),
-      child: listView,
+      itemBuilder: buildItem,
     );
   }
 

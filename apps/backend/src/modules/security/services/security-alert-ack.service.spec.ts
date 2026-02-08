@@ -125,6 +125,34 @@ describe('SecurityAlertAckService', () => {
 		});
 	});
 
+	describe('resetAcknowledgement', () => {
+		it('should do nothing if record not found', async () => {
+			repo.findOne.mockResolvedValue(null);
+
+			await service.resetAcknowledgement('a', new Date('2025-01-01'));
+			expect(repo.save).not.toHaveBeenCalled();
+		});
+
+		it('should reset acknowledged and acknowledgedAt and update lastEventAt', async () => {
+			const existing = {
+				id: 'a',
+				acknowledged: true,
+				acknowledgedAt: new Date('2025-01-01'),
+				lastEventAt: new Date('2025-01-01'),
+			} as SecurityAlertAckEntity;
+			repo.findOne.mockResolvedValue(existing);
+			repo.save.mockImplementation((e) => Promise.resolve(e as SecurityAlertAckEntity));
+
+			const newTimestamp = new Date('2025-01-02');
+			await service.resetAcknowledgement('a', newTimestamp);
+
+			expect(existing.acknowledged).toBe(false);
+			expect(existing.acknowledgedAt).toBeNull();
+			expect(existing.lastEventAt).toEqual(newTimestamp);
+			expect(repo.save).toHaveBeenCalledWith(existing);
+		});
+	});
+
 	describe('updateLastEventAt', () => {
 		it('should do nothing if record not found', async () => {
 			repo.findOne.mockResolvedValue(null);

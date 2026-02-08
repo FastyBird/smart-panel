@@ -1,3 +1,5 @@
+import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/l10n/app_localizations_en.dart';
 import 'package:fastybird_smart_panel/modules/security/models/security_event.dart';
 import 'package:fastybird_smart_panel/modules/security/types/security.dart';
 import 'package:fastybird_smart_panel/modules/security/utils/security_event_ui.dart';
@@ -24,13 +26,19 @@ SecurityEventModel _makeEvent({
 }
 
 void main() {
+	late AppLocalizations localizations;
+
+	setUpAll(() {
+		localizations = AppLocalizationsEn();
+	});
+
 	group('securityEventTitle', () {
 		test('alert_raised with alertType shows type display title', () {
 			final event = _makeEvent(
 				eventType: SecurityEventType.alertRaised,
 				alertType: SecurityAlertType.smoke,
 			);
-			expect(securityEventTitle(event), 'Alert raised: Smoke detected');
+			expect(securityEventTitle(event, localizations), 'Alert raised: Smoke detected');
 		});
 
 		test('alert_resolved with alertType', () {
@@ -38,7 +46,7 @@ void main() {
 				eventType: SecurityEventType.alertResolved,
 				alertType: SecurityAlertType.waterLeak,
 			);
-			expect(securityEventTitle(event), 'Alert resolved: Water leak');
+			expect(securityEventTitle(event, localizations), 'Alert resolved: Water leak');
 		});
 
 		test('alert_acknowledged with alertType', () {
@@ -46,14 +54,14 @@ void main() {
 				eventType: SecurityEventType.alertAcknowledged,
 				alertType: SecurityAlertType.intrusion,
 			);
-			expect(securityEventTitle(event), 'Alert acknowledged: Intrusion detected');
+			expect(securityEventTitle(event, localizations), 'Alert acknowledged: Intrusion detected');
 		});
 
 		test('alert_raised without alertType shows Unknown', () {
 			final event = _makeEvent(
 				eventType: SecurityEventType.alertRaised,
 			);
-			expect(securityEventTitle(event), 'Alert raised: Unknown');
+			expect(securityEventTitle(event, localizations), 'Alert raised: Unknown');
 		});
 
 		test('alarm_state_changed with payload', () {
@@ -61,7 +69,7 @@ void main() {
 				eventType: SecurityEventType.alarmStateChanged,
 				payload: {'from': 'idle', 'to': 'triggered'},
 			);
-			expect(securityEventTitle(event), 'Alarm state changed: Idle → Triggered');
+			expect(securityEventTitle(event, localizations), 'Alarm state changed: Idle → Triggered');
 		});
 
 		test('armed_state_changed with payload', () {
@@ -69,14 +77,14 @@ void main() {
 				eventType: SecurityEventType.armedStateChanged,
 				payload: {'from': 'disarmed', 'to': 'armed_home'},
 			);
-			expect(securityEventTitle(event), 'Arming mode changed: Disarmed → Armed Home');
+			expect(securityEventTitle(event, localizations), 'Arming mode changed: Disarmed → Armed Home');
 		});
 
 		test('alarm_state_changed without payload shows unknown', () {
 			final event = _makeEvent(
 				eventType: SecurityEventType.alarmStateChanged,
 			);
-			expect(securityEventTitle(event), 'Alarm state changed: unknown → unknown');
+			expect(securityEventTitle(event, localizations), 'Alarm state changed: unknown → unknown');
 		});
 	});
 
@@ -129,6 +137,18 @@ void main() {
 			);
 			// fault falls through to default _eventTypeIcon
 			expect(securityEventIcon(event), MdiIcons.alert);
+		});
+	});
+
+	group('securityAlertTypeTitle', () {
+		test('all types have a non-empty title', () {
+			for (final type in SecurityAlertType.values) {
+				expect(securityAlertTypeTitle(type, localizations), isNotEmpty);
+			}
+		});
+
+		test('null type returns Unknown', () {
+			expect(securityAlertTypeTitle(null, localizations), 'Unknown');
 		});
 	});
 
