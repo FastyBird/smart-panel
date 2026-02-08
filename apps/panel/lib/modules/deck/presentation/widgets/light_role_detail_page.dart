@@ -2255,7 +2255,6 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
                   );
 
                   return PortraitViewLayout(
-                    contentPadding: AppSpacings.paddingLg,
                     scrollable: false,
                     content: mainContent,
                   );

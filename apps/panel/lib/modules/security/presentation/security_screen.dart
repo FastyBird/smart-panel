@@ -250,12 +250,6 @@ class _SecurityScreenState extends State<SecurityScreen> {
 	}) {
 		return PortraitViewLayout(
 			scrollable: false,
-			contentPadding: EdgeInsets.only(
-				left: AppSpacings.pLg,
-				right: AppSpacings.pLg,
-				top: AppSpacings.pMd,
-				bottom: AppSpacings.pMd,
-			),
 			content: Column(
 				children: [
 					_StatusRingHero(
