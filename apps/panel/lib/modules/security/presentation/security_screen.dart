@@ -22,6 +22,8 @@ import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
+import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
+import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 import 'package:provider/provider.dart';
@@ -38,7 +40,7 @@ class SecurityScreen extends StatefulWidget {
 class _SecurityScreenState extends State<SecurityScreen> {
 	static const int _maxDisplayedEvents = 10;
 
-	_SecurityTab _selectedTab = _SecurityTab.entryPoints;
+	_SecurityTab _selectedTab = _SecurityTab.alerts;
 
 	@override
 	Widget build(BuildContext context) {
@@ -125,13 +127,14 @@ class _SecurityScreenState extends State<SecurityScreen> {
 		);
 	}
 
-	List<ModeOption<_SecurityTab>> _buildTabModes() {
+	List<ModeOption<_SecurityTab>> _buildTabModes({required bool hasEntryPoints}) {
 		return [
-			ModeOption(
-				value: _SecurityTab.entryPoints,
-				icon: MdiIcons.home,
-				label: 'Entry Points',
-			),
+			if (hasEntryPoints)
+				ModeOption(
+					value: _SecurityTab.entryPoints,
+					icon: MdiIcons.home,
+					label: 'Entry Points',
+				),
 			ModeOption(
 				value: _SecurityTab.alerts,
 				icon: MdiIcons.alertOutline,
@@ -184,9 +187,9 @@ class _SecurityScreenState extends State<SecurityScreen> {
 		}
 	}
 
-	Widget _buildModeSelector() {
+	Widget _buildModeSelector({required bool hasEntryPoints}) {
 		return ModeSelector<_SecurityTab>(
-			modes: _buildTabModes(),
+			modes: _buildTabModes(hasEntryPoints: hasEntryPoints),
 			selectedValue: _selectedTab,
 			onChanged: (tab) => setState(() => _selectedTab = tab),
 			orientation: ModeSelectorOrientation.horizontal,
@@ -195,9 +198,9 @@ class _SecurityScreenState extends State<SecurityScreen> {
 		);
 	}
 
-	Widget _buildLandscapeModeSelector() {
+	Widget _buildLandscapeModeSelector({required bool hasEntryPoints}) {
 		return ModeSelector<_SecurityTab>(
-			modes: _buildTabModes(),
+			modes: _buildTabModes(hasEntryPoints: hasEntryPoints),
 			selectedValue: _selectedTab,
 			onChanged: (tab) => setState(() => _selectedTab = tab),
 			orientation: ModeSelectorOrientation.vertical,
@@ -256,7 +259,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
 					),
 				],
 			),
-			modeSelector: _buildModeSelector(),
+			modeSelector: _buildModeSelector(hasEntryPoints: !entryPoints.isEmpty),
 		);
 	}
 
@@ -288,7 +291,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
 				isCritical: _isCriticalStatus(status),
 				compact: true,
 			),
-			modeSelector: _buildLandscapeModeSelector(),
+			modeSelector: _buildLandscapeModeSelector(hasEntryPoints: !entryPoints.isEmpty),
 			additionalContent: _buildTabContent(
 				status: status,
 				controller: controller,
@@ -464,8 +467,8 @@ class _StatusRingHeroState extends State<_StatusRingHero>
 	Widget build(BuildContext context) {
 		final screenService = locator<ScreenService>();
 		final ringSize = widget.compact ? screenService.scale(90) : screenService.scale(120);
-		final iconSize = widget.compact ? screenService.scale(24) : screenService.scale(28);
-		final labelFontSize = widget.compact ? AppFontSize.extraExtraSmall : AppFontSize.extraSmall;
+		final iconSize = widget.compact ? screenService.scale(24) : screenService.scale(44);
+		final labelFontSize = widget.compact ? AppFontSize.extraExtraSmall : AppFontSize.base;
 		final strokeWidth = widget.compact ? screenService.scale(5) : screenService.scale(6);
 
 		final severityLabel = _severityLabel;
@@ -760,156 +763,85 @@ class _EntryPointGrid extends StatelessWidget {
 			? '${entryPoints.openCount} Open'
 			: 'All Secure';
 
-		return AppCard(
-			headerIcon: MdiIcons.home,
-			headerTitle: 'Entry Points',
-			headerTrailing: _Badge(label: badgeText, color: badgeColor),
-			child: entryPoints.isEmpty
-				? Padding(
-					padding: EdgeInsets.all(AppSpacings.pMd),
-					child: Center(
-						child: Text(
-							'No entry sensors configured',
-							style: TextStyle(
-								fontSize: AppFontSize.small,
-								color: SystemPagesTheme.textMuted(isDark),
-							),
-						),
-					),
-				)
-				: GridView.builder(
-					shrinkWrap: true,
-					physics: const NeverScrollableScrollPhysics(),
-					gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-						crossAxisCount: 4,
-						crossAxisSpacing: AppSpacings.scale(6),
-						mainAxisSpacing: AppSpacings.scale(6),
-						childAspectRatio: 0.85,
-					),
-					itemCount: entryPoints.all.length,
-					itemBuilder: (context, index) {
-						final ep = entryPoints.all[index];
-						return _EntryTile(
-							entryPoint: ep,
-							isDark: isDark,
-							screenService: screenService,
-							isCritical: isCritical && ep.isOpen == true,
-						);
-					},
+		final crossAxisCount = screenService.isSmallScreen ? 3 : 4;
+		final items = entryPoints.all;
+		final rowCount = (items.length / crossAxisCount).ceil();
+		final fillColor = isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
+
+		return Column(
+			crossAxisAlignment: CrossAxisAlignment.start,
+			children: [
+				SectionTitle(
+					title: 'Entry Points',
+					icon: MdiIcons.home,
+					trailing: _Badge(label: badgeText, color: badgeColor),
 				),
+				AppSpacings.spacingMdVertical,
+				Expanded(
+					child: VerticalScrollWithGradient(
+						gradientHeight: AppSpacings.pMd,
+						backgroundColor: fillColor,
+						itemCount: rowCount,
+						separatorHeight: AppSpacings.pMd,
+						padding: EdgeInsets.symmetric(vertical: AppSpacings.pMd),
+						itemBuilder: (context, rowIndex) {
+							final start = rowIndex * crossAxisCount;
+							final end = (start + crossAxisCount).clamp(0, items.length);
+							final rowItems = items.sublist(start, end);
+
+							return Row(
+								spacing: AppSpacings.pMd,
+								children: [
+									for (final ep in rowItems)
+										Expanded(
+											child: AspectRatio(
+												aspectRatio: AppTileAspectRatio.square,
+												child: _entryTile(ep, isCritical && ep.isOpen == true),
+											),
+										),
+									// Fill remaining slots with empty spacers
+									for (var i = rowItems.length; i < crossAxisCount; i++)
+										const Expanded(child: SizedBox()),
+								],
+							);
+						},
+					),
+				),
+			],
 		);
 	}
-}
 
-class _EntryTile extends StatelessWidget {
-	final EntryPointData entryPoint;
-	final bool isDark;
-	final ScreenService screenService;
-	final bool isCritical;
+	UniversalTile _entryTile(EntryPointData ep, bool critical) {
+		final isOpen = ep.isOpen == true;
+		final isUnknown = ep.isOpen == null;
 
-	const _EntryTile({
-		required this.entryPoint,
-		required this.isDark,
-		required this.screenService,
-		this.isCritical = false,
-	});
+		final ThemeColors? color;
+		final String statusText;
 
-	@override
-	Widget build(BuildContext context) {
-		final isOpen = entryPoint.isOpen == true;
-		final isUnknown = entryPoint.isOpen == null;
-
-		Color bgColor;
-		Color iconBg;
-		Color iconColor;
-		Color? iconBorder;
-		String statusText;
-		Color statusColor;
-
-		if (isCritical) {
-			bgColor = SystemPagesTheme.errorLight(isDark);
-			iconBg = SystemPagesTheme.errorLight(isDark);
-			iconColor = SystemPagesTheme.error(isDark);
-			iconBorder = SystemPagesTheme.error(isDark).withValues(alpha: 0.25);
-			statusText = 'BREACH';
-			statusColor = SystemPagesTheme.error(isDark);
+		if (critical) {
+			color = ThemeColors.error;
+			statusText = 'Breach';
 		} else if (isOpen) {
-			bgColor = SystemPagesTheme.warningLight(isDark);
-			iconBg = SystemPagesTheme.warningLight(isDark);
-			iconColor = SystemPagesTheme.warning(isDark);
-			iconBorder = SystemPagesTheme.warning(isDark).withValues(alpha: 0.25);
-			statusText = 'OPEN';
-			statusColor = SystemPagesTheme.warning(isDark);
+			color = ThemeColors.warning;
+			statusText = 'Open';
 		} else if (isUnknown) {
-			bgColor = Colors.transparent;
-			iconBg = SystemPagesTheme.cardSecondary(isDark);
-			iconColor = SystemPagesTheme.textMuted(isDark);
-			iconBorder = null;
+			color = null;
 			statusText = 'Unknown';
-			statusColor = SystemPagesTheme.textMuted(isDark);
 		} else {
-			bgColor = Colors.transparent;
-			iconBg = SystemPagesTheme.successLight(isDark);
-			iconColor = SystemPagesTheme.success(isDark);
-			iconBorder = null;
+			color = ThemeColors.success;
 			statusText = 'Closed';
-			statusColor = SystemPagesTheme.success(isDark).withValues(alpha: 0.7);
 		}
 
-		return Container(
-			padding: EdgeInsets.symmetric(
-				vertical: AppSpacings.pMd,
-				horizontal: AppSpacings.pSm,
-			),
-			decoration: BoxDecoration(
-				color: bgColor,
-				borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-			),
-			child: Column(
-				mainAxisSize: MainAxisSize.min,
-				mainAxisAlignment: MainAxisAlignment.center,
-				children: [
-					Container(
-						width: screenService.scale(28),
-						height: screenService.scale(28),
-						decoration: BoxDecoration(
-							color: iconBg,
-							borderRadius: BorderRadius.circular(AppBorderRadius.base),
-							border: iconBorder != null
-								? Border.all(color: iconBorder, width: screenService.scale(1))
-								: null,
-						),
-						child: Icon(
-							entryPoint.isDoor ? MdiIcons.doorOpen : MdiIcons.windowOpenVariant,
-							size: screenService.scale(14),
-							color: iconColor,
-						),
-					),
-					SizedBox(height: AppSpacings.scale(4)),
-					Text(
-						entryPoint.name,
-						style: TextStyle(
-							fontSize: AppFontSize.extraExtraSmall,
-							fontWeight: FontWeight.w500,
-							color: SystemPagesTheme.textSecondary(isDark),
-							height: 1.2,
-						),
-						textAlign: TextAlign.center,
-						maxLines: 1,
-						overflow: TextOverflow.ellipsis,
-					),
-					SizedBox(height: AppSpacings.scale(2)),
-					Text(
-						statusText,
-						style: TextStyle(
-							fontSize: AppFontSize.extraExtraSmall,
-							fontWeight: FontWeight.w700,
-							color: statusColor,
-							letterSpacing: 0.3,
-						),
-					),
-				],
-			),
+		return UniversalTile(
+			icon: ep.isDoor ? MdiIcons.doorOpen : MdiIcons.windowOpenVariant,
+			name: ep.name,
+			status: statusText,
+			isActive: isOpen || critical,
+			activeColor: color,
+			iconAccentColor: color,
+			showGlow: false,
+			showDoubleBorder: false,
+			showInactiveBorder: true,
 		);
 	}
 }
