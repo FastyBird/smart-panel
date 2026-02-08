@@ -760,7 +760,11 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
     }
 
     Widget cardChild = Padding(
-      padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
+      padding: EdgeInsets.only(
+        left: AppSpacings.pMd,
+        right: AppSpacings.pMd,
+        top: AppSpacings.pLg,
+      ),
       child: Column(
         mainAxisSize: flexible ? MainAxisSize.max : MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
