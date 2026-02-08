@@ -6,6 +6,7 @@ export 'package:fastybird_smart_panel/modules/deck/constants.dart';
 
 // Types
 export 'package:fastybird_smart_panel/modules/deck/types/deck_item_type.dart';
+export 'package:fastybird_smart_panel/modules/deck/types/deck_page_activated_event.dart';
 export 'package:fastybird_smart_panel/modules/deck/types/domain_type.dart';
 export 'package:fastybird_smart_panel/modules/deck/types/intent_type.dart';
 export 'package:fastybird_smart_panel/modules/deck/types/navigate_event.dart';
@@ -17,6 +18,7 @@ export 'package:fastybird_smart_panel/modules/deck/types/lighting/role_ui_state.
 export 'package:fastybird_smart_panel/modules/deck/types/lighting/simple_property_type.dart';
 
 // Models
+export 'package:fastybird_smart_panel/modules/deck/models/bottom_nav_mode_config.dart';
 export 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
 export 'package:fastybird_smart_panel/modules/deck/models/deck_result.dart';
 export 'package:fastybird_smart_panel/modules/deck/models/intent_result.dart';
@@ -30,6 +32,7 @@ export 'package:fastybird_smart_panel/modules/deck/models/lighting/role_mixed_st
 export 'package:fastybird_smart_panel/modules/deck/utils/lighting.dart';
 
 // Services
+export 'package:fastybird_smart_panel/modules/deck/services/bottom_nav_mode_notifier.dart';
 export 'package:fastybird_smart_panel/modules/deck/services/deck_builder.dart';
 export 'package:fastybird_smart_panel/modules/deck/services/deck_service.dart';
 export 'package:fastybird_smart_panel/modules/deck/services/intents_service.dart';
@@ -55,4 +58,7 @@ export 'package:fastybird_smart_panel/modules/deck/presentation/system_pages/mas
 export 'package:fastybird_smart_panel/modules/deck/presentation/system_pages/room_overview.dart';
 
 // Presentation - Widgets
+export 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_bottom_nav_bar.dart';
+export 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_mode_popup.dart';
+export 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_more_sheet.dart';
 export 'package:fastybird_smart_panel/modules/deck/presentation/widgets/light_role_detail_page.dart';

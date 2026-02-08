@@ -1,6 +1,7 @@
 import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/export.dart';
+import 'package:fastybird_smart_panel/modules/deck/services/bottom_nav_mode_notifier.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/deck_service.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/intents_service.dart';
 import 'package:fastybird_smart_panel/modules/devices/export.dart';
@@ -16,6 +17,7 @@ import 'package:flutter/foundation.dart';
 class DeckModuleService {
   late final IntentsService _intentsService;
   late final DeckService _deckService;
+  late final BottomNavModeNotifier _bottomNavModeNotifier;
 
   DeckModuleService({
     required EventBus eventBus,
@@ -38,8 +40,11 @@ class DeckModuleService {
       devicesService: devicesService,
     );
 
+    _bottomNavModeNotifier = BottomNavModeNotifier();
+
     locator.registerSingleton<IntentsService>(_intentsService);
     locator.registerSingleton<DeckService>(_deckService);
+    locator.registerSingleton<BottomNavModeNotifier>(_bottomNavModeNotifier);
 
     if (kDebugMode) {
       debugPrint('[DECK MODULE] Services registered successfully');
@@ -52,10 +57,14 @@ class DeckModuleService {
   /// Gets the DeckService instance.
   DeckService get deckService => _deckService;
 
+  /// Gets the BottomNavModeNotifier instance.
+  BottomNavModeNotifier get bottomNavModeNotifier => _bottomNavModeNotifier;
+
   /// Disposes the module services.
   void dispose() {
     _deckService.dispose();
     _intentsService.dispose();
+    _bottomNavModeNotifier.dispose();
 
     if (kDebugMode) {
       debugPrint('[DECK MODULE] Module disposed');

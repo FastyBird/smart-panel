@@ -32,7 +32,10 @@ import 'package:provider/provider.dart';
 enum _SecurityTab { entryPoints, alerts, events }
 
 class SecurityScreen extends StatefulWidget {
-	const SecurityScreen({super.key});
+	/// When true, hides back/home navigation buttons (used when embedded in deck).
+	final bool embedded;
+
+	const SecurityScreen({super.key, this.embedded = false});
 
 	@override
 	State<SecurityScreen> createState() => _SecurityScreenState();
@@ -67,16 +70,12 @@ class _SecurityScreenState extends State<SecurityScreen> {
 							children: [
 								PageHeader(
 									title: 'Security',
-									onBack: () => Navigator.pop(context),
+									onBack: widget.embedded ? null : () => Navigator.pop(context),
 									leading: HeaderMainIcon(
 										icon: MdiIcons.shieldHome,
 										color: _isCriticalStatus(status)
 											? ThemeColors.error
 											: ThemeColors.success,
-									),
-									trailing: HeaderIconButton(
-										icon: MdiIcons.homeOutline,
-										onTap: () => Navigator.pop(context),
 									),
 								),
 								Expanded(

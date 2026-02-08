@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/app/routes.dart';
 import 'package:fastybird_smart_panel/core/services/connection_state_manager.dart';
@@ -413,12 +414,10 @@ class _AppBodyState extends State<AppBody> {
                 },
                 onOpenSecurity: () {
                   _securityOverlayController.acknowledgeCurrentAlerts();
-                  final future = _navigator.navigateTo(AppRouteNames.security);
-                  if (future == null) return;
                   _securityOverlayController.setOnSecurityScreen(true);
-                  future.then((_) {
-                    _securityOverlayController.setOnSecurityScreen(false);
-                  });
+                  locator<EventBus>().fire(
+                    NavigateToDeckItemEvent(SecurityViewItem.generateId()),
+                  );
                 },
               ),
             ),

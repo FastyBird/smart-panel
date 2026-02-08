@@ -120,6 +120,32 @@ class DomainViewItem extends DeckItem {
   int get hashCode => Object.hash(id, domainType, roomId);
 }
 
+/// The security view showing entry points, alerts, and events.
+class SecurityViewItem extends DeckItem {
+  /// Human-readable title for this view.
+  final String title;
+
+  const SecurityViewItem({
+    required super.id,
+    required this.title,
+  });
+
+  @override
+  DeckItemType get type => DeckItemType.securityView;
+
+  /// Standard ID for the security view.
+  static String generateId() => 'security-view';
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is SecurityViewItem && other.id == id;
+  }
+
+  @override
+  int get hashCode => id.hashCode;
+}
+
 /// A user-configured dashboard page.
 ///
 /// Dashboard pages are created and managed through the Admin interface.

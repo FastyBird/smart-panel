@@ -41,6 +41,8 @@
 //   - ROLES GRID, LIGHTS GRID, SCENES, NAVIGATION, EMPTY STATE: UI builders.
 // - **PRIVATE WIDGETS** — [_RoleCard], [_LightTile], [_SceneTile] (all use [UniversalTile]).
 
+import 'dart:async';
+
 import 'package:event_bus/event_bus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -62,13 +64,14 @@ import 'package:fastybird_smart_panel/core/widgets/tile_wrappers.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/constants.dart';
+import 'package:fastybird_smart_panel/modules/deck/models/bottom_nav_mode_config.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/domain_data_loader.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/domain_state_view.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/light_role_detail_page.dart';
-import 'package:fastybird_smart_panel/modules/deck/services/deck_service.dart';
+import 'package:fastybird_smart_panel/modules/deck/services/bottom_nav_mode_notifier.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/domain_control_state_service.dart';
-import 'package:fastybird_smart_panel/modules/deck/types/navigate_event.dart';
+import 'package:fastybird_smart_panel/modules/deck/types/deck_page_activated_event.dart';
 import 'package:fastybird_smart_panel/modules/deck/utils/lighting.dart';
 import 'package:fastybird_smart_panel/modules/devices/export.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
@@ -239,11 +242,13 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   SpacesService? _spacesService;
   DevicesService? _devicesService;
   ScenesService? _scenesService;
-  DeckService? _deckService;
   EventBus? _eventBus;
   IntentsRepository? _intentsRepository;
   IntentOverlayService? _intentOverlayService;
   DeviceControlStateService? _deviceControlStateService;
+  BottomNavModeNotifier? _bottomNavModeNotifier;
+  StreamSubscription<DeckPageActivatedEvent>? _pageActivatedSubscription;
+  bool _isActivePage = false;
   bool _isLoading = true;
   bool _hasError = false;
 
@@ -480,13 +485,16 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     _spacesService = _tryLocator<SpacesService>('SpacesService', onSuccess: (s) => s.addListener(_onDataChanged));
     _devicesService = _tryLocator<DevicesService>('DevicesService', onSuccess: (s) => s.addListener(_onDataChanged));
     _scenesService = _tryLocator<ScenesService>('ScenesService', onSuccess: (s) => s.addListener(_onDataChanged));
-    _deckService = _tryLocator<DeckService>('DeckService');
     _eventBus = _tryLocator<EventBus>('EventBus');
     _intentsRepository = _tryLocator<IntentsRepository>('IntentsRepository', onSuccess: (s) => s.addListener(_onIntentChanged));
     if (locator.isRegistered<IntentOverlayService>()) {
       _intentOverlayService = locator<IntentOverlayService>();
     }
     _deviceControlStateService = _tryLocator<DeviceControlStateService>('DeviceControlStateService');
+    _bottomNavModeNotifier = _tryLocator<BottomNavModeNotifier>('BottomNavModeNotifier');
+
+    // Subscribe to page activation events for bottom nav mode registration
+    _pageActivatedSubscription = _eventBus?.on<DeckPageActivatedEvent>().listen(_onPageActivated);
 
     // Fetch light targets for this space
     _fetchLightTargets();
@@ -512,6 +520,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
           _isLoading = false;
           _hasError = false;
         });
+        _registerModeConfig();
       }
     } catch (e) {
       if (kDebugMode) {
@@ -537,6 +546,10 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
   @override
   void dispose() {
+    _pageActivatedSubscription?.cancel();
+    if (_isActivePage) {
+      _bottomNavModeNotifier?.clear();
+    }
     _spacesService?.removeListener(_onDataChanged);
     _devicesService?.removeListener(_onDataChanged);
     _scenesService?.removeListener(_onDataChanged);
@@ -546,6 +559,149 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     _roleControlStateService.removeListener(_onControlStateChanged);
     _roleControlStateService.dispose();
     super.dispose();
+  }
+
+  // --------------------------------------------------------------------------
+  // BOTTOM NAV MODE REGISTRATION
+  // --------------------------------------------------------------------------
+
+  void _onPageActivated(DeckPageActivatedEvent event) {
+    if (!mounted) return;
+    _isActivePage = event.itemId == widget.viewItem.id;
+
+    if (_isActivePage) {
+      _registerModeConfig();
+    }
+  }
+
+  void _registerModeConfig() {
+    if (!_isActivePage || _isLoading) return;
+
+    final targets = _spacesService?.getLightTargetsForSpace(_roomId) ?? [];
+    final hasLights = targets.isNotEmpty;
+
+    if (!LightingConstants.useBackendIntents || !hasLights) {
+      _bottomNavModeNotifier?.clear();
+      return;
+    }
+
+    final mode = _currentMode;
+    final modeOptions = _getLightingModeOptions(context, AppLocalizations.of(context)!);
+    final currentOption = modeOptions.firstWhere(
+      (o) => o.value == mode,
+      orElse: () => modeOptions.first,
+    );
+
+    _bottomNavModeNotifier?.setConfig(BottomNavModeConfig(
+      icon: currentOption.icon,
+      label: currentOption.label,
+      color: currentOption.color ?? ThemeColors.neutral,
+      popupBuilder: _buildModePopupContent,
+    ));
+  }
+
+  Widget _buildModePopupContent(BuildContext context, VoidCallback dismiss) {
+    final localizations = AppLocalizations.of(context)!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final modes = _getLightingModeOptions(context, localizations);
+    final (activeValue, matchedValue, lastIntentValue) = _getLightingModeSelectorValues();
+    final isModeLocked = _modeControlStateService.isLocked(LightingConstants.modeChannelId);
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.only(bottom: AppSpacings.pSm),
+          child: Text(
+            'MODE',
+            style: TextStyle(
+              fontSize: AppFontSize.extraSmall,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 1.0,
+              color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
+            ),
+          ),
+        ),
+        for (final mode in modes)
+          _buildPopupModeItem(
+            context,
+            mode: mode,
+            isActive: activeValue == mode.value,
+            isMatched: matchedValue == mode.value,
+            isLastIntent: lastIntentValue == mode.value,
+            isLocked: isModeLocked,
+            onTap: () {
+              _setLightingMode(mode.value);
+              dismiss();
+              _registerModeConfig();
+            },
+          ),
+      ],
+    );
+  }
+
+  Widget _buildPopupModeItem(
+    BuildContext context, {
+    required ModeOption<LightingModeUI> mode,
+    required bool isActive,
+    required bool isMatched,
+    required bool isLastIntent,
+    required bool isLocked,
+    required VoidCallback onTap,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colorFamily = ThemeColorFamily.get(
+      isDark ? Brightness.dark : Brightness.light,
+      mode.color ?? ThemeColors.neutral,
+    );
+
+    final isHighlighted = isActive || isMatched || isLastIntent;
+
+    return GestureDetector(
+      onTap: isLocked ? null : onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          vertical: AppSpacings.pMd,
+          horizontal: AppSpacings.pMd,
+        ),
+        margin: EdgeInsets.only(bottom: AppSpacings.pXs),
+        decoration: BoxDecoration(
+          color: isHighlighted ? colorFamily.light9 : Colors.transparent,
+          borderRadius: BorderRadius.circular(AppBorderRadius.small),
+          border: isHighlighted
+              ? Border.all(color: colorFamily.light7, width: AppSpacings.scale(1))
+              : null,
+        ),
+        child: Row(
+          spacing: AppSpacings.pMd,
+          children: [
+            Icon(
+              mode.icon,
+              color: isHighlighted ? colorFamily.base : (isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary),
+              size: AppSpacings.scale(20),
+            ),
+            Expanded(
+              child: Text(
+                mode.label,
+                style: TextStyle(
+                  fontSize: AppFontSize.base,
+                  fontWeight: isHighlighted ? FontWeight.w600 : FontWeight.w400,
+                  color: isHighlighted ? colorFamily.base : (isDark ? AppTextColorDark.regular : AppTextColorLight.regular),
+                ),
+              ),
+            ),
+            if (isActive)
+              Icon(Icons.check, color: colorFamily.base, size: AppSpacings.scale(16)),
+            if (isMatched)
+              Icon(Icons.sync, color: colorFamily.base, size: AppSpacings.scale(16)),
+            if (isLastIntent)
+              Icon(Icons.history, color: colorFamily.base, size: AppSpacings.scale(16)),
+          ],
+        ),
+      ),
+    );
   }
 
   // --------------------------------------------------------------------------
@@ -581,6 +737,9 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         }
 
         setState(() {});
+
+        // Update bottom nav mode config if this is the active page
+        _registerModeConfig();
       }
     });
   }
@@ -709,20 +868,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   // UTILITIES
   // --------------------------------------------------------------------------
 
-  /// Navigate to the home page in the deck
-  void _navigateToHome() {
-    final deck = _deckService?.deck;
-    if (deck == null || deck.items.isEmpty) {
-      Navigator.pop(context);
-      return;
-    }
 
-    final homeIndex = deck.startIndex;
-    if (homeIndex >= 0 && homeIndex < deck.items.length) {
-      final homeItem = deck.items[homeIndex];
-      _eventBus?.fire(NavigateToDeckItemEvent(homeItem.id));
-    }
-  }
 
   // --------------------------------------------------------------------------
   // BUILD
@@ -1088,10 +1234,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         icon: hasLightsOn ? MdiIcons.lightbulbOn : MdiIcons.lightbulbOutline,
         color: _getStatusColor(context),
       ),
-      trailing: HeaderIconButton(
-        icon: MdiIcons.homeOutline,
-        onTap: _navigateToHome,
-      ),
     );
   }
 
@@ -1149,7 +1291,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     final hasRoles = roles.isNotEmpty;
     final hasOtherLights = otherLights.isNotEmpty;
     final hasScenes = _lightingScenes.isNotEmpty;
-    final hasLights = hasRoles || hasOtherLights;
 
     // Responsive scenes per row based on screen size
     // Small: 3, Medium/Large: 4
@@ -1195,34 +1336,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
           ],
         ],
       ),
-      modeSelector: LightingConstants.useBackendIntents && hasLights
-          ? _buildModeSelector(context, localizations)
-          : null,
-    );
-  }
-
-  /// Build the mode selector widget for portrait/horizontal layout.
-  ///
-  /// Uses the shared [ModeSelector] core widget wrapped with lighting-specific
-  /// styling. The mode change logic (optimistic UI, backend intents) remains in
-  /// this view because it's tightly coupled to the page's state lifecycle
-  /// (`_modeControlStateService`). The shared widget handles the
-  /// generic mode selection UI, while this view handles the domain logic.
-  Widget _buildModeSelector(BuildContext context, AppLocalizations localizations) {
-    final (activeValue, matchedValue, lastIntentValue) = _getLightingModeSelectorValues();
-    final isModeLocked = _modeControlStateService.isLocked(LightingConstants.modeChannelId);
-
-    return IgnorePointer(
-      ignoring: isModeLocked,
-      child: IntentModeSelector<LightingModeUI>(
-        modes: _getLightingModeOptions(context, localizations),
-        activeValue: activeValue,
-        matchedValue: matchedValue,
-        lastIntentValue: lastIntentValue,
-        onChanged: _setLightingMode,
-        orientation: ModeSelectorOrientation.horizontal,
-        iconPlacement: ModeSelectorIconPlacement.top,
-      ),
+      modeSelector: null,
     );
   }
 
