@@ -75,9 +75,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
 									onBack: widget.embedded ? null : () => Navigator.pop(context),
 									leading: HeaderMainIcon(
 										icon: MdiIcons.shieldHome,
-										color: _isCriticalStatus(status)
-											? ThemeColors.error
-											: ThemeColors.success,
+										color: _modeSelectorColor(status),
 									),
 								),
 								Expanded(
