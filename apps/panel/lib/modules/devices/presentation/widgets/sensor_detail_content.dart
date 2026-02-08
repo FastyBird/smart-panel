@@ -764,6 +764,7 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
         left: AppSpacings.pMd,
         right: AppSpacings.pMd,
         top: AppSpacings.pLg,
+        bottom: AppSpacings.pMd,
       ),
       child: Column(
         mainAxisSize: flexible ? MainAxisSize.max : MainAxisSize.min,
