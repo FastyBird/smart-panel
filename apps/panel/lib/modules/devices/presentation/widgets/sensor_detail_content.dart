@@ -627,18 +627,19 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
         itemBuilder: buildItem,
       );
     }
-    return ConstrainedBox(
-      constraints: BoxConstraints(maxHeight: AppSpacings.scale(200)),
-      child: VerticalScrollWithGradient(
-        gradientHeight: AppSpacings.pMd,
-        backgroundColor: fillColor,
-        itemCount: reversedEvents.length,
-        separatorHeight: AppSpacings.scale(1),
-        separatorColor: dividerColor,
-        padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
-        borderRadius: bottomRadius,
-        itemBuilder: buildItem,
+    // Non-flex: used inside parent-managed scroll (e.g. landscape layout).
+    // Use shrinkWrap ListView so parent handles scrolling.
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      padding: EdgeInsets.zero,
+      itemCount: reversedEvents.length,
+      separatorBuilder: (_, __) => Divider(
+        height: AppSpacings.scale(1),
+        thickness: AppSpacings.scale(1),
+        color: dividerColor,
       ),
+      itemBuilder: buildItem,
     );
   }
 
