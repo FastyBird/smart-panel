@@ -71,6 +71,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
 								PageHeader(
 									title: 'Security',
 									subtitle: _headerSubtitle(status, localizations),
+									subtitleColor: ringColor,
 									onBack: widget.embedded ? null : () => Navigator.pop(context),
 									leading: HeaderMainIcon(
 										icon: MdiIcons.shieldHome,
