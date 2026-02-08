@@ -1044,8 +1044,8 @@ class _AlertItem extends StatelessWidget {
 			? (isDark ? AppColorsDark.danger : AppColorsLight.danger)
 			: (isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary);
 
-		final barWidth = AppSpacings.scale(3);
-		final barSpacing = AppSpacings.pMd;
+		final dotWidth = AppSpacings.scale(8);
+		final dotSpacing = AppSpacings.pMd;
 
 		// Build detail parts: device name, message
 		final detailParts = <String>[
@@ -1065,14 +1065,14 @@ class _AlertItem extends StatelessWidget {
 						Row(
 							children: [
 								Container(
-									width: barWidth,
-									height: AppSpacings.scale(16),
+									width: dotWidth,
+									height: dotWidth,
 									decoration: BoxDecoration(
 										color: barColor,
-										borderRadius: BorderRadius.circular(AppSpacings.scale(2)),
+										shape: BoxShape.circle,
 									),
 								),
-								SizedBox(width: barSpacing),
+								SizedBox(width: dotSpacing),
 								Expanded(
 									child: Text(
 										alert.type.displayTitle,
@@ -1103,7 +1103,7 @@ class _AlertItem extends StatelessWidget {
 						// Row 2: (indent) · detail text
 						if (detailText != null)
 							Padding(
-								padding: EdgeInsets.only(left: barWidth + barSpacing, top: AppSpacings.pXs),
+								padding: EdgeInsets.only(left: dotWidth + dotSpacing, top: AppSpacings.pXs),
 								child: Align(
 									alignment: Alignment.centerLeft,
 									child: Text(
