@@ -266,7 +266,7 @@ class _NavTab extends StatelessWidget {
 
     final double iconSize = AppSpacings.scale(24);
     final double pillHeight = AppSpacings.scale(36);
-    final double pillRadius = AppSpacings.scale(16);
+    final double pillRadius = AppBorderRadius.base;
 
     return GestureDetector(
       onTap: onTap,
