@@ -193,10 +193,5 @@ void main() {
 			expect(SecurityAlertType.fromString('unknown'), SecurityAlertType.fault);
 		});
 
-		test('all types have a displayTitle', () {
-			for (final type in SecurityAlertType.values) {
-				expect(type.displayTitle, isNotEmpty);
-			}
-		});
 	});
 }

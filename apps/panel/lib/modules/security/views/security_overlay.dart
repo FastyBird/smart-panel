@@ -6,6 +6,7 @@ import 'package:fastybird_smart_panel/core/widgets/system_pages/export.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/security/models/security_alert.dart';
 import 'package:fastybird_smart_panel/modules/security/services/security_overlay_controller.dart';
+import 'package:fastybird_smart_panel/modules/security/utils/security_event_ui.dart';
 import 'package:fastybird_smart_panel/modules/security/utils/security_ui.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -25,6 +26,7 @@ class SecurityOverlay extends StatelessWidget {
 	Widget build(BuildContext context) {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 		final screenService = locator<ScreenService>();
+		final localizations = AppLocalizations.of(context)!;
 
 		return Consumer<SecurityOverlayController>(
 			builder: (context, controller, _) {
@@ -66,7 +68,7 @@ class SecurityOverlay extends StatelessWidget {
 										_buildIcon(isDark, screenService),
 										AppSpacings.spacingLgVertical,
 										Text(
-											controller.overlayTitle,
+											controller.overlayTitle(localizations),
 											style: TextStyle(
 												color: SystemPagesTheme.error(isDark),
 												fontSize: AppFontSize.extraLarge,
@@ -180,7 +182,7 @@ class SecurityOverlay extends StatelessWidget {
 					AppSpacings.spacingSmHorizontal,
 					Expanded(
 						child: Text(
-							alert.message ?? alert.type.displayTitle,
+							alert.message ?? securityAlertTypeTitle(alert.type, localizations),
 							style: TextStyle(
 								color: SystemPagesTheme.textPrimary(isDark),
 								fontSize: AppFontSize.small,

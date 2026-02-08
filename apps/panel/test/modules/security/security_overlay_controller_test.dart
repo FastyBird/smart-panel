@@ -1,8 +1,12 @@
+import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/l10n/app_localizations_en.dart';
 import 'package:fastybird_smart_panel/modules/security/models/security_alert.dart';
 import 'package:fastybird_smart_panel/modules/security/models/security_status.dart';
 import 'package:fastybird_smart_panel/modules/security/services/security_overlay_controller.dart';
 import 'package:fastybird_smart_panel/modules/security/types/security.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+final AppLocalizations _localizations = AppLocalizationsEn();
 
 SecurityAlertModel _makeAlert({
 	required String id,
@@ -439,14 +443,14 @@ void main() {
 					_makeAlert(id: 'a', type: SecurityAlertType.co),
 				],
 			));
-			expect(controller.overlayTitle, 'CO detected');
+			expect(controller.overlayTitle(_localizations), 'CO detected');
 		});
 
 		test('overlayTitle shows alarm triggered when no alerts', () {
 			controller.updateStatus(_makeStatus(
 				alarmState: AlarmState.triggered,
 			));
-			expect(controller.overlayTitle, 'Alarm triggered');
+			expect(controller.overlayTitle(_localizations), 'Alarm triggered');
 		});
 
 		test('overlayAlerts returns max 3', () {

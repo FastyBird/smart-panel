@@ -1,7 +1,9 @@
+import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/security/models/security_alert.dart';
 import 'package:fastybird_smart_panel/modules/security/models/security_status.dart';
 import 'package:fastybird_smart_panel/modules/security/repositories/security_status.dart';
 import 'package:fastybird_smart_panel/modules/security/types/security.dart';
+import 'package:fastybird_smart_panel/modules/security/utils/security_event_ui.dart';
 import 'package:flutter/foundation.dart';
 
 /// Compare two alerts by timestamp desc, then id asc.
@@ -229,11 +231,13 @@ class SecurityOverlayController extends ChangeNotifier {
 	}
 
 	/// Title for overlay based on top alert or alarm state.
-	String get overlayTitle {
+	String overlayTitle(AppLocalizations localizations) {
 		if (_status.alarmState == AlarmState.triggered && topAlert == null) {
-			return 'Alarm triggered';
+			return localizations.security_overlay_alarm_triggered;
 		}
-		return topAlert?.type.displayTitle ?? 'Security alert';
+		return topAlert != null
+			? securityAlertTypeTitle(topAlert!.type, localizations)
+			: localizations.security_overlay_default_title;
 	}
 
 	/// Check if a specific alert is acknowledged (server or optimistic).

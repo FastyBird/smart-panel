@@ -58,7 +58,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
 				final ringBgColor = ringColor.withValues(alpha: 0.25);
 				final ringProgress = _ringProgress(status);
 				final isTriggered = status.alarmState == AlarmState.triggered;
-				final statusSummary = _statusSummary(status, entryPoints);
+				final statusSummary = _statusSummary(status, entryPoints, localizations);
 
 				return Scaffold(
 					backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
@@ -128,23 +128,23 @@ class _SecurityScreenState extends State<SecurityScreen> {
 		);
 	}
 
-	List<ModeOption<_SecurityTab>> _buildTabModes({required bool hasEntryPoints}) {
+	List<ModeOption<_SecurityTab>> _buildTabModes({required bool hasEntryPoints, required AppLocalizations localizations}) {
 		return [
 			if (hasEntryPoints)
 				ModeOption(
 					value: _SecurityTab.entryPoints,
 					icon: MdiIcons.home,
-					label: 'Entry Points',
+					label: localizations.security_tab_entry_points,
 				),
 			ModeOption(
 				value: _SecurityTab.alerts,
 				icon: MdiIcons.alertOutline,
-				label: 'Alerts',
+				label: localizations.security_tab_alerts,
 			),
 			ModeOption(
 				value: _SecurityTab.events,
 				icon: MdiIcons.history,
-				label: 'Events',
+				label: localizations.security_tab_events,
 			),
 		];
 	}
@@ -166,6 +166,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
 					entryPoints: entryPoints,
 					isDark: isDark,
 					screenService: screenService,
+					localizations: localizations,
 					isCritical: _isCriticalStatus(status),
 					isLandscape: isLandscape,
 				);
@@ -192,9 +193,9 @@ class _SecurityScreenState extends State<SecurityScreen> {
 		}
 	}
 
-	Widget _buildModeSelector({required bool hasEntryPoints}) {
+	Widget _buildModeSelector({required bool hasEntryPoints, required AppLocalizations localizations}) {
 		return ModeSelector<_SecurityTab>(
-			modes: _buildTabModes(hasEntryPoints: hasEntryPoints),
+			modes: _buildTabModes(hasEntryPoints: hasEntryPoints, localizations: localizations),
 			selectedValue: _selectedTab,
 			onChanged: (tab) => setState(() => _selectedTab = tab),
 			orientation: ModeSelectorOrientation.horizontal,
@@ -203,9 +204,9 @@ class _SecurityScreenState extends State<SecurityScreen> {
 		);
 	}
 
-	Widget _buildLandscapeModeSelector({required bool hasEntryPoints}) {
+	Widget _buildLandscapeModeSelector({required bool hasEntryPoints, required AppLocalizations localizations}) {
 		return ModeSelector<_SecurityTab>(
-			modes: _buildTabModes(hasEntryPoints: hasEntryPoints),
+			modes: _buildTabModes(hasEntryPoints: hasEntryPoints, localizations: localizations),
 			selectedValue: _selectedTab,
 			onChanged: (tab) => setState(() => _selectedTab = tab),
 			orientation: ModeSelectorOrientation.vertical,
@@ -249,6 +250,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
 						isTriggered: isTriggered,
 						isDark: isDark,
 						isCritical: _isCriticalStatus(status),
+						localizations: localizations,
 					),
 					Expanded(
 						child: _buildTabContent(
@@ -264,7 +266,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
 					),
 				],
 			),
-			modeSelector: _buildModeSelector(hasEntryPoints: !entryPoints.isEmpty),
+			modeSelector: _buildModeSelector(hasEntryPoints: !entryPoints.isEmpty, localizations: localizations),
 		);
 	}
 
@@ -295,8 +297,9 @@ class _SecurityScreenState extends State<SecurityScreen> {
 				isDark: isDark,
 				isCritical: _isCriticalStatus(status),
 				compact: true,
+				localizations: localizations,
 			),
-			modeSelector: _buildLandscapeModeSelector(hasEntryPoints: !entryPoints.isEmpty),
+			modeSelector: _buildLandscapeModeSelector(hasEntryPoints: !entryPoints.isEmpty, localizations: localizations),
 			additionalContent: _buildTabContent(
 				status: status,
 				controller: controller,
@@ -332,17 +335,17 @@ class _SecurityScreenState extends State<SecurityScreen> {
 			status.highestSeverity == Severity.critical;
 	}
 
-	String _statusSummary(SecurityStatusModel status, EntryPointsSummary entryPoints) {
+	String _statusSummary(SecurityStatusModel status, EntryPointsSummary entryPoints, AppLocalizations localizations) {
 		final openCount = entryPoints.openCount;
 		final alertCount = status.activeAlerts.length;
 
 		if (alertCount == 0 && openCount == 0) {
-			return 'All clear · ${entryPoints.all.length} entry points secured';
+			return localizations.security_summary_all_clear(entryPoints.all.length);
 		}
 
 		final parts = <String>[];
-		if (alertCount > 0) parts.add('$alertCount alerts');
-		if (openCount > 0) parts.add('$openCount entry points open');
+		if (alertCount > 0) parts.add(localizations.security_summary_alerts(alertCount));
+		if (openCount > 0) parts.add(localizations.security_summary_entry_points_open(openCount));
 
 		return parts.join(' · ');
 	}
@@ -416,6 +419,7 @@ class _StatusRingHero extends StatefulWidget {
 	final bool isDark;
 	final bool isCritical;
 	final bool compact;
+	final AppLocalizations localizations;
 
 	const _StatusRingHero({
 		required this.ringColor,
@@ -428,6 +432,7 @@ class _StatusRingHero extends StatefulWidget {
 		required this.isDark,
 		this.isCritical = false,
 		this.compact = false,
+		required this.localizations,
 	});
 
 	@override
@@ -566,9 +571,9 @@ class _StatusRingHeroState extends State<_StatusRingHero>
 	}
 
 	String get _severityLabel {
-		if (widget.isCritical) return 'Triggered';
-		if (widget.ringColor == SystemPagesTheme.warning(widget.isDark)) return 'Warning';
-		return 'Secure';
+		if (widget.isCritical) return widget.localizations.security_status_triggered;
+		if (widget.ringColor == SystemPagesTheme.warning(widget.isDark)) return widget.localizations.security_status_warning;
+		return widget.localizations.security_status_secure;
 	}
 
 	IconData get _severityIcon {
@@ -579,21 +584,21 @@ class _StatusRingHeroState extends State<_StatusRingHero>
 
 	String _armedLabel(ArmedState? state) {
 		return switch (state) {
-			ArmedState.disarmed => 'Disarmed',
-			ArmedState.armedHome => 'Armed Home',
-			ArmedState.armedAway => 'Armed Away',
-			ArmedState.armedNight => 'Armed Night',
-			_ => 'Unknown',
+			ArmedState.disarmed => widget.localizations.security_armed_disarmed,
+			ArmedState.armedHome => widget.localizations.security_armed_home,
+			ArmedState.armedAway => widget.localizations.security_armed_away,
+			ArmedState.armedNight => widget.localizations.security_armed_night,
+			_ => widget.localizations.security_armed_unknown,
 		};
 	}
 
 	String _alarmLabel(AlarmState? state) {
 		return switch (state) {
-			AlarmState.idle => 'Idle',
-			AlarmState.pending => 'Pending',
-			AlarmState.triggered => 'Triggered',
-			AlarmState.silenced => 'Silenced',
-			_ => 'Unknown',
+			AlarmState.idle => widget.localizations.security_alarm_idle,
+			AlarmState.pending => widget.localizations.security_alarm_pending,
+			AlarmState.triggered => widget.localizations.security_alarm_triggered,
+			AlarmState.silenced => widget.localizations.security_alarm_silenced,
+			_ => widget.localizations.security_alarm_unknown,
 		};
 	}
 
@@ -748,6 +753,7 @@ class _EntryPointGrid extends StatelessWidget {
 	final EntryPointsSummary entryPoints;
 	final bool isDark;
 	final ScreenService screenService;
+	final AppLocalizations localizations;
 	final bool isCritical;
 	final bool isLandscape;
 
@@ -755,6 +761,7 @@ class _EntryPointGrid extends StatelessWidget {
 		required this.entryPoints,
 		required this.isDark,
 		required this.screenService,
+		required this.localizations,
 		this.isCritical = false,
 		this.isLandscape = false,
 	});
@@ -768,8 +775,8 @@ class _EntryPointGrid extends StatelessWidget {
 			: SystemPagesTheme.success(isDark);
 
 		final badgeText = entryPoints.openCount > 0
-			? '${entryPoints.openCount} Open'
-			: 'All Secure';
+			? localizations.security_entry_open_count(entryPoints.openCount)
+			: localizations.security_entry_all_secure;
 
 		final crossAxisCount = screenService.isSmallScreen ? 3 : 4;
 		final items = entryPoints.all;
@@ -820,7 +827,7 @@ class _EntryPointGrid extends StatelessWidget {
 			crossAxisAlignment: CrossAxisAlignment.start,
 			children: [
 				SectionTitle(
-					title: 'Entry Points',
+					title: localizations.security_tab_entry_points,
 					icon: MdiIcons.home,
 					trailing: _Badge(label: badgeText, color: badgeColor),
 				),
@@ -848,16 +855,16 @@ class _EntryPointGrid extends StatelessWidget {
 
 		if (critical) {
 			color = ThemeColors.error;
-			statusText = 'Breach';
+			statusText = localizations.security_entry_status_breach;
 		} else if (isOpen) {
 			color = ThemeColors.warning;
-			statusText = 'Open';
+			statusText = localizations.security_entry_status_open;
 		} else if (isUnknown) {
 			color = null;
-			statusText = 'Unknown';
+			statusText = localizations.security_entry_status_unknown;
 		} else {
 			color = ThemeColors.success;
-			statusText = 'Closed';
+			statusText = localizations.security_entry_status_closed;
 		}
 
 		return UniversalTile(
@@ -934,6 +941,7 @@ class _AlertStream extends StatelessWidget {
 					AppSpacings.spacingMdHorizontal,
 					_AckAllButton(
 						isDark: isDark,
+						label: localizations.security_ack_all,
 						onPressed: () => controller.acknowledgeAllAlerts(),
 					),
 				],
@@ -950,7 +958,7 @@ class _AlertStream extends StatelessWidget {
 		);
 
 		final emptyState = Text(
-			'No active alerts',
+			localizations.security_no_active_alerts,
 			style: TextStyle(
 				fontSize: AppFontSize.small,
 				color: SystemPagesTheme.textMuted(isDark),
@@ -962,7 +970,7 @@ class _AlertStream extends StatelessWidget {
 				color: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
 				borderColor: _accentColor,
 				headerIcon: MdiIcons.alertOutline,
-				headerTitle: 'Alerts',
+				headerTitle: localizations.security_tab_alerts,
 				headerTrailing: headerTrailing,
 				headerLine: true,
 				child: sortedAlerts.isEmpty
@@ -990,7 +998,7 @@ class _AlertStream extends StatelessWidget {
 			borderColor: _accentColor,
 			expanded: true,
 			headerIcon: MdiIcons.alertOutline,
-			headerTitle: 'Alerts',
+			headerTitle: localizations.security_tab_alerts,
 			headerTrailing: headerTrailing,
 			headerLine: true,
 			child: Expanded(
@@ -1075,7 +1083,7 @@ class _AlertItem extends StatelessWidget {
 								SizedBox(width: dotSpacing),
 								Expanded(
 									child: Text(
-										alert.type.displayTitle,
+										securityAlertTypeTitle(alert.type, localizations),
 										style: TextStyle(
 											fontSize: AppFontSize.small,
 											fontWeight: FontWeight.w500,
@@ -1170,9 +1178,10 @@ class _AckButton extends StatelessWidget {
 
 class _AckAllButton extends StatelessWidget {
 	final bool isDark;
+	final String label;
 	final VoidCallback? onPressed;
 
-	const _AckAllButton({required this.isDark, this.onPressed});
+	const _AckAllButton({required this.isDark, required this.label, this.onPressed});
 
 	@override
 	Widget build(BuildContext context) {
@@ -1200,7 +1209,7 @@ class _AckAllButton extends StatelessWidget {
 						: AppFilledButtonsLightThemes.neutralForegroundColor,
 				),
 				label: Text(
-					'Ack All',
+					label,
 					style: TextStyle(
 						fontSize: AppFontSize.extraSmall,
 					),
@@ -1246,7 +1255,7 @@ class _EventsFeed extends StatelessWidget {
 			return AppCard(
 				color: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
 				headerIcon: MdiIcons.history,
-				headerTitle: 'Recent Events',
+				headerTitle: localizations.security_header_recent_events,
 				headerTrailing: headerTrailing,
 				headerLine: true,
 				child: _buildContent(context),
@@ -1257,7 +1266,7 @@ class _EventsFeed extends StatelessWidget {
 			color: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
 			expanded: true,
 			headerIcon: MdiIcons.history,
-			headerTitle: 'Recent Events',
+			headerTitle: localizations.security_header_recent_events,
 			headerTrailing: headerTrailing,
 			headerLine: true,
 			child: Expanded(child: _buildContent(context)),
@@ -1299,7 +1308,7 @@ class _EventsFeed extends StatelessWidget {
 					spacing: AppSpacings.pMd,
 					children: [
 						Text(
-							eventsRepo.errorMessage ?? 'Failed to load events',
+							eventsRepo.errorMessage ?? localizations.security_events_load_failed,
 							style: TextStyle(
 								fontSize: AppFontSize.base,
 								color: SystemPagesTheme.textMuted(isDark),
@@ -1327,7 +1336,7 @@ class _EventsFeed extends StatelessWidget {
 										: AppFilledButtonsLightThemes.primaryForegroundColor,
 								),
 								label: Text(
-									'Retry',
+									localizations.security_retry,
 									style: TextStyle(
 										fontSize: AppFontSize.small,
 									),
@@ -1346,7 +1355,7 @@ class _EventsFeed extends StatelessWidget {
 			case SecurityEventsState.loaded:
 				if (eventsRepo.events.isEmpty) {
 					final emptyState = Text(
-						'No recent events',
+						localizations.security_no_recent_events,
 						style: TextStyle(
 							fontSize: AppFontSize.small,
 							color: SystemPagesTheme.textMuted(isDark),
@@ -1411,8 +1420,8 @@ class _EventItem extends StatelessWidget {
 
 	@override
 	Widget build(BuildContext context) {
-		final name = securityEventName(event);
-		final detail = securityEventDetail(event);
+		final name = securityEventName(event, localizations);
+		final detail = securityEventDetail(event, localizations);
 		final deviceName = event.sourceDeviceId != null
 			? devicesService.getDevice(event.sourceDeviceId!)?.name
 			: null;
