@@ -2208,6 +2208,16 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
                   final mainContent = Column(
                     spacing: AppSpacings.pMd,
                     children: [
+                      // Mode selector
+                      if (showModeSelector)
+                        LightingModeSelector(
+                          capabilities: allCapabilities,
+                          selectedCapability: _selectedCapability,
+                          onCapabilityChanged: (value) {
+                            setState(() => _selectedCapability = value);
+                          },
+                          isVertical: false,
+                        ),
                       // Main control
                       Expanded(
                         child: LightingMainControl(
@@ -2248,15 +2258,6 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
                     contentPadding: AppSpacings.paddingLg,
                     scrollable: false,
                     content: mainContent,
-                    modeSelector: showModeSelector ?
-                      LightingModeSelector(
-                          capabilities: allCapabilities,
-                          selectedCapability: _selectedCapability,
-                          onCapabilityChanged: (value) {
-                            setState(() => _selectedCapability = value);
-                          },
-                          isVertical: false,
-                        ) : null,
                   );
                 },
               ),
