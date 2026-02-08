@@ -1776,24 +1776,16 @@ class LightingModeSelector extends StatelessWidget {
     BuildContext context,
     List<ModeOption<LightCapability>> modes,
   ) {
-    return Container(
-      padding: EdgeInsets.only(
-        left: AppSpacings.pLg,
-        right: AppSpacings.pLg,
-        bottom: AppSpacings.pLg,
-        top: AppSpacings.pMd,
-      ),
-      child: ModeSelector<LightCapability>(
-        modes: modes,
-        selectedValue: selectedCapability,
-        iconPlacement: ModeSelectorIconPlacement.top,
-        onChanged: (value) {
-          HapticFeedback.selectionClick();
-          onCapabilityChanged(value);
-        },
-        orientation: ModeSelectorOrientation.horizontal,
-        showLabels: true,
-      ),
+    return ModeSelector<LightCapability>(
+      modes: modes,
+      selectedValue: selectedCapability,
+      iconPlacement: ModeSelectorIconPlacement.top,
+      onChanged: (value) {
+        HapticFeedback.selectionClick();
+        onCapabilityChanged(value);
+      },
+      orientation: ModeSelectorOrientation.horizontal,
+      showLabels: true,
     );
   }
 }

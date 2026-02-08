@@ -29,7 +29,7 @@ class PortraitViewLayout extends StatelessWidget {
   /// Custom scroll controller for the content
   final ScrollController? scrollController;
 
-  PortraitViewLayout({
+  const PortraitViewLayout({
     super.key,
     required this.content,
     this.contentPadding,
@@ -39,14 +39,12 @@ class PortraitViewLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (scrollable) {
-      final defaultPadding = EdgeInsets.only(
-        left: AppSpacings.pLg,
-        right: AppSpacings.pLg,
-        top: AppSpacings.pMd,
-        bottom: AppSpacings.pMd,
-      );
+    final defaultPadding = EdgeInsets.symmetric(
+      horizontal: AppSpacings.pLg,
+      vertical: AppSpacings.pMd,
+    );
 
+    if (scrollable) {
       return VerticalScrollWithGradient(
         gradientHeight: AppSpacings.pMd,
         padding: contentPadding ?? defaultPadding,
@@ -57,13 +55,9 @@ class PortraitViewLayout extends StatelessWidget {
       );
     }
 
-    if (contentPadding != null) {
-      return Padding(
-        padding: contentPadding!,
-        child: content,
-      );
-    }
-
-    return content;
+    return Padding(
+      padding: contentPadding ?? defaultPadding,
+      child: content,
+    );
   }
 }
