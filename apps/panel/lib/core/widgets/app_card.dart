@@ -175,7 +175,7 @@ class _AppCardHeader extends StatelessWidget {
             Text(
               title,
               style: TextStyle(
-                color: secondaryColor,
+                color: titleColor ?? secondaryColor,
                 fontSize: AppFontSize.small,
                 fontWeight: FontWeight.bold,
               ),
