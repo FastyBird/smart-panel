@@ -109,7 +109,10 @@ describe('SecurityService', () => {
 
 			const result = await service.getStatus();
 			expect(result.activeAlerts[0].acknowledged).toBe(false);
-			expect(ackService.resetAcknowledgement).toHaveBeenCalledWith('sensor:dev1:smoke', new Date('2025-01-02T00:00:00Z'));
+			expect(ackService.resetAcknowledgement).toHaveBeenCalledWith(
+				'sensor:dev1:smoke',
+				new Date('2025-01-02T00:00:00Z'),
+			);
 		});
 
 		it('should apply stored ack state for alerts with invalid timestamps', async () => {
@@ -146,7 +149,10 @@ describe('SecurityService', () => {
 
 			const result = await service.getStatus();
 			expect(result.activeAlerts[0].acknowledged).toBe(false);
-			expect(ackService.resetAcknowledgement).toHaveBeenCalledWith('sensor:dev1:smoke', new Date('2025-01-01T00:00:00Z'));
+			expect(ackService.resetAcknowledgement).toHaveBeenCalledWith(
+				'sensor:dev1:smoke',
+				new Date('2025-01-01T00:00:00Z'),
+			);
 		});
 
 		it('should cleanup stale ack records', async () => {
