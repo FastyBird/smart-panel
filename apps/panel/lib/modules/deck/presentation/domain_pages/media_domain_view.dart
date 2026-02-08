@@ -258,9 +258,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	@override
 	void dispose() {
 		_pageActivatedSubscription?.cancel();
-		if (_isActivePage) {
-			_bottomNavModeNotifier?.clear();
-		}
 		_volumeDebounceTimer?.cancel();
 		_playbackSettleTimer?.cancel();
 		_playbackSheetNotifier.dispose();

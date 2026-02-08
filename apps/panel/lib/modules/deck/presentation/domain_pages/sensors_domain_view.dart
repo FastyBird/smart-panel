@@ -312,9 +312,6 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
   @override
   void dispose() {
     _pageActivatedSubscription?.cancel();
-    if (_isActivePage) {
-      _bottomNavModeNotifier?.clear();
-    }
     _freshnessTimer?.cancel();
     _spacesService?.removeListener(_onDataChanged);
     _spaceStateRepository?.removeListener(_onDataChanged);

@@ -1208,9 +1208,6 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   @override
   void dispose() {
     _pageActivatedSubscription?.cancel();
-    if (_isActivePage) {
-      _bottomNavModeNotifier?.clear();
-    }
     _spacesService?.removeListener(_onDataChanged);
     _devicesService?.removeListener(_onDataChanged);
     _intentsRepository?.removeListener(_onIntentChanged);

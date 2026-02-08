@@ -547,9 +547,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   @override
   void dispose() {
     _pageActivatedSubscription?.cancel();
-    if (_isActivePage) {
-      _bottomNavModeNotifier?.clear();
-    }
     _spacesService?.removeListener(_onDataChanged);
     _devicesService?.removeListener(_onDataChanged);
     _scenesService?.removeListener(_onDataChanged);
