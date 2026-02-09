@@ -105,8 +105,21 @@ export class EnergyIngestionListener implements OnModuleInit {
 		const roomId = device.roomId ?? null;
 
 		// Use the actual measurement timestamp from the property value,
-		// falling back to current time only if unavailable
-		const timestamp = property.value?.lastUpdated ? new Date(property.value.lastUpdated) : new Date();
+		// falling back to current time only if unavailable.
+		// Guard against unparseable strings (e.g. "null", "0") that create Invalid Date.
+		let timestamp = new Date();
+
+		if (property.value?.lastUpdated) {
+			const parsed = new Date(property.value.lastUpdated);
+
+			if (!isNaN(parsed.getTime())) {
+				timestamp = parsed;
+			} else {
+				this.logger.warn(
+					`Unparseable lastUpdated "${String(property.value.lastUpdated)}" for property ${property.id}, using current time`,
+				);
+			}
+		}
 
 		// Compute delta from cumulative reading
 		const delta = this.deltaComputation.computeDelta(deviceId, mapping.sourceType, numericValue, timestamp);

@@ -92,7 +92,7 @@ export class EnergyDataService {
 			.addSelect('SUM(delta.deltaKwh)', 'totalKwh')
 			.addSelect('MAX(delta.createdAt)', 'lastUpdated')
 			.where('delta.intervalStart >= :rangeStart', { rangeStart: rangeStart.toISOString() })
-			.andWhere('delta.intervalEnd <= :rangeEnd', { rangeEnd: rangeEnd.toISOString() })
+			.andWhere('delta.intervalStart < :rangeEnd', { rangeEnd: rangeEnd.toISOString() })
 			.groupBy('delta.sourceType');
 
 		if (roomId) {
@@ -134,7 +134,7 @@ export class EnergyDataService {
 			.addSelect('delta.sourceType', 'sourceType')
 			.addSelect('SUM(delta.deltaKwh)', 'totalKwh')
 			.where('delta.intervalStart >= :rangeStart', { rangeStart: rangeStart.toISOString() })
-			.andWhere('delta.intervalEnd <= :rangeEnd', { rangeEnd: rangeEnd.toISOString() })
+			.andWhere('delta.intervalStart < :rangeEnd', { rangeEnd: rangeEnd.toISOString() })
 			.groupBy('delta.intervalStart')
 			.addGroupBy('delta.intervalEnd')
 			.addGroupBy('delta.sourceType')
