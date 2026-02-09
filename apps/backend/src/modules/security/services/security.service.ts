@@ -93,7 +93,18 @@ export class SecurityService {
 
 		const date = new Date(timestamp);
 
-		return Number.isNaN(date.getTime()) ? null : date;
+		if (Number.isNaN(date.getTime())) {
+			return null;
+		}
+
+		// Truncate milliseconds — SQLite datetime columns drop sub-second
+		// precision, so stored values round-trip without ms.  Without this
+		// truncation the "newer event" comparison in applyAcknowledgements
+		// sees the original ms-precise timestamp as strictly greater than
+		// the DB value and immediately resets the acknowledgement.
+		date.setMilliseconds(0);
+
+		return date;
 	}
 
 	private async applyAcknowledgements(status: SecurityStatusModel): Promise<void> {
@@ -111,6 +122,7 @@ export class SecurityService {
 			}
 
 			const alertTime = new Date(alert.timestamp);
+			alertTime.setMilliseconds(0); // Match SQLite datetime precision
 			const alertTimeValid = !Number.isNaN(alertTime.getTime());
 
 			if (alertTimeValid && (record.lastEventAt == null || alertTime > record.lastEventAt)) {

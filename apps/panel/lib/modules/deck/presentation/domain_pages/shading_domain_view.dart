@@ -41,6 +41,8 @@
 import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
+import 'dart:async';
+
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_card.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
@@ -140,8 +142,10 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
 
   SpacesService? _spacesService;
   DevicesService? _devicesService;
-  DeckService? _deckService;
   EventBus? _eventBus;
+  BottomNavModeNotifier? _bottomNavModeNotifier;
+  StreamSubscription<DeckPageActivatedEvent>? _pageActivatedSubscription;
+  bool _isActivePage = false;
   bool _isLoading = true;
   bool _hasError = false;
 
@@ -215,20 +219,23 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     }
 
     try {
-      _deckService = locator<DeckService>();
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('[ShadingDomainView] Failed to get DeckService: $e');
-      }
-    }
-
-    try {
       _eventBus = locator<EventBus>();
     } catch (e) {
       if (kDebugMode) {
         debugPrint('[ShadingDomainView] Failed to get EventBus: $e');
       }
     }
+
+    try {
+      _bottomNavModeNotifier = locator<BottomNavModeNotifier>();
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[ShadingDomainView] Failed to get BottomNavModeNotifier: $e');
+      }
+    }
+
+    // Subscribe to page activation events for bottom nav mode registration
+    _pageActivatedSubscription = _eventBus?.on<DeckPageActivatedEvent>().listen(_onPageActivated);
 
     // Fetch covers targets and state for this space
     _fetchCoversData();
@@ -254,6 +261,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
           _isLoading = false;
           _hasError = false;
         });
+        _registerModeConfig();
       }
     } catch (e) {
       if (kDebugMode) {
@@ -279,9 +287,151 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
 
   @override
   void dispose() {
+    _pageActivatedSubscription?.cancel();
     _spacesService?.removeListener(_onDataChanged);
     _devicesService?.removeListener(_onDataChanged);
     super.dispose();
+  }
+
+  // --------------------------------------------------------------------------
+  // BOTTOM NAV MODE REGISTRATION
+  // --------------------------------------------------------------------------
+
+  void _onPageActivated(DeckPageActivatedEvent event) {
+    if (!mounted) return;
+    _isActivePage = event.itemId == widget.viewItem.id;
+
+    if (_isActivePage) {
+      _registerModeConfig();
+    }
+  }
+
+  void _registerModeConfig({CoversMode? modeOverride}) {
+    if (!_isActivePage || _isLoading) return;
+
+    final targets = _coversTargets;
+    final hasCovers = targets.isNotEmpty;
+    if (!hasCovers) {
+      _bottomNavModeNotifier?.clear();
+      return;
+    }
+
+    final localizations = AppLocalizations.of(context)!;
+    final modeOptions = _getCoversModeOptions(localizations);
+    final (activeValue, matchedValue, lastIntentValue) = _getCoverModeSelectorValues();
+    final currentMode = modeOverride ?? activeValue ?? matchedValue ?? lastIntentValue ?? CoversMode.open;
+
+    final currentOption = modeOptions.firstWhere(
+      (o) => o.value == currentMode,
+      orElse: () => modeOptions.first,
+    );
+
+    _bottomNavModeNotifier?.setConfig(BottomNavModeConfig(
+      icon: currentOption.icon,
+      label: currentOption.label,
+      color: currentOption.color ?? ThemeColors.neutral,
+      popupBuilder: _buildModePopupContent,
+    ));
+  }
+
+  Widget _buildModePopupContent(BuildContext context, VoidCallback dismiss) {
+    final localizations = AppLocalizations.of(context)!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final modes = _getCoversModeOptions(localizations);
+    final (activeValue, matchedValue, lastIntentValue) = _getCoverModeSelectorValues();
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.only(bottom: AppSpacings.pSm),
+          child: Text(
+            'MODE',
+            style: TextStyle(
+              fontSize: AppFontSize.extraSmall,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 1.0,
+              color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
+            ),
+          ),
+        ),
+        for (final mode in modes)
+          _buildPopupModeItem(
+            context,
+            mode: mode,
+            isActive: activeValue == mode.value,
+            isMatched: matchedValue == mode.value,
+            isLastIntent: lastIntentValue == mode.value,
+            onTap: () {
+              _setCoversMode(mode.value);
+              _registerModeConfig(modeOverride: mode.value);
+              dismiss();
+            },
+          ),
+      ],
+    );
+  }
+
+  Widget _buildPopupModeItem(
+    BuildContext context, {
+    required ModeOption<CoversMode> mode,
+    required bool isActive,
+    required bool isMatched,
+    required bool isLastIntent,
+    required VoidCallback onTap,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colorFamily = ThemeColorFamily.get(
+      isDark ? Brightness.dark : Brightness.light,
+      mode.color ?? ThemeColors.neutral,
+    );
+    final isHighlighted = isActive || isMatched || isLastIntent;
+
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          vertical: AppSpacings.pMd,
+          horizontal: AppSpacings.pMd,
+        ),
+        margin: EdgeInsets.only(bottom: AppSpacings.pXs),
+        decoration: BoxDecoration(
+          color: isHighlighted ? colorFamily.light9 : Colors.transparent,
+          borderRadius: BorderRadius.circular(AppBorderRadius.small),
+          border: isHighlighted
+              ? Border.all(color: colorFamily.light7, width: AppSpacings.scale(1))
+              : null,
+        ),
+        child: Row(
+          spacing: AppSpacings.pMd,
+          children: [
+            Icon(
+              mode.icon,
+              color: isHighlighted ? colorFamily.base : (isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary),
+              size: AppSpacings.scale(20),
+            ),
+            Expanded(
+              child: Text(
+                mode.label,
+                style: TextStyle(
+                  fontSize: AppFontSize.base,
+                  fontWeight: isHighlighted ? FontWeight.w600 : FontWeight.w400,
+                  color: isHighlighted ? colorFamily.base : (isDark ? AppTextColorDark.regular : AppTextColorLight.regular),
+                ),
+              ),
+            ),
+            if (isActive)
+              Icon(Icons.check, color: colorFamily.base, size: AppSpacings.scale(16)),
+            if (isMatched)
+              Icon(Icons.sync, color: colorFamily.base, size: AppSpacings.scale(16)),
+            if (isLastIntent)
+              Icon(Icons.history, color: colorFamily.base, size: AppSpacings.scale(16)),
+          ],
+        ),
+      ),
+    );
   }
 
   /// Called when SpacesService or DevicesService notifies; clears converged
@@ -311,24 +461,14 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
           }
         }
         setState(() {});
+
+        // Update bottom nav mode config if this is the active page
+        _registerModeConfig();
       }
     });
   }
 
-  /// Navigate to deck home item via [EventBus].
-  void _navigateToHome() {
-    final deck = _deckService?.deck;
-    if (deck == null || deck.items.isEmpty) {
-      Navigator.pop(context);
-      return;
-    }
 
-    final homeIndex = deck.startIndex;
-    if (homeIndex >= 0 && homeIndex < deck.items.length) {
-      final homeItem = deck.items[homeIndex];
-      _eventBus?.fire(NavigateToDeckItemEvent(homeItem.id));
-    }
-  }
 
   // --------------------------------------------------------------------------
   // BUILD
@@ -415,21 +555,12 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
         icon: position > 0 ? MdiIcons.blindsHorizontal : MdiIcons.blindsHorizontalClosed,
         color: _getPositionThemeColor(position),
       ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        spacing: AppSpacings.pMd,
-        children: [
-          if (showDevicesButton)
-            HeaderIconButton(
+      trailing: showDevicesButton
+          ? HeaderIconButton(
               icon: MdiIcons.windowShutterSettings,
               onTap: _showShadingDevicesSheet,
-            ),
-          HeaderIconButton(
-            icon: MdiIcons.homeOutline,
-            onTap: _navigateToHome,
-          ),
-        ],
-      ),
+            )
+          : null,
     );
   }
 
@@ -645,10 +776,8 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     BuildContext context,
     List<_CoverRoleData> roleDataList,
   ) {
-    final localizations = AppLocalizations.of(context)!;
     final primaryRole = roleDataList.isNotEmpty ? roleDataList.first : null;
     final secondaryRoles = roleDataList.length > 1 ? roleDataList.skip(1).toList() : [];
-    final hasCovers = roleDataList.isNotEmpty;
 
     return PortraitViewLayout(
       content: Column(
@@ -671,7 +800,6 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
             ),
         ],
       ),
-      modeSelector: hasCovers ? _buildModeSelector(context, localizations) : null,
     );
   }
 
@@ -1042,21 +1170,6 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     return (null, null, null);
   }
 
-  /// Horizontal mode selector for portrait layout.
-  Widget _buildModeSelector(BuildContext context, AppLocalizations localizations) {
-    final (activeValue, matchedValue, lastIntentValue) = _getCoverModeSelectorValues();
-
-    return IntentModeSelector<CoversMode>(
-      modes: _getCoversModeOptions(localizations),
-      activeValue: activeValue,
-      matchedValue: matchedValue,
-      lastIntentValue: lastIntentValue,
-      onChanged: _setCoversMode,
-      orientation: ModeSelectorOrientation.horizontal,
-      iconPlacement: ModeSelectorIconPlacement.top,
-    );
-  }
-
   /// Vertical mode selector for landscape layout; [showLabels] from screen size.
   Widget _buildLandscapeModeSelector(
     BuildContext context,
@@ -1230,10 +1343,6 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
               leading: HeaderMainIcon(
                 icon: MdiIcons.blindsHorizontalClosed,
                 color: ThemeColors.neutral,
-              ),
-              trailing: HeaderIconButton(
-                icon: MdiIcons.homeOutline,
-                onTap: _navigateToHome,
               ),
             ),
             Expanded(

@@ -48,6 +48,7 @@
 //   - HEADER, PORTRAIT LAYOUT, LANDSCAPE LAYOUT, PRIMARY CONTROL CARD,
 //     SENSORS, AUXILIARY: UI builders and tap handlers.
 
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:event_bus/event_bus.dart';
@@ -59,6 +60,9 @@ import 'package:provider/provider.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/modules/deck/models/bottom_nav_mode_config.dart';
+import 'package:fastybird_smart_panel/modules/deck/services/bottom_nav_mode_notifier.dart';
+import 'package:fastybird_smart_panel/modules/deck/types/deck_page_activated_event.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_card.dart';
 import 'package:fastybird_smart_panel/core/widgets/circular_control_dial.dart';
 import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
@@ -73,9 +77,7 @@ import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/domain_data_loader.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_item_sheet.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/domain_state_view.dart';
-import 'package:fastybird_smart_panel/modules/deck/services/deck_service.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/domain_control_state_service.dart';
-import 'package:fastybird_smart_panel/modules/deck/types/navigate_event.dart';
 import 'package:fastybird_smart_panel/modules/deck/utils/lighting.dart';
 import 'package:fastybird_smart_panel/modules/devices/export.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
@@ -341,11 +343,13 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   /// Optional services; resolved in initState. Listeners on Spaces, Devices, Intents.
   SpacesService? _spacesService;
   DevicesService? _devicesService;
-  DeckService? _deckService;
   EventBus? _eventBus;
   IntentsRepository? _intentsRepository;
   IntentOverlayService? _intentOverlayService;
   DeviceControlStateService? _deviceControlStateService;
+  BottomNavModeNotifier? _bottomNavModeNotifier;
+  StreamSubscription<DeckPageActivatedEvent>? _pageActivatedSubscription;
+  bool _isActivePage = false;
 
   /// Single derived state for the page; rebuilt in [_buildState] on data/intent changes.
   ClimateRoomState _state = const ClimateRoomState(roomName: '');
@@ -365,6 +369,29 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   bool _setpointWasLocked = false;
 
   String get _roomId => widget.viewItem.roomId;
+
+  /// Current mode, checking pending (locked) state first.
+  ///
+  /// When the user selects a mode in the popup, the control state service is
+  /// updated synchronously via [setPending] but [_buildState] may not run
+  /// until the next frame. This getter reads the pending value directly,
+  /// matching the pattern used by `_currentMode` in lights domain view.
+  ClimateMode get _currentMode {
+    if (_controlStateService
+        .isLocked(_ClimateControlConstants.modeChannelId)) {
+      final desiredModeIndex = _controlStateService
+          .getDesiredValue(_ClimateControlConstants.modeChannelId)
+          ?.toInt();
+      if (desiredModeIndex != null &&
+          desiredModeIndex >= 0 &&
+          desiredModeIndex <
+              spaces_climate.ClimateMode.values.length) {
+        return _fromServiceClimateMode(
+            spaces_climate.ClimateMode.values[desiredModeIndex]);
+      }
+    }
+    return _state.mode;
+  }
 
   // --------------------------------------------------------------------------
   // LIFECYCLE
@@ -418,14 +445,6 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     }
 
     try {
-      _deckService = locator<DeckService>();
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('[ClimateDomainViewPage] Failed to get DeckService: $e');
-      }
-    }
-
-    try {
       _eventBus = locator<EventBus>();
     } catch (e) {
       if (kDebugMode) {
@@ -456,6 +475,17 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
       }
     }
 
+    try {
+      _bottomNavModeNotifier = locator<BottomNavModeNotifier>();
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[ClimateDomainViewPage] Failed to get BottomNavModeNotifier: $e');
+      }
+    }
+
+    // Subscribe to page activation events for bottom nav mode registration
+    _pageActivatedSubscription = _eventBus?.on<DeckPageActivatedEvent>().listen(_onPageActivated);
+
     _fetchClimateData();
   }
 
@@ -481,6 +511,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           _isLoading = false;
           _hasError = false;
         });
+        _registerModeConfig();
       }
     } catch (e) {
       if (kDebugMode) {
@@ -1199,12 +1230,136 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
 
   @override
   void dispose() {
+    _pageActivatedSubscription?.cancel();
     _spacesService?.removeListener(_onDataChanged);
     _devicesService?.removeListener(_onDataChanged);
     _intentsRepository?.removeListener(_onIntentChanged);
     _controlStateService.removeListener(_onControlStateChanged);
     _controlStateService.dispose();
     super.dispose();
+  }
+
+  // --------------------------------------------------------------------------
+  // BOTTOM NAV MODE REGISTRATION
+  // --------------------------------------------------------------------------
+
+  void _onPageActivated(DeckPageActivatedEvent event) {
+    if (!mounted) return;
+    _isActivePage = event.itemId == widget.viewItem.id;
+
+    if (_isActivePage) {
+      _registerModeConfig();
+    }
+  }
+
+  void _registerModeConfig() {
+    if (!_isActivePage || _isLoading) return;
+
+    final localizations = AppLocalizations.of(context)!;
+    final modeOptions = _getClimateModeOptions(localizations);
+    if (modeOptions.isEmpty) return;
+
+    final currentOption = modeOptions.firstWhere(
+      (o) => o.value == _currentMode,
+      orElse: () => modeOptions.first,
+    );
+
+    _bottomNavModeNotifier?.setConfig(BottomNavModeConfig(
+      icon: currentOption.icon,
+      label: currentOption.label,
+      color: currentOption.color ?? ThemeColors.neutral,
+      popupBuilder: _buildModePopupContent,
+    ));
+  }
+
+  Widget _buildModePopupContent(BuildContext context, VoidCallback dismiss) {
+    final localizations = AppLocalizations.of(context)!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final modes = _getClimateModeOptions(localizations);
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.only(bottom: AppSpacings.pSm),
+          child: Text(
+            'MODE',
+            style: TextStyle(
+              fontSize: AppFontSize.extraSmall,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 1.0,
+              color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
+            ),
+          ),
+        ),
+        for (final mode in modes)
+          _buildPopupModeItem(
+            context,
+            mode: mode,
+            isActive: _currentMode == mode.value,
+            onTap: () {
+              _setMode(mode.value);
+              _registerModeConfig();
+              dismiss();
+            },
+          ),
+      ],
+    );
+  }
+
+  Widget _buildPopupModeItem(
+    BuildContext context, {
+    required ModeOption<ClimateMode> mode,
+    required bool isActive,
+    required VoidCallback onTap,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colorFamily = ThemeColorFamily.get(
+      isDark ? Brightness.dark : Brightness.light,
+      mode.color ?? ThemeColors.neutral,
+    );
+
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          vertical: AppSpacings.pMd,
+          horizontal: AppSpacings.pMd,
+        ),
+        margin: EdgeInsets.only(bottom: AppSpacings.pXs),
+        decoration: BoxDecoration(
+          color: isActive ? colorFamily.light9 : Colors.transparent,
+          borderRadius: BorderRadius.circular(AppBorderRadius.small),
+          border: isActive
+              ? Border.all(color: colorFamily.light7, width: AppSpacings.scale(1))
+              : null,
+        ),
+        child: Row(
+          spacing: AppSpacings.pMd,
+          children: [
+            Icon(
+              mode.icon,
+              color: isActive ? colorFamily.base : (isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary),
+              size: AppSpacings.scale(20),
+            ),
+            Expanded(
+              child: Text(
+                mode.label,
+                style: TextStyle(
+                  fontSize: AppFontSize.base,
+                  fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+                  color: isActive ? colorFamily.base : (isDark ? AppTextColorDark.regular : AppTextColorLight.regular),
+                ),
+              ),
+            ),
+            if (isActive)
+              Icon(Icons.check, color: colorFamily.base, size: AppSpacings.scale(16)),
+          ],
+        ),
+      ),
+    );
   }
 
   // --------------------------------------------------------------------------
@@ -1297,6 +1452,9 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         _buildState();
         setState(() {});
 
+        // Update bottom nav mode config if this is the active page
+        _registerModeConfig();
+
         // Check convergence AFTER build
         // This way unlocking only affects the NEXT update, preventing flicker
         // from stale WebSocket events that arrive out of order
@@ -1331,19 +1489,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     return (minSp, maxSp);
   }
 
-  void _navigateToHome() {
-    final deck = _deckService?.deck;
-    if (deck == null || deck.items.isEmpty) {
-      Navigator.pop(context);
-      return;
-    }
 
-    final homeIndex = deck.startIndex;
-    if (homeIndex >= 0 && homeIndex < deck.items.length) {
-      final homeItem = deck.items[homeIndex];
-      _eventBus?.fire(NavigateToDeckItemEvent(homeItem.id));
-    }
-  }
 
   // --------------------------------------------------------------------------
   // MODE & SETPOINT ACTIONS
@@ -1653,22 +1799,12 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         icon: MdiIcons.thermostat,
         color: _getModeColor(),
       ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (showDetailButton) ...[
-            HeaderIconButton(
+      trailing: showDetailButton
+          ? HeaderIconButton(
               icon: MdiIcons.homeThermometer,
               onTap: _showClimateDevicesSheet,
-            ),
-            AppSpacings.spacingMdHorizontal,
-          ],
-          HeaderIconButton(
-            icon: MdiIcons.homeOutline,
-            onTap: _navigateToHome,
-          ),
-        ],
-      ),
+            )
+          : null,
     );
   }
 
@@ -1707,7 +1843,6 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           ],
         ],
       ),
-      modeSelector: _buildModeSelector(context),
     );
   }
 
@@ -2043,17 +2178,6 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     );
   }
 
-  Widget _buildModeSelector(BuildContext context) {
-    final localizations = AppLocalizations.of(context)!;
-    return ModeSelector<ClimateMode>(
-      modes: _getClimateModeOptions(localizations),
-      selectedValue: _state.mode,
-      onChanged: _setMode,
-      orientation: ModeSelectorOrientation.horizontal,
-      iconPlacement: ModeSelectorIconPlacement.top,
-      showLabels: true,
-    );
-  }
 
   // --------------------------------------------------------------------------
   // SENSORS

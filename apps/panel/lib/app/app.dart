@@ -416,6 +416,9 @@ class _MyAppState extends State<MyApp> {
           value: locator<deck_module.IntentsService>(),
         ),
         ChangeNotifierProvider.value(
+          value: locator<deck_module.BottomNavModeNotifier>(),
+        ),
+        ChangeNotifierProvider.value(
           value: locator<spaces_module.MediaActivityRepository>(),
         ),
         ChangeNotifierProvider.value(

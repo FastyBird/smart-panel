@@ -6,6 +6,9 @@ enum DeckItemType {
   /// A domain-specific view (lights, climate, media, sensors).
   domainView,
 
+  /// The security view (entry points, alerts, events).
+  securityView,
+
   /// A user-configured dashboard page.
   dashboardPage,
 }

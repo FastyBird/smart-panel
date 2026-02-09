@@ -70,12 +70,13 @@ import 'package:fastybird_smart_panel/core/widgets/tile_wrappers.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/core/widgets/value_selector.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/deck/models/bottom_nav_mode_config.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/domain_data_loader.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_item_sheet.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/domain_state_view.dart';
-import 'package:fastybird_smart_panel/modules/deck/services/deck_service.dart';
-import 'package:fastybird_smart_panel/modules/deck/types/navigate_event.dart';
+import 'package:fastybird_smart_panel/modules/deck/services/bottom_nav_mode_notifier.dart';
+import 'package:fastybird_smart_panel/modules/deck/types/deck_page_activated_event.dart';
 import 'package:fastybird_smart_panel/modules/deck/utils/lighting.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_detail_page.dart';
@@ -124,10 +125,12 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 
 	MediaActivityService? _mediaService;
 	SpacesService? _spacesService;
-	DeckService? _deckService;
 	EventBus? _eventBus;
 	SocketService? _socketService;
 	DevicesService? _devicesService;
+	BottomNavModeNotifier? _bottomNavModeNotifier;
+	StreamSubscription<DeckPageActivatedEvent>? _pageActivatedSubscription;
+	bool _isActivePage = false;
 
 	bool _isLoading = true;
 	bool _hasError = false;
@@ -185,11 +188,14 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 
 		_mediaService = _tryLocator<MediaActivityService>('MediaActivityService', onSuccess: (s) => s.addListener(_onDataChanged));
 		_spacesService = _tryLocator<SpacesService>('SpacesService');
-		_deckService = _tryLocator<DeckService>('DeckService');
 		_eventBus = _tryLocator<EventBus>('EventBus');
 		_socketService = _tryLocator<SocketService>('SocketService', onSuccess: (s) => s.addConnectionListener(_onConnectionChanged));
 		if (_socketService != null) _wsConnected = _socketService!.isConnected;
 		_devicesService = _tryLocator<DevicesService>('DevicesService', onSuccess: (s) => s.addListener(_onDevicesChanged));
+		_bottomNavModeNotifier = _tryLocator<BottomNavModeNotifier>('BottomNavModeNotifier');
+
+		// Subscribe to page activation events for bottom nav mode registration
+		_pageActivatedSubscription = _eventBus?.on<DeckPageActivatedEvent>().listen(_onPageActivated);
 
 		// Fetch data immediately (not deferred)
 		_fetchMediaData();
@@ -203,6 +209,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 					_isLoading = false;
 					_hasError = false;
 				});
+				_registerModeConfig();
 			}
 			return;
 		}
@@ -219,6 +226,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 					_isLoading = false;
 					_hasError = false;
 				});
+				_registerModeConfig();
 			}
 		} catch (e) {
 			if (kDebugMode) {
@@ -249,6 +257,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 
 	@override
 	void dispose() {
+		_pageActivatedSubscription?.cancel();
 		_volumeDebounceTimer?.cancel();
 		_playbackSettleTimer?.cancel();
 		_playbackSheetNotifier.dispose();
@@ -263,12 +272,139 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	// LISTENERS
 	// -------------------------------------------------------------------------
 
+	// -------------------------------------------------------------------------
+	// BOTTOM NAV MODE REGISTRATION
+	// -------------------------------------------------------------------------
+
+	void _onPageActivated(DeckPageActivatedEvent event) {
+		if (!mounted) return;
+		_isActivePage = event.itemId == widget.viewItem.id;
+
+		if (_isActivePage) {
+			_registerModeConfig();
+		}
+	}
+
+	void _registerModeConfig() {
+		if (!_isActivePage || _isLoading) return;
+
+		final activeState = _mediaService?.getActiveState(_roomId);
+		final currentKey = _getSelectedActivityKey(activeState) ?? MediaActivityKey.off;
+		final modeOptions = _getActivityModeOptions();
+		if (modeOptions.isEmpty) return;
+
+		final currentOption = modeOptions.firstWhere(
+			(o) => o.value == currentKey,
+			orElse: () => modeOptions.first,
+		);
+
+		_bottomNavModeNotifier?.setConfig(BottomNavModeConfig(
+			icon: currentOption.icon,
+			label: currentOption.label,
+			color: currentOption.color ?? ThemeColors.neutral,
+			popupBuilder: _buildModePopupContent,
+		));
+	}
+
+	Widget _buildModePopupContent(BuildContext context, VoidCallback dismiss) {
+		final isDark = Theme.of(context).brightness == Brightness.dark;
+		final modes = _getActivityModeOptions();
+		final activeState = _mediaService?.getActiveState(_roomId);
+		final selectedKey = _getSelectedActivityKey(activeState);
+
+		return Column(
+			mainAxisSize: MainAxisSize.min,
+			crossAxisAlignment: CrossAxisAlignment.start,
+			children: [
+				Padding(
+					padding: EdgeInsets.only(bottom: AppSpacings.pSm),
+					child: Text(
+						'ACTIVITY',
+						style: TextStyle(
+							fontSize: AppFontSize.extraSmall,
+							fontWeight: FontWeight.w600,
+							letterSpacing: 1.0,
+							color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
+						),
+					),
+				),
+				for (final mode in modes)
+					_buildPopupModeItem(
+						context,
+						mode: mode,
+						isActive: selectedKey == mode.value,
+						onTap: () {
+							_onActivitySelected(mode.value);
+							dismiss();
+						},
+					),
+			],
+		);
+	}
+
+	Widget _buildPopupModeItem(
+		BuildContext context, {
+		required ModeOption<MediaActivityKey> mode,
+		required bool isActive,
+		required VoidCallback onTap,
+	}) {
+		final isDark = Theme.of(context).brightness == Brightness.dark;
+		final colorFamily = ThemeColorFamily.get(
+			isDark ? Brightness.dark : Brightness.light,
+			mode.color ?? ThemeColors.neutral,
+		);
+
+		return GestureDetector(
+			onTap: (!_wsConnected || _isSending) ? null : onTap,
+			behavior: HitTestBehavior.opaque,
+			child: Container(
+				padding: EdgeInsets.symmetric(
+					vertical: AppSpacings.pMd,
+					horizontal: AppSpacings.pMd,
+				),
+				margin: EdgeInsets.only(bottom: AppSpacings.pXs),
+				decoration: BoxDecoration(
+					color: isActive ? colorFamily.light9 : Colors.transparent,
+					borderRadius: BorderRadius.circular(AppBorderRadius.small),
+					border: isActive
+						? Border.all(color: colorFamily.light7, width: AppSpacings.scale(1))
+						: null,
+				),
+				child: Row(
+					spacing: AppSpacings.pMd,
+					children: [
+						Icon(
+							mode.icon,
+							color: isActive ? colorFamily.base : (isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary),
+							size: AppSpacings.scale(20),
+						),
+						Expanded(
+							child: Text(
+								mode.label,
+								style: TextStyle(
+									fontSize: AppFontSize.base,
+									fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+									color: isActive ? colorFamily.base : (isDark ? AppTextColorDark.regular : AppTextColorLight.regular),
+								),
+							),
+						),
+						if (isActive)
+							Icon(Icons.check, color: colorFamily.base, size: AppSpacings.scale(16)),
+					],
+				),
+			),
+		);
+	}
+
 	void _onDataChanged() {
 		if (!mounted) return;
 		_syncDeviceState();
 		_playbackSheetNotifier.value++;
 		WidgetsBinding.instance.addPostFrameCallback((_) {
-			if (mounted) setState(() {});
+			if (mounted) {
+				setState(() {});
+				_registerModeConfig();
+			}
 		});
 	}
 
@@ -280,7 +416,10 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			_syncDeviceState();
 			_playbackSheetNotifier.value++;
 			WidgetsBinding.instance.addPostFrameCallback((_) {
-				if (mounted) setState(() {});
+				if (mounted) {
+					setState(() {});
+					_registerModeConfig();
+				}
 			});
 		}
 	}
@@ -388,19 +527,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	// NAVIGATION
 	// -------------------------------------------------------------------------
 
-	void _navigateToHome() {
-		final deck = _deckService?.deck;
-		if (deck == null || deck.items.isEmpty) {
-			Navigator.pop(context);
-			return;
-		}
 
-		final homeIndex = deck.startIndex;
-		if (homeIndex >= 0 && homeIndex < deck.items.length) {
-			final homeItem = deck.items[homeIndex];
-			_eventBus?.fire(NavigateToDeckItemEvent(homeItem.id));
-		}
-	}
 
 	// -------------------------------------------------------------------------
 	// ACTIVITY ACTIONS
@@ -577,21 +704,12 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 				icon: MdiIcons.playBoxOutline,
 				color: _getModeColor(),
 			),
-			trailing: Row(
-				mainAxisSize: MainAxisSize.min,
-				spacing: AppSpacings.pMd,
-				children: [
-					if (showDevicesButton)
-						HeaderIconButton(
-							icon: MdiIcons.monitorSpeaker,
-							onTap: _showMediaDevicesSheet,
-						),
-					HeaderIconButton(
-						icon: MdiIcons.homeOutline,
-						onTap: _navigateToHome,
-					),
-				],
-			),
+			trailing: showDevicesButton
+				? HeaderIconButton(
+						icon: MdiIcons.monitorSpeaker,
+						onTap: _showMediaDevicesSheet,
+					)
+				: null,
 		);
 	}
 
@@ -640,7 +758,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		return PortraitViewLayout(
 			content: content,
 			scrollable: !showOffContent && !isActivating && !isFailed,
-			modeSelector: _buildModeSelector(context, activeState),
 		);
 	}
 
@@ -722,19 +839,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		return activeState.activityKey ?? MediaActivityKey.off;
 	}
 
-	Widget _buildModeSelector(BuildContext context, MediaActiveStateModel? activeState) {
-		return IgnorePointer(
-			ignoring: !_wsConnected || _isSending,
-			child: ModeSelector<MediaActivityKey>(
-				modes: _getActivityModeOptions(),
-				selectedValue: _getSelectedActivityKey(activeState),
-				onChanged: _onActivitySelected,
-				orientation: ModeSelectorOrientation.horizontal,
-				iconPlacement: ModeSelectorIconPlacement.top,
-				showLabels: true,
-			),
-		);
-	}
 
 	Widget _buildLandscapeModeSelector(
 		BuildContext context,

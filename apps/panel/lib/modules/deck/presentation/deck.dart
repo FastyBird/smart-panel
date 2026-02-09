@@ -2,13 +2,13 @@ import 'dart:async';
 
 import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/app/routes.dart';
-import 'package:fastybird_smart_panel/core/services/navigation.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/export.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
+import 'package:fastybird_smart_panel/modules/security/services/security_overlay_controller.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/swipe_event.dart';
 import 'package:fastybird_smart_panel/plugins/pages-device-detail/views/view.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 import 'package:provider/provider.dart';
@@ -29,7 +29,8 @@ class DeckDashboardScreen extends StatefulWidget {
   State<DeckDashboardScreen> createState() => _DeckDashboardScreenState();
 }
 
-class _DeckDashboardScreenState extends State<DeckDashboardScreen> {
+class _DeckDashboardScreenState extends State<DeckDashboardScreen>
+    with SingleTickerProviderStateMixin {
   final DashboardService _dashboardService = locator<DashboardService>();
   final EventBus _eventBus = locator<EventBus>();
 
@@ -37,6 +38,9 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen> {
   int _currentIndex = 0;
   bool _initialized = false;
   bool _swipeBlocked = false;
+  bool _isCrossfading = false;
+
+  late final AnimationController _fadeController;
 
   StreamSubscription<NavigateToDeckItemEvent>? _deckNavigateSubscription;
   StreamSubscription<PageSwipeBlockEvent>? _swipeBlockSubscription;
@@ -44,6 +48,11 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen> {
   @override
   void initState() {
     super.initState();
+    _fadeController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 150),
+      value: 1.0,
+    );
     // Listen for deck navigation events
     _deckNavigateSubscription =
         _eventBus.on<NavigateToDeckItemEvent>().listen(_onNavigateToDeckItem);
@@ -63,6 +72,7 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen> {
   void dispose() {
     _deckNavigateSubscription?.cancel();
     _swipeBlockSubscription?.cancel();
+    _fadeController.dispose();
     _pageController?.dispose();
     super.dispose();
   }
@@ -74,11 +84,7 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen> {
     final index = deckService.indexOfItem(event.itemId);
 
     if (index >= 0 && _pageController?.hasClients == true) {
-      _pageController?.animateToPage(
-        index,
-        duration: const Duration(milliseconds: DeckConstants.pageAnimationMs),
-        curve: Curves.easeInOut,
-      );
+      _navigateToIndex(index);
     }
   }
 
@@ -86,16 +92,77 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen> {
     final items = deckService.items;
     if (index >= 0 && index < items.length) {
       final item = items[index];
-      // Track page ID for space-aware idle mode
-      if (item is DashboardPageItem) {
-        _dashboardService.setCurrentPageId(item.id);
-      } else if (item is SystemViewItem) {
-        // For system views, track using the view's ID
-        _dashboardService.setCurrentPageId(item.id);
-      } else if (item is DomainViewItem) {
-        // For domain views (lights, climate, media, sensors), track using the view's ID
-        _dashboardService.setCurrentPageId(item.id);
+      _dashboardService.setCurrentPageId(item.id);
+    }
+  }
+
+  /// Navigates to [index] using crossfade for distant jumps (> 1 page)
+  /// and slide animation for adjacent pages.
+  void _navigateToIndex(int index) {
+    if (_pageController?.hasClients != true || _isCrossfading) return;
+
+    final distance = (index - _currentIndex).abs();
+
+    if (distance <= 1) {
+      // Adjacent page: use normal slide animation
+      _pageController?.animateToPage(
+        index,
+        duration: const Duration(milliseconds: DeckConstants.pageAnimationMs),
+        curve: Curves.easeInOut,
+      );
+    } else {
+      // Distant jump: crossfade (fade out → jump → fade in)
+      _crossfadeToPage(index);
+    }
+  }
+
+  Future<void> _crossfadeToPage(int index) async {
+    if (_isCrossfading) return;
+    _isCrossfading = true;
+
+    // Fade out
+    await _fadeController.reverse();
+
+    if (!mounted) {
+      _isCrossfading = false;
+      return;
+    }
+
+    // Jump instantly (no intermediate onPageChanged events)
+    _pageController?.jumpToPage(index);
+
+    // Fade in
+    await _fadeController.forward();
+
+    _isCrossfading = false;
+  }
+
+  void _fireDeckPageActivatedEvent(DeckService deckService, int index) {
+    final items = deckService.items;
+    if (index >= 0 && index < items.length) {
+      final item = items[index];
+
+      // Clear mode notifier before firing event so stale config from the
+      // previous domain is never visible while the new domain is loading.
+      try {
+        locator<BottomNavModeNotifier>().clear();
+      } catch (e) {
+        if (kDebugMode) {
+          debugPrint('[Deck] Failed to clear BottomNavModeNotifier: $e');
+        }
       }
+
+      // Update security overlay: suppress when viewing the security page
+      try {
+        locator<SecurityOverlayController>()
+            .setOnSecurityScreen(item is SecurityViewItem);
+      } catch (e) {
+        if (kDebugMode) {
+          debugPrint('[Deck] Failed to update SecurityOverlayController: $e');
+        }
+      }
+
+      _eventBus.fire(DeckPageActivatedEvent(itemId: item.id, item: item));
     }
   }
 
@@ -135,6 +202,10 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen> {
           _currentIndex = startIndex;
           _initialized = true;
           _updateTrackedItem(deckService, startIndex);
+          // Fire initial page activation event after first frame
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _fireDeckPageActivatedEvent(deckService, startIndex);
+          });
         }
 
         // Build widgets for each deck item
@@ -158,48 +229,68 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen> {
         final currentItem = deckService.items[_currentIndex];
 
         return Scaffold(
-          body: Stack(
-            children: [
-              PageView.builder(
-                controller: _pageController,
-                physics: _swipeBlocked
-                    ? const NeverScrollableScrollPhysics()
-                    : null,
-                onPageChanged: (index) {
-                  setState(() {
-                    _currentIndex = index;
-                  });
-                  _updateTrackedItem(deckService, index);
-                },
-                itemCount: widgets.length,
-                itemBuilder: (context, index) => widgets[index % widgets.length],
-              ),
-              if (_shouldShowPageIndicator(currentItem))
-                _buildPageIndicator(context, deckService),
-              // DEBUG: Test button to open security screen
-              Positioned(
-                top: AppSpacings.scale(8),
-                right: AppSpacings.scale(8),
-                child: SizedBox(
-                  width: AppSpacings.scale(36),
-                  height: AppSpacings.scale(36),
-                  child: FloatingActionButton(
-                    mini: true,
-                    backgroundColor:
-                        Theme.of(context).colorScheme.error.withValues(alpha: 0.85),
-                    onPressed: () {
-                      locator<NavigationService>()
-                          .navigateTo(AppRouteNames.security);
-                    },
-                    child: Icon(
-                      MdiIcons.shieldAlert,
-                      size: AppSpacings.scale(18),
-                      color: Colors.white,
-                    ),
-                  ),
+          body: OrientationBuilder(
+            builder: (context, orientation) {
+              final isPortrait = orientation == Orientation.portrait;
+
+              final pageView = FadeTransition(
+                opacity: _fadeController,
+                child: PageView.builder(
+                  controller: _pageController,
+                  physics: _swipeBlocked || _isCrossfading
+                      ? const NeverScrollableScrollPhysics()
+                      : null,
+                  onPageChanged: (index) {
+                    setState(() {
+                      _currentIndex = index;
+                    });
+                    _updateTrackedItem(deckService, index);
+                    // Delay event firing to after the frame is rendered,
+                    // so domain view listeners are fully ready to receive it
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted) {
+                        _fireDeckPageActivatedEvent(deckService, index);
+                      }
+                    });
+                  },
+                  itemCount: widgets.length,
+                  itemBuilder: (context, index) => widgets[index % widgets.length],
                 ),
-              ),
-            ],
+              );
+
+              if (isPortrait) {
+                // Portrait: Column with PageView + Bottom Nav Bar
+                return Column(
+                  children: [
+                    Expanded(child: pageView),
+                    DeckBottomNavBar(
+                      currentIndex: _currentIndex,
+                      onNavigateToIndex: _navigateToIndex,
+                      onMoreTapped: () => showMoreSheet(
+                        context,
+                        currentIndex: _currentIndex,
+                        onNavigateToIndex: _navigateToIndex,
+                      ),
+                      onModeTapped: () {
+                        final notifier = context.read<BottomNavModeNotifier>();
+                        if (notifier.hasConfig) {
+                          showModePopup(context, notifier.config!);
+                        }
+                      },
+                    ),
+                  ],
+                );
+              } else {
+                // Landscape: Page dots overlay (existing behavior)
+                return Stack(
+                  children: [
+                    pageView,
+                    if (_shouldShowPageIndicator(currentItem))
+                      _buildPageIndicator(context, deckService),
+                  ],
+                );
+              }
+            },
           ),
         );
       },

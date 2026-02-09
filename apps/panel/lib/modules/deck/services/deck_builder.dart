@@ -38,6 +38,9 @@ class DeckBuildInput {
   /// Localized title for sensors domain view.
   final String sensorsViewTitle;
 
+  /// Localized title for security view.
+  final String securityViewTitle;
+
   const DeckBuildInput({
     required this.display,
     required this.pages,
@@ -49,6 +52,7 @@ class DeckBuildInput {
     this.climateViewTitle = 'Climate',
     this.mediaViewTitle = 'Media',
     this.sensorsViewTitle = 'Sensors',
+    this.securityViewTitle = 'Security',
   });
 }
 
@@ -86,6 +90,14 @@ DeckResult buildDeck(DeckBuildInput input) {
   // Build the deck items list
   final List<DeckItem> items = [...systemViewsResult.items];
   final Map<String, int> indexByViewKey = {...systemViewsResult.indexByViewKey};
+
+  // Add security view (after domain views, before dashboard pages)
+  final securityView = SecurityViewItem(
+    id: SecurityViewItem.generateId(),
+    title: input.securityViewTitle,
+  );
+  indexByViewKey['security-view'] = items.length;
+  items.add(securityView);
 
   // Add dashboard pages sorted by order
   final sortedPages = List<DashboardPageView>.from(pages);
