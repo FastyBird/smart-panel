@@ -83,7 +83,11 @@ class SensorUtils {
       case DevicesModuleChannelCategory.temperature:
       case DevicesModuleChannelCategory.carbonMonoxide:
       case DevicesModuleChannelCategory.pressure:
+      case DevicesModuleChannelCategory.electricalPower:
         return 1;
+      case DevicesModuleChannelCategory.electricalEnergy:
+      case DevicesModuleChannelCategory.electricalGeneration:
+        return 3;
       default:
         return 0;
     }
@@ -729,6 +733,12 @@ class SensorUtils {
         return l.sensor_label_device_info;
       case DevicesModuleChannelCategory.gas:
         return l.sensor_label_gas;
+      case DevicesModuleChannelCategory.electricalEnergy:
+        return l.sensor_label_electrical_energy;
+      case DevicesModuleChannelCategory.electricalGeneration:
+        return l.sensor_label_electrical_generation;
+      case DevicesModuleChannelCategory.electricalPower:
+        return l.sensor_label_electrical_power;
       default:
         return category.json ?? category.toString();
     }

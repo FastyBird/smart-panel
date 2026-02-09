@@ -936,6 +936,9 @@
   "sensor_label_filter": "Filtr",
   "sensor_label_device_info": "Info o zařízení",
   "sensor_label_gas": "Plyn",
+  "sensor_label_electrical_energy": "Energie",
+  "sensor_label_electrical_generation": "Výroba",
+  "sensor_label_electrical_power": "Výkon",
 
   "sensor_alert_high_level": "Vysoká úroveň",
   "sensor_alert_low_battery": "Slabá baterie",

@@ -3412,6 +3412,9 @@
   "sensor_label_filter": "Filter",
   "sensor_label_device_info": "Device Info",
   "sensor_label_gas": "Gas",
+  "sensor_label_electrical_energy": "Energy",
+  "sensor_label_electrical_generation": "Generation",
+  "sensor_label_electrical_power": "Power",
 
   "sensor_alert_high_level": "High Level",
   "sensor_alert_low_battery": "Low Battery",

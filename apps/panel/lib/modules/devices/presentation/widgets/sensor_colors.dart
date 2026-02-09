@@ -30,6 +30,10 @@ class SensorColors {
       case DevicesModuleChannelCategory.carbonDioxide:
       case DevicesModuleChannelCategory.carbonMonoxide:
         return ThemeColors.error;
+      case DevicesModuleChannelCategory.electricalEnergy:
+      case DevicesModuleChannelCategory.electricalGeneration:
+      case DevicesModuleChannelCategory.electricalPower:
+        return ThemeColors.info;
       case DevicesModuleChannelCategory.filter:
         return ThemeColors.teal;
       default:
