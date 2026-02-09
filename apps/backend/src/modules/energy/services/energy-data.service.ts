@@ -4,7 +4,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
-import { ENERGY_MODULE_NAME, EnergySourceType } from '../energy.constants';
+import { DELTA_INTERVAL_MINUTES, ENERGY_MODULE_NAME, EnergySourceType } from '../energy.constants';
 import { EnergyDeltaEntity } from '../entities/energy-delta.entity';
 
 export interface EnergySummary {
@@ -20,6 +20,28 @@ export interface EnergyDeltaRow {
 	productionDeltaKwh: number;
 }
 
+export interface SpaceEnergySummary {
+	totalConsumptionKwh: number;
+	totalProductionKwh: number;
+	netKwh: number;
+	lastUpdatedAt: string | null;
+}
+
+export interface TimeseriesPoint {
+	intervalStart: string;
+	intervalEnd: string;
+	consumptionDeltaKwh: number;
+	productionDeltaKwh: number;
+}
+
+export interface BreakdownItem {
+	deviceId: string;
+	deviceName: string;
+	roomId: string | null;
+	roomName: string | null;
+	consumptionKwh: number;
+}
+
 interface SummaryRawRow {
 	sourceType: EnergySourceType;
 	totalKwh: number | null;
@@ -30,6 +52,20 @@ interface DeltaRawRow {
 	intervalStart: string;
 	intervalEnd: string;
 	sourceType: EnergySourceType;
+	totalKwh: number | null;
+}
+
+interface TimeseriesRawRow {
+	bucket: string;
+	sourceType: EnergySourceType;
+	totalKwh: number | null;
+}
+
+interface BreakdownRawRow {
+	deviceId: string;
+	deviceName: string;
+	roomId: string | null;
+	roomName: string | null;
 	totalKwh: number | null;
 }
 
@@ -181,5 +217,224 @@ export class EnergyDataService {
 		}
 
 		return Array.from(bucketMap.values());
+	}
+
+	/**
+	 * Get energy summary for a space (aggregated from all rooms belonging to the space).
+	 * If spaceId is 'home' or undefined, aggregates across all rooms/spaces.
+	 */
+	async getSpaceSummary(rangeStart: Date, rangeEnd: Date, spaceId?: string): Promise<SpaceEnergySummary> {
+		const isHome = !spaceId || spaceId === 'home';
+
+		const query = `
+			SELECT delta."sourceType" AS "sourceType",
+			       SUM(delta."deltaKwh") AS "totalKwh",
+			       MAX(delta."createdAt") AS "lastUpdated"
+			FROM energy_module_deltas delta
+			${isHome ? '' : `INNER JOIN devices_module_devices device ON delta."deviceId" = device."id" INNER JOIN spaces_module_spaces room ON device."roomId" = room."id" WHERE (room."id" = ? OR room."parentId" = ?) AND`}
+			${isHome ? 'WHERE' : ''}
+			delta."intervalStart" >= ?
+			AND delta."intervalStart" < ?
+			GROUP BY delta."sourceType"
+		`;
+
+		const params = isHome
+			? [rangeStart.toISOString(), rangeEnd.toISOString()]
+			: [spaceId, spaceId, rangeStart.toISOString(), rangeEnd.toISOString()];
+
+		const rows: SummaryRawRow[] = await this.deltaRepository.query(query, params);
+
+		let totalConsumptionKwh = 0;
+		let totalProductionKwh = 0;
+		let lastUpdatedAt: string | null = null;
+
+		for (const row of rows) {
+			const kwh = Number(row.totalKwh) || 0;
+
+			if (row.sourceType === EnergySourceType.CONSUMPTION_IMPORT) {
+				totalConsumptionKwh = kwh;
+			} else if (row.sourceType === EnergySourceType.GENERATION_PRODUCTION) {
+				totalProductionKwh = kwh;
+			}
+
+			if (row.lastUpdated && (!lastUpdatedAt || row.lastUpdated > lastUpdatedAt)) {
+				lastUpdatedAt = row.lastUpdated;
+			}
+		}
+
+		return {
+			totalConsumptionKwh,
+			totalProductionKwh,
+			netKwh: totalConsumptionKwh - totalProductionKwh,
+			lastUpdatedAt,
+		};
+	}
+
+	/**
+	 * Get time-series data for a space, aggregated into the requested interval.
+	 * Supports 5m (native), 1h, and 1d intervals.
+	 * Returns zero-filled points for intervals with no data.
+	 */
+	async getSpaceTimeseries(
+		rangeStart: Date,
+		rangeEnd: Date,
+		interval: string,
+		spaceId?: string,
+	): Promise<TimeseriesPoint[]> {
+		const isHome = !spaceId || spaceId === 'home';
+
+		// Determine the strftime format for bucketing
+		let strftimeFmt: string;
+		let intervalMs: number;
+
+		switch (interval) {
+			case '1h':
+				strftimeFmt = '%Y-%m-%dT%H:00:00.000Z';
+				intervalMs = 60 * 60 * 1000;
+				break;
+			case '1d':
+				strftimeFmt = '%Y-%m-%dT00:00:00.000Z';
+				intervalMs = 24 * 60 * 60 * 1000;
+				break;
+			case '5m':
+			default:
+				// For 5m, use native bucket from intervalStart (already 5m aligned)
+				strftimeFmt = '';
+				intervalMs = DELTA_INTERVAL_MINUTES * 60 * 1000;
+				break;
+		}
+
+		const bucketExpr =
+			strftimeFmt === '' ? 'delta."intervalStart"' : `strftime('${strftimeFmt}', delta."intervalStart")`;
+
+		const query = `
+			SELECT ${bucketExpr} AS "bucket",
+			       delta."sourceType" AS "sourceType",
+			       SUM(delta."deltaKwh") AS "totalKwh"
+			FROM energy_module_deltas delta
+			${isHome ? '' : `INNER JOIN devices_module_devices device ON delta."deviceId" = device."id" INNER JOIN spaces_module_spaces room ON device."roomId" = room."id" WHERE (room."id" = ? OR room."parentId" = ?) AND`}
+			${isHome ? 'WHERE' : ''}
+			delta."intervalStart" >= ?
+			AND delta."intervalStart" < ?
+			GROUP BY "bucket", delta."sourceType"
+			ORDER BY "bucket" ASC
+		`;
+
+		const params = isHome
+			? [rangeStart.toISOString(), rangeEnd.toISOString()]
+			: [spaceId, spaceId, rangeStart.toISOString(), rangeEnd.toISOString()];
+
+		const rows: TimeseriesRawRow[] = await this.deltaRepository.query(query, params);
+
+		// Merge consumption + production per bucket
+		const bucketMap = new Map<string, { consumptionDeltaKwh: number; productionDeltaKwh: number }>();
+
+		for (const row of rows) {
+			const key = row.bucket;
+			let bucket = bucketMap.get(key);
+
+			if (!bucket) {
+				bucket = { consumptionDeltaKwh: 0, productionDeltaKwh: 0 };
+				bucketMap.set(key, bucket);
+			}
+
+			const kwh = Number(row.totalKwh) || 0;
+
+			if (row.sourceType === EnergySourceType.CONSUMPTION_IMPORT) {
+				bucket.consumptionDeltaKwh = kwh;
+			} else if (row.sourceType === EnergySourceType.GENERATION_PRODUCTION) {
+				bucket.productionDeltaKwh = kwh;
+			}
+		}
+
+		// Generate zero-filled points for the full range
+		const points: TimeseriesPoint[] = [];
+		const rangeStartMs = Math.floor(rangeStart.getTime() / intervalMs) * intervalMs;
+		const rangeEndMs = rangeEnd.getTime();
+
+		for (let ts = rangeStartMs; ts < rangeEndMs; ts += intervalMs) {
+			const bucketStart = new Date(ts);
+			const bucketEnd = new Date(ts + intervalMs);
+			const key = strftimeFmt === '' ? bucketStart.toISOString() : this.formatBucketKey(bucketStart, interval);
+
+			const data = bucketMap.get(key);
+
+			points.push({
+				intervalStart: bucketStart.toISOString(),
+				intervalEnd: bucketEnd.toISOString(),
+				consumptionDeltaKwh: data?.consumptionDeltaKwh ?? 0,
+				productionDeltaKwh: data?.productionDeltaKwh ?? 0,
+			});
+		}
+
+		return points;
+	}
+
+	/**
+	 * Get a breakdown of top consuming devices for a space.
+	 * Only considers consumption_import source type.
+	 */
+	async getSpaceBreakdown(
+		rangeStart: Date,
+		rangeEnd: Date,
+		spaceId?: string,
+		limit: number = 10,
+	): Promise<BreakdownItem[]> {
+		const isHome = !spaceId || spaceId === 'home';
+
+		const query = `
+			SELECT delta."deviceId" AS "deviceId",
+			       device."name" AS "deviceName",
+			       device."roomId" AS "roomId",
+			       room."name" AS "roomName",
+			       SUM(delta."deltaKwh") AS "totalKwh"
+			FROM energy_module_deltas delta
+			INNER JOIN devices_module_devices device ON delta."deviceId" = device."id"
+			LEFT JOIN spaces_module_spaces room ON device."roomId" = room."id"
+			WHERE delta."sourceType" = ?
+			AND delta."intervalStart" >= ?
+			AND delta."intervalStart" < ?
+			${isHome ? '' : `AND (room."id" = ? OR room."parentId" = ?)`}
+			GROUP BY delta."deviceId"
+			ORDER BY "totalKwh" DESC
+			LIMIT ?
+		`;
+
+		const params = isHome
+			? [EnergySourceType.CONSUMPTION_IMPORT, rangeStart.toISOString(), rangeEnd.toISOString(), limit]
+			: [
+					EnergySourceType.CONSUMPTION_IMPORT,
+					rangeStart.toISOString(),
+					rangeEnd.toISOString(),
+					spaceId,
+					spaceId,
+					limit,
+				];
+
+		const rows: BreakdownRawRow[] = await this.deltaRepository.query(query, params);
+
+		return rows.map((row) => ({
+			deviceId: row.deviceId,
+			deviceName: row.deviceName || 'Unknown',
+			roomId: row.roomId ?? null,
+			roomName: row.roomName ?? null,
+			consumptionKwh: Number(row.totalKwh) || 0,
+		}));
+	}
+
+	/**
+	 * Format a bucket start timestamp to match the strftime output format.
+	 */
+	private formatBucketKey(date: Date, interval: string): string {
+		const iso = date.toISOString();
+
+		switch (interval) {
+			case '1h':
+				return iso.replace(/:\d{2}:\d{2}\.\d{3}Z$/, ':00:00.000Z');
+			case '1d':
+				return iso.replace(/T\d{2}:\d{2}:\d{2}\.\d{3}Z$/, 'T00:00:00.000Z');
+			default:
+				return iso;
+		}
 	}
 }

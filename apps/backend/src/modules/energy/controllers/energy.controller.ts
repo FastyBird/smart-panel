@@ -7,52 +7,11 @@ import {
 	ApiSuccessResponse,
 } from '../../swagger/decorators/api-documentation.decorator';
 import { ENERGY_MODULE_API_TAG_NAME } from '../energy.constants';
+import { resolveEnergyRange } from '../helpers/energy-range.helper';
 import { EnergyDeltaItemModel } from '../models/energy-delta.model';
 import { EnergyDeltasResponseModel, EnergySummaryResponseModel } from '../models/energy-response.model';
 import { EnergySummaryModel } from '../models/energy-summary.model';
 import { EnergyDataService } from '../services/energy-data.service';
-
-/**
- * Compute the start/end date for a given range keyword.
- */
-function resolveRange(range?: string): { start: Date; end: Date } {
-	const now = new Date();
-	const end = now;
-
-	switch (range) {
-		case 'yesterday': {
-			const dayStart = new Date(now);
-			dayStart.setDate(dayStart.getDate() - 1);
-			dayStart.setHours(0, 0, 0, 0);
-
-			const dayEnd = new Date(dayStart);
-			dayEnd.setHours(23, 59, 59, 999);
-
-			return { start: dayStart, end: dayEnd };
-		}
-		case 'week': {
-			const weekStart = new Date(now);
-			weekStart.setDate(weekStart.getDate() - 7);
-			weekStart.setHours(0, 0, 0, 0);
-
-			return { start: weekStart, end };
-		}
-		case 'month': {
-			const monthStart = new Date(now);
-			monthStart.setDate(monthStart.getDate() - 30);
-			monthStart.setHours(0, 0, 0, 0);
-
-			return { start: monthStart, end };
-		}
-		case 'today':
-		default: {
-			const dayStart = new Date(now);
-			dayStart.setHours(0, 0, 0, 0);
-
-			return { start: dayStart, end };
-		}
-	}
-}
 
 @ApiTags(ENERGY_MODULE_API_TAG_NAME)
 @Controller('energy')
@@ -89,7 +48,7 @@ export class EnergyController {
 		@Query('room_id') roomId?: string,
 		@Query('range') range?: string,
 	): Promise<EnergySummaryResponseModel> {
-		const { start, end } = resolveRange(range);
+		const { start, end } = resolveEnergyRange(range);
 		const summary = await this.energyData.getSummary(start, end, roomId);
 
 		const model = new EnergySummaryModel();
@@ -133,7 +92,7 @@ export class EnergyController {
 		@Query('room_id') roomId?: string,
 		@Query('range') range?: string,
 	): Promise<EnergyDeltasResponseModel> {
-		const { start, end } = resolveRange(range);
+		const { start, end } = resolveEnergyRange(range);
 		const rows = await this.energyData.getDeltas(start, end, roomId);
 
 		const items: EnergyDeltaItemModel[] = rows.map((row) => {
