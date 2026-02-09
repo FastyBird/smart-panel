@@ -370,6 +370,29 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
 
   String get _roomId => widget.viewItem.roomId;
 
+  /// Current mode, checking pending (locked) state first.
+  ///
+  /// When the user selects a mode in the popup, the control state service is
+  /// updated synchronously via [setPending] but [_buildState] may not run
+  /// until the next frame. This getter reads the pending value directly,
+  /// matching the pattern used by `_currentMode` in lights domain view.
+  ClimateMode get _currentMode {
+    if (_controlStateService
+        .isLocked(_ClimateControlConstants.modeChannelId)) {
+      final desiredModeIndex = _controlStateService
+          .getDesiredValue(_ClimateControlConstants.modeChannelId)
+          ?.toInt();
+      if (desiredModeIndex != null &&
+          desiredModeIndex >= 0 &&
+          desiredModeIndex <
+              spaces_climate.ClimateMode.values.length) {
+        return _fromServiceClimateMode(
+            spaces_climate.ClimateMode.values[desiredModeIndex]);
+      }
+    }
+    return _state.mode;
+  }
+
   // --------------------------------------------------------------------------
   // LIFECYCLE
   // --------------------------------------------------------------------------
@@ -1237,7 +1260,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     if (modeOptions.isEmpty) return;
 
     final currentOption = modeOptions.firstWhere(
-      (o) => o.value == _state.mode,
+      (o) => o.value == _currentMode,
       orElse: () => modeOptions.first,
     );
 
@@ -1274,7 +1297,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           _buildPopupModeItem(
             context,
             mode: mode,
-            isActive: _state.mode == mode.value,
+            isActive: _currentMode == mode.value,
             onTap: () {
               _setMode(mode.value);
               _registerModeConfig();
