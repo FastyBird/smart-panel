@@ -7,7 +7,6 @@ import 'package:fastybird_smart_panel/modules/dashboard/export.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
 import 'package:fastybird_smart_panel/modules/security/services/security_overlay_controller.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/swipe_event.dart';
-import 'package:fastybird_smart_panel/plugins/pages-device-detail/views/view.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -226,8 +225,6 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen>
           });
         }
 
-        final currentItem = deckService.items[_currentIndex];
-
         return Scaffold(
           body: OrientationBuilder(
             builder: (context, orientation) {
@@ -281,12 +278,19 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen>
                   ],
                 );
               } else {
-                // Landscape: Page dots overlay (existing behavior)
-                return Stack(
+                // Landscape: Side dock + PageView + mode chip overlay
+                return Row(
                   children: [
-                    pageView,
-                    if (_shouldShowPageIndicator(currentItem))
-                      _buildPageIndicator(context, deckService),
+                    DeckSideDock(
+                      currentIndex: _currentIndex,
+                      onNavigateToIndex: _navigateToIndex,
+                      onMoreTapped: () => showMoreSheet(
+                        context,
+                        currentIndex: _currentIndex,
+                        onNavigateToIndex: _navigateToIndex,
+                      ),
+                    ),
+                    Expanded(child: pageView),
                   ],
                 );
               }
@@ -351,60 +355,4 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen>
     );
   }
 
-  Widget _buildPageIndicator(BuildContext context, DeckService deckService) {
-    final items = deckService.items;
-
-    return Positioned(
-      bottom: AppSpacings.scale(4),
-      left: 0,
-      right: 0,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: List.generate(
-          items.length,
-          (index) => _buildDot(context, index, items[index]),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDot(BuildContext context, int index, DeckItem item) {
-    final isActive = _currentIndex == index;
-    final isSystemView = item is SystemViewItem;
-
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: DeckConstants.dotAnimationMs),
-      margin: EdgeInsets.symmetric(
-        horizontal: AppSpacings.scale(4),
-      ),
-      height: AppSpacings.scale(6),
-      width: isActive
-          ? AppSpacings.scale(16)
-          : AppSpacings.scale(6),
-      decoration: BoxDecoration(
-        color: isActive
-            ? (Theme.of(context).brightness == Brightness.light
-                ? AppTextColorLight.primary
-                : AppTextColorDark.primary)
-            : (isSystemView
-                ? (Theme.of(context).brightness == Brightness.light
-                    ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.4)
-                    : Theme.of(context).colorScheme.primary.withValues(alpha: 0.4))
-                : (Theme.of(context).brightness == Brightness.light
-                    ? AppTextColorLight.disabled
-                    : AppTextColorDark.disabled)),
-        borderRadius: BorderRadius.circular(
-          AppSpacings.scale(4),
-        ),
-      ),
-    );
-  }
-
-  bool _shouldShowPageIndicator(DeckItem item) {
-    // Hide indicator for device detail pages
-    if (item is DashboardPageItem && item.pageView is DeviceDetailPageView) {
-      return false;
-    }
-    return true;
-  }
 }

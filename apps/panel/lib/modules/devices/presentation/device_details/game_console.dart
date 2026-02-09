@@ -6,6 +6,7 @@ import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_landscape_layout.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_portrait_layout.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_offline_overlay.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_bottom_sheet.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_info_card.dart';
@@ -14,6 +15,7 @@ import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/game_console.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_landscape_controls.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
@@ -160,7 +162,7 @@ class _GameConsoleDeviceDetailState extends State<GameConsoleDeviceDetail> {
 			: null;
 
 		return Scaffold(
-			backgroundColor: isDark ? AppBgColorDark.base : AppBgColorLight.page,
+			backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
 			body: SafeArea(
 				child: Column(
 					children: [
@@ -275,46 +277,57 @@ class _GameConsoleDeviceDetailState extends State<GameConsoleDeviceDetail> {
 	// LANDSCAPE LAYOUT
 	// --------------------------------------------------------------------------
 
+	void _showPlaybackSheet(BuildContext context, bool isDark) {
+		final localizations = AppLocalizations.of(context)!;
+
+		showAppBottomSheet(
+			context,
+			title: localizations.media_playback,
+			titleIcon: MdiIcons.playCircle,
+			content: Padding(
+				padding: AppSpacings.paddingMd,
+				child: MediaPlaybackCard(
+					playbackTrack: _device.isMediaPlaybackTrack,
+					playbackArtist: _device.mediaPlaybackArtist,
+					playbackAlbum: _device.mediaPlaybackAlbum,
+					playbackStatus: _effectivePlaybackStatus,
+					playbackAvailableCommands: _device.mediaPlaybackAvailableCommands,
+					playbackHasPosition: _device.hasMediaPlaybackPosition,
+					playbackPosition: _device.mediaPlaybackPosition,
+					playbackHasDuration: _device.hasMediaPlaybackDuration,
+					playbackDuration: _device.mediaPlaybackDuration,
+					playbackIsPositionWritable: _device.mediaPlaybackChannel?.positionProp?.isWritable ?? false,
+					onPlaybackCommand: _sendPlaybackCommand,
+					onPlaybackSeek: _seekPosition,
+					themeColor: _getThemeColor(),
+					isEnabled: _isOn,
+				),
+			),
+		);
+	}
+
 	Widget _buildLandscapeLayout(BuildContext context, bool isDark) {
 		return DeviceLandscapeLayout(
 			mainContent: Column(
-				mainAxisAlignment: MainAxisAlignment.center,
-				spacing: AppSpacings.pMd,
+				crossAxisAlignment: CrossAxisAlignment.stretch,
 				children: [
-					MediaInfoCard(
-						icon: MdiIcons.gamepadVariant,
-						name: _device.name,
-						isOn: _isOn,
-						themeColor: _getThemeColor(),
-						),
-					if (_device.hasMediaPlayback &&
-						MediaPlaybackCard.hasContent(
-							playbackTrack: _device.isMediaPlaybackTrack,
-							playbackArtist: _device.mediaPlaybackArtist,
-							playbackAlbum: _device.mediaPlaybackAlbum,
-							playbackAvailableCommands: _device.mediaPlaybackAvailableCommands,
-							playbackHasDuration: _device.hasMediaPlaybackDuration,
-							playbackDuration: _device.mediaPlaybackDuration,
-						))
-						MediaPlaybackCard(
-							playbackTrack: _device.isMediaPlaybackTrack,
-							playbackArtist: _device.mediaPlaybackArtist,
-							playbackAlbum: _device.mediaPlaybackAlbum,
-							playbackStatus: _effectivePlaybackStatus,
-							playbackAvailableCommands: _device.mediaPlaybackAvailableCommands,
-							playbackHasPosition: _device.hasMediaPlaybackPosition,
-							playbackPosition: _device.mediaPlaybackPosition,
-							playbackHasDuration: _device.hasMediaPlaybackDuration,
-							playbackDuration: _device.mediaPlaybackDuration,
-							playbackIsPositionWritable: _device.mediaPlaybackChannel?.positionProp?.isWritable ?? false,
-							onPlaybackCommand: _sendPlaybackCommand,
-							onPlaybackSeek: _seekPosition,
+					Expanded(
+						child: MediaInfoCard(
+							icon: MdiIcons.gamepadVariant,
+							name: _device.name,
+							isOn: _isOn,
 							themeColor: _getThemeColor(),
-							isEnabled: _isOn,
-								),
+							expanded: true,
+						),
+					),
 				],
 			),
-			secondaryContent: const SizedBox.shrink(),
+			secondaryContent: MediaLandscapeControls(
+				isEnabled: _isOn,
+				themeColor: _getThemeColor(),
+				hasPlayback: _device.hasMediaPlayback,
+				onPlaybackTap: () => _showPlaybackSheet(context, isDark),
+			),
 		);
 	}
 

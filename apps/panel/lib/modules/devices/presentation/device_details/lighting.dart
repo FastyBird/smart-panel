@@ -10,8 +10,8 @@ import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/devic
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_portrait_layout.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_offline_overlay.dart';
 import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
-import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/lighting_mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
 import 'package:fastybird_smart_panel/core/widgets/tile_wrappers.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
@@ -663,35 +663,47 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
     }
 
     return DeviceLandscapeLayout(
-      mainContent: LightingMainControl(
-        selectedCapability: _selectedCapability,
-        isOn: isOn,
-        brightness: brightness,
-        colorTemp: colorTemp,
-        color: color,
-        saturation: saturation,
-        whiteChannel: white,
-        capabilities: _capabilities,
-        isLandscape: true,
-        onPowerToggle: () {
-          activeController.togglePower();
-          setState(() {});
-        },
-        onBrightnessChanged: _handleBrightnessChanged,
-        onColorTempChanged: _handleColorTempChanged,
-        onColorChanged: _handleColorChanged,
-        onWhiteChannelChanged: _handleWhiteChannelChanged,
-      ),
-      modeSelector: showModeSelector
-          ? LightingModeSelector(
-              capabilities: _capabilities,
+      mainContent: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: LightingMainControl(
               selectedCapability: _selectedCapability,
-              onCapabilityChanged: (value) {
-                setState(() => _selectedCapability = value);
+              isOn: isOn,
+              brightness: brightness,
+              colorTemp: colorTemp,
+              color: color,
+              saturation: saturation,
+              whiteChannel: white,
+              capabilities: _capabilities,
+              isLandscape: true,
+              onPowerToggle: () {
+                activeController.togglePower();
+                setState(() {});
               },
-              isVertical: true,
-            )
-          : null,
+              onBrightnessChanged: _handleBrightnessChanged,
+              onColorTempChanged: _handleColorTempChanged,
+              onColorChanged: _handleColorChanged,
+              onWhiteChannelChanged: _handleWhiteChannelChanged,
+            ),
+          ),
+          if (showModeSelector)
+            SizedBox(
+              width: AppSpacings.scale(64.0),
+              child: Padding(
+                padding: EdgeInsets.only(left: AppSpacings.pMd),
+                child: LightingModeSelector(
+                  capabilities: _capabilities,
+                  selectedCapability: _selectedCapability,
+                  onCapabilityChanged: (value) {
+                    setState(() => _selectedCapability = value);
+                  },
+                  isVertical: true,
+                ),
+              ),
+            ),
+        ],
+      ),
       secondaryContent: secondaryContent,
     );
   }
@@ -802,14 +814,6 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
 // --------------------------------------------------------------------------
 // TYPES AND WIDGETS (inlined for this device detail)
 // --------------------------------------------------------------------------
-
-enum LightCapability {
-  power,
-  brightness,
-  colorTemp,
-  color,
-  white,
-}
 
 /// Data for a single channel in the channels list.
 class LightingChannelData {
@@ -1684,112 +1688,6 @@ class _LightingColorPanel extends StatelessWidget {
 
 // --- Mode selector (brightness / color temp / color / white) ---
 
-class LightingModeSelector extends StatelessWidget {
-  final Set<LightCapability> capabilities;
-  final LightCapability selectedCapability;
-  final ValueChanged<LightCapability> onCapabilityChanged;
-  final bool isVertical;
-  final bool? showLabels;
-
-  const LightingModeSelector({
-    super.key,
-    required this.capabilities,
-    required this.selectedCapability,
-    required this.onCapabilityChanged,
-    this.isVertical = false,
-    this.showLabels,
-  });
-
-  List<LightCapability> get _enabledCapabilities {
-    return [
-      LightCapability.brightness,
-      LightCapability.colorTemp,
-      LightCapability.color,
-      LightCapability.white,
-    ].where((cap) => capabilities.contains(cap)).toList();
-  }
-
-  IconData _getCapabilityIcon(LightCapability cap) {
-    switch (cap) {
-      case LightCapability.brightness:
-        return MdiIcons.brightness6;
-      case LightCapability.colorTemp:
-        return MdiIcons.thermometer;
-      case LightCapability.color:
-        return MdiIcons.palette;
-      case LightCapability.white:
-        return MdiIcons.ceilingLight;
-      default:
-        return MdiIcons.lightbulb;
-    }
-  }
-
-  String _getCapabilityLabel(
-      LightCapability cap, AppLocalizations localizations) {
-    switch (cap) {
-      case LightCapability.brightness:
-        return localizations.light_mode_brightness;
-      case LightCapability.colorTemp:
-        return localizations.light_mode_temperature;
-      case LightCapability.color:
-        return localizations.light_mode_color;
-      case LightCapability.white:
-        return localizations.light_mode_white;
-      default:
-        return '';
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final localizations = AppLocalizations.of(context)!;
-    final enabledCaps = _enabledCapabilities;
-    if (enabledCaps.length <= 1) return const SizedBox.shrink();
-    final modes = enabledCaps.map((cap) {
-      return ModeOption<LightCapability>(
-        value: cap,
-        icon: _getCapabilityIcon(cap),
-        label: _getCapabilityLabel(cap, localizations),
-      );
-    }).toList();
-    if (isVertical) return _buildVerticalSelector(context, modes);
-    return _buildHorizontalSelector(context, modes);
-  }
-
-  Widget _buildVerticalSelector(
-    BuildContext context,
-    List<ModeOption<LightCapability>> modes,
-  ) {
-    return ModeSelector<LightCapability>(
-      modes: modes,
-      selectedValue: selectedCapability,
-      onChanged: (value) {
-        HapticFeedback.selectionClick();
-        onCapabilityChanged(value);
-      },
-      orientation: ModeSelectorOrientation.vertical,
-      showLabels: showLabels ?? false,
-    );
-  }
-
-  Widget _buildHorizontalSelector(
-    BuildContext context,
-    List<ModeOption<LightCapability>> modes,
-  ) {
-    return ModeSelector<LightCapability>(
-      modes: modes,
-      selectedValue: selectedCapability,
-      iconPlacement: ModeSelectorIconPlacement.top,
-      onChanged: (value) {
-        HapticFeedback.selectionClick();
-        onCapabilityChanged(value);
-      },
-      orientation: ModeSelectorOrientation.horizontal,
-      showLabels: true,
-    );
-  }
-}
-
 // --- Presets panel ---
 
 enum _LightingPresetType { brightness, colorTemp, color, white }
@@ -1941,67 +1839,6 @@ class LightingPresetsPanel extends StatelessWidget {
     List<_LightingPreset> presets,
     AppLocalizations localizations,
   ) {
-    if (_screenService.isLargeScreen) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        spacing: AppSpacings.pMd,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SectionTitle(
-            title: localizations.window_covering_presets_label,
-            icon: MdiIcons.viewGrid,
-          ),
-          GridView.count(
-            crossAxisCount: 2,
-            mainAxisSpacing: AppSpacings.pMd,
-            crossAxisSpacing: AppSpacings.pMd,
-            childAspectRatio: AppTileAspectRatio.square,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            children: presets.map((preset) {
-              final isActive = _isPresetActive(preset);
-              return VerticalTileLarge(
-                icon: preset.icon,
-                name: preset.label,
-                isActive: isActive,
-                onTileTap: () => _applyPreset(preset),
-              );
-            }).toList(),
-          ),
-        ],
-      );
-    }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      spacing: AppSpacings.pMd,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        SectionTitle(
-          title: localizations.window_covering_presets_label,
-          icon: MdiIcons.viewGrid,
-        ),
-        ...presets.asMap().entries.map((entry) {
-          final preset = entry.value;
-          return HorizontalTileStretched(
-            icon: preset.icon,
-            name: preset.label,
-            isActive: _isPresetActive(preset),
-            onTileTap: () => _applyPreset(preset),
-          );
-        }),
-      ],
-    );
-  }
-
-  Widget _buildLandscapeColorPresets(
-    BuildContext context,
-    bool isDark,
-    List<_LightingPreset> presets,
-  ) {
-    final localizations = AppLocalizations.of(context)!;
-    final swatchSize = AppSpacings.scale(36);
-    final borderColor =
-        isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       spacing: AppSpacings.pMd,
@@ -2012,10 +1849,46 @@ class LightingPresetsPanel extends StatelessWidget {
           icon: MdiIcons.viewGrid,
         ),
         GridView.count(
-          crossAxisCount: 4,
-          mainAxisSpacing: AppSpacings.pSm,
-          crossAxisSpacing: AppSpacings.pSm,
-          childAspectRatio: 1.0,
+          crossAxisCount: 2,
+          mainAxisSpacing: AppSpacings.pMd,
+          crossAxisSpacing: AppSpacings.pMd,
+          childAspectRatio: AppTileAspectRatio.square,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          children: presets.map((preset) {
+            final isActive = _isPresetActive(preset);
+            return VerticalTileLarge(
+              icon: preset.icon,
+              name: preset.label,
+              isActive: isActive,
+              onTileTap: () => _applyPreset(preset),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLandscapeColorPresets(
+    BuildContext context,
+    bool isDark,
+    List<_LightingPreset> presets,
+  ) {
+    final localizations = AppLocalizations.of(context)!;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: AppSpacings.pMd,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SectionTitle(
+          title: localizations.window_covering_presets_label,
+          icon: MdiIcons.viewGrid,
+        ),
+        GridView.count(
+          crossAxisCount: 2,
+          mainAxisSpacing: AppSpacings.pMd,
+          crossAxisSpacing: AppSpacings.pMd,
+          childAspectRatio: AppTileAspectRatio.horizontal,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           children: presets.map((preset) {
@@ -2024,15 +1897,15 @@ class LightingPresetsPanel extends StatelessWidget {
             return GestureDetector(
               onTap: () => _applyPreset(preset),
               child: Container(
-                width: swatchSize,
-                height: swatchSize,
                 decoration: BoxDecoration(
                   color: presetColor,
                   borderRadius: BorderRadius.circular(AppBorderRadius.base),
-                  border: Border.all(
-                    color: isActive ? presetColor : borderColor,
-                    width: isActive ? AppSpacings.scale(3) : AppSpacings.scale(1),
-                  ),
+                  border: isActive
+                      ? Border.all(
+                          color: presetColor,
+                          width: AppSpacings.scale(3),
+                        )
+                      : null,
                 ),
               ),
             );

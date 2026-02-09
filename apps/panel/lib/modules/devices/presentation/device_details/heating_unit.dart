@@ -382,7 +382,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
         : null;
 
     return Scaffold(
-      backgroundColor: isDark ? AppBgColorDark.base : AppBgColorLight.page,
+      backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
       body: SafeArea(
         child: Column(
           children: [

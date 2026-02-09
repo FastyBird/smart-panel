@@ -216,8 +216,8 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
 
   Widget _buildLandscapeLayout(BuildContext context) {
     final landscapeSecondary = _isDiscrete
-        ? _buildEventLog(context, withMargin: false, withDecoration: false)
-        : _buildChart(context, withMargin: false, withDecoration: false);
+        ? _buildEventLog(context, flexible: true, withDecoration: false)
+        : _buildChart(context, flexible: true, withDecoration: false);
     return DeviceLandscapeLayout(
       mainContent: Center(
         child: Column(
@@ -231,7 +231,9 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
         ),
       ),
       secondaryContent: landscapeSecondary,
-      largeSecondaryColumn: true,
+      secondaryColumnLarge: true,
+      secondaryScrollable: false,
+      secondaryContentPadding: EdgeInsets.zero,
     );
   }
 
@@ -419,9 +421,8 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
 
   Widget _buildEventLog(
     BuildContext context, {
-    bool withMargin = true,
-    bool withDecoration = true,
     bool flexible = false,
+    bool withDecoration = true,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final localizations = AppLocalizations.of(context)!;
@@ -436,7 +437,11 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
         ),
       );
     } else if (_timeseries != null && _timeseries!.isNotEmpty) {
-      contentArea = _buildEventLogEntries(context, inFlex: flexible);
+      final bgColor = withDecoration
+          ? null
+          : (isDark ? AppFillColorDark.light : AppFillColorLight.light);
+      contentArea = _buildEventLogEntries(context,
+          inFlex: flexible, backgroundColor: bgColor);
     } else {
       contentArea = Center(
         child: Text(
@@ -471,32 +476,43 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
     );
 
     if (!withDecoration) {
-      return Padding(
-        padding: EdgeInsets.symmetric(horizontal: AppSpacings.pLg),
-        child: Column(
-          mainAxisSize: flexible ? MainAxisSize.max : MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          spacing: AppSpacings.pMd,
-          children: [
-            Row(
+      final secondaryColor =
+          isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
+      final dividerColor =
+          isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
+      return Column(
+        mainAxisSize: flexible ? MainAxisSize.max : MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: EdgeInsets.only(
+              left: AppSpacings.pMd,
+              right: AppSpacings.pMd,
+              top: AppSpacings.pMd,
+            ),
+            child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   localizations.sensor_ui_event_log,
                   style: TextStyle(
-                    color: isDark
-                        ? AppTextColorDark.primary
-                        : AppTextColorLight.primary,
-                    fontSize: AppFontSize.base,
-                    fontWeight: FontWeight.w600,
+                    color: secondaryColor,
+                    fontSize: AppFontSize.small,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
                 periodSelector,
               ],
             ),
-            contentArea,
-          ],
-        ),
+          ),
+          AppSpacings.spacingMdVertical,
+          Divider(
+            height: flexible ? AppSpacings.scale(1) : AppSpacings.pMd,
+            thickness: AppSpacings.scale(1),
+            color: dividerColor,
+          ),
+          contentArea,
+        ],
       );
     }
 
@@ -511,7 +527,8 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
     );
   }
 
-  Widget _buildEventLogEntries(BuildContext context, {bool inFlex = false}) {
+  Widget _buildEventLogEntries(BuildContext context,
+      {bool inFlex = false, Color? backgroundColor}) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final localizations = AppLocalizations.of(context)!;
     final points = _timeseries!.points;
@@ -618,7 +635,7 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
     if (inFlex) {
       return VerticalScrollWithGradient(
         gradientHeight: AppSpacings.pMd,
-        backgroundColor: fillColor,
+        backgroundColor: backgroundColor ?? fillColor,
         itemCount: reversedEvents.length,
         separatorHeight: AppSpacings.scale(1),
         separatorColor: dividerColor,
@@ -649,9 +666,8 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
 
   Widget _buildChart(
     BuildContext context, {
-    bool withMargin = true,
-    bool withDecoration = true,
     bool flexible = false,
+    bool withDecoration = true,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final localizations = AppLocalizations.of(context)!;
@@ -709,11 +725,14 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
       ),
     );
 
-    final timeLabelsRow = Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: _getTimeLabels()
-          .map((label) => _buildTimeLabel(context, label))
-          .toList(),
+    final timeLabelsRow = Padding(
+      padding: EdgeInsets.only(left: SensorChartPainter.labelWidth),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: _getTimeLabels()
+            .map((label) => _buildTimeLabel(context, label))
+            .toList(),
+      ),
     );
 
     final chartArea = flexible
@@ -729,33 +748,60 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
           );
 
     if (!withDecoration) {
-      return Padding(
-        padding: EdgeInsets.symmetric(horizontal: AppSpacings.pLg),
-        child: Column(
-          mainAxisSize: flexible ? MainAxisSize.max : MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          spacing: AppSpacings.pMd,
-          children: [
-            Row(
+      final secondaryColor =
+          isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
+      final dividerColor =
+          isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
+      return Column(
+        mainAxisSize: flexible ? MainAxisSize.max : MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: EdgeInsets.only(
+              left: AppSpacings.pMd,
+              right: AppSpacings.pMd,
+              top: AppSpacings.pMd,
+            ),
+            child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   localizations.sensor_ui_history,
                   style: TextStyle(
-                    color: isDark
-                        ? AppTextColorDark.primary
-                        : AppTextColorLight.primary,
-                    fontSize: AppFontSize.base,
-                    fontWeight: FontWeight.w600,
+                    color: secondaryColor,
+                    fontSize: AppFontSize.small,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
                 periodSelector,
               ],
             ),
-            chartArea,
-            timeLabelsRow,
-          ],
-        ),
+          ),
+          AppSpacings.spacingMdVertical,
+          Divider(
+            height: flexible ? AppSpacings.scale(1) : AppSpacings.pMd,
+            thickness: AppSpacings.scale(1),
+            color: dividerColor,
+          ),
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(
+                left: AppSpacings.pMd,
+                right: AppSpacings.pMd,
+                top: AppSpacings.pLg,
+                bottom: AppSpacings.pMd,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                spacing: AppSpacings.pMd,
+                children: [
+                  chartArea,
+                  timeLabelsRow,
+                ],
+              ),
+            ),
+          ),
+        ],
       );
     }
 

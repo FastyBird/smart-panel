@@ -17,21 +17,20 @@ void main() {
 
       expect(layout.mainContent, isA<SizedBox>());
       expect(layout.secondaryContent, isNull);
-      expect(layout.modeSelector, isNull);
     });
 
     test('should accept all optional parameters', () {
       const layout = DeviceLandscapeLayout(
         mainContent: SizedBox(),
-        modeSelector: Text('Mode'),
         secondaryContent: Text('Secondary'),
-        largeSecondaryColumn: true,
+        secondaryColumnLarge: true,
+        mainContentScrollable: true,
         secondaryScrollable: false,
       );
 
-      expect(layout.modeSelector, isA<Text>());
       expect(layout.secondaryContent, isA<Text>());
-      expect(layout.largeSecondaryColumn, true);
+      expect(layout.secondaryColumnLarge, true);
+      expect(layout.mainContentScrollable, true);
       expect(layout.secondaryScrollable, false);
     });
 
@@ -41,8 +40,9 @@ void main() {
         secondaryContent: Text('Secondary'),
       );
 
-      expect(layout.modeSelector, isNull);
-      expect(layout.largeSecondaryColumn, false);
+      expect(layout.secondaryColumnLarge, false);
+      expect(layout.mainContentScrollable, false);
+      expect(layout.mainContentPadding, isNull);
       expect(layout.secondaryScrollable, true);
     });
   });

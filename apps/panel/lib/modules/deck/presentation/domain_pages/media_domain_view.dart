@@ -74,6 +74,7 @@ import 'package:fastybird_smart_panel/modules/deck/models/bottom_nav_mode_config
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/domain_data_loader.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_item_sheet.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_mode_chip.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/domain_state_view.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/bottom_nav_mode_notifier.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/deck_page_activated_event.dart';
@@ -704,6 +705,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 				icon: MdiIcons.playBoxOutline,
 				color: _getModeColor(),
 			),
+			landscapeAction: const DeckModeChip(),
 			trailing: showDevicesButton
 				? HeaderIconButton(
 						icon: MdiIcons.monitorSpeaker,
@@ -772,7 +774,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		bool isActivating,
 		bool isFailed,
 	) {
-		final isLargeScreen = _screenService.isLargeScreen;
 		final mainContent = showOffContent
 			? _buildOffStateContent(context)
 			: isActivating
@@ -783,12 +784,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		return LandscapeViewLayout(
 			mainContent: mainContent,
 			mainContentScrollable: false,
-			modeSelector: _buildLandscapeModeSelector(
-				context,
-				activeState,
-				showLabels: isLargeScreen,
-			),
-			modeSelectorShowLabels: isLargeScreen,
 			additionalContent: !showOffContent && !isActivating && !isFailed
 				? Column(
 						crossAxisAlignment: CrossAxisAlignment.start,
@@ -839,24 +834,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		return activeState.activityKey ?? MediaActivityKey.off;
 	}
 
-
-	Widget _buildLandscapeModeSelector(
-		BuildContext context,
-		MediaActiveStateModel? activeState, {
-		bool showLabels = false,
-	}) {
-		return IgnorePointer(
-			ignoring: !_wsConnected || _isSending,
-			child: ModeSelector<MediaActivityKey>(
-				modes: _getActivityModeOptions(),
-				selectedValue: _getSelectedActivityKey(activeState),
-				onChanged: _onActivitySelected,
-				orientation: ModeSelectorOrientation.vertical,
-				iconPlacement: ModeSelectorIconPlacement.top,
-				showLabels: showLabels,
-			),
-		);
-	}
 
 	// =============================================================================
 	// OFF STATE CONTENT
@@ -2090,7 +2067,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 						displayFormatter: (v) => '${v ?? 0}%',
 						columns: 5,
 						layout: ValueSelectorRowLayout.compact,
-						showChevron: true,
 						onChanged: _isSending ? null : (v) {
 							if (v != null) _setVolume(v);
 						},

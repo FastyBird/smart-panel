@@ -19,7 +19,7 @@ import 'package:fastybird_smart_panel/modules/security/types/security.dart';
 import 'package:fastybird_smart_panel/modules/security/utils/entry_points.dart';
 import 'package:fastybird_smart_panel/modules/security/utils/security_event_ui.dart';
 import 'package:fastybird_smart_panel/modules/security/utils/security_ui.dart';
-import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_mode_chip.dart';
 import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
@@ -77,6 +77,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
 										icon: MdiIcons.shieldHome,
 										color: _modeSelectorColor(status),
 									),
+									landscapeAction: const DeckModeChip(),
 								),
 								Expanded(
 									child: LayoutBuilder(
@@ -222,17 +223,6 @@ class _SecurityScreenState extends State<SecurityScreen> {
 		);
 	}
 
-	Widget _buildLandscapeModeSelector({required bool hasEntryPoints, required SecurityStatusModel status, required AppLocalizations localizations}) {
-		return ModeSelector<_SecurityTab>(
-			modes: _buildTabModes(hasEntryPoints: hasEntryPoints, status: status, localizations: localizations),
-			selectedValue: _selectedTab,
-			onChanged: (tab) => setState(() => _selectedTab = tab),
-			orientation: ModeSelectorOrientation.vertical,
-			showLabels: false,
-			color: _modeSelectorColor(status),
-		);
-	}
-
 	Widget _buildPortrait({
 		required SecurityStatusModel status,
 		required SecurityOverlayController controller,
@@ -251,6 +241,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
 		return PortraitViewLayout(
 			scrollable: false,
 			content: Column(
+        spacing: AppSpacings.pMd,
 				children: [
 					_StatusRingHero(
 						ringColor: ringColor,
@@ -263,7 +254,6 @@ class _SecurityScreenState extends State<SecurityScreen> {
 						localizations: localizations,
 					),
 					_buildModeSelector(hasEntryPoints: !entryPoints.isEmpty, status: status, localizations: localizations),
-					AppSpacings.spacingSmVertical,
 					Expanded(
 						child: _buildTabContent(
 							status: status,
@@ -296,29 +286,59 @@ class _SecurityScreenState extends State<SecurityScreen> {
 		required bool isTriggered,
 		required String statusSummary,
 	}) {
-		return LandscapeViewLayout(
-			mainContent: _StatusRingHero(
-				ringColor: ringColor,
-				ringBgColor: ringBgColor,
-				progress: ringProgress,
-				summary: statusSummary,
-				isTriggered: isTriggered,
-				isDark: isDark,
-				isCritical: _isCriticalStatus(status),
-				compact: true,
-				localizations: localizations,
+		return Padding(
+			padding: EdgeInsets.only(
+				left: AppSpacings.pMd,
+				right: AppSpacings.pMd,
+				bottom: AppSpacings.pMd,
 			),
-			modeSelector: _buildLandscapeModeSelector(hasEntryPoints: !entryPoints.isEmpty, status: status, localizations: localizations),
-			additionalContent: _buildTabContent(
-				status: status,
-				controller: controller,
-				devicesService: devicesService,
-				eventsRepo: eventsRepo,
-				entryPoints: entryPoints,
-				isDark: isDark,
-				screenService: screenService,
-				localizations: localizations,
-				isLandscape: true,
+			child: Row(
+				crossAxisAlignment: CrossAxisAlignment.stretch,
+				spacing: AppSpacings.pMd,
+				children: [
+					// Left column: Status ring
+					Expanded(
+						child: Center(
+							child: _StatusRingHero(
+								ringColor: ringColor,
+								ringBgColor: ringBgColor,
+								progress: ringProgress,
+								summary: statusSummary,
+								isTriggered: isTriggered,
+								isDark: isDark,
+								isCritical: _isCriticalStatus(status),
+								compact: true,
+								localizations: localizations,
+							),
+						),
+					),
+					// Right column: Mode selector + tab content
+					Expanded(
+						child: Column(
+							spacing: AppSpacings.pMd,
+							children: [
+								_buildModeSelector(
+									hasEntryPoints: !entryPoints.isEmpty,
+									status: status,
+									localizations: localizations,
+								),
+								Expanded(
+									child: _buildTabContent(
+										status: status,
+										controller: controller,
+										devicesService: devicesService,
+										eventsRepo: eventsRepo,
+										entryPoints: entryPoints,
+										isDark: isDark,
+										screenService: screenService,
+										localizations: localizations,
+										isLandscape: true,
+									),
+								),
+							],
+						),
+					),
+				],
 			),
 		);
 	}
@@ -620,7 +640,7 @@ class _EntryPointGrid extends StatelessWidget {
 			? localizations.security_entry_open_count(entryPoints.openCount)
 			: localizations.security_entry_all_secure;
 
-		final crossAxisCount = screenService.isSmallScreen ? 3 : 4;
+		final crossAxisCount = isLandscape || screenService.isSmallScreen ? 3 : 4;
 		final items = entryPoints.all;
 		final rowCount = (items.length / crossAxisCount).ceil();
 		final fillColor = isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
@@ -807,36 +827,10 @@ class _AlertStream extends StatelessWidget {
 			),
 		);
 
-		if (isLandscape) {
-			return AppCard(
-				color: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
-				borderColor: _accentColor,
-				headerIcon: MdiIcons.alertOutline,
-				headerTitle: localizations.security_tab_alerts,
-				headerTrailing: headerTrailing,
-				headerLine: true,
-				child: sortedAlerts.isEmpty
-					? Padding(
-						padding: EdgeInsets.symmetric(vertical: AppSpacings.pMd),
-						child: Center(child: emptyState),
-					)
-					: ListView.separated(
-						shrinkWrap: true,
-						physics: const NeverScrollableScrollPhysics(),
-						padding: EdgeInsets.zero,
-						itemCount: sortedAlerts.length,
-						separatorBuilder: (_, __) => Divider(
-							height: AppSpacings.scale(1),
-							thickness: AppSpacings.scale(1),
-							color: dividerColor,
-						),
-						itemBuilder: (context, index) => buildAlertItem(index),
-					),
-			);
-		}
+		final cardColor = isDark ? AppFillColorDark.light : AppFillColorLight.blank;
 
 		return AppCard(
-			color: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
+			color: cardColor,
 			borderColor: _accentColor,
 			expanded: true,
 			headerIcon: MdiIcons.alertOutline,
@@ -848,7 +842,7 @@ class _AlertStream extends StatelessWidget {
 					? Center(child: emptyState)
 					: VerticalScrollWithGradient(
 						gradientHeight: AppSpacings.pMd,
-						backgroundColor: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
+						backgroundColor: cardColor,
 						itemCount: sortedAlerts.length,
 						separatorHeight: AppSpacings.scale(1),
 						separatorColor: dividerColor,
@@ -1093,17 +1087,6 @@ class _EventsFeed extends StatelessWidget {
 				: null,
 		);
 
-		if (isLandscape) {
-			return AppCard(
-				color: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
-				headerIcon: MdiIcons.history,
-				headerTitle: localizations.security_header_recent_events,
-				headerTrailing: headerTrailing,
-				headerLine: true,
-				child: _buildContent(context),
-			);
-		}
-
 		return AppCard(
 			color: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
 			expanded: true,
@@ -1129,20 +1112,16 @@ class _EventsFeed extends StatelessWidget {
 		switch (eventsRepo.state) {
 			case SecurityEventsState.initial:
 			case SecurityEventsState.loading:
-				final loader = SizedBox(
-					width: screenService.scale(20),
-					height: screenService.scale(20),
-					child: CircularProgressIndicator(
-						strokeWidth: 2,
-						color: SystemPagesTheme.textMuted(isDark),
+				return Center(
+					child: SizedBox(
+						width: screenService.scale(20),
+						height: screenService.scale(20),
+						child: CircularProgressIndicator(
+							strokeWidth: 2,
+							color: SystemPagesTheme.textMuted(isDark),
+						),
 					),
 				);
-				return isLandscape
-					? Padding(
-						padding: EdgeInsets.symmetric(vertical: AppSpacings.pMd),
-						child: Center(child: loader),
-					)
-					: Center(child: loader);
 
 			case SecurityEventsState.error:
 				final errorContent = Column(
@@ -1187,12 +1166,7 @@ class _EventsFeed extends StatelessWidget {
 						),
 					],
 				);
-				return isLandscape
-					? Padding(
-						padding: EdgeInsets.symmetric(vertical: AppSpacings.pMd),
-						child: Center(child: errorContent),
-					)
-					: Center(child: errorContent);
+				return Center(child: errorContent);
 
 			case SecurityEventsState.loaded:
 				if (eventsRepo.events.isEmpty) {
@@ -1203,30 +1177,10 @@ class _EventsFeed extends StatelessWidget {
 							color: SystemPagesTheme.textMuted(isDark),
 						),
 					);
-					return isLandscape
-						? Padding(
-							padding: EdgeInsets.symmetric(vertical: AppSpacings.pMd),
-							child: Center(child: emptyState),
-						)
-						: Center(child: emptyState);
+					return Center(child: emptyState);
 				}
 
 				final displayEvents = eventsRepo.events.take(maxEvents).toList();
-
-				if (isLandscape) {
-					return ListView.separated(
-						shrinkWrap: true,
-						physics: const NeverScrollableScrollPhysics(),
-						padding: EdgeInsets.zero,
-						itemCount: displayEvents.length,
-						separatorBuilder: (_, __) => Divider(
-							height: AppSpacings.scale(1),
-							thickness: AppSpacings.scale(1),
-							color: dividerColor,
-						),
-						itemBuilder: (context, index) => buildEventItem(index, displayEvents),
-					);
-				}
 
 				final fillColor = isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
 				return VerticalScrollWithGradient(

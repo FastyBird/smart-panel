@@ -40,14 +40,13 @@
 
 import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'dart:async';
 
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_card.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
-import 'package:fastybird_smart_panel/core/widgets/intent_mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
@@ -138,7 +137,6 @@ class ShadingDomainViewPage extends StatefulWidget {
 }
 
 class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
-  final ScreenService _screenService = locator<ScreenService>();
 
   SpacesService? _spacesService;
   DevicesService? _devicesService;
@@ -555,6 +553,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
         icon: position > 0 ? MdiIcons.blindsHorizontal : MdiIcons.blindsHorizontalClosed,
         color: _getPositionThemeColor(position),
       ),
+      landscapeAction: const DeckModeChip(),
       trailing: showDevicesButton
           ? HeaderIconButton(
               icon: MdiIcons.windowShutterSettings,
@@ -732,17 +731,17 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     BuildContext context,
     List<_CoverRoleData> roleDataList,
   ) {
-    final localizations = AppLocalizations.of(context)!;
     final primaryRole = roleDataList.isNotEmpty ? roleDataList.first : null;
-    final secondaryRoles = roleDataList.length > 1 ? roleDataList.skip(1).toList() : [];
-    final isLargeScreen = _screenService.isLargeScreen;
+    final secondaryRoles =
+        roleDataList.length > 1 ? roleDataList.skip(1).toList() : <_CoverRoleData>[];
+    final isLargeScreen = locator<ScreenService>().isLargeScreen;
 
     return LandscapeViewLayout(
       mainContent: SingleChildScrollView(
         child: Column(
           spacing: AppSpacings.pMd,
           children: [
-            // Primary Role Card (with slider and actions)
+            // Primary Role Card (with slider and actions) — always full width
             if (primaryRole != null)
               _buildRoleCard(
                 context,
@@ -750,21 +749,39 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
                 showSlider: true,
                 showActions: true,
               ),
-            // Secondary Role Cards
-            for (final role in secondaryRoles)
-              _buildRoleCard(
-                context,
-                roleData: role,
-              ),
+            // Secondary Role Cards — 2 per row on large screens
+            if (secondaryRoles.isNotEmpty && isLargeScreen)
+              for (var i = 0; i < secondaryRoles.length; i += 2)
+                Row(
+                  spacing: AppSpacings.pMd,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: _buildRoleCard(
+                        context,
+                        roleData: secondaryRoles[i],
+                      ),
+                    ),
+                    Expanded(
+                      child: i + 1 < secondaryRoles.length
+                          ? _buildRoleCard(
+                              context,
+                              roleData: secondaryRoles[i + 1],
+                            )
+                          : const SizedBox.shrink(),
+                    ),
+                  ],
+                ),
+            // Secondary Role Cards — single column on small/medium screens
+            if (secondaryRoles.isNotEmpty && !isLargeScreen)
+              for (final role in secondaryRoles)
+                _buildRoleCard(
+                  context,
+                  roleData: role,
+                ),
           ],
         ),
       ),
-      modeSelector: _buildLandscapeModeSelector(
-        context,
-        localizations,
-        showLabels: isLargeScreen,
-      ),
-      modeSelectorShowLabels: isLargeScreen,
     );
   }
 
@@ -1168,26 +1185,6 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     if (detectedMode != null && !isModeFromIntent) return (null, detectedMode, null);
     if (lastAppliedMode != null) return (null, null, lastAppliedMode);
     return (null, null, null);
-  }
-
-  /// Vertical mode selector for landscape layout; [showLabels] from screen size.
-  Widget _buildLandscapeModeSelector(
-    BuildContext context,
-    AppLocalizations localizations, {
-    bool showLabels = false,
-  }) {
-    final (activeValue, matchedValue, lastIntentValue) = _getCoverModeSelectorValues();
-
-    return IntentModeSelector<CoversMode>(
-      modes: _getCoversModeOptions(localizations),
-      activeValue: activeValue,
-      matchedValue: matchedValue,
-      lastIntentValue: lastIntentValue,
-      onChanged: _setCoversMode,
-      orientation: ModeSelectorOrientation.vertical,
-      iconPlacement: ModeSelectorIconPlacement.top,
-      showLabels: showLabels,
-    );
   }
 
   /// Mode options for [ModeSelector] (open, daylight, privacy, closed).

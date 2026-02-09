@@ -515,7 +515,6 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
             layout: useVerticalLayout
                 ? ValueSelectorRowLayout.compact
                 : ValueSelectorRowLayout.horizontal,
-            showChevron: _screenService.isLargeScreen,
             onChanged: isEnabled
                 ? (level) {
                     if (level != null) _setSpeedLevel(level);
@@ -570,7 +569,6 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
             displayFormatter: (v) => _formatSpeed(localizations, v),
             columns: 4,
             layout: ValueSelectorRowLayout.compact,
-            showChevron: _screenService.isLargeScreen,
             onChanged: isEnabled ? (v) => _setSpeedValue(v ?? 0) : null,
           ),
         );
@@ -631,7 +629,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
         : null;
 
     return Scaffold(
-      backgroundColor: isDark ? AppBgColorDark.base : AppBgColorLight.page,
+      backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
       body: SafeArea(
         child: Column(
           children: [
@@ -950,7 +948,6 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           layout: useVerticalLayout
               ? ValueSelectorRowLayout.compact
               : ValueSelectorRowLayout.horizontal,
-          showChevron: _screenService.isLargeScreen,
           onChanged: (preset) {
             if (preset != null) {
               _setFanTimerPreset(preset);
@@ -978,7 +975,6 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           layout: useVerticalLayout
               ? ValueSelectorRowLayout.compact
               : ValueSelectorRowLayout.horizontal,
-          showChevron: _screenService.isLargeScreen,
           onChanged: (minutes) {
             if (minutes != null) {
               _setFanTimerNumeric(minutes);

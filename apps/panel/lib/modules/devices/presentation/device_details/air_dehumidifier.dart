@@ -433,7 +433,7 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
         : null;
 
     return Scaffold(
-      backgroundColor: isDark ? AppBgColorDark.base : AppBgColorLight.page,
+      backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
       body: SafeArea(
         child: Column(
           children: [
@@ -1299,7 +1299,6 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
         layout: useVerticalLayout
             ? ValueSelectorRowLayout.compact
             : ValueSelectorRowLayout.horizontal,
-        showChevron: _screenService.isLargeScreen,
         onChanged: _device.isOn
             ? (level) {
                 if (level != null) {
@@ -1332,7 +1331,6 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
         displayFormatter: (v) => _formatFanSpeed(localizations, v),
         columns: 4,
         layout: ValueSelectorRowLayout.compact,
-        showChevron: _screenService.isLargeScreen,
         onChanged: _device.isOn ? (v) => _setFanSpeed(v ?? 0) : null,
       );
 
@@ -1380,7 +1378,6 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
             : '-',
         columns: availableModes.length > 4 ? 3 : availableModes.length,
         layout: ValueSelectorRowLayout.compact,
-        showChevron: _screenService.isLargeScreen,
         onChanged: _device.isOn
             ? (mode) {
                 if (mode != null) {
@@ -1547,7 +1544,6 @@ activeColor: activeColor,
         layout: useCompactLayout
             ? ValueSelectorRowLayout.compact
             : ValueSelectorRowLayout.horizontal,
-        showChevron: _screenService.isLargeScreen,
         onChanged: (preset) {
           if (preset != null) {
             _setDehumidifierTimerPreset(preset);
@@ -1574,7 +1570,6 @@ activeColor: activeColor,
         layout: useCompactLayout
             ? ValueSelectorRowLayout.compact
             : ValueSelectorRowLayout.horizontal,
-        showChevron: _screenService.isLargeScreen,
         onChanged: (seconds) {
           if (seconds != null) {
             _setDehumidifierTimerNumeric(seconds);

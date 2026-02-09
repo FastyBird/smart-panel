@@ -54,7 +54,7 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
-import 'package:fastybird_smart_panel/core/widgets/intent_mode_selector.dart';
+import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
@@ -67,6 +67,7 @@ import 'package:fastybird_smart_panel/modules/deck/constants.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/bottom_nav_mode_config.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/domain_data_loader.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_mode_chip.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/domain_state_view.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/light_role_detail_page.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/bottom_nav_mode_notifier.dart';
@@ -1231,6 +1232,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         icon: hasLightsOn ? MdiIcons.lightbulbOn : MdiIcons.lightbulbOutline,
         color: _getStatusColor(context),
       ),
+      landscapeAction: const DeckModeChip(),
     );
   }
 
@@ -1348,16 +1350,14 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     DevicesService devicesService,
     AppLocalizations localizations,
   ) {
-    final hasRoles = roles.isNotEmpty;
-    final hasOtherLights = otherLights.isNotEmpty;
     final hasScenes = _lightingScenes.isNotEmpty;
-    final hasLights = hasRoles || hasOtherLights;
-
-    // Use ScreenService breakpoints for responsive layout
-    // Landscape breakpoints: small ≤800, medium ≤1150, large >1150
-    final isLargeScreen = _screenService.isLargeScreen;
 
     return LandscapeViewLayout(
+      mainContentPadding: EdgeInsets.only(
+        left: AppSpacings.pMd,
+        right: AppSpacings.pLg,
+        bottom: AppSpacings.pMd,
+      ),
       mainContent: _buildLandscapeMainContent(
         context,
         roles,
@@ -1366,14 +1366,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         devicesService,
         localizations,
       ),
-      modeSelector: LightingConstants.useBackendIntents && hasLights
-          ? _buildLandscapeModeSelector(
-              context,
-              localizations,
-              showLabels: isLargeScreen,
-            )
-          : null,
-      modeSelectorShowLabels: isLargeScreen,
       additionalContent: hasScenes
           ? _buildLandscapeScenesColumn(context, localizations)
           : null,
@@ -1390,51 +1382,35 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   ) {
     final hasRoles = roles.isNotEmpty;
     final hasOtherLights = otherLights.isNotEmpty;
-    final isLargeScreen = _screenService.isLargeScreen;
-    final tilesPerRow = isLargeScreen ? 4 : 3;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       spacing: AppSpacings.pMd,
       children: [
-        // Roles + Other Lights layout
         if (hasRoles && hasOtherLights) ...[
-          // Roles row
-          _buildLandscapeRolesRow(
-            context,
-            roles,
-            devicesService,
-            tilesPerRow: tilesPerRow,
-          ),
-          // Other Lights header
-          _buildOtherLightsTitle(otherLights, otherTargets, localizations),
-          // Other Lights grid
-          _buildLandscapeLightsGrid(
-            context,
-            otherLights,
-            localizations,
-            tilesPerRow: tilesPerRow,
-            maxRows: isLargeScreen ? 2 : 1,
-          ),
-        ] else if (hasRoles) ...[
-          // Only roles, no other lights - grid layout
           Expanded(
-            child: _buildRolesGrid(
+            child: _buildLandscapeRolesRow(context, roles, devicesService),
+          ),
+          _buildOtherLightsTitle(otherLights, otherTargets, localizations),
+          Expanded(
+            child: _buildLandscapeLightsRow(
               context,
-              roles,
-              devicesService,
-              crossAxisCount: tilesPerRow,
+              otherLights,
+              localizations,
             ),
           ),
+        ] else if (hasRoles) ...[
+          Expanded(
+            child: _buildLandscapeRolesRow(context, roles, devicesService),
+          ),
         ] else if (hasOtherLights) ...[
-          // Only other lights, no roles
           _buildOtherLightsTitle(otherLights, otherTargets, localizations),
-          _buildLandscapeLightsGrid(
-            context,
-            otherLights,
-            localizations,
-            tilesPerRow: tilesPerRow,
-            maxRows: isLargeScreen ? 2 : 1,
+          Expanded(
+            child: _buildLandscapeLightsRow(
+              context,
+              otherLights,
+              localizations,
+            ),
           ),
         ],
       ],
@@ -1462,29 +1438,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   /// Large screens: 2 vertical tiles per row (square).
   /// Small/medium screens: Column of fixed-height horizontal tiles.
   Widget _buildLandscapeScenesCard(BuildContext context) {
-    final isLargeScreen = _screenService.isLargeScreen;
     final scenes = _lightingScenes;
-
-    // Large screens: 2 vertical tiles per row (square)
-    if (isLargeScreen) {
-      return GridView.count(
-        crossAxisCount: 2,
-        mainAxisSpacing: AppSpacings.pMd,
-        crossAxisSpacing: AppSpacings.pMd,
-        childAspectRatio: AppTileAspectRatio.square,
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        children: scenes.map((scene) {
-          return VerticalTileLarge(
-            icon: _getSceneIcon(scene),
-            name: scene.name,
-            isActive: false,
-            activeColor: _getStatusColor(context),
-            onTileTap: () => _activateScene(scene),
-          );
-        }).toList(),
-      );
-    }
 
     // Small/medium: Column of fixed-height horizontal tiles
     return Column(
@@ -1507,72 +1461,34 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     );
   }
 
-  /// Build vertical mode selector for landscape layout
-  Widget _buildLandscapeModeSelector(
-    BuildContext context,
-    AppLocalizations localizations, {
-    bool showLabels = false,
-  }) {
-    final (activeValue, matchedValue, lastIntentValue) = _getLightingModeSelectorValues();
-    final isModeLocked = _modeControlStateService.isLocked(LightingConstants.modeChannelId);
-
-    // Fixed width matching landscape layout constants (100 large, 64 compact)
-    final selectorWidth = AppSpacings.scale(showLabels ? 100.0 : 64.0);
-
-    return IgnorePointer(
-      ignoring: isModeLocked,
-      child: IntentModeSelector<LightingModeUI>(
-        modes: _getLightingModeOptions(context, localizations),
-        activeValue: activeValue,
-        matchedValue: matchedValue,
-        lastIntentValue: lastIntentValue,
-        onChanged: _setLightingMode,
-        orientation: ModeSelectorOrientation.vertical,
-        iconPlacement: ModeSelectorIconPlacement.top,
-        showLabels: showLabels,
-        fixedWidth: selectorWidth,
-        scrollable: showLabels, // Enable scroll when labels shown (takes more space)
-      ),
-    );
-  }
-
   Widget _buildLandscapeRolesRow(
     BuildContext context,
     List<LightingRoleData> roles,
-    DevicesService devicesService, {
-    required int tilesPerRow,
-    double aspectRatio = 1.0, // width / height ratio
-  }) {
+    DevicesService devicesService,
+  ) {
     final isModeLocked = _modeControlStateService.isLocked(LightingConstants.modeChannelId);
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Calculate tile width from available horizontal space
-        final totalSpacing = AppSpacings.pMd * (tilesPerRow - 1);
-        final tileWidth = (constraints.maxWidth - totalSpacing) / tilesPerRow;
+        final tileSize = constraints.maxHeight;
 
-        // Derive tile height from width using aspect ratio
-        final tileHeight = tileWidth / aspectRatio;
-
-        return SizedBox(
-          height: tileHeight,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: roles.length,
-            separatorBuilder: (context, index) => AppSpacings.spacingMdHorizontal,
-            itemBuilder: (context, index) {
-              return SizedBox(
-                width: tileWidth,
-                child: _RoleCard(
-                  role: roles[index],
-                  onTap: () => _openRoleDetail(context, roles[index]),
-                  onIconTap: () => _toggleRoleViaIntent(roles[index]),
-                  isLoading: isModeLocked,
-                  pendingState: _getRolePendingState(roles[index].role),
-                ),
-              );
-            },
-          ),
+        return HorizontalScrollWithGradient(
+          height: tileSize,
+          layoutPadding: AppSpacings.pLg,
+          itemCount: roles.length,
+          separatorWidth: AppSpacings.pMd,
+          itemBuilder: (context, index) {
+            return SizedBox(
+              width: tileSize,
+              child: _RoleCard(
+                role: roles[index],
+                onTap: () => _openRoleDetail(context, roles[index]),
+                onIconTap: () => _toggleRoleViaIntent(roles[index]),
+                isLoading: isModeLocked,
+                pendingState: _getRolePendingState(roles[index].role),
+              ),
+            );
+          },
         );
       },
     );
@@ -1609,66 +1525,32 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     );
   }
 
-  Widget _buildLandscapeLightsGrid(
+  Widget _buildLandscapeLightsRow(
     BuildContext context,
     List<LightDeviceData> lights,
-    AppLocalizations localizations, {
-    required int tilesPerRow,
-    required int maxRows,
-    double aspectRatio = 1.0, // width / height ratio
-  }) {
+    AppLocalizations localizations,
+  ) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Calculate tile width from available horizontal space
-        final totalHSpacing = AppSpacings.pMd * (tilesPerRow - 1);
-        final tileWidth = (constraints.maxWidth - totalHSpacing) / tilesPerRow;
+        final tileSize = constraints.maxHeight;
 
-        // Derive tile height from width using aspect ratio
-        final tileHeight = tileWidth / aspectRatio;
-
-        // Calculate total grid height
-        final totalVSpacing = maxRows > 1 ? AppSpacings.pMd * (maxRows - 1) : 0.0;
-        final gridHeight = tileHeight * maxRows + totalVSpacing;
-
-        // Build columns of tiles (each column has maxRows tiles stacked)
-        final columnCount = (lights.length / maxRows).ceil();
-
-        return SizedBox(
-          height: gridHeight,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemCount: columnCount,
-            separatorBuilder: (context, index) => AppSpacings.spacingMdHorizontal,
-            itemBuilder: (context, colIndex) {
-              return SizedBox(
-                width: tileWidth,
-                child: Column(
-                  spacing: AppSpacings.pMd,
-                  children: [
-                    for (var row = 0; row < maxRows; row++)
-                      SizedBox(
-                        height: tileHeight,
-                        child: Builder(
-                          builder: (_) {
-                            final index = colIndex * maxRows + row;
-                            if (index < lights.length) {
-                              return _LightTile(
-                                light: lights[index],
-                                localizations: localizations,
-                                onTap: () => _openDeviceDetail(context, lights[index]),
-                                onIconTap: () => _toggleLight(lights[index]),
-                                isVertical: true,
-                              );
-                            }
-                            return const SizedBox.shrink();
-                          },
-                        ),
-                      ),
-                  ],
-                ),
-              );
-            },
-          ),
+        return HorizontalScrollWithGradient(
+          height: tileSize,
+          layoutPadding: AppSpacings.pLg,
+          itemCount: lights.length,
+          separatorWidth: AppSpacings.pMd,
+          itemBuilder: (context, index) {
+            return SizedBox(
+              width: tileSize,
+              child: _LightTile(
+                light: lights[index],
+                localizations: localizations,
+                onTap: () => _openDeviceDetail(context, lights[index]),
+                onIconTap: () => _toggleLight(lights[index]),
+                isVertical: true,
+              ),
+            );
+          },
         );
       },
     );

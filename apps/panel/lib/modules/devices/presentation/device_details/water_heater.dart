@@ -65,7 +65,7 @@ class _WaterHeaterDeviceDetailState extends State<WaterHeaterDeviceDetail> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDark ? AppBgColorDark.base : AppBgColorLight.page,
+      backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
       body: SafeArea(
         child: Column(
           children: [

@@ -20,6 +20,7 @@ import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/projector.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_landscape_controls.dart';
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -459,7 +460,7 @@ class _ProjectorDeviceDetailState extends State<ProjectorDeviceDetail> {
 			: null;
 
 		return Scaffold(
-			backgroundColor: isDark ? AppBgColorDark.base : AppBgColorLight.page,
+			backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
 			body: SafeArea(
 				child: Column(
 					children: [
@@ -649,71 +650,73 @@ class _ProjectorDeviceDetailState extends State<ProjectorDeviceDetail> {
 	// LANDSCAPE LAYOUT
 	// --------------------------------------------------------------------------
 
+	void _showPlaybackSheet(BuildContext context, bool isDark) {
+		final localizations = AppLocalizations.of(context)!;
+
+		showAppBottomSheet(
+			context,
+			title: localizations.media_playback,
+			titleIcon: MdiIcons.playCircle,
+			content: Padding(
+				padding: AppSpacings.paddingMd,
+				child: MediaPlaybackCard(
+					playbackTrack: _device.isMediaPlaybackTrack,
+					playbackArtist: _device.mediaPlaybackArtist,
+					playbackAlbum: _device.mediaPlaybackAlbum,
+					playbackStatus: _effectivePlaybackStatus,
+					playbackAvailableCommands: _device.mediaPlaybackAvailableCommands,
+					playbackHasPosition: _device.hasMediaPlaybackPosition,
+					playbackPosition: _device.mediaPlaybackPosition,
+					playbackHasDuration: _device.hasMediaPlaybackDuration,
+					playbackDuration: _device.mediaPlaybackDuration,
+					playbackIsPositionWritable: _device.mediaPlaybackChannel?.positionProp?.isWritable ?? false,
+					onPlaybackCommand: _sendPlaybackCommand,
+					onPlaybackSeek: _seekPosition,
+					themeColor: _getThemeColor(),
+					isEnabled: _device.isProjectorOn,
+				),
+			),
+		);
+	}
+
 	Widget _buildLandscapeLayout(BuildContext context, bool isDark) {
 		return DeviceLandscapeLayout(
 			mainContent: Column(
-				mainAxisAlignment: MainAxisAlignment.center,
-				spacing: AppSpacings.pMd,
+				crossAxisAlignment: CrossAxisAlignment.stretch,
 				children: [
-					MediaInfoCard(
-						icon: MdiIcons.projector,
-						name: _device.name,
-						isOn: _device.isProjectorOn,
-						displaySource: _getDisplaySource(),
-						themeColor: _getThemeColor(),
-					),
-					if (_device.hasMediaPlayback &&
-						MediaPlaybackCard.hasContent(
-							playbackTrack: _device.isMediaPlaybackTrack,
-							playbackArtist: _device.mediaPlaybackArtist,
-							playbackAlbum: _device.mediaPlaybackAlbum,
-							playbackAvailableCommands: _device.mediaPlaybackAvailableCommands,
-							playbackHasDuration: _device.hasMediaPlaybackDuration,
-							playbackDuration: _device.mediaPlaybackDuration,
-						))
-						MediaPlaybackCard(
-							playbackTrack: _device.isMediaPlaybackTrack,
-							playbackArtist: _device.mediaPlaybackArtist,
-							playbackAlbum: _device.mediaPlaybackAlbum,
-							playbackStatus: _effectivePlaybackStatus,
-							playbackAvailableCommands: _device.mediaPlaybackAvailableCommands,
-							playbackHasPosition: _device.hasMediaPlaybackPosition,
-							playbackPosition: _device.mediaPlaybackPosition,
-							playbackHasDuration: _device.hasMediaPlaybackDuration,
-							playbackDuration: _device.mediaPlaybackDuration,
-							playbackIsPositionWritable: _device.mediaPlaybackChannel?.positionProp?.isWritable ?? false,
-							onPlaybackCommand: _sendPlaybackCommand,
-							onPlaybackSeek: _seekPosition,
+					Expanded(
+						child: MediaInfoCard(
+							icon: MdiIcons.projector,
+							name: _device.name,
+							isOn: _device.isProjectorOn,
+							displaySource: _getDisplaySource(),
 							themeColor: _getThemeColor(),
-							isEnabled: _device.isProjectorOn,
-							),
-					if (_device.hasSpeaker)
-						MediaVolumeCard(
-							volume: _effectiveVolume,
-							isMuted: _effectiveMuted,
-							hasMute: _device.hasSpeakerMute || (_device.speakerChannel?.hasActive ?? false),
-							isEnabled: _device.isProjectorOn,
-							themeColor: _getThemeColor(),
-							onVolumeChanged: _setVolume,
-							onMuteToggle: _toggleMute,
-						),
-				],
-			),
-			secondaryContent: Column(
-				crossAxisAlignment: CrossAxisAlignment.start,
-				spacing: AppSpacings.pMd,
-				children: [
-					if (_device.mediaInputAvailableSources.isNotEmpty)
-						MediaSourceSelectCard(
 							availableSources: _device.mediaInputAvailableSources,
 							currentSource: _device.mediaInputSource,
 							sourceLabel: (s) => mediaInputSourceLabel(context, s),
 							onSourceChanged: _setSource,
-							isEnabled: _device.isProjectorOn,
-							themeColor: _getThemeColor(),
+							sourceEnabled: _device.isProjectorOn,
+							expanded: true,
 						),
+					),
 				],
+			),
+			secondaryContent: MediaLandscapeControls(
+				isEnabled: _device.isProjectorOn,
+				themeColor: _getThemeColor(),
+				hasPlayback: _device.hasMediaPlayback,
+				onPlaybackTap: () => _showPlaybackSheet(context, isDark),
+				hasBrightness: _device.projectorChannel.brightnessProp != null,
+				brightness: _effectiveBrightness,
+				onBrightnessChanged: _setBrightness,
+				hasSpeaker: _device.hasSpeaker,
+				volume: _effectiveVolume,
+				onVolumeChanged: _setVolume,
+				hasMute: _device.hasSpeakerMute || (_device.speakerChannel?.hasActive ?? false),
+				isMuted: _effectiveMuted,
+				onMuteTap: _toggleMute,
 			),
 		);
 	}
+
 }

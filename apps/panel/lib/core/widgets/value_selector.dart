@@ -3,7 +3,6 @@ import 'package:fastybird_smart_panel/core/widgets/app_bottom_sheet.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 /// Layout options for ValueSelectorRow
 enum ValueSelectorRowLayout {
@@ -67,10 +66,7 @@ class ValueSelectorRow<T> extends StatelessWidget {
   /// Layout style for the row (default: horizontal)
   final ValueSelectorRowLayout layout;
 
-  /// Whether to show the chevron icon on the right (default: true)
-  final bool showChevron;
-
-  ValueSelectorRow({
+  const ValueSelectorRow({
     super.key,
     required this.currentValue,
     required this.options,
@@ -82,7 +78,6 @@ class ValueSelectorRow<T> extends StatelessWidget {
     this.displayFormatter,
     this.columns = 4,
     this.layout = ValueSelectorRowLayout.horizontal,
-    this.showChevron = true,
   });
 
   String _getDisplayValue(AppLocalizations localizations) {
@@ -206,12 +201,6 @@ class ValueSelectorRow<T> extends StatelessWidget {
                   ),
                 ),
               ],
-              if (showChevron)
-                Icon(
-                  MdiIcons.chevronRight,
-                  color: secondaryColor,
-                  size: AppSpacings.scale(20),
-                ),
             ],
           ),
         ),

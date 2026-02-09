@@ -23,14 +23,27 @@ class _DeckModePopupOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    // Position above the nav bar, anchored bottom-right
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
+
+    // Portrait: anchored bottom-right above the nav bar
+    // Landscape: anchored top-right below the mode chip
+    final alignment =
+        isLandscape ? Alignment.topRight : Alignment.bottomRight;
+    final padding = isLandscape
+        ? EdgeInsets.only(
+            top: AppSpacings.scale(48), // below the header mode chip
+            right: AppSpacings.pMd,
+          )
+        : EdgeInsets.only(
+            bottom: AppSpacings.scale(68), // above the nav bar
+            right: AppSpacings.pMd,
+          );
+
     return Align(
-      alignment: Alignment.bottomRight,
+      alignment: alignment,
       child: Padding(
-        padding: EdgeInsets.only(
-          bottom: AppSpacings.scale(68), // above the nav bar
-          right: AppSpacings.pMd,
-        ),
+        padding: padding,
         child: Material(
           elevation: 8,
           borderRadius: BorderRadius.circular(AppBorderRadius.medium),

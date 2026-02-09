@@ -28,6 +28,12 @@ class PageHeader extends StatelessWidget {
   /// Custom trailing widget
   final Widget? trailing;
 
+  /// Extra widget shown only in landscape, placed before [trailing].
+  ///
+  /// Useful for domain-level actions (e.g. mode chip) that should only
+  /// appear when the header has room in landscape orientation.
+  final Widget? landscapeAction;
+
   /// Optional colored border at bottom (for error/warning states)
   final Color? borderColor;
 
@@ -45,6 +51,7 @@ class PageHeader extends StatelessWidget {
     this.leading,
     this.onBack,
     this.trailing,
+    this.landscapeAction,
     this.borderColor,
     this.backgroundColor,
     this.subtitleColor,
@@ -53,9 +60,13 @@ class PageHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
 
     final bgColor = backgroundColor ??
-        (isDark ? AppBgColorDark.page : AppBgColorLight.base);
+        (isLandscape
+            ? (isDark ? AppBgColorDark.page : AppBgColorLight.page)
+            : (isDark ? AppBgColorDark.page : AppBgColorLight.base));
     final defaultBorderColor =
         isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
     final titleColor =
@@ -71,12 +82,14 @@ class PageHeader extends StatelessWidget {
       ),
       decoration: BoxDecoration(
         color: bgColor,
-        border: Border(
-          bottom: BorderSide(
-            color: borderColor ?? defaultBorderColor,
-            width: AppSpacings.scale(1),
-          ),
-        ),
+        border: isLandscape
+            ? null
+            : Border(
+                bottom: BorderSide(
+                  color: borderColor ?? defaultBorderColor,
+                  width: AppSpacings.scale(1),
+                ),
+              ),
       ),
       child: Row(
         children: [
@@ -114,6 +127,12 @@ class PageHeader extends StatelessWidget {
               ],
             ),
           ),
+
+          // Landscape action (e.g. mode chip) — only in landscape
+          if (landscapeAction != null && isLandscape) ...[
+            AppSpacings.spacingMdHorizontal,
+            landscapeAction!,
+          ],
 
           // Trailing widget
           if (trailing != null) ...[

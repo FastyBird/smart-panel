@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/property_timeseries.dart';
 import 'package:flutter/material.dart';
 
@@ -8,18 +9,20 @@ import 'package:flutter/material.dart';
 class SensorChartPainter extends CustomPainter {
   final Color color;
   final Color labelColor;
-  final double fontSize;
+  final double? _fontSize;
   final PropertyTimeseries? timeseries;
 
-  static const double labelWidth = 40.0;
-  static const double _labelGap = 6.0;
+  static double get labelWidth => AppSpacings.scale(26);
+  static double get _labelGap => AppSpacings.scale(6);
+
+  double get fontSize => _fontSize ?? AppFontSize.extraSmall;
 
   SensorChartPainter({
     required this.color,
     required this.labelColor,
-    this.fontSize = 11,
+    double? fontSize,
     this.timeseries,
-  });
+  }) : _fontSize = fontSize;
 
   @override
   void paint(Canvas canvas, Size size) {
