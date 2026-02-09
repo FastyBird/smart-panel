@@ -274,6 +274,9 @@ export class EnergyDataService {
 	 * Get time-series data for a space, aggregated into the requested interval.
 	 * Supports 5m (native), 1h, and 1d intervals.
 	 * Returns zero-filled points for intervals with no data.
+	 *
+	 * For 1d intervals, buckets are aligned to rangeStart (which is Prague-midnight-aligned)
+	 * rather than UTC midnight, so that "today" in Europe/Prague groups data correctly.
 	 */
 	async getSpaceTimeseries(
 		rangeStart: Date,
@@ -283,9 +286,10 @@ export class EnergyDataService {
 	): Promise<TimeseriesPoint[]> {
 		const isHome = !spaceId || spaceId === 'home';
 
-		// Determine the strftime format for bucketing
+		// Determine the strftime format for bucketing and interval size
 		let strftimeFmt: string;
 		let intervalMs: number;
+		const dayMs = 24 * 60 * 60 * 1000;
 
 		switch (interval) {
 			case '1h':
@@ -293,8 +297,10 @@ export class EnergyDataService {
 				intervalMs = 60 * 60 * 1000;
 				break;
 			case '1d':
-				strftimeFmt = '%Y-%m-%dT00:00:00.000Z';
-				intervalMs = 24 * 60 * 60 * 1000;
+				// For 1d, we bucket relative to rangeStart in JS (not via strftime)
+				// to align day boundaries with Europe/Prague midnight.
+				strftimeFmt = '';
+				intervalMs = dayMs;
 				break;
 			case '5m':
 			default:
@@ -304,8 +310,11 @@ export class EnergyDataService {
 				break;
 		}
 
-		const bucketExpr =
-			strftimeFmt === '' ? 'delta."intervalStart"' : `strftime('${strftimeFmt}', delta."intervalStart")`;
+		// For 1d, fetch raw per-sourceType sums without SQL-level day bucketing,
+		// since we need to re-bucket relative to rangeStart (Prague-aligned).
+		// For 5m and 1h, use strftime-based SQL bucketing.
+		const useSqlBucketing = interval !== '1d' && strftimeFmt !== '';
+		const bucketExpr = useSqlBucketing ? `strftime('${strftimeFmt}', delta."intervalStart")` : 'delta."intervalStart"';
 
 		const query = `
 			SELECT ${bucketExpr} AS "bucket",
@@ -326,11 +335,24 @@ export class EnergyDataService {
 
 		const rows: TimeseriesRawRow[] = await this.deltaRepository.query(query, params);
 
-		// Merge consumption + production per bucket
+		// For 1d interval, re-bucket raw rows relative to rangeStart (Prague-aligned).
+		// For other intervals, use the SQL bucket key directly.
+		const rangeStartMs = rangeStart.getTime();
 		const bucketMap = new Map<string, { consumptionDeltaKwh: number; productionDeltaKwh: number }>();
 
 		for (const row of rows) {
-			const key = row.bucket;
+			let key: string;
+
+			if (interval === '1d') {
+				// Compute which day bucket this row belongs to, relative to rangeStart
+				const rowMs = new Date(row.bucket).getTime();
+				const dayIndex = Math.floor((rowMs - rangeStartMs) / dayMs);
+				const dayBucketMs = rangeStartMs + dayIndex * dayMs;
+				key = new Date(dayBucketMs).toISOString();
+			} else {
+				key = row.bucket;
+			}
+
 			let bucket = bucketMap.get(key);
 
 			if (!bucket) {
@@ -341,21 +363,31 @@ export class EnergyDataService {
 			const kwh = Number(row.totalKwh) || 0;
 
 			if (row.sourceType === EnergySourceType.CONSUMPTION_IMPORT) {
-				bucket.consumptionDeltaKwh = kwh;
+				bucket.consumptionDeltaKwh += kwh;
 			} else if (row.sourceType === EnergySourceType.GENERATION_PRODUCTION) {
-				bucket.productionDeltaKwh = kwh;
+				bucket.productionDeltaKwh += kwh;
 			}
 		}
 
-		// Generate zero-filled points for the full range
+		// Generate zero-filled points for the full range.
+		// For 5m and 1h, align to interval boundaries.
+		// For 1d, start from rangeStart which is already Prague-midnight-aligned.
 		const points: TimeseriesPoint[] = [];
-		const rangeStartMs = Math.floor(rangeStart.getTime() / intervalMs) * intervalMs;
+		const loopStartMs = interval === '1d' ? rangeStartMs : Math.floor(rangeStartMs / intervalMs) * intervalMs;
 		const rangeEndMs = rangeEnd.getTime();
 
-		for (let ts = rangeStartMs; ts < rangeEndMs; ts += intervalMs) {
+		for (let ts = loopStartMs; ts < rangeEndMs; ts += intervalMs) {
 			const bucketStart = new Date(ts);
 			const bucketEnd = new Date(ts + intervalMs);
-			const key = strftimeFmt === '' ? bucketStart.toISOString() : this.formatBucketKey(bucketStart, interval);
+			let key: string;
+
+			if (interval === '1d') {
+				key = bucketStart.toISOString();
+			} else if (interval === '5m' || strftimeFmt === '') {
+				key = bucketStart.toISOString();
+			} else {
+				key = this.formatBucketKey(bucketStart, interval);
+			}
 
 			const data = bucketMap.get(key);
 

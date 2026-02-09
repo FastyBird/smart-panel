@@ -92,4 +92,80 @@ describe('resolveEnergyRange', () => {
 			expect(start.toISOString()).toBe('2026-02-08T23:00:00.000Z');
 		});
 	});
+
+	describe('DST transition handling', () => {
+		// Europe/Prague DST transitions in 2026:
+		// Spring forward: March 29 at 02:00 CET → 03:00 CEST (UTC+1 → UTC+2)
+		// Fall back: October 25 at 03:00 CEST → 02:00 CET (UTC+2 → UTC+1)
+
+		it('should return correct midnight after spring-forward DST transition', () => {
+			// March 30, 2026: day after spring-forward, now CEST (UTC+2)
+			// 2026-03-30T10:00:00Z = 12:00 CEST
+			jest.setSystemTime(new Date('2026-03-30T10:00:00Z'));
+			const { start } = resolveEnergyRange('today');
+
+			// Midnight CEST on March 30 = 2026-03-29T22:00:00Z (UTC+2)
+			expect(start.toISOString()).toBe('2026-03-29T22:00:00.000Z');
+		});
+
+		it('should return correct midnight before spring-forward DST transition', () => {
+			// March 28, 2026: before spring-forward, still CET (UTC+1)
+			jest.setSystemTime(new Date('2026-03-28T10:00:00Z'));
+			const { start } = resolveEnergyRange('today');
+
+			// Midnight CET on March 28 = 2026-03-27T23:00:00Z (UTC+1)
+			expect(start.toISOString()).toBe('2026-03-27T23:00:00.000Z');
+		});
+
+		it('should compute week range correctly across spring-forward DST', () => {
+			// March 30, 2026 (CEST): week range should go back to March 23 (CET)
+			jest.setSystemTime(new Date('2026-03-30T10:00:00Z'));
+			const { start } = resolveEnergyRange('week');
+
+			// 7 days before March 30 = March 23
+			// Midnight CET on March 23 = 2026-03-22T23:00:00Z (UTC+1, before DST)
+			expect(start.toISOString()).toBe('2026-03-22T23:00:00.000Z');
+		});
+
+		it('should compute month range correctly across spring-forward DST', () => {
+			// April 5, 2026 (CEST): month range should go back to March 6 (CET)
+			jest.setSystemTime(new Date('2026-04-05T10:00:00Z'));
+			const { start } = resolveEnergyRange('month');
+
+			// 30 days before April 5 = March 6
+			// Midnight CET on March 6 = 2026-03-05T23:00:00Z (UTC+1, before DST)
+			expect(start.toISOString()).toBe('2026-03-05T23:00:00.000Z');
+		});
+
+		it('should compute yesterday correctly across spring-forward DST', () => {
+			// March 30, 2026: day after spring-forward
+			jest.setSystemTime(new Date('2026-03-30T10:00:00Z'));
+			const { start, end } = resolveEnergyRange('yesterday');
+
+			// Yesterday = March 29, the day of the spring-forward
+			// Midnight CET on March 29 = 2026-03-28T23:00:00Z (UTC+1, CET)
+			// Midnight CEST on March 30 = 2026-03-29T22:00:00Z (UTC+2, CEST)
+			expect(start.toISOString()).toBe('2026-03-28T23:00:00.000Z');
+			expect(end.toISOString()).toBe('2026-03-29T22:00:00.000Z');
+		});
+
+		it('should compute week range correctly across fall-back DST', () => {
+			// October 26, 2026 (CET): week range should go back to October 19 (CEST)
+			jest.setSystemTime(new Date('2026-10-26T10:00:00Z'));
+			const { start } = resolveEnergyRange('week');
+
+			// 7 days before October 26 = October 19
+			// Midnight CEST on October 19 = 2026-10-18T22:00:00Z (UTC+2, CEST)
+			expect(start.toISOString()).toBe('2026-10-18T22:00:00.000Z');
+		});
+
+		it('should compute today correctly on fall-back day', () => {
+			// October 25, 2026: the day of fall-back (CEST→CET at 03:00 CEST → 02:00 CET)
+			jest.setSystemTime(new Date('2026-10-25T10:00:00Z'));
+			const { start } = resolveEnergyRange('today');
+
+			// Midnight CEST on October 25 = 2026-10-24T22:00:00Z (UTC+2, still CEST at midnight)
+			expect(start.toISOString()).toBe('2026-10-24T22:00:00.000Z');
+		});
+	});
 });

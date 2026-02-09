@@ -389,6 +389,83 @@ describe('EnergyDataService', () => {
 			expect(result[0].consumptionDeltaKwh).toBeCloseTo(3.0);
 		});
 
+		it('should align 1d buckets to rangeStart (Prague-midnight) not UTC midnight', async () => {
+			await insertSpace('room-1', 'Kitchen');
+			await insertDevice('dev-1', 'Oven', 'room-1');
+
+			// Simulate "today" in Prague (CET, UTC+1 in winter):
+			// rangeStart = Prague midnight = 2026-02-08T23:00:00Z
+			// rangeEnd = now = 2026-02-09T15:00:00Z
+			// Data at 23:30 UTC on Feb 8 should be in "today's" bucket (not yesterday UTC)
+			await insertDelta({
+				deviceId: 'dev-1',
+				roomId: 'room-1',
+				sourceType: EnergySourceType.CONSUMPTION_IMPORT,
+				deltaKwh: 0.5,
+				intervalStart: '2026-02-08T23:30:00.000Z',
+				intervalEnd: '2026-02-08T23:35:00.000Z',
+			});
+			await insertDelta({
+				deviceId: 'dev-1',
+				roomId: 'room-1',
+				sourceType: EnergySourceType.CONSUMPTION_IMPORT,
+				deltaKwh: 1.0,
+				intervalStart: '2026-02-09T10:00:00.000Z',
+				intervalEnd: '2026-02-09T10:05:00.000Z',
+			});
+
+			const result = await service.getSpaceTimeseries(
+				new Date('2026-02-08T23:00:00.000Z'), // Prague midnight Feb 9
+				new Date('2026-02-09T15:00:00.000Z'),
+				'1d',
+				'room-1',
+			);
+
+			// Should be 1 bucket starting at Prague midnight (23:00 UTC)
+			expect(result).toHaveLength(1);
+			expect(result[0].intervalStart).toBe('2026-02-08T23:00:00.000Z');
+			// Both deltas should be in the same day bucket
+			expect(result[0].consumptionDeltaKwh).toBeCloseTo(1.5);
+		});
+
+		it('should create multiple 1d buckets for multi-day ranges', async () => {
+			await insertSpace('room-1', 'Kitchen');
+			await insertDevice('dev-1', 'Oven', 'room-1');
+
+			// Day 1 data (Prague Feb 8)
+			await insertDelta({
+				deviceId: 'dev-1',
+				roomId: 'room-1',
+				sourceType: EnergySourceType.CONSUMPTION_IMPORT,
+				deltaKwh: 2.0,
+				intervalStart: '2026-02-07T23:30:00.000Z',
+				intervalEnd: '2026-02-07T23:35:00.000Z',
+			});
+			// Day 2 data (Prague Feb 9)
+			await insertDelta({
+				deviceId: 'dev-1',
+				roomId: 'room-1',
+				sourceType: EnergySourceType.CONSUMPTION_IMPORT,
+				deltaKwh: 3.0,
+				intervalStart: '2026-02-09T05:00:00.000Z',
+				intervalEnd: '2026-02-09T05:05:00.000Z',
+			});
+
+			const result = await service.getSpaceTimeseries(
+				new Date('2026-02-07T23:00:00.000Z'), // Prague midnight Feb 8
+				new Date('2026-02-09T23:00:00.000Z'), // Prague midnight Feb 10
+				'1d',
+				'room-1',
+			);
+
+			// Should be 2 day buckets
+			expect(result).toHaveLength(2);
+			expect(result[0].intervalStart).toBe('2026-02-07T23:00:00.000Z');
+			expect(result[0].consumptionDeltaKwh).toBeCloseTo(2.0);
+			expect(result[1].intervalStart).toBe('2026-02-08T23:00:00.000Z');
+			expect(result[1].consumptionDeltaKwh).toBeCloseTo(3.0);
+		});
+
 		it('should include both consumption and production in timeseries', async () => {
 			await insertSpace('room-1', 'Solar Room');
 			await insertDevice('dev-1', 'Grid', 'room-1');
