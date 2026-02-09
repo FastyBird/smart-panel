@@ -22,6 +22,8 @@ import { DEVICES_MODULE_PREFIX } from './modules/devices/devices.constants';
 import { DevicesModule } from './modules/devices/devices.module';
 import { DISPLAYS_MODULE_PREFIX } from './modules/displays/displays.constants';
 import { DisplaysModule } from './modules/displays/displays.module';
+import { ENERGY_MODULE_PREFIX } from './modules/energy/energy.constants';
+import { EnergyModule } from './modules/energy/energy.module';
 import { EXTENSIONS_MODULE_PREFIX } from './modules/extensions/extensions.constants';
 import { ExtensionsModule } from './modules/extensions/extensions.module';
 import { IntentsModule } from './modules/intents/intents.module';
@@ -186,6 +188,10 @@ export class AppModule {
 								module: StatsModule,
 							},
 							{
+								path: ENERGY_MODULE_PREFIX,
+								module: EnergyModule,
+							},
+							{
 								path: SCENES_MODULE_PREFIX,
 								module: ScenesModule,
 							},
@@ -260,6 +266,7 @@ export class AppModule {
 				SpacesModule,
 				SeedModule,
 				StatsModule,
+				EnergyModule,
 				SystemModule,
 				UsersModule,
 				WeatherModule,
