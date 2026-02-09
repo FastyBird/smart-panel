@@ -56,6 +56,7 @@ class SensorUtils {
       case DevicesModuleChannelCategory.flow:
         return 'm³/h';
       case DevicesModuleChannelCategory.electricalEnergy:
+      case DevicesModuleChannelCategory.electricalGeneration:
         return 'kWh';
       case DevicesModuleChannelCategory.electricalPower:
         return 'W';
@@ -761,6 +762,7 @@ class SensorUtils {
       case DevicesModuleChannelCategory.illuminance:
         return l.sensor_category_light;
       case DevicesModuleChannelCategory.electricalEnergy:
+      case DevicesModuleChannelCategory.electricalGeneration:
       case DevicesModuleChannelCategory.electricalPower:
         return l.sensor_category_energy;
       default:
