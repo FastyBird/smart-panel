@@ -324,10 +324,22 @@ class AppLocalizationsCs extends AppLocalizations {
   String get electrical_energy_consumption_description => 'Celková spotřeba energie v průběhu času.';
 
   @override
-  String get electrical_energy_rate_title => 'Aktuální spotřeba energie';
+  String get electrical_energy_average_power_title => 'Průměrný výkon';
 
   @override
-  String get electrical_energy_rate_description => 'Spotřeba energie v reálném čase v kilowattech.';
+  String get electrical_energy_average_power_description => 'Průměrný odběr výkonu za poslední interval hlášení.';
+
+  @override
+  String get electrical_generation_production_title => 'Výroba energie';
+
+  @override
+  String get electrical_generation_production_description => 'Celková energie vyrobená zdrojem výroby.';
+
+  @override
+  String get electrical_generation_power_title => 'Výkon výroby';
+
+  @override
+  String get electrical_generation_power_description => 'Aktuální výkon ze zdroje výroby.';
 
   @override
   String get electrical_power_current_title => 'Proud';

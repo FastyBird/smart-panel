@@ -515,17 +515,41 @@ abstract class AppLocalizations {
   /// **'Total energy consumed over time'**
   String get electrical_energy_consumption_description;
 
-  /// Title for the current power usage rate
+  /// No description provided for @electrical_energy_average_power_title.
   ///
   /// In en, this message translates to:
-  /// **'Current Power Rate'**
-  String get electrical_energy_rate_title;
+  /// **'Average Power'**
+  String get electrical_energy_average_power_title;
 
-  /// Detailed description of real-time power rate measurement
+  /// No description provided for @electrical_energy_average_power_description.
   ///
   /// In en, this message translates to:
-  /// **'Real-time power usage in kilowatts'**
-  String get electrical_energy_rate_description;
+  /// **'Average power draw over the last reporting interval'**
+  String get electrical_energy_average_power_description;
+
+  /// No description provided for @electrical_generation_production_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Energy Production'**
+  String get electrical_generation_production_title;
+
+  /// No description provided for @electrical_generation_production_description.
+  ///
+  /// In en, this message translates to:
+  /// **'Total energy produced by the generation source'**
+  String get electrical_generation_production_description;
+
+  /// No description provided for @electrical_generation_power_title.
+  ///
+  /// In en, this message translates to:
+  /// **'Generation Power'**
+  String get electrical_generation_power_title;
+
+  /// No description provided for @electrical_generation_power_description.
+  ///
+  /// In en, this message translates to:
+  /// **'Current power output from the generation source'**
+  String get electrical_generation_power_description;
 
   /// Title for the current flow measurement
   ///

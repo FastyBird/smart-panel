@@ -313,10 +313,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get electrical_energy_consumption_description => 'Total energy consumed over time';
 
   @override
-  String get electrical_energy_rate_title => 'Current Power Rate';
+  String get electrical_energy_average_power_title => 'Average Power';
 
   @override
-  String get electrical_energy_rate_description => 'Real-time power usage in kilowatts';
+  String get electrical_energy_average_power_description => 'Average power draw over the last reporting interval';
+
+  @override
+  String get electrical_generation_production_title => 'Energy Production';
+
+  @override
+  String get electrical_generation_production_description => 'Total energy produced by the generation source';
+
+  @override
+  String get electrical_generation_power_title => 'Generation Power';
+
+  @override
+  String get electrical_generation_power_description => 'Current power output from the generation source';
 
   @override
   String get electrical_power_current_title => 'Current';
