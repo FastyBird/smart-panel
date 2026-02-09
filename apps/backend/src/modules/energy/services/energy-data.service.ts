@@ -44,7 +44,10 @@ export class EnergyDataService {
 
 	/**
 	 * Persist a delta record. If a record already exists for the same
-	 * device + sourceType + intervalStart, accumulate the delta.
+	 * device + sourceType + intervalStart, atomically accumulate the delta.
+	 *
+	 * Uses SQLite's INSERT ... ON CONFLICT ... DO UPDATE (upsert) to avoid
+	 * race conditions when concurrent events target the same bucket.
 	 */
 	async saveDelta(params: {
 		deviceId: string;
@@ -56,40 +59,27 @@ export class EnergyDataService {
 	}): Promise<void> {
 		const { deviceId, roomId, sourceType, deltaKwh, intervalStart, intervalEnd } = params;
 
-		// Check if a delta already exists for this bucket
-		const existing = await this.deltaRepository.findOne({
-			where: {
-				deviceId,
-				sourceType,
-				intervalStart: intervalStart.toISOString() as unknown as Date,
-			},
-		});
+		const intervalStartStr = intervalStart.toISOString();
+		const intervalEndStr = intervalEnd.toISOString();
 
-		if (existing) {
-			// Accumulate into existing bucket
-			const newDelta = (typeof existing.deltaKwh === 'number' ? existing.deltaKwh : 0) + deltaKwh;
+		// Atomic upsert: insert a new row or accumulate deltaKwh into the existing bucket.
+		// Uses SQLite's INSERT ... ON CONFLICT ... DO UPDATE to avoid race conditions
+		// when concurrent events target the same (deviceId, sourceType, intervalStart) bucket.
+		// The unique constraint UQ_energy_deltas_device_source_interval enforces this at the DB level.
+		await this.deltaRepository.query(
+			`INSERT INTO energy_module_deltas ("id", "deviceId", "roomId", "sourceType", "deltaKwh", "intervalStart", "intervalEnd", "createdAt")
+			 VALUES (
+			   lower(hex(randomblob(4)) || '-' || hex(randomblob(2)) || '-4' || substr(hex(randomblob(2)),2) || '-' || substr('89ab', abs(random()) % 4 + 1, 1) || substr(hex(randomblob(2)),2) || '-' || hex(randomblob(6))),
+			   ?, ?, ?, ?, ?, ?, datetime('now')
+			 )
+			 ON CONFLICT ("deviceId", "sourceType", "intervalStart")
+			 DO UPDATE SET "deltaKwh" = "deltaKwh" + excluded."deltaKwh"`,
+			[deviceId, roomId, sourceType, deltaKwh, intervalStartStr, intervalEndStr],
+		);
 
-			await this.deltaRepository.update(existing.id, { deltaKwh: newDelta });
-
-			this.logger.debug(
-				`Accumulated delta for device=${deviceId} source=${sourceType} bucket=${intervalStart.toISOString()}: ${existing.deltaKwh} + ${deltaKwh} = ${newDelta}`,
-			);
-		} else {
-			const entity = this.deltaRepository.create({
-				deviceId,
-				roomId,
-				sourceType,
-				deltaKwh,
-				intervalStart: intervalStart.toISOString(),
-				intervalEnd: intervalEnd.toISOString(),
-			});
-
-			await this.deltaRepository.save(entity);
-
-			this.logger.debug(
-				`Saved delta for device=${deviceId} source=${sourceType} bucket=${intervalStart.toISOString()}: ${deltaKwh} kWh`,
-			);
-		}
+		this.logger.debug(
+			`Upserted delta for device=${deviceId} source=${sourceType} bucket=${intervalStartStr}: ${deltaKwh} kWh`,
+		);
 	}
 
 	/**

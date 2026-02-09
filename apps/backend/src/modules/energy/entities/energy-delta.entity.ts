@@ -1,6 +1,6 @@
 import { Expose, Transform } from 'class-transformer';
 import { IsDate, IsEnum, IsNumber, IsOptional, IsString, IsUUID } from 'class-validator';
-import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, Index, PrimaryGeneratedColumn, Unique } from 'typeorm';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -8,7 +8,7 @@ import { EnergySourceType } from '../energy.constants';
 
 @ApiSchema({ name: 'EnergyModuleDataEnergyDelta' })
 @Entity('energy_module_deltas')
-@Index('IDX_energy_deltas_device_interval', ['deviceId', 'sourceType', 'intervalStart'])
+@Unique('UQ_energy_deltas_device_source_interval', ['deviceId', 'sourceType', 'intervalStart'])
 @Index('IDX_energy_deltas_room_interval', ['roomId', 'sourceType', 'intervalStart'])
 export class EnergyDeltaEntity {
 	@ApiProperty({

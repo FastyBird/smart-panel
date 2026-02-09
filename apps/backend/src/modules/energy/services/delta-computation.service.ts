@@ -18,7 +18,6 @@ export interface DeltaResult {
  */
 interface BaselineState {
 	cumulativeKwh: number;
-	timestamp: Date;
 }
 
 /**
@@ -59,7 +58,7 @@ export class DeltaComputationService {
 		const prev = this.baselines.get(key);
 
 		// Always update baseline to the latest reading
-		this.baselines.set(key, { cumulativeKwh, timestamp });
+		this.baselines.set(key, { cumulativeKwh });
 
 		if (!prev) {
 			this.logger.debug(`First reading for ${key}: ${cumulativeKwh} kWh — storing baseline, no delta`);

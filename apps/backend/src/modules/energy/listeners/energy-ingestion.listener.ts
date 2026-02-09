@@ -103,10 +103,13 @@ export class EnergyIngestionListener implements OnModuleInit {
 		const device = channel.device as DeviceEntity;
 		const deviceId = device.id;
 		const roomId = device.roomId ?? null;
-		const now = new Date();
+
+		// Use the actual measurement timestamp from the property value,
+		// falling back to current time only if unavailable
+		const timestamp = property.value?.lastUpdated ? new Date(property.value.lastUpdated) : new Date();
 
 		// Compute delta from cumulative reading
-		const delta = this.deltaComputation.computeDelta(deviceId, mapping.sourceType, numericValue, now);
+		const delta = this.deltaComputation.computeDelta(deviceId, mapping.sourceType, numericValue, timestamp);
 
 		if (!delta) {
 			return;
