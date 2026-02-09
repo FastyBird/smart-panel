@@ -2849,6 +2849,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sensor_label_gas => 'Gas';
 
   @override
+  String get sensor_label_electrical_energy => 'Energy';
+
+  @override
+  String get sensor_label_electrical_generation => 'Generation';
+
+  @override
+  String get sensor_label_electrical_power => 'Power';
+
+  @override
   String get sensor_alert_high_level => 'High Level';
 
   @override

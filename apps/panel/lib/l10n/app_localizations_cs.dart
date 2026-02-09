@@ -2865,6 +2865,15 @@ class AppLocalizationsCs extends AppLocalizations {
   String get sensor_label_gas => 'Plyn';
 
   @override
+  String get sensor_label_electrical_energy => 'Energie';
+
+  @override
+  String get sensor_label_electrical_generation => 'Výroba';
+
+  @override
+  String get sensor_label_electrical_power => 'Výkon';
+
+  @override
   String get sensor_alert_high_level => 'Vysoká úroveň';
 
   @override

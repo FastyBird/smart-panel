@@ -5423,6 +5423,24 @@ abstract class AppLocalizations {
   /// **'Gas'**
   String get sensor_label_gas;
 
+  /// No description provided for @sensor_label_electrical_energy.
+  ///
+  /// In en, this message translates to:
+  /// **'Energy'**
+  String get sensor_label_electrical_energy;
+
+  /// No description provided for @sensor_label_electrical_generation.
+  ///
+  /// In en, this message translates to:
+  /// **'Generation'**
+  String get sensor_label_electrical_generation;
+
+  /// No description provided for @sensor_label_electrical_power.
+  ///
+  /// In en, this message translates to:
+  /// **'Power'**
+  String get sensor_label_electrical_power;
+
   /// No description provided for @sensor_alert_high_level.
   ///
   /// In en, this message translates to:
