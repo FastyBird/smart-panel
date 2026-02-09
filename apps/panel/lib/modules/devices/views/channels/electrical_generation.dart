@@ -3,13 +3,13 @@ import 'package:fastybird_smart_panel/modules/devices/types/values.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/mixins.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/view.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/active.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/properties/average_power.dart';
-import 'package:fastybird_smart_panel/modules/devices/views/properties/consumption.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/fault.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/power.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/production.dart';
 
-class ElectricalEnergyChannelView extends ChannelView
+class ElectricalGenerationChannelView extends ChannelView
     with ChannelFaultMixin, ChannelActiveMixin {
-  ElectricalEnergyChannelView({
+  ElectricalGenerationChannelView({
     required super.id,
     required super.type,
     super.category,
@@ -22,11 +22,11 @@ class ElectricalEnergyChannelView extends ChannelView
     super.validationIssues,
   });
 
-  ConsumptionChannelPropertyView get consumptionProp =>
-      properties.whereType<ConsumptionChannelPropertyView>().first;
+  ProductionChannelPropertyView get productionProp =>
+      properties.whereType<ProductionChannelPropertyView>().first;
 
-  AveragePowerChannelPropertyView? get averagePowerProp =>
-      properties.whereType<AveragePowerChannelPropertyView>().firstOrNull;
+  PowerChannelPropertyView? get powerProp =>
+      properties.whereType<PowerChannelPropertyView>().firstOrNull;
 
   @override
   ActiveChannelPropertyView? get activeProp =>
@@ -36,10 +36,10 @@ class ElectricalEnergyChannelView extends ChannelView
   FaultChannelPropertyView? get faultProp =>
       properties.whereType<FaultChannelPropertyView>().firstOrNull;
 
-  bool get hasAveragePower => averagePowerProp != null;
+  bool get hasPower => powerProp != null;
 
-  double get consumption {
-    final ValueType? value = consumptionProp.value;
+  double get production {
+    final ValueType? value = productionProp.value;
 
     if (value is NumberValueType) {
       return value.value.toDouble();
@@ -48,8 +48,8 @@ class ElectricalEnergyChannelView extends ChannelView
     return 0.0;
   }
 
-  double get averagePower {
-    final ValueType? value = averagePowerProp?.value;
+  double get power {
+    final ValueType? value = powerProp?.value;
 
     if (value is NumberValueType) {
       return value.value.toDouble();

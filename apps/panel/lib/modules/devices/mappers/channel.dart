@@ -16,6 +16,7 @@ import 'package:fastybird_smart_panel/modules/devices/views/channels/device_info
 import 'package:fastybird_smart_panel/modules/devices/views/channels/door.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/doorbell.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/electrical_energy.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/channels/electrical_generation.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/electrical_power.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/fan.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/filter.dart';
@@ -159,6 +160,9 @@ Map<DevicesModuleChannelCategory, ChannelView Function(ChannelModel, List<Channe
   },
   DevicesModuleChannelCategory.electricalEnergy: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, ElectricalEnergyChannelView.new);
+  },
+  DevicesModuleChannelCategory.electricalGeneration: (channel, properties, isValid, validationIssues) {
+    return _createChannelView(channel, properties, isValid, validationIssues, ElectricalGenerationChannelView.new);
   },
   DevicesModuleChannelCategory.electricalPower: (channel, properties, isValid, validationIssues) {
     return _createChannelView(channel, properties, isValid, validationIssues, ElectricalPowerChannelView.new);
@@ -386,6 +390,8 @@ IconData buildChannelIcon(DevicesModuleChannelCategory category) {
       return MdiIcons.informationOutline;
     case DevicesModuleChannelCategory.electricalEnergy:
       return MdiIcons.flashTriangle;
+    case DevicesModuleChannelCategory.electricalGeneration:
+      return MdiIcons.solarPower;
     case DevicesModuleChannelCategory.electricalPower:
       return MdiIcons.flash;
 

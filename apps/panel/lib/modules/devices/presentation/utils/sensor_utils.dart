@@ -323,7 +323,11 @@ class SensorUtils {
       case DevicesModuleChannelCategory.electricalEnergy:
         return _findProp(
                 channel, DevicesModulePropertyCategory.consumption) ??
-            _findProp(channel, DevicesModulePropertyCategory.rate);
+            _findProp(channel, DevicesModulePropertyCategory.averagePower);
+      case DevicesModuleChannelCategory.electricalGeneration:
+        return _findProp(
+                channel, DevicesModulePropertyCategory.production) ??
+            _findProp(channel, DevicesModulePropertyCategory.power);
       case DevicesModuleChannelCategory.electricalPower:
         return _findProp(channel, DevicesModulePropertyCategory.power) ??
             _findProp(channel, DevicesModulePropertyCategory.voltage) ??

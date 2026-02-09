@@ -293,6 +293,7 @@ function mapPropertyCategory(key: string): PropertyCategory | null {
 	const mapping: Partial<Record<string, PropertyCategory>> = {
 		active: PropertyCategory.ACTIVE,
 		angle: PropertyCategory.ANGLE,
+		average_power: PropertyCategory.AVERAGE_POWER,
 		brightness: PropertyCategory.BRIGHTNESS,
 		color_blue: PropertyCategory.COLOR_BLUE,
 		color_green: PropertyCategory.COLOR_GREEN,
@@ -335,6 +336,7 @@ function mapPropertyCategory(key: string): PropertyCategory | null {
 		position: PropertyCategory.POSITION,
 		power: PropertyCategory.POWER,
 		pressure: PropertyCategory.PRESSURE,
+		production: PropertyCategory.PRODUCTION,
 		rate: PropertyCategory.RATE,
 		remaining: PropertyCategory.REMAINING,
 		remote_key: PropertyCategory.REMOTE_KEY,
@@ -369,6 +371,7 @@ function mapPropertyCategoryToSchemaKey(category: PropertyCategory): string | nu
 	const mapping: Partial<Record<PropertyCategory, string>> = {
 		[PropertyCategory.ACTIVE]: 'active',
 		[PropertyCategory.ANGLE]: 'angle',
+		[PropertyCategory.AVERAGE_POWER]: 'average_power',
 		[PropertyCategory.BRIGHTNESS]: 'brightness',
 		[PropertyCategory.COLOR_BLUE]: 'color_blue',
 		[PropertyCategory.COLOR_GREEN]: 'color_green',
@@ -412,6 +415,7 @@ function mapPropertyCategoryToSchemaKey(category: PropertyCategory): string | nu
 		[PropertyCategory.POSITION]: 'position',
 		[PropertyCategory.POWER]: 'power',
 		[PropertyCategory.PRESSURE]: 'pressure',
+		[PropertyCategory.PRODUCTION]: 'production',
 		[PropertyCategory.RATE]: 'rate',
 		[PropertyCategory.REMAINING]: 'remaining',
 		[PropertyCategory.REMOTE_KEY]: 'remote_key',

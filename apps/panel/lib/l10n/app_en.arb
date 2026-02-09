@@ -358,13 +358,29 @@
   "@electrical_energy_consumption_description": {
     "description": "Detailed description of energy consumption measurement"
   },
-  "electrical_energy_rate_title": "Current Power Rate",
-  "@electrical_energy_rate_title": {
-    "description": "Title for the current power usage rate"
+  "electrical_energy_average_power_title": "Average Power",
+  "@electrical_energy_average_power_title": {
+    "description": "Title for the average power draw over last reporting interval"
   },
-  "electrical_energy_rate_description": "Real-time power usage in kilowatts",
-  "@electrical_energy_rate_description": {
-    "description": "Detailed description of real-time power rate measurement"
+  "electrical_energy_average_power_description": "Average power draw over the last reporting interval",
+  "@electrical_energy_average_power_description": {
+    "description": "Detailed description of average power measurement in watts"
+  },
+  "electrical_generation_production_title": "Energy Production",
+  "@electrical_generation_production_title": {
+    "description": "Title for cumulative PV energy production"
+  },
+  "electrical_generation_production_description": "Total energy produced by the generation source",
+  "@electrical_generation_production_description": {
+    "description": "Detailed description of cumulative energy production measurement"
+  },
+  "electrical_generation_power_title": "Generation Power",
+  "@electrical_generation_power_title": {
+    "description": "Title for instantaneous generation power output"
+  },
+  "electrical_generation_power_description": "Current power output from the generation source",
+  "@electrical_generation_power_description": {
+    "description": "Detailed description of instantaneous generation power output in watts"
   },
   "electrical_power_current_title": "Current",
   "@electrical_power_current_title": {

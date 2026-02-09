@@ -380,10 +380,10 @@ mixin DeviceElectricalEnergyMixin {
   double get electricalEnergyConsumption =>
       electricalEnergyChannel?.consumption ?? 0.0;
 
-  bool get hasElectricalEnergyRate => electricalEnergyChannel?.hasRate ?? false;
+  bool get hasElectricalEnergyAveragePower => electricalEnergyChannel?.hasAveragePower ?? false;
 
-  double? get electricalEnergyRate => electricalEnergyChannel?.hasRate == true
-      ? electricalEnergyChannel?.rate ?? 0.0
+  double? get electricalEnergyAveragePower => electricalEnergyChannel?.hasAveragePower == true
+      ? electricalEnergyChannel?.averagePower ?? 0.0
       : null;
 
   bool get isElectricalEnergyActive =>
