@@ -8,6 +8,7 @@ import 'package:fastybird_smart_panel/modules/deck/export.dart';
 import 'package:fastybird_smart_panel/modules/security/services/security_overlay_controller.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/swipe_event.dart';
 import 'package:fastybird_smart_panel/plugins/pages-device-detail/views/view.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 import 'package:provider/provider.dart';
@@ -145,13 +146,21 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen>
       // previous domain is never visible while the new domain is loading.
       try {
         locator<BottomNavModeNotifier>().clear();
-      } catch (_) {}
+      } catch (e) {
+        if (kDebugMode) {
+          debugPrint('[Deck] Failed to clear BottomNavModeNotifier: $e');
+        }
+      }
 
       // Update security overlay: suppress when viewing the security page
       try {
         locator<SecurityOverlayController>()
             .setOnSecurityScreen(item is SecurityViewItem);
-      } catch (_) {}
+      } catch (e) {
+        if (kDebugMode) {
+          debugPrint('[Deck] Failed to update SecurityOverlayController: $e');
+        }
+      }
 
       _eventBus.fire(DeckPageActivatedEvent(itemId: item.id, item: item));
     }

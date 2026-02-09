@@ -258,7 +258,10 @@ class _NavTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    const Color accentColor = Color(0xFFE85A4F);
+    final accentColor = ThemeColorFamily.get(
+      isDark ? Brightness.dark : Brightness.light,
+      ThemeColors.primary,
+    ).base;
     final Color inactiveColor = isDark
         ? AppTextColorDark.placeholder
         : AppTextColorLight.placeholder;
