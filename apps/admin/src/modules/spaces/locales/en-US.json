@@ -313,6 +313,7 @@
 			"sulphur_dioxide": "Sulphur dioxide",
 			"volatile_organic_compounds": "Volatile organic compounds",
 			"electrical_energy": "Energy",
+			"electrical_generation": "Generation",
 			"electrical_power": "Power",
 			"battery": "Battery"
 		}

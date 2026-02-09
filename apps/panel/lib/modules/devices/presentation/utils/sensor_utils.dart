@@ -56,6 +56,7 @@ class SensorUtils {
       case DevicesModuleChannelCategory.flow:
         return 'm³/h';
       case DevicesModuleChannelCategory.electricalEnergy:
+      case DevicesModuleChannelCategory.electricalGeneration:
         return 'kWh';
       case DevicesModuleChannelCategory.electricalPower:
         return 'W';
@@ -82,7 +83,11 @@ class SensorUtils {
       case DevicesModuleChannelCategory.temperature:
       case DevicesModuleChannelCategory.carbonMonoxide:
       case DevicesModuleChannelCategory.pressure:
+      case DevicesModuleChannelCategory.electricalPower:
         return 1;
+      case DevicesModuleChannelCategory.electricalEnergy:
+      case DevicesModuleChannelCategory.electricalGeneration:
+        return 3;
       default:
         return 0;
     }
@@ -323,7 +328,11 @@ class SensorUtils {
       case DevicesModuleChannelCategory.electricalEnergy:
         return _findProp(
                 channel, DevicesModulePropertyCategory.consumption) ??
-            _findProp(channel, DevicesModulePropertyCategory.rate);
+            _findProp(channel, DevicesModulePropertyCategory.averagePower);
+      case DevicesModuleChannelCategory.electricalGeneration:
+        return _findProp(
+                channel, DevicesModulePropertyCategory.production) ??
+            _findProp(channel, DevicesModulePropertyCategory.power);
       case DevicesModuleChannelCategory.electricalPower:
         return _findProp(channel, DevicesModulePropertyCategory.power) ??
             _findProp(channel, DevicesModulePropertyCategory.voltage) ??
@@ -724,6 +733,12 @@ class SensorUtils {
         return l.sensor_label_device_info;
       case DevicesModuleChannelCategory.gas:
         return l.sensor_label_gas;
+      case DevicesModuleChannelCategory.electricalEnergy:
+        return l.sensor_label_electrical_energy;
+      case DevicesModuleChannelCategory.electricalGeneration:
+        return l.sensor_label_electrical_generation;
+      case DevicesModuleChannelCategory.electricalPower:
+        return l.sensor_label_electrical_power;
       default:
         return category.json ?? category.toString();
     }
@@ -757,6 +772,7 @@ class SensorUtils {
       case DevicesModuleChannelCategory.illuminance:
         return l.sensor_category_light;
       case DevicesModuleChannelCategory.electricalEnergy:
+      case DevicesModuleChannelCategory.electricalGeneration:
       case DevicesModuleChannelCategory.electricalPower:
         return l.sensor_category_energy;
       default:

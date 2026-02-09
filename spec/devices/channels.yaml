@@ -2349,29 +2349,96 @@ electrical_energy:
     en: Electrical Energy
   description:
     en: >-
-      Measures the total energy consumption over time, typically reported in kilowatt-hours (kWh).
+      Measures cumulative energy consumption over time in kilowatt-hours (kWh). The consumption property
+      is a running total; use measurement_kind and reset_behavior metadata to determine how to compute
+      deltas for billing or aggregation.
   docGroup: power
   properties:
     consumption:
       category: consumption
       required: true
       description:
-        en: Energy consumption
+        en: >-
+          Cumulative total energy consumed since last counter reset, in kWh. Monotonically increasing
+          under normal operation. Use reset_behavior to handle counter resets or rollovers.
       permissions:
         - ro
       data_type: float
       unit: kWh
       format: [0,null]
-    rate:
-      category: rate
+      measurement_kind: cumulative
+      reset_behavior: unknown
+    average_power:
+      category: average_power
       required: false
       description:
-        en: ""
+        en: >-
+          Average power draw over the last reporting interval, in watts. Computed by the device as
+          energy delta divided by interval duration. Not an instantaneous reading.
       permissions:
         - ro
       data_type: float
-      unit: kW
-      format: [0,100]
+      unit: W
+      format: [0,100000]
+      measurement_kind: interval_average
+    active:
+      category: active
+      required: false
+      description:
+        en: Indicates if the channel/sensor is currently active and functioning
+      permissions:
+        - ro
+      data_type: bool
+      unit: null
+      format: null
+    fault:
+      category: fault
+      required: false
+      description:
+        en: Fault code or diagnostic indicator (0 = no fault)
+      permissions:
+        - ro
+      data_type: uchar
+      unit: null
+      format: [0,255]
+
+electrical_generation:
+  category: electrical_generation
+  name:
+    en: Electrical Generation
+  description:
+    en: >-
+      Reports energy production from a photovoltaic (PV) or other generation source. The production property
+      tracks cumulative energy generated in kWh. An optional power property reports instantaneous generation
+      output in watts. This channel is additive and does not affect existing electrical_energy or
+      electrical_power channels on the same device.
+  docGroup: power
+  properties:
+    production:
+      category: production
+      required: true
+      description:
+        en: >-
+          Cumulative total energy produced by the generation source since last counter reset, in kWh.
+          Monotonically increasing under normal operation. Use reset_behavior to handle counter resets.
+      permissions:
+        - ro
+      data_type: float
+      unit: kWh
+      format: [0,null]
+      measurement_kind: cumulative
+      reset_behavior: unknown
+    power:
+      category: power
+      required: false
+      description:
+        en: Instantaneous active power output from the generation source in watts
+      permissions:
+        - ro
+      data_type: float
+      unit: W
+      format: [0,100000]
+      measurement_kind: instantaneous
     active:
       category: active
       required: false
@@ -2399,54 +2466,60 @@ electrical_power:
     en: Electrical Power
   description:
     en: >-
-      Reports real-time power metrics such as voltage, current, power, and frequency for monitoring and diagnostics.
+      Reports instantaneous power metrics such as voltage, current, power, and frequency for real-time
+      monitoring and diagnostics. All measurement properties represent point-in-time readings.
   docGroup: power
   properties:
     power:
       category: power
       required: true
       description:
-        en: Power consumption in watts
+        en: Instantaneous active power draw in watts
       permissions:
         - ro
       data_type: float
       unit: W
       format: [0,10000]
+      measurement_kind: instantaneous
     voltage:
       category: voltage
       required: false
       description:
-        en: Electrical voltage
+        en: Instantaneous RMS voltage
       permissions:
         - ro
       data_type: float
       unit: V
       format: [0,500]
+      measurement_kind: instantaneous
     current:
       category: current
       required: false
       description:
-        en: Electrical current
+        en: Instantaneous RMS current
       permissions:
         - ro
       data_type: float
       unit: A
       format: [0,100]
+      measurement_kind: instantaneous
     frequency:
       category: frequency
       required: false
       description:
-        en: ""
+        en: >-
+          AC line frequency. Typical grid values are 50 Hz (EU/Asia/Africa) or 60 Hz (Americas/parts of Asia).
       permissions:
         - ro
       data_type: float
       unit: Hz
-      format: [50,60]
+      format: [40,70]
+      measurement_kind: instantaneous
     over_current:
       category: over_current
       required: false
       description:
-        en: ""
+        en: Indicates an over-current condition has been detected
       permissions:
         - ro
       data_type: bool
@@ -2456,7 +2529,7 @@ electrical_power:
       category: over_voltage
       required: false
       description:
-        en: ""
+        en: Indicates an over-voltage condition has been detected
       permissions:
         - ro
       data_type: bool
@@ -2466,7 +2539,7 @@ electrical_power:
       category: over_power
       required: false
       description:
-        en: ""
+        en: Indicates an over-power condition has been detected
       permissions:
         - ro
       data_type: bool

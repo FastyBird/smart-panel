@@ -324,10 +324,22 @@ class AppLocalizationsCs extends AppLocalizations {
   String get electrical_energy_consumption_description => 'Celková spotřeba energie v průběhu času.';
 
   @override
-  String get electrical_energy_rate_title => 'Aktuální spotřeba energie';
+  String get electrical_energy_average_power_title => 'Průměrný výkon';
 
   @override
-  String get electrical_energy_rate_description => 'Spotřeba energie v reálném čase v kilowattech.';
+  String get electrical_energy_average_power_description => 'Průměrný odběr výkonu za poslední interval hlášení.';
+
+  @override
+  String get electrical_generation_production_title => 'Výroba energie';
+
+  @override
+  String get electrical_generation_production_description => 'Celková energie vyrobená zdrojem výroby.';
+
+  @override
+  String get electrical_generation_power_title => 'Výkon výroby';
+
+  @override
+  String get electrical_generation_power_description => 'Aktuální výkon ze zdroje výroby.';
 
   @override
   String get electrical_power_current_title => 'Proud';
@@ -2863,6 +2875,15 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get sensor_label_gas => 'Plyn';
+
+  @override
+  String get sensor_label_electrical_energy => 'Energie';
+
+  @override
+  String get sensor_label_electrical_generation => 'Výroba';
+
+  @override
+  String get sensor_label_electrical_power => 'Výkon';
 
   @override
   String get sensor_alert_high_level => 'Vysoká úroveň';

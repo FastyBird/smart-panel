@@ -12,6 +12,7 @@ import 'package:fastybird_smart_panel/modules/devices/views/properties/artist.da
 import 'package:fastybird_smart_panel/modules/devices/views/properties/alarm_state.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/angle.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/aqi.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/average_power.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/change_needed.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/child_lock.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/command.dart';
@@ -64,6 +65,7 @@ import 'package:fastybird_smart_panel/modules/devices/views/properties/percentag
 import 'package:fastybird_smart_panel/modules/devices/views/properties/position.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/power.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/pressure.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/properties/production.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/rate.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/remaining.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/remote_key.dart';
@@ -170,6 +172,8 @@ ChannelPropertyView buildChannelPropertyView(ChannelPropertyModel property) {
       return _createPropertyView(property, AngleChannelPropertyView.new);
     case DevicesModulePropertyCategory.aqi:
       return _createPropertyView(property, AqiChannelPropertyView.new);
+    case DevicesModulePropertyCategory.averagePower:
+      return _createPropertyView(property, AveragePowerChannelPropertyView.new);
     case DevicesModulePropertyCategory.artist:
       return _createPropertyView(property, ArtistChannelPropertyView.new);
     case DevicesModulePropertyCategory.brightness:
@@ -278,6 +282,8 @@ ChannelPropertyView buildChannelPropertyView(ChannelPropertyModel property) {
       return _createPropertyView(property, PowerChannelPropertyView.new);
     case DevicesModulePropertyCategory.pressure:
       return _createPropertyView(property, PressureChannelPropertyView.new);
+    case DevicesModulePropertyCategory.production:
+      return _createPropertyView(property, ProductionChannelPropertyView.new);
     case DevicesModulePropertyCategory.rate:
       return _createPropertyView(property, RateChannelPropertyView.new);
     case DevicesModulePropertyCategory.remaining:
@@ -346,6 +352,7 @@ Map<DevicesModulePropertyCategory, IconData Function()>
   DevicesModulePropertyCategory.angle: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.artist: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.aqi: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.averagePower: () => MdiIcons.flashTriangle,
   DevicesModulePropertyCategory.brightness: () => MdiIcons.weatherSunny,
   DevicesModulePropertyCategory.changeNeeded: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.childLock: () => MdiIcons.databaseCog,
@@ -396,6 +403,7 @@ Map<DevicesModulePropertyCategory, IconData Function()>
   DevicesModulePropertyCategory.position: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.power: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.pressure: () => MdiIcons.databaseCog,
+  DevicesModulePropertyCategory.production: () => MdiIcons.solarPower,
   DevicesModulePropertyCategory.rate: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.remaining: () => MdiIcons.databaseCog,
   DevicesModulePropertyCategory.remoteKey: () => MdiIcons.databaseCog,

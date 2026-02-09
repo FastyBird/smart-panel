@@ -491,6 +491,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
         return SensorCategory.airQuality;
       case 'electrical_power':
       case 'electrical_energy':
+      case 'electrical_generation':
         return SensorCategory.energy;
       default:
         return SensorCategory.temperature; // Default fallback

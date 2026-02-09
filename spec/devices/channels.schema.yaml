@@ -61,6 +61,23 @@ definitions:
       - type: number
     default: null
 
+  # Measurement kind enumeration (semantics metadata)
+  measurementKindEnum:
+    type: string
+    enum:
+      - instantaneous    # Value at a single point in time
+      - cumulative       # Running total since last reset / device lifetime
+      - interval_average # Average over the last reporting interval
+
+  # Reset behavior enumeration (for cumulative measurements)
+  resetBehaviorEnum:
+    type: string
+    enum:
+      - monotonic  # Never resets, only increases
+      - resets     # May reset to zero (e.g. on power cycle)
+      - rollover   # Wraps around at max value
+      - unknown    # Reset behavior is not specified
+
   # Description type with language support
   descriptionType:
     type: object
@@ -94,6 +111,10 @@ definitions:
         $ref: "#/definitions/stepType"
       description:
         $ref: "#/definitions/descriptionType"
+      measurement_kind:
+        $ref: "#/definitions/measurementKindEnum"
+      reset_behavior:
+        $ref: "#/definitions/resetBehaviorEnum"
     additionalProperties: false
 
   # Property category enumeration
@@ -108,6 +129,7 @@ definitions:
       - artist
       - artwork_url
       - aqi
+      - average_power
       - balance
       - bass
       - brightness
@@ -162,6 +184,7 @@ definitions:
       - position
       - power
       - pressure
+      - production
       - rate
       - remaining
       - repeat
@@ -230,6 +253,10 @@ definitions:
         $ref: "#/definitions/invalidType"
       step:
         $ref: "#/definitions/stepType"
+      measurement_kind:
+        $ref: "#/definitions/measurementKindEnum"
+      reset_behavior:
+        $ref: "#/definitions/resetBehaviorEnum"
     additionalProperties: false
 
   # Multi data type property definition
@@ -285,6 +312,7 @@ patternProperties:
           - door
           - doorbell
           - electrical_energy
+          - electrical_generation
           - electrical_power
           - fan
           - filter
