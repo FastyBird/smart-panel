@@ -3,12 +3,10 @@ import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/bottom_nav_mode_config.dart';
-import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
+import 'package:fastybird_smart_panel/modules/deck/models/deck_nav_tab_data.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/bottom_nav_mode_notifier.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/deck_service.dart';
-import 'package:fastybird_smart_panel/modules/deck/types/domain_type.dart';
 import 'package:flutter/material.dart';
-import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 import 'package:provider/provider.dart';
 
 /// Bottom navigation bar for portrait mode.
@@ -85,46 +83,15 @@ class _DeckBottomNavBarState extends State<DeckBottomNavBar> {
     final deckService = context.watch<DeckService>();
     final modeNotifier = context.watch<BottomNavModeNotifier>();
 
-    final items = deckService.items;
-    final dashboardPages = items.whereType<DashboardPageItem>().toList();
-    final hasDashboardPages = dashboardPages.isNotEmpty;
     final showLabels = !locator<ScreenService>().isSmallScreen;
 
-    // Split: home tab (first SystemViewItem) vs scrollable tabs (rest).
-    _TabData? homeTab;
-    final scrollableTabs = <_TabData>[];
-
-    for (int i = 0; i < items.length; i++) {
-      final item = items[i];
-      if (item is SystemViewItem) {
-        homeTab = _TabData(icon: MdiIcons.home, label: localizations.system_view_master, pageIndex: i);
-      } else if (item is DomainViewItem) {
-        scrollableTabs.add(_TabData(
-          icon: item.domainType.icon,
-          label: item.domainType.label,
-          pageIndex: i,
-        ));
-      } else if (item is SecurityViewItem) {
-        scrollableTabs.add(_TabData(
-          icon: MdiIcons.shieldHome,
-          label: item.title,
-          pageIndex: i,
-        ));
-      }
-    }
-
-    if (hasDashboardPages) {
-      final isDashboardActive = widget.currentIndex < items.length &&
-          items[widget.currentIndex] is DashboardPageItem;
-      scrollableTabs.add(_TabData(
-        icon: MdiIcons.dotsHorizontal,
-        label: localizations.deck_nav_more,
-        pageIndex: -1,
-        isMore: true,
-        isMoreActive: isDashboardActive,
-        badgeCount: dashboardPages.length,
-      ));
-    }
+    final tabs = buildDeckNavTabs(
+      items: deckService.items,
+      currentIndex: widget.currentIndex,
+      localizations: localizations,
+    );
+    final homeTab = tabs.homeTab;
+    final scrollableTabs = tabs.scrollableTabs;
 
     final dividerColor =
         isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
@@ -151,7 +118,7 @@ class _DeckBottomNavBarState extends State<DeckBottomNavBar> {
                 label: homeTab.label,
                 isActive: widget.currentIndex == homeTab.pageIndex,
                 isExpanded: false,
-                onTap: () => widget.onNavigateToIndex(homeTab!.pageIndex),
+                onTap: () => widget.onNavigateToIndex(homeTab.pageIndex),
               ),
             ),
             _buildDivider(dividerColor),
@@ -211,25 +178,6 @@ class _DeckBottomNavBarState extends State<DeckBottomNavBar> {
       color: color,
     );
   }
-}
-
-/// Data holder for a single tab entry.
-class _TabData {
-  final IconData icon;
-  final String label;
-  final int pageIndex;
-  final bool isMore;
-  final bool isMoreActive;
-  final int badgeCount;
-
-  const _TabData({
-    required this.icon,
-    required this.label,
-    required this.pageIndex,
-    this.isMore = false,
-    this.isMoreActive = false,
-    this.badgeCount = 0,
-  });
 }
 
 /// A single tab that shows icon-only when collapsed, icon + label when expanded.

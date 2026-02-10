@@ -2,11 +2,9 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
-import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
+import 'package:fastybird_smart_panel/modules/deck/models/deck_nav_tab_data.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/deck_service.dart';
-import 'package:fastybird_smart_panel/modules/deck/types/domain_type.dart';
 import 'package:flutter/material.dart';
-import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 import 'package:provider/provider.dart';
 
 /// Vertical floating dock for landscape mode navigation.
@@ -76,46 +74,15 @@ class _DeckSideDockState extends State<DeckSideDock> {
     final screenService = locator<ScreenService>();
     final showLabels = screenService.isLargeScreen;
 
-    final items = deckService.items;
-    final dashboardPages = items.whereType<DashboardPageItem>().toList();
-    final hasDashboardPages = dashboardPages.isNotEmpty;
-
-    // Build tab data (same logic as DeckBottomNavBar)
     final localizations = AppLocalizations.of(context)!;
-    _TabData? homeTab;
-    final scrollableTabs = <_TabData>[];
 
-    for (int i = 0; i < items.length; i++) {
-      final item = items[i];
-      if (item is SystemViewItem) {
-        homeTab = _TabData(icon: MdiIcons.home, label: localizations.system_view_master, pageIndex: i);
-      } else if (item is DomainViewItem) {
-        scrollableTabs.add(_TabData(
-          icon: item.domainType.icon,
-          label: item.domainType.label,
-          pageIndex: i,
-        ));
-      } else if (item is SecurityViewItem) {
-        scrollableTabs.add(_TabData(
-          icon: MdiIcons.shieldHome,
-          label: item.title,
-          pageIndex: i,
-        ));
-      }
-    }
-
-    if (hasDashboardPages) {
-      final isDashboardActive = widget.currentIndex < items.length &&
-          items[widget.currentIndex] is DashboardPageItem;
-      scrollableTabs.add(_TabData(
-        icon: MdiIcons.dotsHorizontal,
-        label: localizations.deck_nav_more,
-        pageIndex: -1,
-        isMore: true,
-        isMoreActive: isDashboardActive,
-        badgeCount: dashboardPages.length,
-      ));
-    }
+    final tabs = buildDeckNavTabs(
+      items: deckService.items,
+      currentIndex: widget.currentIndex,
+      localizations: localizations,
+    );
+    final homeTab = tabs.homeTab;
+    final scrollableTabs = tabs.scrollableTabs;
 
     final dockWidth = AppSpacings.scale(showLabels ? 80 : 56);
 
@@ -169,7 +136,7 @@ class _DeckSideDockState extends State<DeckSideDock> {
                       isActive: widget.currentIndex == homeTab.pageIndex,
                       showLabel: showLabels,
                       onTap: () =>
-                          widget.onNavigateToIndex(homeTab!.pageIndex),
+                          widget.onNavigateToIndex(homeTab.pageIndex),
                     ),
                   if (homeTab != null && scrollableTabs.isNotEmpty)
                     _buildDivider(dividerColor),
@@ -231,25 +198,6 @@ class _DeckSideDockState extends State<DeckSideDock> {
       ),
     );
   }
-}
-
-/// Data holder for a single tab entry.
-class _TabData {
-  final IconData icon;
-  final String label;
-  final int pageIndex;
-  final bool isMore;
-  final bool isMoreActive;
-  final int badgeCount;
-
-  const _TabData({
-    required this.icon,
-    required this.label,
-    required this.pageIndex,
-    this.isMore = false,
-    this.isMoreActive = false,
-    this.badgeCount = 0,
-  });
 }
 
 /// A single dock tab: icon (+ optional label) with active pill highlight.
