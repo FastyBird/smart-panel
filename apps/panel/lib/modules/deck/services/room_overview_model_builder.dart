@@ -217,7 +217,10 @@ RoomOverviewModel buildRoomOverviewModel(RoomOverviewBuildInput input) {
 }
 
 List<HeaderStatusChip> _buildStatusChips(DomainCounts counts, String roomId) {
-  return counts.presentDomains.map((domain) {
+  // Exclude energy — it has its own header badge and is not a device-count domain
+  return counts.presentDomains
+      .where((domain) => domain != DomainType.energy)
+      .map((domain) {
     return HeaderStatusChip(
       domain: domain,
       icon: domain.icon,
@@ -228,7 +231,10 @@ List<HeaderStatusChip> _buildStatusChips(DomainCounts counts, String roomId) {
 }
 
 List<DomainTile> _buildTiles(DomainCounts counts, String roomId) {
-  return counts.presentDomains.map((domain) {
+  // Exclude energy — it has its own header badge and is not a device-count domain
+  return counts.presentDomains
+      .where((domain) => domain != DomainType.energy)
+      .map((domain) {
     return DomainTile(
       domain: domain,
       icon: domain.icon,
