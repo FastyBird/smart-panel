@@ -60,13 +60,28 @@ export class EnergyCleanupService {
 	/**
 	 * Delete old delta records in batches to avoid holding long DB locks.
 	 * Returns total number of rows deleted.
+	 *
+	 * Uses a SELECT-then-DELETE approach because TypeORM's Repository.query()
+	 * returns undefined for DELETE statements on the sqlite3 driver — the
+	 * affected-row count is not exposed through the public query() API.
 	 */
 	private async deleteInBatches(cutoff: Date): Promise<number> {
 		const cutoffStr = cutoff.toISOString();
 		let totalDeleted = 0;
 
 		for (;;) {
-			const result: { changes?: number } = await this.deltaRepository.query(
+			const expiredRows: unknown[] = await this.deltaRepository.query(
+				`SELECT rowid FROM energy_module_deltas WHERE "intervalEnd" < ? LIMIT ?`,
+				[cutoffStr, CLEANUP_BATCH_SIZE],
+			);
+
+			const batchCount = expiredRows.length;
+
+			if (batchCount === 0) {
+				break;
+			}
+
+			await this.deltaRepository.query(
 				`DELETE FROM energy_module_deltas
 				 WHERE rowid IN (
 				   SELECT rowid FROM energy_module_deltas
@@ -76,15 +91,13 @@ export class EnergyCleanupService {
 				[cutoffStr, CLEANUP_BATCH_SIZE],
 			);
 
-			const deleted = typeof result?.changes === 'number' ? result.changes : 0;
+			totalDeleted += batchCount;
 
-			totalDeleted += deleted;
-
-			if (deleted < CLEANUP_BATCH_SIZE) {
+			if (batchCount < CLEANUP_BATCH_SIZE) {
 				break;
 			}
 
-			this.logger.debug(`Cleanup batch: deleted ${deleted} rows (total so far: ${totalDeleted})`);
+			this.logger.debug(`Cleanup batch: deleted ${batchCount} rows (total so far: ${totalDeleted})`);
 		}
 
 		return totalDeleted;

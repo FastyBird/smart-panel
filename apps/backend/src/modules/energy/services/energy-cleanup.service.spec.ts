@@ -6,6 +6,7 @@ import { DataSource, Repository } from 'typeorm';
 import { Logger } from '@nestjs/common';
 
 import { ConfigService } from '../../config/services/config.service';
+import * as constants from '../energy.constants';
 import { EnergySourceType } from '../energy.constants';
 import { EnergyDeltaEntity } from '../entities/energy-delta.entity';
 
@@ -189,6 +190,32 @@ describe('EnergyCleanupService', () => {
 			const remaining = await deltaRepo.count();
 
 			expect(remaining).toBe(1);
+		});
+
+		it('should delete more rows than batch size via multiple iterations', async () => {
+			// Override CLEANUP_BATCH_SIZE to 3 so we can test batching with few rows
+			const originalBatchSize = constants.CLEANUP_BATCH_SIZE;
+			Object.defineProperty(constants, 'CLEANUP_BATCH_SIZE', { value: 3, writable: true });
+
+			// Re-create service so it picks up the new constant at call time
+			service = new EnergyCleanupService(deltaRepo, mockConfigService as ConfigService);
+
+			// Insert 8 expired records and 2 recent ones
+			for (let i = 0; i < 8; i++) {
+				await insertDelta(100, `dev-batch-${i}`);
+			}
+			await insertDelta(10, 'dev-recent-1');
+			await insertDelta(5, 'dev-recent-2');
+
+			await service.runCleanup();
+
+			const remaining = await deltaRepo.count();
+
+			// All 8 expired rows should be gone, 2 recent remain
+			expect(remaining).toBe(2);
+
+			// Restore original value
+			Object.defineProperty(constants, 'CLEANUP_BATCH_SIZE', { value: originalBatchSize, writable: true });
 		});
 	});
 });
