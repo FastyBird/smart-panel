@@ -1,5 +1,5 @@
 import { Expose, Transform, Type } from 'class-transformer';
-import { IsDate, IsEnum, IsInt, IsOptional, IsString, IsUUID, Min, ValidateNested } from 'class-validator';
+import { IsArray, IsDate, IsEnum, IsInt, IsOptional, IsString, IsUUID, Min, ValidateNested } from 'class-validator';
 import { Column, Entity, Index, JoinColumn, ManyToOne, OneToMany } from 'typeorm';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
@@ -141,6 +141,39 @@ export class SpaceEntity extends BaseEntity {
 	)
 	@Column({ type: 'boolean', default: true })
 	suggestionsEnabled: boolean;
+
+	@ApiPropertyOptional({
+		name: 'header_widgets',
+		description: 'Ordered list of header widgets configured for this space',
+		type: 'array',
+		nullable: true,
+		items: {
+			type: 'object',
+			properties: {
+				type: { type: 'string', example: 'energy' },
+				order: { type: 'number', example: 0 },
+				settings: {
+					type: 'object',
+					properties: {
+						range: { type: 'string', enum: ['today', 'week', 'month'], example: 'today' },
+						show_production: { type: 'boolean', example: true },
+					},
+				},
+			},
+			required: ['type', 'order', 'settings'],
+		},
+		example: [{ type: 'energy', order: 0, settings: { range: 'today', show_production: true } }],
+	})
+	@Expose({ name: 'header_widgets' })
+	@IsOptional()
+	@IsArray()
+	@Transform(
+		({ obj }: { obj: { header_widgets?: unknown[] | null; headerWidgets?: unknown[] | null } }) =>
+			obj.header_widgets ?? obj.headerWidgets ?? null,
+		{ toClassOnly: true },
+	)
+	@Column({ type: 'simple-json', nullable: true, default: null })
+	headerWidgets: Record<string, unknown>[] | null;
 
 	@ApiPropertyOptional({
 		name: 'last_activity_at',
