@@ -857,7 +857,7 @@ class _EnergyScreenState extends State<EnergyScreen> {
 									: AppFilledButtonsLightThemes.primaryForegroundColor,
 							),
 							label: Text(
-								localizations.security_retry,
+								localizations.button_retry,
 								style: TextStyle(
 									fontSize: AppFontSize.small,
 								),
