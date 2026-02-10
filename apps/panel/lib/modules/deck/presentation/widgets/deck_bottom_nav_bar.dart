@@ -108,6 +108,12 @@ class _DeckBottomNavBarState extends State<DeckBottomNavBar> {
           label: item.title,
           pageIndex: i,
         ));
+      } else if (item is EnergyViewItem) {
+        scrollableTabs.add(_TabData(
+          icon: MdiIcons.flashOutline,
+          label: item.title,
+          pageIndex: i,
+        ));
       }
     }
 

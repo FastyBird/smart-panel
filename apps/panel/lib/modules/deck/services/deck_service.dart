@@ -4,6 +4,7 @@ import 'package:fastybird_smart_panel/modules/dashboard/export.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
 import 'package:fastybird_smart_panel/modules/devices/export.dart';
 import 'package:fastybird_smart_panel/modules/displays/models/display.dart';
+import 'package:fastybird_smart_panel/modules/energy/repositories/energy_repository.dart';
 import 'package:fastybird_smart_panel/modules/spaces/export.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -209,6 +210,14 @@ class DeckService extends ChangeNotifier {
     // Get pages from dashboard service
     final pages = _dashboardService.pages.values.toList();
 
+    // Check energy support from repository
+    bool energySupported = false;
+    try {
+      if (locator.isRegistered<EnergyRepository>()) {
+        energySupported = locator<EnergyRepository>().isSupported;
+      }
+    } catch (_) {}
+
     // Build the deck
     final input = DeckBuildInput(
       display: _display!,
@@ -223,6 +232,8 @@ class DeckService extends ChangeNotifier {
       sensorsViewTitle: localizations?.domain_sensors ?? 'Sensors',
       energyViewTitle: localizations?.domain_energy ?? 'Energy',
       securityViewTitle: localizations?.entry_security ?? 'Security',
+      energyScreenTitle: localizations?.domain_energy ?? 'Energy',
+      energySupported: energySupported,
     );
 
     _deck = buildDeck(input);

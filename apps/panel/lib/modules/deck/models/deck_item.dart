@@ -146,6 +146,32 @@ class SecurityViewItem extends DeckItem {
   int get hashCode => id.hashCode;
 }
 
+/// The energy view showing consumption, production, and breakdown.
+class EnergyViewItem extends DeckItem {
+  /// Human-readable title for this view.
+  final String title;
+
+  const EnergyViewItem({
+    required super.id,
+    required this.title,
+  });
+
+  @override
+  DeckItemType get type => DeckItemType.energyView;
+
+  /// Standard ID for the energy view.
+  static String generateId() => 'energy-view';
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is EnergyViewItem && other.id == id;
+  }
+
+  @override
+  int get hashCode => id.hashCode;
+}
+
 /// A user-configured dashboard page.
 ///
 /// Dashboard pages are created and managed through the Admin interface.
