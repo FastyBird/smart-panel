@@ -40,6 +40,8 @@ class EnergyService {
   EnergyService({required Dio dio}) : _dio = dio;
 
   /// Fetches energy summary for a space.
+  ///
+  /// Throws on network or server errors so callers can handle error state.
   Future<EnergySummary?> fetchSummary(String spaceId, EnergyRange range) async {
     try {
       final response = await _dio.get(
@@ -59,11 +61,13 @@ class EnergyService {
       if (kDebugMode) {
         debugPrint('[ENERGY] Failed to fetch summary: $e');
       }
-      return null;
+      rethrow;
     }
   }
 
   /// Fetches energy timeseries for a space.
+  ///
+  /// Throws on network or server errors so callers can handle error state.
   Future<EnergyTimeseries?> fetchTimeseries(
     String spaceId,
     EnergyRange range, {
@@ -90,11 +94,13 @@ class EnergyService {
       if (kDebugMode) {
         debugPrint('[ENERGY] Failed to fetch timeseries: $e');
       }
-      return null;
+      rethrow;
     }
   }
 
   /// Fetches energy breakdown (top consumers) for a space.
+  ///
+  /// Throws on network or server errors so callers can handle error state.
   Future<EnergyBreakdown?> fetchBreakdown(
     String spaceId,
     EnergyRange range, {
@@ -121,7 +127,7 @@ class EnergyService {
       if (kDebugMode) {
         debugPrint('[ENERGY] Failed to fetch breakdown: $e');
       }
-      return null;
+      rethrow;
     }
   }
 }

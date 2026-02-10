@@ -66,6 +66,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
 
   EnergyService? _energyService;
   EnergyRange _selectedRange = EnergyRange.today;
+  bool _isRangeChangeInFlight = false;
 
   EnergySummary? _summary;
   EnergyTimeseries? _timeseries;
@@ -128,7 +129,9 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
   }
 
   Future<void> _onRangeChanged(EnergyRange range) async {
-    if (range == _selectedRange) return;
+    if (range == _selectedRange || _isRangeChangeInFlight) return;
+
+    _isRangeChangeInFlight = true;
 
     setState(() {
       _selectedRange = range;
@@ -140,7 +143,12 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
     });
 
     setLoadState(DomainLoadState.loading);
-    await loadDomainData();
+
+    try {
+      await loadDomainData();
+    } finally {
+      _isRangeChangeInFlight = false;
+    }
   }
 
   // --------------------------------------------------------------------------
