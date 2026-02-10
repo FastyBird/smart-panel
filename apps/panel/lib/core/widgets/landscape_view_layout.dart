@@ -56,7 +56,7 @@ class LandscapeViewLayout extends StatelessWidget {
     final resolvedMainPadding = mainContentPadding ??
         EdgeInsets.only(
           left: AppSpacings.pMd,
-          right: additionalContent != null ? 0: AppSpacings.pMd,
+          right: additionalContent != null ? 0 : AppSpacings.pMd,
           bottom: AppSpacings.pMd,
         );
     final defaultAdditionalPadding = AppSpacings.paddingMd;
