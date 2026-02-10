@@ -75,9 +75,6 @@ class ValueSelectorRow<T> extends StatelessWidget {
   /// Upper bound for the continuous slider in landscape dialog.
   final double? sliderMax;
 
-  /// Number of discrete divisions for the slider (null = continuous).
-  final int? sliderDivisions;
-
   /// Unit suffix shown next to the slider value (e.g. "%" or "°").
   final String? sliderUnit;
 
@@ -107,7 +104,6 @@ class ValueSelectorRow<T> extends StatelessWidget {
     this.layout = ValueSelectorRowLayout.horizontal,
     this.sliderMin,
     this.sliderMax,
-    this.sliderDivisions,
     this.sliderUnit,
     this.sliderSteps,
     this.sliderValueFormatter,

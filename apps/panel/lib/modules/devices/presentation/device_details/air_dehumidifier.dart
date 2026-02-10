@@ -1333,7 +1333,6 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
         layout: ValueSelectorRowLayout.compact,
         sliderMin: 0.0,
         sliderMax: 1.0,
-        sliderDivisions: 20,
         sliderUnit: '%',
         onChanged: _device.isOn ? (v) => _setFanSpeed(v ?? 0) : null,
       );

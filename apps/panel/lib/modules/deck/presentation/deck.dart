@@ -38,6 +38,7 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen>
   bool _initialized = false;
   bool _swipeBlocked = false;
   bool _isCrossfading = false;
+  Orientation? _lastOrientation;
 
   late final AnimationController _fadeController;
 
@@ -234,12 +235,19 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen>
               // (Column ↔ Row), causing Flutter to remount it. The new
               // ScrollPosition uses PageController.initialPage (start index)
               // instead of the current page, so we restore it here.
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                if (_pageController?.hasClients == true &&
-                    _pageController!.page?.round() != _currentIndex) {
-                  _pageController!.jumpToPage(_currentIndex);
-                }
-              });
+              // Only run on actual orientation transitions, and skip during
+              // crossfade to avoid fighting the ongoing animation.
+              if (_lastOrientation != null &&
+                  _lastOrientation != orientation) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (!mounted || _isCrossfading) return;
+                  if (_pageController?.hasClients == true &&
+                      _pageController!.page?.round() != _currentIndex) {
+                    _pageController!.jumpToPage(_currentIndex);
+                  }
+                });
+              }
+              _lastOrientation = orientation;
 
               final pageView = FadeTransition(
                 opacity: _fadeController,

@@ -1487,7 +1487,6 @@ class _AirConditionerDeviceDetailState
             layout: ValueSelectorRowLayout.compact,
             sliderMin: 0.0,
             sliderMax: 1.0,
-            sliderDivisions: 20,
             sliderUnit: '%',
             onChanged: _currentMode != AcMode.off ? (v) => _setFanSpeedValue(v ?? 0) : null,
           ),
