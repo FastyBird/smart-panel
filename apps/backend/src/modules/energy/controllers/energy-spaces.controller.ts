@@ -168,7 +168,8 @@ export class EnergySpacesController {
 		@Query('range') range?: string,
 		@Query('limit') limitStr?: string,
 	): Promise<EnergySpaceBreakdownResponseModel> {
-		const limit = limitStr ? Math.max(1, Math.min(100, parseInt(limitStr, 10) || 10)) : 10;
+		const parsedLimit = limitStr !== undefined ? parseInt(limitStr, 10) : NaN;
+		const limit = Number.isNaN(parsedLimit) ? 10 : Math.max(1, Math.min(100, parsedLimit));
 		const { start, end } = resolveEnergyRange(range);
 		const items = await this.energyData.getSpaceBreakdown(start, end, spaceId, limit);
 

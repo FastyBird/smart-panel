@@ -463,8 +463,6 @@ export class EnergyDataService {
 		switch (interval) {
 			case '1h':
 				return iso.replace(/:\d{2}:\d{2}\.\d{3}Z$/, ':00:00.000Z');
-			case '1d':
-				return iso.replace(/T\d{2}:\d{2}:\d{2}\.\d{3}Z$/, 'T00:00:00.000Z');
 			default:
 				return iso;
 		}
