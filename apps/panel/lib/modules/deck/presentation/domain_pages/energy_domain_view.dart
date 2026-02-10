@@ -132,6 +132,11 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
 
     setState(() {
       _selectedRange = range;
+      // Clear stale data so hasExistingData() returns false
+      // and loadDomainData() will call fetchData() for the new range
+      _summary = null;
+      _timeseries = null;
+      _breakdown = null;
     });
 
     setLoadState(DomainLoadState.loading);
@@ -569,9 +574,14 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
                       }
                       final point = points[index];
                       final hour = point.timestamp.hour.toString().padLeft(2, '0');
-                      final label = _selectedRange == EnergyRange.month
-                          ? '${point.timestamp.day}'
-                          : '$hour:00';
+                      String label;
+                      if (_selectedRange == EnergyRange.month) {
+                        label = '${point.timestamp.day}';
+                      } else if (_selectedRange == EnergyRange.week) {
+                        label = '${point.timestamp.day}/${point.timestamp.month} $hour:00';
+                      } else {
+                        label = '$hour:00';
+                      }
                       return Padding(
                         padding: EdgeInsets.only(top: AppSpacings.pXs),
                         child: Text(

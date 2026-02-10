@@ -567,11 +567,13 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
   }
 
   Widget _buildEnergyBadge(BuildContext context) {
+    final localizations = AppLocalizations.of(context);
     final iconSize = AppSpacings.scale(14);
     final consumption = NumberFormatUtils.defaultFormat.formatDecimal(
       _energySummary!.consumption,
       decimalPlaces: 1,
     );
+    final unit = localizations?.energy_unit_kwh ?? 'kWh';
 
     return GestureDetector(
       onTap: () => _navigateToDomainView(DomainType.energy),
@@ -600,7 +602,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
                   : AppColorsDark.info,
             ),
             Text(
-              '$consumption kWh',
+              '$consumption $unit',
               style: TextStyle(
                 fontSize: AppFontSize.extraSmall,
                 fontWeight: FontWeight.w500,
