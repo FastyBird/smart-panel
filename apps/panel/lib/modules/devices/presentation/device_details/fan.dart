@@ -665,6 +665,10 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
             displayFormatter: (v) => _formatSpeed(localizations, v),
             columns: 4,
             layout: ValueSelectorRowLayout.compact,
+            sliderMin: 0.0,
+            sliderMax: 1.0,
+            sliderDivisions: 20,
+            sliderUnit: '%',
             onChanged: _device.isOn ? (v) => _setSpeedValue(v ?? 0) : null,
           ),
         );

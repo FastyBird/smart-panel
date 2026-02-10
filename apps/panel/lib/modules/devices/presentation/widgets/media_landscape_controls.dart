@@ -119,6 +119,9 @@ class MediaLandscapeControls extends StatelessWidget {
 							displayFormatter: (v) => '${v ?? 0}%',
 							columns: 5,
 							layout: ValueSelectorRowLayout.compact,
+							sliderMin: 0.0,
+							sliderMax: 100.0,
+							sliderUnit: '%',
 							onChanged: isEnabled ? (v) {
 								if (v != null) onBrightnessChanged?.call(v);
 							} : null,
@@ -143,6 +146,9 @@ class MediaLandscapeControls extends StatelessWidget {
 							displayFormatter: (v) => '${v ?? 0}%',
 							columns: 5,
 							layout: ValueSelectorRowLayout.compact,
+							sliderMin: 0.0,
+							sliderMax: 100.0,
+							sliderUnit: '%',
 							onChanged: isEnabled ? (v) {
 								if (v != null) onVolumeChanged?.call(v);
 							} : null,

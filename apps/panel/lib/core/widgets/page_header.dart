@@ -28,7 +28,7 @@ class PageHeader extends StatelessWidget {
   /// Custom trailing widget
   final Widget? trailing;
 
-  /// Extra widget shown only in landscape, placed before [trailing].
+  /// Extra widget shown only in landscape, placed after [trailing] (rightmost).
   ///
   /// Useful for domain-level actions (e.g. mode chip) that should only
   /// appear when the header has room in landscape orientation.
@@ -128,16 +128,16 @@ class PageHeader extends StatelessWidget {
             ),
           ),
 
-          // Landscape action (e.g. mode chip) — only in landscape
-          if (landscapeAction != null && isLandscape) ...[
-            AppSpacings.spacingMdHorizontal,
-            landscapeAction!,
-          ],
-
           // Trailing widget
           if (trailing != null) ...[
             AppSpacings.spacingMdHorizontal,
             trailing!,
+          ],
+
+          // Landscape action (e.g. mode chip) — always rightmost in landscape
+          if (landscapeAction != null && isLandscape) ...[
+            AppSpacings.spacingMdHorizontal,
+            landscapeAction!,
           ],
         ],
       ),

@@ -2067,6 +2067,9 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 						displayFormatter: (v) => '${v ?? 0}%',
 						columns: 5,
 						layout: ValueSelectorRowLayout.compact,
+						sliderMin: 0.0,
+						sliderMax: 100.0,
+						sliderUnit: '%',
 						onChanged: _isSending ? null : (v) {
 							if (v != null) _setVolume(v);
 						},

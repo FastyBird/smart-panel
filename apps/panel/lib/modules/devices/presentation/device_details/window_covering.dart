@@ -1309,6 +1309,16 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
         displayFormatter: (v) => '${v ?? 0}°',
         columns: 3,
         layout: ValueSelectorRowLayout.compact,
+        sliderMin: minTilt.toDouble(),
+        sliderMax: maxTilt.toDouble(),
+        sliderUnit: '°',
+        sliderSteps: [
+          '$minTilt°',
+          '${((maxTilt + minTilt) / 2).round()}°',
+          '$maxTilt°',
+        ],
+        sliderValueFormatter: (v) =>
+            '${(minTilt + v * tiltRange).round()}°',
         onChanged: (value) {
           if (value != null) {
             _handleTiltChanged(value.toDouble());
