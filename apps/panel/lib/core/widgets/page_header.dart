@@ -82,7 +82,7 @@ class PageHeader extends StatelessWidget {
       ),
       decoration: BoxDecoration(
         color: bgColor,
-        border: isLandscape
+        border: isLandscape && borderColor == null
             ? null
             : Border(
                 bottom: BorderSide(
