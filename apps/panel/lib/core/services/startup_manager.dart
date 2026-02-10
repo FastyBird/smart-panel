@@ -36,6 +36,8 @@ import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/role_control_state_repository.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/property_timeseries.dart';
+import 'package:fastybird_smart_panel/modules/energy/module.dart';
+import 'package:fastybird_smart_panel/modules/energy/repositories/energy_repository.dart';
 import 'package:fastybird_smart_panel/modules/energy/services/energy_service.dart';
 import 'package:fastybird_smart_panel/modules/displays/models/display.dart';
 import 'package:fastybird_smart_panel/modules/displays/module.dart';
@@ -312,6 +314,7 @@ class StartupManagerService {
         locator.get<ScenesModuleService>().initialize(),
         locator.get<IntentsModuleService>().initialize(),
         locator.get<DashboardModuleService>().initialize(),
+        locator.get<EnergyModuleService>().initialize(),
       ]);
     } catch (e) {
       if (kDebugMode) {
@@ -413,6 +416,19 @@ class StartupManagerService {
       try {
         locator<SecurityOverlayController>().dispose();
         locator.unregister<SecurityOverlayController>();
+      } catch (_) {}
+    }
+    if (locator.isRegistered<EnergyModuleService>()) {
+      try {
+        final module = locator<EnergyModuleService>();
+        module.dispose();
+        locator.unregister<EnergyModuleService>();
+      } catch (_) {}
+    }
+    if (locator.isRegistered<EnergyRepository>()) {
+      try {
+        locator<EnergyRepository>().dispose();
+        locator.unregister<EnergyRepository>();
       } catch (_) {}
     }
     if (locator.isRegistered<WeatherModuleService>()) {
@@ -805,6 +821,13 @@ class StartupManagerService {
     // Energy service
     var energyService = EnergyService(dio: _apiIoService);
     locator.registerSingleton(energyService);
+
+    // Energy module service
+    var energyModuleService = EnergyModuleService(
+      energyService: energyService,
+    );
+    locator.registerSingleton(energyModuleService);
+    locator.registerSingleton(energyModuleService.repository);
 
     // Deck module services
     var deckModuleService = DeckModuleService(

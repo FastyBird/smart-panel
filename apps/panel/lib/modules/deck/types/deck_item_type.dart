@@ -9,6 +9,9 @@ enum DeckItemType {
   /// The security view (entry points, alerts, events).
   securityView,
 
+  /// The energy view (consumption, production, breakdown).
+  energyView,
+
   /// A user-configured dashboard page.
   dashboardPage,
 }

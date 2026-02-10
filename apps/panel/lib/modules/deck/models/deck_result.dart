@@ -73,6 +73,14 @@ class DeckResult {
   List<DomainViewItem> get domainViews =>
       items.whereType<DomainViewItem>().toList();
 
+  /// Returns the energy view item if present.
+  EnergyViewItem? get energyView {
+    for (final item in items) {
+      if (item is EnergyViewItem) return item;
+    }
+    return null;
+  }
+
   /// Returns all dashboard page items.
   List<DashboardPageItem> get dashboardPages =>
       items.whereType<DashboardPageItem>().toList();
