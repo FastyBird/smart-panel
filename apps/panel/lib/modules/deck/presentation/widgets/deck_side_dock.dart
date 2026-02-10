@@ -9,7 +9,7 @@ import 'package:provider/provider.dart';
 
 /// Vertical floating dock for landscape mode navigation.
 ///
-/// Layout: vertical glass container with Home, domain tabs, More, divider, Mode.
+/// Layout: vertical glass container with Home, domain tabs, and More.
 /// Mirrors [DeckBottomNavBar] API but renders vertically as a floating side dock.
 class DeckSideDock extends StatefulWidget {
   final int currentIndex;
