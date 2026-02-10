@@ -33,5 +33,7 @@ Widget _buildDomainViewWidget(DomainViewItem domainView) {
       return MediaDomainViewPage(viewItem: domainView);
     case DomainType.sensors:
       return SensorsDomainViewPage(viewItem: domainView);
+    case DomainType.energy:
+      return EnergyDomainViewPage(viewItem: domainView);
   }
 }

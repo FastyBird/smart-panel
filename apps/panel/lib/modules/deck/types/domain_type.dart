@@ -20,6 +20,9 @@ enum DomainType {
 
   /// Sensor devices (motion, temperature, humidity sensors)
   sensors,
+
+  /// Energy monitoring (consumption, production, top consumers)
+  energy,
 }
 
 /// Extension providing UI properties for DomainType.
@@ -37,6 +40,8 @@ extension DomainTypeUI on DomainType {
         return MdiIcons.playCircleOutline;
       case DomainType.sensors:
         return MdiIcons.accessPoint;
+      case DomainType.energy:
+        return MdiIcons.flashOutline;
     }
   }
 
@@ -53,6 +58,8 @@ extension DomainTypeUI on DomainType {
         return 'Media';
       case DomainType.sensors:
         return 'Sensors';
+      case DomainType.energy:
+        return 'Energy';
     }
   }
 
@@ -69,6 +76,8 @@ extension DomainTypeUI on DomainType {
         return 3;
       case DomainType.sensors:
         return 4;
+      case DomainType.energy:
+        return 5;
     }
   }
 }

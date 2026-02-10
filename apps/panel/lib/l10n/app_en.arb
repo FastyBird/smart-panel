@@ -1890,6 +1890,68 @@
   "@domain_sensors": {
     "description": "Title for sensors domain view in room navigation"
   },
+  "domain_energy": "Energy",
+  "@domain_energy": {
+    "description": "Title for energy domain view in room navigation"
+  },
+  "energy_consumption": "Consumption",
+  "@energy_consumption": {
+    "description": "Label for energy consumption"
+  },
+  "energy_production": "Production",
+  "@energy_production": {
+    "description": "Label for energy production"
+  },
+  "energy_net": "Net",
+  "@energy_net": {
+    "description": "Label for net energy (consumption minus production)"
+  },
+  "energy_range_today": "Today",
+  "@energy_range_today": {
+    "description": "Label for today energy range"
+  },
+  "energy_range_week": "Week",
+  "@energy_range_week": {
+    "description": "Label for week energy range"
+  },
+  "energy_range_month": "Month",
+  "@energy_range_month": {
+    "description": "Label for month energy range"
+  },
+  "energy_top_consumers": "Top Consumers",
+  "@energy_top_consumers": {
+    "description": "Section title for top energy consuming devices"
+  },
+  "energy_chart_title": "Usage Over Time",
+  "@energy_chart_title": {
+    "description": "Section title for energy timeseries chart"
+  },
+  "energy_summary_title": "Summary",
+  "@energy_summary_title": {
+    "description": "Section title for energy summary"
+  },
+  "energy_unit_kwh": "kWh",
+  "@energy_unit_kwh": {
+    "description": "Unit label for kilowatt-hours"
+  },
+  "energy_empty_title": "No Energy Data",
+  "@energy_empty_title": {
+    "description": "Title shown when no energy data is available"
+  },
+  "energy_empty_description": "No energy monitoring devices found in this space",
+  "@energy_empty_description": {
+    "description": "Description shown when no energy data is available"
+  },
+  "energy_device_count": "{count, plural, =1{1 device} other{{count} devices}}",
+  "@energy_device_count": {
+    "description": "Count of energy devices",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "5"
+      }
+    }
+  },
   "device_category_lighting": "Lights",
   "@device_category_lighting": {
     "description": "Label for lighting device category"

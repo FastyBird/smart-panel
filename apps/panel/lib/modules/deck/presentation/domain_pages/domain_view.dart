@@ -97,6 +97,10 @@ class _DomainViewPageState extends State<DomainViewPage> {
         hint = 'View sensor readings';
         hintIcon = MdiIcons.gaugeEmpty;
         break;
+      case DomainType.energy:
+        hint = 'Monitor energy usage';
+        hintIcon = MdiIcons.flashOutline;
+        break;
     }
 
     return Container(

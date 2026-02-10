@@ -221,6 +221,7 @@ class DeckService extends ChangeNotifier {
       climateViewTitle: localizations?.domain_climate ?? 'Climate',
       mediaViewTitle: localizations?.domain_media ?? 'Media',
       sensorsViewTitle: localizations?.domain_sensors ?? 'Sensors',
+      energyViewTitle: localizations?.domain_energy ?? 'Energy',
       securityViewTitle: localizations?.entry_security ?? 'Security',
     );
 

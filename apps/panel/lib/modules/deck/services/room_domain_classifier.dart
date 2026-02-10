@@ -117,15 +117,23 @@ class DomainCounts {
         return media;
       case DomainType.sensors:
         return sensors;
+      case DomainType.energy:
+        // Energy uses sensors count as proxy — energy sensors are classified as sensors
+        return sensors;
     }
   }
 
   /// Returns true if a domain has any devices that make it visible.
   /// For climate domain, requires at least one actuator device (thermostat, heater, AC).
+  /// For energy domain, visible when sensor devices exist (energy sensors are a subset).
   bool hasDomain(DomainType domain) {
     if (domain == DomainType.climate) {
       // Climate domain is only visible when there are actuators
       return climateActuators > 0;
+    }
+    if (domain == DomainType.energy) {
+      // Energy domain is visible when sensors exist (energy sensors are classified as sensors)
+      return sensors > 0;
     }
     return getCount(domain) > 0;
   }
@@ -188,6 +196,9 @@ DomainCounts buildDomainCounts(List<DevicesModuleDeviceCategory> deviceCategorie
         break;
       case DomainType.sensors:
         sensors++;
+        break;
+      case DomainType.energy:
+        // Energy is not a device-level domain — visibility derived from sensors count
         break;
     }
   }

@@ -36,6 +36,7 @@ import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/role_control_state_repository.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/property_timeseries.dart';
+import 'package:fastybird_smart_panel/modules/energy/services/energy_service.dart';
 import 'package:fastybird_smart_panel/modules/displays/models/display.dart';
 import 'package:fastybird_smart_panel/modules/displays/module.dart';
 import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
@@ -800,6 +801,10 @@ class StartupManagerService {
     // Property timeseries service
     var propertyTimeseriesService = PropertyTimeseriesService(dio: _apiIoService);
     locator.registerSingleton(propertyTimeseriesService);
+
+    // Energy service
+    var energyService = EnergyService(dio: _apiIoService);
+    locator.registerSingleton(energyService);
 
     // Deck module services
     var deckModuleService = DeckModuleService(

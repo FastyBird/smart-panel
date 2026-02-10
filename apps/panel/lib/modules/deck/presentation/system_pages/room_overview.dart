@@ -9,6 +9,7 @@ import 'package:fastybird_smart_panel/modules/deck/export.dart';
 import 'package:fastybird_smart_panel/modules/devices/export.dart';
 import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
 import 'package:fastybird_smart_panel/modules/scenes/export.dart';
+import 'package:fastybird_smart_panel/modules/energy/export.dart';
 import 'package:fastybird_smart_panel/modules/spaces/export.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -52,6 +53,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
   // Additional live data (not in model)
   int _lightsOnCount = 0;
   double? _temperature;
+  EnergySummary? _energySummary;
 
   // Error state
   String? _errorMessage;
@@ -158,6 +160,9 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 
       // Fetch live device property values (temperature, lights on)
       await _fetchLiveDeviceData();
+
+      // Fetch energy summary for header badge (non-blocking)
+      _fetchEnergySummary();
 
       if (!mounted) return;
 
@@ -271,6 +276,20 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
       }
     }
     return null;
+  }
+
+  Future<void> _fetchEnergySummary() async {
+    try {
+      final energyService = locator<EnergyService>();
+      final summary = await energyService.fetchSummary(_roomId, EnergyRange.today);
+      if (mounted && summary != null) {
+        setState(() {
+          _energySummary = summary;
+        });
+      }
+    } catch (_) {
+      // Silently fail — energy badge is optional
+    }
   }
 
   void _navigateToDomainView(DomainType domain) {
@@ -440,6 +459,12 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
       badges.add(_buildTemperatureBadge(context));
     }
 
+    // Energy badge
+    if (_energySummary != null && _energySummary!.consumption > 0) {
+      if (badges.isNotEmpty) badges.add(AppSpacings.spacingSmHorizontal);
+      badges.add(_buildEnergyBadge(context));
+    }
+
     return badges;
   }
 
@@ -537,6 +562,57 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildEnergyBadge(BuildContext context) {
+    final localizations = AppLocalizations.of(context);
+    final iconSize = AppSpacings.scale(14);
+    final consumption = NumberFormatUtils.defaultFormat.formatDecimal(
+      _energySummary!.consumption,
+      decimalPlaces: 1,
+    );
+    final unit = localizations?.energy_unit_kwh ?? 'kWh';
+
+    return GestureDetector(
+      onTap: () => _navigateToDomainView(DomainType.energy),
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: AppSpacings.pSm,
+          vertical: AppSpacings.pXs,
+        ),
+        decoration: BoxDecoration(
+          color: Theme.of(context).brightness == Brightness.light
+              ? AppColorsLight.infoLight9
+              : AppColorsDark.infoLight7,
+          borderRadius: BorderRadius.circular(AppBorderRadius.base),
+        ),
+        child: Row(
+          spacing: AppSpacings.pXs,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              _energySummary!.hasProduction
+                  ? MdiIcons.solarPower
+                  : MdiIcons.flashOutline,
+              size: iconSize,
+              color: Theme.of(context).brightness == Brightness.light
+                  ? AppColorsLight.info
+                  : AppColorsDark.info,
+            ),
+            Text(
+              '$consumption $unit',
+              style: TextStyle(
+                fontSize: AppFontSize.extraSmall,
+                fontWeight: FontWeight.w500,
+                color: Theme.of(context).brightness == Brightness.light
+                    ? AppColorsLight.infoDark2
+                    : AppTextColorDark.primary,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

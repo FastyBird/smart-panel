@@ -23,6 +23,7 @@ class SystemViewsBuildInput {
   final String mediaViewTitle;
   final String sensorsViewTitle;
   final String shadingViewTitle;
+  final String energyViewTitle;
 
   const SystemViewsBuildInput({
     required this.display,
@@ -35,6 +36,7 @@ class SystemViewsBuildInput {
     this.mediaViewTitle = 'Media',
     this.sensorsViewTitle = 'Sensors',
     this.shadingViewTitle = 'Shading',
+    this.energyViewTitle = 'Energy',
   });
 }
 
@@ -168,5 +170,7 @@ String _getDomainTitle(DomainType domain, SystemViewsBuildInput input) {
       return input.sensorsViewTitle;
     case DomainType.shading:
       return input.shadingViewTitle;
+    case DomainType.energy:
+      return input.energyViewTitle;
   }
 }
