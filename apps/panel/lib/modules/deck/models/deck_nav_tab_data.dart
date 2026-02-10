@@ -66,6 +66,12 @@ DeckNavTabs buildDeckNavTabs({
         label: item.title,
         pageIndex: i,
       ));
+    } else if (item is EnergyViewItem) {
+      scrollableTabs.add(DeckNavTabData(
+        icon: MdiIcons.flashOutline,
+        label: item.title,
+        pageIndex: i,
+      ));
     }
   }
 

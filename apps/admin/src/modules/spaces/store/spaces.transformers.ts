@@ -5,7 +5,7 @@ import {
 	SpacesModuleDataSpaceCategory,
 } from '../../../openapi';
 
-import { SpaceCategory, SpaceType } from '../spaces.constants';
+import { type IHeaderWidget, SpaceCategory, SpaceType } from '../spaces.constants';
 
 import type { ISpace, ISpaceCreateData, ISpaceEditData } from './spaces.store.types';
 
@@ -53,6 +53,41 @@ const spaceCategoryToApiCategory = (
 	return category as unknown as SpacesModuleCreateSpaceCategory;
 };
 
+const transformApiHeaderWidgets = (
+	apiWidgets: ApiSpace['header_widgets'],
+): IHeaderWidget[] | null => {
+	if (!apiWidgets || !Array.isArray(apiWidgets)) return null;
+
+	return apiWidgets.map((widget) => ({
+		type: widget.type,
+		order: widget.order,
+		settings: {
+			...(widget.settings.range !== undefined ? { range: widget.settings.range } : {}),
+			...(widget.settings.show_production !== undefined
+				? { showProduction: widget.settings.show_production }
+				: {}),
+		},
+	}));
+};
+
+const transformHeaderWidgetsToApi = (
+	widgets: IHeaderWidget[] | null | undefined,
+): Record<string, unknown>[] | null | undefined => {
+	if (widgets === undefined) return undefined;
+	if (widgets === null) return null;
+
+	return widgets.map((widget) => ({
+		type: widget.type,
+		order: widget.order,
+		settings: {
+			...(widget.settings.range !== undefined ? { range: widget.settings.range } : {}),
+			...(widget.settings.showProduction !== undefined
+				? { show_production: widget.settings.showProduction }
+				: {}),
+		},
+	}));
+};
+
 export const transformSpaceResponse = (response: ApiSpace): ISpace => {
 	return {
 		id: response.id,
@@ -64,6 +99,7 @@ export const transformSpaceResponse = (response: ApiSpace): ISpace => {
 		displayOrder: response.display_order ?? 0,
 		parentId: response.parent_id ?? null,
 		suggestionsEnabled: response.suggestions_enabled ?? true,
+		headerWidgets: transformApiHeaderWidgets(response.header_widgets),
 		createdAt: new Date(response.created_at),
 		updatedAt: response.updated_at ? new Date(response.updated_at) : null,
 		draft: false,
@@ -80,6 +116,7 @@ export const transformSpaceCreateRequest = (data: ISpaceCreateData): ApiSpaceCre
 		display_order: data.displayOrder,
 		parent_id: data.parentId ?? undefined,
 		suggestions_enabled: data.suggestionsEnabled,
+		header_widgets: transformHeaderWidgetsToApi(data.headerWidgets) as ApiSpaceCreate['header_widgets'],
 	};
 };
 
@@ -98,6 +135,11 @@ export const transformSpaceEditRequest = (data: ISpaceEditData): ApiSpaceUpdate 
 	// Parent zone assignment - explicitly include null to unassign
 	if ('parentId' in data) {
 		baseData.parent_id = data.parentId ?? null;
+	}
+
+	// Header widgets - explicitly include when present
+	if ('headerWidgets' in data) {
+		baseData.header_widgets = transformHeaderWidgetsToApi(data.headerWidgets);
 	}
 
 	return baseData as ApiSpaceUpdate;

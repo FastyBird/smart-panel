@@ -44,6 +44,12 @@ class DeckBuildInput {
   /// Localized title for security view.
   final String securityViewTitle;
 
+  /// Localized title for standalone energy view.
+  final String energyScreenTitle;
+
+  /// Whether energy is supported (determined by [EnergyRepository.checkSupport]).
+  final bool energySupported;
+
   const DeckBuildInput({
     required this.display,
     required this.pages,
@@ -57,6 +63,8 @@ class DeckBuildInput {
     this.sensorsViewTitle = 'Sensors',
     this.energyViewTitle = 'Energy',
     this.securityViewTitle = 'Security',
+    this.energyScreenTitle = 'Energy',
+    this.energySupported = false,
   });
 }
 
@@ -103,6 +111,16 @@ DeckResult buildDeck(DeckBuildInput input) {
   );
   indexByViewKey['security-view'] = items.length;
   items.add(securityView);
+
+  // Add energy view (after security, before dashboard pages) if supported
+  if (input.energySupported) {
+    final energyView = EnergyViewItem(
+      id: EnergyViewItem.generateId(),
+      title: input.energyScreenTitle,
+    );
+    indexByViewKey['energy-view'] = items.length;
+    items.add(energyView);
+  }
 
   // Add dashboard pages sorted by order
   final sortedPages = List<DashboardPageView>.from(pages);

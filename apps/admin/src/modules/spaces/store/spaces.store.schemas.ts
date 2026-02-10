@@ -2,6 +2,12 @@ import { z } from 'zod';
 
 import { SpaceType } from '../spaces.constants';
 
+export const HeaderWidgetSchema = z.object({
+	type: z.string(),
+	order: z.number().int().min(0),
+	settings: z.record(z.unknown()),
+});
+
 export const SpaceSchema = z.object({
 	id: z.string().uuid(),
 	name: z.string().min(1),
@@ -9,6 +15,7 @@ export const SpaceSchema = z.object({
 	type: z.nativeEnum(SpaceType),
 	icon: z.string().nullable(),
 	displayOrder: z.number().int().min(0),
+	headerWidgets: z.array(HeaderWidgetSchema).nullable(),
 	createdAt: z.coerce.date(),
 	updatedAt: z.coerce.date().nullable(),
 	draft: z.boolean().default(false),
@@ -20,6 +27,7 @@ export const SpaceCreateSchema = z.object({
 	type: z.nativeEnum(SpaceType).optional(),
 	icon: z.string().nullable().optional(),
 	displayOrder: z.number().int().min(0).optional(),
+	headerWidgets: z.array(HeaderWidgetSchema).nullable().optional(),
 });
 
 export const SpaceEditSchema = z.object({
@@ -28,4 +36,5 @@ export const SpaceEditSchema = z.object({
 	type: z.nativeEnum(SpaceType).optional(),
 	icon: z.string().nullable().optional(),
 	displayOrder: z.number().int().min(0).optional(),
+	headerWidgets: z.array(HeaderWidgetSchema).nullable().optional(),
 });

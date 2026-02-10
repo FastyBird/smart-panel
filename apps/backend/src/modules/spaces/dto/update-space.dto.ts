@@ -1,5 +1,6 @@
 import { Expose, Transform, Type } from 'class-transformer';
 import {
+	IsArray,
 	IsBoolean,
 	IsEnum,
 	IsInt,
@@ -118,6 +119,35 @@ export class UpdateSpaceDto {
 	@IsOptional()
 	@IsBoolean({ message: '[{"field":"suggestions_enabled","reason":"Suggestions enabled must be a boolean."}]' })
 	suggestions_enabled?: boolean;
+
+	@ApiPropertyOptional({
+		name: 'header_widgets',
+		description: 'Ordered list of header widgets configured for this space',
+		type: 'array',
+		nullable: true,
+		items: {
+			type: 'object',
+			properties: {
+				type: { type: 'string', example: 'energy' },
+				order: { type: 'number', example: 0 },
+				settings: {
+					type: 'object',
+					properties: {
+						range: { type: 'string', enum: ['today', 'week', 'month'], example: 'today' },
+						show_production: { type: 'boolean', example: true },
+					},
+				},
+			},
+			required: ['type', 'order', 'settings'],
+		},
+		example: [{ type: 'energy', order: 0, settings: { range: 'today', show_production: true } }],
+	})
+	@Expose()
+	@IsOptional()
+	@IsArray({
+		message: '[{"field":"header_widgets","reason":"Header widgets must be an array."}]',
+	})
+	header_widgets?: Record<string, unknown>[] | null;
 }
 
 @ApiSchema({ name: 'SpacesModuleReqUpdateSpace' })

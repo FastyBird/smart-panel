@@ -1,6 +1,6 @@
 import type { Ref } from 'vue';
 
-import type { SpaceCategory, SpaceType } from '../spaces.constants';
+import type { IHeaderWidget, SpaceCategory, SpaceType } from '../spaces.constants';
 
 export interface ISpace {
 	id: string;
@@ -12,6 +12,7 @@ export interface ISpace {
 	displayOrder: number;
 	parentId: string | null;
 	suggestionsEnabled: boolean;
+	headerWidgets: IHeaderWidget[] | null;
 	createdAt: Date;
 	updatedAt: Date | null;
 
@@ -27,6 +28,7 @@ export interface ISpaceEditData {
 	displayOrder?: number;
 	parentId?: string | null;
 	suggestionsEnabled?: boolean;
+	headerWidgets?: IHeaderWidget[] | null;
 }
 
 export interface ISpaceCreateData {
@@ -38,6 +40,7 @@ export interface ISpaceCreateData {
 	displayOrder?: number;
 	parentId?: string | null;
 	suggestionsEnabled?: boolean;
+	headerWidgets?: IHeaderWidget[] | null;
 }
 
 export interface ISpacesStoreState {

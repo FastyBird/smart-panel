@@ -118,6 +118,9 @@ class _DeckMoreSheet extends StatelessWidget {
     } else if (item is SecurityViewItem) {
       label = item.title;
       icon = MdiIcons.shieldHome;
+    } else if (item is EnergyViewItem) {
+      label = item.title;
+      icon = MdiIcons.flashOutline;
     } else if (item is DashboardPageItem) {
       label = item.title;
       icon = MdiIcons.viewDashboard;

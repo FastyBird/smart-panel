@@ -29,6 +29,10 @@
 				"manageDevices": "Manage devices",
 				"manageDisplays": "Manage displays"
 			},
+			"headerWidgets": {
+				"title": "Header widgets",
+				"hint": "Configure widgets displayed in the space header area on the panel."
+			},
 			"smartOverrides": {
 				"title": "Smart overrides",
 				"badge": "Advanced",
@@ -237,6 +241,22 @@
 			"suggestionsEnabled": {
 				"title": "Enable suggestions",
 				"hint": "When enabled, the panel will show non-intrusive lighting suggestions based on time of day and current state."
+			},
+			"headerWidgets": {
+				"energy": {
+					"title": "Energy",
+					"range": {
+						"title": "Range",
+						"options": {
+							"today": "Today",
+							"week": "Week",
+							"month": "Month"
+						}
+					},
+					"showProduction": {
+						"title": "Show production"
+					}
+				}
 			}
 		}
 	},

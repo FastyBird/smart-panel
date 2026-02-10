@@ -1950,6 +1950,10 @@
   "@energy_empty_description": {
     "description": "Description shown when no energy data is available"
   },
+  "energy_load_failed": "Failed to load energy data",
+  "@energy_load_failed": {
+    "description": "Message shown when energy data fetch fails due to network or server error"
+  },
   "energy_device_count": "{count, plural, =1{1 device} other{{count} devices}}",
   "@energy_device_count": {
     "description": "Count of energy devices",

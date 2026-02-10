@@ -15,6 +15,7 @@ const createMockSpace = (overrides: Partial<ISpace> = {}): ISpace => ({
 	displayOrder: 0,
 	parentId: null,
 	suggestionsEnabled: true,
+	headerWidgets: null,
 	createdAt: new Date(),
 	updatedAt: null,
 	draft: false,

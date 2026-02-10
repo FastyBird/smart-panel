@@ -1486,6 +1486,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get energy_empty_description => 'No energy monitoring devices found in this space';
 
   @override
+  String get energy_load_failed => 'Failed to load energy data';
+
+  @override
   String energy_device_count(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,

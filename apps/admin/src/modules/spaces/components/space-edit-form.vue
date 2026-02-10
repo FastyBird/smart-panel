@@ -146,7 +146,60 @@
 				</div>
 			</el-collapse-item>
 
-			<!-- 3. Smart Overrides Section -->
+			<!-- 3. Header Widgets Section -->
+			<el-collapse-item name="headerWidgets">
+				<template #title>
+					<div class="flex items-center gap-2">
+						<el-icon :size="20">
+							<icon icon="mdi:view-dashboard-variant" />
+						</el-icon>
+						<span class="font-medium">{{ t('spacesModule.edit.sections.headerWidgets.title') }}</span>
+					</div>
+				</template>
+
+				<div class="px-2">
+					<el-alert
+						:title="t('spacesModule.edit.sections.headerWidgets.hint')"
+						type="info"
+						:closable="false"
+						show-icon
+						class="!mb-4"
+					/>
+
+					<!-- Energy widget card -->
+					<div class="border border-solid border-gray-200 rounded-lg p-4 mb-2">
+						<div class="flex items-center justify-between mb-3">
+							<div class="flex items-center gap-2">
+								<icon icon="mdi:flash-outline" class="text-lg" />
+								<span class="font-medium">{{ t('spacesModule.fields.spaces.headerWidgets.energy.title') }}</span>
+							</div>
+							<el-switch
+								:model-value="isEnergyWidgetEnabled"
+								@change="onEnergyWidgetToggle"
+							/>
+						</div>
+
+						<template v-if="isEnergyWidgetEnabled">
+							<el-form-item :label="t('spacesModule.fields.spaces.headerWidgets.energy.range.title')">
+								<el-segmented
+									v-model="energyWidgetRange"
+									:options="energyRangeOptions"
+									block
+								/>
+							</el-form-item>
+
+							<el-form-item label-position="left">
+								<template #label>
+									{{ t('spacesModule.fields.spaces.headerWidgets.energy.showProduction.title') }}
+								</template>
+								<el-switch v-model="energyWidgetShowProduction" />
+							</el-form-item>
+						</template>
+					</div>
+				</div>
+			</el-collapse-item>
+
+			<!-- 4. Smart Overrides Section -->
 			<el-collapse-item name="smartOverrides">
 				<template #title>
 					<div class="flex items-center gap-2">
@@ -223,6 +276,7 @@ import {
 	ElInputNumber,
 	ElOption,
 	ElOptionGroup,
+	ElSegmented,
 	ElSelect,
 	ElSwitch,
 	ElTag,
@@ -234,7 +288,11 @@ import { useI18n } from 'vue-i18n';
 import { IconPicker } from '../../../common';
 import { useSpaceCategories, useSpaceEditForm, useSpaces } from '../composables';
 import {
+	ENERGY_WIDGET_DEFAULTS,
+	EnergyWidgetRange,
 	FormResult,
+	HeaderWidgetType,
+	type IHeaderWidget,
 	isValidCategoryForType,
 	type SpaceCategory,
 	SpaceType,
@@ -294,6 +352,68 @@ const { categoryOptions, categoryGroups, currentTemplates } = useSpaceCategories
 const availableZones = computed(() =>
 	zoneSpaces.value.filter((s) => !props.space || s.id !== props.space.id)
 );
+
+// --- Header Widgets: Energy ---
+
+const getEnergyWidget = (): IHeaderWidget | undefined => {
+	return model.headerWidgets?.find((w: IHeaderWidget) => w.type === HeaderWidgetType.ENERGY);
+};
+
+const isEnergyWidgetEnabled = computed(() => !!getEnergyWidget());
+
+const energyRangeOptions = computed(() => [
+	{ label: t('spacesModule.fields.spaces.headerWidgets.energy.range.options.today'), value: EnergyWidgetRange.TODAY },
+	{ label: t('spacesModule.fields.spaces.headerWidgets.energy.range.options.week'), value: EnergyWidgetRange.WEEK },
+	{ label: t('spacesModule.fields.spaces.headerWidgets.energy.range.options.month'), value: EnergyWidgetRange.MONTH },
+]);
+
+const energyWidgetRange = computed({
+	get: () => {
+		const widget = getEnergyWidget();
+		return (widget?.settings?.range as EnergyWidgetRange) ?? ENERGY_WIDGET_DEFAULTS.range;
+	},
+	set: (val: EnergyWidgetRange) => {
+		const widget = getEnergyWidget();
+		if (widget) {
+			widget.settings = { ...widget.settings, range: val };
+		}
+	},
+});
+
+const energyWidgetShowProduction = computed({
+	get: () => {
+		const widget = getEnergyWidget();
+		return (widget?.settings?.showProduction as boolean) ?? ENERGY_WIDGET_DEFAULTS.showProduction;
+	},
+	set: (val: boolean) => {
+		const widget = getEnergyWidget();
+		if (widget) {
+			widget.settings = { ...widget.settings, showProduction: val };
+		}
+	},
+});
+
+const onEnergyWidgetToggle = (enabled: boolean | string | number): void => {
+	if (enabled) {
+		const widgets = model.headerWidgets ?? [];
+		widgets.push({
+			type: HeaderWidgetType.ENERGY,
+			order: widgets.length,
+			settings: {
+				range: ENERGY_WIDGET_DEFAULTS.range,
+				showProduction: ENERGY_WIDGET_DEFAULTS.showProduction,
+			},
+		});
+		model.headerWidgets = widgets;
+	} else {
+		model.headerWidgets = (model.headerWidgets ?? []).filter(
+			(w: IHeaderWidget) => w.type !== HeaderWidgetType.ENERGY
+		);
+		if (model.headerWidgets.length === 0) {
+			model.headerWidgets = null;
+		}
+	}
+};
 
 // Handle type change - clear category if it becomes incompatible
 watch(

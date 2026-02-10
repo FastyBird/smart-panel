@@ -10,6 +10,7 @@ import { ASSIGNABLE_ZONE_CATEGORIES, SpaceCategory, SpaceType, SPACE_CATEGORY_TE
 import { SpacesApiException } from '../spaces.exceptions';
 import { canonicalizeSpaceName } from '../spaces.utils';
 import type { ISpace, ISpaceCreateData } from '../store';
+import { type ApiSpace, transformSpaceResponse } from '../store/spaces.transformers';
 
 interface ProposedSpace {
 	name: string;
@@ -298,6 +299,7 @@ export const useSpacesOnboarding = () => {
 				displayOrder: 0,
 				parentId: null,
 				suggestionsEnabled: true,
+				headerWidgets: null,
 				createdAt: new Date(),
 				updatedAt: null,
 				draft: true,
@@ -332,6 +334,7 @@ export const useSpacesOnboarding = () => {
 				displayOrder: 0,
 				parentId: null,
 				suggestionsEnabled: true,
+				headerWidgets: null,
 				createdAt: new Date(),
 				updatedAt: null,
 				draft: true,
@@ -395,20 +398,7 @@ export const useSpacesOnboarding = () => {
 					throw new SpacesApiException(`Failed to create space: ${draftSpace.name}`);
 				}
 
-				const space: ISpace = {
-					id: response.data.data.id,
-					name: response.data.data.name,
-					description: response.data.data.description ?? null,
-					type: apiTypeToSpaceType(response.data.data.type),
-					category: apiCategoryToSpaceCategory(response.data.data.category),
-					icon: response.data.data.icon ?? null,
-					displayOrder: response.data.data.display_order ?? 0,
-					parentId: response.data.data.parent_id ?? null,
-					suggestionsEnabled: response.data.data.suggestions_enabled ?? true,
-					createdAt: new Date(response.data.data.created_at),
-					updatedAt: response.data.data.updated_at ? new Date(response.data.data.updated_at) : null,
-					draft: false,
-				};
+				const space: ISpace = transformSpaceResponse(response.data.data as ApiSpace);
 
 				// Update device assignments to use the new space ID
 				for (const [deviceId, spaceId] of Object.entries(state.deviceAssignments)) {
@@ -473,20 +463,7 @@ export const useSpacesOnboarding = () => {
 				throw new SpacesApiException('Failed to create space');
 			}
 
-			const space: ISpace = {
-				id: response.data.data.id,
-				name: response.data.data.name,
-				description: response.data.data.description ?? null,
-				type: apiTypeToSpaceType(response.data.data.type),
-				category: apiCategoryToSpaceCategory(response.data.data.category),
-				icon: response.data.data.icon ?? null,
-				displayOrder: response.data.data.display_order ?? 0,
-				parentId: response.data.data.parent_id ?? null,
-				suggestionsEnabled: response.data.data.suggestions_enabled ?? true,
-				createdAt: new Date(response.data.data.created_at),
-				updatedAt: response.data.data.updated_at ? new Date(response.data.data.updated_at) : null,
-				draft: false,
-			};
+			const space: ISpace = transformSpaceResponse(response.data.data as ApiSpace);
 
 			state.spaces.push(space);
 
@@ -989,20 +966,7 @@ export const useSpacesOnboarding = () => {
 				throw new SpacesApiException('Failed to fetch spaces');
 			}
 
-			const spaces: ISpace[] = response.data.data.map((s) => ({
-				id: s.id,
-				name: s.name,
-				description: s.description ?? null,
-				type: apiTypeToSpaceType(s.type),
-				category: apiCategoryToSpaceCategory(s.category),
-				icon: s.icon ?? null,
-				displayOrder: s.display_order ?? 0,
-				parentId: s.parent_id ?? null,
-				suggestionsEnabled: s.suggestions_enabled ?? true,
-				createdAt: new Date(s.created_at),
-				updatedAt: s.updated_at ? new Date(s.updated_at) : null,
-				draft: false,
-			}));
+			const spaces: ISpace[] = response.data.data.map((s) => transformSpaceResponse(s as ApiSpace));
 
 			state.existingSpaces = spaces;
 
