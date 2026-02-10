@@ -32,10 +32,11 @@ class _DeckModePopupOverlay extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isLandscape =
         MediaQuery.of(context).orientation == Orientation.landscape;
-    final screenHeight = MediaQuery.of(context).size.height;
 
-    // Position relative to the trigger widget when available, otherwise
-    // fall back to reasonable defaults.
+    // Landscape: anchor below the trigger widget (DeckModeChip passes its
+    // own context so triggerRect is accurate).
+    // Portrait: use a fixed offset above the bottom nav bar because the
+    // caller's context covers the full body, not the mode button.
     final alignment =
         isLandscape ? Alignment.topRight : Alignment.bottomRight;
     final padding = isLandscape
@@ -46,9 +47,7 @@ class _DeckModePopupOverlay extends StatelessWidget {
             right: AppSpacings.pMd,
           )
         : EdgeInsets.only(
-            bottom: triggerRect != null
-                ? screenHeight - triggerRect!.top + AppSpacings.pSm
-                : AppSpacings.scale(68),
+            bottom: AppSpacings.scale(68),
             right: AppSpacings.pMd,
           );
 
