@@ -1492,6 +1492,9 @@ class AppLocalizationsCs extends AppLocalizations {
   String get energy_empty_description => 'V tomto prostoru nejsou žádná zařízení pro monitoring energie';
 
   @override
+  String get energy_load_failed => 'Nepodařilo se načíst data o energii';
+
+  @override
   String energy_device_count(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,

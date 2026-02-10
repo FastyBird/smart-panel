@@ -2789,6 +2789,12 @@ abstract class AppLocalizations {
   /// **'No energy monitoring devices found in this space'**
   String get energy_empty_description;
 
+  /// Message shown when energy data fetch fails due to network or server error
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load energy data'**
+  String get energy_load_failed;
+
   /// Count of energy devices
   ///
   /// In en, this message translates to:
