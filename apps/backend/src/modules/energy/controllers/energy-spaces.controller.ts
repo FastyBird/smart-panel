@@ -62,7 +62,8 @@ export class EnergySpacesController {
 		model.totalConsumptionKwh = summary.totalConsumptionKwh;
 		model.totalProductionKwh = summary.totalProductionKwh;
 		model.netKwh = summary.netKwh;
-		model.range = range || 'today';
+		const validRanges = ['today', 'yesterday', 'week', 'month'];
+		model.range = range && validRanges.includes(range) ? range : 'today';
 		model.lastUpdatedAt = summary.lastUpdatedAt;
 
 		const response = new EnergySpaceSummaryResponseModel();
