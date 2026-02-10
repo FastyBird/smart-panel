@@ -1474,7 +1474,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
         return HorizontalScrollWithGradient(
           height: tileSize,
-          layoutPadding: AppSpacings.pLg,
+          layoutPadding: AppSpacings.pMd,
           itemCount: roles.length,
           separatorWidth: AppSpacings.pMd,
           itemBuilder: (context, index) {
@@ -1536,7 +1536,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
         return HorizontalScrollWithGradient(
           height: tileSize,
-          layoutPadding: AppSpacings.pLg,
+          layoutPadding: AppSpacings.pMd,
           itemCount: lights.length,
           separatorWidth: AppSpacings.pMd,
           itemBuilder: (context, index) {
