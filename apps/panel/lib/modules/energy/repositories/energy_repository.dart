@@ -90,22 +90,34 @@ class EnergyRepository extends ChangeNotifier {
 	// ---------------------------------------------------------------------------
 
 	/// Fetches all energy data for the given space and current range.
+	///
+	/// Guards against stale responses: if the selected range changes while
+	/// a fetch is in-flight (e.g. rapid range taps), the outdated result is
+	/// discarded so the UI always reflects the latest selection.
 	Future<void> fetchData(String spaceId) async {
+		final rangeAtStart = _selectedRange;
+
 		_state = EnergyDataState.loading;
 		notifyListeners();
 
 		try {
 			final results = await Future.wait([
-				_service.fetchSummary(spaceId, _selectedRange),
-				_service.fetchTimeseries(spaceId, _selectedRange),
-				_service.fetchBreakdown(spaceId, _selectedRange, limit: 10),
+				_service.fetchSummary(spaceId, rangeAtStart),
+				_service.fetchTimeseries(spaceId, rangeAtStart),
+				_service.fetchBreakdown(spaceId, rangeAtStart, limit: 10),
 			]);
+
+			// Discard if the range changed while we were awaiting.
+			if (_selectedRange != rangeAtStart) return;
 
 			_summary = results[0] as EnergySummary?;
 			_timeseries = results[1] as EnergyTimeseries?;
 			_breakdown = results[2] as EnergyBreakdown?;
 			_state = EnergyDataState.loaded;
 		} catch (e) {
+			// Discard errors for a range that is no longer selected.
+			if (_selectedRange != rangeAtStart) return;
+
 			if (kDebugMode) {
 				debugPrint('[ENERGY REPOSITORY] Error fetching data: $e');
 			}

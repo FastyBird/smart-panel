@@ -420,6 +420,7 @@
   "energy_unit_kwh": "kWh",
   "energy_empty_title": "Žádná data o energii",
   "energy_empty_description": "V tomto prostoru nejsou žádná zařízení pro monitoring energie",
+  "energy_load_failed": "Nepodařilo se načíst data o energii",
   "energy_device_count": "{count, plural, =1{1 zařízení} few{{count} zařízení} other{{count} zařízení}}",
   "device_category_lighting": "Osvětlení",
   "device_category_climate": "Klima",

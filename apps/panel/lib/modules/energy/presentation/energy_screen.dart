@@ -827,7 +827,7 @@ class _EnergyScreenState extends State<EnergyScreen> {
 				spacing: AppSpacings.pMd,
 				children: [
 					Text(
-						localizations.energy_empty_title,
+						localizations.energy_load_failed,
 						style: TextStyle(
 							fontSize: AppFontSize.base,
 							color: isDark
