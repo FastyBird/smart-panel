@@ -1,4 +1,5 @@
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/deck_service.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/domain_type.dart';
@@ -41,6 +42,7 @@ class _DeckMoreSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final localizations = AppLocalizations.of(context)!;
     final deckService = context.read<DeckService>();
     final items = deckService.items;
 
@@ -70,7 +72,7 @@ class _DeckMoreSheet extends StatelessWidget {
           Padding(
             padding: EdgeInsets.all(AppSpacings.pLg),
             child: Text(
-              'All Pages',
+              localizations.deck_all_pages,
               style: TextStyle(
                 fontSize: AppFontSize.large,
                 fontWeight: FontWeight.w600,
@@ -108,7 +110,7 @@ class _DeckMoreSheet extends StatelessWidget {
     final IconData icon;
 
     if (item is SystemViewItem) {
-      label = 'Home';
+      label = AppLocalizations.of(context)!.system_view_master;
       icon = MdiIcons.home;
     } else if (item is DomainViewItem) {
       label = item.domainType.label;

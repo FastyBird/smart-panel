@@ -1306,6 +1306,9 @@ class AppLocalizationsCs extends AppLocalizations {
   String get deck_nav_more => 'Více';
 
   @override
+  String get deck_all_pages => 'Všechny stránky';
+
+  @override
   String get system_view_entry => 'Vstup';
 
   @override

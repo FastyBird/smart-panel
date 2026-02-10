@@ -1698,6 +1698,10 @@
   "@deck_nav_more": {
     "description": "Label for the more/dashboard pages button in deck navigation"
   },
+  "deck_all_pages": "All Pages",
+  "@deck_all_pages": {
+    "description": "Title for the more sheet listing all navigable pages"
+  },
   "system_view_entry": "Entry",
   "@system_view_entry": {
     "description": "Title for entry system view in deck navigation"

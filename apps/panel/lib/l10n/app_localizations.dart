@@ -2447,6 +2447,12 @@ abstract class AppLocalizations {
   /// **'More'**
   String get deck_nav_more;
 
+  /// Title for the more sheet listing all navigable pages
+  ///
+  /// In en, this message translates to:
+  /// **'All Pages'**
+  String get deck_all_pages;
+
   /// Title for entry system view in deck navigation
   ///
   /// In en, this message translates to:
