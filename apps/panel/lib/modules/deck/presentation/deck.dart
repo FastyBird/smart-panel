@@ -230,6 +230,17 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen>
             builder: (context, orientation) {
               final isPortrait = orientation == Orientation.portrait;
 
+              // After orientation change the PageView is re-parented
+              // (Column ↔ Row), causing Flutter to remount it. The new
+              // ScrollPosition uses PageController.initialPage (start index)
+              // instead of the current page, so we restore it here.
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                if (_pageController?.hasClients == true &&
+                    _pageController!.page?.round() != _currentIndex) {
+                  _pageController!.jumpToPage(_currentIndex);
+                }
+              });
+
               final pageView = FadeTransition(
                 opacity: _fadeController,
                 child: PageView.builder(
