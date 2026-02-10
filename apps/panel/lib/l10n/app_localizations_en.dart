@@ -1292,6 +1292,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get system_view_master => 'Home';
 
   @override
+  String get deck_nav_more => 'More';
+
+  @override
   String get system_view_entry => 'Entry';
 
   @override

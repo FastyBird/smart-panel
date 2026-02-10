@@ -2441,6 +2441,12 @@ abstract class AppLocalizations {
   /// **'Home'**
   String get system_view_master;
 
+  /// Label for the more/dashboard pages button in deck navigation
+  ///
+  /// In en, this message translates to:
+  /// **'More'**
+  String get deck_nav_more;
+
   /// Title for entry system view in deck navigation
   ///
   /// In en, this message translates to:

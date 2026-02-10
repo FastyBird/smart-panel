@@ -1,6 +1,7 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/bottom_nav_mode_config.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/bottom_nav_mode_notifier.dart';
@@ -80,6 +81,7 @@ class _DeckBottomNavBarState extends State<DeckBottomNavBar> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final localizations = AppLocalizations.of(context)!;
     final deckService = context.watch<DeckService>();
     final modeNotifier = context.watch<BottomNavModeNotifier>();
 
@@ -95,7 +97,7 @@ class _DeckBottomNavBarState extends State<DeckBottomNavBar> {
     for (int i = 0; i < items.length; i++) {
       final item = items[i];
       if (item is SystemViewItem) {
-        homeTab = _TabData(icon: MdiIcons.home, label: 'Home', pageIndex: i);
+        homeTab = _TabData(icon: MdiIcons.home, label: localizations.system_view_master, pageIndex: i);
       } else if (item is DomainViewItem) {
         scrollableTabs.add(_TabData(
           icon: item.domainType.icon,
@@ -116,7 +118,7 @@ class _DeckBottomNavBarState extends State<DeckBottomNavBar> {
           items[widget.currentIndex] is DashboardPageItem;
       scrollableTabs.add(_TabData(
         icon: MdiIcons.dotsHorizontal,
-        label: 'More',
+        label: localizations.deck_nav_more,
         pageIndex: -1,
         isMore: true,
         isMoreActive: isDashboardActive,

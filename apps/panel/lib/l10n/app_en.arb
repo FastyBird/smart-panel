@@ -1694,6 +1694,10 @@
   "@system_view_master": {
     "description": "Title for master/home system view in deck navigation"
   },
+  "deck_nav_more": "More",
+  "@deck_nav_more": {
+    "description": "Label for the more/dashboard pages button in deck navigation"
+  },
   "system_view_entry": "Entry",
   "@system_view_entry": {
     "description": "Title for entry system view in deck navigation"

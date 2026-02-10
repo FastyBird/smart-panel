@@ -1,6 +1,7 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/deck_service.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/domain_type.dart';
@@ -80,13 +81,14 @@ class _DeckSideDockState extends State<DeckSideDock> {
     final hasDashboardPages = dashboardPages.isNotEmpty;
 
     // Build tab data (same logic as DeckBottomNavBar)
+    final localizations = AppLocalizations.of(context)!;
     _TabData? homeTab;
     final scrollableTabs = <_TabData>[];
 
     for (int i = 0; i < items.length; i++) {
       final item = items[i];
       if (item is SystemViewItem) {
-        homeTab = _TabData(icon: MdiIcons.home, label: 'Home', pageIndex: i);
+        homeTab = _TabData(icon: MdiIcons.home, label: localizations.system_view_master, pageIndex: i);
       } else if (item is DomainViewItem) {
         scrollableTabs.add(_TabData(
           icon: item.domainType.icon,
@@ -107,7 +109,7 @@ class _DeckSideDockState extends State<DeckSideDock> {
           items[widget.currentIndex] is DashboardPageItem;
       scrollableTabs.add(_TabData(
         icon: MdiIcons.dotsHorizontal,
-        label: 'More',
+        label: localizations.deck_nav_more,
         pageIndex: -1,
         isMore: true,
         isMoreActive: isDashboardActive,

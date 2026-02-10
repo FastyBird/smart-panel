@@ -1303,6 +1303,9 @@ class AppLocalizationsCs extends AppLocalizations {
   String get system_view_master => 'Domov';
 
   @override
+  String get deck_nav_more => 'Více';
+
+  @override
   String get system_view_entry => 'Vstup';
 
   @override
