@@ -10,6 +10,7 @@ import { EnergySourceType } from '../energy.constants';
 @Entity('energy_module_deltas')
 @Unique('UQ_energy_deltas_device_source_interval', ['deviceId', 'sourceType', 'intervalStart'])
 @Index('IDX_energy_deltas_room_interval', ['roomId', 'sourceType', 'intervalStart'])
+@Index('IDX_energy_deltas_device_interval', ['deviceId', 'intervalStart'])
 export class EnergyDeltaEntity {
 	@ApiProperty({
 		description: 'Unique identifier for the energy delta record.',

@@ -7,6 +7,7 @@ import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../swagger/swagger.module';
 
+import { EnergySpacesController } from './controllers/energy-spaces.controller';
 import { EnergyController } from './controllers/energy.controller';
 import { ENERGY_MODULE_API_TAG_DESCRIPTION, ENERGY_MODULE_API_TAG_NAME, ENERGY_MODULE_NAME } from './energy.constants';
 import { ENERGY_SWAGGER_EXTRA_MODELS } from './energy.openapi';
@@ -23,7 +24,7 @@ import { EnergyDataService } from './services/energy-data.service';
 @Module({
 	imports: [TypeOrmModule.forFeature([EnergyDeltaEntity, ChannelEntity]), SwaggerModule],
 	providers: [DeltaComputationService, EnergyDataService, EnergyIngestionListener],
-	controllers: [EnergyController],
+	controllers: [EnergyController, EnergySpacesController],
 	exports: [EnergyDataService],
 })
 export class EnergyModule implements OnModuleInit {
