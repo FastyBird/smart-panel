@@ -10,6 +10,7 @@ import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../device
 import { ENERGY_MODULE_NAME, EnergySourceType } from '../energy.constants';
 import { DeltaComputationService } from '../services/delta-computation.service';
 import { EnergyDataService } from '../services/energy-data.service';
+import { EnergyMetricsService } from '../services/energy-metrics.service';
 
 /**
  * Maps channel category + property category to an EnergySourceType.
@@ -40,6 +41,7 @@ export class EnergyIngestionListener implements OnModuleInit {
 		private readonly channelRepository: Repository<ChannelEntity>,
 		private readonly deltaComputation: DeltaComputationService,
 		private readonly energyData: EnergyDataService,
+		private readonly metrics: EnergyMetricsService,
 	) {}
 
 	onModuleInit(): void {
@@ -121,12 +123,16 @@ export class EnergyIngestionListener implements OnModuleInit {
 			}
 		}
 
+		this.metrics.recordSampleProcessed();
+
 		// Compute delta from cumulative reading
 		const delta = this.deltaComputation.computeDelta(deviceId, mapping.sourceType, numericValue, timestamp);
 
 		if (!delta) {
 			return;
 		}
+
+		this.metrics.recordDeltaCreated();
 
 		// Persist the delta
 		await this.energyData.saveDelta({

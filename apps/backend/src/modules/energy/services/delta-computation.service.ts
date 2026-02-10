@@ -3,6 +3,8 @@ import { Injectable } from '@nestjs/common';
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { DELTA_INTERVAL_MINUTES, ENERGY_MODULE_NAME, EnergySourceType } from '../energy.constants';
 
+import { EnergyMetricsService } from './energy-metrics.service';
+
 /**
  * Result of a delta computation.
  * `null` means no delta could be computed (first sample or unknown reset).
@@ -18,6 +20,7 @@ export interface DeltaResult {
  */
 interface BaselineState {
 	cumulativeKwh: number;
+	lastTimestamp: Date;
 }
 
 /**
@@ -39,6 +42,8 @@ export class DeltaComputationService {
 	 */
 	private baselines = new Map<string, BaselineState>();
 
+	constructor(private readonly metrics: EnergyMetricsService) {}
+
 	/**
 	 * Process a new cumulative kWh reading and return a delta if computable.
 	 *
@@ -57,11 +62,21 @@ export class DeltaComputationService {
 		const key = `${deviceId}:${sourceType}`;
 		const prev = this.baselines.get(key);
 
+		// Check for out-of-order samples before updating baseline
+		if (prev && timestamp < prev.lastTimestamp) {
+			this.logger.warn(
+				`Out-of-order sample for ${key}: received=${timestamp.toISOString()}, lastSeen=${prev.lastTimestamp.toISOString()}. Skipping.`,
+			);
+			this.metrics.recordOutOfOrder();
+			return null;
+		}
+
 		// Always update baseline to the latest reading
-		this.baselines.set(key, { cumulativeKwh });
+		this.baselines.set(key, { cumulativeKwh, lastTimestamp: timestamp });
 
 		if (!prev) {
 			this.logger.debug(`First reading for ${key}: ${cumulativeKwh} kWh — storing baseline, no delta`);
+			this.metrics.recordFirstSample();
 			return null;
 		}
 
@@ -73,8 +88,9 @@ export class DeltaComputationService {
 		} else {
 			// Value decreased — meter reset
 			this.logger.warn(
-				`Meter reset detected for ${key}: prev=${prev.cumulativeKwh}, new=${cumulativeKwh}. Using new value as delta.`,
+				`Meter reset detected for ${key}: prev=${prev.cumulativeKwh}, new=${cumulativeKwh}, reset_behavior=treat_as_reset. Using new value as delta.`,
 			);
+			this.metrics.recordNegativeDelta();
 			deltaKwh = cumulativeKwh;
 		}
 
