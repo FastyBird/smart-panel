@@ -6,6 +6,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { DELTA_INTERVAL_MINUTES, ENERGY_MODULE_NAME, EnergySourceType } from '../energy.constants';
 import { EnergyDeltaEntity } from '../entities/energy-delta.entity';
+import { getLocalMidnight, getLocalMidnightDaysAgo } from '../helpers/energy-range.helper';
 
 export interface EnergySummary {
 	totalConsumptionKwh: number;
@@ -289,7 +290,6 @@ export class EnergyDataService {
 		// Determine the strftime format for bucketing and interval size
 		let strftimeFmt: string;
 		let intervalMs: number;
-		const dayMs = 24 * 60 * 60 * 1000;
 
 		switch (interval) {
 			case '1h':
@@ -297,10 +297,10 @@ export class EnergyDataService {
 				intervalMs = 60 * 60 * 1000;
 				break;
 			case '1d':
-				// For 1d, we bucket relative to rangeStart in JS (not via strftime)
-				// to align day boundaries with Europe/Prague midnight.
+				// For 1d, bucketing uses actual Prague midnights via getLocalMidnight/getLocalMidnightDaysAgo
+				// to handle DST transitions correctly (days can be 23h or 25h).
 				strftimeFmt = '';
-				intervalMs = dayMs;
+				intervalMs = 0; // Not used; 1d has its own loop
 				break;
 			case '5m':
 			default:
@@ -344,11 +344,8 @@ export class EnergyDataService {
 			let key: string;
 
 			if (interval === '1d') {
-				// Compute which day bucket this row belongs to, relative to rangeStart
-				const rowMs = new Date(row.bucket).getTime();
-				const dayIndex = Math.floor((rowMs - rangeStartMs) / dayMs);
-				const dayBucketMs = rangeStartMs + dayIndex * dayMs;
-				key = new Date(dayBucketMs).toISOString();
+				// Compute Prague-midnight for this row's date to handle DST correctly
+				key = getLocalMidnight(new Date(row.bucket)).toISOString();
 			} else {
 				key = row.bucket;
 			}
@@ -370,33 +367,52 @@ export class EnergyDataService {
 		}
 
 		// Generate zero-filled points for the full range.
-		// For 5m and 1h, align to interval boundaries.
-		// For 1d, start from rangeStart which is already Prague-midnight-aligned.
 		const points: TimeseriesPoint[] = [];
-		const loopStartMs = interval === '1d' ? rangeStartMs : Math.floor(rangeStartMs / intervalMs) * intervalMs;
 		const rangeEndMs = rangeEnd.getTime();
 
-		for (let ts = loopStartMs; ts < rangeEndMs; ts += intervalMs) {
-			const bucketStart = new Date(ts);
-			const bucketEnd = new Date(ts + intervalMs);
-			let key: string;
+		if (interval === '1d') {
+			// Compute day boundaries using actual Prague midnights to handle DST correctly.
+			// Days during DST transitions are 23h (spring-forward) or 25h (fall-back).
+			const dayBoundaries: Date[] = [];
+			let current = new Date(rangeStartMs);
 
-			if (interval === '1d') {
-				key = bucketStart.toISOString();
-			} else if (interval === '5m' || strftimeFmt === '') {
-				key = bucketStart.toISOString();
-			} else {
-				key = this.formatBucketKey(bucketStart, interval);
+			while (current.getTime() < rangeEndMs) {
+				dayBoundaries.push(current);
+				current = getLocalMidnightDaysAgo(current, -1);
 			}
 
-			const data = bucketMap.get(key);
+			dayBoundaries.push(current); // end boundary for last bucket
 
-			points.push({
-				intervalStart: bucketStart.toISOString(),
-				intervalEnd: bucketEnd.toISOString(),
-				consumptionDeltaKwh: data?.consumptionDeltaKwh ?? 0,
-				productionDeltaKwh: data?.productionDeltaKwh ?? 0,
-			});
+			for (let i = 0; i < dayBoundaries.length - 1; i++) {
+				const bucketStart = dayBoundaries[i];
+				const bucketEnd = dayBoundaries[i + 1];
+				const key = bucketStart.toISOString();
+				const data = bucketMap.get(key);
+
+				points.push({
+					intervalStart: bucketStart.toISOString(),
+					intervalEnd: bucketEnd.toISOString(),
+					consumptionDeltaKwh: data?.consumptionDeltaKwh ?? 0,
+					productionDeltaKwh: data?.productionDeltaKwh ?? 0,
+				});
+			}
+		} else {
+			// For 5m and 1h, align to fixed interval boundaries.
+			const loopStartMs = Math.floor(rangeStartMs / intervalMs) * intervalMs;
+
+			for (let ts = loopStartMs; ts < rangeEndMs; ts += intervalMs) {
+				const bucketStart = new Date(ts);
+				const bucketEnd = new Date(ts + intervalMs);
+				const key = strftimeFmt === '' ? bucketStart.toISOString() : this.formatBucketKey(bucketStart, interval);
+				const data = bucketMap.get(key);
+
+				points.push({
+					intervalStart: bucketStart.toISOString(),
+					intervalEnd: bucketEnd.toISOString(),
+					consumptionDeltaKwh: data?.consumptionDeltaKwh ?? 0,
+					productionDeltaKwh: data?.productionDeltaKwh ?? 0,
+				});
+			}
 		}
 
 		return points;

@@ -24,7 +24,7 @@ export interface DateRange {
  * server's local timezone. The offset is computed by formatting the candidate
  * UTC instant back into Europe/Prague and comparing the hour/minute.
  */
-function getLocalMidnight(date: Date): Date {
+export function getLocalMidnight(date: Date): Date {
 	const formatter = new Intl.DateTimeFormat('en-US', {
 		timeZone: TIMEZONE,
 		year: 'numeric',
@@ -85,7 +85,7 @@ function getLocalMidnight(date: Date): Date {
  * this subtracts calendar days from the local date representation and then
  * re-derives midnight for the resulting date.
  */
-function getLocalMidnightDaysAgo(date: Date, daysAgo: number): Date {
+export function getLocalMidnightDaysAgo(date: Date, daysAgo: number): Date {
 	const formatter = new Intl.DateTimeFormat('en-US', {
 		timeZone: TIMEZONE,
 		year: 'numeric',
