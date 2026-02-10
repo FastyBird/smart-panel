@@ -63,6 +63,20 @@ void main() {
         expect(widget, isA<MediaDomainViewPage>());
         expect((widget as MediaDomainViewPage).viewItem, domainViewItem);
       });
+      test('should route energy domain to EnergyDomainViewPage', () {
+        final domainViewItem = DomainViewItem(
+          id: 'domain-energy-room123',
+          domainType: DomainType.energy,
+          roomId: 'room123',
+          title: 'Energy',
+          deviceCount: 3,
+        );
+
+        final widget = buildDeckItemWidget(domainViewItem);
+
+        expect(widget, isA<EnergyDomainViewPage>());
+        expect((widget as EnergyDomainViewPage).viewItem, domainViewItem);
+      });
     });
 
     group('DomainViewItem ID generation', () {

@@ -200,12 +200,13 @@ void main() {
           ],
         ));
 
-        // Order should be: room overview, lights, climate, media, sensors
-        expect(result.items.length, 5);
+        // Order should be: room overview, lights, climate, media, sensors, energy
+        expect(result.items.length, 6);
         expect((result.items[1] as DomainViewItem).domainType, DomainType.lights);
         expect((result.items[2] as DomainViewItem).domainType, DomainType.climate);
         expect((result.items[3] as DomainViewItem).domainType, DomainType.media);
         expect((result.items[4] as DomainViewItem).domainType, DomainType.sensors);
+        expect((result.items[5] as DomainViewItem).domainType, DomainType.energy);
       });
 
       test('should handle empty device categories', () {

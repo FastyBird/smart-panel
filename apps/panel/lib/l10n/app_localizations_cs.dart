@@ -1453,6 +1453,56 @@ class AppLocalizationsCs extends AppLocalizations {
   String get domain_sensors => 'Senzory';
 
   @override
+  String get domain_energy => 'Energie';
+
+  @override
+  String get energy_consumption => 'Spotřeba';
+
+  @override
+  String get energy_production => 'Výroba';
+
+  @override
+  String get energy_net => 'Čistá';
+
+  @override
+  String get energy_range_today => 'Dnes';
+
+  @override
+  String get energy_range_week => 'Týden';
+
+  @override
+  String get energy_range_month => 'Měsíc';
+
+  @override
+  String get energy_top_consumers => 'Největší spotřebitelé';
+
+  @override
+  String get energy_chart_title => 'Spotřeba v čase';
+
+  @override
+  String get energy_summary_title => 'Přehled';
+
+  @override
+  String get energy_unit_kwh => 'kWh';
+
+  @override
+  String get energy_empty_title => 'Žádná data o energii';
+
+  @override
+  String get energy_empty_description => 'V tomto prostoru nejsou žádná zařízení pro monitoring energie';
+
+  @override
+  String energy_device_count(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count zařízení',
+      one: '1 zařízení',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get device_category_lighting => 'Osvětlení';
 
   @override

@@ -216,12 +216,13 @@ void main() {
 
       final present = counts.presentDomains;
 
-      // Should be in order: lights (0), climate (1), shading (2), media (3), sensors (4)
+      // Should be in order: lights (0), climate (1), shading (2), media (3), sensors (4), energy (5)
       expect(present[0], DomainType.lights);
       expect(present[1], DomainType.climate);
       expect(present[2], DomainType.shading);
       expect(present[3], DomainType.media);
       expect(present[4], DomainType.sensors);
+      expect(present[5], DomainType.energy);
     });
 
     test('total should sum all counts', () {

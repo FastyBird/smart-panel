@@ -1441,6 +1441,56 @@ class AppLocalizationsEn extends AppLocalizations {
   String get domain_sensors => 'Sensors';
 
   @override
+  String get domain_energy => 'Energy';
+
+  @override
+  String get energy_consumption => 'Consumption';
+
+  @override
+  String get energy_production => 'Production';
+
+  @override
+  String get energy_net => 'Net';
+
+  @override
+  String get energy_range_today => 'Today';
+
+  @override
+  String get energy_range_week => 'Week';
+
+  @override
+  String get energy_range_month => 'Month';
+
+  @override
+  String get energy_top_consumers => 'Top Consumers';
+
+  @override
+  String get energy_chart_title => 'Usage Over Time';
+
+  @override
+  String get energy_summary_title => 'Summary';
+
+  @override
+  String get energy_unit_kwh => 'kWh';
+
+  @override
+  String get energy_empty_title => 'No Energy Data';
+
+  @override
+  String get energy_empty_description => 'No energy monitoring devices found in this space';
+
+  @override
+  String energy_device_count(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count devices',
+      one: '1 device',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get device_category_lighting => 'Lights';
 
   @override

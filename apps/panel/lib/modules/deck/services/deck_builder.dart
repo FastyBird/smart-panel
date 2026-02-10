@@ -38,6 +38,9 @@ class DeckBuildInput {
   /// Localized title for sensors domain view.
   final String sensorsViewTitle;
 
+  /// Localized title for energy domain view.
+  final String energyViewTitle;
+
   /// Localized title for security view.
   final String securityViewTitle;
 
@@ -52,6 +55,7 @@ class DeckBuildInput {
     this.climateViewTitle = 'Climate',
     this.mediaViewTitle = 'Media',
     this.sensorsViewTitle = 'Sensors',
+    this.energyViewTitle = 'Energy',
     this.securityViewTitle = 'Security',
   });
 }
@@ -83,6 +87,7 @@ DeckResult buildDeck(DeckBuildInput input) {
     climateViewTitle: input.climateViewTitle,
     mediaViewTitle: input.mediaViewTitle,
     sensorsViewTitle: input.sensorsViewTitle,
+    energyViewTitle: input.energyViewTitle,
   );
 
   final systemViewsResult = buildSystemViews(systemViewsInput);

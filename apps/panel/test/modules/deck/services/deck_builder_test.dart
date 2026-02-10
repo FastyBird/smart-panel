@@ -591,6 +591,10 @@ void main() {
         DomainViewItem.generateId(DomainType.sensors, 'r1'),
         'domain-sensors-r1',
       );
+      expect(
+        DomainViewItem.generateId(DomainType.energy, 'r1'),
+        'domain-energy-r1',
+      );
     });
   });
 }

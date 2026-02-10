@@ -2711,6 +2711,90 @@ abstract class AppLocalizations {
   /// **'Sensors'**
   String get domain_sensors;
 
+  /// Title for energy domain view in room navigation
+  ///
+  /// In en, this message translates to:
+  /// **'Energy'**
+  String get domain_energy;
+
+  /// Label for energy consumption
+  ///
+  /// In en, this message translates to:
+  /// **'Consumption'**
+  String get energy_consumption;
+
+  /// Label for energy production
+  ///
+  /// In en, this message translates to:
+  /// **'Production'**
+  String get energy_production;
+
+  /// Label for net energy (consumption minus production)
+  ///
+  /// In en, this message translates to:
+  /// **'Net'**
+  String get energy_net;
+
+  /// Label for today energy range
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get energy_range_today;
+
+  /// Label for week energy range
+  ///
+  /// In en, this message translates to:
+  /// **'Week'**
+  String get energy_range_week;
+
+  /// Label for month energy range
+  ///
+  /// In en, this message translates to:
+  /// **'Month'**
+  String get energy_range_month;
+
+  /// Section title for top energy consuming devices
+  ///
+  /// In en, this message translates to:
+  /// **'Top Consumers'**
+  String get energy_top_consumers;
+
+  /// Section title for energy timeseries chart
+  ///
+  /// In en, this message translates to:
+  /// **'Usage Over Time'**
+  String get energy_chart_title;
+
+  /// Section title for energy summary
+  ///
+  /// In en, this message translates to:
+  /// **'Summary'**
+  String get energy_summary_title;
+
+  /// Unit label for kilowatt-hours
+  ///
+  /// In en, this message translates to:
+  /// **'kWh'**
+  String get energy_unit_kwh;
+
+  /// Title shown when no energy data is available
+  ///
+  /// In en, this message translates to:
+  /// **'No Energy Data'**
+  String get energy_empty_title;
+
+  /// Description shown when no energy data is available
+  ///
+  /// In en, this message translates to:
+  /// **'No energy monitoring devices found in this space'**
+  String get energy_empty_description;
+
+  /// Count of energy devices
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 device} other{{count} devices}}'**
+  String energy_device_count(int count);
+
   /// Label for lighting device category
   ///
   /// In en, this message translates to:
