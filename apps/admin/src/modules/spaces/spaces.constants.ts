@@ -493,6 +493,32 @@ export const SENSOR_ROLE_ORDER: SensorRole[] = [
 
 export { DevicesModuleDeviceCategory as DeviceCategory } from '../../openapi.constants';
 
+export enum HeaderWidgetType {
+	ENERGY = 'energy',
+}
+
+export enum EnergyWidgetRange {
+	TODAY = 'today',
+	WEEK = 'week',
+	MONTH = 'month',
+}
+
+export interface IHeaderWidget {
+	type: string;
+	order: number;
+	settings: Record<string, unknown>;
+}
+
+export interface IEnergyWidgetSettings {
+	range: EnergyWidgetRange;
+	showProduction: boolean;
+}
+
+export const ENERGY_WIDGET_DEFAULTS: IEnergyWidgetSettings = {
+	range: EnergyWidgetRange.TODAY,
+	showProduction: true,
+};
+
 export enum FormResult {
 	NONE = 'none',
 	WORKING = 'working',
