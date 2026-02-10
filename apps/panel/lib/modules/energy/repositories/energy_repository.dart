@@ -126,16 +126,4 @@ class EnergyRepository extends ChangeNotifier {
 
 		await fetchData(spaceId);
 	}
-
-	/// Refreshes the header summary (today only).
-	Future<void> refreshHeaderSummary(String spaceId) async {
-		try {
-			_headerSummary = await _service.fetchSummary(spaceId, EnergyRange.today);
-			notifyListeners();
-		} catch (e) {
-			if (kDebugMode) {
-				debugPrint('[ENERGY REPOSITORY] Error refreshing header summary: $e');
-			}
-		}
-	}
 }

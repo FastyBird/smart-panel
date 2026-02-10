@@ -36,6 +36,7 @@ class EnergyModuleService {
 	}
 
 	void dispose() {
-		_repository.dispose();
+		// Repository disposal is handled by startup_manager cleanup,
+		// not here — mirroring SecurityModuleService pattern.
 	}
 }

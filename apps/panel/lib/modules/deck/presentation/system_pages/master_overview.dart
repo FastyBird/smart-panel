@@ -7,6 +7,7 @@ import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
 import 'package:fastybird_smart_panel/modules/devices/export.dart';
+import 'package:fastybird_smart_panel/modules/energy/repositories/energy_repository.dart';
 import 'package:fastybird_smart_panel/modules/energy/widgets/energy_header_widget.dart';
 import 'package:fastybird_smart_panel/modules/scenes/export.dart';
 import 'package:fastybird_smart_panel/modules/spaces/export.dart';
@@ -347,8 +348,11 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
     }
 
     // Energy header widget (whole-installation)
-    badges.add(AppSpacings.spacingSmHorizontal);
-    badges.add(const EnergyHeaderWidget());
+    if (locator.isRegistered<EnergyRepository>() &&
+        locator<EnergyRepository>().isSupported) {
+      badges.add(AppSpacings.spacingSmHorizontal);
+      badges.add(const EnergyHeaderWidget());
+    }
 
     return badges;
   }
