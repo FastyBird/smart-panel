@@ -9,8 +9,6 @@
 
 const TIMEZONE = 'Europe/Prague';
 
-export type EnergyRange = 'today' | 'yesterday' | 'week' | 'month';
-
 export interface DateRange {
 	start: Date;
 	end: Date;
