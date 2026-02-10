@@ -431,6 +431,11 @@ class StartupManagerService {
         locator.unregister<EnergyRepository>();
       } catch (_) {}
     }
+    if (locator.isRegistered<EnergyService>()) {
+      try {
+        locator.unregister<EnergyService>();
+      } catch (_) {}
+    }
     if (locator.isRegistered<WeatherModuleService>()) {
       try {
         final module = locator<WeatherModuleService>();

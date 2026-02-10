@@ -65,14 +65,8 @@ class EnergyRepository extends ChangeNotifier {
 			final summary = await _service.fetchSummary(spaceId, EnergyRange.today);
 			_isSupported = summary != null;
 			_headerSummary = summary;
-		} on DioException catch (e) {
-			final statusCode = e.response?.statusCode;
-			if (statusCode == 404 || statusCode == 501) {
-				_isSupported = false;
-			} else {
-				// Network error or other server error — assume unsupported
-				_isSupported = false;
-			}
+		} on DioException {
+			_isSupported = false;
 		} catch (e) {
 			_isSupported = false;
 			if (kDebugMode) {
