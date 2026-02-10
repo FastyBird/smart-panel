@@ -6,7 +6,7 @@ import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_landscape_layout.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_portrait_layout.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_offline_overlay.dart';
-import 'package:fastybird_smart_panel/core/widgets/app_bottom_sheet.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_playback_sheet.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_info_card.dart';
@@ -255,32 +255,23 @@ class _StreamingServiceDeviceDetailState extends State<StreamingServiceDeviceDet
 	// LANDSCAPE LAYOUT
 	// --------------------------------------------------------------------------
 
-	void _showPlaybackSheet(BuildContext context, bool isDark) {
-		final localizations = AppLocalizations.of(context)!;
-
-		showAppBottomSheet(
+	void _showPlaybackSheet(BuildContext context) {
+		showMediaPlaybackSheet(
 			context,
-			title: localizations.media_playback,
-			titleIcon: MdiIcons.playCircle,
-			content: Padding(
-				padding: AppSpacings.paddingMd,
-				child: MediaPlaybackCard(
-					playbackTrack: _device.isMediaPlaybackTrack,
-					playbackArtist: _device.mediaPlaybackArtist,
-					playbackAlbum: _device.mediaPlaybackAlbum,
-					playbackStatus: _effectivePlaybackStatus,
-					playbackAvailableCommands: _device.mediaPlaybackAvailableCommands,
-					playbackHasPosition: _device.hasMediaPlaybackPosition,
-					playbackPosition: _device.mediaPlaybackPosition,
-					playbackHasDuration: _device.hasMediaPlaybackDuration,
-					playbackDuration: _device.mediaPlaybackDuration,
-					playbackIsPositionWritable: _device.mediaPlaybackChannel.positionProp?.isWritable ?? false,
-					onPlaybackCommand: _sendPlaybackCommand,
-					onPlaybackSeek: _seekPosition,
-					themeColor: _getThemeColor(),
-					isEnabled: true,
-				),
-			),
+			playbackTrack: _device.isMediaPlaybackTrack,
+			playbackArtist: _device.mediaPlaybackArtist,
+			playbackAlbum: _device.mediaPlaybackAlbum,
+			playbackStatus: _effectivePlaybackStatus,
+			playbackAvailableCommands: _device.mediaPlaybackAvailableCommands,
+			playbackHasPosition: _device.hasMediaPlaybackPosition,
+			playbackPosition: _device.mediaPlaybackPosition,
+			playbackHasDuration: _device.hasMediaPlaybackDuration,
+			playbackDuration: _device.mediaPlaybackDuration,
+			playbackIsPositionWritable: _device.mediaPlaybackChannel.positionProp?.isWritable ?? false,
+			onPlaybackCommand: _sendPlaybackCommand,
+			onPlaybackSeek: _seekPosition,
+			themeColor: _getThemeColor(),
+			isEnabled: true,
 		);
 	}
 
@@ -304,7 +295,7 @@ class _StreamingServiceDeviceDetailState extends State<StreamingServiceDeviceDet
 				isEnabled: true,
 				themeColor: _getThemeColor(),
 				hasPlayback: true,
-				onPlaybackTap: () => _showPlaybackSheet(context, isDark),
+				onPlaybackTap: () => _showPlaybackSheet(context),
 			),
 		);
 	}

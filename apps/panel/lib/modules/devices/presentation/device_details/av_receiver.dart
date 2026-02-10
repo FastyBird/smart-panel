@@ -6,7 +6,7 @@ import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_landscape_layout.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_portrait_layout.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_offline_overlay.dart';
-import 'package:fastybird_smart_panel/core/widgets/app_bottom_sheet.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_playback_sheet.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/utils/media_input_source_label.dart';
@@ -526,32 +526,23 @@ class _AvReceiverDeviceDetailState extends State<AvReceiverDeviceDetail> {
 	// LANDSCAPE LAYOUT
 	// --------------------------------------------------------------------------
 
-	void _showPlaybackSheet(BuildContext context, bool isDark) {
-		final localizations = AppLocalizations.of(context)!;
-
-		showAppBottomSheet(
+	void _showPlaybackSheet(BuildContext context) {
+		showMediaPlaybackSheet(
 			context,
-			title: localizations.media_playback,
-			titleIcon: MdiIcons.playCircle,
-			content: Padding(
-				padding: AppSpacings.paddingMd,
-				child: MediaPlaybackCard(
-					playbackTrack: _device.isMediaPlaybackTrack,
-					playbackArtist: _device.mediaPlaybackArtist,
-					playbackAlbum: _device.mediaPlaybackAlbum,
-					playbackStatus: _effectivePlaybackStatus,
-					playbackAvailableCommands: _device.mediaPlaybackAvailableCommands,
-					playbackHasPosition: _device.hasMediaPlaybackPosition,
-					playbackPosition: _device.mediaPlaybackPosition,
-					playbackHasDuration: _device.hasMediaPlaybackDuration,
-					playbackDuration: _device.mediaPlaybackDuration,
-					playbackIsPositionWritable: _device.mediaPlaybackChannel?.positionProp?.isWritable ?? false,
-					onPlaybackCommand: _sendPlaybackCommand,
-					onPlaybackSeek: _seekPosition,
-					themeColor: _getThemeColor(),
-					isEnabled: _isOn,
-				),
-			),
+			playbackTrack: _device.isMediaPlaybackTrack,
+			playbackArtist: _device.mediaPlaybackArtist,
+			playbackAlbum: _device.mediaPlaybackAlbum,
+			playbackStatus: _effectivePlaybackStatus,
+			playbackAvailableCommands: _device.mediaPlaybackAvailableCommands,
+			playbackHasPosition: _device.hasMediaPlaybackPosition,
+			playbackPosition: _device.mediaPlaybackPosition,
+			playbackHasDuration: _device.hasMediaPlaybackDuration,
+			playbackDuration: _device.mediaPlaybackDuration,
+			playbackIsPositionWritable: _device.mediaPlaybackChannel?.positionProp?.isWritable ?? false,
+			onPlaybackCommand: _sendPlaybackCommand,
+			onPlaybackSeek: _seekPosition,
+			themeColor: _getThemeColor(),
+			isEnabled: _isOn,
 		);
 	}
 
@@ -581,7 +572,7 @@ class _AvReceiverDeviceDetailState extends State<AvReceiverDeviceDetail> {
 				isEnabled: _isOn,
 				themeColor: _getThemeColor(),
 				hasPlayback: _device.hasMediaPlayback,
-				onPlaybackTap: () => _showPlaybackSheet(context, isDark),
+				onPlaybackTap: () => _showPlaybackSheet(context),
 				hasSpeaker: _device.hasSpeaker,
 				volume: _effectiveVolume,
 				onVolumeChanged: _setVolume,
