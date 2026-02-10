@@ -117,6 +117,7 @@ describe('SpaceSuggestionService - Pure Functions', () => {
 			icon: null,
 			displayOrder: 0,
 			suggestionsEnabled: true,
+			headerWidgets: null,
 			lastActivityAt: null,
 			parentId: null,
 			parent: null,

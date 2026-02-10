@@ -30,6 +30,7 @@ describe('SpacesService', () => {
 		icon: 'mdi:sofa',
 		displayOrder: 0,
 		suggestionsEnabled: true,
+		headerWidgets: null,
 		lastActivityAt: null,
 		parentId: null,
 		parent: null,

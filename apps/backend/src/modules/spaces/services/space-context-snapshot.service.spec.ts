@@ -31,6 +31,7 @@ describe('SpaceContextSnapshotService', () => {
 		icon: null,
 		displayOrder: 0,
 		suggestionsEnabled: true,
+		headerWidgets: null,
 		lastActivityAt: null,
 		parentId: null,
 		parent: null,
