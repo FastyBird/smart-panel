@@ -64,6 +64,7 @@ import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/bottom_nav_mode_config.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/domain_data_loader.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_mode_chip.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/domain_state_view.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/bottom_nav_mode_notifier.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/deck_page_activated_event.dart';
@@ -917,6 +918,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
         icon: MdiIcons.accessPointNetwork,
         color: accentThemeColor,
       ),
+      landscapeAction: const DeckModeChip(),
     );
   }
 
@@ -970,25 +972,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
         ],
       ),
       mainContentScrollable: true,
-      modeSelector: _buildLandscapeCategorySelector(context, showLabels: isLargeScreen),
-      modeSelectorShowLabels: isLargeScreen,
-    );
-  }
-
-  /// Vertical category selector for landscape; [showLabels] on large screens.
-  Widget _buildLandscapeCategorySelector(
-    BuildContext context, {
-    bool showLabels = false,
-  }) {
-    final modeOptions = _getCategoryModeOptions();
-    return ModeSelector<SensorCategory?>(
-      modes: modeOptions,
-      selectedValue: _selectedCategory,
-      onChanged: (category) => setState(() => _selectedCategory = category),
-      orientation: ModeSelectorOrientation.vertical,
-      iconPlacement: ModeSelectorIconPlacement.top,
-      showLabels: showLabels,
-      scrollable: true,
+      mainContentPadding: AppSpacings.paddingMd,
     );
   }
 

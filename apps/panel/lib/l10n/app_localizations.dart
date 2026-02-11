@@ -515,37 +515,37 @@ abstract class AppLocalizations {
   /// **'Total energy consumed over time'**
   String get electrical_energy_consumption_description;
 
-  /// No description provided for @electrical_energy_average_power_title.
+  /// Title for the average power draw over last reporting interval
   ///
   /// In en, this message translates to:
   /// **'Average Power'**
   String get electrical_energy_average_power_title;
 
-  /// No description provided for @electrical_energy_average_power_description.
+  /// Detailed description of average power measurement in watts
   ///
   /// In en, this message translates to:
   /// **'Average power draw over the last reporting interval'**
   String get electrical_energy_average_power_description;
 
-  /// No description provided for @electrical_generation_production_title.
+  /// Title for cumulative PV energy production
   ///
   /// In en, this message translates to:
   /// **'Energy Production'**
   String get electrical_generation_production_title;
 
-  /// No description provided for @electrical_generation_production_description.
+  /// Detailed description of cumulative energy production measurement
   ///
   /// In en, this message translates to:
   /// **'Total energy produced by the generation source'**
   String get electrical_generation_production_description;
 
-  /// No description provided for @electrical_generation_power_title.
+  /// Title for instantaneous generation power output
   ///
   /// In en, this message translates to:
   /// **'Generation Power'**
   String get electrical_generation_power_title;
 
-  /// No description provided for @electrical_generation_power_description.
+  /// Detailed description of instantaneous generation power output in watts
   ///
   /// In en, this message translates to:
   /// **'Current power output from the generation source'**
@@ -2440,6 +2440,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Home'**
   String get system_view_master;
+
+  /// Label for the more/dashboard pages button in deck navigation
+  ///
+  /// In en, this message translates to:
+  /// **'More'**
+  String get deck_nav_more;
+
+  /// Title for the more sheet listing all navigable pages
+  ///
+  /// In en, this message translates to:
+  /// **'All Pages'**
+  String get deck_all_pages;
 
   /// Title for entry system view in deck navigation
   ///

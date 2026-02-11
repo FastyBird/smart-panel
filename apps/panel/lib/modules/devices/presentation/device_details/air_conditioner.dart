@@ -812,7 +812,7 @@ class _AirConditionerDeviceDetailState
         : null;
 
     return Scaffold(
-      backgroundColor: isDark ? AppBgColorDark.base : AppBgColorLight.page,
+      backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
       body: SafeArea(
         child: Column(
           children: [
@@ -1333,7 +1333,6 @@ class _AirConditionerDeviceDetailState
             : '',
         columns: availableModes.length > 4 ? 3 : availableModes.length,
         layout: ValueSelectorRowLayout.compact,
-        showChevron: _screenService.isLargeScreen,
         onChanged: _currentMode != AcMode.off ? (mode) => ((mode != null) ? _setFanMode(mode) : null) : null,
       );
 
@@ -1413,7 +1412,6 @@ class _AirConditionerDeviceDetailState
             layout: useCompactLayout
                 ? ValueSelectorRowLayout.compact
                 : ValueSelectorRowLayout.horizontal,
-            showChevron: _screenService.isLargeScreen,
             onChanged: _currentMode != AcMode.off ? (level) => ((level != null) ? _setFanSpeedLevel(level) : null) : null,
           ),
         );
@@ -1487,7 +1485,9 @@ class _AirConditionerDeviceDetailState
             displayFormatter: (v) => _formatFanSpeed(localizations, v),
             columns: 4,
             layout: ValueSelectorRowLayout.compact,
-            showChevron: _screenService.isLargeScreen,
+            sliderMin: 0.0,
+            sliderMax: 1.0,
+            sliderUnit: '%',
             onChanged: _currentMode != AcMode.off ? (v) => _setFanSpeedValue(v ?? 0) : null,
           ),
         );
@@ -1678,7 +1678,6 @@ class _AirConditionerDeviceDetailState
           layout: useCompactLayout
               ? ValueSelectorRowLayout.compact
               : ValueSelectorRowLayout.horizontal,
-          showChevron: _screenService.isLargeScreen,
           onChanged: _currentMode != AcMode.off ? (preset) => ((preset != null) ? _setFanTimerPreset(preset) : null) : null,
         ),
       );
@@ -1701,7 +1700,6 @@ class _AirConditionerDeviceDetailState
           layout: useCompactLayout
               ? ValueSelectorRowLayout.compact
               : ValueSelectorRowLayout.horizontal,
-          showChevron: _screenService.isLargeScreen,
           onChanged: _currentMode != AcMode.off ? (minutes) => ((minutes != null) ? _setFanTimerNumeric(minutes) : null) : null,
         ),
       );

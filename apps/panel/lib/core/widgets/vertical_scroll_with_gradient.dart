@@ -63,7 +63,7 @@ class VerticalScrollWithGradient extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor =
-        backgroundColor ?? (isDark ? AppBgColorDark.base : AppBgColorLight.page);
+        backgroundColor ?? (isDark ? AppBgColorDark.page : AppBgColorLight.page);
 
     // Resolve padding to get individual values
     final resolvedPadding = padding.resolve(TextDirection.ltr);

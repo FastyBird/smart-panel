@@ -58,7 +58,6 @@ import 'package:material_design_icons_flutter/material_design_icons_flutter.dart
 import 'package:provider/provider.dart';
 
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/bottom_nav_mode_config.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/bottom_nav_mode_notifier.dart';
@@ -76,6 +75,7 @@ import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/domain_data_loader.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_item_sheet.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_mode_chip.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/domain_state_view.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/domain_control_state_service.dart';
 import 'package:fastybird_smart_panel/modules/deck/utils/lighting.dart';
@@ -338,8 +338,6 @@ class ClimateDomainViewPage extends StatefulWidget {
 }
 
 class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
-  final ScreenService _screenService = locator<ScreenService>();
-
   /// Optional services; resolved in initState. Listeners on Spaces, Devices, Intents.
   SpacesService? _spacesService;
   DevicesService? _devicesService;
@@ -1799,6 +1797,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         icon: MdiIcons.thermostat,
         color: _getModeColor(),
       ),
+      landscapeAction: const DeckModeChip(),
       trailing: showDetailButton
           ? HeaderIconButton(
               icon: MdiIcons.homeThermometer,
@@ -1924,12 +1923,8 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     final hasAuxiliary = _state.auxiliaryDevices.isNotEmpty;
     final hasAdditionalContent = hasSensors || hasAuxiliary;
 
-    final isLargeScreen = _screenService.isLargeScreen;
-
     return LandscapeViewLayout(
       mainContent: _buildLandscapeMainContent(context),
-      modeSelector: _buildLandscapeModeSelector(context, showLabels: isLargeScreen),
-      modeSelectorShowLabels: isLargeScreen,
       additionalContent: hasAdditionalContent
           ? _buildLandscapeAdditionalColumn(context)
           : null,
@@ -2011,32 +2006,8 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   }
 
   Widget _buildLandscapeSensorsCard(BuildContext context) {
-    final isLargeScreen = _screenService.isLargeScreen;
     final localizations = AppLocalizations.of(context)!;
     final sensors = _state.sensors;
-
-    // Large screens: 2 vertical tiles per row (square)
-    if (isLargeScreen) {
-      return GridView.count(
-        crossAxisCount: 2,
-        mainAxisSpacing: AppSpacings.pMd,
-        crossAxisSpacing: AppSpacings.pMd,
-        childAspectRatio: AppTileAspectRatio.square,
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        children: sensors.map((sensor) {
-          return VerticalTileLarge(
-            icon: sensor.icon,
-            name: sensor.isOnline ? sensor.value : _translateSensorLabel(localizations, sensor),
-            status: sensor.isOnline ? _translateSensorLabel(localizations, sensor) : localizations.device_status_offline,
-            iconAccentColor: SensorColors.themeColorForCategory(sensor.type),
-            isOffline: !sensor.isOnline,
-            showWarningBadge: true,
-            onTileTap: _sensorTapCallback(sensor),
-          );
-        }).toList(),
-      );
-    }
 
     // Small/medium: Column of fixed-height horizontal tiles
     return Column(
@@ -2087,18 +2058,6 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           );
         },
       ),
-    );
-  }
-
-  Widget _buildLandscapeModeSelector(BuildContext context, {bool showLabels = false}) {
-    final localizations = AppLocalizations.of(context)!;
-    return ModeSelector<ClimateMode>(
-      modes: _getClimateModeOptions(localizations),
-      selectedValue: _state.mode,
-      onChanged: _setMode,
-      orientation: ModeSelectorOrientation.vertical,
-      iconPlacement: ModeSelectorIconPlacement.top,
-      showLabels: showLabels,
     );
   }
 

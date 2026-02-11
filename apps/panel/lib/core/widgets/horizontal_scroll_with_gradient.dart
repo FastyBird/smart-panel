@@ -50,90 +50,96 @@ class HorizontalScrollWithGradient extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor =
-        backgroundColor ?? (isDark ? AppBgColorDark.base : AppBgColorLight.page);
-    final screenWidth = MediaQuery.of(context).size.width;
+        backgroundColor ?? (isDark ? AppBgColorDark.page : AppBgColorLight.page);
 
-    return SizedBox(
-      height: height,
-      child: OverflowBox(
-        maxWidth: screenWidth,
-        alignment: Alignment.centerLeft,
-        child: Transform.translate(
-          offset: Offset(-layoutPadding, 0),
-          child: SizedBox(
-            width: screenWidth,
-            height: height,
-            child: Stack(
-              children: [
-                // Scrollable list
-                ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  itemCount: itemCount,
-                  separatorBuilder: (_, __) => SizedBox(width: separatorWidth),
-                  itemBuilder: (context, index) {
-                    final isFirst = index == 0;
-                    final isLast = index == itemCount - 1;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final totalWidth = constraints.maxWidth + 2 * layoutPadding;
 
-                    return Padding(
-                      padding: EdgeInsets.only(
-                        left: isFirst ? layoutPadding : 0,
-                        right: isLast ? layoutPadding : 0,
-                      ),
-                      child: itemBuilder(context, index),
-                    );
-                  },
-                ),
-                // Left gradient overlay
-                Positioned(
-                  left: 0,
-                  top: 0,
-                  bottom: 0,
-                  width: layoutPadding,
-                  child: IgnorePointer(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.centerLeft,
-                          end: Alignment.centerRight,
-                          colors: [
-                            bgColor,
-                            bgColor.withValues(alpha: 0.7),
-                            bgColor.withValues(alpha: 0),
-                          ],
-                          stops: const [0.0, 0.5, 1.0],
+        return SizedBox(
+          height: height,
+          child: OverflowBox(
+            maxWidth: totalWidth,
+            alignment: Alignment.centerLeft,
+            child: Transform.translate(
+              offset: Offset(-layoutPadding, 0),
+              child: SizedBox(
+                width: totalWidth,
+                height: height,
+                child: Stack(
+                  children: [
+                    // Scrollable list
+                    ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      itemCount: itemCount,
+                      separatorBuilder: (_, __) =>
+                          SizedBox(width: separatorWidth),
+                      itemBuilder: (context, index) {
+                        final isFirst = index == 0;
+                        final isLast = index == itemCount - 1;
+
+                        return Padding(
+                          padding: EdgeInsets.only(
+                            left: isFirst ? layoutPadding : 0,
+                            right: isLast ? layoutPadding : 0,
+                          ),
+                          child: itemBuilder(context, index),
+                        );
+                      },
+                    ),
+                    // Left gradient overlay
+                    Positioned(
+                      left: 0,
+                      top: 0,
+                      bottom: 0,
+                      width: layoutPadding,
+                      child: IgnorePointer(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                              colors: [
+                                bgColor,
+                                bgColor.withValues(alpha: 0.7),
+                                bgColor.withValues(alpha: 0),
+                              ],
+                              stops: const [0.0, 0.5, 1.0],
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ),
-                // Right gradient overlay
-                Positioned(
-                  right: 0,
-                  top: 0,
-                  bottom: 0,
-                  width: layoutPadding,
-                  child: IgnorePointer(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.centerRight,
-                          end: Alignment.centerLeft,
-                          colors: [
-                            bgColor,
-                            bgColor.withValues(alpha: 0.7),
-                            bgColor.withValues(alpha: 0),
-                          ],
-                          stops: const [0.0, 0.5, 1.0],
+                    // Right gradient overlay
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      bottom: 0,
+                      width: layoutPadding,
+                      child: IgnorePointer(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.centerRight,
+                              end: Alignment.centerLeft,
+                              colors: [
+                                bgColor,
+                                bgColor.withValues(alpha: 0.7),
+                                bgColor.withValues(alpha: 0),
+                              ],
+                              stops: const [0.0, 0.5, 1.0],
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

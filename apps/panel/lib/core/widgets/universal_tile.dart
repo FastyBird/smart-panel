@@ -427,7 +427,7 @@ class UniversalTile extends StatelessWidget {
           isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
       innerBorderColor = tileBgColor;
     } else if (isActive) {
-      outerBorderColor = accentColorLight5;
+      outerBorderColor = isDark ? accentColorLight9 : accentColorLight5;
       innerBorderColor = outerBorderColor;
     } else {
       outerBorderColor = (!isDark || showInactiveBorder)

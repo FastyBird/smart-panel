@@ -1,7 +1,9 @@
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_card.dart';
+import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 class MediaInfoCard extends StatelessWidget {
 	final IconData icon;
@@ -10,6 +12,16 @@ class MediaInfoCard extends StatelessWidget {
 	final String? displaySource;
 	final ThemeColors themeColor;
 
+	/// Whether the card should expand to fill available height
+	final bool expanded;
+
+	/// Optional source selector parameters (for landscape inline source select)
+	final List<String>? availableSources;
+	final String? currentSource;
+	final String Function(String)? sourceLabel;
+	final ValueChanged<String>? onSourceChanged;
+	final bool sourceEnabled;
+
 	const MediaInfoCard({
 		super.key,
 		required this.icon,
@@ -17,6 +29,12 @@ class MediaInfoCard extends StatelessWidget {
 		required this.isOn,
 		this.displaySource,
 		this.themeColor = ThemeColors.primary,
+		this.expanded = false,
+		this.availableSources,
+		this.currentSource,
+		this.sourceLabel,
+		this.onSourceChanged,
+		this.sourceEnabled = true,
 	});
 
 	@override
@@ -29,9 +47,16 @@ class MediaInfoCard extends StatelessWidget {
 			themeColor,
 		).iconContainer;
 
+		final hasSourceSelector = availableSources != null &&
+			availableSources!.isNotEmpty &&
+			sourceLabel != null &&
+			onSourceChanged != null;
+
 		return AppCard(
 			width: double.infinity,
+			expanded: expanded,
 			child: Column(
+				mainAxisAlignment: expanded ? MainAxisAlignment.center : MainAxisAlignment.start,
 				spacing: AppSpacings.pMd,
 				children: [
 					Container(
@@ -77,7 +102,7 @@ class MediaInfoCard extends StatelessWidget {
 									color: secondaryColor,
 								),
 							),
-							if (displaySource != null) ...[
+							if (displaySource != null && !hasSourceSelector) ...[
 								Padding(
 									padding: EdgeInsets.symmetric(horizontal: AppSpacings.pSm),
 									child: Text(
@@ -99,6 +124,22 @@ class MediaInfoCard extends StatelessWidget {
 							],
 						],
 					),
+					if (hasSourceSelector)
+						ModeSelector<String>(
+							modes: availableSources!
+								.map((s) => ModeOption<String>(
+									value: s,
+									icon: MdiIcons.videoInputHdmi,
+									label: sourceLabel!(s),
+								))
+								.toList(),
+							selectedValue: currentSource,
+							onChanged: sourceEnabled ? onSourceChanged! : (_) {},
+							orientation: ModeSelectorOrientation.horizontal,
+							color: themeColor,
+							showIcon: false,
+							scrollable: true,
+						),
 				],
 			),
 		);

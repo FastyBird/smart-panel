@@ -9,10 +9,9 @@ import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_landscape_layout.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_portrait_layout.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_offline_overlay.dart';
-import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
-import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
-import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/lighting_mode_selector.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/lighting_presets_panel.dart';
 import 'package:fastybird_smart_panel/core/widgets/tile_wrappers.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/controllers/channels/light.dart';
@@ -663,35 +662,47 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
     }
 
     return DeviceLandscapeLayout(
-      mainContent: LightingMainControl(
-        selectedCapability: _selectedCapability,
-        isOn: isOn,
-        brightness: brightness,
-        colorTemp: colorTemp,
-        color: color,
-        saturation: saturation,
-        whiteChannel: white,
-        capabilities: _capabilities,
-        isLandscape: true,
-        onPowerToggle: () {
-          activeController.togglePower();
-          setState(() {});
-        },
-        onBrightnessChanged: _handleBrightnessChanged,
-        onColorTempChanged: _handleColorTempChanged,
-        onColorChanged: _handleColorChanged,
-        onWhiteChannelChanged: _handleWhiteChannelChanged,
-      ),
-      modeSelector: showModeSelector
-          ? LightingModeSelector(
-              capabilities: _capabilities,
+      mainContent: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: LightingMainControl(
               selectedCapability: _selectedCapability,
-              onCapabilityChanged: (value) {
-                setState(() => _selectedCapability = value);
+              isOn: isOn,
+              brightness: brightness,
+              colorTemp: colorTemp,
+              color: color,
+              saturation: saturation,
+              whiteChannel: white,
+              capabilities: _capabilities,
+              isLandscape: true,
+              onPowerToggle: () {
+                activeController.togglePower();
+                setState(() {});
               },
-              isVertical: true,
-            )
-          : null,
+              onBrightnessChanged: _handleBrightnessChanged,
+              onColorTempChanged: _handleColorTempChanged,
+              onColorChanged: _handleColorChanged,
+              onWhiteChannelChanged: _handleWhiteChannelChanged,
+            ),
+          ),
+          if (showModeSelector)
+            SizedBox(
+              width: AppSpacings.scale(64.0),
+              child: Padding(
+                padding: EdgeInsets.only(left: AppSpacings.pMd),
+                child: LightingModeSelector(
+                  capabilities: _capabilities,
+                  selectedCapability: _selectedCapability,
+                  onCapabilityChanged: (value) {
+                    setState(() => _selectedCapability = value);
+                  },
+                  isVertical: true,
+                ),
+              ),
+            ),
+        ],
+      ),
       secondaryContent: secondaryContent,
     );
   }
@@ -802,14 +813,6 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
 // --------------------------------------------------------------------------
 // TYPES AND WIDGETS (inlined for this device detail)
 // --------------------------------------------------------------------------
-
-enum LightCapability {
-  power,
-  brightness,
-  colorTemp,
-  color,
-  white,
-}
 
 /// Data for a single channel in the channels list.
 class LightingChannelData {
@@ -1683,457 +1686,4 @@ class _LightingColorPanel extends StatelessWidget {
 }
 
 // --- Mode selector (brightness / color temp / color / white) ---
-
-class LightingModeSelector extends StatelessWidget {
-  final Set<LightCapability> capabilities;
-  final LightCapability selectedCapability;
-  final ValueChanged<LightCapability> onCapabilityChanged;
-  final bool isVertical;
-  final bool? showLabels;
-
-  const LightingModeSelector({
-    super.key,
-    required this.capabilities,
-    required this.selectedCapability,
-    required this.onCapabilityChanged,
-    this.isVertical = false,
-    this.showLabels,
-  });
-
-  List<LightCapability> get _enabledCapabilities {
-    return [
-      LightCapability.brightness,
-      LightCapability.colorTemp,
-      LightCapability.color,
-      LightCapability.white,
-    ].where((cap) => capabilities.contains(cap)).toList();
-  }
-
-  IconData _getCapabilityIcon(LightCapability cap) {
-    switch (cap) {
-      case LightCapability.brightness:
-        return MdiIcons.brightness6;
-      case LightCapability.colorTemp:
-        return MdiIcons.thermometer;
-      case LightCapability.color:
-        return MdiIcons.palette;
-      case LightCapability.white:
-        return MdiIcons.ceilingLight;
-      default:
-        return MdiIcons.lightbulb;
-    }
-  }
-
-  String _getCapabilityLabel(
-      LightCapability cap, AppLocalizations localizations) {
-    switch (cap) {
-      case LightCapability.brightness:
-        return localizations.light_mode_brightness;
-      case LightCapability.colorTemp:
-        return localizations.light_mode_temperature;
-      case LightCapability.color:
-        return localizations.light_mode_color;
-      case LightCapability.white:
-        return localizations.light_mode_white;
-      default:
-        return '';
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final localizations = AppLocalizations.of(context)!;
-    final enabledCaps = _enabledCapabilities;
-    if (enabledCaps.length <= 1) return const SizedBox.shrink();
-    final modes = enabledCaps.map((cap) {
-      return ModeOption<LightCapability>(
-        value: cap,
-        icon: _getCapabilityIcon(cap),
-        label: _getCapabilityLabel(cap, localizations),
-      );
-    }).toList();
-    if (isVertical) return _buildVerticalSelector(context, modes);
-    return _buildHorizontalSelector(context, modes);
-  }
-
-  Widget _buildVerticalSelector(
-    BuildContext context,
-    List<ModeOption<LightCapability>> modes,
-  ) {
-    return ModeSelector<LightCapability>(
-      modes: modes,
-      selectedValue: selectedCapability,
-      onChanged: (value) {
-        HapticFeedback.selectionClick();
-        onCapabilityChanged(value);
-      },
-      orientation: ModeSelectorOrientation.vertical,
-      showLabels: showLabels ?? false,
-    );
-  }
-
-  Widget _buildHorizontalSelector(
-    BuildContext context,
-    List<ModeOption<LightCapability>> modes,
-  ) {
-    return ModeSelector<LightCapability>(
-      modes: modes,
-      selectedValue: selectedCapability,
-      iconPlacement: ModeSelectorIconPlacement.top,
-      onChanged: (value) {
-        HapticFeedback.selectionClick();
-        onCapabilityChanged(value);
-      },
-      orientation: ModeSelectorOrientation.horizontal,
-      showLabels: true,
-    );
-  }
-}
-
-// --- Presets panel ---
-
-enum _LightingPresetType { brightness, colorTemp, color, white }
-
-class _LightingPreset {
-  final IconData icon;
-  final String label;
-  final int value;
-  final _LightingPresetType type;
-  final Color? color;
-
-  const _LightingPreset({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.type,
-    this.color,
-  });
-}
-
-class LightingPresetsPanel extends StatelessWidget {
-  final ScreenService _screenService = locator<ScreenService>();
-  final LightCapability selectedCapability;
-  final int brightness;
-  final int colorTemp;
-  final Color? color;
-  final int? whiteChannel;
-  final bool isLandscape;
-  final ValueChanged<int>? onBrightnessChanged;
-  final ValueChanged<int>? onColorTempChanged;
-  final Function(Color, double)? onColorChanged;
-  final ValueChanged<int>? onWhiteChannelChanged;
-
-  LightingPresetsPanel({
-    super.key,
-    required this.selectedCapability,
-    this.brightness = 100,
-    this.colorTemp = 4000,
-    this.color,
-    this.whiteChannel,
-    this.isLandscape = false,
-    this.onBrightnessChanged,
-    this.onColorTempChanged,
-    this.onColorChanged,
-    this.onWhiteChannelChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final localizations = AppLocalizations.of(context)!;
-    final presets = _getPresetsForCapability(selectedCapability, localizations);
-    if (presets.isEmpty) return const SizedBox.shrink();
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    if (selectedCapability == LightCapability.color) {
-      return isLandscape
-          ? _buildLandscapeColorPresets(context, isDark, presets)
-          : _buildPortraitColorPresets(context, isDark, presets);
-    }
-    return isLandscape
-        ? _buildLandscapePresets(context, isDark, presets, localizations)
-        : _buildPortraitPresets(context, isDark, presets, localizations);
-  }
-
-  List<_LightingPreset> _getPresetsForCapability(
-    LightCapability capability,
-    AppLocalizations localizations,
-  ) {
-    switch (capability) {
-      case LightCapability.brightness:
-        return [
-          _LightingPreset(
-              icon: MdiIcons.brightness5, label: '25%', value: 25, type: _LightingPresetType.brightness),
-          _LightingPreset(
-              icon: MdiIcons.brightness6, label: '50%', value: 50, type: _LightingPresetType.brightness),
-          _LightingPreset(
-              icon: MdiIcons.brightness7, label: '75%', value: 75, type: _LightingPresetType.brightness),
-          _LightingPreset(
-              icon: MdiIcons.whiteBalanceSunny, label: '100%', value: 100, type: _LightingPresetType.brightness),
-        ];
-      case LightCapability.colorTemp:
-        return [
-          _LightingPreset(icon: MdiIcons.fire, label: localizations.light_preset_candle, value: 2700, type: _LightingPresetType.colorTemp),
-          _LightingPreset(icon: MdiIcons.weatherNight, label: localizations.light_preset_warm, value: 3200, type: _LightingPresetType.colorTemp),
-          _LightingPreset(icon: MdiIcons.whiteBalanceSunny, label: localizations.light_preset_daylight, value: 5000, type: _LightingPresetType.colorTemp),
-          _LightingPreset(icon: MdiIcons.snowflake, label: localizations.light_preset_cool, value: 6500, type: _LightingPresetType.colorTemp),
-        ];
-      case LightCapability.color:
-        return [
-          _LightingPreset(icon: MdiIcons.circle, label: localizations.light_color_red, value: 0, type: _LightingPresetType.color, color: Colors.red),
-          _LightingPreset(icon: MdiIcons.circle, label: localizations.light_color_orange, value: 30, type: _LightingPresetType.color, color: Colors.orange),
-          _LightingPreset(icon: MdiIcons.circle, label: localizations.light_color_yellow, value: 60, type: _LightingPresetType.color, color: Colors.yellow),
-          _LightingPreset(icon: MdiIcons.circle, label: localizations.light_color_green, value: 120, type: _LightingPresetType.color, color: Colors.green),
-          _LightingPreset(icon: MdiIcons.circle, label: localizations.light_color_cyan, value: 180, type: _LightingPresetType.color, color: Colors.cyan),
-          _LightingPreset(icon: MdiIcons.circle, label: localizations.light_color_blue, value: 240, type: _LightingPresetType.color, color: Colors.blue),
-          _LightingPreset(icon: MdiIcons.circle, label: localizations.light_color_purple, value: 270, type: _LightingPresetType.color, color: Colors.purple),
-          _LightingPreset(icon: MdiIcons.circle, label: localizations.light_color_pink, value: 330, type: _LightingPresetType.color, color: Colors.pink),
-        ];
-      case LightCapability.white:
-        return [
-          _LightingPreset(icon: MdiIcons.brightness5, label: '25%', value: 25, type: _LightingPresetType.white),
-          _LightingPreset(icon: MdiIcons.brightness6, label: '50%', value: 50, type: _LightingPresetType.white),
-          _LightingPreset(icon: MdiIcons.brightness7, label: '75%', value: 75, type: _LightingPresetType.white),
-          _LightingPreset(icon: MdiIcons.whiteBalanceSunny, label: '100%', value: 100, type: _LightingPresetType.white),
-        ];
-      default:
-        return [];
-    }
-  }
-
-  bool _isPresetActive(_LightingPreset preset) {
-    switch (preset.type) {
-      case _LightingPresetType.brightness:
-        return (brightness - preset.value).abs() < 5;
-      case _LightingPresetType.colorTemp:
-        return (colorTemp - preset.value).abs() < 200;
-      case _LightingPresetType.color:
-        if (color == null) return false;
-        final hsv = HSVColor.fromColor(color!);
-        final hueDiff = (hsv.hue - preset.value).abs();
-        return hueDiff < 15 || (360 - hueDiff) < 15;
-      case _LightingPresetType.white:
-        return ((whiteChannel ?? 0) - preset.value).abs() < 5;
-    }
-  }
-
-  void _applyPreset(_LightingPreset preset) {
-    HapticFeedback.selectionClick();
-    switch (preset.type) {
-      case _LightingPresetType.brightness:
-        onBrightnessChanged?.call(preset.value);
-        break;
-      case _LightingPresetType.colorTemp:
-        onColorTempChanged?.call(preset.value);
-        break;
-      case _LightingPresetType.color:
-        final presetColor =
-            HSVColor.fromAHSV(1, preset.value.toDouble(), 1, 1).toColor();
-        onColorChanged?.call(presetColor, 1.0);
-        break;
-      case _LightingPresetType.white:
-        onWhiteChannelChanged?.call(preset.value);
-        break;
-    }
-  }
-
-  Widget _buildLandscapePresets(
-    BuildContext context,
-    bool isDark,
-    List<_LightingPreset> presets,
-    AppLocalizations localizations,
-  ) {
-    if (_screenService.isLargeScreen) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        spacing: AppSpacings.pMd,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SectionTitle(
-            title: localizations.window_covering_presets_label,
-            icon: MdiIcons.viewGrid,
-          ),
-          GridView.count(
-            crossAxisCount: 2,
-            mainAxisSpacing: AppSpacings.pMd,
-            crossAxisSpacing: AppSpacings.pMd,
-            childAspectRatio: AppTileAspectRatio.square,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            children: presets.map((preset) {
-              final isActive = _isPresetActive(preset);
-              return VerticalTileLarge(
-                icon: preset.icon,
-                name: preset.label,
-                isActive: isActive,
-                onTileTap: () => _applyPreset(preset),
-              );
-            }).toList(),
-          ),
-        ],
-      );
-    }
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      spacing: AppSpacings.pMd,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        SectionTitle(
-          title: localizations.window_covering_presets_label,
-          icon: MdiIcons.viewGrid,
-        ),
-        ...presets.asMap().entries.map((entry) {
-          final preset = entry.value;
-          return HorizontalTileStretched(
-            icon: preset.icon,
-            name: preset.label,
-            isActive: _isPresetActive(preset),
-            onTileTap: () => _applyPreset(preset),
-          );
-        }),
-      ],
-    );
-  }
-
-  Widget _buildLandscapeColorPresets(
-    BuildContext context,
-    bool isDark,
-    List<_LightingPreset> presets,
-  ) {
-    final localizations = AppLocalizations.of(context)!;
-    final swatchSize = AppSpacings.scale(36);
-    final borderColor =
-        isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      spacing: AppSpacings.pMd,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        SectionTitle(
-          title: localizations.window_covering_presets_label,
-          icon: MdiIcons.viewGrid,
-        ),
-        GridView.count(
-          crossAxisCount: 4,
-          mainAxisSpacing: AppSpacings.pSm,
-          crossAxisSpacing: AppSpacings.pSm,
-          childAspectRatio: 1.0,
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          children: presets.map((preset) {
-            final isActive = _isPresetActive(preset);
-            final presetColor = preset.color ?? Colors.white;
-            return GestureDetector(
-              onTap: () => _applyPreset(preset),
-              child: Container(
-                width: swatchSize,
-                height: swatchSize,
-                decoration: BoxDecoration(
-                  color: presetColor,
-                  borderRadius: BorderRadius.circular(AppBorderRadius.base),
-                  border: Border.all(
-                    color: isActive ? presetColor : borderColor,
-                    width: isActive ? AppSpacings.scale(3) : AppSpacings.scale(1),
-                  ),
-                ),
-              ),
-            );
-          }).toList(),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPortraitPresets(
-    BuildContext context,
-    bool isDark,
-    List<_LightingPreset> presets,
-    AppLocalizations localizations,
-  ) {
-    final tileHeight = AppSpacings.scale(AppTileHeight.horizontal);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      spacing: AppSpacings.pMd,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        SectionTitle(
-          title: localizations.window_covering_presets_label,
-          icon: MdiIcons.viewGrid,
-        ),
-        HorizontalScrollWithGradient(
-          height: tileHeight,
-          layoutPadding: AppSpacings.pLg,
-          itemCount: presets.length,
-          separatorWidth: AppSpacings.pMd,
-          itemBuilder: (context, index) {
-            final preset = presets[index];
-            return HorizontalTileCompact(
-              icon: preset.icon,
-              name: preset.label,
-              isActive: _isPresetActive(preset),
-              onTileTap: () => _applyPreset(preset),
-            );
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPortraitColorPresets(
-    BuildContext context,
-    bool isDark,
-    List<_LightingPreset> presets,
-  ) {
-    final localizations = AppLocalizations.of(context)!;
-    final swatchHeight = AppSpacings.scale(AppTileHeight.horizontal);
-    final swatchWidth =
-        _screenService.isLargeScreen ? swatchHeight * 2 : swatchHeight;
-    final borderColor =
-        isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      spacing: AppSpacings.pMd,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        SectionTitle(
-          title: localizations.window_covering_presets_label,
-          icon: MdiIcons.viewGrid,
-        ),
-        HorizontalScrollWithGradient(
-          height: swatchHeight,
-          layoutPadding: AppSpacings.pLg,
-          itemCount: presets.length,
-          separatorWidth: AppSpacings.pMd,
-          itemBuilder: (context, index) {
-            final preset = presets[index];
-            final isActive = _isPresetActive(preset);
-            final presetColor = preset.color ?? Colors.white;
-            return GestureDetector(
-              onTap: () => _applyPreset(preset),
-              child: Container(
-                width: swatchWidth,
-                height: swatchHeight,
-                decoration: BoxDecoration(
-                  color: presetColor,
-                  borderRadius: BorderRadius.circular(AppBorderRadius.base),
-                  border: Border.all(
-                    color: isActive ? presetColor : borderColor,
-                    width: isActive ? AppSpacings.scale(3) : AppSpacings.scale(1),
-                  ),
-                  boxShadow: isActive
-                      ? [
-                          BoxShadow(
-                            color: presetColor.withValues(alpha: 0.5),
-                            blurRadius: 8,
-                            spreadRadius: 2,
-                          ),
-                        ]
-                      : null,
-                ),
-              ),
-            );
-          },
-        ),
-      ],
-    );
-  }
-}
 

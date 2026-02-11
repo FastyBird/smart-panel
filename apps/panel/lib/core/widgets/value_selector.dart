@@ -1,5 +1,6 @@
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_bottom_sheet.dart';
+import 'package:fastybird_smart_panel/core/widgets/slider_with_steps.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -67,10 +68,29 @@ class ValueSelectorRow<T> extends StatelessWidget {
   /// Layout style for the row (default: horizontal)
   final ValueSelectorRowLayout layout;
 
-  /// Whether to show the chevron icon on the right (default: true)
-  final bool showChevron;
+  /// When set together with [sliderMax], the landscape dialog shows a
+  /// continuous slider instead of the option grid.
+  final double? sliderMin;
 
-  ValueSelectorRow({
+  /// Upper bound for the continuous slider in landscape dialog.
+  final double? sliderMax;
+
+  /// Unit suffix shown next to the slider value (e.g. "%" or "°").
+  final String? sliderUnit;
+
+  /// Step labels shown below the slider (e.g. ['0%', '50%', '100%']).
+  /// When null, default labels from [SliderWithSteps] are used.
+  final List<String>? sliderSteps;
+
+  /// Custom formatter for the live value indicator in the slider dialog header.
+  /// Receives the raw 0.0–1.0 slider position. When null, the indicator shows
+  /// the slider position as a percentage (e.g. "60%").
+  final String Function(double)? sliderValueFormatter;
+
+  /// Theme color for the slider track and thumb. Defaults to [ThemeColors.primary].
+  final ThemeColors sliderThemeColor;
+
+  const ValueSelectorRow({
     super.key,
     required this.currentValue,
     required this.options,
@@ -82,7 +102,12 @@ class ValueSelectorRow<T> extends StatelessWidget {
     this.displayFormatter,
     this.columns = 4,
     this.layout = ValueSelectorRowLayout.horizontal,
-    this.showChevron = true,
+    this.sliderMin,
+    this.sliderMax,
+    this.sliderUnit,
+    this.sliderSteps,
+    this.sliderValueFormatter,
+    this.sliderThemeColor = ThemeColors.primary,
   });
 
   String _getDisplayValue(AppLocalizations localizations) {
@@ -206,12 +231,6 @@ class ValueSelectorRow<T> extends StatelessWidget {
                   ),
                 ),
               ],
-              if (showChevron)
-                Icon(
-                  MdiIcons.chevronRight,
-                  color: secondaryColor,
-                  size: AppSpacings.scale(20),
-                ),
             ],
           ),
         ),
@@ -220,6 +239,17 @@ class ValueSelectorRow<T> extends StatelessWidget {
   }
 
   void _showSelectorSheet(BuildContext context, bool isDark) {
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
+
+    if (isLandscape) {
+      _showSelectorDialog(context, isDark);
+    } else {
+      _showSelectorBottomSheet(context, isDark);
+    }
+  }
+
+  void _showSelectorBottomSheet(BuildContext context, bool isDark) {
     final effectiveActiveColor =
         activeColor ?? (isDark ? AppColorsDark.primary : AppColorsLight.primary);
     final found = options.indexWhere((o) => o.value == currentValue);
@@ -244,6 +274,287 @@ class ValueSelectorRow<T> extends StatelessWidget {
         context,
         isDark,
         selectedIndexNotifier,
+      ),
+    );
+  }
+
+  bool get _hasSliderConfig => sliderMin != null && sliderMax != null;
+
+  void _showSelectorDialog(BuildContext context, bool isDark) {
+    if (_hasSliderConfig) {
+      _showSliderDialog(context, isDark);
+    } else {
+      _showGridDialog(context, isDark);
+    }
+  }
+
+  void _showGridDialog(BuildContext context, bool isDark) {
+    final effectiveActiveColor =
+        activeColor ?? (isDark ? AppColorsDark.primary : AppColorsLight.primary);
+    final found = options.indexWhere((o) => o.value == currentValue);
+    final initialIndex = options.isEmpty
+        ? -1
+        : (found < 0 ? 0 : found.clamp(0, options.length - 1));
+    final selectedIndexNotifier = ValueNotifier<int>(initialIndex);
+
+    final bgColor = isDark ? AppFillColorDark.base : AppFillColorLight.blank;
+    final borderColor =
+        isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
+    final textColor =
+        isDark ? AppTextColorDark.primary : AppTextColorLight.primary;
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return Center(
+          child: Material(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+            elevation: 8,
+            child: Container(
+              constraints: BoxConstraints(
+                maxWidth: AppSpacings.scale(360),
+                maxHeight: MediaQuery.of(context).size.height * 0.7,
+              ),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+                border: Border.all(
+                  color: borderColor,
+                  width: AppSpacings.scale(1),
+                ),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Header
+                  _buildDialogHeader(dialogContext, isDark, textColor, borderColor),
+                  // Content
+                  Flexible(
+                    child: ValueSelectorSheet<T>(
+                      currentValue: currentValue,
+                      options: options,
+                      title: sheetTitle,
+                      activeColor: effectiveActiveColor,
+                      columns: columns,
+                      selectedIndexNotifier: selectedIndexNotifier,
+                    ),
+                  ),
+                  Divider(
+                    height: AppSpacings.scale(1),
+                    color: borderColor,
+                  ),
+                  // Done button
+                  Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: AppSpacings.pLg,
+                      vertical: AppSpacings.pMd,
+                    ),
+                    child: _buildDoneButton(
+                      dialogContext,
+                      isDark,
+                      selectedIndexNotifier,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showSliderDialog(BuildContext context, bool isDark) {
+    final bgColor = isDark ? AppFillColorDark.base : AppFillColorLight.blank;
+    final borderColor =
+        isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
+    final textColor =
+        isDark ? AppTextColorDark.primary : AppTextColorLight.primary;
+
+    // Convert current value to 0.0–1.0 normalized slider position
+    double rawValue;
+    if (currentValue is int) {
+      rawValue = (currentValue as int).toDouble();
+    } else if (currentValue is double) {
+      rawValue = currentValue as double;
+    } else {
+      rawValue = sliderMin!;
+    }
+
+    final range = sliderMax! - sliderMin!;
+    final normalizedValue = range > 0
+        ? ((rawValue - sliderMin!) / range).clamp(0.0, 1.0)
+        : 0.0;
+
+    final sliderValueNotifier = ValueNotifier<double>(normalizedValue);
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return Center(
+          child: Material(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+            elevation: 8,
+            child: Container(
+              constraints: BoxConstraints(
+                maxWidth: AppSpacings.scale(360),
+              ),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+                border: Border.all(
+                  color: borderColor,
+                  width: AppSpacings.scale(1),
+                ),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Header with live value
+                  _buildDialogHeader(
+                    dialogContext,
+                    isDark,
+                    textColor,
+                    borderColor,
+                    valueIndicator: _buildSliderValueIndicator(
+                      sliderValueNotifier,
+                      isDark,
+                    ),
+                  ),
+                  // Slider content
+                  _ValueSelectorSliderContent(
+                    sliderValueNotifier: sliderValueNotifier,
+                    themeColor: sliderThemeColor,
+                    steps: sliderSteps,
+                  ),
+                  Divider(
+                    height: AppSpacings.scale(1),
+                    color: borderColor,
+                  ),
+                  // Done button
+                  Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: AppSpacings.pLg,
+                      vertical: AppSpacings.pMd,
+                    ),
+                    child: _buildSliderDoneButton(
+                      dialogContext,
+                      isDark,
+                      sliderValueNotifier,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDialogHeader(
+    BuildContext context,
+    bool isDark,
+    Color textColor,
+    Color borderColor, {
+    Widget? valueIndicator,
+  }) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Padding(
+          padding: EdgeInsets.only(
+            left: AppSpacings.pLg,
+            right: AppSpacings.pMd,
+            top: AppSpacings.pMd,
+            bottom: AppSpacings.pMd,
+          ),
+          child: Row(
+            children: [
+              Text(
+                sheetTitle.toUpperCase(),
+                style: TextStyle(
+                  color: textColor,
+                  fontSize: AppFontSize.large,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              if (valueIndicator != null) ...[
+                AppSpacings.spacingMdHorizontal,
+                valueIndicator,
+              ],
+              const Spacer(),
+              _buildDialogCloseButton(context, isDark),
+            ],
+          ),
+        ),
+        Divider(
+          height: AppSpacings.scale(1),
+          color: borderColor,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSliderValueIndicator(
+    ValueNotifier<double> sliderValueNotifier,
+    bool isDark,
+  ) {
+    final secondaryColor =
+        isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
+
+    String formatSliderValue(double value) {
+      if (sliderValueFormatter != null) {
+        return sliderValueFormatter!(value);
+      }
+      final percentage = (value.clamp(0.0, 1.0) * 100).round();
+      return '$percentage${sliderUnit ?? ''}';
+    }
+
+    return ValueListenableBuilder<double>(
+      valueListenable: sliderValueNotifier,
+      builder: (context, value, _) {
+        return Text(
+          formatSliderValue(value),
+          style: TextStyle(
+            color: secondaryColor,
+            fontSize: AppFontSize.base,
+            fontWeight: FontWeight.w500,
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildDialogCloseButton(BuildContext context, bool isDark) {
+    return Theme(
+      data: isDark
+          ? ThemeData(
+              brightness: Brightness.dark,
+              filledButtonTheme: AppFilledButtonsDarkThemes.neutral,
+            )
+          : ThemeData(
+              filledButtonTheme: AppFilledButtonsLightThemes.neutral,
+            ),
+      child: FilledButton(
+        onPressed: () {
+          HapticFeedback.lightImpact();
+          Navigator.pop(context);
+        },
+        style: FilledButton.styleFrom(
+          padding: EdgeInsets.zero,
+          minimumSize: Size(AppSpacings.scale(32), AppSpacings.scale(32)),
+          maximumSize: Size(AppSpacings.scale(32), AppSpacings.scale(32)),
+          shape: const CircleBorder(),
+          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
+        child: Icon(
+          MdiIcons.close,
+          size: AppSpacings.scale(18),
+          color: isDark
+              ? AppFilledButtonsDarkThemes.neutralForegroundColor
+              : AppFilledButtonsLightThemes.neutralForegroundColor,
+        ),
       ),
     );
   }
@@ -293,6 +604,54 @@ class ValueSelectorRow<T> extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildSliderDoneButton(
+    BuildContext context,
+    bool isDark,
+    ValueNotifier<double> sliderValueNotifier,
+  ) {
+    final localizations = AppLocalizations.of(context)!;
+    return SizedBox(
+      width: double.infinity,
+      child: Theme(
+        data: isDark
+            ? ThemeData(
+                brightness: Brightness.dark,
+                filledButtonTheme: AppFilledButtonsDarkThemes.primary,
+              )
+            : ThemeData(
+                filledButtonTheme: AppFilledButtonsLightThemes.primary,
+              ),
+        child: FilledButton(
+          onPressed: () {
+            Navigator.pop(context);
+            // Denormalize 0.0–1.0 back to sliderMin–sliderMax range
+            final normalized = sliderValueNotifier.value;
+            final mapped =
+                sliderMin! + normalized * (sliderMax! - sliderMin!);
+            if (currentValue is int || (currentValue == null && 0 is T)) {
+              onChanged?.call(mapped.round() as T);
+            } else {
+              onChanged?.call(mapped as T);
+            }
+          },
+          style: FilledButton.styleFrom(
+            padding: EdgeInsets.symmetric(vertical: AppSpacings.pMd),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(AppBorderRadius.base),
+            ),
+          ),
+          child: Text(
+            localizations.button_done,
+            style: TextStyle(
+              fontSize: AppFontSize.base,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -564,6 +923,55 @@ class _ValueSelectorSheetState<T> extends State<ValueSelectorSheet<T>> {
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+/// Wraps [SliderWithSteps] for use inside the landscape value selector dialog.
+///
+/// Keeps [sliderValueNotifier] in sync with the slider position.
+class _ValueSelectorSliderContent extends StatefulWidget {
+  final ValueNotifier<double> sliderValueNotifier;
+  final ThemeColors themeColor;
+  final List<String>? steps;
+
+  const _ValueSelectorSliderContent({
+    required this.sliderValueNotifier,
+    this.themeColor = ThemeColors.primary,
+    this.steps,
+  });
+
+  @override
+  State<_ValueSelectorSliderContent> createState() =>
+      _ValueSelectorSliderContentState();
+}
+
+class _ValueSelectorSliderContentState
+    extends State<_ValueSelectorSliderContent> {
+  late double _value;
+
+  @override
+  void initState() {
+    super.initState();
+    _value = widget.sliderValueNotifier.value;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: AppSpacings.pLg,
+        vertical: AppSpacings.pMd,
+      ),
+      child: SliderWithSteps(
+        value: _value.clamp(0.0, 1.0),
+        themeColor: widget.themeColor,
+        steps: widget.steps ?? const ['0%', '25%', '50%', '75%', '100%'],
+        onChanged: (value) {
+          setState(() => _value = value);
+          widget.sliderValueNotifier.value = value;
+        },
       ),
     );
   }

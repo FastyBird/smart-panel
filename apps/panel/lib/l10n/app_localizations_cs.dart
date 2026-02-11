@@ -1303,6 +1303,12 @@ class AppLocalizationsCs extends AppLocalizations {
   String get system_view_master => 'Domov';
 
   @override
+  String get deck_nav_more => 'Více';
+
+  @override
+  String get deck_all_pages => 'Všechny stránky';
+
+  @override
   String get system_view_entry => 'Vstup';
 
   @override
@@ -1500,6 +1506,7 @@ class AppLocalizationsCs extends AppLocalizations {
       count,
       locale: localeName,
       other: '$count zařízení',
+      few: '$count zařízení',
       one: '1 zařízení',
     );
     return '$_temp0';

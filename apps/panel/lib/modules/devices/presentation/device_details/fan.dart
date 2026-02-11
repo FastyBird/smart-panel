@@ -368,7 +368,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
         : null;
 
     return Scaffold(
-      backgroundColor: isDark ? AppBgColorDark.base : AppBgColorLight.page,
+      backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
       body: SafeArea(
         child: Column(
           children: [
@@ -606,7 +606,6 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
             layout: useVerticalLayout
                 ? ValueSelectorRowLayout.compact
                 : ValueSelectorRowLayout.horizontal,
-            showChevron: _screenService.isLargeScreen,
             onChanged: _device.isOn
                 ? (level) {
                     if (level != null) _setSpeedLevel(level);
@@ -666,7 +665,9 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
             displayFormatter: (v) => _formatSpeed(localizations, v),
             columns: 4,
             layout: ValueSelectorRowLayout.compact,
-            showChevron: _screenService.isLargeScreen,
+            sliderMin: 0.0,
+            sliderMax: 1.0,
+            sliderUnit: '%',
             onChanged: _device.isOn ? (v) => _setSpeedValue(v ?? 0) : null,
           ),
         );
@@ -877,7 +878,6 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
           layout: useCompactLayout
               ? ValueSelectorRowLayout.compact
               : ValueSelectorRowLayout.horizontal,
-          showChevron: _screenService.isLargeScreen,
           onChanged: (preset) {
             if (preset != null) {
               _setFanTimerPreset(preset);
@@ -904,7 +904,6 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
           layout: useCompactLayout
               ? ValueSelectorRowLayout.compact
               : ValueSelectorRowLayout.horizontal,
-          showChevron: _screenService.isLargeScreen,
           onChanged: (minutes) {
             if (minutes != null) {
               _setFanTimerNumeric(minutes);

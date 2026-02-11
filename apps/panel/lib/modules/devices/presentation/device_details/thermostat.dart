@@ -659,7 +659,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
         : null;
 
     return Scaffold(
-      backgroundColor: isDark ? AppBgColorDark.base : AppBgColorLight.page,
+      backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
       body: SafeArea(
         child: Column(
           children: [
