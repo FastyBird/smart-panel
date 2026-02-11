@@ -6,7 +6,12 @@ import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { ConfigService } from '../../config/services/config.service';
-import { CLEANUP_BATCH_SIZE, DEFAULT_RETENTION_DAYS, ENERGY_MODULE_NAME, MAX_RETENTION_DAYS } from '../energy.constants';
+import {
+	CLEANUP_BATCH_SIZE,
+	DEFAULT_RETENTION_DAYS,
+	ENERGY_MODULE_NAME,
+	MAX_RETENTION_DAYS,
+} from '../energy.constants';
 import { EnergyDeltaEntity } from '../entities/energy-delta.entity';
 import { EnergyConfigModel } from '../models/config.model';
 
@@ -34,9 +39,7 @@ export class EnergyCleanupService {
 			const retentionDays = this.getRetentionDays();
 			const cutoff = this.computeCutoff(retentionDays);
 
-			this.logger.log(
-				`Starting energy delta cleanup: retention=${retentionDays}d, cutoff=${cutoff.toISOString()}`,
-			);
+			this.logger.log(`Starting energy delta cleanup: retention=${retentionDays}d, cutoff=${cutoff.toISOString()}`);
 
 			totalDeleted = await this.deleteInBatches(cutoff);
 		} catch (error) {
