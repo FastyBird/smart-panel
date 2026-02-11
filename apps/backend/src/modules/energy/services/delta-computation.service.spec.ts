@@ -121,11 +121,14 @@ describe('DeltaComputationService', () => {
 	});
 
 	describe('out-of-order samples', () => {
-		it('should skip and return null for out-of-order timestamps', () => {
+		it('should still process out-of-order samples (not skip them)', () => {
 			service.computeDelta(deviceId, sourceType, 100.0, new Date('2026-02-09T12:05:00Z'));
 			const result = service.computeDelta(deviceId, sourceType, 101.0, new Date('2026-02-09T12:00:00Z'));
 
-			expect(result).toBeNull();
+			// Out-of-order samples are processed because timestamps may mix
+			// wall-clock fallbacks with real device times
+			expect(result).not.toBeNull();
+			expect(result.deltaKwh).toBeCloseTo(1.0);
 		});
 
 		it('should increment outOfOrderCount metric', () => {
@@ -135,15 +138,15 @@ describe('DeltaComputationService', () => {
 			expect(metrics.getSnapshot().outOfOrderCount).toBe(1);
 		});
 
-		it('should not update baseline for out-of-order samples', () => {
+		it('should update baseline even for out-of-order samples', () => {
 			service.computeDelta(deviceId, sourceType, 100.0, new Date('2026-02-09T12:00:00Z'));
-			// Out-of-order: should be skipped
+			// Out-of-order timestamp, but with a value decrease — treated as meter reset
 			service.computeDelta(deviceId, sourceType, 50.0, new Date('2026-02-09T11:55:00Z'));
-			// Next normal reading should compute delta from original baseline (100.0)
-			const result = service.computeDelta(deviceId, sourceType, 102.0, new Date('2026-02-09T12:05:00Z'));
+			// Baseline is now 50.0, so next reading computes delta from 50
+			const result = service.computeDelta(deviceId, sourceType, 55.0, new Date('2026-02-09T12:05:00Z'));
 
 			expect(result).not.toBeNull();
-			expect(result.deltaKwh).toBeCloseTo(2.0);
+			expect(result.deltaKwh).toBeCloseTo(5.0);
 		});
 	});
 

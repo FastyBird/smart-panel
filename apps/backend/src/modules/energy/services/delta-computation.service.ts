@@ -62,13 +62,14 @@ export class DeltaComputationService {
 		const key = `${deviceId}:${sourceType}`;
 		const prev = this.baselines.get(key);
 
-		// Check for out-of-order samples before updating baseline
+		// Detect out-of-order samples (log + count) but still process them.
+		// Timestamps may mix wall-clock fallbacks with real device times,
+		// so rejecting would suppress legitimate deltas.
 		if (prev && timestamp < prev.lastTimestamp) {
 			this.logger.warn(
-				`Out-of-order sample for ${key}: received=${timestamp.toISOString()}, lastSeen=${prev.lastTimestamp.toISOString()}. Skipping.`,
+				`Out-of-order sample for ${key}: received=${timestamp.toISOString()}, lastSeen=${prev.lastTimestamp.toISOString()}. Processing anyway.`,
 			);
 			this.metrics.recordOutOfOrder();
-			return null;
 		}
 
 		// Always update baseline to the latest reading
