@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_right_drawer.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
+import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/slider_with_steps.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/lighting_mode_selector.dart';
@@ -1350,24 +1352,64 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
     );
   }
 
-  /// Shows the channels bottom sheet (individual light toggles + sync/retry).
+  /// Shows the channels sheet (individual light toggles + sync/retry).
+  ///
+  /// In portrait mode opens a bottom sheet via [DeckItemSheet]; in landscape
+  /// mode opens a right-side drawer via [showAppRightDrawer].
   void _showChannelsSheet(List<LightingChannelData> channels) {
     if (channels.isEmpty) return;
     final localizations = AppLocalizations.of(context)!;
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
 
-    DeckItemSheet.showItemSheetWithUpdates(
-      context,
-      title: localizations.domain_lights,
-      icon: MdiIcons.lightbulbGroup,
-      rebuildWhen: _channelsSheetRebuildNotifier,
-      getItemCount: () => _lastChannels?.length ?? 0,
-      itemBuilder: (c, i) => _buildChannelTileForSheet(c, _lastChannels![i]),
-      showCountInHeader: false,
-      bottomSection: _currentUiState == LightingState.synced ? null : ListenableBuilder(
-        listenable: _channelsSheetRebuildNotifier,
-        builder: (ctx, _) => _buildChannelsSheetBottomSection(ctx),
-      ),
-    );
+    final bottomSection = _currentUiState == LightingState.synced
+        ? null
+        : ListenableBuilder(
+            listenable: _channelsSheetRebuildNotifier,
+            builder: (ctx, _) => _buildChannelsSheetBottomSection(ctx),
+          );
+
+    if (isLandscape) {
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+      final drawerBgColor =
+          isDark ? AppFillColorDark.base : AppFillColorLight.blank;
+
+      showAppRightDrawer(
+        context,
+        title: localizations.domain_lights,
+        titleIcon: MdiIcons.lightbulbGroup,
+        scrollable: false,
+        content: ListenableBuilder(
+          listenable: _channelsSheetRebuildNotifier,
+          builder: (ctx, _) {
+            final items = _lastChannels ?? [];
+            return VerticalScrollWithGradient(
+              gradientHeight: AppSpacings.pMd,
+              itemCount: items.length,
+              separatorHeight: AppSpacings.pSm,
+              backgroundColor: drawerBgColor,
+              padding: EdgeInsets.symmetric(
+                horizontal: AppSpacings.pLg,
+                vertical: AppSpacings.pMd,
+              ),
+              itemBuilder: (c, i) => _buildChannelTileForSheet(c, items[i]),
+            );
+          },
+        ),
+        footerSection: bottomSection,
+      );
+    } else {
+      DeckItemSheet.showItemSheetWithUpdates(
+        context,
+        title: localizations.domain_lights,
+        icon: MdiIcons.lightbulbGroup,
+        rebuildWhen: _channelsSheetRebuildNotifier,
+        getItemCount: () => _lastChannels?.length ?? 0,
+        itemBuilder: (c, i) => _buildChannelTileForSheet(c, _lastChannels![i]),
+        showCountInHeader: false,
+        bottomSection: bottomSection,
+      );
+    }
   }
 
   Widget _buildChannelsSheetBottomSection(BuildContext context) {
@@ -1384,19 +1426,16 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
 
     return Theme(
       data: Theme.of(context).copyWith(filledButtonTheme: filledTheme),
-      child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: AppSpacings.pLg, vertical: AppSpacings.pMd),
-        child: SizedBox(
-          width: double.infinity,
-          child: FilledButton(
-            onPressed: () {
-              HapticFeedback.lightImpact();
-              _onSyncAllCallback?.call();
-              _channelsSheetRebuildNotifier.value++;
-              Navigator.of(context).pop();
-            },
-            child: Text(label),
-          ),
+      child: SizedBox(
+        width: double.infinity,
+        child: FilledButton(
+          onPressed: () {
+            HapticFeedback.lightImpact();
+            _onSyncAllCallback?.call();
+            _channelsSheetRebuildNotifier.value++;
+            Navigator.of(context).pop();
+          },
+          child: Text(label),
         ),
       ),
     );
