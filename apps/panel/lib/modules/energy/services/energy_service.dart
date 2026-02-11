@@ -67,23 +67,37 @@ class EnergyService {
 
   /// Fetches energy timeseries for a space.
   ///
+  /// The backend returns `{ "data": [ { "interval_start": ..., ... }, ... ] }`.
+  /// We construct an [EnergyTimeseries] from the array and the query params.
+  ///
   /// Throws on network or server errors so callers can handle error state.
   Future<EnergyTimeseries?> fetchTimeseries(
     String spaceId,
     EnergyRange range, {
     String? interval,
   }) async {
+    final resolvedInterval = interval ?? range.defaultInterval;
+
     try {
       final response = await _dio.get(
         '/api/energy/spaces/$spaceId/timeseries',
         queryParameters: {
           'range': range.value,
-          'interval': interval ?? range.defaultInterval,
+          'interval': resolvedInterval,
         },
       );
 
       if (response.statusCode == 200 && response.data != null) {
         final data = response.data['data'];
+
+        if (data is List) {
+          return EnergyTimeseries.fromList(
+            data.cast<Map<String, dynamic>>(),
+            range: range.value,
+            interval: resolvedInterval,
+          );
+        }
+
         if (data is Map<String, dynamic>) {
           return EnergyTimeseries.fromJson(data);
         }
@@ -99,6 +113,9 @@ class EnergyService {
   }
 
   /// Fetches energy breakdown (top consumers) for a space.
+  ///
+  /// The backend returns `{ "data": [ { "device_id": ..., ... }, ... ] }`.
+  /// We construct an [EnergyBreakdown] from the array and the query params.
   ///
   /// Throws on network or server errors so callers can handle error state.
   Future<EnergyBreakdown?> fetchBreakdown(
@@ -117,6 +134,14 @@ class EnergyService {
 
       if (response.statusCode == 200 && response.data != null) {
         final data = response.data['data'];
+
+        if (data is List) {
+          return EnergyBreakdown.fromList(
+            data.cast<Map<String, dynamic>>(),
+            range: range.value,
+          );
+        }
+
         if (data is Map<String, dynamic>) {
           return EnergyBreakdown.fromJson(data);
         }

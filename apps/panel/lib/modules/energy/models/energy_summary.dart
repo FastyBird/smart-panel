@@ -42,13 +42,17 @@ class EnergySummary {
   bool get hasProduction => production != null && production! > 0;
 
   factory EnergySummary.fromJson(Map<String, dynamic> json) {
+    final rawConsumption = json['total_consumption_kwh'] ?? json['consumption'];
+    final rawProduction = json['total_production_kwh'] ?? json['production'];
+    final rawNet = json['net_kwh'] ?? json['net'];
+
     return EnergySummary(
-      consumption: _parseDouble(json['consumption']),
-      production: json['production'] != null ? _parseDouble(json['production']) : null,
-      net: json['net'] != null ? _parseDouble(json['net']) : null,
-      gridImport: _parseDouble(json['grid_import'] ?? json['total_grid_import_kwh']),
-      gridExport: _parseDouble(json['grid_export'] ?? json['total_grid_export_kwh']),
-      netGrid: _parseDouble(json['net_grid'] ?? json['net_grid_kwh']),
+      consumption: _parseDouble(rawConsumption),
+      production: rawProduction != null ? _parseDouble(rawProduction) : null,
+      net: rawNet != null ? _parseDouble(rawNet) : null,
+      gridImport: _parseDouble(json['total_grid_import_kwh'] ?? json['grid_import']),
+      gridExport: _parseDouble(json['total_grid_export_kwh'] ?? json['grid_export']),
+      netGrid: _parseDouble(json['net_grid_kwh'] ?? json['net_grid']),
       hasGridMetrics: json['has_grid_metrics'] as bool? ?? false,
       range: json['range'] as String? ?? 'today',
     );
