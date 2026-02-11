@@ -1297,6 +1297,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     final scenesPerRow = isSmallScreen ? 3 : 4;
 
     return PortraitViewLayout(
+      scrollable: false,
       content: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         spacing: AppSpacings.pMd,

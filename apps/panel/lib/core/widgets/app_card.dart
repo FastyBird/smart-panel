@@ -70,10 +70,10 @@ class AppCard extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final resolvedColor =
-        color ?? (isDark ? AppFillColorDark.lighter : AppFillColorLight.light);
+        color ?? (isDark ? AppFillColorDark.light : AppFillColorLight.blank);
     final resolvedBorderColor = borderColor ??
-        (isDark ? AppBorderColorDark.light : AppBorderColorLight.darker);
-    final finalBorderWidth = borderWidth ?? AppSpacings.scale(1);
+        (isDark ? AppBorderColorDark.light : AppBorderColorLight.light);
+    final finalBorderWidth = borderWidth ?? (isDark ? null :AppSpacings.scale(1));
 
     final resolvedPadding = padding ?? AppSpacings.paddingMd;
 
@@ -85,7 +85,7 @@ class AppCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: resolvedColor,
           borderRadius: BorderRadius.circular(AppBorderRadius.base),
-          border: Border.all(color: resolvedBorderColor, width: finalBorderWidth),
+          border: finalBorderWidth != null ? Border.all(color: resolvedBorderColor, width: finalBorderWidth) : null,
         ),
         child: child,
       );
@@ -99,7 +99,7 @@ class AppCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: resolvedColor,
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
-        border: Border.all(color: resolvedBorderColor, width: finalBorderWidth),
+        border: finalBorderWidth != null ? Border.all(color: resolvedBorderColor, width: finalBorderWidth) : null,
       ),
       child: Column(
         mainAxisSize: expanded ? MainAxisSize.max : MainAxisSize.min,

@@ -290,7 +290,7 @@ class UniversalTile extends StatelessWidget {
                     name,
                     style: TextStyle(
                       color: colors.textColor,
-                      fontSize: nameFontSize ?? AppFontSize.base,
+                      fontSize: nameFontSize ?? AppFontSize.small,
                       fontWeight: FontWeight.w600,
                     ),
                     overflow: TextOverflow.ellipsis,
