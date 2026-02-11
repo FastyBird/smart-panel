@@ -401,8 +401,6 @@ class LightingPresetsPanel extends StatelessWidget {
     final swatchHeight = AppSpacings.scale(AppTileHeight.horizontal);
     final swatchWidth =
         _screenService.isLargeScreen ? swatchHeight * 2 : swatchHeight;
-    final borderColor =
-        isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       spacing: AppSpacings.pMd,
@@ -429,10 +427,12 @@ class LightingPresetsPanel extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: presetColor,
                   borderRadius: BorderRadius.circular(AppBorderRadius.base),
-                  border: Border.all(
-                    color: isActive ? presetColor : borderColor,
-                    width: isActive ? AppSpacings.scale(3) : AppSpacings.scale(1),
-                  ),
+                  border: isActive
+                      ? Border.all(
+                          color: presetColor,
+                          width: AppSpacings.scale(3),
+                        )
+                      : null,
                   boxShadow: isActive
                       ? [
                           BoxShadow(

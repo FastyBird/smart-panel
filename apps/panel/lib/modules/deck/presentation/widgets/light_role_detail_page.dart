@@ -1,11 +1,11 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/utils/color.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
+import 'package:fastybird_smart_panel/core/widgets/slider_with_steps.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/lighting_mode_selector.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/lighting_presets_panel.dart';
 import 'package:fastybird_smart_panel/core/widgets/tile_wrappers.dart';
@@ -2686,7 +2686,6 @@ class LightingMainControl extends StatelessWidget {
         final hsv = HSVColor.fromColor(currentColor);
         return _ColorPanel(
           isLandscape: isLandscape,
-          isDark: isDark,
           hue: hsv.hue,
           saturation: saturation,
           onChanged: (hue, sat) {
@@ -2851,7 +2850,7 @@ class _SliderPanel extends StatelessWidget {
   final Color thumbColor;
   final ValueChanged<int> onChanged;
 
-  _SliderPanel({
+  const _SliderPanel({
     required this.isLandscape,
     required this.isDark,
     required this.value,
@@ -2866,13 +2865,38 @@ class _SliderPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final normalizedValue = (value - minValue) / (maxValue - minValue);
+
+    final slider = SliderWithSteps(
+      themeColor: ThemeColors.neutral,
+      value: normalizedValue,
+      vertical: isLandscape,
+      trackGradientColors: gradientColors,
+      thumbFillColor: thumbColor,
+      showSteps: false,
+      onChanged: (v) {
+        final newValue =
+            (minValue + (maxValue - minValue) * v).round();
+        onChanged(newValue);
+      },
+    );
+
     if (isLandscape) {
       return Row(
         spacing: AppSpacings.pMd,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Expanded(child: _buildDisplay()),
-          _buildVerticalSlider(),
+          Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: AppSpacings.pMd,
+              vertical: AppSpacings.pLg,
+            ),
+            child: SizedBox(
+              width: AppSpacings.scale(52),
+              child: slider,
+            ),
+          ),
         ],
       );
     } else {
@@ -2880,7 +2904,13 @@ class _SliderPanel extends StatelessWidget {
           spacing: AppSpacings.pMd,
           children: [
             Expanded(child: _buildDisplay()),
-            _buildHorizontalSlider(),
+            Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: AppSpacings.pLg,
+                vertical: AppSpacings.pMd,
+              ),
+              child: slider,
+            ),
           ],
       );
     }
@@ -2959,162 +2989,6 @@ class _SliderPanel extends StatelessWidget {
     );
   }
 
-  Widget _buildVerticalSlider() {
-    final thumbSize = AppSpacings.scale(44);
-    final padding = AppSpacings.pSm;
-    final progress = (value - minValue) / (maxValue - minValue);
-
-    return SizedBox(
-      width: AppSpacings.scale(52),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final trackHeight = math.max(1.0, constraints.maxHeight - thumbSize - padding * 2);
-          final thumbOffset = trackHeight * (1 - progress);
-
-          return GestureDetector(
-            onVerticalDragUpdate: (details) {
-              final newProgress =
-                  1 - (details.localPosition.dy - padding - thumbSize / 2) / trackHeight;
-              final clampedProgress = newProgress.clamp(0.0, 1.0);
-              final newValue =
-                  (minValue + (maxValue - minValue) * clampedProgress).round();
-              onChanged(newValue);
-            },
-            onTapDown: (details) {
-              final newProgress =
-                  1 - (details.localPosition.dy - padding - thumbSize / 2) / trackHeight;
-              final clampedProgress = newProgress.clamp(0.0, 1.0);
-              final newValue =
-                  (minValue + (maxValue - minValue) * clampedProgress).round();
-              onChanged(newValue);
-            },
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.bottomCenter,
-                  end: Alignment.topCenter,
-                  colors: gradientColors,
-                ),
-                borderRadius: BorderRadius.circular(AppBorderRadius.base),
-                border: isDark
-                    ? null
-                    : Border.all(
-                        color: AppBorderColorLight.darker,
-                        width: AppSpacings.scale(1),
-                      ),
-              ),
-              child: Stack(
-                children: [
-                  Positioned(
-                    top: padding + thumbOffset,
-                    left: padding,
-                    right: padding,
-                    child: _buildThumb(thumbSize),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildHorizontalSlider() {
-    final thumbSize = AppSpacings.scale(44);
-    final padding = AppSpacings.pSm;
-    final progress = (value - minValue) / (maxValue - minValue);
-
-    return SizedBox(
-      height: AppSpacings.scale(52),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final trackWidth = math.max(1.0, constraints.maxWidth - thumbSize - padding * 2);
-          final thumbOffset = trackWidth * progress;
-
-          return GestureDetector(
-            onHorizontalDragUpdate: (details) {
-              final newProgress =
-                  (details.localPosition.dx - padding - thumbSize / 2) / trackWidth;
-              final clampedProgress = newProgress.clamp(0.0, 1.0);
-              final newValue =
-                  (minValue + (maxValue - minValue) * clampedProgress).round();
-              onChanged(newValue);
-            },
-            onTapDown: (details) {
-              final newProgress =
-                  (details.localPosition.dx - padding - thumbSize / 2) / trackWidth;
-              final clampedProgress = newProgress.clamp(0.0, 1.0);
-              final newValue =
-                  (minValue + (maxValue - minValue) * clampedProgress).round();
-              onChanged(newValue);
-            },
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.centerLeft,
-                  end: Alignment.centerRight,
-                  colors: gradientColors,
-                ),
-                borderRadius: BorderRadius.circular(AppBorderRadius.base),
-                border: isDark
-                    ? null
-                    : Border.all(
-                        color: AppBorderColorLight.darker,
-                        width: AppSpacings.scale(1),
-                      ),
-              ),
-              child: Stack(
-                children: [
-                  Positioned(
-                    left: padding + thumbOffset,
-                    top: padding,
-                    bottom: padding,
-                    child: _buildThumb(thumbSize),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildThumb(double size) {
-    final borderColor =
-        isDark ? AppTextColorDark.primary : AppBorderColorLight.base;
-
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(AppBorderRadius.base),
-        border: Border.all(
-          color: borderColor,
-          width: AppSpacings.scale(3),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: AppShadowColor.medium,
-            blurRadius: AppSpacings.scale(8),
-            offset: Offset(0, AppSpacings.scale(2)),
-          ),
-        ],
-      ),
-      child: Center(
-        child: Container(
-          width: size * 2/3,
-          height: size * 2/3,
-          decoration: BoxDecoration(
-            color: thumbColor,
-            borderRadius: BorderRadius.circular(AppBorderRadius.base),
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 // ============================================================================
@@ -3123,14 +2997,12 @@ class _SliderPanel extends StatelessWidget {
 
 class _ColorPanel extends StatelessWidget {
   final bool isLandscape;
-  final bool isDark;
   final double hue;
   final double saturation;
   final Function(double hue, double saturation) onChanged;
 
-  _ColorPanel({
+  const _ColorPanel({
     required this.isLandscape,
-    required this.isDark,
     required this.hue,
     required this.saturation,
     required this.onChanged,
@@ -3139,6 +3011,43 @@ class _ColorPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = HSVColor.fromAHSV(1, hue, saturation, 1).toColor();
+    final currentHueColor = HSVColor.fromAHSV(1, hue, 1, 1).toColor();
+
+    // Hue slider: bottom-to-top via RotatedBox(quarterTurns: 3), so
+    // gradient colors go left→right = bottom→top after rotation.
+    // Original vertical was top→bottom, so we reverse the colors.
+    final hueSlider = SliderWithSteps(
+      themeColor: ThemeColors.neutral,
+      value: 1 - hue / 360,
+      vertical: isLandscape,
+      trackGradientColors: const [
+        Color(0xFFFF0000),
+        Color(0xFFFF00FF),
+        Color(0xFF0000FF),
+        Color(0xFF00FFFF),
+        Color(0xFF00FF00),
+        Color(0xFFFFFF00),
+        Color(0xFFFF0000),
+      ],
+      thumbFillColor: AppColors.white,
+      thumbBorderColor: currentHueColor,
+      showSteps: false,
+      onChanged: (v) => onChanged((1 - v) * 360, saturation),
+    );
+
+    // Saturation slider: bottom-to-top matches naturally (low sat at bottom,
+    // high sat at top).
+    final satSlider = SliderWithSteps(
+      themeColor: ThemeColors.neutral,
+      value: saturation,
+      vertical: isLandscape,
+      trackGradientColors: [AppColors.white, currentHueColor],
+      thumbFillColor: AppColors.white,
+      thumbBorderColor:
+          HSVColor.fromAHSV(1, hue, saturation, 1).toColor(),
+      showSteps: false,
+      onChanged: (v) => onChanged(hue, v),
+    );
 
     if (isLandscape) {
       return Row(
@@ -3146,8 +3055,26 @@ class _ColorPanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Expanded(child: _buildDisplay(color)),
-          _buildVerticalHueSlider(),
-          _buildVerticalSatSlider(),
+          Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: AppSpacings.pMd,
+              vertical: AppSpacings.pLg,
+            ),
+            child: SizedBox(
+              width: AppSpacings.scale(52),
+              child: hueSlider,
+            ),
+          ),
+          Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: AppSpacings.pMd,
+              vertical: AppSpacings.pLg,
+            ),
+            child: SizedBox(
+              width: AppSpacings.scale(52),
+              child: satSlider,
+            ),
+          ),
         ],
       );
     } else {
@@ -3158,8 +3085,20 @@ class _ColorPanel extends StatelessWidget {
             flex: 2,
             child: _buildDisplay(color),
           ),
-          _buildHorizontalHueSlider(),
-          _buildHorizontalSatSlider(),
+          Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: AppSpacings.pLg,
+              vertical: AppSpacings.pMd,
+            ),
+            child: hueSlider,
+          ),
+          Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: AppSpacings.pLg,
+              vertical: AppSpacings.pMd,
+            ),
+            child: satSlider,
+          ),
         ],
       );
     }
@@ -3170,288 +3109,15 @@ class _ColorPanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: color,
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
-        boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.4),
-            blurRadius: AppSpacings.scale(20),
-            spreadRadius: AppSpacings.scale(2),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildVerticalHueSlider() {
-    final thumbSize = AppSpacings.scale(44);
-    final padding = AppSpacings.pSm;
-    final progress = hue / 360;
-
-    return SizedBox(
-      width: AppSpacings.scale(52),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final trackHeight = math.max(1.0, constraints.maxHeight - thumbSize - padding * 2);
-          final thumbOffset = trackHeight * progress;
-
-          return GestureDetector(
-            onVerticalDragUpdate: (details) {
-              final newProgress =
-                  (details.localPosition.dy - padding - thumbSize / 2) / trackHeight;
-              final clampedProgress = newProgress.clamp(0.0, 1.0);
-              onChanged(clampedProgress * 360, saturation);
-            },
-            onTapDown: (details) {
-              final newProgress =
-                  (details.localPosition.dy - padding - thumbSize / 2) / trackHeight;
-              final clampedProgress = newProgress.clamp(0.0, 1.0);
-              onChanged(clampedProgress * 360, saturation);
-            },
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Color(0xFFFF0000),
-                    Color(0xFFFFFF00),
-                    Color(0xFF00FF00),
-                    Color(0xFF00FFFF),
-                    Color(0xFF0000FF),
-                    Color(0xFFFF00FF),
-                    Color(0xFFFF0000),
-                  ],
+        boxShadow: isLandscape
+            ? null
+            : [
+                BoxShadow(
+                  color: color.withValues(alpha: 0.4),
+                  blurRadius: AppSpacings.scale(20),
+                  spreadRadius: AppSpacings.scale(2),
                 ),
-                borderRadius: BorderRadius.circular(AppBorderRadius.base),
-                border: isDark
-                    ? null
-                    : Border.all(
-                        color: AppBorderColorLight.darker,
-                        width: AppSpacings.scale(1),
-                      ),
-              ),
-              child: Stack(
-                children: [
-                  Positioned(
-                    top: padding + thumbOffset,
-                    left: padding,
-                    right: padding,
-                    child: _buildThumb(
-                        thumbSize, HSVColor.fromAHSV(1, hue, 1, 1).toColor()),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildVerticalSatSlider() {
-    final thumbSize = AppSpacings.scale(44);
-    final padding = AppSpacings.pSm;
-    final currentColor = HSVColor.fromAHSV(1, hue, 1, 1).toColor();
-
-    return SizedBox(
-      width: AppSpacings.scale(52),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final trackHeight = math.max(1.0, constraints.maxHeight - thumbSize - padding * 2);
-          final thumbOffset = trackHeight * (1 - saturation);
-
-          return GestureDetector(
-            onVerticalDragUpdate: (details) {
-              final newSat =
-                  1 - (details.localPosition.dy - padding - thumbSize / 2) / trackHeight;
-              onChanged(hue, newSat.clamp(0.0, 1.0));
-            },
-            onTapDown: (details) {
-              final newSat =
-                  1 - (details.localPosition.dy - padding - thumbSize / 2) / trackHeight;
-              onChanged(hue, newSat.clamp(0.0, 1.0));
-            },
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [currentColor, AppColors.white],
-                ),
-                borderRadius: BorderRadius.circular(AppBorderRadius.base),
-                border: isDark
-                    ? null
-                    : Border.all(
-                        color: AppBorderColorLight.darker,
-                        width: AppSpacings.scale(1),
-                      ),
-              ),
-              child: Stack(
-                children: [
-                  Positioned(
-                    top: padding + thumbOffset,
-                    left: padding,
-                    right: padding,
-                    child: _buildThumb(thumbSize,
-                        HSVColor.fromAHSV(1, hue, saturation, 1).toColor()),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildHorizontalHueSlider() {
-    final thumbSize = AppSpacings.scale(44);
-    final padding = AppSpacings.pSm;
-    final progress = hue / 360;
-
-    return SizedBox(
-      height: AppSpacings.scale(52),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final trackWidth = math.max(1.0, constraints.maxWidth - thumbSize - padding * 2);
-          final thumbOffset = trackWidth * progress;
-
-          return GestureDetector(
-            onHorizontalDragUpdate: (details) {
-              final newProgress =
-                  (details.localPosition.dx - padding - thumbSize / 2) / trackWidth;
-              final clampedProgress = newProgress.clamp(0.0, 1.0);
-              onChanged(clampedProgress * 360, saturation);
-            },
-            onTapDown: (details) {
-              final newProgress =
-                  (details.localPosition.dx - padding - thumbSize / 2) / trackWidth;
-              final clampedProgress = newProgress.clamp(0.0, 1.0);
-              onChanged(clampedProgress * 360, saturation);
-            },
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [
-                    Color(0xFFFF0000),
-                    Color(0xFFFFFF00),
-                    Color(0xFF00FF00),
-                    Color(0xFF00FFFF),
-                    Color(0xFF0000FF),
-                    Color(0xFFFF00FF),
-                    Color(0xFFFF0000),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(AppBorderRadius.base),
-                border: isDark
-                    ? null
-                    : Border.all(
-                        color: AppBorderColorLight.darker,
-                        width: AppSpacings.scale(1),
-                      ),
-              ),
-              child: Stack(
-                children: [
-                  Positioned(
-                    left: padding + thumbOffset,
-                    top: padding,
-                    bottom: padding,
-                    child: _buildThumb(
-                        thumbSize, HSVColor.fromAHSV(1, hue, 1, 1).toColor()),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildHorizontalSatSlider() {
-    final thumbSize = AppSpacings.scale(44);
-    final padding = AppSpacings.pSm;
-    final currentColor = HSVColor.fromAHSV(1, hue, 1, 1).toColor();
-
-    return SizedBox(
-      height: AppSpacings.scale(52),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final trackWidth = math.max(1.0, constraints.maxWidth - thumbSize - padding * 2);
-          final thumbOffset = trackWidth * saturation;
-
-          return GestureDetector(
-            onHorizontalDragUpdate: (details) {
-              final newSat =
-                  (details.localPosition.dx - padding - thumbSize / 2) / trackWidth;
-              onChanged(hue, newSat.clamp(0.0, 1.0));
-            },
-            onTapDown: (details) {
-              final newSat =
-                  (details.localPosition.dx - padding - thumbSize / 2) / trackWidth;
-              onChanged(hue, newSat.clamp(0.0, 1.0));
-            },
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [AppColors.white, currentColor],
-                ),
-                borderRadius: BorderRadius.circular(AppBorderRadius.base),
-                border: isDark
-                    ? null
-                    : Border.all(
-                        color: AppBorderColorLight.darker,
-                        width: AppSpacings.scale(1),
-                      ),
-              ),
-              child: Stack(
-                children: [
-                  Positioned(
-                    left: padding + thumbOffset,
-                    top: padding,
-                    bottom: padding,
-                    child: _buildThumb(thumbSize,
-                        HSVColor.fromAHSV(1, hue, saturation, 1).toColor()),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildThumb(double size, Color color) {
-    final borderColor =
-        isDark ? AppTextColorDark.primary : AppBorderColorLight.base;
-
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(AppBorderRadius.base),
-        border: Border.all(
-          color: borderColor,
-          width: AppSpacings.scale(3),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: AppShadowColor.medium,
-            blurRadius: AppSpacings.scale(8),
-            offset: Offset(0, AppSpacings.scale(2)),
-          ),
-        ],
-      ),
-      child: Center(
-        child: Container(
-          width: size * 2/3,
-          height: size * 2/3,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(AppBorderRadius.base),
-          ),
-        ),
+              ],
       ),
     );
   }
