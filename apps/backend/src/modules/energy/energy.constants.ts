@@ -18,6 +18,12 @@ export const DELTA_INTERVAL_MINUTES = 5;
 export const DEFAULT_RETENTION_DAYS = 90;
 
 /**
+ * Maximum allowed retention period (≈10 years).
+ * Prevents overflow when computing the cutoff date.
+ */
+export const MAX_RETENTION_DAYS = 3650;
+
+/**
  * Number of rows to delete per batch during cleanup.
  */
 export const CLEANUP_BATCH_SIZE = 1000;

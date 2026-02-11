@@ -1,10 +1,10 @@
 import { Expose, Transform } from 'class-transformer';
-import { IsInt, IsString, Min } from 'class-validator';
+import { IsInt, IsString, Max, Min } from 'class-validator';
 
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
 import { ModuleConfigModel } from '../../config/models/config.model';
-import { DEFAULT_RETENTION_DAYS, ENERGY_MODULE_NAME } from '../energy.constants';
+import { DEFAULT_RETENTION_DAYS, ENERGY_MODULE_NAME, MAX_RETENTION_DAYS } from '../energy.constants';
 
 @ApiSchema({ name: 'ConfigModuleDataEnergy' })
 export class EnergyConfigModel extends ModuleConfigModel {
@@ -26,6 +26,7 @@ export class EnergyConfigModel extends ModuleConfigModel {
 	@Expose({ name: 'retention_days' })
 	@IsInt()
 	@Min(1)
+	@Max(MAX_RETENTION_DAYS)
 	@Transform(
 		({ obj }: { obj: { retention_days?: number; retentionDays?: number } }) =>
 			obj.retention_days ?? obj.retentionDays ?? DEFAULT_RETENTION_DAYS,

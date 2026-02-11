@@ -4,6 +4,16 @@ export class AddEnergyDeltaIntervalEndIndex1765900000000 implements MigrationInt
 	name = 'AddEnergyDeltaIntervalEndIndex1765900000000';
 
 	public async up(queryRunner: QueryRunner): Promise<void> {
+		// Guard: skip if the table does not exist yet (energy module not activated).
+		// The @Index decorator on the entity will create the index when the table is first created.
+		const tables: { name: string }[] = await queryRunner.query(
+			`SELECT name FROM sqlite_master WHERE type='table' AND name='energy_module_deltas'`,
+		);
+
+		if (tables.length === 0) {
+			return;
+		}
+
 		// Check if index already exists (e.g. from synchronize:true environments)
 		const indices: { name: string }[] = await queryRunner.query(
 			`PRAGMA index_list("energy_module_deltas")`,

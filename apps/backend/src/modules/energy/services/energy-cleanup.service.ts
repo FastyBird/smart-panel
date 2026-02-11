@@ -6,7 +6,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { ConfigService } from '../../config/services/config.service';
-import { CLEANUP_BATCH_SIZE, DEFAULT_RETENTION_DAYS, ENERGY_MODULE_NAME } from '../energy.constants';
+import { CLEANUP_BATCH_SIZE, DEFAULT_RETENTION_DAYS, ENERGY_MODULE_NAME, MAX_RETENTION_DAYS } from '../energy.constants';
 import { EnergyDeltaEntity } from '../entities/energy-delta.entity';
 import { EnergyConfigModel } from '../models/config.model';
 
@@ -28,14 +28,16 @@ export class EnergyCleanupService {
 	async runCleanup(): Promise<void> {
 		const startTime = Date.now();
 
-		const retentionDays = this.getRetentionDays();
-		const cutoff = this.computeCutoff(retentionDays);
-
-		this.logger.log(`Starting energy delta cleanup: retention=${retentionDays}d, cutoff=${cutoff.toISOString()}`);
-
 		let totalDeleted = 0;
 
 		try {
+			const retentionDays = this.getRetentionDays();
+			const cutoff = this.computeCutoff(retentionDays);
+
+			this.logger.log(
+				`Starting energy delta cleanup: retention=${retentionDays}d, cutoff=${cutoff.toISOString()}`,
+			);
+
 			totalDeleted = await this.deleteInBatches(cutoff);
 		} catch (error) {
 			const err = error as Error;
@@ -105,8 +107,9 @@ export class EnergyCleanupService {
 	private getRetentionDays(): number {
 		try {
 			const energyConfig = this.configService.getModuleConfig<EnergyConfigModel>(ENERGY_MODULE_NAME);
+			const days = energyConfig?.retentionDays ?? DEFAULT_RETENTION_DAYS;
 
-			return energyConfig?.retentionDays ?? DEFAULT_RETENTION_DAYS;
+			return Math.min(Math.max(days, 1), MAX_RETENTION_DAYS);
 		} catch {
 			return DEFAULT_RETENTION_DAYS;
 		}
