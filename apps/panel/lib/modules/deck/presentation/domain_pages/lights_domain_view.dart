@@ -961,8 +961,10 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
   /// Builds a list of [LightingRoleData] from the given targets.
   ///
-  /// Performance optimization: For large target lists (> [LightingConstants.largeTargetListThreshold]),
-  /// pre-builds device and channel lookup maps to avoid repeated service calls and list searches.
+  /// Uses [RoleAggregatedState] from [SpacesService.getLightingState()] as the
+  /// source of truth for on/off counts and brightness, matching the approach
+  /// in the role detail page. Targets are still grouped for navigation and
+  /// capability detection.
   List<LightingRoleData> _buildRoleDataList(
     List<LightTargetView> targets,
     DevicesService devicesService,
@@ -976,88 +978,28 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       grouped.putIfAbsent(role, () => []).add(target);
     }
 
-    // Performance optimization: Pre-build device lookup map for large target lists.
-    // This avoids repeated hash lookups in DevicesService.getDevice() for each target.
-    final bool useLookupMaps = targets.length > LightingConstants.largeTargetListThreshold;
-    Map<String, LightingDeviceView>? deviceLookup;
-    Map<String, Map<String, LightChannelView>>? channelLookup;
-
-    if (useLookupMaps) {
-      deviceLookup = {};
-      channelLookup = {};
-
-      // Collect unique device IDs
-      final uniqueDeviceIds = targets.map((t) => t.deviceId).toSet();
-
-      for (final deviceId in uniqueDeviceIds) {
-        final device = devicesService.getDevice(deviceId);
-        if (device is LightingDeviceView) {
-          deviceLookup[deviceId] = device;
-          // Pre-build channel lookup map for this device
-          channelLookup[deviceId] = {
-            for (final channel in device.lightChannels) channel.id: channel,
-          };
-        }
-      }
-    }
+    final lightingState = _lightingState;
 
     final List<LightingRoleData> roles = [];
     for (final role in LightTargetRole.values) {
       final roleTargets = grouped[role] ?? [];
       if (roleTargets.isEmpty) continue;
 
-      int onCount = 0;
-      int? avgBrightness;
-      int brightnessSum = 0;
-      int brightnessCount = 0;
+      // Read aggregated values from backend state
+      final stateRole = mapTargetRoleToStateRole(role);
+      final roleState = stateRole != null ? lightingState?.getRoleState(stateRole) : null;
 
-      for (final target in roleTargets) {
-        // Use pre-built lookup maps for large lists, otherwise fetch directly
-        final LightingDeviceView? device;
-        final LightChannelView? channel;
-
-        if (useLookupMaps) {
-          device = deviceLookup![target.deviceId];
-          if (device != null) {
-            channel = channelLookup![target.deviceId]?[target.channelId] ??
-                device.lightChannels.firstOrNull;
-          } else {
-            channel = null;
-          }
-        } else {
-          final rawDevice = devicesService.getDevice(target.deviceId);
-          if (rawDevice is LightingDeviceView) {
-            device = rawDevice;
-            final channels = rawDevice.lightChannels;
-            // Use firstOrNull for consistency with optimized path - handles empty channel lists gracefully
-            channel = channels.where((c) => c.id == target.channelId).firstOrNull ??
-                channels.firstOrNull;
-          } else {
-            device = null;
-            channel = null;
-          }
-        }
-
-        if (device != null && channel != null && channel.on) {
-          onCount++;
-          if (channel.hasBrightness) {
-            brightnessSum += channel.brightness;
-            brightnessCount++;
-          }
-        }
-      }
-
-      if (brightnessCount > 0) {
-        avgBrightness = (brightnessSum / brightnessCount).round();
-      }
+      final onCount = roleState?.devicesOn ?? 0;
+      final totalCount = roleState?.devicesCount ?? roleTargets.length;
+      final brightness = roleState?.brightness;
 
       roles.add(LightingRoleData(
         role: role,
         name: _getRoleName(role, localizations),
         icon: _getRoleIcon(role),
         onCount: onCount,
-        totalCount: roleTargets.length,
-        brightness: onCount > 0 ? avgBrightness : null,
+        totalCount: totalCount,
+        brightness: onCount > 0 ? brightness : null,
         targets: roleTargets,
       ));
     }
