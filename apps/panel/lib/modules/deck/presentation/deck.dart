@@ -38,7 +38,10 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen>
   bool _initialized = false;
   bool _swipeBlocked = false;
   bool _isCrossfading = false;
-  Orientation? _lastOrientation;
+
+  /// Preserves the PageView element when it is re-parented between
+  /// Column (portrait) and Row (landscape) on orientation change.
+  final _pageViewKey = GlobalKey();
 
   late final AnimationController _fadeController;
 
@@ -231,25 +234,11 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen>
             builder: (context, orientation) {
               final isPortrait = orientation == Orientation.portrait;
 
-              // After orientation change the PageView is re-parented
-              // (Column ↔ Row), causing Flutter to remount it. The new
-              // ScrollPosition uses PageController.initialPage (start index)
-              // instead of the current page, so we restore it here.
-              // Only run on actual orientation transitions, and skip during
-              // crossfade to avoid fighting the ongoing animation.
-              if (_lastOrientation != null &&
-                  _lastOrientation != orientation) {
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (!mounted || _isCrossfading) return;
-                  if (_pageController?.hasClients == true &&
-                      _pageController!.page?.round() != _currentIndex) {
-                    _pageController!.jumpToPage(_currentIndex);
-                  }
-                });
-              }
-              _lastOrientation = orientation;
-
+              // GlobalKey on the FadeTransition preserves the PageView element
+              // when it is re-parented between Column ↔ Row on orientation
+              // change, so the ScrollPosition (and current page) is kept.
               final pageView = FadeTransition(
+                key: _pageViewKey,
                 opacity: _fadeController,
                 child: PageView.builder(
                   controller: _pageController,

@@ -134,11 +134,11 @@ class PageHeader extends StatelessWidget {
             trailing!,
           ],
 
-          // Landscape action (e.g. mode chip) — always rightmost in landscape
-          if (landscapeAction != null && isLandscape) ...[
-            AppSpacings.spacingMdHorizontal,
-            landscapeAction!,
-          ],
+          // Landscape action (e.g. mode chip) — always rightmost in landscape.
+          // No explicit spacing: the action widget is responsible for its own
+          // leading margin so that visually-empty widgets (SizedBox.shrink)
+          // do not leave trailing whitespace.
+          if (landscapeAction != null && isLandscape) landscapeAction!,
         ],
       ),
     );

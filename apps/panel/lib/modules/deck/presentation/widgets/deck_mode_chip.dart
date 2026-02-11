@@ -26,46 +26,49 @@ class DeckModeChip extends StatelessWidget {
       config.color,
     );
 
-    return GestureDetector(
-      onTap: () => showModePopup(context, config),
-      behavior: HitTestBehavior.opaque,
-      child: Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: AppSpacings.pMd,
-          vertical: AppSpacings.pMd,
-        ),
-        decoration: BoxDecoration(
-          color: colorFamily.light8,
-          borderRadius: BorderRadius.circular(AppBorderRadius.base),
-          border: Border.all(
-            color: colorFamily.light7,
-            width: AppSpacings.scale(1),
+    return Padding(
+      padding: EdgeInsets.only(left: AppSpacings.pMd),
+      child: GestureDetector(
+        onTap: () => showModePopup(context, config),
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: AppSpacings.pMd,
+            vertical: AppSpacings.pMd,
           ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              config.icon,
-              size: AppSpacings.scale(16),
-              color: colorFamily.base,
+          decoration: BoxDecoration(
+            color: colorFamily.light8,
+            borderRadius: BorderRadius.circular(AppBorderRadius.base),
+            border: Border.all(
+              color: colorFamily.light7,
+              width: AppSpacings.scale(1),
             ),
-            SizedBox(width: AppSpacings.pSm),
-            Text(
-              config.label,
-              style: TextStyle(
-                fontSize: AppFontSize.small,
-                fontWeight: FontWeight.w600,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                config.icon,
+                size: AppSpacings.scale(16),
                 color: colorFamily.base,
               ),
-            ),
-            SizedBox(width: AppSpacings.pXs),
-            Icon(
-              MdiIcons.chevronDown,
-              size: AppSpacings.scale(14),
-              color: colorFamily.base,
-            ),
-          ],
+              SizedBox(width: AppSpacings.pSm),
+              Text(
+                config.label,
+                style: TextStyle(
+                  fontSize: AppFontSize.small,
+                  fontWeight: FontWeight.w600,
+                  color: colorFamily.base,
+                ),
+              ),
+              SizedBox(width: AppSpacings.pXs),
+              Icon(
+                MdiIcons.chevronDown,
+                size: AppSpacings.scale(14),
+                color: colorFamily.base,
+              ),
+            ],
+          ),
         ),
       ),
     );
