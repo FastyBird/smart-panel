@@ -255,6 +255,142 @@ describe('EnergyDataService', () => {
 			expect(result.netKwh).toBe(0);
 			expect(result.lastUpdatedAt).toBeNull();
 		});
+
+		it('should include grid import and export in summary', async () => {
+			await insertSpace('room-1', 'Main Room');
+			await insertDevice('dev-1', 'Grid Meter', 'room-1');
+
+			await insertDelta({
+				deviceId: 'dev-1',
+				roomId: 'room-1',
+				sourceType: EnergySourceType.GRID_IMPORT,
+				deltaKwh: 10.0,
+				intervalStart: '2026-02-09T10:00:00.000Z',
+				intervalEnd: '2026-02-09T10:05:00.000Z',
+			});
+			await insertDelta({
+				deviceId: 'dev-1',
+				roomId: 'room-1',
+				sourceType: EnergySourceType.GRID_EXPORT,
+				deltaKwh: 3.5,
+				intervalStart: '2026-02-09T10:00:00.000Z',
+				intervalEnd: '2026-02-09T10:05:00.000Z',
+			});
+
+			const result = await service.getSpaceSummary(
+				new Date('2026-02-09T00:00:00.000Z'),
+				new Date('2026-02-09T23:59:59.999Z'),
+				'room-1',
+			);
+
+			expect(result.totalGridImportKwh).toBeCloseTo(10.0);
+			expect(result.totalGridExportKwh).toBeCloseTo(3.5);
+			expect(result.netGridKwh).toBeCloseTo(6.5);
+			expect(result.hasGridMetrics).toBe(true);
+		});
+
+		it('should set hasGridMetrics to false when no grid data exists', async () => {
+			await insertSpace('room-1', 'Main Room');
+			await insertDevice('dev-1', 'Oven', 'room-1');
+
+			await insertDelta({
+				deviceId: 'dev-1',
+				roomId: 'room-1',
+				sourceType: EnergySourceType.CONSUMPTION_IMPORT,
+				deltaKwh: 5.0,
+				intervalStart: '2026-02-09T10:00:00.000Z',
+				intervalEnd: '2026-02-09T10:05:00.000Z',
+			});
+
+			const result = await service.getSpaceSummary(
+				new Date('2026-02-09T00:00:00.000Z'),
+				new Date('2026-02-09T23:59:59.999Z'),
+				'room-1',
+			);
+
+			expect(result.totalGridImportKwh).toBe(0);
+			expect(result.totalGridExportKwh).toBe(0);
+			expect(result.netGridKwh).toBe(0);
+			expect(result.hasGridMetrics).toBe(false);
+		});
+
+		it('should set hasGridMetrics to true with only grid_import (no export)', async () => {
+			await insertSpace('room-1', 'Main Room');
+			await insertDevice('dev-1', 'Grid Meter', 'room-1');
+
+			await insertDelta({
+				deviceId: 'dev-1',
+				roomId: 'room-1',
+				sourceType: EnergySourceType.GRID_IMPORT,
+				deltaKwh: 7.0,
+				intervalStart: '2026-02-09T10:00:00.000Z',
+				intervalEnd: '2026-02-09T10:05:00.000Z',
+			});
+
+			const result = await service.getSpaceSummary(
+				new Date('2026-02-09T00:00:00.000Z'),
+				new Date('2026-02-09T23:59:59.999Z'),
+				'room-1',
+			);
+
+			expect(result.totalGridImportKwh).toBeCloseTo(7.0);
+			expect(result.totalGridExportKwh).toBe(0);
+			expect(result.netGridKwh).toBeCloseTo(7.0);
+			expect(result.hasGridMetrics).toBe(true);
+		});
+
+		it('should aggregate all four source types together', async () => {
+			await insertSpace('room-1', 'Solar House');
+			await insertDevice('dev-1', 'Grid Meter', 'room-1');
+			await insertDevice('dev-2', 'Solar Panel', 'room-1');
+
+			await insertDelta({
+				deviceId: 'dev-1',
+				roomId: 'room-1',
+				sourceType: EnergySourceType.CONSUMPTION_IMPORT,
+				deltaKwh: 15.0,
+				intervalStart: '2026-02-09T10:00:00.000Z',
+				intervalEnd: '2026-02-09T10:05:00.000Z',
+			});
+			await insertDelta({
+				deviceId: 'dev-2',
+				roomId: 'room-1',
+				sourceType: EnergySourceType.GENERATION_PRODUCTION,
+				deltaKwh: 8.0,
+				intervalStart: '2026-02-09T10:00:00.000Z',
+				intervalEnd: '2026-02-09T10:05:00.000Z',
+			});
+			await insertDelta({
+				deviceId: 'dev-1',
+				roomId: 'room-1',
+				sourceType: EnergySourceType.GRID_IMPORT,
+				deltaKwh: 10.0,
+				intervalStart: '2026-02-09T10:00:00.000Z',
+				intervalEnd: '2026-02-09T10:05:00.000Z',
+			});
+			await insertDelta({
+				deviceId: 'dev-1',
+				roomId: 'room-1',
+				sourceType: EnergySourceType.GRID_EXPORT,
+				deltaKwh: 3.0,
+				intervalStart: '2026-02-09T10:00:00.000Z',
+				intervalEnd: '2026-02-09T10:05:00.000Z',
+			});
+
+			const result = await service.getSpaceSummary(
+				new Date('2026-02-09T00:00:00.000Z'),
+				new Date('2026-02-09T23:59:59.999Z'),
+				'room-1',
+			);
+
+			expect(result.totalConsumptionKwh).toBeCloseTo(15.0);
+			expect(result.totalProductionKwh).toBeCloseTo(8.0);
+			expect(result.totalGridImportKwh).toBeCloseTo(10.0);
+			expect(result.totalGridExportKwh).toBeCloseTo(3.0);
+			expect(result.netKwh).toBeCloseTo(7.0); // 15 - 8
+			expect(result.netGridKwh).toBeCloseTo(7.0); // 10 - 3
+			expect(result.hasGridMetrics).toBe(true);
+		});
 	});
 
 	describe('getSpaceTimeseries', () => {
@@ -497,6 +633,116 @@ describe('EnergyDataService', () => {
 
 			expect(result[0].consumptionDeltaKwh).toBeCloseTo(3.0);
 			expect(result[0].productionDeltaKwh).toBeCloseTo(1.5);
+		});
+
+		it('should include grid import and export in timeseries', async () => {
+			await insertSpace('room-1', 'Grid Room');
+			await insertDevice('dev-1', 'Grid Meter', 'room-1');
+
+			await insertDelta({
+				deviceId: 'dev-1',
+				roomId: 'room-1',
+				sourceType: EnergySourceType.GRID_IMPORT,
+				deltaKwh: 2.0,
+				intervalStart: '2026-02-09T10:00:00.000Z',
+				intervalEnd: '2026-02-09T10:05:00.000Z',
+			});
+			await insertDelta({
+				deviceId: 'dev-1',
+				roomId: 'room-1',
+				sourceType: EnergySourceType.GRID_EXPORT,
+				deltaKwh: 0.5,
+				intervalStart: '2026-02-09T10:00:00.000Z',
+				intervalEnd: '2026-02-09T10:05:00.000Z',
+			});
+
+			const result = await service.getSpaceTimeseries(
+				new Date('2026-02-09T10:00:00.000Z'),
+				new Date('2026-02-09T11:00:00.000Z'),
+				'1h',
+				'room-1',
+			);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].gridImportDeltaKwh).toBeCloseTo(2.0);
+			expect(result[0].gridExportDeltaKwh).toBeCloseTo(0.5);
+		});
+
+		it('should zero-fill grid fields when no grid data exists', async () => {
+			await insertSpace('room-1', 'Kitchen');
+			await insertDevice('dev-1', 'Oven', 'room-1');
+
+			await insertDelta({
+				deviceId: 'dev-1',
+				roomId: 'room-1',
+				sourceType: EnergySourceType.CONSUMPTION_IMPORT,
+				deltaKwh: 1.0,
+				intervalStart: '2026-02-09T10:00:00.000Z',
+				intervalEnd: '2026-02-09T10:05:00.000Z',
+			});
+
+			const result = await service.getSpaceTimeseries(
+				new Date('2026-02-09T10:00:00.000Z'),
+				new Date('2026-02-09T11:00:00.000Z'),
+				'1h',
+				'room-1',
+			);
+
+			expect(result[0].consumptionDeltaKwh).toBeCloseTo(1.0);
+			expect(result[0].gridImportDeltaKwh).toBe(0);
+			expect(result[0].gridExportDeltaKwh).toBe(0);
+		});
+
+		it('should include all four source types in timeseries points', async () => {
+			await insertSpace('room-1', 'Solar House');
+			await insertDevice('dev-1', 'Grid Meter', 'room-1');
+			await insertDevice('dev-2', 'Solar', 'room-1');
+
+			await insertDelta({
+				deviceId: 'dev-1',
+				roomId: 'room-1',
+				sourceType: EnergySourceType.CONSUMPTION_IMPORT,
+				deltaKwh: 5.0,
+				intervalStart: '2026-02-09T10:00:00.000Z',
+				intervalEnd: '2026-02-09T10:05:00.000Z',
+			});
+			await insertDelta({
+				deviceId: 'dev-2',
+				roomId: 'room-1',
+				sourceType: EnergySourceType.GENERATION_PRODUCTION,
+				deltaKwh: 3.0,
+				intervalStart: '2026-02-09T10:00:00.000Z',
+				intervalEnd: '2026-02-09T10:05:00.000Z',
+			});
+			await insertDelta({
+				deviceId: 'dev-1',
+				roomId: 'room-1',
+				sourceType: EnergySourceType.GRID_IMPORT,
+				deltaKwh: 4.0,
+				intervalStart: '2026-02-09T10:00:00.000Z',
+				intervalEnd: '2026-02-09T10:05:00.000Z',
+			});
+			await insertDelta({
+				deviceId: 'dev-1',
+				roomId: 'room-1',
+				sourceType: EnergySourceType.GRID_EXPORT,
+				deltaKwh: 1.5,
+				intervalStart: '2026-02-09T10:00:00.000Z',
+				intervalEnd: '2026-02-09T10:05:00.000Z',
+			});
+
+			const result = await service.getSpaceTimeseries(
+				new Date('2026-02-09T10:00:00.000Z'),
+				new Date('2026-02-09T11:00:00.000Z'),
+				'1h',
+				'room-1',
+			);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].consumptionDeltaKwh).toBeCloseTo(5.0);
+			expect(result[0].productionDeltaKwh).toBeCloseTo(3.0);
+			expect(result[0].gridImportDeltaKwh).toBeCloseTo(4.0);
+			expect(result[0].gridExportDeltaKwh).toBeCloseTo(1.5);
 		});
 	});
 

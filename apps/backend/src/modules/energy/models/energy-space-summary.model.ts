@@ -1,5 +1,5 @@
 import { Expose } from 'class-transformer';
-import { IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsNumber, IsOptional, IsString } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -28,6 +28,28 @@ export class EnergySpaceSummaryModel {
 	totalProductionKwh: number;
 
 	@ApiProperty({
+		name: 'total_grid_import_kwh',
+		description: 'Total energy imported from the public grid in kWh. 0 if no grid metrics.',
+		type: 'number',
+		format: 'float',
+		example: 8.5,
+	})
+	@Expose({ name: 'total_grid_import_kwh' })
+	@IsNumber()
+	totalGridImportKwh: number;
+
+	@ApiProperty({
+		name: 'total_grid_export_kwh',
+		description: 'Total energy exported to the public grid in kWh. 0 if no grid metrics.',
+		type: 'number',
+		format: 'float',
+		example: 1.2,
+	})
+	@Expose({ name: 'total_grid_export_kwh' })
+	@IsNumber()
+	totalGridExportKwh: number;
+
+	@ApiProperty({
 		name: 'net_kwh',
 		description: 'Net energy in kWh (consumption - production). Positive means net consumption.',
 		type: 'number',
@@ -37,6 +59,28 @@ export class EnergySpaceSummaryModel {
 	@Expose({ name: 'net_kwh' })
 	@IsNumber()
 	netKwh: number;
+
+	@ApiProperty({
+		name: 'net_grid_kwh',
+		description:
+			'Net grid energy in kWh (grid_import - grid_export). Positive means net import from grid. 0 if no grid metrics.',
+		type: 'number',
+		format: 'float',
+		example: 7.3,
+	})
+	@Expose({ name: 'net_grid_kwh' })
+	@IsNumber()
+	netGridKwh: number;
+
+	@ApiProperty({
+		name: 'has_grid_metrics',
+		description: 'Whether grid import/export metrics are available. When false, grid values are 0.',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose({ name: 'has_grid_metrics' })
+	@IsBoolean()
+	hasGridMetrics: boolean;
 
 	@ApiProperty({
 		description: 'The requested time range.',

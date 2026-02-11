@@ -54,6 +54,9 @@ export class EnergyController {
 		const model = new EnergySummaryModel();
 		model.totalConsumptionKwh = summary.totalConsumptionKwh;
 		model.totalProductionKwh = summary.totalProductionKwh;
+		model.totalGridImportKwh = summary.totalGridImportKwh;
+		model.totalGridExportKwh = summary.totalGridExportKwh;
+		model.hasGridMetrics = summary.hasGridMetrics;
 		model.lastUpdatedAt = summary.lastUpdatedAt;
 
 		const response = new EnergySummaryResponseModel();
@@ -101,6 +104,8 @@ export class EnergyController {
 			item.intervalEnd = row.intervalEnd;
 			item.consumptionDeltaKwh = row.consumptionDeltaKwh;
 			item.productionDeltaKwh = row.productionDeltaKwh;
+			item.gridImportDeltaKwh = row.gridImportDeltaKwh;
+			item.gridExportDeltaKwh = row.gridExportDeltaKwh;
 			return item;
 		});
 

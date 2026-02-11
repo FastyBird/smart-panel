@@ -9,10 +9,18 @@ class EnergyTimeseriesPoint {
   /// Production delta for this bucket in kWh (0 if no PV).
   final double production;
 
+  /// Grid import delta for this bucket in kWh (0 if no grid metrics).
+  final double gridImport;
+
+  /// Grid export delta for this bucket in kWh (0 if no grid metrics).
+  final double gridExport;
+
   const EnergyTimeseriesPoint({
     required this.timestamp,
     required this.consumption,
     this.production = 0,
+    this.gridImport = 0,
+    this.gridExport = 0,
   });
 
   factory EnergyTimeseriesPoint.fromJson(Map<String, dynamic> json) {
@@ -20,6 +28,8 @@ class EnergyTimeseriesPoint {
       timestamp: DateTime.parse(json['timestamp'] as String),
       consumption: _parseDouble(json['consumption']),
       production: _parseDouble(json['production']),
+      gridImport: _parseDouble(json['grid_import'] ?? json['grid_import_delta_kwh']),
+      gridExport: _parseDouble(json['grid_export'] ?? json['grid_export_delta_kwh']),
     );
   }
 
