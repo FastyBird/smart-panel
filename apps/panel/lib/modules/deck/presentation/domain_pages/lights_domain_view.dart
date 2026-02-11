@@ -236,8 +236,6 @@ class LightsDomainViewPage extends StatefulWidget {
 }
 
 class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
-  final ScreenService _screenService = locator<ScreenService>();
-
   /// Optional services: resolved in initState via [_tryLocator]. Listeners
   /// registered for Spaces, Devices, Scenes, Intents; others used ad hoc.
   SpacesService? _spacesService;
@@ -963,8 +961,10 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
   /// Builds a list of [LightingRoleData] from the given targets.
   ///
-  /// Performance optimization: For large target lists (> [LightingConstants.largeTargetListThreshold]),
-  /// pre-builds device and channel lookup maps to avoid repeated service calls and list searches.
+  /// Uses [RoleAggregatedState] from [SpacesService.getLightingState()] as the
+  /// source of truth for on/off counts and brightness, matching the approach
+  /// in the role detail page. Targets are still grouped for navigation and
+  /// capability detection.
   List<LightingRoleData> _buildRoleDataList(
     List<LightTargetView> targets,
     DevicesService devicesService,
@@ -978,88 +978,28 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       grouped.putIfAbsent(role, () => []).add(target);
     }
 
-    // Performance optimization: Pre-build device lookup map for large target lists.
-    // This avoids repeated hash lookups in DevicesService.getDevice() for each target.
-    final bool useLookupMaps = targets.length > LightingConstants.largeTargetListThreshold;
-    Map<String, LightingDeviceView>? deviceLookup;
-    Map<String, Map<String, LightChannelView>>? channelLookup;
-
-    if (useLookupMaps) {
-      deviceLookup = {};
-      channelLookup = {};
-
-      // Collect unique device IDs
-      final uniqueDeviceIds = targets.map((t) => t.deviceId).toSet();
-
-      for (final deviceId in uniqueDeviceIds) {
-        final device = devicesService.getDevice(deviceId);
-        if (device is LightingDeviceView) {
-          deviceLookup[deviceId] = device;
-          // Pre-build channel lookup map for this device
-          channelLookup[deviceId] = {
-            for (final channel in device.lightChannels) channel.id: channel,
-          };
-        }
-      }
-    }
+    final lightingState = _lightingState;
 
     final List<LightingRoleData> roles = [];
     for (final role in LightTargetRole.values) {
       final roleTargets = grouped[role] ?? [];
       if (roleTargets.isEmpty) continue;
 
-      int onCount = 0;
-      int? avgBrightness;
-      int brightnessSum = 0;
-      int brightnessCount = 0;
+      // Read aggregated values from backend state
+      final stateRole = mapTargetRoleToStateRole(role);
+      final roleState = stateRole != null ? lightingState?.getRoleState(stateRole) : null;
 
-      for (final target in roleTargets) {
-        // Use pre-built lookup maps for large lists, otherwise fetch directly
-        final LightingDeviceView? device;
-        final LightChannelView? channel;
-
-        if (useLookupMaps) {
-          device = deviceLookup![target.deviceId];
-          if (device != null) {
-            channel = channelLookup![target.deviceId]?[target.channelId] ??
-                device.lightChannels.firstOrNull;
-          } else {
-            channel = null;
-          }
-        } else {
-          final rawDevice = devicesService.getDevice(target.deviceId);
-          if (rawDevice is LightingDeviceView) {
-            device = rawDevice;
-            final channels = rawDevice.lightChannels;
-            // Use firstOrNull for consistency with optimized path - handles empty channel lists gracefully
-            channel = channels.where((c) => c.id == target.channelId).firstOrNull ??
-                channels.firstOrNull;
-          } else {
-            device = null;
-            channel = null;
-          }
-        }
-
-        if (device != null && channel != null && channel.on) {
-          onCount++;
-          if (channel.hasBrightness) {
-            brightnessSum += channel.brightness;
-            brightnessCount++;
-          }
-        }
-      }
-
-      if (brightnessCount > 0) {
-        avgBrightness = (brightnessSum / brightnessCount).round();
-      }
+      final onCount = roleState?.devicesOn ?? 0;
+      final totalCount = roleState?.devicesCount ?? roleTargets.length;
+      final brightness = roleState?.brightness;
 
       roles.add(LightingRoleData(
         role: role,
         name: _getRoleName(role, localizations),
         icon: _getRoleIcon(role),
         onCount: onCount,
-        totalCount: roleTargets.length,
-        brightness: onCount > 0 ? avgBrightness : null,
+        totalCount: totalCount,
+        brightness: onCount > 0 ? brightness : null,
         targets: roleTargets,
       ));
     }
@@ -1290,50 +1230,66 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     final hasRoles = roles.isNotEmpty;
     final hasOtherLights = otherLights.isNotEmpty;
     final hasScenes = _lightingScenes.isNotEmpty;
-
-    // Responsive scenes per row based on screen size
-    // Small: 3, Medium/Large: 4
-    final isSmallScreen = _screenService.isSmallScreen;
-    final scenesPerRow = isSmallScreen ? 3 : 4;
+    final isSmallScreen = locator<ScreenService>().isSmallScreen;
 
     return PortraitViewLayout(
-      content: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        spacing: AppSpacings.pMd,
-        children: [
-          // Roles Grid
-          if (hasRoles)
-            _buildRolesGrid(context, roles, devicesService, crossAxisCount: 3),
+      scrollable: false,
+      content: LayoutBuilder(
+        builder: (context, constraints) {
+          // Reserve roles height for 2 rows (max 6 roles, 3 per row)
+          // so scenes/lights get consistent space regardless of role count.
+          final tileWidth =
+              (constraints.maxWidth - 2 * AppSpacings.pMd) / 3;
+          final tileHeight = tileWidth / 0.9;
+          final rolesHeight = 2 * tileHeight + AppSpacings.pMd;
 
-          // Quick Scenes Section
-          if (hasScenes) ...[
-            SectionTitle(
-                title: localizations.space_scenes_title,
-                icon: MdiIcons.autoFix),
-            // Use horizontal scroll when other lights present (less vertical space)
-            if (hasOtherLights)
-              SizedBox(
-                height: AppSpacings.scale(70),
-                child: _buildPortraitScenesRow(
-                  context,
-                  tilesPerRow: scenesPerRow,
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            spacing: AppSpacings.pMd,
+            children: [
+              // Roles Grid — fixed at 2 rows height
+              if (hasRoles)
+                SizedBox(
+                  height: rolesHeight,
+                  child: _buildRolesGrid(
+                    context,
+                    roles,
+                    devicesService,
+                    crossAxisCount: 3,
+                  ),
                 ),
-              )
-            else
-              _buildScenesGrid(context, crossAxisCount: scenesPerRow),
-          ],
 
-          // Other Lights Section
-          if (hasOtherLights) ...[
-            _buildOtherLightsTitle(otherLights, otherTargets, localizations),
-            _buildLightsGrid(
-              context,
-              otherLights,
-              localizations,
-              crossAxisCount: 2,
-            ),
-          ],
-        ],
+              // Quick Scenes — horizontal scroll with gradient
+              if (hasScenes) ...[
+                SectionTitle(
+                  title: localizations.space_scenes_title,
+                  icon: MdiIcons.autoFix,
+                ),
+                Expanded(
+                  flex: isSmallScreen ? 2 : 1,
+                  child: _buildPortraitScenesHorizontalScroll(context),
+                ),
+              ],
+
+              // Other Lights — horizontal scroll with gradient
+              if (hasOtherLights) ...[
+                _buildOtherLightsTitle(
+                  otherLights,
+                  otherTargets,
+                  localizations,
+                ),
+                Expanded(
+                  child: _buildPortraitLightsHorizontalScroll(
+                    context,
+                    otherLights,
+                    localizations,
+                    isSmallScreen: isSmallScreen,
+                  ),
+                ),
+              ],
+            ],
+          );
+        },
       ),
     );
   }
@@ -1494,22 +1450,21 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     );
   }
 
-  Widget _buildPortraitScenesRow(
-    BuildContext context, {
-    required int tilesPerRow,
-  }) {
+  Widget _buildPortraitScenesHorizontalScroll(BuildContext context) {
     final scenes = _lightingScenes;
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Calculate tile width to fit exactly tilesPerRow tiles
-        final totalSpacing = AppSpacings.pMd * (tilesPerRow - 1);
-        final tileWidth = (constraints.maxWidth - totalSpacing) / tilesPerRow;
+        final height = constraints.maxHeight;
+        // Size tiles so ~2.5 fit visibly — the partial tile hints at scrollability
+        final tileWidth =
+            (constraints.maxWidth - 1.5 * AppSpacings.pMd) / 2.5;
 
-        return ListView.separated(
-          scrollDirection: Axis.horizontal,
+        return HorizontalScrollWithGradient(
+          height: height,
+          layoutPadding: AppSpacings.pLg,
           itemCount: scenes.length,
-          separatorBuilder: (context, index) => AppSpacings.spacingMdHorizontal,
+          separatorWidth: AppSpacings.pMd,
           itemBuilder: (context, index) {
             return SizedBox(
               width: tileWidth,
@@ -1517,6 +1472,44 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                 scene: scenes[index],
                 icon: _getSceneIcon(scenes[index]),
                 onTap: () => _activateScene(scenes[index]),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildPortraitLightsHorizontalScroll(
+    BuildContext context,
+    List<LightDeviceData> otherLights,
+    AppLocalizations localizations, {
+    bool isSmallScreen = false,
+  }) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final height = constraints.maxHeight;
+        // Small: fixed width matching climate sensors; medium/large: ~2.5 visible
+        final tileWidth = isSmallScreen
+            ? AppSpacings.scale(AppTileWidth.horizontalMedium)
+            : (constraints.maxWidth - 1.5 * AppSpacings.pMd) / 2.5;
+
+        return HorizontalScrollWithGradient(
+          height: height,
+          layoutPadding: AppSpacings.pLg,
+          itemCount: otherLights.length,
+          separatorWidth: AppSpacings.pMd,
+          itemBuilder: (context, index) {
+            return SizedBox(
+              width: tileWidth,
+              child: _LightTile(
+                light: otherLights[index],
+                localizations: localizations,
+                onTap: () => _openDeviceDetail(context, otherLights[index]),
+                onIconTap: otherLights[index].isOffline
+                    ? null
+                    : () => _toggleLight(otherLights[index]),
+                isVertical: !isSmallScreen,
               ),
             );
           },
@@ -1965,69 +1958,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   }
 
   // --------------------------------------------------------------------------
-  // LIGHTS GRID
-  // --------------------------------------------------------------------------
-
-  /// Builds a grid of light tiles (other lights) using [DeviceTilePortrait].
-  Widget _buildLightsGrid(
-    BuildContext context,
-    List<LightDeviceData> lights,
-    AppLocalizations localizations, {
-    int crossAxisCount = 2,
-  }) {
-    // Build device tiles using DeviceTilePortrait wrapper
-    final items = lights.map((light) {
-      return DeviceTilePortrait(
-        icon: MdiIcons.lightbulbOutline,
-        activeIcon: MdiIcons.lightbulb,
-        name: light.name,
-        status: _getLightStatusText(light, localizations),
-        isActive: light.isOn,
-        isOffline: light.isOffline,
-        onTileTap: () => _openDeviceDetail(context, light),
-        onIconTap: light.isOffline ? null : () => _toggleLight(light),
-      );
-    }).toList();
-
-    // Build rows of tiles
-    final List<Widget> rows = [];
-    for (var i = 0; i < items.length; i += crossAxisCount) {
-      final rowItems = <Widget>[];
-      for (var j = 0; j < crossAxisCount; j++) {
-        final index = i + j;
-        if (index < items.length) {
-          rowItems.add(Expanded(child: items[index]));
-        } else {
-          rowItems.add(const Expanded(child: SizedBox()));
-        }
-        if (j < crossAxisCount - 1) {
-          rowItems.add(AppSpacings.spacingMdHorizontal);
-        }
-      }
-      if (rows.isNotEmpty) {
-        rows.add(AppSpacings.spacingMdVertical);
-      }
-      rows.add(Row(children: rowItems));
-    }
-
-    return Column(children: rows);
-  }
-
-  /// Get localized status text for a light device.
-  String _getLightStatusText(LightDeviceData light, AppLocalizations localizations) {
-    switch (light.state) {
-      case LightState.off:
-        return localizations.light_state_off;
-      case LightState.on:
-        return light.brightness != null
-            ? '${light.brightness}%'
-            : localizations.light_state_on;
-      case LightState.offline:
-        return localizations.device_status_offline;
-    }
-  }
-
-  // --------------------------------------------------------------------------
   // SCENES
   // --------------------------------------------------------------------------
 
@@ -2076,28 +2006,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
     // Default icon for lighting scenes
     return MdiIcons.lightbulbGroup;
-  }
-
-  Widget _buildScenesGrid(BuildContext context, {required int crossAxisCount}) {
-    final scenes = _lightingScenes;
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: crossAxisCount,
-        crossAxisSpacing: AppSpacings.pMd,
-        mainAxisSpacing: AppSpacings.pMd,
-        childAspectRatio: 1.0,
-      ),
-      itemCount: scenes.length,
-      itemBuilder: (context, index) {
-        return _SceneTile(
-          scene: scenes[index],
-          icon: _getSceneIcon(scenes[index]),
-          onTap: () => _activateScene(scenes[index]),
-        );
-      },
-    );
   }
 
   Future<void> _activateScene(SceneView scene) async {

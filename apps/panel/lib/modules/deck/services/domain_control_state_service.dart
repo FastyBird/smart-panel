@@ -163,10 +163,12 @@ class DomainControlStateService<T> extends ChangeNotifier {
     _startSettling(channelId, desiredValue, config);
   }
 
-  /// Check for convergence during settling state.
+  /// Check for convergence when device data changes.
   ///
-  /// Call this when device data changes. If converged, transitions to idle.
-  /// Also handles mixed state: if devices converge while in mixed, clears to idle.
+  /// Handles three states:
+  /// - **pending**: converged → idle (covers direct device commands without intents)
+  /// - **settling**: converged → idle
+  /// - **mixed**: converged → idle (sync error resolved)
   void checkConvergence(String channelId, List<T> targets) {
     final config = _channelConfigs[channelId];
     final currentState = _states[channelId];
@@ -176,8 +178,8 @@ class DomainControlStateService<T> extends ChangeNotifier {
     final desiredValue = currentState.desiredValue;
     if (desiredValue == null) return;
 
-    // Only check convergence during settling or mixed states
-    if (currentState.state != ControlUIState.settling &&
+    if (currentState.state != ControlUIState.pending &&
+        currentState.state != ControlUIState.settling &&
         currentState.state != ControlUIState.mixed) {
       return;
     }

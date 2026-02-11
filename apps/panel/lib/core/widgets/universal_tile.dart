@@ -156,26 +156,28 @@ class UniversalTile extends StatelessWidget {
                   vertical: AppSpacings.pSm,
                 ),
                 child: Column(
-                  spacing: AppSpacings.pMd,
                   children: [
                     // Icon - takes available space
                     Expanded(
-                      child: Center(
-                        child: LayoutBuilder(
-                          builder: (context, constraints) {
-                            final iconSize = constraints.maxHeight;
-                            return _buildIconButton(
-                              context,
-                              colors,
-                              iconSize,
-                              iconSize * 0.6,
-                            );
-                          },
+                      child: Padding(
+                        padding: EdgeInsets.only(bottom: AppSpacings.pMd),
+                        child: Center(
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              final iconSize = constraints.maxHeight;
+                              return _buildIconButton(
+                                context,
+                                colors,
+                                iconSize,
+                                iconSize * 0.6,
+                              );
+                            },
+                          ),
                         ),
                       ),
                     ),
 
-                    // Name
+                    // Name + Status grouped together
                     Text(
                       name,
                       style: TextStyle(
@@ -208,6 +210,7 @@ class UniversalTile extends StatelessWidget {
 
                     // Accessories (optional)
                     if (accessories != null) ...[
+                      SizedBox(height: AppSpacings.pSm),
                       accessories!,
                     ],
                   ],
@@ -290,7 +293,7 @@ class UniversalTile extends StatelessWidget {
                     name,
                     style: TextStyle(
                       color: colors.textColor,
-                      fontSize: nameFontSize ?? AppFontSize.base,
+                      fontSize: nameFontSize ?? AppFontSize.small,
                       fontWeight: FontWeight.w600,
                     ),
                     overflow: TextOverflow.ellipsis,

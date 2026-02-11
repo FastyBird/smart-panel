@@ -26,6 +26,7 @@ import { SpaceSensorRoleEntity } from './entities/space-sensor-role.entity';
 import { SpaceEntity } from './entities/space.entity';
 import { SpaceActivityListener } from './listeners/space-activity.listener';
 import { SpaceClimateStateListener } from './listeners/space-climate-state.listener';
+import { SpaceLightingStateListener } from './listeners/space-lighting-state.listener';
 import { SpaceSensorStateListener } from './listeners/space-sensor-state.listener';
 import { WebsocketExchangeListener } from './listeners/websocket-exchange.listener';
 import { SpacesConfigModel } from './models/config.model';
@@ -106,6 +107,7 @@ import { IntentSpecLoaderService } from './spec';
 		SpaceUndoHistoryService,
 		SpaceActivityListener,
 		SpaceClimateStateListener,
+		SpaceLightingStateListener,
 		SpaceSensorStateListener,
 		WebsocketExchangeListener,
 		IntentSpecLoaderService,

@@ -1,3 +1,5 @@
+import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -63,12 +65,10 @@ class PageHeader extends StatelessWidget {
     final isLandscape =
         MediaQuery.of(context).orientation == Orientation.landscape;
 
-    final bgColor = backgroundColor ??
-        (isLandscape
-            ? (isDark ? AppBgColorDark.page : AppBgColorLight.page)
-            : (isDark ? AppBgColorDark.page : AppBgColorLight.base));
-    final defaultBorderColor =
-        isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
+    final screenService = locator<ScreenService>();
+    final isCompact = screenService.isSmallScreen && screenService.isPortrait;
+
+    final bgColor = backgroundColor ?? (isDark ? AppBgColorDark.page : AppBgColorLight.page);
     final titleColor =
         isDark ? AppTextColorDark.primary : AppTextColorLight.primary;
     final defaultSubtitleColor =
@@ -77,25 +77,19 @@ class PageHeader extends StatelessWidget {
 
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: AppSpacings.scale(10),
-        vertical: AppSpacings.scale(8),
+        horizontal: isLandscape ? AppSpacings.pMd : AppSpacings.pLg,
+        vertical: isCompact ? AppSpacings.pSm : AppSpacings.pMd,
       ),
       decoration: BoxDecoration(
         color: bgColor,
-        border: isLandscape && borderColor == null
-            ? null
-            : Border(
-                bottom: BorderSide(
-                  color: borderColor ?? defaultBorderColor,
-                  width: AppSpacings.scale(1),
-                ),
-              ),
       ),
       child: Row(
         children: [
           // Leading: back button, icon, or custom widget
-          _buildLeading(context, iconColor),
-          AppSpacings.spacingMdHorizontal,
+          _buildLeading(context, iconColor, isCompact),
+          isCompact
+              ? AppSpacings.spacingSmHorizontal
+              : AppSpacings.spacingMdHorizontal,
 
           // Title and subtitle
           Expanded(
@@ -107,7 +101,8 @@ class PageHeader extends StatelessWidget {
                   title,
                   style: TextStyle(
                     color: titleColor,
-                    fontSize: AppFontSize.large,
+                    fontSize:
+                        isCompact ? AppFontSize.base : AppFontSize.large,
                     fontWeight: FontWeight.w600,
                   ),
                   overflow: TextOverflow.ellipsis,
@@ -118,7 +113,9 @@ class PageHeader extends StatelessWidget {
                     subtitle!,
                     style: TextStyle(
                       color: subtitleColor ?? defaultSubtitleColor,
-                      fontSize: AppFontSize.small,
+                      fontSize: isCompact
+                          ? AppFontSize.extraSmall
+                          : AppFontSize.small,
                     ),
                     overflow: TextOverflow.ellipsis,
                     maxLines: 1,
@@ -144,7 +141,7 @@ class PageHeader extends StatelessWidget {
     );
   }
 
-  Widget _buildLeading(BuildContext context, Color iconColor) {
+  Widget _buildLeading(BuildContext context, Color iconColor, bool isCompact) {
     // Custom leading widget takes priority
     if (leading != null) {
       return leading!;
@@ -159,13 +156,16 @@ class PageHeader extends StatelessWidget {
             icon: MdiIcons.arrowLeft,
             onTap: onBack,
             isDark: Theme.of(context).brightness == Brightness.dark,
+            isCompact: isCompact,
           ),
           if (icon != null) ...[
-            AppSpacings.spacingMdHorizontal,
+            isCompact
+                ? AppSpacings.spacingSmHorizontal
+                : AppSpacings.spacingMdHorizontal,
             Icon(
               icon,
               color: iconColor,
-              size: AppSpacings.scale(24),
+              size: AppSpacings.scale(isCompact ? 20 : 24),
             ),
           ],
         ],
@@ -177,7 +177,7 @@ class PageHeader extends StatelessWidget {
       return Icon(
         icon,
         color: iconColor,
-        size: AppSpacings.scale(24),
+        size: AppSpacings.scale(isCompact ? 20 : 24),
       );
     }
 
@@ -190,11 +190,13 @@ class _HeaderIconButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback? onTap;
   final bool isDark;
+  final bool isCompact;
 
   const _HeaderIconButton({
     required this.icon,
     this.onTap,
     required this.isDark,
+    this.isCompact = false,
   });
 
   @override
@@ -204,11 +206,14 @@ class _HeaderIconButton extends StatelessWidget {
     final color =
         isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
 
+    final containerSize = AppSpacings.scale(isCompact ? 30 : 36);
+    final iconSize = AppSpacings.scale(isCompact ? 15 : 18);
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: AppSpacings.scale(36),
-        height: AppSpacings.scale(36),
+        width: containerSize,
+        height: containerSize,
         decoration: BoxDecoration(
           color: bgColor,
           borderRadius: BorderRadius.circular(AppBorderRadius.round),
@@ -218,7 +223,7 @@ class _HeaderIconButton extends StatelessWidget {
         ),
         child: Icon(
           icon,
-          size: AppSpacings.scale(18),
+          size: iconSize,
           color: color,
         ),
       ),
@@ -369,9 +374,16 @@ class HeaderMainIcon extends StatelessWidget {
   Widget build(BuildContext context) {
     final brightness = Theme.of(context).brightness;
     final family = ThemeColorFamily.get(brightness, color);
+
+    final screenService = locator<ScreenService>();
+    final isCompact = screenService.isSmallScreen && screenService.isPortrait;
+
+    final containerSize = AppSpacings.scale(isCompact ? 36 : 44);
+    final iconSize = AppSpacings.scale(isCompact ? 20 : 24);
+
     return Container(
-      width: AppSpacings.scale(44),
-      height: AppSpacings.scale(44),
+      width: containerSize,
+      height: containerSize,
       decoration: BoxDecoration(
         color: family.light8,
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
@@ -379,7 +391,7 @@ class HeaderMainIcon extends StatelessWidget {
       child: Icon(
         icon,
         color: family.base,
-        size: AppSpacings.scale(24),
+        size: iconSize,
       ),
     );
   }

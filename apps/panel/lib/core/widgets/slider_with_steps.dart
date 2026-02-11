@@ -15,6 +15,8 @@ import 'package:flutter/material.dart';
 /// - Customizable step labels
 /// - Theme-aware colors via [ThemeColorFamily] and [themeColor]
 /// - Custom thumb with colored border for better visibility
+/// - Optional gradient track via [trackGradientColors]
+/// - Optional custom thumb fill via [thumbFillColor]
 class SliderWithSteps extends StatelessWidget {
   /// Current value (0.0 to 1.0)
   final double value;
@@ -39,6 +41,23 @@ class SliderWithSteps extends StatelessWidget {
   /// Whether to show step labels below the slider.
   final bool showSteps;
 
+  /// When true, renders the slider vertically (bottom-to-top).
+  /// Value 0 is at the bottom, value 1 at the top. Step labels are hidden.
+  final bool vertical;
+
+  /// Gradient colors for the full track. When set, replaces the default
+  /// active/inactive track coloring with a continuous gradient.
+  final List<Color>? trackGradientColors;
+
+  /// Custom thumb fill color. When set, overrides the default theme-based
+  /// thumb fill (useful for sliders where the thumb reflects the current
+  /// value, e.g. color temperature or hue).
+  final Color? thumbFillColor;
+
+  /// Custom thumb border color. When set, overrides the default theme-based
+  /// border (useful for color sliders where the border should match the thumb).
+  final Color? thumbBorderColor;
+
   const SliderWithSteps({
     super.key,
     required this.value,
@@ -48,6 +67,10 @@ class SliderWithSteps extends StatelessWidget {
     this.enabled = true,
     this.discrete = false,
     this.showSteps = true,
+    this.vertical = false,
+    this.trackGradientColors,
+    this.thumbFillColor,
+    this.thumbBorderColor,
   });
 
   @override
@@ -80,58 +103,87 @@ class SliderWithSteps extends StatelessWidget {
 
     // Active track: accent when enabled, muted gray when disabled
     final sliderActiveColor = enabled ? effectiveActiveColor : disabledActiveColor;
-    // Thumb border matches active track
-    final thumbBorderColor = enabled ? effectiveActiveColor : disabledActiveColor;
-    // Thumb fill: dark background when enabled, matches active track (left part) when disabled
-    final thumbFillColor = enabled
-        ? (isDark ? AppFillColorDark.base : AppFillColorLight.base)
-        : isDark ? AppFillColorDark.darker : AppFillColorLight.darker;
+
+    // When gradient colors are provided, use a custom track shape
+    final hasGradient = trackGradientColors != null && trackGradientColors!.length >= 2;
+
+    // Thumb border: explicit override, match track border for gradient in
+    // light mode, or default to active track color
+    final resolvedThumbBorder = thumbBorderColor ??
+        (hasGradient && !isDark
+            ? AppBorderColorLight.darker
+            : (enabled ? effectiveActiveColor : disabledActiveColor));
+    // Thumb fill: custom color, or dark background when enabled, gray when disabled
+    final resolvedThumbFill = thumbFillColor ??
+        (enabled
+            ? (isDark ? AppFillColorDark.base : AppFillColorLight.base)
+            : isDark ? AppFillColorDark.darker : AppFillColorLight.darker);
 
     final clampedValue = value.clamp(0.0, 1.0);
+
+    final sliderTheme = SliderTheme.of(context).copyWith(
+      activeTrackColor: hasGradient ? Colors.transparent : sliderActiveColor,
+      inactiveTrackColor: hasGradient ? Colors.transparent : trackColor,
+      thumbColor: resolvedThumbFill,
+      overlayColor: effectiveOverlayColor,
+      trackHeight: scale(12),
+      trackShape: hasGradient
+          ? _GradientTrackShape(
+              colors: trackGradientColors!,
+              trackHeight: scale(12),
+              borderColor:
+                  isDark ? null : AppBorderColorLight.darker,
+              borderWidth: scale(1),
+            )
+          : null,
+      thumbShape: _SliderThumbWithBorder(
+        thumbRadius: scale(12),
+        fillColor: resolvedThumbFill,
+        borderColor: resolvedThumbBorder,
+        borderWidth: scale(2),
+      ),
+    );
+
+    final slider = SliderTheme(
+      data: sliderTheme,
+      child: IgnorePointer(
+        ignoring: !enabled,
+        child: Slider(
+          value: clampedValue,
+          divisions: divisions,
+          onChanged: enabled ? onChanged : null,
+        ),
+      ),
+    );
+
+    if (vertical) {
+      return RotatedBox(
+        quarterTurns: 3,
+        child: slider,
+      );
+    }
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       spacing: AppSpacings.pMd,
       children: [
-        SliderTheme(
-            data: SliderTheme.of(context).copyWith(
-              activeTrackColor: sliderActiveColor,
-              inactiveTrackColor: trackColor,
-              thumbColor: thumbFillColor,
-              overlayColor: effectiveOverlayColor,
-              trackHeight: scale(8),
-              thumbShape: _SliderThumbWithBorder(
-                thumbRadius: scale(12),
-                fillColor: thumbFillColor,
-                borderColor: thumbBorderColor,
-                borderWidth: scale(2),
-              ),
-            ),
-            child: IgnorePointer(
-              ignoring: !enabled,
-              child: Slider(
-                value: clampedValue,
-                divisions: divisions,
-                onChanged: enabled ? onChanged : null,
-              ),
-            ),
+        slider,
+        if (showSteps) ...[
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: steps
+                .map((s) => Text(
+                      s,
+                      style: TextStyle(
+                        color: enabled ? stepColor : mutedColor,
+                        fontSize: AppFontSize.extraSmall,
+                      ),
+                    ))
+                .toList(),
           ),
-          if (showSteps) ...[
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: steps
-                  .map((s) => Text(
-                        s,
-                        style: TextStyle(
-                          color: enabled ? stepColor : mutedColor,
-                          fontSize: AppFontSize.extraSmall,
-                        ),
-                      ))
-                  .toList(),
-            ),
-          ],
         ],
-      );
+      ],
+    );
   }
 }
 
@@ -183,5 +235,71 @@ class _SliderThumbWithBorder extends SliderComponentShape {
       ..style = PaintingStyle.stroke
       ..strokeWidth = borderWidth;
     canvas.drawCircle(center, thumbRadius - borderWidth / 2, borderPaint);
+  }
+}
+
+/// Custom track shape that paints a gradient across the full track.
+class _GradientTrackShape extends SliderTrackShape {
+  final List<Color> colors;
+  final double trackHeight;
+  final Color? borderColor;
+  final double borderWidth;
+
+  const _GradientTrackShape({
+    required this.colors,
+    required this.trackHeight,
+    this.borderColor,
+    this.borderWidth = 1.0,
+  });
+
+  @override
+  Rect getPreferredRect({
+    required RenderBox parentBox,
+    Offset offset = Offset.zero,
+    required SliderThemeData sliderTheme,
+    bool isEnabled = false,
+    bool isDiscrete = false,
+  }) {
+    final double trackLeft = offset.dx;
+    final double trackTop =
+        offset.dy + (parentBox.size.height - trackHeight) / 2;
+    final double trackWidth = parentBox.size.width;
+    return Rect.fromLTWH(trackLeft, trackTop, trackWidth, trackHeight);
+  }
+
+  @override
+  void paint(
+    PaintingContext context,
+    Offset offset, {
+    required RenderBox parentBox,
+    required SliderThemeData sliderTheme,
+    required Animation<double> enableAnimation,
+    required Offset thumbCenter,
+    Offset? secondaryOffset,
+    bool isEnabled = false,
+    bool isDiscrete = false,
+    required TextDirection textDirection,
+  }) {
+    final rect = getPreferredRect(
+      parentBox: parentBox,
+      offset: offset,
+      sliderTheme: sliderTheme,
+    );
+
+    final radius = Radius.circular(trackHeight / 2);
+    final rrect = RRect.fromRectAndRadius(rect, radius);
+
+    final gradient = LinearGradient(colors: colors);
+    final paint = Paint()..shader = gradient.createShader(rect);
+
+    context.canvas.drawRRect(rrect, paint);
+
+    if (borderColor != null) {
+      final borderPaint = Paint()
+        ..color = borderColor!
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = borderWidth;
+      context.canvas.drawRRect(rrect, borderPaint);
+    }
   }
 }

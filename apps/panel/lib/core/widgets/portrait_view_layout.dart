@@ -39,15 +39,18 @@ class PortraitViewLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final defaultPadding = EdgeInsets.symmetric(
-      horizontal: AppSpacings.pLg,
-      vertical: AppSpacings.pMd,
+    final defaultPadding = EdgeInsets.only(
+      left: AppSpacings.pLg,
+      right: AppSpacings.pLg,
+      top: scrollable ? AppSpacings.pMd : 0,
+      bottom: AppSpacings.pMd,
     );
+    final resolvedPadding = contentPadding ?? defaultPadding;
 
     if (scrollable) {
       return VerticalScrollWithGradient(
         gradientHeight: AppSpacings.pMd,
-        padding: contentPadding ?? defaultPadding,
+        padding: resolvedPadding,
         itemCount: 1,
         separatorHeight: 0,
         itemBuilder: (context, index) => content,
@@ -56,7 +59,7 @@ class PortraitViewLayout extends StatelessWidget {
     }
 
     return Padding(
-      padding: contentPadding ?? defaultPadding,
+      padding: resolvedPadding,
       child: content,
     );
   }

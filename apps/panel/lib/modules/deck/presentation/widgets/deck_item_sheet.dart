@@ -1,5 +1,6 @@
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_bottom_sheet.dart';
+import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:flutter/material.dart';
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -55,6 +56,7 @@ class DeckItemSheet {
       title: titleWidget != null ? null : sheetTitle,
       titleWidget: titleWidget,
       titleIcon: icon,
+      scrollable: false,
       content: _Content(
         itemCount: itemCount,
         itemBuilder: itemBuilder,
@@ -92,6 +94,7 @@ class DeckItemSheet {
       title: titleWidget != null ? null : sheetTitle,
       titleWidget: titleWidget,
       titleIcon: icon,
+      scrollable: false,
       content: ListenableBuilder(
         listenable: rebuildWhen,
         builder: (context, child) {
@@ -125,23 +128,20 @@ class _Content extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? AppFillColorDark.base : AppFillColorLight.blank;
+
+    return VerticalScrollWithGradient(
+      gradientHeight: AppSpacings.pMd,
+      itemCount: itemCount,
+      separatorHeight: AppSpacings.pSm,
+      backgroundColor: bgColor,
+      shrinkWrap: true,
       padding: EdgeInsets.symmetric(
         horizontal: AppSpacings.pLg,
         vertical: AppSpacings.pMd,
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: List.generate(
-          itemCount,
-          (index) => Padding(
-            padding: EdgeInsets.only(
-              bottom: index < itemCount - 1 ? AppSpacings.pSm : 0,
-            ),
-            child: itemBuilder(context, index),
-          ),
-        ),
-      ),
+      itemBuilder: itemBuilder,
     );
   }
 }

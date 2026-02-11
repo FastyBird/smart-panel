@@ -1819,6 +1819,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     final hasSensors = _state.sensors.isNotEmpty;
 
     return PortraitViewLayout(
+      scrollable: false,
       content: Column(
         spacing: AppSpacings.pMd,
         crossAxisAlignment: CrossAxisAlignment.start,
