@@ -631,7 +631,7 @@ class ValueSelectorRow<T> extends StatelessWidget {
             final normalized = sliderValueNotifier.value;
             final mapped =
                 sliderMin! + normalized * (sliderMax! - sliderMin!);
-            if (currentValue is int) {
+            if (currentValue is int || (currentValue == null && 0 is T)) {
               onChanged?.call(mapped.round() as T);
             } else {
               onChanged?.call(mapped as T);
