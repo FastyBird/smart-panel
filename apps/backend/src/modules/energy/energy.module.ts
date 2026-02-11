@@ -2,6 +2,8 @@ import { Module, OnModuleInit } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../common/logger/extension-logger.service';
+import { ConfigModule } from '../config/config.module';
+import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
 import { ChannelEntity } from '../devices/entities/devices.entity';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
@@ -9,12 +11,16 @@ import { SwaggerModule } from '../swagger/swagger.module';
 
 import { EnergySpacesController } from './controllers/energy-spaces.controller';
 import { EnergyController } from './controllers/energy.controller';
+import { UpdateEnergyConfigDto } from './dto/update-config.dto';
 import { ENERGY_MODULE_API_TAG_DESCRIPTION, ENERGY_MODULE_API_TAG_NAME, ENERGY_MODULE_NAME } from './energy.constants';
 import { ENERGY_SWAGGER_EXTRA_MODELS } from './energy.openapi';
 import { EnergyDeltaEntity } from './entities/energy-delta.entity';
 import { EnergyIngestionListener } from './listeners/energy-ingestion.listener';
+import { EnergyConfigModel } from './models/config.model';
 import { DeltaComputationService } from './services/delta-computation.service';
+import { EnergyCleanupService } from './services/energy-cleanup.service';
 import { EnergyDataService } from './services/energy-data.service';
+import { EnergyMetricsService } from './services/energy-metrics.service';
 
 @ApiTag({
 	tagName: ENERGY_MODULE_NAME,
@@ -22,17 +28,32 @@ import { EnergyDataService } from './services/energy-data.service';
 	description: ENERGY_MODULE_API_TAG_DESCRIPTION,
 })
 @Module({
-	imports: [TypeOrmModule.forFeature([EnergyDeltaEntity, ChannelEntity]), SwaggerModule],
-	providers: [DeltaComputationService, EnergyDataService, EnergyIngestionListener],
+	imports: [TypeOrmModule.forFeature([EnergyDeltaEntity, ChannelEntity]), SwaggerModule, ConfigModule],
+	providers: [
+		EnergyMetricsService,
+		DeltaComputationService,
+		EnergyDataService,
+		EnergyIngestionListener,
+		EnergyCleanupService,
+	],
 	controllers: [EnergyController, EnergySpacesController],
 	exports: [EnergyDataService],
 })
 export class EnergyModule implements OnModuleInit {
 	private readonly logger = createExtensionLogger(ENERGY_MODULE_NAME, 'EnergyModule');
 
-	constructor(private readonly swaggerRegistry: SwaggerModelsRegistryService) {}
+	constructor(
+		private readonly swaggerRegistry: SwaggerModelsRegistryService,
+		private readonly modulesMapperService: ModulesTypeMapperService,
+	) {}
 
 	onModuleInit(): void {
+		this.modulesMapperService.registerMapping<EnergyConfigModel, UpdateEnergyConfigDto>({
+			type: ENERGY_MODULE_NAME,
+			class: EnergyConfigModel,
+			configDto: UpdateEnergyConfigDto,
+		});
+
 		for (const model of ENERGY_SWAGGER_EXTRA_MODELS) {
 			this.swaggerRegistry.register(model);
 		}

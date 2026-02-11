@@ -6,12 +6,15 @@ import { Logger } from '@nestjs/common';
 import { DELTA_INTERVAL_MINUTES, EnergySourceType } from '../energy.constants';
 
 import { DeltaComputationService } from './delta-computation.service';
+import { EnergyMetricsService } from './energy-metrics.service';
 
 describe('DeltaComputationService', () => {
 	let service: DeltaComputationService;
+	let metrics: EnergyMetricsService;
 
 	beforeEach(() => {
-		service = new DeltaComputationService();
+		metrics = new EnergyMetricsService();
+		service = new DeltaComputationService(metrics);
 
 		// Suppress logger output in tests
 		jest.spyOn(Logger.prototype, 'warn').mockImplementation(() => undefined);
@@ -40,6 +43,12 @@ describe('DeltaComputationService', () => {
 
 			expect(result1).toBeNull();
 			expect(result2).toBeNull();
+		});
+
+		it('should increment firstSampleCount metric', () => {
+			service.computeDelta(deviceId, sourceType, 100.0, new Date('2026-02-09T12:00:00Z'));
+
+			expect(metrics.getSnapshot().firstSampleCount).toBe(1);
 		});
 	});
 
@@ -101,6 +110,53 @@ describe('DeltaComputationService', () => {
 			const result = service.computeDelta(deviceId, sourceType, 5.0, new Date('2026-02-09T12:10:00Z'));
 			expect(result).not.toBeNull();
 			expect(result.deltaKwh).toBeCloseTo(3.0);
+		});
+
+		it('should increment negativeDeltaCount metric on meter reset', () => {
+			service.computeDelta(deviceId, sourceType, 500.0, new Date('2026-02-09T12:00:00Z'));
+			service.computeDelta(deviceId, sourceType, 2.0, new Date('2026-02-09T12:05:00Z'));
+
+			expect(metrics.getSnapshot().negativeDeltaCount).toBe(1);
+		});
+	});
+
+	describe('out-of-order samples', () => {
+		it('should still process out-of-order samples (not skip them)', () => {
+			service.computeDelta(deviceId, sourceType, 100.0, new Date('2026-02-09T12:05:00Z'));
+			const result = service.computeDelta(deviceId, sourceType, 101.0, new Date('2026-02-09T12:00:00Z'));
+
+			// Out-of-order samples are processed because timestamps may mix
+			// wall-clock fallbacks with real device times
+			expect(result).not.toBeNull();
+			expect(result.deltaKwh).toBeCloseTo(1.0);
+		});
+
+		it('should increment outOfOrderCount metric', () => {
+			service.computeDelta(deviceId, sourceType, 100.0, new Date('2026-02-09T12:05:00Z'));
+			service.computeDelta(deviceId, sourceType, 101.0, new Date('2026-02-09T12:00:00Z'));
+
+			expect(metrics.getSnapshot().outOfOrderCount).toBe(1);
+		});
+
+		it('should update baseline even for out-of-order samples', () => {
+			service.computeDelta(deviceId, sourceType, 100.0, new Date('2026-02-09T12:00:00Z'));
+			// Out-of-order timestamp, but with a value decrease — treated as meter reset
+			service.computeDelta(deviceId, sourceType, 50.0, new Date('2026-02-09T11:55:00Z'));
+			// Baseline is now 50.0, so next reading computes delta from 50
+			const result = service.computeDelta(deviceId, sourceType, 55.0, new Date('2026-02-09T12:05:00Z'));
+
+			expect(result).not.toBeNull();
+			expect(result.deltaKwh).toBeCloseTo(5.0);
+		});
+
+		it('should flag consecutive stale events by preserving timestamp high-water mark', () => {
+			service.computeDelta(deviceId, sourceType, 100.0, new Date('2026-02-09T12:05:00Z'));
+			// First stale sample — flagged
+			service.computeDelta(deviceId, sourceType, 101.0, new Date('2026-02-09T12:00:00Z'));
+			// Second stale sample — should also be flagged because 12:02 < 12:05
+			service.computeDelta(deviceId, sourceType, 102.0, new Date('2026-02-09T12:02:00Z'));
+
+			expect(metrics.getSnapshot().outOfOrderCount).toBe(2);
 		});
 	});
 

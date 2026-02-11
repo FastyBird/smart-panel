@@ -12,6 +12,22 @@ export const ENERGY_MODULE_API_TAG_DESCRIPTION =
  */
 export const DELTA_INTERVAL_MINUTES = 5;
 
+/**
+ * Default number of days to retain energy delta records.
+ */
+export const DEFAULT_RETENTION_DAYS = 90;
+
+/**
+ * Maximum allowed retention period (≈10 years).
+ * Prevents overflow when computing the cutoff date.
+ */
+export const MAX_RETENTION_DAYS = 3650;
+
+/**
+ * Number of rows to delete per batch during cleanup.
+ */
+export const CLEANUP_BATCH_SIZE = 1000;
+
 export enum EnergySourceType {
 	CONSUMPTION_IMPORT = 'consumption_import',
 	GENERATION_PRODUCTION = 'generation_production',
