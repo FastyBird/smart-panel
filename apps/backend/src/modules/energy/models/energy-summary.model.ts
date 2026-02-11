@@ -1,5 +1,5 @@
 import { Expose } from 'class-transformer';
-import { IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsNumber, IsOptional, IsString } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -26,6 +26,38 @@ export class EnergySummaryModel {
 	@Expose({ name: 'total_production_kwh' })
 	@IsNumber()
 	totalProductionKwh: number;
+
+	@ApiProperty({
+		name: 'total_grid_import_kwh',
+		description: 'Total energy imported from the public grid in kWh for the requested range. 0 if no grid metrics.',
+		type: 'number',
+		format: 'float',
+		example: 8.5,
+	})
+	@Expose({ name: 'total_grid_import_kwh' })
+	@IsNumber()
+	totalGridImportKwh: number;
+
+	@ApiProperty({
+		name: 'total_grid_export_kwh',
+		description: 'Total energy exported to the public grid in kWh for the requested range. 0 if no grid metrics.',
+		type: 'number',
+		format: 'float',
+		example: 1.2,
+	})
+	@Expose({ name: 'total_grid_export_kwh' })
+	@IsNumber()
+	totalGridExportKwh: number;
+
+	@ApiProperty({
+		name: 'has_grid_metrics',
+		description: 'Whether grid import/export metrics are available. When false, grid values are 0.',
+		type: 'boolean',
+		example: true,
+	})
+	@Expose({ name: 'has_grid_metrics' })
+	@IsBoolean()
+	hasGridMetrics: boolean;
 
 	@ApiPropertyOptional({
 		name: 'last_updated_at',

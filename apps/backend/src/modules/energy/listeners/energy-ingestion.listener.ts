@@ -30,6 +30,16 @@ const SOURCE_TYPE_MAP: Array<{
 		propertyCategory: PropertyCategory.PRODUCTION,
 		sourceType: EnergySourceType.GENERATION_PRODUCTION,
 	},
+	{
+		channelCategory: ChannelCategory.ELECTRICAL_ENERGY,
+		propertyCategory: PropertyCategory.GRID_IMPORT,
+		sourceType: EnergySourceType.GRID_IMPORT,
+	},
+	{
+		channelCategory: ChannelCategory.ELECTRICAL_ENERGY,
+		propertyCategory: PropertyCategory.GRID_EXPORT,
+		sourceType: EnergySourceType.GRID_EXPORT,
+	},
 ];
 
 @Injectable()
@@ -61,7 +71,10 @@ export class EnergyIngestionListener implements OnModuleInit {
 	private async processPropertyValue(property: ChannelPropertyEntity): Promise<void> {
 		// Quick check: is this a property category we care about?
 		const isRelevantProperty =
-			property.category === PropertyCategory.CONSUMPTION || property.category === PropertyCategory.PRODUCTION;
+			property.category === PropertyCategory.CONSUMPTION ||
+			property.category === PropertyCategory.PRODUCTION ||
+			property.category === PropertyCategory.GRID_IMPORT ||
+			property.category === PropertyCategory.GRID_EXPORT;
 
 		if (!isRelevantProperty) {
 			return;

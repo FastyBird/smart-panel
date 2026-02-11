@@ -2381,6 +2381,36 @@ electrical_energy:
       unit: W
       format: [0,100000]
       measurement_kind: interval_average
+    grid_import:
+      category: grid_import
+      required: false
+      description:
+        en: >-
+          Cumulative total energy imported from the public grid into the home since last counter reset,
+          in kWh. Monotonically increasing under normal operation. Only present on devices with a main
+          grid meter. Use reset_behavior to handle counter resets or rollovers.
+      permissions:
+        - ro
+      data_type: float
+      unit: kWh
+      format: [0,null]
+      measurement_kind: cumulative
+      reset_behavior: unknown
+    grid_export:
+      category: grid_export
+      required: false
+      description:
+        en: >-
+          Cumulative total energy exported from the home into the public grid since last counter reset,
+          in kWh. Monotonically increasing under normal operation. Represents excess generation (e.g. PV)
+          fed back to the grid. Use reset_behavior to handle counter resets or rollovers.
+      permissions:
+        - ro
+      data_type: float
+      unit: kWh
+      format: [0,null]
+      measurement_kind: cumulative
+      reset_behavior: unknown
     active:
       category: active
       required: false

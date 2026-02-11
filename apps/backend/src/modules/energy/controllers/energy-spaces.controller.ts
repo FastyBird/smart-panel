@@ -61,7 +61,11 @@ export class EnergySpacesController {
 		const model = new EnergySpaceSummaryModel();
 		model.totalConsumptionKwh = summary.totalConsumptionKwh;
 		model.totalProductionKwh = summary.totalProductionKwh;
+		model.totalGridImportKwh = summary.totalGridImportKwh;
+		model.totalGridExportKwh = summary.totalGridExportKwh;
 		model.netKwh = summary.netKwh;
+		model.netGridKwh = summary.netGridKwh;
+		model.hasGridMetrics = summary.hasGridMetrics;
 		const validRanges = ['today', 'yesterday', 'week', 'month'];
 		model.range = range && validRanges.includes(range) ? range : 'today';
 		model.lastUpdatedAt = summary.lastUpdatedAt;
@@ -122,6 +126,8 @@ export class EnergySpacesController {
 			model.intervalEnd = point.intervalEnd;
 			model.consumptionDeltaKwh = point.consumptionDeltaKwh;
 			model.productionDeltaKwh = point.productionDeltaKwh;
+			model.gridImportDeltaKwh = point.gridImportDeltaKwh;
+			model.gridExportDeltaKwh = point.gridExportDeltaKwh;
 			return model;
 		});
 

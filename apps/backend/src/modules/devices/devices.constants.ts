@@ -159,6 +159,8 @@ export enum PropertyCategory {
 	FAULT_DESCRIPTION = 'fault_description',
 	FIRMWARE_REVISION = 'firmware_revision',
 	FREQUENCY = 'frequency',
+	GRID_EXPORT = 'grid_export',
+	GRID_IMPORT = 'grid_import',
 	HARDWARE_REVISION = 'hardware_revision',
 	HUE = 'hue',
 	HUMIDITY = 'humidity',

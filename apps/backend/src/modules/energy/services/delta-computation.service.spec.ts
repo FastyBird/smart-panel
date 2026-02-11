@@ -184,6 +184,50 @@ describe('DeltaComputationService', () => {
 			expect(production).not.toBeNull();
 			expect(production.deltaKwh).toBeCloseTo(3.0);
 		});
+
+		it('should maintain separate baselines for grid_import and grid_export', () => {
+			service.computeDelta(deviceId, EnergySourceType.GRID_IMPORT, 200.0, new Date('2026-02-09T12:00:00Z'));
+			service.computeDelta(deviceId, EnergySourceType.GRID_EXPORT, 80.0, new Date('2026-02-09T12:00:00Z'));
+
+			const gridImport = service.computeDelta(
+				deviceId,
+				EnergySourceType.GRID_IMPORT,
+				205.0,
+				new Date('2026-02-09T12:05:00Z'),
+			);
+			const gridExport = service.computeDelta(
+				deviceId,
+				EnergySourceType.GRID_EXPORT,
+				82.0,
+				new Date('2026-02-09T12:05:00Z'),
+			);
+
+			expect(gridImport).not.toBeNull();
+			expect(gridImport.deltaKwh).toBeCloseTo(5.0);
+
+			expect(gridExport).not.toBeNull();
+			expect(gridExport.deltaKwh).toBeCloseTo(2.0);
+		});
+
+		it('should maintain all four source types independently on the same device', () => {
+			const ts1 = new Date('2026-02-09T12:00:00Z');
+			const ts2 = new Date('2026-02-09T12:05:00Z');
+
+			service.computeDelta(deviceId, EnergySourceType.CONSUMPTION_IMPORT, 100.0, ts1);
+			service.computeDelta(deviceId, EnergySourceType.GENERATION_PRODUCTION, 50.0, ts1);
+			service.computeDelta(deviceId, EnergySourceType.GRID_IMPORT, 200.0, ts1);
+			service.computeDelta(deviceId, EnergySourceType.GRID_EXPORT, 80.0, ts1);
+
+			const r1 = service.computeDelta(deviceId, EnergySourceType.CONSUMPTION_IMPORT, 110.0, ts2);
+			const r2 = service.computeDelta(deviceId, EnergySourceType.GENERATION_PRODUCTION, 55.0, ts2);
+			const r3 = service.computeDelta(deviceId, EnergySourceType.GRID_IMPORT, 212.0, ts2);
+			const r4 = service.computeDelta(deviceId, EnergySourceType.GRID_EXPORT, 83.0, ts2);
+
+			expect(r1.deltaKwh).toBeCloseTo(10.0);
+			expect(r2.deltaKwh).toBeCloseTo(5.0);
+			expect(r3.deltaKwh).toBeCloseTo(12.0);
+			expect(r4.deltaKwh).toBeCloseTo(3.0);
+		});
 	});
 
 	describe('interval bucketing', () => {

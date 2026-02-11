@@ -31,4 +31,6 @@ export const CLEANUP_BATCH_SIZE = 1000;
 export enum EnergySourceType {
 	CONSUMPTION_IMPORT = 'consumption_import',
 	GENERATION_PRODUCTION = 'generation_production',
+	GRID_IMPORT = 'grid_import',
+	GRID_EXPORT = 'grid_export',
 }

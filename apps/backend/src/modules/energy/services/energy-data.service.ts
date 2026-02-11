@@ -11,6 +11,9 @@ import { getLocalMidnight, getLocalMidnightDaysAgo } from '../helpers/energy-ran
 export interface EnergySummary {
 	totalConsumptionKwh: number;
 	totalProductionKwh: number;
+	totalGridImportKwh: number;
+	totalGridExportKwh: number;
+	hasGridMetrics: boolean;
 	lastUpdatedAt: string | null;
 }
 
@@ -19,12 +22,18 @@ export interface EnergyDeltaRow {
 	intervalEnd: string;
 	consumptionDeltaKwh: number;
 	productionDeltaKwh: number;
+	gridImportDeltaKwh: number;
+	gridExportDeltaKwh: number;
 }
 
 export interface SpaceEnergySummary {
 	totalConsumptionKwh: number;
 	totalProductionKwh: number;
+	totalGridImportKwh: number;
+	totalGridExportKwh: number;
 	netKwh: number;
+	netGridKwh: number;
+	hasGridMetrics: boolean;
 	lastUpdatedAt: string | null;
 }
 
@@ -33,6 +42,8 @@ export interface TimeseriesPoint {
 	intervalEnd: string;
 	consumptionDeltaKwh: number;
 	productionDeltaKwh: number;
+	gridImportDeltaKwh: number;
+	gridExportDeltaKwh: number;
 }
 
 export interface BreakdownItem {
@@ -140,6 +151,9 @@ export class EnergyDataService {
 
 		let totalConsumptionKwh = 0;
 		let totalProductionKwh = 0;
+		let totalGridImportKwh = 0;
+		let totalGridExportKwh = 0;
+		let hasGridMetrics = false;
 		let lastUpdatedAt: string | null = null;
 
 		for (const row of rows) {
@@ -149,6 +163,12 @@ export class EnergyDataService {
 				totalConsumptionKwh = kwh;
 			} else if (row.sourceType === EnergySourceType.GENERATION_PRODUCTION) {
 				totalProductionKwh = kwh;
+			} else if (row.sourceType === EnergySourceType.GRID_IMPORT) {
+				totalGridImportKwh = kwh;
+				hasGridMetrics = true;
+			} else if (row.sourceType === EnergySourceType.GRID_EXPORT) {
+				totalGridExportKwh = kwh;
+				hasGridMetrics = true;
 			}
 
 			if (row.lastUpdated && (!lastUpdatedAt || row.lastUpdated > lastUpdatedAt)) {
@@ -156,7 +176,14 @@ export class EnergyDataService {
 			}
 		}
 
-		return { totalConsumptionKwh, totalProductionKwh, lastUpdatedAt };
+		return {
+			totalConsumptionKwh,
+			totalProductionKwh,
+			totalGridImportKwh,
+			totalGridExportKwh,
+			hasGridMetrics,
+			lastUpdatedAt,
+		};
 	}
 
 	/**
@@ -183,16 +210,8 @@ export class EnergyDataService {
 
 		const rows: DeltaRawRow[] = await qb.getRawMany<DeltaRawRow>();
 
-		// Merge consumption + production into a single row per interval
-		const bucketMap = new Map<
-			string,
-			{
-				intervalStart: string;
-				intervalEnd: string;
-				consumptionDeltaKwh: number;
-				productionDeltaKwh: number;
-			}
-		>();
+		// Merge all source types into a single row per interval
+		const bucketMap = new Map<string, EnergyDeltaRow>();
 
 		for (const row of rows) {
 			const key: string = row.intervalStart;
@@ -204,6 +223,8 @@ export class EnergyDataService {
 					intervalEnd: row.intervalEnd,
 					consumptionDeltaKwh: 0,
 					productionDeltaKwh: 0,
+					gridImportDeltaKwh: 0,
+					gridExportDeltaKwh: 0,
 				};
 				bucketMap.set(key, bucket);
 			}
@@ -214,6 +235,10 @@ export class EnergyDataService {
 				bucket.consumptionDeltaKwh = kwh;
 			} else if (row.sourceType === EnergySourceType.GENERATION_PRODUCTION) {
 				bucket.productionDeltaKwh = kwh;
+			} else if (row.sourceType === EnergySourceType.GRID_IMPORT) {
+				bucket.gridImportDeltaKwh = kwh;
+			} else if (row.sourceType === EnergySourceType.GRID_EXPORT) {
+				bucket.gridExportDeltaKwh = kwh;
 			}
 		}
 
@@ -247,6 +272,9 @@ export class EnergyDataService {
 
 		let totalConsumptionKwh = 0;
 		let totalProductionKwh = 0;
+		let totalGridImportKwh = 0;
+		let totalGridExportKwh = 0;
+		let hasGridMetrics = false;
 		let lastUpdatedAt: string | null = null;
 
 		for (const row of rows) {
@@ -256,6 +284,12 @@ export class EnergyDataService {
 				totalConsumptionKwh = kwh;
 			} else if (row.sourceType === EnergySourceType.GENERATION_PRODUCTION) {
 				totalProductionKwh = kwh;
+			} else if (row.sourceType === EnergySourceType.GRID_IMPORT) {
+				totalGridImportKwh = kwh;
+				hasGridMetrics = true;
+			} else if (row.sourceType === EnergySourceType.GRID_EXPORT) {
+				totalGridExportKwh = kwh;
+				hasGridMetrics = true;
 			}
 
 			if (row.lastUpdated && (!lastUpdatedAt || row.lastUpdated > lastUpdatedAt)) {
@@ -266,7 +300,11 @@ export class EnergyDataService {
 		return {
 			totalConsumptionKwh,
 			totalProductionKwh,
+			totalGridImportKwh,
+			totalGridExportKwh,
 			netKwh: totalConsumptionKwh - totalProductionKwh,
+			netGridKwh: totalGridImportKwh - totalGridExportKwh,
+			hasGridMetrics,
 			lastUpdatedAt,
 		};
 	}
@@ -338,7 +376,15 @@ export class EnergyDataService {
 		// For 1d interval, re-bucket raw rows relative to rangeStart (Prague-aligned).
 		// For other intervals, use the SQL bucket key directly.
 		const rangeStartMs = rangeStart.getTime();
-		const bucketMap = new Map<string, { consumptionDeltaKwh: number; productionDeltaKwh: number }>();
+		const bucketMap = new Map<
+			string,
+			{
+				consumptionDeltaKwh: number;
+				productionDeltaKwh: number;
+				gridImportDeltaKwh: number;
+				gridExportDeltaKwh: number;
+			}
+		>();
 
 		for (const row of rows) {
 			let key: string;
@@ -353,7 +399,7 @@ export class EnergyDataService {
 			let bucket = bucketMap.get(key);
 
 			if (!bucket) {
-				bucket = { consumptionDeltaKwh: 0, productionDeltaKwh: 0 };
+				bucket = { consumptionDeltaKwh: 0, productionDeltaKwh: 0, gridImportDeltaKwh: 0, gridExportDeltaKwh: 0 };
 				bucketMap.set(key, bucket);
 			}
 
@@ -363,6 +409,10 @@ export class EnergyDataService {
 				bucket.consumptionDeltaKwh += kwh;
 			} else if (row.sourceType === EnergySourceType.GENERATION_PRODUCTION) {
 				bucket.productionDeltaKwh += kwh;
+			} else if (row.sourceType === EnergySourceType.GRID_IMPORT) {
+				bucket.gridImportDeltaKwh += kwh;
+			} else if (row.sourceType === EnergySourceType.GRID_EXPORT) {
+				bucket.gridExportDeltaKwh += kwh;
 			}
 		}
 
@@ -394,6 +444,8 @@ export class EnergyDataService {
 					intervalEnd: bucketEnd.toISOString(),
 					consumptionDeltaKwh: data?.consumptionDeltaKwh ?? 0,
 					productionDeltaKwh: data?.productionDeltaKwh ?? 0,
+					gridImportDeltaKwh: data?.gridImportDeltaKwh ?? 0,
+					gridExportDeltaKwh: data?.gridExportDeltaKwh ?? 0,
 				});
 			}
 		} else {
@@ -411,6 +463,8 @@ export class EnergyDataService {
 					intervalEnd: bucketEnd.toISOString(),
 					consumptionDeltaKwh: data?.consumptionDeltaKwh ?? 0,
 					productionDeltaKwh: data?.productionDeltaKwh ?? 0,
+					gridImportDeltaKwh: data?.gridImportDeltaKwh ?? 0,
+					gridExportDeltaKwh: data?.gridExportDeltaKwh ?? 0,
 				});
 			}
 		}

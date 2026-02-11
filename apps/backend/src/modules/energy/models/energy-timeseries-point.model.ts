@@ -48,4 +48,26 @@ export class EnergyTimeseriesPointModel {
 	@Expose({ name: 'production_delta_kwh' })
 	@IsNumber()
 	productionDeltaKwh: number;
+
+	@ApiProperty({
+		name: 'grid_import_delta_kwh',
+		description: 'Grid import energy delta for this interval in kWh. 0 if no grid metrics.',
+		type: 'number',
+		format: 'float',
+		example: 0.5,
+	})
+	@Expose({ name: 'grid_import_delta_kwh' })
+	@IsNumber()
+	gridImportDeltaKwh: number;
+
+	@ApiProperty({
+		name: 'grid_export_delta_kwh',
+		description: 'Grid export energy delta for this interval in kWh. 0 if no grid metrics.',
+		type: 'number',
+		format: 'float',
+		example: 0.1,
+	})
+	@Expose({ name: 'grid_export_delta_kwh' })
+	@IsNumber()
+	gridExportDeltaKwh: number;
 }
