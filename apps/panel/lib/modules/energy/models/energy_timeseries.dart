@@ -24,12 +24,24 @@ class EnergyTimeseriesPoint {
   });
 
   factory EnergyTimeseriesPoint.fromJson(Map<String, dynamic> json) {
+    // Accept both simplified names (timestamp, consumption, production)
+    // and backend snake_case names (interval_start, consumption_delta_kwh, etc.)
+    final rawTimestamp = json['timestamp'] ?? json['interval_start'];
+
     return EnergyTimeseriesPoint(
-      timestamp: DateTime.parse(json['timestamp'] as String),
-      consumption: _parseDouble(json['consumption']),
-      production: _parseDouble(json['production']),
-      gridImport: _parseDouble(json['grid_import'] ?? json['grid_import_delta_kwh']),
-      gridExport: _parseDouble(json['grid_export'] ?? json['grid_export_delta_kwh']),
+      timestamp: DateTime.parse(rawTimestamp as String),
+      consumption: _parseDouble(
+        json['consumption'] ?? json['consumption_delta_kwh'],
+      ),
+      production: _parseDouble(
+        json['production'] ?? json['production_delta_kwh'],
+      ),
+      gridImport: _parseDouble(
+        json['grid_import'] ?? json['grid_import_delta_kwh'],
+      ),
+      gridExport: _parseDouble(
+        json['grid_export'] ?? json['grid_export_delta_kwh'],
+      ),
     );
   }
 
@@ -65,6 +77,7 @@ class EnergyTimeseries {
   /// Whether any point has production data.
   bool get hasProduction => points.any((p) => p.production > 0);
 
+  /// Parse from a wrapped JSON object with 'series', 'range', 'interval' keys.
   factory EnergyTimeseries.fromJson(Map<String, dynamic> json) {
     final pointsList = json['series'] as List<dynamic>? ?? [];
     return EnergyTimeseries(
@@ -72,6 +85,21 @@ class EnergyTimeseries {
       interval: json['interval'] as String? ?? '1h',
       points: pointsList
           .map((item) => EnergyTimeseriesPoint.fromJson(item as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+
+  /// Parse from a raw list of point objects (backend array response format).
+  factory EnergyTimeseries.fromList(
+    List<Map<String, dynamic>> items, {
+    required String range,
+    required String interval,
+  }) {
+    return EnergyTimeseries(
+      range: range,
+      interval: interval,
+      points: items
+          .map((item) => EnergyTimeseriesPoint.fromJson(item))
           .toList(),
     );
   }

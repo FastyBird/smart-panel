@@ -209,6 +209,49 @@ describe('DeltaComputationService', () => {
 			expect(gridExport.deltaKwh).toBeCloseTo(2.0);
 		});
 
+		it('should handle meter reset for grid_import source type', () => {
+			service.computeDelta(deviceId, EnergySourceType.GRID_IMPORT, 500.0, new Date('2026-02-09T12:00:00Z'));
+			const result = service.computeDelta(
+				deviceId,
+				EnergySourceType.GRID_IMPORT,
+				10.0,
+				new Date('2026-02-09T12:05:00Z'),
+			);
+
+			expect(result).not.toBeNull();
+			expect(result.deltaKwh).toBeCloseTo(10.0);
+			expect(metrics.getSnapshot().negativeDeltaCount).toBe(1);
+		});
+
+		it('should handle meter reset for grid_export source type', () => {
+			service.computeDelta(deviceId, EnergySourceType.GRID_EXPORT, 300.0, new Date('2026-02-09T12:00:00Z'));
+			const result = service.computeDelta(
+				deviceId,
+				EnergySourceType.GRID_EXPORT,
+				5.0,
+				new Date('2026-02-09T12:05:00Z'),
+			);
+
+			expect(result).not.toBeNull();
+			expect(result.deltaKwh).toBeCloseTo(5.0);
+			expect(metrics.getSnapshot().negativeDeltaCount).toBe(1);
+		});
+
+		it('should resume normal grid_import deltas after reset', () => {
+			service.computeDelta(deviceId, EnergySourceType.GRID_IMPORT, 500.0, new Date('2026-02-09T12:00:00Z'));
+			service.computeDelta(deviceId, EnergySourceType.GRID_IMPORT, 10.0, new Date('2026-02-09T12:05:00Z'));
+
+			const result = service.computeDelta(
+				deviceId,
+				EnergySourceType.GRID_IMPORT,
+				15.0,
+				new Date('2026-02-09T12:10:00Z'),
+			);
+
+			expect(result).not.toBeNull();
+			expect(result.deltaKwh).toBeCloseTo(5.0);
+		});
+
 		it('should maintain all four source types independently on the same device', () => {
 			const ts1 = new Date('2026-02-09T12:00:00Z');
 			const ts2 = new Date('2026-02-09T12:05:00Z');

@@ -67,7 +67,9 @@ export class DeltaComputationService {
 		// so rejecting would suppress legitimate deltas.
 		if (prev && timestamp < prev.lastTimestamp) {
 			this.logger.warn(
-				`Out-of-order sample for ${key}: received=${timestamp.toISOString()}, lastSeen=${prev.lastTimestamp.toISOString()}. Processing anyway.`,
+				`Out-of-order sample for device=${deviceId} sourceType=${sourceType}: ` +
+					`received=${timestamp.toISOString()}, lastSeen=${prev.lastTimestamp.toISOString()}, ` +
+					`cumulativeKwh=${cumulativeKwh}, prevKwh=${prev.cumulativeKwh}. Processing anyway.`,
 			);
 			this.metrics.recordOutOfOrder();
 		}
@@ -79,7 +81,9 @@ export class DeltaComputationService {
 		this.baselines.set(key, { cumulativeKwh, lastTimestamp: highWaterTimestamp });
 
 		if (!prev) {
-			this.logger.debug(`First reading for ${key}: ${cumulativeKwh} kWh — storing baseline, no delta`);
+			this.logger.debug(
+				`First reading for device=${deviceId} sourceType=${sourceType}: ${cumulativeKwh} kWh — storing baseline, no delta`,
+			);
 			this.metrics.recordFirstSample();
 			return null;
 		}
@@ -92,7 +96,9 @@ export class DeltaComputationService {
 		} else {
 			// Value decreased — meter reset
 			this.logger.warn(
-				`Meter reset detected for ${key}: prev=${prev.cumulativeKwh}, new=${cumulativeKwh}, reset_behavior=treat_as_reset. Using new value as delta.`,
+				`Meter reset detected for device=${deviceId} sourceType=${sourceType}: ` +
+					`prev=${prev.cumulativeKwh}, new=${cumulativeKwh}, ` +
+					`timestamp=${timestamp.toISOString()}, reset_behavior=treat_as_reset. Using new value as delta.`,
 			);
 			this.metrics.recordNegativeDelta();
 			deltaKwh = cumulativeKwh;

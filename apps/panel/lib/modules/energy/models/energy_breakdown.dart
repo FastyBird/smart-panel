@@ -23,7 +23,7 @@ class EnergyBreakdownDevice {
     return EnergyBreakdownDevice(
       deviceId: json['device_id'] as String? ?? json['deviceId'] as String? ?? '',
       deviceName: json['device_name'] as String? ?? json['deviceName'] as String? ?? 'Unknown',
-      consumption: _parseDouble(json['consumption']),
+      consumption: _parseDouble(json['consumption_kwh'] ?? json['consumption']),
       roomName: json['room_name'] as String? ?? json['roomName'] as String?,
     );
   }
@@ -53,12 +53,26 @@ class EnergyBreakdown {
   bool get isEmpty => devices.isEmpty;
   bool get isNotEmpty => devices.isNotEmpty;
 
+  /// Parse from a wrapped JSON object with 'devices' and 'range' keys.
   factory EnergyBreakdown.fromJson(Map<String, dynamic> json) {
     final devicesList = json['devices'] as List<dynamic>? ?? [];
     return EnergyBreakdown(
       range: json['range'] as String? ?? 'today',
       devices: devicesList
           .map((item) => EnergyBreakdownDevice.fromJson(item as Map<String, dynamic>))
+          .toList(),
+    );
+  }
+
+  /// Parse from a raw list of device objects (backend array response format).
+  factory EnergyBreakdown.fromList(
+    List<Map<String, dynamic>> items, {
+    required String range,
+  }) {
+    return EnergyBreakdown(
+      range: range,
+      devices: items
+          .map((item) => EnergyBreakdownDevice.fromJson(item))
           .toList(),
     );
   }
