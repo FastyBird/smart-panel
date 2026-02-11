@@ -28,6 +28,11 @@ export const MAX_RETENTION_DAYS = 3650;
  */
 export const CLEANUP_BATCH_SIZE = 1000;
 
+/**
+ * Default cache TTL in seconds for energy query results.
+ */
+export const DEFAULT_CACHE_TTL_SECONDS = 30;
+
 export enum EnergySourceType {
 	CONSUMPTION_IMPORT = 'consumption_import',
 	GENERATION_PRODUCTION = 'generation_production',

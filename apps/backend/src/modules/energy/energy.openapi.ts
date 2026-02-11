@@ -4,6 +4,11 @@
 import { EnergyDeltaEntity } from './entities/energy-delta.entity';
 import { EnergyBreakdownItemModel } from './models/energy-breakdown-item.model';
 import { EnergyDeltaItemModel } from './models/energy-delta.model';
+import {
+	EnergyHomeBreakdownResponseModel,
+	EnergyHomeSummaryResponseModel,
+	EnergyHomeTimeseriesResponseModel,
+} from './models/energy-home-response.model';
 import { EnergyDeltasResponseModel, EnergySummaryResponseModel } from './models/energy-response.model';
 import {
 	EnergySpaceBreakdownResponseModel,
@@ -21,6 +26,9 @@ export const ENERGY_SWAGGER_EXTRA_MODELS = [
 	EnergySpaceSummaryResponseModel,
 	EnergySpaceTimeseriesResponseModel,
 	EnergySpaceBreakdownResponseModel,
+	EnergyHomeSummaryResponseModel,
+	EnergyHomeTimeseriesResponseModel,
+	EnergyHomeBreakdownResponseModel,
 	// Data models
 	EnergySummaryModel,
 	EnergyDeltaItemModel,
