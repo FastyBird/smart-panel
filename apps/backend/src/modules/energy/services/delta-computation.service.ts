@@ -72,8 +72,11 @@ export class DeltaComputationService {
 			this.metrics.recordOutOfOrder();
 		}
 
-		// Always update baseline to the latest reading
-		this.baselines.set(key, { cumulativeKwh, lastTimestamp: timestamp });
+		// Update baseline: always store the latest cumulative reading, but only
+		// advance lastTimestamp when the incoming sample is newer to avoid
+		// regressing the high-water mark and underreporting out-of-order events.
+		const highWaterTimestamp = prev && prev.lastTimestamp > timestamp ? prev.lastTimestamp : timestamp;
+		this.baselines.set(key, { cumulativeKwh, lastTimestamp: highWaterTimestamp });
 
 		if (!prev) {
 			this.logger.debug(`First reading for ${key}: ${cumulativeKwh} kWh — storing baseline, no delta`);

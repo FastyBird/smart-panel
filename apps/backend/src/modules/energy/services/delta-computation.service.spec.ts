@@ -148,6 +148,16 @@ describe('DeltaComputationService', () => {
 			expect(result).not.toBeNull();
 			expect(result.deltaKwh).toBeCloseTo(5.0);
 		});
+
+		it('should flag consecutive stale events by preserving timestamp high-water mark', () => {
+			service.computeDelta(deviceId, sourceType, 100.0, new Date('2026-02-09T12:05:00Z'));
+			// First stale sample — flagged
+			service.computeDelta(deviceId, sourceType, 101.0, new Date('2026-02-09T12:00:00Z'));
+			// Second stale sample — should also be flagged because 12:02 < 12:05
+			service.computeDelta(deviceId, sourceType, 102.0, new Date('2026-02-09T12:02:00Z'));
+
+			expect(metrics.getSnapshot().outOfOrderCount).toBe(2);
+		});
 	});
 
 	describe('different source types', () => {
