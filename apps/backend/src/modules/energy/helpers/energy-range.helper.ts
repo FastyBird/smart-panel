@@ -9,9 +9,25 @@
 
 const TIMEZONE = 'Europe/Prague';
 
+export const VALID_ENERGY_RANGES = ['today', 'yesterday', 'week', 'month'] as const;
+
+export type EnergyRange = (typeof VALID_ENERGY_RANGES)[number];
+
 export interface DateRange {
 	start: Date;
 	end: Date;
+}
+
+/**
+ * Normalize a range query parameter to a valid EnergyRange.
+ * Returns the input if valid, otherwise defaults to 'today'.
+ */
+export function normalizeEnergyRange(range?: string): EnergyRange {
+	if (range && (VALID_ENERGY_RANGES as readonly string[]).includes(range)) {
+		return range as EnergyRange;
+	}
+
+	return 'today';
 }
 
 /**

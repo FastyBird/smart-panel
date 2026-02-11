@@ -1,5 +1,5 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
-import { ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { Controller, Get, Query } from '@nestjs/common';
+import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import {
 	ApiBadRequestResponse,
@@ -10,18 +10,18 @@ import { ENERGY_MODULE_API_TAG_NAME } from '../energy.constants';
 import { normalizeEnergyRange, resolveEnergyRange } from '../helpers/energy-range.helper';
 import { EnergyBreakdownItemModel } from '../models/energy-breakdown-item.model';
 import {
-	EnergySpaceBreakdownResponseModel,
-	EnergySpaceSummaryResponseModel,
-	EnergySpaceTimeseriesResponseModel,
-} from '../models/energy-space-response.model';
+	EnergyHomeBreakdownResponseModel,
+	EnergyHomeSummaryResponseModel,
+	EnergyHomeTimeseriesResponseModel,
+} from '../models/energy-home-response.model';
 import { EnergySpaceSummaryModel } from '../models/energy-space-summary.model';
 import { EnergyTimeseriesPointModel } from '../models/energy-timeseries-point.model';
 import { EnergyCacheService } from '../services/energy-cache.service';
 import { EnergyDataService } from '../services/energy-data.service';
 
 @ApiTags(ENERGY_MODULE_API_TAG_NAME)
-@Controller('energy/spaces')
-export class EnergySpacesController {
+@Controller('energy/home')
+export class EnergyHomeController {
 	constructor(
 		private readonly energyData: EnergyDataService,
 		private readonly cache: EnergyCacheService,
@@ -29,19 +29,12 @@ export class EnergySpacesController {
 
 	@ApiOperation({
 		tags: [ENERGY_MODULE_API_TAG_NAME],
-		summary: 'Get space energy summary',
+		summary: 'Get home energy summary',
 		description:
-			'Returns total consumption, production, and net energy in kWh for a space over the requested time range. ' +
-			'Aggregates data from all rooms belonging to the space. Use spaceId "home" to get whole-home totals. ' +
-			'Ranges use Europe/Prague timezone: today = midnight to now, week = 7 days ago midnight to now, month = 30 days ago midnight to now. ' +
-			'netKwh = totalConsumptionKwh - totalProductionKwh (positive = net consumption).',
-		operationId: 'get-energy-module-space-summary',
-	})
-	@ApiParam({
-		name: 'spaceId',
-		type: 'string',
-		description: 'Space UUID, or "home" for whole-home aggregation.',
-		example: 'home',
+			'Returns total consumption, production, grid import/export, and net energy in kWh aggregated across all spaces and devices (including unassigned). ' +
+			'Results are cached with a configurable TTL (default 30s) to reduce query load. ' +
+			'Ranges use Europe/Prague timezone: today = midnight to now, week = 7 days ago midnight to now, month = 30 days ago midnight to now.',
+		operationId: 'get-energy-module-home-summary',
 	})
 	@ApiQuery({
 		name: 'range',
@@ -51,21 +44,18 @@ export class EnergySpacesController {
 		description: 'Time range for the summary. Defaults to "today".',
 		example: 'today',
 	})
-	@ApiSuccessResponse(EnergySpaceSummaryResponseModel, 'Space energy summary retrieved successfully.')
+	@ApiSuccessResponse(EnergyHomeSummaryResponseModel, 'Home energy summary retrieved successfully.')
 	@ApiBadRequestResponse('Invalid request parameters.')
 	@ApiInternalServerErrorResponse()
-	@Get(':spaceId/summary')
-	async getSpaceSummary(
-		@Param('spaceId') spaceId: string,
-		@Query('range') range?: string,
-	): Promise<EnergySpaceSummaryResponseModel> {
+	@Get('summary')
+	async getHomeSummary(@Query('range') range?: string): Promise<EnergyHomeSummaryResponseModel> {
 		const resolvedRange = normalizeEnergyRange(range);
-		const cacheKey = `space:${spaceId}:summary:${resolvedRange}`;
+		const cacheKey = `home:summary:${resolvedRange}`;
 
 		const summary = await this.cache.getOrCompute(cacheKey, async () => {
 			const { start, end } = resolveEnergyRange(resolvedRange);
 
-			return this.energyData.getSpaceSummary(start, end, spaceId);
+			return this.energyData.getSpaceSummary(start, end, 'home');
 		});
 
 		const model = new EnergySpaceSummaryModel();
@@ -79,7 +69,7 @@ export class EnergySpacesController {
 		model.range = resolvedRange;
 		model.lastUpdatedAt = summary.lastUpdatedAt;
 
-		const response = new EnergySpaceSummaryResponseModel();
+		const response = new EnergyHomeSummaryResponseModel();
 		response.data = model;
 
 		return response;
@@ -87,18 +77,13 @@ export class EnergySpacesController {
 
 	@ApiOperation({
 		tags: [ENERGY_MODULE_API_TAG_NAME],
-		summary: 'Get space energy time-series',
+		summary: 'Get home energy time-series',
 		description:
-			'Returns time-series energy data points for a space, aggregated into the requested interval. ' +
-			'Supports 5m (native), 1h, and 1d intervals. Missing intervals are zero-filled for UI friendliness. ' +
+			'Returns time-series energy data points aggregated across all spaces and devices (including unassigned). ' +
+			'Supports 5m (native), 1h, and 1d intervals. Missing intervals are zero-filled. ' +
+			'Results are cached with a configurable TTL (default 30s). ' +
 			'Ranges use Europe/Prague timezone.',
-		operationId: 'get-energy-module-space-timeseries',
-	})
-	@ApiParam({
-		name: 'spaceId',
-		type: 'string',
-		description: 'Space UUID, or "home" for whole-home aggregation.',
-		example: 'home',
+		operationId: 'get-energy-module-home-timeseries',
 	})
 	@ApiQuery({
 		name: 'range',
@@ -116,23 +101,22 @@ export class EnergySpacesController {
 		description: 'Aggregation interval for data points. Defaults to "1h".',
 		example: '1h',
 	})
-	@ApiSuccessResponse(EnergySpaceTimeseriesResponseModel, 'Space energy time-series retrieved successfully.')
+	@ApiSuccessResponse(EnergyHomeTimeseriesResponseModel, 'Home energy time-series retrieved successfully.')
 	@ApiBadRequestResponse('Invalid request parameters.')
 	@ApiInternalServerErrorResponse()
-	@Get(':spaceId/timeseries')
-	async getSpaceTimeseries(
-		@Param('spaceId') spaceId: string,
+	@Get('timeseries')
+	async getHomeTimeseries(
 		@Query('range') range?: string,
 		@Query('interval') interval?: string,
-	): Promise<EnergySpaceTimeseriesResponseModel> {
+	): Promise<EnergyHomeTimeseriesResponseModel> {
 		const resolvedRange = normalizeEnergyRange(range);
 		const resolvedInterval = interval || '1h';
-		const cacheKey = `space:${spaceId}:timeseries:${resolvedRange}:${resolvedInterval}`;
+		const cacheKey = `home:timeseries:${resolvedRange}:${resolvedInterval}`;
 
 		const points = await this.cache.getOrCompute(cacheKey, async () => {
 			const { start, end } = resolveEnergyRange(resolvedRange);
 
-			return this.energyData.getSpaceTimeseries(start, end, resolvedInterval, spaceId);
+			return this.energyData.getSpaceTimeseries(start, end, resolvedInterval, 'home');
 		});
 
 		const items: EnergyTimeseriesPointModel[] = points.map((point) => {
@@ -146,7 +130,7 @@ export class EnergySpacesController {
 			return model;
 		});
 
-		const response = new EnergySpaceTimeseriesResponseModel();
+		const response = new EnergyHomeTimeseriesResponseModel();
 		response.data = items;
 
 		return response;
@@ -154,17 +138,11 @@ export class EnergySpacesController {
 
 	@ApiOperation({
 		tags: [ENERGY_MODULE_API_TAG_NAME],
-		summary: 'Get space energy breakdown',
+		summary: 'Get home energy breakdown',
 		description:
-			'Returns a breakdown of top energy-consuming devices within a space, sorted by consumption descending. ' +
+			'Returns a breakdown of top energy-consuming devices across all spaces, sorted by consumption descending. ' +
 			'Only considers consumption_import source type. Includes device and room names for display.',
-		operationId: 'get-energy-module-space-breakdown',
-	})
-	@ApiParam({
-		name: 'spaceId',
-		type: 'string',
-		description: 'Space UUID, or "home" for whole-home breakdown.',
-		example: 'home',
+		operationId: 'get-energy-module-home-breakdown',
 	})
 	@ApiQuery({
 		name: 'range',
@@ -181,19 +159,18 @@ export class EnergySpacesController {
 		description: 'Maximum number of devices to return. Defaults to 10.',
 		example: 10,
 	})
-	@ApiSuccessResponse(EnergySpaceBreakdownResponseModel, 'Space energy breakdown retrieved successfully.')
+	@ApiSuccessResponse(EnergyHomeBreakdownResponseModel, 'Home energy breakdown retrieved successfully.')
 	@ApiBadRequestResponse('Invalid request parameters.')
 	@ApiInternalServerErrorResponse()
-	@Get(':spaceId/breakdown')
-	async getSpaceBreakdown(
-		@Param('spaceId') spaceId: string,
+	@Get('breakdown')
+	async getHomeBreakdown(
 		@Query('range') range?: string,
 		@Query('limit') limitStr?: string,
-	): Promise<EnergySpaceBreakdownResponseModel> {
+	): Promise<EnergyHomeBreakdownResponseModel> {
 		const parsedLimit = limitStr !== undefined ? parseInt(limitStr, 10) : NaN;
 		const limit = Number.isNaN(parsedLimit) ? 10 : Math.max(1, Math.min(100, parsedLimit));
 		const { start, end } = resolveEnergyRange(range);
-		const items = await this.energyData.getSpaceBreakdown(start, end, spaceId, limit);
+		const items = await this.energyData.getSpaceBreakdown(start, end, 'home', limit);
 
 		const models: EnergyBreakdownItemModel[] = items.map((item) => {
 			const model = new EnergyBreakdownItemModel();
@@ -205,7 +182,7 @@ export class EnergySpacesController {
 			return model;
 		});
 
-		const response = new EnergySpaceBreakdownResponseModel();
+		const response = new EnergyHomeBreakdownResponseModel();
 		response.data = models;
 
 		return response;

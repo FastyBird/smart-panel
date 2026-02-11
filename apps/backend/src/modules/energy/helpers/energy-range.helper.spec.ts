@@ -1,4 +1,4 @@
-import { resolveEnergyRange } from './energy-range.helper';
+import { VALID_ENERGY_RANGES, normalizeEnergyRange, resolveEnergyRange } from './energy-range.helper';
 
 describe('resolveEnergyRange', () => {
 	beforeEach(() => {
@@ -93,6 +93,12 @@ describe('resolveEnergyRange', () => {
 		});
 	});
 
+	describe('VALID_ENERGY_RANGES', () => {
+		it('should contain exactly the ranges supported by resolveEnergyRange', () => {
+			expect(VALID_ENERGY_RANGES).toEqual(['today', 'yesterday', 'week', 'month']);
+		});
+	});
+
 	describe('DST transition handling', () => {
 		// Europe/Prague DST transitions in 2026:
 		// Spring forward: March 29 at 02:00 CET → 03:00 CEST (UTC+1 → UTC+2)
@@ -167,5 +173,24 @@ describe('resolveEnergyRange', () => {
 			// Midnight CEST on October 25 = 2026-10-24T22:00:00Z (UTC+2, still CEST at midnight)
 			expect(start.toISOString()).toBe('2026-10-24T22:00:00.000Z');
 		});
+	});
+});
+
+describe('normalizeEnergyRange', () => {
+	it('should return valid range values as-is', () => {
+		expect(normalizeEnergyRange('today')).toBe('today');
+		expect(normalizeEnergyRange('yesterday')).toBe('yesterday');
+		expect(normalizeEnergyRange('week')).toBe('week');
+		expect(normalizeEnergyRange('month')).toBe('month');
+	});
+
+	it('should default to "today" for undefined', () => {
+		expect(normalizeEnergyRange(undefined)).toBe('today');
+	});
+
+	it('should default to "today" for invalid values', () => {
+		expect(normalizeEnergyRange('invalid')).toBe('today');
+		expect(normalizeEnergyRange('')).toBe('today');
+		expect(normalizeEnergyRange('year')).toBe('today');
 	});
 });

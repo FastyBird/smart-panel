@@ -9,6 +9,7 @@ import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../swagger/swagger.module';
 
+import { EnergyHomeController } from './controllers/energy-home.controller';
 import { EnergySpacesController } from './controllers/energy-spaces.controller';
 import { EnergyController } from './controllers/energy.controller';
 import { UpdateEnergyConfigDto } from './dto/update-config.dto';
@@ -18,6 +19,7 @@ import { EnergyDeltaEntity } from './entities/energy-delta.entity';
 import { EnergyIngestionListener } from './listeners/energy-ingestion.listener';
 import { EnergyConfigModel } from './models/config.model';
 import { DeltaComputationService } from './services/delta-computation.service';
+import { EnergyCacheService } from './services/energy-cache.service';
 import { EnergyCleanupService } from './services/energy-cleanup.service';
 import { EnergyDataService } from './services/energy-data.service';
 import { EnergyMetricsService } from './services/energy-metrics.service';
@@ -33,10 +35,11 @@ import { EnergyMetricsService } from './services/energy-metrics.service';
 		EnergyMetricsService,
 		DeltaComputationService,
 		EnergyDataService,
+		EnergyCacheService,
 		EnergyIngestionListener,
 		EnergyCleanupService,
 	],
-	controllers: [EnergyController, EnergySpacesController],
+	controllers: [EnergyController, EnergySpacesController, EnergyHomeController],
 	exports: [EnergyDataService],
 })
 export class EnergyModule implements OnModuleInit {

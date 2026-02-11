@@ -33,4 +33,19 @@ export class UpdateEnergyConfigDto extends UpdateModuleConfigDto {
 		message: `[{"field":"retention_days","reason":"Retention days must not exceed ${MAX_RETENTION_DAYS}."}]`,
 	})
 	retention_days?: number;
+
+	@ApiPropertyOptional({
+		name: 'cache_ttl_seconds',
+		description: 'TTL in seconds for cached energy query results. 0 disables caching.',
+		type: 'integer',
+		example: 30,
+	})
+	@Expose({ name: 'cache_ttl_seconds' })
+	@IsOptional()
+	@IsInt({ message: '[{"field":"cache_ttl_seconds","reason":"Cache TTL must be an integer."}]' })
+	@Min(0, { message: '[{"field":"cache_ttl_seconds","reason":"Cache TTL must be at least 0."}]' })
+	@Max(3600, {
+		message: '[{"field":"cache_ttl_seconds","reason":"Cache TTL must not exceed 3600."}]',
+	})
+	cache_ttl_seconds?: number;
 }
