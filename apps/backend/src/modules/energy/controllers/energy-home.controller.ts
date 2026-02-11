@@ -7,7 +7,7 @@ import {
 	ApiSuccessResponse,
 } from '../../swagger/decorators/api-documentation.decorator';
 import { ENERGY_MODULE_API_TAG_NAME } from '../energy.constants';
-import { resolveEnergyRange } from '../helpers/energy-range.helper';
+import { normalizeEnergyRange, resolveEnergyRange } from '../helpers/energy-range.helper';
 import { EnergyBreakdownItemModel } from '../models/energy-breakdown-item.model';
 import {
 	EnergyHomeBreakdownResponseModel,
@@ -49,8 +49,7 @@ export class EnergyHomeController {
 	@ApiInternalServerErrorResponse()
 	@Get('summary')
 	async getHomeSummary(@Query('range') range?: string): Promise<EnergyHomeSummaryResponseModel> {
-		const validRanges = ['today', 'yesterday', 'week', 'month'];
-		const resolvedRange = range && validRanges.includes(range) ? range : 'today';
+		const resolvedRange = normalizeEnergyRange(range);
 		const cacheKey = `home:summary:${resolvedRange}`;
 
 		const summary = await this.cache.getOrCompute(cacheKey, async () => {
@@ -110,8 +109,7 @@ export class EnergyHomeController {
 		@Query('range') range?: string,
 		@Query('interval') interval?: string,
 	): Promise<EnergyHomeTimeseriesResponseModel> {
-		const validRanges = ['today', 'yesterday', 'week', 'month'];
-		const resolvedRange = range && validRanges.includes(range) ? range : 'today';
+		const resolvedRange = normalizeEnergyRange(range);
 		const resolvedInterval = interval || '1h';
 		const cacheKey = `home:timeseries:${resolvedRange}:${resolvedInterval}`;
 

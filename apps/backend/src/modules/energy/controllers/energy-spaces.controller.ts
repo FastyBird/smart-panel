@@ -7,7 +7,7 @@ import {
 	ApiSuccessResponse,
 } from '../../swagger/decorators/api-documentation.decorator';
 import { ENERGY_MODULE_API_TAG_NAME } from '../energy.constants';
-import { resolveEnergyRange } from '../helpers/energy-range.helper';
+import { normalizeEnergyRange, resolveEnergyRange } from '../helpers/energy-range.helper';
 import { EnergyBreakdownItemModel } from '../models/energy-breakdown-item.model';
 import {
 	EnergySpaceBreakdownResponseModel,
@@ -59,8 +59,7 @@ export class EnergySpacesController {
 		@Param('spaceId') spaceId: string,
 		@Query('range') range?: string,
 	): Promise<EnergySpaceSummaryResponseModel> {
-		const validRanges = ['today', 'yesterday', 'week', 'month'];
-		const resolvedRange = range && validRanges.includes(range) ? range : 'today';
+		const resolvedRange = normalizeEnergyRange(range);
 		const cacheKey = `space:${spaceId}:summary:${resolvedRange}`;
 
 		const summary = await this.cache.getOrCompute(cacheKey, async () => {
@@ -126,8 +125,7 @@ export class EnergySpacesController {
 		@Query('range') range?: string,
 		@Query('interval') interval?: string,
 	): Promise<EnergySpaceTimeseriesResponseModel> {
-		const validRanges = ['today', 'yesterday', 'week', 'month'];
-		const resolvedRange = range && validRanges.includes(range) ? range : 'today';
+		const resolvedRange = normalizeEnergyRange(range);
 		const resolvedInterval = interval || '1h';
 		const cacheKey = `space:${spaceId}:timeseries:${resolvedRange}:${resolvedInterval}`;
 
