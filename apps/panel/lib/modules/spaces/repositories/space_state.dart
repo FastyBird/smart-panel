@@ -585,6 +585,20 @@ class SpaceStateRepository extends ChangeNotifier {
     );
   }
 
+  /// Set white channel for a specific role
+  Future<LightingIntentResult?> setRoleWhite(
+    String spaceId,
+    LightingStateRole role,
+    int white,
+  ) {
+    return executeLightingIntent(
+      spaceId: spaceId,
+      type: LightingIntentType.roleWhite,
+      role: role,
+      white: white,
+    );
+  }
+
   // ============================================
   // CLIMATE INTENTS
   // ============================================

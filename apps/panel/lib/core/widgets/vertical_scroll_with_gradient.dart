@@ -46,6 +46,10 @@ class VerticalScrollWithGradient extends StatelessWidget {
   /// from covering parent container's rounded corners.
   final BorderRadius? borderRadius;
 
+  /// When true, the list sizes to its content instead of expanding to fill
+  /// available space. Useful inside bottom sheets or other min-size layouts.
+  final bool shrinkWrap;
+
   const VerticalScrollWithGradient({
     super.key,
     required this.gradientHeight,
@@ -57,6 +61,7 @@ class VerticalScrollWithGradient extends StatelessWidget {
     this.padding = EdgeInsets.zero,
     this.controller,
     this.borderRadius,
+    this.shrinkWrap = false,
   });
 
   @override
@@ -74,6 +79,8 @@ class VerticalScrollWithGradient extends StatelessWidget {
         ListView.separated(
           controller: controller,
           scrollDirection: Axis.vertical,
+          shrinkWrap: shrinkWrap,
+          physics: shrinkWrap ? const ClampingScrollPhysics() : null,
           itemCount: itemCount,
           separatorBuilder: (_, __) => separatorColor != null
               ? Divider(
