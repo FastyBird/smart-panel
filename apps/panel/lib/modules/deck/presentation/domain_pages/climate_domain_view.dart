@@ -74,7 +74,6 @@ import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
-import 'package:fastybird_smart_panel/core/widgets/tile_wrappers.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
@@ -1683,20 +1682,29 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         ? buildDeviceIcon(deviceView.category, deviceView.icon)
         : device.icon;
 
-    return HorizontalTileStretched(
-      icon: tileIcon,
-      name: device.name,
-      status: isOffline
-          ? localizations.device_status_offline
-          : _translateDeviceStatus(localizations, device.status, device.isActive),
-      isActive: device.isActive,
-      isOffline: isOffline,
-      showWarningBadge: true,
-      activeColor: device.isActive ? _getModeColor() : null,
-      onTileTap: () {
-        Navigator.of(context).pop();
-        _openClimateDeviceDetail(device);
-      },
+    final tileHeight = AppSpacings.scale(AppTileHeight.horizontal * 0.85);
+
+    return SizedBox(
+      height: tileHeight,
+      child: UniversalTile(
+        layout: TileLayout.horizontal,
+        icon: tileIcon,
+        name: device.name,
+        status: isOffline
+            ? localizations.device_status_offline
+            : _translateDeviceStatus(localizations, device.status, device.isActive),
+        isActive: device.isActive,
+        isOffline: isOffline,
+        showWarningBadge: true,
+        showGlow: false,
+        showDoubleBorder: false,
+        showInactiveBorder: true,
+        activeColor: device.isActive ? _getModeColor() : null,
+        onTileTap: () {
+          Navigator.of(context).pop();
+          _openClimateDeviceDetail(device);
+        },
+      ),
     );
   }
 
@@ -1785,22 +1793,31 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         ? buildDeviceIcon(deviceView.category, deviceView.icon)
         : device.icon;
 
-    return HorizontalTileStretched(
-      icon: tileIcon,
-      name: device.name,
-      status: isOffline
-          ? localizations.device_status_offline
-          : _translateDeviceStatus(localizations, device.status, device.isActive),
-      isActive: device.isActive,
-      isOffline: isOffline,
-      showWarningBadge: true,
-      onIconTap: isOffline
-          ? null
-          : () => _toggleAuxiliaryDevice(device),
-      onTileTap: () {
-        Navigator.of(context).pop();
-        _openAuxiliaryDeviceDetail(device);
-      },
+    final tileHeight = AppSpacings.scale(AppTileHeight.horizontal * 0.85);
+
+    return SizedBox(
+      height: tileHeight,
+      child: UniversalTile(
+        layout: TileLayout.horizontal,
+        icon: tileIcon,
+        name: device.name,
+        status: isOffline
+            ? localizations.device_status_offline
+            : _translateDeviceStatus(localizations, device.status, device.isActive),
+        isActive: device.isActive,
+        isOffline: isOffline,
+        showWarningBadge: true,
+        showGlow: false,
+        showDoubleBorder: false,
+        showInactiveBorder: true,
+        onIconTap: isOffline
+            ? null
+            : () => _toggleAuxiliaryDevice(device),
+        onTileTap: () {
+          Navigator.of(context).pop();
+          _openAuxiliaryDeviceDetail(device);
+        },
+      ),
     );
   }
 
