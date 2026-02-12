@@ -74,7 +74,6 @@ import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
-import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
 import 'package:fastybird_smart_panel/core/widgets/tile_wrappers.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
@@ -1982,25 +1981,17 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   // bottom mode selector via [PortraitViewLayout.modeSelector].
 
   Widget _buildPortraitLayout(BuildContext context) {
-    final localizations = AppLocalizations.of(context)!;
     final hasSensors = _state.sensors.isNotEmpty;
 
     return PortraitViewLayout(
       scrollable: false,
       content: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: AppSpacings.pMd,
         children: [
           _buildHeroCard(context),
-          // Sensors section
-          if (hasSensors) ...[
-            SizedBox(height: AppSpacings.pMd),
-            SectionTitle(
-              title: localizations.device_sensors,
-              icon: MdiIcons.eyeSettings,
-            ),
-            SizedBox(height: AppSpacings.pSm),
+          if (hasSensors)
             Expanded(child: _buildSensorsGrid(context)),
-          ],
         ],
       ),
     );
@@ -2010,17 +2001,25 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     final isSmallScreen = locator<ScreenService>().isSmallScreen;
     final sensors = _state.sensors;
     final crossAxisCount = isSmallScreen ? 2 : 3;
-    final childAspectRatio = isSmallScreen ? 2.8 : 1.2;
     final spacing = AppSpacings.pSm;
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final availableHeight = constraints.maxHeight;
-
-        // Row height = gridWidth / crossAxisCount / childAspectRatio
         final gridWidth = constraints.maxWidth;
         final cellWidth =
             (gridWidth - spacing * (crossAxisCount - 1)) / crossAxisCount;
+
+        // Small: fixed tile height matching landscape, derive aspect ratio
+        // Medium+: vertical tiles with fixed aspect ratio
+        final double childAspectRatio;
+        if (isSmallScreen) {
+          final tileHeight = AppSpacings.scale(AppTileHeight.horizontal * 0.85);
+          childAspectRatio = cellWidth / tileHeight;
+        } else {
+          childAspectRatio = 1.2;
+        }
+
         final cellHeight = cellWidth / childAspectRatio;
 
         // How many rows fit in available height
@@ -2081,6 +2080,12 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   Widget _buildMoreSensorsTile(BuildContext context, int overflowCount) {
     final localizations = AppLocalizations.of(context)!;
     final isSmallScreen = locator<ScreenService>().isSmallScreen;
+    final compactPadding = isSmallScreen
+        ? EdgeInsets.symmetric(
+            horizontal: AppSpacings.pMd,
+            vertical: AppSpacings.pXs,
+          )
+        : null;
 
     return UniversalTile(
       layout: isSmallScreen ? TileLayout.horizontal : TileLayout.vertical,
@@ -2091,6 +2096,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
       isActive: false,
       showGlow: false,
       showInactiveBorder: false,
+      contentPadding: compactPadding,
       onTileTap: _showSensorsSheet,
     );
   }
@@ -2188,16 +2194,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   }
 
   Widget _buildLandscapeAdditionalColumn(BuildContext context) {
-    final localizations = AppLocalizations.of(context)!;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SectionTitle(title: localizations.device_sensors, icon: MdiIcons.eyeSettings),
-        SizedBox(height: AppSpacings.pSm),
-        Expanded(child: _buildLandscapeSensorsCard(context)),
-      ],
-    );
+    return _buildLandscapeSensorsCard(context);
   }
 
   Widget _buildLandscapeSensorsCard(BuildContext context) {
@@ -2205,7 +2202,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final tileHeight = AppSpacings.scale(AppTileHeight.horizontal * 0.78);
+        final tileHeight = AppSpacings.scale(AppTileHeight.horizontal * 0.85);
         final minSpacing = AppSpacings.pSm;
         final availableHeight = constraints.maxHeight;
 
@@ -2256,10 +2253,6 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   Widget _buildSensorTileHorizontal(
       BuildContext context, ClimateSensor sensor, double height) {
     final localizations = AppLocalizations.of(context)!;
-    final compactPadding = EdgeInsets.symmetric(
-      horizontal: AppSpacings.pSm,
-      vertical: AppSpacings.pSm,
-    );
 
     return SizedBox(
       height: height,
@@ -2278,8 +2271,6 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         showGlow: false,
         showDoubleBorder: false,
         showInactiveBorder: true,
-        contentPadding: compactPadding,
-        statusFontSize: AppFontSize.extraExtraSmall,
         onTileTap: _sensorTapCallback(sensor),
       ),
     );
@@ -2288,10 +2279,6 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   Widget _buildMoreSensorsTileHorizontal(
       BuildContext context, int overflowCount, double height) {
     final localizations = AppLocalizations.of(context)!;
-    final compactPadding = EdgeInsets.symmetric(
-      horizontal: AppSpacings.pSm,
-      vertical: AppSpacings.pSm,
-    );
 
     return SizedBox(
       height: height,
@@ -2304,8 +2291,6 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         showGlow: false,
         showDoubleBorder: false,
         showInactiveBorder: false,
-        contentPadding: compactPadding,
-        statusFontSize: AppFontSize.extraExtraSmall,
         onTileTap: _showSensorsSheet,
       ),
     );

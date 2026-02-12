@@ -21,7 +21,7 @@ class HeroCard extends StatelessWidget {
   const HeroCard({
     super.key,
     required this.child,
-    this.fraction = 0.45,
+    this.fraction = 0.48,
     this.maxHeight,
   });
 

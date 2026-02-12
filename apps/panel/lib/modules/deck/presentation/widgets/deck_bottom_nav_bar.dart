@@ -97,7 +97,7 @@ class _DeckBottomNavBarState extends State<DeckBottomNavBar> {
         isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
 
     return Container(
-      height: AppSpacings.scale(48),
+      height: AppSpacings.scale(52),
       decoration: BoxDecoration(
         color: isDark ? AppBgColorDark.base : AppBgColorLight.base,
         border: Border(
@@ -112,7 +112,7 @@ class _DeckBottomNavBarState extends State<DeckBottomNavBar> {
           // Fixed Home tab (icon-only).
           if (homeTab != null) ...[
             SizedBox(
-              width: AppSpacings.scale(44),
+              width: AppSpacings.scale(56),
               child: _NavTab(
                 icon: homeTab.icon,
                 label: homeTab.label,
@@ -174,7 +174,7 @@ class _DeckBottomNavBarState extends State<DeckBottomNavBar> {
   Widget _buildDivider(Color color) {
     return Container(
       width: AppSpacings.scale(1),
-      height: AppSpacings.scale(28),
+      height: AppSpacings.scale(36),
       color: color,
     );
   }
@@ -217,8 +217,8 @@ class _NavTab extends StatelessWidget {
         : AppTextColorLight.placeholder;
     final Color iconColor = isActive ? accentColor : inactiveColor;
 
-    final double iconSize = AppSpacings.scale(20);
-    final double pillHeight = AppSpacings.scale(30);
+    final double iconSize = AppSpacings.scale(24);
+    final double pillHeight = AppSpacings.scale(36);
     final double pillRadius = AppBorderRadius.base;
 
     return GestureDetector(
@@ -229,7 +229,7 @@ class _NavTab extends StatelessWidget {
           duration: _animDuration,
           curve: _animCurve,
           child: Container(
-            constraints: BoxConstraints(minWidth: AppSpacings.scale(34)),
+            constraints: BoxConstraints(minWidth: AppSpacings.scale(40)),
             height: pillHeight,
             margin: EdgeInsets.symmetric(horizontal: AppSpacings.scale(4)),
             padding: EdgeInsets.symmetric(horizontal: AppSpacings.scale(8)),
@@ -323,7 +323,7 @@ class _ModeButton extends StatelessWidget {
         child: Icon(
           config.icon,
           color: colorFamily.base,
-          size: AppSpacings.scale(20),
+          size: AppSpacings.scale(22),
         ),
       ),
     );
