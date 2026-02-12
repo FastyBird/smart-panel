@@ -1992,41 +1992,36 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
       tileWidth = tileHeight * 1.2;
     }
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
+    return HorizontalScrollWithGradient(
+      height: tileHeight,
+      layoutPadding: AppSpacings.pLg,
+      itemCount: devices.length,
+      separatorWidth: AppSpacings.pMd,
+      itemBuilder: (context, index) {
+        final device = devices[index];
+        final deviceView = _devicesService?.getDevice(device.id);
+        final isOffline = deviceView != null && !deviceView.isOnline;
+        final tileIcon = deviceView != null
+            ? buildDeviceIcon(deviceView.category, deviceView.icon)
+            : device.icon;
 
-        return HorizontalScrollWithGradient(
-          height: tileHeight,
-          layoutPadding: AppSpacings.pLg,
-          itemCount: devices.length,
-          separatorWidth: AppSpacings.pMd,
-          itemBuilder: (context, index) {
-            final device = devices[index];
-            final deviceView = _devicesService?.getDevice(device.id);
-            final isOffline = deviceView != null && !deviceView.isOnline;
-            final tileIcon = deviceView != null
-                ? buildDeviceIcon(deviceView.category, deviceView.icon)
-                : device.icon;
-
-            return SizedBox(
-              width: tileWidth,
-              child: UniversalTile(
-                layout: !isSmallScreen
-                    ? TileLayout.vertical
-                    : TileLayout.horizontal,
-                icon: tileIcon,
-                name: device.name,
-                status: _translateDeviceStatus(
-                    localizations, device.status, device.isActive),
-                isActive: device.isActive,
-                isOffline: isOffline,
-                onIconTap: isOffline
-                    ? null
-                    : () => _toggleAuxiliaryDevice(device),
-                onTileTap: () => _openAuxiliaryDeviceDetail(device),
-              ),
-            );
-          },
+        return SizedBox(
+          width: tileWidth,
+          child: UniversalTile(
+            layout: !isSmallScreen
+                ? TileLayout.vertical
+                : TileLayout.horizontal,
+            icon: tileIcon,
+            name: device.name,
+            status: _translateDeviceStatus(
+                localizations, device.status, device.isActive),
+            isActive: device.isActive,
+            isOffline: isOffline,
+            onIconTap: isOffline
+                ? null
+                : () => _toggleAuxiliaryDevice(device),
+            onTileTap: () => _openAuxiliaryDeviceDetail(device),
+          ),
         );
       },
     );
