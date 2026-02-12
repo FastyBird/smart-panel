@@ -42,7 +42,7 @@
 //     [_onDataChanged].
 //   - HELPERS: [_scale], [_getSetpointRange], [_navigateToHome].
 //   - MODE & SETPOINT ACTIONS: [_setMode], [_setTargetTemp].
-//   - DEVICES BOTTOM SHEET: [_showClimateDevicesSheet], device detail routing.
+//   - DEVICES SHEET / DRAWER: [_showClimateDevicesSheet], device detail routing.
 //   - THEME & LABELS: mode colors, dial accent, localized strings.
 //   - BUILD: scaffold, header, orientation → portrait/landscape.
 //   - HEADER, PORTRAIT LAYOUT, LANDSCAPE LAYOUT, PRIMARY CONTROL CARD,
@@ -64,8 +64,10 @@ import 'package:fastybird_smart_panel/modules/deck/models/bottom_nav_mode_config
 import 'package:fastybird_smart_panel/modules/deck/services/bottom_nav_mode_notifier.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/deck_page_activated_event.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_card.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_right_drawer.dart';
 import 'package:fastybird_smart_panel/core/widgets/circular_control_dial.dart';
 import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
+import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
@@ -1586,15 +1588,46 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   void _showClimateDevicesSheet() {
     if (_state.climateDevices.isEmpty) return;
     final localizations = AppLocalizations.of(context)!;
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
 
-    DeckItemSheet.showItemSheet(
-      context,
-      title: localizations.climate_devices_section,
-      icon: MdiIcons.homeThermometer,
-      itemCount: _state.climateDevices.length,
-      itemBuilder: (context, index) =>
-          _buildClimateDeviceTileForSheet(context, _state.climateDevices[index]),
-    );
+    if (isLandscape) {
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+      final drawerBgColor =
+          isDark ? AppFillColorDark.base : AppFillColorLight.blank;
+
+      showAppRightDrawer(
+        context,
+        title: localizations.climate_devices_section,
+        titleIcon: MdiIcons.homeThermometer,
+        scrollable: false,
+        content: VerticalScrollWithGradient(
+          gradientHeight: AppSpacings.pMd,
+          itemCount: _state.climateDevices.length,
+          separatorHeight: AppSpacings.pSm,
+          backgroundColor: drawerBgColor,
+          padding: EdgeInsets.symmetric(
+            horizontal: AppSpacings.pLg,
+            vertical: AppSpacings.pMd,
+          ),
+          itemBuilder: (context, index) => _buildClimateDeviceTileForSheet(
+            context,
+            _state.climateDevices[index],
+          ),
+        ),
+      );
+    } else {
+      DeckItemSheet.showItemSheet(
+        context,
+        title: localizations.climate_devices_section,
+        icon: MdiIcons.homeThermometer,
+        itemCount: _state.climateDevices.length,
+        itemBuilder: (context, index) => _buildClimateDeviceTileForSheet(
+          context,
+          _state.climateDevices[index],
+        ),
+      );
+    }
   }
 
   Widget _buildClimateDeviceTileForSheet(
