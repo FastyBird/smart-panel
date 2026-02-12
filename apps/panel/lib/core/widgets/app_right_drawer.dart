@@ -143,6 +143,7 @@ class AppRightDrawer extends StatelessWidget {
           color: bgColor,
           elevation: 16,
           child: DecoratedBox(
+            position: DecorationPosition.foreground,
             decoration: BoxDecoration(
               border: Border(
                 left: BorderSide(

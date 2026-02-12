@@ -97,7 +97,7 @@ class _DeckBottomNavBarState extends State<DeckBottomNavBar> {
         isDark ? AppBorderColorDark.light : AppBorderColorLight.darker;
 
     return Container(
-      height: AppSpacings.scale(62),
+      height: AppSpacings.scale(52),
       decoration: BoxDecoration(
         color: isDark ? AppBgColorDark.base : AppBgColorLight.base,
         border: Border(

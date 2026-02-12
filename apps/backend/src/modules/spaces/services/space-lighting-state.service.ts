@@ -360,16 +360,19 @@ export class SpaceLightingStateService {
 		const isOn = devicesOn > 0;
 		const isOnMixed = !onStates.every((on) => on === onStates[0]);
 
-		// Brightness - uniform value or null if mixed
+		// Brightness - uniform value or null if mixed (tolerance 5 on 0-100 scale)
 		const brightnessResult = this.getUniformValue(lights.map((l) => l.brightness));
 
-		// Color temperature - uniform value or null if mixed
-		const colorTempResult = this.getUniformValue(lights.map((l) => l.colorTemperature));
+		// Color temperature - uniform value or null if mixed (tolerance 100 on 2700-6500K scale)
+		const colorTempResult = this.getUniformValue(
+			lights.map((l) => l.colorTemperature),
+			100,
+		);
 
 		// Color (RGB) - uniform value or null if mixed
 		const colorResult = this.getUniformColor(lights);
 
-		// White - uniform value or null if mixed
+		// White - uniform value or null if mixed (tolerance 5 on 0-100 scale)
 		const whiteResult = this.getUniformValue(lights.map((l) => l.white));
 
 		// Derive last intent from last applied mode
@@ -422,7 +425,10 @@ export class SpaceLightingStateService {
 		const isOnMixed = !onStates.every((on) => on === onStates[0]);
 
 		const brightnessResult = this.getUniformValue(otherLights.map((l) => l.brightness));
-		const colorTempResult = this.getUniformValue(otherLights.map((l) => l.colorTemperature));
+		const colorTempResult = this.getUniformValue(
+			otherLights.map((l) => l.colorTemperature),
+			100,
+		);
 		const colorResult = this.getUniformColor(otherLights);
 		const whiteResult = this.getUniformValue(otherLights.map((l) => l.white));
 
@@ -449,8 +455,10 @@ export class SpaceLightingStateService {
 	 *
 	 * Uses range-based check (max - min <= tolerance) which is order-independent.
 	 */
-	private getUniformValue(values: (number | null)[]): { value: number | null; isMixed: boolean } {
-		const TOLERANCE = 5;
+	private getUniformValue(
+		values: (number | null)[],
+		tolerance: number = 5,
+	): { value: number | null; isMixed: boolean } {
 		const nonNullValues = values.filter((v): v is number => v !== null);
 
 		if (nonNullValues.length === 0) {
@@ -461,7 +469,7 @@ export class SpaceLightingStateService {
 		const max = Math.max(...nonNullValues);
 
 		// Values are uniform if the range (max - min) is within tolerance
-		if (max - min <= TOLERANCE) {
+		if (max - min <= tolerance) {
 			// Return the rounded average when uniform
 			const avg = Math.round(nonNullValues.reduce((a, b) => a + b, 0) / nonNullValues.length);
 

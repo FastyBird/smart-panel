@@ -75,6 +75,10 @@ class UniversalTile extends StatelessWidget {
   // Vertical: placed at the bottom after status text
   final Widget? accessories;
 
+  // Optional padding override for the tile content area.
+  // Defaults to horizontal: pMd, vertical: pSm.
+  final EdgeInsetsGeometry? contentPadding;
+
   UniversalTile({
     super.key,
     this.layout = TileLayout.vertical,
@@ -97,6 +101,7 @@ class UniversalTile extends StatelessWidget {
     this.nameFontSize,
     this.statusFontSize,
     this.accessories,
+    this.contentPadding,
   });
 
   @override
@@ -151,10 +156,11 @@ class UniversalTile extends StatelessWidget {
           child: Stack(
             children: [
               Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: AppSpacings.pMd,
-                  vertical: AppSpacings.pSm,
-                ),
+                padding: contentPadding ??
+                    EdgeInsets.symmetric(
+                      horizontal: AppSpacings.pMd,
+                      vertical: AppSpacings.pSm,
+                    ),
                 child: Column(
                   children: [
                     // Icon - takes available space
@@ -250,10 +256,11 @@ class UniversalTile extends StatelessWidget {
       onTap: onTileTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: EdgeInsets.symmetric(
-          horizontal: AppSpacings.pMd,
-          vertical: AppSpacings.pSm,
-        ),
+        padding: contentPadding ??
+            EdgeInsets.symmetric(
+              horizontal: AppSpacings.pSm,
+              vertical: AppSpacings.pSm,
+            ),
         decoration: BoxDecoration(
           color: colors.tileBgColor,
           borderRadius: BorderRadius.circular(AppBorderRadius.base),

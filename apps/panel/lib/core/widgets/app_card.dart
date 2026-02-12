@@ -73,7 +73,7 @@ class AppCard extends StatelessWidget {
         color ?? (isDark ? AppFillColorDark.light : AppFillColorLight.blank);
     final resolvedBorderColor = borderColor ??
         (isDark ? AppBorderColorDark.light : AppBorderColorLight.light);
-    final finalBorderWidth = borderWidth ?? (isDark ? null :AppSpacings.scale(1));
+    final finalBorderWidth = borderWidth ?? (isDark ? null : AppSpacings.scale(1));
 
     final resolvedPadding = padding ?? AppSpacings.paddingMd;
 

@@ -6,11 +6,18 @@ import 'package:flutter/material.dart';
 ///
 /// The popup content is provided by the active domain view's [BottomNavModeConfig.popupBuilder].
 /// In landscape the popup appears below the trigger; in portrait it appears above.
-void showModePopup(BuildContext context, BottomNavModeConfig config) {
-  final renderBox = context.findRenderObject() as RenderBox?;
-  final triggerRect = renderBox != null
-      ? renderBox.localToGlobal(Offset.zero) & renderBox.size
-      : null;
+void showModePopup(
+  BuildContext context,
+  BottomNavModeConfig config, {
+  bool useAnchor = true,
+}) {
+  Rect? triggerRect;
+  if (useAnchor) {
+    final renderBox = context.findRenderObject() as RenderBox?;
+    triggerRect = renderBox != null
+        ? renderBox.localToGlobal(Offset.zero) & renderBox.size
+        : null;
+  }
 
   showDialog(
     context: context,

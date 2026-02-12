@@ -537,6 +537,9 @@ class AppLocalizationsCs extends AppLocalizations {
   String get thermostat_max => 'max';
 
   @override
+  String get thermostat_target_label => 'Cíl';
+
+  @override
   String get thermostat_state_off => 'Vypnuto';
 
   @override
@@ -1964,6 +1967,9 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get climate_devices_section => 'Klimatizační zařízení';
+
+  @override
+  String get climate_more_sensors => 'Více senzorů';
 
   @override
   String get domain_shading => 'Stínění';

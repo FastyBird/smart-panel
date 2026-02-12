@@ -38,6 +38,8 @@ class LandscapeViewLayout extends StatelessWidget {
   /// Default: true
   final bool additionalContentScrollable;
 
+  final EdgeInsetsGeometry? additionalContentPadding;
+
   const LandscapeViewLayout({
     super.key,
     required this.mainContent,
@@ -45,13 +47,12 @@ class LandscapeViewLayout extends StatelessWidget {
     this.mainContentPadding,
     this.additionalContent,
     this.additionalContentScrollable = true,
+    this.additionalContentPadding,
   });
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final borderColor =
-        isDark ? AppBorderColorDark.light : AppBorderColorLight.base;
 
     final resolvedMainPadding = mainContentPadding ??
         EdgeInsets.only(
@@ -59,13 +60,34 @@ class LandscapeViewLayout extends StatelessWidget {
           right: additionalContent != null ? 0 : AppSpacings.pMd,
           bottom: AppSpacings.pMd,
         );
-    final defaultAdditionalPadding = AppSpacings.paddingMd;
+    final resolvedAdditionalPadding = additionalContentPadding ?? AppSpacings.paddingMd;
     final additionalBgColor =
         isDark ? AppFillColorDark.light : AppFillColorLight.light;
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+
+        // Right column: Additional content (optional)
+        if (additionalContent != null) ...[
+          Expanded(
+            flex: 1,
+            child: additionalContentScrollable
+              ? VerticalScrollWithGradient(
+                  gradientHeight: AppSpacings.pMd,
+                  padding: resolvedAdditionalPadding,
+                  backgroundColor: additionalBgColor,
+                  itemCount: 1,
+                  separatorHeight: 0,
+                  itemBuilder: (context, index) => additionalContent!,
+                )
+              : Padding(
+                  padding: resolvedAdditionalPadding,
+                  child: additionalContent,
+                ),
+          ),
+        ],
+
         // Left column: Main content
         Expanded(
           flex: 2,
@@ -84,40 +106,6 @@ class LandscapeViewLayout extends StatelessWidget {
                   ),
           ),
         ),
-
-        // Right column: Additional content (optional)
-        if (additionalContent != null) ...[
-          AppSpacings.spacingMdHorizontal,
-          Expanded(
-            flex: 1,
-            child: Container(
-              clipBehavior: Clip.hardEdge,
-              decoration: BoxDecoration(
-                color: additionalBgColor,
-                border: Border(
-                  top: BorderSide(color: borderColor, width: AppSpacings.scale(1)),
-                  left: BorderSide(color: borderColor, width: AppSpacings.scale(1)),
-                ),
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(AppBorderRadius.base),
-                ),
-              ),
-              child: additionalContentScrollable
-                  ? VerticalScrollWithGradient(
-                      gradientHeight: AppSpacings.pMd,
-                      padding: defaultAdditionalPadding,
-                      backgroundColor: additionalBgColor,
-                      itemCount: 1,
-                      separatorHeight: 0,
-                      itemBuilder: (context, index) => additionalContent!,
-                    )
-                  : Padding(
-                      padding: defaultAdditionalPadding,
-                      child: additionalContent,
-                    ),
-            ),
-          ),
-        ],
       ],
     );
   }

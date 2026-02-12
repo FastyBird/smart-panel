@@ -941,6 +941,12 @@ abstract class AppLocalizations {
   /// **'max'**
   String get thermostat_max;
 
+  /// Label for the target temperature in the climate hero card
+  ///
+  /// In en, this message translates to:
+  /// **'Target'**
+  String get thermostat_target_label;
+
   /// Indicates the thermostat is turned off
   ///
   /// In en, this message translates to:
@@ -3706,6 +3712,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Climate Devices'**
   String get climate_devices_section;
+
+  /// Status label on the 'more' tile when sensors overflow the grid
+  ///
+  /// In en, this message translates to:
+  /// **'More sensors'**
+  String get climate_more_sensors;
 
   /// Title for shading domain view in room navigation
   ///

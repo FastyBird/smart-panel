@@ -526,6 +526,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get thermostat_max => 'max';
 
   @override
+  String get thermostat_target_label => 'Target';
+
+  @override
   String get thermostat_state_off => 'Off';
 
   @override
@@ -1951,6 +1954,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get climate_devices_section => 'Climate Devices';
+
+  @override
+  String get climate_more_sensors => 'More sensors';
 
   @override
   String get domain_shading => 'Shading';

@@ -1236,20 +1236,37 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       scrollable: false,
       content: LayoutBuilder(
         builder: (context, constraints) {
-          // Reserve roles height for 2 rows (max 6 roles, 3 per row)
-          // so scenes/lights get consistent space regardless of role count.
-          final tileWidth =
-              (constraints.maxWidth - 2 * AppSpacings.pMd) / 3;
-          final tileHeight = tileWidth / 0.9;
-          final rolesHeight = 2 * tileHeight + AppSpacings.pMd;
+          final hasBothSections = hasScenes && hasOtherLights;
 
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            spacing: AppSpacings.pMd,
-            children: [
-              // Roles Grid — fixed at 2 rows height
-              if (hasRoles)
-                SizedBox(
+          // Roles height: fixed 2-row size for when sections are missing
+          final roleTileWidth =
+              (constraints.maxWidth - 2 * AppSpacings.pMd) / 3;
+          final roleTileHeight = roleTileWidth / 0.9;
+          final rolesHeight = 2 * roleTileHeight + AppSpacings.pMd;
+
+          // Both sections present: roles expand to fill remaining space,
+          // aspect ratio computed from available height so tiles shrink to fit.
+          // Otherwise: fixed 2-row height with standard 0.9 ratio.
+          final rowCount = (roles.length / 3).ceil();
+          final rolesWidget = hasBothSections
+              ? Expanded(
+                  child: LayoutBuilder(
+                    builder: (context, rolesConstraints) {
+                      final rowHeight =
+                          (rolesConstraints.maxHeight - (rowCount - 1) * AppSpacings.pMd) / rowCount;
+                      final fitRatio = roleTileWidth / rowHeight;
+
+                      return _buildRolesGrid(
+                        context,
+                        roles,
+                        devicesService,
+                        crossAxisCount: 3,
+                        aspectRatio: fitRatio,
+                      );
+                    },
+                  ),
+                )
+              : SizedBox(
                   height: rolesHeight,
                   child: _buildRolesGrid(
                     context,
@@ -1257,7 +1274,14 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                     devicesService,
                     crossAxisCount: 3,
                   ),
-                ),
+                );
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            spacing: AppSpacings.pMd,
+            children: [
+              // Roles Grid
+              if (hasRoles) rolesWidget,
 
               // Quick Scenes — horizontal scroll with gradient
               if (hasScenes) ...[
@@ -1265,10 +1289,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                   title: localizations.space_scenes_title,
                   icon: MdiIcons.autoFix,
                 ),
-                Expanded(
-                  flex: isSmallScreen ? 2 : 1,
-                  child: _buildPortraitScenesHorizontalScroll(context),
-                ),
+                _buildPortraitScenesHorizontalScroll(context),
               ],
 
               // Other Lights — horizontal scroll with gradient
@@ -1278,13 +1299,11 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                   otherTargets,
                   localizations,
                 ),
-                Expanded(
-                  child: _buildPortraitLightsHorizontalScroll(
-                    context,
-                    otherLights,
-                    localizations,
-                    isSmallScreen: isSmallScreen,
-                  ),
+                _buildPortraitLightsHorizontalScroll(
+                  context,
+                  otherLights,
+                  localizations,
+                  isSmallScreen: isSmallScreen,
                 ),
               ],
             ],
@@ -1452,29 +1471,34 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
   Widget _buildPortraitScenesHorizontalScroll(BuildContext context) {
     final scenes = _lightingScenes;
+    final isSmallScreen = locator<ScreenService>().isSmallScreen;
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final height = constraints.maxHeight;
-        // Size tiles so ~2.5 fit visibly — the partial tile hints at scrollability
-        final tileWidth =
-            (constraints.maxWidth - 1.5 * AppSpacings.pMd) / 2.5;
+    // Small: fixed width, horizontal layout
+    // Medium/large: fixed height, wider tiles (1.2 ratio)
+    final double tileWidth;
+    final double tileHeight;
+    if (isSmallScreen) {
+      tileWidth = AppSpacings.scale(AppTileWidth.horizontalMedium);
+      tileHeight = AppSpacings.scale(AppTileHeight.horizontal);
+    } else {
+      tileHeight = AppSpacings.scale(AppTileWidth.horizontalSmall);
+      tileWidth = tileHeight * 1.2;
+    }
 
-        return HorizontalScrollWithGradient(
-          height: height,
-          layoutPadding: AppSpacings.pLg,
-          itemCount: scenes.length,
-          separatorWidth: AppSpacings.pMd,
-          itemBuilder: (context, index) {
-            return SizedBox(
-              width: tileWidth,
-              child: _SceneTile(
-                scene: scenes[index],
-                icon: _getSceneIcon(scenes[index]),
-                onTap: () => _activateScene(scenes[index]),
-              ),
-            );
-          },
+    return HorizontalScrollWithGradient(
+      height: tileHeight,
+      layoutPadding: AppSpacings.pLg,
+      itemCount: scenes.length,
+      separatorWidth: AppSpacings.pMd,
+      itemBuilder: (context, index) {
+        return SizedBox(
+          width: tileWidth,
+          child: _SceneTile(
+            scene: scenes[index],
+            icon: _getSceneIcon(scenes[index]),
+            onTap: () => _activateScene(scenes[index]),
+            isVertical: !isSmallScreen,
+          ),
         );
       },
     );
@@ -1486,33 +1510,35 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     AppLocalizations localizations, {
     bool isSmallScreen = false,
   }) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final height = constraints.maxHeight;
-        // Small: fixed width matching climate sensors; medium/large: ~2.5 visible
-        final tileWidth = isSmallScreen
-            ? AppSpacings.scale(AppTileWidth.horizontalMedium)
-            : (constraints.maxWidth - 1.5 * AppSpacings.pMd) / 2.5;
+    // Small: fixed width, horizontal layout
+    // Medium/large: fixed height, wider tiles (1.2 ratio)
+    final double tileWidth;
+    final double tileHeight;
+    if (isSmallScreen) {
+      tileWidth = AppSpacings.scale(AppTileWidth.horizontalMedium);
+      tileHeight = AppSpacings.scale(AppTileHeight.horizontal);
+    } else {
+      tileHeight = AppSpacings.scale(AppTileWidth.horizontalSmall);
+      tileWidth = tileHeight * 1.2;
+    }
 
-        return HorizontalScrollWithGradient(
-          height: height,
-          layoutPadding: AppSpacings.pLg,
-          itemCount: otherLights.length,
-          separatorWidth: AppSpacings.pMd,
-          itemBuilder: (context, index) {
-            return SizedBox(
-              width: tileWidth,
-              child: _LightTile(
-                light: otherLights[index],
-                localizations: localizations,
-                onTap: () => _openDeviceDetail(context, otherLights[index]),
-                onIconTap: otherLights[index].isOffline
-                    ? null
-                    : () => _toggleLight(otherLights[index]),
-                isVertical: !isSmallScreen,
-              ),
-            );
-          },
+    return HorizontalScrollWithGradient(
+      height: tileHeight,
+      layoutPadding: AppSpacings.pLg,
+      itemCount: otherLights.length,
+      separatorWidth: AppSpacings.pMd,
+      itemBuilder: (context, index) {
+        return SizedBox(
+          width: tileWidth,
+          child: _LightTile(
+            light: otherLights[index],
+            localizations: localizations,
+            onTap: () => _openDeviceDetail(context, otherLights[index]),
+            onIconTap: otherLights[index].isOffline
+                ? null
+                : () => _toggleLight(otherLights[index]),
+            isVertical: !isSmallScreen,
+          ),
         );
       },
     );
@@ -2209,17 +2235,19 @@ class _SceneTile extends StatelessWidget {
   final SceneView scene;
   final IconData icon;
   final VoidCallback? onTap;
+  final bool isVertical;
 
   const _SceneTile({
     required this.scene,
     required this.icon,
     this.onTap,
+    this.isVertical = true,
   });
 
   @override
   Widget build(BuildContext context) {
     return UniversalTile(
-      layout: TileLayout.vertical,
+      layout: isVertical ? TileLayout.vertical : TileLayout.horizontal,
       icon: icon,
       name: scene.name,
       isActive: false,

@@ -49,17 +49,18 @@ class SectionTitle extends StatelessWidget {
         Row(
           spacing: AppSpacings.pMd,
           children: [
+            AppSpacings.spacingXxsHorizontal,
             Icon(
               icon,
               color: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
-              size: AppSpacings.scale(18),
+              size: AppFontSize.small,
             ),
             Expanded(
               child: Text(
-                title,
+                title.toUpperCase(),
                 style: TextStyle(
                   color: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
-                  fontSize: AppFontSize.base,
+                  fontSize: AppFontSize.small,
                   fontWeight: FontWeight.w600,
                   letterSpacing: 0.5,
                 ),

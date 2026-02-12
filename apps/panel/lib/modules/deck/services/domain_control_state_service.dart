@@ -168,7 +168,9 @@ class DomainControlStateService<T> extends ChangeNotifier {
   /// Handles three states:
   /// - **pending**: converged → idle (covers direct device commands without intents)
   /// - **settling**: converged → idle
-  /// - **mixed**: converged → idle (sync error resolved)
+  /// - **mixed**: converged → idle (sync error resolved), OR
+  ///   any new backend data → idle (accept external changes, e.g. from
+  ///   another panel setting a different value)
   void checkConvergence(String channelId, List<T> targets) {
     final config = _channelConfigs[channelId];
     final currentState = _states[channelId];
@@ -185,6 +187,12 @@ class DomainControlStateService<T> extends ChangeNotifier {
     }
 
     if (config.convergenceChecker(targets, desiredValue, config.tolerance)) {
+      _transitionToIdle(channelId);
+    } else if (currentState.state == ControlUIState.mixed) {
+      // MIXED means the settling window already expired without convergence.
+      // If new backend data arrives (even with a different value), accept it
+      // rather than staying locked forever. This handles the case where
+      // another client changed the value to something different.
       _transitionToIdle(channelId);
     }
   }

@@ -141,6 +141,10 @@ class SliderWithSteps extends StatelessWidget {
         fillColor: resolvedThumbFill,
         borderColor: resolvedThumbBorder,
         borderWidth: scale(2),
+        outlineColor: thumbBorderColor != null && !isDark
+            ? AppBorderColorLight.darker
+            : null,
+        outlineWidth: scale(1),
       ),
     );
 
@@ -187,18 +191,29 @@ class SliderWithSteps extends StatelessWidget {
   }
 }
 
-/// Custom slider thumb shape with colored border for better contrast
+/// Custom slider thumb shape with colored border for better contrast.
+///
+/// When the border color has low contrast against the fill (e.g. a white-ish
+/// color temperature thumb on a light background), an automatic outer outline
+/// ring is drawn using [outlineColor] so the thumb stays visible.
 class _SliderThumbWithBorder extends SliderComponentShape {
   final double thumbRadius;
   final Color fillColor;
   final Color borderColor;
   final double borderWidth;
 
+  /// Thin outline drawn outside the border when the border has low contrast
+  /// against the fill. Pass null to disable.
+  final Color? outlineColor;
+  final double outlineWidth;
+
   const _SliderThumbWithBorder({
     required this.thumbRadius,
     required this.fillColor,
     required this.borderColor,
     required this.borderWidth,
+    this.outlineColor,
+    this.outlineWidth = 1.0,
   });
 
   @override
@@ -222,6 +237,19 @@ class _SliderThumbWithBorder extends SliderComponentShape {
     required Size sizeWithOverflow,
   }) {
     final Canvas canvas = context.canvas;
+
+    // Draw outer outline when border has low contrast against fill
+    if (outlineColor != null) {
+      final contrast =
+          (borderColor.computeLuminance() - fillColor.computeLuminance()).abs();
+      if (contrast < 0.15) {
+        final outlinePaint = Paint()
+          ..color = outlineColor!
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = outlineWidth;
+        canvas.drawCircle(center, thumbRadius, outlinePaint);
+      }
+    }
 
     // Draw fill
     final fillPaint = Paint()
