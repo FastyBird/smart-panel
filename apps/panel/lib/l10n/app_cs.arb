@@ -620,6 +620,7 @@
   "device_status_active": "Aktivní",
   "device_status_inactive": "Neaktivní",
   "climate_devices_section": "Klimatizační zařízení",
+  "climate_more_sensors": "Více senzorů",
 
   "domain_shading": "Stínění",
   "domain_shading_empty_title": "Žádné stínění",

@@ -1956,6 +1956,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get climate_devices_section => 'Climate Devices';
 
   @override
+  String get climate_more_sensors => 'More sensors';
+
+  @override
   String get domain_shading => 'Shading';
 
   @override

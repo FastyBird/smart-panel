@@ -3713,6 +3713,12 @@ abstract class AppLocalizations {
   /// **'Climate Devices'**
   String get climate_devices_section;
 
+  /// Status label on the 'more' tile when sensors overflow the grid
+  ///
+  /// In en, this message translates to:
+  /// **'More sensors'**
+  String get climate_more_sensors;
+
   /// Title for shading domain view in room navigation
   ///
   /// In en, this message translates to:

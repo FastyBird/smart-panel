@@ -1969,6 +1969,9 @@ class AppLocalizationsCs extends AppLocalizations {
   String get climate_devices_section => 'Klimatizační zařízení';
 
   @override
+  String get climate_more_sensors => 'Více senzorů';
+
+  @override
   String get domain_shading => 'Stínění';
 
   @override
