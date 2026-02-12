@@ -2185,8 +2185,8 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final tileHeight = AppSpacings.scale(AppTileHeight.horizontal);
-        final spacing = AppSpacings.pMd;
+        final tileHeight = AppSpacings.scale(AppTileHeight.horizontal * 0.8);
+        final spacing = AppSpacings.pSm;
         final availableHeight = constraints.maxHeight;
 
         // Calculate how many tiles fit: N tiles + (N-1) gaps
@@ -2205,9 +2205,14 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
               tile = _buildMoreSensorsTileHorizontal(
                 context,
                 sensors.length - (maxVisible - 1),
+                tileHeight,
               );
             } else {
-              tile = _buildSensorTileHorizontal(context, sensors[index]);
+              tile = _buildSensorTileHorizontal(
+                context,
+                sensors[index],
+                tileHeight,
+              );
             }
 
             return Padding(
@@ -2221,33 +2226,58 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   }
 
   Widget _buildSensorTileHorizontal(
-      BuildContext context, ClimateSensor sensor) {
+      BuildContext context, ClimateSensor sensor, double height) {
     final localizations = AppLocalizations.of(context)!;
+    final compactPadding = EdgeInsets.symmetric(
+      horizontal: AppSpacings.pMd,
+      vertical: AppSpacings.pXs,
+    );
 
-    return HorizontalTileStretched(
-      icon: sensor.icon,
-      name: sensor.isOnline
-          ? sensor.value
-          : _translateSensorLabel(localizations, sensor),
-      status: sensor.isOnline
-          ? _translateSensorLabel(localizations, sensor)
-          : localizations.device_status_offline,
-      iconAccentColor: SensorColors.themeColorForCategory(sensor.type),
-      isOffline: !sensor.isOnline,
-      showWarningBadge: true,
-      onTileTap: _sensorTapCallback(sensor),
+    return SizedBox(
+      height: height,
+      child: UniversalTile(
+        layout: TileLayout.horizontal,
+        icon: sensor.icon,
+        name: sensor.isOnline
+            ? sensor.value
+            : _translateSensorLabel(localizations, sensor),
+        status: sensor.isOnline
+            ? _translateSensorLabel(localizations, sensor)
+            : localizations.device_status_offline,
+        iconAccentColor: SensorColors.themeColorForCategory(sensor.type),
+        isOffline: !sensor.isOnline,
+        showWarningBadge: true,
+        showGlow: false,
+        showDoubleBorder: false,
+        showInactiveBorder: true,
+        contentPadding: compactPadding,
+        onTileTap: _sensorTapCallback(sensor),
+      ),
     );
   }
 
   Widget _buildMoreSensorsTileHorizontal(
-      BuildContext context, int overflowCount) {
+      BuildContext context, int overflowCount, double height) {
     final localizations = AppLocalizations.of(context)!;
+    final compactPadding = EdgeInsets.symmetric(
+      horizontal: AppSpacings.pMd,
+      vertical: AppSpacings.pXs,
+    );
 
-    return HorizontalTileStretched(
-      icon: MdiIcons.dotsHorizontal,
-      name: '+$overflowCount',
-      status: localizations.climate_more_sensors,
-      onTileTap: _showSensorsSheet,
+    return SizedBox(
+      height: height,
+      child: UniversalTile(
+        layout: TileLayout.horizontal,
+        icon: MdiIcons.dotsHorizontal,
+        name: '+$overflowCount',
+        status: localizations.climate_more_sensors,
+        isActive: false,
+        showGlow: false,
+        showDoubleBorder: false,
+        showInactiveBorder: false,
+        contentPadding: compactPadding,
+        onTileTap: _showSensorsSheet,
+      ),
     );
   }
 
