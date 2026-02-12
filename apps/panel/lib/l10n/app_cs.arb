@@ -137,6 +137,7 @@
   "thermostat_mode_manual": "Ruční",
   "thermostat_min": "min",
   "thermostat_max": "max",
+  "thermostat_target_label": "Cíl",
   "thermostat_state_off": "Vypnuto",
   "thermostat_state_heating": "Topení",
   "thermostat_state_heating_to": "Topení na {temperature}",

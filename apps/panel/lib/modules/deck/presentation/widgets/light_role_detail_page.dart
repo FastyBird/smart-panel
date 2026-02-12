@@ -1734,7 +1734,6 @@ class _BrightnessPanel extends StatelessWidget {
         isDark ? AppFillColorDark.dark : AppFillColorLight.dark,
         AppColors.white,
       ],
-      thumbColor: AppColors.white,
       onChanged: onChanged,
     );
   }
@@ -1823,7 +1822,6 @@ class _WhitePanel extends StatelessWidget {
         isDark ? AppFillColorDark.dark : AppFillColorLight.dark,
         AppColors.white,
       ],
-      thumbColor: AppColors.white,
       onChanged: onChanged,
     );
   }
@@ -1842,7 +1840,7 @@ class _SliderPanel extends StatelessWidget {
   final String displayValue;
   final String? sublabel;
   final List<Color> gradientColors;
-  final Color thumbColor;
+  final Color? thumbColor;
   final ValueChanged<int> onChanged;
 
   const _SliderPanel({
@@ -1854,7 +1852,7 @@ class _SliderPanel extends StatelessWidget {
     required this.displayValue,
     this.sublabel,
     required this.gradientColors,
-    this.thumbColor = AppColors.white,
+    this.thumbColor,
     required this.onChanged,
   });
 
@@ -1867,7 +1865,7 @@ class _SliderPanel extends StatelessWidget {
       value: normalizedValue,
       vertical: isLandscape,
       trackGradientColors: gradientColors,
-      thumbFillColor: thumbColor,
+      thumbBorderColor: thumbColor,
       showSteps: false,
       onChanged: (v) {
         final newValue =
@@ -2020,7 +2018,6 @@ class _ColorPanel extends StatelessWidget {
         Color(0xFFFFFF00),
         Color(0xFFFF0000),
       ],
-      thumbFillColor: AppColors.white,
       thumbBorderColor: currentHueColor,
       showSteps: false,
       onChanged: (v) => onChanged((1 - v) * 360, saturation),
@@ -2031,9 +2028,7 @@ class _ColorPanel extends StatelessWidget {
       value: saturation,
       vertical: isLandscape,
       trackGradientColors: [AppColors.white, currentHueColor],
-      thumbFillColor: AppColors.white,
-      thumbBorderColor:
-          HSVColor.fromAHSV(1, hue, saturation, 1).toColor(),
+      thumbBorderColor: currentHueColor,
       showSteps: false,
       onChanged: (v) => onChanged(hue, v),
     );

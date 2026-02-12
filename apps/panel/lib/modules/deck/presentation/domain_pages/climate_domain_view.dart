@@ -22,8 +22,9 @@
 // - Mode/setpoint intents are tracked via [IntentsRepository]. When an intent
 //   completes, [_onIntentChanged] notifies the control state service so it can
 //   clear pending state.
-// - Portrait: dial card + sensors row + auxiliary grid + bottom mode selector.
-//   Landscape: compact dial (or main content), vertical mode selector, optional
+// - Portrait: hero card (giant number + range bar + controls) + sensors row
+//   + auxiliary grid + bottom mode selector.
+//   Landscape: hero card as main content, vertical mode selector, optional
 //   column with sensors and auxiliary tiles.
 //
 // **File structure (for humans and AI):**
@@ -45,7 +46,7 @@
 //   - DEVICES SHEET / DRAWER: [_showClimateDevicesSheet], device detail routing.
 //   - THEME & LABELS: mode colors, dial accent, localized strings.
 //   - BUILD: scaffold, header, orientation → portrait/landscape.
-//   - HEADER, PORTRAIT LAYOUT, LANDSCAPE LAYOUT, PRIMARY CONTROL CARD,
+//   - HEADER, PORTRAIT LAYOUT, LANDSCAPE LAYOUT, HERO CARD,
 //     SENSORS, AUXILIARY: UI builders and tap handlers.
 
 import 'dart:async';
@@ -54,6 +55,7 @@ import 'dart:math' as math;
 import 'package:event_bus/event_bus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 import 'package:provider/provider.dart';
 
@@ -64,8 +66,8 @@ import 'package:fastybird_smart_panel/modules/deck/models/bottom_nav_mode_config
 import 'package:fastybird_smart_panel/modules/deck/services/bottom_nav_mode_notifier.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/deck_page_activated_event.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_card.dart';
+import 'package:fastybird_smart_panel/core/widgets/slider_with_steps.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_right_drawer.dart';
-import 'package:fastybird_smart_panel/core/widgets/circular_control_dial.dart';
 import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
@@ -123,6 +125,9 @@ class _ClimateControlConstants {
 
   /// Tolerance for setpoint convergence (degrees)
   static const double setpointTolerance = 0.5;
+
+  /// Debounce for slider drags (ms)
+  static const int sliderDebounceMs = 300;
 
   /// Control channel IDs
   static const String modeChannelId = 'mode';
@@ -364,6 +369,9 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   /// we show the desired value until backend confirms or settling timeout.
   late DomainControlStateService<spaces_climate.ClimateStateModel>
       _controlStateService;
+
+  /// Debounce timer for slider-driven setpoint changes.
+  Timer? _setpointDebounceTimer;
 
   /// True when we are waiting for a space intent to complete; used in
   /// [_onIntentChanged] to call [DomainControlStateService.onIntentCompleted].
@@ -1232,6 +1240,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
 
   @override
   void dispose() {
+    _setpointDebounceTimer?.cancel();
     _pageActivatedSubscription?.cancel();
     _spacesService?.removeListener(_onDataChanged);
     _devicesService?.removeListener(_onDataChanged);
@@ -1551,6 +1560,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     _spacesService?.setClimateMode(_roomId, apiMode);
   }
 
+  /// Called by +/- buttons: immediate optimistic UI + immediate API call.
   void _setTargetTemp(double temp) {
     final climateState = _spacesService?.getClimateState(_roomId);
     final (minSetpoint, maxSetpoint) = _getSetpointRange(climateState);
@@ -1577,6 +1587,38 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         IntentResultHandler.showOfflineAlertIfNeededForClimate(context, result);
       }
     });
+  }
+
+  /// Called by the slider during drag: immediate optimistic UI + debounced API call.
+  void _onSetpointSliderChanged(double temp) {
+    final climateState = _spacesService?.getClimateState(_roomId);
+    final (minSetpoint, maxSetpoint) = _getSetpointRange(climateState);
+    final clampedTemp = temp.clamp(minSetpoint, maxSetpoint);
+
+    // Immediate optimistic UI update
+    _controlStateService.setPending(
+      _ClimateControlConstants.setpointChannelId,
+      clampedTemp,
+    );
+    setState(() => _state = _state.copyWith(targetTemp: clampedTemp));
+
+    // Debounced API call
+    _setpointDebounceTimer?.cancel();
+    _setpointDebounceTimer = Timer(
+      const Duration(milliseconds: _ClimateControlConstants.sliderDebounceMs),
+      () {
+        if (!mounted) return;
+        _setpointWasLocked = true;
+        _spacesService
+            ?.setSetpoint(_roomId, clampedTemp,
+                mode: _toServiceClimateMode(_state.mode))
+            .then((result) {
+          if (mounted) {
+            IntentResultHandler.showOfflineAlertIfNeededForClimate(context, result);
+          }
+        });
+      },
+    );
   }
 
   // --------------------------------------------------------------------------
@@ -1707,21 +1749,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   ThemeColorFamily _getModeColorFamily(BuildContext context) =>
       ThemeColorFamily.get(Theme.of(context).brightness, _getModeColor());
 
-  /// Dial glow/accent from current mode.
-  DialAccentColor _getDialAccentType() {
-    switch (_getModeColor()) {
-      case ThemeColors.warning:
-        return DialAccentColor.warning;
-      case ThemeColors.info:
-        return DialAccentColor.info;
-      case ThemeColors.success:
-        return DialAccentColor.success;
-      default:
-        return DialAccentColor.neutral;
-    }
-  }
-
-  /// True when room is actively heating or cooling (for dial glow and header color).
+  /// True when room is actively heating or cooling (for header color).
   bool _isDialActive() {
     final climateState = _spacesService?.getClimateState(_roomId);
     if (climateState == null) return false;
@@ -1845,8 +1873,8 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   // --------------------------------------------------------------------------
   // PORTRAIT LAYOUT
   // --------------------------------------------------------------------------
-  // Primary dial card, optional sensors row, optional auxiliary grid; bottom
-  // mode selector via [PortraitViewLayout.modeSelector].
+  // Hero card (giant number), optional sensors row, optional auxiliary grid;
+  // bottom mode selector via [PortraitViewLayout.modeSelector].
 
   Widget _buildPortraitLayout(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
@@ -1858,20 +1886,20 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
       scrollable: false,
       content: LayoutBuilder(
         builder: (context, constraints) {
-          // When both sections present: dial expands to fill remaining space
-          // When only one section: dial takes 40% of total height
-          final dialWidget = hasBothSections
-              ? Expanded(child: _buildPrimaryControlCard(context))
+          // When both sections present: hero card expands to fill remaining space
+          // When only one section: hero card takes 40% of total height
+          final heroWidget = hasBothSections
+              ? Expanded(child: _buildHeroCard(context))
               : SizedBox(
                   height: constraints.maxHeight * 0.4,
-                  child: _buildPrimaryControlCard(context),
+                  child: _buildHeroCard(context),
                 );
 
           return Column(
             spacing: AppSpacings.pMd,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              dialWidget,
+              heroWidget,
               // Sensors section
               if (hasSensors) ...[
                 SectionTitle(
@@ -2007,8 +2035,8 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   // --------------------------------------------------------------------------
   // LANDSCAPE LAYOUT
   // --------------------------------------------------------------------------
-  // [LandscapeViewLayout]: main = compact dial (or full dial on large);
-  // mode selector on side; optional additional column = sensors + auxiliary.
+  // [LandscapeViewLayout]: main = hero card; mode selector on side; optional
+  // additional column = sensors + auxiliary.
 
   Widget _buildLandscapeLayout(BuildContext context) {
     final hasSensors = _state.sensors.isNotEmpty;
@@ -2029,9 +2057,9 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     );
   }
 
-  /// Main content in landscape: compact dial; mode selector is in layout slot.
+  /// Main content in landscape: hero card; mode selector is in layout slot.
   Widget _buildLandscapeMainContent(BuildContext context) {
-    return _buildCompactDial(context);
+    return _buildHeroCard(context);
   }
 
   Widget _buildLandscapeAdditionalColumn(BuildContext context) {
@@ -2130,32 +2158,237 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     );
   }
 
-  Widget _buildCompactDial(BuildContext context) {
-    final localizations = AppLocalizations.of(context)!;
+  // --------------------------------------------------------------------------
+  // HERO CARD — giant number temperature display
+  // --------------------------------------------------------------------------
+  // Replaces the circular dial with an oversized temperature number, mode badge,
+  // gradient range bar, and +/- adjustment buttons.
+
+  Widget _buildHeroCard(BuildContext context) {
     return AppCard(
+      width: double.infinity,
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final dialSize =
-              math.min(constraints.maxWidth, constraints.maxHeight).clamp(120.0, 400.0);
-
-          return Center(
-            child: CircularControlDial(
-              value: _state.targetTemp,
-              currentValue: _state.currentTemp,
-              minValue: _state.minSetpoint,
-              maxValue: _state.maxSetpoint,
-              step: 0.5,
-              size: dialSize,
-              accentType: _getDialAccentType(),
-              isActive: _isDialActive(),
-              enabled: _state.mode != ClimateMode.off,
-              modeLabel: _getModeLabel(localizations),
-              displayFormat: DialDisplayFormat.temperature,
-              onChanged: _setTargetTemp,
-            ),
+          return Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Expanded(
+                child: LayoutBuilder(
+                  builder: (context, innerConstraints) {
+                    final fontSize = (innerConstraints.maxHeight * 0.70).clamp(48.0, 160.0);
+                    return Center(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Padding(
+                            padding: EdgeInsets.only(bottom: fontSize * 0.08),
+                            child: _buildModeBadge(context),
+                          ),
+                          SizedBox(width: AppSpacings.pMd),
+                          _buildGiantTemp(context, fontSize),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+              SizedBox(height: AppSpacings.pSm),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
+                child: _buildTemperatureSlider(context),
+              ),
+              SizedBox(height: AppSpacings.pLg),
+              _buildControlsRow(context),
+              SizedBox(height: AppSpacings.pSm),
+            ],
           );
         },
       ),
+    );
+  }
+
+  Widget _buildModeBadge(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
+    final colorFamily = _getModeColorFamily(context);
+    final modeLabel = _getModeLabel(localizations).toUpperCase();
+
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: AppSpacings.pMd,
+        vertical: AppSpacings.pXs,
+      ),
+      decoration: BoxDecoration(
+        color: colorFamily.light9,
+        borderRadius: BorderRadius.circular(AppBorderRadius.round),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: AppSpacings.scale(6),
+            height: AppSpacings.scale(6),
+            decoration: BoxDecoration(
+              color: colorFamily.base,
+              shape: BoxShape.circle,
+            ),
+          ),
+          SizedBox(width: AppSpacings.pSm),
+          Text(
+            modeLabel,
+            style: TextStyle(
+              fontSize: AppFontSize.extraSmall,
+              fontWeight: FontWeight.w700,
+              color: colorFamily.base,
+              letterSpacing: 0.3,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGiantTemp(BuildContext context, double fontSize) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isOff = _state.mode == ClimateMode.off;
+    final tempText = _state.targetTemp.toStringAsFixed(0);
+    final unitFontSize = fontSize * 0.27;
+
+    final textColor = isOff
+        ? (isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary)
+        : (isDark ? AppTextColorDark.regular : AppTextColorLight.regular);
+    final unitColor = isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder;
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Text(
+          tempText,
+          style: TextStyle(
+            fontSize: fontSize,
+            fontWeight: FontWeight.w200,
+            color: textColor,
+            height: 1,
+            letterSpacing: -fontSize * 0.05,
+          ),
+        ),
+        Positioned(
+          top: fontSize * 0.1,
+          right: -unitFontSize * 1.1,
+          child: Text(
+            '°C',
+            style: TextStyle(
+              fontSize: unitFontSize,
+              fontWeight: FontWeight.w300,
+              color: unitColor,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  static const _temperatureGradientColors = [
+    Color(0xFF4FC3F7), // cool blue
+    Color(0xFF81C784), // green
+    Color(0xFFFFB74D), // orange
+    Color(0xFFE57373), // red
+  ];
+
+  /// Interpolates the gradient color at [t] (0.0–1.0).
+  static Color _sampleGradient(List<Color> colors, double t) {
+    final clamped = t.clamp(0.0, 1.0);
+    if (colors.length == 1) return colors.first;
+    final maxIndex = colors.length - 1;
+    final scaled = clamped * maxIndex;
+    final lower = scaled.floor().clamp(0, maxIndex - 1);
+    final fraction = scaled - lower;
+    return Color.lerp(colors[lower], colors[lower + 1], fraction)!;
+  }
+
+  Widget _buildTemperatureSlider(BuildContext context) {
+    final isOff = _state.mode == ClimateMode.off;
+    final range = _state.maxSetpoint - _state.minSetpoint;
+    final normalizedValue = range > 0
+        ? ((_state.targetTemp - _state.minSetpoint) / range).clamp(0.0, 1.0)
+        : 0.5;
+
+    final thumbColor = _sampleGradient(_temperatureGradientColors, normalizedValue);
+
+    final step = range / 3;
+    final labels = List.generate(4, (i) {
+      final value = _state.minSetpoint + step * i;
+      return '${value.toStringAsFixed(0)}°';
+    });
+
+    return SliderWithSteps(
+      value: normalizedValue,
+      themeColor: _getModeColor(),
+      enabled: !isOff,
+      trackGradientColors: _temperatureGradientColors,
+      thumbBorderColor: thumbColor,
+      steps: labels,
+      onChanged: (v) {
+        final newTemp = _state.minSetpoint + range * v;
+        // Round to nearest 0.5
+        final rounded = (newTemp * 2).round() / 2;
+        _onSetpointSliderChanged(rounded);
+      },
+    );
+  }
+
+  Widget _buildControlsRow(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isOff = _state.mode == ClimateMode.off;
+
+    final neutralTheme = isDark
+        ? AppFilledButtonsDarkThemes.neutral
+        : AppFilledButtonsLightThemes.neutral;
+    final foregroundColor = isDark
+        ? AppFilledButtonsDarkThemes.neutralForegroundColor
+        : AppFilledButtonsLightThemes.neutralForegroundColor;
+
+    Widget buildAdjustButton(IconData icon, VoidCallback? onTap) {
+      return Theme(
+        data: Theme.of(context).copyWith(filledButtonTheme: neutralTheme),
+        child: FilledButton(
+          onPressed: onTap,
+          style: FilledButton.styleFrom(
+            padding: AppSpacings.paddingMd,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+          child: Icon(
+            icon,
+            size: AppFontSize.extraLarge,
+            color: foregroundColor,
+          ),
+        ),
+      );
+    }
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      spacing: AppSpacings.pLg,
+      children: [
+        buildAdjustButton(
+          Icons.remove,
+          isOff
+              ? null
+              : () {
+                  HapticFeedback.lightImpact();
+                  _setTargetTemp(_state.targetTemp - 0.5);
+                },
+        ),
+        buildAdjustButton(
+          Icons.add,
+          isOff
+              ? null
+              : () {
+                  HapticFeedback.lightImpact();
+                  _setTargetTemp(_state.targetTemp + 0.5);
+                },
+        ),
+      ],
     );
   }
 
@@ -2201,42 +2434,6 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     return modes;
   }
 
-  // --------------------------------------------------------------------------
-  // PRIMARY CONTROL CARD
-  // --------------------------------------------------------------------------
-  // Portrait: card with [CircularControlDial] only. Landscape uses [_buildCompactDial].
-
-  Widget _buildPrimaryControlCard(BuildContext context) {
-    final localizations = AppLocalizations.of(context)!;
-    return AppCard(
-      width: double.infinity,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final dialSize = math.min(
-            constraints.maxHeight - AppSpacings.pMd * 2,
-            constraints.maxWidth - AppSpacings.pMd * 2,
-          );
-
-          return Center(
-            child: CircularControlDial(
-              value: _state.targetTemp,
-              currentValue: _state.currentTemp,
-              minValue: _state.minSetpoint,
-              maxValue: _state.maxSetpoint,
-              step: 0.5,
-              size: dialSize,
-              accentType: _getDialAccentType(),
-              isActive: _isDialActive(),
-              enabled: _state.mode != ClimateMode.off,
-              modeLabel: _getModeLabel(localizations),
-              displayFormat: DialDisplayFormat.temperature,
-              onChanged: _setTargetTemp,
-            ),
-          );
-        },
-      ),
-    );
-  }
 
 
   // --------------------------------------------------------------------------

@@ -526,6 +526,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get thermostat_max => 'max';
 
   @override
+  String get thermostat_target_label => 'Target';
+
+  @override
   String get thermostat_state_off => 'Off';
 
   @override
