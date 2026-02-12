@@ -84,7 +84,7 @@ class _DeckSideDockState extends State<DeckSideDock> {
     final homeTab = tabs.homeTab;
     final scrollableTabs = tabs.scrollableTabs;
 
-    final dockWidth = AppSpacings.scale(showLabels ? 80 : 56);
+    final dockWidth = AppSpacings.scale(showLabels ? 90 : 65);
 
     // Glass background colors
     final bgColor = isDark
@@ -102,9 +102,11 @@ class _DeckSideDockState extends State<DeckSideDock> {
       width: dockWidth,
       color: columnBgColor,
       child: Padding(
-        padding: EdgeInsets.symmetric(
-          vertical: AppSpacings.pLg,
-          horizontal: AppSpacings.pSm,
+        padding: EdgeInsets.only(
+          top: AppSpacings.pLg,
+          bottom: AppSpacings.pLg,
+          left: AppSpacings.pMd,
+          right: AppSpacings.pMd,
         ),
         child: Center(
           child: Container(

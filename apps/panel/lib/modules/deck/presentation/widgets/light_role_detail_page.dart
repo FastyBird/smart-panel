@@ -1205,6 +1205,7 @@ class _LightRoleDetailPageState extends State<LightRoleDetailPage> {
                                 ),
                               ),
                             ),
+                          AppSpacings.spacingMdHorizontal,
                         ],
                       ),
                       additionalContent: additionalContent,

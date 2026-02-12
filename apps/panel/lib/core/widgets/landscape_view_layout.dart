@@ -87,7 +87,6 @@ class LandscapeViewLayout extends StatelessWidget {
 
         // Right column: Additional content (optional)
         if (additionalContent != null) ...[
-          AppSpacings.spacingMdHorizontal,
           Expanded(
             flex: 1,
             child: Container(

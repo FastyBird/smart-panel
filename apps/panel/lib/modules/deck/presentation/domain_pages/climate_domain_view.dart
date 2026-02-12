@@ -2016,7 +2016,13 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     final hasAdditionalContent = hasSensors || hasAuxiliary;
 
     return LandscapeViewLayout(
-      mainContent: _buildLandscapeMainContent(context),
+      mainContent: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(child: _buildLandscapeMainContent(context)),
+          if (hasAdditionalContent) AppSpacings.spacingMdHorizontal,
+        ],
+      ),
       additionalContent: hasAdditionalContent
           ? _buildLandscapeAdditionalColumn(context)
           : null,
