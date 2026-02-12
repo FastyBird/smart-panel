@@ -93,6 +93,11 @@ class LandscapeViewLayout extends StatelessWidget {
               clipBehavior: Clip.hardEdge,
               decoration: BoxDecoration(
                 color: additionalBgColor,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(AppBorderRadius.base),
+                ),
+              ),
+              foregroundDecoration: BoxDecoration(
                 border: Border(
                   top: BorderSide(color: borderColor, width: AppSpacings.scale(1)),
                   left: BorderSide(color: borderColor, width: AppSpacings.scale(1)),
