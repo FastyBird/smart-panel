@@ -2145,19 +2145,27 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
 
   Widget _buildSensorTileForSheet(BuildContext context, ClimateSensor sensor) {
     final localizations = AppLocalizations.of(context)!;
+    final tileHeight = AppSpacings.scale(AppTileHeight.horizontal * 0.85);
 
-    return HorizontalTileStretched(
-      icon: sensor.icon,
-      name: sensor.isOnline
-          ? sensor.value
-          : _translateSensorLabel(localizations, sensor),
-      status: sensor.isOnline
-          ? _translateSensorLabel(localizations, sensor)
-          : localizations.device_status_offline,
-      iconAccentColor: SensorColors.themeColorForCategory(sensor.type),
-      isOffline: !sensor.isOnline,
-      showWarningBadge: true,
-      onTileTap: _sensorTapCallback(sensor),
+    return SizedBox(
+      height: tileHeight,
+      child: UniversalTile(
+        layout: TileLayout.horizontal,
+        icon: sensor.icon,
+        name: sensor.isOnline
+            ? sensor.value
+            : _translateSensorLabel(localizations, sensor),
+        status: sensor.isOnline
+            ? _translateSensorLabel(localizations, sensor)
+            : localizations.device_status_offline,
+        iconAccentColor: SensorColors.themeColorForCategory(sensor.type),
+        isOffline: !sensor.isOnline,
+        showWarningBadge: true,
+        showGlow: false,
+        showDoubleBorder: false,
+        showInactiveBorder: true,
+        onTileTap: _sensorTapCallback(sensor),
+      ),
     );
   }
 
