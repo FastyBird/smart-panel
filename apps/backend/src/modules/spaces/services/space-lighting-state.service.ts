@@ -364,7 +364,10 @@ export class SpaceLightingStateService {
 		const brightnessResult = this.getUniformValue(lights.map((l) => l.brightness));
 
 		// Color temperature - uniform value or null if mixed (tolerance 100 on 2700-6500K scale)
-		const colorTempResult = this.getUniformValue(lights.map((l) => l.colorTemperature), 100);
+		const colorTempResult = this.getUniformValue(
+			lights.map((l) => l.colorTemperature),
+			100,
+		);
 
 		// Color (RGB) - uniform value or null if mixed
 		const colorResult = this.getUniformColor(lights);
@@ -422,7 +425,10 @@ export class SpaceLightingStateService {
 		const isOnMixed = !onStates.every((on) => on === onStates[0]);
 
 		const brightnessResult = this.getUniformValue(otherLights.map((l) => l.brightness));
-		const colorTempResult = this.getUniformValue(otherLights.map((l) => l.colorTemperature), 100);
+		const colorTempResult = this.getUniformValue(
+			otherLights.map((l) => l.colorTemperature),
+			100,
+		);
 		const colorResult = this.getUniformColor(otherLights);
 		const whiteResult = this.getUniformValue(otherLights.map((l) => l.white));
 
@@ -449,7 +455,10 @@ export class SpaceLightingStateService {
 	 *
 	 * Uses range-based check (max - min <= tolerance) which is order-independent.
 	 */
-	private getUniformValue(values: (number | null)[], tolerance: number = 5): { value: number | null; isMixed: boolean } {
+	private getUniformValue(
+		values: (number | null)[],
+		tolerance: number = 5,
+	): { value: number | null; isMixed: boolean } {
 		const nonNullValues = values.filter((v): v is number => v !== null);
 
 		if (nonNullValues.length === 0) {
