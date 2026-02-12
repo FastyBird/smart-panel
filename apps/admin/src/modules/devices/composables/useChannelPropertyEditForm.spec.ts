@@ -24,7 +24,7 @@ const mockProperty: IChannelProperty = {
 	identifier: null,
 	dataType: DevicesModuleChannelPropertyDataType.float,
 	permissions: [],
-	unit: '',
+	unit: null,
 	format: [],
 	invalid: '',
 	step: null,
