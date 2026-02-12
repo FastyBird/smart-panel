@@ -258,7 +258,7 @@ class UniversalTile extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: contentPadding ??
             EdgeInsets.symmetric(
-              horizontal: AppSpacings.pMd,
+              horizontal: AppSpacings.pSm,
               vertical: AppSpacings.pSm,
             ),
         decoration: BoxDecoration(

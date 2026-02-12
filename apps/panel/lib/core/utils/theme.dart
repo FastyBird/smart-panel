@@ -785,6 +785,9 @@ class AppSpacings {
   static double scale(double value) =>
       _screenService.scale(value, density: _visualDensityService.density);
 
+  static double get pXxs =>
+      _screenService.scale(1.0, density: _visualDensityService.density);
+
   static double get pXs =>
       _screenService.scale(2.0, density: _visualDensityService.density);
 
@@ -800,6 +803,8 @@ class AppSpacings {
   static double get pXl =>
       _screenService.scale(32.0, density: _visualDensityService.density);
 
+  static EdgeInsets get paddingXSs => EdgeInsets.all(pXxs);
+
   static EdgeInsets get paddingXs => EdgeInsets.all(pXs);
 
   static EdgeInsets get paddingSm => EdgeInsets.all(pSm);
@@ -810,6 +815,8 @@ class AppSpacings {
 
   static EdgeInsets get paddingXl => EdgeInsets.all(pXl);
 
+  static SizedBox get spacingXxsVertical => SizedBox(height: pXxs);
+
   static SizedBox get spacingXsVertical => SizedBox(height: pXs);
 
   static SizedBox get spacingSmVertical => SizedBox(height: pSm);
@@ -819,6 +826,8 @@ class AppSpacings {
   static SizedBox get spacingLgVertical => SizedBox(height: pLg);
 
   static SizedBox get spacingXlVertical => SizedBox(height: pXl);
+
+  static SizedBox get spacingXxsHorizontal => SizedBox(width: pXxs);
 
   static SizedBox get spacingXsHorizontal => SizedBox(width: pXs);
 

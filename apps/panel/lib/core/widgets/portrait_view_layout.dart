@@ -43,7 +43,7 @@ class PortraitViewLayout extends StatelessWidget {
       left: AppSpacings.pLg,
       right: AppSpacings.pLg,
       top: scrollable ? AppSpacings.pMd : 0,
-      bottom: AppSpacings.pMd,
+      bottom: scrollable ? AppSpacings.pMd : 0,
     );
     final resolvedPadding = contentPadding ?? defaultPadding;
 

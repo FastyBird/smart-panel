@@ -1988,17 +1988,18 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     return PortraitViewLayout(
       scrollable: false,
       content: Column(
-        spacing: AppSpacings.pMd,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildHeroCard(context),
           // Sensors section
           if (hasSensors) ...[
+            SizedBox(height: AppSpacings.pMd),
             SectionTitle(
               title: localizations.device_sensors,
               icon: MdiIcons.eyeSettings,
             ),
-            _buildSensorsGrid(context),
+            SizedBox(height: AppSpacings.pSm),
+            Expanded(child: _buildSensorsGrid(context)),
           ],
         ],
       ),
@@ -2008,30 +2009,48 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   Widget _buildSensorsGrid(BuildContext context) {
     final isSmallScreen = locator<ScreenService>().isSmallScreen;
     final sensors = _state.sensors;
-
     final crossAxisCount = isSmallScreen ? 2 : 3;
-    final maxVisible = 6;
-    final hasOverflow = sensors.length > maxVisible;
-    final displayCount = hasOverflow ? maxVisible : sensors.length;
+    final childAspectRatio = isSmallScreen ? 2.8 : 1.2;
+    final spacing = AppSpacings.pSm;
 
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: crossAxisCount,
-        childAspectRatio: isSmallScreen ? 2.8 : 1.2,
-        crossAxisSpacing: AppSpacings.pMd,
-        mainAxisSpacing: AppSpacings.pMd,
-      ),
-      itemCount: displayCount,
-      itemBuilder: (context, index) {
-        if (hasOverflow && index == displayCount - 1) {
-          return _buildMoreSensorsTile(
-            context,
-            sensors.length - (maxVisible - 1),
-          );
-        }
-        return _buildSensorGridTile(context, sensors[index]);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final availableHeight = constraints.maxHeight;
+
+        // Row height = gridWidth / crossAxisCount / childAspectRatio
+        final gridWidth = constraints.maxWidth;
+        final cellWidth =
+            (gridWidth - spacing * (crossAxisCount - 1)) / crossAxisCount;
+        final cellHeight = cellWidth / childAspectRatio;
+
+        // How many rows fit in available height
+        final maxRows = ((availableHeight + spacing) / (cellHeight + spacing))
+            .floor()
+            .clamp(1, 100);
+        final maxVisible = (maxRows * crossAxisCount).clamp(1, sensors.length);
+        final hasOverflow = sensors.length > maxVisible;
+        final displayCount = hasOverflow ? maxVisible : sensors.length;
+
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            childAspectRatio: childAspectRatio,
+            crossAxisSpacing: spacing,
+            mainAxisSpacing: spacing,
+          ),
+          itemCount: displayCount,
+          itemBuilder: (context, index) {
+            if (hasOverflow && index == displayCount - 1) {
+              return _buildMoreSensorsTile(
+                context,
+                sensors.length - (maxVisible - 1),
+              );
+            }
+            return _buildSensorGridTile(context, sensors[index]);
+          },
+        );
       },
     );
   }
@@ -2155,6 +2174,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
       additionalContentScrollable: false,
       additionalContentPadding: EdgeInsets.only(
         left: AppSpacings.pMd,
+        bottom: AppSpacings.pMd,
       ),
       additionalContent: hasSensors
           ? _buildLandscapeAdditionalColumn(context)
@@ -2174,7 +2194,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SectionTitle(title: localizations.device_sensors, icon: MdiIcons.eyeSettings),
-        SizedBox(height: AppSpacings.pMd),
+        SizedBox(height: AppSpacings.pSm),
         Expanded(child: _buildLandscapeSensorsCard(context)),
       ],
     );
@@ -2185,18 +2205,29 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final tileHeight = AppSpacings.scale(AppTileHeight.horizontal * 0.8);
-        final spacing = AppSpacings.pSm;
+        final tileHeight = AppSpacings.scale(AppTileHeight.horizontal * 0.78);
+        final minSpacing = AppSpacings.pSm;
         final availableHeight = constraints.maxHeight;
 
-        // Calculate how many tiles fit: N tiles + (N-1) gaps
-        final maxVisible = ((availableHeight + spacing) / (tileHeight + spacing))
+        // How many tiles fit at the baseline height + minimum spacing
+        final tileCount = ((availableHeight + minSpacing) / (tileHeight + minSpacing))
             .floor()
             .clamp(1, sensors.length);
-        final hasOverflow = sensors.length > maxVisible;
-        final displayCount = hasOverflow ? maxVisible : sensors.length;
+
+        final hasOverflow = sensors.length > tileCount;
+        final displayCount = hasOverflow ? tileCount : sensors.length;
+
+        // Distribute leftover space as gap between tiles;
+        // use minimum spacing when tiles don't fill the area
+        final adjustedSpacing = displayCount > 1
+            ? (availableHeight - displayCount * tileHeight) / (displayCount - 1)
+            : 0.0;
+        final spacing = hasOverflow
+            ? adjustedSpacing.clamp(minSpacing, double.infinity)
+            : minSpacing;
 
         return Column(
+          spacing: spacing,
           children: List.generate(displayCount, (index) {
             final isLast = index == displayCount - 1;
 
@@ -2204,7 +2235,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             if (hasOverflow && isLast) {
               tile = _buildMoreSensorsTileHorizontal(
                 context,
-                sensors.length - (maxVisible - 1),
+                sensors.length - (tileCount - 1),
                 tileHeight,
               );
             } else {
@@ -2215,10 +2246,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
               );
             }
 
-            return Padding(
-              padding: EdgeInsets.only(bottom: isLast ? 0 : spacing),
-              child: tile,
-            );
+            return tile;
           }),
         );
       },
@@ -2229,8 +2257,8 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
       BuildContext context, ClimateSensor sensor, double height) {
     final localizations = AppLocalizations.of(context)!;
     final compactPadding = EdgeInsets.symmetric(
-      horizontal: AppSpacings.pMd,
-      vertical: AppSpacings.pXs,
+      horizontal: AppSpacings.pSm,
+      vertical: AppSpacings.pSm,
     );
 
     return SizedBox(
@@ -2251,6 +2279,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         showDoubleBorder: false,
         showInactiveBorder: true,
         contentPadding: compactPadding,
+        statusFontSize: AppFontSize.extraExtraSmall,
         onTileTap: _sensorTapCallback(sensor),
       ),
     );
@@ -2260,8 +2289,8 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
       BuildContext context, int overflowCount, double height) {
     final localizations = AppLocalizations.of(context)!;
     final compactPadding = EdgeInsets.symmetric(
-      horizontal: AppSpacings.pMd,
-      vertical: AppSpacings.pXs,
+      horizontal: AppSpacings.pSm,
+      vertical: AppSpacings.pSm,
     );
 
     return SizedBox(
@@ -2276,6 +2305,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         showDoubleBorder: false,
         showInactiveBorder: false,
         contentPadding: compactPadding,
+        statusFontSize: AppFontSize.extraExtraSmall,
         onTileTap: _showSensorsSheet,
       ),
     );
@@ -2288,10 +2318,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   // gradient range bar, and +/- adjustment buttons.
 
   Widget _buildHeroCard(BuildContext context) {
-    final isSmallScreen = locator<ScreenService>().isSmallScreen;
-
     return HeroCard(
-      fraction: isSmallScreen ? 0.40 : 0.42,
       child: LayoutBuilder(
         builder: (context, constraints) {
           final fontSize = (constraints.maxHeight * 0.35).clamp(48.0, 160.0);
