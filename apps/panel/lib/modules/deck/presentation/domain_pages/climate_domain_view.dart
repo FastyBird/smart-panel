@@ -2213,6 +2213,13 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     final colorFamily = _getModeColorFamily(context);
     final modeLabel = _getModeLabel(localizations).toUpperCase();
 
+    final screenService = locator<ScreenService>();
+    final useBaseFontSize = screenService.isLandscape
+        ? screenService.isLargeScreen
+        : !screenService.isSmallScreen;
+    final fontSize =
+        useBaseFontSize ? AppFontSize.base : AppFontSize.small;
+
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: AppSpacings.pMd,
@@ -2226,8 +2233,8 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: AppSpacings.scale(6),
-            height: AppSpacings.scale(6),
+            width: AppSpacings.scale(8),
+            height: AppSpacings.scale(8),
             decoration: BoxDecoration(
               color: colorFamily.base,
               shape: BoxShape.circle,
@@ -2237,7 +2244,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           Text(
             modeLabel,
             style: TextStyle(
-              fontSize: AppFontSize.extraSmall,
+              fontSize: fontSize,
               fontWeight: FontWeight.w700,
               color: colorFamily.base,
               letterSpacing: 0.3,
@@ -2368,7 +2375,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
-      spacing: AppSpacings.pLg,
+      spacing: AppSpacings.pXl,
       children: [
         buildAdjustButton(
           Icons.remove,
