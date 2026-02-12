@@ -81,6 +81,7 @@ import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/domain_data_loader.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_item_sheet.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_mode_chip.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_mode_popup.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/domain_state_view.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/domain_control_state_service.dart';
 import 'package:fastybird_smart_panel/modules/deck/utils/lighting.dart';
@@ -2349,37 +2350,46 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     final fontSize =
         useBaseFontSize ? AppFontSize.base : AppFontSize.small;
 
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: AppSpacings.pMd,
-        vertical: AppSpacings.pXs,
-      ),
-      decoration: BoxDecoration(
-        color: colorFamily.light9,
-        borderRadius: BorderRadius.circular(AppBorderRadius.round),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: AppSpacings.scale(8),
-            height: AppSpacings.scale(8),
-            decoration: BoxDecoration(
-              color: colorFamily.base,
-              shape: BoxShape.circle,
+    return GestureDetector(
+      onTap: () {
+        final config = _bottomNavModeNotifier?.config;
+        if (config != null) {
+          showModePopup(this.context, config, useAnchor: false);
+        }
+      },
+      behavior: HitTestBehavior.opaque,
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: AppSpacings.pMd,
+          vertical: AppSpacings.pXs,
+        ),
+        decoration: BoxDecoration(
+          color: colorFamily.light9,
+          borderRadius: BorderRadius.circular(AppBorderRadius.round),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: AppSpacings.scale(8),
+              height: AppSpacings.scale(8),
+              decoration: BoxDecoration(
+                color: colorFamily.base,
+                shape: BoxShape.circle,
+              ),
             ),
-          ),
-          SizedBox(width: AppSpacings.pSm),
-          Text(
-            modeLabel,
-            style: TextStyle(
-              fontSize: fontSize,
-              fontWeight: FontWeight.w700,
-              color: colorFamily.base,
-              letterSpacing: 0.3,
+            SizedBox(width: AppSpacings.pSm),
+            Text(
+              modeLabel,
+              style: TextStyle(
+                fontSize: fontSize,
+                fontWeight: FontWeight.w700,
+                color: colorFamily.base,
+                letterSpacing: 0.3,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
