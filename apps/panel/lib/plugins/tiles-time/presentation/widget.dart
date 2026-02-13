@@ -5,7 +5,7 @@ import 'package:fastybird_smart_panel/plugins/tiles-time/views/view.dart';
 import 'package:flutter/material.dart';
 
 class TimeTileWidget extends TileWidget<TimeTileView> {
-  TimeTileWidget(super.tile, {super.key});
+  const TimeTileWidget(super.tile, {super.key});
 
   @override
   Widget build(BuildContext context) {

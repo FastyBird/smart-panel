@@ -23,7 +23,7 @@ class DeviceDetailPage extends StatelessWidget {
   final String id;
   final String? initialChannelId;
 
-  DeviceDetailPage(this.id, {this.initialChannelId, super.key});
+  const DeviceDetailPage(this.id, {this.initialChannelId, super.key});
 
 
   @override

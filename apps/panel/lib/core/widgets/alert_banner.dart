@@ -38,7 +38,7 @@ class AlertBanner extends StatelessWidget {
   /// Optional icon. Defaults to [MdiIcons.alertOutline].
   final IconData? icon;
 
-  AlertBanner({
+  const AlertBanner({
     super.key,
     this.title,
     required this.text,

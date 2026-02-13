@@ -77,7 +77,7 @@ class _DeviceOfflineBanner extends StatelessWidget {
   final bool isDark;
   final String? lastSeenText;
 
-  _DeviceOfflineBanner({
+  const _DeviceOfflineBanner({
     required this.isDark,
     this.lastSeenText,
   });

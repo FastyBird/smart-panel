@@ -14,7 +14,7 @@ import 'package:material_design_icons_flutter/material_design_icons_flutter.dart
 import 'package:weather_icons/weather_icons.dart';
 
 class WeatherDetailPage extends StatelessWidget {
-  WeatherDetailPage({super.key});
+  const WeatherDetailPage({super.key});
 
   @override
   Widget build(BuildContext context) {

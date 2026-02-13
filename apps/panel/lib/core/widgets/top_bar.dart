@@ -8,7 +8,7 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
   final List<Widget> actions;
   final PreferredSizeWidget? bottom;
 
-  AppTopBar({
+  const AppTopBar({
     super.key,
     required this.title,
     this.actions = const [],

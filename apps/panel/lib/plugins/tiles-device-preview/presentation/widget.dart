@@ -13,7 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 class DevicePreviewTileWidget extends TileWidget<DevicePreviewTileView> {
-  DevicePreviewTileWidget(super.tile, {super.key});
+  const DevicePreviewTileWidget(super.tile, {super.key});
 
   @override
   Widget build(BuildContext context) {
