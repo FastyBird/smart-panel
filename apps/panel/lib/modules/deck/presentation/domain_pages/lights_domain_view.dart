@@ -4,6 +4,10 @@
 // accent, night), "other" lights, scenes, and a mode selector (off/work/relax/night).
 // Role and device detail are opened via navigation.
 //
+// **AI / Tooling:** When editing this file, preserve the rendered UI. Do not
+// change widget trees, layout parameters, or visual behavior. Section headers
+// (e.g. "// DATA MODELS", "// LIFECYCLE") are stable anchors for navigation.
+//
 // **Data flow:**
 // - [SpacesService] provides light targets and lighting state for the room.
 // - [DevicesService] provides live device views used to build role/light data.
@@ -23,23 +27,25 @@
 // jump to that part of the file. Sections appear in this order:
 //
 // - **DATA MODELS** — [LightingRoleData], [LightState], [LightingModeUI] (+ extension),
-//   [LightDeviceData]. Channel IDs/settling from [LightingConstants] (constants.dart).
+//   [LightDeviceData], [_LightHeroState]. Channel IDs/settling from [LightingConstants].
 // - **LIGHTS DOMAIN VIEW PAGE** — [LightsDomainViewPage] and state class:
 //   - STATE & DEPENDENCIES: _roomId, [_tryLocator], optional services.
-//   - DERIVED STATE & CONVERGENCE HELPERS: [_lightingState], [_currentMode],
-//     [_checkModeConvergence], [_checkRoleConvergence], [_getRolePendingState].
-//   - LIFECYCLE: initState (mode + role control services, listeners, fetch), dispose.
-//   - CONTROL STATE & CALLBACKS: [_onDataChanged], [_groupTargetsByRole],
-//     [_onIntentChanged].
-//   - UTILITIES: [_scale], [_navigateToHome].
+//   - DERIVED STATE & CONVERGENCE: [_lightingState], [_currentMode], [_checkModeConvergence],
+//     [_checkRoleConvergence], [_getRolePendingState].
+//   - HERO CARD CONVERGENCE: [_getHeroRoleAggregatedState], [_applyHeroOptimisticOverrides],
+//     [_checkHero*Convergence], [_saveHeroToCache], [_loadHeroCachedValuesIfNeeded].
+//   - LIFECYCLE: initState (control services, listeners, fetch), dispose.
+//   - BOTTOM NAV MODE: [_onPageActivated], [_registerModeConfig], [_buildModePopupContent].
+//   - CONTROL STATE & CALLBACKS: [_onDataChanged], [_groupTargetsByRole], [_onIntentChanged].
 //   - BUILD: scaffold, loading/empty/content; [Consumer] for [DevicesService].
-//   - DATA BUILDING: [_buildRoleDataList], [_buildOtherLights], counts, role names/icons.
-//   - HEADER: [_buildHeader], mode subtitle, status color.
-//   - PORTRAIT LAYOUT, LANDSCAPE LAYOUT: roles, scenes, other lights, mode selector.
-//   - LIGHTING MODE CONTROLS: [_setLightingMode], [_toggleRoleViaIntent],
-//     [_toggleRole], [_toggleLight].
-//   - ROLES GRID, LIGHTS GRID, SCENES, NAVIGATION, EMPTY STATE: UI builders.
-// - **PRIVATE WIDGETS** — [_RoleCard], [_LightTile], [_SceneTile] (all use [UniversalTile]).
+//   - DATA BUILDING: [_buildRoleDataList], [_buildOtherLights], [_getLightOptimisticOn].
+//   - HEADER: [_buildHeader], [_getStatusColor], [_getModeName].
+//   - SHEETS: [_showOtherLightsSheet], [_showRoleLightsSheet], [_showScenesSheet].
+//   - LIGHTING MODE CONTROLS: [_setLightingMode], [_toggleRoleLights], [_toggleLight].
+//   - HERO CONTROLS: [_onHeroValueChanged], [_heroSetBrightness], [_heroSetColor], etc.
+//   - LAYOUTS: [_buildPortraitLayout], [_buildLandscapeLayout], role selector, scenes.
+//   - HELPERS: [_getEffectiveRoleFromTargets], [_getRoleDataForRole].
+// - **PRIVATE WIDGETS** — [_HeroGradients], [_LightsHeroCard], [_SceneTile].
 
 import 'dart:async';
 
@@ -606,6 +612,21 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   String _heroCacheKey(LightTargetRole role) =>
       RoleControlStateRepository.generateKey(_roomId, 'lighting', role.name);
 
+  /// Resolve effective hero role: [_selectedRole] or first defined role from targets.
+  /// Used when we have targets but not yet [LightingRoleData] (e.g. initState, _onDataChanged).
+  LightTargetRole? _getEffectiveRoleFromTargets() {
+    if (_selectedRole != null) return _selectedRole;
+    final targets = _spacesService?.getLightTargetsForSpace(_roomId) ?? [];
+    if (targets.isEmpty) return null;
+    final groups = _groupTargetsByRole(targets);
+    for (final r in LightTargetRole.values) {
+      if (r != LightTargetRole.other && r != LightTargetRole.hidden && groups.containsKey(r)) {
+        return r;
+      }
+    }
+    return null;
+  }
+
   /// Parse hex color string (#RRGGBB) to Color.
   Color? _parseHexColor(String? hex) {
     if (hex == null || hex.isEmpty) return null;
@@ -1068,25 +1089,11 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final heroRoleState = _getHeroRoleAggregatedState();
-      if (heroRoleState != null) {
+      final effectiveRole = _getEffectiveRoleFromTargets();
+      if (heroRoleState != null && effectiveRole != null) {
         final roleMixedState = _buildHeroMixedStateFromRole(heroRoleState);
-        LightTargetRole? effectiveRole = _selectedRole;
-        if (effectiveRole == null) {
-          final targets = _spacesService?.getLightTargetsForSpace(_roomId) ?? [];
-          if (targets.isNotEmpty) {
-            final groups = _groupTargetsByRole(targets);
-            for (final r in LightTargetRole.values) {
-              if (r != LightTargetRole.other && r != LightTargetRole.hidden && groups.containsKey(r)) {
-                effectiveRole = r;
-                break;
-              }
-            }
-          }
-        }
-        if (effectiveRole != null) {
-          _loadHeroCachedValuesIfNeeded(heroRoleState, roleMixedState, effectiveRole);
-          setState(() {});
-        }
+        _loadHeroCachedValuesIfNeeded(heroRoleState, roleMixedState, effectiveRole);
+        setState(() {});
       }
     });
   }
@@ -1334,19 +1341,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
         // Check convergence for hero card control channels
         final heroRoleState = _getHeroRoleAggregatedState();
-        LightTargetRole? effectiveRole = _selectedRole;
-        if (effectiveRole == null) {
-          final targets = _spacesService?.getLightTargetsForSpace(_roomId) ?? [];
-          if (targets.isNotEmpty) {
-            final groups = _groupTargetsByRole(targets);
-            for (final r in LightTargetRole.values) {
-              if (r != LightTargetRole.other && r != LightTargetRole.hidden && groups.containsKey(r)) {
-                effectiveRole = r;
-                break;
-              }
-            }
-          }
-        }
+        final effectiveRole = _getEffectiveRoleFromTargets();
         if (heroRoleState != null && effectiveRole != null) {
           final heroTargets = [heroRoleState];
           for (final channelId in _heroControlChannelIds) {
@@ -1535,12 +1530,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   }
 
   // --------------------------------------------------------------------------
-  // UTILITIES
-  // --------------------------------------------------------------------------
-
-
-
-  // --------------------------------------------------------------------------
   // BUILD
   // --------------------------------------------------------------------------
 
@@ -1591,9 +1580,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             (definedRoles.isNotEmpty ? definedRoles.first.role : null);
         _LightHeroState? heroState;
         if (effectiveRole != null) {
-          final selectedRoleData = definedRoles
-              .cast<LightingRoleData?>()
-              .firstWhere((r) => r?.role == effectiveRole, orElse: () => null);
+          final selectedRoleData = _getRoleDataForRole(definedRoles, effectiveRole);
           if (selectedRoleData != null) {
             heroState = _buildHeroState(selectedRoleData, devicesService);
             heroState = _applyHeroOptimisticOverrides(heroState!);
@@ -1725,20 +1712,23 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     return roles;
   }
 
+  /// Get optimistic on/off state for a single light from overlay services.
+  /// Falls back to [fallback] when no pending state exists.
   bool _getLightOptimisticOn(
     String deviceId,
     String channelId,
     String propertyId,
     bool fallback,
   ) {
-    if (_deviceControlStateService != null &&
-        _deviceControlStateService!.isLocked(deviceId, channelId, propertyId)) {
-      final v = _deviceControlStateService!.getDesiredValue(deviceId, channelId, propertyId);
+    final deviceControl = _deviceControlStateService;
+    if (deviceControl != null &&
+        deviceControl.isLocked(deviceId, channelId, propertyId)) {
+      final v = deviceControl.getDesiredValue(deviceId, channelId, propertyId);
       if (v is bool) return v;
     }
-    if (_intentOverlayService != null &&
-        _intentOverlayService!.isLocked(deviceId, channelId, propertyId)) {
-      final v = _intentOverlayService!.getOverlayValue(deviceId, channelId, propertyId);
+    final overlay = _intentOverlayService;
+    if (overlay != null && overlay.isLocked(deviceId, channelId, propertyId)) {
+      final v = overlay.getOverlayValue(deviceId, channelId, propertyId);
       if (v is bool) return v;
     }
     return fallback;
@@ -2092,6 +2082,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     }
   }
 
+  /// Convert backend [LightingMode] to [LightingModeUI]. Returns null for null input.
   LightingModeUI? _toLightingModeUI(LightingMode? mode) {
     if (mode == null) return null;
     return LightingModeUI.values.firstWhere(
@@ -2509,6 +2500,17 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     );
   }
 
+  /// Find [LightingRoleData] for a role in the roles list. Returns null if not found.
+  LightingRoleData? _getRoleDataForRole(
+    List<LightingRoleData> roles,
+    LightTargetRole role,
+  ) {
+    for (final r in roles) {
+      if (r.role == role) return r;
+    }
+    return null;
+  }
+
   // --------------------------------------------------------------------------
   // ROLE SELECTOR
   // --------------------------------------------------------------------------
@@ -2632,28 +2634,14 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
               },
               onToggle: effectiveRole != null
                   ? (turnOn) {
-                      final roleData = roles
-                          .cast<LightingRoleData?>()
-                          .firstWhere(
-                            (r) => r?.role == effectiveRole,
-                            orElse: () => null,
-                          );
-                      if (roleData != null) {
-                        _toggleRoleLights(roleData, turnOn);
-                      }
+                      final roleData = _getRoleDataForRole(roles, effectiveRole);
+                      if (roleData != null) _toggleRoleLights(roleData, turnOn);
                     }
                   : null,
               onShowLights: effectiveRole != null
                   ? () {
-                      final roleData = roles
-                          .cast<LightingRoleData?>()
-                          .firstWhere(
-                            (r) => r?.role == effectiveRole,
-                            orElse: () => null,
-                          );
-                      if (roleData != null) {
-                        _showRoleLightsSheet(roleData);
-                      }
+                      final roleData = _getRoleDataForRole(roles, effectiveRole);
+                      if (roleData != null) _showRoleLightsSheet(roleData);
                     }
                   : null,
               onValueChanged: effectiveRole != null
@@ -2740,28 +2728,14 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
               },
               onToggle: effectiveRole != null
                   ? (turnOn) {
-                      final roleData = roles
-                          .cast<LightingRoleData?>()
-                          .firstWhere(
-                            (r) => r?.role == effectiveRole,
-                            orElse: () => null,
-                          );
-                      if (roleData != null) {
-                        _toggleRoleLights(roleData, turnOn);
-                      }
+                      final roleData = _getRoleDataForRole(roles, effectiveRole);
+                      if (roleData != null) _toggleRoleLights(roleData, turnOn);
                     }
                   : null,
               onShowLights: effectiveRole != null
                   ? () {
-                      final roleData = roles
-                          .cast<LightingRoleData?>()
-                          .firstWhere(
-                            (r) => r?.role == effectiveRole,
-                            orElse: () => null,
-                          );
-                      if (roleData != null) {
-                        _showRoleLightsSheet(roleData);
-                      }
+                      final roleData = _getRoleDataForRole(roles, effectiveRole);
+                      if (roleData != null) _showRoleLightsSheet(roleData);
                     }
                   : null,
               onValueChanged: effectiveRole != null
@@ -3117,9 +3091,8 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   // LIGHTING MODE CONTROLS (BACKEND INTENTS)
   // --------------------------------------------------------------------------
   // [_setLightingMode]: setPending → API (turn off or set mode) → onIntentCompleted
-  // when IntentsRepository unlocks. [_toggleRoleViaIntent]: same for role
-  // on/off; falls back to [_toggleRole] if no backend intents. [_toggleLight]:
-  // direct device control with DeviceControlStateService + IntentOverlay.
+  // when IntentsRepository unlocks. [_toggleRoleLights]: role on/off via SpacesService
+  // intent. [_toggleLight]: direct device control with DeviceControlStateService.
 
   /// Set lighting mode via backend intent
   Future<void> _setLightingMode(LightingModeUI mode) async {
