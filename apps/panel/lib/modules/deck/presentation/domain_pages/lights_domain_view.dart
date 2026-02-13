@@ -2497,7 +2497,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         showWarningBadge: true,
         showGlow: false,
         showDoubleBorder: false,
-        showInactiveBorder: true,
+        showInactiveBorder: false,
         onIconTap: light.isOffline
             ? null
             : () => _toggleLight(light),
@@ -2850,7 +2850,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         activeColor: statusColor,
         showGlow: false,
         showDoubleBorder: false,
-        showInactiveBorder: true,
+        showInactiveBorder: false,
         onTileTap: () {
           _resetHeroControlState();
           setState(() {
@@ -2926,7 +2926,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                     activeColor: _getStatusColor(context),
                     showGlow: false,
                     showDoubleBorder: false,
-                    showInactiveBorder: true,
+                    showInactiveBorder: false,
                     onTileTap: () => _activateScene(scene),
                   ),
                 ),
