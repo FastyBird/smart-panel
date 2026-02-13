@@ -530,14 +530,23 @@ export class SpaceLightingStateService {
 		const firstSat = hueSatLights[0].colorSaturation ?? 100;
 		const firstSatNorm = firstSat > 1 ? firstSat / 100 : firstSat;
 
+		// Circular hue distance (handles 0/360 wrap-around)
+		const hueDist = (a: number, b: number): number => {
+			const d = Math.abs(a - b) % 360;
+			return d > 180 ? 360 - d : d;
+		};
+
 		const allSame = hueSatLights.every((l) => {
 			const satRaw = l.colorSaturation ?? 100;
 			const sat = satRaw > 1 ? satRaw / 100 : satRaw;
-			return Math.abs(l.colorHue - firstHue) <= hueTolerance && Math.abs(sat - firstSatNorm) <= satTolerance;
+			return hueDist(l.colorHue, firstHue) <= hueTolerance && Math.abs(sat - firstSatNorm) <= satTolerance;
 		});
 
 		if (allSame) {
-			const avgHue = hueSatLights.reduce((a, l) => a + l.colorHue, 0) / hueSatLights.length;
+			// Circular mean for hue using atan2 to handle 0/360 wrap-around
+			const sinSum = hueSatLights.reduce((a, l) => a + Math.sin((l.colorHue * Math.PI) / 180), 0);
+			const cosSum = hueSatLights.reduce((a, l) => a + Math.cos((l.colorHue * Math.PI) / 180), 0);
+			const avgHue = ((Math.atan2(sinSum, cosSum) * 180) / Math.PI + 360) % 360;
 			const avgSatRaw = hueSatLights.reduce((a, l) => a + (l.colorSaturation ?? 100), 0) / hueSatLights.length;
 			const avgSat = avgSatRaw > 1 ? avgSatRaw / 100 : avgSatRaw;
 			const hex = hsvToHex(avgHue, Math.max(0, Math.min(1, avgSat)), 1);
