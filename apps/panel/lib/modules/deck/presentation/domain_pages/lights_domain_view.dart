@@ -287,7 +287,7 @@ class _LightHeroState {
     this.maxColorTemp = 6500,
     this.hue = 0,
     this.minHue = 0,
-    this.maxHue = 360,
+    this.maxHue = 359,
     this.saturation = 0,
     this.whiteChannel = 0,
     this.currentColor,
@@ -1784,7 +1784,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     double minColorTemp = 2700;
     double maxColorTemp = 6500;
     double minHue = 0;
-    double maxHue = 360;
+    double maxHue = 359;
     int deviceCount = 0;
 
     for (final target in targets) {
@@ -1816,7 +1816,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       if (channel.hasHue) {
         capabilities.add(LightHeroCapability.hue);
         minHue = channel.minHue;
-        maxHue = channel.maxHue;
+        maxHue = channel.maxHue.clamp(0, 359).toDouble();
       }
 
       if (channel.hasSaturation) {
@@ -3211,14 +3211,14 @@ class _HeroGradients {
     Color(0xFF64B5F6),
   ];
 
-  /// Hue: full spectrum rainbow (matches _ColorPanel hue slider).
+  /// Hue: full spectrum rainbow (standard hue wheel: 0°=red → 360°=red).
   static const hue = [
     Color(0xFFFF0000),
-    Color(0xFFFF00FF),
-    Color(0xFF0000FF),
-    Color(0xFF00FFFF),
-    Color(0xFF00FF00),
     Color(0xFFFFFF00),
+    Color(0xFF00FF00),
+    Color(0xFF00FFFF),
+    Color(0xFF0000FF),
+    Color(0xFFFF00FF),
     Color(0xFFFF0000),
   ];
 
@@ -3279,8 +3279,6 @@ class _LightsHeroCard extends StatelessWidget {
                 _buildOnOffHero(isDark, colorFamily),
               ] else ...[
                 _buildHeroRow(isDark, colorFamily, fontSize),
-                AppSpacings.spacingSmVertical,
-                _buildLabel(isDark),
                 if (state.showModeSwitcher) ...[
                   AppSpacings.spacingLgVertical,
                   _buildModeSwitcher(isDark, colorFamily),
@@ -3416,15 +3414,38 @@ class _LightsHeroCard extends StatelessWidget {
   // ── Giant Value (number with unit at top-right, color swatch at bottom-right)
 
   Widget _buildGiantValue(bool isDark, double fontSize) {
-    final mode = state.activeMode ?? LightHeroCapability.brightness;
-    final (value, unit) = _valueForMode(mode);
     final unitFontSize = fontSize * 0.27;
     final swatchSize = fontSize * 0.22;
+
+    // Always show brightness; fallback: colorTemp → whiteChannel
+    final String value;
+    final bool useIcon;
+    if (state.capabilities.contains(LightHeroCapability.brightness)) {
+      value = state.brightness.round().toString();
+      useIcon = true;
+    } else if (state.capabilities.contains(LightHeroCapability.colorTemp)) {
+      value = state.colorTemp.round().toString();
+      useIcon = false;
+    } else if (state.capabilities.contains(LightHeroCapability.whiteChannel)) {
+      value = state.whiteChannel.round().toString();
+      useIcon = true;
+    } else {
+      value = state.brightness.round().toString();
+      useIcon = true;
+    }
 
     final textColor =
         isDark ? AppTextColorDark.regular : AppTextColorLight.regular;
     final unitColor =
         isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder;
+
+    // Color swatch: show HSV color for hue-capable, colorTemp color for temp-capable
+    Color? swatchColor;
+    if (state.capabilities.contains(LightHeroCapability.hue)) {
+      swatchColor = state.currentColor;
+    } else if (state.capabilities.contains(LightHeroCapability.colorTemp)) {
+      swatchColor = _colorTempThumbColor(state.colorTemp.round());
+    }
 
     return Stack(
       clipBehavior: Clip.none,
@@ -3442,16 +3463,22 @@ class _LightsHeroCard extends StatelessWidget {
         Positioned(
           top: 0,
           right: -unitFontSize,
-          child: Text(
-            unit,
-            style: TextStyle(
-              fontSize: unitFontSize,
-              fontWeight: FontWeight.w300,
-              color: unitColor,
-            ),
-          ),
+          child: useIcon
+              ? Icon(
+                  Icons.wb_sunny_outlined,
+                  size: unitFontSize,
+                  color: unitColor,
+                )
+              : Text(
+                  'K',
+                  style: TextStyle(
+                    fontSize: unitFontSize,
+                    fontWeight: FontWeight.w300,
+                    color: unitColor,
+                  ),
+                ),
         ),
-        if (state.currentColor != null)
+        if (swatchColor != null)
           Positioned(
             bottom: 0,
             right: -unitFontSize * 1.1,
@@ -3459,77 +3486,19 @@ class _LightsHeroCard extends StatelessWidget {
               width: swatchSize,
               height: swatchSize,
               decoration: BoxDecoration(
-                color: state.currentColor,
+                color: swatchColor,
                 borderRadius: BorderRadius.circular(AppBorderRadius.small),
+                border: !isDark
+                    ? Border.all(
+                        color: AppBorderColorLight.darker,
+                        width: AppSpacings.scale(1),
+                      )
+                    : null,
               ),
             ),
           ),
       ],
     );
-  }
-
-  (String, String) _valueForMode(LightHeroCapability mode) {
-    return switch (mode) {
-      LightHeroCapability.brightness =>
-        (state.brightness.round().toString(), '%'),
-      LightHeroCapability.colorTemp =>
-        (state.colorTemp.round().toString(), 'K'),
-      LightHeroCapability.hue =>
-        (state.brightness.round().toString(), '%'),
-      LightHeroCapability.saturation =>
-        (state.saturation.round().toString(), '%'),
-      LightHeroCapability.whiteChannel =>
-        (state.whiteChannel.round().toString(), '%'),
-    };
-  }
-
-  // ── Label ─────────────────────────────────────────────────────
-
-  Widget _buildLabel(bool isDark) {
-    final textSecondary =
-        isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
-    final mode = state.activeMode ?? LightHeroCapability.brightness;
-    final parts = <String>[_labelForMode(mode)];
-
-    if (state.colorName != null &&
-        mode != LightHeroCapability.hue &&
-        mode != LightHeroCapability.saturation) {
-      parts.add(state.colorName!);
-    }
-
-    if (mode == LightHeroCapability.brightness &&
-        state.capabilities.contains(LightHeroCapability.colorTemp)) {
-      parts.add('${state.colorTemp.round()}K');
-    }
-
-    return Text(
-      parts.join(' · '),
-      style: TextStyle(
-        fontSize: AppFontSize.small,
-        color: textSecondary,
-      ),
-    );
-  }
-
-  String _labelForMode(LightHeroCapability mode) {
-    return switch (mode) {
-      LightHeroCapability.brightness => 'Brightness',
-      LightHeroCapability.colorTemp => _colorTempLabel(state.colorTemp),
-      LightHeroCapability.hue =>
-        'Hue · ${state.hue.round()}° ${_heroHueName(state.hue)}',
-      LightHeroCapability.saturation =>
-        'Saturation · ${state.saturation.round()}%',
-      LightHeroCapability.whiteChannel =>
-        'White Channel · ${state.whiteChannel.round()}%',
-    };
-  }
-
-  String _colorTempLabel(double kelvin) {
-    if (kelvin < 3000) return 'Color Temperature · Warm';
-    if (kelvin < 4000) return 'Color Temperature · Warm White';
-    if (kelvin < 5000) return 'Color Temperature · Neutral';
-    if (kelvin < 5500) return 'Color Temperature · Cool White';
-    return 'Color Temperature · Daylight';
   }
 
   // ── Mode Switcher (ModeSelector) ──────────────────────────────
@@ -3646,7 +3615,7 @@ class _LightsHeroCard extends StatelessWidget {
           _HeroGradients.hue,
           currentHueColor,
           hueRange > 0 ? (state.hue - state.minHue) / hueRange : 0.0,
-          ['0°', '120°', '240°', '360°'],
+          ['0°', '120°', '240°', '359°'],
         ),
       LightHeroCapability.saturation => (
           _HeroGradients.saturation(currentHueColor),
@@ -3864,7 +3833,9 @@ class _LightsHeroCard extends StatelessWidget {
             color: p.isActive ? colorFamily.light9 : surfaceDim,
             borderRadius: BorderRadius.circular(AppBorderRadius.small),
             border: Border.all(
-              color: isDark ? AppBorderColorDark.darker : AppBorderColorLight.darker,
+              color: p.isActive
+                  ? colorFamily.base
+                  : (isDark ? AppBorderColorDark.darker : AppBorderColorLight.darker),
               width: AppSpacings.scale(1),
             ),
           ),
@@ -3882,11 +3853,6 @@ class _LightsHeroCard extends StatelessWidget {
   }
 
   List<Widget> _colorPresetItems(bool isDark, ThemeColorFamily colorFamily) {
-    final textPrimary =
-        isDark ? AppTextColorDark.primary : AppTextColorLight.primary;
-    final surfaceColor =
-        isDark ? AppFillColorDark.light : AppFillColorLight.blank;
-
     final presets = [
       ColorPreset(
         color: const Color(0xFFE85A4F),
@@ -3933,9 +3899,8 @@ class _LightsHeroCard extends StatelessWidget {
 
     return presets.map((p) {
       final isLight = p.color.computeLuminance() > 0.85;
-      final borderColor = p.isActive
-          ? textPrimary
-          : (isLight && !isDark ? AppBorderColorLight.darker : p.color);
+      final borderColor =
+          isLight && !isDark ? AppBorderColorLight.darker : p.color;
 
       return GestureDetector(
         onTap: state.isOn
@@ -3957,9 +3922,9 @@ class _LightsHeroCard extends StatelessWidget {
             boxShadow: p.isActive
                 ? [
                     BoxShadow(
-                      color: surfaceColor,
-                      spreadRadius: AppSpacings.pXs,
-                      blurRadius: 0,
+                      color: p.color.withValues(alpha: 0.6),
+                      blurRadius: 8,
+                      spreadRadius: 2,
                     ),
                   ]
                 : null,
