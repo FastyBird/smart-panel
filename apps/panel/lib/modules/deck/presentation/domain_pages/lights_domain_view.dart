@@ -1214,7 +1214,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             style: TextStyle(
               fontSize: AppFontSize.extraSmall,
               fontWeight: FontWeight.w600,
-              letterSpacing: 1.0,
+              letterSpacing: AppSpacings.scale(1),
               color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
             ),
           ),
@@ -3796,7 +3796,9 @@ class _LightsHeroCard extends StatelessWidget {
     return HeroCard(
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final fontSize = screenService.isSmallScreen ? (constraints.maxHeight * 0.25).clamp(48.0, 160.0) : (constraints.maxHeight * 0.35).clamp(48.0, 160.0);
+          final fontSize = screenService.isSmallScreen
+              ? (constraints.maxHeight * 0.25).clamp(AppSpacings.scale(48), AppSpacings.scale(160))
+              : (constraints.maxHeight * 0.35).clamp(AppSpacings.scale(48), AppSpacings.scale(160));
 
           return Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -3895,7 +3897,7 @@ class _LightsHeroCard extends StatelessWidget {
                     fontSize: fontSize,
                     fontWeight: FontWeight.w700,
                     color: activeColor,
-                    letterSpacing: 0.3,
+                    letterSpacing: AppSpacings.scale(0.3),
                   ),
                 ),
               ],
@@ -4476,8 +4478,8 @@ class _LightsHeroCard extends StatelessWidget {
                 ? [
                     BoxShadow(
                       color: p.color.withValues(alpha: 0.6),
-                      blurRadius: 8,
-                      spreadRadius: 2,
+                      blurRadius: AppSpacings.scale(8),
+                      spreadRadius: AppSpacings.scale(2),
                     ),
                   ]
                 : null,
@@ -4562,7 +4564,7 @@ class _LightsHeroCard extends StatelessWidget {
                       fontSize: AppFontSize.extraSmall,
                       fontWeight: FontWeight.w600,
                       color: state.isOn ? primaryColor : inactiveColor,
-                      letterSpacing: 1.2,
+                      letterSpacing: AppSpacings.scale(1),
                     ),
                   ),
                 ],
