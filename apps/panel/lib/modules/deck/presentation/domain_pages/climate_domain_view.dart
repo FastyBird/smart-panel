@@ -6,6 +6,10 @@
 // auxiliary devices (fans, purifiers, humidifiers) are listed in bottom sheets /
 // drawers opened from header buttons.
 //
+// **AI / Tooling:** When editing this file, preserve the rendered UI. Do not
+// change widget trees, layout parameters, or visual behavior. Section headers
+// (e.g. "// CONSTANTS", "// LIFECYCLE") are stable anchors for navigation.
+//
 // **Data flow:**
 // - [SpacesService] provides room climate state and climate targets (which
 //   devices are sensors, auxiliary, or heating/cooling) for the room.
@@ -37,14 +41,16 @@
 //   [AuxiliaryDevice], [ClimateSensor], [ClimateRoomState]; converters to/from
 //   spaces_climate.
 // - **CLIMATE DOMAIN VIEW PAGE** — [ClimateDomainViewPage] and state class:
-//   - LIFECYCLE: initState (register services, listeners, fetch), dispose.
+//   - STATE & DEPENDENCIES: _roomId, [_tryLocator], optional services.
+//   - LIFECYCLE: initState (control service, listeners, fetch), dispose.
 //   - STATE BUILDING: [_buildState] — single source of truth for [_state].
+//   - BOTTOM NAV MODE: [_onPageActivated], [_registerModeConfig], [_buildModePopupContent].
 //   - CONTROL STATE SERVICE CALLBACKS: convergence/lock checks, [_onIntentChanged],
 //     [_onDataChanged].
-//   - HELPERS: [_scale], [_getSetpointRange], [_navigateToHome].
-//   - MODE & SETPOINT ACTIONS: [_setMode], [_setTargetTemp].
+//   - HELPERS: [_getSetpointRange], [_tryLocator].
+//   - MODE & SETPOINT ACTIONS: [_setMode], [_setTargetTemp], [_onSetpointSliderChanged].
 //   - DEVICES SHEET / DRAWER: [_showClimateDevicesSheet], [_showAuxiliaryDevicesSheet],
-//     device detail routing.
+//     [_showSensorsSheet], device detail routing.
 //   - THEME & LABELS: mode colors, dial accent, localized strings.
 //   - BUILD: scaffold, header, orientation → portrait/landscape.
 //   - HEADER, PORTRAIT LAYOUT, LANDSCAPE LAYOUT, HERO CARD,
@@ -379,6 +385,21 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
 
   String get _roomId => widget.viewItem.roomId;
 
+  /// Resolve optional service from locator; register [onSuccess] callback if provided.
+  /// Returns null on failure; logs in debug mode.
+  T? _tryLocator<T extends Object>(String debugLabel, {void Function(T)? onSuccess}) {
+    try {
+      final s = locator<T>();
+      onSuccess?.call(s);
+      return s;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[ClimateDomainViewPage] Failed to get $debugLabel: $e');
+      }
+      return null;
+    }
+  }
+
   /// Current mode, checking pending (locked) state first.
   ///
   /// When the user selects a mode in the popup, the control state service is
@@ -435,62 +456,15 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     );
     _controlStateService.addListener(_onControlStateChanged);
 
-    try {
-      _spacesService = locator<SpacesService>();
-      _spacesService?.addListener(_onDataChanged);
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('[ClimateDomainViewPage] Failed to get SpacesService: $e');
-      }
-    }
-
-    try {
-      _devicesService = locator<DevicesService>();
-      _devicesService?.addListener(_onDataChanged);
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('[ClimateDomainViewPage] Failed to get DevicesService: $e');
-      }
-    }
-
-    try {
-      _eventBus = locator<EventBus>();
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('[ClimateDomainViewPage] Failed to get EventBus: $e');
-      }
-    }
-
-    try {
-      _intentsRepository = locator<IntentsRepository>();
-      _intentsRepository?.addListener(_onIntentChanged);
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint(
-            '[ClimateDomainViewPage] Failed to get IntentsRepository: $e');
-      }
-    }
-
+    _spacesService = _tryLocator<SpacesService>('SpacesService', onSuccess: (s) => s.addListener(_onDataChanged));
+    _devicesService = _tryLocator<DevicesService>('DevicesService', onSuccess: (s) => s.addListener(_onDataChanged));
+    _eventBus = _tryLocator<EventBus>('EventBus');
+    _intentsRepository = _tryLocator<IntentsRepository>('IntentsRepository', onSuccess: (s) => s.addListener(_onIntentChanged));
     if (locator.isRegistered<IntentOverlayService>()) {
       _intentOverlayService = locator<IntentOverlayService>();
     }
-
-    try {
-      _deviceControlStateService = locator<DeviceControlStateService>();
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint(
-            '[ClimateDomainViewPage] Failed to get DeviceControlStateService: $e');
-      }
-    }
-
-    try {
-      _bottomNavModeNotifier = locator<BottomNavModeNotifier>();
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('[ClimateDomainViewPage] Failed to get BottomNavModeNotifier: $e');
-      }
-    }
+    _deviceControlStateService = _tryLocator<DeviceControlStateService>('DeviceControlStateService');
+    _bottomNavModeNotifier = _tryLocator<BottomNavModeNotifier>('BottomNavModeNotifier');
 
     // Subscribe to page activation events for bottom nav mode registration
     _pageActivatedSubscription = _eventBus?.on<DeckPageActivatedEvent>().listen(_onPageActivated);
@@ -1042,16 +1016,15 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     String propertyId,
     bool fallback,
   ) {
-    if (_deviceControlStateService != null &&
-        _deviceControlStateService!.isLocked(deviceId, channelId, propertyId)) {
-      final desiredValue =
-          _deviceControlStateService!.getDesiredValue(deviceId, channelId, propertyId);
+    final deviceControl = _deviceControlStateService;
+    if (deviceControl != null &&
+        deviceControl.isLocked(deviceId, channelId, propertyId)) {
+      final desiredValue = deviceControl.getDesiredValue(deviceId, channelId, propertyId);
       if (desiredValue is bool) return desiredValue;
     }
-    if (_intentOverlayService != null &&
-        _intentOverlayService!.isLocked(deviceId, channelId, propertyId)) {
-      final overlayValue =
-          _intentOverlayService!.getOverlayValue(deviceId, channelId, propertyId);
+    final overlay = _intentOverlayService;
+    if (overlay != null && overlay.isLocked(deviceId, channelId, propertyId)) {
+      final overlayValue = overlay.getOverlayValue(deviceId, channelId, propertyId);
       if (overlayValue is bool) return overlayValue;
     }
     return fallback;
@@ -1487,7 +1460,6 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   // --------------------------------------------------------------------------
   // HELPERS
   // --------------------------------------------------------------------------
-  // Scaling, setpoint range from API, and navigation (home / device sheets).
 
   /// Min/max setpoint from [climateState] with safe defaults and normalized order.
   (double, double) _getSetpointRange(spaces_climate.ClimateStateModel? climateState) {
@@ -1498,8 +1470,6 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     if (maxSp <= minSp) maxSp = minSp + 1.0;
     return (minSp, maxSp);
   }
-
-
 
   // --------------------------------------------------------------------------
   // MODE & SETPOINT ACTIONS
@@ -1725,8 +1695,9 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     }
 
     if (detailPage != null) {
+      final page = detailPage;
       Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => detailPage!),
+        MaterialPageRoute(builder: (_) => page),
       );
     }
   }
@@ -2604,8 +2575,6 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     return modes;
   }
 
-
-
   // --------------------------------------------------------------------------
   // SENSORS
   // --------------------------------------------------------------------------
@@ -2828,8 +2797,9 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     }
 
     if (detailPage != null) {
+      final page = detailPage;
       Navigator.of(context).push(
-        MaterialPageRoute(builder: (_) => detailPage!),
+        MaterialPageRoute(builder: (_) => page),
       );
     }
   }
