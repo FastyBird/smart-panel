@@ -339,8 +339,8 @@ export class SpaceContextSnapshotService {
 	}
 
 	/**
-	 * Extract a color value from properties (RGB components or HUE)
-	 * Returns a hex color string if RGB values are found, or hue degree if only hue is found
+	 * Extract a color value from properties (RGB components or HUE + SATURATION)
+	 * Returns a hex color string for consistent panel display and convergence checks.
 	 */
 	private extractColorValue(properties: ChannelPropertyEntity[]): string | null {
 		// Try to find RGB components
@@ -364,9 +364,22 @@ export class SpaceContextSnapshotService {
 			}
 		}
 
-		// Try to find HUE as a fallback (return as degree value)
+		// Try HUE + SATURATION (convert to hex so panel gets full color for display/convergence)
 		const hueProperty = properties.find((p) => p.category === PropertyCategory.HUE);
+		const saturationProperty = properties.find((p) => p.category === PropertyCategory.SATURATION);
 
+		if (hueProperty && saturationProperty) {
+			const hue = this.getPropertyNumericValue(hueProperty);
+			const saturationRaw = this.getPropertyNumericValue(saturationProperty);
+
+			if (hue !== null && saturationRaw !== null) {
+				const sat = saturationRaw > 1 ? saturationRaw / 100 : saturationRaw;
+				const hex = this.hsvToHex(hue, Math.max(0, Math.min(1, sat)), 1);
+				if (hex) return hex;
+			}
+		}
+
+		// Fallback: hue only (device has hue but no saturation property)
 		if (hueProperty) {
 			const hue = this.getPropertyNumericValue(hueProperty);
 
@@ -376,6 +389,52 @@ export class SpaceContextSnapshotService {
 		}
 
 		return null;
+	}
+
+	/**
+	 * Convert HSV to hex color string.
+	 * H: 0-360 (degrees), S: 0-1, V: 0-1
+	 */
+	private hsvToHex(h: number, s: number, v: number): string {
+		const c = v * s;
+		const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+		const m = v - c;
+
+		let r = 0,
+			g = 0,
+			b = 0;
+
+		if (h >= 0 && h < 60) {
+			r = c;
+			g = x;
+			b = 0;
+		} else if (h >= 60 && h < 120) {
+			r = x;
+			g = c;
+			b = 0;
+		} else if (h >= 120 && h < 180) {
+			r = 0;
+			g = c;
+			b = x;
+		} else if (h >= 180 && h < 240) {
+			r = 0;
+			g = x;
+			b = c;
+		} else if (h >= 240 && h < 300) {
+			r = x;
+			g = 0;
+			b = c;
+		} else {
+			r = c;
+			g = 0;
+			b = x;
+		}
+
+		const red = Math.round((r + m) * 255);
+		const green = Math.round((g + m) * 255);
+		const blue = Math.round((b + m) * 255);
+
+		return `#${red.toString(16).padStart(2, '0')}${green.toString(16).padStart(2, '0')}${blue.toString(16).padStart(2, '0')}`;
 	}
 
 	/**

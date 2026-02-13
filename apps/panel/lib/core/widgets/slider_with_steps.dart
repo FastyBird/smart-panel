@@ -169,7 +169,7 @@ class SliderWithSteps extends StatelessWidget {
 
     return Column(
       mainAxisSize: MainAxisSize.min,
-      spacing: AppSpacings.pMd,
+      spacing: AppSpacings.pXs,
       children: [
         slider,
         if (showSteps) ...[

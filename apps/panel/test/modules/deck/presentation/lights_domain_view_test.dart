@@ -292,4 +292,58 @@ void main() {
       expect(role.statusText, '0/5');
     });
   });
+
+  // --------------------------------------------------------------------------
+  // Additional behaviors
+  // --------------------------------------------------------------------------
+
+  group('Additional edge cases and data models', () {
+    test('LightingRoleData should format status text as 0/0 when totalCount is zero', () {
+      const role = LightingRoleData(
+        role: LightTargetRole.other,
+        name: 'Other',
+        icon: Icons.lightbulb_outline,
+        onCount: 0,
+        totalCount: 0,
+        targets: [],
+      );
+      expect(role.statusText, '0/0');
+    });
+
+    test('LightDeviceData should format 0% when on with zero brightness', () {
+      const device = LightDeviceData(
+        deviceId: 'd1',
+        channelId: 'c1',
+        name: 'Zero Brightness Light',
+        state: LightState.on,
+        brightness: 0,
+      );
+      expect(device.statusText, '0%');
+    });
+
+    test('SliderPreset should default isActive to false', () {
+      const preset = SliderPreset(label: 'Test', value: 0.5);
+      expect(preset.label, 'Test');
+      expect(preset.value, 0.5);
+      expect(preset.isActive, false);
+    });
+
+    test('ColorPreset should default isActive to false and preserve hueValue', () {
+      const preset = ColorPreset(color: Colors.red, name: 'Red', hueValue: 0.0);
+      expect(preset.name, 'Red');
+      expect(preset.color, Colors.red);
+      expect(preset.hueValue, 0.0);
+      expect(preset.isActive, false);
+    });
+
+    test('LightHeroCapability should include all expected capability types', () {
+      expect(LightHeroCapability.values, [
+        LightHeroCapability.brightness,
+        LightHeroCapability.colorTemp,
+        LightHeroCapability.hue,
+        LightHeroCapability.saturation,
+        LightHeroCapability.whiteChannel,
+      ]);
+    });
+  });
 }

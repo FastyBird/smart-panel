@@ -2329,10 +2329,12 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   // gradient range bar, and +/- adjustment buttons.
 
   Widget _buildHeroCard(BuildContext context) {
+    final screenService = locator<ScreenService>();
+
     return HeroCard(
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final fontSize = (constraints.maxHeight * 0.35).clamp(48.0, 160.0);
+          final fontSize = screenService.isSmallScreen ? (constraints.maxHeight * 0.25).clamp(48.0, 160.0) : (constraints.maxHeight * 0.35).clamp(48.0, 160.0);
 
           return Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -2341,10 +2343,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Padding(
-                    padding: EdgeInsets.only(bottom: fontSize * 0.08),
-                    child: _buildModeBadge(context),
-                  ),
+                  _buildModeBadge(context),
                   SizedBox(width: AppSpacings.pMd),
                   _buildGiantTemp(context, fontSize),
                 ],
@@ -2439,13 +2438,13 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             fontSize: fontSize,
             fontWeight: FontWeight.w200,
             color: textColor,
-            height: 1,
-            letterSpacing: -fontSize * 0.05,
+            height: 0.7,
+            letterSpacing: -fontSize * 0.09,
           ),
         ),
         Positioned(
-          top: fontSize * 0.1,
-          right: -unitFontSize * 1.1,
+          top: 0,
+          right: -unitFontSize,
           child: Text(
             '°C',
             style: TextStyle(
