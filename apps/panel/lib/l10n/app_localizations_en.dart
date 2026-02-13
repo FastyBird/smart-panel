@@ -460,6 +460,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get light_mode_swatches => 'Swatches';
 
   @override
+  String get lights_more_scenes => 'More scenes';
+
+  @override
   String get thermostat_state_title => 'Thermostat state';
 
   @override

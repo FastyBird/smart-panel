@@ -66,7 +66,6 @@ import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
 import 'package:fastybird_smart_panel/core/widgets/slider_with_steps.dart';
-import 'package:fastybird_smart_panel/core/widgets/tile_wrappers.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/constants.dart';
@@ -1606,28 +1605,63 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
               ? AppBgColorDark.page
               : AppBgColorLight.page,
           body: SafeArea(
-            child: Column(
-              children: [
-                _buildHeader(context, lightsOn, totalLights, hasOtherLights: hasOtherLights),
-                Expanded(
-                  child: OrientationBuilder(
-                    builder: (context, orientation) {
-                      final isLandscape = orientation == Orientation.landscape;
-                      return isLandscape
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isLandscape =
+                    MediaQuery.of(context).orientation == Orientation.landscape;
+
+                // Pre-calculate whether scenes fit inline in landscape
+                final hasScenes = _lightingScenes.isNotEmpty;
+                bool landscapeScenesInline = true;
+                if (isLandscape && hasScenes && definedRoles.isNotEmpty) {
+                  final tileHeight =
+                      AppSpacings.scale(AppTileHeight.horizontal * 0.85);
+                  final headerHeight = 2 * AppSpacings.pMd +
+                      AppFontSize.large * 1.4 +
+                      AppFontSize.small * 1.4;
+                  final columnHeight =
+                      constraints.maxHeight - headerHeight - AppSpacings.pMd;
+                  final rolesHeight = definedRoles.length * tileHeight +
+                      (definedRoles.length > 1
+                          ? (definedRoles.length - 1) * AppSpacings.pSm
+                          : 0);
+                  final remaining =
+                      columnHeight - rolesHeight - AppSpacings.pMd;
+                  final titleHeight = AppFontSize.base * 1.4;
+                  final minScenesHeight = titleHeight +
+                      AppSpacings.pMd +
+                      2 * tileHeight +
+                      AppSpacings.pSm;
+                  landscapeScenesInline = remaining >= minScenesHeight;
+                }
+
+                final showScenesButton =
+                    isLandscape && hasScenes && !landscapeScenesInline;
+
+                return Column(
+                  children: [
+                    _buildHeader(
+                      context, lightsOn, totalLights,
+                      hasOtherLights: hasOtherLights,
+                      showScenesButton: showScenesButton,
+                    ),
+                    Expanded(
+                      child: isLandscape
                           ? _buildLandscapeLayout(
                               context, definedRoles, localizations,
                               heroState: heroState,
                               effectiveRole: effectiveRole,
+                              showScenes: landscapeScenesInline,
                             )
                           : _buildPortraitLayout(
                               context, definedRoles, localizations,
                               heroState: heroState,
                               effectiveRole: effectiveRole,
-                            );
-                    },
-                  ),
-                ),
-              ],
+                            ),
+                    ),
+                  ],
+                );
+              },
             ),
           ),
         );
@@ -1993,6 +2027,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     int lightsOn,
     int totalLights, {
     bool hasOtherLights = false,
+    bool showScenesButton = false,
   }) {
     final localizations = AppLocalizations.of(context)!;
     final statusColorFamily = _getStatusColorFamily(context);
@@ -2010,6 +2045,20 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     // Use actual light state for icon, not pending mode
     final hasLightsOn = lightsOn > 0;
 
+    // Build trailing widget(s)
+    final List<Widget> trailingWidgets = [
+      if (showScenesButton)
+        HeaderIconButton(
+          icon: MdiIcons.autoFix,
+          onTap: _showScenesSheet,
+        ),
+      if (hasOtherLights)
+        HeaderIconButton(
+          icon: MdiIcons.lightbulbGroup,
+          onTap: _showOtherLightsSheet,
+        ),
+    ];
+
     return PageHeader(
       title: localizations.domain_lights,
       subtitle: subtitle,
@@ -2019,10 +2068,11 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         color: _getStatusColor(context),
       ),
       landscapeAction: const DeckModeChip(),
-      trailing: hasOtherLights
-          ? HeaderIconButton(
-              icon: MdiIcons.lightbulbGroup,
-              onTap: _showOtherLightsSheet,
+      trailing: trailingWidgets.isNotEmpty
+          ? Row(
+              mainAxisSize: MainAxisSize.min,
+              spacing: AppSpacings.pMd,
+              children: trailingWidgets,
             )
           : null,
     );
@@ -2638,8 +2688,9 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     AppLocalizations localizations, {
     _LightHeroState? heroState,
     LightTargetRole? effectiveRole,
+    bool showScenes = true,
   }) {
-    final hasScenes = _lightingScenes.isNotEmpty;
+    final hasScenes = showScenes && _lightingScenes.isNotEmpty;
 
     return LandscapeViewLayout(
       mainContentPadding: EdgeInsets.only(
@@ -2657,8 +2708,12 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         left: AppSpacings.pMd,
         bottom: AppSpacings.pMd,
       ),
-      additionalContent: hasScenes
-          ? _buildLandscapeScenesColumn(context, localizations)
+      additionalContent: (roles.isNotEmpty || hasScenes)
+          ? _buildLandscapeAdditionalColumn(
+              context, roles, localizations,
+              effectiveRole: effectiveRole,
+              showScenes: hasScenes,
+            )
           : null,
     );
   }
@@ -2718,15 +2773,92 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             ),
           ),
 
-        // Role selector (horizontal, below hero)
-        if (roles.isNotEmpty) ...[
-          SizedBox(height: AppSpacings.pMd),
-          _buildRoleSelector(
+      ],
+    );
+  }
+
+  Widget _buildLandscapeAdditionalColumn(
+    BuildContext context,
+    List<LightingRoleData> roles,
+    AppLocalizations localizations, {
+    LightTargetRole? effectiveRole,
+    bool showScenes = true,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (roles.isNotEmpty)
+          _buildLandscapeRolesCard(
             context, roles,
             effectiveRole: effectiveRole,
           ),
+        if (showScenes) ...[
+          if (roles.isNotEmpty) SizedBox(height: AppSpacings.pMd),
+          Expanded(
+            child: _buildLandscapeScenesColumn(context, localizations),
+          ),
         ],
       ],
+    );
+  }
+
+  Widget _buildLandscapeRolesCard(
+    BuildContext context,
+    List<LightingRoleData> roles, {
+    LightTargetRole? effectiveRole,
+  }) {
+    final tileHeight = AppSpacings.scale(AppTileHeight.horizontal * 0.85);
+
+    return Column(
+      spacing: AppSpacings.pSm,
+      children: roles
+          .map((role) => _buildRoleTileHorizontal(
+                context, role, tileHeight,
+                effectiveRole: effectiveRole,
+              ))
+          .toList(),
+    );
+  }
+
+  Widget _buildRoleTileHorizontal(
+    BuildContext context,
+    LightingRoleData roleData,
+    double height, {
+    LightTargetRole? effectiveRole,
+  }) {
+    final localizations = AppLocalizations.of(context)!;
+    final statusColor = _getStatusColor(context);
+
+    final pendingState = _getRolePendingState(roleData.role);
+    final isOn = pendingState ?? roleData.hasLightsOn;
+
+    final valueText = roleData.onCount == 0
+        ? localizations.light_state_off
+        : roleData.brightness != null
+            ? '${roleData.brightness}%'
+            : localizations.light_state_on;
+
+    return SizedBox(
+      height: height,
+      child: UniversalTile(
+        layout: TileLayout.horizontal,
+        icon: roleData.icon,
+        name: valueText,
+        status: roleData.name,
+        iconAccentColor: isOn ? statusColor : null,
+        isActive: roleData.role == effectiveRole,
+        activeColor: statusColor,
+        showGlow: false,
+        showDoubleBorder: false,
+        showInactiveBorder: true,
+        onTileTap: () {
+          _resetHeroControlState();
+          setState(() {
+            _selectedRole = roleData.role;
+            _activeHeroMode = null;
+          });
+        },
+      ),
     );
   }
 
@@ -2734,43 +2866,96 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     BuildContext context,
     AppLocalizations localizations,
   ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      spacing: AppSpacings.pMd,
-      children: [
-        SectionTitle(
-          title: localizations.space_scenes_title,
-          icon: MdiIcons.autoFix,
-        ),
-        _buildLandscapeScenesCard(context),
-      ],
+    final scenes = _lightingScenes;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final tileHeight = AppSpacings.scale(AppTileHeight.horizontal * 0.85);
+        final minSpacing = AppSpacings.pSm;
+        // Reserve space for SectionTitle + gap below it
+        final titleAreaHeight = AppFontSize.small * 1.4 + AppSpacings.pMd;
+        final availableHeight = constraints.maxHeight - titleAreaHeight;
+
+        final tileCount = ((availableHeight + minSpacing) /
+                (tileHeight + minSpacing))
+            .floor()
+            .clamp(1, scenes.length);
+
+        final hasOverflow = scenes.length > tileCount;
+        final displayCount = hasOverflow ? tileCount : scenes.length;
+
+        return Column(
+          mainAxisAlignment: MainAxisAlignment.end,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SectionTitle(
+              title: localizations.space_scenes_title,
+              icon: MdiIcons.autoFix,
+            ),
+            SizedBox(height: AppSpacings.pMd),
+            ...List.generate(displayCount, (index) {
+              final isLast = index == displayCount - 1;
+
+              if (hasOverflow && isLast) {
+                return Padding(
+                  padding: EdgeInsets.only(
+                    top: index > 0 ? minSpacing : 0,
+                  ),
+                  child: _buildMoreScenesTileHorizontal(
+                    context,
+                    scenes.length - (tileCount - 1),
+                    tileHeight,
+                    localizations,
+                  ),
+                );
+              }
+
+              final scene = scenes[index];
+
+              return Padding(
+                padding: EdgeInsets.only(
+                  top: index > 0 ? minSpacing : 0,
+                ),
+                child: SizedBox(
+                  height: tileHeight,
+                  child: UniversalTile(
+                    layout: TileLayout.horizontal,
+                    icon: _getSceneIcon(scene),
+                    name: scene.name,
+                    isActive: false,
+                    activeColor: _getStatusColor(context),
+                    showGlow: false,
+                    showDoubleBorder: false,
+                    showInactiveBorder: true,
+                    onTileTap: () => _activateScene(scene),
+                  ),
+                ),
+              );
+            }),
+          ],
+        );
+      },
     );
   }
 
-  /// Build scenes card matching the presets pattern from window_covering.dart.
-  /// Large screens: 2 vertical tiles per row (square).
-  /// Small/medium screens: Column of fixed-height horizontal tiles.
-  Widget _buildLandscapeScenesCard(BuildContext context) {
-    final scenes = _lightingScenes;
-
-    // Small/medium: Column of fixed-height horizontal tiles
-    return Column(
-      children: scenes.asMap().entries.map((entry) {
-        final index = entry.key;
-        final scene = entry.value;
-        final isLast = index == scenes.length - 1;
-
-        return Padding(
-          padding: EdgeInsets.only(bottom: isLast ? 0 : AppSpacings.pMd),
-          child: HorizontalTileStretched(
-            icon: _getSceneIcon(scene),
-            name: scene.name,
-            isActive: false,
-            activeColor: _getStatusColor(context),
-            onTileTap: () => _activateScene(scene),
-          ),
-        );
-      }).toList(),
+  Widget _buildMoreScenesTileHorizontal(
+    BuildContext context,
+    int overflowCount,
+    double height,
+    AppLocalizations localizations,
+  ) {
+    return SizedBox(
+      height: height,
+      child: UniversalTile(
+        layout: TileLayout.horizontal,
+        icon: MdiIcons.dotsHorizontal,
+        name: '+$overflowCount',
+        status: localizations.lights_more_scenes,
+        isActive: false,
+        showGlow: false,
+        showDoubleBorder: false,
+        showInactiveBorder: false,
+      ),
     );
   }
 

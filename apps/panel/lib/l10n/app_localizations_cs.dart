@@ -471,6 +471,9 @@ class AppLocalizationsCs extends AppLocalizations {
   String get light_mode_swatches => 'Palety';
 
   @override
+  String get lights_more_scenes => 'Více scén';
+
+  @override
   String get thermostat_state_title => 'Stav termostatu';
 
   @override
