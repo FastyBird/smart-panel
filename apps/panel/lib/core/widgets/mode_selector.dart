@@ -35,11 +35,22 @@ class ModeOption<T> {
   /// If null, uses the selector's default color
   final ThemeColors? color;
 
+  /// Optional override for the icon size (in logical pixels before scaling).
+  /// If null, uses the default size for the current layout variant.
+  final double? iconSize;
+
+  /// Optional custom label builder that replaces the default [Text] widget.
+  /// Receives [isSelected] and the computed [contentColor] so the custom widget
+  /// can adapt to selection state and theme.
+  final Widget Function(bool isSelected, Color contentColor)? labelBuilder;
+
   const ModeOption({
     required this.value,
     required this.icon,
     required this.label,
     this.color,
+    this.iconSize,
+    this.labelBuilder,
   });
 }
 
@@ -383,17 +394,20 @@ class _ModeSelectorState<T> extends State<ModeSelector<T>> {
     if (!widget.showIcon) {
       // Label only (no icon)
       content = Center(
-        child: Text(
-          mode.label,
-          style: TextStyle(
-            color: contentColor,
-            fontSize: AppFontSize.small,
-            fontWeight: fontWeight,
-          ),
-          overflow: isScrollable ? TextOverflow.visible : TextOverflow.ellipsis,
-          maxLines: 1,
-          softWrap: false,
-        ),
+        child: mode.labelBuilder != null
+            ? mode.labelBuilder!(isSelected, contentColor)
+            : Text(
+                mode.label,
+                style: TextStyle(
+                  color: contentColor,
+                  fontSize: AppFontSize.small,
+                  fontWeight: fontWeight,
+                ),
+                overflow:
+                    isScrollable ? TextOverflow.visible : TextOverflow.ellipsis,
+                maxLines: 1,
+                softWrap: false,
+              ),
       );
     } else if (!showLabel) {
       // Icon only
@@ -401,7 +415,7 @@ class _ModeSelectorState<T> extends State<ModeSelector<T>> {
         child: Icon(
           mode.icon,
           color: contentColor,
-          size: AppSpacings.scale(20),
+          size: AppSpacings.scale(mode.iconSize ?? 20),
         ),
       );
     } else if (useTopIcon) {
@@ -414,35 +428,42 @@ class _ModeSelectorState<T> extends State<ModeSelector<T>> {
           Icon(
             mode.icon,
             color: contentColor,
-            size: AppSpacings.scale(18),
+            size: AppSpacings.scale(mode.iconSize ?? 18),
           ),
           Flexible(
-            child: Text(
-              mode.label,
-              style: TextStyle(
-                color: contentColor,
-                fontSize: AppFontSize.extraSmall,
-                fontWeight: fontWeight,
-              ),
-              overflow: TextOverflow.ellipsis,
-              maxLines: 1,
-              textAlign: TextAlign.center,
-            ),
+            child: mode.labelBuilder != null
+                ? mode.labelBuilder!(isSelected, contentColor)
+                : Text(
+                    mode.label,
+                    style: TextStyle(
+                      color: contentColor,
+                      fontSize: AppFontSize.extraSmall,
+                      fontWeight: fontWeight,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                    textAlign: TextAlign.center,
+                  ),
           ),
         ],
       );
     } else {
       // Icon on left, label on right
-      final textWidget = Text(
-        mode.label,
-        style: TextStyle(
-          color: contentColor,
-          fontSize: AppFontSize.small,
-          fontWeight: fontWeight,
-        ),
-        overflow: TextOverflow.ellipsis,
-        maxLines: 1,
-      );
+      final Widget labelWidget;
+      if (mode.labelBuilder != null) {
+        labelWidget = mode.labelBuilder!(isSelected, contentColor);
+      } else {
+        labelWidget = Text(
+          mode.label,
+          style: TextStyle(
+            color: contentColor,
+            fontSize: AppFontSize.small,
+            fontWeight: fontWeight,
+          ),
+          overflow: TextOverflow.ellipsis,
+          maxLines: 1,
+        );
+      }
 
       content = Row(
         spacing: AppSpacings.pSm,
@@ -452,10 +473,10 @@ class _ModeSelectorState<T> extends State<ModeSelector<T>> {
           Icon(
             mode.icon,
             color: contentColor,
-            size: AppSpacings.scale(18),
+            size: AppSpacings.scale(mode.iconSize ?? 18),
           ),
           // When scrollable, don't use Flexible (unbounded width)
-          isScrollable ? textWidget : Flexible(child: textWidget),
+          isScrollable ? labelWidget : Flexible(child: labelWidget),
         ],
       );
     }

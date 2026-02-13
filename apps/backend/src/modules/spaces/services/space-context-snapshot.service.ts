@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
+import { hsvToHex } from '../../../common/utils/color.utils';
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import {
@@ -339,8 +340,8 @@ export class SpaceContextSnapshotService {
 	}
 
 	/**
-	 * Extract a color value from properties (RGB components or HUE)
-	 * Returns a hex color string if RGB values are found, or hue degree if only hue is found
+	 * Extract a color value from properties (RGB components or HUE + SATURATION)
+	 * Returns a hex color string for consistent panel display and convergence checks.
 	 */
 	private extractColorValue(properties: ChannelPropertyEntity[]): string | null {
 		// Try to find RGB components
@@ -364,9 +365,22 @@ export class SpaceContextSnapshotService {
 			}
 		}
 
-		// Try to find HUE as a fallback (return as degree value)
+		// Try HUE + SATURATION (convert to hex so panel gets full color for display/convergence)
 		const hueProperty = properties.find((p) => p.category === PropertyCategory.HUE);
+		const saturationProperty = properties.find((p) => p.category === PropertyCategory.SATURATION);
 
+		if (hueProperty && saturationProperty) {
+			const hue = this.getPropertyNumericValue(hueProperty);
+			const saturationRaw = this.getPropertyNumericValue(saturationProperty);
+
+			if (hue !== null && saturationRaw !== null) {
+				const sat = saturationRaw > 1 ? saturationRaw / 100 : saturationRaw;
+				const hex = hsvToHex(hue, Math.max(0, Math.min(1, sat)), 1);
+				if (hex) return hex;
+			}
+		}
+
+		// Fallback: hue only (device has hue but no saturation property)
 		if (hueProperty) {
 			const hue = this.getPropertyNumericValue(hueProperty);
 

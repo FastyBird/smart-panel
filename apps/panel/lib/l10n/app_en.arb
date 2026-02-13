@@ -554,6 +554,10 @@
   "@light_mode_swatches": {
     "description": "Mode for selecting predefined color swatches"
   },
+  "lights_more_scenes": "More scenes",
+  "@lights_more_scenes": {
+    "description": "Status label on the 'more' tile when scenes overflow the grid in landscape"
+  },
   "thermostat_state_title": "Thermostat state",
   "@thermostat_state_title": {
     "description": "Title displayed for the thermostat state section"

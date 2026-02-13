@@ -65,7 +65,7 @@ class IntentModeSelector<T> extends StatelessWidget {
   /// Whether the selector should be scrollable
   final bool scrollable;
 
-  IntentModeSelector({
+  const IntentModeSelector({
     super.key,
     required this.modes,
     required this.onChanged,

@@ -8,7 +8,7 @@ class DevicePowerButton extends StatelessWidget {
   /// Size for compact layouts (e.g. landscape on small/medium screens).
   static const double compactSize = 130;
 
-  DevicePowerButton({
+  const DevicePowerButton({
     super.key,
     required this.isOn,
     this.themeColor,

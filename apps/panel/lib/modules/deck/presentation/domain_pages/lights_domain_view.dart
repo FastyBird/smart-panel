@@ -4,6 +4,10 @@
 // accent, night), "other" lights, scenes, and a mode selector (off/work/relax/night).
 // Role and device detail are opened via navigation.
 //
+// **AI / Tooling:** When editing this file, preserve the rendered UI. Do not
+// change widget trees, layout parameters, or visual behavior. Section headers
+// (e.g. "// DATA MODELS", "// LIFECYCLE") are stable anchors for navigation.
+//
 // **Data flow:**
 // - [SpacesService] provides light targets and lighting state for the room.
 // - [DevicesService] provides live device views used to build role/light data.
@@ -23,29 +27,32 @@
 // jump to that part of the file. Sections appear in this order:
 //
 // - **DATA MODELS** — [LightingRoleData], [LightState], [LightingModeUI] (+ extension),
-//   [LightDeviceData]. Channel IDs/settling from [LightingConstants] (constants.dart).
+//   [LightDeviceData], [_LightHeroState]. Channel IDs/settling from [LightingConstants].
 // - **LIGHTS DOMAIN VIEW PAGE** — [LightsDomainViewPage] and state class:
 //   - STATE & DEPENDENCIES: _roomId, [_tryLocator], optional services.
-//   - DERIVED STATE & CONVERGENCE HELPERS: [_lightingState], [_currentMode],
-//     [_checkModeConvergence], [_checkRoleConvergence], [_getRolePendingState].
-//   - LIFECYCLE: initState (mode + role control services, listeners, fetch), dispose.
-//   - CONTROL STATE & CALLBACKS: [_onDataChanged], [_groupTargetsByRole],
-//     [_onIntentChanged].
-//   - UTILITIES: [_scale], [_navigateToHome].
+//   - DERIVED STATE & CONVERGENCE: [_lightingState], [_currentMode], [_checkModeConvergence],
+//     [_checkRoleConvergence], [_getRolePendingState].
+//   - HERO CARD CONVERGENCE: [_getHeroRoleAggregatedState], [_applyHeroOptimisticOverrides],
+//     [_checkHero*Convergence], [_saveHeroToCache], [_loadHeroCachedValuesIfNeeded].
+//   - LIFECYCLE: initState (control services, listeners, fetch), dispose.
+//   - BOTTOM NAV MODE: [_onPageActivated], [_registerModeConfig], [_buildModePopupContent].
+//   - CONTROL STATE & CALLBACKS: [_onDataChanged], [_groupTargetsByRole], [_onIntentChanged].
 //   - BUILD: scaffold, loading/empty/content; [Consumer] for [DevicesService].
-//   - DATA BUILDING: [_buildRoleDataList], [_buildOtherLights], counts, role names/icons.
-//   - HEADER: [_buildHeader], mode subtitle, status color.
-//   - PORTRAIT LAYOUT, LANDSCAPE LAYOUT: roles, scenes, other lights, mode selector.
-//   - LIGHTING MODE CONTROLS: [_setLightingMode], [_toggleRoleViaIntent],
-//     [_toggleRole], [_toggleLight].
-//   - ROLES GRID, LIGHTS GRID, SCENES, NAVIGATION, EMPTY STATE: UI builders.
-// - **PRIVATE WIDGETS** — [_RoleCard], [_LightTile], [_SceneTile] (all use [UniversalTile]).
+//   - DATA BUILDING: [_buildRoleDataList], [_buildOtherLights], [_getLightOptimisticOn].
+//   - HEADER: [_buildHeader], [_getStatusColor], [_getModeName].
+//   - SHEETS: [_showOtherLightsSheet], [_showRoleLightsSheet], [_showScenesSheet].
+//   - LIGHTING MODE CONTROLS: [_setLightingMode], [_toggleRoleLights], [_toggleLight].
+//   - HERO CONTROLS: [_onHeroValueChanged], [_heroSetBrightness], [_heroSetColor], etc.
+//   - LAYOUTS: [_buildPortraitLayout], [_buildLandscapeLayout], role selector, scenes.
+//   - HELPERS: [_getEffectiveRoleFromTargets], [_getRoleDataForRole].
+// - **PRIVATE WIDGETS** — [_HeroGradients], [_LightsHeroCard], [_SceneTile].
 
 import 'dart:async';
 
 import 'package:event_bus/event_bus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 import 'package:provider/provider.dart';
 
@@ -53,23 +60,28 @@ import 'package:fastybird_smart_panel/api/models/scenes_module_data_scene_catego
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/hero_card.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_bottom_sheet.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_right_drawer.dart';
 import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
+import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
-import 'package:fastybird_smart_panel/core/widgets/tile_wrappers.dart';
+import 'package:fastybird_smart_panel/core/widgets/slider_with_steps.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/constants.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/bottom_nav_mode_config.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
+import 'package:fastybird_smart_panel/modules/deck/models/lighting/role_mixed_state.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/domain_data_loader.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_item_sheet.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_mode_chip.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/domain_state_view.dart';
-import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/light_role_detail_page.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/bottom_nav_mode_notifier.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/domain_control_state_service.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/deck_page_activated_event.dart';
@@ -78,6 +90,7 @@ import 'package:fastybird_smart_panel/modules/devices/export.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_detail_page.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/light.dart';
+import 'package:fastybird_smart_panel/modules/devices/types/formats.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/lighting.dart';
 import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
 import 'package:fastybird_smart_panel/modules/intents/repositories/intents.dart';
@@ -215,6 +228,128 @@ class LightDeviceData {
   }
 }
 
+/// Capabilities a light role can support for the hero card display.
+enum LightHeroCapability { brightness, colorTemp, hue, saturation, whiteChannel }
+
+/// A preset value for a slider mode.
+class SliderPreset {
+  final String label;
+  final double value;
+  final bool isActive;
+
+  const SliderPreset({
+    required this.label,
+    required this.value,
+    this.isActive = false,
+  });
+}
+
+/// A color preset swatch for hue mode.
+class ColorPreset {
+  final Color color;
+  final String name;
+  final double hueValue;
+  final bool isActive;
+
+  const ColorPreset({
+    required this.color,
+    required this.name,
+    required this.hueValue,
+    this.isActive = false,
+  });
+}
+
+/// Aggregated state of a light role for the hero card display.
+///
+/// Built from device channel data in [_buildHeroState]. Represents the
+/// combined state of all devices in a role.
+class _LightHeroState {
+  final String roleName;
+  final int deviceCount;
+  final bool isOn;
+  final Set<LightHeroCapability> capabilities;
+  final LightHeroCapability? activeMode;
+  final double brightness;
+  final double colorTemp;
+  final double minColorTemp;
+  final double maxColorTemp;
+  final double hue;
+  final double minHue;
+  final double maxHue;
+  final double saturation;
+  final double whiteChannel;
+  final Color? currentColor;
+  final String? colorName;
+  final IconData statusIcon;
+
+  _LightHeroState({
+    required this.roleName,
+    required this.deviceCount,
+    this.isOn = false,
+    this.capabilities = const {},
+    this.activeMode,
+    this.brightness = 0,
+    this.colorTemp = 3200,
+    this.minColorTemp = 2700,
+    this.maxColorTemp = 6500,
+    this.hue = 0,
+    this.minHue = 0,
+    this.maxHue = 359,
+    this.saturation = 0,
+    this.whiteChannel = 0,
+    this.currentColor,
+    this.colorName,
+    IconData? statusIcon,
+  }) : statusIcon = statusIcon ?? MdiIcons.lightbulbGroup;
+
+  bool get isOnOffOnly => capabilities.isEmpty;
+  bool get showModeSwitcher => capabilities.length >= 2;
+
+  _LightHeroState copyWith({
+    bool? isOn,
+    double? brightness,
+    double? colorTemp,
+    double? hue,
+    double? saturation,
+    double? whiteChannel,
+    Color? currentColor,
+    String? colorName,
+  }) {
+    return _LightHeroState(
+      roleName: roleName,
+      deviceCount: deviceCount,
+      isOn: isOn ?? this.isOn,
+      capabilities: capabilities,
+      activeMode: activeMode,
+      brightness: brightness ?? this.brightness,
+      colorTemp: colorTemp ?? this.colorTemp,
+      minColorTemp: minColorTemp,
+      maxColorTemp: maxColorTemp,
+      hue: hue ?? this.hue,
+      minHue: minHue,
+      maxHue: maxHue,
+      saturation: saturation ?? this.saturation,
+      whiteChannel: whiteChannel ?? this.whiteChannel,
+      currentColor: currentColor ?? this.currentColor,
+      colorName: colorName ?? this.colorName,
+      statusIcon: statusIcon,
+    );
+  }
+}
+
+/// Get human-readable color name from hue degree value.
+String _heroHueName(double hue) {
+  if (hue < 15 || hue >= 345) return 'Red';
+  if (hue < 45) return 'Orange';
+  if (hue < 75) return 'Yellow';
+  if (hue < 150) return 'Green';
+  if (hue < 195) return 'Cyan';
+  if (hue < 255) return 'Blue';
+  if (hue < 285) return 'Violet';
+  if (hue < 345) return 'Pink';
+  return 'Red';
+}
+
 // =============================================================================
 // LIGHTS DOMAIN VIEW PAGE
 // =============================================================================
@@ -250,6 +385,45 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   bool _isActivePage = false;
   bool _isLoading = true;
   bool _hasError = false;
+
+  /// Currently selected role tab in the ModeSelector.
+  LightTargetRole? _selectedRole;
+
+  /// Currently active hero card capability mode.
+  LightHeroCapability? _activeHeroMode;
+
+  // Debounce timers for hero card slider changes
+  Timer? _heroBrightnessDebounceTimer;
+  Timer? _heroTemperatureDebounceTimer;
+  Timer? _heroHueDebounceTimer;
+  Timer? _heroWhiteDebounceTimer;
+
+  /// Optimistic UI for hero card slider/preset values (brightness, hue, etc.).
+  /// Uses [RoleAggregatedState] from backend as convergence target.
+  late DomainControlStateService<RoleAggregatedState> _heroControlStateService;
+
+  /// Pending on/off state for hero card optimistic UI.
+  bool? _heroPendingOnState;
+  Timer? _heroPendingOnStateClearTimer;
+
+  /// Role control state repository (caching slider values for mixed state).
+  RoleControlStateRepository? _roleControlStateRepository;
+
+  /// True when a hero intent was in flight; used to detect unlock.
+  bool _heroWasSpaceLocked = false;
+
+  /// Notifier bumped after [_toggleLight] so the role-lights sheet rebuilds.
+  final ValueNotifier<int> _roleLightsSheetNotifier = ValueNotifier<int>(0);
+
+  /// Channel IDs tracked by [_heroControlStateService].
+  static const List<String> _heroControlChannelIds = [
+    LightingConstants.brightnessChannelId,
+    LightingConstants.hueChannelId,
+    LightingConstants.saturationChannelId,
+    LightingConstants.temperatureChannelId,
+    LightingConstants.whiteChannelId,
+    LightingConstants.onOffChannelId,
+  ];
 
   /// Optimistic UI for mode (off/work/relax/night). Lock blocks role toggles.
   late DomainControlStateService<LightingStateModel> _modeControlStateService;
@@ -408,6 +582,369 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   }
 
   // --------------------------------------------------------------------------
+  // HERO CARD CONVERGENCE & HELPERS
+  // --------------------------------------------------------------------------
+
+  /// Get role aggregated state for the currently selected hero role.
+  /// Falls back to auto-detecting the first defined role when [_selectedRole]
+  /// is null (matches the build method's effectiveRole logic).
+  RoleAggregatedState? _getHeroRoleAggregatedState() {
+    var role = _selectedRole;
+    if (role == null) {
+      final targets = _spacesService?.getLightTargetsForSpace(_roomId) ?? [];
+      if (targets.isEmpty) return null;
+      final roleGroups = _groupTargetsByRole(targets);
+      for (final r in LightTargetRole.values) {
+        if (r == LightTargetRole.other || r == LightTargetRole.hidden) continue;
+        if (roleGroups.containsKey(r)) {
+          role = r;
+          break;
+        }
+      }
+    }
+    if (role == null) return null;
+    final stateRole = mapTargetRoleToStateRole(role);
+    if (stateRole == null) return null;
+    return _lightingState?.getRoleState(stateRole);
+  }
+
+  /// Cache key for the currently selected hero role.
+  String _heroCacheKey(LightTargetRole role) =>
+      RoleControlStateRepository.generateKey(_roomId, 'lighting', role.name);
+
+  /// Resolve effective hero role: [_selectedRole] or first defined role from targets.
+  /// Used when we have targets but not yet [LightingRoleData] (e.g. initState, _onDataChanged).
+  LightTargetRole? _getEffectiveRoleFromTargets() {
+    if (_selectedRole != null) return _selectedRole;
+    final targets = _spacesService?.getLightTargetsForSpace(_roomId) ?? [];
+    if (targets.isEmpty) return null;
+    final groups = _groupTargetsByRole(targets);
+    for (final r in LightTargetRole.values) {
+      if (r != LightTargetRole.other && r != LightTargetRole.hidden && groups.containsKey(r)) {
+        return r;
+      }
+    }
+    return null;
+  }
+
+  /// Parse hex color string (#RRGGBB) to Color.
+  Color? _parseHexColor(String? hex) {
+    if (hex == null || hex.isEmpty) return null;
+    try {
+      final cleaned = hex.replaceAll('#', '');
+      if (cleaned.length != 6) return null;
+      final r = int.parse(cleaned.substring(0, 2), radix: 16);
+      final g = int.parse(cleaned.substring(2, 4), radix: 16);
+      final b = int.parse(cleaned.substring(4, 6), radix: 16);
+      return Color.fromARGB(255, r, g, b);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Parse backend color string to (hue, saturation).
+  /// Handles hex (#RRGGBB) and hue-only format (hue:181) from backend.
+  (double?, double?) _parseColorToHueSat(String? colorStr) {
+    if (colorStr == null || colorStr.isEmpty) return (null, null);
+    final hexColor = _parseHexColor(colorStr);
+    if (hexColor != null) {
+      final hsv = HSVColor.fromColor(hexColor);
+      return (hsv.hue, hsv.saturation);
+    }
+    final hueMatch = RegExp(r'^hue:(\d+(?:\.\d+)?)$').firstMatch(colorStr);
+    if (hueMatch != null) {
+      final hue = double.tryParse(hueMatch.group(1)!);
+      return (hue, null);
+    }
+    return (null, null);
+  }
+
+  bool _checkHeroBrightnessConvergence(
+    List<RoleAggregatedState> targets,
+    double desiredValue,
+    double tolerance,
+  ) {
+    if (targets.isEmpty) return true;
+    final state = targets.first;
+    if (state.brightness == null) return false;
+    return (state.brightness! - desiredValue).abs() <= tolerance;
+  }
+
+  bool _checkHeroHueConvergence(
+    List<RoleAggregatedState> targets,
+    double desiredValue,
+    double tolerance,
+  ) {
+    if (targets.isEmpty) return true;
+    final state = targets.first;
+    final (hue, _) = _parseColorToHueSat(state.color);
+    if (hue == null) return false;
+    return (hue - desiredValue).abs() <= tolerance;
+  }
+
+  bool _checkHeroSaturationConvergence(
+    List<RoleAggregatedState> targets,
+    double desiredValue,
+    double tolerance,
+  ) {
+    if (targets.isEmpty) return true;
+    final state = targets.first;
+    final (_, sat) = _parseColorToHueSat(state.color);
+    if (sat == null) return false;
+    final saturation = sat * 100.0;
+    return (saturation - desiredValue).abs() <= tolerance;
+  }
+
+  bool _checkHeroTemperatureConvergence(
+    List<RoleAggregatedState> targets,
+    double desiredValue,
+    double tolerance,
+  ) {
+    if (targets.isEmpty) return true;
+    final state = targets.first;
+    if (state.colorTemperature == null) return false;
+    return (state.colorTemperature! - desiredValue).abs() <= tolerance;
+  }
+
+  bool _checkHeroWhiteConvergence(
+    List<RoleAggregatedState> targets,
+    double desiredValue,
+    double tolerance,
+  ) {
+    if (targets.isEmpty) return true;
+    final state = targets.first;
+    if (state.white == null) return false;
+    return (state.white! - desiredValue).abs() <= tolerance;
+  }
+
+  bool _checkHeroOnOffConvergence(
+    List<RoleAggregatedState> targets,
+    double desiredValue,
+    double tolerance,
+  ) {
+    if (targets.isEmpty) return true;
+    final state = targets.first;
+    final targetOn = desiredValue > LightingConstants.onOffThreshold;
+    return state.isOn == targetOn && !state.isOnMixed;
+  }
+
+  /// Apply optimistic overrides from [_heroControlStateService] onto
+  /// a hero state built from device data.
+  _LightHeroState _applyHeroOptimisticOverrides(_LightHeroState base) {
+    final isOn = _heroPendingOnState ?? base.isOn;
+
+    final brightness =
+        _heroControlStateService.isLocked(LightingConstants.brightnessChannelId)
+            ? (_heroControlStateService.getDesiredValue(
+                    LightingConstants.brightnessChannelId) ??
+                base.brightness)
+            : base.brightness;
+
+    final colorTemp =
+        _heroControlStateService.isLocked(LightingConstants.temperatureChannelId)
+            ? (_heroControlStateService.getDesiredValue(
+                    LightingConstants.temperatureChannelId) ??
+                base.colorTemp)
+            : base.colorTemp;
+
+    final whiteChannel =
+        _heroControlStateService.isLocked(LightingConstants.whiteChannelId)
+            ? (_heroControlStateService.getDesiredValue(
+                    LightingConstants.whiteChannelId) ??
+                base.whiteChannel)
+            : base.whiteChannel;
+
+    double hue = base.hue;
+    double saturation = base.saturation;
+    Color? currentColor = base.currentColor;
+    String? colorName = base.colorName;
+
+    final hueDesired = _heroControlStateService
+        .getDesiredValue(LightingConstants.hueChannelId);
+    final satDesired = _heroControlStateService
+        .getDesiredValue(LightingConstants.saturationChannelId);
+
+    if (_heroControlStateService.isLocked(LightingConstants.hueChannelId) &&
+        hueDesired != null) {
+      hue = hueDesired;
+      colorName = _heroHueName(hue);
+    }
+    if (_heroControlStateService
+            .isLocked(LightingConstants.saturationChannelId) &&
+        satDesired != null) {
+      saturation = satDesired;
+    }
+    if (hue != base.hue || saturation != base.saturation) {
+      currentColor = HSVColor.fromAHSV(
+              1, hue.clamp(0, 360), (saturation / 100).clamp(0.0, 1.0), 1)
+          .toColor();
+    }
+
+    return base.copyWith(
+      isOn: isOn,
+      brightness: brightness,
+      colorTemp: colorTemp,
+      hue: hue,
+      saturation: saturation,
+      whiteChannel: whiteChannel,
+      currentColor: currentColor,
+      colorName: colorName,
+    );
+  }
+
+  /// Save hero slider values to cache for mixed-state recovery.
+  /// Saturation must be 0.0-1.0 for [RoleCacheEntry]; brightness/hue/temp/white
+  /// use the same scale as hero display (0-100, 0-360, kelvin, 0-100).
+  void _saveHeroToCache(
+    LightTargetRole role, {
+    double? brightness,
+    double? hue,
+    double? saturation,
+    double? temperature,
+    double? white,
+  }) {
+    _roleControlStateRepository?.set(
+      _heroCacheKey(role),
+      brightness: brightness,
+      hue: hue,
+      saturation: saturation != null ? saturation / 100 : null,
+      temperature: temperature,
+      white: white,
+    );
+  }
+
+  /// Build [RoleMixedState] from [RoleAggregatedState] for hero role.
+  RoleMixedState _buildHeroMixedStateFromRole(RoleAggregatedState roleState) {
+    return RoleMixedState(
+      onStateMixed: roleState.isOnMixed,
+      brightnessMixed: roleState.isBrightnessMixed,
+      hueMixed: roleState.isColorMixed,
+      temperatureMixed: roleState.isColorTemperatureMixed,
+      whiteMixed: roleState.isWhiteMixed,
+      onCount: roleState.devicesOn,
+      offCount: roleState.devicesCount - roleState.devicesOn,
+    );
+  }
+
+  double? _extractHeroHueFromRole(RoleAggregatedState roleState) {
+    final (hue, _) = _parseColorToHueSat(roleState.color);
+    return hue;
+  }
+
+  double? _extractHeroSaturationFromRole(RoleAggregatedState roleState) {
+    final (_, sat) = _parseColorToHueSat(roleState.color);
+    return sat != null ? sat * 100 : null;
+  }
+
+  /// Load cached values into hero control state when role is mixed.
+  void _loadHeroCachedValuesIfNeeded(
+    RoleAggregatedState roleState,
+    RoleMixedState roleMixedState,
+    LightTargetRole role,
+  ) {
+    if (!roleMixedState.isMixed) return;
+
+    final cached = _roleControlStateRepository?.get(_heroCacheKey(role));
+    if (cached == null) return;
+    if (!mounted) return;
+
+    final brightness = cached.brightness ?? roleState.brightness?.toDouble();
+    if (brightness != null &&
+        _heroControlStateService.getDesiredValue(LightingConstants.brightnessChannelId) == null) {
+      _heroControlStateService.setMixed(LightingConstants.brightnessChannelId, brightness);
+    }
+
+    final hue = cached.hue ?? _extractHeroHueFromRole(roleState);
+    if (hue != null &&
+        _heroControlStateService.getDesiredValue(LightingConstants.hueChannelId) == null) {
+      _heroControlStateService.setMixed(LightingConstants.hueChannelId, hue);
+    }
+
+    final saturation = cached.saturation != null
+        ? cached.saturation! * 100
+        : _extractHeroSaturationFromRole(roleState);
+    if (saturation != null &&
+        _heroControlStateService.getDesiredValue(LightingConstants.saturationChannelId) == null) {
+      _heroControlStateService.setMixed(LightingConstants.saturationChannelId, saturation);
+    }
+
+    final temperature = cached.temperature ?? roleState.colorTemperature?.toDouble();
+    if (temperature != null &&
+        _heroControlStateService.getDesiredValue(LightingConstants.temperatureChannelId) == null) {
+      _heroControlStateService.setMixed(LightingConstants.temperatureChannelId, temperature);
+    }
+
+    final white = cached.white ?? roleState.white?.toDouble();
+    if (white != null &&
+        _heroControlStateService.getDesiredValue(LightingConstants.whiteChannelId) == null) {
+      _heroControlStateService.setMixed(LightingConstants.whiteChannelId, white);
+    }
+  }
+
+  /// Update cache when hero role is fully synced.
+  ///
+  /// Preserves existing cached hue/saturation when backend returns hue-only
+  /// format (e.g. "hue:181") which doesn't include saturation. Otherwise we'd
+  /// wipe the user's set values and the UI would snap back.
+  void _updateHeroCacheIfSynced(RoleAggregatedState? roleState, LightTargetRole role) {
+    if (roleState == null) return;
+
+    final roleMixedState = _buildHeroMixedStateFromRole(roleState);
+    if (!roleMixedState.isSynced || roleMixedState.onStateMixed) return;
+
+    double? commonBrightness;
+    double? commonHue;
+    double? commonSaturation;
+    double? commonTemperature;
+    double? commonWhite;
+
+    if (roleState.isOn) {
+      commonBrightness = roleState.brightness?.toDouble();
+      commonTemperature = roleState.colorTemperature?.toDouble();
+      commonWhite = roleState.white?.toDouble();
+
+      final (parsedHue, parsedSat) = _parseColorToHueSat(roleState.color);
+      commonHue = parsedHue;
+      commonSaturation = parsedSat;
+
+      final existing = _roleControlStateRepository?.get(_heroCacheKey(role));
+      if (commonHue == null && existing?.hue != null) commonHue = existing!.hue;
+      if (commonSaturation == null && existing?.saturation != null) {
+        commonSaturation = existing!.saturation;
+      }
+    }
+
+    if (commonBrightness != null ||
+        commonHue != null ||
+        commonSaturation != null ||
+        commonTemperature != null ||
+        commonWhite != null) {
+      _roleControlStateRepository?.updateFromSync(
+        _heroCacheKey(role),
+        brightness: commonBrightness,
+        hue: commonHue,
+        saturation: commonSaturation,
+        temperature: commonTemperature,
+        white: commonWhite,
+      );
+    }
+  }
+
+  /// Reset hero control state (when switching roles).
+  void _resetHeroControlState() {
+    for (final channelId in _heroControlChannelIds) {
+      _heroControlStateService.setIdle(channelId);
+    }
+    _heroBrightnessDebounceTimer?.cancel();
+    _heroTemperatureDebounceTimer?.cancel();
+    _heroHueDebounceTimer?.cancel();
+    _heroWhiteDebounceTimer?.cancel();
+    _heroPendingOnStateClearTimer?.cancel();
+    _heroPendingOnState = null;
+    _heroWasSpaceLocked = false;
+  }
+
+  // --------------------------------------------------------------------------
   // LIFECYCLE
   // --------------------------------------------------------------------------
   // initState: create mode + role [DomainControlStateService], register
@@ -481,6 +1018,55 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     );
     _roleControlStateService.addListener(_onControlStateChanged);
 
+    // Initialize the hero card control state service for slider/preset optimistic UI
+    _heroControlStateService = DomainControlStateService<RoleAggregatedState>(
+      channelConfigs: {
+        LightingConstants.brightnessChannelId: ControlChannelConfig(
+          id: LightingConstants.brightnessChannelId,
+          convergenceChecker: _checkHeroBrightnessConvergence,
+          intentLockChecker: _isSpaceIntentLocked,
+          settlingWindowMs: LightingConstants.settlingWindowMs,
+          tolerance: LightingConstants.brightnessTolerance,
+        ),
+        LightingConstants.hueChannelId: ControlChannelConfig(
+          id: LightingConstants.hueChannelId,
+          convergenceChecker: _checkHeroHueConvergence,
+          intentLockChecker: _isSpaceIntentLocked,
+          settlingWindowMs: LightingConstants.settlingWindowMs,
+          tolerance: LightingConstants.hueTolerance,
+        ),
+        LightingConstants.saturationChannelId: ControlChannelConfig(
+          id: LightingConstants.saturationChannelId,
+          convergenceChecker: _checkHeroSaturationConvergence,
+          intentLockChecker: _isSpaceIntentLocked,
+          settlingWindowMs: LightingConstants.settlingWindowMs,
+          tolerance: LightingConstants.saturationTolerance,
+        ),
+        LightingConstants.temperatureChannelId: ControlChannelConfig(
+          id: LightingConstants.temperatureChannelId,
+          convergenceChecker: _checkHeroTemperatureConvergence,
+          intentLockChecker: _isSpaceIntentLocked,
+          settlingWindowMs: LightingConstants.settlingWindowMs,
+          tolerance: LightingConstants.temperatureTolerance,
+        ),
+        LightingConstants.whiteChannelId: ControlChannelConfig(
+          id: LightingConstants.whiteChannelId,
+          convergenceChecker: _checkHeroWhiteConvergence,
+          intentLockChecker: _isSpaceIntentLocked,
+          settlingWindowMs: LightingConstants.settlingWindowMs,
+          tolerance: LightingConstants.whiteTolerance,
+        ),
+        LightingConstants.onOffChannelId: ControlChannelConfig(
+          id: LightingConstants.onOffChannelId,
+          convergenceChecker: _checkHeroOnOffConvergence,
+          intentLockChecker: _isSpaceIntentLocked,
+          settlingWindowMs: LightingConstants.onOffSettlingWindowMs,
+          tolerance: 0.0,
+        ),
+      },
+    );
+    _heroControlStateService.addListener(_onControlStateChanged);
+
     _spacesService = _tryLocator<SpacesService>('SpacesService', onSuccess: (s) => s.addListener(_onDataChanged));
     _devicesService = _tryLocator<DevicesService>('DevicesService', onSuccess: (s) => s.addListener(_onDataChanged));
     _scenesService = _tryLocator<ScenesService>('ScenesService', onSuccess: (s) => s.addListener(_onDataChanged));
@@ -490,6 +1076,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       _intentOverlayService = locator<IntentOverlayService>();
     }
     _deviceControlStateService = _tryLocator<DeviceControlStateService>('DeviceControlStateService');
+    _roleControlStateRepository = _tryLocator<RoleControlStateRepository>('RoleControlStateRepository');
     _bottomNavModeNotifier = _tryLocator<BottomNavModeNotifier>('BottomNavModeNotifier');
 
     // Subscribe to page activation events for bottom nav mode registration
@@ -497,6 +1084,18 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
     // Fetch light targets for this space
     _fetchLightTargets();
+
+    // Load hero cached values when role is mixed (after first frame)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final heroRoleState = _getHeroRoleAggregatedState();
+      final effectiveRole = _getEffectiveRoleFromTargets();
+      if (heroRoleState != null && effectiveRole != null) {
+        final roleMixedState = _buildHeroMixedStateFromRole(heroRoleState);
+        _loadHeroCachedValuesIfNeeded(heroRoleState, roleMixedState, effectiveRole);
+        setState(() {});
+      }
+    });
   }
 
   Future<void> _fetchLightTargets() async {
@@ -545,6 +1144,11 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
   @override
   void dispose() {
+    _heroBrightnessDebounceTimer?.cancel();
+    _heroTemperatureDebounceTimer?.cancel();
+    _heroHueDebounceTimer?.cancel();
+    _heroWhiteDebounceTimer?.cancel();
+    _heroPendingOnStateClearTimer?.cancel();
     _pageActivatedSubscription?.cancel();
     _spacesService?.removeListener(_onDataChanged);
     _devicesService?.removeListener(_onDataChanged);
@@ -554,6 +1158,9 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     _modeControlStateService.dispose();
     _roleControlStateService.removeListener(_onControlStateChanged);
     _roleControlStateService.dispose();
+    _heroControlStateService.removeListener(_onControlStateChanged);
+    _heroControlStateService.dispose();
+    _roleLightsSheetNotifier.dispose();
     super.dispose();
   }
 
@@ -614,7 +1221,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             style: TextStyle(
               fontSize: AppFontSize.extraSmall,
               fontWeight: FontWeight.w600,
-              letterSpacing: 1.0,
+              letterSpacing: AppSpacings.scale(1),
               color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
             ),
           ),
@@ -732,12 +1339,60 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
           }
         }
 
+        // Check convergence for hero card control channels
+        final heroRoleState = _getHeroRoleAggregatedState();
+        final effectiveRole = _getEffectiveRoleFromTargets();
+        if (heroRoleState != null && effectiveRole != null) {
+          final heroTargets = [heroRoleState];
+          for (final channelId in _heroControlChannelIds) {
+            _heroControlStateService.checkConvergence(channelId, heroTargets);
+          }
+          final roleMixedState = _buildHeroMixedStateFromRole(heroRoleState);
+          _loadHeroCachedValuesIfNeeded(heroRoleState, roleMixedState, effectiveRole);
+          _updateHeroCacheIfSynced(heroRoleState, effectiveRole);
+        }
+
+        // Check convergence for device-level on/off optimistic states
+        // (set by _toggleLight via DeviceControlStateService).
+        _checkDeviceLightConvergence();
+
         setState(() {});
 
         // Update bottom nav mode config if this is the active page
         _registerModeConfig();
       }
     });
+  }
+
+  /// Checks convergence for device-level on/off optimistic states set by
+  /// [_toggleLight]. Without this, the [DeviceControlStateService] transitions
+  /// pending → settling → mixed and stays locked forever, returning the stale
+  /// desired value in [_getLightOptimisticOn].
+  void _checkDeviceLightConvergence() {
+    final controlState = _deviceControlStateService;
+    final devicesService = _devicesService;
+    if (controlState == null || devicesService == null) return;
+
+    final targets = _spacesService?.getLightTargetsForSpace(_roomId) ?? [];
+    for (final target in targets) {
+      final device = devicesService.getDevice(target.deviceId);
+      if (device is! LightingDeviceView) continue;
+
+      final channel = device.lightChannels.firstWhere(
+        (c) => c.id == target.channelId,
+        orElse: () => device.lightChannels.first,
+      );
+
+      // Only check properties that have active optimistic state.
+      if (controlState.isLocked(target.deviceId, channel.id, channel.onProp.id)) {
+        controlState.checkPropertyConvergence(
+          target.deviceId,
+          channel.id,
+          channel.onProp.id,
+          channel.on,
+        );
+      }
+    }
   }
 
   /// Group light targets by their role.
@@ -850,21 +1505,29 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       }
     }
 
+    // Detect hero control intent unlock
+    if (_heroWasSpaceLocked && !isNowLocked) {
+      final heroRoleState = _getHeroRoleAggregatedState();
+      final heroTargets = heroRoleState != null
+          ? [heroRoleState]
+          : <RoleAggregatedState>[];
+      for (final channelId in _heroControlChannelIds) {
+        _heroControlStateService.onIntentCompleted(channelId, heroTargets);
+      }
+    }
+
     // Update tracking state for next iteration
     // Only update _modeWasLocked if a mode change was in progress (it was already true)
     // This prevents incorrectly setting it to true when other intents (like role toggles) lock the space
     if (_modeWasLocked) {
       _modeWasLocked = isNowLocked;
     }
+    if (_heroWasSpaceLocked) {
+      _heroWasSpaceLocked = isNowLocked;
+    }
     // Always update _spaceWasLocked to track space lock state
     _spaceWasLocked = isNowLocked;
   }
-
-  // --------------------------------------------------------------------------
-  // UTILITIES
-  // --------------------------------------------------------------------------
-
-
 
   // --------------------------------------------------------------------------
   // BUILD
@@ -898,52 +1561,94 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
           return _buildEmptyState(context);
         }
 
-        // Build role data and other lights
+        // Build role data
         final roleDataList = _buildRoleDataList(lightTargets, devicesService, localizations);
         final definedRoles = roleDataList
             .where((r) =>
                 r.role != LightTargetRole.other &&
                 r.role != LightTargetRole.hidden)
             .toList();
-        final otherRole = roleDataList.firstWhere(
-          (r) => r.role == LightTargetRole.other,
-          orElse: () => LightingRoleData(
-            role: LightTargetRole.other,
-            name: localizations.light_role_other,
-            icon: MdiIcons.lightbulbOutline,
-            onCount: 0,
-            totalCount: 0,
-            targets: [],
-          ),
+        final hasOtherLights = roleDataList.any(
+          (r) => r.role == LightTargetRole.other && r.targets.isNotEmpty,
         );
         // Calculate totals
         final totalLights = lightTargets.length;
         final lightsOn = _countLightsOn(lightTargets, devicesService);
-        final roomName = _spacesService?.getSpace(_roomId)?.name ?? '';
 
-        final otherLights = _buildOtherLights(otherRole.targets, devicesService, roomName);
+        // Auto-select first role and build hero state
+        final effectiveRole = _selectedRole ??
+            (definedRoles.isNotEmpty ? definedRoles.first.role : null);
+        _LightHeroState? heroState;
+        if (effectiveRole != null) {
+          final selectedRoleData = _getRoleDataForRole(definedRoles, effectiveRole);
+          if (selectedRoleData != null) {
+            heroState = _buildHeroState(selectedRoleData, devicesService);
+            heroState = _applyHeroOptimisticOverrides(heroState!);
+          }
+        }
 
         return Scaffold(
           backgroundColor: Theme.of(context).brightness == Brightness.dark
               ? AppBgColorDark.page
               : AppBgColorLight.page,
           body: SafeArea(
-            child: Column(
-              children: [
-                _buildHeader(context, roomName, lightsOn, totalLights),
-                Expanded(
-                  child: OrientationBuilder(
-                    builder: (context, orientation) {
-                      final isLandscape = orientation == Orientation.landscape;
-                      return isLandscape
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isLandscape =
+                    MediaQuery.of(context).orientation == Orientation.landscape;
+
+                // Pre-calculate whether scenes fit inline in landscape
+                final hasScenes = _lightingScenes.isNotEmpty;
+                bool landscapeScenesInline = true;
+                if (isLandscape && hasScenes && definedRoles.isNotEmpty) {
+                  final tileHeight =
+                      AppSpacings.scale(AppTileHeight.horizontal * 0.85);
+                  final headerHeight = 2 * AppSpacings.pMd +
+                      AppFontSize.large * 1.4 +
+                      AppFontSize.small * 1.4;
+                  final columnHeight =
+                      constraints.maxHeight - headerHeight - AppSpacings.pMd;
+                  final rolesHeight = definedRoles.length * tileHeight +
+                      (definedRoles.length > 1
+                          ? (definedRoles.length - 1) * AppSpacings.pSm
+                          : 0);
+                  final remaining =
+                      columnHeight - rolesHeight - AppSpacings.pMd;
+                  final titleHeight = AppFontSize.base * 1.4;
+                  final minScenesHeight = titleHeight +
+                      AppSpacings.pMd +
+                      2 * tileHeight +
+                      AppSpacings.pSm;
+                  landscapeScenesInline = remaining >= minScenesHeight;
+                }
+
+                final showScenesButton =
+                    isLandscape && hasScenes && !landscapeScenesInline;
+
+                return Column(
+                  children: [
+                    _buildHeader(
+                      context, lightsOn, totalLights,
+                      hasOtherLights: hasOtherLights,
+                      showScenesButton: showScenesButton,
+                    ),
+                    Expanded(
+                      child: isLandscape
                           ? _buildLandscapeLayout(
-                              context, definedRoles, otherLights, otherRole.targets, devicesService, localizations)
+                              context, definedRoles, localizations,
+                              heroState: heroState,
+                              effectiveRole: effectiveRole,
+                              showScenes: landscapeScenesInline,
+                            )
                           : _buildPortraitLayout(
-                              context, definedRoles, otherLights, otherRole.targets, devicesService, localizations);
-                    },
-                  ),
-                ),
-              ],
+                              context, definedRoles, localizations,
+                              heroState: heroState,
+                              effectiveRole: effectiveRole,
+                            ),
+                    ),
+                  ],
+                );
+              },
             ),
           ),
         );
@@ -1007,20 +1712,23 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     return roles;
   }
 
+  /// Get optimistic on/off state for a single light from overlay services.
+  /// Falls back to [fallback] when no pending state exists.
   bool _getLightOptimisticOn(
     String deviceId,
     String channelId,
     String propertyId,
     bool fallback,
   ) {
-    if (_deviceControlStateService != null &&
-        _deviceControlStateService!.isLocked(deviceId, channelId, propertyId)) {
-      final v = _deviceControlStateService!.getDesiredValue(deviceId, channelId, propertyId);
+    final deviceControl = _deviceControlStateService;
+    if (deviceControl != null &&
+        deviceControl.isLocked(deviceId, channelId, propertyId)) {
+      final v = deviceControl.getDesiredValue(deviceId, channelId, propertyId);
       if (v is bool) return v;
     }
-    if (_intentOverlayService != null &&
-        _intentOverlayService!.isLocked(deviceId, channelId, propertyId)) {
-      final v = _intentOverlayService!.getOverlayValue(deviceId, channelId, propertyId);
+    final overlay = _intentOverlayService;
+    if (overlay != null && overlay.isLocked(deviceId, channelId, propertyId)) {
+      final v = overlay.getOverlayValue(deviceId, channelId, propertyId);
       if (v is bool) return v;
     }
     return fallback;
@@ -1123,6 +1831,168 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   }
 
   // --------------------------------------------------------------------------
+  // HERO STATE BUILDING
+  // --------------------------------------------------------------------------
+
+  /// Build the hero card state for a selected role.
+  ///
+  /// Capabilities and value ranges come from device channels; aggregated
+  /// display values (brightness, color temp, hue, etc.) come from
+  /// [RoleAggregatedState] — the same source as the role detail page.
+  _LightHeroState? _buildHeroState(
+    LightingRoleData roleData,
+    DevicesService devicesService,
+  ) {
+    final targets = roleData.targets;
+    if (targets.isEmpty) return null;
+
+    // Detect capabilities and ranges from device channels
+    final Set<LightHeroCapability> capabilities = {};
+    double minColorTemp = 2700;
+    double maxColorTemp = 6500;
+    double minHue = 0;
+    double maxHue = 359;
+    int deviceCount = 0;
+
+    for (final target in targets) {
+      final device = devicesService.getDevice(target.deviceId);
+      if (device is! LightingDeviceView) continue;
+
+      final channel = device.lightChannels.firstWhere(
+        (c) => c.id == target.channelId,
+        orElse: () => device.lightChannels.first,
+      );
+      deviceCount++;
+
+      if (channel.hasBrightness) {
+        capabilities.add(LightHeroCapability.brightness);
+      }
+
+      if (channel.hasTemperature) {
+        capabilities.add(LightHeroCapability.colorTemp);
+        final tempProp = channel.temperatureProp;
+        if (tempProp != null) {
+          final format = tempProp.format;
+          if (format is NumberListFormatType && format.value.length == 2) {
+            minColorTemp = (format.value[0] as num).toDouble();
+            maxColorTemp = (format.value[1] as num).toDouble();
+          }
+        }
+      }
+
+      if (channel.hasHue) {
+        capabilities.add(LightHeroCapability.hue);
+        minHue = channel.minHue;
+        maxHue = channel.maxHue.clamp(0, 359).toDouble();
+      }
+
+      if (channel.hasSaturation) {
+        capabilities.add(LightHeroCapability.saturation);
+      }
+
+      if (channel.hasColorWhite) {
+        capabilities.add(LightHeroCapability.whiteChannel);
+      }
+    }
+
+    if (deviceCount == 0) return null;
+
+    // Read aggregated values from RoleAggregatedState (matching detail page).
+    // These persist regardless of on/off state.
+    final stateRole = mapTargetRoleToStateRole(roleData.role);
+    final roleState = stateRole != null
+        ? _lightingState?.getRoleState(stateRole)
+        : null;
+
+    final isOn = roleState?.anyOn ?? false;
+    final brightness = roleState?.brightness?.toDouble() ?? 100;
+    final colorTemp = roleState?.colorTemperature?.toDouble() ?? 4000;
+    final white = roleState?.white?.toDouble() ?? 100;
+
+    // Parse color for hue/saturation from RoleAggregatedState first.
+    // Backend may return hex (#RRGGBB) or hue-only (hue:181) format.
+    double hue = 0;
+    double saturation = 0;
+    Color? currentColor;
+    String? colorName;
+
+    final (parsedHue, parsedSat) = _parseColorToHueSat(roleState?.color);
+    if (parsedHue != null) {
+      hue = parsedHue;
+      saturation = parsedSat != null ? parsedSat * 100 : 100;
+      final cached = _roleControlStateRepository?.get(_heroCacheKey(roleData.role));
+      if (parsedSat == null && cached?.saturation != null) {
+        saturation = cached!.saturation! * 100;
+      }
+      currentColor = HSVColor.fromAHSV(1, hue.clamp(0, 360), (saturation / 100).clamp(0.0, 1.0), 1).toColor();
+      colorName = _heroHueName(hue);
+    } else if (capabilities.contains(LightHeroCapability.hue)) {
+      // Fall back to device channel values for color info
+      for (final target in targets) {
+        final device = devicesService.getDevice(target.deviceId);
+        if (device is! LightingDeviceView) continue;
+        final channel = device.lightChannels.firstWhere(
+          (c) => c.id == target.channelId,
+          orElse: () => device.lightChannels.first,
+        );
+        if (channel.hasColor) {
+          try {
+            currentColor = channel.color;
+            if (channel.hasHue) {
+              hue = channel.hue;
+              colorName = _heroHueName(hue);
+            }
+            if (channel.hasSaturation) {
+              saturation = channel.saturation.toDouble();
+            }
+            break;
+          } catch (_) {}
+        }
+      }
+      // Ensure color swatch is always visible when hue is supported
+      currentColor ??= HSVColor.fromAHSV(
+        1, hue.clamp(0, 360), (saturation / 100).clamp(0.0, 1.0), 1,
+      ).toColor();
+    }
+
+    // Determine status icon: offline → alert, mixed → tune, synced → lightbulbGroup
+    IconData statusIcon;
+    final hasOffline = targets.any((t) {
+      final d = devicesService.getDevice(t.deviceId);
+      return d != null && !d.isOnline;
+    });
+    if (hasOffline) {
+      statusIcon = MdiIcons.alert;
+    } else if (roleState != null) {
+      final mixed = _buildHeroMixedStateFromRole(roleState);
+      statusIcon = mixed.isMixed ? MdiIcons.tune : MdiIcons.lightbulbGroup;
+    } else {
+      statusIcon = MdiIcons.lightbulbGroup;
+    }
+
+    return _LightHeroState(
+      roleName: roleData.name,
+      deviceCount: deviceCount,
+      isOn: isOn,
+      capabilities: capabilities,
+      activeMode: _activeHeroMode ??
+          (capabilities.isNotEmpty ? capabilities.first : null),
+      brightness: brightness,
+      colorTemp: colorTemp,
+      minColorTemp: minColorTemp,
+      maxColorTemp: maxColorTemp,
+      hue: hue,
+      minHue: minHue,
+      maxHue: maxHue,
+      saturation: saturation,
+      whiteChannel: white,
+      currentColor: currentColor,
+      colorName: colorName,
+      statusIcon: statusIcon,
+    );
+  }
+
+  // --------------------------------------------------------------------------
   // HEADER
   // --------------------------------------------------------------------------
 
@@ -1144,10 +2014,11 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
   Widget _buildHeader(
     BuildContext context,
-    String roomName,
     int lightsOn,
-    int totalLights,
-  ) {
+    int totalLights, {
+    bool hasOtherLights = false,
+    bool showScenesButton = false,
+  }) {
     final localizations = AppLocalizations.of(context)!;
     final statusColorFamily = _getStatusColorFamily(context);
 
@@ -1164,6 +2035,20 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     // Use actual light state for icon, not pending mode
     final hasLightsOn = lightsOn > 0;
 
+    // Build trailing widget(s)
+    final List<Widget> trailingWidgets = [
+      if (showScenesButton)
+        HeaderIconButton(
+          icon: MdiIcons.autoFix,
+          onTap: _showScenesSheet,
+        ),
+      if (hasOtherLights)
+        HeaderIconButton(
+          icon: MdiIcons.lightbulbGroup,
+          onTap: _showOtherLightsSheet,
+        ),
+    ];
+
     return PageHeader(
       title: localizations.domain_lights,
       subtitle: subtitle,
@@ -1173,6 +2058,13 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         color: _getStatusColor(context),
       ),
       landscapeAction: const DeckModeChip(),
+      trailing: trailingWidgets.isNotEmpty
+          ? Row(
+              mainAxisSize: MainAxisSize.min,
+              spacing: AppSpacings.pMd,
+              children: trailingWidgets,
+            )
+          : null,
     );
   }
 
@@ -1190,6 +2082,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     }
   }
 
+  /// Convert backend [LightingMode] to [LightingModeUI]. Returns null for null input.
   LightingModeUI? _toLightingModeUI(LightingMode? mode) {
     if (mode == null) return null;
     return LightingModeUI.values.firstWhere(
@@ -1216,99 +2109,559 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   }
 
   // --------------------------------------------------------------------------
+  // OTHER LIGHTS SHEET / DRAWER
+  // --------------------------------------------------------------------------
+
+  void _showOtherLightsSheet() {
+    final targets = _spacesService?.getLightTargetsForSpace(_roomId) ?? [];
+    final roleGroups = _groupTargetsByRole(targets);
+    final otherTargets = roleGroups[LightTargetRole.other] ?? [];
+    if (otherTargets.isEmpty) return;
+
+    final devicesService = _devicesService;
+    if (devicesService == null) return;
+
+    final roomName = _spacesService?.getSpace(_roomId)?.name ?? '';
+    final initialLights = _buildOtherLights(otherTargets, devicesService, roomName);
+    if (initialLights.isEmpty) return;
+
+    final localizations = AppLocalizations.of(context)!;
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
+
+    if (isLandscape) {
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+      final drawerBgColor =
+          isDark ? AppFillColorDark.base : AppFillColorLight.blank;
+
+      showAppRightDrawer(
+        context,
+        title: localizations.domain_lights_other,
+        titleIcon: MdiIcons.lightbulbOutline,
+        scrollable: false,
+        content: ListenableBuilder(
+          listenable: _roleLightsSheetNotifier,
+          builder: (ctx, _) {
+            final lights = _buildOtherLights(
+              otherTargets,
+              devicesService,
+              roomName,
+            );
+            return VerticalScrollWithGradient(
+              gradientHeight: AppSpacings.pMd,
+              itemCount: lights.length,
+              separatorHeight: AppSpacings.pSm,
+              backgroundColor: drawerBgColor,
+              padding: EdgeInsets.symmetric(
+                horizontal: AppSpacings.pLg,
+                vertical: AppSpacings.pMd,
+              ),
+              itemBuilder: (context, index) =>
+                  _buildOtherLightTileForSheet(context, lights[index]),
+            );
+          },
+        ),
+      );
+    } else {
+      List<LightDeviceData> cachedLights = initialLights;
+
+      DeckItemSheet.showItemSheetWithUpdates(
+        context,
+        title: localizations.domain_lights_other,
+        icon: MdiIcons.lightbulbOutline,
+        rebuildWhen: _roleLightsSheetNotifier,
+        getItemCount: () {
+          cachedLights = _buildOtherLights(
+            otherTargets,
+            devicesService,
+            roomName,
+          );
+          return cachedLights.length;
+        },
+        itemBuilder: (context, index) => _buildOtherLightTileForSheet(
+          context,
+          cachedLights[index],
+        ),
+      );
+    }
+  }
+
+  /// Sync all lights in the role to current hero display values.
+  Future<void> _heroSyncAllForRole(LightingRoleData roleData) async {
+    final devicesService = _devicesService;
+    if (devicesService == null) return;
+
+    final heroState = _buildHeroState(roleData, devicesService);
+    if (heroState == null) return;
+    final state = _applyHeroOptimisticOverrides(heroState);
+    final stateRole = mapTargetRoleToStateRole(roleData.role);
+    if (stateRole == null) return;
+
+    final spacesService = _spacesService;
+    if (spacesService == null) return;
+
+    final localizations = AppLocalizations.of(context)!;
+    try {
+      _heroWasSpaceLocked = true;
+
+      if (!state.isOn) {
+        final result = await spacesService.turnRoleOff(_roomId, stateRole);
+        if (mounted) IntentResultHandler.showOfflineAlertIfNeeded(context, result);
+        if (mounted && result == null) AppToast.showError(context, message: localizations.action_failed);
+        return;
+      }
+
+      var result = await spacesService.turnRoleOn(_roomId, stateRole);
+      if (mounted) IntentResultHandler.showOfflineAlertIfNeeded(context, result);
+      if (!mounted) return;
+      if (result == null) {
+        AppToast.showError(context, message: localizations.action_failed);
+        return;
+      }
+
+      final capabilities = state.capabilities;
+      if (capabilities.contains(LightHeroCapability.brightness)) {
+        result = await spacesService.setRoleBrightness(_roomId, stateRole, state.brightness.round());
+        if (mounted) IntentResultHandler.showOfflineAlertIfNeeded(context, result);
+        if (!mounted) return;
+        if (result == null) AppToast.showError(context, message: localizations.action_failed);
+      }
+      if (capabilities.contains(LightHeroCapability.colorTemp)) {
+        result = await spacesService.setRoleColorTemp(_roomId, stateRole, state.colorTemp.round());
+        if (mounted) IntentResultHandler.showOfflineAlertIfNeeded(context, result);
+        if (!mounted) return;
+        if (result == null) AppToast.showError(context, message: localizations.action_failed);
+      }
+      if (capabilities.contains(LightHeroCapability.hue) || capabilities.contains(LightHeroCapability.saturation)) {
+        final color = HSVColor.fromAHSV(
+          1.0,
+          state.hue.clamp(0, 360),
+          (state.saturation / 100).clamp(0.0, 1.0),
+          1.0,
+        ).toColor();
+        final hex = '#${(color.r * 255).toInt().toRadixString(16).padLeft(2, '0')}'
+            '${(color.g * 255).toInt().toRadixString(16).padLeft(2, '0')}'
+            '${(color.b * 255).toInt().toRadixString(16).padLeft(2, '0')}'.toUpperCase();
+        result = await spacesService.setRoleColor(_roomId, stateRole, hex);
+        if (mounted) IntentResultHandler.showOfflineAlertIfNeeded(context, result);
+        if (!mounted) return;
+        if (result == null) AppToast.showError(context, message: localizations.action_failed);
+      }
+      if (capabilities.contains(LightHeroCapability.whiteChannel)) {
+        result = await spacesService.setRoleWhite(_roomId, stateRole, state.whiteChannel.round());
+        if (mounted) IntentResultHandler.showOfflineAlertIfNeeded(context, result);
+        if (!mounted) return;
+        if (result == null) AppToast.showError(context, message: localizations.action_failed);
+      }
+    } catch (e) {
+      if (mounted) AppToast.showError(context, message: localizations.action_failed);
+    }
+  }
+
+  /// Shows a bottom sheet (portrait) / drawer (landscape) with the lights
+  /// assigned to a specific role.
+  void _showRoleLightsSheet(LightingRoleData roleData) {
+    final devicesService = _devicesService;
+    if (devicesService == null) return;
+
+    final roomName = _spacesService?.getSpace(_roomId)?.name ?? '';
+
+    // Check there are lights to show before opening the sheet.
+    final initialLights =
+        _buildOtherLights(roleData.targets, devicesService, roomName);
+    if (initialLights.isEmpty) return;
+
+    final localizations = AppLocalizations.of(context)!;
+    final roleName = _getRoleName(roleData.role, localizations);
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
+
+    if (isLandscape) {
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+      final drawerBgColor =
+          isDark ? AppFillColorDark.base : AppFillColorLight.blank;
+
+      showAppRightDrawer(
+        context,
+        title: roleName,
+        titleIcon: MdiIcons.lightbulbGroup,
+        scrollable: false,
+        content: ListenableBuilder(
+          listenable: _roleLightsSheetNotifier,
+          builder: (ctx, _) {
+            final lights = _buildOtherLights(
+              roleData.targets,
+              devicesService,
+              roomName,
+            );
+            return Column(
+              children: [
+                Expanded(
+                  child: VerticalScrollWithGradient(
+                    gradientHeight: AppSpacings.pMd,
+                    itemCount: lights.length,
+                    separatorHeight: AppSpacings.pSm,
+                    backgroundColor: drawerBgColor,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: AppSpacings.pLg,
+                      vertical: AppSpacings.pMd,
+                    ),
+                    itemBuilder: (context, index) =>
+                        _buildOtherLightTileForSheet(context, lights[index]),
+                  ),
+                ),
+                _buildRoleLightsSheetFooter(ctx, roleData),
+              ],
+            );
+          },
+        ),
+      );
+    } else {
+      showAppBottomSheet(
+        context,
+        title: roleName,
+        titleIcon: MdiIcons.lightbulbGroup,
+        scrollable: false,
+        content: ListenableBuilder(
+          listenable: _roleLightsSheetNotifier,
+          builder: (ctx, _) {
+            final lights = _buildOtherLights(
+              roleData.targets,
+              devicesService,
+              roomName,
+            );
+            final isDark =
+                Theme.of(ctx).brightness == Brightness.dark;
+            final bgColor =
+                isDark ? AppFillColorDark.base : AppFillColorLight.blank;
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
+                  child: VerticalScrollWithGradient(
+                    gradientHeight: AppSpacings.pMd,
+                    itemCount: lights.length,
+                    separatorHeight: AppSpacings.pSm,
+                    backgroundColor: bgColor,
+                    shrinkWrap: true,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: AppSpacings.pLg,
+                      vertical: AppSpacings.pMd,
+                    ),
+                    itemBuilder: (c, i) =>
+                        _buildOtherLightTileForSheet(c, lights[i]),
+                  ),
+                ),
+                _buildRoleLightsSheetFooter(ctx, roleData),
+              ],
+            );
+          },
+        ),
+      );
+    }
+  }
+
+  /// Builds the footer for the role-lights sheet: sync-all, retry, or nothing.
+  ///
+  /// Checks the device-level optimistic state (same source as the tile icons)
+  /// rather than the backend role-level aggregated state, so the button
+  /// appears/disappears immediately after [_toggleLight].
+  ///
+  /// Includes its own top-border decoration so it can live inside the content
+  /// area and collapse to [SizedBox.shrink] without leaving a visible gap.
+  Widget _buildRoleLightsSheetFooter(
+    BuildContext context,
+    LightingRoleData roleData,
+  ) {
+    final devicesService = _devicesService;
+    if (devicesService == null) return const SizedBox.shrink();
+
+    // Check device-level state (with optimistic overlays) for mixed / offline.
+    bool hasOn = false;
+    bool hasOff = false;
+    bool hasOffline = false;
+    for (final t in roleData.targets) {
+      final device = devicesService.getDevice(t.deviceId);
+      if (device is! LightingDeviceView) continue;
+      if (!device.isOnline) {
+        hasOffline = true;
+        continue;
+      }
+      final channel = device.lightChannels.firstWhere(
+        (c) => c.id == t.channelId,
+        orElse: () => device.lightChannels.first,
+      );
+      final isOn = _getLightOptimisticOn(
+        t.deviceId,
+        t.channelId,
+        channel.onProp.id,
+        channel.on,
+      );
+      if (isOn) {
+        hasOn = true;
+      } else {
+        hasOff = true;
+      }
+    }
+    final isMixed = hasOn && hasOff;
+
+    if (!isMixed && !hasOffline) return const SizedBox.shrink();
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final localizations = AppLocalizations.of(context)!;
+    final borderColor =
+        isDark ? AppBorderColorDark.darker : AppBorderColorLight.darker;
+    final filledTheme = hasOffline
+        ? (isDark
+            ? AppFilledButtonsDarkThemes.warning
+            : AppFilledButtonsLightThemes.warning)
+        : (isDark
+            ? AppFilledButtonsDarkThemes.info
+            : AppFilledButtonsLightThemes.info);
+    final label = hasOffline
+        ? localizations.button_retry
+        : localizations.button_sync_all;
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        border: Border(
+          top: BorderSide(
+            color: borderColor,
+            width: AppSpacings.scale(1),
+          ),
+        ),
+      ),
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: AppSpacings.pLg,
+          vertical: AppSpacings.pMd,
+        ),
+        child: Theme(
+          data: Theme.of(context).copyWith(filledButtonTheme: filledTheme),
+          child: SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: () {
+                HapticFeedback.lightImpact();
+                _heroSyncAllForRole(roleData);
+                Navigator.of(context).pop();
+              },
+              child: Text(label),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOtherLightTileForSheet(
+    BuildContext context,
+    LightDeviceData light,
+  ) {
+    final localizations = AppLocalizations.of(context)!;
+
+    String statusText;
+    switch (light.state) {
+      case LightState.off:
+        statusText = localizations.light_state_off;
+      case LightState.on:
+        statusText = light.brightness != null
+            ? '${light.brightness}%'
+            : localizations.light_state_on;
+      case LightState.offline:
+        statusText = localizations.device_status_offline;
+    }
+
+    final tileHeight = AppSpacings.scale(AppTileHeight.horizontal * 0.85);
+
+    return SizedBox(
+      height: tileHeight,
+      child: UniversalTile(
+        layout: TileLayout.horizontal,
+        icon: MdiIcons.lightbulbOutline,
+        activeIcon: MdiIcons.lightbulb,
+        name: light.name,
+        status: statusText,
+        isActive: light.isOn,
+        isOffline: light.isOffline,
+        showWarningBadge: true,
+        showGlow: false,
+        showDoubleBorder: false,
+        showInactiveBorder: false,
+        onIconTap: light.isOffline
+            ? null
+            : () => _toggleLight(light),
+        onTileTap: () {
+          Navigator.of(context).pop();
+          _openDeviceDetail(context, light);
+        },
+      ),
+    );
+  }
+
+  /// Find [LightingRoleData] for a role in the roles list. Returns null if not found.
+  LightingRoleData? _getRoleDataForRole(
+    List<LightingRoleData> roles,
+    LightTargetRole role,
+  ) {
+    for (final r in roles) {
+      if (r.role == role) return r;
+    }
+    return null;
+  }
+
+  // --------------------------------------------------------------------------
+  // ROLE SELECTOR
+  // --------------------------------------------------------------------------
+
+  Widget _buildRoleSelector(
+    BuildContext context,
+    List<LightingRoleData> roles, {
+    bool isLandscape = false,
+    LightTargetRole? effectiveRole,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final localizations = AppLocalizations.of(context)!;
+    final statusColor = _getStatusColor(context);
+    final statusColorFamily = _getStatusColorFamily(context);
+
+    // Build status icons for roles with lights on
+    final Map<LightTargetRole, (IconData, Color)> statusIcons = {};
+    for (final role in roles) {
+      final pendingState = _getRolePendingState(role.role);
+      final isActive = pendingState ?? role.hasLightsOn;
+      if (isActive) {
+        statusIcons[role.role] = (Icons.circle, statusColorFamily.base);
+      }
+    }
+
+    return ModeSelector<LightTargetRole>(
+      modes: roles.map((roleData) {
+        // Value line: brightness when on, "Off" when all off
+        final valueText = roleData.onCount == 0
+            ? localizations.light_state_off
+            : roleData.brightness != null
+                ? '${roleData.brightness}%'
+                : localizations.light_state_on;
+
+        return ModeOption<LightTargetRole>(
+          value: roleData.role,
+          icon: roleData.icon,
+          label: roleData.name,
+          color: statusColor,
+          iconSize: AppSpacings.scale(18),
+          labelBuilder: (isSelected, contentColor) {
+            final secondaryColor = isDark
+                ? AppTextColorDark.secondary
+                : AppTextColorLight.secondary;
+
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  roleData.name,
+                  style: TextStyle(
+                    color: secondaryColor,
+                    fontSize: AppFontSize.extraSmall,
+                    fontWeight: FontWeight.w500,
+                    height: 1,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  valueText,
+                  style: TextStyle(
+                    color: contentColor,
+                    fontSize: AppFontSize.base,
+                    fontWeight: FontWeight.w600,
+                    height: 1,
+                  ),
+                  maxLines: 1,
+                ),
+              ],
+            );
+          },
+        );
+      }).toList(),
+      selectedValue: effectiveRole,
+      onChanged: (role) {
+        _resetHeroControlState();
+        setState(() {
+          _selectedRole = role;
+          // Reset hero mode when switching roles
+          _activeHeroMode = null;
+        });
+      },
+      orientation: isLandscape
+          ? ModeSelectorOrientation.vertical
+          : ModeSelectorOrientation.horizontal,
+      iconPlacement: ModeSelectorIconPlacement.top,
+      color: statusColor,
+      statusIcons: statusIcons,
+    );
+  }
+
+  // --------------------------------------------------------------------------
   // PORTRAIT LAYOUT
   // --------------------------------------------------------------------------
 
   Widget _buildPortraitLayout(
     BuildContext context,
     List<LightingRoleData> roles,
-    List<LightDeviceData> otherLights,
-    List<LightTargetView> otherTargets,
-    DevicesService devicesService,
-    AppLocalizations localizations,
-  ) {
+    AppLocalizations localizations, {
+    _LightHeroState? heroState,
+    LightTargetRole? effectiveRole,
+  }) {
     final hasRoles = roles.isNotEmpty;
-    final hasOtherLights = otherLights.isNotEmpty;
     final hasScenes = _lightingScenes.isNotEmpty;
-    final isSmallScreen = locator<ScreenService>().isSmallScreen;
+    final statusColor = _getStatusColor(context);
 
     return PortraitViewLayout(
       scrollable: false,
-      content: LayoutBuilder(
-        builder: (context, constraints) {
-          final hasBothSections = hasScenes && hasOtherLights;
+      content: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Hero card for selected role
+          if (heroState != null)
+            _LightsHeroCard(
+              state: heroState,
+              statusColor: statusColor,
+              isPortrait: true,
+              onModeChanged: (mode) {
+                setState(() => _activeHeroMode = mode);
+              },
+              onToggle: effectiveRole != null
+                  ? (turnOn) {
+                      final roleData = _getRoleDataForRole(roles, effectiveRole);
+                      if (roleData != null) _toggleRoleLights(roleData, turnOn);
+                    }
+                  : null,
+              onShowLights: effectiveRole != null
+                  ? () {
+                      final roleData = _getRoleDataForRole(roles, effectiveRole);
+                      if (roleData != null) _showRoleLightsSheet(roleData);
+                    }
+                  : null,
+              onValueChanged: effectiveRole != null
+                  ? (mode, value) {
+                      _onHeroValueChanged(
+                          mode, value, effectiveRole, heroState);
+                    }
+                  : null,
+            ),
 
-          // Roles height: fixed 2-row size for when sections are missing
-          final roleTileWidth =
-              (constraints.maxWidth - 2 * AppSpacings.pMd) / 3;
-          final roleTileHeight = roleTileWidth / 0.9;
-          final rolesHeight = 2 * roleTileHeight + AppSpacings.pMd;
+          if (hasRoles) ...[
+            AppSpacings.spacingMdVertical,
+            _buildRoleSelector(context, roles, effectiveRole: effectiveRole),
+          ],
 
-          // Both sections present: roles expand to fill remaining space,
-          // aspect ratio computed from available height so tiles shrink to fit.
-          // Otherwise: fixed 2-row height with standard 0.9 ratio.
-          final rowCount = (roles.length / 3).ceil();
-          final rolesWidget = hasBothSections
-              ? Expanded(
-                  child: LayoutBuilder(
-                    builder: (context, rolesConstraints) {
-                      final rowHeight =
-                          (rolesConstraints.maxHeight - (rowCount - 1) * AppSpacings.pMd) / rowCount;
-                      final fitRatio = roleTileWidth / rowHeight;
-
-                      return _buildRolesGrid(
-                        context,
-                        roles,
-                        devicesService,
-                        crossAxisCount: 3,
-                        aspectRatio: fitRatio,
-                      );
-                    },
-                  ),
-                )
-              : SizedBox(
-                  height: rolesHeight,
-                  child: _buildRolesGrid(
-                    context,
-                    roles,
-                    devicesService,
-                    crossAxisCount: 3,
-                  ),
-                );
-
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            spacing: AppSpacings.pMd,
-            children: [
-              // Roles Grid
-              if (hasRoles) rolesWidget,
-
-              // Quick Scenes — horizontal scroll with gradient
-              if (hasScenes) ...[
-                SectionTitle(
-                  title: localizations.space_scenes_title,
-                  icon: MdiIcons.autoFix,
-                ),
-                _buildPortraitScenesHorizontalScroll(context),
-              ],
-
-              // Other Lights — horizontal scroll with gradient
-              if (hasOtherLights) ...[
-                _buildOtherLightsTitle(
-                  otherLights,
-                  otherTargets,
-                  localizations,
-                ),
-                _buildPortraitLightsHorizontalScroll(
-                  context,
-                  otherLights,
-                  localizations,
-                  isSmallScreen: isSmallScreen,
-                ),
-              ],
-            ],
-          );
-        },
+          if (hasScenes) ...[
+            AppSpacings.spacingMdVertical,
+            Expanded(child: _buildPortraitScenesGrid(context)),
+          ],
+        ],
       ),
     );
   }
@@ -1320,75 +2673,166 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   Widget _buildLandscapeLayout(
     BuildContext context,
     List<LightingRoleData> roles,
-    List<LightDeviceData> otherLights,
-    List<LightTargetView> otherTargets,
-    DevicesService devicesService,
-    AppLocalizations localizations,
-  ) {
-    final hasScenes = _lightingScenes.isNotEmpty;
+    AppLocalizations localizations, {
+    _LightHeroState? heroState,
+    LightTargetRole? effectiveRole,
+    bool showScenes = true,
+  }) {
+    final hasScenes = showScenes && _lightingScenes.isNotEmpty;
 
     return LandscapeViewLayout(
       mainContentPadding: EdgeInsets.only(
+        right: AppSpacings.pMd,
         left: AppSpacings.pMd,
-        right: AppSpacings.pLg,
         bottom: AppSpacings.pMd,
       ),
       mainContent: _buildLandscapeMainContent(
-        context,
-        roles,
-        otherLights,
-        otherTargets,
-        devicesService,
-        localizations,
+        context, roles,
+        heroState: heroState,
+        effectiveRole: effectiveRole,
       ),
-      additionalContent: hasScenes
-          ? _buildLandscapeScenesColumn(context, localizations)
+      additionalContentScrollable: false,
+      additionalContentPadding: EdgeInsets.only(
+        left: AppSpacings.pMd,
+        bottom: AppSpacings.pMd,
+      ),
+      additionalContent: (roles.isNotEmpty || hasScenes)
+          ? _buildLandscapeAdditionalColumn(
+              context, roles, localizations,
+              effectiveRole: effectiveRole,
+              showScenes: hasScenes,
+            )
           : null,
     );
   }
 
   Widget _buildLandscapeMainContent(
     BuildContext context,
-    List<LightingRoleData> roles,
-    List<LightDeviceData> otherLights,
-    List<LightTargetView> otherTargets,
-    DevicesService devicesService,
-    AppLocalizations localizations,
-  ) {
-    final hasRoles = roles.isNotEmpty;
-    final hasOtherLights = otherLights.isNotEmpty;
+    List<LightingRoleData> roles, {
+    _LightHeroState? heroState,
+    LightTargetRole? effectiveRole,
+  }) {
+    final statusColor = _getStatusColor(context);
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      spacing: AppSpacings.pMd,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (hasRoles && hasOtherLights) ...[
+        // Hero card for selected role
+        if (heroState != null)
           Expanded(
-            child: _buildLandscapeRolesRow(context, roles, devicesService),
-          ),
-          _buildOtherLightsTitle(otherLights, otherTargets, localizations),
-          Expanded(
-            child: _buildLandscapeLightsRow(
-              context,
-              otherLights,
-              localizations,
+            child: _LightsHeroCard(
+              state: heroState,
+              statusColor: statusColor,
+              onModeChanged: (mode) {
+                setState(() => _activeHeroMode = mode);
+              },
+              onToggle: effectiveRole != null
+                  ? (turnOn) {
+                      final roleData = _getRoleDataForRole(roles, effectiveRole);
+                      if (roleData != null) _toggleRoleLights(roleData, turnOn);
+                    }
+                  : null,
+              onShowLights: effectiveRole != null
+                  ? () {
+                      final roleData = _getRoleDataForRole(roles, effectiveRole);
+                      if (roleData != null) _showRoleLightsSheet(roleData);
+                    }
+                  : null,
+              onValueChanged: effectiveRole != null
+                  ? (mode, value) {
+                      _onHeroValueChanged(
+                          mode, value, effectiveRole, heroState);
+                    }
+                  : null,
             ),
           ),
-        ] else if (hasRoles) ...[
-          Expanded(
-            child: _buildLandscapeRolesRow(context, roles, devicesService),
+
+      ],
+    );
+  }
+
+  Widget _buildLandscapeAdditionalColumn(
+    BuildContext context,
+    List<LightingRoleData> roles,
+    AppLocalizations localizations, {
+    LightTargetRole? effectiveRole,
+    bool showScenes = true,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (roles.isNotEmpty)
+          _buildLandscapeRolesCard(
+            context, roles,
+            effectiveRole: effectiveRole,
           ),
-        ] else if (hasOtherLights) ...[
-          _buildOtherLightsTitle(otherLights, otherTargets, localizations),
+        if (showScenes) ...[
+          if (roles.isNotEmpty) AppSpacings.spacingMdVertical,
           Expanded(
-            child: _buildLandscapeLightsRow(
-              context,
-              otherLights,
-              localizations,
-            ),
+            child: _buildLandscapeScenesColumn(context, localizations),
           ),
         ],
       ],
+    );
+  }
+
+  Widget _buildLandscapeRolesCard(
+    BuildContext context,
+    List<LightingRoleData> roles, {
+    LightTargetRole? effectiveRole,
+  }) {
+    final tileHeight = AppSpacings.scale(AppTileHeight.horizontal * 0.85);
+
+    return Column(
+      spacing: AppSpacings.pSm,
+      children: roles
+          .map((role) => _buildRoleTileHorizontal(
+                context, role, tileHeight,
+                effectiveRole: effectiveRole,
+              ))
+          .toList(),
+    );
+  }
+
+  Widget _buildRoleTileHorizontal(
+    BuildContext context,
+    LightingRoleData roleData,
+    double height, {
+    LightTargetRole? effectiveRole,
+  }) {
+    final localizations = AppLocalizations.of(context)!;
+    final statusColor = _getStatusColor(context);
+
+    final pendingState = _getRolePendingState(roleData.role);
+    final isOn = pendingState ?? roleData.hasLightsOn;
+
+    final valueText = roleData.onCount == 0
+        ? localizations.light_state_off
+        : roleData.brightness != null
+            ? '${roleData.brightness}%'
+            : localizations.light_state_on;
+
+    return SizedBox(
+      height: height,
+      child: UniversalTile(
+        layout: TileLayout.horizontal,
+        icon: roleData.icon,
+        name: valueText,
+        status: roleData.name,
+        iconAccentColor: isOn ? statusColor : null,
+        isActive: roleData.role == effectiveRole,
+        activeColor: statusColor,
+        showGlow: false,
+        showDoubleBorder: false,
+        showInactiveBorder: false,
+        onTileTap: () {
+          _resetHeroControlState();
+          setState(() {
+            _selectedRole = roleData.role;
+            _activeHeroMode = null;
+          });
+        },
+      ),
     );
   }
 
@@ -1396,238 +2840,259 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     BuildContext context,
     AppLocalizations localizations,
   ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      spacing: AppSpacings.pMd,
-      children: [
-        SectionTitle(
-          title: localizations.space_scenes_title,
-          icon: MdiIcons.autoFix,
-        ),
-        _buildLandscapeScenesCard(context),
-      ],
-    );
-  }
-
-  /// Build scenes card matching the presets pattern from window_covering.dart.
-  /// Large screens: 2 vertical tiles per row (square).
-  /// Small/medium screens: Column of fixed-height horizontal tiles.
-  Widget _buildLandscapeScenesCard(BuildContext context) {
     final scenes = _lightingScenes;
-
-    // Small/medium: Column of fixed-height horizontal tiles
-    return Column(
-      children: scenes.asMap().entries.map((entry) {
-        final index = entry.key;
-        final scene = entry.value;
-        final isLast = index == scenes.length - 1;
-
-        return Padding(
-          padding: EdgeInsets.only(bottom: isLast ? 0 : AppSpacings.pMd),
-          child: HorizontalTileStretched(
-            icon: _getSceneIcon(scene),
-            name: scene.name,
-            isActive: false,
-            activeColor: _getStatusColor(context),
-            onTileTap: () => _activateScene(scene),
-          ),
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildLandscapeRolesRow(
-    BuildContext context,
-    List<LightingRoleData> roles,
-    DevicesService devicesService,
-  ) {
-    final isModeLocked = _modeControlStateService.isLocked(LightingConstants.modeChannelId);
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final tileSize = constraints.maxHeight;
+        final tileHeight = AppSpacings.scale(AppTileHeight.horizontal * 0.85);
+        final minSpacing = AppSpacings.pSm;
+        // Reserve space for SectionTitle + gap below it
+        final titleAreaHeight = AppFontSize.small * 1.4 + AppSpacings.pMd;
+        final availableHeight = constraints.maxHeight - titleAreaHeight;
 
-        return HorizontalScrollWithGradient(
-          height: tileSize,
-          layoutPadding: AppSpacings.pMd,
-          itemCount: roles.length,
-          separatorWidth: AppSpacings.pMd,
-          itemBuilder: (context, index) {
-            return SizedBox(
-              width: tileSize,
-              child: _RoleCard(
-                role: roles[index],
-                onTap: () => _openRoleDetail(context, roles[index]),
-                onIconTap: () => _toggleRoleViaIntent(roles[index]),
-                isLoading: isModeLocked,
-                pendingState: _getRolePendingState(roles[index].role),
-              ),
-            );
-          },
+        final tileCount = ((availableHeight + minSpacing) /
+                (tileHeight + minSpacing))
+            .floor()
+            .clamp(1, scenes.length);
+
+        final hasOverflow = scenes.length > tileCount;
+        final displayCount = hasOverflow ? tileCount : scenes.length;
+
+        return Column(
+          mainAxisAlignment: MainAxisAlignment.end,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SectionTitle(
+              title: localizations.space_scenes_title,
+              icon: MdiIcons.autoFix,
+            ),
+            AppSpacings.spacingMdVertical,
+            ...List.generate(displayCount, (index) {
+              final isLast = index == displayCount - 1;
+
+              if (hasOverflow && isLast) {
+                return Padding(
+                  padding: EdgeInsets.only(
+                    top: index > 0 ? minSpacing : 0,
+                  ),
+                  child: _buildMoreScenesTileHorizontal(
+                    context,
+                    scenes.length - (tileCount - 1),
+                    tileHeight,
+                    localizations,
+                  ),
+                );
+              }
+
+              final scene = scenes[index];
+
+              return Padding(
+                padding: EdgeInsets.only(
+                  top: index > 0 ? minSpacing : 0,
+                ),
+                child: SizedBox(
+                  height: tileHeight,
+                  child: UniversalTile(
+                    layout: TileLayout.horizontal,
+                    icon: _getSceneIcon(scene),
+                    name: scene.name,
+                    isActive: false,
+                    activeColor: _getStatusColor(context),
+                    showGlow: false,
+                    showDoubleBorder: false,
+                    showInactiveBorder: false,
+                    onTileTap: () => _activateScene(scene),
+                  ),
+                ),
+              );
+            }),
+          ],
         );
       },
     );
   }
 
-  Widget _buildPortraitScenesHorizontalScroll(BuildContext context) {
-    final scenes = _lightingScenes;
-    final isSmallScreen = locator<ScreenService>().isSmallScreen;
-
-    // Small: fixed width, horizontal layout
-    // Medium/large: fixed height, wider tiles (1.2 ratio)
-    final double tileWidth;
-    final double tileHeight;
-    if (isSmallScreen) {
-      tileWidth = AppSpacings.scale(AppTileWidth.horizontalMedium);
-      tileHeight = AppSpacings.scale(AppTileHeight.horizontal);
-    } else {
-      tileHeight = AppSpacings.scale(AppTileWidth.horizontalSmall);
-      tileWidth = tileHeight * 1.2;
-    }
-
-    return HorizontalScrollWithGradient(
-      height: tileHeight,
-      layoutPadding: AppSpacings.pLg,
-      itemCount: scenes.length,
-      separatorWidth: AppSpacings.pMd,
-      itemBuilder: (context, index) {
-        return SizedBox(
-          width: tileWidth,
-          child: _SceneTile(
-            scene: scenes[index],
-            icon: _getSceneIcon(scenes[index]),
-            onTap: () => _activateScene(scenes[index]),
-            isVertical: !isSmallScreen,
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildPortraitLightsHorizontalScroll(
+  Widget _buildMoreScenesTileHorizontal(
     BuildContext context,
-    List<LightDeviceData> otherLights,
-    AppLocalizations localizations, {
-    bool isSmallScreen = false,
-  }) {
-    // Small: fixed width, horizontal layout
-    // Medium/large: fixed height, wider tiles (1.2 ratio)
-    final double tileWidth;
-    final double tileHeight;
-    if (isSmallScreen) {
-      tileWidth = AppSpacings.scale(AppTileWidth.horizontalMedium);
-      tileHeight = AppSpacings.scale(AppTileHeight.horizontal);
-    } else {
-      tileHeight = AppSpacings.scale(AppTileWidth.horizontalSmall);
-      tileWidth = tileHeight * 1.2;
-    }
-
-    return HorizontalScrollWithGradient(
-      height: tileHeight,
-      layoutPadding: AppSpacings.pLg,
-      itemCount: otherLights.length,
-      separatorWidth: AppSpacings.pMd,
-      itemBuilder: (context, index) {
-        return SizedBox(
-          width: tileWidth,
-          child: _LightTile(
-            light: otherLights[index],
-            localizations: localizations,
-            onTap: () => _openDeviceDetail(context, otherLights[index]),
-            onIconTap: otherLights[index].isOffline
-                ? null
-                : () => _toggleLight(otherLights[index]),
-            isVertical: !isSmallScreen,
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildLandscapeLightsRow(
-    BuildContext context,
-    List<LightDeviceData> lights,
+    int overflowCount,
+    double height,
     AppLocalizations localizations,
   ) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final tileSize = constraints.maxHeight;
-
-        return HorizontalScrollWithGradient(
-          height: tileSize,
-          layoutPadding: AppSpacings.pMd,
-          itemCount: lights.length,
-          separatorWidth: AppSpacings.pMd,
-          itemBuilder: (context, index) {
-            return SizedBox(
-              width: tileSize,
-              child: _LightTile(
-                light: lights[index],
-                localizations: localizations,
-                onTap: () => _openDeviceDetail(context, lights[index]),
-                onIconTap: () => _toggleLight(lights[index]),
-                isVertical: true,
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildOtherLightsTitle(
-    List<LightDeviceData> otherLights,
-    List<LightTargetView> otherTargets,
-    AppLocalizations localizations,
-  ) {
-    final anyOn = otherLights.any((light) => light.isOn);
-    final buttonLabel = anyOn
-        ? localizations.domain_lights_button_all_off
-        : localizations.domain_lights_button_all_on;
-
-    return SectionTitle(
-      title: localizations.domain_lights_other,
-      icon: MdiIcons.lightbulbOutline,
-      trailing: SectionTitleButton(
-        label: buttonLabel,
-        icon: MdiIcons.power,
-        onTap: () => _toggleAllOtherLights(otherTargets, anyOn),
+    return SizedBox(
+      height: height,
+      child: UniversalTile(
+        layout: TileLayout.horizontal,
+        icon: MdiIcons.dotsHorizontal,
+        name: '+$overflowCount',
+        status: localizations.lights_more_scenes,
+        isActive: false,
+        showGlow: false,
+        showDoubleBorder: false,
+        showInactiveBorder: false,
+        onTileTap: _showScenesSheet,
       ),
     );
   }
 
-  /// Toggle all other lights on or off
-  Future<void> _toggleAllOtherLights(
-    List<LightTargetView> targets,
-    bool currentlyAnyOn,
-  ) async {
-    final targetState = !currentlyAnyOn; // If any on, turn all off; if all off, turn all on
+  Widget _buildPortraitScenesGrid(BuildContext context) {
+    final isSmallScreen = locator<ScreenService>().isSmallScreen;
+    final scenes = _lightingScenes;
+    final crossAxisCount = isSmallScreen ? 2 : 3;
+    final spacing = AppSpacings.pSm;
 
-    for (final target in targets) {
-      final device = _devicesService?.getDevice(target.deviceId);
-      if (device is! LightingDeviceView) continue;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final availableHeight = constraints.maxHeight;
+        final gridWidth = constraints.maxWidth;
+        final cellWidth =
+            (gridWidth - spacing * (crossAxisCount - 1)) / crossAxisCount;
 
-      final channel = device.lightChannels.firstWhere(
-        (c) => c.id == target.channelId,
-        orElse: () => device.lightChannels.first,
+        final double childAspectRatio;
+        if (isSmallScreen) {
+          final tileHeight =
+              AppSpacings.scale(AppTileHeight.horizontal * 0.85);
+          childAspectRatio = cellWidth / tileHeight;
+        } else {
+          childAspectRatio = 1.2;
+        }
+
+        final cellHeight = cellWidth / childAspectRatio;
+        final maxRows = ((availableHeight + spacing) / (cellHeight + spacing))
+            .floor()
+            .clamp(1, 100);
+        final maxVisible =
+            (maxRows * crossAxisCount).clamp(1, scenes.length);
+        final hasOverflow = scenes.length > maxVisible;
+        final displayCount = hasOverflow ? maxVisible : scenes.length;
+
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            childAspectRatio: childAspectRatio,
+            crossAxisSpacing: spacing,
+            mainAxisSpacing: spacing,
+          ),
+          itemCount: displayCount,
+          itemBuilder: (context, index) {
+            if (hasOverflow && index == displayCount - 1) {
+              return _buildMoreScenesTile(
+                context,
+                scenes.length - (maxVisible - 1),
+              );
+            }
+            final scene = scenes[index];
+            return _SceneTile(
+              scene: scene,
+              icon: _getSceneIcon(scene),
+              onTap: () => _activateScene(scene),
+              isVertical: !isSmallScreen,
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildMoreScenesTile(BuildContext context, int overflowCount) {
+    final localizations = AppLocalizations.of(context)!;
+    final isSmallScreen = locator<ScreenService>().isSmallScreen;
+    final compactPadding = isSmallScreen
+        ? EdgeInsets.symmetric(
+            horizontal: AppSpacings.pMd,
+            vertical: AppSpacings.pXs,
+          )
+        : null;
+
+    return UniversalTile(
+      layout: isSmallScreen ? TileLayout.horizontal : TileLayout.vertical,
+      icon: MdiIcons.dotsHorizontal,
+      name: '+$overflowCount',
+      status: localizations.space_scenes_title,
+      iconAccentColor: null,
+      isActive: false,
+      showGlow: false,
+      showInactiveBorder: false,
+      contentPadding: compactPadding,
+      onTileTap: _showScenesSheet,
+    );
+  }
+
+  void _showScenesSheet() {
+    final scenes = _lightingScenes;
+    if (scenes.isEmpty) return;
+
+    final localizations = AppLocalizations.of(context)!;
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
+
+    if (isLandscape) {
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+      final drawerBgColor =
+          isDark ? AppFillColorDark.base : AppFillColorLight.blank;
+
+      showAppRightDrawer(
+        context,
+        title: localizations.space_scenes_title,
+        titleIcon: MdiIcons.autoFix,
+        scrollable: false,
+        content: VerticalScrollWithGradient(
+          gradientHeight: AppSpacings.pMd,
+          itemCount: scenes.length,
+          separatorHeight: AppSpacings.pSm,
+          backgroundColor: drawerBgColor,
+          padding: EdgeInsets.symmetric(
+            horizontal: AppSpacings.pLg,
+            vertical: AppSpacings.pMd,
+          ),
+          itemBuilder: (context, index) => _buildSceneTileForSheet(
+            context,
+            scenes[index],
+          ),
+        ),
       );
-
-      // Only toggle lights that need to change state
-      final isOn = channel.on;
-      if ((targetState && !isOn) || (!targetState && isOn)) {
-        final onPropId = channel.onProp.id;
-        await _devicesService?.setPropertyValue(onPropId, targetState);
-      }
+    } else {
+      DeckItemSheet.showItemSheet(
+        context,
+        title: localizations.space_scenes_title,
+        icon: MdiIcons.autoFix,
+        itemCount: scenes.length,
+        itemBuilder: (context, index) => _buildSceneTileForSheet(
+          context,
+          scenes[index],
+        ),
+      );
     }
+  }
+
+  Widget _buildSceneTileForSheet(BuildContext context, SceneView scene) {
+    final tileHeight = AppSpacings.scale(AppTileHeight.horizontal * 0.85);
+
+    return SizedBox(
+      height: tileHeight,
+      child: UniversalTile(
+        layout: TileLayout.horizontal,
+        icon: _getSceneIcon(scene),
+        name: scene.name,
+        isActive: false,
+        showGlow: false,
+        showWarningBadge: false,
+        showInactiveBorder: false,
+        onTileTap: () {
+          Navigator.of(context).pop();
+          _activateScene(scene);
+        },
+      ),
+    );
   }
 
   // --------------------------------------------------------------------------
   // LIGHTING MODE CONTROLS (BACKEND INTENTS)
   // --------------------------------------------------------------------------
   // [_setLightingMode]: setPending → API (turn off or set mode) → onIntentCompleted
-  // when IntentsRepository unlocks. [_toggleRoleViaIntent]: same for role
-  // on/off; falls back to [_toggleRole] if no backend intents. [_toggleLight]:
-  // direct device control with DeviceControlStateService + IntentOverlay.
+  // when IntentsRepository unlocks. [_toggleRoleLights]: role on/off via SpacesService
+  // intent. [_toggleLight]: direct device control with DeviceControlStateService.
 
   /// Set lighting mode via backend intent
   Future<void> _setLightingMode(LightingModeUI mode) async {
@@ -1712,113 +3177,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     }
   }
 
-  /// Toggle role via backend intent.
-  ///
-  /// Falls back to [_toggleRole] (direct device control) when:
-  /// - [LightingConstants.useBackendIntents] is `false`
-  /// - The role cannot be mapped to a [LightingStateRole]
-  /// - [SpacesService] is not available
-  Future<void> _toggleRoleViaIntent(LightingRoleData roleData) async {
-    // Guard against concurrent execution:
-    // - Block if mode change is pending (mode changes affect all roles)
-    // - Block if this specific role toggle is already pending
-    // This prevents conflicting intents and ensures UI consistency.
-    final roleChannelId = LightingConstants.getRoleChannelId(roleData.role);
-    if (_modeControlStateService.isLocked(LightingConstants.modeChannelId)) return;
-    if (_roleControlStateService.isLocked(roleChannelId)) return;
-
-    // Check feature flag - fallback to direct device control if disabled
-    if (!LightingConstants.useBackendIntents) {
-      await _toggleRole(roleData);
-      return;
-    }
-
-    final localizations = AppLocalizations.of(context)!;
-    final spacesService = _spacesService;
-
-    // Map LightTargetRole to LightingStateRole for backend
-    final stateRole = mapTargetRoleToStateRole(roleData.role);
-
-    // Fallback to direct device control when:
-    // - SpacesService is not available
-    // - Role cannot be mapped to a LightingStateRole
-    if (spacesService == null || stateRole == null) {
-      await _toggleRole(roleData);
-      return;
-    }
-
-    // Determine the new state (toggle)
-    final anyOn = roleData.hasLightsOn;
-    final newState = !anyOn;
-
-    // Set optimistic UI state
-    _roleControlStateService.setPending(
-      roleChannelId,
-      newState ? LightingConstants.onValue : LightingConstants.offValue,
-    );
-
-    if (kDebugMode) {
-      debugPrint('[LightsDomainView] Role toggle: ${roleData.role.name} -> ${newState ? "on" : "off"} (pending)');
-    }
-
-    try {
-      bool success = false;
-
-      if (anyOn) {
-        final result = await spacesService.turnRoleOff(_roomId, stateRole);
-        success = result != null;
-        if (mounted) {
-          IntentResultHandler.showOfflineAlertIfNeeded(context, result);
-        }
-      } else {
-        final result = await spacesService.turnRoleOn(_roomId, stateRole);
-        success = result != null;
-        if (mounted) {
-          IntentResultHandler.showOfflineAlertIfNeeded(context, result);
-        }
-      }
-
-      if (success && mounted) {
-        // If intents repository is not available, manually trigger completion
-        // to start the settling process. Otherwise, rely on _onIntentChanged
-        // to detect intent unlock and call onIntentCompleted.
-        if (_intentsRepository == null) {
-          if (kDebugMode) {
-            debugPrint(
-              '[LightsDomainView] IntentsRepository unavailable, manually triggering completion for role ${roleData.role.name}',
-            );
-          }
-          final lightTargets = _spacesService?.getLightTargetsForSpace(_roomId);
-          final roleTargets = lightTargets != null && lightTargets.isNotEmpty
-              ? _groupTargetsByRole(lightTargets)[roleData.role] ?? []
-              : <LightTargetView>[];
-          _roleControlStateService.onIntentCompleted(roleChannelId, roleTargets);
-        }
-        // If intents repository is available, _onIntentChanged will handle completion
-      } else if (!success && mounted) {
-        AppToast.showError(
-          context,
-          message: localizations.action_failed,
-        );
-        // Reset on error
-        _roleControlStateService.setIdle(roleChannelId);
-      }
-    } catch (e) {
-      // Only show error if the toggle intent itself failed
-      if (kDebugMode) {
-        debugPrint('[LightsDomainView] Failed to toggle role: $e');
-      }
-      if (mounted) {
-        AppToast.showError(
-          context,
-          message: localizations.action_failed,
-        );
-        // Reset on error
-        _roleControlStateService.setIdle(roleChannelId);
-      }
-    }
-  }
-
   /// Get mode options for the mode selector (uses page status color for all modes).
   List<ModeOption<LightingModeUI>> _getLightingModeOptions(
     BuildContext context,
@@ -1851,30 +3209,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         color: statusColor,
       ),
     ];
-  }
-
-  /// Toggle all lights in a role
-  Future<void> _toggleRole(LightingRoleData roleData) async {
-    // If any light is on, turn all off. If all off, turn all on.
-    final anyOn = roleData.hasLightsOn;
-    final targetState = !anyOn;
-
-    for (final target in roleData.targets) {
-      final device = _devicesService?.getDevice(target.deviceId);
-      if (device is! LightingDeviceView) continue;
-
-      final channel = device.lightChannels.firstWhere(
-        (c) => c.id == target.channelId,
-        orElse: () => device.lightChannels.first,
-      );
-
-      // Only toggle lights that need to change state
-      final isOn = channel.on;
-      if ((targetState && !isOn) || (!targetState && isOn)) {
-        final onPropId = channel.onProp.id;
-        await _devicesService?.setPropertyValue(onPropId, targetState);
-      }
-    }
   }
 
   /// Toggle a single light
@@ -1927,6 +3261,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
     // Force immediate UI update
     if (mounted) setState(() {});
+    _roleLightsSheetNotifier.value++;
 
     await devicesService.setMultiplePropertyValues(
       properties: [
@@ -1948,39 +3283,285 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     );
   }
 
-  // --------------------------------------------------------------------------
-  // ROLES GRID
-  // --------------------------------------------------------------------------
+  /// Toggle all lights in a role to [turnOn] state via SpacesService intent.
+  Future<void> _toggleRoleLights(LightingRoleData roleData, bool turnOn) async {
+    final spacesService = _spacesService;
+    if (spacesService == null) return;
 
-  Widget _buildRolesGrid(
-    BuildContext context,
-    List<LightingRoleData> roles,
-    DevicesService devicesService, {
-    required int crossAxisCount,
-    double aspectRatio = 0.9,
-  }) {
-    final isModeLocked = _modeControlStateService.isLocked(LightingConstants.modeChannelId);
+    final localizations = AppLocalizations.of(context)!;
+    final stateRole = mapTargetRoleToStateRole(roleData.role);
+    if (stateRole == null) return;
 
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: crossAxisCount,
-        crossAxisSpacing: AppSpacings.pMd,
-        mainAxisSpacing: AppSpacings.pMd,
-        childAspectRatio: aspectRatio,
-      ),
-      itemCount: roles.length,
-      itemBuilder: (context, index) {
-        return _RoleCard(
-          role: roles[index],
-          onTap: () => _openRoleDetail(context, roles[index]),
-          onIconTap: () => _toggleRoleViaIntent(roles[index]),
-          isLoading: isModeLocked,
-          pendingState: _getRolePendingState(roles[index].role),
+    try {
+      _heroPendingOnStateClearTimer?.cancel();
+      _heroPendingOnStateClearTimer = null;
+
+      _heroControlStateService.setPending(
+        LightingConstants.onOffChannelId,
+        turnOn ? LightingConstants.onValue : LightingConstants.offValue,
+      );
+
+      setState(() {
+        _heroPendingOnState = turnOn;
+      });
+
+      _heroWasSpaceLocked = true;
+
+      final result = turnOn
+          ? await spacesService.turnRoleOn(_roomId, stateRole)
+          : await spacesService.turnRoleOff(_roomId, stateRole);
+      final success = result != null;
+
+      if (mounted) {
+        IntentResultHandler.showOfflineAlertIfNeeded(context, result);
+      }
+
+      if (!mounted) return;
+
+      if (!success) {
+        AppToast.showError(context, message: localizations.action_failed);
+        _heroControlStateService.setIdle(LightingConstants.onOffChannelId);
+        setState(() {
+          _heroPendingOnState = null;
+        });
+      } else {
+        _heroPendingOnStateClearTimer = Timer(
+          const Duration(milliseconds: LightingConstants.onOffSettlingWindowMs),
+          () {
+            if (mounted) {
+              setState(() {
+                _heroPendingOnState = null;
+              });
+            }
+          },
         );
-      },
-    );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      AppToast.showError(context, message: localizations.action_failed);
+      _heroControlStateService.setIdle(LightingConstants.onOffChannelId);
+      setState(() {
+        _heroPendingOnState = null;
+      });
+    }
+  }
+
+  /// Handle hero card slider/preset value changes with optimistic UI.
+  ///
+  /// Immediately sets pending state in [_heroControlStateService] and saves
+  /// to cache, then debounces the actual API call via [SpacesService].
+  void _onHeroValueChanged(
+    LightHeroCapability mode,
+    double value,
+    LightTargetRole role,
+    _LightHeroState? heroState,
+  ) {
+    final spacesService = _spacesService;
+    if (spacesService == null) return;
+
+    final stateRole = mapTargetRoleToStateRole(role);
+    if (stateRole == null) return;
+
+    switch (mode) {
+      case LightHeroCapability.brightness:
+        _heroControlStateService.setPending(
+          LightingConstants.brightnessChannelId,
+          value,
+        );
+        _saveHeroToCache(role, brightness: value);
+        _heroBrightnessDebounceTimer?.cancel();
+        _heroBrightnessDebounceTimer = Timer(
+          const Duration(milliseconds: LightingConstants.sliderDebounceMs),
+          () => _heroSetBrightness(role, value.round()),
+        );
+        break;
+      case LightHeroCapability.colorTemp:
+        _heroControlStateService.setPending(
+          LightingConstants.temperatureChannelId,
+          value,
+        );
+        _saveHeroToCache(role, temperature: value);
+        _heroTemperatureDebounceTimer?.cancel();
+        _heroTemperatureDebounceTimer = Timer(
+          const Duration(milliseconds: LightingConstants.sliderDebounceMs),
+          () => _heroSetColorTemp(role, value.round()),
+        );
+        break;
+      case LightHeroCapability.hue:
+        // Backend requires hue + saturation together (hex) to convert to RGB.
+        final currentSat = heroState?.saturation ?? 100;
+        _heroControlStateService.setPending(
+          LightingConstants.hueChannelId,
+          value,
+        );
+        _heroControlStateService.setPending(
+          LightingConstants.saturationChannelId,
+          currentSat,
+        );
+        _saveHeroToCache(role, hue: value, saturation: currentSat);
+        _heroHueDebounceTimer?.cancel();
+        _heroHueDebounceTimer = Timer(
+          const Duration(milliseconds: LightingConstants.sliderDebounceMs),
+          () => _heroSetColorFromState(role),
+        );
+        break;
+      case LightHeroCapability.saturation:
+        // Backend requires hue + saturation together (hex) to convert to RGB.
+        final currentHue = heroState?.hue ?? 0;
+        _heroControlStateService.setPending(
+          LightingConstants.saturationChannelId,
+          value,
+        );
+        _heroControlStateService.setPending(
+          LightingConstants.hueChannelId,
+          currentHue,
+        );
+        _saveHeroToCache(role, saturation: value, hue: currentHue);
+        _heroHueDebounceTimer?.cancel();
+        _heroHueDebounceTimer = Timer(
+          const Duration(milliseconds: LightingConstants.sliderDebounceMs),
+          () => _heroSetColorFromState(role),
+        );
+        break;
+      case LightHeroCapability.whiteChannel:
+        _heroControlStateService.setPending(
+          LightingConstants.whiteChannelId,
+          value,
+        );
+        _saveHeroToCache(role, white: value);
+        _heroWhiteDebounceTimer?.cancel();
+        _heroWhiteDebounceTimer = Timer(
+          const Duration(milliseconds: LightingConstants.sliderDebounceMs),
+          () => _heroSetWhite(role, value.round()),
+        );
+        break;
+    }
+  }
+
+  /// Execute hero brightness API call with error handling.
+  Future<void> _heroSetBrightness(LightTargetRole role, int value) async {
+    if (!mounted) return;
+    final spacesService = _spacesService;
+    final stateRole = mapTargetRoleToStateRole(role);
+    if (spacesService == null || stateRole == null) return;
+
+    final localizations = AppLocalizations.of(context)!;
+    try {
+      _heroWasSpaceLocked = true;
+      final result = await spacesService.setRoleBrightness(_roomId, stateRole, value);
+      if (mounted) IntentResultHandler.showOfflineAlertIfNeeded(context, result);
+      if (!mounted) return;
+      if (result == null) {
+        AppToast.showError(context, message: localizations.action_failed);
+        _heroControlStateService.setIdle(LightingConstants.brightnessChannelId);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      AppToast.showError(context, message: localizations.action_failed);
+      _heroControlStateService.setIdle(LightingConstants.brightnessChannelId);
+    }
+  }
+
+  /// Execute hero color temp API call with error handling.
+  Future<void> _heroSetColorTemp(LightTargetRole role, int value) async {
+    if (!mounted) return;
+    final spacesService = _spacesService;
+    final stateRole = mapTargetRoleToStateRole(role);
+    if (spacesService == null || stateRole == null) return;
+
+    final localizations = AppLocalizations.of(context)!;
+    try {
+      _heroWasSpaceLocked = true;
+      final result = await spacesService.setRoleColorTemp(_roomId, stateRole, value);
+      if (mounted) IntentResultHandler.showOfflineAlertIfNeeded(context, result);
+      if (!mounted) return;
+      if (result == null) {
+        AppToast.showError(context, message: localizations.action_failed);
+        _heroControlStateService.setIdle(LightingConstants.temperatureChannelId);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      AppToast.showError(context, message: localizations.action_failed);
+      _heroControlStateService.setIdle(LightingConstants.temperatureChannelId);
+    }
+  }
+
+  /// Execute hero color API call, reading hue+saturation from control state.
+  /// Backend requires both together (as hex) to convert to RGB; sending only one
+  /// would fail. We always send both from the state machine.
+  Future<void> _heroSetColorFromState(LightTargetRole role) async {
+    if (!mounted) return;
+
+    double hue = _heroControlStateService.getDesiredValue(LightingConstants.hueChannelId) ?? 0;
+    double satRaw = _heroControlStateService.getDesiredValue(LightingConstants.saturationChannelId) ?? 100;
+    double saturation = (satRaw <= 1.0 ? satRaw : satRaw / 100).clamp(0.0, 1.0);
+
+    final roleState = _getHeroRoleAggregatedState();
+    if (_heroControlStateService.getDesiredValue(LightingConstants.hueChannelId) == null && roleState != null) {
+      final color = _parseHexColor(roleState.color);
+      if (color != null) hue = HSVColor.fromColor(color).hue;
+    }
+    if (_heroControlStateService.getDesiredValue(LightingConstants.saturationChannelId) == null && roleState != null) {
+      final color = _parseHexColor(roleState.color);
+      if (color != null) saturation = HSVColor.fromColor(color).saturation;
+    }
+
+    await _heroSetColor(role, hue.clamp(0, 360), saturation);
+  }
+
+  /// Execute hero color API call with error handling.
+  /// [hue] 0-360, [saturation] 0.0-1.0. Always sends both as hex to backend.
+  Future<void> _heroSetColor(LightTargetRole role, double hue, double saturation) async {
+    if (!mounted) return;
+    final spacesService = _spacesService;
+    final stateRole = mapTargetRoleToStateRole(role);
+    if (spacesService == null || stateRole == null) return;
+
+    final localizations = AppLocalizations.of(context)!;
+    try {
+      _heroWasSpaceLocked = true;
+      final color = HSVColor.fromAHSV(1.0, hue.clamp(0, 360), saturation.clamp(0.0, 1.0), 1.0).toColor();
+      final hex = '#${(color.r * 255).toInt().toRadixString(16).padLeft(2, '0')}'
+          '${(color.g * 255).toInt().toRadixString(16).padLeft(2, '0')}'
+          '${(color.b * 255).toInt().toRadixString(16).padLeft(2, '0')}'.toUpperCase();
+      final result = await spacesService.setRoleColor(_roomId, stateRole, hex);
+      if (mounted) IntentResultHandler.showOfflineAlertIfNeeded(context, result);
+      if (!mounted) return;
+      if (result == null) {
+        AppToast.showError(context, message: localizations.action_failed);
+        _heroControlStateService.setIdle(LightingConstants.hueChannelId);
+        _heroControlStateService.setIdle(LightingConstants.saturationChannelId);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      AppToast.showError(context, message: localizations.action_failed);
+      _heroControlStateService.setIdle(LightingConstants.hueChannelId);
+      _heroControlStateService.setIdle(LightingConstants.saturationChannelId);
+    }
+  }
+
+  /// Execute hero white channel API call with error handling.
+  Future<void> _heroSetWhite(LightTargetRole role, int value) async {
+    if (!mounted) return;
+    final spacesService = _spacesService;
+    final stateRole = mapTargetRoleToStateRole(role);
+    if (spacesService == null || stateRole == null) return;
+
+    final localizations = AppLocalizations.of(context)!;
+    try {
+      _heroWasSpaceLocked = true;
+      final result = await spacesService.setRoleWhite(_roomId, stateRole, value);
+      if (mounted) IntentResultHandler.showOfflineAlertIfNeeded(context, result);
+      if (!mounted) return;
+      if (result == null) {
+        AppToast.showError(context, message: localizations.action_failed);
+        _heroControlStateService.setIdle(LightingConstants.whiteChannelId);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      AppToast.showError(context, message: localizations.action_failed);
+      _heroControlStateService.setIdle(LightingConstants.whiteChannelId);
+    }
   }
 
   // --------------------------------------------------------------------------
@@ -2041,33 +3622,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   // --------------------------------------------------------------------------
   // NAVIGATION
   // --------------------------------------------------------------------------
-
-  void _openRoleDetail(BuildContext context, LightingRoleData roleData) {
-    if (roleData.targets.length == 1) {
-      // Single device - open device detail
-      final target = roleData.targets.first;
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => DeviceDetailPage(
-            target.deviceId,
-            initialChannelId: target.channelId,
-          ),
-        ),
-      );
-    } else {
-      // Multiple devices - open role detail page
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => LightRoleDetailPage(
-            role: roleData.role,
-            roomId: _roomId,
-          ),
-        ),
-      );
-    }
-  }
 
   void _openDeviceDetail(BuildContext context, LightDeviceData light) {
     Navigator.push(
@@ -2137,91 +3691,869 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 }
 
 // =============================================================================
-// PRIVATE WIDGETS — ROLE CARD
+// PRIVATE WIDGETS — HERO GRADIENT DEFINITIONS
 // =============================================================================
-// One role tile (main, task, ambient, etc.). Shows name, on/total count,
-// optional brightness; [pendingState] overrides for optimistic UI.
 
-class _RoleCard extends StatelessWidget {
-  final LightingRoleData role;
-  final VoidCallback? onTap;
-  final VoidCallback? onIconTap;
-  final bool isLoading;
-  final bool? pendingState; // Optimistic UI override
+class _HeroGradients {
+  _HeroGradients._();
 
-  const _RoleCard({
-    required this.role,
-    this.onTap,
-    this.onIconTap,
-    this.isLoading = false,
-    this.pendingState,
-  });
+  /// Brightness: dark fill → white (matches _BrightnessPanel).
+  static List<Color> brightness(bool isDark) => [
+        isDark ? AppFillColorDark.dark : AppFillColorLight.dark,
+        AppColors.white,
+      ];
 
-  @override
-  Widget build(BuildContext context) {
-    // Use pending state if available, otherwise use actual state
-    final isActive = pendingState ?? role.hasLightsOn;
+  /// Color temperature: warm orange → ivory → cool blue (matches _ColorTempPanel).
+  static const colorTemp = [
+    Color(0xFFFF9800),
+    Color(0xFFFFFAF0),
+    Color(0xFFE3F2FD),
+    Color(0xFF64B5F6),
+  ];
 
-    return UniversalTile(
-      layout: TileLayout.vertical,
-      icon: role.icon,
-      name: role.name,
-      status: role.statusText,
-      isActive: isActive,
-      onTileTap: onTap,
-      onIconTap: isLoading ? null : onIconTap,
-      showWarningBadge: false,
-    );
-  }
+  /// Hue: full spectrum rainbow (standard hue wheel: 0°=red → 360°=red).
+  static const hue = [
+    Color(0xFFFF0000),
+    Color(0xFFFFFF00),
+    Color(0xFF00FF00),
+    Color(0xFF00FFFF),
+    Color(0xFF0000FF),
+    Color(0xFFFF00FF),
+    Color(0xFFFF0000),
+  ];
+
+  /// Saturation: white → current hue color (matches _ColorPanel sat slider).
+  static List<Color> saturation(Color hueColor) => [
+        AppColors.white,
+        hueColor,
+      ];
+
+  /// White channel: dark fill → white (matches _WhitePanel).
+  static List<Color> whiteChannel(bool isDark) => [
+        isDark ? AppFillColorDark.dark : AppFillColorLight.dark,
+        AppColors.white,
+      ];
 }
 
 // =============================================================================
-// PRIVATE WIDGETS — LIGHT TILE
+// PRIVATE WIDGETS — LIGHTS HERO CARD
 // =============================================================================
-// Single light in "other lights" list. Vertical or horizontal [UniversalTile];
-// tap opens device detail, icon tap toggles via [_toggleLight].
+// Hero display for a selected light role. Shows value display, capability
+// mode switcher, gradient slider track with thumb, presets, and on/off toggle.
 
-class _LightTile extends StatelessWidget {
-  final LightDeviceData light;
-  final AppLocalizations localizations;
-  final VoidCallback? onTap;
-  final VoidCallback? onIconTap;
-  final bool isVertical;
+class _LightsHeroCard extends StatelessWidget {
+  final _LightHeroState state;
+  final ThemeColors statusColor;
+  final bool isPortrait;
+  final ValueChanged<LightHeroCapability>? onModeChanged;
+  final ValueChanged<bool>? onToggle;
+  final VoidCallback? onShowLights;
+  final void Function(LightHeroCapability mode, double value)? onValueChanged;
 
-  const _LightTile({
-    required this.light,
-    required this.localizations,
-    this.onTap,
-    this.onIconTap,
-    this.isVertical = false,
+  const _LightsHeroCard({
+    required this.state,
+    required this.statusColor,
+    this.isPortrait = false,
+    this.onModeChanged,
+    this.onToggle,
+    this.onShowLights,
+    this.onValueChanged,
   });
-
-  String get _localizedStatusText {
-    switch (light.state) {
-      case LightState.off:
-        return localizations.light_state_off;
-      case LightState.on:
-        return light.brightness != null
-            ? '${light.brightness}%'
-            : localizations.light_state_on;
-      case LightState.offline:
-        return localizations.device_status_offline;
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
-    return UniversalTile(
-      layout: isVertical ? TileLayout.vertical : TileLayout.horizontal,
-      icon: MdiIcons.lightbulbOutline,
-      activeIcon: MdiIcons.lightbulb,
-      name: light.name,
-      status: _localizedStatusText,
-      isActive: light.isOn,
-      isOffline: light.isOffline,
-      onTileTap: onTap,
-      // Disable icon tap (toggle) when device is offline
-      onIconTap: light.isOffline ? null : onIconTap,
+    final screenService = locator<ScreenService>();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final colorFamily = ThemeColorFamily.get(
+      isDark ? Brightness.dark : Brightness.light, statusColor);
+
+    return HeroCard(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final fontSize = screenService.isSmallScreen
+              ? (constraints.maxHeight * 0.25).clamp(AppSpacings.scale(48), AppSpacings.scale(160))
+              : (constraints.maxHeight * 0.35).clamp(AppSpacings.scale(48), AppSpacings.scale(160));
+
+          return Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (state.isOnOffOnly) ...[
+                _buildOnOffHero(isDark, colorFamily),
+              ] else ...[
+                _buildHeroRow(isDark, colorFamily, fontSize),
+                if (state.showModeSwitcher) ...[
+                  AppSpacings.spacingLgVertical,
+                  _buildModeSwitcher(isDark, colorFamily),
+                  AppSpacings.spacingMdVertical,
+                ],
+                AppSpacings.spacingMdVertical,
+                _buildActiveSlider(isDark, colorFamily),
+              ],
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  // ── Hero Row (badge on left, giant value on right) ───────────
+
+  Widget _buildHeroRow(
+    bool isDark,
+    ThemeColorFamily colorFamily,
+    double fontSize,
+  ) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        _buildBadge(isDark, colorFamily),
+        AppSpacings.spacingMdHorizontal,
+        _buildGiantValue(isDark, fontSize),
+      ],
+    );
+  }
+
+  // ── Badge (split: left = power toggle, right = device count → sheet) ──
+
+  Widget _buildBadge(bool isDark, ThemeColorFamily colorFamily) {
+    final screenService = locator<ScreenService>();
+    final useBaseFontSize = screenService.isLandscape
+        ? screenService.isLargeScreen
+        : !screenService.isSmallScreen;
+    final fontSize =
+        useBaseFontSize ? AppFontSize.base : AppFontSize.small;
+
+    final onColor = colorFamily.base;
+    final offColor =
+        isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
+    final onBg = colorFamily.light9;
+    final offBg = isDark ? AppFillColorDark.base : AppFillColorLight.lighter;
+
+    final isOn = state.isOn;
+    final activeColor = isOn ? onColor : offColor;
+    final activeBg = isOn ? onBg : offBg;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Left part: power icon + role name → toggle
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () {
+            HapticFeedback.mediumImpact();
+            onToggle?.call(!isOn);
+          },
+          child: Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: AppSpacings.pMd,
+              vertical: AppSpacings.pXs,
+            ),
+            height: AppSpacings.scale(24),
+            decoration: BoxDecoration(
+              color: activeBg,
+              borderRadius: BorderRadius.horizontal(
+                left: Radius.circular(AppBorderRadius.round),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  MdiIcons.power,
+                  size: fontSize,
+                  color: activeColor,
+                ),
+                AppSpacings.spacingSmHorizontal,
+                Text(
+                  state.roleName.toUpperCase(),
+                  style: TextStyle(
+                    fontSize: fontSize,
+                    fontWeight: FontWeight.w700,
+                    color: activeColor,
+                    letterSpacing: AppSpacings.scale(0.3),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        // Divider between left and right parts
+        Container(
+          width: AppSpacings.scale(1),
+          color: activeColor.withValues(alpha: 0.3),
+          height: fontSize + AppSpacings.pXs * 2,
+        ),
+        // Right part: status icon + count circle → show lights sheet
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: onShowLights,
+          child: Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: AppSpacings.pMd,
+              vertical: AppSpacings.pXs,
+            ),
+            height: AppSpacings.scale(24),
+            decoration: BoxDecoration(
+              color: activeBg,
+              borderRadius: BorderRadius.horizontal(
+                right: Radius.circular(AppBorderRadius.round),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  state.statusIcon,
+                  size: fontSize,
+                  color: activeColor,
+                ),
+                AppSpacings.spacingSmHorizontal,
+                Container(
+                  width: fontSize,
+                  height: fontSize,
+                  decoration: BoxDecoration(
+                    color: activeColor,
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    '${state.deviceCount}',
+                    style: TextStyle(
+                      fontSize: fontSize * 0.6,
+                      fontWeight: FontWeight.w700,
+                      color: activeBg,
+                      height: 1,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── Giant Value (number with unit at top-right, color swatch at bottom-right)
+
+  Widget _buildGiantValue(bool isDark, double fontSize) {
+    final unitFontSize = fontSize * 0.27;
+    final swatchSize = fontSize * 0.22;
+
+    // Always show brightness; fallback: colorTemp → whiteChannel
+    final String value;
+    final bool useIcon;
+    if (state.capabilities.contains(LightHeroCapability.brightness)) {
+      value = state.brightness.round().toString();
+      useIcon = true;
+    } else if (state.capabilities.contains(LightHeroCapability.colorTemp)) {
+      value = state.colorTemp.round().toString();
+      useIcon = false;
+    } else if (state.capabilities.contains(LightHeroCapability.whiteChannel)) {
+      value = state.whiteChannel.round().toString();
+      useIcon = true;
+    } else {
+      value = state.brightness.round().toString();
+      useIcon = true;
+    }
+
+    final textColor =
+        isDark ? AppTextColorDark.regular : AppTextColorLight.regular;
+    final unitColor =
+        isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder;
+
+    // Color swatch: show HSV color for hue-capable, colorTemp color for temp-capable
+    Color? swatchColor;
+    if (state.capabilities.contains(LightHeroCapability.hue)) {
+      swatchColor = state.currentColor;
+    } else if (state.capabilities.contains(LightHeroCapability.colorTemp)) {
+      final tempRange = state.maxColorTemp - state.minColorTemp;
+      final t = tempRange > 0
+          ? (state.colorTemp - state.minColorTemp) / tempRange
+          : 0.5;
+      swatchColor = _sampleGradient(_HeroGradients.colorTemp, t);
+    }
+
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: fontSize,
+            fontWeight: FontWeight.w200,
+            fontFamily: 'DIN1451',
+            color: textColor,
+            height: 0.7,
+          ),
+        ),
+        Positioned(
+          top: 0,
+          right: -unitFontSize,
+          child: useIcon
+              ? Icon(
+                  Icons.wb_sunny_outlined,
+                  size: unitFontSize,
+                  color: unitColor,
+                )
+              : Text(
+                  'K',
+                  style: TextStyle(
+                    fontSize: unitFontSize,
+                    fontWeight: FontWeight.w300,
+                    color: unitColor,
+                  ),
+                ),
+        ),
+        if (swatchColor != null)
+          Positioned(
+            bottom: 0,
+            right: -unitFontSize * 1.1,
+            child: Container(
+              width: swatchSize,
+              height: swatchSize,
+              decoration: BoxDecoration(
+                color: swatchColor,
+                borderRadius: BorderRadius.circular(AppBorderRadius.small),
+                border: !isDark
+                    ? Border.all(
+                        color: AppBorderColorLight.darker,
+                        width: AppSpacings.scale(1),
+                      )
+                    : null,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  // ── Mode Switcher (ModeSelector) ──────────────────────────────
+
+  Widget _buildModeSwitcher(bool isDark, ThemeColorFamily colorFamily) {
+    final caps = state.capabilities.toList();
+    caps.sort((a, b) => a.index.compareTo(b.index));
+
+    final isSmallPortrait = isPortrait && locator<ScreenService>().isSmallScreen;
+
+    return ModeSelector<LightHeroCapability>(
+      modes: caps.map((cap) => ModeOption<LightHeroCapability>(
+        value: cap,
+        icon: _capIcon(cap),
+        label: _capLabel(cap),
+      )).toList(),
+      selectedValue: state.activeMode ?? caps.first,
+      onChanged: (cap) => onModeChanged?.call(cap),
+      orientation: ModeSelectorOrientation.horizontal,
+      iconPlacement: isSmallPortrait
+          ? ModeSelectorIconPlacement.left
+          : ModeSelectorIconPlacement.top,
+      showLabels: isSmallPortrait || !isPortrait ? false : null,
+      color: statusColor,
+    );
+  }
+
+  IconData _capIcon(LightHeroCapability cap) {
+    return switch (cap) {
+      LightHeroCapability.brightness => Icons.wb_sunny_outlined,
+      LightHeroCapability.colorTemp => Icons.thermostat,
+      LightHeroCapability.hue => Icons.palette_outlined,
+      LightHeroCapability.saturation => Icons.opacity,
+      LightHeroCapability.whiteChannel => Icons.square_rounded,
+    };
+  }
+
+  String _capLabel(LightHeroCapability cap) {
+    return switch (cap) {
+      LightHeroCapability.brightness => 'Bright',
+      LightHeroCapability.colorTemp => 'Temp',
+      LightHeroCapability.hue => 'Hue',
+      LightHeroCapability.saturation => 'Sat',
+      LightHeroCapability.whiteChannel => 'White',
+    };
+  }
+
+  // ── Active Slider (SliderWithSteps) ───────────────────────────
+
+  Widget _buildActiveSlider(bool isDark, ThemeColorFamily colorFamily) {
+    final mode = state.activeMode ??
+        (state.capabilities.isNotEmpty
+            ? state.capabilities.first
+            : LightHeroCapability.brightness);
+
+    final (gradientColors, thumbColor, position, steps) =
+        _sliderParams(isDark, colorFamily, mode);
+
+    return Column(
+      children: [
+        Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: AppSpacings.pMd,
+          ),
+          child: SliderWithSteps(
+            value: position.clamp(0.0, 1.0),
+            themeColor: ThemeColors.neutral,
+            trackGradientColors: gradientColors,
+            thumbBorderColor: thumbColor,
+            steps: steps,
+            enabled: state.isOn,
+            onChanged: state.isOn
+                ? (v) {
+                    HapticFeedback.selectionClick();
+                    onValueChanged?.call(
+                        mode, _sliderToActualValue(mode, v));
+                  }
+                : null,
+          ),
+        ),
+        AppSpacings.spacingMdVertical,
+        _buildPresets(isDark, colorFamily, mode),
+      ],
+    );
+  }
+
+  /// Returns (gradientColors, thumbBorderColor, normalizedValue, stepLabels).
+  (List<Color>, Color?, double, List<String>) _sliderParams(
+    bool isDark,
+    ThemeColorFamily colorFamily,
+    LightHeroCapability mode,
+  ) {
+    final currentHueColor =
+        HSVColor.fromAHSV(1, state.hue.clamp(0, 360), 1, 1).toColor();
+    final tempRange = state.maxColorTemp - state.minColorTemp;
+    final hueRange = state.maxHue - state.minHue;
+    final tempPosition = tempRange > 0
+        ? (state.colorTemp - state.minColorTemp) / tempRange
+        : 0.5;
+
+    return switch (mode) {
+      LightHeroCapability.brightness => (
+          _HeroGradients.brightness(isDark),
+          null,
+          state.brightness / 100,
+          ['0%', '25%', '50%', '75%', '100%'],
+        ),
+      LightHeroCapability.colorTemp => (
+          _HeroGradients.colorTemp,
+          _sampleGradient(_HeroGradients.colorTemp, tempPosition),
+          tempPosition,
+          [
+            '${state.minColorTemp.round()}K',
+            '${((state.minColorTemp + state.maxColorTemp) / 2).round()}K',
+            '${state.maxColorTemp.round()}K',
+          ],
+        ),
+      LightHeroCapability.hue => (
+          _HeroGradients.hue,
+          currentHueColor,
+          hueRange > 0 ? (state.hue - state.minHue) / hueRange : 0.0,
+          ['0°', '120°', '240°', '359°'],
+        ),
+      LightHeroCapability.saturation => (
+          _HeroGradients.saturation(currentHueColor),
+          currentHueColor,
+          state.saturation / 100,
+          ['0%', '25%', '50%', '75%', '100%'],
+        ),
+      LightHeroCapability.whiteChannel => (
+          _HeroGradients.whiteChannel(isDark),
+          null,
+          state.whiteChannel / 100,
+          ['Off', '25%', '50%', '75%', '100%'],
+        ),
+    };
+  }
+
+  /// Sample a color from a gradient at normalized position [t] (0.0–1.0).
+  /// Colors are evenly distributed along the gradient.
+  Color _sampleGradient(List<Color> colors, double t) {
+    assert(colors.length >= 2);
+    t = t.clamp(0.0, 1.0);
+    final segments = colors.length - 1;
+    final segment = (t * segments).floor().clamp(0, segments - 1);
+    final localT = (t * segments - segment).clamp(0.0, 1.0);
+    return Color.lerp(colors[segment], colors[segment + 1], localT)!;
+  }
+
+  /// Convert a 0.0–1.0 slider position back to the actual domain value.
+  double _sliderToActualValue(LightHeroCapability mode, double v) {
+    return switch (mode) {
+      LightHeroCapability.brightness => v * 100,
+      LightHeroCapability.colorTemp =>
+        state.minColorTemp + (state.maxColorTemp - state.minColorTemp) * v,
+      LightHeroCapability.hue =>
+        state.minHue + (state.maxHue - state.minHue) * v,
+      LightHeroCapability.saturation => v * 100,
+      LightHeroCapability.whiteChannel => v * 100,
+    };
+  }
+
+  // ── Presets ────────────────────────────────────────────────────
+
+  Widget _buildPresets(
+    bool isDark,
+    ThemeColorFamily colorFamily,
+    LightHeroCapability mode,
+  ) {
+    final items = mode == LightHeroCapability.hue
+        ? _colorPresetItems(isDark, colorFamily)
+        : _chipPresetItems(isDark, colorFamily, mode);
+
+    if (items.isEmpty) return const SizedBox.shrink();
+
+    final cardColor =
+        isDark ? AppFillColorDark.light : AppFillColorLight.blank;
+
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: AppSpacings.pMd,
+      ),
+      child: HorizontalScrollWithGradient(
+        height: AppSpacings.scale(20),
+        layoutPadding: AppSpacings.pLg,
+        itemCount: items.length,
+        separatorWidth: AppSpacings.pMd,
+        backgroundColor: cardColor,
+        itemBuilder: (context, index) => items[index],
+      ),
+    );
+  }
+
+  List<SliderPreset> _presetsForMode(LightHeroCapability mode) {
+    return switch (mode) {
+      LightHeroCapability.brightness => [
+          SliderPreset(
+            label: '10%',
+            value: 10,
+            isActive: state.brightness.round() == 10,
+          ),
+          SliderPreset(
+            label: '25%',
+            value: 25,
+            isActive: state.brightness.round() == 25,
+          ),
+          SliderPreset(
+            label: '50%',
+            value: 50,
+            isActive: state.brightness.round() == 50,
+          ),
+          SliderPreset(
+            label: '75%',
+            value: 75,
+            isActive: state.brightness.round() == 75,
+          ),
+          SliderPreset(
+            label: '100%',
+            value: 100,
+            isActive: state.brightness.round() == 100,
+          ),
+        ],
+      LightHeroCapability.colorTemp => [
+          SliderPreset(
+            label: 'Candle',
+            value: 2700,
+            isActive: state.colorTemp.round() == 2700,
+          ),
+          SliderPreset(
+            label: 'Warm White',
+            value: 3200,
+            isActive: state.colorTemp.round() == 3200,
+          ),
+          SliderPreset(
+            label: 'Neutral',
+            value: 4000,
+            isActive: state.colorTemp.round() == 4000,
+          ),
+          SliderPreset(
+            label: 'Daylight',
+            value: 5000,
+            isActive: state.colorTemp.round() == 5000,
+          ),
+          SliderPreset(
+            label: 'Cool White',
+            value: 6500,
+            isActive: state.colorTemp.round() == 6500,
+          ),
+        ],
+      LightHeroCapability.saturation => [
+          SliderPreset(
+            label: '25%',
+            value: 25,
+            isActive: state.saturation.round() == 25,
+          ),
+          SliderPreset(
+            label: '50%',
+            value: 50,
+            isActive: state.saturation.round() == 50,
+          ),
+          SliderPreset(
+            label: '75%',
+            value: 75,
+            isActive: state.saturation.round() == 75,
+          ),
+          SliderPreset(
+            label: '85%',
+            value: 85,
+            isActive: state.saturation.round() == 85,
+          ),
+          SliderPreset(
+            label: '100%',
+            value: 100,
+            isActive: state.saturation.round() == 100,
+          ),
+        ],
+      LightHeroCapability.whiteChannel => [
+          SliderPreset(
+            label: 'Off',
+            value: 0,
+            isActive: state.whiteChannel.round() == 0,
+          ),
+          SliderPreset(
+            label: '25%',
+            value: 25,
+            isActive: state.whiteChannel.round() == 25,
+          ),
+          SliderPreset(
+            label: '50%',
+            value: 50,
+            isActive: state.whiteChannel.round() == 50,
+          ),
+          SliderPreset(
+            label: '75%',
+            value: 75,
+            isActive: state.whiteChannel.round() == 75,
+          ),
+          SliderPreset(
+            label: '100%',
+            value: 100,
+            isActive: state.whiteChannel.round() == 100,
+          ),
+        ],
+      _ => [],
+    };
+  }
+
+  List<Widget> _chipPresetItems(
+    bool isDark,
+    ThemeColorFamily colorFamily,
+    LightHeroCapability mode,
+  ) {
+    final presets = _presetsForMode(mode);
+
+    final textSecondary =
+        isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
+    final surfaceDim =
+        isDark ? AppFillColorDark.base : AppFillColorLight.lighter;
+
+    return presets.map((p) {
+      return GestureDetector(
+        onTap: state.isOn
+            ? () {
+                HapticFeedback.selectionClick();
+                onValueChanged?.call(mode, p.value);
+              }
+            : null,
+        child: Container(
+          width: AppSpacings.scale(62),
+          height: AppSpacings.scale(20),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: p.isActive ? colorFamily.light9 : surfaceDim,
+            borderRadius: BorderRadius.circular(AppBorderRadius.small),
+            border: Border.all(
+              color: p.isActive
+                  ? colorFamily.base
+                  : (isDark ? AppBorderColorDark.darker : AppBorderColorLight.darker),
+              width: AppSpacings.scale(1),
+            ),
+          ),
+          child: Text(
+            p.label,
+            style: TextStyle(
+              fontSize: AppFontSize.extraExtraSmall,
+              fontWeight: FontWeight.w600,
+              color: p.isActive ? colorFamily.base : textSecondary,
+            ),
+          ),
+        ),
+      );
+    }).toList();
+  }
+
+  List<Widget> _colorPresetItems(bool isDark, ThemeColorFamily colorFamily) {
+    final presets = [
+      ColorPreset(
+        color: const Color(0xFFE85A4F),
+        name: 'Red',
+        hueValue: 10,
+        isActive: state.hue < 15,
+      ),
+      ColorPreset(
+        color: const Color(0xFFFF9800),
+        name: 'Orange',
+        hueValue: 30,
+      ),
+      ColorPreset(
+        color: const Color(0xFFFFEB3B),
+        name: 'Yellow',
+        hueValue: 60,
+      ),
+      ColorPreset(
+        color: const Color(0xFF4CAF50),
+        name: 'Green',
+        hueValue: 120,
+      ),
+      ColorPreset(
+        color: const Color(0xFF42A5F5),
+        name: 'Blue',
+        hueValue: 210,
+      ),
+      ColorPreset(
+        color: const Color(0xFF7B1FA2),
+        name: 'Purple',
+        hueValue: 280,
+      ),
+      ColorPreset(
+        color: const Color(0xFFE91E63),
+        name: 'Pink',
+        hueValue: 340,
+      ),
+      ColorPreset(
+        color: const Color(0xFFFFFAF0),
+        name: 'White',
+        hueValue: 0,
+      ),
+    ];
+
+    return presets.map((p) {
+      final isLight = p.color.computeLuminance() > 0.85;
+      final borderColor =
+          isLight && !isDark ? AppBorderColorLight.darker : p.color;
+
+      return GestureDetector(
+        onTap: state.isOn
+            ? () {
+                HapticFeedback.selectionClick();
+                onValueChanged?.call(LightHeroCapability.hue, p.hueValue);
+              }
+            : null,
+        child: Container(
+          width: AppSpacings.scale(38),
+          height: AppSpacings.scale(20),
+          decoration: BoxDecoration(
+            color: p.color,
+            borderRadius: BorderRadius.circular(AppBorderRadius.small),
+            border: Border.all(
+              color: borderColor,
+              width: AppSpacings.scale(1),
+            ),
+            boxShadow: p.isActive
+                ? [
+                    BoxShadow(
+                      color: p.color.withValues(alpha: 0.6),
+                      blurRadius: AppSpacings.scale(8),
+                      spreadRadius: AppSpacings.scale(2),
+                    ),
+                  ]
+                : null,
+          ),
+        ),
+      );
+    }).toList();
+  }
+
+  // ── On/Off Hero (no slider capabilities) ──────────────────────
+
+  Widget _buildOnOffHero(bool isDark, ThemeColorFamily colorFamily) {
+    final primaryColor =
+        isDark ? AppColorsDark.primary : AppColorsLight.primary;
+    final primaryBgColor =
+        isDark ? AppColorsDark.primaryLight9 : AppColorsLight.primaryLight9;
+    final inactiveBgColor =
+        isDark ? AppFillColorDark.light : AppFillColorLight.light;
+    final inactiveColor =
+        isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
+
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        spacing: AppSpacings.pLg,
+        children: [
+          GestureDetector(
+            onTap: () {
+              HapticFeedback.mediumImpact();
+              onToggle?.call(!state.isOn);
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              width: AppSpacings.scale(160),
+              height: AppSpacings.scale(160),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: state.isOn ? primaryBgColor : inactiveBgColor,
+                border: Border.all(
+                  color: state.isOn
+                      ? primaryColor
+                      : (isDark
+                          ? AppColors.blank
+                          : AppBorderColorLight.darker),
+                  width: state.isOn
+                      ? AppSpacings.scale(4)
+                      : AppSpacings.scale(1),
+                ),
+                boxShadow: state.isOn
+                    ? [
+                        BoxShadow(
+                          color: primaryColor.withValues(alpha: 0.3),
+                          blurRadius: AppSpacings.scale(40),
+                          spreadRadius: 0,
+                        ),
+                        BoxShadow(
+                          color: AppShadowColor.light,
+                          blurRadius: AppSpacings.scale(20),
+                          offset: Offset(0, AppSpacings.scale(4)),
+                        ),
+                      ]
+                    : [
+                        BoxShadow(
+                          color: AppShadowColor.light,
+                          blurRadius: AppSpacings.scale(20),
+                          offset: Offset(0, AppSpacings.scale(4)),
+                        ),
+                      ],
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                spacing: AppSpacings.pMd,
+                children: [
+                  Icon(
+                    MdiIcons.power,
+                    size: AppSpacings.scale(44),
+                    color: state.isOn ? primaryColor : inactiveColor,
+                  ),
+                  Text(
+                    state.isOn ? 'ON' : 'OFF',
+                    style: TextStyle(
+                      fontSize: AppFontSize.extraSmall,
+                      fontWeight: FontWeight.w600,
+                      color: state.isOn ? primaryColor : inactiveColor,
+                      letterSpacing: AppSpacings.scale(1),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Text(
+            state.isOn ? 'Tap to turn off' : 'Tap to turn on',
+            style: TextStyle(
+              fontSize: AppFontSize.extraSmall,
+              color: inactiveColor,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

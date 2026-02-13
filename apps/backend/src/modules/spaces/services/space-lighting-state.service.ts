@@ -1,6 +1,7 @@
 import { Inject, Injectable, forwardRef } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
+import { hsvToHex } from '../../../common/utils/color.utils';
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { IntentTimeseriesService } from '../../intents/services/intent-timeseries.service';
@@ -117,6 +118,8 @@ interface LightState {
 	colorRed: number | null;
 	colorGreen: number | null;
 	colorBlue: number | null;
+	colorHue: number | null;
+	colorSaturation: number | null;
 	white: number | null;
 }
 
@@ -285,6 +288,8 @@ export class SpaceLightingStateService {
 		const colorRedProperty = channel.properties?.find((p) => p.category === PropertyCategory.COLOR_RED);
 		const colorGreenProperty = channel.properties?.find((p) => p.category === PropertyCategory.COLOR_GREEN);
 		const colorBlueProperty = channel.properties?.find((p) => p.category === PropertyCategory.COLOR_BLUE);
+		const colorHueProperty = channel.properties?.find((p) => p.category === PropertyCategory.HUE);
+		const colorSaturationProperty = channel.properties?.find((p) => p.category === PropertyCategory.SATURATION);
 		const whiteProperty = channel.properties?.find((p) => p.category === PropertyCategory.COLOR_WHITE);
 
 		const roleKey = `${device.id}:${channel.id}`;
@@ -300,6 +305,8 @@ export class SpaceLightingStateService {
 			colorRed: this.getPropertyNumericValue(colorRedProperty),
 			colorGreen: this.getPropertyNumericValue(colorGreenProperty),
 			colorBlue: this.getPropertyNumericValue(colorBlueProperty),
+			colorHue: this.getPropertyNumericValue(colorHueProperty),
+			colorSaturation: this.getPropertyNumericValue(colorSaturationProperty),
 			white: this.getPropertyNumericValue(whiteProperty),
 		};
 	}
@@ -481,38 +488,68 @@ export class SpaceLightingStateService {
 
 	/**
 	 * Get uniform color from lights.
-	 * Returns hex color string if all lights have same RGB, null if mixed.
+	 * Returns hex color string if all lights have same RGB or same hue+saturation, null if mixed.
 	 */
 	private getUniformColor(lights: LightState[]): { value: string | null; isMixed: boolean } {
-		// Get lights that have all RGB components
-		const colorLights = lights.filter((l) => l.colorRed !== null && l.colorGreen !== null && l.colorBlue !== null);
+		// Prefer RGB lights
+		const rgbLights = lights.filter((l) => l.colorRed !== null && l.colorGreen !== null && l.colorBlue !== null);
 
-		if (colorLights.length === 0) {
+		if (rgbLights.length > 0) {
+			const firstR = rgbLights[0].colorRed;
+			const firstG = rgbLights[0].colorGreen;
+			const firstB = rgbLights[0].colorBlue;
+			const tolerance = 10;
+
+			const allSame = rgbLights.every(
+				(l) =>
+					Math.abs(l.colorRed - firstR) <= tolerance &&
+					Math.abs(l.colorGreen - firstG) <= tolerance &&
+					Math.abs(l.colorBlue - firstB) <= tolerance,
+			);
+
+			if (allSame) {
+				const avgR = Math.round(rgbLights.reduce((a, l) => a + l.colorRed, 0) / rgbLights.length);
+				const avgG = Math.round(rgbLights.reduce((a, l) => a + l.colorGreen, 0) / rgbLights.length);
+				const avgB = Math.round(rgbLights.reduce((a, l) => a + l.colorBlue, 0) / rgbLights.length);
+				const hex = `#${avgR.toString(16).padStart(2, '0')}${avgG.toString(16).padStart(2, '0')}${avgB.toString(16).padStart(2, '0')}`;
+				return { value: hex, isMixed: false };
+			}
+			return { value: null, isMixed: true };
+		}
+
+		// Fallback: hue + saturation lights (no RGB). Include hue-only (saturation defaults to 1)
+		const hueSatLights = lights.filter((l) => l.colorHue !== null);
+
+		if (hueSatLights.length === 0) {
 			return { value: null, isMixed: false };
 		}
 
-		// Check if all colors are the same (within tolerance)
-		const firstR = colorLights[0].colorRed;
-		const firstG = colorLights[0].colorGreen;
-		const firstB = colorLights[0].colorBlue;
+		const hueTolerance = 5;
+		const satTolerance = 0.05;
+		const firstHue = hueSatLights[0].colorHue;
+		const firstSat = hueSatLights[0].colorSaturation ?? 100;
+		const firstSatNorm = firstSat > 1 ? firstSat / 100 : firstSat;
 
-		const tolerance = 10; // Allow ±10 per channel
+		// Circular hue distance (handles 0/360 wrap-around)
+		const hueDist = (a: number, b: number): number => {
+			const d = Math.abs(a - b) % 360;
+			return d > 180 ? 360 - d : d;
+		};
 
-		const allSame = colorLights.every(
-			(l) =>
-				Math.abs(l.colorRed - firstR) <= tolerance &&
-				Math.abs(l.colorGreen - firstG) <= tolerance &&
-				Math.abs(l.colorBlue - firstB) <= tolerance,
-		);
+		const allSame = hueSatLights.every((l) => {
+			const satRaw = l.colorSaturation ?? 100;
+			const sat = satRaw > 1 ? satRaw / 100 : satRaw;
+			return hueDist(l.colorHue, firstHue) <= hueTolerance && Math.abs(sat - firstSatNorm) <= satTolerance;
+		});
 
 		if (allSame) {
-			// Calculate average and convert to hex
-			const avgR = Math.round(colorLights.reduce((a, l) => a + l.colorRed, 0) / colorLights.length);
-			const avgG = Math.round(colorLights.reduce((a, l) => a + l.colorGreen, 0) / colorLights.length);
-			const avgB = Math.round(colorLights.reduce((a, l) => a + l.colorBlue, 0) / colorLights.length);
-
-			const hex = `#${avgR.toString(16).padStart(2, '0')}${avgG.toString(16).padStart(2, '0')}${avgB.toString(16).padStart(2, '0')}`;
-
+			// Circular mean for hue using atan2 to handle 0/360 wrap-around
+			const sinSum = hueSatLights.reduce((a, l) => a + Math.sin((l.colorHue * Math.PI) / 180), 0);
+			const cosSum = hueSatLights.reduce((a, l) => a + Math.cos((l.colorHue * Math.PI) / 180), 0);
+			const avgHue = ((Math.atan2(sinSum, cosSum) * 180) / Math.PI + 360) % 360;
+			const avgSatRaw = hueSatLights.reduce((a, l) => a + (l.colorSaturation ?? 100), 0) / hueSatLights.length;
+			const avgSat = avgSatRaw > 1 ? avgSatRaw / 100 : avgSatRaw;
+			const hex = hsvToHex(avgHue, Math.max(0, Math.min(1, avgSat)), 1);
 			return { value: hex, isMixed: false };
 		}
 

@@ -1173,8 +1173,8 @@ export class LightingIntentService extends SpaceIntentBaseService {
 					});
 				} else if (hasHueSat) {
 					// Use Hue-Saturation color mode
-					const hsl = this.hexToHsl(intent.color);
-					if (!hsl) {
+					const hsv = this.hexToHsv(intent.color);
+					if (!hsv) {
 						this.logger.warn(`Invalid hex color: ${intent.color}`);
 						return false;
 					}
@@ -1182,13 +1182,13 @@ export class LightingIntentService extends SpaceIntentBaseService {
 						device: light.device,
 						channel: light.lightChannel,
 						property: light.hueProperty,
-						value: hsl.hue,
+						value: hsv.hue,
 					});
 					commands.push({
 						device: light.device,
 						channel: light.lightChannel,
 						property: light.saturationProperty,
-						value: hsl.saturation,
+						value: hsv.saturation,
 					});
 				}
 				break;
@@ -1280,19 +1280,19 @@ export class LightingIntentService extends SpaceIntentBaseService {
 							});
 						}
 					} else if (hasHueSat) {
-						const hsl = this.hexToHsl(intent.color);
-						if (hsl) {
+						const hsv = this.hexToHsv(intent.color);
+						if (hsv) {
 							commands.push({
 								device: light.device,
 								channel: light.lightChannel,
 								property: light.hueProperty,
-								value: hsl.hue,
+								value: hsv.hue,
 							});
 							commands.push({
 								device: light.device,
 								channel: light.lightChannel,
 								property: light.saturationProperty,
-								value: hsl.saturation,
+								value: hsv.saturation,
 							});
 						}
 					}
@@ -1391,7 +1391,7 @@ export class LightingIntentService extends SpaceIntentBaseService {
 	 * Convert hex color string to HSL object.
 	 * Returns hue in degrees (0-360) and saturation as percentage (0-100).
 	 */
-	private hexToHsl(hex: string): { hue: number; saturation: number } | null {
+	private hexToHsv(hex: string): { hue: number; saturation: number } | null {
 		const rgb = this.hexToRgb(hex);
 
 		if (!rgb) {
@@ -1425,18 +1425,8 @@ export class LightingIntentService extends SpaceIntentBaseService {
 			}
 		}
 
-		// Calculate lightness (used for saturation calculation)
-		const lightness = (max + min) / 2;
-
-		// Calculate saturation
-		let saturation = 0;
-
-		if (delta !== 0) {
-			saturation = delta / (1 - Math.abs(2 * lightness - 1));
-		}
-
-		// Convert saturation to percentage (0-100)
-		saturation = Math.round(saturation * 100);
+		// Calculate HSV saturation: S = delta / max (or 0 when max is 0)
+		const saturation = max === 0 ? 0 : Math.round((delta / max) * 100);
 
 		return { hue, saturation };
 	}

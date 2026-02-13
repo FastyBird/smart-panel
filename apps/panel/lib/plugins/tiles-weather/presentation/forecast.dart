@@ -14,7 +14,7 @@ import 'package:provider/provider.dart';
 import 'package:weather_icons/weather_icons.dart';
 
 class ForecastTileWidget extends TileWidget<ForecastWeatherTileView> {
-  ForecastTileWidget(super.tile, {super.key});
+  const ForecastTileWidget(super.tile, {super.key});
 
   @override
   Widget build(BuildContext context) {

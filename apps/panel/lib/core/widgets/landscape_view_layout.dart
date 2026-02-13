@@ -19,11 +19,11 @@ import 'package:flutter/material.dart';
 /// )
 /// ```
 class LandscapeViewLayout extends StatelessWidget {
-  /// The main content widget (left column)
+  /// The main content widget (right column, flex 2)
   final Widget mainContent;
 
-  /// Optional additional content widget (right column)
-  /// If null, the right column is hidden
+  /// Optional additional content widget (left column, flex 1)
+  /// If null, the left column is hidden
   final Widget? additionalContent;
 
   /// Whether the main content should be scrollable with gradient
@@ -68,7 +68,7 @@ class LandscapeViewLayout extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
 
-        // Right column: Additional content (optional)
+        // Left column: Additional content (optional)
         if (additionalContent != null) ...[
           Expanded(
             flex: 1,
@@ -88,7 +88,7 @@ class LandscapeViewLayout extends StatelessWidget {
           ),
         ],
 
-        // Left column: Main content
+        // Right column: Main content
         Expanded(
           flex: 2,
           child: ClipRect(

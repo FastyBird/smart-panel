@@ -809,6 +809,12 @@ abstract class AppLocalizations {
   /// **'Swatches'**
   String get light_mode_swatches;
 
+  /// Status label on the 'more' tile when scenes overflow the grid in landscape
+  ///
+  /// In en, this message translates to:
+  /// **'More scenes'**
+  String get lights_more_scenes;
+
   /// Title displayed for the thermostat state section
   ///
   /// In en, this message translates to:

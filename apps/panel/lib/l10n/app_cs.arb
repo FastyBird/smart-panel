@@ -115,6 +115,7 @@
   "light_mode_temperature": "Teplota",
   "light_mode_white": "Bílé",
   "light_mode_swatches": "Palety",
+  "lights_more_scenes": "Více scén",
   "thermostat_state_title": "Stav termostatu",
   "thermostat_state_configured_temperature_description": "Nastavená teplota.",
   "thermostat_state_current_temperature_description": "Aktuální teplota místnosti.",
