@@ -1698,7 +1698,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         showWarningBadge: true,
         showGlow: false,
         showDoubleBorder: false,
-        showInactiveBorder: true,
+        showInactiveBorder: false,
         activeColor: device.isActive ? _getModeColor() : null,
         onTileTap: () {
           Navigator.of(context).pop();
@@ -1809,7 +1809,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         showWarningBadge: true,
         showGlow: false,
         showDoubleBorder: false,
-        showInactiveBorder: true,
+        showInactiveBorder: false,
         onIconTap: isOffline
             ? null
             : () => _toggleAuxiliaryDevice(device),
@@ -2180,7 +2180,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         showWarningBadge: true,
         showGlow: false,
         showDoubleBorder: false,
-        showInactiveBorder: true,
+        showInactiveBorder: false,
         onTileTap: _sensorTapCallback(sensor),
       ),
     );
@@ -2295,7 +2295,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         showWarningBadge: true,
         showGlow: false,
         showDoubleBorder: false,
-        showInactiveBorder: true,
+        showInactiveBorder: false,
         onTileTap: _sensorTapCallback(sensor),
       ),
     );
