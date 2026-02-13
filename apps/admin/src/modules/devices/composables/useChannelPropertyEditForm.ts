@@ -132,6 +132,7 @@ export const useChannelPropertyEditForm = <TForm extends IChannelPropertyEditFor
 	const model = reactive<TForm>({
 		...property,
 		format: toRaw(property.format),
+		value: (property.value as { value?: string | number | boolean | null } | null)?.value ?? null,
 		enumValues,
 		minValue,
 		maxValue,
