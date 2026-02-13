@@ -3712,6 +3712,8 @@ class _LightsHeroCard extends StatelessWidget {
     final caps = state.capabilities.toList();
     caps.sort((a, b) => a.index.compareTo(b.index));
 
+    final isSmallPortrait = isPortrait && locator<ScreenService>().isSmallScreen;
+
     return ModeSelector<LightHeroCapability>(
       modes: caps.map((cap) => ModeOption<LightHeroCapability>(
         value: cap,
@@ -3721,9 +3723,11 @@ class _LightsHeroCard extends StatelessWidget {
       selectedValue: state.activeMode ?? caps.first,
       onChanged: (cap) => onModeChanged?.call(cap),
       orientation: ModeSelectorOrientation.horizontal,
-      iconPlacement: isPortrait && locator<ScreenService>().isSmallScreen
+      iconPlacement: isSmallPortrait
           ? ModeSelectorIconPlacement.left
           : ModeSelectorIconPlacement.top,
+      showLabels: isSmallPortrait ? false : null,
+      color: statusColor,
     );
   }
 
