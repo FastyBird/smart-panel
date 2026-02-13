@@ -2665,12 +2665,12 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             ),
 
           if (hasRoles) ...[
-            SizedBox(height: AppSpacings.pMd),
+            AppSpacings.spacingMdVertical,
             _buildRoleSelector(context, roles, effectiveRole: effectiveRole),
           ],
 
           if (hasScenes) ...[
-            SizedBox(height: AppSpacings.pMd),
+            AppSpacings.spacingMdVertical,
             Expanded(child: _buildPortraitScenesGrid(context)),
           ],
         ],
@@ -2793,7 +2793,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             effectiveRole: effectiveRole,
           ),
         if (showScenes) ...[
-          if (roles.isNotEmpty) SizedBox(height: AppSpacings.pMd),
+          if (roles.isNotEmpty) AppSpacings.spacingMdVertical,
           Expanded(
             child: _buildLandscapeScenesColumn(context, localizations),
           ),
@@ -2892,7 +2892,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
               title: localizations.space_scenes_title,
               icon: MdiIcons.autoFix,
             ),
-            SizedBox(height: AppSpacings.pMd),
+            AppSpacings.spacingMdVertical,
             ...List.generate(displayCount, (index) {
               final isLast = index == displayCount - 1;
 
@@ -3832,7 +3832,7 @@ class _LightsHeroCard extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         _buildBadge(isDark, colorFamily),
-        SizedBox(width: AppSpacings.pMd),
+        AppSpacings.spacingMdHorizontal,
         _buildGiantValue(isDark, fontSize),
       ],
     );
@@ -4131,7 +4131,7 @@ class _LightsHeroCard extends StatelessWidget {
                 : null,
           ),
         ),
-        SizedBox(height: AppSpacings.pMd),
+        AppSpacings.spacingMdVertical,
         _buildPresets(isDark, colorFamily, mode),
       ],
     );
