@@ -1271,7 +1271,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
             style: TextStyle(
               fontSize: AppFontSize.extraSmall,
               fontWeight: FontWeight.w600,
-              letterSpacing: 1.0,
+              letterSpacing: AppSpacings.scale(1),
               color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
             ),
           ),
@@ -2304,7 +2304,9 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     return HeroCard(
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final fontSize = screenService.isSmallScreen ? (constraints.maxHeight * 0.25).clamp(48.0, 160.0) : (constraints.maxHeight * 0.35).clamp(48.0, 160.0);
+          final fontSize = screenService.isSmallScreen
+              ? (constraints.maxHeight * 0.25).clamp(AppSpacings.scale(48), AppSpacings.scale(160))
+              : (constraints.maxHeight * 0.35).clamp(AppSpacings.scale(48), AppSpacings.scale(160));
 
           return Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -2314,7 +2316,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   _buildModeBadge(context),
-                  SizedBox(width: AppSpacings.pMd),
+                  AppSpacings.spacingMdHorizontal,
                   _buildGiantTemp(context, fontSize),
                 ],
               ),
@@ -2373,14 +2375,14 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
                 shape: BoxShape.circle,
               ),
             ),
-            SizedBox(width: AppSpacings.pSm),
+            AppSpacings.spacingSmHorizontal,
             Text(
               modeLabel,
               style: TextStyle(
                 fontSize: fontSize,
                 fontWeight: FontWeight.w700,
                 color: colorFamily.base,
-                letterSpacing: 0.3,
+                letterSpacing: AppSpacings.scale(0.3),
               ),
             ),
           ],
