@@ -56,6 +56,7 @@ import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/hero_card.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_bottom_sheet.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_right_drawer.dart';
 import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
@@ -405,6 +406,9 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
   /// True when a hero intent was in flight; used to detect unlock.
   bool _heroWasSpaceLocked = false;
+
+  /// Notifier bumped after [_toggleLight] so the role-lights sheet rebuilds.
+  final ValueNotifier<int> _roleLightsSheetNotifier = ValueNotifier<int>(0);
 
   /// Channel IDs tracked by [_heroControlStateService].
   static const List<String> _heroControlChannelIds = [
@@ -1150,6 +1154,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     _roleControlStateService.dispose();
     _heroControlStateService.removeListener(_onControlStateChanged);
     _heroControlStateService.dispose();
+    _roleLightsSheetNotifier.dispose();
     super.dispose();
   }
 
@@ -1353,12 +1358,47 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
           _updateHeroCacheIfSynced(heroRoleState, effectiveRole);
         }
 
+        // Check convergence for device-level on/off optimistic states
+        // (set by _toggleLight via DeviceControlStateService).
+        _checkDeviceLightConvergence();
+
         setState(() {});
 
         // Update bottom nav mode config if this is the active page
         _registerModeConfig();
       }
     });
+  }
+
+  /// Checks convergence for device-level on/off optimistic states set by
+  /// [_toggleLight]. Without this, the [DeviceControlStateService] transitions
+  /// pending → settling → mixed and stays locked forever, returning the stale
+  /// desired value in [_getLightOptimisticOn].
+  void _checkDeviceLightConvergence() {
+    final controlState = _deviceControlStateService;
+    final devicesService = _devicesService;
+    if (controlState == null || devicesService == null) return;
+
+    final targets = _spacesService?.getLightTargetsForSpace(_roomId) ?? [];
+    for (final target in targets) {
+      final device = devicesService.getDevice(target.deviceId);
+      if (device is! LightingDeviceView) continue;
+
+      final channel = device.lightChannels.firstWhere(
+        (c) => c.id == target.channelId,
+        orElse: () => device.lightChannels.first,
+      );
+
+      // Only check properties that have active optimistic state.
+      if (controlState.isLocked(target.deviceId, channel.id, channel.onProp.id)) {
+        controlState.checkPropertyConvergence(
+          target.deviceId,
+          channel.id,
+          channel.onProp.id,
+          channel.on,
+        );
+      }
+    }
   }
 
   /// Group light targets by their role.
@@ -2087,22 +2127,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     }
   }
 
-  /// Returns true if the hero role has mixed/sync-error state (needs sync/retry).
-  bool _isHeroRoleMixed(LightTargetRole role) {
-    if (_selectedRole != null && _selectedRole != role) return false;
-    final roleState = _getHeroRoleAggregatedState();
-    if (roleState == null) return false;
-    final roleMixedState = _buildHeroMixedStateFromRole(roleState);
-    final devicesMixed = roleMixedState.isMixed;
-    final hasSyncError = _heroControlStateService.isMixed(LightingConstants.brightnessChannelId) ||
-        _heroControlStateService.isMixed(LightingConstants.hueChannelId) ||
-        _heroControlStateService.isMixed(LightingConstants.saturationChannelId) ||
-        _heroControlStateService.isMixed(LightingConstants.temperatureChannelId) ||
-        _heroControlStateService.isMixed(LightingConstants.whiteChannelId) ||
-        _heroControlStateService.isMixed(LightingConstants.onOffChannelId);
-    return _heroControlStateService.hasActiveState ? false : (hasSyncError || devicesMixed);
-  }
-
   /// Sync all lights in the role to current hero display values.
   Future<void> _heroSyncAllForRole(LightingRoleData roleData) async {
     final devicesService = _devicesService;
@@ -2182,35 +2206,16 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     if (devicesService == null) return;
 
     final roomName = _spacesService?.getSpace(_roomId)?.name ?? '';
-    final lights = _buildOtherLights(roleData.targets, devicesService, roomName);
-    if (lights.isEmpty) return;
+
+    // Check there are lights to show before opening the sheet.
+    final initialLights =
+        _buildOtherLights(roleData.targets, devicesService, roomName);
+    if (initialLights.isEmpty) return;
 
     final localizations = AppLocalizations.of(context)!;
     final roleName = _getRoleName(roleData.role, localizations);
     final isLandscape =
         MediaQuery.of(context).orientation == Orientation.landscape;
-    final isMixed = _isHeroRoleMixed(roleData.role);
-
-    final bottomSection = isMixed
-        ? Theme(
-            data: Theme.of(context).copyWith(
-              filledButtonTheme: Theme.of(context).brightness == Brightness.dark
-                  ? AppFilledButtonsDarkThemes.info
-                  : AppFilledButtonsLightThemes.info,
-            ),
-            child: SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: () {
-                  HapticFeedback.lightImpact();
-                  _heroSyncAllForRole(roleData);
-                  Navigator.of(context).pop();
-                },
-                child: Text(localizations.button_sync_all),
-              ),
-            ),
-          )
-        : null;
 
     if (isLandscape) {
       final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -2222,35 +2227,173 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         title: roleName,
         titleIcon: MdiIcons.lightbulbGroup,
         scrollable: false,
-        content: VerticalScrollWithGradient(
-          gradientHeight: AppSpacings.pMd,
-          itemCount: lights.length,
-          separatorHeight: AppSpacings.pSm,
-          backgroundColor: drawerBgColor,
-          padding: EdgeInsets.symmetric(
-            horizontal: AppSpacings.pLg,
-            vertical: AppSpacings.pMd,
-          ),
-          itemBuilder: (context, index) => _buildOtherLightTileForSheet(
-            context,
-            lights[index],
-          ),
+        content: ListenableBuilder(
+          listenable: _roleLightsSheetNotifier,
+          builder: (ctx, _) {
+            final lights = _buildOtherLights(
+              roleData.targets,
+              devicesService,
+              roomName,
+            );
+            return Column(
+              children: [
+                Expanded(
+                  child: VerticalScrollWithGradient(
+                    gradientHeight: AppSpacings.pMd,
+                    itemCount: lights.length,
+                    separatorHeight: AppSpacings.pSm,
+                    backgroundColor: drawerBgColor,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: AppSpacings.pLg,
+                      vertical: AppSpacings.pMd,
+                    ),
+                    itemBuilder: (context, index) =>
+                        _buildOtherLightTileForSheet(context, lights[index]),
+                  ),
+                ),
+                _buildRoleLightsSheetFooter(ctx, roleData),
+              ],
+            );
+          },
         ),
-        footerSection: bottomSection,
       );
     } else {
-      DeckItemSheet.showItemSheet(
+      showAppBottomSheet(
         context,
         title: roleName,
-        icon: MdiIcons.lightbulbGroup,
-        itemCount: lights.length,
-        itemBuilder: (context, index) => _buildOtherLightTileForSheet(
-          context,
-          lights[index],
+        titleIcon: MdiIcons.lightbulbGroup,
+        scrollable: false,
+        content: ListenableBuilder(
+          listenable: _roleLightsSheetNotifier,
+          builder: (ctx, _) {
+            final lights = _buildOtherLights(
+              roleData.targets,
+              devicesService,
+              roomName,
+            );
+            final isDark =
+                Theme.of(ctx).brightness == Brightness.dark;
+            final bgColor =
+                isDark ? AppFillColorDark.base : AppFillColorLight.blank;
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Flexible(
+                  child: VerticalScrollWithGradient(
+                    gradientHeight: AppSpacings.pMd,
+                    itemCount: lights.length,
+                    separatorHeight: AppSpacings.pSm,
+                    backgroundColor: bgColor,
+                    shrinkWrap: true,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: AppSpacings.pLg,
+                      vertical: AppSpacings.pMd,
+                    ),
+                    itemBuilder: (c, i) =>
+                        _buildOtherLightTileForSheet(c, lights[i]),
+                  ),
+                ),
+                _buildRoleLightsSheetFooter(ctx, roleData),
+              ],
+            );
+          },
         ),
-        bottomSection: bottomSection,
       );
     }
+  }
+
+  /// Builds the footer for the role-lights sheet: sync-all, retry, or nothing.
+  ///
+  /// Checks the device-level optimistic state (same source as the tile icons)
+  /// rather than the backend role-level aggregated state, so the button
+  /// appears/disappears immediately after [_toggleLight].
+  ///
+  /// Includes its own top-border decoration so it can live inside the content
+  /// area and collapse to [SizedBox.shrink] without leaving a visible gap.
+  Widget _buildRoleLightsSheetFooter(
+    BuildContext context,
+    LightingRoleData roleData,
+  ) {
+    final devicesService = _devicesService;
+    if (devicesService == null) return const SizedBox.shrink();
+
+    // Check device-level state (with optimistic overlays) for mixed / offline.
+    bool hasOn = false;
+    bool hasOff = false;
+    bool hasOffline = false;
+    for (final t in roleData.targets) {
+      final device = devicesService.getDevice(t.deviceId);
+      if (device is! LightingDeviceView) continue;
+      if (!device.isOnline) {
+        hasOffline = true;
+        continue;
+      }
+      final channel = device.lightChannels.firstWhere(
+        (c) => c.id == t.channelId,
+        orElse: () => device.lightChannels.first,
+      );
+      final isOn = _getLightOptimisticOn(
+        t.deviceId,
+        t.channelId,
+        channel.onProp.id,
+        channel.on,
+      );
+      if (isOn) {
+        hasOn = true;
+      } else {
+        hasOff = true;
+      }
+    }
+    final isMixed = hasOn && hasOff;
+
+    if (!isMixed && !hasOffline) return const SizedBox.shrink();
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final localizations = AppLocalizations.of(context)!;
+    final borderColor =
+        isDark ? AppBorderColorDark.darker : AppBorderColorLight.darker;
+    final filledTheme = hasOffline
+        ? (isDark
+            ? AppFilledButtonsDarkThemes.warning
+            : AppFilledButtonsLightThemes.warning)
+        : (isDark
+            ? AppFilledButtonsDarkThemes.info
+            : AppFilledButtonsLightThemes.info);
+    final label = hasOffline
+        ? localizations.button_retry
+        : localizations.button_sync_all;
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        border: Border(
+          top: BorderSide(
+            color: borderColor,
+            width: AppSpacings.scale(1),
+          ),
+        ),
+      ),
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: AppSpacings.pLg,
+          vertical: AppSpacings.pMd,
+        ),
+        child: Theme(
+          data: Theme.of(context).copyWith(filledButtonTheme: filledTheme),
+          child: SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: () {
+                HapticFeedback.lightImpact();
+                _heroSyncAllForRole(roleData);
+                Navigator.of(context).pop();
+              },
+              child: Text(label),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildOtherLightTileForSheet(
@@ -2781,6 +2924,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
     // Force immediate UI update
     if (mounted) setState(() {});
+    _roleLightsSheetNotifier.value++;
 
     await devicesService.setMultiplePropertyValues(
       properties: [
