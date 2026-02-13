@@ -274,8 +274,9 @@ class _LightHeroState {
   final double whiteChannel;
   final Color? currentColor;
   final String? colorName;
+  final IconData statusIcon;
 
-  const _LightHeroState({
+  _LightHeroState({
     required this.roleName,
     required this.deviceCount,
     this.isOn = false,
@@ -292,7 +293,8 @@ class _LightHeroState {
     this.whiteChannel = 0,
     this.currentColor,
     this.colorName,
-  });
+    IconData? statusIcon,
+  }) : statusIcon = statusIcon ?? MdiIcons.lightbulbGroup;
 
   bool get isOnOffOnly => capabilities.isEmpty;
   bool get showModeSwitcher => capabilities.length >= 2;
@@ -324,6 +326,7 @@ class _LightHeroState {
       whiteChannel: whiteChannel ?? this.whiteChannel,
       currentColor: currentColor ?? this.currentColor,
       colorName: colorName ?? this.colorName,
+      statusIcon: statusIcon,
     );
   }
 }
@@ -1888,6 +1891,21 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       ).toColor();
     }
 
+    // Determine status icon: offline → alert, mixed → tune, synced → lightbulbGroup
+    IconData statusIcon;
+    final hasOffline = targets.any((t) {
+      final d = devicesService.getDevice(t.deviceId);
+      return d != null && !d.isOnline;
+    });
+    if (hasOffline) {
+      statusIcon = MdiIcons.alert;
+    } else if (roleState != null) {
+      final mixed = _buildHeroMixedStateFromRole(roleState);
+      statusIcon = mixed.isMixed ? MdiIcons.tune : MdiIcons.lightbulbGroup;
+    } else {
+      statusIcon = MdiIcons.lightbulbGroup;
+    }
+
     return _LightHeroState(
       roleName: roleData.name,
       deviceCount: deviceCount,
@@ -1906,6 +1924,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       whiteChannel: white,
       currentColor: currentColor,
       colorName: colorName,
+      statusIcon: statusIcon,
     );
   }
 
@@ -3361,7 +3380,7 @@ class _LightsHeroCard extends StatelessWidget {
                   size: fontSize,
                   color: activeColor,
                 ),
-                SizedBox(width: AppSpacings.pXs),
+                AppSpacings.spacingSmHorizontal,
                 Text(
                   state.roleName.toUpperCase(),
                   style: TextStyle(
@@ -3381,7 +3400,7 @@ class _LightsHeroCard extends StatelessWidget {
           color: activeColor.withValues(alpha: 0.3),
           height: fontSize + AppSpacings.pXs * 2,
         ),
-        // Right part: device count → show lights sheet
+        // Right part: status icon + count circle → show lights sheet
         GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: onShowLights,
@@ -3396,14 +3415,34 @@ class _LightsHeroCard extends StatelessWidget {
                 right: Radius.circular(AppBorderRadius.round),
               ),
             ),
-            child: Text(
-              '${state.deviceCount}',
-              style: TextStyle(
-                fontSize: fontSize,
-                fontWeight: FontWeight.w700,
-                color: activeColor,
-                letterSpacing: 0.3,
-              ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  state.statusIcon,
+                  size: fontSize,
+                  color: activeColor,
+                ),
+                AppSpacings.spacingSmHorizontal,
+                Container(
+                  width: fontSize,
+                  height: fontSize,
+                  decoration: BoxDecoration(
+                    color: activeColor,
+                    shape: BoxShape.circle,
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    '${state.deviceCount}',
+                    style: TextStyle(
+                      fontSize: fontSize * 0.6,
+                      fontWeight: FontWeight.w700,
+                      color: activeBg,
+                      height: 1,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -3444,7 +3483,11 @@ class _LightsHeroCard extends StatelessWidget {
     if (state.capabilities.contains(LightHeroCapability.hue)) {
       swatchColor = state.currentColor;
     } else if (state.capabilities.contains(LightHeroCapability.colorTemp)) {
-      swatchColor = _colorTempThumbColor(state.colorTemp.round());
+      final tempRange = state.maxColorTemp - state.minColorTemp;
+      final t = tempRange > 0
+          ? (state.colorTemp - state.minColorTemp) / tempRange
+          : 0.5;
+      swatchColor = _sampleGradient(_HeroGradients.colorTemp, t);
     }
 
     return Stack(
@@ -3591,6 +3634,9 @@ class _LightsHeroCard extends StatelessWidget {
         HSVColor.fromAHSV(1, state.hue.clamp(0, 360), 1, 1).toColor();
     final tempRange = state.maxColorTemp - state.minColorTemp;
     final hueRange = state.maxHue - state.minHue;
+    final tempPosition = tempRange > 0
+        ? (state.colorTemp - state.minColorTemp) / tempRange
+        : 0.5;
 
     return switch (mode) {
       LightHeroCapability.brightness => (
@@ -3601,10 +3647,8 @@ class _LightsHeroCard extends StatelessWidget {
         ),
       LightHeroCapability.colorTemp => (
           _HeroGradients.colorTemp,
-          _colorTempThumbColor(state.colorTemp.round()),
-          tempRange > 0
-              ? (state.colorTemp - state.minColorTemp) / tempRange
-              : 0.5,
+          _sampleGradient(_HeroGradients.colorTemp, tempPosition),
+          tempPosition,
           [
             '${state.minColorTemp.round()}K',
             '${((state.minColorTemp + state.maxColorTemp) / 2).round()}K',
@@ -3632,19 +3676,15 @@ class _LightsHeroCard extends StatelessWidget {
     };
   }
 
-  /// Interpolate color temp thumb color (matches _ColorTempPanel._getColorTempColor).
-  Color _colorTempThumbColor(int temp) {
-    final t = (temp - 2700) / (6500 - 2700);
-    if (t < 0.33) {
-      return Color.lerp(
-          const Color(0xFFFF9800), const Color(0xFFFFFAF0), t / 0.33)!;
-    } else if (t < 0.66) {
-      return Color.lerp(
-          const Color(0xFFFFFAF0), const Color(0xFFE3F2FD), (t - 0.33) / 0.33)!;
-    } else {
-      return Color.lerp(
-          const Color(0xFFE3F2FD), const Color(0xFF64B5F6), (t - 0.66) / 0.34)!;
-    }
+  /// Sample a color from a gradient at normalized position [t] (0.0–1.0).
+  /// Colors are evenly distributed along the gradient.
+  Color _sampleGradient(List<Color> colors, double t) {
+    assert(colors.length >= 2);
+    t = t.clamp(0.0, 1.0);
+    final segments = colors.length - 1;
+    final segment = (t * segments).floor().clamp(0, segments - 1);
+    final localT = (t * segments - segment).clamp(0.0, 1.0);
+    return Color.lerp(colors[segment], colors[segment + 1], localT)!;
   }
 
   /// Convert a 0.0–1.0 slider position back to the actual domain value.
