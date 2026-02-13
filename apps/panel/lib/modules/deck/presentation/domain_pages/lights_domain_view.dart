@@ -2081,8 +2081,8 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     if (devicesService == null) return;
 
     final roomName = _spacesService?.getSpace(_roomId)?.name ?? '';
-    final otherLights = _buildOtherLights(otherTargets, devicesService, roomName);
-    if (otherLights.isEmpty) return;
+    final initialLights = _buildOtherLights(otherTargets, devicesService, roomName);
+    if (initialLights.isEmpty) return;
 
     final localizations = AppLocalizations.of(context)!;
     final isLandscape =
@@ -2098,30 +2098,48 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         title: localizations.domain_lights_other,
         titleIcon: MdiIcons.lightbulbOutline,
         scrollable: false,
-        content: VerticalScrollWithGradient(
-          gradientHeight: AppSpacings.pMd,
-          itemCount: otherLights.length,
-          separatorHeight: AppSpacings.pSm,
-          backgroundColor: drawerBgColor,
-          padding: EdgeInsets.symmetric(
-            horizontal: AppSpacings.pLg,
-            vertical: AppSpacings.pMd,
-          ),
-          itemBuilder: (context, index) => _buildOtherLightTileForSheet(
-            context,
-            otherLights[index],
-          ),
+        content: ListenableBuilder(
+          listenable: _roleLightsSheetNotifier,
+          builder: (ctx, _) {
+            final lights = _buildOtherLights(
+              otherTargets,
+              devicesService,
+              roomName,
+            );
+            return VerticalScrollWithGradient(
+              gradientHeight: AppSpacings.pMd,
+              itemCount: lights.length,
+              separatorHeight: AppSpacings.pSm,
+              backgroundColor: drawerBgColor,
+              padding: EdgeInsets.symmetric(
+                horizontal: AppSpacings.pLg,
+                vertical: AppSpacings.pMd,
+              ),
+              itemBuilder: (context, index) =>
+                  _buildOtherLightTileForSheet(context, lights[index]),
+            );
+          },
         ),
       );
     } else {
-      DeckItemSheet.showItemSheet(
+      List<LightDeviceData> cachedLights = initialLights;
+
+      DeckItemSheet.showItemSheetWithUpdates(
         context,
         title: localizations.domain_lights_other,
         icon: MdiIcons.lightbulbOutline,
-        itemCount: otherLights.length,
+        rebuildWhen: _roleLightsSheetNotifier,
+        getItemCount: () {
+          cachedLights = _buildOtherLights(
+            otherTargets,
+            devicesService,
+            roomName,
+          );
+          return cachedLights.length;
+        },
         itemBuilder: (context, index) => _buildOtherLightTileForSheet(
           context,
-          otherLights[index],
+          cachedLights[index],
         ),
       );
     }
