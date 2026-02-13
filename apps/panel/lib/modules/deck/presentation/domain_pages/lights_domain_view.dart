@@ -2955,6 +2955,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         showGlow: false,
         showDoubleBorder: false,
         showInactiveBorder: false,
+        onTileTap: _showScenesSheet,
       ),
     );
   }
