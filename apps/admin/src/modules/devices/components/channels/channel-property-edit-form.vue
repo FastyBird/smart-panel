@@ -177,7 +177,64 @@
 		/>
 
 		<el-form-item
-			v-if="model.enterValue"
+			v-if="model.enterValue && model.dataType === DevicesModuleChannelPropertyDataType.bool"
+			:label="t('devicesModule.fields.channelsProperties.value.title')"
+			:prop="['value']"
+			class="mt-2"
+		>
+			<el-switch v-model="model.value as boolean" />
+		</el-form-item>
+
+		<el-form-item
+			v-else-if="
+				model.enterValue &&
+				[
+					DevicesModuleChannelPropertyDataType.char,
+					DevicesModuleChannelPropertyDataType.uchar,
+					DevicesModuleChannelPropertyDataType.short,
+					DevicesModuleChannelPropertyDataType.ushort,
+					DevicesModuleChannelPropertyDataType.int,
+					DevicesModuleChannelPropertyDataType.uint,
+					DevicesModuleChannelPropertyDataType.float,
+				].includes(model.dataType)
+			"
+			:label="t('devicesModule.fields.channelsProperties.value.title')"
+			:prop="['value']"
+			class="mt-2"
+		>
+			<el-input-number
+				v-model="model.value as number"
+				:placeholder="t('devicesModule.fields.channelsProperties.value.placeholder')"
+				:min="model.minValue"
+				:max="model.maxValue"
+				:step="model.step ?? undefined"
+				name="value"
+				class="w-full!"
+			/>
+		</el-form-item>
+
+		<el-form-item
+			v-else-if="model.enterValue && model.dataType === DevicesModuleChannelPropertyDataType.enum"
+			:label="t('devicesModule.fields.channelsProperties.value.title')"
+			:prop="['value']"
+			class="mt-2"
+		>
+			<el-select
+				v-model="model.value as string"
+				:placeholder="t('devicesModule.fields.channelsProperties.value.placeholder')"
+				name="value"
+			>
+				<el-option
+					v-for="item in model.enumValues"
+					:key="item"
+					:label="item"
+					:value="item"
+				/>
+			</el-select>
+		</el-form-item>
+
+		<el-form-item
+			v-else-if="model.enterValue"
 			:label="t('devicesModule.fields.channelsProperties.value.title')"
 			:prop="['value']"
 			class="mt-2"
@@ -195,7 +252,7 @@
 import { watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, ElSwitch, vLoading } from 'element-plus';
+import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElInputNumber, ElOption, ElSelect, ElSwitch, vLoading } from 'element-plus';
 
 import { DevicesModuleChannelCategory, DevicesModuleChannelPropertyDataType } from '../../../../openapi.constants';
 import { useChannel, useChannelPropertyEditForm } from '../../composables/composables';
