@@ -2196,13 +2196,12 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     final hasSensors = _state.sensors.isNotEmpty;
 
     return LandscapeViewLayout(
-      mainContent: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(child: _buildLandscapeMainContent(context)),
-          if (hasSensors) AppSpacings.spacingMdHorizontal,
-        ],
+      mainContentPadding: EdgeInsets.only(
+        right: AppSpacings.pMd,
+        left: AppSpacings.pMd,
+        bottom: AppSpacings.pMd,
       ),
+      mainContent: Expanded(child: _buildLandscapeMainContent(context)),
       additionalContentScrollable: false,
       additionalContentPadding: EdgeInsets.only(
         left: AppSpacings.pMd,
@@ -2348,12 +2347,12 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
                   _buildGiantTemp(context, fontSize),
                 ],
               ),
-              SizedBox(height: AppSpacings.pSm),
+              AppSpacings.spacingLgVertical,
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
                 child: _buildTemperatureSlider(context),
               ),
-              SizedBox(height: AppSpacings.pLg),
+              AppSpacings.spacingLgVertical,
               _buildControlsRow(context),
             ],
           );
@@ -2387,6 +2386,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           horizontal: AppSpacings.pMd,
           vertical: AppSpacings.pXs,
         ),
+        height: AppSpacings.scale(24),
         decoration: BoxDecoration(
           color: colorFamily.light9,
           borderRadius: BorderRadius.circular(AppBorderRadius.round),

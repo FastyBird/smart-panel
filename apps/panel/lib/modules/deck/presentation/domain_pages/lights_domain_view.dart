@@ -2498,7 +2498,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
           icon: roleData.icon,
           label: roleData.name,
           color: statusColor,
-          iconSize: AppSpacings.scale(16),
+          iconSize: AppSpacings.scale(18),
           labelBuilder: (isSelected, contentColor) {
             final secondaryColor = isDark
                 ? AppTextColorDark.secondary
@@ -2513,6 +2513,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                     color: secondaryColor,
                     fontSize: AppFontSize.extraSmall,
                     fontWeight: FontWeight.w500,
+                    height: 1,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -2523,6 +2524,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                     color: contentColor,
                     fontSize: AppFontSize.base,
                     fontWeight: FontWeight.w600,
+                    height: 1,
                   ),
                   maxLines: 1,
                 ),
@@ -2641,14 +2643,19 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
     return LandscapeViewLayout(
       mainContentPadding: EdgeInsets.only(
+        right: AppSpacings.pMd,
         left: AppSpacings.pMd,
-        right: AppSpacings.pLg,
         bottom: AppSpacings.pMd,
       ),
       mainContent: _buildLandscapeMainContent(
         context, roles,
         heroState: heroState,
         effectiveRole: effectiveRole,
+      ),
+      additionalContentScrollable: false,
+      additionalContentPadding: EdgeInsets.only(
+        left: AppSpacings.pMd,
+        bottom: AppSpacings.pMd,
       ),
       additionalContent: hasScenes
           ? _buildLandscapeScenesColumn(context, localizations)
@@ -3681,6 +3688,7 @@ class _LightsHeroCard extends StatelessWidget {
               horizontal: AppSpacings.pMd,
               vertical: AppSpacings.pXs,
             ),
+            height: AppSpacings.scale(24),
             decoration: BoxDecoration(
               color: activeBg,
               borderRadius: BorderRadius.horizontal(
@@ -3724,6 +3732,7 @@ class _LightsHeroCard extends StatelessWidget {
               horizontal: AppSpacings.pMd,
               vertical: AppSpacings.pXs,
             ),
+            height: AppSpacings.scale(24),
             decoration: BoxDecoration(
               color: activeBg,
               borderRadius: BorderRadius.horizontal(
@@ -3879,7 +3888,7 @@ class _LightsHeroCard extends StatelessWidget {
       iconPlacement: isSmallPortrait
           ? ModeSelectorIconPlacement.left
           : ModeSelectorIconPlacement.top,
-      showLabels: isSmallPortrait ? false : null,
+      showLabels: isSmallPortrait || !isPortrait ? false : null,
       color: statusColor,
     );
   }
