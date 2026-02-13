@@ -2469,6 +2469,8 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     bool isLandscape = false,
     LightTargetRole? effectiveRole,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final localizations = AppLocalizations.of(context)!;
     final statusColor = _getStatusColor(context);
     final statusColorFamily = _getStatusColorFamily(context);
 
@@ -2483,12 +2485,52 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     }
 
     return ModeSelector<LightTargetRole>(
-      modes: roles.map((roleData) => ModeOption<LightTargetRole>(
-        value: roleData.role,
-        icon: roleData.icon,
-        label: roleData.name,
-        color: statusColor,
-      )).toList(),
+      modes: roles.map((roleData) {
+        // Value line: brightness when on, "Off" when all off
+        final valueText = roleData.onCount == 0
+            ? localizations.light_state_off
+            : roleData.brightness != null
+                ? '${roleData.brightness}%'
+                : localizations.light_state_on;
+
+        return ModeOption<LightTargetRole>(
+          value: roleData.role,
+          icon: roleData.icon,
+          label: roleData.name,
+          color: statusColor,
+          iconSize: AppSpacings.scale(16),
+          labelBuilder: (isSelected, contentColor) {
+            final secondaryColor = isDark
+                ? AppTextColorDark.secondary
+                : AppTextColorLight.secondary;
+
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  roleData.name,
+                  style: TextStyle(
+                    color: secondaryColor,
+                    fontSize: AppFontSize.extraSmall,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  valueText,
+                  style: TextStyle(
+                    color: contentColor,
+                    fontSize: AppFontSize.base,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 1,
+                ),
+              ],
+            );
+          },
+        );
+      }).toList(),
       selectedValue: effectiveRole,
       onChanged: (role) {
         _resetHeroControlState();
@@ -2502,7 +2544,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
           ? ModeSelectorOrientation.vertical
           : ModeSelectorOrientation.horizontal,
       iconPlacement: ModeSelectorIconPlacement.top,
-      scrollable: true,
       color: statusColor,
       statusIcons: statusIcons,
     );
@@ -2576,15 +2617,9 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             _buildRoleSelector(context, roles, effectiveRole: effectiveRole),
           ],
 
-          // Quick Scenes — horizontal scroll with gradient
           if (hasScenes) ...[
             SizedBox(height: AppSpacings.pMd),
-            SectionTitle(
-              title: localizations.space_scenes_title,
-              icon: MdiIcons.autoFix,
-            ),
-            SizedBox(height: AppSpacings.pMd),
-            _buildPortraitScenesHorizontalScroll(context),
+            Expanded(child: _buildPortraitScenesGrid(context)),
           ],
         ],
       ),
@@ -2732,38 +2767,156 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     );
   }
 
-  Widget _buildPortraitScenesHorizontalScroll(BuildContext context) {
-    final scenes = _lightingScenes;
+  Widget _buildPortraitScenesGrid(BuildContext context) {
     final isSmallScreen = locator<ScreenService>().isSmallScreen;
+    final scenes = _lightingScenes;
+    final crossAxisCount = isSmallScreen ? 2 : 3;
+    final spacing = AppSpacings.pSm;
 
-    // Small: fixed width, horizontal layout
-    // Medium/large: fixed height, wider tiles (1.2 ratio)
-    final double tileWidth;
-    final double tileHeight;
-    if (isSmallScreen) {
-      tileWidth = AppSpacings.scale(AppTileWidth.horizontalMedium);
-      tileHeight = AppSpacings.scale(AppTileHeight.horizontal);
-    } else {
-      tileHeight = AppSpacings.scale(AppTileWidth.horizontalSmall);
-      tileWidth = tileHeight * 1.2;
-    }
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final availableHeight = constraints.maxHeight;
+        final gridWidth = constraints.maxWidth;
+        final cellWidth =
+            (gridWidth - spacing * (crossAxisCount - 1)) / crossAxisCount;
 
-    return HorizontalScrollWithGradient(
-      height: tileHeight,
-      layoutPadding: AppSpacings.pLg,
-      itemCount: scenes.length,
-      separatorWidth: AppSpacings.pMd,
-      itemBuilder: (context, index) {
-        return SizedBox(
-          width: tileWidth,
-          child: _SceneTile(
-            scene: scenes[index],
-            icon: _getSceneIcon(scenes[index]),
-            onTap: () => _activateScene(scenes[index]),
-            isVertical: !isSmallScreen,
+        final double childAspectRatio;
+        if (isSmallScreen) {
+          final tileHeight =
+              AppSpacings.scale(AppTileHeight.horizontal * 0.85);
+          childAspectRatio = cellWidth / tileHeight;
+        } else {
+          childAspectRatio = 1.2;
+        }
+
+        final cellHeight = cellWidth / childAspectRatio;
+        final maxRows = ((availableHeight + spacing) / (cellHeight + spacing))
+            .floor()
+            .clamp(1, 100);
+        final maxVisible =
+            (maxRows * crossAxisCount).clamp(1, scenes.length);
+        final hasOverflow = scenes.length > maxVisible;
+        final displayCount = hasOverflow ? maxVisible : scenes.length;
+
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            childAspectRatio: childAspectRatio,
+            crossAxisSpacing: spacing,
+            mainAxisSpacing: spacing,
           ),
+          itemCount: displayCount,
+          itemBuilder: (context, index) {
+            if (hasOverflow && index == displayCount - 1) {
+              return _buildMoreScenesTile(
+                context,
+                scenes.length - (maxVisible - 1),
+              );
+            }
+            final scene = scenes[index];
+            return _SceneTile(
+              scene: scene,
+              icon: _getSceneIcon(scene),
+              onTap: () => _activateScene(scene),
+              isVertical: !isSmallScreen,
+            );
+          },
         );
       },
+    );
+  }
+
+  Widget _buildMoreScenesTile(BuildContext context, int overflowCount) {
+    final localizations = AppLocalizations.of(context)!;
+    final isSmallScreen = locator<ScreenService>().isSmallScreen;
+    final compactPadding = isSmallScreen
+        ? EdgeInsets.symmetric(
+            horizontal: AppSpacings.pMd,
+            vertical: AppSpacings.pXs,
+          )
+        : null;
+
+    return UniversalTile(
+      layout: isSmallScreen ? TileLayout.horizontal : TileLayout.vertical,
+      icon: MdiIcons.dotsHorizontal,
+      name: '+$overflowCount',
+      status: localizations.space_scenes_title,
+      iconAccentColor: null,
+      isActive: false,
+      showGlow: false,
+      showInactiveBorder: false,
+      contentPadding: compactPadding,
+      onTileTap: _showScenesSheet,
+    );
+  }
+
+  void _showScenesSheet() {
+    final scenes = _lightingScenes;
+    if (scenes.isEmpty) return;
+
+    final localizations = AppLocalizations.of(context)!;
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
+
+    if (isLandscape) {
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+      final drawerBgColor =
+          isDark ? AppFillColorDark.base : AppFillColorLight.blank;
+
+      showAppRightDrawer(
+        context,
+        title: localizations.space_scenes_title,
+        titleIcon: MdiIcons.autoFix,
+        scrollable: false,
+        content: VerticalScrollWithGradient(
+          gradientHeight: AppSpacings.pMd,
+          itemCount: scenes.length,
+          separatorHeight: AppSpacings.pSm,
+          backgroundColor: drawerBgColor,
+          padding: EdgeInsets.symmetric(
+            horizontal: AppSpacings.pLg,
+            vertical: AppSpacings.pMd,
+          ),
+          itemBuilder: (context, index) => _buildSceneTileForSheet(
+            context,
+            scenes[index],
+          ),
+        ),
+      );
+    } else {
+      DeckItemSheet.showItemSheet(
+        context,
+        title: localizations.space_scenes_title,
+        icon: MdiIcons.autoFix,
+        itemCount: scenes.length,
+        itemBuilder: (context, index) => _buildSceneTileForSheet(
+          context,
+          scenes[index],
+        ),
+      );
+    }
+  }
+
+  Widget _buildSceneTileForSheet(BuildContext context, SceneView scene) {
+    final tileHeight = AppSpacings.scale(AppTileHeight.horizontal * 0.85);
+
+    return SizedBox(
+      height: tileHeight,
+      child: UniversalTile(
+        layout: TileLayout.horizontal,
+        icon: _getSceneIcon(scene),
+        name: scene.name,
+        isActive: false,
+        showGlow: false,
+        showWarningBadge: false,
+        showInactiveBorder: false,
+        onTileTap: () {
+          Navigator.of(context).pop();
+          _activateScene(scene);
+        },
+      ),
     );
   }
 
