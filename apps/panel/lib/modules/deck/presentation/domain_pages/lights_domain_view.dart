@@ -85,6 +85,7 @@ import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/domain_s
 import 'package:fastybird_smart_panel/modules/deck/services/bottom_nav_mode_notifier.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/domain_control_state_service.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/deck_page_activated_event.dart';
+import 'package:fastybird_smart_panel/modules/deck/utils/intent_mode_status.dart';
 import 'package:fastybird_smart_panel/modules/deck/utils/lighting.dart';
 import 'package:fastybird_smart_panel/modules/devices/export.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
@@ -406,6 +407,10 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   bool? _heroPendingOnState;
   Timer? _heroPendingOnStateClearTimer;
 
+  /// Per-role pending on/off state for landscape tile icon tap optimistic UI.
+  final Map<LightTargetRole, bool> _roleTilePendingOnStates = {};
+  final Map<LightTargetRole, Timer> _roleTilePendingTimers = {};
+
   /// Role control state repository (caching slider values for mixed state).
   RoleControlStateRepository? _roleControlStateRepository;
 
@@ -438,6 +443,16 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   /// True when space had an intent lock last frame (any lighting intent).
   /// Used to detect role-toggle intent completion when space unlocks.
   bool _spaceWasLocked = false;
+
+  /// Tracks whether the user has changed a hero control (brightness, hue, etc.)
+  /// since the last mode intent. When true, the mode is considered overridden
+  /// even if the backend still reports [isModeFromIntent] = true.
+  bool _modeOverriddenByManualChange = false;
+
+  /// The [lastAppliedAt] timestamp at the moment [_modeOverriddenByManualChange]
+  /// was set. Used to distinguish stale backend state from a genuinely new intent
+  /// (e.g. from another panel instance).
+  DateTime? _lastAppliedAtWhenOverridden;
 
   /// Cached result of [_groupTargetsByRole]; invalidated via [_cachedTargetsHash].
   Map<LightTargetRole, List<LightTargetView>>? _cachedRoleGroups;
@@ -1149,6 +1164,9 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     _heroHueDebounceTimer?.cancel();
     _heroWhiteDebounceTimer?.cancel();
     _heroPendingOnStateClearTimer?.cancel();
+    for (final timer in _roleTilePendingTimers.values) {
+      timer.cancel();
+    }
     _pageActivatedSubscription?.cancel();
     _spacesService?.removeListener(_onDataChanged);
     _devicesService?.removeListener(_onDataChanged);
@@ -1254,12 +1272,20 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     required VoidCallback onTap,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final colorFamily = ThemeColorFamily.get(
+    final modeColorFamily = ThemeColorFamily.get(
       isDark ? Brightness.dark : Brightness.light,
       mode.color ?? ThemeColors.neutral,
     );
+    final neutralColorFamily = ThemeColorFamily.get(
+      isDark ? Brightness.dark : Brightness.light,
+      ThemeColors.neutral,
+    );
 
-    final isHighlighted = isActive || isMatched || isLastIntent;
+    // Active (check) uses intent color; history uses neutral; sync has no highlight.
+    final isHighlighted = isActive || isLastIntent;
+    final colorFamily = isLastIntent ? neutralColorFamily : modeColorFamily;
+    final defaultIconColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
+    final defaultTextColor = isDark ? AppTextColorDark.regular : AppTextColorLight.regular;
 
     return GestureDetector(
       onTap: isLocked ? null : onTap,
@@ -1282,7 +1308,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
           children: [
             Icon(
               mode.icon,
-              color: isHighlighted ? colorFamily.base : (isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary),
+              color: isHighlighted ? colorFamily.base : defaultIconColor,
               size: AppSpacings.scale(20),
             ),
             Expanded(
@@ -1291,14 +1317,14 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                 style: TextStyle(
                   fontSize: AppFontSize.base,
                   fontWeight: isHighlighted ? FontWeight.w600 : FontWeight.w400,
-                  color: isHighlighted ? colorFamily.base : (isDark ? AppTextColorDark.regular : AppTextColorLight.regular),
+                  color: isHighlighted ? colorFamily.base : defaultTextColor,
                 ),
               ),
             ),
             if (isActive)
               Icon(Icons.check, color: colorFamily.base, size: AppSpacings.scale(16)),
             if (isMatched)
-              Icon(Icons.sync, color: colorFamily.base, size: AppSpacings.scale(16)),
+              Icon(Icons.sync, color: modeColorFamily.base, size: AppSpacings.scale(16)),
             if (isLastIntent)
               Icon(Icons.history, color: colorFamily.base, size: AppSpacings.scale(16)),
           ],
@@ -1320,6 +1346,19 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     // Use addPostFrameCallback to avoid "setState during build" errors
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
+        // If backend confirms a new mode intent (lastAppliedAt changed),
+        // clear the local manual override flag. We compare timestamps to
+        // avoid clearing the flag when the backend still reflects the old
+        // intent before manual-change invalidation has propagated.
+        if (_modeOverriddenByManualChange &&
+            _lightingState?.isModeFromIntent == true) {
+          final backendAt = _lightingState?.lastAppliedAt;
+          if (backendAt != null && backendAt != _lastAppliedAtWhenOverridden) {
+            _modeOverriddenByManualChange = false;
+            _lastAppliedAtWhenOverridden = null;
+          }
+        }
+
         // Check convergence for mode channel
         final lightingState = _lightingState;
         if (lightingState != null) {
@@ -2022,14 +2061,43 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     final localizations = AppLocalizations.of(context)!;
     final statusColorFamily = _getStatusColorFamily(context);
 
-    // Build subtitle based on mode and lights state
-    final mode = _currentMode;
+    // Build subtitle: intent-aware mode name or lights count
     String subtitle;
-    if (mode == LightingModeUI.off || lightsOn == 0) {
-      subtitle = '$lightsOn of $totalLights on';
+    final isModeLocked = _modeControlStateService.isLocked(LightingConstants.modeChannelId);
+    final state = _lightingState;
+
+    if (isModeLocked) {
+      // Optimistic UI: show locked mode name
+      final desiredIndex = _modeControlStateService
+          .getDesiredValue(LightingConstants.modeChannelId)
+          ?.toInt();
+      if (desiredIndex != null &&
+          desiredIndex >= 0 &&
+          desiredIndex < LightingModeUI.values.length) {
+        final lockedMode = LightingModeUI.values[desiredIndex];
+        final modeName = _getModeName(lockedMode, localizations);
+        subtitle = '$modeName \u2022 $lightsOn on';
+      } else {
+        subtitle = '$lightsOn of $totalLights on';
+      }
+    } else if (state != null &&
+        state.isModeFromIntent &&
+        !_modeOverriddenByManualChange &&
+        state.detectedMode != null) {
+      // Intent active and matching: show detected mode name
+      final detectedModeUI = _toLightingModeUI(state.detectedMode);
+      if (detectedModeUI != null && detectedModeUI != LightingModeUI.off) {
+        final modeName = _getModeName(detectedModeUI, localizations);
+        subtitle = '$modeName \u2022 $lightsOn on';
+      } else {
+        subtitle = '$lightsOn of $totalLights on';
+      }
+    } else if (state?.lastAppliedMode != null && lightsOn > 0) {
+      // Intent exists but overridden and lights are on: show "Custom"
+      subtitle = '${localizations.domain_mode_custom} \u2022 $lightsOn on';
     } else {
-      final modeName = _getModeName(mode, localizations);
-      subtitle = '$modeName \u2022 $lightsOn on';
+      // No intent or all lights off: show count
+      subtitle = '$lightsOn of $totalLights on';
     }
 
     // Use actual light state for icon, not pending mode
@@ -2091,21 +2159,31 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     );
   }
 
-  (LightingModeUI? activeValue, LightingModeUI? matchedValue, LightingModeUI? lastIntentValue)
-      _getLightingModeSelectorValues() {
-    final mode = _currentMode;
-    if (_modeControlStateService.isLocked(LightingConstants.modeChannelId)) {
-      return (mode, null, null);
+  (LightingModeUI?, LightingModeUI?, LightingModeUI?) _getLightingModeSelectorValues() {
+    final isLocked = _modeControlStateService.isLocked(LightingConstants.modeChannelId);
+    LightingModeUI? lockedValue;
+    if (isLocked) {
+      final desiredIndex = _modeControlStateService
+          .getDesiredValue(LightingConstants.modeChannelId)
+          ?.toInt();
+      if (desiredIndex != null &&
+          desiredIndex >= 0 &&
+          desiredIndex < LightingModeUI.values.length) {
+        lockedValue = LightingModeUI.values[desiredIndex];
+      }
     }
-    final detectedMode = _lightingState?.detectedMode;
-    final lastAppliedMode = _lightingState?.lastAppliedMode;
-    final isModeFromIntent = _lightingState?.isModeFromIntent ?? false;
-    final detectedModeUI = _toLightingModeUI(detectedMode);
-    final lastAppliedModeUI = _toLightingModeUI(lastAppliedMode);
-    if (detectedModeUI != null && isModeFromIntent) return (detectedModeUI, null, null);
-    if (detectedModeUI != null && !isModeFromIntent) return (null, detectedModeUI, null);
-    if (lastAppliedModeUI != null) return (null, null, lastAppliedModeUI);
-    return (mode == LightingModeUI.off ? LightingModeUI.off : null, null, null);
+
+    final state = _lightingState;
+    final detectedModeUI = _toLightingModeUI(state?.detectedMode);
+    final lastAppliedModeUI = _toLightingModeUI(state?.lastAppliedMode);
+
+    return computeIntentModeStatus<LightingModeUI>(
+      selectedIntent: lastAppliedModeUI,
+      currentState: detectedModeUI,
+      isCurrentStateFromIntent: (state?.isModeFromIntent ?? false) && !_modeOverriddenByManualChange,
+      isLocked: isLocked,
+      lockedValue: lockedValue,
+    ).toTuple();
   }
 
   // --------------------------------------------------------------------------
@@ -2521,7 +2599,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     bool isLandscape = false,
     LightTargetRole? effectiveRole,
   }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final localizations = AppLocalizations.of(context)!;
     final statusColor = _getStatusColor(context);
     final statusColorFamily = _getStatusColorFamily(context);
@@ -2552,17 +2629,13 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
           color: statusColor,
           iconSize: AppSpacings.scale(18),
           labelBuilder: (isSelected, contentColor) {
-            final secondaryColor = isDark
-                ? AppTextColorDark.secondary
-                : AppTextColorLight.secondary;
-
             return Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   roleData.name,
                   style: TextStyle(
-                    color: secondaryColor,
+                    color: contentColor,
                     fontSize: AppFontSize.extraSmall,
                     fontWeight: FontWeight.w500,
                     height: 1,
@@ -2804,13 +2877,18 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     final statusColor = _getStatusColor(context);
 
     final pendingState = _getRolePendingState(roleData.role);
-    final isOn = pendingState ?? roleData.hasLightsOn;
+    final tilePending = _roleTilePendingOnStates[roleData.role];
+    final isOn = tilePending ?? pendingState ?? roleData.hasLightsOn;
 
-    final valueText = roleData.onCount == 0
-        ? localizations.light_state_off
-        : roleData.brightness != null
-            ? '${roleData.brightness}%'
-            : localizations.light_state_on;
+    final valueText = (tilePending != null)
+        ? (tilePending
+            ? localizations.light_state_on
+            : localizations.light_state_off)
+        : roleData.onCount == 0
+            ? localizations.light_state_off
+            : roleData.brightness != null
+                ? '${roleData.brightness}%'
+                : localizations.light_state_on;
 
     return SizedBox(
       height: height,
@@ -2825,6 +2903,27 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         showGlow: false,
         showDoubleBorder: false,
         showInactiveBorder: false,
+        onIconTap: () {
+          final turnOn = !isOn;
+          _roleTilePendingTimers[roleData.role]?.cancel();
+          setState(() {
+            _roleTilePendingOnStates[roleData.role] = turnOn;
+          });
+          _roleTilePendingTimers[roleData.role] = Timer(
+            const Duration(milliseconds: LightingConstants.onOffSettlingWindowMs),
+            () {
+              if (mounted) {
+                setState(() {
+                  _roleTilePendingOnStates.remove(roleData.role);
+                });
+              }
+            },
+          );
+          _toggleRoleLights(
+            roleData, turnOn,
+            updateHero: roleData.role == effectiveRole,
+          );
+        },
         onTileTap: () {
           _resetHeroControlState();
           setState(() {
@@ -3114,6 +3213,8 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
     // Track that we're waiting for an intent
     _modeWasLocked = true;
+    _modeOverriddenByManualChange = false;
+    _lastAppliedAtWhenOverridden = null;
 
     // Optimistic UI update (now driven by control service)
     setState(() {});
@@ -3284,7 +3385,14 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   }
 
   /// Toggle all lights in a role to [turnOn] state via SpacesService intent.
-  Future<void> _toggleRoleLights(LightingRoleData roleData, bool turnOn) async {
+  ///
+  /// When [updateHero] is false, hero card optimistic state is not touched —
+  /// used when toggling a non-selected role from the landscape tile icon.
+  Future<void> _toggleRoleLights(
+    LightingRoleData roleData,
+    bool turnOn, {
+    bool updateHero = true,
+  }) async {
     final spacesService = _spacesService;
     if (spacesService == null) return;
 
@@ -3293,17 +3401,22 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     if (stateRole == null) return;
 
     try {
-      _heroPendingOnStateClearTimer?.cancel();
-      _heroPendingOnStateClearTimer = null;
+      if (updateHero) {
+        _heroPendingOnStateClearTimer?.cancel();
+        _heroPendingOnStateClearTimer = null;
 
-      _heroControlStateService.setPending(
-        LightingConstants.onOffChannelId,
-        turnOn ? LightingConstants.onValue : LightingConstants.offValue,
-      );
+        _heroControlStateService.setPending(
+          LightingConstants.onOffChannelId,
+          turnOn ? LightingConstants.onValue : LightingConstants.offValue,
+        );
 
-      setState(() {
-        _heroPendingOnState = turnOn;
-      });
+        setState(() {
+          _heroPendingOnState = turnOn;
+        });
+      }
+
+      _modeOverriddenByManualChange = true;
+      _lastAppliedAtWhenOverridden = _lightingState?.lastAppliedAt;
 
       _heroWasSpaceLocked = true;
 
@@ -3320,11 +3433,13 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
       if (!success) {
         AppToast.showError(context, message: localizations.action_failed);
-        _heroControlStateService.setIdle(LightingConstants.onOffChannelId);
-        setState(() {
-          _heroPendingOnState = null;
-        });
-      } else {
+        if (updateHero) {
+          _heroControlStateService.setIdle(LightingConstants.onOffChannelId);
+          setState(() {
+            _heroPendingOnState = null;
+          });
+        }
+      } else if (updateHero) {
         _heroPendingOnStateClearTimer = Timer(
           const Duration(milliseconds: LightingConstants.onOffSettlingWindowMs),
           () {
@@ -3339,10 +3454,12 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     } catch (e) {
       if (!mounted) return;
       AppToast.showError(context, message: localizations.action_failed);
-      _heroControlStateService.setIdle(LightingConstants.onOffChannelId);
-      setState(() {
-        _heroPendingOnState = null;
-      });
+      if (updateHero) {
+        _heroControlStateService.setIdle(LightingConstants.onOffChannelId);
+        setState(() {
+          _heroPendingOnState = null;
+        });
+      }
     }
   }
 
@@ -3361,6 +3478,9 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
     final stateRole = mapTargetRoleToStateRole(role);
     if (stateRole == null) return;
+
+    _modeOverriddenByManualChange = true;
+    _lastAppliedAtWhenOverridden = _lightingState?.lastAppliedAt;
 
     switch (mode) {
       case LightHeroCapability.brightness:
@@ -3770,7 +3890,10 @@ class _LightsHeroCard extends StatelessWidget {
     return HeroCard(
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final fontSize = screenService.isSmallScreen
+          final isCompactFont = screenService.isPortrait
+              ? screenService.isSmallScreen
+              : screenService.isSmallScreen || screenService.isMediumScreen;
+          final fontSize = isCompactFont
               ? (constraints.maxHeight * 0.25).clamp(AppSpacings.scale(48), AppSpacings.scale(160))
               : (constraints.maxHeight * 0.35).clamp(AppSpacings.scale(48), AppSpacings.scale(160));
 
@@ -3808,7 +3931,6 @@ class _LightsHeroCard extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         _buildBadge(isDark, colorFamily),
-        AppSpacings.spacingMdHorizontal,
         _buildGiantValue(isDark, fontSize),
       ],
     );

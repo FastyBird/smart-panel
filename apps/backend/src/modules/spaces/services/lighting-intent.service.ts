@@ -300,10 +300,19 @@ export class LightingIntentService extends SpaceIntentBaseService {
 					affectedDevices,
 					failedDevices,
 				);
-				void this.intentTimeseriesService.storeModeValidity(spaceId, 'lighting', true);
 			}
 
 			result = { success: overallSuccess, affectedDevices, failedDevices };
+		}
+
+		// Invalidate/validate mode only when the intent actually changed device state
+		if (result.success) {
+			if (intent.type === LightingIntentType.OFF) {
+				void this.intentTimeseriesService.storeModeValidity(spaceId, 'lighting', true);
+			} else if (intent.type !== LightingIntentType.SET_MODE) {
+				// Non-mode intents (ON, BRIGHTNESS_DELTA, role toggles) invalidate the current mode
+				void this.intentTimeseriesService.storeModeValidity(spaceId, 'lighting', false);
+			}
 		}
 
 		// Add skipped offline devices info to result (only those actually targeted)

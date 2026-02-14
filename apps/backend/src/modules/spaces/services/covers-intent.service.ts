@@ -269,6 +269,19 @@ export class CoversIntentService extends SpaceIntentBaseService {
 				};
 		}
 
+		// Invalidate mode only when the intent actually changed device state
+		const modeInvalidatingTypes: CoversIntentType[] = [
+			CoversIntentType.OPEN,
+			CoversIntentType.CLOSE,
+			CoversIntentType.SET_POSITION,
+			CoversIntentType.POSITION_DELTA,
+			CoversIntentType.ROLE_POSITION,
+		];
+
+		if (result.success && modeInvalidatingTypes.includes(intent.type)) {
+			void this.intentTimeseriesService.storeModeValidity(spaceId, 'covers', false);
+		}
+
 		// Add skipped offline devices info to result (only those actually targeted)
 		result.skippedOfflineDevices = targetedOfflineIds.length;
 

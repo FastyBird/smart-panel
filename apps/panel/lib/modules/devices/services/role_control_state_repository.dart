@@ -25,6 +25,9 @@ class RoleCacheEntry {
   /// White channel value (0-255, null = not set by user)
   final double? white;
 
+  /// Position percentage (0-100, null = not set by user). Used for shading domain.
+  final double? position;
+
   /// Timestamp when this entry was created/last updated
   final DateTime timestamp;
 
@@ -38,6 +41,7 @@ class RoleCacheEntry {
     this.saturation,
     this.temperature,
     this.white,
+    this.position,
     required this.timestamp,
     this.ttl = const Duration(minutes: 30),
   });
@@ -52,7 +56,8 @@ class RoleCacheEntry {
       hue != null ||
       saturation != null ||
       temperature != null ||
-      white != null;
+      white != null ||
+      position != null;
 
   /// Create a copy with updated values
   RoleCacheEntry copyWith({
@@ -62,6 +67,7 @@ class RoleCacheEntry {
     double? saturation,
     double? temperature,
     double? white,
+    double? position,
     DateTime? timestamp,
     Duration? ttl,
     bool clearIsOn = false,
@@ -70,6 +76,7 @@ class RoleCacheEntry {
     bool clearSaturation = false,
     bool clearTemperature = false,
     bool clearWhite = false,
+    bool clearPosition = false,
   }) {
     return RoleCacheEntry(
       isOn: clearIsOn ? null : (isOn ?? this.isOn),
@@ -78,6 +85,7 @@ class RoleCacheEntry {
       saturation: clearSaturation ? null : (saturation ?? this.saturation),
       temperature: clearTemperature ? null : (temperature ?? this.temperature),
       white: clearWhite ? null : (white ?? this.white),
+      position: clearPosition ? null : (position ?? this.position),
       timestamp: timestamp ?? DateTime.now(),
       ttl: ttl ?? this.ttl,
     );
@@ -85,7 +93,7 @@ class RoleCacheEntry {
 
   @override
   String toString() =>
-      'RoleCacheEntry(isOn: $isOn, brightness: $brightness, hue: $hue, sat: $saturation, temp: $temperature, white: $white, age: ${DateTime.now().difference(timestamp).inSeconds}s)';
+      'RoleCacheEntry(isOn: $isOn, brightness: $brightness, hue: $hue, sat: $saturation, temp: $temperature, white: $white, position: $position, age: ${DateTime.now().difference(timestamp).inSeconds}s)';
 }
 
 /// Repository for caching role control state.
@@ -179,6 +187,7 @@ class RoleControlStateRepository extends ChangeNotifier {
     double? saturation,
     double? temperature,
     double? white,
+    double? position,
   }) {
     // Start periodic cleanup on first use
     _startPeriodicCleanup();
@@ -194,6 +203,7 @@ class RoleControlStateRepository extends ChangeNotifier {
         saturation: saturation,
         temperature: temperature,
         white: white,
+        position: position,
         timestamp: DateTime.now(),
       );
     } else {
@@ -208,6 +218,7 @@ class RoleControlStateRepository extends ChangeNotifier {
         saturation: saturation,
         temperature: temperature,
         white: white,
+        position: position,
         timestamp: DateTime.now(),
       );
     }
@@ -250,6 +261,7 @@ class RoleControlStateRepository extends ChangeNotifier {
     double? saturation,
     double? temperature,
     double? white,
+    double? position,
   }) {
     set(
       generateKey(spaceId, domain, roleKey),
@@ -259,6 +271,7 @@ class RoleControlStateRepository extends ChangeNotifier {
       saturation: saturation,
       temperature: temperature,
       white: white,
+      position: position,
     );
   }
 
@@ -274,6 +287,7 @@ class RoleControlStateRepository extends ChangeNotifier {
     double? saturation,
     double? temperature,
     double? white,
+    double? position,
   }) {
     // Only update if we have an existing entry (user has interacted)
     // or if we have synced values to store
@@ -282,7 +296,8 @@ class RoleControlStateRepository extends ChangeNotifier {
         hue != null ||
         saturation != null ||
         temperature != null ||
-        white != null;
+        white != null ||
+        position != null;
 
     if (!hasValues) return;
 
@@ -293,6 +308,7 @@ class RoleControlStateRepository extends ChangeNotifier {
       saturation: saturation,
       temperature: temperature,
       white: white,
+      position: position,
       timestamp: DateTime.now(),
     );
 
@@ -316,6 +332,7 @@ class RoleControlStateRepository extends ChangeNotifier {
     double? saturation,
     double? temperature,
     double? white,
+    double? position,
   }) {
     updateFromSync(
       generateKey(spaceId, domain, roleKey),
@@ -325,6 +342,7 @@ class RoleControlStateRepository extends ChangeNotifier {
       saturation: saturation,
       temperature: temperature,
       white: white,
+      position: position,
     );
   }
 

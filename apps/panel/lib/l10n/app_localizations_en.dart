@@ -2029,6 +2029,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get covers_mode_daylight => 'Daylight';
 
   @override
+  String get domain_mode_custom => 'Custom';
+
+  @override
   String get covers_role_primary => 'Primary';
 
   @override

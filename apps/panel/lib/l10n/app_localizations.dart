@@ -3839,6 +3839,12 @@ abstract class AppLocalizations {
   /// **'Daylight'**
   String get covers_mode_daylight;
 
+  /// Shown when device state does not match any intent
+  ///
+  /// In en, this message translates to:
+  /// **'Custom'**
+  String get domain_mode_custom;
+
   /// Label for primary covers role
   ///
   /// In en, this message translates to:
