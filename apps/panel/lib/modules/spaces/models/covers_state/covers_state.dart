@@ -160,6 +160,7 @@ class CoversStateModel {
   final Map<CoversStateRole, RoleCoversState> roles;
   final Map<CoversStateRole, int> coversByRole;
   final CoversMode? lastAppliedMode;
+  final DateTime? lastAppliedAt;
 
   CoversStateModel({
     required this.spaceId,
@@ -179,6 +180,7 @@ class CoversStateModel {
     required this.roles,
     required this.coversByRole,
     this.lastAppliedMode,
+    this.lastAppliedAt,
   });
 
   /// Check if all covers are open (position = 100)
@@ -234,6 +236,9 @@ class CoversStateModel {
       roles: rolesMap,
       coversByRole: coversByRoleMap,
       lastAppliedMode: parseCoversMode(json['last_applied_mode'] as String?),
+      lastAppliedAt: json['last_applied_at'] != null
+          ? DateTime.parse(json['last_applied_at'] as String)
+          : null,
     );
   }
 
