@@ -1067,7 +1067,6 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     bool isLandscape = false,
     CoversTargetRole? effectiveRole,
   }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final localizations = AppLocalizations.of(context)!;
 
     // Build status icons for roles with open covers
@@ -1096,17 +1095,13 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
           color: _getPositionThemeColor(position),
           iconSize: AppSpacings.scale(18),
           labelBuilder: (isSelected, contentColor) {
-            final secondaryColor = isDark
-                ? AppTextColorDark.secondary
-                : AppTextColorLight.secondary;
-
             return Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   roleData.name,
                   style: TextStyle(
-                    color: secondaryColor,
+                    color: contentColor,
                     fontSize: AppFontSize.extraSmall,
                     fontWeight: FontWeight.w500,
                     height: 1,
@@ -1715,32 +1710,48 @@ class _ShadingHeroCard extends StatelessWidget {
     return HeroCard(
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final fontSize = screenService.isSmallScreen
+          final isCompactFont = screenService.isPortrait
+              ? screenService.isSmallScreen
+              : screenService.isSmallScreen || screenService.isMediumScreen;
+          final fontSize = isCompactFont
               ? (constraints.maxHeight * 0.25).clamp(AppSpacings.scale(48), AppSpacings.scale(160))
               : (constraints.maxHeight * 0.35).clamp(AppSpacings.scale(48), AppSpacings.scale(160));
+
+          final hidePositionLabel = !isPortrait &&
+              (screenService.isSmallScreen || screenService.isMediumScreen);
 
           return Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               _buildHeroRow(isDark, colorFamily, fontSize),
-              AppSpacings.spacingMdVertical,
-              Text(
-                position == 100
-                    ? localizations.shading_state_open
-                    : position == 0
-                        ? localizations.shading_state_closed
-                        : localizations.shading_state_partial(position),
-                style: TextStyle(
-                  fontSize: AppFontSize.small,
-                  color: isDark
-                      ? AppTextColorDark.secondary
-                      : AppTextColorLight.secondary,
+              if (!hidePositionLabel) ...[
+                AppSpacings.spacingMdVertical,
+                Text(
+                  position == 100
+                      ? localizations.shading_state_open.toUpperCase()
+                      : position == 0
+                          ? localizations.shading_state_closed.toUpperCase()
+                          : localizations.shading_state_partial(position).toUpperCase(),
+                  style: TextStyle(
+                    fontSize: AppFontSize.base,
+                    fontWeight: FontWeight.w600,
+                    color: isDark
+                        ? AppTextColorDark.secondary
+                        : AppTextColorLight.secondary,
+                  ),
                 ),
-              ),
+              ],
               AppSpacings.spacingMdVertical,
               _buildPositionSlider(isDark, localizations),
               AppSpacings.spacingLgVertical,
-              _buildQuickActions(context, localizations),
+              _buildQuickActions(
+                context,
+                localizations,
+                isCompact: isPortrait
+                    ? screenService.isSmallScreen
+                    : screenService.isSmallScreen ||
+                        screenService.isMediumScreen,
+              ),
               AppSpacings.spacingLgVertical,
               _buildPresets(isDark, colorFamily, localizations),
             ],
@@ -1762,7 +1773,6 @@ class _ShadingHeroCard extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         _buildBadge(isDark, colorFamily),
-        AppSpacings.spacingMdHorizontal,
         _buildGiantValue(isDark, fontSize),
       ],
     );
@@ -1948,7 +1958,10 @@ class _ShadingHeroCard extends StatelessWidget {
   // ── Quick Action Buttons (Open / Stop / Close) ──
 
   Widget _buildQuickActions(
-      BuildContext context, AppLocalizations localizations) {
+    BuildContext context,
+    AppLocalizations localizations, {
+    bool isCompact = false,
+  }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Row(
@@ -1962,6 +1975,7 @@ class _ShadingHeroCard extends StatelessWidget {
             icon: MdiIcons.chevronUp,
             isActive: position == 100,
             onTap: onOpen,
+            isCompact: isCompact,
           ),
         ),
         Expanded(
@@ -1971,6 +1985,7 @@ class _ShadingHeroCard extends StatelessWidget {
             icon: MdiIcons.stop,
             isActive: false,
             onTap: onStop,
+            isCompact: isCompact,
           ),
         ),
         Expanded(
@@ -1980,6 +1995,7 @@ class _ShadingHeroCard extends StatelessWidget {
             icon: MdiIcons.chevronDown,
             isActive: position == 0,
             onTap: onClose,
+            isCompact: isCompact,
           ),
         ),
       ],
@@ -1992,6 +2008,7 @@ class _ShadingHeroCard extends StatelessWidget {
     required IconData icon,
     required bool isActive,
     required VoidCallback onTap,
+    bool isCompact = false,
   }) {
     final themeData = isActive
         ? ThemeData(
@@ -2019,12 +2036,21 @@ class _ShadingHeroCard extends StatelessWidget {
             HapticFeedback.lightImpact();
             onTap();
           },
-          icon: Icon(icon, size: AppFontSize.base, color: iconColor),
-          label: Text(label),
+          icon: Icon(
+            icon,
+            size: isCompact ? AppFontSize.small : AppFontSize.base,
+            color: iconColor,
+          ),
+          label: Text(
+            label,
+            style: TextStyle(
+              fontSize: isCompact ? AppFontSize.small : AppFontSize.base,
+            ),
+          ),
           style: FilledButton.styleFrom(
             padding: EdgeInsets.symmetric(
-              horizontal: AppSpacings.pMd,
-              vertical: AppSpacings.pMd,
+              horizontal: isCompact ? AppSpacings.pSm : AppSpacings.pMd,
+              vertical: isCompact ? AppSpacings.pSm : AppSpacings.pMd,
             ),
           ),
         ),

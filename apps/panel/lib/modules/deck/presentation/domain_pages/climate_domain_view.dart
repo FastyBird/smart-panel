@@ -2304,7 +2304,10 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     return HeroCard(
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final fontSize = screenService.isSmallScreen
+          final isCompactFont = screenService.isPortrait
+              ? screenService.isSmallScreen
+              : screenService.isSmallScreen || screenService.isMediumScreen;
+          final fontSize = isCompactFont
               ? (constraints.maxHeight * 0.25).clamp(AppSpacings.scale(48), AppSpacings.scale(160))
               : (constraints.maxHeight * 0.35).clamp(AppSpacings.scale(48), AppSpacings.scale(160));
 
@@ -2316,7 +2319,6 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   _buildModeBadge(context),
-                  AppSpacings.spacingMdHorizontal,
                   _buildGiantTemp(context, fontSize),
                 ],
               ),
@@ -2481,8 +2483,12 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   }
 
   Widget _buildControlsRow(BuildContext context) {
+    final screenService = locator<ScreenService>();
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isOff = _state.mode == ClimateMode.off;
+    final isCompact = screenService.isPortrait
+        ? screenService.isSmallScreen
+        : screenService.isSmallScreen || screenService.isMediumScreen;
 
     final neutralTheme = isDark
         ? AppFilledButtonsDarkThemes.neutral
@@ -2497,12 +2503,12 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         child: FilledButton(
           onPressed: onTap,
           style: FilledButton.styleFrom(
-            padding: AppSpacings.paddingMd,
+            padding: isCompact ? AppSpacings.paddingSm : AppSpacings.paddingMd,
             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
           child: Icon(
             icon,
-            size: AppFontSize.extraLarge,
+            size: isCompact ? AppFontSize.large : AppFontSize.extraLarge,
             color: foregroundColor,
           ),
         ),

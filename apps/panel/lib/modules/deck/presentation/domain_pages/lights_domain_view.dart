@@ -2582,17 +2582,13 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
           color: statusColor,
           iconSize: AppSpacings.scale(18),
           labelBuilder: (isSelected, contentColor) {
-            final secondaryColor = isDark
-                ? AppTextColorDark.secondary
-                : AppTextColorLight.secondary;
-
             return Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   roleData.name,
                   style: TextStyle(
-                    color: secondaryColor,
+                    color: contentColor,
                     fontSize: AppFontSize.extraSmall,
                     fontWeight: FontWeight.w500,
                     height: 1,
@@ -3805,7 +3801,10 @@ class _LightsHeroCard extends StatelessWidget {
     return HeroCard(
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final fontSize = screenService.isSmallScreen
+          final isCompactFont = screenService.isPortrait
+              ? screenService.isSmallScreen
+              : screenService.isSmallScreen || screenService.isMediumScreen;
+          final fontSize = isCompactFont
               ? (constraints.maxHeight * 0.25).clamp(AppSpacings.scale(48), AppSpacings.scale(160))
               : (constraints.maxHeight * 0.35).clamp(AppSpacings.scale(48), AppSpacings.scale(160));
 
@@ -3843,7 +3842,6 @@ class _LightsHeroCard extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         _buildBadge(isDark, colorFamily),
-        AppSpacings.spacingMdHorizontal,
         _buildGiantValue(isDark, fontSize),
       ],
     );
