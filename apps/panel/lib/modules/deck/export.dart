@@ -29,6 +29,7 @@ export 'package:fastybird_smart_panel/modules/deck/models/lighting/role_group.da
 export 'package:fastybird_smart_panel/modules/deck/models/lighting/role_mixed_state.dart';
 
 // Utils
+export 'package:fastybird_smart_panel/modules/deck/utils/covers.dart';
 export 'package:fastybird_smart_panel/modules/deck/utils/lighting.dart';
 
 // Services

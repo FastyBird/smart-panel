@@ -6,16 +6,23 @@
 // Mode selector (open, daylight, privacy, closed) and a devices bottom sheet are
 // available from the header.
 //
+// **AI / Tooling:** When editing this file, preserve the rendered UI. Do not
+// change widget trees, layout parameters, or visual behavior. Section headers
+// (e.g. "// DATA MODELS", "// LIFECYCLE") are stable anchors for navigation.
+//
 // **Data flow:**
 // - [SpacesService] provides covers targets and [CoversStateModel] for the room.
 // - [DevicesService] provides [WindowCoveringDeviceView] / [WindowCoveringChannelView]
 //   used to build [_CoverRoleData], [_CoverDeviceData], and to open device detail.
-// - Optimistic UI: [_pendingPositions] holds per-role position until backend
-//   converges (cleared in [_onDataChanged] when within 5% of actual).
+// - Optimistic UI: [DomainControlStateService] for mode and hero position;
+//   [IntentsRepository] notifies when intents complete so pending state can settle.
 //
 // **Key concepts:**
-// - [_CoverRoleData] = one role's targets and average position; [_CoverDeviceData]
-//   = one device/channel row for the devices sheet.
+// - [_CoverRoleData] = one role's targets and position (role target from backend);
+//   [_CoverDeviceData] = one device/channel row for the devices sheet.
+// - Role position uses [RoleCoversState] from backend (like lights) — the role
+//   target stored by backend. When devices are mixed, we show the role target
+//   (e.g. 50%), not the device average (e.g. 62.5%).
 // - Hero card shows the selected role's position, slider, and quick actions.
 //   Role selector below allows switching roles via [_selectedRole].
 // - Portrait: hero card + horizontal role selector. Landscape: hero card on right,
@@ -27,6 +34,7 @@
 //
 // - **DATA MODELS** — [_CoverRoleData], [_CoverDeviceData].
 // - **SHADING DOMAIN VIEW PAGE** — [ShadingDomainViewPage] and state class:
+//   - STATE & DEPENDENCIES: _roomId, [_tryLocator], optional services.
 //   - LIFECYCLE: initState (services, listeners, fetch), dispose, [_onDataChanged].
 //   - DATA BUILDING: [_buildRoleDataList], [_buildDeviceDataList], role/cover type helpers.
 //   - INTENT METHODS: [_setRolePosition], [_stopCovers], [_setCoversMode], [_showActionFailed].
@@ -40,13 +48,14 @@
 //   - EMPTY STATE: [_buildEmptyState].
 // - **PRIVATE WIDGETS** — [_ShadingHeroCard].
 
+import 'dart:async';
+
 import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'dart:async';
+import 'package:provider/provider.dart';
 
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/app_bottom_sheet.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_right_drawer.dart';
 import 'package:fastybird_smart_panel/core/widgets/hero_card.dart';
 import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
@@ -61,8 +70,11 @@ import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/domain_data_loader.dart';
+import 'package:fastybird_smart_panel/modules/deck/services/domain_control_state_service.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/domain_state_view.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_item_sheet.dart';
 import 'package:fastybird_smart_panel/modules/devices/export.dart';
+import 'package:fastybird_smart_panel/modules/intents/repositories/intents.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_detail_page.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/window_covering.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/window_covering.dart';
@@ -127,9 +139,9 @@ class _CoverDeviceData {
 // =============================================================================
 // SHADING DOMAIN VIEW PAGE
 // =============================================================================
-// Stateful page for one room's shading. State class: holds optional services,
-// [_pendingPositions] for optimistic UI, [_selectedRole] for hero card;
-// listens to SpacesService and DevicesService.
+// Stateful page for one room's shading. State class: holds [DomainControlStateService]
+// for mode and hero, optional services, [_selectedRole]; listens to Spaces, Devices,
+// Intents.
 
 class ShadingDomainViewPage extends StatefulWidget {
   final DomainViewItem viewItem;
@@ -141,42 +153,168 @@ class ShadingDomainViewPage extends StatefulWidget {
 }
 
 class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
-
   SpacesService? _spacesService;
   DevicesService? _devicesService;
   EventBus? _eventBus;
+  IntentsRepository? _intentsRepository;
+  RoleControlStateRepository? _roleControlStateRepository;
   BottomNavModeNotifier? _bottomNavModeNotifier;
   StreamSubscription<DeckPageActivatedEvent>? _pageActivatedSubscription;
   bool _isActivePage = false;
   bool _isLoading = true;
   bool _hasError = false;
 
-  // Optimistic UI state for slider interaction (per role)
-  final Map<CoversTargetRole, int> _pendingPositions = {};
-
-  // Currently selected role in the hero card / role selector
   CoversTargetRole? _selectedRole;
 
-  /// Notifier bumped when data changes so the devices sheet rebuilds live.
+  Timer? _heroPositionDebounceTimer;
+
+  late DomainControlStateService<CoversStateModel> _modeControlStateService;
+  late DomainControlStateService<RoleCoversState> _heroControlStateService;
+
+  bool _heroWasSpaceLocked = false;
+  bool _modeWasLocked = false;
+
+  Map<CoversTargetRole, List<CoversTargetView>>? _cachedRoleGroups;
+  int _cachedTargetsHash = 0;
+
+  static const List<String> _heroControlChannelIds = [
+    ShadingConstants.positionChannelId,
+  ];
+
   final ValueNotifier<int> _sheetNotifier = ValueNotifier<int>(0);
 
   String get _roomId => widget.viewItem.roomId;
 
-  /// Covers state from backend (cached).
   CoversStateModel? get _coversState => _spacesService?.getCoversState(_roomId);
 
-  /// Covers targets for the current room.
   List<CoversTargetView> get _coversTargets =>
       _spacesService?.getCoversTargetsForSpace(_roomId) ?? [];
 
-  /// Position for a role: pending value if set, otherwise actual average.
-  int _getRolePosition(_CoverRoleData roleData) {
-    // Check for pending position first
-    if (_pendingPositions.containsKey(roleData.role)) {
-      return _pendingPositions[roleData.role]!;
+  int _getRolePosition(_CoverRoleData roleData, CoversTargetRole? effectiveRole) {
+    if (_heroControlStateService.isLocked(ShadingConstants.positionChannelId)) {
+      final desired = _heroControlStateService.getDesiredValue(ShadingConstants.positionChannelId);
+      if (desired != null && roleData.role == effectiveRole) return desired.round();
     }
-    // Return actual average position from devices
+    final pending = _getRolePendingPosition(roleData.role, effectiveRole);
+    if (pending != null) return pending;
     return roleData.averagePosition;
+  }
+
+  int? _getRolePendingPosition(CoversTargetRole role, CoversTargetRole? effectiveRole) {
+    if (role != effectiveRole) return null;
+    if (_heroControlStateService.isLocked(ShadingConstants.positionChannelId)) {
+      final desired = _heroControlStateService.getDesiredValue(ShadingConstants.positionChannelId);
+      if (desired != null) return desired.round();
+    }
+    return null;
+  }
+
+  bool _isSpaceIntentLocked<T>(List<T> targets) =>
+      _intentsRepository?.isSpaceLocked(_roomId) ?? false;
+
+  bool _checkModeConvergence(
+    List<CoversStateModel> targets,
+    double desiredValue,
+    double tolerance,
+  ) {
+    if (targets.isEmpty) return true;
+    final state = targets.first;
+    final desiredModeIndex = desiredValue.toInt();
+    if (desiredModeIndex < 0 || desiredModeIndex >= CoversMode.values.length) return true;
+    final desiredMode = CoversMode.values[desiredModeIndex];
+    final backendMode = state.detectedMode;
+    if (backendMode == null) return false;
+    return backendMode == desiredMode && state.isModeFromIntent;
+  }
+
+  bool _checkHeroPositionConvergence(
+    List<RoleCoversState> targets,
+    double desiredValue,
+    double tolerance,
+  ) {
+    if (targets.isEmpty) return true;
+    final state = targets.first;
+    if (state.position == null) return false;
+    return (state.position! - desiredValue).abs() <= tolerance;
+  }
+
+  CoversTargetRole? _getEffectiveRoleFromTargets() {
+    if (_selectedRole != null) return _selectedRole;
+    final targets = _coversTargets;
+    if (targets.isEmpty) return null;
+    final groups = _groupTargetsByRole(targets);
+    for (final r in CoversTargetRole.values) {
+      if (r != CoversTargetRole.hidden && groups.containsKey(r)) return r;
+    }
+    return null;
+  }
+
+  RoleCoversState? _getHeroRoleState() {
+    final role = _getEffectiveRoleFromTargets();
+    if (role == null) return null;
+    final stateRole = _toStateRole(role);
+    if (stateRole == null) return null;
+    return _coversState?.getRoleState(stateRole);
+  }
+
+  String _heroCacheKey(CoversTargetRole role) =>
+      RoleControlStateRepository.generateKey(_roomId, 'shading', role.name);
+
+  Map<CoversTargetRole, List<CoversTargetView>> _groupTargetsByRole(List<CoversTargetView> targets) {
+    final currentHash = _computeTargetsHash(targets);
+    if (_cachedRoleGroups != null && currentHash == _cachedTargetsHash) {
+      return _cachedRoleGroups!;
+    }
+    final result = <CoversTargetRole, List<CoversTargetView>>{};
+    for (final target in targets) {
+      final role = target.role ?? CoversTargetRole.primary;
+      if (role == CoversTargetRole.hidden) continue;
+      result.putIfAbsent(role, () => []).add(target);
+    }
+    _cachedRoleGroups = result;
+    _cachedTargetsHash = currentHash;
+    return result;
+  }
+
+  int _computeTargetsHash(List<CoversTargetView> targets) {
+    int hash = targets.length;
+    for (final target in targets) {
+      hash = hash ^ target.id.hashCode ^ target.deviceId.hashCode ^ (target.role?.hashCode ?? 0);
+    }
+    return hash;
+  }
+
+  void _onControlStateChanged() {
+    if (!mounted) return;
+    setState(() {});
+  }
+
+  void _onIntentChanged() {
+    if (!mounted) return;
+    final intentsRepo = _intentsRepository;
+    if (intentsRepo == null) return;
+
+    final isNowLocked = intentsRepo.isSpaceLocked(_roomId);
+    final coversState = _coversState;
+    final modeTargets = coversState != null ? [coversState] : <CoversStateModel>[];
+
+    if (_modeWasLocked && !isNowLocked) {
+      _modeControlStateService.onIntentCompleted(
+        ShadingConstants.modeChannelId,
+        modeTargets,
+      );
+    }
+
+    if (_heroWasSpaceLocked && !isNowLocked) {
+      final heroRoleState = _getHeroRoleState();
+      final heroTargets = heroRoleState != null ? [heroRoleState] : <RoleCoversState>[];
+      for (final channelId in _heroControlChannelIds) {
+        _heroControlStateService.onIntentCompleted(channelId, heroTargets);
+      }
+    }
+
+    if (_modeWasLocked) _modeWasLocked = isNowLocked;
+    if (_heroWasSpaceLocked) _heroWasSpaceLocked = isNowLocked;
   }
 
   /// Maps [CoversTargetRole] to [CoversStateRole] for SpacesService API calls.
@@ -201,48 +339,60 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   // initState: resolve services, add listeners (Spaces, Devices), fetch covers
   // data. dispose: remove listeners.
 
+  /// Resolves optional service from locator; registers listener on success.
+  /// Returns null and logs in debug mode if resolution fails.
+  T? _tryLocator<T extends Object>(String debugLabel, {void Function(T)? onSuccess}) {
+    try {
+      final service = locator<T>();
+      onSuccess?.call(service);
+      return service;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[ShadingDomainView] Failed to get $debugLabel: $e');
+      }
+      return null;
+    }
+  }
+
   @override
   void initState() {
     super.initState();
 
-    try {
-      _spacesService = locator<SpacesService>();
-      _spacesService?.addListener(_onDataChanged);
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('[ShadingDomainView] Failed to get SpacesService: $e');
-      }
-    }
+    _modeControlStateService = DomainControlStateService<CoversStateModel>(
+      channelConfigs: {
+        ShadingConstants.modeChannelId: ControlChannelConfig(
+          id: ShadingConstants.modeChannelId,
+          convergenceChecker: _checkModeConvergence,
+          intentLockChecker: _isSpaceIntentLocked,
+          settlingWindowMs: ShadingConstants.modeSettlingWindowMs,
+          tolerance: 0.0,
+        ),
+      },
+    );
+    _modeControlStateService.addListener(_onControlStateChanged);
 
-    try {
-      _devicesService = locator<DevicesService>();
-      _devicesService?.addListener(_onDataChanged);
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('[ShadingDomainView] Failed to get DevicesService: $e');
-      }
-    }
+    _heroControlStateService = DomainControlStateService<RoleCoversState>(
+      channelConfigs: {
+        ShadingConstants.positionChannelId: ControlChannelConfig(
+          id: ShadingConstants.positionChannelId,
+          convergenceChecker: _checkHeroPositionConvergence,
+          intentLockChecker: _isSpaceIntentLocked,
+          settlingWindowMs: ShadingConstants.settlingWindowMs,
+          tolerance: ShadingConstants.positionTolerance,
+        ),
+      },
+    );
+    _heroControlStateService.addListener(_onControlStateChanged);
 
-    try {
-      _eventBus = locator<EventBus>();
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('[ShadingDomainView] Failed to get EventBus: $e');
-      }
-    }
+    _spacesService = _tryLocator<SpacesService>('SpacesService', onSuccess: (s) => s.addListener(_onDataChanged));
+    _devicesService = _tryLocator<DevicesService>('DevicesService', onSuccess: (s) => s.addListener(_onDataChanged));
+    _intentsRepository = _tryLocator<IntentsRepository>('IntentsRepository', onSuccess: (s) => s.addListener(_onIntentChanged));
+    _eventBus = _tryLocator<EventBus>('EventBus');
+    _bottomNavModeNotifier = _tryLocator<BottomNavModeNotifier>('BottomNavModeNotifier');
+    _roleControlStateRepository = _tryLocator<RoleControlStateRepository>('RoleControlStateRepository');
 
-    try {
-      _bottomNavModeNotifier = locator<BottomNavModeNotifier>();
-    } catch (e) {
-      if (kDebugMode) {
-        debugPrint('[ShadingDomainView] Failed to get BottomNavModeNotifier: $e');
-      }
-    }
-
-    // Subscribe to page activation events for bottom nav mode registration
     _pageActivatedSubscription = _eventBus?.on<DeckPageActivatedEvent>().listen(_onPageActivated);
 
-    // Fetch covers targets and state for this space
     _fetchCoversData();
   }
 
@@ -292,9 +442,15 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
 
   @override
   void dispose() {
+    _heroPositionDebounceTimer?.cancel();
     _pageActivatedSubscription?.cancel();
     _spacesService?.removeListener(_onDataChanged);
     _devicesService?.removeListener(_onDataChanged);
+    _intentsRepository?.removeListener(_onIntentChanged);
+    _modeControlStateService.removeListener(_onControlStateChanged);
+    _modeControlStateService.dispose();
+    _heroControlStateService.removeListener(_onControlStateChanged);
+    _heroControlStateService.dispose();
     _sheetNotifier.dispose();
     super.dispose();
   }
@@ -309,6 +465,9 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
 
     if (_isActivePage) {
       _registerModeConfig();
+      // Refresh covers state so we have latest role targets (e.g. after returning
+      // from device detail or when another panel changed covers).
+      _spacesService?.fetchCoversState(_roomId);
     }
   }
 
@@ -317,7 +476,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
 
     final targets = _coversTargets;
     final hasCovers = targets.isNotEmpty;
-    if (!hasCovers) {
+    if (!ShadingConstants.useBackendIntents || !hasCovers) {
       _bottomNavModeNotifier?.clear();
       return;
     }
@@ -345,6 +504,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final modes = _getCoversModeOptions(localizations);
     final (activeValue, matchedValue, lastIntentValue) = _getCoverModeSelectorValues();
+    final isModeLocked = _modeControlStateService.isLocked(ShadingConstants.modeChannelId);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -369,6 +529,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
             isActive: activeValue == mode.value,
             isMatched: matchedValue == mode.value,
             isLastIntent: lastIntentValue == mode.value,
+            isLocked: isModeLocked,
             onTap: () {
               _setCoversMode(mode.value);
               _registerModeConfig(modeOverride: mode.value);
@@ -385,6 +546,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     required bool isActive,
     required bool isMatched,
     required bool isLastIntent,
+    required bool isLocked,
     required VoidCallback onTap,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -395,7 +557,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     final isHighlighted = isActive || isMatched || isLastIntent;
 
     return GestureDetector(
-      onTap: onTap,
+      onTap: isLocked ? null : onTap,
       behavior: HitTestBehavior.opaque,
       child: Container(
         padding: EdgeInsets.symmetric(
@@ -440,41 +602,60 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     );
   }
 
-  /// Called when SpacesService or DevicesService notifies; clears converged
-  /// pending positions and calls setState.
   void _onDataChanged() {
     if (!mounted) return;
-    // Use addPostFrameCallback to avoid "setState during build" errors
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        // Clear pending positions when data converges (per role)
-        if (_pendingPositions.isNotEmpty) {
-          final targets = _coversTargets;
-          final roleDataList = _buildRoleDataList(targets);
+      if (!mounted) return;
 
-          final rolesToRemove = <CoversTargetRole>[];
-          for (final entry in _pendingPositions.entries) {
-            final roleData = roleDataList.where((r) => r.role == entry.key).firstOrNull;
-            if (roleData != null) {
-              // Consider converged if within 5% tolerance
-              if ((roleData.averagePosition - entry.value).abs() <= 5) {
-                rolesToRemove.add(entry.key);
-              }
-            }
-          }
-          for (final role in rolesToRemove) {
-            _pendingPositions.remove(role);
-          }
-        }
-        setState(() {});
-
-        // Bump sheet notifier so any open devices sheet rebuilds live.
-        _sheetNotifier.value++;
-
-        // Update bottom nav mode config if this is the active page
-        _registerModeConfig();
+      final coversState = _coversState;
+      if (coversState != null) {
+        _modeControlStateService.checkConvergence(
+          ShadingConstants.modeChannelId,
+          [coversState],
+        );
       }
+
+      final heroRoleState = _getHeroRoleState();
+      if (heroRoleState != null) {
+        final heroTargets = [heroRoleState];
+        for (final channelId in _heroControlChannelIds) {
+          _heroControlStateService.checkConvergence(channelId, heroTargets);
+        }
+        _loadHeroCachedValuesIfNeeded(heroRoleState);
+        _updateHeroCacheIfSynced(heroRoleState);
+      }
+
+      setState(() {});
+      _sheetNotifier.value++;
+      _registerModeConfig();
     });
+  }
+
+  void _loadHeroCachedValuesIfNeeded(RoleCoversState roleState) {
+    final effectiveRole = _getEffectiveRoleFromTargets();
+    if (effectiveRole == null) return;
+    if (!roleState.isPositionMixed) return;
+
+    final cached = _roleControlStateRepository?.get(_heroCacheKey(effectiveRole));
+    final position = cached?.position;
+    if (position != null &&
+        _heroControlStateService.getDesiredValue(ShadingConstants.positionChannelId) == null) {
+      _heroControlStateService.setMixed(ShadingConstants.positionChannelId, position);
+    }
+  }
+
+  void _updateHeroCacheIfSynced(RoleCoversState roleState) {
+    final effectiveRole = _getEffectiveRoleFromTargets();
+    if (effectiveRole == null) return;
+    if (roleState.isPositionMixed) return;
+
+    final pos = roleState.position;
+    if (pos != null) {
+      _roleControlStateRepository?.updateFromSync(
+        _heroCacheKey(effectiveRole),
+        position: pos.toDouble(),
+      );
+    }
   }
 
 
@@ -504,21 +685,22 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
       );
     }
 
-    final targets = _coversTargets;
-    if (targets.isEmpty) {
-      return _buildEmptyState(context);
-    }
+    return Consumer<DevicesService>(
+      builder: (context, devicesService, _) {
+        final targets = _coversTargets;
+        if (targets.isEmpty) {
+          return _buildEmptyState(context);
+        }
 
-    // Build role data from actual sources
-    final roleDataList = _buildRoleDataList(targets);
-    if (roleDataList.isEmpty) {
-      return _buildEmptyState(context);
-    }
+        final roleDataList = _buildRoleDataList(targets);
+        if (roleDataList.isEmpty) {
+          return _buildEmptyState(context);
+        }
 
-    final totalDevices = targets.length;
-    final effectiveRole = _selectedRole ?? roleDataList.first.role;
+        final totalDevices = targets.length;
+        final effectiveRole = _selectedRole ?? roleDataList.first.role;
 
-    return Scaffold(
+        return Scaffold(
       backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
       body: SafeArea(
         child: Column(
@@ -538,6 +720,8 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
         ),
       ),
     );
+      },
+    );
   }
 
   // --------------------------------------------------------------------------
@@ -555,7 +739,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
       (r) => r.role == effectiveRole,
       orElse: () => roleDataList.first,
     );
-    final position = _getRolePosition(roleData);
+    final position = _getRolePosition(roleData, effectiveRole);
     final positionColorFamily = _getPositionColorFamily(context, position);
 
     // Build subtitle showing selected role info
@@ -594,7 +778,14 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   // [_buildRoleDataList] groups targets by role and computes average position
   // from DevicesService. [_buildDeviceDataList] builds rows for the devices sheet.
 
-  /// Builds role data list from covers targets (grouped by role, avg position from devices).
+  /// Builds role data list from covers targets (grouped by role).
+  ///
+  /// Uses [RoleCoversState] from backend for position (role target) when
+  /// available — matching lights domain. The backend stores role state (e.g. in
+  /// Influx) and propagates via API/WebSocket. When devices are mixed (e.g.
+  /// one manually set to 75% while role target is 50%), we show the role target
+  /// (50%), not the device average. Fallback to device average when backend
+  /// position is null.
   List<_CoverRoleData> _buildRoleDataList(List<CoversTargetView> targets) {
     final Map<CoversTargetRole, List<CoversTargetView>> grouped = {};
 
@@ -604,6 +795,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
       grouped.putIfAbsent(role, () => []).add(target);
     }
 
+    final coversState = _coversState;
     final List<_CoverRoleData> roles = [];
 
     for (final role in CoversTargetRole.values) {
@@ -611,26 +803,33 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
       final roleTargets = grouped[role] ?? [];
       if (roleTargets.isEmpty) continue;
 
-      // Calculate average position from actual device data
-      int totalPosition = 0;
-      int deviceCount = 0;
+      // Prefer backend role target (position) — correct when devices are mixed.
+      final stateRole = _toStateRole(role);
+      final roleState = stateRole != null ? coversState?.getRoleState(stateRole) : null;
 
-      for (final target in roleTargets) {
-        final device = _devicesService?.getDevice(target.deviceId);
-        if (device is WindowCoveringDeviceView) {
-          totalPosition += device.isWindowCoveringPercentage;
-          deviceCount++;
+      int position;
+      if (roleState?.position != null) {
+        position = roleState!.position!;
+      } else {
+        // Fallback: device average when backend has no position yet
+        int totalPosition = 0;
+        int deviceCount = 0;
+        for (final target in roleTargets) {
+          final device = _devicesService?.getDevice(target.deviceId);
+          if (device is WindowCoveringDeviceView) {
+            totalPosition += device.isWindowCoveringPercentage;
+            deviceCount++;
+          }
         }
+        position = deviceCount > 0 ? (totalPosition / deviceCount).round() : 0;
       }
-
-      final avgPosition = deviceCount > 0 ? (totalPosition / deviceCount).round() : 0;
 
       roles.add(_CoverRoleData(
         role: role,
         name: _getRoleName(role),
         icon: _getRoleIcon(role),
         deviceCount: roleTargets.length,
-        averagePosition: avgPosition,
+        averagePosition: position,
         targets: roleTargets,
       ));
     }
@@ -646,27 +845,17 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     // Filter out hidden targets
     final visibleTargets = targets.where((t) => t.role != CoversTargetRole.hidden).toList();
 
-    // Count channels per device to determine naming strategy
-    final channelsPerDevice = <String, int>{};
-    for (final target in visibleTargets) {
-      channelsPerDevice[target.deviceId] = (channelsPerDevice[target.deviceId] ?? 0) + 1;
-    }
-
     for (final target in visibleTargets) {
       final device = _devicesService?.getDevice(target.deviceId);
       if (device is! WindowCoveringDeviceView) continue;
 
-      // Find the specific channel for this target
       final channel = device.channels
           .whereType<WindowCoveringChannelView>()
           .where((c) => c.id == target.channelId)
           .firstOrNull;
       if (channel == null) continue;
 
-      // Use channel name if device has multiple channels, device name otherwise
-      final hasMultipleChannels = (channelsPerDevice[target.deviceId] ?? 1) > 1;
-      final rawName = hasMultipleChannels ? target.channelName : target.deviceName;
-      final name = stripRoomNameFromDevice(rawName, roomName);
+      final name = getCoverTargetDisplayName(target, visibleTargets, roomName);
 
       devices.add(_CoverDeviceData(
         deviceId: target.deviceId,
@@ -761,7 +950,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
       (r) => r.role == effectiveRole,
       orElse: () => roleDataList.first,
     );
-    final position = _getRolePosition(roleData);
+    final position = _getRolePosition(roleData, effectiveRole);
 
     return LandscapeViewLayout(
       mainContentPadding: EdgeInsets.only(
@@ -780,14 +969,10 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
               position: position,
               positionThemeColor: _getPositionThemeColor(position),
               statusIcon: _getRoleStatusIcon(roleData),
-              onPositionChanged: (value) {
-                final newPosition = (value * 100).round();
-                setState(() => _pendingPositions[roleData.role] = newPosition);
-                _setRolePosition(roleData.role, newPosition);
-              },
-              onOpen: () => _setRolePosition(roleData.role, 100),
+              onPositionChanged: (value) => _onHeroPositionChanged(roleData.role, (value * 100).round()),
+              onOpen: () => _setRolePositionImmediate(roleData.role, 100),
               onStop: _stopCovers,
-              onClose: () => _setRolePosition(roleData.role, 0),
+              onClose: () => _setRolePositionImmediate(roleData.role, 0),
               onShowDevices: () => _showShadingDevicesSheet(role: roleData.role, roleTargets: roleData.targets),
             ),
           ),
@@ -821,7 +1006,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
       (r) => r.role == effectiveRole,
       orElse: () => roleDataList.first,
     );
-    final position = _getRolePosition(roleData);
+    final position = _getRolePosition(roleData, effectiveRole);
     final hasMultipleRoles = roleDataList.length > 1;
 
     return PortraitViewLayout(
@@ -837,14 +1022,10 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
             positionThemeColor: _getPositionThemeColor(position),
             isPortrait: true,
             statusIcon: _getRoleStatusIcon(roleData),
-            onPositionChanged: (value) {
-              final newPosition = (value * 100).round();
-              setState(() => _pendingPositions[roleData.role] = newPosition);
-              _setRolePosition(roleData.role, newPosition);
-            },
-            onOpen: () => _setRolePosition(roleData.role, 100),
+            onPositionChanged: (value) => _onHeroPositionChanged(roleData.role, (value * 100).round()),
+            onOpen: () => _setRolePositionImmediate(roleData.role, 100),
             onStop: _stopCovers,
-            onClose: () => _setRolePosition(roleData.role, 0),
+            onClose: () => _setRolePositionImmediate(roleData.role, 0),
             onShowDevices: () => _showShadingDevicesSheet(role: roleData.role, roleTargets: roleData.targets),
           ),
           if (hasMultipleRoles) ...[
@@ -872,7 +1053,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     // Build status icons for roles with open covers
     final Map<CoversTargetRole, (IconData, Color)> statusIcons = {};
     for (final roleData in roleDataList) {
-      final position = _getRolePosition(roleData);
+      final position = _getRolePosition(roleData, effectiveRole);
       if (position > 0) {
         final colorFamily = _getPositionColorFamily(context, position);
         statusIcons[roleData.role] = (Icons.circle, colorFamily.base);
@@ -881,7 +1062,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
 
     return ModeSelector<CoversTargetRole>(
       modes: roleDataList.map((roleData) {
-        final position = _getRolePosition(roleData);
+        final position = _getRolePosition(roleData, effectiveRole);
         final valueText = position == 100
             ? localizations.shading_state_open
             : position == 0
@@ -930,6 +1111,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
       }).toList(),
       selectedValue: effectiveRole,
       onChanged: (role) {
+        _heroControlStateService.clear(ShadingConstants.positionChannelId);
         setState(() {
           _selectedRole = role;
         });
@@ -949,29 +1131,41 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   // [_setRolePosition], [_stopCovers], [_setCoversMode] call SpacesService;
   // [_showActionFailed] shows toast and optionally clears pending position.
 
-  void _showActionFailed({CoversTargetRole? clearPendingRole}) {
+  void _showActionFailed({bool clearHeroPosition = false}) {
     if (!mounted) return;
     final localizations = AppLocalizations.of(context)!;
     AppToast.showError(context, message: localizations.action_failed);
-    if (clearPendingRole != null) {
-      _pendingPositions.remove(clearPendingRole);
+    if (clearHeroPosition) {
+      _heroControlStateService.setIdle(ShadingConstants.positionChannelId);
       setState(() {});
     }
   }
 
-  /// Set position for covers with a specific role
+  void _onHeroPositionChanged(CoversTargetRole role, int position) {
+    _heroControlStateService.setPending(ShadingConstants.positionChannelId, position.toDouble());
+    _roleControlStateRepository?.set(_heroCacheKey(role), position: position.toDouble());
+    _heroPositionDebounceTimer?.cancel();
+    _heroPositionDebounceTimer = Timer(
+      const Duration(milliseconds: ShadingConstants.sliderDebounceMs),
+      () => _setRolePosition(role, position),
+    );
+    setState(() {});
+  }
+
+  void _setRolePositionImmediate(CoversTargetRole role, int position) {
+    _heroControlStateService.setPending(ShadingConstants.positionChannelId, position.toDouble());
+    _roleControlStateRepository?.set(_heroCacheKey(role), position: position.toDouble());
+    _heroPositionDebounceTimer?.cancel();
+    _setRolePosition(role, position);
+  }
+
   Future<void> _setRolePosition(CoversTargetRole role, int position) async {
-    setState(() => _pendingPositions[role] = position);
+    if (!mounted) return;
+    final stateRole = _toStateRole(role);
+    if (stateRole == null) return;
 
     try {
-      final stateRole = _toStateRole(role);
-      if (stateRole == null) {
-        if (kDebugMode) {
-          debugPrint('[ShadingDomainView] Invalid role: $role');
-        }
-        return;
-      }
-
+      _heroWasSpaceLocked = true;
       final result = await _spacesService?.setRolePosition(_roomId, stateRole, position);
 
       if (mounted) {
@@ -979,16 +1173,15 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
       }
 
       if (result == null && mounted) {
-        _showActionFailed(clearPendingRole: role);
+        _showActionFailed(clearHeroPosition: true);
       }
 
-      // Bump sheet notifier so any open devices sheet updates immediately.
       _sheetNotifier.value++;
     } catch (e) {
       if (kDebugMode) {
         debugPrint('[ShadingDomainView] Failed to set role position: $e');
       }
-      if (mounted) _showActionFailed(clearPendingRole: role);
+      if (mounted) _showActionFailed(clearHeroPosition: true);
     }
   }
 
@@ -1010,9 +1203,15 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     }
   }
 
-  /// Set covers mode via backend intent
   Future<void> _setCoversMode(CoversMode mode) async {
     try {
+      _modeControlStateService.setPending(
+        ShadingConstants.modeChannelId,
+        mode.index.toDouble(),
+      );
+      _modeWasLocked = true;
+      setState(() {});
+
       final result = await _spacesService?.setCoversMode(_roomId, mode);
 
       if (mounted) {
@@ -1020,13 +1219,19 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
       }
 
       if (result == null || result.failedDevices > 0) {
-        if (mounted) _showActionFailed();
+        if (mounted) {
+          _showActionFailed();
+          _modeControlStateService.setIdle(ShadingConstants.modeChannelId);
+        }
       }
     } catch (e) {
       if (kDebugMode) {
         debugPrint('[ShadingDomainView] Failed to set covers mode: $e');
       }
-      if (mounted) _showActionFailed();
+      if (mounted) {
+        _showActionFailed();
+        _modeControlStateService.setIdle(ShadingConstants.modeChannelId);
+      }
     }
   }
 
@@ -1034,8 +1239,18 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   // MODE SELECTOR
   // --------------------------------------------------------------------------
 
-  /// Compute (activeValue, matchedValue, lastIntentValue) for [IntentModeSelector].
   (CoversMode?, CoversMode?, CoversMode?) _getCoverModeSelectorValues() {
+    if (_modeControlStateService.isLocked(ShadingConstants.modeChannelId)) {
+      final desiredIndex = _modeControlStateService
+          .getDesiredValue(ShadingConstants.modeChannelId)
+          ?.toInt();
+      if (desiredIndex != null &&
+          desiredIndex >= 0 &&
+          desiredIndex < CoversMode.values.length) {
+        return (CoversMode.values[desiredIndex], null, null);
+      }
+    }
+
     final detectedMode = _coversState?.detectedMode;
     final lastAppliedMode = _coversState?.lastAppliedMode;
     final isModeFromIntent = _coversState?.isModeFromIntent ?? false;
@@ -1101,6 +1316,8 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     final isLandscape =
         MediaQuery.of(context).orientation == Orientation.landscape;
 
+    final bottomSection = role != null ? _buildDevicesSheetFooter(context, role) : null;
+
     if (isLandscape) {
       final isDark = Theme.of(context).brightness == Brightness.dark;
       final drawerBgColor =
@@ -1131,49 +1348,24 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
                         _buildShadingDeviceTile(context, deviceDataList[index]),
                   ),
                 ),
-                if (role != null) _buildDevicesSheetFooter(ctx, role),
+                if (bottomSection != null) bottomSection,
               ],
             );
           },
         ),
       );
     } else {
-      showAppBottomSheet(
+      DeckItemSheet.showItemSheetWithUpdates(
         context,
         title: localizations.shading_devices_title,
-        titleIcon: MdiIcons.windowShutterSettings,
-        scrollable: false,
-        content: ListenableBuilder(
-          listenable: _sheetNotifier,
-          builder: (ctx, _) {
-            final deviceDataList = _buildDeviceDataList(targets);
-            final isDark =
-                Theme.of(ctx).brightness == Brightness.dark;
-            final bgColor =
-                isDark ? AppFillColorDark.base : AppFillColorLight.blank;
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Flexible(
-                  child: VerticalScrollWithGradient(
-                    gradientHeight: AppSpacings.pMd,
-                    itemCount: deviceDataList.length,
-                    separatorHeight: AppSpacings.pSm,
-                    backgroundColor: bgColor,
-                    shrinkWrap: true,
-                    padding: EdgeInsets.symmetric(
-                      horizontal: AppSpacings.pLg,
-                      vertical: AppSpacings.pMd,
-                    ),
-                    itemBuilder: (c, i) =>
-                        _buildShadingDeviceTile(c, deviceDataList[i]),
-                  ),
-                ),
-                if (role != null) _buildDevicesSheetFooter(ctx, role),
-              ],
-            );
-          },
-        ),
+        icon: MdiIcons.windowShutterSettings,
+        rebuildWhen: _sheetNotifier,
+        getItemCount: () => _buildDeviceDataList(targets).length,
+        itemBuilder: (context, index) {
+          final deviceDataList = _buildDeviceDataList(targets);
+          return _buildShadingDeviceTile(context, deviceDataList[index]);
+        },
+        bottomSection: bottomSection,
       );
     }
   }
@@ -1253,8 +1445,8 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
                 final roleDataList = _buildRoleDataList(_coversTargets);
                 final roleData = roleDataList.where((r) => r.role == role).firstOrNull;
                 if (roleData != null) {
-                  final position = _getRolePosition(roleData);
-                  _setRolePosition(role, position);
+                  final position = _getRolePosition(roleData, role);
+                  _setRolePositionImmediate(role, position);
                 }
                 Navigator.of(context).pop();
               },

@@ -1,3 +1,4 @@
+import 'package:fastybird_smart_panel/modules/spaces/views/covers_targets/view.dart';
 import 'package:fastybird_smart_panel/modules/spaces/views/light_targets/view.dart';
 
 /// Module name identifier.
@@ -161,6 +162,75 @@ class LightingConstants {
       case LightTargetRole.other:
         return roleOtherChannelId;
       case LightTargetRole.hidden:
+        return 'role_hidden'; // Should not be used
+    }
+  }
+}
+
+/// Shading domain constants for behavior and thresholds.
+///
+/// Mirrors [LightingConstants] structure for parity with lights domain.
+class ShadingConstants {
+  ShadingConstants._();
+
+  // ---------------------------------------------------------------------------
+  // Feature Flags
+  // ---------------------------------------------------------------------------
+
+  /// Enable backend intent integration for covers control.
+  static const bool useBackendIntents = true;
+
+  // ---------------------------------------------------------------------------
+  // Timing Constants
+  // ---------------------------------------------------------------------------
+
+  /// Settling window after a control change completes (ms).
+  static const int settlingWindowMs = 2000;
+
+  /// Debounce delay for slider controls (ms).
+  static const int sliderDebounceMs = 300;
+
+  // ---------------------------------------------------------------------------
+  // Tolerances & Thresholds
+  // ---------------------------------------------------------------------------
+
+  /// Tolerance for considering position "equal" across devices (percent).
+  static const double positionTolerance = 5.0;
+
+  // ---------------------------------------------------------------------------
+  // DomainControlStateService Channel IDs
+  // ---------------------------------------------------------------------------
+
+  /// Control channel ID for covers mode (open/daylight/privacy/closed).
+  static const String modeChannelId = 'mode';
+
+  /// Control channel ID for position control.
+  static const String positionChannelId = 'position';
+
+  /// Settling window for mode changes (ms).
+  static const int modeSettlingWindowMs = 3000;
+
+  // ---------------------------------------------------------------------------
+  // Role Position Channel IDs
+  // ---------------------------------------------------------------------------
+
+  static const String rolePrimaryChannelId = 'role_primary';
+  static const String roleBlackoutChannelId = 'role_blackout';
+  static const String roleSheerChannelId = 'role_sheer';
+  static const String roleOutdoorChannelId = 'role_outdoor';
+
+  /// Get channel ID for a specific role.
+  static String getRoleChannelId(CoversTargetRole role) {
+    switch (role) {
+      case CoversTargetRole.primary:
+        return rolePrimaryChannelId;
+      case CoversTargetRole.blackout:
+        return roleBlackoutChannelId;
+      case CoversTargetRole.sheer:
+        return roleSheerChannelId;
+      case CoversTargetRole.outdoor:
+        return roleOutdoorChannelId;
+      case CoversTargetRole.hidden:
         return 'role_hidden'; // Should not be used
     }
   }
