@@ -1334,6 +1334,12 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     // Use addPostFrameCallback to avoid "setState during build" errors
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
+        // If backend confirms a mode intent is active (possibly from another
+        // panel instance), clear the local manual override flag.
+        if (_lightingState?.isModeFromIntent == true) {
+          _modeOverriddenByManualChange = false;
+        }
+
         // Check convergence for mode channel
         final lightingState = _lightingState;
         if (lightingState != null) {

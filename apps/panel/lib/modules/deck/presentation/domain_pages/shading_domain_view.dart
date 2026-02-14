@@ -621,6 +621,12 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
 
+      // If backend confirms a mode intent is active (possibly from another
+      // panel instance), clear the local manual override flag.
+      if (_coversState?.isModeFromIntent == true) {
+        _modeOverriddenByManualChange = false;
+      }
+
       final coversState = _coversState;
       if (coversState != null) {
         _modeControlStateService.checkConvergence(
