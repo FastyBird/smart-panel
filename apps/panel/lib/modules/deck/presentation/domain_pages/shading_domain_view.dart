@@ -1004,12 +1004,68 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
         bottom: AppSpacings.pMd,
       ),
       additionalContent: roleDataList.length > 1
-          ? _buildRoleSelector(
+          ? _buildLandscapeRolesCard(
               context, roleDataList,
-              isLandscape: true,
               effectiveRole: effectiveRole,
             )
           : null,
+    );
+  }
+
+  Widget _buildLandscapeRolesCard(
+    BuildContext context,
+    List<_CoverRoleData> roleDataList, {
+    CoversTargetRole? effectiveRole,
+  }) {
+    final tileHeight = AppSpacings.scale(AppTileHeight.horizontal * 0.85);
+
+    return Column(
+      spacing: AppSpacings.pSm,
+      children: roleDataList
+          .map((roleData) => _buildRoleTileHorizontal(
+                context, roleData, tileHeight,
+                effectiveRole: effectiveRole,
+              ))
+          .toList(),
+    );
+  }
+
+  Widget _buildRoleTileHorizontal(
+    BuildContext context,
+    _CoverRoleData roleData,
+    double height, {
+    CoversTargetRole? effectiveRole,
+  }) {
+    final localizations = AppLocalizations.of(context)!;
+    final position = _getRolePosition(roleData, effectiveRole);
+    final positionColor = _getPositionThemeColor(position);
+
+    final valueText = position == 100
+        ? localizations.shading_state_open
+        : position == 0
+            ? localizations.shading_state_closed
+            : '$position%';
+
+    return SizedBox(
+      height: height,
+      child: UniversalTile(
+        layout: TileLayout.horizontal,
+        icon: roleData.icon,
+        name: valueText,
+        status: roleData.name,
+        iconAccentColor: position > 0 ? positionColor : null,
+        isActive: roleData.role == effectiveRole,
+        activeColor: positionColor,
+        showGlow: false,
+        showDoubleBorder: false,
+        showInactiveBorder: false,
+        onTileTap: () {
+          _heroControlStateService.clear(ShadingConstants.positionChannelId);
+          setState(() {
+            _selectedRole = roleData.role;
+          });
+        },
+      ),
     );
   }
 
@@ -1064,7 +1120,6 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   Widget _buildRoleSelector(
     BuildContext context,
     List<_CoverRoleData> roleDataList, {
-    bool isLandscape = false,
     CoversTargetRole? effectiveRole,
   }) {
     final localizations = AppLocalizations.of(context)!;
@@ -1131,9 +1186,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
           _selectedRole = role;
         });
       },
-      orientation: isLandscape
-          ? ModeSelectorOrientation.vertical
-          : ModeSelectorOrientation.horizontal,
+      orientation: ModeSelectorOrientation.horizontal,
       iconPlacement: ModeSelectorIconPlacement.top,
       color: ThemeColors.primary,
       statusIcons: statusIcons,
