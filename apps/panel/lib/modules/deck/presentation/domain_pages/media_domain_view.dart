@@ -66,7 +66,6 @@ import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
 import 'package:fastybird_smart_panel/core/widgets/slider_with_steps.dart';
-import 'package:fastybird_smart_panel/core/widgets/tile_wrappers.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/core/widgets/value_selector.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
@@ -2319,25 +2318,36 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		final tileIcon = deviceView != null
 			? buildDeviceIcon(deviceView.category, deviceView.icon)
 			: _deviceGroupIcon(group);
-		return DeviceTilePortrait(
-			icon: tileIcon,
-			name: group.deviceName,
-			status: isOffline
-				? localizations.device_status_offline
-				: _deviceStatus(context, group, activeState),
-			isActive: isActive,
-			isOffline: isOffline,
-			activeColor: isActive ? _getModeColor() : null,
-			accessories: accessories,
-			onIconTap: supportsPowerOn
-				? () async {
-						await _devicesService?.toggleDeviceOnState(group.deviceId);
-					}
-				: null,
-			onTileTap: () {
-				Navigator.of(context).pop();
-				_navigateToDeviceDetail(group);
-			},
+		final tileHeight = AppSpacings.scale(AppTileHeight.horizontal * 0.85);
+
+		return SizedBox(
+			height: tileHeight,
+			child: UniversalTile(
+				layout: TileLayout.horizontal,
+				icon: tileIcon,
+				activeIcon: tileIcon,
+				name: group.deviceName,
+				status: isOffline
+					? localizations.device_status_offline
+					: _deviceStatus(context, group, activeState),
+				isActive: isActive,
+				isOffline: isOffline,
+				activeColor: isActive ? _getModeColor() : null,
+				accessories: accessories,
+				showWarningBadge: true,
+				showGlow: false,
+				showDoubleBorder: false,
+				showInactiveBorder: false,
+				onIconTap: supportsPowerOn
+					? () async {
+							await _devicesService?.toggleDeviceOnState(group.deviceId);
+						}
+					: null,
+				onTileTap: () {
+					Navigator.of(context).pop();
+					_navigateToDeviceDetail(group);
+				},
+			),
 		);
 	}
 
