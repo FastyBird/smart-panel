@@ -2587,7 +2587,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     bool isLandscape = false,
     LightTargetRole? effectiveRole,
   }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final localizations = AppLocalizations.of(context)!;
     final statusColor = _getStatusColor(context);
     final statusColorFamily = _getStatusColorFamily(context);

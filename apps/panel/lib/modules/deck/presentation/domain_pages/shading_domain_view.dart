@@ -1370,7 +1370,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
 
     try {
       final result = await _spacesService?.setCoversMode(_roomId, mode);
-      final success = result != null && result.failedDevices == 0;
+      final success = result != null;
 
       if (mounted) {
         IntentResultHandler.showOfflineAlertIfNeededForCovers(context, result);
@@ -1560,7 +1560,10 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     if (devicesService == null) return const SizedBox.shrink();
 
     // Check device-level state for mixed position / offline.
-    final targets = _coversTargets.where((t) => t.role == role).toList();
+    // Null-role targets are treated as primary (matching _buildRoleDataList).
+    final targets = _coversTargets
+        .where((t) => (t.role ?? CoversTargetRole.primary) == role)
+        .toList();
     bool hasOffline = false;
     int? firstPosition;
     bool isPositionMixed = false;
