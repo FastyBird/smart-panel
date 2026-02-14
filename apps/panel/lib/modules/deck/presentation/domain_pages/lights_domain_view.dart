@@ -3480,6 +3480,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     if (stateRole == null) return;
 
     _modeOverriddenByManualChange = true;
+    _lastAppliedAtWhenOverridden = _lightingState?.lastAppliedAt;
 
     switch (mode) {
       case LightHeroCapability.brightness:
