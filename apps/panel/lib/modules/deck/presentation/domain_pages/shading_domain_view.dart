@@ -555,11 +555,20 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     required VoidCallback onTap,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final colorFamily = ThemeColorFamily.get(
+    final modeColorFamily = ThemeColorFamily.get(
       isDark ? Brightness.dark : Brightness.light,
       mode.color ?? ThemeColors.neutral,
     );
-    final isHighlighted = isActive || isMatched || isLastIntent;
+    final neutralColorFamily = ThemeColorFamily.get(
+      isDark ? Brightness.dark : Brightness.light,
+      ThemeColors.neutral,
+    );
+
+    // Active (check) uses intent color; history uses neutral; sync has no highlight.
+    final isHighlighted = isActive || isLastIntent;
+    final colorFamily = isLastIntent ? neutralColorFamily : modeColorFamily;
+    final defaultIconColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
+    final defaultTextColor = isDark ? AppTextColorDark.regular : AppTextColorLight.regular;
 
     return GestureDetector(
       onTap: isLocked ? null : onTap,
@@ -582,7 +591,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
           children: [
             Icon(
               mode.icon,
-              color: isHighlighted ? colorFamily.base : (isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary),
+              color: isHighlighted ? colorFamily.base : defaultIconColor,
               size: AppSpacings.scale(20),
             ),
             Expanded(
@@ -591,14 +600,14 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
                 style: TextStyle(
                   fontSize: AppFontSize.base,
                   fontWeight: isHighlighted ? FontWeight.w600 : FontWeight.w400,
-                  color: isHighlighted ? colorFamily.base : (isDark ? AppTextColorDark.regular : AppTextColorLight.regular),
+                  color: isHighlighted ? colorFamily.base : defaultTextColor,
                 ),
               ),
             ),
             if (isActive)
               Icon(Icons.check, color: colorFamily.base, size: AppSpacings.scale(16)),
             if (isMatched)
-              Icon(Icons.sync, color: colorFamily.base, size: AppSpacings.scale(16)),
+              Icon(Icons.sync, color: modeColorFamily.base, size: AppSpacings.scale(16)),
             if (isLastIntent)
               Icon(Icons.history, color: colorFamily.base, size: AppSpacings.scale(16)),
           ],

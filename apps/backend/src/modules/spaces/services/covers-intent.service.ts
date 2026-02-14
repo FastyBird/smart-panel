@@ -225,10 +225,12 @@ export class CoversIntentService extends SpaceIntentBaseService {
 		switch (intent.type) {
 			case CoversIntentType.OPEN:
 				result = await this.executePositionIntentWithResults(covers, 100, targetResults);
+				void this.intentTimeseriesService.storeModeValidity(spaceId, 'covers', false);
 				break;
 
 			case CoversIntentType.CLOSE:
 				result = await this.executePositionIntentWithResults(covers, 0, targetResults);
+				void this.intentTimeseriesService.storeModeValidity(spaceId, 'covers', false);
 				break;
 
 			case CoversIntentType.STOP:
@@ -237,10 +239,12 @@ export class CoversIntentService extends SpaceIntentBaseService {
 
 			case CoversIntentType.SET_POSITION:
 				result = await this.executePositionIntentWithResults(covers, intent.position ?? 0, targetResults);
+				void this.intentTimeseriesService.storeModeValidity(spaceId, 'covers', false);
 				break;
 
 			case CoversIntentType.POSITION_DELTA:
 				result = await this.executePositionDeltaIntentWithResults(covers, intent.delta, intent.increase, targetResults);
+				void this.intentTimeseriesService.storeModeValidity(spaceId, 'covers', false);
 				break;
 
 			case CoversIntentType.ROLE_POSITION:
@@ -250,6 +254,7 @@ export class CoversIntentService extends SpaceIntentBaseService {
 					intent.position ?? 0,
 					targetResults,
 				);
+				void this.intentTimeseriesService.storeModeValidity(spaceId, 'covers', false);
 				break;
 
 			case CoversIntentType.SET_MODE:

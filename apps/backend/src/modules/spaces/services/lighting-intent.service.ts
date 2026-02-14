@@ -264,6 +264,8 @@ export class LightingIntentService extends SpaceIntentBaseService {
 		} else if (this.isRoleSpecificIntent(intent.type)) {
 			// For role-specific intents, only affect lights with the specified role
 			result = await this.executeRoleIntentWithResults(spaceId, lights, intent, targetResults);
+			// Manual role change invalidates the current mode
+			void this.intentTimeseriesService.storeModeValidity(spaceId, 'lighting', false);
 		} else {
 			// For other intents (ON, OFF, BRIGHTNESS_DELTA), apply to all online lights
 			let affectedDevices = 0;
@@ -301,6 +303,9 @@ export class LightingIntentService extends SpaceIntentBaseService {
 					failedDevices,
 				);
 				void this.intentTimeseriesService.storeModeValidity(spaceId, 'lighting', true);
+			} else if (intent.type !== LightingIntentType.OFF) {
+				// Non-mode changes (ON, BRIGHTNESS_DELTA) invalidate the current mode
+				void this.intentTimeseriesService.storeModeValidity(spaceId, 'lighting', false);
 			}
 
 			result = { success: overallSuccess, affectedDevices, failedDevices };
