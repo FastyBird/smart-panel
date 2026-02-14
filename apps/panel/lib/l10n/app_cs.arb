@@ -647,6 +647,7 @@
   "covers_mode_closed": "Zavřeno",
   "covers_mode_privacy": "Soukromí",
   "covers_mode_daylight": "Denní světlo",
+  "domain_mode_custom": "Vlastní",
   "covers_role_primary": "Hlavní",
   "covers_role_blackout": "Zatemnění",
   "covers_role_sheer": "Záclony",

@@ -2043,7 +2043,7 @@ class AppLocalizationsCs extends AppLocalizations {
   String get covers_mode_daylight => 'Denní světlo';
 
   @override
-  String get domain_mode_custom => 'Custom';
+  String get domain_mode_custom => 'Vlastní';
 
   @override
   String get covers_role_primary => 'Hlavní';
