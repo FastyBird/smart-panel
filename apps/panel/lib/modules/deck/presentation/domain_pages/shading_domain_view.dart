@@ -183,6 +183,10 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   /// still reports [isModeFromIntent] = true.
   bool _modeOverriddenByManualChange = false;
 
+  /// The [lastAppliedAt] timestamp at the moment [_modeOverriddenByManualChange]
+  /// was set. Used to distinguish stale backend state from a genuinely new intent.
+  DateTime? _lastAppliedAtWhenOverridden;
+
   Map<CoversTargetRole, List<CoversTargetView>>? _cachedRoleGroups;
   int _cachedTargetsHash = 0;
 
@@ -628,10 +632,17 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
 
-      // If backend confirms a mode intent is active (possibly from another
-      // panel instance), clear the local manual override flag.
-      if (_coversState?.isModeFromIntent == true) {
-        _modeOverriddenByManualChange = false;
+      // If backend confirms a new mode intent (lastAppliedAt changed),
+      // clear the local manual override flag. We compare timestamps to
+      // avoid clearing the flag when the backend still reflects the old
+      // intent before manual-change invalidation has propagated.
+      if (_modeOverriddenByManualChange &&
+          _coversState?.isModeFromIntent == true) {
+        final backendAt = _coversState?.lastAppliedAt;
+        if (backendAt != null && backendAt != _lastAppliedAtWhenOverridden) {
+          _modeOverriddenByManualChange = false;
+          _lastAppliedAtWhenOverridden = null;
+        }
       }
 
       final coversState = _coversState;
@@ -1138,7 +1149,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
           } else {
             // Non-selected role: skip hero state update to avoid leaking
             _modeOverriddenByManualChange = true;
-            _heroPositionDebounceTimer?.cancel();
+            _lastAppliedAtWhenOverridden = _coversState?.lastAppliedAt;
             _setRolePosition(roleData.role, targetPosition);
           }
         },
@@ -1296,6 +1307,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     _heroControlStateService.setPending(ShadingConstants.positionChannelId, position.toDouble());
     _roleControlStateRepository?.set(_heroCacheKey(role), position: position.toDouble());
     _modeOverriddenByManualChange = true;
+    _lastAppliedAtWhenOverridden = _coversState?.lastAppliedAt;
     _heroPositionDebounceTimer?.cancel();
     _heroPositionDebounceTimer = Timer(
       const Duration(milliseconds: ShadingConstants.sliderDebounceMs),
@@ -1308,6 +1320,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     _heroControlStateService.setPending(ShadingConstants.positionChannelId, position.toDouble());
     _roleControlStateRepository?.set(_heroCacheKey(role), position: position.toDouble());
     _modeOverriddenByManualChange = true;
+    _lastAppliedAtWhenOverridden = _coversState?.lastAppliedAt;
     _heroPositionDebounceTimer?.cancel();
     _setRolePosition(role, position);
   }
@@ -1366,6 +1379,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     );
     _modeWasLocked = true;
     _modeOverriddenByManualChange = false;
+    _lastAppliedAtWhenOverridden = null;
     setState(() {});
 
     try {

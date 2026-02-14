@@ -449,6 +449,11 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   /// even if the backend still reports [isModeFromIntent] = true.
   bool _modeOverriddenByManualChange = false;
 
+  /// The [lastAppliedAt] timestamp at the moment [_modeOverriddenByManualChange]
+  /// was set. Used to distinguish stale backend state from a genuinely new intent
+  /// (e.g. from another panel instance).
+  DateTime? _lastAppliedAtWhenOverridden;
+
   /// Cached result of [_groupTargetsByRole]; invalidated via [_cachedTargetsHash].
   Map<LightTargetRole, List<LightTargetView>>? _cachedRoleGroups;
   int _cachedTargetsHash = 0;
@@ -1341,10 +1346,17 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     // Use addPostFrameCallback to avoid "setState during build" errors
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        // If backend confirms a mode intent is active (possibly from another
-        // panel instance), clear the local manual override flag.
-        if (_lightingState?.isModeFromIntent == true) {
-          _modeOverriddenByManualChange = false;
+        // If backend confirms a new mode intent (lastAppliedAt changed),
+        // clear the local manual override flag. We compare timestamps to
+        // avoid clearing the flag when the backend still reflects the old
+        // intent before manual-change invalidation has propagated.
+        if (_modeOverriddenByManualChange &&
+            _lightingState?.isModeFromIntent == true) {
+          final backendAt = _lightingState?.lastAppliedAt;
+          if (backendAt != null && backendAt != _lastAppliedAtWhenOverridden) {
+            _modeOverriddenByManualChange = false;
+            _lastAppliedAtWhenOverridden = null;
+          }
         }
 
         // Check convergence for mode channel
@@ -3202,6 +3214,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     // Track that we're waiting for an intent
     _modeWasLocked = true;
     _modeOverriddenByManualChange = false;
+    _lastAppliedAtWhenOverridden = null;
 
     // Optimistic UI update (now driven by control service)
     setState(() {});
@@ -3403,6 +3416,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       }
 
       _modeOverriddenByManualChange = true;
+      _lastAppliedAtWhenOverridden = _lightingState?.lastAppliedAt;
 
       _heroWasSpaceLocked = true;
 
