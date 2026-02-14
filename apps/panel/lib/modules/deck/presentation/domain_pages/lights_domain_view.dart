@@ -407,6 +407,10 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   bool? _heroPendingOnState;
   Timer? _heroPendingOnStateClearTimer;
 
+  /// Per-role pending on/off state for landscape tile icon tap optimistic UI.
+  final Map<LightTargetRole, bool> _roleTilePendingOnStates = {};
+  final Map<LightTargetRole, Timer> _roleTilePendingTimers = {};
+
   /// Role control state repository (caching slider values for mixed state).
   RoleControlStateRepository? _roleControlStateRepository;
 
@@ -1155,6 +1159,9 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     _heroHueDebounceTimer?.cancel();
     _heroWhiteDebounceTimer?.cancel();
     _heroPendingOnStateClearTimer?.cancel();
+    for (final timer in _roleTilePendingTimers.values) {
+      timer.cancel();
+    }
     _pageActivatedSubscription?.cancel();
     _spacesService?.removeListener(_onDataChanged);
     _devicesService?.removeListener(_onDataChanged);
@@ -2859,13 +2866,18 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     final statusColor = _getStatusColor(context);
 
     final pendingState = _getRolePendingState(roleData.role);
-    final isOn = pendingState ?? roleData.hasLightsOn;
+    final tilePending = _roleTilePendingOnStates[roleData.role];
+    final isOn = tilePending ?? pendingState ?? roleData.hasLightsOn;
 
-    final valueText = roleData.onCount == 0
-        ? localizations.light_state_off
-        : roleData.brightness != null
-            ? '${roleData.brightness}%'
-            : localizations.light_state_on;
+    final valueText = (tilePending != null)
+        ? (tilePending
+            ? localizations.light_state_on
+            : localizations.light_state_off)
+        : roleData.onCount == 0
+            ? localizations.light_state_off
+            : roleData.brightness != null
+                ? '${roleData.brightness}%'
+                : localizations.light_state_on;
 
     return SizedBox(
       height: height,
@@ -2881,7 +2893,22 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         showDoubleBorder: false,
         showInactiveBorder: false,
         onIconTap: () {
-          _toggleRoleLights(roleData, !isOn);
+          final turnOn = !isOn;
+          _roleTilePendingTimers[roleData.role]?.cancel();
+          setState(() {
+            _roleTilePendingOnStates[roleData.role] = turnOn;
+          });
+          _roleTilePendingTimers[roleData.role] = Timer(
+            const Duration(milliseconds: LightingConstants.onOffSettlingWindowMs),
+            () {
+              if (mounted) {
+                setState(() {
+                  _roleTilePendingOnStates.remove(roleData.role);
+                });
+              }
+            },
+          );
+          _toggleRoleLights(roleData, turnOn);
         },
         onTileTap: () {
           _resetHeroControlState();

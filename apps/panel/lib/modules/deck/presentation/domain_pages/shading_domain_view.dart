@@ -168,6 +168,10 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
 
   Timer? _heroPositionDebounceTimer;
 
+  /// Per-role pending position for landscape tile icon tap optimistic UI.
+  final Map<CoversTargetRole, int> _roleTilePendingPositions = {};
+  final Map<CoversTargetRole, Timer> _roleTilePendingTimers = {};
+
   late DomainControlStateService<CoversStateModel> _modeControlStateService;
   late DomainControlStateService<RoleCoversState> _heroControlStateService;
 
@@ -448,6 +452,9 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   @override
   void dispose() {
     _heroPositionDebounceTimer?.cancel();
+    for (final timer in _roleTilePendingTimers.values) {
+      timer.cancel();
+    }
     _pageActivatedSubscription?.cancel();
     _spacesService?.removeListener(_onDataChanged);
     _devicesService?.removeListener(_onDataChanged);
@@ -1079,7 +1086,8 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     CoversTargetRole? effectiveRole,
   }) {
     final localizations = AppLocalizations.of(context)!;
-    final position = _getRolePosition(roleData, effectiveRole);
+    final basePosition = _getRolePosition(roleData, effectiveRole);
+    final position = _roleTilePendingPositions[roleData.role] ?? basePosition;
     final positionColor = _getPositionThemeColor(position);
 
     final valueText = position == 100
@@ -1104,6 +1112,20 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
         onIconTap: () {
           // Toggle: if position >= 50 → close, if < 50 → open
           final targetPosition = position >= 50 ? 0 : 100;
+          _roleTilePendingTimers[roleData.role]?.cancel();
+          setState(() {
+            _roleTilePendingPositions[roleData.role] = targetPosition;
+          });
+          _roleTilePendingTimers[roleData.role] = Timer(
+            const Duration(milliseconds: ShadingConstants.settlingWindowMs),
+            () {
+              if (mounted) {
+                setState(() {
+                  _roleTilePendingPositions.remove(roleData.role);
+                });
+              }
+            },
+          );
           _setRolePositionImmediate(roleData.role, targetPosition);
         },
         onTileTap: () {
