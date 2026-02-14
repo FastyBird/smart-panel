@@ -725,6 +725,13 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
         }
 
         final totalDevices = targets.length;
+
+        // Clear stale selection if the role no longer exists in data
+        if (_selectedRole != null &&
+            !roleDataList.any((r) => r.role == _selectedRole)) {
+          _selectedRole = null;
+        }
+
         final effectiveRole = _selectedRole ?? roleDataList.first.role;
 
         return Scaffold(
@@ -1126,7 +1133,14 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
               }
             },
           );
-          _setRolePositionImmediate(roleData.role, targetPosition);
+          if (roleData.role == effectiveRole) {
+            _setRolePositionImmediate(roleData.role, targetPosition);
+          } else {
+            // Non-selected role: skip hero state update to avoid leaking
+            _modeOverriddenByManualChange = true;
+            _heroPositionDebounceTimer?.cancel();
+            _setRolePosition(roleData.role, targetPosition);
+          }
         },
         onTileTap: () {
           _heroControlStateService.clear(ShadingConstants.positionChannelId);

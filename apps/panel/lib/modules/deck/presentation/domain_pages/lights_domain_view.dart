@@ -2908,7 +2908,10 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
               }
             },
           );
-          _toggleRoleLights(roleData, turnOn);
+          _toggleRoleLights(
+            roleData, turnOn,
+            updateHero: roleData.role == effectiveRole,
+          );
         },
         onTileTap: () {
           _resetHeroControlState();
@@ -3370,7 +3373,14 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   }
 
   /// Toggle all lights in a role to [turnOn] state via SpacesService intent.
-  Future<void> _toggleRoleLights(LightingRoleData roleData, bool turnOn) async {
+  ///
+  /// When [updateHero] is false, hero card optimistic state is not touched —
+  /// used when toggling a non-selected role from the landscape tile icon.
+  Future<void> _toggleRoleLights(
+    LightingRoleData roleData,
+    bool turnOn, {
+    bool updateHero = true,
+  }) async {
     final spacesService = _spacesService;
     if (spacesService == null) return;
 
@@ -3379,19 +3389,21 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     if (stateRole == null) return;
 
     try {
-      _heroPendingOnStateClearTimer?.cancel();
-      _heroPendingOnStateClearTimer = null;
+      if (updateHero) {
+        _heroPendingOnStateClearTimer?.cancel();
+        _heroPendingOnStateClearTimer = null;
 
-      _heroControlStateService.setPending(
-        LightingConstants.onOffChannelId,
-        turnOn ? LightingConstants.onValue : LightingConstants.offValue,
-      );
+        _heroControlStateService.setPending(
+          LightingConstants.onOffChannelId,
+          turnOn ? LightingConstants.onValue : LightingConstants.offValue,
+        );
+
+        setState(() {
+          _heroPendingOnState = turnOn;
+        });
+      }
 
       _modeOverriddenByManualChange = true;
-
-      setState(() {
-        _heroPendingOnState = turnOn;
-      });
 
       _heroWasSpaceLocked = true;
 
@@ -3408,11 +3420,13 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
       if (!success) {
         AppToast.showError(context, message: localizations.action_failed);
-        _heroControlStateService.setIdle(LightingConstants.onOffChannelId);
-        setState(() {
-          _heroPendingOnState = null;
-        });
-      } else {
+        if (updateHero) {
+          _heroControlStateService.setIdle(LightingConstants.onOffChannelId);
+          setState(() {
+            _heroPendingOnState = null;
+          });
+        }
+      } else if (updateHero) {
         _heroPendingOnStateClearTimer = Timer(
           const Duration(milliseconds: LightingConstants.onOffSettlingWindowMs),
           () {
@@ -3427,10 +3441,12 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     } catch (e) {
       if (!mounted) return;
       AppToast.showError(context, message: localizations.action_failed);
-      _heroControlStateService.setIdle(LightingConstants.onOffChannelId);
-      setState(() {
-        _heroPendingOnState = null;
-      });
+      if (updateHero) {
+        _heroControlStateService.setIdle(LightingConstants.onOffChannelId);
+        setState(() {
+          _heroPendingOnState = null;
+        });
+      }
     }
   }
 

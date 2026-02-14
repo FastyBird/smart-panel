@@ -225,12 +225,10 @@ export class CoversIntentService extends SpaceIntentBaseService {
 		switch (intent.type) {
 			case CoversIntentType.OPEN:
 				result = await this.executePositionIntentWithResults(covers, 100, targetResults);
-				void this.intentTimeseriesService.storeModeValidity(spaceId, 'covers', false);
 				break;
 
 			case CoversIntentType.CLOSE:
 				result = await this.executePositionIntentWithResults(covers, 0, targetResults);
-				void this.intentTimeseriesService.storeModeValidity(spaceId, 'covers', false);
 				break;
 
 			case CoversIntentType.STOP:
@@ -239,12 +237,10 @@ export class CoversIntentService extends SpaceIntentBaseService {
 
 			case CoversIntentType.SET_POSITION:
 				result = await this.executePositionIntentWithResults(covers, intent.position ?? 0, targetResults);
-				void this.intentTimeseriesService.storeModeValidity(spaceId, 'covers', false);
 				break;
 
 			case CoversIntentType.POSITION_DELTA:
 				result = await this.executePositionDeltaIntentWithResults(covers, intent.delta, intent.increase, targetResults);
-				void this.intentTimeseriesService.storeModeValidity(spaceId, 'covers', false);
 				break;
 
 			case CoversIntentType.ROLE_POSITION:
@@ -254,7 +250,6 @@ export class CoversIntentService extends SpaceIntentBaseService {
 					intent.position ?? 0,
 					targetResults,
 				);
-				void this.intentTimeseriesService.storeModeValidity(spaceId, 'covers', false);
 				break;
 
 			case CoversIntentType.SET_MODE:
@@ -272,6 +267,19 @@ export class CoversIntentService extends SpaceIntentBaseService {
 					offlineDeviceIds: targetedOfflineIds.length > 0 ? targetedOfflineIds : undefined,
 					newPosition: null,
 				};
+		}
+
+		// Invalidate mode only when the intent actually changed device state
+		const modeInvalidatingTypes: CoversIntentType[] = [
+			CoversIntentType.OPEN,
+			CoversIntentType.CLOSE,
+			CoversIntentType.SET_POSITION,
+			CoversIntentType.POSITION_DELTA,
+			CoversIntentType.ROLE_POSITION,
+		];
+
+		if (result.success && modeInvalidatingTypes.includes(intent.type)) {
+			void this.intentTimeseriesService.storeModeValidity(spaceId, 'covers', false);
 		}
 
 		// Add skipped offline devices info to result (only those actually targeted)

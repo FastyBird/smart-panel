@@ -96,6 +96,7 @@ describe('CoversIntentService', () => {
 					provide: IntentTimeseriesService,
 					useValue: {
 						storeCoversPositionChange: jest.fn().mockResolvedValue(undefined),
+						storeModeValidity: jest.fn().mockResolvedValue(undefined),
 					},
 				},
 				{

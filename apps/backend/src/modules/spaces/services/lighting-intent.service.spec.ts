@@ -107,6 +107,7 @@ describe('LightingIntentService', () => {
 					provide: IntentTimeseriesService,
 					useValue: {
 						storeLightingModeChange: jest.fn().mockResolvedValue(undefined),
+						storeModeValidity: jest.fn().mockResolvedValue(undefined),
 					},
 				},
 				{
