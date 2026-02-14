@@ -174,6 +174,11 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   bool _heroWasSpaceLocked = false;
   bool _modeWasLocked = false;
 
+  /// Tracks whether the user has changed a role position since the last mode
+  /// intent. When true, the mode is considered overridden even if the backend
+  /// still reports [isModeFromIntent] = true.
+  bool _modeOverriddenByManualChange = false;
+
   Map<CoversTargetRole, List<CoversTargetView>>? _cachedRoleGroups;
   int _cachedTargetsHash = 0;
 
@@ -1144,6 +1149,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   void _onHeroPositionChanged(CoversTargetRole role, int position) {
     _heroControlStateService.setPending(ShadingConstants.positionChannelId, position.toDouble());
     _roleControlStateRepository?.set(_heroCacheKey(role), position: position.toDouble());
+    _modeOverriddenByManualChange = true;
     _heroPositionDebounceTimer?.cancel();
     _heroPositionDebounceTimer = Timer(
       const Duration(milliseconds: ShadingConstants.sliderDebounceMs),
@@ -1155,6 +1161,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   void _setRolePositionImmediate(CoversTargetRole role, int position) {
     _heroControlStateService.setPending(ShadingConstants.positionChannelId, position.toDouble());
     _roleControlStateRepository?.set(_heroCacheKey(role), position: position.toDouble());
+    _modeOverriddenByManualChange = true;
     _heroPositionDebounceTimer?.cancel();
     _setRolePosition(role, position);
   }
@@ -1204,25 +1211,48 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   }
 
   Future<void> _setCoversMode(CoversMode mode) async {
-    try {
-      _modeControlStateService.setPending(
-        ShadingConstants.modeChannelId,
-        mode.index.toDouble(),
-      );
-      _modeWasLocked = true;
-      setState(() {});
+    // Guard against concurrent execution
+    if (_modeControlStateService.isLocked(ShadingConstants.modeChannelId)) return;
 
+    _modeControlStateService.setPending(
+      ShadingConstants.modeChannelId,
+      mode.index.toDouble(),
+    );
+    _modeWasLocked = true;
+    _modeOverriddenByManualChange = false;
+    setState(() {});
+
+    try {
       final result = await _spacesService?.setCoversMode(_roomId, mode);
+      final success = result != null && result.failedDevices == 0;
 
       if (mounted) {
         IntentResultHandler.showOfflineAlertIfNeededForCovers(context, result);
       }
 
-      if (result == null || result.failedDevices > 0) {
-        if (mounted) {
-          _showActionFailed();
-          _modeControlStateService.setIdle(ShadingConstants.modeChannelId);
+      if (success && mounted) {
+        // If intents repository is not available, manually trigger completion
+        // to start the settling process. Otherwise, rely on _onIntentChanged.
+        if (_intentsRepository == null) {
+          if (kDebugMode) {
+            debugPrint(
+              '[ShadingDomainView] IntentsRepository unavailable, manually triggering completion for mode',
+            );
+          }
+          final coversState = _coversState;
+          final modeTargets = coversState != null
+              ? [coversState]
+              : <CoversStateModel>[];
+          _modeControlStateService.onIntentCompleted(
+            ShadingConstants.modeChannelId,
+            modeTargets,
+          );
+          _modeWasLocked = false;
         }
+      } else if (!success && mounted) {
+        _showActionFailed();
+        _modeControlStateService.setIdle(ShadingConstants.modeChannelId);
+        _modeWasLocked = false;
       }
     } catch (e) {
       if (kDebugMode) {
@@ -1231,6 +1261,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
       if (mounted) {
         _showActionFailed();
         _modeControlStateService.setIdle(ShadingConstants.modeChannelId);
+        _modeWasLocked = false;
       }
     }
   }
@@ -1240,25 +1271,28 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   // --------------------------------------------------------------------------
 
   (CoversMode?, CoversMode?, CoversMode?) _getCoverModeSelectorValues() {
-    if (_modeControlStateService.isLocked(ShadingConstants.modeChannelId)) {
+    final isLocked = _modeControlStateService.isLocked(ShadingConstants.modeChannelId);
+    CoversMode? lockedValue;
+    if (isLocked) {
       final desiredIndex = _modeControlStateService
           .getDesiredValue(ShadingConstants.modeChannelId)
           ?.toInt();
       if (desiredIndex != null &&
           desiredIndex >= 0 &&
           desiredIndex < CoversMode.values.length) {
-        return (CoversMode.values[desiredIndex], null, null);
+        lockedValue = CoversMode.values[desiredIndex];
       }
     }
 
-    final detectedMode = _coversState?.detectedMode;
-    final lastAppliedMode = _coversState?.lastAppliedMode;
-    final isModeFromIntent = _coversState?.isModeFromIntent ?? false;
+    final state = _coversState;
 
-    if (detectedMode != null && isModeFromIntent) return (detectedMode, null, null);
-    if (detectedMode != null && !isModeFromIntent) return (null, detectedMode, null);
-    if (lastAppliedMode != null) return (null, null, lastAppliedMode);
-    return (null, null, null);
+    return computeIntentModeStatus<CoversMode>(
+      selectedIntent: state?.lastAppliedMode,
+      currentState: state?.detectedMode,
+      isCurrentStateFromIntent: (state?.isModeFromIntent ?? false) && !_modeOverriddenByManualChange,
+      isLocked: isLocked,
+      lockedValue: lockedValue,
+    ).toTuple();
   }
 
   /// Mode options for [ModeSelector] (open, daylight, privacy, closed).

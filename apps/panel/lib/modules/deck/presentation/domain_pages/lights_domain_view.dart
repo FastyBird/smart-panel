@@ -85,6 +85,7 @@ import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/domain_s
 import 'package:fastybird_smart_panel/modules/deck/services/bottom_nav_mode_notifier.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/domain_control_state_service.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/deck_page_activated_event.dart';
+import 'package:fastybird_smart_panel/modules/deck/utils/intent_mode_status.dart';
 import 'package:fastybird_smart_panel/modules/deck/utils/lighting.dart';
 import 'package:fastybird_smart_panel/modules/devices/export.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/property_command.dart';
@@ -438,6 +439,11 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   /// True when space had an intent lock last frame (any lighting intent).
   /// Used to detect role-toggle intent completion when space unlocks.
   bool _spaceWasLocked = false;
+
+  /// Tracks whether the user has changed a hero control (brightness, hue, etc.)
+  /// since the last mode intent. When true, the mode is considered overridden
+  /// even if the backend still reports [isModeFromIntent] = true.
+  bool _modeOverriddenByManualChange = false;
 
   /// Cached result of [_groupTargetsByRole]; invalidated via [_cachedTargetsHash].
   Map<LightTargetRole, List<LightTargetView>>? _cachedRoleGroups;
@@ -2091,21 +2097,31 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     );
   }
 
-  (LightingModeUI? activeValue, LightingModeUI? matchedValue, LightingModeUI? lastIntentValue)
-      _getLightingModeSelectorValues() {
-    final mode = _currentMode;
-    if (_modeControlStateService.isLocked(LightingConstants.modeChannelId)) {
-      return (mode, null, null);
+  (LightingModeUI?, LightingModeUI?, LightingModeUI?) _getLightingModeSelectorValues() {
+    final isLocked = _modeControlStateService.isLocked(LightingConstants.modeChannelId);
+    LightingModeUI? lockedValue;
+    if (isLocked) {
+      final desiredIndex = _modeControlStateService
+          .getDesiredValue(LightingConstants.modeChannelId)
+          ?.toInt();
+      if (desiredIndex != null &&
+          desiredIndex >= 0 &&
+          desiredIndex < LightingModeUI.values.length) {
+        lockedValue = LightingModeUI.values[desiredIndex];
+      }
     }
-    final detectedMode = _lightingState?.detectedMode;
-    final lastAppliedMode = _lightingState?.lastAppliedMode;
-    final isModeFromIntent = _lightingState?.isModeFromIntent ?? false;
-    final detectedModeUI = _toLightingModeUI(detectedMode);
-    final lastAppliedModeUI = _toLightingModeUI(lastAppliedMode);
-    if (detectedModeUI != null && isModeFromIntent) return (detectedModeUI, null, null);
-    if (detectedModeUI != null && !isModeFromIntent) return (null, detectedModeUI, null);
-    if (lastAppliedModeUI != null) return (null, null, lastAppliedModeUI);
-    return (mode == LightingModeUI.off ? LightingModeUI.off : null, null, null);
+
+    final state = _lightingState;
+    final detectedModeUI = _toLightingModeUI(state?.detectedMode);
+    final lastAppliedModeUI = _toLightingModeUI(state?.lastAppliedMode);
+
+    return computeIntentModeStatus<LightingModeUI>(
+      selectedIntent: lastAppliedModeUI,
+      currentState: detectedModeUI,
+      isCurrentStateFromIntent: (state?.isModeFromIntent ?? false) && !_modeOverriddenByManualChange,
+      isLocked: isLocked,
+      lockedValue: lockedValue,
+    ).toTuple();
   }
 
   // --------------------------------------------------------------------------
@@ -3114,6 +3130,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
     // Track that we're waiting for an intent
     _modeWasLocked = true;
+    _modeOverriddenByManualChange = false;
 
     // Optimistic UI update (now driven by control service)
     setState(() {});
@@ -3301,6 +3318,8 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         turnOn ? LightingConstants.onValue : LightingConstants.offValue,
       );
 
+      _modeOverriddenByManualChange = true;
+
       setState(() {
         _heroPendingOnState = turnOn;
       });
@@ -3361,6 +3380,8 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
     final stateRole = mapTargetRoleToStateRole(role);
     if (stateRole == null) return;
+
+    _modeOverriddenByManualChange = true;
 
     switch (mode) {
       case LightHeroCapability.brightness:
