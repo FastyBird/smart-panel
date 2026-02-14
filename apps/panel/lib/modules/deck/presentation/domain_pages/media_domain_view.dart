@@ -35,12 +35,12 @@
 /// - **HEADER, THEME & LABELS** — header builder, mode colors, activity labels/icons.
 /// - **LAYOUTS** — portrait/landscape, activity content, mode selector.
 /// - **STATE CONTENT** — off, activating, failed content builders.
-/// - **ACTIVE CARD** — composition preview, warnings, volume/playback/remote controls.
+/// - **ACTIVE CARD** — hero card content: warnings, now-playing, volume/playback controls.
 /// - **FAILURE DETAILS** — inline failure, sheet, retry/deactivate.
 /// - **LANDSCAPE CONTROLS** — playback tile, volume selector, mute, remote.
 /// - **HELPERS** — activity/device labels and icons, navigation, device sheet.
 /// - **ACTIONS** — volume, mute, input selector, playback command, playback sheet, remote.
-/// - **DATA MODELS / PAINTER** — [_CompositionDisplayItem], [_SpinnerArcPainter].
+/// - **DATA MODELS / PAINTER** — [_SpinnerArcPainter].
 library;
 
 import 'dart:async';
@@ -58,8 +58,8 @@ import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_banner.dart';
-import 'package:fastybird_smart_panel/core/widgets/app_card.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_bottom_sheet.dart';
+import 'package:fastybird_smart_panel/core/widgets/hero_card.dart';
 import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
@@ -70,11 +70,9 @@ import 'package:fastybird_smart_panel/core/widgets/tile_wrappers.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/core/widgets/value_selector.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
-import 'package:fastybird_smart_panel/modules/deck/models/bottom_nav_mode_config.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/domain_data_loader.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_item_sheet.dart';
-import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_mode_chip.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/domain_state_view.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/bottom_nav_mode_notifier.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/deck_page_activated_event.dart';
@@ -147,6 +145,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	/// Track metadata read from device properties.
 	String? _trackName;
 	String? _artistName;
+	String? _albumName;
 	/// Playback position and duration in seconds.
 	double? _position;
 	double? _duration;
@@ -289,112 +288,9 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	void _registerModeConfig() {
 		if (!_isActivePage || _isLoading) return;
 
-		final activeState = _mediaService?.getActiveState(_roomId);
-		final currentKey = _getSelectedActivityKey(activeState) ?? MediaActivityKey.off;
-		final modeOptions = _getActivityModeOptions();
-		if (modeOptions.isEmpty) return;
-
-		final currentOption = modeOptions.firstWhere(
-			(o) => o.value == currentKey,
-			orElse: () => modeOptions.first,
-		);
-
-		_bottomNavModeNotifier?.setConfig(BottomNavModeConfig(
-			icon: currentOption.icon,
-			label: currentOption.label,
-			color: currentOption.color ?? ThemeColors.neutral,
-			popupBuilder: _buildModePopupContent,
-		));
-	}
-
-	Widget _buildModePopupContent(BuildContext context, VoidCallback dismiss) {
-		final isDark = Theme.of(context).brightness == Brightness.dark;
-		final modes = _getActivityModeOptions();
-		final activeState = _mediaService?.getActiveState(_roomId);
-		final selectedKey = _getSelectedActivityKey(activeState);
-
-		return Column(
-			mainAxisSize: MainAxisSize.min,
-			crossAxisAlignment: CrossAxisAlignment.start,
-			children: [
-				Padding(
-					padding: EdgeInsets.only(bottom: AppSpacings.pSm),
-					child: Text(
-						'ACTIVITY',
-						style: TextStyle(
-							fontSize: AppFontSize.extraSmall,
-							fontWeight: FontWeight.w600,
-							letterSpacing: 1.0,
-							color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
-						),
-					),
-				),
-				for (final mode in modes)
-					_buildPopupModeItem(
-						context,
-						mode: mode,
-						isActive: selectedKey == mode.value,
-						onTap: () {
-							_onActivitySelected(mode.value);
-							dismiss();
-						},
-					),
-			],
-		);
-	}
-
-	Widget _buildPopupModeItem(
-		BuildContext context, {
-		required ModeOption<MediaActivityKey> mode,
-		required bool isActive,
-		required VoidCallback onTap,
-	}) {
-		final isDark = Theme.of(context).brightness == Brightness.dark;
-		final colorFamily = ThemeColorFamily.get(
-			isDark ? Brightness.dark : Brightness.light,
-			mode.color ?? ThemeColors.neutral,
-		);
-
-		return GestureDetector(
-			onTap: (!_wsConnected || _isSending) ? null : onTap,
-			behavior: HitTestBehavior.opaque,
-			child: Container(
-				padding: EdgeInsets.symmetric(
-					vertical: AppSpacings.pMd,
-					horizontal: AppSpacings.pMd,
-				),
-				margin: EdgeInsets.only(bottom: AppSpacings.pXs),
-				decoration: BoxDecoration(
-					color: isActive ? colorFamily.light9 : Colors.transparent,
-					borderRadius: BorderRadius.circular(AppBorderRadius.small),
-					border: isActive
-						? Border.all(color: colorFamily.light7, width: AppSpacings.scale(1))
-						: null,
-				),
-				child: Row(
-					spacing: AppSpacings.pMd,
-					children: [
-						Icon(
-							mode.icon,
-							color: isActive ? colorFamily.base : (isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary),
-							size: AppSpacings.scale(20),
-						),
-						Expanded(
-							child: Text(
-								mode.label,
-								style: TextStyle(
-									fontSize: AppFontSize.base,
-									fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
-									color: isActive ? colorFamily.base : (isDark ? AppTextColorDark.regular : AppTextColorLight.regular),
-								),
-							),
-						),
-						if (isActive)
-							Icon(Icons.check, color: colorFamily.base, size: AppSpacings.scale(16)),
-					],
-				),
-			),
-		);
+		// Media domain does not use the bottom nav mode button;
+		// activity selection is handled by the inline ModeSelector.
+		_bottomNavModeNotifier?.clear();
 	}
 
 	void _onDataChanged() {
@@ -491,6 +387,14 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 				_artistName = null;
 			}
 
+			final albumId = playbackLinks.albumPropertyId;
+			if (albumId != null) {
+				final prop = _devicesService?.getChannelProperty(albumId);
+				_albumName = prop?.value is StringValueType ? (prop!.value as StringValueType).value : null;
+			} else {
+				_albumName = null;
+			}
+
 			// Position & duration
 			final posId = playbackLinks.positionPropertyId;
 			if (posId != null) {
@@ -514,6 +418,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			_playbackState = null;
 			_trackName = null;
 			_artistName = null;
+			_albumName = null;
 			_position = null;
 			_duration = null;
 		}
@@ -549,6 +454,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			_playbackState = null;
 			_trackName = null;
 			_artistName = null;
+			_albumName = null;
 			_position = null;
 			_duration = null;
 		});
@@ -697,6 +603,30 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		final deviceGroups = _mediaService?.getDeviceGroups(_roomId) ?? [];
 		final showDevicesButton = deviceGroups.isNotEmpty;
 
+		// Power button: always visible, primary when active, neutral when off
+		final isMediaOn = activeState != null &&
+			(activeState.isActive || activeState.isActivating || activeState.isFailed);
+		final targets = _mediaService?.resolveControlTargets(_roomId);
+		final showRemoteButton = isMediaOn && (targets?.hasRemote == true);
+
+		final List<Widget> trailingWidgets = [
+			if (showDevicesButton)
+				HeaderIconButton(
+					icon: MdiIcons.monitorSpeaker,
+					onTap: _showMediaDevicesSheet,
+				),
+			if (showRemoteButton)
+				HeaderIconButton(
+					icon: MdiIcons.remote,
+					onTap: _showRemote,
+				),
+			HeaderIconButton(
+				icon: MdiIcons.power,
+				color: isMediaOn ? ThemeColors.primary : ThemeColors.neutral,
+				onTap: isMediaOn ? _deactivateActivity : null,
+			),
+		];
+
 		return PageHeader(
 			title: localizations.domain_media,
 			subtitle: subtitle,
@@ -705,13 +635,11 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 				icon: MdiIcons.playBoxOutline,
 				color: _getModeColor(),
 			),
-			landscapeAction: const DeckModeChip(),
-			trailing: showDevicesButton
-				? HeaderIconButton(
-						icon: MdiIcons.monitorSpeaker,
-						onTap: _showMediaDevicesSheet,
-					)
-				: null,
+			trailing: Row(
+				mainAxisSize: MainAxisSize.min,
+				spacing: AppSpacings.pMd,
+				children: trailingWidgets,
+			),
 		);
 	}
 
@@ -750,16 +678,38 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		bool isActivating,
 		bool isFailed,
 	) {
-		final content = showOffContent
-			? _buildOffStateContent(context)
-			: isActivating
-				? _buildActivatingContent(context, activeState!)
-				: isFailed
-					? _buildFailedContent(context, activeState!)
-					: _buildActivityContent(context, activeState);
+		if (showOffContent) {
+			return PortraitViewLayout(
+				scrollable: false,
+				content: Column(
+					children: [
+						HeroCard(
+							child: _buildOffStateContent(context),
+						),
+						AppSpacings.spacingMdVertical,
+						_buildModeSelector(context),
+					],
+				),
+			);
+		}
+
+		if (isActivating) {
+			return PortraitViewLayout(
+				scrollable: false,
+				content: _buildActivatingContent(context, activeState!),
+			);
+		}
+
+		if (isFailed) {
+			return PortraitViewLayout(
+				scrollable: false,
+				content: _buildFailedContent(context, activeState!),
+			);
+		}
+
 		return PortraitViewLayout(
-			content: content,
-			scrollable: !showOffContent && !isActivating && !isFailed,
+			scrollable: false,
+			content: _buildActivityContent(context, activeState),
 		);
 	}
 
@@ -774,25 +724,56 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		bool isActivating,
 		bool isFailed,
 	) {
-		final mainContent = showOffContent
-			? _buildOffStateContent(context)
-			: isActivating
-				? _buildActivatingContent(context, activeState!)
-				: isFailed
-					? _buildFailedContent(context, activeState!)
-					: _buildActivityContent(context, activeState);
+		if (showOffContent) {
+			final modeTiles = _buildLandscapeModeTiles(context);
+			return LandscapeViewLayout(
+				mainContent: Column(
+					crossAxisAlignment: CrossAxisAlignment.stretch,
+					children: [
+						Expanded(
+							child: HeroCard(
+								child: _buildOffStateContent(context),
+							),
+						),
+					],
+				),
+				mainContentScrollable: false,
+				additionalContent: modeTiles.isNotEmpty
+					? Column(
+							crossAxisAlignment: CrossAxisAlignment.start,
+							children: [
+								SectionTitle(
+									title: AppLocalizations.of(context)!.domain_media,
+									icon: MdiIcons.playBoxOutline,
+								),
+								...modeTiles.map((tile) => Padding(
+									padding: EdgeInsets.only(top: AppSpacings.pSm),
+									child: tile,
+								)),
+							],
+						)
+					: null,
+			);
+		}
+
+		if (isActivating) {
+			return LandscapeViewLayout(
+				mainContent: _buildActivatingContent(context, activeState!),
+				mainContentScrollable: false,
+			);
+		}
+
+		if (isFailed) {
+			return LandscapeViewLayout(
+				mainContent: _buildFailedContent(context, activeState!),
+				mainContentScrollable: false,
+			);
+		}
+
 		return LandscapeViewLayout(
-			mainContent: mainContent,
+			mainContent: _buildLandscapeMainContent(context, activeState),
 			mainContentScrollable: false,
-			additionalContent: !showOffContent && !isActivating && !isFailed
-				? Column(
-						crossAxisAlignment: CrossAxisAlignment.start,
-						spacing: AppSpacings.pLg,
-						children: [
-							_buildLandscapeControls(context),
-						],
-					)
-				: null,
+			additionalContent: _buildLandscapeAdditionalColumn(context),
 		);
 	}
 
@@ -805,11 +786,17 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		MediaActiveStateModel? activeState,
 	) {
 		// Off, deactivating, activating and failed are handled at layout level; this is only for active.
-		final content = _buildActiveCard(context, activeState!);
-
-		return AppCard(
-			width: double.infinity,
-			child: content,
+		return Column(
+			crossAxisAlignment: CrossAxisAlignment.start,
+			children: [
+				HeroCard(
+					child: _buildHeroCardContent(context, activeState!),
+				),
+				AppSpacings.spacingMdVertical,
+				_buildModeSelector(context),
+				AppSpacings.spacingMdVertical,
+				_buildDevicePillsRow(context),
+			],
 		);
 	}
 
@@ -818,13 +805,57 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	// =============================================================================
 
 	List<ModeOption<MediaActivityKey>> _getActivityModeOptions() {
+		final localizations = AppLocalizations.of(context)!;
 		final availableKeys = _mediaService?.getAvailableActivities(_roomId) ?? MediaActivityKey.values;
-		return availableKeys.map((key) => ModeOption<MediaActivityKey>(
-			value: key,
-			icon: _activityIcon(key),
-			label: _activityLabel(context, key),
-			color: _getModeColor(key),
-		)).toList();
+		final activeState = _mediaService?.getActiveState(_roomId);
+		final currentKey = _getSelectedActivityKey(activeState);
+
+		return availableKeys
+			.where((key) => key != MediaActivityKey.off)
+			.map((key) {
+				final isActive = key == currentKey &&
+					currentKey != MediaActivityKey.off;
+				final statusText = isActive
+					? localizations.on_state_on
+					: localizations.on_state_off;
+				final name = _activityLabel(context, key);
+
+				return ModeOption<MediaActivityKey>(
+					value: key,
+					icon: _activityIcon(key),
+					label: name,
+					color: _getModeColor(key),
+					iconSize: AppSpacings.scale(18),
+					labelBuilder: (isSelected, contentColor) {
+						return Column(
+							mainAxisSize: MainAxisSize.min,
+							children: [
+								Text(
+									name,
+									style: TextStyle(
+										color: contentColor,
+										fontSize: AppFontSize.extraSmall,
+										fontWeight: FontWeight.w500,
+										height: 1,
+									),
+									maxLines: 1,
+									overflow: TextOverflow.ellipsis,
+								),
+								Text(
+									statusText,
+									style: TextStyle(
+										color: contentColor,
+										fontSize: AppFontSize.base,
+										fontWeight: FontWeight.w600,
+										height: 1,
+									),
+									maxLines: 1,
+								),
+							],
+						);
+					},
+				);
+			}).toList();
 	}
 
 	MediaActivityKey? _getSelectedActivityKey(MediaActiveStateModel? activeState) {
@@ -834,6 +865,173 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		return activeState.activityKey ?? MediaActivityKey.off;
 	}
 
+	Widget _buildModeSelector(BuildContext context) {
+		final modeOptions = _getActivityModeOptions();
+		if (modeOptions.length <= 1) return const SizedBox.shrink();
+
+		final activeState = _mediaService?.getActiveState(_roomId);
+		final selectedKey = _getSelectedActivityKey(activeState);
+
+		return ModeSelector<MediaActivityKey>(
+			modes: modeOptions,
+			selectedValue: selectedKey == MediaActivityKey.off ? null : selectedKey,
+			onChanged: (!_wsConnected || _isSending) ? (_) {} : _onActivitySelected,
+			orientation: ModeSelectorOrientation.horizontal,
+			iconPlacement: ModeSelectorIconPlacement.top,
+			color: _getModeColor(),
+		);
+	}
+
+	Widget _buildDevicePill(
+		BuildContext context, {
+		required IconData icon,
+		required String label,
+		VoidCallback? onTap,
+	}) {
+		final isDark = Theme.of(context).brightness == Brightness.dark;
+
+		return GestureDetector(
+			onTap: onTap,
+			child: Container(
+				padding: EdgeInsets.symmetric(
+					horizontal: AppSpacings.pMd,
+					vertical: AppSpacings.pSm,
+				),
+				decoration: BoxDecoration(
+					color: isDark ? AppFillColorDark.darker : AppFillColorLight.darker,
+					borderRadius: BorderRadius.circular(AppBorderRadius.round),
+				),
+				child: Row(
+					mainAxisSize: MainAxisSize.min,
+					spacing: AppSpacings.pSm,
+					children: [
+						Icon(
+							icon,
+							size: AppFontSize.small,
+							color: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
+						),
+						Text(
+							label,
+							style: TextStyle(
+								fontSize: AppFontSize.extraSmall,
+								fontWeight: FontWeight.w500,
+								color: isDark ? AppTextColorDark.regular : AppTextColorLight.regular,
+							),
+						),
+					],
+				),
+			),
+		);
+	}
+
+	Widget _buildDevicePillsRow(BuildContext context) {
+		final compositionEntries = _mediaService?.getActiveCompositionEntries(_roomId) ?? [];
+		final roomName = _spacesService?.getSpace(_roomId)?.name ?? '';
+
+		final pills = <Widget>[];
+
+		for (final entry in compositionEntries) {
+			final device = _devicesService?.getDevice(entry.deviceId);
+			final name = device != null
+				? stripRoomNameFromDevice(device.name, roomName)
+				: entry.endpointName;
+			final icon = _roleIcon(entry.role);
+
+			pills.add(
+				_buildDevicePill(
+					context,
+					icon: icon,
+					label: name,
+					onTap: () => Navigator.push(
+						context,
+						MaterialPageRoute(
+							builder: (context) => DeviceDetailPage(entry.deviceId),
+						),
+					),
+				),
+			);
+		}
+
+		if (pills.isEmpty) return const SizedBox.shrink();
+
+		return Wrap(
+			spacing: AppSpacings.pSm,
+			runSpacing: AppSpacings.pSm,
+			children: pills,
+		);
+	}
+
+	List<Widget> _buildLandscapeModeTiles(BuildContext context) {
+		final modeOptions = _getActivityModeOptions();
+		if (modeOptions.length <= 1) return [];
+
+		final activeState = _mediaService?.getActiveState(_roomId);
+		final selectedKey = _getSelectedActivityKey(activeState);
+		final tileHeight = AppSpacings.scale(AppTileHeight.horizontal);
+
+		return modeOptions.map((mode) {
+			final isActive = mode.value == selectedKey;
+
+			return SizedBox(
+				height: tileHeight,
+				width: double.infinity,
+				child: UniversalTile(
+					layout: TileLayout.horizontal,
+					icon: mode.icon,
+					name: mode.label,
+					isActive: isActive,
+					activeColor: _getModeColor(mode.value),
+					showGlow: false,
+					showDoubleBorder: false,
+					showInactiveBorder: false,
+					onTileTap: (!_wsConnected || _isSending)
+						? null
+						: () => _onActivitySelected(mode.value),
+				),
+			);
+		}).toList();
+	}
+
+	Widget _buildLandscapeMainContent(
+		BuildContext context,
+		MediaActiveStateModel? activeState,
+	) {
+		return Column(
+			crossAxisAlignment: CrossAxisAlignment.stretch,
+			children: [
+				Expanded(
+					child: HeroCard(
+						child: _buildHeroCardContent(context, activeState!),
+					),
+				),
+				AppSpacings.spacingMdVertical,
+				_buildDevicePillsRow(context),
+			],
+		);
+	}
+
+	Widget _buildLandscapeAdditionalColumn(BuildContext context) {
+		final localizations = AppLocalizations.of(context)!;
+		final modeTiles = _buildLandscapeModeTiles(context);
+
+		return Column(
+			crossAxisAlignment: CrossAxisAlignment.start,
+			children: [
+				if (modeTiles.isNotEmpty) ...[
+					SectionTitle(
+						title: localizations.domain_media,
+						icon: MdiIcons.playBoxOutline,
+					),
+					...modeTiles.map((tile) => Padding(
+						padding: EdgeInsets.only(top: AppSpacings.pSm),
+						child: tile,
+					)),
+					AppSpacings.spacingLgVertical,
+				],
+				_buildLandscapeControls(context),
+			],
+		);
+	}
 
 	// =============================================================================
 	// OFF STATE CONTENT
@@ -1133,54 +1331,29 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	// ACTIVE ACTIVITY CARD
 	// =============================================================================
 
-	Widget _buildActiveCard(
+	Widget _buildHeroCardContent(
 		BuildContext context,
 		MediaActiveStateModel activeState,
 	) {
 		final targets = _mediaService?.resolveControlTargets(_roomId) ?? const ActiveControlTargets();
-		final compositionEntries = _mediaService?.getActiveCompositionEntries(_roomId) ?? [];
-		// Resolve display names and online status for composition entries
-		final roomName = _spacesService?.getSpace(_roomId)?.name ?? '';
-		final displayItems = <_CompositionDisplayItem>[];
-		final offlineRoles = <String>[];
 
+		// Check for offline devices in composition
+		final compositionEntries = _mediaService?.getActiveCompositionEntries(_roomId) ?? [];
+		final offlineRoles = <String>[];
 		for (final entry in compositionEntries) {
 			final device = _devicesService?.getDevice(entry.deviceId);
-			var name = device != null
-					? stripRoomNameFromDevice(device.name, roomName)
-					: entry.endpointName;
-			final isOnline = device?.isOnline ?? true;
-
-			// Resolve input property ID for this role's endpoint
-			String? inputPropId;
-			switch (entry.role) {
-				case 'Display':
-					inputPropId = targets.displayTarget?.links.inputPropertyId;
-					break;
-				case 'Audio':
-					inputPropId = targets.volumeTarget?.links.inputPropertyId;
-					break;
-				case 'Source':
-					inputPropId = targets.playbackTarget?.links.inputPropertyId;
-					break;
+			if (device != null && !device.isOnline) {
+				offlineRoles.add(entry.role);
 			}
-
-			displayItems.add(_CompositionDisplayItem(
-				role: entry.role,
-				displayName: name,
-				isOnline: isOnline,
-				inputPropertyId: inputPropId,
-			));
-			if (!isOnline) offlineRoles.add(entry.role);
 		}
 
 		final cardSpacing = _screenService.isSmallScreen
 				? AppSpacings.pMd
 				: AppSpacings.pLg;
-        
+
 		return Column(
 			crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+			mainAxisAlignment: MainAxisAlignment.center,
 			spacing: cardSpacing,
 			children: [
 					// Warning banner
@@ -1193,26 +1366,18 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 						_buildOfflineDeviceBanner(context, offlineRoles),
 					],
 
-					// Composition preview
-					if (displayItems.isNotEmpty) ...[
-						_buildCompositionPreview(context, displayItems),
-					],
-
 					// Capability-driven controls
-					if (_trackName != null || _artistName != null) ...[
+					if (_trackName != null || _artistName != null || _albumName != null) ...[
 						_buildNowPlaying(context),
-					],
-					if (targets.hasPlayback && (_screenService.isPortrait || _screenService.isLargeScreen)) ...[
-						_buildPlaybackControl(context),
 					],
 					if (_duration != null && _duration! > 0) ...[
 						_buildProgressBar(context),
 					],
+					if (targets.hasPlayback && (_screenService.isPortrait || _screenService.isLargeScreen)) ...[
+						_buildPlaybackControl(context),
+					],
 					if (targets.hasVolume && !_screenService.isLandscape) ...[
 						_buildVolumeControl(context),
-					],
-					if (targets.hasRemote && !_screenService.isLandscape) ...[
-						_buildRemoteButton(context),
 					],
 
 					// Failure details
@@ -1249,158 +1414,18 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		);
 	}
 
-	Widget _buildCompositionPreview(BuildContext context, List<_CompositionDisplayItem> items) {
-		final isDark = Theme.of(context).brightness == Brightness.dark;
-		final warningColor = isDark ? AppColorsDark.warning : AppColorsLight.warning;
-
-		return Container(
-			padding: AppSpacings.paddingMd,
-			decoration: BoxDecoration(
-				color: isDark ? AppFillColorDark.darker : AppFillColorLight.darker,
-				borderRadius: BorderRadius.circular(AppBorderRadius.base),
-			),
-			child: Column(
-				spacing: AppSpacings.pMd,
-				children: items.map((item) {
-					final icon = _roleIcon(item.role);
-					final nameText = item.isOnline ? item.displayName : '${item.displayName} (offline)';
-					final nameColor = item.isOnline
-							? (isDark ? AppTextColorDark.primary : AppTextColorLight.primary)
-							: warningColor;
-
-					// Resolve input source value and format
-					String? inputValue;
-					List<String>? inputOptions;
-					if (item.inputPropertyId != null && _devicesService != null) {
-						final prop = _devicesService!.getChannelProperty(item.inputPropertyId!);
-						if (prop?.value is StringValueType) {
-							inputValue = (prop!.value as StringValueType).value;
-						}
-						if (prop?.format is StringListFormatType) {
-							inputOptions = (prop!.format as StringListFormatType).value;
-						}
-					}
-
-					return Row(
-						spacing: AppSpacings.pMd,
-						children: [
-							Container(
-								width: AppSpacings.scale(32),
-								height: AppSpacings.scale(32),
-								decoration: BoxDecoration(
-									color: isDark ? AppFillColorDark.light : AppFillColorLight.light,
-									borderRadius: BorderRadius.circular(AppBorderRadius.base),
-								),
-								child: Icon(
-									icon,
-									size: AppSpacings.scale(16),
-									color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
-								),
-							),
-							Expanded(
-								child: Column(
-									crossAxisAlignment: CrossAxisAlignment.start,
-									children: [
-										if (item.role.isNotEmpty)
-											Text(
-												item.role.toUpperCase(),
-												style: TextStyle(
-													fontSize: AppFontSize.extraSmall,
-													fontWeight: FontWeight.w500,
-													color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.secondary,
-													letterSpacing: 0.5,
-												),
-											),
-										Text(
-											nameText,
-											style: TextStyle(
-												fontSize: AppFontSize.extraSmall,
-												fontWeight: FontWeight.w500,
-												color: nameColor,
-											),
-										),
-									],
-								),
-							),
-							// Input source on the right
-							if (inputValue != null && inputOptions != null && inputOptions.isNotEmpty)
-								Theme(
-									data: isDark
-										? ThemeData(brightness: Brightness.dark, outlinedButtonTheme: AppOutlinedButtonsDarkThemes.neutral)
-										: ThemeData(outlinedButtonTheme: AppOutlinedButtonsLightThemes.neutral),
-									child: OutlinedButton(
-										onPressed: _isSending
-											? null
-											: () => _showInputSelectorSheet(inputOptions!, inputValue, item.inputPropertyId!),
-										style: OutlinedButton.styleFrom(
-											padding: EdgeInsets.symmetric(
-												horizontal: AppSpacings.pMd,
-												vertical: AppSpacings.pMd,
-											),
-											minimumSize: Size.zero,
-											tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-										),
-										child: Row(
-											mainAxisSize: MainAxisSize.min,
-											spacing: AppSpacings.pXs,
-											children: [
-												Text(
-													mediaInputSourceLabel(context, inputValue),
-													style: TextStyle(
-														fontSize: AppFontSize.extraSmall,
-														fontWeight: FontWeight.w500,
-													),
-												),
-												Icon(
-													MdiIcons.chevronDown,
-													size: AppFontSize.extraSmall,
-												),
-											],
-										),
-									),
-								)
-							else if (inputValue != null)
-								Container(
-									padding: EdgeInsets.symmetric(
-										horizontal: AppSpacings.pMd,
-										vertical: AppSpacings.pSm,
-									),
-									decoration: BoxDecoration(
-										color: isDark
-												? AppFillColorDark.base
-												: AppFillColorLight.base,
-										borderRadius: BorderRadius.circular(AppBorderRadius.base),
-										border: Border.all(
-											color: isDark
-													? AppBorderColorDark.light
-													: AppBorderColorLight.darker,
-											width: AppSpacings.scale(1),
-										),
-									),
-									child: Text(
-										mediaInputSourceLabel(context, inputValue),
-										style: TextStyle(
-											fontSize: AppFontSize.extraSmall,
-											fontWeight: FontWeight.w500,
-											color: isDark
-													? AppTextColorDark.regular
-													: AppTextColorLight.regular,
-										),
-									),
-								),
-						],
-					);
-				}).toList(),
-			),
-		);
-	}
-
 	Widget _buildVolumeControl(BuildContext context) {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 		final volume = _volume;
 		final isMuted = _isMuted;
 
-		final columnWidth = AppSpacings.scale(40);
+		final isCompact = _screenService.isPortrait
+			? _screenService.isSmallScreen
+			: _screenService.isSmallScreen || _screenService.isMediumScreen;
+
+		final columnWidth = AppSpacings.scale(isCompact ? 32 : 40);
+		final iconSize = isCompact ? AppFontSize.base : AppFontSize.large;
+		final buttonPadding = isCompact ? AppSpacings.paddingSm : AppSpacings.paddingMd;
 
 		return Row(
 			spacing: AppSpacings.pMd,
@@ -1417,13 +1442,13 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 								_toggleMute();
 							},
 							style: FilledButton.styleFrom(
-								padding: AppSpacings.paddingMd,
+								padding: buttonPadding,
 								minimumSize: Size(columnWidth, columnWidth),
 								maximumSize: Size(columnWidth, columnWidth),
 							),
 							child: Icon(
 								isMuted ? MdiIcons.volumeOff : MdiIcons.volumeHigh,
-								size: AppFontSize.large,
+								size: iconSize,
 								color: isDark
 									? (isMuted
 										? AppFilledButtonsDarkThemes.primaryForegroundColor
@@ -1449,7 +1474,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 					child: Text(
 						AppLocalizations.of(context)!.media_volume_percent(volume),
 						style: TextStyle(
-							fontSize: AppFontSize.small,
+							fontSize: isCompact ? AppFontSize.extraSmall : AppFontSize.small,
 							fontWeight: FontWeight.w600,
 							color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
 						),
@@ -1520,6 +1545,11 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	Widget _buildNowPlaying(BuildContext context) {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 
+		final subtitleParts = <String>[
+			if (_artistName != null) _artistName!,
+			if (_albumName != null) _albumName!,
+		];
+
 		return Column(
 			crossAxisAlignment: CrossAxisAlignment.stretch,
 			children: [
@@ -1535,9 +1565,9 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 						overflow: TextOverflow.ellipsis,
 						textAlign: TextAlign.center,
 					),
-				if (_artistName != null)
+				if (subtitleParts.isNotEmpty)
 					Text(
-						_artistName!,
+						subtitleParts.join(' \u2022 '),
 						style: TextStyle(
 							fontSize: AppFontSize.small,
 							color: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
@@ -1560,36 +1590,24 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		final dur = _duration ?? 1;
 		final progress = (pos / dur).clamp(0.0, 1.0);
 
-		final timeWidth = AppSpacings.scale(52);
-
 		// Check if position property is writable for seek support
 		final targets = _mediaService?.resolveControlTargets(_roomId);
 		final posId = targets?.playbackTarget?.links.positionPropertyId;
 		final isSeekable = posId != null && _devicesService != null &&
 				(_devicesService!.getChannelProperty(posId)?.isWritable ?? false);
 
-		return Row(
-			spacing: AppSpacings.pMd,
-			children: [
-				SizedBox(
-					width: timeWidth,
-					child: Text(
-						_formatTime(pos.toInt()),
-						style: TextStyle(
-							fontSize: AppFontSize.extraSmall,
-							color: secondaryColor,
-						),
-					),
-				),
-				Expanded(
-					child: LayoutBuilder(
+		return Padding(
+			padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
+			child: Column(
+				children: [
+					LayoutBuilder(
 						builder: (context, constraints) {
 							final barWidth = constraints.maxWidth;
 							final bar = ClipRRect(
 								borderRadius: BorderRadius.circular(AppBorderRadius.base),
 								child: LinearProgressIndicator(
 									value: progress,
-									minHeight: AppSpacings.scale(3),
+									minHeight: AppSpacings.scale(5),
 									backgroundColor: trackColor,
 									valueColor: AlwaysStoppedAnimation<Color>(modeColorFamily.base),
 								),
@@ -1607,25 +1625,33 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 									_devicesService!.setPropertyValue(posId, newPos.toInt());
 								},
 								child: Padding(
-									padding: EdgeInsets.symmetric(vertical: AppSpacings.pLg),
+									padding: EdgeInsets.symmetric(vertical: AppSpacings.pSm),
 									child: bar,
 								),
 							);
 						},
 					),
-				),
-				SizedBox(
-					width: timeWidth,
-					child: Text(
-						_formatTime(dur.toInt()),
-						style: TextStyle(
-							fontSize: AppFontSize.extraSmall,
-							color: secondaryColor,
-						),
-						textAlign: TextAlign.right,
+					Row(
+						mainAxisAlignment: MainAxisAlignment.spaceBetween,
+						children: [
+							Text(
+								_formatTime(pos.toInt()),
+								style: TextStyle(
+									fontSize: AppFontSize.extraSmall,
+									color: secondaryColor,
+								),
+							),
+							Text(
+								_formatTime(dur.toInt()),
+								style: TextStyle(
+									fontSize: AppFontSize.extraSmall,
+									color: secondaryColor,
+								),
+							),
+						],
 					),
-				),
-			],
+				],
+			),
 		);
 	}
 
@@ -1683,45 +1709,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 							: (isActive
 								? AppFilledButtonsLightThemes.primaryForegroundColor
 								: AppFilledButtonsLightThemes.neutralForegroundColor),
-					),
-				),
-			),
-		);
-	}
-
-	Widget _buildRemoteButton(BuildContext context) {
-		final isDark = Theme.of(context).brightness == Brightness.dark;
-		final themeData = isDark ? ThemeData(filledButtonTheme: AppFilledButtonsDarkThemes.neutral) : ThemeData(filledButtonTheme: AppFilledButtonsLightThemes.neutral);
-
-		return SizedBox(
-			width: double.infinity,
-			child: Theme(
-				data: themeData,
-				child: FilledButton(
-					onPressed: _isSending
-						? null
-						: () {
-							HapticFeedback.lightImpact();
-							_showRemote();
-						},
-					style: FilledButton.styleFrom(
-						padding: AppSpacings.paddingMd,
-					),
-					child: Row(
-					mainAxisSize: MainAxisSize.min,
-					mainAxisAlignment: MainAxisAlignment.center,
-					spacing: AppSpacings.pXs,
-					children: [
-						Icon(
-							MdiIcons.remote,
-							size: AppFontSize.base,
-							color: isDark
-								? AppFilledButtonsDarkThemes.neutralForegroundColor
-								: AppFilledButtonsLightThemes.neutralForegroundColor,
-						),
-						Text(
-							AppLocalizations.of(context)!.media_remote_control),
-						],
 					),
 				),
 			),
@@ -2398,67 +2385,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		_devicesService!.setPropertyValue(propId, newMuted);
 	}
 
-	void _showInputSelectorSheet(List<String> sources, String? currentValue, String propId) {
-		final localizations = AppLocalizations.of(context)!;
-		final isDark = Theme.of(context).brightness == Brightness.dark;
-		final options = sources
-				.map((s) => ValueOption<String>(value: s, label: mediaInputSourceLabel(context, s)))
-				.toList();
-		final initialIndex = currentValue != null
-				? sources.indexOf(currentValue).clamp(0, sources.length - 1)
-				: 0;
-		final selectedIndexNotifier = ValueNotifier<int>(initialIndex);
-
-		showAppBottomSheet(
-			context,
-			title: localizations.media_input_select_title,
-			titleIcon: MdiIcons.audioInputStereoMinijack,
-			scrollable: false,
-			content: ValueSelectorSheet<String>(
-				currentValue: currentValue,
-				options: options,
-				title: localizations.media_input_select_title,
-				columns: 3,
-				optionStyle: ValueSelectorOptionStyle.buttons,
-				selectedIndexNotifier: selectedIndexNotifier,
-			),
-			bottomSection: ValueListenableBuilder<int>(
-				valueListenable: selectedIndexNotifier,
-				builder: (ctx, index, _) {
-					return SizedBox(
-						width: double.infinity,
-						child: Theme(
-							data: isDark
-									? ThemeData(brightness: Brightness.dark, filledButtonTheme: AppFilledButtonsDarkThemes.primary)
-									: ThemeData(filledButtonTheme: AppFilledButtonsLightThemes.primary),
-							child: FilledButton(
-								onPressed: options.isEmpty || index < 0
-										? null
-										: () {
-												Navigator.pop(ctx);
-												_devicesService!.setPropertyValue(propId, options[index].value);
-											},
-								style: FilledButton.styleFrom(
-									padding: EdgeInsets.symmetric(vertical: AppSpacings.pMd),
-									shape: RoundedRectangleBorder(
-										borderRadius: BorderRadius.circular(AppBorderRadius.base),
-									),
-								),
-								child: Text(
-									localizations.button_done,
-									style: TextStyle(
-										fontSize: AppFontSize.base,
-										fontWeight: FontWeight.w600,
-									),
-								),
-							),
-						),
-					);
-				},
-			),
-		);
-	}
-
 	void _sendPlaybackCommand(String command) {
 		final targets = _mediaService?.resolveControlTargets(_roomId);
 		final propId = targets?.playbackTarget?.links.playbackCommandId;
@@ -2791,25 +2717,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	void _sendRemoteSheetCommand(String propId, TelevisionRemoteKeyValue command) {
 		_devicesService?.setPropertyValue(propId, command.value);
 	}
-}
-
-// =============================================================================
-// DATA MODELS
-// =============================================================================
-// View model for one entry in the active composition (Display/Audio/Source role).
-
-class _CompositionDisplayItem {
-	final String role;
-	final String displayName;
-	final bool isOnline;
-	final String? inputPropertyId;
-
-	const _CompositionDisplayItem({
-		required this.role,
-		required this.displayName,
-		required this.isOnline,
-		this.inputPropertyId,
-	});
 }
 
 // =============================================================================
