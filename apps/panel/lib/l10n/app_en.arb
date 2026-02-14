@@ -2698,6 +2698,10 @@
   "@covers_mode_daylight": {
     "description": "Covers mode optimized for natural daylight"
   },
+  "domain_mode_custom": "Custom",
+  "@domain_mode_custom": {
+    "description": "Shown when device state does not match any intent"
+  },
   "covers_role_primary": "Primary",
   "@covers_role_primary": {
     "description": "Label for primary covers role"

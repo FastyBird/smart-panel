@@ -762,14 +762,42 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     final position = _getRolePosition(roleData, effectiveRole);
     final positionColorFamily = _getPositionColorFamily(context, position);
 
-    // Build subtitle showing selected role info
+    // Build subtitle: intent-aware mode name or position-based text
     String subtitle;
-    if (position == 100) {
-      subtitle = '${localizations.shading_state_open} \u2022 $totalDevices';
-    } else if (position == 0) {
-      subtitle = '${localizations.shading_state_closed} \u2022 $totalDevices';
+    final isModeLocked = _modeControlStateService.isLocked(ShadingConstants.modeChannelId);
+    final state = _coversState;
+
+    if (isModeLocked) {
+      // Optimistic UI: show locked mode name
+      final desiredIndex = _modeControlStateService
+          .getDesiredValue(ShadingConstants.modeChannelId)
+          ?.toInt();
+      if (desiredIndex != null &&
+          desiredIndex >= 0 &&
+          desiredIndex < CoversMode.values.length) {
+        final lockedMode = CoversMode.values[desiredIndex];
+        subtitle = '${_getCoversModeName(lockedMode, localizations)} \u2022 $totalDevices';
+      } else {
+        subtitle = '$totalDevices';
+      }
+    } else if (state != null &&
+        state.isModeFromIntent &&
+        !_modeOverriddenByManualChange &&
+        state.detectedMode != null) {
+      // Intent active and matching: show detected mode name
+      subtitle = '${_getCoversModeName(state.detectedMode!, localizations)} \u2022 $totalDevices';
+    } else if (state?.lastAppliedMode != null) {
+      // Intent exists but overridden: show "Custom"
+      subtitle = '${localizations.domain_mode_custom} \u2022 $totalDevices';
     } else {
-      subtitle = '$position% \u2022 $totalDevices';
+      // No intent ever set: show position-based text
+      if (position == 100) {
+        subtitle = '${localizations.shading_state_open} \u2022 $totalDevices';
+      } else if (position == 0) {
+        subtitle = '${localizations.shading_state_closed} \u2022 $totalDevices';
+      } else {
+        subtitle = '$position% \u2022 $totalDevices';
+      }
     }
 
     final showDevicesButton = totalDevices > 0;
@@ -790,6 +818,20 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
             )
           : null,
     );
+  }
+
+  /// Get localized name for covers mode
+  String _getCoversModeName(CoversMode mode, AppLocalizations localizations) {
+    switch (mode) {
+      case CoversMode.open:
+        return localizations.covers_mode_open;
+      case CoversMode.closed:
+        return localizations.covers_mode_closed;
+      case CoversMode.privacy:
+        return localizations.covers_mode_privacy;
+      case CoversMode.daylight:
+        return localizations.covers_mode_daylight;
+    }
   }
 
   // --------------------------------------------------------------------------
@@ -1059,6 +1101,11 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
         showGlow: false,
         showDoubleBorder: false,
         showInactiveBorder: false,
+        onIconTap: () {
+          // Toggle: if position >= 50 → close, if < 50 → open
+          final targetPosition = position >= 50 ? 0 : 100;
+          _setRolePositionImmediate(roleData.role, targetPosition);
+        },
         onTileTap: () {
           _heroControlStateService.clear(ShadingConstants.positionChannelId);
           setState(() {

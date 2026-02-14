@@ -2042,14 +2042,43 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     final localizations = AppLocalizations.of(context)!;
     final statusColorFamily = _getStatusColorFamily(context);
 
-    // Build subtitle based on mode and lights state
-    final mode = _currentMode;
+    // Build subtitle: intent-aware mode name or lights count
     String subtitle;
-    if (mode == LightingModeUI.off || lightsOn == 0) {
-      subtitle = '$lightsOn of $totalLights on';
+    final isModeLocked = _modeControlStateService.isLocked(LightingConstants.modeChannelId);
+    final state = _lightingState;
+
+    if (isModeLocked) {
+      // Optimistic UI: show locked mode name
+      final desiredIndex = _modeControlStateService
+          .getDesiredValue(LightingConstants.modeChannelId)
+          ?.toInt();
+      if (desiredIndex != null &&
+          desiredIndex >= 0 &&
+          desiredIndex < LightingModeUI.values.length) {
+        final lockedMode = LightingModeUI.values[desiredIndex];
+        final modeName = _getModeName(lockedMode, localizations);
+        subtitle = '$modeName \u2022 $lightsOn on';
+      } else {
+        subtitle = '$lightsOn of $totalLights on';
+      }
+    } else if (state != null &&
+        state.isModeFromIntent &&
+        !_modeOverriddenByManualChange &&
+        state.detectedMode != null) {
+      // Intent active and matching: show detected mode name
+      final detectedModeUI = _toLightingModeUI(state.detectedMode);
+      if (detectedModeUI != null && detectedModeUI != LightingModeUI.off) {
+        final modeName = _getModeName(detectedModeUI, localizations);
+        subtitle = '$modeName \u2022 $lightsOn on';
+      } else {
+        subtitle = '$lightsOn of $totalLights on';
+      }
+    } else if (state?.lastAppliedMode != null && lightsOn > 0) {
+      // Intent exists but overridden and lights are on: show "Custom"
+      subtitle = '${localizations.domain_mode_custom} \u2022 $lightsOn on';
     } else {
-      final modeName = _getModeName(mode, localizations);
-      subtitle = '$modeName \u2022 $lightsOn on';
+      // No intent or all lights off: show count
+      subtitle = '$lightsOn of $totalLights on';
     }
 
     // Use actual light state for icon, not pending mode
@@ -2851,6 +2880,9 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         showGlow: false,
         showDoubleBorder: false,
         showInactiveBorder: false,
+        onIconTap: () {
+          _toggleRoleLights(roleData, !isOn);
+        },
         onTileTap: () {
           _resetHeroControlState();
           setState(() {
