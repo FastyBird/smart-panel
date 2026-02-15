@@ -153,9 +153,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	Timer? _volumeDebounceTimer;
 	Timer? _playbackSettleTimer;
 
-	/// Notifier bumped after playback/volume state changes so inline controls rebuild.
-	final ValueNotifier<int> _playbackStateNotifier = ValueNotifier(0);
-
 	late AnimationController _pulseController;
 
 	String get _roomId => widget.viewItem.roomId;
@@ -262,7 +259,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		_pageActivatedSubscription?.cancel();
 		_volumeDebounceTimer?.cancel();
 		_playbackSettleTimer?.cancel();
-		_playbackStateNotifier.dispose();
 		_pulseController.dispose();
 		_mediaService?.removeListener(_onDataChanged);
 		_devicesService?.removeListener(_onDevicesChanged);
@@ -294,7 +290,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	void _onDataChanged() {
 		if (!mounted) return;
 		_syncDeviceState();
-		_playbackStateNotifier.value++;
 		WidgetsBinding.instance.addPostFrameCallback((_) {
 			if (mounted) {
 				setState(() {});
@@ -309,7 +304,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		// Skip if a debounce timer is active (user is dragging the slider)
 		if (_volumeDebounceTimer == null || !_volumeDebounceTimer!.isActive) {
 			_syncDeviceState();
-			_playbackStateNotifier.value++;
 			WidgetsBinding.instance.addPostFrameCallback((_) {
 				if (mounted) {
 					setState(() {});
@@ -842,7 +836,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 
 	Widget _buildModeSelector(BuildContext context) {
 		final modeOptions = _getActivityModeOptions();
-		if (modeOptions.length <= 1) return const SizedBox.shrink();
+		if (modeOptions.isEmpty) return const SizedBox.shrink();
 
 		final activeState = _mediaService?.getActiveState(_roomId);
 		final selectedKey = _getSelectedActivityKey(activeState);
@@ -895,7 +889,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	List<Widget> _buildLandscapeModeTiles(BuildContext context) {
 		final localizations = AppLocalizations.of(context)!;
 		final modeOptions = _getActivityModeOptions();
-		if (modeOptions.length <= 1) return [];
+		if (modeOptions.isEmpty) return [];
 
 		final activeState = _mediaService?.getActiveState(_roomId);
 		final selectedKey = _getSelectedActivityKey(activeState);
@@ -2125,6 +2119,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		final activityName = _activityLabel(context, activityKey);
 		final tileHeight = AppSpacings.scale(AppTileHeight.horizontal * 0.85);
 		final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+		final parentNavigator = Navigator.of(context);
 
 		Widget buildCompositionTile(BuildContext context, int index) {
 			if (index >= entries.length) return const SizedBox.shrink();
@@ -2152,10 +2147,9 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 					showInactiveBorder: false,
 					onTileTap: () {
 						Navigator.of(context).pop();
-						Navigator.push(
-							context,
+						parentNavigator.push(
 							MaterialPageRoute(
-								builder: (context) => DeviceDetailPage(entry.deviceId),
+								builder: (_) => DeviceDetailPage(entry.deviceId),
 							),
 						);
 					},
@@ -2365,7 +2359,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			_ => _playbackState,
 		};
 		setState(() => _playbackState = optimisticState);
-		_playbackStateNotifier.value++;
 
 		// Block _syncDeviceState from overwriting during settle window.
 		// After timeout, re-read the actual device value (backend truth).
@@ -2374,7 +2367,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			if (!mounted) return;
 			_syncDeviceState();
 			setState(() {});
-			_playbackStateNotifier.value++;
 		});
 
 		if (kDebugMode) {
