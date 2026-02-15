@@ -2484,9 +2484,6 @@ class AppLocalizationsCs extends AppLocalizations {
   String get sensor_freshness_offline => 'Offline';
 
   @override
-  String get media_input_select_title => 'Vybrat vstup';
-
-  @override
   String get media_input_hdmi1 => 'HDMI 1';
 
   @override
