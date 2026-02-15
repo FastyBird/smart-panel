@@ -153,8 +153,8 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	Timer? _volumeDebounceTimer;
 	Timer? _playbackSettleTimer;
 
-	/// Notifier to rebuild playback sheet when state changes.
-	final ValueNotifier<int> _playbackSheetNotifier = ValueNotifier(0);
+	/// Notifier bumped after playback/volume state changes so inline controls rebuild.
+	final ValueNotifier<int> _playbackStateNotifier = ValueNotifier(0);
 
 	late AnimationController _pulseController;
 
@@ -262,7 +262,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		_pageActivatedSubscription?.cancel();
 		_volumeDebounceTimer?.cancel();
 		_playbackSettleTimer?.cancel();
-		_playbackSheetNotifier.dispose();
+		_playbackStateNotifier.dispose();
 		_pulseController.dispose();
 		_mediaService?.removeListener(_onDataChanged);
 		_devicesService?.removeListener(_onDevicesChanged);
@@ -294,7 +294,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	void _onDataChanged() {
 		if (!mounted) return;
 		_syncDeviceState();
-		_playbackSheetNotifier.value++;
+		_playbackStateNotifier.value++;
 		WidgetsBinding.instance.addPostFrameCallback((_) {
 			if (mounted) {
 				setState(() {});
@@ -309,7 +309,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		// Skip if a debounce timer is active (user is dragging the slider)
 		if (_volumeDebounceTimer == null || !_volumeDebounceTimer!.isActive) {
 			_syncDeviceState();
-			_playbackSheetNotifier.value++;
+			_playbackStateNotifier.value++;
 			WidgetsBinding.instance.addPostFrameCallback((_) {
 				if (mounted) {
 					setState(() {});
@@ -2365,7 +2365,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			_ => _playbackState,
 		};
 		setState(() => _playbackState = optimisticState);
-		_playbackSheetNotifier.value++;
+		_playbackStateNotifier.value++;
 
 		// Block _syncDeviceState from overwriting during settle window.
 		// After timeout, re-read the actual device value (backend truth).
@@ -2374,7 +2374,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			if (!mounted) return;
 			_syncDeviceState();
 			setState(() {});
-			_playbackSheetNotifier.value++;
+			_playbackStateNotifier.value++;
 		});
 
 		if (kDebugMode) {
