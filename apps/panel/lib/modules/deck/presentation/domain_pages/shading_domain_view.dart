@@ -1503,6 +1503,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     final localizations = AppLocalizations.of(context)!;
     final isLandscape =
         MediaQuery.of(context).orientation == Orientation.landscape;
+    final sheetTitle = role != null ? _getRoleName(role) : localizations.shading_devices_title;
 
     final bottomSection = role != null ? _buildDevicesSheetFooter(context, role) : null;
 
@@ -1513,7 +1514,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
 
       showAppRightDrawer(
         context,
-        title: localizations.shading_devices_title,
+        title: sheetTitle,
         titleIcon: MdiIcons.windowShutterSettings,
         scrollable: false,
         content: ListenableBuilder(
@@ -1545,7 +1546,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     } else {
       DeckItemSheet.showItemSheetWithUpdates(
         context,
-        title: localizations.shading_devices_title,
+        title: sheetTitle,
         icon: MdiIcons.windowShutterSettings,
         rebuildWhen: _sheetNotifier,
         getItemCount: () => _buildDeviceDataList(targets).length,
