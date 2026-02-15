@@ -59,6 +59,7 @@ import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_banner.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_bottom_sheet.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_card.dart';
 import 'package:fastybird_smart_panel/core/widgets/hero_card.dart';
 import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
@@ -794,7 +795,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 				AppSpacings.spacingMdVertical,
 				_buildModeSelector(context),
 				AppSpacings.spacingMdVertical,
-				_buildDevicePillsRow(context),
+				_buildCompositionCard(context),
 			],
 		);
 	}
@@ -881,82 +882,38 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		);
 	}
 
-	Widget _buildDevicePill(
-		BuildContext context, {
-		required IconData icon,
-		required String label,
-		VoidCallback? onTap,
-	}) {
-		final isDark = Theme.of(context).brightness == Brightness.dark;
-
-		return GestureDetector(
-			onTap: onTap,
-			child: Container(
-				padding: EdgeInsets.symmetric(
-					horizontal: AppSpacings.pMd,
-					vertical: AppSpacings.pSm,
-				),
-				decoration: BoxDecoration(
-					color: isDark ? AppFillColorDark.darker : AppFillColorLight.darker,
-					borderRadius: BorderRadius.circular(AppBorderRadius.round),
-				),
-				child: Row(
-					mainAxisSize: MainAxisSize.min,
-					spacing: AppSpacings.pSm,
-					children: [
-						Icon(
-							icon,
-							size: AppFontSize.small,
-							color: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
-						),
-						Text(
-							label,
-							style: TextStyle(
-								fontSize: AppFontSize.extraSmall,
-								fontWeight: FontWeight.w500,
-								color: isDark ? AppTextColorDark.regular : AppTextColorLight.regular,
-							),
-						),
-					],
-				),
-			),
-		);
-	}
-
-	Widget _buildDevicePillsRow(BuildContext context) {
+	Widget _buildCompositionCard(BuildContext context) {
 		final compositionEntries = _mediaService?.getActiveCompositionEntries(_roomId) ?? [];
+		if (compositionEntries.isEmpty) return const SizedBox.shrink();
+
+		final localizations = AppLocalizations.of(context)!;
 		final roomName = _spacesService?.getSpace(_roomId)?.name ?? '';
 
-		final pills = <Widget>[];
-
+		final seen = <String>{};
+		final names = <String>[];
 		for (final entry in compositionEntries) {
+			if (!seen.add(entry.deviceId)) continue;
 			final device = _devicesService?.getDevice(entry.deviceId);
-			final name = device != null
-				? stripRoomNameFromDevice(device.name, roomName)
-				: entry.endpointName;
-			final icon = _roleIcon(entry.role);
-
-			pills.add(
-				_buildDevicePill(
-					context,
-					icon: icon,
-					label: name,
-					onTap: () => Navigator.push(
-						context,
-						MaterialPageRoute(
-							builder: (context) => DeviceDetailPage(entry.deviceId),
-						),
-					),
-				),
-			);
+			names.add(device != null
+					? stripRoomNameFromDevice(device.name, roomName)
+					: entry.endpointName);
 		}
 
-		if (pills.isEmpty) return const SizedBox.shrink();
+		final tileHeight = AppSpacings.scale(AppTileHeight.horizontal * 0.85);
 
-		return Wrap(
-			spacing: AppSpacings.pSm,
-			runSpacing: AppSpacings.pSm,
-			children: pills,
+		return SizedBox(
+			height: tileHeight,
+			child: UniversalTile(
+				layout: TileLayout.horizontal,
+				icon: MdiIcons.monitorSpeaker,
+				name: localizations.media_devices_summary(names.length),
+				status: names.join(' \u2022 '),
+				isActive: false,
+				showGlow: false,
+				showDoubleBorder: false,
+				showInactiveBorder: false,
+				onTileTap: () => _showCompositionDevicesSheet(compositionEntries),
+			),
 		);
 	}
 
@@ -1004,7 +961,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 					),
 				),
 				AppSpacings.spacingMdVertical,
-				_buildDevicePillsRow(context),
+				_buildCompositionCard(context),
 			],
 		);
 	}
@@ -2267,6 +2224,72 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		}
 	}
 
+	void _showCompositionDevicesSheet(List<MediaCompositionEntry> entries) {
+		if (entries.isEmpty) return;
+
+		final roomName = _spacesService?.getSpace(_roomId)?.name ?? '';
+		final activeState = _mediaService?.getActiveState(_roomId);
+		final activityKey = _getSelectedActivityKey(activeState);
+		final activityName = _activityLabel(context, activityKey);
+		final tileHeight = AppSpacings.scale(AppTileHeight.horizontal * 0.85);
+
+		Widget buildCompositionTile(BuildContext context, int index) {
+			if (index >= entries.length) return const SizedBox.shrink();
+			final entry = entries[index];
+			final device = _devicesService?.getDevice(entry.deviceId);
+			final deviceName = device != null
+					? stripRoomNameFromDevice(device.name, roomName)
+					: entry.endpointName;
+			final isOffline = device == null || !device.isOnline;
+			final icon = _roleIcon(entry.role);
+
+			return SizedBox(
+				height: tileHeight,
+				child: UniversalTile(
+					layout: TileLayout.horizontal,
+					icon: icon,
+					activeIcon: icon,
+					name: entry.role,
+					status: deviceName,
+					isActive: false,
+					isOffline: isOffline,
+					showWarningBadge: true,
+					showGlow: false,
+					showDoubleBorder: false,
+					showInactiveBorder: false,
+					onTileTap: () {
+						Navigator.of(context).pop();
+						Navigator.push(
+							context,
+							MaterialPageRoute(
+								builder: (context) => DeviceDetailPage(entry.deviceId),
+							),
+						);
+					},
+				),
+			);
+		}
+
+		if (_devicesService != null) {
+			DeckItemSheet.showItemSheetWithUpdates(
+				context,
+				title: activityName,
+				icon: _activityIcon(activityKey),
+				rebuildWhen: _devicesService!,
+				getItemCount: () => entries.length,
+				itemBuilder: buildCompositionTile,
+			);
+		} else {
+			DeckItemSheet.showItemSheet(
+				context,
+				title: activityName,
+				icon: _activityIcon(activityKey),
+				itemCount: entries.length,
+				itemBuilder: buildCompositionTile,
+			);
+		}
+	}
+
 	List<IconData> _deviceCapabilityIcons(MediaDeviceGroup group) {
 		final icons = <IconData>[];
 		if (group.hasDisplay) icons.add(MdiIcons.television);
@@ -2354,6 +2377,67 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	// =============================================================================
 	// ACTIONS (volume, mute, input, playback, remote)
 	// =============================================================================
+
+	void _showInputSelectorSheet(List<String> sources, String? currentValue, String propId) {
+		final localizations = AppLocalizations.of(context)!;
+		final isDark = Theme.of(context).brightness == Brightness.dark;
+		final options = sources
+				.map((s) => ValueOption<String>(value: s, label: mediaInputSourceLabel(context, s)))
+				.toList();
+		final initialIndex = currentValue != null
+				? sources.indexOf(currentValue).clamp(0, sources.length - 1)
+				: 0;
+		final selectedIndexNotifier = ValueNotifier<int>(initialIndex);
+
+		showAppBottomSheet(
+			context,
+			title: localizations.media_input_select_title,
+			titleIcon: MdiIcons.audioInputStereoMinijack,
+			scrollable: false,
+			content: ValueSelectorSheet<String>(
+				currentValue: currentValue,
+				options: options,
+				title: localizations.media_input_select_title,
+				columns: 3,
+				optionStyle: ValueSelectorOptionStyle.buttons,
+				selectedIndexNotifier: selectedIndexNotifier,
+			),
+			bottomSection: ValueListenableBuilder<int>(
+				valueListenable: selectedIndexNotifier,
+				builder: (ctx, index, _) {
+					return SizedBox(
+						width: double.infinity,
+						child: Theme(
+							data: isDark
+									? ThemeData(brightness: Brightness.dark, filledButtonTheme: AppFilledButtonsDarkThemes.primary)
+									: ThemeData(filledButtonTheme: AppFilledButtonsLightThemes.primary),
+							child: FilledButton(
+								onPressed: options.isEmpty || index < 0
+										? null
+										: () {
+												Navigator.pop(ctx);
+												_devicesService!.setPropertyValue(propId, options[index].value);
+											},
+								style: FilledButton.styleFrom(
+									padding: EdgeInsets.symmetric(vertical: AppSpacings.pMd),
+									shape: RoundedRectangleBorder(
+										borderRadius: BorderRadius.circular(AppBorderRadius.base),
+									),
+								),
+								child: Text(
+									localizations.button_done,
+									style: TextStyle(
+										fontSize: AppFontSize.base,
+										fontWeight: FontWeight.w600,
+									),
+								),
+							),
+						),
+					);
+				},
+			),
+		);
+	}
 
 	void _setVolume(int volume) {
 		setState(() => _volume = volume);
@@ -2727,6 +2811,24 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	void _sendRemoteSheetCommand(String propId, TelevisionRemoteKeyValue command) {
 		_devicesService?.setPropertyValue(propId, command.value);
 	}
+}
+
+// =============================================================================
+// COMPOSITION DISPLAY ITEM
+// =============================================================================
+
+class _CompositionDisplayItem {
+	final String role;
+	final String displayName;
+	final bool isOnline;
+	final String? inputPropertyId;
+
+	const _CompositionDisplayItem({
+		required this.role,
+		required this.displayName,
+		required this.isOnline,
+		this.inputPropertyId,
+	});
 }
 
 // =============================================================================
