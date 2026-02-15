@@ -35,6 +35,8 @@
 // - **DATA MODELS** — [_CoverRoleData], [_CoverDeviceData].
 // - **SHADING DOMAIN VIEW PAGE** — [ShadingDomainViewPage] and state class:
 //   - STATE & DEPENDENCIES: _roomId, [_tryLocator], optional services.
+//   - CONVERGENCE CHECKERS: [_checkModeConvergence], [_checkHeroPositionConvergence], [_isSpaceIntentLocked].
+//   - ROLE & STATE RESOLUTION: [_getEffectiveRoleFromTargets], [_groupTargetsByRole], [_getRolePosition].
 //   - LIFECYCLE: initState (services, listeners, fetch), dispose, [_onDataChanged].
 //   - DATA BUILDING: [_buildRoleDataList], [_buildDeviceDataList], role/cover type helpers.
 //   - INTENT METHODS: [_setRolePosition], [_stopCovers], [_setCoversMode], [_showActionFailed].
@@ -44,7 +46,7 @@
 //   - MODE SELECTOR: [_getCoversModeOptions], popup content builders.
 //   - DEVICES BOTTOM SHEET: [_showShadingDevicesSheet], device tile builders.
 //   - NAVIGATION: [_openDeviceDetail].
-//   - HELPERS: position theme/color/text, [_toStateRole], [_getRolePosition].
+//   - HELPERS: [_getPositionThemeColor], [_getPositionColorFamily], [_computeTargetsHealth], [_getRoleStatusIcon].
 //   - EMPTY STATE: [_buildEmptyState].
 // - **PRIVATE WIDGETS** — [_ShadingHeroCard].
 
@@ -203,27 +205,22 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   List<CoversTargetView> get _coversTargets =>
       _spacesService?.getCoversTargetsForSpace(_roomId) ?? [];
 
+  /// Resolved position for a role: locked/optimistic value or backend average.
   int _getRolePosition(_CoverRoleData roleData, CoversTargetRole? effectiveRole) {
     if (_heroControlStateService.isLocked(ShadingConstants.positionChannelId)) {
       final desired = _heroControlStateService.getDesiredValue(ShadingConstants.positionChannelId);
       if (desired != null && roleData.role == effectiveRole) return desired.round();
     }
-    final pending = _getRolePendingPosition(roleData.role, effectiveRole);
-    if (pending != null) return pending;
     return roleData.averagePosition;
   }
 
-  int? _getRolePendingPosition(CoversTargetRole role, CoversTargetRole? effectiveRole) {
-    if (role != effectiveRole) return null;
-    if (_heroControlStateService.isLocked(ShadingConstants.positionChannelId)) {
-      final desired = _heroControlStateService.getDesiredValue(ShadingConstants.positionChannelId);
-      if (desired != null) return desired.round();
-    }
-    return null;
-  }
-
-  bool _isSpaceIntentLocked<T>(List<T> targets) =>
+  /// Intent lock checker for [DomainControlStateService]. Targets param unused (space-level lock).
+  bool _isSpaceIntentLocked<T>(List<T> _) =>
       _intentsRepository?.isSpaceLocked(_roomId) ?? false;
+
+  // --------------------------------------------------------------------------
+  // CONVERGENCE CHECKERS (for DomainControlStateService)
+  // --------------------------------------------------------------------------
 
   bool _checkModeConvergence(
     List<CoversStateModel> targets,
@@ -250,6 +247,10 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     if (state.position == null) return false;
     return (state.position! - desiredValue).abs() <= tolerance;
   }
+
+  // --------------------------------------------------------------------------
+  // ROLE & STATE RESOLUTION
+  // --------------------------------------------------------------------------
 
   CoversTargetRole? _getEffectiveRoleFromTargets() {
     if (_selectedRole != null) return _selectedRole;
@@ -874,14 +875,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   /// (50%), not the device average. Fallback to device average when backend
   /// position is null.
   List<_CoverRoleData> _buildRoleDataList(List<CoversTargetView> targets) {
-    final Map<CoversTargetRole, List<CoversTargetView>> grouped = {};
-
-    for (final target in targets) {
-      final role = target.role ?? CoversTargetRole.primary;
-      if (role == CoversTargetRole.hidden) continue;
-      grouped.putIfAbsent(role, () => []).add(target);
-    }
-
+    final grouped = _groupTargetsByRole(targets);
     final coversState = _coversState;
     final List<_CoverRoleData> roles = [];
 
@@ -1570,49 +1564,25 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   /// Checks device-level state for offline / position-mixed within this role.
   /// Includes its own top-border so it collapses to [SizedBox.shrink] cleanly.
   Widget _buildDevicesSheetFooter(BuildContext context, CoversTargetRole role) {
-    final devicesService = _devicesService;
-    if (devicesService == null) return const SizedBox.shrink();
-
-    // Check device-level state for mixed position / offline.
-    // Null-role targets are treated as primary (matching _buildRoleDataList).
+    // Null-role targets treated as primary (matching _buildRoleDataList).
     final targets = _coversTargets
         .where((t) => (t.role ?? CoversTargetRole.primary) == role)
         .toList();
-    bool hasOffline = false;
-    int? firstPosition;
-    bool isPositionMixed = false;
-
-    for (final target in targets) {
-      final device = devicesService.getDevice(target.deviceId);
-      if (device is! WindowCoveringDeviceView) continue;
-
-      if (!device.isOnline) {
-        hasOffline = true;
-        continue;
-      }
-
-      final pos = device.isWindowCoveringPercentage;
-      if (firstPosition == null) {
-        firstPosition = pos;
-      } else if ((pos - firstPosition).abs() > 5) {
-        isPositionMixed = true;
-      }
-    }
-
-    if (!isPositionMixed && !hasOffline) return const SizedBox.shrink();
+    final health = _computeTargetsHealth(targets);
+    if (!health.isPositionMixed && !health.hasOffline) return const SizedBox.shrink();
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final localizations = AppLocalizations.of(context)!;
     final borderColor =
         isDark ? AppBorderColorDark.darker : AppBorderColorLight.darker;
-    final filledTheme = hasOffline
+    final filledTheme = health.hasOffline
         ? (isDark
             ? AppFilledButtonsDarkThemes.warning
             : AppFilledButtonsLightThemes.warning)
         : (isDark
             ? AppFilledButtonsDarkThemes.info
             : AppFilledButtonsLightThemes.info);
-    final label = hasOffline
+    final label = health.hasOffline
         ? localizations.button_retry
         : localizations.button_sync_all;
 
@@ -1702,10 +1672,10 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   }
 
   // --------------------------------------------------------------------------
-  // HELPERS (THEME & POSITION LABELS)
+  // HELPERS (THEME, POSITION, ROLE HEALTH)
   // --------------------------------------------------------------------------
-  // Use [_getPositionThemeColor] / [_getPositionColorFamily] for position-based
-  // colors; [_getPositionText] for localized open/closed/partial.
+  // [_getPositionThemeColor], [_getPositionColorFamily]: position-based theming.
+  // [_computeTargetsHealth]: offline/mixed check for footer and status icon.
 
   /// Theme color for position (success=open, info=closed, warning=partial).
   ThemeColors _getPositionThemeColor(int position) {
@@ -1718,18 +1688,17 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   ThemeColorFamily _getPositionColorFamily(BuildContext context, int position) =>
       ThemeColorFamily.get(Theme.of(context).brightness, _getPositionThemeColor(position));
 
-  /// Status icon for a role: offline → alert, mixed positions → tune, synced → settings.
-  ///
-  /// Matches the lighting domain's hero card status icon pattern.
-  IconData _getRoleStatusIcon(_CoverRoleData roleData) {
+  /// Computes offline and position-mixed state for a list of targets.
+  /// Used by [_getRoleStatusIcon] and [_buildDevicesSheetFooter].
+  ({bool hasOffline, bool isPositionMixed}) _computeTargetsHealth(List<CoversTargetView> targets) {
     final devicesService = _devicesService;
-    if (devicesService == null) return MdiIcons.windowShutterSettings;
+    if (devicesService == null) return (hasOffline: false, isPositionMixed: false);
 
     bool hasOffline = false;
     int? firstPosition;
     bool isPositionMixed = false;
 
-    for (final target in roleData.targets) {
+    for (final target in targets) {
       final device = devicesService.getDevice(target.deviceId);
       if (device is! WindowCoveringDeviceView) continue;
 
@@ -1746,8 +1715,16 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
       }
     }
 
-    if (hasOffline) return MdiIcons.alert;
-    if (isPositionMixed) return MdiIcons.tune;
+    return (hasOffline: hasOffline, isPositionMixed: isPositionMixed);
+  }
+
+  /// Status icon for a role: offline → alert, mixed positions → tune, synced → settings.
+  ///
+  /// Matches the lighting domain's hero card status icon pattern.
+  IconData _getRoleStatusIcon(_CoverRoleData roleData) {
+    final health = _computeTargetsHealth(roleData.targets);
+    if (health.hasOffline) return MdiIcons.alert;
+    if (health.isPositionMixed) return MdiIcons.tune;
     return MdiIcons.windowShutterSettings;
   }
 
