@@ -1,46 +1,47 @@
 /// Media domain view: room-level media control for a single space/room.
 ///
-/// **Purpose:** One screen per room for AV control: activity selection (Watch,
-/// Listen, Gaming, Background, Off), composition preview (Display/Audio/Source
-/// roles and input source), volume/mute, playback transport, progress bar,
-/// and remote control. Media-capable devices are listed in a bottom sheet
-/// opened from the header.
+/// ## Purpose
+/// One screen per room for AV control: activity selection (Watch, Listen, Gaming,
+/// Background, Off), composition preview (Display/Audio/Source roles), volume/mute,
+/// playback transport, progress bar, and remote control. Media-capable devices
+/// are listed in a bottom sheet opened from the header.
 ///
-/// **Data flow:**
-/// - [MediaActivityService] provides active state, endpoints, control targets
-///   (volume, playback, display, remote), and device groups for the room.
-/// - [DevicesService] provides live device views and property values (volume,
-///   mute, playback state, track metadata, position/duration) used for UI.
-/// - [SpacesService] provides room name. [DeckService] / [EventBus] for navigation.
-/// - Local state: _volume, _isMuted, _playbackState, _trackName, _artistName,
-///   _position, _duration are synced from device properties in [_syncDeviceState].
+/// ## Data flow
+/// - [MediaActivityService]: active state, endpoints, control targets (volume,
+///   playback, display, remote), device groups.
+/// - [DevicesService]: live device views and property values (volume, mute,
+///   playback state, track metadata, position/duration).
+/// - [SpacesService]: room name. [EventBus] for page activation.
+/// - Local state (`_volume`, `_isMuted`, `_playbackState`, etc.) is synced from
+///   device properties in [_syncDeviceState].
 ///
-/// **Key concepts:**
-/// - Activity on/off and mode (Watch/Listen/etc.) are server-driven; volume,
-///   mute, and playback commands are sent to device properties with optimistic
-///   UI and debounce/settle timers where needed.
-/// - Portrait: activity content card + mode selector at bottom. Landscape:
-///   main content + vertical mode selector + optional controls column (volume,
-///   mute, playback tile, remote).
-/// - Failure/warning state: inline banners and [_showFailureDetailsSheet] for
-///   step results; retry and deactivate actions.
+/// ## Key concepts
+/// - Activity on/off and mode are server-driven; volume/mute/playback use optimistic
+///   UI with debounce (volume) and settle timers (playback).
+/// - Portrait: activity card + mode selector. Landscape: main content + vertical
+///   mode selector + optional controls column.
+/// - Failure/warning: inline banners and [_showFailureDetailsSheet]; retry/deactivate.
 ///
-/// **File structure (for humans and AI):**
-/// Search for the exact section header (e.g. "// CONSTANTS", "// LIFECYCLE") to
-/// jump to that part of the file. Sections appear in this order:
+/// ## File structure (for AI and humans)
+/// Search for section headers to jump to a part of the file:
 ///
-/// - **CONSTANTS** — debounce/settle durations for volume and playback.
-/// - **MEDIA DOMAIN VIEW PAGE** — [MediaDomainViewPage] and state: LIFECYCLE,
-///   LISTENERS, STATE SYNC, NAVIGATION, ACTIVITY ACTIONS, BUILD.
-/// - **HEADER, THEME & LABELS** — header builder, mode colors, activity labels/icons.
-/// - **LAYOUTS** — portrait/landscape, activity content, mode selector.
-/// - **STATE CONTENT** — off, activating, failed content builders.
-/// - **ACTIVE CARD** — hero card content: warnings, now-playing, volume/playback controls.
-/// - **FAILURE DETAILS** — inline failure, sheet, retry/deactivate.
-/// - **LANDSCAPE CONTROLS** — playback tile, volume selector, mute, remote.
-/// - **HELPERS** — activity/device labels and icons, navigation, device sheet.
-/// - **ACTIONS** — volume, mute, input selector, playback command, playback sheet, remote.
-/// - **DATA MODELS / PAINTER** — [_SpinnerArcPainter].
+/// | Section | Content |
+/// |---------|---------|
+/// | CONSTANTS | Debounce/settle durations |
+/// | LIFECYCLE | initState, dispose, fetch, retry |
+/// | LISTENERS & CALLBACKS | Page activation, data/devices/connection |
+/// | STATE SYNC | [_syncDeviceState], property readers |
+/// | ACTIVITY ACTIONS | [_onActivitySelected] |
+/// | BUILD | Main build, loading/error states |
+/// | HEADER | [_buildHeader] |
+/// | THEME & LABELS | Mode colors, activity labels/icons |
+/// | PORTRAIT/LANDSCAPE LAYOUT | Layout builders |
+/// | STATE CONTENT | Off, activating, failed builders |
+/// | ACTIVE CARD | Hero card, warnings, now-playing, controls |
+/// | FAILURE DETAILS | Inline failure, sheet, retry/deactivate |
+/// | HELPERS | Labels, icons, device sheet |
+/// | ACTIONS | Volume, mute, playback, remote |
+/// | SPINNER ARC PAINTER | [_SpinnerArcPainter] |
 library;
 
 import 'dart:async';
@@ -71,11 +72,11 @@ import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/domain_data_loader.dart';
+import 'package:fastybird_smart_panel/modules/deck/utils/lighting.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_item_sheet.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/domain_state_view.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/bottom_nav_mode_notifier.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/deck_page_activated_event.dart';
-import 'package:fastybird_smart_panel/modules/deck/utils/lighting.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_detail_page.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/utils/media_input_source_label.dart';
@@ -159,6 +160,8 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 
 	String get _roomId => widget.viewItem.roomId;
 
+	/// Resolves optional service from locator. Logs in debug on failure.
+	/// Use [onSuccess] to register listeners when the service is available.
 	T? _tryLocator<T extends Object>(String debugLabel, {void Function(T)? onSuccess}) {
 		try {
 			final s = locator<T>();
@@ -268,11 +271,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	}
 
 	// -------------------------------------------------------------------------
-	// LISTENERS
-	// -------------------------------------------------------------------------
-
-	// -------------------------------------------------------------------------
-	// BOTTOM NAV MODE REGISTRATION
+	// LISTENERS & CALLBACKS
 	// -------------------------------------------------------------------------
 
 	void _onPageActivated(DeckPageActivatedEvent event) {
@@ -330,90 +329,34 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		final targets = _mediaService?.resolveControlTargets(_roomId);
 		if (targets == null) return;
 
-		// Volume: read from the resolved volume property
+		// Volume & mute
 		if (targets.hasVolume) {
-			final propId = targets.volumeTarget!.links.volumePropertyId;
-			if (propId != null) {
-				final prop = _devicesService?.getChannelProperty(propId);
-				final val = prop?.value;
-				if (val is NumberValueType) {
-					_volume = val.value.toInt();
-				}
-			}
+			final volVal = _readNumberProperty(targets.volumeTarget!.links.volumePropertyId);
+			if (volVal != null) _volume = volVal.toInt();
 
-			// Mute: read from the resolved mute property
-			final muteId = targets.volumeTarget!.links.mutePropertyId;
-			if (muteId != null) {
-				final prop = _devicesService?.getChannelProperty(muteId);
-				final val = prop?.value;
-				if (val is BooleanValueType) {
-					_isMuted = val.value;
-				}
-			}
+			final muteVal = _readBooleanProperty(targets.volumeTarget!.links.mutePropertyId);
+			if (muteVal != null) _isMuted = muteVal;
 		}
 
 		// Playback state and track metadata
 		if (targets.hasPlayback) {
 			final playbackLinks = targets.playbackTarget!.links;
-
-			// Only sync playback state from device when not in optimistic settle window
 			final isSettling = _playbackSettleTimer != null && _playbackSettleTimer!.isActive;
+
 			if (!isSettling) {
-				final stateId = playbackLinks.playbackStatePropertyId;
-				if (stateId != null) {
-					final prop = _devicesService?.getChannelProperty(stateId);
-					final val = prop?.value;
-					_playbackState = val is StringValueType ? val.value : null;
-				} else {
-					_playbackState = null;
-				}
+				_playbackState = _readStringProperty(playbackLinks.playbackStatePropertyId);
 			}
 
-			// Track metadata
-			final trackId = playbackLinks.trackMetadataPropertyId;
-			if (trackId != null) {
-				final prop = _devicesService?.getChannelProperty(trackId);
-				_trackName = prop?.value is StringValueType ? (prop!.value as StringValueType).value : null;
-			} else {
-				_trackName = null;
-			}
+			_trackName = _readStringProperty(playbackLinks.trackMetadataPropertyId);
+			_artistName = _readStringProperty(playbackLinks.artistPropertyId);
+			_albumName = _readStringProperty(playbackLinks.albumPropertyId);
 
-			final artistId = playbackLinks.artistPropertyId;
-			if (artistId != null) {
-				final prop = _devicesService?.getChannelProperty(artistId);
-				_artistName = prop?.value is StringValueType ? (prop!.value as StringValueType).value : null;
-			} else {
-				_artistName = null;
-			}
+			final pos = _readNumberProperty(playbackLinks.positionPropertyId);
+			_position = pos?.toDouble();
 
-			final albumId = playbackLinks.albumPropertyId;
-			if (albumId != null) {
-				final prop = _devicesService?.getChannelProperty(albumId);
-				_albumName = prop?.value is StringValueType ? (prop!.value as StringValueType).value : null;
-			} else {
-				_albumName = null;
-			}
-
-			// Position & duration
-			final posId = playbackLinks.positionPropertyId;
-			if (posId != null) {
-				final prop = _devicesService?.getChannelProperty(posId);
-				final val = prop?.value;
-				_position = val is NumberValueType ? val.value.toDouble() : null;
-			} else {
-				_position = null;
-			}
-
-			final durId = playbackLinks.durationPropertyId;
-			if (durId != null) {
-				final prop = _devicesService?.getChannelProperty(durId);
-				final val = prop?.value;
-				_duration = val is NumberValueType ? val.value.toDouble() : null;
-			} else {
-				_duration = null;
-			}
+			final dur = _readNumberProperty(playbackLinks.durationPropertyId);
+			_duration = dur?.toDouble();
 		} else {
-			// No playback target — clear all metadata
 			_playbackState = null;
 			_trackName = null;
 			_artistName = null;
@@ -423,16 +366,31 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		}
 	}
 
+	/// Reads a string value from a channel property. Returns null if missing or wrong type.
+	String? _readStringProperty(String? propId) {
+		if (propId == null) return null;
+		final val = _devicesService?.getChannelProperty(propId)?.value;
+		return val is StringValueType ? val.value : null;
+	}
+
+	/// Reads a numeric value from a channel property. Returns null if missing or wrong type.
+	num? _readNumberProperty(String? propId) {
+		if (propId == null) return null;
+		final val = _devicesService?.getChannelProperty(propId)?.value;
+		return val is NumberValueType ? val.value : null;
+	}
+
+	/// Reads a boolean value from a channel property. Returns null if missing or wrong type.
+	bool? _readBooleanProperty(String? propId) {
+		if (propId == null) return null;
+		final val = _devicesService?.getChannelProperty(propId)?.value;
+		return val is BooleanValueType ? val.value : null;
+	}
+
 	void _onConnectionChanged(bool isConnected) {
 		if (!mounted) return;
 		setState(() => _wsConnected = isConnected);
 	}
-
-	// -------------------------------------------------------------------------
-	// NAVIGATION
-	// -------------------------------------------------------------------------
-
-
 
 	// -------------------------------------------------------------------------
 	// ACTIVITY ACTIONS
@@ -989,6 +947,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		);
 	}
 
+	/// Landscape sidebar: mode tiles (Watch/Listen/etc.) + composition summary at bottom.
 	Widget _buildLandscapeAdditionalColumn(BuildContext context) {
 		final modeTiles = _buildLandscapeModeTiles(context);
 
@@ -1127,6 +1086,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		);
 	}
 
+	/// Translates activation step labels: input sources (hdmi1→HDMI 1), device names (strip room suffix).
 	String _translateStepLabel(BuildContext context, String label) {
 		final roomName = _spacesService?.getSpace(_roomId)?.name ?? '';
 
@@ -2070,6 +2030,8 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		);
 	}
 
+	/// Opens media devices list: right drawer in landscape, bottom sheet in portrait.
+	/// Uses [DeckItemSheet] or [showAppRightDrawer] depending on orientation.
 	void _showMediaDevicesSheet() {
 		final roomName = _spacesService?.getSpace(_roomId)?.name ?? '';
 		String? deviceNameResolver(String deviceId) {
@@ -2153,6 +2115,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		}
 	}
 
+	/// Opens composition devices sheet (Display/Audio/Source roles for active activity).
 	void _showCompositionDevicesSheet(List<MediaCompositionEntry> entries) {
 		if (entries.isEmpty) return;
 
@@ -2528,6 +2491,8 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		);
 	}
 
+	/// Opens TV remote control: right drawer in landscape, bottom sheet in portrait.
+	/// Renders D-pad, transport (play/pause/etc.), and nav keys from property format.
 	void _showRemote() {
 		final targets = _mediaService?.resolveControlTargets(_roomId);
 		if (targets == null || !targets.hasRemote) return;
