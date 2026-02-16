@@ -1,4 +1,4 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { BadRequestException, Controller, Get, Query } from '@nestjs/common';
 import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import {
@@ -6,7 +6,7 @@ import {
 	ApiInternalServerErrorResponse,
 	ApiSuccessResponse,
 } from '../../swagger/decorators/api-documentation.decorator';
-import { ENERGY_MODULE_API_TAG_NAME } from '../energy.constants';
+import { ENERGY_MODULE_API_TAG_NAME, VALID_ENERGY_RANGES } from '../energy.constants';
 import { resolveEnergyRange } from '../helpers/energy-range.helper';
 import { EnergyDeltaItemModel } from '../models/energy-delta.model';
 import { EnergyDeltasResponseModel, EnergySummaryResponseModel } from '../models/energy-response.model';
@@ -48,6 +48,10 @@ export class EnergyController {
 		@Query('room_id') roomId?: string,
 		@Query('range') range?: string,
 	): Promise<EnergySummaryResponseModel> {
+		if (range && !(VALID_ENERGY_RANGES as readonly string[]).includes(range)) {
+			throw new BadRequestException(`Invalid range "${range}". Must be one of: ${VALID_ENERGY_RANGES.join(', ')}`);
+		}
+
 		const { start, end } = resolveEnergyRange(range);
 		const summary = await this.energyData.getSummary(start, end, roomId);
 
@@ -95,6 +99,10 @@ export class EnergyController {
 		@Query('room_id') roomId?: string,
 		@Query('range') range?: string,
 	): Promise<EnergyDeltasResponseModel> {
+		if (range && !(VALID_ENERGY_RANGES as readonly string[]).includes(range)) {
+			throw new BadRequestException(`Invalid range "${range}". Must be one of: ${VALID_ENERGY_RANGES.join(', ')}`);
+		}
+
 		const { start, end } = resolveEnergyRange(range);
 		const rows = await this.energyData.getDeltas(start, end, roomId);
 

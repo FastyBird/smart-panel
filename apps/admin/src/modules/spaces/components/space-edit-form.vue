@@ -396,6 +396,10 @@ const energyWidgetShowProduction = computed({
 const onEnergyWidgetToggle = (enabled: boolean | string | number): void => {
 	if (enabled) {
 		const widgets = model.headerWidgets ?? [];
+		// Prevent duplicate energy widgets
+		if (widgets.some((w: IHeaderWidget) => w.type === HeaderWidgetType.ENERGY)) {
+			return;
+		}
 		widgets.push({
 			type: HeaderWidgetType.ENERGY,
 			order: widgets.length,

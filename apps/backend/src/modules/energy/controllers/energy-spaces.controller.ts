@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import { BadRequestException, Controller, Get, Param, Query } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import {
@@ -6,7 +6,7 @@ import {
 	ApiInternalServerErrorResponse,
 	ApiSuccessResponse,
 } from '../../swagger/decorators/api-documentation.decorator';
-import { ENERGY_MODULE_API_TAG_NAME } from '../energy.constants';
+import { ENERGY_MODULE_API_TAG_NAME, VALID_ENERGY_RANGES } from '../energy.constants';
 import { normalizeEnergyRange, resolveEnergyRange } from '../helpers/energy-range.helper';
 import { EnergyBreakdownItemModel } from '../models/energy-breakdown-item.model';
 import {
@@ -59,6 +59,10 @@ export class EnergySpacesController {
 		@Param('spaceId') spaceId: string,
 		@Query('range') range?: string,
 	): Promise<EnergySpaceSummaryResponseModel> {
+		if (range && !(VALID_ENERGY_RANGES as readonly string[]).includes(range)) {
+			throw new BadRequestException(`Invalid range "${range}". Must be one of: ${VALID_ENERGY_RANGES.join(', ')}`);
+		}
+
 		const resolvedRange = normalizeEnergyRange(range);
 		const cacheKey = `space:${spaceId}:summary:${resolvedRange}`;
 
@@ -125,6 +129,10 @@ export class EnergySpacesController {
 		@Query('range') range?: string,
 		@Query('interval') interval?: string,
 	): Promise<EnergySpaceTimeseriesResponseModel> {
+		if (range && !(VALID_ENERGY_RANGES as readonly string[]).includes(range)) {
+			throw new BadRequestException(`Invalid range "${range}". Must be one of: ${VALID_ENERGY_RANGES.join(', ')}`);
+		}
+
 		const resolvedRange = normalizeEnergyRange(range);
 		const resolvedInterval = interval || '1h';
 		const cacheKey = `space:${spaceId}:timeseries:${resolvedRange}:${resolvedInterval}`;
@@ -190,6 +198,10 @@ export class EnergySpacesController {
 		@Query('range') range?: string,
 		@Query('limit') limitStr?: string,
 	): Promise<EnergySpaceBreakdownResponseModel> {
+		if (range && !(VALID_ENERGY_RANGES as readonly string[]).includes(range)) {
+			throw new BadRequestException(`Invalid range "${range}". Must be one of: ${VALID_ENERGY_RANGES.join(', ')}`);
+		}
+
 		const parsedLimit = limitStr !== undefined ? parseInt(limitStr, 10) : NaN;
 		const limit = Number.isNaN(parsedLimit) ? 10 : Math.max(1, Math.min(100, parsedLimit));
 		const { start, end } = resolveEnergyRange(range);

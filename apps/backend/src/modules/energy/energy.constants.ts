@@ -33,6 +33,17 @@ export const CLEANUP_BATCH_SIZE = 1000;
  */
 export const DEFAULT_CACHE_TTL_SECONDS = 30;
 
+/**
+ * Maximum number of entries allowed in the energy cache.
+ * Oldest entries are evicted when this limit is reached.
+ */
+export const MAX_CACHE_ENTRIES = 256;
+
+/**
+ * Valid energy range values for query parameters.
+ */
+export const VALID_ENERGY_RANGES = ['today', 'yesterday', 'week', 'month'] as const;
+
 export enum EnergySourceType {
 	CONSUMPTION_IMPORT = 'consumption_import',
 	GENERATION_PRODUCTION = 'generation_production',

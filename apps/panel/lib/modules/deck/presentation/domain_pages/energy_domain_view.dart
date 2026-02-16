@@ -31,6 +31,7 @@ import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
+import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
@@ -179,7 +180,13 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
             Expanded(
               child: _summary == null
                   ? _buildEmptyState(context)
-                  : _buildPortraitLayout(context),
+                  : OrientationBuilder(
+                      builder: (context, orientation) {
+                        return orientation == Orientation.landscape
+                            ? _buildLandscapeLayout(context)
+                            : _buildPortraitLayout(context);
+                      },
+                    ),
             ),
           ],
         ),
@@ -247,6 +254,38 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
   }
 
   // =============================================================================
+  // LANDSCAPE LAYOUT
+  // =============================================================================
+
+  Widget _buildLandscapeLayout(BuildContext context) {
+    return LandscapeViewLayout(
+      mainContentScrollable: true,
+      mainContentPadding: EdgeInsets.only(
+        right: AppSpacings.pMd,
+        left: AppSpacings.pMd,
+        bottom: AppSpacings.pMd,
+      ),
+      mainContent: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: AppSpacings.pLg,
+        children: [
+          _buildRangeSelector(context),
+          if (_timeseries != null && _timeseries!.isNotEmpty)
+            _buildTimeseriesChart(context),
+          if (_breakdown != null && _breakdown!.isNotEmpty)
+            _buildTopConsumers(context),
+        ],
+      ),
+      additionalContentScrollable: false,
+      additionalContentPadding: EdgeInsets.only(
+        left: AppSpacings.pMd,
+        bottom: AppSpacings.pMd,
+      ),
+      additionalContent: _buildSummaryCards(context, vertical: true),
+    );
+  }
+
+  // =============================================================================
   // RANGE SELECTOR
   // =============================================================================
 
@@ -310,43 +349,39 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
   // SUMMARY CARDS
   // =============================================================================
 
-  Widget _buildSummaryCards(BuildContext context) {
+  Widget _buildSummaryCards(BuildContext context, {bool vertical = false}) {
     final localizations = AppLocalizations.of(context)!;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final infoColor = isDark ? AppColorsDark.info : AppColorsLight.info;
     final successColor = isDark ? AppColorsDark.success : AppColorsLight.success;
 
-    final cards = <Widget>[];
+    final cardWidgets = <Widget>[];
 
     // Consumption card
-    cards.add(Expanded(
-      child: _buildSummaryCard(
-        context,
-        title: localizations.energy_consumption,
-        value: NumberFormatUtils.defaultFormat.formatDecimal(
-          _summary!.consumption,
-          decimalPlaces: 2,
-        ),
-        unit: localizations.energy_unit_kwh,
-        icon: MdiIcons.flashOutline,
-        color: infoColor,
+    cardWidgets.add(_buildSummaryCard(
+      context,
+      title: localizations.energy_consumption,
+      value: NumberFormatUtils.defaultFormat.formatDecimal(
+        _summary!.consumption,
+        decimalPlaces: 2,
       ),
+      unit: localizations.energy_unit_kwh,
+      icon: MdiIcons.flashOutline,
+      color: infoColor,
     ));
 
     // Production card (if available)
     if (_summary!.hasProduction) {
-      cards.add(Expanded(
-        child: _buildSummaryCard(
-          context,
-          title: localizations.energy_production,
-          value: NumberFormatUtils.defaultFormat.formatDecimal(
-            _summary!.production!,
-            decimalPlaces: 2,
-          ),
-          unit: localizations.energy_unit_kwh,
-          icon: MdiIcons.solarPower,
-          color: successColor,
+      cardWidgets.add(_buildSummaryCard(
+        context,
+        title: localizations.energy_production,
+        value: NumberFormatUtils.defaultFormat.formatDecimal(
+          _summary!.production!,
+          decimalPlaces: 2,
         ),
+        unit: localizations.energy_unit_kwh,
+        icon: MdiIcons.solarPower,
+        color: successColor,
       ));
     }
 
@@ -356,26 +391,32 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
           ? (isDark ? AppColorsDark.warning : AppColorsLight.warning)
           : successColor;
 
-      cards.add(Expanded(
-        child: _buildSummaryCard(
-          context,
-          title: localizations.energy_net,
-          value: NumberFormatUtils.defaultFormat.formatDecimal(
-            _summary!.net!,
-            decimalPlaces: 2,
-          ),
-          unit: localizations.energy_unit_kwh,
-          icon: MdiIcons.swapVertical,
-          color: netColor,
+      cardWidgets.add(_buildSummaryCard(
+        context,
+        title: localizations.energy_net,
+        value: NumberFormatUtils.defaultFormat.formatDecimal(
+          _summary!.net!,
+          decimalPlaces: 2,
         ),
+        unit: localizations.energy_unit_kwh,
+        icon: MdiIcons.swapVertical,
+        color: netColor,
       ));
+    }
+
+    if (vertical) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        spacing: AppSpacings.pMd,
+        children: cardWidgets,
+      );
     }
 
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         spacing: AppSpacings.pMd,
-        children: cards,
+        children: cardWidgets.map((c) => Expanded(child: c)).toList(),
       ),
     );
   }

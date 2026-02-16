@@ -1,12 +1,19 @@
 import { z } from 'zod';
 
-import { SpaceType } from '../spaces.constants';
+import { EnergyWidgetRange, HeaderWidgetType, SpaceType } from '../spaces.constants';
 
-export const HeaderWidgetSchema = z.object({
-	type: z.string(),
-	order: z.number().int().min(0),
-	settings: z.record(z.unknown()),
+const EnergyWidgetSettingsSchema = z.object({
+	range: z.nativeEnum(EnergyWidgetRange).optional(),
+	showProduction: z.boolean().optional(),
 });
+
+export const HeaderWidgetSchema = z.discriminatedUnion('type', [
+	z.object({
+		type: z.literal(HeaderWidgetType.ENERGY),
+		order: z.number().int().min(0),
+		settings: EnergyWidgetSettingsSchema,
+	}),
+]);
 
 export const SpaceSchema = z.object({
 	id: z.string().uuid(),
