@@ -28,7 +28,7 @@ export class SecurityModuleInfluxMigration1766000000000 implements MigrationInte
 		// Recreate events table (without data — InfluxDB data is not reversible)
 		await queryRunner.query(`
 			CREATE TABLE IF NOT EXISTS "security_module_events" (
-				"id" integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+				"id" varchar PRIMARY KEY NOT NULL,
 				"eventType" varchar NOT NULL,
 				"alertId" varchar,
 				"alertType" varchar,

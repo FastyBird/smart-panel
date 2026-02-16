@@ -53,7 +53,7 @@ export class AlarmSecurityProvider implements SecurityStateProviderInterface {
 	}
 
 	private async buildSignal(context?: SecurityAggregationContext): Promise<SecuritySignal> {
-		const allDevices: DeviceEntity[] = context?.devices ?? await this.devicesService.findAll();
+		const allDevices: DeviceEntity[] = context?.devices ?? (await this.devicesService.findAll());
 		const alarmDevices = allDevices
 			.filter((device) => device.category === DeviceCategory.ALARM)
 			.sort((a, b) => a.id.localeCompare(b.id));
@@ -130,15 +130,26 @@ export class AlarmSecurityProvider implements SecurityStateProviderInterface {
 		}
 
 		// Stable timestamps for alert conditions (from property value or entity)
-		const triggeredTimestamp = this.getPropertyTimestamp(properties, PropertyCategory.TRIGGERED)
-			?? this.getPropertyTimestamp(properties, PropertyCategory.ALARM_STATE);
+		const triggeredTimestamp =
+			this.getPropertyTimestamp(properties, PropertyCategory.TRIGGERED) ??
+			this.getPropertyTimestamp(properties, PropertyCategory.ALARM_STATE);
 		const tamperedTimestamp = this.getPropertyTimestamp(properties, PropertyCategory.TAMPERED);
-		const faultTimestamp = this.getPropertyTimestamp(properties, PropertyCategory.FAULT)
-			?? this.getPropertyTimestamp(properties, PropertyCategory.ACTIVE);
+		const faultTimestamp =
+			this.getPropertyTimestamp(properties, PropertyCategory.FAULT) ??
+			this.getPropertyTimestamp(properties, PropertyCategory.ACTIVE);
 
 		return {
-			deviceId: device.id, armedState, alarmState, triggered, tampered, active, fault, lastEvent,
-			triggeredTimestamp, tamperedTimestamp, faultTimestamp,
+			deviceId: device.id,
+			armedState,
+			alarmState,
+			triggered,
+			tampered,
+			active,
+			fault,
+			lastEvent,
+			triggeredTimestamp,
+			tamperedTimestamp,
+			faultTimestamp,
 		};
 	}
 
@@ -249,10 +260,7 @@ export class AlarmSecurityProvider implements SecurityStateProviderInterface {
 	 * Get a stable timestamp for a property: prefers the InfluxDB lastUpdated
 	 * value, then falls back to the entity's updatedAt / createdAt.
 	 */
-	private getPropertyTimestamp(
-		properties: ChannelPropertyEntity[],
-		category: PropertyCategory,
-	): string | null {
+	private getPropertyTimestamp(properties: ChannelPropertyEntity[], category: PropertyCategory): string | null {
 		const prop = properties.find((p) => p.category === category);
 
 		if (prop == null) {

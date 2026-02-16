@@ -40,10 +40,7 @@ export class SecurityAlertAckService {
 		return this.repo.save(record);
 	}
 
-	async acknowledgeAll(
-		alerts: { id: string; timestamp?: Date }[],
-		acknowledgedBy?: string,
-	): Promise<void> {
+	async acknowledgeAll(alerts: { id: string; timestamp?: Date }[], acknowledgedBy?: string): Promise<void> {
 		if (alerts.length === 0) {
 			return;
 		}

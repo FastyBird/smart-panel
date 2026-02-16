@@ -5,8 +5,8 @@ import { ModulesTypeMapperService } from '../config/services/modules-type-mapper
 import { DevicesModule } from '../devices/devices.module';
 import { ChannelEntity } from '../devices/entities/devices.entity';
 import { ExtensionsModule } from '../extensions/extensions.module';
-import { InfluxDbModule } from '../influxdb/influxdb.module';
 import { ExtensionsService } from '../extensions/services/extensions.service';
+import { InfluxDbModule } from '../influxdb/influxdb.module';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../swagger/swagger.module';

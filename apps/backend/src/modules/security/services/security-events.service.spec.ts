@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/unbound-method */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { InfluxDbService } from '../../influxdb/services/influxdb.service';
@@ -57,25 +58,25 @@ describe('SecurityEventsService', () => {
 		it('should query InfluxDB with default limit', async () => {
 			await service.findRecent();
 			expect(influxDb.query).toHaveBeenCalled();
-			const queryArg = influxDb.query.mock.calls[0][0] as string;
+			const queryArg = influxDb.query.mock.calls[0][0];
 			expect(queryArg).toContain('LIMIT 50');
 		});
 
 		it('should clamp limit to max 200', async () => {
 			await service.findRecent({ limit: 500 });
-			const queryArg = influxDb.query.mock.calls[0][0] as string;
+			const queryArg = influxDb.query.mock.calls[0][0];
 			expect(queryArg).toContain('LIMIT 200');
 		});
 
 		it('should apply severity filter', async () => {
 			await service.findRecent({ severity: Severity.CRITICAL });
-			const queryArg = influxDb.query.mock.calls[0][0] as string;
+			const queryArg = influxDb.query.mock.calls[0][0];
 			expect(queryArg).toContain("severity = 'critical'");
 		});
 
 		it('should apply type filter', async () => {
 			await service.findRecent({ type: SecurityEventType.ALERT_RAISED });
-			const queryArg = influxDb.query.mock.calls[0][0] as string;
+			const queryArg = influxDb.query.mock.calls[0][0];
 			expect(queryArg).toContain("eventType = 'alert_raised'");
 		});
 	});

@@ -241,9 +241,7 @@ describe('SecurityService', () => {
 		it('should pass acknowledgedBy to ack service', async () => {
 			const alerts = [makeAlert('a', '2025-01-01T00:00:00Z')];
 			aggregator.aggregate.mockResolvedValue(makeStatus(alerts));
-			ackService.findByIds.mockResolvedValue([
-				{ id: 'a', acknowledged: true } as SecurityAlertAckEntity,
-			]);
+			ackService.findByIds.mockResolvedValue([{ id: 'a', acknowledged: true } as SecurityAlertAckEntity]);
 
 			await service.acknowledgeAllAlerts('user-456');
 			expect(ackService.acknowledgeAll).toHaveBeenCalledWith(

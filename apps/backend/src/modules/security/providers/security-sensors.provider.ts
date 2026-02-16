@@ -7,7 +7,7 @@ import { DevicesService } from '../../devices/services/devices.service';
 import { SecurityAggregationContext } from '../contracts/security-aggregation-context.type';
 import { SecurityAlert, SecuritySignal } from '../contracts/security-signal.type';
 import { SecurityStateProviderInterface } from '../contracts/security-state-provider.interface';
-import { ArmedState, SecurityAlertType, SEVERITY_RANK, Severity } from '../security.constants';
+import { ArmedState, SEVERITY_RANK, SecurityAlertType, Severity } from '../security.constants';
 import { DetectionRulesLoaderService } from '../spec/detection-rules-loader.service';
 import { ResolvedPropertyCheck, ResolvedSensorRule } from '../spec/detection-rules.types';
 
@@ -46,7 +46,7 @@ export class SecuritySensorsProvider implements SecurityStateProviderInterface {
 	}
 
 	private async buildSignals(context?: SecurityAggregationContext): Promise<SecuritySignal> {
-		const devices: DeviceEntity[] = context?.devices ?? await this.devicesService.findAll();
+		const devices: DeviceEntity[] = context?.devices ?? (await this.devicesService.findAll());
 		const rules = this.detectionRulesLoader.getSensorRules();
 		const armedState = context?.armedState ?? null;
 

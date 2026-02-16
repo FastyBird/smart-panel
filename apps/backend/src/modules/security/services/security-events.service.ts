@@ -155,40 +155,48 @@ export class SecurityEventsService implements OnModuleInit {
 
 		for (const alert of activeAlerts) {
 			if (!this.lastKnownAlertIds.has(alert.id)) {
-				points.push(this.buildPoint(SecurityEventType.ALERT_RAISED, {
-					severity: alert.severity ?? undefined,
-					alertId: alert.id,
-					alertType: alert.type ?? undefined,
-					sourceDeviceId: alert.sourceDeviceId ?? undefined,
-				}));
+				points.push(
+					this.buildPoint(SecurityEventType.ALERT_RAISED, {
+						severity: alert.severity ?? undefined,
+						alertId: alert.id,
+						alertType: alert.type ?? undefined,
+						sourceDeviceId: alert.sourceDeviceId ?? undefined,
+					}),
+				);
 			}
 		}
 
 		// Detect resolved alerts
 		for (const [id, prev] of this.lastKnownAlertIds) {
 			if (!currentIds.has(id)) {
-				points.push(this.buildPoint(SecurityEventType.ALERT_RESOLVED, {
-					severity: prev.severity ?? undefined,
-					alertId: id,
-					alertType: prev.type ?? undefined,
-					sourceDeviceId: prev.sourceDeviceId ?? undefined,
-				}));
+				points.push(
+					this.buildPoint(SecurityEventType.ALERT_RESOLVED, {
+						severity: prev.severity ?? undefined,
+						alertId: id,
+						alertType: prev.type ?? undefined,
+						sourceDeviceId: prev.sourceDeviceId ?? undefined,
+					}),
+				);
 			}
 		}
 
 		// Detect armed state change
 		if (armedState !== this.lastKnownArmedState) {
-			points.push(this.buildPoint(SecurityEventType.ARMED_STATE_CHANGED, {
-				payload: JSON.stringify({ from: this.lastKnownArmedState, to: armedState }),
-			}));
+			points.push(
+				this.buildPoint(SecurityEventType.ARMED_STATE_CHANGED, {
+					payload: JSON.stringify({ from: this.lastKnownArmedState, to: armedState }),
+				}),
+			);
 		}
 
 		// Detect alarm state change
 		if (alarmState !== this.lastKnownAlarmState) {
-			points.push(this.buildPoint(SecurityEventType.ALARM_STATE_CHANGED, {
-				severity: alarmState === AlarmState.TRIGGERED ? Severity.CRITICAL : undefined,
-				payload: JSON.stringify({ from: this.lastKnownAlarmState, to: alarmState }),
-			}));
+			points.push(
+				this.buildPoint(SecurityEventType.ALARM_STATE_CHANGED, {
+					severity: alarmState === AlarmState.TRIGGERED ? Severity.CRITICAL : undefined,
+					payload: JSON.stringify({ from: this.lastKnownAlarmState, to: alarmState }),
+				}),
+			);
 		}
 
 		// Always advance the snapshot so we never re-detect the same transitions,

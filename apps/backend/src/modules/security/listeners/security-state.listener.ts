@@ -7,8 +7,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { ChannelCategory, EventType as DevicesEventType, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelEntity, ChannelPropertyEntity } from '../../devices/entities/devices.entity';
 import { EventType, SECURITY_STATE_DEBOUNCE_MS } from '../security.constants';
-import { SecurityAlertAckService } from '../services/security-alert-ack.service';
 import { SecurityAggregatorService } from '../services/security-aggregator.service';
+import { SecurityAlertAckService } from '../services/security-alert-ack.service';
 import { SecurityEventsService } from '../services/security-events.service';
 
 /**
@@ -108,7 +108,7 @@ export class SecurityStateListener implements OnModuleInit, OnModuleDestroy {
 			return;
 		}
 
-		if (!SECURITY_CHANNEL_CATEGORIES.includes(channel.category as ChannelCategory)) {
+		if (!SECURITY_CHANNEL_CATEGORIES.includes(channel.category)) {
 			return;
 		}
 
@@ -137,11 +137,7 @@ export class SecurityStateListener implements OnModuleInit, OnModuleDestroy {
 
 			// Record transitions
 			try {
-				await this.eventsService.recordAlertTransitions(
-					status.activeAlerts,
-					status.armedState,
-					status.alarmState,
-				);
+				await this.eventsService.recordAlertTransitions(status.activeAlerts, status.armedState, status.alarmState);
 			} catch (error) {
 				this.logger.warn(`Failed to record alert transitions: ${error}`);
 			}
@@ -206,9 +202,7 @@ export class SecurityStateListener implements OnModuleInit, OnModuleDestroy {
 	 * Sync ack records: reset acks for alerts with newer timestamps,
 	 * and clean up stale ack records for alerts that no longer exist.
 	 */
-	private async syncAckRecords(
-		status: import('../models/security-status.model').SecurityStatusModel,
-	): Promise<void> {
+	private async syncAckRecords(status: import('../models/security-status.model').SecurityStatusModel): Promise<void> {
 		// Reset acks for alerts with newer timestamps
 		if (status.activeAlerts.length > 0) {
 			const alertIds = status.activeAlerts.map((a) => a.id);
