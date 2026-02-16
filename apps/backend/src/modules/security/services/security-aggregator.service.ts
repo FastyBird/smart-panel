@@ -29,15 +29,15 @@ export class SecurityAggregatorService implements SecurityAggregatorInterface {
 	async aggregateWithErrors(): Promise<AggregationResult> {
 		// Fetch devices once for all providers
 		let devices: DeviceEntity[];
+		let providerErrors = 0;
 
 		try {
 			devices = await this.devicesService.findAll();
 		} catch (error) {
 			this.logger.warn(`Failed to fetch devices: ${error}`);
 			devices = [];
+			providerErrors++;
 		}
-
-		let providerErrors = 0;
 
 		// Phase 1: Resolve armed state from alarm provider first
 		let armedState: ArmedState | null = null;
