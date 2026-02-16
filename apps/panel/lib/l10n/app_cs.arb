@@ -1075,7 +1075,9 @@
 
   "security_summary_all_clear": "Vše v pořádku · {count} vstupních bodů zabezpečeno",
   "security_summary_alerts": "{count} upozornění",
+  "security_summary_alerts_label": "Upozornění",
   "security_summary_entry_points_open": "{count} vstupních bodů otevřeno",
+  "security_summary_open_label": "Otevřeno",
 
   "security_no_active_alerts": "Žádná aktivní upozornění",
   "security_ack_all": "Potvrdit vše",

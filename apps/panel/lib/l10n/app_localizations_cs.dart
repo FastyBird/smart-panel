@@ -3240,9 +3240,15 @@ class AppLocalizationsCs extends AppLocalizations {
   }
 
   @override
+  String get security_summary_alerts_label => 'Upozornění';
+
+  @override
   String security_summary_entry_points_open(int count) {
     return '$count vstupních bodů otevřeno';
   }
+
+  @override
+  String get security_summary_open_label => 'Otevřeno';
 
   @override
   String get security_no_active_alerts => 'Žádná aktivní upozornění';

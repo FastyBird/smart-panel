@@ -3222,9 +3222,15 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get security_summary_alerts_label => 'Alerts';
+
+  @override
   String security_summary_entry_points_open(int count) {
     return '$count entry points open';
   }
+
+  @override
+  String get security_summary_open_label => 'Open';
 
   @override
   String get security_no_active_alerts => 'No active alerts';

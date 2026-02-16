@@ -3800,6 +3800,10 @@
       }
     }
   },
+  "security_summary_alerts_label": "Alerts",
+  "@security_summary_alerts_label": {
+    "description": "Short label for the alerts summary pill"
+  },
   "security_summary_entry_points_open": "{count} entry points open",
   "@security_summary_entry_points_open": {
     "description": "Status summary part showing the number of open entry points",
@@ -3808,6 +3812,10 @@
         "type": "int"
       }
     }
+  },
+  "security_summary_open_label": "Open",
+  "@security_summary_open_label": {
+    "description": "Short label for the open entry points summary pill"
   },
 
   "security_no_active_alerts": "No active alerts",

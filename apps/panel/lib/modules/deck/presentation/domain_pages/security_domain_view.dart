@@ -61,7 +61,6 @@ class _SecurityScreenState extends State<SecurityScreen> {
 				final ringBgColor = ringColor.withValues(alpha: 0.25);
 				final ringProgress = _ringProgress(status);
 				final isTriggered = status.alarmState == AlarmState.triggered;
-				final statusSummary = _statusSummary(status, entryPoints, localizations);
 
 				return Scaffold(
 					backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
@@ -98,7 +97,6 @@ class _SecurityScreenState extends State<SecurityScreen> {
 													ringBgColor: ringBgColor,
 													ringProgress: ringProgress,
 													isTriggered: isTriggered,
-													statusSummary: statusSummary,
 												);
 											}
 
@@ -115,7 +113,6 @@ class _SecurityScreenState extends State<SecurityScreen> {
 												ringBgColor: ringBgColor,
 												ringProgress: ringProgress,
 												isTriggered: isTriggered,
-												statusSummary: statusSummary,
 											);
 										},
 									),
@@ -235,7 +232,6 @@ class _SecurityScreenState extends State<SecurityScreen> {
 		required Color ringBgColor,
 		required double ringProgress,
 		required bool isTriggered,
-		required String statusSummary,
 	}) {
 		return PortraitViewLayout(
 			scrollable: false,
@@ -246,7 +242,9 @@ class _SecurityScreenState extends State<SecurityScreen> {
 						ringColor: ringColor,
 						ringBgColor: ringBgColor,
 						progress: ringProgress,
-						summary: statusSummary,
+						alertCount: status.activeAlerts.length,
+						openCount: entryPoints.openCount,
+						totalEntryPoints: entryPoints.all.length,
 						isTriggered: isTriggered,
 						isDark: isDark,
 						isCritical: _isCriticalStatus(status),
@@ -283,7 +281,6 @@ class _SecurityScreenState extends State<SecurityScreen> {
 		required Color ringBgColor,
 		required double ringProgress,
 		required bool isTriggered,
-		required String statusSummary,
 	}) {
 		return Padding(
 			padding: EdgeInsets.only(
@@ -302,7 +299,9 @@ class _SecurityScreenState extends State<SecurityScreen> {
 								ringColor: ringColor,
 								ringBgColor: ringBgColor,
 								progress: ringProgress,
-								summary: statusSummary,
+								alertCount: status.activeAlerts.length,
+								openCount: entryPoints.openCount,
+								totalEntryPoints: entryPoints.all.length,
 								isTriggered: isTriggered,
 								isDark: isDark,
 								isCritical: _isCriticalStatus(status),
@@ -381,20 +380,6 @@ class _SecurityScreenState extends State<SecurityScreen> {
 		return '$armed • $alarm';
 	}
 
-	String _statusSummary(SecurityStatusModel status, EntryPointsSummary entryPoints, AppLocalizations localizations) {
-		final openCount = entryPoints.openCount;
-		final alertCount = status.activeAlerts.length;
-
-		if (alertCount == 0 && openCount == 0) {
-			return localizations.security_summary_all_clear(entryPoints.all.length);
-		}
-
-		final parts = <String>[];
-		if (alertCount > 0) parts.add(localizations.security_summary_alerts(alertCount));
-		if (openCount > 0) parts.add(localizations.security_summary_entry_points_open(openCount));
-
-		return parts.join(' · ');
-	}
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -458,7 +443,9 @@ class _StatusRingHero extends StatefulWidget {
 	final Color ringColor;
 	final Color ringBgColor;
 	final double progress;
-	final String summary;
+	final int alertCount;
+	final int openCount;
+	final int totalEntryPoints;
 	final bool isTriggered;
 	final bool isDark;
 	final bool isCritical;
@@ -469,7 +456,9 @@ class _StatusRingHero extends StatefulWidget {
 		required this.ringColor,
 		required this.ringBgColor,
 		required this.progress,
-		required this.summary,
+		required this.alertCount,
+		required this.openCount,
+		required this.totalEntryPoints,
 		this.isTriggered = false,
 		required this.isDark,
 		this.isCritical = false,
@@ -577,19 +566,47 @@ class _StatusRingHeroState extends State<_StatusRingHero>
 						),
 					),
 					AppSpacings.spacingMdVertical,
-					// Summary
-					Text(
-						widget.summary,
-						style: TextStyle(
-							fontSize: AppFontSize.small,
-							color: widget.isCritical
-								? SystemPagesTheme.error(widget.isDark)
-								: SystemPagesTheme.textMuted(widget.isDark),
-						),
-						textAlign: TextAlign.center,
-					),
+					// Summary pills
+					_buildSummaryPills(),
 				],
 			),
+		);
+	}
+
+	Widget _buildSummaryPills() {
+		final alertCount = widget.alertCount;
+		final openCount = widget.openCount;
+
+		if (alertCount == 0 && openCount == 0) {
+			return _Badge(
+				label: widget.localizations.security_summary_all_clear(widget.totalEntryPoints),
+				color: SystemPagesTheme.success(widget.isDark),
+			);
+		}
+
+		final brightness = widget.isDark ? Brightness.dark : Brightness.light;
+		final themeKey = widget.isCritical ? ThemeColors.error : ThemeColors.warning;
+		final family = ThemeColorFamily.get(brightness, themeKey);
+
+		return Row(
+			mainAxisSize: MainAxisSize.min,
+			spacing: AppSpacings.pSm,
+			children: [
+				if (alertCount > 0)
+					_Badge(
+						label: widget.localizations.security_summary_alerts_label,
+						color: family.base,
+						count: alertCount,
+						countColor: family.light9,
+					),
+				if (openCount > 0)
+					_Badge(
+						label: widget.localizations.security_summary_open_label,
+						color: family.base,
+						count: openCount,
+						countColor: family.light9,
+					),
+			],
 		);
 	}
 
@@ -1329,29 +1346,71 @@ class _RefreshButton extends StatelessWidget {
 class _Badge extends StatelessWidget {
 	final String label;
 	final Color color;
+	final int? count;
+	final Color? countColor;
 
-	const _Badge({required this.label, required this.color});
+	const _Badge({required this.label, required this.color, this.count, this.countColor});
 
 	@override
 	Widget build(BuildContext context) {
+		final isDark = Theme.of(context).brightness == Brightness.dark;
+		final bgColor = _resolveBackground(isDark);
+		final textStyle = TextStyle(
+			fontSize: AppFontSize.extraSmall,
+			fontWeight: FontWeight.w700,
+			color: color,
+			letterSpacing: 0.3,
+		);
+
 		return Container(
 			padding: EdgeInsets.symmetric(
 				horizontal: AppSpacings.pMd,
-				vertical: AppSpacings.pXs,
+				vertical: AppSpacings.pSm,
 			),
 			decoration: BoxDecoration(
-				color: color.withValues(alpha: 0.12),
+				color: bgColor,
 				borderRadius: BorderRadius.circular(AppBorderRadius.base),
 			),
-			child: Text(
-				label,
-				style: TextStyle(
-					fontSize: AppFontSize.extraSmall,
-					fontWeight: FontWeight.w700,
-					color: color,
-					letterSpacing: 0.3,
-				),
-			),
+			child: count != null
+				? Row(
+					mainAxisSize: MainAxisSize.min,
+					spacing: AppSpacings.pSm,
+					children: [
+						Container(
+							width: AppSpacings.scale(14),
+							height: AppSpacings.scale(14),
+							decoration: BoxDecoration(
+								color: color,
+								shape: BoxShape.circle,
+							),
+							alignment: Alignment.center,
+							child: Text(
+								'$count',
+								style: TextStyle(
+									fontSize: AppFontSize.extraExtraSmall,
+									fontWeight: FontWeight.w700,
+									color: countColor ?? Colors.white,
+									height: 1,
+								),
+							),
+						),
+						Text(label, style: textStyle),
+					],
+				)
+				: Text(label, style: textStyle),
 		);
+	}
+
+	/// Resolve the pill background from ThemeColorFamily by matching the base color.
+	Color _resolveBackground(bool isDark) {
+		final brightness = isDark ? Brightness.dark : Brightness.light;
+
+		for (final key in ThemeColors.values) {
+			final family = ThemeColorFamily.get(brightness, key);
+			if (family.base == color) return family.light8;
+		}
+
+		// Fallback: shouldn't happen if color comes from ThemeColorFamily
+		return color.withValues(alpha: 0.12);
 	}
 }
