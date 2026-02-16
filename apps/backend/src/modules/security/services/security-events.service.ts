@@ -240,15 +240,28 @@ export class SecurityEventsService implements OnModuleInit {
 			tags.severity = data.severity;
 		}
 
+		const fields: Record<string, string> = {};
+
+		if (data.alertId) {
+			fields.alertId = data.alertId;
+		}
+
+		if (data.alertType) {
+			fields.alertType = data.alertType;
+		}
+
+		if (data.sourceDeviceId) {
+			fields.sourceDeviceId = data.sourceDeviceId;
+		}
+
+		if (data.payload) {
+			fields.payload = data.payload;
+		}
+
 		return {
 			measurement: MEASUREMENT_NAME,
 			tags,
-			fields: {
-				alertId: data.alertId ?? '',
-				alertType: data.alertType ?? '',
-				sourceDeviceId: data.sourceDeviceId ?? '',
-				payload: data.payload ?? '',
-			},
+			fields,
 		};
 	}
 

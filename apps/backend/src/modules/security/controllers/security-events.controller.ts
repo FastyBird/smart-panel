@@ -100,11 +100,11 @@ export class SecurityEventsController {
 			model.id = e.id;
 			model.timestamp = e.timestamp.toISOString();
 			model.eventType = e.eventType;
-			model.severity = e.severity ?? undefined;
-			model.alertId = e.alertId ?? undefined;
-			model.alertType = e.alertType ?? undefined;
-			model.sourceDeviceId = e.sourceDeviceId ?? undefined;
-			model.payload = e.payload ?? undefined;
+			model.severity = e.severity || undefined;
+			model.alertId = e.alertId || undefined;
+			model.alertType = e.alertType || undefined;
+			model.sourceDeviceId = e.sourceDeviceId || undefined;
+			model.payload = e.payload || undefined;
 
 			return model;
 		});
