@@ -1151,6 +1151,8 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     final items = _buildSummaryItems(isDark: isDark, localizations: localizations);
 
     if (items.isEmpty) {
+      if (!vertical) return const SizedBox.shrink();
+
       return Center(
         child: Padding(
           padding: AppSpacings.paddingMd,
