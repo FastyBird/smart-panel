@@ -610,7 +610,6 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     return SensorStatus.normal;
   }
 
-
   /// Formats raw sensor value for display using [SensorUtils.formatRawValue].
   String _formatSensorValue(dynamic value, String channelCategory) {
     return SensorUtils.formatRawValue(
@@ -618,7 +617,6 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
       DevicesModuleChannelCategory.fromJson(channelCategory),
     );
   }
-
 
   /// True when the channel property is bool or enum (binary/state display, no trend icon).
   bool _isDiscreteProperty(String? propertyId) {
@@ -840,7 +838,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     }
 
     return Consumer<DevicesService>(
-      builder: (context, devicesService, _) {
+      builder: (context, _, __) {
         final isDark = Theme.of(context).brightness == Brightness.dark;
 
         final alertCount =
@@ -932,7 +930,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
   // =============================================================================
   // HEADER
   // =============================================================================
-  // Title, subtitle (alert/health counts or sensor count), leading icon, home button.
+  // Title, subtitle (alert/health counts or sensor count), leading icon.
 
   Widget _buildHeader(BuildContext context, int alertCount) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
