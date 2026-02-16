@@ -372,9 +372,12 @@ class LightsDomainViewPage extends StatefulWidget {
 }
 
 class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
+  final ScreenService _screenService = locator<ScreenService>();
+
   /// Optional services: resolved in initState via [_tryLocator]. Listeners
   /// registered for Spaces, Devices, Scenes, Intents; others used ad hoc.
   SpacesService? _spacesService;
+  DisplayRepository? _displayRepository;
   DevicesService? _devicesService;
   ScenesService? _scenesService;
   EventBus? _eventBus;
@@ -1093,6 +1096,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     _deviceControlStateService = _tryLocator<DeviceControlStateService>('DeviceControlStateService');
     _roleControlStateRepository = _tryLocator<RoleControlStateRepository>('RoleControlStateRepository');
     _bottomNavModeNotifier = _tryLocator<BottomNavModeNotifier>('BottomNavModeNotifier');
+    _displayRepository = _tryLocator<DisplayRepository>('DisplayRepository');
 
     // Subscribe to page activation events for bottom nav mode registration
     _pageActivatedSubscription = _eventBus?.on<DeckPageActivatedEvent>().listen(_onPageActivated);
@@ -2702,6 +2706,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             _LightsHeroCard(
               state: heroState,
               statusColor: statusColor,
+              screenService: _screenService,
               isPortrait: true,
               onModeChanged: (mode) {
                 setState(() => _activeHeroMode = mode);
@@ -2797,6 +2802,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             child: _LightsHeroCard(
               state: heroState,
               statusColor: statusColor,
+              screenService: _screenService,
               onModeChanged: (mode) {
                 setState(() => _activeHeroMode = mode);
               },
@@ -3035,7 +3041,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   }
 
   Widget _buildPortraitScenesGrid(BuildContext context) {
-    final isSmallScreen = locator<ScreenService>().isSmallScreen;
+    final isSmallScreen = _screenService.isSmallScreen;
     final scenes = _lightingScenes;
     final crossAxisCount = isSmallScreen ? 2 : 3;
     final spacing = AppSpacings.pSm;
@@ -3097,7 +3103,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
   Widget _buildMoreScenesTile(BuildContext context, int overflowCount) {
     final localizations = AppLocalizations.of(context)!;
-    final isSmallScreen = locator<ScreenService>().isSmallScreen;
+    final isSmallScreen = _screenService.isSmallScreen;
     final compactPadding = isSmallScreen
         ? EdgeInsets.symmetric(
             horizontal: AppSpacings.pMd,
@@ -3335,8 +3341,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     final currentState = currentOverlay is bool ? currentOverlay : channel.on;
     final newState = !currentState;
 
-    final displayRepository = locator<DisplayRepository>();
-    final displayId = displayRepository.display?.id;
+    final displayId = _displayRepository?.display?.id;
 
     final commandContext = PropertyCommandContext(
       origin: 'panel.system.room',
@@ -3865,6 +3870,7 @@ class _HeroGradients {
 class _LightsHeroCard extends StatelessWidget {
   final _LightHeroState state;
   final ThemeColors statusColor;
+  final ScreenService screenService;
   final bool isPortrait;
   final ValueChanged<LightHeroCapability>? onModeChanged;
   final ValueChanged<bool>? onToggle;
@@ -3874,6 +3880,7 @@ class _LightsHeroCard extends StatelessWidget {
   const _LightsHeroCard({
     required this.state,
     required this.statusColor,
+    required this.screenService,
     this.isPortrait = false,
     this.onModeChanged,
     this.onToggle,
@@ -3883,7 +3890,7 @@ class _LightsHeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final screenService = locator<ScreenService>();
+    final screenService = this.screenService;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final colorFamily = ThemeColorFamily.get(
       isDark ? Brightness.dark : Brightness.light, statusColor);
@@ -3942,7 +3949,7 @@ class _LightsHeroCard extends StatelessWidget {
   // ── Badge (split: left = power toggle, right = device count → sheet) ──
 
   Widget _buildBadge(bool isDark, ThemeColorFamily colorFamily) {
-    final screenService = locator<ScreenService>();
+    final screenService = this.screenService;
     final useBaseFontSize = screenService.isLandscape
         ? screenService.isLargeScreen
         : !screenService.isSmallScreen;
@@ -4160,7 +4167,7 @@ class _LightsHeroCard extends StatelessWidget {
     final caps = state.capabilities.toList();
     caps.sort((a, b) => a.index.compareTo(b.index));
 
-    final isSmallPortrait = isPortrait && locator<ScreenService>().isSmallScreen;
+    final isSmallPortrait = isPortrait && screenService.isSmallScreen;
 
     return ModeSelector<LightHeroCapability>(
       modes: caps.map((cap) => ModeOption<LightHeroCapability>(

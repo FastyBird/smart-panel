@@ -216,6 +216,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
   final ScreenService _screenService = locator<ScreenService>();
 
   SpacesService? _spacesService;
+  ChannelPropertiesRepository? _channelPropertiesRepository;
   SpaceStateRepository? _spaceStateRepository;
   DevicesService? _devicesService;
   EventBus? _eventBus;
@@ -265,6 +266,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     _devicesService = _tryLocator<DevicesService>('DevicesService', onSuccess: (s) => s.addListener(_onDataChanged));
     _eventBus = _tryLocator<EventBus>('EventBus');
     _bottomNavModeNotifier = _tryLocator<BottomNavModeNotifier>('BottomNavModeNotifier');
+    _channelPropertiesRepository = _tryLocator<ChannelPropertiesRepository>('ChannelPropertiesRepository');
 
     // Subscribe to page activation events for bottom nav mode registration
     _pageActivatedSubscription = _eventBus?.on<DeckPageActivatedEvent>().listen(_onPageActivated);
@@ -621,14 +623,11 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
   /// True when the channel property is bool or enum (binary/state display, no trend icon).
   bool _isDiscreteProperty(String? propertyId) {
     if (propertyId == null) return false;
-    try {
-      final repo = locator<ChannelPropertiesRepository>();
-      final property = repo.getItem(propertyId);
-      if (property == null) return false;
-      return property.dataType.json == 'bool' || property.dataType.json == 'enum';
-    } catch (_) {
-      return false;
-    }
+    final repo = _channelPropertiesRepository;
+    if (repo == null) return false;
+    final property = repo.getItem(propertyId);
+    if (property == null) return false;
+    return property.dataType.json == 'bool' || property.dataType.json == 'enum';
   }
 
   /// Loads sensor list from [SpaceStateRepository] for [_roomId]; transforms

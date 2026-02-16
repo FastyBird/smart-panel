@@ -155,6 +155,8 @@ class ShadingDomainViewPage extends StatefulWidget {
 }
 
 class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
+  final ScreenService _screenService = locator<ScreenService>();
+
   SpacesService? _spacesService;
   DevicesService? _devicesService;
   EventBus? _eventBus;
@@ -1049,6 +1051,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
               deviceCount: roleData.deviceCount,
               position: position,
               positionThemeColor: _getPositionThemeColor(position),
+              screenService: _screenService,
               statusIcon: _getRoleStatusIcon(roleData),
               onPositionChanged: (value) => _onHeroPositionChanged(roleData.role, (value * 100).round()),
               onOpen: () => _setRolePositionImmediate(roleData.role, 100),
@@ -1184,6 +1187,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
             deviceCount: roleData.deviceCount,
             position: position,
             positionThemeColor: _getPositionThemeColor(position),
+            screenService: _screenService,
             isPortrait: true,
             statusIcon: _getRoleStatusIcon(roleData),
             onPositionChanged: (value) => _onHeroPositionChanged(roleData.role, (value * 100).round()),
@@ -1807,6 +1811,7 @@ class _ShadingHeroCard extends StatelessWidget {
   final int deviceCount;
   final int position;
   final ThemeColors positionThemeColor;
+  final ScreenService screenService;
   final bool isPortrait;
   final ValueChanged<double> onPositionChanged;
   final VoidCallback onOpen;
@@ -1821,6 +1826,7 @@ class _ShadingHeroCard extends StatelessWidget {
     required this.deviceCount,
     required this.position,
     required this.positionThemeColor,
+    required this.screenService,
     this.isPortrait = false,
     required this.statusIcon,
     required this.onPositionChanged,
@@ -1832,7 +1838,7 @@ class _ShadingHeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final screenService = locator<ScreenService>();
+    final screenService = this.screenService;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final colorFamily = ThemeColorFamily.get(
       isDark ? Brightness.dark : Brightness.light, positionThemeColor);
@@ -1912,7 +1918,7 @@ class _ShadingHeroCard extends StatelessWidget {
   // ── Badge (split: left = role name, right = device count → sheet) ──
 
   Widget _buildBadge(bool isDark, ThemeColorFamily colorFamily) {
-    final screenService = locator<ScreenService>();
+    final screenService = this.screenService;
     final useBaseFontSize = screenService.isLandscape
         ? screenService.isLargeScreen
         : !screenService.isSmallScreen;
