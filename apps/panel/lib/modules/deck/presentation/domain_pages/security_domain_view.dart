@@ -261,7 +261,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
 			onChanged: (tab) => setState(() => _selectedTab = tab),
 			orientation: ModeSelectorOrientation.horizontal,
 			iconPlacement: ModeSelectorIconPlacement.left,
-			showLabels: screenService.isLargeScreen ? null : false,
+			showLabels: screenService.isSmallScreen ? false : null,
 			color: _modeSelectorColor(status),
 		);
 	}
