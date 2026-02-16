@@ -181,7 +181,6 @@ class _SecurityScreenState extends State<SecurityScreen> {
 					screenService: screenService,
 					localizations: localizations,
 					isCritical: _isCriticalStatus(status),
-					isLandscape: isLandscape,
 				);
 			case _SecurityTab.alerts:
 				return _AlertStream(
@@ -617,7 +616,6 @@ class _EntryPointGrid extends StatelessWidget {
 	final ScreenService screenService;
 	final AppLocalizations localizations;
 	final bool isCritical;
-	final bool isLandscape;
 
 	const _EntryPointGrid({
 		required this.entryPoints,
@@ -625,7 +623,6 @@ class _EntryPointGrid extends StatelessWidget {
 		required this.screenService,
 		required this.localizations,
 		this.isCritical = false,
-		this.isLandscape = false,
 	});
 
 	@override
@@ -640,48 +637,30 @@ class _EntryPointGrid extends StatelessWidget {
 			? localizations.security_entry_open_count(entryPoints.openCount)
 			: localizations.security_entry_all_secure;
 
-		final crossAxisCount = isLandscape || screenService.isSmallScreen ? 3 : 4;
+		final crossAxisCount = screenService.isSmallScreen ? 1 : 2;
 		final items = entryPoints.all;
 		final rowCount = (items.length / crossAxisCount).ceil();
-		final fillColor = isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
+		final tileHeight = AppSpacings.scale(AppTileHeight.horizontal * 0.85);
+		final bgColor = isDark ? AppBgColorDark.page : AppBgColorLight.page;
 
-		Widget buildRow(int rowIndex) {
+		Widget buildRow(BuildContext context, int rowIndex) {
 			final start = rowIndex * crossAxisCount;
 			final end = (start + crossAxisCount).clamp(0, items.length);
 			final rowItems = items.sublist(start, end);
 
-			return Row(
-				spacing: AppSpacings.pMd,
-				children: [
-					for (final ep in rowItems)
-						Expanded(
-							child: AspectRatio(
-								aspectRatio: AppTileAspectRatio.square,
+			return SizedBox(
+				height: tileHeight,
+				child: Row(
+					spacing: AppSpacings.pSm,
+					children: [
+						for (final ep in rowItems)
+							Expanded(
 								child: _entryTile(context, ep, isCritical && ep.isOpen == true),
 							),
-						),
-					for (var i = rowItems.length; i < crossAxisCount; i++)
-						const Expanded(child: SizedBox()),
-				],
-			);
-		}
-
-		if (isLandscape) {
-			return Column(
-				mainAxisSize: MainAxisSize.min,
-				crossAxisAlignment: CrossAxisAlignment.start,
-				children: [
-					SectionTitle(
-						title: 'Entry Points',
-						icon: MdiIcons.home,
-						trailing: _Badge(label: badgeText, color: badgeColor),
-					),
-					AppSpacings.spacingMdVertical,
-					for (int i = 0; i < rowCount; i++) ...[
-						if (i > 0) SizedBox(height: AppSpacings.pMd),
-						buildRow(i),
+						for (var i = rowItems.length; i < crossAxisCount; i++)
+							const Expanded(child: SizedBox()),
 					],
-				],
+				),
 			);
 		}
 
@@ -693,22 +672,22 @@ class _EntryPointGrid extends StatelessWidget {
 					icon: MdiIcons.home,
 					trailing: _Badge(label: badgeText, color: badgeColor),
 				),
-				AppSpacings.spacingMdVertical,
+				AppSpacings.spacingSmVertical,
 				Expanded(
 					child: VerticalScrollWithGradient(
 						gradientHeight: AppSpacings.pMd,
-						backgroundColor: fillColor,
+						backgroundColor: bgColor,
 						itemCount: rowCount,
-						separatorHeight: AppSpacings.pMd,
+						separatorHeight: AppSpacings.pSm,
 						padding: EdgeInsets.symmetric(vertical: AppSpacings.pMd),
-						itemBuilder: (context, rowIndex) => buildRow(rowIndex),
+						itemBuilder: (context, rowIndex) => buildRow(context, rowIndex),
 					),
 				),
 			],
 		);
 	}
 
-	UniversalTile _entryTile(BuildContext context, EntryPointData ep, bool critical) {
+	Widget _entryTile(BuildContext context, EntryPointData ep, bool critical) {
 		final isOpen = ep.isOpen == true;
 		final isUnknown = ep.isOpen == null;
 
@@ -730,6 +709,7 @@ class _EntryPointGrid extends StatelessWidget {
 		}
 
 		return UniversalTile(
+			layout: TileLayout.horizontal,
 			icon: ep.isDoor ? MdiIcons.doorOpen : MdiIcons.windowOpenVariant,
 			name: ep.name,
 			status: statusText,
