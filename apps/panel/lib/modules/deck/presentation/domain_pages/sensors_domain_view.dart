@@ -362,24 +362,20 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: AppSpacings.pLg,
-            vertical: AppSpacings.pMd,
+          padding: EdgeInsets.only(
+            top: AppSpacings.pMd,
+            left: AppSpacings.pMd,
+            right: AppSpacings.pMd,
           ),
           child: Text(
             AppLocalizations.of(context)!.sensor_label_filter.toUpperCase(),
             style: TextStyle(
               fontSize: AppFontSize.extraSmall,
               fontWeight: FontWeight.w600,
-              letterSpacing: 1.0,
+              letterSpacing: AppSpacings.scale(1),
               color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
             ),
           ),
-        ),
-        Divider(
-          height: AppSpacings.scale(1),
-          thickness: AppSpacings.scale(1),
-          color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light,
         ),
         Flexible(
           child: VerticalScrollWithGradient(
