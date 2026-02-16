@@ -14,7 +14,8 @@ export class SecurityModuleInfluxMigration1766000000000 implements MigrationInte
 			`);
 		}
 
-		// 2. Drop security_module_events table (data migrated to InfluxDB)
+		// 2. Drop security_module_events table — events are now stored in InfluxDB.
+		// Historical SQLite events are intentionally discarded (not migrated to InfluxDB).
 		const tables = await queryRunner.query(
 			`SELECT name FROM sqlite_master WHERE type='table' AND name='security_module_events'`,
 		);
@@ -25,7 +26,9 @@ export class SecurityModuleInfluxMigration1766000000000 implements MigrationInte
 	}
 
 	public async down(queryRunner: QueryRunner): Promise<void> {
-		// Recreate events table (without data — InfluxDB data is not reversible)
+		// Recreate events table for schema compatibility only — data stored in
+		// InfluxDB is not migrated back. Column names and types approximate the
+		// original SecurityEventEntity but may differ in defaults.
 		await queryRunner.query(`
 			CREATE TABLE IF NOT EXISTS "security_module_events" (
 				"id" varchar PRIMARY KEY NOT NULL,

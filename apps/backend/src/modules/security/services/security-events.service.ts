@@ -73,11 +73,11 @@ export class SecurityEventsService implements OnModuleInit {
 			conditions.push(`time >= '${query.since.toISOString()}'`);
 		}
 
-		if (query.severity != null) {
+		if (query.severity != null && Object.values(Severity).includes(query.severity)) {
 			conditions.push(`severity = '${query.severity}'`);
 		}
 
-		if (query.type != null) {
+		if (query.type != null && Object.values(SecurityEventType).includes(query.type)) {
 			conditions.push(`eventType = '${query.type}'`);
 		}
 
