@@ -253,17 +253,11 @@ class SecurityOverlayController extends ChangeNotifier {
 
 	void updateStatus(SecurityStatusModel newStatus) {
 		// Clear optimistic cache: server state is now the truth.
-		// Keep IDs that are still pending (in-flight), synthetic IDs,
-		// or IDs where the alert is still active but server hasn't confirmed
-		// the acknowledgement yet (prevents overlay flicker between API
-		// success and server push).
+		// Keep IDs that are still pending (in-flight) or synthetic IDs.
+		// Once the server reports a state (acknowledged or not), trust it.
 		_optimisticAckIds.retainWhere((id) {
 			if (_pendingAckIds.contains(id)) return true;
 			if (id.startsWith('__')) return true;
-			// Retain if alert still active but not yet confirmed by server
-			for (final alert in newStatus.activeAlerts) {
-				if (alert.id == id && !alert.acknowledged) return true;
-			}
 			return false;
 		});
 

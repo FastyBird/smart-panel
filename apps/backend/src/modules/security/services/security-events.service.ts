@@ -102,8 +102,8 @@ export class SecurityEventsService implements OnModuleInit {
 				payload: string | null;
 			}>(influxQuery);
 
-			return results.map((r, index) => ({
-				id: `evt_${r.time.getTime()}_${index}`,
+			return results.map((r) => ({
+				id: `evt_${r.time.getTime()}_${r.eventType ?? 'unknown'}_${r.alertId || 'system'}`,
 				timestamp: r.time,
 				eventType: (r.eventType as SecurityEventType) ?? SecurityEventType.ALERT_RAISED,
 				severity: (r.severity as Severity) ?? null,

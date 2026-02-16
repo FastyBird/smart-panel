@@ -76,6 +76,7 @@ export class SecurityStateListener implements OnModuleInit, OnModuleDestroy {
 		}
 	}
 
+	@OnEvent(DevicesEventType.CHANNEL_PROPERTY_CREATED)
 	@OnEvent(DevicesEventType.CHANNEL_PROPERTY_VALUE_SET)
 	@OnEvent(DevicesEventType.CHANNEL_PROPERTY_UPDATED)
 	@OnEvent(DevicesEventType.CHANNEL_PROPERTY_DELETED)
@@ -87,8 +88,9 @@ export class SecurityStateListener implements OnModuleInit, OnModuleDestroy {
 		}
 	}
 
+	@OnEvent(DevicesEventType.CHANNEL_CREATED)
 	@OnEvent(DevicesEventType.CHANNEL_DELETED)
-	handleChannelDeleted(channel: ChannelEntity): void {
+	handleChannelChanged(channel: ChannelEntity): void {
 		if (!SECURITY_CHANNEL_CATEGORIES.includes(channel.category)) {
 			return;
 		}
