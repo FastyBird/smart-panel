@@ -3680,6 +3680,11 @@
     }
   },
 
+  "domain_security": "Security",
+  "@domain_security": {
+    "description": "Title for security domain view in room navigation"
+  },
+
   "security_tab_entry_points": "Entry Points",
   "@security_tab_entry_points": {
     "description": "Tab label for the entry points section on the security screen"

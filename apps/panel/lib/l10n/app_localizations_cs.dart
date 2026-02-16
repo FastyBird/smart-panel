@@ -3159,6 +3159,9 @@ class AppLocalizationsCs extends AppLocalizations {
   }
 
   @override
+  String get domain_security => 'Zabezpečení';
+
+  @override
   String get security_tab_entry_points => 'Vstupní body';
 
   @override

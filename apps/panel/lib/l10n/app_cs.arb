@@ -1045,6 +1045,8 @@
   "sensors_domain_all_sensors": "Všechny senzory",
   "sensors_domain_sensor_count": "{count} senzorů",
 
+  "domain_security": "Zabezpečení",
+
   "security_tab_entry_points": "Vstupní body",
   "security_tab_alerts": "Upozornění",
   "security_tab_events": "Události",

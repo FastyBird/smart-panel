@@ -5939,6 +5939,12 @@ abstract class AppLocalizations {
   /// **'{count} sensors'**
   String sensors_domain_sensor_count(int count);
 
+  /// Title for security domain view in room navigation
+  ///
+  /// In en, this message translates to:
+  /// **'Security'**
+  String get domain_security;
+
   /// Tab label for the entry points section on the security screen
   ///
   /// In en, this message translates to:

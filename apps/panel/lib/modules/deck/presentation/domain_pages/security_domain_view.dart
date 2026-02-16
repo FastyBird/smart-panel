@@ -108,7 +108,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
 						child: Column(
 							children: [
 								PageHeader(
-									title: 'Security',
+									title: localizations.domain_security,
 									subtitle: _headerSubtitle(status, localizations),
 									subtitleColor: statusFamily.base,
 									onBack: widget.embedded ? null : () => Navigator.pop(context),
@@ -662,6 +662,7 @@ class _StatusRingHeroState extends State<_StatusRingHero>
 			return _Badge(
 				label: widget.localizations.security_summary_all_clear(widget.totalEntryPoints),
 				color: family.base,
+				backgroundColor: family.light8,
 			);
 		}
 
@@ -673,6 +674,7 @@ class _StatusRingHeroState extends State<_StatusRingHero>
 					_Badge(
 						label: widget.localizations.security_summary_alerts_label,
 						color: family.base,
+						backgroundColor: family.light8,
 						count: alertCount,
 						countColor: family.light9,
 					),
@@ -680,6 +682,7 @@ class _StatusRingHeroState extends State<_StatusRingHero>
 					_Badge(
 						label: widget.localizations.security_summary_open_label,
 						color: family.base,
+						backgroundColor: family.light8,
 						count: openCount,
 						countColor: family.light9,
 					),
@@ -727,7 +730,7 @@ class _EntryPointGrid extends StatelessWidget {
 		final badgeThemeKey = entryPoints.openCount > 0
 			? (isCritical ? ThemeColors.error : ThemeColors.warning)
 			: ThemeColors.success;
-		final badgeColor = ThemeColorFamily.get(brightness, badgeThemeKey).base;
+		final badgeFamily = ThemeColorFamily.get(brightness, badgeThemeKey);
 
 		final badgeText = entryPoints.openCount > 0
 			? localizations.security_entry_open_count(entryPoints.openCount)
@@ -766,7 +769,7 @@ class _EntryPointGrid extends StatelessWidget {
 				SectionTitle(
 					title: localizations.security_tab_entry_points,
 					icon: MdiIcons.home,
-					trailing: _Badge(label: badgeText, color: badgeColor),
+					trailing: _Badge(label: badgeText, color: badgeFamily.base, backgroundColor: badgeFamily.light8),
 				),
 				AppSpacings.spacingSmVertical,
 				Expanded(
@@ -847,15 +850,15 @@ class _AlertStream extends StatelessWidget {
 		required this.localizations,
 	});
 
-	Color get _accentColor {
+	ThemeColorFamily get _accentFamily {
 		final brightness = isDark ? Brightness.dark : Brightness.light;
 		if (status.hasCriticalAlert || status.alarmState == AlarmState.triggered) {
-			return ThemeColorFamily.get(brightness, ThemeColors.error).base;
+			return ThemeColorFamily.get(brightness, ThemeColors.error);
 		}
 		if (status.highestSeverity == Severity.warning) {
-			return ThemeColorFamily.get(brightness, ThemeColors.warning).base;
+			return ThemeColorFamily.get(brightness, ThemeColors.warning);
 		}
-		return ThemeColorFamily.get(brightness, ThemeColors.success).base;
+		return ThemeColorFamily.get(brightness, ThemeColors.success);
 	}
 
 	bool get _hasUnacked {
@@ -872,7 +875,7 @@ class _AlertStream extends StatelessWidget {
 		final headerTrailing = Row(
 			mainAxisSize: MainAxisSize.min,
 			children: [
-				_Badge(label: '${sortedAlerts.length}', color: _accentColor),
+				_Badge(label: '${sortedAlerts.length}', color: _accentFamily.base, backgroundColor: _accentFamily.light8),
 				if (_hasUnacked && !controller.isConnectionOffline) ...[
 					AppSpacings.spacingMdHorizontal,
 					_AckAllButton(
@@ -1426,15 +1429,20 @@ class _RefreshButton extends StatelessWidget {
 class _Badge extends StatelessWidget {
 	final String label;
 	final Color color;
+	final Color backgroundColor;
 	final int? count;
 	final Color? countColor;
 
-	const _Badge({required this.label, required this.color, this.count, this.countColor});
+	const _Badge({
+		required this.label,
+		required this.color,
+		required this.backgroundColor,
+		this.count,
+		this.countColor,
+	});
 
 	@override
 	Widget build(BuildContext context) {
-		final isDark = Theme.of(context).brightness == Brightness.dark;
-		final bgColor = _resolveBackground(isDark);
 		final textStyle = TextStyle(
 			fontSize: AppFontSize.extraSmall,
 			fontWeight: FontWeight.w700,
@@ -1448,7 +1456,7 @@ class _Badge extends StatelessWidget {
 				vertical: AppSpacings.pSm,
 			),
 			decoration: BoxDecoration(
-				color: bgColor,
+				color: backgroundColor,
 				borderRadius: BorderRadius.circular(AppBorderRadius.base),
 			),
 			child: count != null
@@ -1479,18 +1487,5 @@ class _Badge extends StatelessWidget {
 				)
 				: Text(label, style: textStyle),
 		);
-	}
-
-	/// Resolve the pill background from ThemeColorFamily by matching the base color.
-	Color _resolveBackground(bool isDark) {
-		final brightness = isDark ? Brightness.dark : Brightness.light;
-
-		for (final key in ThemeColors.values) {
-			final family = ThemeColorFamily.get(brightness, key);
-			if (family.base == color) return family.light8;
-		}
-
-		// Fallback: shouldn't happen if color comes from ThemeColorFamily
-		return color.withValues(alpha: 0.12);
 	}
 }
