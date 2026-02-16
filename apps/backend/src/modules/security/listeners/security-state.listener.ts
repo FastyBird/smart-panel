@@ -93,8 +93,8 @@ export class SecurityStateListener implements OnModuleInit, OnModuleDestroy {
 	@OnEvent(DevicesEventType.CHANNEL_CREATED)
 	@OnEvent(DevicesEventType.CHANNEL_DELETED)
 	@OnEvent(DevicesEventType.CHANNEL_RESET)
-	handleChannelChanged(channel: ChannelEntity): void {
-		if (!SECURITY_CHANNEL_CATEGORIES.includes(channel.category)) {
+	handleChannelChanged(channel: ChannelEntity | null): void {
+		if (channel != null && !SECURITY_CHANNEL_CATEGORIES.includes(channel.category)) {
 			return;
 		}
 
@@ -103,7 +103,7 @@ export class SecurityStateListener implements OnModuleInit, OnModuleDestroy {
 
 	@OnEvent(DevicesEventType.DEVICE_DELETED)
 	@OnEvent(DevicesEventType.DEVICE_RESET)
-	handleDeviceChanged(_device: DeviceEntity): void {
+	handleDeviceChanged(_device: DeviceEntity | null): void {
 		this.scheduleStateRecalculation();
 	}
 
