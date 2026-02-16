@@ -46,6 +46,7 @@ export class SecurityStateListener implements OnModuleInit, OnModuleDestroy {
 	private readonly logger = new Logger(SecurityStateListener.name);
 
 	private debounceTimer: NodeJS.Timeout | null = null;
+	private processingLock: Promise<void> = Promise.resolve();
 	private seeded = false;
 
 	constructor(
@@ -63,7 +64,7 @@ export class SecurityStateListener implements OnModuleInit, OnModuleDestroy {
 		// Seed the events snapshot on startup so transitions during downtime
 		// are not silently missed.
 		try {
-			await this.processSecurityStateChange();
+			await this.enqueueStateChange();
 		} catch (error) {
 			this.logger.warn(`Failed to seed security state on init: ${error}`);
 		}
@@ -147,8 +148,26 @@ export class SecurityStateListener implements OnModuleInit, OnModuleDestroy {
 
 		this.debounceTimer = setTimeout(() => {
 			this.debounceTimer = null;
-			void this.processSecurityStateChange();
+			void this.enqueueStateChange();
 		}, SECURITY_STATE_DEBOUNCE_MS);
+	}
+
+	/**
+	 * Serialize state changes so only one processSecurityStateChange()
+	 * runs at a time. Prevents out-of-order status emissions when a
+	 * slower run finishes after a faster one.
+	 */
+	private async enqueueStateChange(): Promise<void> {
+		const previous = this.processingLock;
+		let resolve: () => void = () => {};
+		this.processingLock = new Promise<void>((r) => (resolve = r));
+
+		try {
+			await previous;
+			await this.processSecurityStateChange();
+		} finally {
+			resolve();
+		}
 	}
 
 	private async processSecurityStateChange(): Promise<void> {
