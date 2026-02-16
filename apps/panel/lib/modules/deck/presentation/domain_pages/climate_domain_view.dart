@@ -352,9 +352,12 @@ class ClimateDomainViewPage extends StatefulWidget {
 }
 
 class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
+  final ScreenService _screenService = locator<ScreenService>();
+
   /// Optional services; resolved in initState. Listeners on Spaces, Devices, Intents.
   SpacesService? _spacesService;
   DevicesService? _devicesService;
+  DisplayRepository? _displayRepository;
   EventBus? _eventBus;
   IntentsRepository? _intentsRepository;
   IntentOverlayService? _intentOverlayService;
@@ -465,6 +468,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     }
     _deviceControlStateService = _tryLocator<DeviceControlStateService>('DeviceControlStateService');
     _bottomNavModeNotifier = _tryLocator<BottomNavModeNotifier>('BottomNavModeNotifier');
+    _displayRepository = _tryLocator<DisplayRepository>('DisplayRepository');
 
     // Subscribe to page activation events for bottom nav mode registration
     _pageActivatedSubscription = _eventBus?.on<DeckPageActivatedEvent>().listen(_onPageActivated);
@@ -1267,7 +1271,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         Padding(
           padding: EdgeInsets.only(bottom: AppSpacings.pSm),
           child: Text(
-            'MODE',
+            localizations.popup_label_mode.toUpperCase(),
             style: TextStyle(
               fontSize: AppFontSize.extraSmall,
               fontWeight: FontWeight.w600,
@@ -1679,7 +1683,8 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   }
 
   void _openClimateDeviceDetail(ClimateDevice climateDevice) {
-    final devicesService = locator<DevicesService>();
+    final devicesService = _devicesService;
+    if (devicesService == null) return;
     final deviceView = devicesService.getDevice(climateDevice.id);
 
     Widget? detailPage;
@@ -1987,7 +1992,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   }
 
   Widget _buildSensorsGrid(BuildContext context) {
-    final isSmallScreen = locator<ScreenService>().isSmallScreen;
+    final isSmallScreen = _screenService.isSmallScreen;
     final sensors = _state.sensors;
     final crossAxisCount = isSmallScreen ? 2 : 3;
     final spacing = AppSpacings.pSm;
@@ -2045,7 +2050,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
 
   Widget _buildSensorGridTile(BuildContext context, ClimateSensor sensor) {
     final localizations = AppLocalizations.of(context)!;
-    final isSmallScreen = locator<ScreenService>().isSmallScreen;
+    final isSmallScreen = _screenService.isSmallScreen;
 
     return UniversalTile(
       layout: isSmallScreen ? TileLayout.horizontal : TileLayout.vertical,
@@ -2068,7 +2073,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
 
   Widget _buildMoreSensorsTile(BuildContext context, int overflowCount) {
     final localizations = AppLocalizations.of(context)!;
-    final isSmallScreen = locator<ScreenService>().isSmallScreen;
+    final isSmallScreen = _screenService.isSmallScreen;
     final compactPadding = isSmallScreen
         ? EdgeInsets.symmetric(
             horizontal: AppSpacings.pMd,
@@ -2299,7 +2304,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   // gradient range bar, and +/- adjustment buttons.
 
   Widget _buildHeroCard(BuildContext context) {
-    final screenService = locator<ScreenService>();
+    final screenService = _screenService;
 
     return HeroCard(
       child: LayoutBuilder(
@@ -2341,7 +2346,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     final colorFamily = _getModeColorFamily(context);
     final modeLabel = _getModeLabel(localizations).toUpperCase();
 
-    final screenService = locator<ScreenService>();
+    final screenService = _screenService;
     final useBaseFontSize = screenService.isLandscape
         ? screenService.isLargeScreen
         : !screenService.isSmallScreen;
@@ -2483,7 +2488,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   }
 
   Widget _buildControlsRow(BuildContext context) {
-    final screenService = locator<ScreenService>();
+    final screenService = _screenService;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isOff = _state.mode == ClimateMode.off;
     final isCompact = screenService.isPortrait
@@ -2714,8 +2719,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     }
     final newState = !currentState;
 
-    final displayRepository = locator<DisplayRepository>();
-    final displayId = displayRepository.display?.id;
+    final displayId = _displayRepository?.display?.id;
 
     final commandContext = PropertyCommandContext(
       origin: 'panel.system.room',
@@ -2764,7 +2768,8 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   }
 
   void _openAuxiliaryDeviceDetail(AuxiliaryDevice auxiliaryDevice) {
-    final devicesService = locator<DevicesService>();
+    final devicesService = _devicesService;
+    if (devicesService == null) return;
     final deviceView = devicesService.getDevice(auxiliaryDevice.id);
 
     Widget? detailPage;

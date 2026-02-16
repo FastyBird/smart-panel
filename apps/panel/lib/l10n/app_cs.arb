@@ -662,6 +662,9 @@
   "light_preset_warm": "Teplá",
   "light_preset_daylight": "Denní světlo",
   "light_preset_cool": "Studená",
+  "light_preset_warm_white": "Teplá bílá",
+  "light_preset_neutral": "Neutrální",
+  "light_preset_cool_white": "Studená bílá",
   "light_color_red": "Červená",
   "light_color_orange": "Oranžová",
   "light_color_yellow": "Žlutá",
@@ -670,6 +673,37 @@
   "light_color_blue": "Modrá",
   "light_color_purple": "Fialová",
   "light_color_pink": "Růžová",
+  "light_color_violet": "Fialová",
+  "light_color_white": "Bílá",
+  "light_cap_brightness": "Jas",
+  "light_cap_color_temp": "Teplota",
+  "light_cap_hue": "Odstín",
+  "light_cap_saturation": "Sytost",
+  "light_cap_white": "Bílá",
+  "light_header_mode_count": "{mode} \u2022 {count} zap.",
+  "@light_header_mode_count": {
+    "placeholders": {
+      "mode": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "light_header_count_of_total": "{count} z {total} zap.",
+  "@light_header_count_of_total": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+
+  "popup_label_mode": "Režim",
 
   "connection_banner_reconnecting": "Připojování...",
   "connection_banner_retry": "Zkusit znovu",
@@ -1001,6 +1035,7 @@
   "sensors_domain_empty_title": "Žádné senzory",
   "sensors_domain_empty_description": "V této místnosti zatím nejsou přiřazeny žádné senzory.",
   "sensors_domain_alerts_active": "{count, plural, =1{Aktivní výstraha} few{Aktivní výstrahy} other{Aktivních výstrah}}",
+  "sensors_domain_no_summary": "Žádná data o prostředí",
   "sensors_domain_no_sensors": "Žádné senzory",
   "sensors_domain_health_stale": "{count} zastaralých",
   "sensors_domain_health_offline": "{count} offline",

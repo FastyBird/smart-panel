@@ -3929,6 +3929,24 @@ abstract class AppLocalizations {
   /// **'Cool'**
   String get light_preset_cool;
 
+  /// Warm white color temperature preset label
+  ///
+  /// In en, this message translates to:
+  /// **'Warm White'**
+  String get light_preset_warm_white;
+
+  /// Neutral color temperature preset label
+  ///
+  /// In en, this message translates to:
+  /// **'Neutral'**
+  String get light_preset_neutral;
+
+  /// Cool white color temperature preset label
+  ///
+  /// In en, this message translates to:
+  /// **'Cool White'**
+  String get light_preset_cool_white;
+
   /// Red color preset label
   ///
   /// In en, this message translates to:
@@ -3976,6 +3994,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Pink'**
   String get light_color_pink;
+
+  /// Violet color preset label
+  ///
+  /// In en, this message translates to:
+  /// **'Violet'**
+  String get light_color_violet;
+
+  /// White color preset label
+  ///
+  /// In en, this message translates to:
+  /// **'White'**
+  String get light_color_white;
+
+  /// Brightness capability short label
+  ///
+  /// In en, this message translates to:
+  /// **'Bright'**
+  String get light_cap_brightness;
+
+  /// Color temperature capability short label
+  ///
+  /// In en, this message translates to:
+  /// **'Temp'**
+  String get light_cap_color_temp;
+
+  /// Hue capability short label
+  ///
+  /// In en, this message translates to:
+  /// **'Hue'**
+  String get light_cap_hue;
+
+  /// Saturation capability short label
+  ///
+  /// In en, this message translates to:
+  /// **'Sat'**
+  String get light_cap_saturation;
+
+  /// White channel capability short label
+  ///
+  /// In en, this message translates to:
+  /// **'White'**
+  String get light_cap_white;
+
+  /// Lights header subtitle showing mode name and count of lights on
+  ///
+  /// In en, this message translates to:
+  /// **'{mode} • {count} on'**
+  String light_header_mode_count(String mode, int count);
+
+  /// Lights header subtitle showing count of lights on out of total
+  ///
+  /// In en, this message translates to:
+  /// **'{count} of {total} on'**
+  String light_header_count_of_total(int count, int total);
+
+  /// Label shown at top of mode selection popup
+  ///
+  /// In en, this message translates to:
+  /// **'Mode'**
+  String get popup_label_mode;
 
   /// Banner text shown during reconnection attempts
   ///
@@ -5806,6 +5884,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, =1{Alert Active} other{Alerts Active}}'**
   String sensors_domain_alerts_active(int count);
+
+  /// Message shown when no summary data (temperature, humidity, etc.) is available for the room
+  ///
+  /// In en, this message translates to:
+  /// **'No environment data available'**
+  String get sensors_domain_no_summary;
 
   /// No description provided for @sensors_domain_no_sensors.
   ///

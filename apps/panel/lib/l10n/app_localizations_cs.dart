@@ -2088,6 +2088,15 @@ class AppLocalizationsCs extends AppLocalizations {
   String get light_preset_cool => 'Studená';
 
   @override
+  String get light_preset_warm_white => 'Teplá bílá';
+
+  @override
+  String get light_preset_neutral => 'Neutrální';
+
+  @override
+  String get light_preset_cool_white => 'Studená bílá';
+
+  @override
   String get light_color_red => 'Červená';
 
   @override
@@ -2110,6 +2119,40 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get light_color_pink => 'Růžová';
+
+  @override
+  String get light_color_violet => 'Fialová';
+
+  @override
+  String get light_color_white => 'Bílá';
+
+  @override
+  String get light_cap_brightness => 'Jas';
+
+  @override
+  String get light_cap_color_temp => 'Teplota';
+
+  @override
+  String get light_cap_hue => 'Odstín';
+
+  @override
+  String get light_cap_saturation => 'Sytost';
+
+  @override
+  String get light_cap_white => 'Bílá';
+
+  @override
+  String light_header_mode_count(String mode, int count) {
+    return '$mode • $count zap.';
+  }
+
+  @override
+  String light_header_count_of_total(int count, int total) {
+    return '$count z $total zap.';
+  }
+
+  @override
+  String get popup_label_mode => 'Režim';
 
   @override
   String get connection_banner_reconnecting => 'Připojování...';
@@ -3081,6 +3124,9 @@ class AppLocalizationsCs extends AppLocalizations {
     );
     return '$_temp0';
   }
+
+  @override
+  String get sensors_domain_no_summary => 'Žádná data o prostředí';
 
   @override
   String get sensors_domain_no_sensors => 'Žádné senzory';
