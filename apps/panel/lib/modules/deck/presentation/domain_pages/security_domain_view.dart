@@ -807,11 +807,7 @@ class _AlertStream extends StatelessWidget {
 			),
 		);
 
-		final cardColor = isDark ? AppFillColorDark.light : AppFillColorLight.blank;
-
 		return AppCard(
-			color: cardColor,
-			borderColor: _accentColor,
 			expanded: true,
 			headerIcon: MdiIcons.alertOutline,
 			headerTitle: localizations.security_tab_alerts,
@@ -822,7 +818,7 @@ class _AlertStream extends StatelessWidget {
 					? Center(child: emptyState)
 					: VerticalScrollWithGradient(
 						gradientHeight: AppSpacings.pMd,
-						backgroundColor: cardColor,
+						backgroundColor: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
 						itemCount: sortedAlerts.length,
 						separatorHeight: AppSpacings.scale(1),
 						separatorColor: dividerColor,
@@ -1162,10 +1158,9 @@ class _EventsFeed extends StatelessWidget {
 
 				final displayEvents = eventsRepo.events.take(maxEvents).toList();
 
-				final fillColor = isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
 				return VerticalScrollWithGradient(
 					gradientHeight: AppSpacings.pMd,
-					backgroundColor: fillColor,
+					backgroundColor: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
 					itemCount: displayEvents.length,
 					separatorHeight: AppSpacings.scale(1),
 					separatorColor: dividerColor,
