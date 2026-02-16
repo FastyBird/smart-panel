@@ -1,14 +1,21 @@
 import { Injectable, Logger } from '@nestjs/common';
 
 import { PropertyCategory } from '../../devices/devices.constants';
-import { ChannelEntity, ChannelPropertyEntity } from '../../devices/entities/devices.entity';
+import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { PropertyValueState } from '../../devices/models/property-value-state.model';
 import { DevicesService } from '../../devices/services/devices.service';
+import { SecurityAggregationContext } from '../contracts/security-aggregation-context.type';
 import { SecurityAlert, SecuritySignal } from '../contracts/security-signal.type';
 import { SecurityStateProviderInterface } from '../contracts/security-state-provider.interface';
-import { SEVERITY_RANK, Severity } from '../security.constants';
+import { ArmedState, SEVERITY_RANK, SecurityAlertType, Severity } from '../security.constants';
 import { DetectionRulesLoaderService } from '../spec/detection-rules-loader.service';
 import { ResolvedPropertyCheck, ResolvedSensorRule } from '../spec/detection-rules.types';
+
+/** Alert types that represent intrusion/entry detection (not life-safety) */
+const INTRUSION_ALERT_TYPES: Set<SecurityAlertType> = new Set([
+	SecurityAlertType.INTRUSION,
+	SecurityAlertType.ENTRY_OPEN,
+]);
 
 @Injectable()
 export class SecuritySensorsProvider implements SecurityStateProviderInterface {
@@ -23,9 +30,9 @@ export class SecuritySensorsProvider implements SecurityStateProviderInterface {
 		return 'security_sensors';
 	}
 
-	async getSignals(): Promise<SecuritySignal> {
+	async getSignals(context?: SecurityAggregationContext): Promise<SecuritySignal> {
 		try {
-			return await this.buildSignals();
+			return await this.buildSignals(context);
 		} catch (error) {
 			this.logger.warn(`Failed to build sensor signals: ${error}`);
 
@@ -38,9 +45,10 @@ export class SecuritySensorsProvider implements SecurityStateProviderInterface {
 		}
 	}
 
-	private async buildSignals(): Promise<SecuritySignal> {
-		const devices = await this.devicesService.findAll();
+	private async buildSignals(context?: SecurityAggregationContext): Promise<SecuritySignal> {
+		const devices: DeviceEntity[] = context?.devices ?? (await this.devicesService.findAll());
 		const rules = this.detectionRulesLoader.getSensorRules();
+		const armedState = context?.armedState ?? null;
 
 		const alerts: SecurityAlert[] = [];
 
@@ -61,10 +69,13 @@ export class SecuritySensorsProvider implements SecurityStateProviderInterface {
 				const result = this.evaluateRule(channel, rule);
 
 				if (result.triggered) {
+					// Lower severity for intrusion/entry alerts when disarmed
+					const severity = this.adjustSeverityForArmedState(rule.alertType, rule.severity, armedState);
+
 					alerts.push({
 						id: `sensor:${device.id}:${rule.alertType}`,
 						type: rule.alertType,
-						severity: rule.severity,
+						severity,
 						sourceDeviceId: device.id,
 						timestamp: result.lastUpdated ?? new Date().toISOString(),
 						acknowledged: false,
@@ -129,7 +140,16 @@ export class SecuritySensorsProvider implements SecurityStateProviderInterface {
 			}
 
 			const actual = valueState instanceof PropertyValueState ? valueState.value : valueState;
-			const lastUpdated = valueState instanceof PropertyValueState ? (valueState.lastUpdated ?? null) : null;
+			let lastUpdated = valueState instanceof PropertyValueState ? (valueState.lastUpdated ?? null) : null;
+
+			// Fall back to entity-level timestamp when InfluxDB timestamp is absent
+			if (lastUpdated == null) {
+				const entityTs = prop.updatedAt ?? prop.createdAt;
+
+				if (entityTs != null) {
+					lastUpdated = entityTs instanceof Date ? entityTs.toISOString() : entityTs;
+				}
+			}
 
 			if (this.matchesCondition(actual, check)) {
 				return { triggered: true, lastUpdated };
@@ -176,5 +196,29 @@ export class SecuritySensorsProvider implements SecurityStateProviderInterface {
 			default:
 				return false;
 		}
+	}
+
+	/**
+	 * Lower severity for intrusion/entry alerts when system is disarmed.
+	 * Life-safety alerts (smoke, CO, gas, leak) always fire at configured severity.
+	 */
+	private adjustSeverityForArmedState(
+		alertType: SecurityAlertType,
+		configuredSeverity: Severity,
+		armedState: ArmedState | null,
+	): Severity {
+		// Only downgrade on explicit DISARMED. When armedState is null
+		// (alarm provider failed or not configured), keep configured severity
+		// to avoid understating real armed conditions.
+		if (armedState !== ArmedState.DISARMED) {
+			return configuredSeverity;
+		}
+
+		// Only lower intrusion/entry alerts when disarmed
+		if (INTRUSION_ALERT_TYPES.has(alertType) && configuredSeverity !== Severity.INFO) {
+			return Severity.INFO;
+		}
+
+		return configuredSeverity;
 	}
 }

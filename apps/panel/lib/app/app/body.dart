@@ -413,7 +413,6 @@ class _AppBodyState extends State<AppBody> {
                   _securityOverlayController.acknowledgeCurrentAlerts();
                 },
                 onOpenSecurity: () {
-                  _securityOverlayController.acknowledgeCurrentAlerts();
                   _securityOverlayController.setOnSecurityScreen(true);
                   locator<EventBus>().fire(
                     NavigateToDeckItemEvent(SecurityViewItem.generateId()),

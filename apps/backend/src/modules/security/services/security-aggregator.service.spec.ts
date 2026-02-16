@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { DevicesService } from '../../devices/services/devices.service';
 import { SecurityAlert, SecuritySignal } from '../contracts/security-signal.type';
 import { SecurityStateProviderInterface } from '../contracts/security-state-provider.interface';
 import { AlarmState, ArmedState, SECURITY_STATE_PROVIDERS, SecurityAlertType, Severity } from '../security.constants';
@@ -38,6 +39,12 @@ describe('SecurityAggregatorService', () => {
 				{
 					provide: SECURITY_STATE_PROVIDERS,
 					useValue: providers,
+				},
+				{
+					provide: DevicesService,
+					useValue: {
+						findAll: jest.fn().mockResolvedValue([]),
+					},
 				},
 				SecurityAggregatorService,
 			],
@@ -253,6 +260,30 @@ describe('SecurityAggregatorService', () => {
 		const result = await aggregator.aggregate();
 
 		expect(result.lastEvent?.type).toBe('good-second');
+	});
+
+	it('should count providerErrors when devicesService.findAll() fails', async () => {
+		const module: TestingModule = await Test.createTestingModule({
+			providers: [
+				{
+					provide: SECURITY_STATE_PROVIDERS,
+					useValue: [new FakeProvider('default', {})],
+				},
+				{
+					provide: DevicesService,
+					useValue: {
+						findAll: jest.fn().mockRejectedValue(new Error('DB connection lost')),
+					},
+				},
+				SecurityAggregatorService,
+			],
+		}).compile();
+
+		const aggregator = module.get<SecurityAggregatorService>(SecurityAggregatorService);
+		const result = await aggregator.aggregateWithErrors();
+
+		expect(result.providerErrors).toBeGreaterThan(0);
+		expect(result.status.activeAlerts).toEqual([]);
 	});
 
 	it('should handle provider that throws', async () => {

@@ -47,6 +47,8 @@ export enum SecurityEventType {
 	ARMED_STATE_CHANGED = 'armed_state_changed',
 }
 
+export const SECURITY_STATE_DEBOUNCE_MS = 150;
+
 export const SECURITY_EVENTS_MAX_ROWS = 200;
 
 export const SECURITY_EVENTS_DEFAULT_LIMIT = 50;

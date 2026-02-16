@@ -1,10 +1,13 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 
-import { SecurityAggregatorInterface } from '../contracts/security-aggregator.interface';
+import { DeviceEntity } from '../../devices/entities/devices.entity';
+import { DevicesService } from '../../devices/services/devices.service';
+import { SecurityAggregationContext } from '../contracts/security-aggregation-context.type';
+import { AggregationResult, SecurityAggregatorInterface } from '../contracts/security-aggregator.interface';
 import { SecurityAlert, SecuritySignal } from '../contracts/security-signal.type';
 import { SecurityStateProviderInterface } from '../contracts/security-state-provider.interface';
 import { SecurityAlertModel, SecurityLastEventModel, SecurityStatusModel } from '../models/security-status.model';
-import { SECURITY_STATE_PROVIDERS, SEVERITY_RANK, Severity } from '../security.constants';
+import { ArmedState, SECURITY_STATE_PROVIDERS, SEVERITY_RANK, Severity } from '../security.constants';
 import { pickNewestEvent } from '../security.utils';
 
 @Injectable()
@@ -14,19 +17,65 @@ export class SecurityAggregatorService implements SecurityAggregatorInterface {
 	constructor(
 		@Inject(SECURITY_STATE_PROVIDERS)
 		private readonly providers: SecurityStateProviderInterface[],
+		private readonly devicesService: DevicesService,
 	) {}
 
 	async aggregate(): Promise<SecurityStatusModel> {
+		const result = await this.aggregateWithErrors();
+
+		return result.status;
+	}
+
+	async aggregateWithErrors(): Promise<AggregationResult> {
+		// Fetch devices once for all providers
+		let devices: DeviceEntity[];
+		let providerErrors = 0;
+
+		try {
+			devices = await this.devicesService.findAll();
+		} catch (error) {
+			this.logger.warn(`Failed to fetch devices: ${error}`);
+			devices = [];
+			providerErrors++;
+		}
+
+		// Phase 1: Resolve armed state from alarm provider first
+		let armedState: ArmedState | null = null;
+		const alarmProvider = this.providers.find((p) => {
+			try {
+				return p.getKey() === 'alarm';
+			} catch {
+				return false;
+			}
+		});
+
+		if (alarmProvider != null) {
+			try {
+				const signal = await alarmProvider.getSignals({ devices });
+
+				if (signal?.armedState != null) {
+					armedState = signal.armedState;
+				}
+			} catch (error) {
+				providerErrors++;
+				this.logger.warn(`Alarm provider threw an error during phase 1: ${error}`);
+			}
+		}
+
+		// Phase 2: Call all providers with context (armedState + devices)
+		const context: SecurityAggregationContext = { armedState, devices };
 		const signals: SecuritySignal[] = [];
 
 		for (const provider of this.providers) {
 			try {
-				const signal = await provider.getSignals();
+				const signal = await provider.getSignals(context);
 
 				if (signal != null) {
 					signals.push(signal);
 				}
 			} catch (error) {
+				providerErrors++;
+
 				try {
 					this.logger.warn(`Security state provider "${provider.getKey()}" threw an error: ${error}`);
 				} catch {
@@ -35,7 +84,7 @@ export class SecurityAggregatorService implements SecurityAggregatorInterface {
 			}
 		}
 
-		return this.merge(signals);
+		return { status: this.merge(signals), providerErrors };
 	}
 
 	private merge(signals: SecuritySignal[]): SecurityStatusModel {

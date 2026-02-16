@@ -42,8 +42,8 @@ export class SecurityEventsController {
 	async getEvents(
 		@Query('limit') limit?: string,
 		@Query('since') since?: string,
-		@Query('severity') severity?: Severity,
-		@Query('type') type?: SecurityEventType,
+		@Query('severity') severity?: string,
+		@Query('type') type?: string,
 	): Promise<SecurityEventsResponseModel> {
 		let sinceDate: Date | undefined;
 
@@ -65,11 +65,33 @@ export class SecurityEventsController {
 			}
 		}
 
+		let validatedSeverity: Severity | undefined;
+
+		if (severity != null) {
+			if (!Object.values(Severity).includes(severity as Severity)) {
+				throw new BadRequestException(
+					`Invalid "severity" parameter: must be one of ${Object.values(Severity).join(', ')}`,
+				);
+			}
+			validatedSeverity = severity as Severity;
+		}
+
+		let validatedType: SecurityEventType | undefined;
+
+		if (type != null) {
+			if (!Object.values(SecurityEventType).includes(type as SecurityEventType)) {
+				throw new BadRequestException(
+					`Invalid "type" parameter: must be one of ${Object.values(SecurityEventType).join(', ')}`,
+				);
+			}
+			validatedType = type as SecurityEventType;
+		}
+
 		const events = await this.eventsService.findRecent({
 			limit: parsedLimit,
 			since: sinceDate,
-			severity,
-			type,
+			severity: validatedSeverity,
+			type: validatedType,
 		});
 
 		const response = new SecurityEventsResponseModel();
@@ -78,11 +100,11 @@ export class SecurityEventsController {
 			model.id = e.id;
 			model.timestamp = e.timestamp.toISOString();
 			model.eventType = e.eventType;
-			model.severity = e.severity ?? undefined;
-			model.alertId = e.alertId ?? undefined;
-			model.alertType = e.alertType ?? undefined;
-			model.sourceDeviceId = e.sourceDeviceId ?? undefined;
-			model.payload = e.payload ?? undefined;
+			model.severity = e.severity || undefined;
+			model.alertId = e.alertId || undefined;
+			model.alertType = e.alertType || undefined;
+			model.sourceDeviceId = e.sourceDeviceId || undefined;
+			model.payload = e.payload || undefined;
 
 			return model;
 		});

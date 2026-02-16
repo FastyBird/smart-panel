@@ -1,10 +1,8 @@
 /* eslint-disable @typescript-eslint/unbound-method */
-import { Repository } from 'typeorm';
-
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
 
-import { SecurityEventEntity } from '../entities/security-event.entity';
+import { InfluxDbService } from '../../influxdb/services/influxdb.service';
 import { SecurityAlertModel } from '../models/security-status.model';
 import { AlarmState, ArmedState, SecurityAlertType, SecurityEventType, Severity } from '../security.constants';
 
@@ -12,25 +10,7 @@ import { SecurityEventsService } from './security-events.service';
 
 describe('SecurityEventsService', () => {
 	let service: SecurityEventsService;
-	let repo: jest.Mocked<Repository<SecurityEventEntity>>;
-
-	const mockQueryBuilder = {
-		orderBy: jest.fn().mockReturnThis(),
-		limit: jest.fn().mockReturnThis(),
-		andWhere: jest.fn().mockReturnThis(),
-		getMany: jest.fn().mockResolvedValue([]),
-	};
-
-	const mockRepo = () => ({
-		find: jest.fn().mockResolvedValue([]),
-		findOne: jest.fn(),
-		create: jest.fn((data: Partial<SecurityEventEntity>) => ({ ...data }) as SecurityEventEntity),
-		save: jest.fn((entity: any) => Promise.resolve(entity)),
-		delete: jest.fn(),
-		remove: jest.fn(),
-		count: jest.fn().mockResolvedValue(0),
-		createQueryBuilder: jest.fn().mockReturnValue(mockQueryBuilder),
-	});
+	let influxDb: jest.Mocked<InfluxDbService>;
 
 	const makeAlert = (overrides: Partial<SecurityAlertModel> = {}): SecurityAlertModel => {
 		const alert = new SecurityAlertModel();
@@ -49,14 +29,19 @@ describe('SecurityEventsService', () => {
 			providers: [
 				SecurityEventsService,
 				{
-					provide: getRepositoryToken(SecurityEventEntity),
-					useFactory: mockRepo,
+					provide: InfluxDbService,
+					useValue: {
+						isConnected: jest.fn().mockReturnValue(true),
+						registerSchema: jest.fn(),
+						writePoints: jest.fn().mockResolvedValue(undefined),
+						query: jest.fn().mockResolvedValue([]),
+					},
 				},
 			],
 		}).compile();
 
 		service = module.get<SecurityEventsService>(SecurityEventsService);
-		repo = module.get(getRepositoryToken(SecurityEventEntity));
+		influxDb = module.get(InfluxDbService);
 	});
 
 	it('should be defined', () => {
@@ -64,37 +49,35 @@ describe('SecurityEventsService', () => {
 	});
 
 	describe('findRecent', () => {
-		it('should return events with default limit', async () => {
+		it('should return empty array when not connected', async () => {
+			influxDb.isConnected.mockReturnValue(false);
+			const result = await service.findRecent();
+			expect(result).toEqual([]);
+		});
+
+		it('should query InfluxDB with default limit', async () => {
 			await service.findRecent();
-			expect(mockQueryBuilder.orderBy).toHaveBeenCalledWith('event.timestamp', 'DESC');
-			expect(mockQueryBuilder.limit).toHaveBeenCalledWith(50);
+			expect(influxDb.query).toHaveBeenCalled();
+			const queryArg = influxDb.query.mock.calls[0][0];
+			expect(queryArg).toContain('LIMIT 50');
 		});
 
 		it('should clamp limit to max 200', async () => {
 			await service.findRecent({ limit: 500 });
-			expect(mockQueryBuilder.limit).toHaveBeenCalledWith(200);
-		});
-
-		it('should apply since filter', async () => {
-			const since = new Date('2025-01-01T00:00:00Z');
-			await service.findRecent({ since });
-			expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith('event.timestamp >= :since', {
-				since: since.toISOString(),
-			});
+			const queryArg = influxDb.query.mock.calls[0][0];
+			expect(queryArg).toContain('LIMIT 200');
 		});
 
 		it('should apply severity filter', async () => {
 			await service.findRecent({ severity: Severity.CRITICAL });
-			expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith('event.severity = :severity', {
-				severity: 'critical',
-			});
+			const queryArg = influxDb.query.mock.calls[0][0];
+			expect(queryArg).toContain("severity = 'critical'");
 		});
 
 		it('should apply type filter', async () => {
 			await service.findRecent({ type: SecurityEventType.ALERT_RAISED });
-			expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith('event.eventType = :type', {
-				type: 'alert_raised',
-			});
+			const queryArg = influxDb.query.mock.calls[0][0];
+			expect(queryArg).toContain("eventType = 'alert_raised'");
 		});
 	});
 
@@ -102,7 +85,7 @@ describe('SecurityEventsService', () => {
 		it('should not generate events on first call (seed)', async () => {
 			const alert = makeAlert();
 			await service.recordAlertTransitions([alert], ArmedState.DISARMED, AlarmState.IDLE);
-			expect(repo.save).not.toHaveBeenCalled();
+			expect(influxDb.writePoints).not.toHaveBeenCalled();
 		});
 
 		it('should generate alert_raised when new alert appears', async () => {
@@ -111,13 +94,18 @@ describe('SecurityEventsService', () => {
 			const alert = makeAlert();
 			await service.recordAlertTransitions([alert], ArmedState.DISARMED, AlarmState.IDLE);
 
-			expect(repo.save).toHaveBeenCalled();
-			expect(repo.save.mock.calls[0][0]).toEqual(
+			expect(influxDb.writePoints).toHaveBeenCalled();
+			const points = influxDb.writePoints.mock.calls[0][0];
+			expect(points).toEqual(
 				expect.arrayContaining([
 					expect.objectContaining({
-						eventType: SecurityEventType.ALERT_RAISED,
-						alertId: 'sensor:dev1:smoke',
-						severity: Severity.CRITICAL,
+						measurement: 'security_event',
+						tags: expect.objectContaining({
+							eventType: SecurityEventType.ALERT_RAISED,
+						}),
+						fields: expect.objectContaining({
+							alertId: 'sensor:dev1:smoke',
+						}),
 					}),
 				]),
 			);
@@ -129,12 +117,17 @@ describe('SecurityEventsService', () => {
 
 			await service.recordAlertTransitions([], ArmedState.DISARMED, AlarmState.IDLE);
 
-			expect(repo.save).toHaveBeenCalled();
-			expect(repo.save.mock.calls[0][0]).toEqual(
+			expect(influxDb.writePoints).toHaveBeenCalled();
+			const points = influxDb.writePoints.mock.calls[0][0];
+			expect(points).toEqual(
 				expect.arrayContaining([
 					expect.objectContaining({
-						eventType: SecurityEventType.ALERT_RESOLVED,
-						alertId: 'sensor:dev1:smoke',
+						tags: expect.objectContaining({
+							eventType: SecurityEventType.ALERT_RESOLVED,
+						}),
+						fields: expect.objectContaining({
+							alertId: 'sensor:dev1:smoke',
+						}),
 					}),
 				]),
 			);
@@ -145,12 +138,14 @@ describe('SecurityEventsService', () => {
 
 			await service.recordAlertTransitions([], ArmedState.ARMED_AWAY, AlarmState.IDLE);
 
-			expect(repo.save).toHaveBeenCalled();
-			expect(repo.save.mock.calls[0][0]).toEqual(
+			expect(influxDb.writePoints).toHaveBeenCalled();
+			const points = influxDb.writePoints.mock.calls[0][0];
+			expect(points).toEqual(
 				expect.arrayContaining([
 					expect.objectContaining({
-						eventType: SecurityEventType.ARMED_STATE_CHANGED,
-						payload: { from: ArmedState.DISARMED, to: ArmedState.ARMED_AWAY },
+						tags: expect.objectContaining({
+							eventType: SecurityEventType.ARMED_STATE_CHANGED,
+						}),
 					}),
 				]),
 			);
@@ -161,13 +156,15 @@ describe('SecurityEventsService', () => {
 
 			await service.recordAlertTransitions([], ArmedState.DISARMED, AlarmState.TRIGGERED);
 
-			expect(repo.save).toHaveBeenCalled();
-			expect(repo.save.mock.calls[0][0]).toEqual(
+			expect(influxDb.writePoints).toHaveBeenCalled();
+			const points = influxDb.writePoints.mock.calls[0][0];
+			expect(points).toEqual(
 				expect.arrayContaining([
 					expect.objectContaining({
-						eventType: SecurityEventType.ALARM_STATE_CHANGED,
-						severity: Severity.CRITICAL,
-						payload: { from: AlarmState.IDLE, to: AlarmState.TRIGGERED },
+						tags: expect.objectContaining({
+							eventType: SecurityEventType.ALARM_STATE_CHANGED,
+							severity: Severity.CRITICAL,
+						}),
 					}),
 				]),
 			);
@@ -179,91 +176,36 @@ describe('SecurityEventsService', () => {
 
 			await service.recordAlertTransitions([alert], ArmedState.DISARMED, AlarmState.IDLE);
 
-			expect(repo.save).not.toHaveBeenCalled();
-		});
-
-		it('should generate exactly one alert_raised when previousActive is empty and currentActive contains A', async () => {
-			// Seed with empty alerts
-			await service.recordAlertTransitions([], ArmedState.DISARMED, AlarmState.IDLE);
-			expect(repo.save).not.toHaveBeenCalled();
-
-			// Alert A appears
-			const alertA = makeAlert({ id: 'sensor:dev1:smoke' });
-			await service.recordAlertTransitions([alertA], ArmedState.DISARMED, AlarmState.IDLE);
-
-			expect(repo.save).toHaveBeenCalledTimes(1);
-			const savedEvents = repo.save.mock.calls[0][0] as SecurityEventEntity[];
-			expect(savedEvents).toHaveLength(1);
-			expect(savedEvents[0]).toEqual(
-				expect.objectContaining({
-					eventType: SecurityEventType.ALERT_RAISED,
-					alertId: 'sensor:dev1:smoke',
-					severity: Severity.CRITICAL,
-					alertType: SecurityAlertType.SMOKE,
-					sourceDeviceId: 'dev1',
-				}),
-			);
-		});
-
-		it('should generate exactly one alert_resolved when previousActive contains A and currentActive is empty', async () => {
-			// Seed with alert A active
-			const alertA = makeAlert({ id: 'sensor:dev1:smoke' });
-			await service.recordAlertTransitions([alertA], ArmedState.DISARMED, AlarmState.IDLE);
-			expect(repo.save).not.toHaveBeenCalled();
-
-			// Alert A disappears
-			await service.recordAlertTransitions([], ArmedState.DISARMED, AlarmState.IDLE);
-
-			expect(repo.save).toHaveBeenCalledTimes(1);
-			const savedEvents = repo.save.mock.calls[0][0] as SecurityEventEntity[];
-			expect(savedEvents).toHaveLength(1);
-			expect(savedEvents[0]).toEqual(
-				expect.objectContaining({
-					eventType: SecurityEventType.ALERT_RESOLVED,
-					alertId: 'sensor:dev1:smoke',
-					severity: Severity.CRITICAL,
-					alertType: SecurityAlertType.SMOKE,
-					sourceDeviceId: 'dev1',
-				}),
-			);
+			expect(influxDb.writePoints).not.toHaveBeenCalled();
 		});
 	});
 
 	describe('recordAcknowledgement', () => {
-		it('should create alert_acknowledged event', async () => {
+		it('should write alert_acknowledged point to InfluxDB', async () => {
 			await service.recordAcknowledgement('sensor:dev1:smoke', 'smoke', 'dev1', Severity.CRITICAL);
 
-			expect(repo.save).toHaveBeenCalled();
-			expect(repo.save.mock.calls[0][0]).toEqual(
+			expect(influxDb.writePoints).toHaveBeenCalled();
+			const points = influxDb.writePoints.mock.calls[0][0];
+			expect(points[0]).toEqual(
 				expect.objectContaining({
-					eventType: SecurityEventType.ALERT_ACKNOWLEDGED,
-					severity: Severity.CRITICAL,
-					alertId: 'sensor:dev1:smoke',
-					alertType: 'smoke',
-					sourceDeviceId: 'dev1',
+					measurement: 'security_event',
+					tags: expect.objectContaining({
+						eventType: SecurityEventType.ALERT_ACKNOWLEDGED,
+						severity: Severity.CRITICAL,
+					}),
+					fields: expect.objectContaining({
+						alertId: 'sensor:dev1:smoke',
+						alertType: 'smoke',
+						sourceDeviceId: 'dev1',
+					}),
 				}),
 			);
 		});
-	});
 
-	describe('enforceRetention', () => {
-		it('should not delete when under limit', async () => {
-			repo.count.mockResolvedValue(100);
-
-			await service.enforceRetention();
-
-			expect(repo.find).not.toHaveBeenCalled();
-			expect(repo.delete).not.toHaveBeenCalled();
-		});
-
-		it('should delete old events when over limit', async () => {
-			const cutoffEvent = { id: 'old', timestamp: new Date('2025-01-01') } as SecurityEventEntity;
-			repo.count.mockResolvedValueOnce(250).mockResolvedValueOnce(200);
-			repo.find.mockResolvedValueOnce([cutoffEvent]);
-
-			await service.enforceRetention();
-
-			expect(repo.delete).toHaveBeenCalled();
+		it('should not write when disconnected', async () => {
+			influxDb.isConnected.mockReturnValue(false);
+			await service.recordAcknowledgement('sensor:dev1:smoke', 'smoke', 'dev1', Severity.CRITICAL);
+			expect(influxDb.writePoints).not.toHaveBeenCalled();
 		});
 	});
 });

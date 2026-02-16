@@ -22,7 +22,7 @@ export class SecurityAlertAckService {
 		return this.repo.find({ where: { id: In(ids) } });
 	}
 
-	async acknowledge(id: string, lastEventAt?: Date): Promise<SecurityAlertAckEntity> {
+	async acknowledge(id: string, lastEventAt?: Date, acknowledgedBy?: string): Promise<SecurityAlertAckEntity> {
 		let record = await this.repo.findOne({ where: { id } });
 
 		if (record == null) {
@@ -31,6 +31,7 @@ export class SecurityAlertAckService {
 
 		record.acknowledged = true;
 		record.acknowledgedAt = new Date();
+		record.acknowledgedBy = acknowledgedBy ?? null;
 
 		if (lastEventAt != null) {
 			record.lastEventAt = lastEventAt;
@@ -39,7 +40,7 @@ export class SecurityAlertAckService {
 		return this.repo.save(record);
 	}
 
-	async acknowledgeAll(alerts: { id: string; timestamp?: Date }[]): Promise<void> {
+	async acknowledgeAll(alerts: { id: string; timestamp?: Date }[], acknowledgedBy?: string): Promise<void> {
 		if (alerts.length === 0) {
 			return;
 		}
@@ -54,6 +55,7 @@ export class SecurityAlertAckService {
 		for (const record of records) {
 			record.acknowledged = true;
 			record.acknowledgedAt = now;
+			record.acknowledgedBy = acknowledgedBy ?? null;
 
 			const ts = timestampMap.get(record.id);
 
@@ -71,6 +73,7 @@ export class SecurityAlertAckService {
 					id,
 					acknowledged: true,
 					acknowledgedAt: now,
+					acknowledgedBy: acknowledgedBy ?? null,
 					lastEventAt: ts ?? null,
 				});
 			});
