@@ -1,12 +1,54 @@
+// Security domain view: deck page for security status, entry points, alerts, and events.
+//
+// **AI/Editor navigation:** Use section headers (e.g. "// MAIN SCREEN", "// STATUS RING")
+// to jump. Do not change UI structure or widget tree; preserve rendered output.
+//
+// **Purpose:** Displays security status (armed state, alarm state), entry point
+// status (doors/windows), active alerts with acknowledge actions, and recent
+// security events. Supports portrait and landscape layouts with tab switching.
+//
+// **Data flow:**
+// - [SecurityOverlayController] provides [SecurityStatusModel] (armed/alarm state,
+//   active alerts). [DevicesService] for device names. [SecurityEventsRepository]
+//   for event history. [buildEntryPointsSummary] aggregates contact channels.
+// - Local state: _selectedTab (_SecurityTab). Consumers: Consumer3 for reactive updates.
+//
+// **Key concepts:**
+// - Status ring: circular progress indicator with severity color (success/warning/error).
+// - Tabs: Entry Points (when any), Alerts, Events. Portrait: horizontal mode selector;
+//   landscape: vertical tile list.
+// - Entry points: doors/windows from contact channels; tap opens [DeviceDetailPage].
+//
+// **File structure (for humans and AI):**
+// - MAIN SCREEN — [SecurityScreen], layout switching, tab content routing.
+// - TAB MODES & CONTENT — [_buildTabModes], [_buildTabContent], mode selector.
+// - STATUS HELPERS — theme color, ring progress, header subtitle, critical check.
+// - STATUS RING — [_StatusRingPainter], [_StatusRingHero] (animated when triggered).
+// - ENTRY POINT GRID — [_EntryPointGrid], entry tiles with status badges.
+// - ALERT STREAM — [_AlertStream], [_AlertItem], acknowledge buttons.
+// - EVENTS FEED — [_EventsFeed], [_EventItem], refresh, loading/error states.
+// - SHARED UI — [_Badge], [_AckButton], [_AckAllButton], [_RefreshButton].
+
 import 'dart:math' as math;
+
+import 'package:flutter/material.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
+import 'package:provider/provider.dart';
 
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_card.dart';
+import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
+import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
+import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
+import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
+import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
+import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_mode_chip.dart';
 import 'package:fastybird_smart_panel/modules/devices/export.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_detail_page.dart';
 import 'package:fastybird_smart_panel/modules/security/models/security_alert.dart';
@@ -18,19 +60,17 @@ import 'package:fastybird_smart_panel/modules/security/types/security.dart';
 import 'package:fastybird_smart_panel/modules/security/utils/entry_points.dart';
 import 'package:fastybird_smart_panel/modules/security/utils/security_event_ui.dart';
 import 'package:fastybird_smart_panel/modules/security/utils/security_ui.dart';
-import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_mode_chip.dart';
-import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
-import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
-import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
-import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
-import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
-import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
-import 'package:flutter/material.dart';
-import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
-import 'package:provider/provider.dart';
+
+// =============================================================================
+// MAIN SCREEN
+// =============================================================================
 
 enum _SecurityTab { entryPoints, alerts, events }
 
+/// Security domain page: status ring, entry points, alerts, and events.
+///
+/// Can run standalone (with back button) or embedded in deck (no back).
+/// Uses [SecurityOverlayController], [DevicesService], [SecurityEventsRepository].
 class SecurityScreen extends StatefulWidget {
 	/// When true, hides back/home navigation buttons (used when embedded in deck).
 	final bool embedded;
@@ -125,6 +165,10 @@ class _SecurityScreenState extends State<SecurityScreen> {
 		);
 	}
 
+	// -------------------------------------------------------------------------
+	// Tab modes & content
+	// -------------------------------------------------------------------------
+
 	List<ModeOption<_SecurityTab>> _buildTabModes({
 		required bool hasEntryPoints,
 		required SecurityStatusModel status,
@@ -168,7 +212,6 @@ class _SecurityScreenState extends State<SecurityScreen> {
 		required bool isDark,
 		required ScreenService screenService,
 		required AppLocalizations localizations,
-		bool isLandscape = false,
 	}) {
 		switch (_selectedTab) {
 			case _SecurityTab.entryPoints:
@@ -185,9 +228,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
 					controller: controller,
 					devicesService: devicesService,
 					isDark: isDark,
-					screenService: screenService,
 					localizations: localizations,
-					isLandscape: isLandscape,
 				);
 			case _SecurityTab.events:
 				return _EventsFeed(
@@ -197,10 +238,13 @@ class _SecurityScreenState extends State<SecurityScreen> {
 					screenService: screenService,
 					localizations: localizations,
 					maxEvents: _maxDisplayedEvents,
-					isLandscape: isLandscape,
 				);
 		}
 	}
+
+	// -------------------------------------------------------------------------
+	// Status helpers
+	// -------------------------------------------------------------------------
 
 	ThemeColors _modeSelectorColor(SecurityStatusModel status) {
 		if (_isCriticalStatus(status)) return ThemeColors.error;
@@ -239,7 +283,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
 		return PortraitViewLayout(
 			scrollable: false,
 			content: Column(
-        spacing: AppSpacings.pMd,
+				spacing: AppSpacings.pMd,
 				children: [
 					_StatusRingHero(
 						statusColor: statusColor,
@@ -300,7 +344,6 @@ class _SecurityScreenState extends State<SecurityScreen> {
 				isDark: isDark,
 				screenService: screenService,
 				localizations: localizations,
-				isLandscape: true,
 			),
 			additionalContentScrollable: false,
 			additionalContentPadding: EdgeInsets.only(
@@ -409,10 +452,11 @@ class _SecurityScreenState extends State<SecurityScreen> {
 
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// STATUS RING PAINTER
-// ─────────────────────────────────────────────────────────────────────────────
+// =============================================================================
+// STATUS RING
+// =============================================================================
 
+/// Paints a circular progress ring (background circle + foreground arc).
 class _StatusRingPainter extends CustomPainter {
 	final double progress;
 	final Color ringColor;
@@ -462,10 +506,8 @@ class _StatusRingPainter extends CustomPainter {
 		oldDelegate.ringBgColor != ringBgColor;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// STATUS RING HERO
-// ─────────────────────────────────────────────────────────────────────────────
-
+/// Hero widget: circular status ring with icon, label, and optional summary pills.
+/// Pulses when alarm is triggered.
 class _StatusRingHero extends StatefulWidget {
 	final ThemeColors statusColor;
 	final ThemeColorFamily statusFamily;
@@ -604,8 +646,8 @@ class _StatusRingHeroState extends State<_StatusRingHero>
 					AppSpacings.spacingSmVertical,
 					// Summary pills
 					if (!widget.compact) ...[
-            _buildSummaryPills()
-          ],
+						_buildSummaryPills(),
+					],
 				],
 			),
 		);
@@ -658,10 +700,12 @@ class _StatusRingHeroState extends State<_StatusRingHero>
 	}
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// =============================================================================
 // ENTRY POINT GRID
-// ─────────────────────────────────────────────────────────────────────────────
+// =============================================================================
 
+/// Grid of entry point tiles (doors/windows) with status badges.
+/// Tap navigates to [DeviceDetailPage].
 class _EntryPointGrid extends StatelessWidget {
 	final EntryPointsSummary entryPoints;
 	final bool isDark;
@@ -783,27 +827,24 @@ class _EntryPointGrid extends StatelessWidget {
 	}
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// =============================================================================
 // ALERT STREAM
-// ─────────────────────────────────────────────────────────────────────────────
+// =============================================================================
 
+/// Scrollable list of active alerts with per-item and bulk acknowledge actions.
 class _AlertStream extends StatelessWidget {
 	final SecurityStatusModel status;
 	final SecurityOverlayController controller;
 	final DevicesService devicesService;
 	final bool isDark;
-	final ScreenService screenService;
 	final AppLocalizations localizations;
-	final bool isLandscape;
 
 	const _AlertStream({
 		required this.status,
 		required this.controller,
 		required this.devicesService,
 		required this.isDark,
-		required this.screenService,
 		required this.localizations,
-		this.isLandscape = false,
 	});
 
 	Color get _accentColor {
@@ -995,6 +1036,10 @@ class _AlertItem extends StatelessWidget {
 	}
 }
 
+// =============================================================================
+// SHARED UI
+// =============================================================================
+
 class _AckButton extends StatelessWidget {
 	final bool isDark;
 	final bool acknowledged;
@@ -1084,10 +1129,11 @@ class _AckAllButton extends StatelessWidget {
 	}
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// =============================================================================
 // EVENTS FEED
-// ─────────────────────────────────────────────────────────────────────────────
+// =============================================================================
 
+/// Scrollable list of recent security events with refresh and loading/error states.
 class _EventsFeed extends StatelessWidget {
 	final SecurityEventsRepository eventsRepo;
 	final DevicesService devicesService;
@@ -1095,7 +1141,6 @@ class _EventsFeed extends StatelessWidget {
 	final ScreenService screenService;
 	final AppLocalizations localizations;
 	final int maxEvents;
-	final bool isLandscape;
 
 	const _EventsFeed({
 		required this.eventsRepo,
@@ -1104,7 +1149,6 @@ class _EventsFeed extends StatelessWidget {
 		required this.screenService,
 		required this.localizations,
 		required this.maxEvents,
-		this.isLandscape = false,
 	});
 
 	@override
