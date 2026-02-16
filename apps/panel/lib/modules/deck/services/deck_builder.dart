@@ -3,6 +3,7 @@ import 'package:fastybird_smart_panel/modules/dashboard/views/pages/view.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_result.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/system_views_builder.dart';
+import 'package:fastybird_smart_panel/modules/deck/types/domain_type.dart';
 import 'package:fastybird_smart_panel/modules/displays/models/display.dart';
 
 /// Input parameters for deck building.
@@ -112,8 +113,14 @@ DeckResult buildDeck(DeckBuildInput input) {
   indexByViewKey['security-view'] = items.length;
   items.add(securityView);
 
-  // Add energy view (after security, before dashboard pages) if supported
-  if (input.energySupported) {
+  // Add energy view (after security, before dashboard pages) if supported.
+  // Skip for ROOM displays that already have an energy domain view
+  // to avoid duplicate energy screens in the deck.
+  final hasEnergyDomainView = items.any(
+    (item) => item is DomainViewItem && item.domainType == DomainType.energy,
+  );
+
+  if (input.energySupported && !hasEnergyDomainView) {
     final energyView = EnergyViewItem(
       id: EnergyViewItem.generateId(),
       title: input.energyScreenTitle,
