@@ -295,7 +295,6 @@ class _SecurityScreenState extends State<SecurityScreen> {
 						isTriggered: isTriggered,
 						isDark: isDark,
 						isCritical: _isCriticalStatus(status),
-						compact: !screenService.isLargeScreen,
 						localizations: localizations,
 					),
 					_buildModeSelector(hasEntryPoints: !entryPoints.isEmpty, status: status, localizations: localizations),
