@@ -21,6 +21,7 @@ import 'package:fastybird_smart_panel/modules/security/utils/security_ui.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_mode_chip.dart';
 import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
+import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
@@ -284,17 +285,30 @@ class _SecurityScreenState extends State<SecurityScreen> {
 		required double ringProgress,
 		required bool isTriggered,
 	}) {
-		return Padding(
-			padding: EdgeInsets.only(
-				left: AppSpacings.pMd,
+		return LandscapeViewLayout(
+			mainContentPadding: EdgeInsets.only(
 				right: AppSpacings.pMd,
+				left: AppSpacings.pMd,
 				bottom: AppSpacings.pMd,
 			),
-			child: Row(
-				crossAxisAlignment: CrossAxisAlignment.stretch,
-				spacing: AppSpacings.pMd,
+			mainContent: _buildTabContent(
+				status: status,
+				controller: controller,
+				devicesService: devicesService,
+				eventsRepo: eventsRepo,
+				entryPoints: entryPoints,
+				isDark: isDark,
+				screenService: screenService,
+				localizations: localizations,
+				isLandscape: true,
+			),
+			additionalContentScrollable: false,
+			additionalContentPadding: EdgeInsets.only(
+				left: AppSpacings.pMd,
+				bottom: AppSpacings.pMd,
+			),
+			additionalContent: Column(
 				children: [
-					// Left column: Status ring
 					Expanded(
 						child: Center(
 							child: _StatusRingHero(
@@ -307,39 +321,49 @@ class _SecurityScreenState extends State<SecurityScreen> {
 								isTriggered: isTriggered,
 								isDark: isDark,
 								isCritical: _isCriticalStatus(status),
-								compact: true,
+								compact: !screenService.isLargeScreen,
 								localizations: localizations,
 							),
 						),
 					),
-					// Right column: Mode selector + tab content
-					Expanded(
-						child: Column(
-							spacing: AppSpacings.pMd,
-							children: [
-								_buildModeSelector(
-									hasEntryPoints: !entryPoints.isEmpty,
-									status: status,
-									localizations: localizations,
-								),
-								Expanded(
-									child: _buildTabContent(
-										status: status,
-										controller: controller,
-										devicesService: devicesService,
-										eventsRepo: eventsRepo,
-										entryPoints: entryPoints,
-										isDark: isDark,
-										screenService: screenService,
-										localizations: localizations,
-										isLandscape: true,
-									),
-								),
-							],
-						),
+					_buildLandscapeTabTiles(
+						hasEntryPoints: !entryPoints.isEmpty,
+						status: status,
+						localizations: localizations,
 					),
 				],
 			),
+		);
+	}
+
+	Widget _buildLandscapeTabTiles({
+		required bool hasEntryPoints,
+		required SecurityStatusModel status,
+		required AppLocalizations localizations,
+	}) {
+		final tileHeight = AppSpacings.scale(AppTileHeight.horizontal * 0.85);
+		final modes = _buildTabModes(
+			hasEntryPoints: hasEntryPoints,
+			status: status,
+			localizations: localizations,
+		);
+
+		return Column(
+			spacing: AppSpacings.pSm,
+			children: modes.map((mode) => SizedBox(
+				height: tileHeight,
+				child: UniversalTile(
+					layout: TileLayout.horizontal,
+					icon: mode.icon,
+					name: mode.label,
+					isActive: _selectedTab == mode.value,
+					activeColor: _modeSelectorColor(status),
+					showGlow: false,
+					showDoubleBorder: false,
+					showInactiveBorder: false,
+					onTileTap: () => setState(() => _selectedTab = mode.value),
+				),
+			)).toList(),
 		);
 	}
 
@@ -511,16 +535,16 @@ class _StatusRingHeroState extends State<_StatusRingHero>
 	@override
 	Widget build(BuildContext context) {
 		final screenService = locator<ScreenService>();
-		final ringSize = widget.compact ? screenService.scale(90) : screenService.scale(110);
-		final iconSize = widget.compact ? screenService.scale(24) : screenService.scale(44);
-		final labelFontSize = widget.compact ? AppFontSize.extraExtraSmall : AppFontSize.base;
+		final ringSize = widget.compact ? screenService.scale(58) : screenService.scale(110);
+		final iconSize = widget.compact ? screenService.scale(20) : screenService.scale(44);
+		final labelFontSize = widget.compact ? AppFontSize.extraSmall : AppFontSize.base;
 		final strokeWidth = widget.compact ? screenService.scale(5) : screenService.scale(6);
 
 		final family = widget.statusFamily;
 		final ringColor = family.base;
 		final ringBgColor = family.light7;
 		final iconBgColor = family.light8;
-		final iconBgSize = widget.compact ? screenService.scale(48) : screenService.scale(64);
+		final iconBgSize = widget.compact ? screenService.scale(35) : screenService.scale(64);
 		final severityLabel = _severityLabel;
 		final severityIcon = _severityIcon;
 
@@ -579,7 +603,9 @@ class _StatusRingHeroState extends State<_StatusRingHero>
 					),
 					AppSpacings.spacingSmVertical,
 					// Summary pills
-					_buildSummaryPills(),
+					if (!widget.compact) ...[
+            _buildSummaryPills()
+          ],
 				],
 			),
 		);
