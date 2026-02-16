@@ -10,6 +10,10 @@
         "outDir": "dist"
       },
       {
+        "include": "modules/security/spec/definitions/**/*.yaml",
+        "outDir": "dist"
+      },
+      {
         "include": "plugins/devices-zigbee2mqtt/mappings/schema/**/*.json",
         "outDir": "dist"
       },
