@@ -5,7 +5,7 @@ import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { ChannelCategory, EventType as DevicesEventType, PropertyCategory } from '../../devices/devices.constants';
-import { ChannelEntity, ChannelPropertyEntity } from '../../devices/entities/devices.entity';
+import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { EventType, SECURITY_STATE_DEBOUNCE_MS } from '../security.constants';
 import { SecurityAggregatorService } from '../services/security-aggregator.service';
 import { SecurityAlertAckService } from '../services/security-alert-ack.service';
@@ -78,12 +78,30 @@ export class SecurityStateListener implements OnModuleInit, OnModuleDestroy {
 
 	@OnEvent(DevicesEventType.CHANNEL_PROPERTY_VALUE_SET)
 	@OnEvent(DevicesEventType.CHANNEL_PROPERTY_UPDATED)
+	@OnEvent(DevicesEventType.CHANNEL_PROPERTY_DELETED)
 	async handlePropertyChanged(property: ChannelPropertyEntity): Promise<void> {
 		try {
 			await this.processPropertyChange(property);
 		} catch (error) {
 			this.logger.warn(`Failed to process security property change: ${error}`);
 		}
+	}
+
+	@OnEvent(DevicesEventType.CHANNEL_DELETED)
+	handleChannelDeleted(channel: ChannelEntity): void {
+		if (!SECURITY_CHANNEL_CATEGORIES.includes(channel.category)) {
+			return;
+		}
+
+		this.scheduleStateRecalculation();
+	}
+
+	@OnEvent(DevicesEventType.DEVICE_DELETED)
+	handleDeviceDeleted(_device: DeviceEntity): void {
+		// Channels are individually removed (emitting CHANNEL_DELETED) before
+		// DEVICE_DELETED fires, but this is a safety net for edge cases where
+		// the cascade may not trigger channel-level events.
+		this.scheduleStateRecalculation();
 	}
 
 	private async processPropertyChange(property: ChannelPropertyEntity): Promise<void> {
