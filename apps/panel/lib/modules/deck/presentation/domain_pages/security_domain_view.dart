@@ -208,12 +208,15 @@ class _SecurityScreenState extends State<SecurityScreen> {
 	}
 
 	Widget _buildModeSelector({required bool hasEntryPoints, required SecurityStatusModel status, required AppLocalizations localizations}) {
+		final screenService = locator<ScreenService>();
+
 		return ModeSelector<_SecurityTab>(
 			modes: _buildTabModes(hasEntryPoints: hasEntryPoints, status: status, localizations: localizations),
 			selectedValue: _selectedTab,
 			onChanged: (tab) => setState(() => _selectedTab = tab),
 			orientation: ModeSelectorOrientation.horizontal,
 			iconPlacement: ModeSelectorIconPlacement.left,
+			showLabels: screenService.isSmallScreen ? false : null,
 			color: _modeSelectorColor(status),
 		);
 	}

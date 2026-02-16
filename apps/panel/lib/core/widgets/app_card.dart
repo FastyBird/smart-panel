@@ -179,7 +179,7 @@ class _AppCardHeader extends StatelessWidget {
                   color: secondaryColor,
                 ),
               Text(
-                title,
+                title.toUpperCase(),
                 style: TextStyle(
                   color: titleColor ?? secondaryColor,
                   fontSize: AppFontSize.small,
