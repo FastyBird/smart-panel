@@ -1,9 +1,11 @@
-import { Controller, Param, Patch } from '@nestjs/common';
+import { Controller, Param, Patch, Req } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
+import { AuthenticatedRequest } from '../../auth/guards/auth.guard';
 import {
 	ApiBadRequestResponse,
 	ApiInternalServerErrorResponse,
+	ApiNotFoundResponse,
 	ApiSuccessResponse,
 } from '../../swagger/decorators/api-documentation.decorator';
 import {
@@ -32,10 +34,15 @@ export class SecurityAlertsController {
 	})
 	@ApiSuccessResponse(SecurityAlertAckResponseModel, 'Alert acknowledged successfully')
 	@ApiBadRequestResponse('Invalid request')
+	@ApiNotFoundResponse('Alert not found among active alerts')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Patch(':id/ack')
-	async acknowledgeOne(@Param('id') id: string): Promise<SecurityAlertAckResponseModel> {
-		const result = await this.securityService.acknowledgeAlert(id);
+	async acknowledgeOne(
+		@Param('id') id: string,
+		@Req() req: AuthenticatedRequest,
+	): Promise<SecurityAlertAckResponseModel> {
+		const acknowledgedBy = this.extractIdentity(req);
+		const result = await this.securityService.acknowledgeAlert(id, acknowledgedBy);
 
 		const data = new SecurityAlertAckModel();
 		data.id = result.id;
@@ -57,8 +64,9 @@ export class SecurityAlertsController {
 	@ApiBadRequestResponse('Invalid request')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Patch('ack')
-	async acknowledgeAll(): Promise<SecurityAlertAckAllResponseModel> {
-		const results = await this.securityService.acknowledgeAllAlerts();
+	async acknowledgeAll(@Req() req: AuthenticatedRequest): Promise<SecurityAlertAckAllResponseModel> {
+		const acknowledgedBy = this.extractIdentity(req);
+		const results = await this.securityService.acknowledgeAllAlerts(acknowledgedBy);
 
 		const response = new SecurityAlertAckAllResponseModel();
 		response.data = results.map((r) => {
@@ -70,5 +78,17 @@ export class SecurityAlertsController {
 		});
 
 		return response;
+	}
+
+	private extractIdentity(req: AuthenticatedRequest): string | undefined {
+		if (req.auth == null) {
+			return undefined;
+		}
+
+		if (req.auth.type === 'user') {
+			return req.auth.id;
+		}
+
+		return req.auth.tokenId;
 	}
 }

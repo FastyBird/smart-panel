@@ -45,8 +45,8 @@ class SecurityOverlay extends StatelessWidget {
 							: AppOverlayColorLight.lighter,
 						child: Center(
 							child: Container(
-								margin: EdgeInsets.all(AppSpacings.pXl),
-								padding: EdgeInsets.all(AppSpacings.pLg + AppSpacings.pMd),
+								margin: EdgeInsets.all(AppSpacings.pLg),
+								padding: EdgeInsets.all(AppSpacings.pLg),
 								constraints: BoxConstraints(
 									maxWidth: screenService.scale(340),
 								),
@@ -110,6 +110,14 @@ class SecurityOverlay extends StatelessWidget {
 															: AppFilledButtonsLightThemes.primaryForegroundColor,
 													),
 													label: Text('Acknowledge'),
+                          style: FilledButton.styleFrom(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: AppSpacings.pMd,
+                              vertical: AppSpacings.pMd,
+                            ),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
 												),
 											),
 										),
@@ -132,6 +140,14 @@ class SecurityOverlay extends StatelessWidget {
 															: AppOutlinedButtonsLightThemes.primaryForegroundColor,
 													),
 													label: Text('Open Security'),
+                          style: FilledButton.styleFrom(
+                            padding: EdgeInsets.symmetric(
+                              horizontal: AppSpacings.pMd,
+                              vertical: AppSpacings.pMd,
+                            ),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
 												),
 											),
 										),

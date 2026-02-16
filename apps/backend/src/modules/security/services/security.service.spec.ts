@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
+import { NotFoundException } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { SecurityAlertAckEntity } from '../entities/security-alert-ack.entity';
@@ -74,7 +75,6 @@ describe('SecurityService', () => {
 			const result = await service.getStatus();
 			expect(result.activeAlerts).toHaveLength(0);
 			expect(ackService.findByIds).not.toHaveBeenCalled();
-			expect(ackService.cleanupStale).toHaveBeenCalledWith([]);
 		});
 
 		it('should apply acknowledged=true from stored ack records', async () => {
@@ -94,7 +94,7 @@ describe('SecurityService', () => {
 			expect(result.activeAlerts[0].acknowledged).toBe(true);
 		});
 
-		it('should reset ack when alert timestamp is newer than stored lastEventAt', async () => {
+		it('should show acknowledged=false when alert timestamp is newer than stored lastEventAt', async () => {
 			const alert = makeAlert('sensor:dev1:smoke', '2025-01-02T00:00:00Z');
 			aggregator.aggregate.mockResolvedValue(makeStatus([alert]));
 
@@ -109,10 +109,8 @@ describe('SecurityService', () => {
 
 			const result = await service.getStatus();
 			expect(result.activeAlerts[0].acknowledged).toBe(false);
-			expect(ackService.resetAcknowledgement).toHaveBeenCalledWith(
-				'sensor:dev1:smoke',
-				new Date('2025-01-02T00:00:00Z'),
-			);
+			// getStatus is now read-only — no resetAcknowledgement call
+			expect(ackService.resetAcknowledgement).not.toHaveBeenCalled();
 		});
 
 		it('should apply stored ack state for alerts with invalid timestamps', async () => {
@@ -130,11 +128,9 @@ describe('SecurityService', () => {
 
 			const result = await service.getStatus();
 			expect(result.activeAlerts[0].acknowledged).toBe(true);
-			expect(ackService.resetAcknowledgement).not.toHaveBeenCalled();
-			expect(ackService.updateLastEventAt).not.toHaveBeenCalled();
 		});
 
-		it('should reset ack when lastEventAt is null (first occurrence tracking)', async () => {
+		it('should show acknowledged=false when lastEventAt is null (first occurrence tracking)', async () => {
 			const alert = makeAlert('sensor:dev1:smoke', '2025-01-01T00:00:00Z');
 			aggregator.aggregate.mockResolvedValue(makeStatus([alert]));
 
@@ -149,18 +145,6 @@ describe('SecurityService', () => {
 
 			const result = await service.getStatus();
 			expect(result.activeAlerts[0].acknowledged).toBe(false);
-			expect(ackService.resetAcknowledgement).toHaveBeenCalledWith(
-				'sensor:dev1:smoke',
-				new Date('2025-01-01T00:00:00Z'),
-			);
-		});
-
-		it('should cleanup stale ack records', async () => {
-			const alert = makeAlert('sensor:dev1:smoke', '2025-01-01T00:00:00Z');
-			aggregator.aggregate.mockResolvedValue(makeStatus([alert]));
-
-			await service.getStatus();
-			expect(ackService.cleanupStale).toHaveBeenCalledWith(['sensor:dev1:smoke']);
 		});
 
 		it('should show acknowledged=true after acking an alert at timestamp T1', async () => {
@@ -180,10 +164,9 @@ describe('SecurityService', () => {
 
 			const result = await service.getStatus();
 			expect(result.activeAlerts[0].acknowledged).toBe(true);
-			expect(ackService.resetAcknowledgement).not.toHaveBeenCalled();
 		});
 
-		it('should reset acknowledged=false when same alert reappears with newer timestamp', async () => {
+		it('should show acknowledged=false when same alert reappears with newer timestamp', async () => {
 			const T1 = '2025-01-01T00:00:00Z';
 			const T2 = '2025-01-02T00:00:00Z';
 			const alert = makeAlert('sensor:dev1:smoke', T2);
@@ -201,7 +184,6 @@ describe('SecurityService', () => {
 
 			const result = await service.getStatus();
 			expect(result.activeAlerts[0].acknowledged).toBe(false);
-			expect(ackService.resetAcknowledgement).toHaveBeenCalledWith('sensor:dev1:smoke', new Date(T2));
 		});
 	});
 
@@ -215,17 +197,24 @@ describe('SecurityService', () => {
 
 			const result = await service.acknowledgeAlert('a');
 			expect(result).toBe(entity);
-			expect(ackService.acknowledge).toHaveBeenCalledWith('a', new Date('2025-01-15T00:00:00Z'));
+			expect(ackService.acknowledge).toHaveBeenCalledWith('a', new Date('2025-01-15T00:00:00Z'), undefined);
 		});
 
-		it('should call acknowledge without timestamp when alert not found', async () => {
+		it('should throw NotFoundException when alert not found', async () => {
 			aggregator.aggregate.mockResolvedValue(makeStatus([]));
+
+			await expect(service.acknowledgeAlert('nonexistent')).rejects.toThrow(NotFoundException);
+		});
+
+		it('should pass acknowledgedBy to ack service', async () => {
+			const alert = makeAlert('a', '2025-01-15T00:00:00Z');
+			aggregator.aggregate.mockResolvedValue(makeStatus([alert]));
 
 			const entity = { id: 'a', acknowledged: true } as SecurityAlertAckEntity;
 			ackService.acknowledge.mockResolvedValue(entity);
 
-			await service.acknowledgeAlert('a');
-			expect(ackService.acknowledge).toHaveBeenCalledWith('a', undefined);
+			await service.acknowledgeAlert('a', 'user-123');
+			expect(ackService.acknowledge).toHaveBeenCalledWith('a', new Date('2025-01-15T00:00:00Z'), 'user-123');
 		});
 	});
 
@@ -239,11 +228,28 @@ describe('SecurityService', () => {
 			]);
 
 			const result = await service.acknowledgeAllAlerts();
-			expect(ackService.acknowledgeAll).toHaveBeenCalledWith([
-				{ id: 'a', timestamp: new Date('2025-01-01T00:00:00Z') },
-				{ id: 'b', timestamp: new Date('2025-01-02T00:00:00Z') },
-			]);
+			expect(ackService.acknowledgeAll).toHaveBeenCalledWith(
+				[
+					{ id: 'a', timestamp: new Date('2025-01-01T00:00:00Z') },
+					{ id: 'b', timestamp: new Date('2025-01-02T00:00:00Z') },
+				],
+				undefined,
+			);
 			expect(result).toHaveLength(2);
+		});
+
+		it('should pass acknowledgedBy to ack service', async () => {
+			const alerts = [makeAlert('a', '2025-01-01T00:00:00Z')];
+			aggregator.aggregate.mockResolvedValue(makeStatus(alerts));
+			ackService.findByIds.mockResolvedValue([
+				{ id: 'a', acknowledged: true } as SecurityAlertAckEntity,
+			]);
+
+			await service.acknowledgeAllAlerts('user-456');
+			expect(ackService.acknowledgeAll).toHaveBeenCalledWith(
+				[{ id: 'a', timestamp: new Date('2025-01-01T00:00:00Z') }],
+				'user-456',
+			);
 		});
 	});
 });

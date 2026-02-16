@@ -14,6 +14,9 @@ export class SecurityAlertAckEntity {
 	@Column({ type: 'datetime', nullable: true })
 	lastEventAt: Date | null;
 
+	@Column({ type: 'varchar', nullable: true })
+	acknowledgedBy: string | null;
+
 	@UpdateDateColumn({ type: 'datetime' })
 	updatedAt: Date;
 }

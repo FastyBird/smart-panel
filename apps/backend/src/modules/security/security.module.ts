@@ -1,9 +1,11 @@
-import { Module, OnModuleInit } from '@nestjs/common';
+import { Module, OnModuleInit, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
 import { DevicesModule } from '../devices/devices.module';
+import { ChannelEntity } from '../devices/entities/devices.entity';
 import { ExtensionsModule } from '../extensions/extensions.module';
+import { InfluxDbModule } from '../influxdb/influxdb.module';
 import { ExtensionsService } from '../extensions/services/extensions.service';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
@@ -14,7 +16,7 @@ import { SecurityEventsController } from './controllers/security-events.controll
 import { SecurityController } from './controllers/security.controller';
 import { UpdateSecurityConfigDto } from './dto/update-config.dto';
 import { SecurityAlertAckEntity } from './entities/security-alert-ack.entity';
-import { SecurityEventEntity } from './entities/security-event.entity';
+import { SecurityStateListener } from './listeners/security-state.listener';
 import { SecurityConfigModel } from './models/config.model';
 import { AlarmSecurityProvider } from './providers/alarm-security.provider';
 import { DefaultSecurityProvider } from './providers/default-security.provider';
@@ -42,7 +44,8 @@ import { DetectionRulesLoaderService } from './spec/detection-rules-loader.servi
 		SwaggerModule,
 		ExtensionsModule,
 		DevicesModule,
-		TypeOrmModule.forFeature([SecurityAlertAckEntity, SecurityEventEntity]),
+		forwardRef(() => InfluxDbModule),
+		TypeOrmModule.forFeature([SecurityAlertAckEntity, ChannelEntity]),
 	],
 	controllers: [SecurityController, SecurityAlertsController, SecurityEventsController],
 	providers: [
@@ -63,6 +66,7 @@ import { DetectionRulesLoaderService } from './spec/detection-rules-loader.servi
 		SecurityEventsService,
 		SecurityAggregatorService,
 		SecurityService,
+		SecurityStateListener,
 	],
 	exports: [SecurityService, SECURITY_STATE_PROVIDERS],
 })

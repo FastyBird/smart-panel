@@ -253,12 +253,19 @@ class SecurityOverlayController extends ChangeNotifier {
 
 	void updateStatus(SecurityStatusModel newStatus) {
 		// Clear optimistic cache: server state is now the truth.
-		// Keep IDs that are still pending (in-flight request) and synthetic IDs
-		// (which have no server-side equivalent). Synthetic IDs are cleared when
-		// the critical condition resolves, so they don't suppress future overlays.
-		_optimisticAckIds.retainWhere(
-			(id) => _pendingAckIds.contains(id) || id.startsWith('__'),
-		);
+		// Keep IDs that are still pending (in-flight), synthetic IDs,
+		// or IDs where the alert is still active but server hasn't confirmed
+		// the acknowledgement yet (prevents overlay flicker between API
+		// success and server push).
+		_optimisticAckIds.retainWhere((id) {
+			if (_pendingAckIds.contains(id)) return true;
+			if (id.startsWith('__')) return true;
+			// Retain if alert still active but not yet confirmed by server
+			for (final alert in newStatus.activeAlerts) {
+				if (alert.id == id && !alert.acknowledged) return true;
+			}
+			return false;
+		});
 
 		// Drop synthetic IDs when no critical condition exists (alarm cleared, etc.)
 		// so the overlay can reappear if the condition is re-triggered later.
@@ -300,8 +307,8 @@ class SecurityOverlayController extends ChangeNotifier {
 		try {
 			await _repository.acknowledgeAlert(alertId);
 			_pendingAckIds.remove(alertId);
-			_optimisticAckIds.remove(alertId);
-			// fetchStatus in repository already updates, but we need to sync
+			// Keep in _optimisticAckIds until server confirms via updateStatus()
+			notifyListeners();
 			return true;
 		} catch (e) {
 			_pendingAckIds.remove(alertId);
@@ -341,9 +348,8 @@ class SecurityOverlayController extends ChangeNotifier {
 		try {
 			await _repository.acknowledgeAllAlerts();
 			_pendingAckIds.removeAll(realIds);
-			// Remove only real IDs; synthetic IDs stay in optimistic cache
-			// until the next updateStatus() clears them.
-			_optimisticAckIds.removeAll(realIds);
+			// Keep real IDs in _optimisticAckIds until server confirms via updateStatus()
+			notifyListeners();
 			return true;
 		} catch (e) {
 			_pendingAckIds.removeAll(realIds);
@@ -375,9 +381,8 @@ class SecurityOverlayController extends ChangeNotifier {
 		try {
 			await _repository.acknowledgeAllAlerts();
 			_pendingAckIds.removeAll(realIds);
-			// Remove only real IDs; synthetic IDs stay in optimistic cache
-			// until the next updateStatus() clears them.
-			_optimisticAckIds.removeAll(realIds);
+			// Keep real IDs in _optimisticAckIds until server confirms via updateStatus()
+			notifyListeners();
 			return true;
 		} catch (e) {
 			_pendingAckIds.removeAll(realIds);

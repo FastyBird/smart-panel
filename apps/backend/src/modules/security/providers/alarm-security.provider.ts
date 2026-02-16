@@ -3,6 +3,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { DevicesService } from '../../devices/services/devices.service';
+import { SecurityAggregationContext } from '../contracts/security-aggregation-context.type';
 import { SecurityAlert, SecuritySignal } from '../contracts/security-signal.type';
 import { SecurityStateProviderInterface } from '../contracts/security-state-provider.interface';
 import { AlarmState, ArmedState, SEVERITY_RANK, SecurityAlertType, Severity } from '../security.constants';
@@ -24,6 +25,11 @@ interface AlarmDeviceState {
 	active: boolean | null;
 	fault: number;
 	lastEvent: SecuritySignal['lastEvent'] | undefined;
+	// Stable timestamps from property values — used for alert timestamps
+	// instead of Date.now() to ensure ack records don't become stale.
+	triggeredTimestamp: string | null;
+	tamperedTimestamp: string | null;
+	faultTimestamp: string | null;
 }
 
 @Injectable()
@@ -36,9 +42,9 @@ export class AlarmSecurityProvider implements SecurityStateProviderInterface {
 		return 'alarm';
 	}
 
-	async getSignals(): Promise<SecuritySignal> {
+	async getSignals(context?: SecurityAggregationContext): Promise<SecuritySignal> {
 		try {
-			return await this.buildSignal();
+			return await this.buildSignal(context);
 		} catch (error) {
 			this.logger.warn(`Failed to build alarm security signal: ${error}`);
 
@@ -46,8 +52,8 @@ export class AlarmSecurityProvider implements SecurityStateProviderInterface {
 		}
 	}
 
-	private async buildSignal(): Promise<SecuritySignal> {
-		const allDevices = await this.devicesService.findAll();
+	private async buildSignal(context?: SecurityAggregationContext): Promise<SecuritySignal> {
+		const allDevices: DeviceEntity[] = context?.devices ?? await this.devicesService.findAll();
 		const alarmDevices = allDevices
 			.filter((device) => device.category === DeviceCategory.ALARM)
 			.sort((a, b) => a.id.localeCompare(b.id));
@@ -123,7 +129,17 @@ export class AlarmSecurityProvider implements SecurityStateProviderInterface {
 			lastEvent = this.parseLastEvent(lastEventValue, device.id);
 		}
 
-		return { deviceId: device.id, armedState, alarmState, triggered, tampered, active, fault, lastEvent };
+		// Stable timestamps for alert conditions (from property value or entity)
+		const triggeredTimestamp = this.getPropertyTimestamp(properties, PropertyCategory.TRIGGERED)
+			?? this.getPropertyTimestamp(properties, PropertyCategory.ALARM_STATE);
+		const tamperedTimestamp = this.getPropertyTimestamp(properties, PropertyCategory.TAMPERED);
+		const faultTimestamp = this.getPropertyTimestamp(properties, PropertyCategory.FAULT)
+			?? this.getPropertyTimestamp(properties, PropertyCategory.ACTIVE);
+
+		return {
+			deviceId: device.id, armedState, alarmState, triggered, tampered, active, fault, lastEvent,
+			triggeredTimestamp, tamperedTimestamp, faultTimestamp,
+		};
 	}
 
 	private aggregateStates(states: AlarmDeviceState[]): SecuritySignal {
@@ -147,7 +163,6 @@ export class AlarmSecurityProvider implements SecurityStateProviderInterface {
 
 		// Build alerts for exception states
 		const activeAlerts: SecurityAlert[] = [];
-		const now = new Date().toISOString();
 
 		for (const s of states) {
 			if (s.alarmState === AlarmState.TRIGGERED || s.triggered) {
@@ -155,7 +170,7 @@ export class AlarmSecurityProvider implements SecurityStateProviderInterface {
 					id: `alarm:${s.deviceId}:${SecurityAlertType.INTRUSION}`,
 					type: SecurityAlertType.INTRUSION,
 					severity: Severity.CRITICAL,
-					timestamp: s.lastEvent?.timestamp ?? now,
+					timestamp: s.lastEvent?.timestamp ?? s.triggeredTimestamp ?? new Date().toISOString(),
 					acknowledged: false,
 					sourceDeviceId: s.deviceId,
 				});
@@ -166,7 +181,7 @@ export class AlarmSecurityProvider implements SecurityStateProviderInterface {
 					id: `alarm:${s.deviceId}:${SecurityAlertType.TAMPER}`,
 					type: SecurityAlertType.TAMPER,
 					severity: Severity.CRITICAL,
-					timestamp: s.lastEvent?.timestamp ?? now,
+					timestamp: s.lastEvent?.timestamp ?? s.tamperedTimestamp ?? new Date().toISOString(),
 					acknowledged: false,
 					sourceDeviceId: s.deviceId,
 				});
@@ -177,7 +192,7 @@ export class AlarmSecurityProvider implements SecurityStateProviderInterface {
 					id: `alarm:${s.deviceId}:${SecurityAlertType.FAULT}`,
 					type: SecurityAlertType.FAULT,
 					severity: Severity.WARNING,
-					timestamp: s.lastEvent?.timestamp ?? now,
+					timestamp: s.lastEvent?.timestamp ?? s.faultTimestamp ?? new Date().toISOString(),
 					acknowledged: false,
 					sourceDeviceId: s.deviceId,
 				});
@@ -228,6 +243,35 @@ export class AlarmSecurityProvider implements SecurityStateProviderInterface {
 		const prop = properties.find((p) => p.category === category);
 
 		return prop?.value?.value ?? null;
+	}
+
+	/**
+	 * Get a stable timestamp for a property: prefers the InfluxDB lastUpdated
+	 * value, then falls back to the entity's updatedAt / createdAt.
+	 */
+	private getPropertyTimestamp(
+		properties: ChannelPropertyEntity[],
+		category: PropertyCategory,
+	): string | null {
+		const prop = properties.find((p) => p.category === category);
+
+		if (prop == null) {
+			return null;
+		}
+
+		// Prefer InfluxDB measurement timestamp
+		if (prop.value?.lastUpdated != null) {
+			return prop.value.lastUpdated;
+		}
+
+		// Fall back to entity-level timestamp
+		const entityTs = prop.updatedAt ?? prop.createdAt;
+
+		if (entityTs != null) {
+			return entityTs instanceof Date ? entityTs.toISOString() : entityTs;
+		}
+
+		return null;
 	}
 
 	private parseArmedState(value: string | number | boolean | null): ArmedState | null {

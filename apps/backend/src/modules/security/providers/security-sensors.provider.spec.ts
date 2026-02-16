@@ -4,7 +4,7 @@ import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices
 import { ChannelEntity, ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { PropertyValueState } from '../../devices/models/property-value-state.model';
 import { DevicesService } from '../../devices/services/devices.service';
-import { SecurityAlertType, Severity } from '../security.constants';
+import { ArmedState, SecurityAlertType, Severity } from '../security.constants';
 import { DetectionRulesLoaderService } from '../spec/detection-rules-loader.service';
 import { ResolvedSensorRule } from '../spec/detection-rules.types';
 
@@ -199,12 +199,26 @@ describe('SecuritySensorsProvider', () => {
 		expect(signal.lastEvent?.type).toBe('gas');
 	});
 
-	it('should map motion sensor to warning severity', async () => {
+	it('should map motion sensor to info severity when disarmed (no context)', async () => {
 		devicesService.findAll.mockResolvedValue([
 			createDevice('d1', [createDetectedChannel(ChannelCategory.MOTION, true)]),
 		]);
 
 		const signal = await provider.getSignals();
+
+		expect(signal.activeAlertsCount).toBe(1);
+		expect(signal.highestSeverity).toBe(Severity.INFO);
+		expect(signal.hasCriticalAlert).toBe(false);
+		expect(signal.lastEvent?.type).toBe('intrusion');
+		expect(signal.lastEvent?.severity).toBe(Severity.INFO);
+	});
+
+	it('should map motion sensor to warning severity when armed', async () => {
+		devicesService.findAll.mockResolvedValue([
+			createDevice('d1', [createDetectedChannel(ChannelCategory.MOTION, true)]),
+		]);
+
+		const signal = await provider.getSignals({ armedState: ArmedState.ARMED_AWAY });
 
 		expect(signal.activeAlertsCount).toBe(1);
 		expect(signal.highestSeverity).toBe(Severity.WARNING);
@@ -213,12 +227,24 @@ describe('SecuritySensorsProvider', () => {
 		expect(signal.lastEvent?.severity).toBe(Severity.WARNING);
 	});
 
-	it('should map occupancy sensor to warning severity', async () => {
+	it('should map occupancy sensor to info severity when disarmed (no context)', async () => {
 		devicesService.findAll.mockResolvedValue([
 			createDevice('d1', [createDetectedChannel(ChannelCategory.OCCUPANCY, true)]),
 		]);
 
 		const signal = await provider.getSignals();
+
+		expect(signal.activeAlertsCount).toBe(1);
+		expect(signal.highestSeverity).toBe(Severity.INFO);
+		expect(signal.lastEvent?.type).toBe('intrusion');
+	});
+
+	it('should map occupancy sensor to warning severity when armed', async () => {
+		devicesService.findAll.mockResolvedValue([
+			createDevice('d1', [createDetectedChannel(ChannelCategory.OCCUPANCY, true)]),
+		]);
+
+		const signal = await provider.getSignals({ armedState: ArmedState.ARMED_HOME });
 
 		expect(signal.activeAlertsCount).toBe(1);
 		expect(signal.highestSeverity).toBe(Severity.WARNING);

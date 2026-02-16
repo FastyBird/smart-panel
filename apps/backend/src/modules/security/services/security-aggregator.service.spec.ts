@@ -1,5 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 
+import { DevicesService } from '../../devices/services/devices.service';
 import { SecurityAlert, SecuritySignal } from '../contracts/security-signal.type';
 import { SecurityStateProviderInterface } from '../contracts/security-state-provider.interface';
 import { AlarmState, ArmedState, SECURITY_STATE_PROVIDERS, SecurityAlertType, Severity } from '../security.constants';
@@ -38,6 +39,12 @@ describe('SecurityAggregatorService', () => {
 				{
 					provide: SECURITY_STATE_PROVIDERS,
 					useValue: providers,
+				},
+				{
+					provide: DevicesService,
+					useValue: {
+						findAll: jest.fn().mockResolvedValue([]),
+					},
 				},
 				SecurityAggregatorService,
 			],
