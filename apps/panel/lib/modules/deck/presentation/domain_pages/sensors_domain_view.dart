@@ -1,5 +1,8 @@
 // Sensors domain view: room-level list of sensors for a single space/room.
 //
+// **AI/Editor navigation:** Use section headers (CONSTANTS, DATA MODELS, etc.)
+// to jump. Do not change UI structure or widget tree; preserve rendered output.
+//
 // **Purpose:** One screen per room showing sensor readings (temperature,
 // humidity, air quality, motion, safety, light, energy). Users can filter by
 // category, see summary cards (avg temp/humidity/illuminance), and open
@@ -25,21 +28,22 @@
 // - Tapping a sensor opens [DeviceDetailPage] for its device.
 //
 // **File structure (for humans and AI):**
-// Search for the exact section header (e.g. "// CONSTANTS", "// DATA MODELS",
-// "// LIFECYCLE") to jump to that part of the file. Sections appear in this order:
+// Search for the exact section header (e.g. "// CONSTANTS", "// DATA MODELS")
+// to jump to that part of the file. Sections appear in this order:
 //
 // - **CONSTANTS** — [_SensorsViewConstants]: freshness refresh interval.
-// - **DATA MODELS** — [SensorStatus], [TrendDirection], [SensorData], [_parseTrend].
+// - **DATA MODELS** — [SensorStatus], [TrendDirection], [SensorData], [_parseTrend],
+//   [_iconForCategory].
 // - **SENSORS DOMAIN VIEW PAGE** — [SensorsDomainViewPage] and state: HELPERS,
-//   LIFECYCLE, LISTENERS, DATA LOADING, NAVIGATION, FILTERING & CATEGORIES, BUILD.
+//   LIFECYCLE, BOTTOM NAV MODE, FILTER POPUP, LISTENERS, DATA LOADING,
+//   FILTERING & CATEGORIES, BUILD.
 // - **EMPTY STATE** — no sensors message.
-// - **HEADER** — title, subtitle (alert/health counts), home button.
-// - **CATEGORY SELECTOR** — portrait and landscape mode selectors.
+// - **HEADER** — title, subtitle (alert/health counts).
 // - **LAYOUTS** — portrait and landscape column layout.
 // - **ALERT BANNER** — single alert CTA when any sensor is in alert.
 // - **SUMMARY CARDS** — environment averages (temp, humidity, illuminance/pressure).
-// - **SENSOR GRID** — section title + grid of sensor cards; card builder, freshness dot, trend icon.
-// - **SENSOR DETAIL** — navigate to device detail.
+// - **SENSOR GRID** — tappable section title (opens filter popup) + grid of sensor cards.
+// - **SENSOR DETAIL** — navigate to [DeviceDetailPage].
 
 import 'dart:async';
 
@@ -59,12 +63,12 @@ import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
+import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
+import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/tile_wrappers.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
-import 'package:fastybird_smart_panel/modules/deck/models/bottom_nav_mode_config.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/domain_data_loader.dart';
-import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_mode_chip.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/domain_state_view.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/bottom_nav_mode_notifier.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/deck_page_activated_event.dart';
@@ -154,27 +158,31 @@ class SensorData {
   /// Offline means the parent device is not connected
   bool get isOffline => !deviceOnline;
 
-  IconData get icon {
-    switch (category) {
-      case SensorCategory.temperature:
-        return MdiIcons.thermometer;
-      case SensorCategory.humidity:
-        return MdiIcons.waterPercent;
-      case SensorCategory.airQuality:
-        return MdiIcons.airFilter;
-      case SensorCategory.motion:
-        return MdiIcons.motionSensor;
-      case SensorCategory.safety:
-        return MdiIcons.shieldCheck;
-      case SensorCategory.light:
-        return MdiIcons.weatherSunny;
-      case SensorCategory.energy:
-        return MdiIcons.flash;
-    }
+  IconData get icon => _iconForCategory(category);
+}
+
+/// Maps [SensorCategory] to icon. Shared by [SensorData.icon] and mode selector.
+IconData _iconForCategory(SensorCategory category) {
+  switch (category) {
+    case SensorCategory.temperature:
+      return MdiIcons.thermometer;
+    case SensorCategory.humidity:
+      return MdiIcons.waterPercent;
+    case SensorCategory.airQuality:
+      return MdiIcons.airFilter;
+    case SensorCategory.motion:
+      return MdiIcons.motionSensor;
+    case SensorCategory.safety:
+      return MdiIcons.shieldCheck;
+    case SensorCategory.light:
+      return MdiIcons.weatherSunny;
+    case SensorCategory.energy:
+      return MdiIcons.flash;
   }
 }
 
 /// Parses API trend string ('rising'/'falling'/'stable') into [TrendDirection].
+/// Used when building [SensorData] from [SensorReadingModel].
 TrendDirection _parseTrend(String? trend) {
   switch (trend) {
     case 'rising':
@@ -334,23 +342,16 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
   }
 
   void _registerModeConfig() {
-    if (!_isActivePage || _isLoading) return;
+    if (!_isActivePage) return;
 
-    final modeOptions = _getCategoryModeOptions();
-    if (modeOptions.isEmpty) return;
-
-    final currentOption = modeOptions.firstWhere(
-      (o) => o.value == _selectedCategory,
-      orElse: () => modeOptions.first,
-    );
-
-    _bottomNavModeNotifier?.setConfig(BottomNavModeConfig(
-      icon: currentOption.icon,
-      label: currentOption.label,
-      color: currentOption.color ?? ThemeColors.neutral,
-      popupBuilder: _buildModePopupContent,
-    ));
+    _bottomNavModeNotifier?.clear();
   }
+
+  // --------------------------------------------------------------------------
+  // FILTER POPUP
+  // --------------------------------------------------------------------------
+  // Category filter is a tappable section title ([_buildSensorSectionTitle])
+  // that opens this popup. Options from [_getCategoryModeOptions].
 
   Widget _buildModePopupContent(BuildContext context, VoidCallback dismiss) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -361,7 +362,10 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: EdgeInsets.only(bottom: AppSpacings.pSm),
+          padding: EdgeInsets.symmetric(
+            horizontal: AppSpacings.pLg,
+            vertical: AppSpacings.pMd,
+          ),
           child: Text(
             'FILTER',
             style: TextStyle(
@@ -372,17 +376,40 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
             ),
           ),
         ),
-        for (final mode in modes)
-          _buildPopupModeItem(
-            context,
-            mode: mode,
-            isActive: _selectedCategory == mode.value,
-            onTap: () {
-              setState(() => _selectedCategory = mode.value);
-              _registerModeConfig();
-              dismiss();
+        Divider(
+          height: AppSpacings.scale(1),
+          thickness: AppSpacings.scale(1),
+          color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light,
+        ),
+        Flexible(
+          child: VerticalScrollWithGradient(
+            gradientHeight: AppSpacings.pMd,
+            backgroundColor: isDark ? AppBgColorDark.overlay : AppBgColorLight.overlay,
+            borderRadius: BorderRadius.vertical(
+              bottom: Radius.circular(AppBorderRadius.medium),
+            ),
+            padding: EdgeInsets.symmetric(
+              vertical: AppSpacings.pMd,
+              horizontal: AppSpacings.pMd,
+            ),
+            shrinkWrap: true,
+            itemCount: modes.length,
+            separatorHeight: 0,
+            itemBuilder: (context, index) {
+              final mode = modes[index];
+              return _buildPopupModeItem(
+                context,
+                mode: mode,
+                isActive: _selectedCategory == mode.value,
+                onTap: () {
+                  setState(() => _selectedCategory = mode.value);
+                  _registerModeConfig();
+                  dismiss();
+                },
+              );
             },
           ),
+        ),
       ],
     );
   }
@@ -438,6 +465,65 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
           ],
         ),
       ),
+    );
+  }
+
+  /// Shows category filter popup anchored below the section title.
+  /// Uses [context]'s RenderBox for positioning when available.
+  void _showFilterPopup(BuildContext context) {
+    final renderBox = context.findRenderObject() as RenderBox?;
+    final triggerRect = renderBox != null
+        ? renderBox.localToGlobal(Offset.zero) & renderBox.size
+        : null;
+
+    showDialog(
+      context: context,
+      barrierColor: Colors.transparent,
+      builder: (dialogContext) {
+        final isDark = Theme.of(dialogContext).brightness == Brightness.dark;
+        final screenHeight = MediaQuery.of(dialogContext).size.height;
+        final popupTop = triggerRect != null
+            ? triggerRect.bottom + AppSpacings.pSm
+            : AppSpacings.scale(120);
+        final maxPopupHeight = screenHeight - popupTop - AppSpacings.pMd;
+
+        return Align(
+          alignment: Alignment.topLeft,
+          child: Padding(
+            padding: EdgeInsets.only(
+              top: popupTop,
+              left: triggerRect != null
+                  ? triggerRect.left
+                  : AppSpacings.pLg,
+            ),
+            child: Material(
+              elevation: 8,
+              borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+              color: isDark ? AppBgColorDark.overlay : AppBgColorLight.overlay,
+              child: Container(
+                constraints: BoxConstraints(
+                  minWidth: AppSpacings.scale(180),
+                  maxWidth: AppSpacings.scale(220),
+                  maxHeight: maxPopupHeight,
+                ),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+                  border: Border.all(
+                    color: isDark
+                        ? AppBorderColorDark.light
+                        : AppBorderColorLight.light,
+                    width: AppSpacings.scale(1),
+                  ),
+                ),
+                child: _buildModePopupContent(
+                  dialogContext,
+                  () => Navigator.of(dialogContext).pop(),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -529,7 +615,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
   }
 
 
-  /// Format sensor value for display
+  /// Formats raw sensor value for display using [SensorUtils.formatRawValue].
   String _formatSensorValue(dynamic value, String channelCategory) {
     return SensorUtils.formatRawValue(
       value,
@@ -538,7 +624,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
   }
 
 
-  /// True when the channel property is bool or enum (used for binary/state display).
+  /// True when the channel property is bool or enum (binary/state display, no trend icon).
   bool _isDiscreteProperty(String? propertyId) {
     if (propertyId == null) return false;
     try {
@@ -633,12 +719,6 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
   }
 
   // --------------------------------------------------------------------------
-  // NAVIGATION
-  // --------------------------------------------------------------------------
-
-
-
-  // --------------------------------------------------------------------------
   // FILTERING & CATEGORIES
   // --------------------------------------------------------------------------
   // Category display (colors, labels, icons) and filtered list for mode selector + grid.
@@ -694,25 +774,6 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     }
   }
 
-  IconData _getCategoryIcon(SensorCategory category) {
-    switch (category) {
-      case SensorCategory.temperature:
-        return MdiIcons.thermometer;
-      case SensorCategory.humidity:
-        return MdiIcons.waterPercent;
-      case SensorCategory.airQuality:
-        return MdiIcons.airFilter;
-      case SensorCategory.motion:
-        return MdiIcons.motionSensor;
-      case SensorCategory.safety:
-        return MdiIcons.shieldCheck;
-      case SensorCategory.light:
-        return MdiIcons.weatherSunny;
-      case SensorCategory.energy:
-        return MdiIcons.flash;
-    }
-  }
-
   ThemeColors _getCategoryModeColor(SensorCategory category) {
     switch (category) {
       case SensorCategory.temperature:
@@ -750,7 +811,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
       // Then available categories
       ...availableCategories.map((cat) => ModeOption<SensorCategory?>(
             value: cat,
-            icon: _getCategoryIcon(cat),
+            icon: _iconForCategory(cat),
             label: _getCategoryLabel(AppLocalizations.of(context)!, cat),
             color: _getCategoryModeColor(cat),
           )),
@@ -918,15 +979,8 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
         icon: MdiIcons.accessPointNetwork,
         color: accentThemeColor,
       ),
-      landscapeAction: const DeckModeChip(),
     );
   }
-
-  // =============================================================================
-  // CATEGORY SELECTOR
-  // =============================================================================
-  // Horizontal mode selector (portrait) or vertical (landscape); options from [_getCategoryModeOptions].
-
 
   // =============================================================================
   // PORTRAIT LAYOUT
@@ -934,20 +988,40 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
   // Optional alert banner, summary cards (when "All"), category selector, sensor grid.
 
   Widget _buildPortraitLayout(BuildContext context) {
-    final isAtLeastMedium = _screenService.isAtLeastMedium;
     final isSmallScreen = _screenService.isSmallScreen;
-    final sensorsPerRow = isAtLeastMedium ? 3 : 2;
+    final sensorsPerRow = _screenService.isAtLeastMedium ? 3 : 2;
 
     return PortraitViewLayout(
+      scrollable: false,
       content: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         spacing: AppSpacings.pMd,
         children: [
           if (_hasAlerts) _buildAlertBanner(context),
-          if (_selectedCategory == null) ...[
-            _buildSummaryCards(context, compact: isSmallScreen),
-          ],
-          _buildSensorGrid(context, crossAxisCount: sensorsPerRow, childAspectRatio: isSmallScreen ? 1.0 : 0.9),
+          _buildSummaryCards(context, compact: isSmallScreen),
+          _buildSensorSectionTitle(context),
+          Expanded(
+            child: VerticalScrollWithGradient(
+              gradientHeight: AppSpacings.pMd,
+              padding: EdgeInsets.symmetric(vertical: AppSpacings.pMd),
+              itemCount: 1,
+              separatorHeight: 0,
+              itemBuilder: (context, index) => GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: sensorsPerRow,
+                  childAspectRatio: isSmallScreen ? 1.0 : 0.9,
+                  crossAxisSpacing: AppSpacings.pMd,
+                  mainAxisSpacing: AppSpacings.pMd,
+                ),
+                itemCount: _filteredSensors.length,
+                itemBuilder: (context, index) {
+                  return _buildSensorCard(context, _filteredSensors[index]);
+                },
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -960,19 +1034,50 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
 
   Widget _buildLandscapeLayout(BuildContext context) {
     final isLargeScreen = _screenService.isLargeScreen;
-    final sensorsPerRow = isLargeScreen ? 4 : (_screenService.isAtLeastMedium ? 3 : 2);
+    final sensorsPerRow = isLargeScreen ? 3 : 2;
 
     return LandscapeViewLayout(
+      mainContentPadding: EdgeInsets.only(
+        right: AppSpacings.pMd,
+        left: AppSpacings.pMd,
+        bottom: AppSpacings.pMd,
+      ),
       mainContent: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        spacing: AppSpacings.pLg,
         children: [
-          if (_selectedCategory == null) _buildSummaryCards(context),
-          _buildSensorGrid(context, crossAxisCount: sensorsPerRow, childAspectRatio: 0.95),
+          _buildSensorSectionTitle(context),
+          Expanded(
+            child: VerticalScrollWithGradient(
+              gradientHeight: AppSpacings.pMd,
+              padding: EdgeInsets.symmetric(
+                vertical: AppSpacings.pMd,
+              ),
+              itemCount: 1,
+              separatorHeight: 0,
+              itemBuilder: (context, index) => GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: sensorsPerRow,
+                  childAspectRatio: isLargeScreen ? 0.87 : 1,
+                  crossAxisSpacing: AppSpacings.pMd,
+                  mainAxisSpacing: AppSpacings.pMd,
+                ),
+                itemCount: _filteredSensors.length,
+                itemBuilder: (context, index) {
+                  return _buildSensorCard(context, _filteredSensors[index]);
+                },
+              ),
+            ),
+          ),
         ],
       ),
-      mainContentScrollable: true,
-      mainContentPadding: AppSpacings.paddingMd,
+      additionalContentScrollable: false,
+      additionalContentPadding: EdgeInsets.only(
+        left: AppSpacings.pMd,
+        bottom: AppSpacings.pMd,
+      ),
+      additionalContent: _buildSummaryCards(context, compact: !isLargeScreen, vertical: true),
     );
   }
 
@@ -1047,16 +1152,39 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     return items;
   }
 
-  Widget _buildSummaryCards(BuildContext context, {bool compact = false}) {
+  Widget _buildSummaryCards(BuildContext context, {bool compact = false, bool vertical = false}) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final localizations = AppLocalizations.of(context)!;
     final items = _buildSummaryItems(isDark: isDark, localizations: localizations);
 
     if (items.isEmpty) return const SizedBox.shrink();
 
-    // Compact: horizontal scroll tiles (small portrait)
+    // Compact vertical: stacked tiles fitted to available height (landscape small/medium)
+    if (compact && vertical) {
+      final tileHeight = AppSpacings.scale(AppTileHeight.horizontal * 0.85);
+
+      return Column(
+        spacing: AppSpacings.pSm,
+        children: items.map((item) => SizedBox(
+          height: tileHeight,
+          child: UniversalTile(
+            layout: TileLayout.horizontal,
+            icon: item.icon,
+            name: item.name,
+            status: item.status,
+            iconAccentColor: item.themeColor,
+            showGlow: false,
+            showDoubleBorder: false,
+            showInactiveBorder: false,
+            onTileTap: () {},
+          ),
+        )).toList(),
+      );
+    }
+
+    // Compact horizontal: scroll tiles (small portrait)
     if (compact) {
-      final tileHeight = AppSpacings.scale(AppTileHeight.horizontal);
+      final tileHeight = AppSpacings.scale(AppTileHeight.horizontal * 0.85);
 
       return HorizontalScrollWithGradient(
         height: tileHeight,
@@ -1077,27 +1205,28 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
       );
     }
 
-    // Standard: expanded cards in a row
-    final cards = <Widget>[];
+    // Standard: cards in a row or column
+    final cards = items.map((item) => _buildSummaryCard(
+      context,
+      title: item.status,
+      value: item.name,
+      icon: item.icon,
+      color: item.color,
+    )).toList();
 
-    for (var i = 0; i < items.length; i++) {
-      final item = items[i];
-      cards.add(Expanded(
-        child: _buildSummaryCard(
-          context,
-          title: item.status,
-          value: item.name,
-          icon: item.icon,
-          color: item.color,
-        ),
-      ));
+    if (vertical) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        spacing: AppSpacings.pSm,
+        children: cards,
+      );
     }
 
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         spacing: AppSpacings.pMd,
-        children: cards,
+        children: cards.map((c) => Expanded(child: c)).toList(),
       ),
     );
   }
@@ -1167,45 +1296,44 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
   // =============================================================================
   // Section title + count, then grid of [_filteredSensors]. Cards show icon, freshness dot, value, trend.
 
-  Widget _buildSensorGrid(BuildContext context, {required int crossAxisCount, double childAspectRatio = 1.0}) {
+  Widget _buildSensorSectionTitle(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final filtered = _filteredSensors;
-
     final localizations = AppLocalizations.of(context)!;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      spacing: AppSpacings.pMd,
-      children: [
-        SectionTitle(
-          icon: MdiIcons.viewGrid,
-          title: _selectedCategory == null
-              ? localizations.sensors_domain_all_sensors
-              : _getCategoryLabel(localizations, _selectedCategory!),
-          trailing: Text(
-            localizations.sensors_domain_sensor_count(filtered.length),
-            style: TextStyle(
-              color: isDark
-                  ? AppTextColorDark.placeholder
-                  : AppTextColorLight.placeholder,
-              fontSize: AppFontSize.extraSmall,
+
+    return Builder(
+      builder: (sectionContext) => GestureDetector(
+        onTap: () => _showFilterPopup(sectionContext),
+        behavior: HitTestBehavior.opaque,
+        child: SectionTitle(
+        icon: MdiIcons.viewGrid,
+        title: _selectedCategory == null
+            ? localizations.sensors_domain_all_sensors
+            : _getCategoryLabel(localizations, _selectedCategory!),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          spacing: AppSpacings.pSm,
+          children: [
+            Text(
+              localizations.sensors_domain_sensor_count(filtered.length),
+              style: TextStyle(
+                color: isDark
+                    ? AppTextColorDark.placeholder
+                    : AppTextColorLight.placeholder,
+                fontSize: AppFontSize.extraSmall,
+              ),
             ),
-          ),
+            Icon(
+              MdiIcons.chevronDown,
+              color: isDark
+                  ? AppTextColorDark.secondary
+                  : AppTextColorLight.secondary,
+              size: AppFontSize.small,
+            ),
+          ],
         ),
-        GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: crossAxisCount,
-            childAspectRatio: childAspectRatio,
-            crossAxisSpacing: AppSpacings.pMd,
-            mainAxisSpacing: AppSpacings.pMd,
-          ),
-          itemCount: filtered.length,
-          itemBuilder: (context, index) {
-            return _buildSensorCard(context, filtered[index]);
-          },
-        ),
-      ],
+      ),
+      ),
     );
   }
 
