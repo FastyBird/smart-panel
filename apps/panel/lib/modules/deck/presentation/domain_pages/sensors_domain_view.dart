@@ -483,7 +483,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
         final popupTop = triggerRect != null
             ? triggerRect.bottom + AppSpacings.pSm
             : AppSpacings.scale(120);
-        final maxPopupHeight = screenHeight - popupTop - AppSpacings.pMd;
+        final maxPopupHeight = (screenHeight - popupTop - AppSpacings.pMd).clamp(AppSpacings.scale(100), screenHeight);
 
         return Align(
           alignment: Alignment.topLeft,
@@ -1151,8 +1151,6 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     final items = _buildSummaryItems(isDark: isDark, localizations: localizations);
 
     if (items.isEmpty) {
-      if (!vertical) return const SizedBox.shrink();
-
       return Center(
         child: Padding(
           padding: AppSpacings.paddingMd,
