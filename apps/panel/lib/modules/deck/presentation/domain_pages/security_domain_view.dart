@@ -6,7 +6,6 @@ import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_card.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
-import 'package:fastybird_smart_panel/core/widgets/system_pages/export.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/export.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_detail_page.dart';
@@ -57,8 +56,8 @@ class _SecurityScreenState extends State<SecurityScreen> {
 				final status = controller.status;
 				final entryPoints = buildEntryPointsSummary(devicesService);
 
-				final ringColor = _overallRingColor(status, isDark);
-				final ringBgColor = ringColor.withValues(alpha: 0.25);
+				final statusColor = _statusThemeColor(status);
+				final statusFamily = ThemeColorFamily.get(isDark ? Brightness.dark : Brightness.light, statusColor);
 				final ringProgress = _ringProgress(status);
 				final isTriggered = status.alarmState == AlarmState.triggered;
 
@@ -70,7 +69,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
 								PageHeader(
 									title: 'Security',
 									subtitle: _headerSubtitle(status, localizations),
-									subtitleColor: ringColor,
+									subtitleColor: statusFamily.base,
 									onBack: widget.embedded ? null : () => Navigator.pop(context),
 									leading: HeaderMainIcon(
 										icon: MdiIcons.shieldHome,
@@ -93,8 +92,8 @@ class _SecurityScreenState extends State<SecurityScreen> {
 													isDark: isDark,
 													screenService: screenService,
 													localizations: localizations,
-													ringColor: ringColor,
-													ringBgColor: ringBgColor,
+													statusColor: statusColor,
+													statusFamily: statusFamily,
 													ringProgress: ringProgress,
 													isTriggered: isTriggered,
 												);
@@ -109,8 +108,8 @@ class _SecurityScreenState extends State<SecurityScreen> {
 												isDark: isDark,
 												screenService: screenService,
 												localizations: localizations,
-												ringColor: ringColor,
-												ringBgColor: ringBgColor,
+												statusColor: statusColor,
+												statusFamily: statusFamily,
 												ringProgress: ringProgress,
 												isTriggered: isTriggered,
 											);
@@ -228,8 +227,8 @@ class _SecurityScreenState extends State<SecurityScreen> {
 		required bool isDark,
 		required ScreenService screenService,
 		required AppLocalizations localizations,
-		required Color ringColor,
-		required Color ringBgColor,
+		required ThemeColors statusColor,
+		required ThemeColorFamily statusFamily,
 		required double ringProgress,
 		required bool isTriggered,
 	}) {
@@ -239,8 +238,8 @@ class _SecurityScreenState extends State<SecurityScreen> {
         spacing: AppSpacings.pMd,
 				children: [
 					_StatusRingHero(
-						ringColor: ringColor,
-						ringBgColor: ringBgColor,
+						statusColor: statusColor,
+						statusFamily: statusFamily,
 						progress: ringProgress,
 						alertCount: status.activeAlerts.length,
 						openCount: entryPoints.openCount,
@@ -277,8 +276,8 @@ class _SecurityScreenState extends State<SecurityScreen> {
 		required bool isDark,
 		required ScreenService screenService,
 		required AppLocalizations localizations,
-		required Color ringColor,
-		required Color ringBgColor,
+		required ThemeColors statusColor,
+		required ThemeColorFamily statusFamily,
 		required double ringProgress,
 		required bool isTriggered,
 	}) {
@@ -296,8 +295,8 @@ class _SecurityScreenState extends State<SecurityScreen> {
 					Expanded(
 						child: Center(
 							child: _StatusRingHero(
-								ringColor: ringColor,
-								ringBgColor: ringBgColor,
+								statusColor: statusColor,
+								statusFamily: statusFamily,
 								progress: ringProgress,
 								alertCount: status.activeAlerts.length,
 								openCount: entryPoints.openCount,
@@ -341,14 +340,15 @@ class _SecurityScreenState extends State<SecurityScreen> {
 		);
 	}
 
-	Color _overallRingColor(SecurityStatusModel status, bool isDark) {
+	/// Semantic color key for the current security status.
+	ThemeColors _statusThemeColor(SecurityStatusModel status) {
 		if (status.hasCriticalAlert || status.alarmState == AlarmState.triggered) {
-			return SystemPagesTheme.error(isDark);
+			return ThemeColors.error;
 		}
 		if (status.highestSeverity == Severity.warning) {
-			return SystemPagesTheme.warning(isDark);
+			return ThemeColors.warning;
 		}
-		return SystemPagesTheme.success(isDark);
+		return ThemeColors.success;
 	}
 
 	double _ringProgress(SecurityStatusModel status) {
@@ -440,8 +440,8 @@ class _StatusRingPainter extends CustomPainter {
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _StatusRingHero extends StatefulWidget {
-	final Color ringColor;
-	final Color ringBgColor;
+	final ThemeColors statusColor;
+	final ThemeColorFamily statusFamily;
 	final double progress;
 	final int alertCount;
 	final int openCount;
@@ -453,8 +453,8 @@ class _StatusRingHero extends StatefulWidget {
 	final AppLocalizations localizations;
 
 	const _StatusRingHero({
-		required this.ringColor,
-		required this.ringBgColor,
+		required this.statusColor,
+		required this.statusFamily,
 		required this.progress,
 		required this.alertCount,
 		required this.openCount,
@@ -508,11 +508,16 @@ class _StatusRingHeroState extends State<_StatusRingHero>
 	@override
 	Widget build(BuildContext context) {
 		final screenService = locator<ScreenService>();
-		final ringSize = widget.compact ? screenService.scale(90) : screenService.scale(120);
+		final ringSize = widget.compact ? screenService.scale(90) : screenService.scale(110);
 		final iconSize = widget.compact ? screenService.scale(24) : screenService.scale(44);
 		final labelFontSize = widget.compact ? AppFontSize.extraExtraSmall : AppFontSize.base;
 		final strokeWidth = widget.compact ? screenService.scale(5) : screenService.scale(6);
 
+		final family = widget.statusFamily;
+		final ringColor = family.base;
+		final ringBgColor = family.light7;
+		final iconBgColor = family.light8;
+		final iconBgSize = widget.compact ? screenService.scale(48) : screenService.scale(64);
 		final severityLabel = _severityLabel;
 		final severityIcon = _severityIcon;
 
@@ -536,36 +541,40 @@ class _StatusRingHeroState extends State<_StatusRingHero>
 							child: CustomPaint(
 								painter: _StatusRingPainter(
 									progress: widget.progress,
-									ringColor: widget.ringColor,
-									ringBgColor: widget.ringBgColor,
+									ringColor: ringColor,
+									ringBgColor: ringBgColor,
 									strokeWidth: strokeWidth,
 								),
 								child: Center(
-									child: Column(
-										mainAxisSize: MainAxisSize.min,
-										children: [
-											Icon(
-												severityIcon,
-												size: iconSize,
-												color: widget.ringColor,
-											),
-											SizedBox(height: screenService.scale(2)),
-											Text(
-												severityLabel,
-												style: TextStyle(
-													fontSize: labelFontSize,
-													fontWeight: FontWeight.w700,
-													letterSpacing: 0.5,
-													color: widget.ringColor,
-												),
-											),
-										],
+									child: Container(
+										width: iconBgSize,
+										height: iconBgSize,
+										decoration: BoxDecoration(
+											color: iconBgColor,
+											shape: BoxShape.circle,
+										),
+										child: Icon(
+											severityIcon,
+											size: iconSize,
+											color: ringColor,
+										),
 									),
 								),
 							),
 						),
 					),
-					AppSpacings.spacingMdVertical,
+					AppSpacings.spacingSmVertical,
+					// Status label
+					Text(
+						severityLabel,
+						style: TextStyle(
+							fontSize: labelFontSize,
+							fontWeight: FontWeight.w700,
+							letterSpacing: 0.5,
+							color: ringColor,
+						),
+					),
+					AppSpacings.spacingSmVertical,
 					// Summary pills
 					_buildSummaryPills(),
 				],
@@ -576,17 +585,14 @@ class _StatusRingHeroState extends State<_StatusRingHero>
 	Widget _buildSummaryPills() {
 		final alertCount = widget.alertCount;
 		final openCount = widget.openCount;
+		final family = widget.statusFamily;
 
 		if (alertCount == 0 && openCount == 0) {
 			return _Badge(
 				label: widget.localizations.security_summary_all_clear(widget.totalEntryPoints),
-				color: SystemPagesTheme.success(widget.isDark),
+				color: family.base,
 			);
 		}
-
-		final brightness = widget.isDark ? Brightness.dark : Brightness.light;
-		final themeKey = widget.isCritical ? ThemeColors.error : ThemeColors.warning;
-		final family = ThemeColorFamily.get(brightness, themeKey);
 
 		return Row(
 			mainAxisSize: MainAxisSize.min,
@@ -612,13 +618,13 @@ class _StatusRingHeroState extends State<_StatusRingHero>
 
 	String get _severityLabel {
 		if (widget.isCritical) return widget.localizations.security_status_triggered;
-		if (widget.ringColor == SystemPagesTheme.warning(widget.isDark)) return widget.localizations.security_status_warning;
+		if (widget.statusColor == ThemeColors.warning) return widget.localizations.security_status_warning;
 		return widget.localizations.security_status_secure;
 	}
 
 	IconData get _severityIcon {
 		if (widget.isCritical) return MdiIcons.shieldAlert;
-		if (widget.ringColor == SystemPagesTheme.warning(widget.isDark)) return MdiIcons.shieldAlert;
+		if (widget.statusColor == ThemeColors.warning) return MdiIcons.shieldAlert;
 		return MdiIcons.shieldCheck;
 	}
 }
@@ -644,11 +650,11 @@ class _EntryPointGrid extends StatelessWidget {
 
 	@override
 	Widget build(BuildContext context) {
-		final badgeColor = entryPoints.openCount > 0
-			? (isCritical
-				? SystemPagesTheme.error(isDark)
-				: SystemPagesTheme.warning(isDark))
-			: SystemPagesTheme.success(isDark);
+		final brightness = isDark ? Brightness.dark : Brightness.light;
+		final badgeThemeKey = entryPoints.openCount > 0
+			? (isCritical ? ThemeColors.error : ThemeColors.warning)
+			: ThemeColors.success;
+		final badgeColor = ThemeColorFamily.get(brightness, badgeThemeKey).base;
 
 		final badgeText = entryPoints.openCount > 0
 			? localizations.security_entry_open_count(entryPoints.openCount)
@@ -772,13 +778,14 @@ class _AlertStream extends StatelessWidget {
 	});
 
 	Color get _accentColor {
+		final brightness = isDark ? Brightness.dark : Brightness.light;
 		if (status.hasCriticalAlert || status.alarmState == AlarmState.triggered) {
-			return SystemPagesTheme.error(isDark);
+			return ThemeColorFamily.get(brightness, ThemeColors.error).base;
 		}
 		if (status.highestSeverity == Severity.warning) {
-			return SystemPagesTheme.warning(isDark);
+			return ThemeColorFamily.get(brightness, ThemeColors.warning).base;
 		}
-		return SystemPagesTheme.success(isDark);
+		return ThemeColorFamily.get(brightness, ThemeColors.success).base;
 	}
 
 	bool get _hasUnacked {
@@ -820,7 +827,7 @@ class _AlertStream extends StatelessWidget {
 			localizations.security_no_active_alerts,
 			style: TextStyle(
 				fontSize: AppFontSize.small,
-				color: SystemPagesTheme.textMuted(isDark),
+				color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
 			),
 		);
 
@@ -1111,7 +1118,7 @@ class _EventsFeed extends StatelessWidget {
 						height: screenService.scale(20),
 						child: CircularProgressIndicator(
 							strokeWidth: 2,
-							color: SystemPagesTheme.textMuted(isDark),
+							color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
 						),
 					),
 				);
@@ -1125,7 +1132,7 @@ class _EventsFeed extends StatelessWidget {
 							eventsRepo.errorMessage ?? localizations.security_events_load_failed,
 							style: TextStyle(
 								fontSize: AppFontSize.base,
-								color: SystemPagesTheme.textMuted(isDark),
+								color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
 							),
 						),
 						Theme(
@@ -1167,7 +1174,7 @@ class _EventsFeed extends StatelessWidget {
 						localizations.security_no_recent_events,
 						style: TextStyle(
 							fontSize: AppFontSize.small,
-							color: SystemPagesTheme.textMuted(isDark),
+							color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
 						),
 					);
 					return Center(child: emptyState);
