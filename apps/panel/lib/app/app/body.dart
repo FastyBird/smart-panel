@@ -20,7 +20,7 @@ import 'package:fastybird_smart_panel/modules/config/module.dart';
 import 'package:fastybird_smart_panel/modules/config/repositories/module_config_repository.dart';
 import 'package:fastybird_smart_panel/modules/security/services/security_overlay_controller.dart';
 import 'package:fastybird_smart_panel/modules/security/repositories/security_status.dart';
-import 'package:fastybird_smart_panel/modules/security/views/security_overlay.dart';
+import 'package:fastybird_smart_panel/modules/security/presentation/security_overlay.dart';
 import 'package:fastybird_smart_panel/modules/system/models/system.dart';
 import 'package:fastybird_smart_panel/modules/system/types/configuration.dart';
 import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
