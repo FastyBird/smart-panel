@@ -27,6 +27,9 @@ class DeckService extends ChangeNotifier {
   /// Device categories for the current room (ROOM role only).
   List<DevicesModuleDeviceCategory> _deviceCategories = [];
 
+  /// Number of devices with energy-related channels in the current room.
+  int _energyDeviceCount = 0;
+
   /// Configuration validation error.
   String? _configError;
 
@@ -168,9 +171,13 @@ class DeckService extends ChangeNotifier {
       // Get device categories directly from DeviceView
       _deviceCategories = devices.map((d) => d.category).toList();
 
+      // Count devices with energy-related channels
+      _energyDeviceCount = countEnergyDevices(devices);
+
       if (kDebugMode) {
         debugPrint(
-          '[DECK SERVICE] Got ${_deviceCategories.length} categories: $_deviceCategories',
+          '[DECK SERVICE] Got ${_deviceCategories.length} categories: $_deviceCategories'
+          '${_energyDeviceCount > 0 ? ', $_energyDeviceCount energy devices' : ''}',
         );
       }
 
@@ -223,6 +230,7 @@ class DeckService extends ChangeNotifier {
       display: _display!,
       pages: pages,
       deviceCategories: _deviceCategories,
+      energyDeviceCount: _energyDeviceCount,
       roomViewTitle: localizations?.system_view_room ?? 'Room',
       masterViewTitle: localizations?.system_view_master ?? 'Home',
       entryViewTitle: localizations?.system_view_entry ?? 'Entry',
@@ -266,6 +274,7 @@ class DeckService extends ChangeNotifier {
           display.roomId != null &&
           display.roomId != oldRoomId) {
         _deviceCategories = [];
+        _energyDeviceCount = 0;
         _buildDeck(context);
         _fetchDeviceCategoriesAsync(display.roomId!, context);
         _prefetchDomainData(display.roomId!);

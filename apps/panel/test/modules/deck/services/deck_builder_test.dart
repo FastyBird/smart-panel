@@ -268,8 +268,9 @@ void main() {
           display: display,
           pages: [],
           deviceCategories: [
-            DevicesModuleDeviceCategory.sensor, // triggers energy domain view
+            DevicesModuleDeviceCategory.sensor,
           ],
+          energyDeviceCount: 1, // room has devices with energy channels
           energySupported: true,
         );
 

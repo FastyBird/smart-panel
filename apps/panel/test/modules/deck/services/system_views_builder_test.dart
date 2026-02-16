@@ -198,6 +198,7 @@ void main() {
             DevicesModuleDeviceCategory.lighting, // lights = displayOrder 0
             DevicesModuleDeviceCategory.television, // media = displayOrder 2
           ],
+          energyDeviceCount: 1, // room has energy-capable devices
         ));
 
         // Order should be: room overview, lights, climate, media, sensors, energy

@@ -18,6 +18,10 @@ class DeckBuildInput {
   /// Used to determine which domain views to create.
   final List<DevicesModuleDeviceCategory> deviceCategories;
 
+  /// Number of devices with energy-related channels in the room.
+  /// Determined from channel categories (electrical_energy, etc.).
+  final int energyDeviceCount;
+
   /// Localized title for room system view.
   final String roomViewTitle;
 
@@ -55,6 +59,7 @@ class DeckBuildInput {
     required this.display,
     required this.pages,
     this.deviceCategories = const [],
+    this.energyDeviceCount = 0,
     this.roomViewTitle = 'Room',
     this.masterViewTitle = 'Home',
     this.entryViewTitle = 'Entry',
@@ -89,6 +94,7 @@ DeckResult buildDeck(DeckBuildInput input) {
   final systemViewsInput = SystemViewsBuildInput(
     display: display,
     deviceCategories: input.deviceCategories,
+    energyDeviceCount: input.energyDeviceCount,
     roomViewTitle: input.roomViewTitle,
     masterViewTitle: input.masterViewTitle,
     entryViewTitle: input.entryViewTitle,

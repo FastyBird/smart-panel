@@ -212,6 +212,7 @@ void main() {
         shading: 1,
         media: 1,
         sensors: 1,
+        energy: 1,
       );
 
       final present = counts.presentDomains;
