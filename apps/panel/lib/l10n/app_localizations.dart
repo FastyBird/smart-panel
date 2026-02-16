@@ -5909,6 +5909,12 @@ abstract class AppLocalizations {
   /// **'{count, plural, =1{Alert Active} other{Alerts Active}}'**
   String sensors_domain_alerts_active(int count);
 
+  /// Message shown when no summary data (temperature, humidity, etc.) is available for the room
+  ///
+  /// In en, this message translates to:
+  /// **'No environment data available'**
+  String get sensors_domain_no_summary;
+
   /// No description provided for @sensors_domain_no_sensors.
   ///
   /// In en, this message translates to:

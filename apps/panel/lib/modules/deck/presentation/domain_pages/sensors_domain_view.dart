@@ -1150,7 +1150,21 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     final localizations = AppLocalizations.of(context)!;
     final items = _buildSummaryItems(isDark: isDark, localizations: localizations);
 
-    if (items.isEmpty) return const SizedBox.shrink();
+    if (items.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: AppSpacings.paddingMd,
+          child: Text(
+            localizations.sensors_domain_no_summary,
+            style: TextStyle(
+              fontSize: AppFontSize.small,
+              color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ),
+      );
+    }
 
     // Compact vertical: stacked tiles fitted to available height (landscape small/medium)
     if (compact && vertical) {

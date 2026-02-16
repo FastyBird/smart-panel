@@ -3138,6 +3138,9 @@ class AppLocalizationsCs extends AppLocalizations {
   }
 
   @override
+  String get sensors_domain_no_summary => 'Žádná data o prostředí';
+
+  @override
   String get sensors_domain_no_sensors => 'Žádné senzory';
 
   @override

@@ -1039,6 +1039,7 @@
   "sensors_domain_empty_title": "Žádné senzory",
   "sensors_domain_empty_description": "V této místnosti zatím nejsou přiřazeny žádné senzory.",
   "sensors_domain_alerts_active": "{count, plural, =1{Aktivní výstraha} few{Aktivní výstrahy} other{Aktivních výstrah}}",
+  "sensors_domain_no_summary": "Žádná data o prostředí",
   "sensors_domain_no_sensors": "Žádné senzory",
   "sensors_domain_health_stale": "{count} zastaralých",
   "sensors_domain_health_offline": "{count} offline",

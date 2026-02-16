@@ -3120,6 +3120,9 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get sensors_domain_no_summary => 'No environment data available';
+
+  @override
   String get sensors_domain_no_sensors => 'No sensors configured';
 
   @override
