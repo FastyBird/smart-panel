@@ -1,13 +1,54 @@
+// Security domain view: deck page for security status, entry points, alerts, and events.
+//
+// **AI/Editor navigation:** Use section headers (e.g. "// MAIN SCREEN", "// STATUS RING")
+// to jump. Do not change UI structure or widget tree; preserve rendered output.
+//
+// **Purpose:** Displays security status (armed state, alarm state), entry point
+// status (doors/windows), active alerts with acknowledge actions, and recent
+// security events. Supports portrait and landscape layouts with tab switching.
+//
+// **Data flow:**
+// - [SecurityOverlayController] provides [SecurityStatusModel] (armed/alarm state,
+//   active alerts). [DevicesService] for device names. [SecurityEventsRepository]
+//   for event history. [buildEntryPointsSummary] aggregates contact channels.
+// - Local state: _selectedTab (_SecurityTab). Consumers: Consumer3 for reactive updates.
+//
+// **Key concepts:**
+// - Status ring: circular progress indicator with severity color (success/warning/error).
+// - Tabs: Entry Points (when any), Alerts, Events. Portrait: horizontal mode selector;
+//   landscape: vertical tile list.
+// - Entry points: doors/windows from contact channels; tap opens [DeviceDetailPage].
+//
+// **File structure (for humans and AI):**
+// - MAIN SCREEN — [SecurityScreen], layout switching, tab content routing.
+// - TAB MODES & CONTENT — [_buildTabModes], [_buildTabContent], mode selector.
+// - STATUS HELPERS — theme color, ring progress, header subtitle, critical check.
+// - STATUS RING — [_StatusRingPainter], [_StatusRingHero] (animated when triggered).
+// - ENTRY POINT GRID — [_EntryPointGrid], entry tiles with status badges.
+// - ALERT STREAM — [_AlertStream], [_AlertItem], acknowledge buttons.
+// - EVENTS FEED — [_EventsFeed], [_EventItem], refresh, loading/error states.
+// - SHARED UI — [_Badge], [_AckButton], [_AckAllButton], [_RefreshButton].
+
 import 'dart:math' as math;
+
+import 'package:flutter/material.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
+import 'package:provider/provider.dart';
 
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_card.dart';
+import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
+import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
-import 'package:fastybird_smart_panel/core/widgets/system_pages/export.dart';
+import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
+import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
+import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
+import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_mode_chip.dart';
 import 'package:fastybird_smart_panel/modules/devices/export.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_detail_page.dart';
 import 'package:fastybird_smart_panel/modules/security/models/security_alert.dart';
@@ -19,18 +60,17 @@ import 'package:fastybird_smart_panel/modules/security/types/security.dart';
 import 'package:fastybird_smart_panel/modules/security/utils/entry_points.dart';
 import 'package:fastybird_smart_panel/modules/security/utils/security_event_ui.dart';
 import 'package:fastybird_smart_panel/modules/security/utils/security_ui.dart';
-import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_mode_chip.dart';
-import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
-import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
-import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
-import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
-import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
-import 'package:flutter/material.dart';
-import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
-import 'package:provider/provider.dart';
+
+// =============================================================================
+// MAIN SCREEN
+// =============================================================================
 
 enum _SecurityTab { entryPoints, alerts, events }
 
+/// Security domain page: status ring, entry points, alerts, and events.
+///
+/// Can run standalone (with back button) or embedded in deck (no back).
+/// Uses [SecurityOverlayController], [DevicesService], [SecurityEventsRepository].
 class SecurityScreen extends StatefulWidget {
 	/// When true, hides back/home navigation buttons (used when embedded in deck).
 	final bool embedded;
@@ -57,11 +97,10 @@ class _SecurityScreenState extends State<SecurityScreen> {
 				final status = controller.status;
 				final entryPoints = buildEntryPointsSummary(devicesService);
 
-				final ringColor = _overallRingColor(status, isDark);
-				final ringBgColor = ringColor.withValues(alpha: 0.25);
+				final statusColor = _statusThemeColor(status);
+				final statusFamily = ThemeColorFamily.get(isDark ? Brightness.dark : Brightness.light, statusColor);
 				final ringProgress = _ringProgress(status);
 				final isTriggered = status.alarmState == AlarmState.triggered;
-				final statusSummary = _statusSummary(status, entryPoints, localizations);
 
 				return Scaffold(
 					backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
@@ -69,9 +108,9 @@ class _SecurityScreenState extends State<SecurityScreen> {
 						child: Column(
 							children: [
 								PageHeader(
-									title: 'Security',
+									title: localizations.domain_security,
 									subtitle: _headerSubtitle(status, localizations),
-									subtitleColor: ringColor,
+									subtitleColor: statusFamily.base,
 									onBack: widget.embedded ? null : () => Navigator.pop(context),
 									leading: HeaderMainIcon(
 										icon: MdiIcons.shieldHome,
@@ -94,11 +133,10 @@ class _SecurityScreenState extends State<SecurityScreen> {
 													isDark: isDark,
 													screenService: screenService,
 													localizations: localizations,
-													ringColor: ringColor,
-													ringBgColor: ringBgColor,
+													statusColor: statusColor,
+													statusFamily: statusFamily,
 													ringProgress: ringProgress,
 													isTriggered: isTriggered,
-													statusSummary: statusSummary,
 												);
 											}
 
@@ -111,11 +149,10 @@ class _SecurityScreenState extends State<SecurityScreen> {
 												isDark: isDark,
 												screenService: screenService,
 												localizations: localizations,
-												ringColor: ringColor,
-												ringBgColor: ringBgColor,
+												statusColor: statusColor,
+												statusFamily: statusFamily,
 												ringProgress: ringProgress,
 												isTriggered: isTriggered,
-												statusSummary: statusSummary,
 											);
 										},
 									),
@@ -127,6 +164,10 @@ class _SecurityScreenState extends State<SecurityScreen> {
 			},
 		);
 	}
+
+	// -------------------------------------------------------------------------
+	// Tab modes & content
+	// -------------------------------------------------------------------------
 
 	List<ModeOption<_SecurityTab>> _buildTabModes({
 		required bool hasEntryPoints,
@@ -171,7 +212,6 @@ class _SecurityScreenState extends State<SecurityScreen> {
 		required bool isDark,
 		required ScreenService screenService,
 		required AppLocalizations localizations,
-		bool isLandscape = false,
 	}) {
 		switch (_selectedTab) {
 			case _SecurityTab.entryPoints:
@@ -181,7 +221,6 @@ class _SecurityScreenState extends State<SecurityScreen> {
 					screenService: screenService,
 					localizations: localizations,
 					isCritical: _isCriticalStatus(status),
-					isLandscape: isLandscape,
 				);
 			case _SecurityTab.alerts:
 				return _AlertStream(
@@ -189,9 +228,7 @@ class _SecurityScreenState extends State<SecurityScreen> {
 					controller: controller,
 					devicesService: devicesService,
 					isDark: isDark,
-					screenService: screenService,
 					localizations: localizations,
-					isLandscape: isLandscape,
 				);
 			case _SecurityTab.events:
 				return _EventsFeed(
@@ -201,10 +238,13 @@ class _SecurityScreenState extends State<SecurityScreen> {
 					screenService: screenService,
 					localizations: localizations,
 					maxEvents: _maxDisplayedEvents,
-					isLandscape: isLandscape,
 				);
 		}
 	}
+
+	// -------------------------------------------------------------------------
+	// Status helpers
+	// -------------------------------------------------------------------------
 
 	ThemeColors _modeSelectorColor(SecurityStatusModel status) {
 		if (_isCriticalStatus(status)) return ThemeColors.error;
@@ -213,12 +253,15 @@ class _SecurityScreenState extends State<SecurityScreen> {
 	}
 
 	Widget _buildModeSelector({required bool hasEntryPoints, required SecurityStatusModel status, required AppLocalizations localizations}) {
+		final screenService = locator<ScreenService>();
+
 		return ModeSelector<_SecurityTab>(
 			modes: _buildTabModes(hasEntryPoints: hasEntryPoints, status: status, localizations: localizations),
 			selectedValue: _selectedTab,
 			onChanged: (tab) => setState(() => _selectedTab = tab),
 			orientation: ModeSelectorOrientation.horizontal,
 			iconPlacement: ModeSelectorIconPlacement.left,
+			showLabels: screenService.isSmallScreen ? false : null,
 			color: _modeSelectorColor(status),
 		);
 	}
@@ -232,22 +275,23 @@ class _SecurityScreenState extends State<SecurityScreen> {
 		required bool isDark,
 		required ScreenService screenService,
 		required AppLocalizations localizations,
-		required Color ringColor,
-		required Color ringBgColor,
+		required ThemeColors statusColor,
+		required ThemeColorFamily statusFamily,
 		required double ringProgress,
 		required bool isTriggered,
-		required String statusSummary,
 	}) {
 		return PortraitViewLayout(
 			scrollable: false,
 			content: Column(
-        spacing: AppSpacings.pMd,
+				spacing: AppSpacings.pMd,
 				children: [
 					_StatusRingHero(
-						ringColor: ringColor,
-						ringBgColor: ringBgColor,
+						statusColor: statusColor,
+						statusFamily: statusFamily,
 						progress: ringProgress,
-						summary: statusSummary,
+						alertCount: status.activeAlerts.length,
+						openCount: entryPoints.openCount,
+						totalEntryPoints: entryPoints.all.length,
 						isTriggered: isTriggered,
 						isDark: isDark,
 						isCritical: _isCriticalStatus(status),
@@ -280,77 +324,101 @@ class _SecurityScreenState extends State<SecurityScreen> {
 		required bool isDark,
 		required ScreenService screenService,
 		required AppLocalizations localizations,
-		required Color ringColor,
-		required Color ringBgColor,
+		required ThemeColors statusColor,
+		required ThemeColorFamily statusFamily,
 		required double ringProgress,
 		required bool isTriggered,
-		required String statusSummary,
 	}) {
-		return Padding(
-			padding: EdgeInsets.only(
-				left: AppSpacings.pMd,
+		return LandscapeViewLayout(
+			mainContentPadding: EdgeInsets.only(
 				right: AppSpacings.pMd,
+				left: AppSpacings.pMd,
 				bottom: AppSpacings.pMd,
 			),
-			child: Row(
-				crossAxisAlignment: CrossAxisAlignment.stretch,
-				spacing: AppSpacings.pMd,
+			mainContent: _buildTabContent(
+				status: status,
+				controller: controller,
+				devicesService: devicesService,
+				eventsRepo: eventsRepo,
+				entryPoints: entryPoints,
+				isDark: isDark,
+				screenService: screenService,
+				localizations: localizations,
+			),
+			additionalContentScrollable: false,
+			additionalContentPadding: EdgeInsets.only(
+				left: AppSpacings.pMd,
+				bottom: AppSpacings.pMd,
+			),
+			additionalContent: Column(
 				children: [
-					// Left column: Status ring
 					Expanded(
 						child: Center(
 							child: _StatusRingHero(
-								ringColor: ringColor,
-								ringBgColor: ringBgColor,
+								statusColor: statusColor,
+								statusFamily: statusFamily,
 								progress: ringProgress,
-								summary: statusSummary,
+								alertCount: status.activeAlerts.length,
+								openCount: entryPoints.openCount,
+								totalEntryPoints: entryPoints.all.length,
 								isTriggered: isTriggered,
 								isDark: isDark,
 								isCritical: _isCriticalStatus(status),
-								compact: true,
+								compact: !screenService.isLargeScreen,
 								localizations: localizations,
 							),
 						),
 					),
-					// Right column: Mode selector + tab content
-					Expanded(
-						child: Column(
-							spacing: AppSpacings.pMd,
-							children: [
-								_buildModeSelector(
-									hasEntryPoints: !entryPoints.isEmpty,
-									status: status,
-									localizations: localizations,
-								),
-								Expanded(
-									child: _buildTabContent(
-										status: status,
-										controller: controller,
-										devicesService: devicesService,
-										eventsRepo: eventsRepo,
-										entryPoints: entryPoints,
-										isDark: isDark,
-										screenService: screenService,
-										localizations: localizations,
-										isLandscape: true,
-									),
-								),
-							],
-						),
+					_buildLandscapeTabTiles(
+						hasEntryPoints: !entryPoints.isEmpty,
+						status: status,
+						localizations: localizations,
 					),
 				],
 			),
 		);
 	}
 
-	Color _overallRingColor(SecurityStatusModel status, bool isDark) {
+	Widget _buildLandscapeTabTiles({
+		required bool hasEntryPoints,
+		required SecurityStatusModel status,
+		required AppLocalizations localizations,
+	}) {
+		final tileHeight = AppSpacings.scale(AppTileHeight.horizontal * 0.85);
+		final modes = _buildTabModes(
+			hasEntryPoints: hasEntryPoints,
+			status: status,
+			localizations: localizations,
+		);
+
+		return Column(
+			spacing: AppSpacings.pSm,
+			children: modes.map((mode) => SizedBox(
+				height: tileHeight,
+				child: UniversalTile(
+					layout: TileLayout.horizontal,
+					icon: mode.icon,
+					name: mode.label,
+					isActive: _selectedTab == mode.value,
+					activeColor: _modeSelectorColor(status),
+					showGlow: false,
+					showDoubleBorder: false,
+					showInactiveBorder: false,
+					onTileTap: () => setState(() => _selectedTab = mode.value),
+				),
+			)).toList(),
+		);
+	}
+
+	/// Semantic color key for the current security status.
+	ThemeColors _statusThemeColor(SecurityStatusModel status) {
 		if (status.hasCriticalAlert || status.alarmState == AlarmState.triggered) {
-			return SystemPagesTheme.error(isDark);
+			return ThemeColors.error;
 		}
 		if (status.highestSeverity == Severity.warning) {
-			return SystemPagesTheme.warning(isDark);
+			return ThemeColors.warning;
 		}
-		return SystemPagesTheme.success(isDark);
+		return ThemeColors.success;
 	}
 
 	double _ringProgress(SecurityStatusModel status) {
@@ -382,26 +450,13 @@ class _SecurityScreenState extends State<SecurityScreen> {
 		return '$armed • $alarm';
 	}
 
-	String _statusSummary(SecurityStatusModel status, EntryPointsSummary entryPoints, AppLocalizations localizations) {
-		final openCount = entryPoints.openCount;
-		final alertCount = status.activeAlerts.length;
-
-		if (alertCount == 0 && openCount == 0) {
-			return localizations.security_summary_all_clear(entryPoints.all.length);
-		}
-
-		final parts = <String>[];
-		if (alertCount > 0) parts.add(localizations.security_summary_alerts(alertCount));
-		if (openCount > 0) parts.add(localizations.security_summary_entry_points_open(openCount));
-
-		return parts.join(' · ');
-	}
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// STATUS RING PAINTER
-// ─────────────────────────────────────────────────────────────────────────────
+// =============================================================================
+// STATUS RING
+// =============================================================================
 
+/// Paints a circular progress ring (background circle + foreground arc).
 class _StatusRingPainter extends CustomPainter {
 	final double progress;
 	final Color ringColor;
@@ -451,15 +506,15 @@ class _StatusRingPainter extends CustomPainter {
 		oldDelegate.ringBgColor != ringBgColor;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// STATUS RING HERO
-// ─────────────────────────────────────────────────────────────────────────────
-
+/// Hero widget: circular status ring with icon, label, and optional summary pills.
+/// Pulses when alarm is triggered.
 class _StatusRingHero extends StatefulWidget {
-	final Color ringColor;
-	final Color ringBgColor;
+	final ThemeColors statusColor;
+	final ThemeColorFamily statusFamily;
 	final double progress;
-	final String summary;
+	final int alertCount;
+	final int openCount;
+	final int totalEntryPoints;
 	final bool isTriggered;
 	final bool isDark;
 	final bool isCritical;
@@ -467,10 +522,12 @@ class _StatusRingHero extends StatefulWidget {
 	final AppLocalizations localizations;
 
 	const _StatusRingHero({
-		required this.ringColor,
-		required this.ringBgColor,
+		required this.statusColor,
+		required this.statusFamily,
 		required this.progress,
-		required this.summary,
+		required this.alertCount,
+		required this.openCount,
+		required this.totalEntryPoints,
 		this.isTriggered = false,
 		required this.isDark,
 		this.isCritical = false,
@@ -520,11 +577,16 @@ class _StatusRingHeroState extends State<_StatusRingHero>
 	@override
 	Widget build(BuildContext context) {
 		final screenService = locator<ScreenService>();
-		final ringSize = widget.compact ? screenService.scale(90) : screenService.scale(120);
-		final iconSize = widget.compact ? screenService.scale(24) : screenService.scale(44);
-		final labelFontSize = widget.compact ? AppFontSize.extraExtraSmall : AppFontSize.base;
+		final ringSize = widget.compact ? screenService.scale(58) : screenService.scale(110);
+		final iconSize = widget.compact ? screenService.scale(20) : screenService.scale(44);
+		final labelFontSize = widget.compact ? AppFontSize.extraSmall : AppFontSize.base;
 		final strokeWidth = widget.compact ? screenService.scale(5) : screenService.scale(6);
 
+		final family = widget.statusFamily;
+		final ringColor = family.base;
+		final ringBgColor = family.light7;
+		final iconBgColor = family.light8;
+		final iconBgSize = widget.compact ? screenService.scale(35) : screenService.scale(64);
 		final severityLabel = _severityLabel;
 		final severityIcon = _severityIcon;
 
@@ -548,76 +610,111 @@ class _StatusRingHeroState extends State<_StatusRingHero>
 							child: CustomPaint(
 								painter: _StatusRingPainter(
 									progress: widget.progress,
-									ringColor: widget.ringColor,
-									ringBgColor: widget.ringBgColor,
+									ringColor: ringColor,
+									ringBgColor: ringBgColor,
 									strokeWidth: strokeWidth,
 								),
 								child: Center(
-									child: Column(
-										mainAxisSize: MainAxisSize.min,
-										children: [
-											Icon(
-												severityIcon,
-												size: iconSize,
-												color: widget.ringColor,
-											),
-											SizedBox(height: screenService.scale(2)),
-											Text(
-												severityLabel,
-												style: TextStyle(
-													fontSize: labelFontSize,
-													fontWeight: FontWeight.w700,
-													letterSpacing: 0.5,
-													color: widget.ringColor,
-												),
-											),
-										],
+									child: Container(
+										width: iconBgSize,
+										height: iconBgSize,
+										decoration: BoxDecoration(
+											color: iconBgColor,
+											shape: BoxShape.circle,
+										),
+										child: Icon(
+											severityIcon,
+											size: iconSize,
+											color: ringColor,
+										),
 									),
 								),
 							),
 						),
 					),
-					AppSpacings.spacingMdVertical,
-					// Summary
+					AppSpacings.spacingSmVertical,
+					// Status label
 					Text(
-						widget.summary,
+						severityLabel,
 						style: TextStyle(
-							fontSize: AppFontSize.small,
-							color: widget.isCritical
-								? SystemPagesTheme.error(widget.isDark)
-								: SystemPagesTheme.textMuted(widget.isDark),
+							fontSize: labelFontSize,
+							fontWeight: FontWeight.w700,
+							letterSpacing: 0.5,
+							color: ringColor,
 						),
-						textAlign: TextAlign.center,
 					),
+					AppSpacings.spacingSmVertical,
+					// Summary pills
+					if (!widget.compact) ...[
+						_buildSummaryPills(),
+					],
 				],
 			),
 		);
 	}
 
+	Widget _buildSummaryPills() {
+		final alertCount = widget.alertCount;
+		final openCount = widget.openCount;
+		final family = widget.statusFamily;
+
+		if (alertCount == 0 && openCount == 0) {
+			return _Badge(
+				label: widget.localizations.security_summary_all_clear(widget.totalEntryPoints),
+				color: family.base,
+				backgroundColor: family.light8,
+			);
+		}
+
+		return Row(
+			mainAxisSize: MainAxisSize.min,
+			spacing: AppSpacings.pSm,
+			children: [
+				if (alertCount > 0)
+					_Badge(
+						label: widget.localizations.security_summary_alerts_label,
+						color: family.base,
+						backgroundColor: family.light8,
+						count: alertCount,
+						countColor: family.light9,
+					),
+				if (openCount > 0)
+					_Badge(
+						label: widget.localizations.security_summary_open_label,
+						color: family.base,
+						backgroundColor: family.light8,
+						count: openCount,
+						countColor: family.light9,
+					),
+			],
+		);
+	}
+
 	String get _severityLabel {
 		if (widget.isCritical) return widget.localizations.security_status_triggered;
-		if (widget.ringColor == SystemPagesTheme.warning(widget.isDark)) return widget.localizations.security_status_warning;
+		if (widget.statusColor == ThemeColors.warning) return widget.localizations.security_status_warning;
 		return widget.localizations.security_status_secure;
 	}
 
 	IconData get _severityIcon {
 		if (widget.isCritical) return MdiIcons.shieldAlert;
-		if (widget.ringColor == SystemPagesTheme.warning(widget.isDark)) return MdiIcons.shieldAlert;
+		if (widget.statusColor == ThemeColors.warning) return MdiIcons.shieldAlert;
 		return MdiIcons.shieldCheck;
 	}
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// =============================================================================
 // ENTRY POINT GRID
-// ─────────────────────────────────────────────────────────────────────────────
+// =============================================================================
 
+/// Grid of entry point tiles (doors/windows) with status badges.
+/// Tap navigates to [DeviceDetailPage].
 class _EntryPointGrid extends StatelessWidget {
 	final EntryPointsSummary entryPoints;
 	final bool isDark;
 	final ScreenService screenService;
 	final AppLocalizations localizations;
 	final bool isCritical;
-	final bool isLandscape;
 
 	const _EntryPointGrid({
 		required this.entryPoints,
@@ -625,63 +722,44 @@ class _EntryPointGrid extends StatelessWidget {
 		required this.screenService,
 		required this.localizations,
 		this.isCritical = false,
-		this.isLandscape = false,
 	});
 
 	@override
 	Widget build(BuildContext context) {
-		final badgeColor = entryPoints.openCount > 0
-			? (isCritical
-				? SystemPagesTheme.error(isDark)
-				: SystemPagesTheme.warning(isDark))
-			: SystemPagesTheme.success(isDark);
+		final brightness = isDark ? Brightness.dark : Brightness.light;
+		final badgeThemeKey = entryPoints.openCount > 0
+			? (isCritical ? ThemeColors.error : ThemeColors.warning)
+			: ThemeColors.success;
+		final badgeFamily = ThemeColorFamily.get(brightness, badgeThemeKey);
 
 		final badgeText = entryPoints.openCount > 0
 			? localizations.security_entry_open_count(entryPoints.openCount)
 			: localizations.security_entry_all_secure;
 
-		final crossAxisCount = isLandscape || screenService.isSmallScreen ? 3 : 4;
+		final crossAxisCount = screenService.isSmallScreen ? 1 : 2;
 		final items = entryPoints.all;
 		final rowCount = (items.length / crossAxisCount).ceil();
-		final fillColor = isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
+		final tileHeight = AppSpacings.scale(AppTileHeight.horizontal * 0.85);
+		final bgColor = isDark ? AppBgColorDark.page : AppBgColorLight.page;
 
-		Widget buildRow(int rowIndex) {
+		Widget buildRow(BuildContext context, int rowIndex) {
 			final start = rowIndex * crossAxisCount;
 			final end = (start + crossAxisCount).clamp(0, items.length);
 			final rowItems = items.sublist(start, end);
 
-			return Row(
-				spacing: AppSpacings.pMd,
-				children: [
-					for (final ep in rowItems)
-						Expanded(
-							child: AspectRatio(
-								aspectRatio: AppTileAspectRatio.square,
+			return SizedBox(
+				height: tileHeight,
+				child: Row(
+					spacing: AppSpacings.pSm,
+					children: [
+						for (final ep in rowItems)
+							Expanded(
 								child: _entryTile(context, ep, isCritical && ep.isOpen == true),
 							),
-						),
-					for (var i = rowItems.length; i < crossAxisCount; i++)
-						const Expanded(child: SizedBox()),
-				],
-			);
-		}
-
-		if (isLandscape) {
-			return Column(
-				mainAxisSize: MainAxisSize.min,
-				crossAxisAlignment: CrossAxisAlignment.start,
-				children: [
-					SectionTitle(
-						title: 'Entry Points',
-						icon: MdiIcons.home,
-						trailing: _Badge(label: badgeText, color: badgeColor),
-					),
-					AppSpacings.spacingMdVertical,
-					for (int i = 0; i < rowCount; i++) ...[
-						if (i > 0) SizedBox(height: AppSpacings.pMd),
-						buildRow(i),
+						for (var i = rowItems.length; i < crossAxisCount; i++)
+							const Expanded(child: SizedBox()),
 					],
-				],
+				),
 			);
 		}
 
@@ -691,24 +769,24 @@ class _EntryPointGrid extends StatelessWidget {
 				SectionTitle(
 					title: localizations.security_tab_entry_points,
 					icon: MdiIcons.home,
-					trailing: _Badge(label: badgeText, color: badgeColor),
+					trailing: _Badge(label: badgeText, color: badgeFamily.base, backgroundColor: badgeFamily.light8),
 				),
-				AppSpacings.spacingMdVertical,
+				AppSpacings.spacingSmVertical,
 				Expanded(
 					child: VerticalScrollWithGradient(
 						gradientHeight: AppSpacings.pMd,
-						backgroundColor: fillColor,
+						backgroundColor: bgColor,
 						itemCount: rowCount,
-						separatorHeight: AppSpacings.pMd,
+						separatorHeight: AppSpacings.pSm,
 						padding: EdgeInsets.symmetric(vertical: AppSpacings.pMd),
-						itemBuilder: (context, rowIndex) => buildRow(rowIndex),
+						itemBuilder: (context, rowIndex) => buildRow(context, rowIndex),
 					),
 				),
 			],
 		);
 	}
 
-	UniversalTile _entryTile(BuildContext context, EntryPointData ep, bool critical) {
+	Widget _entryTile(BuildContext context, EntryPointData ep, bool critical) {
 		final isOpen = ep.isOpen == true;
 		final isUnknown = ep.isOpen == null;
 
@@ -730,6 +808,7 @@ class _EntryPointGrid extends StatelessWidget {
 		}
 
 		return UniversalTile(
+			layout: TileLayout.horizontal,
 			icon: ep.isDoor ? MdiIcons.doorOpen : MdiIcons.windowOpenVariant,
 			name: ep.name,
 			status: statusText,
@@ -751,37 +830,35 @@ class _EntryPointGrid extends StatelessWidget {
 	}
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// =============================================================================
 // ALERT STREAM
-// ─────────────────────────────────────────────────────────────────────────────
+// =============================================================================
 
+/// Scrollable list of active alerts with per-item and bulk acknowledge actions.
 class _AlertStream extends StatelessWidget {
 	final SecurityStatusModel status;
 	final SecurityOverlayController controller;
 	final DevicesService devicesService;
 	final bool isDark;
-	final ScreenService screenService;
 	final AppLocalizations localizations;
-	final bool isLandscape;
 
 	const _AlertStream({
 		required this.status,
 		required this.controller,
 		required this.devicesService,
 		required this.isDark,
-		required this.screenService,
 		required this.localizations,
-		this.isLandscape = false,
 	});
 
-	Color get _accentColor {
+	ThemeColorFamily get _accentFamily {
+		final brightness = isDark ? Brightness.dark : Brightness.light;
 		if (status.hasCriticalAlert || status.alarmState == AlarmState.triggered) {
-			return SystemPagesTheme.error(isDark);
+			return ThemeColorFamily.get(brightness, ThemeColors.error);
 		}
 		if (status.highestSeverity == Severity.warning) {
-			return SystemPagesTheme.warning(isDark);
+			return ThemeColorFamily.get(brightness, ThemeColors.warning);
 		}
-		return SystemPagesTheme.success(isDark);
+		return ThemeColorFamily.get(brightness, ThemeColors.success);
 	}
 
 	bool get _hasUnacked {
@@ -798,7 +875,7 @@ class _AlertStream extends StatelessWidget {
 		final headerTrailing = Row(
 			mainAxisSize: MainAxisSize.min,
 			children: [
-				_Badge(label: '${sortedAlerts.length}', color: _accentColor),
+				_Badge(label: '${sortedAlerts.length}', color: _accentFamily.base, backgroundColor: _accentFamily.light8),
 				if (_hasUnacked && !controller.isConnectionOffline) ...[
 					AppSpacings.spacingMdHorizontal,
 					_AckAllButton(
@@ -823,15 +900,11 @@ class _AlertStream extends StatelessWidget {
 			localizations.security_no_active_alerts,
 			style: TextStyle(
 				fontSize: AppFontSize.small,
-				color: SystemPagesTheme.textMuted(isDark),
+				color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
 			),
 		);
 
-		final cardColor = isDark ? AppFillColorDark.light : AppFillColorLight.blank;
-
 		return AppCard(
-			color: cardColor,
-			borderColor: _accentColor,
 			expanded: true,
 			headerIcon: MdiIcons.alertOutline,
 			headerTitle: localizations.security_tab_alerts,
@@ -842,7 +915,7 @@ class _AlertStream extends StatelessWidget {
 					? Center(child: emptyState)
 					: VerticalScrollWithGradient(
 						gradientHeight: AppSpacings.pMd,
-						backgroundColor: cardColor,
+						backgroundColor: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
 						itemCount: sortedAlerts.length,
 						separatorHeight: AppSpacings.scale(1),
 						separatorColor: dividerColor,
@@ -966,6 +1039,10 @@ class _AlertItem extends StatelessWidget {
 	}
 }
 
+// =============================================================================
+// SHARED UI
+// =============================================================================
+
 class _AckButton extends StatelessWidget {
 	final bool isDark;
 	final bool acknowledged;
@@ -1055,10 +1132,11 @@ class _AckAllButton extends StatelessWidget {
 	}
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// =============================================================================
 // EVENTS FEED
-// ─────────────────────────────────────────────────────────────────────────────
+// =============================================================================
 
+/// Scrollable list of recent security events with refresh and loading/error states.
 class _EventsFeed extends StatelessWidget {
 	final SecurityEventsRepository eventsRepo;
 	final DevicesService devicesService;
@@ -1066,7 +1144,6 @@ class _EventsFeed extends StatelessWidget {
 	final ScreenService screenService;
 	final AppLocalizations localizations;
 	final int maxEvents;
-	final bool isLandscape;
 
 	const _EventsFeed({
 		required this.eventsRepo,
@@ -1075,7 +1152,6 @@ class _EventsFeed extends StatelessWidget {
 		required this.screenService,
 		required this.localizations,
 		required this.maxEvents,
-		this.isLandscape = false,
 	});
 
 	@override
@@ -1118,7 +1194,7 @@ class _EventsFeed extends StatelessWidget {
 						height: screenService.scale(20),
 						child: CircularProgressIndicator(
 							strokeWidth: 2,
-							color: SystemPagesTheme.textMuted(isDark),
+							color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
 						),
 					),
 				);
@@ -1132,7 +1208,7 @@ class _EventsFeed extends StatelessWidget {
 							eventsRepo.errorMessage ?? localizations.security_events_load_failed,
 							style: TextStyle(
 								fontSize: AppFontSize.base,
-								color: SystemPagesTheme.textMuted(isDark),
+								color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
 							),
 						),
 						Theme(
@@ -1174,7 +1250,7 @@ class _EventsFeed extends StatelessWidget {
 						localizations.security_no_recent_events,
 						style: TextStyle(
 							fontSize: AppFontSize.small,
-							color: SystemPagesTheme.textMuted(isDark),
+							color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
 						),
 					);
 					return Center(child: emptyState);
@@ -1182,10 +1258,9 @@ class _EventsFeed extends StatelessWidget {
 
 				final displayEvents = eventsRepo.events.take(maxEvents).toList();
 
-				final fillColor = isDark ? AppFillColorDark.lighter : AppFillColorLight.light;
 				return VerticalScrollWithGradient(
 					gradientHeight: AppSpacings.pMd,
-					backgroundColor: fillColor,
+					backgroundColor: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
 					itemCount: displayEvents.length,
 					separatorHeight: AppSpacings.scale(1),
 					separatorColor: dividerColor,
@@ -1354,29 +1429,63 @@ class _RefreshButton extends StatelessWidget {
 class _Badge extends StatelessWidget {
 	final String label;
 	final Color color;
+	final Color backgroundColor;
+	final int? count;
+	final Color? countColor;
 
-	const _Badge({required this.label, required this.color});
+	const _Badge({
+		required this.label,
+		required this.color,
+		required this.backgroundColor,
+		this.count,
+		this.countColor,
+	});
 
 	@override
 	Widget build(BuildContext context) {
+		final textStyle = TextStyle(
+			fontSize: AppFontSize.extraSmall,
+			fontWeight: FontWeight.w700,
+			color: color,
+			letterSpacing: 0.3,
+		);
+
 		return Container(
 			padding: EdgeInsets.symmetric(
 				horizontal: AppSpacings.pMd,
-				vertical: AppSpacings.pXs,
+				vertical: AppSpacings.pSm,
 			),
 			decoration: BoxDecoration(
-				color: color.withValues(alpha: 0.12),
+				color: backgroundColor,
 				borderRadius: BorderRadius.circular(AppBorderRadius.base),
 			),
-			child: Text(
-				label,
-				style: TextStyle(
-					fontSize: AppFontSize.extraSmall,
-					fontWeight: FontWeight.w700,
-					color: color,
-					letterSpacing: 0.3,
-				),
-			),
+			child: count != null
+				? Row(
+					mainAxisSize: MainAxisSize.min,
+					spacing: AppSpacings.pSm,
+					children: [
+						Container(
+							width: AppSpacings.scale(14),
+							height: AppSpacings.scale(14),
+							decoration: BoxDecoration(
+								color: color,
+								shape: BoxShape.circle,
+							),
+							alignment: Alignment.center,
+							child: Text(
+								'$count',
+								style: TextStyle(
+									fontSize: AppFontSize.extraExtraSmall,
+									fontWeight: FontWeight.w700,
+									color: countColor ?? Colors.white,
+									height: 1,
+								),
+							),
+						),
+						Text(label, style: textStyle),
+					],
+				)
+				: Text(label, style: textStyle),
 		);
 	}
 }

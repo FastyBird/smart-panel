@@ -233,14 +233,14 @@ class SectionHeader extends StatelessWidget {
           Icon(
             icon,
             color: iconColor,
-            size: AppSpacings.scale(14),
+            size: AppFontSize.small,
           ),
           Text(
             title,
             style: TextStyle(
               color: textColor,
               fontSize: AppFontSize.small,
-              fontWeight: FontWeight.w600,
+              fontWeight: FontWeight.bold,
             ),
           ),
           if (count != null)

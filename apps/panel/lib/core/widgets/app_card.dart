@@ -109,18 +109,19 @@ class AppCard extends StatelessWidget {
             padding: EdgeInsets.only(
               left: resolvedEdgeInsets.left,
               right: resolvedEdgeInsets.right,
-              top: resolvedEdgeInsets.top,
-              bottom: 0,
             ),
             child: _AppCardHeader(
               icon: headerIcon,
               title: headerTitle!,
               titleColor: headerTitleColor,
               trailing: headerTrailing,
-            ),
+              padding: EdgeInsets.only(
+                top: resolvedEdgeInsets.top,
+                bottom: resolvedEdgeInsets.bottom,
+              ),
+            )
           ),
           if (headerLine) ...[
-            AppSpacings.spacingMdVertical,
             Divider(
               height: expanded ? AppSpacings.scale(1) : AppSpacings.pMd,
               thickness: AppSpacings.scale(1),
@@ -131,7 +132,13 @@ class AppCard extends StatelessWidget {
             child
           else
             Padding(
-              padding: resolvedPadding,
+              padding: headerLine
+                  ? resolvedPadding
+                  : EdgeInsets.only(
+                      left: resolvedEdgeInsets.left,
+                      right: resolvedEdgeInsets.right,
+                      bottom: resolvedEdgeInsets.bottom,
+                    ),
               child: child,
             ),
         ],
@@ -145,12 +152,14 @@ class _AppCardHeader extends StatelessWidget {
   final String title;
   final Color? titleColor;
   final Widget? trailing;
+  final EdgeInsetsGeometry? padding;
 
   const _AppCardHeader({
     this.icon,
     required this.title,
     this.titleColor,
     this.trailing,
+    this.padding,
   });
 
   @override
@@ -162,25 +171,29 @@ class _AppCardHeader extends StatelessWidget {
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Row(
-          spacing: AppSpacings.pSm,
-          children: [
-            if (icon != null)
-              Icon(
-                icon,
-                size: AppFontSize.small,
-                color: secondaryColor,
+        Padding(
+          padding: padding ?? EdgeInsets.zero,
+          child: Row(
+            spacing: AppSpacings.pSm,
+            children: [
+              if (icon != null)
+                Icon(
+                  icon,
+                  size: AppFontSize.small,
+                  color: secondaryColor,
+                ),
+              Text(
+                title.toUpperCase(),
+                style: TextStyle(
+                  color: titleColor ?? secondaryColor,
+                  fontSize: AppFontSize.small,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            Text(
-              title,
-              style: TextStyle(
-                color: titleColor ?? secondaryColor,
-                fontSize: AppFontSize.small,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
         if (trailing != null) trailing!,
       ],

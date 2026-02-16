@@ -5939,6 +5939,12 @@ abstract class AppLocalizations {
   /// **'{count} sensors'**
   String sensors_domain_sensor_count(int count);
 
+  /// Title for security domain view in room navigation
+  ///
+  /// In en, this message translates to:
+  /// **'Security'**
+  String get domain_security;
+
   /// Tab label for the entry points section on the security screen
   ///
   /// In en, this message translates to:
@@ -6089,11 +6095,23 @@ abstract class AppLocalizations {
   /// **'{count} alerts'**
   String security_summary_alerts(int count);
 
+  /// Short label for the alerts summary pill
+  ///
+  /// In en, this message translates to:
+  /// **'Alerts'**
+  String get security_summary_alerts_label;
+
   /// Status summary part showing the number of open entry points
   ///
   /// In en, this message translates to:
   /// **'{count} entry points open'**
   String security_summary_entry_points_open(int count);
+
+  /// Short label for the open entry points summary pill
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get security_summary_open_label;
 
   /// Message displayed when there are no active security alerts
   ///

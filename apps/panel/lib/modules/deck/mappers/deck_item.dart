@@ -1,7 +1,7 @@
 import 'package:fastybird_smart_panel/modules/dashboard/mappers/page.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
 import 'package:fastybird_smart_panel/modules/energy/presentation/energy_screen.dart';
-import 'package:fastybird_smart_panel/modules/security/presentation/security_screen.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/security_domain_view.dart';
 import 'package:flutter/material.dart';
 
 /// Builds the appropriate widget for any deck item.
