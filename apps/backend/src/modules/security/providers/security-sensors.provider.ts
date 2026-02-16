@@ -207,7 +207,10 @@ export class SecuritySensorsProvider implements SecurityStateProviderInterface {
 		configuredSeverity: Severity,
 		armedState: ArmedState | null,
 	): Severity {
-		if (armedState != null && armedState !== ArmedState.DISARMED) {
+		// Only downgrade on explicit DISARMED. When armedState is null
+		// (alarm provider failed or not configured), keep configured severity
+		// to avoid understating real armed conditions.
+		if (armedState !== ArmedState.DISARMED) {
 			return configuredSeverity;
 		}
 

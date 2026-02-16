@@ -81,6 +81,7 @@ export class SecurityStateListener implements OnModuleInit, OnModuleDestroy {
 	@OnEvent(DevicesEventType.CHANNEL_PROPERTY_VALUE_SET)
 	@OnEvent(DevicesEventType.CHANNEL_PROPERTY_UPDATED)
 	@OnEvent(DevicesEventType.CHANNEL_PROPERTY_DELETED)
+	@OnEvent(DevicesEventType.CHANNEL_PROPERTY_RESET)
 	async handlePropertyChanged(property: ChannelPropertyEntity): Promise<void> {
 		try {
 			await this.processPropertyChange(property);
@@ -91,6 +92,7 @@ export class SecurityStateListener implements OnModuleInit, OnModuleDestroy {
 
 	@OnEvent(DevicesEventType.CHANNEL_CREATED)
 	@OnEvent(DevicesEventType.CHANNEL_DELETED)
+	@OnEvent(DevicesEventType.CHANNEL_RESET)
 	handleChannelChanged(channel: ChannelEntity): void {
 		if (!SECURITY_CHANNEL_CATEGORIES.includes(channel.category)) {
 			return;
@@ -100,10 +102,13 @@ export class SecurityStateListener implements OnModuleInit, OnModuleDestroy {
 	}
 
 	@OnEvent(DevicesEventType.DEVICE_DELETED)
-	handleDeviceDeleted(_device: DeviceEntity): void {
-		// Channels are individually removed (emitting CHANNEL_DELETED) before
-		// DEVICE_DELETED fires, but this is a safety net for edge cases where
-		// the cascade may not trigger channel-level events.
+	@OnEvent(DevicesEventType.DEVICE_RESET)
+	handleDeviceChanged(_device: DeviceEntity): void {
+		this.scheduleStateRecalculation();
+	}
+
+	@OnEvent(DevicesEventType.MODULE_RESET)
+	handleModuleReset(): void {
 		this.scheduleStateRecalculation();
 	}
 
@@ -113,24 +118,21 @@ export class SecurityStateListener implements OnModuleInit, OnModuleDestroy {
 			return;
 		}
 
-		// Resolve channel to check if it's security-relevant
+		// Resolve channel to check if it's security-relevant.
+		// If channelId is missing (e.g. deleted property without loaded relation)
+		// or channel is not found (already deleted), fall through and recalculate
+		// conservatively — the aggregator will re-evaluate from scratch.
 		const channelId = typeof property.channel === 'string' ? property.channel : property.channel?.id;
 
-		if (!channelId) {
-			return;
-		}
+		if (channelId) {
+			const channel = await this.channelRepository
+				.createQueryBuilder('channel')
+				.where('channel.id = :channelId', { channelId })
+				.getOne();
 
-		const channel = await this.channelRepository
-			.createQueryBuilder('channel')
-			.where('channel.id = :channelId', { channelId })
-			.getOne();
-
-		if (!channel) {
-			return;
-		}
-
-		if (!SECURITY_CHANNEL_CATEGORIES.includes(channel.category)) {
-			return;
+			if (channel && !SECURITY_CHANNEL_CATEGORIES.includes(channel.category)) {
+				return;
+			}
 		}
 
 		// Schedule debounced state recalculation
@@ -181,13 +183,13 @@ export class SecurityStateListener implements OnModuleInit, OnModuleDestroy {
 				this.logger.warn(`Failed to record alert transitions: ${error}`);
 			}
 
-			// Sync ack records — clean up stale acks only when aggregation is reliable
-			if (providerErrors === 0 || status.activeAlerts.length > 0) {
-				try {
-					await this.syncAckRecords(status);
-				} catch (error) {
-					this.logger.warn(`Failed to sync ack records: ${error}`);
-				}
+			// Sync ack records: reset acks for alerts with newer timestamps (safe
+			// with partial data since it only touches present alerts), and clean
+			// up stale acks only when aggregation had zero provider errors.
+			try {
+				await this.syncAckRecords(status, providerErrors);
+			} catch (error) {
+				this.logger.warn(`Failed to sync ack records: ${error}`);
 			}
 
 			// Apply acknowledgements for the emitted status
@@ -241,8 +243,12 @@ export class SecurityStateListener implements OnModuleInit, OnModuleDestroy {
 	 * Sync ack records: reset acks for alerts with newer timestamps,
 	 * and clean up stale ack records for alerts that no longer exist.
 	 */
-	private async syncAckRecords(status: import('../models/security-status.model').SecurityStatusModel): Promise<void> {
-		// Reset acks for alerts with newer timestamps
+	private async syncAckRecords(
+		status: import('../models/security-status.model').SecurityStatusModel,
+		providerErrors: number,
+	): Promise<void> {
+		// Reset acks for alerts with newer timestamps — safe with partial
+		// data since it only touches alerts that ARE present.
 		if (status.activeAlerts.length > 0) {
 			const alertIds = status.activeAlerts.map((a) => a.id);
 			const ackRecords = await this.ackService.findByIds(alertIds);
@@ -265,8 +271,12 @@ export class SecurityStateListener implements OnModuleInit, OnModuleDestroy {
 			}
 		}
 
-		// Clean up stale ack records
-		const activeIds = status.activeAlerts.map((a) => a.id);
-		await this.ackService.cleanupStale(activeIds);
+		// Clean up stale ack records only when all providers succeeded.
+		// With partial failures, some providers' alerts may be missing,
+		// and cleanupStale would incorrectly delete their ack records.
+		if (providerErrors === 0) {
+			const activeIds = status.activeAlerts.map((a) => a.id);
+			await this.ackService.cleanupStale(activeIds);
+		}
 	}
 }
