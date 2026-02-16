@@ -1267,7 +1267,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         Padding(
           padding: EdgeInsets.only(bottom: AppSpacings.pSm),
           child: Text(
-            'MODE',
+            localizations.popup_label_mode.toUpperCase(),
             style: TextStyle(
               fontSize: AppFontSize.extraSmall,
               fontWeight: FontWeight.w600,

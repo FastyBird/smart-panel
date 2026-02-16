@@ -339,16 +339,16 @@ class _LightHeroState {
 }
 
 /// Get human-readable color name from hue degree value.
-String _heroHueName(double hue) {
-  if (hue < 15 || hue >= 345) return 'Red';
-  if (hue < 45) return 'Orange';
-  if (hue < 75) return 'Yellow';
-  if (hue < 150) return 'Green';
-  if (hue < 195) return 'Cyan';
-  if (hue < 255) return 'Blue';
-  if (hue < 285) return 'Violet';
-  if (hue < 345) return 'Pink';
-  return 'Red';
+String _heroHueName(double hue, AppLocalizations l) {
+  if (hue < 15 || hue >= 345) return l.light_color_red;
+  if (hue < 45) return l.light_color_orange;
+  if (hue < 75) return l.light_color_yellow;
+  if (hue < 150) return l.light_color_green;
+  if (hue < 195) return l.light_color_cyan;
+  if (hue < 255) return l.light_color_blue;
+  if (hue < 285) return l.light_color_violet;
+  if (hue < 345) return l.light_color_pink;
+  return l.light_color_red;
 }
 
 // =============================================================================
@@ -745,7 +745,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
   /// Apply optimistic overrides from [_heroControlStateService] onto
   /// a hero state built from device data.
-  _LightHeroState _applyHeroOptimisticOverrides(_LightHeroState base) {
+  _LightHeroState _applyHeroOptimisticOverrides(_LightHeroState base, AppLocalizations localizations) {
     final isOn = _heroPendingOnState ?? base.isOn;
 
     final brightness =
@@ -782,7 +782,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     if (_heroControlStateService.isLocked(LightingConstants.hueChannelId) &&
         hueDesired != null) {
       hue = hueDesired;
-      colorName = _heroHueName(hue);
+      colorName = _heroHueName(hue, localizations);
     }
     if (_heroControlStateService
             .isLocked(LightingConstants.saturationChannelId) &&
@@ -1235,7 +1235,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         Padding(
           padding: EdgeInsets.only(bottom: AppSpacings.pSm),
           child: Text(
-            'MODE',
+            localizations.popup_label_mode.toUpperCase(),
             style: TextStyle(
               fontSize: AppFontSize.extraSmall,
               fontWeight: FontWeight.w600,
@@ -1621,8 +1621,8 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         if (effectiveRole != null) {
           final selectedRoleData = _getRoleDataForRole(definedRoles, effectiveRole);
           if (selectedRoleData != null) {
-            heroState = _buildHeroState(selectedRoleData, devicesService);
-            heroState = _applyHeroOptimisticOverrides(heroState!);
+            heroState = _buildHeroState(selectedRoleData, devicesService, localizations);
+            heroState = _applyHeroOptimisticOverrides(heroState!, localizations);
           }
         }
 
@@ -1881,6 +1881,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   _LightHeroState? _buildHeroState(
     LightingRoleData roleData,
     DevicesService devicesService,
+    AppLocalizations localizations,
   ) {
     final targets = roleData.targets;
     if (targets.isEmpty) return null;
@@ -1964,7 +1965,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         saturation = cached!.saturation! * 100;
       }
       currentColor = HSVColor.fromAHSV(1, hue.clamp(0, 360), (saturation / 100).clamp(0.0, 1.0), 1).toColor();
-      colorName = _heroHueName(hue);
+      colorName = _heroHueName(hue, localizations);
     } else if (capabilities.contains(LightHeroCapability.hue)) {
       // Fall back to device channel values for color info
       for (final target in targets) {
@@ -1979,7 +1980,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             currentColor = channel.color;
             if (channel.hasHue) {
               hue = channel.hue;
-              colorName = _heroHueName(hue);
+              colorName = _heroHueName(hue, localizations);
             }
             if (channel.hasSaturation) {
               saturation = channel.saturation.toDouble();
@@ -2076,9 +2077,9 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
           desiredIndex < LightingModeUI.values.length) {
         final lockedMode = LightingModeUI.values[desiredIndex];
         final modeName = _getModeName(lockedMode, localizations);
-        subtitle = '$modeName \u2022 $lightsOn on';
+        subtitle = localizations.light_header_mode_count(modeName, lightsOn);
       } else {
-        subtitle = '$lightsOn of $totalLights on';
+        subtitle = localizations.light_header_count_of_total(lightsOn, totalLights);
       }
     } else if (state != null &&
         state.isModeFromIntent &&
@@ -2088,16 +2089,16 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       final detectedModeUI = _toLightingModeUI(state.detectedMode);
       if (detectedModeUI != null && detectedModeUI != LightingModeUI.off) {
         final modeName = _getModeName(detectedModeUI, localizations);
-        subtitle = '$modeName \u2022 $lightsOn on';
+        subtitle = localizations.light_header_mode_count(modeName, lightsOn);
       } else {
-        subtitle = '$lightsOn of $totalLights on';
+        subtitle = localizations.light_header_count_of_total(lightsOn, totalLights);
       }
     } else if (state?.lastAppliedMode != null && lightsOn > 0) {
       // Intent exists but overridden and lights are on: show "Custom"
-      subtitle = '${localizations.domain_mode_custom} \u2022 $lightsOn on';
+      subtitle = localizations.light_header_mode_count(localizations.domain_mode_custom, lightsOn);
     } else {
       // No intent or all lights off: show count
-      subtitle = '$lightsOn of $totalLights on';
+      subtitle = localizations.light_header_count_of_total(lightsOn, totalLights);
     }
 
     // Use actual light state for icon, not pending mode
@@ -2269,16 +2270,16 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     final devicesService = _devicesService;
     if (devicesService == null) return;
 
-    final heroState = _buildHeroState(roleData, devicesService);
+    final localizations = AppLocalizations.of(context)!;
+    final heroState = _buildHeroState(roleData, devicesService, localizations);
     if (heroState == null) return;
-    final state = _applyHeroOptimisticOverrides(heroState);
+    final state = _applyHeroOptimisticOverrides(heroState, localizations);
     final stateRole = mapTargetRoleToStateRole(roleData.role);
     if (stateRole == null) return;
 
     final spacesService = _spacesService;
     if (spacesService == null) return;
 
-    final localizations = AppLocalizations.of(context)!;
     try {
       _heroWasSpaceLocked = true;
 
@@ -3897,20 +3898,22 @@ class _LightsHeroCard extends StatelessWidget {
               ? (constraints.maxHeight * 0.25).clamp(AppSpacings.scale(48), AppSpacings.scale(160))
               : (constraints.maxHeight * 0.35).clamp(AppSpacings.scale(48), AppSpacings.scale(160));
 
+          final localizations = AppLocalizations.of(context)!;
+
           return Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               if (state.isOnOffOnly) ...[
-                _buildOnOffHero(isDark, colorFamily),
+                _buildOnOffHero(isDark, colorFamily, localizations),
               ] else ...[
                 _buildHeroRow(isDark, colorFamily, fontSize),
                 if (state.showModeSwitcher) ...[
                   AppSpacings.spacingLgVertical,
-                  _buildModeSwitcher(isDark, colorFamily),
+                  _buildModeSwitcher(isDark, colorFamily, localizations),
                   AppSpacings.spacingMdVertical,
                 ],
                 AppSpacings.spacingMdVertical,
-                _buildActiveSlider(isDark, colorFamily),
+                _buildActiveSlider(isDark, colorFamily, localizations),
               ],
             ],
           );
@@ -4153,7 +4156,7 @@ class _LightsHeroCard extends StatelessWidget {
 
   // ── Mode Switcher (ModeSelector) ──────────────────────────────
 
-  Widget _buildModeSwitcher(bool isDark, ThemeColorFamily colorFamily) {
+  Widget _buildModeSwitcher(bool isDark, ThemeColorFamily colorFamily, AppLocalizations localizations) {
     final caps = state.capabilities.toList();
     caps.sort((a, b) => a.index.compareTo(b.index));
 
@@ -4163,7 +4166,7 @@ class _LightsHeroCard extends StatelessWidget {
       modes: caps.map((cap) => ModeOption<LightHeroCapability>(
         value: cap,
         icon: _capIcon(cap),
-        label: _capLabel(cap),
+        label: _capLabel(cap, localizations),
       )).toList(),
       selectedValue: state.activeMode ?? caps.first,
       onChanged: (cap) => onModeChanged?.call(cap),
@@ -4186,26 +4189,26 @@ class _LightsHeroCard extends StatelessWidget {
     };
   }
 
-  String _capLabel(LightHeroCapability cap) {
+  String _capLabel(LightHeroCapability cap, AppLocalizations l) {
     return switch (cap) {
-      LightHeroCapability.brightness => 'Bright',
-      LightHeroCapability.colorTemp => 'Temp',
-      LightHeroCapability.hue => 'Hue',
-      LightHeroCapability.saturation => 'Sat',
-      LightHeroCapability.whiteChannel => 'White',
+      LightHeroCapability.brightness => l.light_cap_brightness,
+      LightHeroCapability.colorTemp => l.light_cap_color_temp,
+      LightHeroCapability.hue => l.light_cap_hue,
+      LightHeroCapability.saturation => l.light_cap_saturation,
+      LightHeroCapability.whiteChannel => l.light_cap_white,
     };
   }
 
   // ── Active Slider (SliderWithSteps) ───────────────────────────
 
-  Widget _buildActiveSlider(bool isDark, ThemeColorFamily colorFamily) {
+  Widget _buildActiveSlider(bool isDark, ThemeColorFamily colorFamily, AppLocalizations localizations) {
     final mode = state.activeMode ??
         (state.capabilities.isNotEmpty
             ? state.capabilities.first
             : LightHeroCapability.brightness);
 
     final (gradientColors, thumbColor, position, steps) =
-        _sliderParams(isDark, colorFamily, mode);
+        _sliderParams(isDark, colorFamily, mode, localizations);
 
     return Column(
       children: [
@@ -4230,7 +4233,7 @@ class _LightsHeroCard extends StatelessWidget {
           ),
         ),
         AppSpacings.spacingMdVertical,
-        _buildPresets(isDark, colorFamily, mode),
+        _buildPresets(isDark, colorFamily, mode, localizations),
       ],
     );
   }
@@ -4240,6 +4243,7 @@ class _LightsHeroCard extends StatelessWidget {
     bool isDark,
     ThemeColorFamily colorFamily,
     LightHeroCapability mode,
+    AppLocalizations localizations,
   ) {
     final currentHueColor =
         HSVColor.fromAHSV(1, state.hue.clamp(0, 360), 1, 1).toColor();
@@ -4282,7 +4286,7 @@ class _LightsHeroCard extends StatelessWidget {
           _HeroGradients.whiteChannel(isDark),
           null,
           state.whiteChannel / 100,
-          ['Off', '25%', '50%', '75%', '100%'],
+          [localizations.on_state_off, '25%', '50%', '75%', '100%'],
         ),
     };
   }
@@ -4317,10 +4321,11 @@ class _LightsHeroCard extends StatelessWidget {
     bool isDark,
     ThemeColorFamily colorFamily,
     LightHeroCapability mode,
+    AppLocalizations localizations,
   ) {
     final items = mode == LightHeroCapability.hue
-        ? _colorPresetItems(isDark, colorFamily)
-        : _chipPresetItems(isDark, colorFamily, mode);
+        ? _colorPresetItems(isDark, colorFamily, localizations)
+        : _chipPresetItems(isDark, colorFamily, mode, localizations);
 
     if (items.isEmpty) return const SizedBox.shrink();
 
@@ -4342,7 +4347,7 @@ class _LightsHeroCard extends StatelessWidget {
     );
   }
 
-  List<SliderPreset> _presetsForMode(LightHeroCapability mode) {
+  List<SliderPreset> _presetsForMode(LightHeroCapability mode, AppLocalizations localizations) {
     return switch (mode) {
       LightHeroCapability.brightness => [
           SliderPreset(
@@ -4373,27 +4378,27 @@ class _LightsHeroCard extends StatelessWidget {
         ],
       LightHeroCapability.colorTemp => [
           SliderPreset(
-            label: 'Candle',
+            label: localizations.light_preset_candle,
             value: 2700,
             isActive: state.colorTemp.round() == 2700,
           ),
           SliderPreset(
-            label: 'Warm White',
+            label: localizations.light_preset_warm_white,
             value: 3200,
             isActive: state.colorTemp.round() == 3200,
           ),
           SliderPreset(
-            label: 'Neutral',
+            label: localizations.light_preset_neutral,
             value: 4000,
             isActive: state.colorTemp.round() == 4000,
           ),
           SliderPreset(
-            label: 'Daylight',
+            label: localizations.light_preset_daylight,
             value: 5000,
             isActive: state.colorTemp.round() == 5000,
           ),
           SliderPreset(
-            label: 'Cool White',
+            label: localizations.light_preset_cool_white,
             value: 6500,
             isActive: state.colorTemp.round() == 6500,
           ),
@@ -4427,7 +4432,7 @@ class _LightsHeroCard extends StatelessWidget {
         ],
       LightHeroCapability.whiteChannel => [
           SliderPreset(
-            label: 'Off',
+            label: localizations.on_state_off,
             value: 0,
             isActive: state.whiteChannel.round() == 0,
           ),
@@ -4460,8 +4465,9 @@ class _LightsHeroCard extends StatelessWidget {
     bool isDark,
     ThemeColorFamily colorFamily,
     LightHeroCapability mode,
+    AppLocalizations localizations,
   ) {
-    final presets = _presetsForMode(mode);
+    final presets = _presetsForMode(mode, localizations);
 
     final textSecondary =
         isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
@@ -4503,47 +4509,47 @@ class _LightsHeroCard extends StatelessWidget {
     }).toList();
   }
 
-  List<Widget> _colorPresetItems(bool isDark, ThemeColorFamily colorFamily) {
+  List<Widget> _colorPresetItems(bool isDark, ThemeColorFamily colorFamily, AppLocalizations localizations) {
     final presets = [
       ColorPreset(
         color: const Color(0xFFE85A4F),
-        name: 'Red',
+        name: localizations.light_color_red,
         hueValue: 10,
         isActive: state.hue < 15,
       ),
       ColorPreset(
         color: const Color(0xFFFF9800),
-        name: 'Orange',
+        name: localizations.light_color_orange,
         hueValue: 30,
       ),
       ColorPreset(
         color: const Color(0xFFFFEB3B),
-        name: 'Yellow',
+        name: localizations.light_color_yellow,
         hueValue: 60,
       ),
       ColorPreset(
         color: const Color(0xFF4CAF50),
-        name: 'Green',
+        name: localizations.light_color_green,
         hueValue: 120,
       ),
       ColorPreset(
         color: const Color(0xFF42A5F5),
-        name: 'Blue',
+        name: localizations.light_color_blue,
         hueValue: 210,
       ),
       ColorPreset(
         color: const Color(0xFF7B1FA2),
-        name: 'Purple',
+        name: localizations.light_color_purple,
         hueValue: 280,
       ),
       ColorPreset(
         color: const Color(0xFFE91E63),
-        name: 'Pink',
+        name: localizations.light_color_pink,
         hueValue: 340,
       ),
       ColorPreset(
         color: const Color(0xFFFFFAF0),
-        name: 'White',
+        name: localizations.light_color_white,
         hueValue: 0,
       ),
     ];
@@ -4587,7 +4593,7 @@ class _LightsHeroCard extends StatelessWidget {
 
   // ── On/Off Hero (no slider capabilities) ──────────────────────
 
-  Widget _buildOnOffHero(bool isDark, ThemeColorFamily colorFamily) {
+  Widget _buildOnOffHero(bool isDark, ThemeColorFamily colorFamily, AppLocalizations localizations) {
     final primaryColor =
         isDark ? AppColorsDark.primary : AppColorsLight.primary;
     final primaryBgColor =
@@ -4655,7 +4661,7 @@ class _LightsHeroCard extends StatelessWidget {
                     color: state.isOn ? primaryColor : inactiveColor,
                   ),
                   Text(
-                    state.isOn ? 'ON' : 'OFF',
+                    state.isOn ? localizations.on_state_on.toUpperCase() : localizations.on_state_off.toUpperCase(),
                     style: TextStyle(
                       fontSize: AppFontSize.extraSmall,
                       fontWeight: FontWeight.w600,
@@ -4668,7 +4674,7 @@ class _LightsHeroCard extends StatelessWidget {
             ),
           ),
           Text(
-            state.isOn ? 'Tap to turn off' : 'Tap to turn on',
+            state.isOn ? localizations.power_hint_tap_to_turn_off : localizations.power_hint_tap_to_turn_on,
             style: TextStyle(
               fontSize: AppFontSize.extraSmall,
               color: inactiveColor,

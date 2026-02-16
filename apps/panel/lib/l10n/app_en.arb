@@ -2758,6 +2758,18 @@
   "@light_preset_cool": {
     "description": "Cool color temperature preset label"
   },
+  "light_preset_warm_white": "Warm White",
+  "@light_preset_warm_white": {
+    "description": "Warm white color temperature preset label"
+  },
+  "light_preset_neutral": "Neutral",
+  "@light_preset_neutral": {
+    "description": "Neutral color temperature preset label"
+  },
+  "light_preset_cool_white": "Cool White",
+  "@light_preset_cool_white": {
+    "description": "Cool white color temperature preset label"
+  },
   "light_color_red": "Red",
   "@light_color_red": {
     "description": "Red color preset label"
@@ -2789,6 +2801,79 @@
   "light_color_pink": "Pink",
   "@light_color_pink": {
     "description": "Pink color preset label"
+  },
+  "light_color_violet": "Violet",
+  "@light_color_violet": {
+    "description": "Violet color preset label"
+  },
+  "light_color_white": "White",
+  "@light_color_white": {
+    "description": "White color preset label"
+  },
+  "light_cap_brightness": "Bright",
+  "@light_cap_brightness": {
+    "description": "Brightness capability short label"
+  },
+  "light_cap_color_temp": "Temp",
+  "@light_cap_color_temp": {
+    "description": "Color temperature capability short label"
+  },
+  "light_cap_hue": "Hue",
+  "@light_cap_hue": {
+    "description": "Hue capability short label"
+  },
+  "light_cap_saturation": "Sat",
+  "@light_cap_saturation": {
+    "description": "Saturation capability short label"
+  },
+  "light_cap_white": "White",
+  "@light_cap_white": {
+    "description": "White channel capability short label"
+  },
+  "light_header_mode_count": "{mode} \u2022 {count} on",
+  "@light_header_mode_count": {
+    "description": "Lights header subtitle showing mode name and count of lights on",
+    "placeholders": {
+      "mode": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "light_header_count_of_total": "{count} of {total} on",
+  "@light_header_count_of_total": {
+    "description": "Lights header subtitle showing count of lights on out of total",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+
+  "popup_label_mode": "Mode",
+  "@popup_label_mode": {
+    "description": "Label shown at top of mode selection popup"
+  },
+  "climate_status_off": "Off",
+  "@climate_status_off": {
+    "description": "Climate device status when turned off"
+  },
+  "climate_status_heating": "Heating",
+  "@climate_status_heating": {
+    "description": "Climate device status when actively heating"
+  },
+  "climate_status_cooling": "Cooling",
+  "@climate_status_cooling": {
+    "description": "Climate device status when actively cooling"
+  },
+  "climate_status_standby": "Standby",
+  "@climate_status_standby": {
+    "description": "Climate device status when on but idle"
   },
 
   "connection_banner_reconnecting": "Reconnecting...",

@@ -367,7 +367,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
             vertical: AppSpacings.pMd,
           ),
           child: Text(
-            'FILTER',
+            AppLocalizations.of(context)!.sensor_label_filter.toUpperCase(),
             style: TextStyle(
               fontSize: AppFontSize.extraSmall,
               fontWeight: FontWeight.w600,

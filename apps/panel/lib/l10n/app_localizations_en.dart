@@ -2074,6 +2074,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get light_preset_cool => 'Cool';
 
   @override
+  String get light_preset_warm_white => 'Warm White';
+
+  @override
+  String get light_preset_neutral => 'Neutral';
+
+  @override
+  String get light_preset_cool_white => 'Cool White';
+
+  @override
   String get light_color_red => 'Red';
 
   @override
@@ -2096,6 +2105,52 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get light_color_pink => 'Pink';
+
+  @override
+  String get light_color_violet => 'Violet';
+
+  @override
+  String get light_color_white => 'White';
+
+  @override
+  String get light_cap_brightness => 'Bright';
+
+  @override
+  String get light_cap_color_temp => 'Temp';
+
+  @override
+  String get light_cap_hue => 'Hue';
+
+  @override
+  String get light_cap_saturation => 'Sat';
+
+  @override
+  String get light_cap_white => 'White';
+
+  @override
+  String light_header_mode_count(String mode, int count) {
+    return '$mode • $count on';
+  }
+
+  @override
+  String light_header_count_of_total(int count, int total) {
+    return '$count of $total on';
+  }
+
+  @override
+  String get popup_label_mode => 'Mode';
+
+  @override
+  String get climate_status_off => 'Off';
+
+  @override
+  String get climate_status_heating => 'Heating';
+
+  @override
+  String get climate_status_cooling => 'Cooling';
+
+  @override
+  String get climate_status_standby => 'Standby';
 
   @override
   String get connection_banner_reconnecting => 'Reconnecting...';
