@@ -2859,23 +2859,6 @@
   "@popup_label_mode": {
     "description": "Label shown at top of mode selection popup"
   },
-  "climate_status_off": "Off",
-  "@climate_status_off": {
-    "description": "Climate device status when turned off"
-  },
-  "climate_status_heating": "Heating",
-  "@climate_status_heating": {
-    "description": "Climate device status when actively heating"
-  },
-  "climate_status_cooling": "Cooling",
-  "@climate_status_cooling": {
-    "description": "Climate device status when actively cooling"
-  },
-  "climate_status_standby": "Standby",
-  "@climate_status_standby": {
-    "description": "Climate device status when on but idle"
-  },
-
   "connection_banner_reconnecting": "Reconnecting...",
   "@connection_banner_reconnecting": {
     "description": "Banner text shown during reconnection attempts"

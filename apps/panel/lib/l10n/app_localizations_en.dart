@@ -2141,18 +2141,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get popup_label_mode => 'Mode';
 
   @override
-  String get climate_status_off => 'Off';
-
-  @override
-  String get climate_status_heating => 'Heating';
-
-  @override
-  String get climate_status_cooling => 'Cooling';
-
-  @override
-  String get climate_status_standby => 'Standby';
-
-  @override
   String get connection_banner_reconnecting => 'Reconnecting...';
 
   @override

@@ -2155,18 +2155,6 @@ class AppLocalizationsCs extends AppLocalizations {
   String get popup_label_mode => 'Režim';
 
   @override
-  String get climate_status_off => 'Vypnuto';
-
-  @override
-  String get climate_status_heating => 'Topení';
-
-  @override
-  String get climate_status_cooling => 'Chlazení';
-
-  @override
-  String get climate_status_standby => 'Pohotovost';
-
-  @override
   String get connection_banner_reconnecting => 'Připojování...';
 
   @override

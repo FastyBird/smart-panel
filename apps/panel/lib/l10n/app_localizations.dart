@@ -4055,30 +4055,6 @@ abstract class AppLocalizations {
   /// **'Mode'**
   String get popup_label_mode;
 
-  /// Climate device status when turned off
-  ///
-  /// In en, this message translates to:
-  /// **'Off'**
-  String get climate_status_off;
-
-  /// Climate device status when actively heating
-  ///
-  /// In en, this message translates to:
-  /// **'Heating'**
-  String get climate_status_heating;
-
-  /// Climate device status when actively cooling
-  ///
-  /// In en, this message translates to:
-  /// **'Cooling'**
-  String get climate_status_cooling;
-
-  /// Climate device status when on but idle
-  ///
-  /// In en, this message translates to:
-  /// **'Standby'**
-  String get climate_status_standby;
-
   /// Banner text shown during reconnection attempts
   ///
   /// In en, this message translates to:

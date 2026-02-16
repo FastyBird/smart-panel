@@ -704,10 +704,6 @@
   },
 
   "popup_label_mode": "Režim",
-  "climate_status_off": "Vypnuto",
-  "climate_status_heating": "Topení",
-  "climate_status_cooling": "Chlazení",
-  "climate_status_standby": "Pohotovost",
 
   "connection_banner_reconnecting": "Připojování...",
   "connection_banner_retry": "Zkusit znovu",
