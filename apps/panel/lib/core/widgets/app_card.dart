@@ -132,7 +132,13 @@ class AppCard extends StatelessWidget {
             child
           else
             Padding(
-              padding: resolvedPadding,
+              padding: headerLine
+                  ? resolvedPadding
+                  : EdgeInsets.only(
+                      left: resolvedEdgeInsets.left,
+                      right: resolvedEdgeInsets.right,
+                      bottom: resolvedEdgeInsets.bottom,
+                    ),
               child: child,
             ),
         ],
