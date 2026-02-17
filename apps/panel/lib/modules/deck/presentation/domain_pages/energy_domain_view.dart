@@ -13,10 +13,11 @@
 // - CONSTANTS
 // - ENERGY DOMAIN VIEW PAGE (state, lifecycle, data loading, build)
 // - HEADER
-// - RANGE SELECTOR
-// - SUMMARY CARDS
+// - PORTRAIT LAYOUT
+// - LANDSCAPE LAYOUT
+// - SUMMARY CARDS (consumption hero, secondary values, comparison)
 // - TIMESERIES CHART
-// - TOP CONSUMERS LIST
+// - TOP CONSUMERS (sheet / drawer)
 // - EMPTY STATE
 
 import 'dart:async';
@@ -507,9 +508,8 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
                     decimalPlaces: 2,
                   ),
                   unit: localizations.energy_unit_kwh,
-                  colorFamily: _summary!.net! > 0
-                      ? warningFamily
-                      : successFamily,
+                  colorFamily:
+                      _summary!.net! > 0 ? warningFamily : successFamily,
                 ),
               ),
           ],
@@ -566,15 +566,13 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
                       AppSpacings.scale(96),
                     );
               final unitFontSize = fontSize * 0.27;
-              final textColor = isDark
-                  ? AppTextColorDark.regular
-                  : AppTextColorLight.regular;
+              final textColor =
+                  isDark ? AppTextColorDark.regular : AppTextColorLight.regular;
               final unitColor = isDark
                   ? AppTextColorDark.placeholder
                   : AppTextColorLight.placeholder;
-              final badgeFontSize = isCompactFont
-                  ? AppFontSize.small
-                  : AppFontSize.base;
+              final badgeFontSize =
+                  isCompactFont ? AppFontSize.small : AppFontSize.base;
 
               return Row(
                 mainAxisSize: MainAxisSize.min,
@@ -700,9 +698,8 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
                           decimalPlaces: 2,
                         ),
                         unit: localizations.energy_unit_kwh,
-                        colorFamily: _summary!.net! > 0
-                            ? warningFamily
-                            : successFamily,
+                        colorFamily:
+                            _summary!.net! > 0 ? warningFamily : successFamily,
                       ),
                     ),
                 ],
@@ -822,12 +819,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
     if (isZero) {
       arrowIcon = Icons.remove;
       colorFamily = ThemeColorFamily.get(brightness, ThemeColors.neutral);
-      final periodName = switch (_selectedRange) {
-        EnergyRange.today => localizations.energy_comparison_vs_yesterday,
-        EnergyRange.week => localizations.energy_comparison_vs_last_week,
-        EnergyRange.month => localizations.energy_comparison_vs_last_month,
-      };
-      text = localizations.energy_comparison_same(periodName);
+      text = localizations.energy_comparison_same(periodLabel);
     } else if (isDown) {
       arrowIcon = Icons.arrow_downward;
       // Less consumption = good (green)
@@ -925,8 +917,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
       maxY,
       decimalPlaces: yDecimals,
     );
-    final yReservedSize =
-        AppSpacings.scale(widestLabel.length * 7.0 + 4);
+    final yReservedSize = AppSpacings.scale(widestLabel.length * 7.0 + 4);
 
     return AppCard(
       expanded: true,
@@ -944,199 +935,205 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
             children: [
               Expanded(
                 child: BarChart(
-              BarChartData(
-                alignment: BarChartAlignment.spaceAround,
-                maxY: maxY,
-                barTouchData: BarTouchData(
-                  enabled: true,
-                  touchTooltipData: BarTouchTooltipData(
-                    getTooltipColor: (group) => isDark
-                        ? AppFillColorDark.darker
-                        : AppFillColorLight.darker,
-                    tooltipPadding: EdgeInsets.symmetric(
-                      horizontal: AppSpacings.pMd,
-                      vertical: AppSpacings.pSm,
-                    ),
-                    maxContentWidth: AppSpacings.scale(150),
-                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                      final value =
-                          NumberFormatUtils.defaultFormat.formatDecimal(
-                        rod.toY,
-                        decimalPlaces: 2,
-                      );
-                      final label = rodIndex == 0
-                          ? localizations.energy_consumption
-                          : localizations.energy_production;
-                      return BarTooltipItem(
-                        '$label\n$value ${localizations.energy_unit_kwh}',
-                        TextStyle(
-                          color: isDark
-                              ? AppTextColorDark.primary
-                              : AppTextColorLight.primary,
-                          fontSize: AppFontSize.extraSmall,
-                          fontWeight: FontWeight.w500,
+                  BarChartData(
+                    alignment: BarChartAlignment.spaceAround,
+                    maxY: maxY,
+                    barTouchData: BarTouchData(
+                      enabled: true,
+                      touchTooltipData: BarTouchTooltipData(
+                        getTooltipColor: (group) => isDark
+                            ? AppFillColorDark.darker
+                            : AppFillColorLight.darker,
+                        tooltipPadding: EdgeInsets.symmetric(
+                          horizontal: AppSpacings.pMd,
+                          vertical: AppSpacings.pSm,
                         ),
-                      );
-                    },
-                  ),
-                ),
-                titlesData: FlTitlesData(
-                  show: true,
-                  topTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false)),
-                  rightTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false)),
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      interval: yInterval,
-                      reservedSize: yReservedSize,
-                      getTitlesWidget: (value, meta) {
-                        return SizedBox(
-                          width: yReservedSize,
-                          child: Padding(
-                            padding: EdgeInsets.only(right: AppSpacings.pXs),
-                            child: Text(
+                        maxContentWidth: AppSpacings.scale(150),
+                        getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                          final value =
                               NumberFormatUtils.defaultFormat.formatDecimal(
-                                value,
-                                decimalPlaces: yDecimals,
-                              ),
-                              textAlign: TextAlign.right,
-                              style: TextStyle(
-                                fontSize: AppFontSize.extraExtraSmall,
-                                color: isDark
-                                    ? AppTextColorDark.placeholder
-                                    : AppTextColorLight.placeholder,
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: AppSpacings.scale(20),
-                      getTitlesWidget: (value, meta) {
-                        final index = value.toInt();
-                        if (index < 0 || index >= points.length) {
-                          return const SizedBox.shrink();
-                        }
-                        final point = points[index];
-
-                        // Show labels at regular intervals, fewer on compact
-                        final bool show;
-                        String label;
-                        if (_selectedRange == EnergyRange.month) {
-                          // Compact: every 5th day, normal: even days
-                          show = isCompact
-                              ? point.timestamp.day % 5 == 0
-                              : point.timestamp.day.isEven;
-                          label = '${point.timestamp.day}';
-                        } else if (_selectedRange == EnergyRange.week) {
-                          // Daily interval — show day name for each point
-                          show = true;
-                          const dayNames = [
-                            'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun',
-                          ];
-                          label = dayNames[
-                              point.timestamp.weekday - 1];
-                        } else {
-                          // Compact: every 4th hour, normal: even hours
-                          show = isCompact
-                              ? point.timestamp.hour % 4 == 0
-                              : point.timestamp.hour.isEven;
-                          label =
-                              '${point.timestamp.hour.toString().padLeft(2, '0')}:00';
-                        }
-
-                        if (!show) {
-                          return const SizedBox.shrink();
-                        }
-
-                        return Padding(
-                          padding: EdgeInsets.only(top: AppSpacings.pXs),
-                          child: Text(
-                            label,
-                            style: TextStyle(
-                              fontSize: AppFontSize.extraExtraSmall,
+                            rod.toY,
+                            decimalPlaces: 2,
+                          );
+                          final label = rodIndex == 0
+                              ? localizations.energy_consumption
+                              : localizations.energy_production;
+                          return BarTooltipItem(
+                            '$label\n$value ${localizations.energy_unit_kwh}',
+                            TextStyle(
                               color: isDark
-                                  ? AppTextColorDark.placeholder
-                                  : AppTextColorLight.placeholder,
+                                  ? AppTextColorDark.primary
+                                  : AppTextColorLight.primary,
+                              fontSize: AppFontSize.extraSmall,
+                              fontWeight: FontWeight.w500,
                             ),
-                          ),
+                          );
+                        },
+                      ),
+                    ),
+                    titlesData: FlTitlesData(
+                      show: true,
+                      topTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false)),
+                      rightTitles: const AxisTitles(
+                          sideTitles: SideTitles(showTitles: false)),
+                      leftTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          interval: yInterval,
+                          reservedSize: yReservedSize,
+                          getTitlesWidget: (value, meta) {
+                            return SizedBox(
+                              width: yReservedSize,
+                              child: Padding(
+                                padding:
+                                    EdgeInsets.only(right: AppSpacings.pXs),
+                                child: Text(
+                                  NumberFormatUtils.defaultFormat.formatDecimal(
+                                    value,
+                                    decimalPlaces: yDecimals,
+                                  ),
+                                  textAlign: TextAlign.right,
+                                  style: TextStyle(
+                                    fontSize: AppFontSize.extraExtraSmall,
+                                    color: isDark
+                                        ? AppTextColorDark.placeholder
+                                        : AppTextColorLight.placeholder,
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      bottomTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: AppSpacings.scale(20),
+                          getTitlesWidget: (value, meta) {
+                            final index = value.toInt();
+                            if (index < 0 || index >= points.length) {
+                              return const SizedBox.shrink();
+                            }
+                            final point = points[index];
+
+                            // Show labels at regular intervals, fewer on compact
+                            final bool show;
+                            String label;
+                            if (_selectedRange == EnergyRange.month) {
+                              // Compact: every 5th day, normal: even days
+                              show = isCompact
+                                  ? point.timestamp.day % 5 == 0
+                                  : point.timestamp.day.isEven;
+                              label = '${point.timestamp.day}';
+                            } else if (_selectedRange == EnergyRange.week) {
+                              // Daily interval — show day name for each point
+                              show = true;
+                              const dayNames = [
+                                'Mon',
+                                'Tue',
+                                'Wed',
+                                'Thu',
+                                'Fri',
+                                'Sat',
+                                'Sun',
+                              ];
+                              label = dayNames[point.timestamp.weekday - 1];
+                            } else {
+                              // Compact: every 4th hour, normal: even hours
+                              show = isCompact
+                                  ? point.timestamp.hour % 4 == 0
+                                  : point.timestamp.hour.isEven;
+                              label =
+                                  '${point.timestamp.hour.toString().padLeft(2, '0')}:00';
+                            }
+
+                            if (!show) {
+                              return const SizedBox.shrink();
+                            }
+
+                            return Padding(
+                              padding: EdgeInsets.only(top: AppSpacings.pXs),
+                              child: Text(
+                                label,
+                                style: TextStyle(
+                                  fontSize: AppFontSize.extraExtraSmall,
+                                  color: isDark
+                                      ? AppTextColorDark.placeholder
+                                      : AppTextColorLight.placeholder,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                    gridData: FlGridData(
+                      show: true,
+                      drawVerticalLine: false,
+                      horizontalInterval: maxY > 0 ? maxY / 4 : 1,
+                      getDrawingHorizontalLine: (value) {
+                        return FlLine(
+                          color: isDark
+                              ? AppFillColorDark.darker
+                              : AppBorderColorLight.base,
+                          strokeWidth: AppSpacings.scale(1),
                         );
                       },
                     ),
+                    borderData: FlBorderData(show: false),
+                    barGroups: List.generate(points.length, (index) {
+                      final point = points[index];
+                      final rods = <BarChartRodData>[
+                        BarChartRodData(
+                          toY: point.consumption,
+                          color: infoFamily.base,
+                          width: barWidth,
+                          borderRadius: BorderRadius.vertical(
+                            top: Radius.circular(AppSpacings.scale(2)),
+                          ),
+                        ),
+                      ];
+
+                      if (hasProduction) {
+                        rods.add(BarChartRodData(
+                          toY: point.production,
+                          color: successFamily.base,
+                          width: barWidth,
+                          borderRadius: BorderRadius.vertical(
+                            top: Radius.circular(AppSpacings.scale(2)),
+                          ),
+                        ));
+                      }
+
+                      return BarChartGroupData(
+                        x: index,
+                        barRods: rods,
+                        barsSpace: hasProduction ? AppSpacings.scale(2) : 0,
+                      );
+                    }),
                   ),
                 ),
-                gridData: FlGridData(
-                  show: true,
-                  drawVerticalLine: false,
-                  horizontalInterval: maxY > 0 ? maxY / 4 : 1,
-                  getDrawingHorizontalLine: (value) {
-                    return FlLine(
-                      color: isDark
-                          ? AppFillColorDark.darker
-                          : AppBorderColorLight.base,
-                      strokeWidth: AppSpacings.scale(1),
-                    );
-                  },
-                ),
-                borderData: FlBorderData(show: false),
-                barGroups: List.generate(points.length, (index) {
-                  final point = points[index];
-                  final rods = <BarChartRodData>[
-                    BarChartRodData(
-                      toY: point.consumption,
-                      color: infoFamily.base,
-                      width: barWidth,
-                      borderRadius: BorderRadius.vertical(
-                        top: Radius.circular(AppSpacings.scale(2)),
-                      ),
-                    ),
-                  ];
-
-                  if (hasProduction) {
-                    rods.add(BarChartRodData(
-                      toY: point.production,
-                      color: successFamily.base,
-                      width: barWidth,
-                      borderRadius: BorderRadius.vertical(
-                        top: Radius.circular(AppSpacings.scale(2)),
-                      ),
-                    ));
-                  }
-
-                  return BarChartGroupData(
-                    x: index,
-                    barRods: rods,
-                    barsSpace: hasProduction ? AppSpacings.scale(2) : 0,
-                  );
-                }),
               ),
-            ),
-          ),
-          // Legend
-          if (hasProduction)
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              spacing: AppSpacings.pLg,
-              children: [
-                _buildLegendItem(
-                  context,
-                  color: infoFamily.base,
-                  label: localizations.energy_consumption,
+              // Legend
+              if (hasProduction)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  spacing: AppSpacings.pLg,
+                  children: [
+                    _buildLegendItem(
+                      context,
+                      color: infoFamily.base,
+                      label: localizations.energy_consumption,
+                    ),
+                    _buildLegendItem(
+                      context,
+                      color: successFamily.base,
+                      label: localizations.energy_production,
+                    ),
+                  ],
                 ),
-                _buildLegendItem(
-                  context,
-                  color: successFamily.base,
-                  label: localizations.energy_production,
-                ),
-              ],
-            ),
-        ],
+            ],
           ),
         ),
       ),
@@ -1250,8 +1247,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
                 height: AppSpacings.scale(32),
                 decoration: BoxDecoration(
                   color: infoFamily.light8,
-                  borderRadius:
-                      BorderRadius.circular(AppBorderRadius.base),
+                  borderRadius: BorderRadius.circular(AppBorderRadius.base),
                 ),
                 child: Icon(
                   MdiIcons.flashOutline,
@@ -1263,8 +1259,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
               Expanded(
                 child: Text(
                   device.roomName != null &&
-                          device.deviceName
-                              .startsWith(device.roomName!)
+                          device.deviceName.startsWith(device.roomName!)
                       ? device.deviceName
                           .substring(device.roomName!.length)
                           .trimLeft()
