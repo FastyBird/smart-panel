@@ -121,6 +121,11 @@ class DomainCounts {
   /// categories rather than device categories.
   final int energy;
 
+  /// Number of sensor readings reported by the backend (from sensor roles).
+  /// When 0, the sensors domain is not shown even if sensor-category devices
+  /// exist, because no roles are assigned and the page would be empty.
+  final int sensorReadings;
+
   const DomainCounts({
     this.lights = 0,
     this.climate = 0,
@@ -129,6 +134,7 @@ class DomainCounts {
     this.media = 0,
     this.sensors = 0,
     this.energy = 0,
+    this.sensorReadings = 0,
   });
 
   /// Get count for a specific domain.
@@ -152,6 +158,7 @@ class DomainCounts {
   /// Returns true if a domain has any devices that make it visible.
   /// For climate domain, requires at least one actuator device (thermostat, heater, AC).
   /// For energy domain, requires at least one device with energy-related channels.
+  /// For sensors domain, requires backend-reported sensor readings (roles must be assigned).
   bool hasDomain(DomainType domain) {
     if (domain == DomainType.climate) {
       // Climate domain is only visible when there are actuators
@@ -159,6 +166,10 @@ class DomainCounts {
     }
     if (domain == DomainType.energy) {
       return energy > 0;
+    }
+    if (domain == DomainType.sensors) {
+      // Sensors domain requires backend-confirmed readings (sensor roles assigned)
+      return sensorReadings > 0;
     }
     return getCount(domain) > 0;
   }
@@ -172,16 +183,16 @@ class DomainCounts {
   }
 
   /// Returns true if any domain has devices that make it visible.
-  /// Uses hasDomain logic, so climate requires actuators.
+  /// Uses hasDomain logic, so climate requires actuators, sensors requires readings.
   bool get hasAnyDomain =>
-      lights > 0 || climateActuators > 0 || shading > 0 || media > 0 || sensors > 0 || energy > 0;
+      lights > 0 || climateActuators > 0 || shading > 0 || media > 0 || sensorReadings > 0 || energy > 0;
 
   /// Total device count across all domains.
   int get total => lights + climate + shading + media + sensors;
 
   @override
   String toString() {
-    return 'DomainCounts(lights: $lights, climate: $climate, climateActuators: $climateActuators, shading: $shading, media: $media, sensors: $sensors, energy: $energy)';
+    return 'DomainCounts(lights: $lights, climate: $climate, climateActuators: $climateActuators, shading: $shading, media: $media, sensors: $sensors, energy: $energy, sensorReadings: $sensorReadings)';
   }
 }
 
@@ -195,9 +206,14 @@ class DomainCounts {
 /// (electrical_energy, electrical_generation, electrical_power). This is
 /// determined from channel categories and passed in separately since device
 /// categories alone cannot identify energy capability.
+///
+/// [sensorReadingsCount] is the number of sensor readings reported by the
+/// backend. When 0 (no sensor roles assigned), the sensors domain is hidden
+/// even if sensor-category devices exist.
 DomainCounts buildDomainCounts(
   List<DevicesModuleDeviceCategory> deviceCategories, {
   int energyDeviceCount = 0,
+  int sensorReadingsCount = 0,
 }) {
   int lights = 0;
   int climate = 0;
@@ -245,6 +261,7 @@ DomainCounts buildDomainCounts(
     media: media,
     sensors: sensors,
     energy: energyDeviceCount,
+    sensorReadings: sensorReadingsCount,
   );
 }
 
@@ -253,9 +270,11 @@ DomainCounts buildDomainCountsFromCategories<T>({
   required List<T> items,
   required DevicesModuleDeviceCategory Function(T) getCategory,
   int energyDeviceCount = 0,
+  int sensorReadingsCount = 0,
 }) {
   return buildDomainCounts(
     items.map(getCategory).toList(),
     energyDeviceCount: energyDeviceCount,
+    sensorReadingsCount: sensorReadingsCount,
   );
 }

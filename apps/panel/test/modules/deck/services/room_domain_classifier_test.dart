@@ -213,6 +213,7 @@ void main() {
         media: 1,
         sensors: 1,
         energy: 1,
+        sensorReadings: 1,
       );
 
       final present = counts.presentDomains;

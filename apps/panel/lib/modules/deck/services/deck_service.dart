@@ -30,6 +30,9 @@ class DeckService extends ChangeNotifier {
   /// Number of devices with energy-related channels in the current room.
   int _energyDeviceCount = 0;
 
+  /// Number of sensor readings reported by the backend for the current room.
+  int _sensorReadingsCount = 0;
+
   /// Configuration validation error.
   String? _configError;
 
@@ -73,6 +76,12 @@ class DeckService extends ChangeNotifier {
 
   /// Returns device categories for the current room (ROOM role only).
   List<DevicesModuleDeviceCategory> get deviceCategories => _deviceCategories;
+
+  /// Returns the number of devices with energy-related channels.
+  int get energyDeviceCount => _energyDeviceCount;
+
+  /// Returns the number of sensor readings reported by the backend.
+  int get sensorReadingsCount => _sensorReadingsCount;
 
   /// Returns true if device data is currently being loaded.
   bool get isLoadingDevices => _isLoadingDevices;
@@ -174,10 +183,25 @@ class DeckService extends ChangeNotifier {
       // Count devices with energy-related channels
       _energyDeviceCount = countEnergyDevices(devices);
 
+      // Fetch sensor state to check if backend has sensor readings (roles assigned)
+      try {
+        if (locator.isRegistered<SpacesService>()) {
+          final sensorState = await locator<SpacesService>().fetchSensorState(roomId);
+          if (_display?.roomId == roomId) {
+            _sensorReadingsCount = sensorState?.totalSensors ?? 0;
+          }
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          debugPrint('[DECK SERVICE] Failed to fetch sensor state for domain visibility: $e');
+        }
+      }
+
       if (kDebugMode) {
         debugPrint(
           '[DECK SERVICE] Got ${_deviceCategories.length} categories: $_deviceCategories'
-          '${_energyDeviceCount > 0 ? ', $_energyDeviceCount energy devices' : ''}',
+          '${_energyDeviceCount > 0 ? ', $_energyDeviceCount energy devices' : ''}'
+          '${_sensorReadingsCount > 0 ? ', $_sensorReadingsCount sensor readings' : ''}',
         );
       }
 
@@ -231,6 +255,7 @@ class DeckService extends ChangeNotifier {
       pages: pages,
       deviceCategories: _deviceCategories,
       energyDeviceCount: _energyDeviceCount,
+      sensorReadingsCount: _sensorReadingsCount,
       roomViewTitle: localizations?.system_view_room ?? 'Room',
       masterViewTitle: localizations?.system_view_master ?? 'Home',
       entryViewTitle: localizations?.system_view_entry ?? 'Entry',
@@ -275,6 +300,7 @@ class DeckService extends ChangeNotifier {
           display.roomId != oldRoomId) {
         _deviceCategories = [];
         _energyDeviceCount = 0;
+        _sensorReadingsCount = 0;
         _buildDeck(context);
         _fetchDeviceCategoriesAsync(display.roomId!, context);
         _prefetchDomainData(display.roomId!);

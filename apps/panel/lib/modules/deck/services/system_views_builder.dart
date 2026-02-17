@@ -18,6 +18,10 @@ class SystemViewsBuildInput {
   /// Determined from channel categories (electrical_energy, etc.).
   final int energyDeviceCount;
 
+  /// Number of sensor readings reported by the backend for this room.
+  /// When 0 (no sensor roles assigned), the sensors domain is hidden.
+  final int sensorReadingsCount;
+
   /// Localized titles.
   final String roomViewTitle;
   final String masterViewTitle;
@@ -33,6 +37,7 @@ class SystemViewsBuildInput {
     required this.display,
     this.deviceCategories = const [],
     this.energyDeviceCount = 0,
+    this.sensorReadingsCount = 0,
     this.roomViewTitle = 'Room',
     this.masterViewTitle = 'Home',
     this.entryViewTitle = 'Entry',
@@ -101,6 +106,7 @@ SystemViewsResult buildSystemViews(SystemViewsBuildInput input) {
       final domainCounts = buildDomainCounts(
         input.deviceCategories,
         energyDeviceCount: input.energyDeviceCount,
+        sensorReadingsCount: input.sensorReadingsCount,
       );
 
       // 1. Add room overview

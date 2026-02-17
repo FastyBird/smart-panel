@@ -225,6 +225,7 @@ void main() {
             DevicesModuleDeviceCategory.lighting,
             DevicesModuleDeviceCategory.sensor,
           ],
+          sensorReadingsCount: 1, // backend has sensor readings
           scenes: [],
           now: DateTime(2024, 6, 15, 12, 0),
         );
@@ -251,6 +252,7 @@ void main() {
             DevicesModuleDeviceCategory.television, // media = 2
             DevicesModuleDeviceCategory.lighting, // lights = 0
           ],
+          sensorReadingsCount: 1, // backend has sensor readings
           scenes: [],
           now: DateTime(2024, 6, 15, 12, 0),
         );

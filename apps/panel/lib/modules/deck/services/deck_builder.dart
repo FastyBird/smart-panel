@@ -22,6 +22,10 @@ class DeckBuildInput {
   /// Determined from channel categories (electrical_energy, etc.).
   final int energyDeviceCount;
 
+  /// Number of sensor readings reported by the backend for this room.
+  /// When 0 (no sensor roles assigned), the sensors domain is hidden.
+  final int sensorReadingsCount;
+
   /// Localized title for room system view.
   final String roomViewTitle;
 
@@ -60,6 +64,7 @@ class DeckBuildInput {
     required this.pages,
     this.deviceCategories = const [],
     this.energyDeviceCount = 0,
+    this.sensorReadingsCount = 0,
     this.roomViewTitle = 'Room',
     this.masterViewTitle = 'Home',
     this.entryViewTitle = 'Entry',
@@ -95,6 +100,7 @@ DeckResult buildDeck(DeckBuildInput input) {
     display: display,
     deviceCategories: input.deviceCategories,
     energyDeviceCount: input.energyDeviceCount,
+    sensorReadingsCount: input.sensorReadingsCount,
     roomViewTitle: input.roomViewTitle,
     masterViewTitle: input.masterViewTitle,
     entryViewTitle: input.entryViewTitle,
