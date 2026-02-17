@@ -30,12 +30,16 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_card.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_right_drawer.dart';
+import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
+import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
-import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_item_sheet.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/domain_state_view.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/domain_data_loader.dart';
 import 'package:fastybird_smart_panel/modules/energy/export.dart';
@@ -160,7 +164,8 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
 
-    if (loadState != DomainLoadState.loaded && loadState != DomainLoadState.empty) {
+    if (loadState != DomainLoadState.loaded &&
+        loadState != DomainLoadState.empty) {
       return DomainStateView(
         state: loadState,
         onRetry: retryLoad,
@@ -215,7 +220,8 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
           _summary!.production!,
           decimalPlaces: 2,
         );
-        subtitle += ' / $production ${localizations.energy_unit_kwh} ${localizations.energy_production.toLowerCase()}';
+        subtitle +=
+            ' / $production ${localizations.energy_unit_kwh} ${localizations.energy_production.toLowerCase()}';
       }
     } else {
       subtitle = localizations.energy_empty_title;
@@ -229,6 +235,13 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
         icon: MdiIcons.flashOutline,
         color: ThemeColors.info,
       ),
+      trailing: _breakdown != null && _breakdown!.isNotEmpty
+          ? HeaderIconButton(
+              icon: MdiIcons.podium,
+              color: ThemeColors.info,
+              onTap: () => _showTopConsumers(context),
+            )
+          : null,
     );
   }
 
@@ -240,14 +253,13 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
     return PortraitViewLayout(
       content: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        spacing: AppSpacings.pLg,
+        spacing: AppSpacings.pSm,
         children: [
+          _buildConsumptionCard(context),
+          if (_summary!.hasProduction) _buildSecondaryCards(context),
           _buildRangeSelector(context),
-          _buildSummaryCards(context),
           if (_timeseries != null && _timeseries!.isNotEmpty)
             _buildTimeseriesChart(context),
-          if (_breakdown != null && _breakdown!.isNotEmpty)
-            _buildTopConsumers(context),
         ],
       ),
     );
@@ -272,8 +284,6 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
           _buildRangeSelector(context),
           if (_timeseries != null && _timeseries!.isNotEmpty)
             _buildTimeseriesChart(context),
-          if (_breakdown != null && _breakdown!.isNotEmpty)
-            _buildTopConsumers(context),
         ],
       ),
       additionalContentScrollable: false,
@@ -281,7 +291,15 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
         left: AppSpacings.pMd,
         bottom: AppSpacings.pMd,
       ),
-      additionalContent: _buildSummaryCards(context, vertical: true),
+      additionalContent: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        spacing: AppSpacings.pMd,
+        children: [
+          _buildConsumptionCard(context),
+          if (_summary!.hasProduction)
+            _buildSecondaryCards(context, vertical: true),
+        ],
+      ),
     );
   }
 
@@ -291,57 +309,29 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
 
   Widget _buildRangeSelector(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final ranges = [
-      (EnergyRange.today, localizations.energy_range_today),
-      (EnergyRange.week, localizations.energy_range_week),
-      (EnergyRange.month, localizations.energy_range_month),
-    ];
-
-    final infoFamily = ThemeColorFamily.get(
-      isDark ? Brightness.dark : Brightness.light,
-      ThemeColors.info,
-    );
-
-    return Row(
-      children: ranges.map((entry) {
-        final (range, label) = entry;
-        final isSelected = range == _selectedRange;
-
-        return Padding(
-          padding: EdgeInsets.only(right: AppSpacings.pSm),
-          child: GestureDetector(
-            onTap: () => _onRangeChanged(range),
-            child: Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: AppSpacings.pMd,
-                vertical: AppSpacings.pSm,
-              ),
-              decoration: BoxDecoration(
-                color: isSelected ? infoFamily.light8 : Colors.transparent,
-                borderRadius: BorderRadius.circular(AppBorderRadius.base),
-                border: Border.all(
-                  color: isSelected
-                      ? infoFamily.light5
-                      : (isDark ? AppFillColorDark.light : AppBorderColorLight.darker),
-                  width: AppSpacings.scale(1),
-                ),
-              ),
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontSize: AppFontSize.small,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                  color: isSelected
-                      ? infoFamily.base
-                      : (isDark ? AppTextColorDark.regular : AppTextColorLight.regular),
-                ),
-              ),
-            ),
-          ),
-        );
-      }).toList(),
+    return ModeSelector<EnergyRange>(
+      modes: [
+        ModeOption(
+          value: EnergyRange.today,
+          icon: MdiIcons.calendarToday,
+          label: localizations.energy_range_today,
+        ),
+        ModeOption(
+          value: EnergyRange.week,
+          icon: MdiIcons.calendarWeek,
+          label: localizations.energy_range_week,
+        ),
+        ModeOption(
+          value: EnergyRange.month,
+          icon: MdiIcons.calendarMonth,
+          label: localizations.energy_range_month,
+        ),
+      ],
+      selectedValue: _selectedRange,
+      onChanged: _onRangeChanged,
+      showIcon: false,
+      color: ThemeColors.info,
     );
   }
 
@@ -349,16 +339,12 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
   // SUMMARY CARDS
   // =============================================================================
 
-  Widget _buildSummaryCards(BuildContext context, {bool vertical = false}) {
+  Widget _buildConsumptionCard(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final infoColor = isDark ? AppColorsDark.info : AppColorsLight.info;
-    final successColor = isDark ? AppColorsDark.success : AppColorsLight.success;
 
-    final cardWidgets = <Widget>[];
-
-    // Consumption card
-    cardWidgets.add(_buildSummaryCard(
+    return _buildSummaryCard(
       context,
       title: localizations.energy_consumption,
       value: NumberFormatUtils.defaultFormat.formatDecimal(
@@ -368,25 +354,32 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
       unit: localizations.energy_unit_kwh,
       icon: MdiIcons.flashOutline,
       color: infoColor,
+    );
+  }
+
+  Widget _buildSecondaryCards(BuildContext context, {bool vertical = false}) {
+    final localizations = AppLocalizations.of(context)!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final successColor =
+        isDark ? AppColorsDark.success : AppColorsLight.success;
+
+    final cardWidgets = <Widget>[];
+
+    // Production card
+    cardWidgets.add(_buildSummaryCard(
+      context,
+      title: localizations.energy_production,
+      value: NumberFormatUtils.defaultFormat.formatDecimal(
+        _summary!.production!,
+        decimalPlaces: 2,
+      ),
+      unit: localizations.energy_unit_kwh,
+      icon: MdiIcons.solarPower,
+      color: successColor,
     ));
 
-    // Production card (if available)
-    if (_summary!.hasProduction) {
-      cardWidgets.add(_buildSummaryCard(
-        context,
-        title: localizations.energy_production,
-        value: NumberFormatUtils.defaultFormat.formatDecimal(
-          _summary!.production!,
-          decimalPlaces: 2,
-        ),
-        unit: localizations.energy_unit_kwh,
-        icon: MdiIcons.solarPower,
-        color: successColor,
-      ));
-    }
-
-    // Net card (if production exists)
-    if (_summary!.hasProduction && _summary!.net != null) {
+    // Net card (if available)
+    if (_summary!.net != null) {
       final netColor = _summary!.net! > 0
           ? (isDark ? AppColorsDark.warning : AppColorsLight.warning)
           : successColor;
@@ -442,31 +435,30 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
         ),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         spacing: AppSpacings.pSm,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             spacing: AppSpacings.pSm,
             children: [
               Icon(icon, size: AppSpacings.scale(18), color: color),
-              Expanded(
-                child: Text(
-                  title,
-                  style: TextStyle(
-                    color: isDark
-                        ? AppTextColorDark.secondary
-                        : AppTextColorLight.secondary,
-                    fontSize: AppFontSize.extraSmall,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  overflow: TextOverflow.ellipsis,
+              Text(
+                title,
+                style: TextStyle(
+                  color: isDark
+                      ? AppTextColorDark.secondary
+                      : AppTextColorLight.secondary,
+                  fontSize: AppFontSize.extraSmall,
+                  fontWeight: FontWeight.w500,
                 ),
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
           FittedBox(
             fit: BoxFit.scaleDown,
-            alignment: Alignment.centerLeft,
+            alignment: Alignment.center,
             child: RichText(
               maxLines: 1,
               text: TextSpan(
@@ -530,189 +522,201 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
         ? AppSpacings.scale(8)
         : AppSpacings.scale(12);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      spacing: AppSpacings.pMd,
-      children: [
-        SectionTitle(
-          icon: MdiIcons.chartBar,
-          title: localizations.energy_chart_title,
-        ),
-        Container(
-          height: AppSpacings.scale(200),
-          padding: AppSpacings.paddingMd,
-          decoration: BoxDecoration(
-            color: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
-            borderRadius: BorderRadius.circular(AppBorderRadius.base),
-            border: Border.all(
-              color: isDark ? AppFillColorDark.light : AppBorderColorLight.darker,
-              width: AppSpacings.scale(1),
-            ),
-          ),
-          child: BarChart(
-            BarChartData(
-              alignment: BarChartAlignment.spaceAround,
-              maxY: maxY,
-              barTouchData: BarTouchData(
-                enabled: true,
-                touchTooltipData: BarTouchTooltipData(
-                  getTooltipColor: (group) => isDark
-                      ? AppFillColorDark.darker
-                      : AppFillColorLight.darker,
-                  tooltipPadding: EdgeInsets.symmetric(
-                    horizontal: AppSpacings.pSm,
-                    vertical: AppSpacings.pXs,
-                  ),
-                  getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                    final value = NumberFormatUtils.defaultFormat.formatDecimal(
-                      rod.toY,
-                      decimalPlaces: 2,
-                    );
-                    final label = rodIndex == 0
-                        ? localizations.energy_consumption
-                        : localizations.energy_production;
-                    return BarTooltipItem(
-                      '$label\n$value ${localizations.energy_unit_kwh}',
-                      TextStyle(
-                        color: isDark
-                            ? AppTextColorDark.primary
-                            : AppTextColorLight.primary,
-                        fontSize: AppFontSize.extraSmall,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    );
-                  },
-                ),
-              ),
-              titlesData: FlTitlesData(
-                show: true,
-                topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                leftTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    reservedSize: AppSpacings.scale(40),
-                    getTitlesWidget: (value, meta) {
-                      return Text(
-                        NumberFormatUtils.defaultFormat.formatDecimal(
-                          value,
-                          decimalPlaces: 1,
-                        ),
-                        style: TextStyle(
-                          fontSize: AppFontSize.extraSmall,
+    // Adaptive decimal places so Y-axis labels stay meaningful for small values
+    final yInterval = maxY / 4;
+    final int yDecimals;
+    if (yInterval >= 10) {
+      yDecimals = 0;
+    } else if (yInterval >= 1) {
+      yDecimals = 1;
+    } else if (yInterval >= 0.1) {
+      yDecimals = 2;
+    } else {
+      yDecimals = 3;
+    }
+
+    return AppCard(
+      headerIcon: MdiIcons.chartBar,
+      headerTitle: localizations.energy_chart_title,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: AppSpacings.pMd,
+        children: [
+          SizedBox(
+            height: AppSpacings.scale(200),
+            child: BarChart(
+              BarChartData(
+                alignment: BarChartAlignment.spaceAround,
+                maxY: maxY,
+                barTouchData: BarTouchData(
+                  enabled: true,
+                  touchTooltipData: BarTouchTooltipData(
+                    getTooltipColor: (group) => isDark
+                        ? AppFillColorDark.darker
+                        : AppFillColorLight.darker,
+                    tooltipPadding: EdgeInsets.symmetric(
+                      horizontal: AppSpacings.pSm,
+                      vertical: AppSpacings.pXs,
+                    ),
+                    getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                      final value =
+                          NumberFormatUtils.defaultFormat.formatDecimal(
+                        rod.toY,
+                        decimalPlaces: 2,
+                      );
+                      final label = rodIndex == 0
+                          ? localizations.energy_consumption
+                          : localizations.energy_production;
+                      return BarTooltipItem(
+                        '$label\n$value ${localizations.energy_unit_kwh}',
+                        TextStyle(
                           color: isDark
-                              ? AppTextColorDark.placeholder
-                              : AppTextColorLight.placeholder,
+                              ? AppTextColorDark.primary
+                              : AppTextColorLight.primary,
+                          fontSize: AppFontSize.extraSmall,
+                          fontWeight: FontWeight.w500,
                         ),
                       );
                     },
                   ),
                 ),
-                bottomTitles: AxisTitles(
-                  sideTitles: SideTitles(
-                    showTitles: true,
-                    getTitlesWidget: (value, meta) {
-                      final index = value.toInt();
-                      if (index < 0 || index >= points.length) {
-                        return const SizedBox.shrink();
-                      }
-                      // Show every Nth label to avoid crowding
-                      final step = (points.length / 6).ceil().clamp(1, points.length);
-                      if (index % step != 0 && index != points.length - 1) {
-                        return const SizedBox.shrink();
-                      }
-                      final point = points[index];
-                      final hour = point.timestamp.hour.toString().padLeft(2, '0');
-                      String label;
-                      if (_selectedRange == EnergyRange.month) {
-                        label = '${point.timestamp.day}';
-                      } else if (_selectedRange == EnergyRange.week) {
-                        label = '${point.timestamp.day}/${point.timestamp.month} $hour:00';
-                      } else {
-                        label = '$hour:00';
-                      }
-                      return Padding(
-                        padding: EdgeInsets.only(top: AppSpacings.pXs),
-                        child: Text(
-                          label,
+                titlesData: FlTitlesData(
+                  show: true,
+                  topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      interval: yInterval,
+                      reservedSize: AppSpacings.scale(40),
+                      getTitlesWidget: (value, meta) {
+                        return Text(
+                          NumberFormatUtils.defaultFormat.formatDecimal(
+                            value,
+                            decimalPlaces: yDecimals,
+                          ),
                           style: TextStyle(
                             fontSize: AppFontSize.extraSmall,
                             color: isDark
                                 ? AppTextColorDark.placeholder
                                 : AppTextColorLight.placeholder,
                           ),
-                        ),
-                      );
-                    },
+                        );
+                      },
+                    ),
+                  ),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: AppSpacings.scale(24),
+                      getTitlesWidget: (value, meta) {
+                        final index = value.toInt();
+                        if (index < 0 || index >= points.length) {
+                          return const SizedBox.shrink();
+                        }
+                        // Show every Nth label to avoid crowding
+                        final step =
+                            (points.length / 4).ceil().clamp(1, points.length);
+                        if (index % step != 0 && index != points.length - 1) {
+                          return const SizedBox.shrink();
+                        }
+                        final point = points[index];
+                        final hour =
+                            point.timestamp.hour.toString().padLeft(2, '0');
+                        String label;
+                        if (_selectedRange == EnergyRange.month) {
+                          label = '${point.timestamp.day}';
+                        } else if (_selectedRange == EnergyRange.week) {
+                          label =
+                              '${point.timestamp.day}/${point.timestamp.month} $hour:00';
+                        } else {
+                          label = '$hour:00';
+                        }
+                        return Padding(
+                          padding: EdgeInsets.only(top: AppSpacings.pXs),
+                          child: Text(
+                            label,
+                            style: TextStyle(
+                              fontSize: AppFontSize.extraSmall,
+                              color: isDark
+                                  ? AppTextColorDark.placeholder
+                                  : AppTextColorLight.placeholder,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
                   ),
                 ),
-              ),
-              gridData: FlGridData(
-                show: true,
-                drawVerticalLine: false,
-                horizontalInterval: maxY > 0 ? maxY / 4 : 1,
-                getDrawingHorizontalLine: (value) {
-                  return FlLine(
-                    color: isDark
-                        ? AppFillColorDark.darker
-                        : AppBorderColorLight.base,
-                    strokeWidth: AppSpacings.scale(1),
+                gridData: FlGridData(
+                  show: true,
+                  drawVerticalLine: false,
+                  horizontalInterval: maxY > 0 ? maxY / 4 : 1,
+                  getDrawingHorizontalLine: (value) {
+                    return FlLine(
+                      color: isDark
+                          ? AppFillColorDark.darker
+                          : AppBorderColorLight.base,
+                      strokeWidth: AppSpacings.scale(1),
+                    );
+                  },
+                ),
+                borderData: FlBorderData(show: false),
+                barGroups: List.generate(points.length, (index) {
+                  final point = points[index];
+                  final rods = <BarChartRodData>[
+                    BarChartRodData(
+                      toY: point.consumption,
+                      color: infoFamily.base,
+                      width: barWidth,
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(AppSpacings.scale(2)),
+                      ),
+                    ),
+                  ];
+
+                  if (hasProduction) {
+                    rods.add(BarChartRodData(
+                      toY: point.production,
+                      color: successFamily.base,
+                      width: barWidth,
+                      borderRadius: BorderRadius.vertical(
+                        top: Radius.circular(AppSpacings.scale(2)),
+                      ),
+                    ));
+                  }
+
+                  return BarChartGroupData(
+                    x: index,
+                    barRods: rods,
+                    barsSpace: hasProduction ? AppSpacings.scale(2) : 0,
                   );
-                },
+                }),
               ),
-              borderData: FlBorderData(show: false),
-              barGroups: List.generate(points.length, (index) {
-                final point = points[index];
-                final rods = <BarChartRodData>[
-                  BarChartRodData(
-                    toY: point.consumption,
-                    color: infoFamily.base,
-                    width: barWidth,
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(AppSpacings.scale(2)),
-                    ),
-                  ),
-                ];
-
-                if (hasProduction) {
-                  rods.add(BarChartRodData(
-                    toY: point.production,
-                    color: successFamily.base,
-                    width: barWidth,
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(AppSpacings.scale(2)),
-                    ),
-                  ));
-                }
-
-                return BarChartGroupData(
-                  x: index,
-                  barRods: rods,
-                  barsSpace: hasProduction ? AppSpacings.scale(2) : 0,
-                );
-              }),
             ),
           ),
-        ),
-        // Legend
-        if (hasProduction)
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            spacing: AppSpacings.pLg,
-            children: [
-              _buildLegendItem(
-                context,
-                color: infoFamily.base,
-                label: localizations.energy_consumption,
-              ),
-              _buildLegendItem(
-                context,
-                color: successFamily.base,
-                label: localizations.energy_production,
-              ),
-            ],
-          ),
-      ],
+          // Legend
+          if (hasProduction)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              spacing: AppSpacings.pLg,
+              children: [
+                _buildLegendItem(
+                  context,
+                  color: infoFamily.base,
+                  label: localizations.energy_consumption,
+                ),
+                _buildLegendItem(
+                  context,
+                  color: successFamily.base,
+                  label: localizations.energy_production,
+                ),
+              ],
+            ),
+        ],
+      ),
     );
   }
 
@@ -749,10 +753,52 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
   }
 
   // =============================================================================
-  // TOP CONSUMERS
+  // TOP CONSUMERS (SHEET / DRAWER)
   // =============================================================================
 
-  Widget _buildTopConsumers(BuildContext context) {
+  void _showTopConsumers(BuildContext context) {
+    if (_breakdown == null || _breakdown!.isEmpty) return;
+
+    final localizations = AppLocalizations.of(context)!;
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
+
+    if (isLandscape) {
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+      final drawerBgColor =
+          isDark ? AppFillColorDark.base : AppFillColorLight.blank;
+
+      showAppRightDrawer(
+        context,
+        title: localizations.energy_top_consumers,
+        titleIcon: MdiIcons.podium,
+        scrollable: false,
+        content: VerticalScrollWithGradient(
+          gradientHeight: AppSpacings.pMd,
+          itemCount: _breakdown!.devices.length,
+          separatorHeight: AppSpacings.pSm,
+          backgroundColor: drawerBgColor,
+          padding: EdgeInsets.symmetric(
+            horizontal: AppSpacings.pLg,
+            vertical: AppSpacings.pMd,
+          ),
+          itemBuilder: (context, index) =>
+              _buildConsumerTileForSheet(context, index),
+        ),
+      );
+    } else {
+      DeckItemSheet.showItemSheet(
+        context,
+        title: localizations.energy_top_consumers,
+        icon: MdiIcons.podium,
+        itemCount: _breakdown!.devices.length,
+        itemBuilder: (context, index) =>
+            _buildConsumerTileForSheet(context, index),
+      );
+    }
+  }
+
+  Widget _buildConsumerTileForSheet(BuildContext context, int index) {
     final localizations = AppLocalizations.of(context)!;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final infoFamily = ThemeColorFamily.get(
@@ -761,127 +807,75 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
     );
 
     final devices = _breakdown!.devices;
-
-    // Find max consumption for progress bar scaling
+    final device = devices[index];
     final maxConsumption = devices.isNotEmpty
         ? devices.map((d) => d.consumption).reduce(max)
         : 1.0;
+    final ratio =
+        maxConsumption > 0 ? device.consumption / maxConsumption : 0.0;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      spacing: AppSpacings.pMd,
-      children: [
-        SectionTitle(
-          icon: MdiIcons.formatListBulleted,
-          title: localizations.energy_top_consumers,
-          trailing: Text(
-            localizations.energy_device_count(devices.length),
-            style: TextStyle(
-              color: isDark
-                  ? AppTextColorDark.placeholder
-                  : AppTextColorLight.placeholder,
-              fontSize: AppFontSize.extraSmall,
-            ),
-          ),
-        ),
-        Container(
-          decoration: BoxDecoration(
-            color: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
-            borderRadius: BorderRadius.circular(AppBorderRadius.base),
-            border: Border.all(
-              color: isDark ? AppFillColorDark.light : AppBorderColorLight.darker,
-              width: AppSpacings.scale(1),
-            ),
-          ),
-          child: Column(
-            children: List.generate(devices.length, (index) {
-              final device = devices[index];
-              final isLast = index == devices.length - 1;
-              final ratio = maxConsumption > 0
-                  ? device.consumption / maxConsumption
-                  : 0.0;
-
-              return Container(
-                padding: AppSpacings.paddingMd,
-                decoration: !isLast
-                    ? BoxDecoration(
-                        border: Border(
-                          bottom: BorderSide(
-                            color: isDark
-                                ? AppFillColorDark.darker
-                                : AppBorderColorLight.base,
-                            width: AppSpacings.scale(1),
-                          ),
-                        ),
-                      )
-                    : null,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  spacing: AppSpacings.pSm,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          MdiIcons.flashOutline,
-                          size: AppSpacings.scale(16),
-                          color: infoFamily.base,
-                        ),
-                        AppSpacings.spacingSmHorizontal,
-                        Expanded(
-                          child: Text(
-                            device.deviceName,
-                            style: TextStyle(
-                              fontSize: AppFontSize.base,
-                              fontWeight: FontWeight.w500,
-                              color: isDark
-                                  ? AppTextColorDark.primary
-                                  : AppTextColorLight.primary,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        Text(
-                          '${NumberFormatUtils.defaultFormat.formatDecimal(device.consumption, decimalPlaces: 2)} ${localizations.energy_unit_kwh}',
-                          style: TextStyle(
-                            fontSize: AppFontSize.base,
-                            fontWeight: FontWeight.w600,
-                            color: infoFamily.base,
-                          ),
-                        ),
-                      ],
-                    ),
-                    // Progress bar
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(AppSpacings.scale(2)),
-                      child: LinearProgressIndicator(
-                        value: ratio,
-                        minHeight: AppSpacings.scale(4),
-                        backgroundColor: isDark
-                            ? AppFillColorDark.darker
-                            : AppBorderColorLight.base,
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                          infoFamily.base.withValues(alpha: 0.6),
-                        ),
-                      ),
-                    ),
-                    if (device.roomName != null)
-                      Text(
-                        device.roomName!,
-                        style: TextStyle(
-                          fontSize: AppFontSize.extraSmall,
-                          color: isDark
-                              ? AppTextColorDark.placeholder
-                              : AppTextColorLight.placeholder,
-                        ),
-                      ),
-                  ],
+    return AppCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        spacing: AppSpacings.pSm,
+        children: [
+          Row(
+            children: [
+              Icon(
+                MdiIcons.flashOutline,
+                size: AppSpacings.scale(16),
+                color: infoFamily.base,
+              ),
+              AppSpacings.spacingSmHorizontal,
+              Expanded(
+                child: Text(
+                  device.deviceName,
+                  style: TextStyle(
+                    fontSize: AppFontSize.base,
+                    fontWeight: FontWeight.w500,
+                    color: isDark
+                        ? AppTextColorDark.primary
+                        : AppTextColorLight.primary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-              );
-            }),
+              ),
+              Text(
+                '${NumberFormatUtils.defaultFormat.formatDecimal(device.consumption, decimalPlaces: 2)} ${localizations.energy_unit_kwh}',
+                style: TextStyle(
+                  fontSize: AppFontSize.base,
+                  fontWeight: FontWeight.w600,
+                  color: infoFamily.base,
+                ),
+              ),
+            ],
           ),
-        ),
-      ],
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AppSpacings.scale(2)),
+            child: LinearProgressIndicator(
+              value: ratio,
+              minHeight: AppSpacings.scale(4),
+              backgroundColor:
+                  isDark ? AppFillColorDark.darker : AppBorderColorLight.base,
+              valueColor: AlwaysStoppedAnimation<Color>(
+                infoFamily.base.withValues(alpha: 0.6),
+              ),
+            ),
+          ),
+          if (device.roomName != null)
+            Text(
+              device.roomName!,
+              style: TextStyle(
+                fontSize: AppFontSize.extraSmall,
+                color: isDark
+                    ? AppTextColorDark.placeholder
+                    : AppTextColorLight.placeholder,
+              ),
+            ),
+        ],
+      ),
     );
   }
 
@@ -893,7 +887,8 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final localizations = AppLocalizations.of(context)!;
     final infoColor = isDark ? AppColorsDark.info : AppColorsLight.info;
-    final infoBgColor = isDark ? AppColorsDark.infoLight9 : AppColorsLight.infoLight9;
+    final infoBgColor =
+        isDark ? AppColorsDark.infoLight9 : AppColorsLight.infoLight9;
 
     return Center(
       child: Padding(
