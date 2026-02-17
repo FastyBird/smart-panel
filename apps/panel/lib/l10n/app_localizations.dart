@@ -2819,6 +2819,24 @@ abstract class AppLocalizations {
   /// **'Failed to load energy data'**
   String get energy_load_failed;
 
+  /// Description under consumption value for today range
+  ///
+  /// In en, this message translates to:
+  /// **'Total energy consumed today'**
+  String get energy_consumed_today;
+
+  /// Description under consumption value for week range
+  ///
+  /// In en, this message translates to:
+  /// **'Total energy consumed this week'**
+  String get energy_consumed_week;
+
+  /// Description under consumption value for month range
+  ///
+  /// In en, this message translates to:
+  /// **'Total energy consumed this month'**
+  String get energy_consumed_month;
+
   /// Count of energy devices
   ///
   /// In en, this message translates to:

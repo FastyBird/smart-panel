@@ -1507,6 +1507,15 @@ class AppLocalizationsCs extends AppLocalizations {
   String get energy_load_failed => 'Nepodařilo se načíst data o energii';
 
   @override
+  String get energy_consumed_today => 'Celková spotřeba energie dnes';
+
+  @override
+  String get energy_consumed_week => 'Celková spotřeba energie tento týden';
+
+  @override
+  String get energy_consumed_month => 'Celková spotřeba energie tento měsíc';
+
+  @override
   String energy_device_count(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,

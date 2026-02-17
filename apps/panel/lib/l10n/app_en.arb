@@ -1962,6 +1962,18 @@
   "@energy_load_failed": {
     "description": "Message shown when energy data fetch fails due to network or server error"
   },
+  "energy_consumed_today": "Total energy consumed today",
+  "@energy_consumed_today": {
+    "description": "Description under consumption value for today range"
+  },
+  "energy_consumed_week": "Total energy consumed this week",
+  "@energy_consumed_week": {
+    "description": "Description under consumption value for week range"
+  },
+  "energy_consumed_month": "Total energy consumed this month",
+  "@energy_consumed_month": {
+    "description": "Description under consumption value for month range"
+  },
   "energy_device_count": "{count, plural, =1{1 device} other{{count} devices}}",
   "@energy_device_count": {
     "description": "Count of energy devices",

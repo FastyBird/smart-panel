@@ -7,7 +7,7 @@ import {
 	ApiSuccessResponse,
 } from '../../swagger/decorators/api-documentation.decorator';
 import { ENERGY_MODULE_API_TAG_NAME, VALID_ENERGY_RANGES } from '../energy.constants';
-import { normalizeEnergyRange, resolveEnergyRange } from '../helpers/energy-range.helper';
+import { normalizeEnergyRange, resolveEnergyRange, resolvePreviousEnergyRange } from '../helpers/energy-range.helper';
 import { EnergyBreakdownItemModel } from '../models/energy-breakdown-item.model';
 import {
 	EnergySpaceBreakdownResponseModel,
@@ -68,8 +68,28 @@ export class EnergySpacesController {
 
 		const summary = await this.cache.getOrCompute(cacheKey, async () => {
 			const { start, end } = resolveEnergyRange(resolvedRange);
+			const previous = resolvePreviousEnergyRange(resolvedRange);
 
-			return this.energyData.getSpaceSummary(start, end, spaceId);
+			const [current, prev] = await Promise.all([
+				this.energyData.getSpaceSummary(start, end, spaceId),
+				this.energyData.getSpaceSummary(previous.start, previous.end, spaceId),
+			]);
+
+			const hasPrevConsumption = prev.totalConsumptionKwh > 0;
+			const hasPrevProduction = prev.totalProductionKwh > 0;
+
+			return {
+				...current,
+				previousConsumptionKwh: hasPrevConsumption ? prev.totalConsumptionKwh : null,
+				consumptionChangePercent: hasPrevConsumption
+					? Math.round(((current.totalConsumptionKwh - prev.totalConsumptionKwh) / prev.totalConsumptionKwh) * 1000) /
+						10
+					: null,
+				previousProductionKwh: hasPrevProduction ? prev.totalProductionKwh : null,
+				productionChangePercent: hasPrevProduction
+					? Math.round(((current.totalProductionKwh - prev.totalProductionKwh) / prev.totalProductionKwh) * 1000) / 10
+					: null,
+			};
 		});
 
 		const model = new EnergySpaceSummaryModel();
@@ -82,6 +102,10 @@ export class EnergySpacesController {
 		model.hasGridMetrics = summary.hasGridMetrics;
 		model.range = resolvedRange;
 		model.lastUpdatedAt = summary.lastUpdatedAt;
+		model.previousConsumptionKwh = summary.previousConsumptionKwh;
+		model.consumptionChangePercent = summary.consumptionChangePercent;
+		model.previousProductionKwh = summary.previousProductionKwh;
+		model.productionChangePercent = summary.productionChangePercent;
 
 		const response = new EnergySpaceSummaryResponseModel();
 		response.data = model;

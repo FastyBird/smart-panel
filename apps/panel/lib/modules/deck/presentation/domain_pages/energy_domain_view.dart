@@ -491,6 +491,11 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
     final successFamily = ThemeColorFamily.get(brightness, ThemeColors.success);
     final warningFamily = ThemeColorFamily.get(brightness, ThemeColors.warning);
 
+    final rangeIcon = switch (_selectedRange) {
+      EnergyRange.today => MdiIcons.calendarToday,
+      EnergyRange.week => MdiIcons.calendarWeek,
+      EnergyRange.month => MdiIcons.calendarMonth,
+    };
     final rangeLabel = switch (_selectedRange) {
       EnergyRange.today => localizations.energy_range_today,
       EnergyRange.week => localizations.energy_range_week,
@@ -502,44 +507,22 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
         crossAxisAlignment: CrossAxisAlignment.center,
         spacing: AppSpacings.pSm,
         children: [
-          // Pill: ⚡ Consumption · Today
-          Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: AppSpacings.pMd,
-              vertical: AppSpacings.pXs,
-            ),
-            decoration: BoxDecoration(
-              color: infoFamily.light9,
-              borderRadius: BorderRadius.circular(AppBorderRadius.round),
-              border: Border.all(
-                color: infoFamily.light7,
-                width: AppSpacings.scale(1),
-              ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              spacing: AppSpacings.pXs,
-              children: [
-                Icon(
-                  MdiIcons.flashOutline,
-                  size: AppSpacings.scale(14),
-                  color: infoFamily.base,
-                ),
-                Text(
-                  '${localizations.energy_consumption} · $rangeLabel',
-                  style: TextStyle(
-                    color: infoFamily.base,
-                    fontSize: AppFontSize.extraSmall,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
+          // Hero row: badge + giant value
           LayoutBuilder(
             builder: (context, constraints) {
-              final fontSize = (constraints.maxWidth * 0.18)
-                  .clamp(AppSpacings.scale(32), AppSpacings.scale(64));
+              final isCompactFont = _screenService.isPortrait
+                  ? _screenService.isSmallScreen
+                  : _screenService.isSmallScreen ||
+                      _screenService.isMediumScreen;
+              final fontSize = isCompactFont
+                  ? (constraints.maxWidth * 0.18).clamp(
+                      AppSpacings.scale(32),
+                      AppSpacings.scale(96),
+                    )
+                  : (constraints.maxWidth * 0.22).clamp(
+                      AppSpacings.scale(32),
+                      AppSpacings.scale(96),
+                    );
               final unitFontSize = fontSize * 0.27;
               final textColor = isDark
                   ? AppTextColorDark.regular
@@ -547,39 +530,99 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
               final unitColor = isDark
                   ? AppTextColorDark.placeholder
                   : AppTextColorLight.placeholder;
+              final badgeFontSize = isCompactFont
+                  ? AppFontSize.small
+                  : AppFontSize.base;
 
-              return Stack(
-                clipBehavior: Clip.none,
-                alignment: Alignment.center,
+              return Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text(
-                    NumberFormatUtils.defaultFormat.formatDecimal(
-                      _summary!.consumption,
-                      decimalPlaces: 2,
+                  // Badge pill
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: AppSpacings.pMd,
+                      vertical: AppSpacings.pXs,
                     ),
-                    style: TextStyle(
-                      fontSize: fontSize,
-                      fontWeight: FontWeight.w200,
-                      fontFamily: 'DIN1451',
-                      color: textColor,
-                      height: 0.9,
-                    ),
-                  ),
-                  Positioned(
-                    top: 0,
-                    right: -unitFontSize * 2,
-                    child: Text(
-                      localizations.energy_unit_kwh,
-                      style: TextStyle(
-                        fontSize: unitFontSize,
-                        fontWeight: FontWeight.w300,
-                        color: unitColor,
+                    height: AppSpacings.scale(24),
+                    decoration: BoxDecoration(
+                      color: infoFamily.light9,
+                      borderRadius: BorderRadius.circular(
+                        AppBorderRadius.round,
                       ),
                     ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          rangeIcon,
+                          size: badgeFontSize,
+                          color: infoFamily.base,
+                        ),
+                        AppSpacings.spacingSmHorizontal,
+                        Text(
+                          rangeLabel.toUpperCase(),
+                          style: TextStyle(
+                            fontSize: badgeFontSize,
+                            fontWeight: FontWeight.w700,
+                            color: infoFamily.base,
+                            letterSpacing: AppSpacings.scale(0.3),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  AppSpacings.spacingSmHorizontal,
+                  // Giant value
+                  Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Text(
+                        NumberFormatUtils.defaultFormat.formatDecimal(
+                          _summary!.consumption,
+                          decimalPlaces: 2,
+                        ),
+                        style: TextStyle(
+                          fontSize: fontSize,
+                          fontWeight: FontWeight.w200,
+                          fontFamily: 'DIN1451',
+                          color: textColor,
+                          height: 0.7,
+                        ),
+                      ),
+                      Positioned(
+                        top: 0,
+                        right: -unitFontSize * 2.25,
+                        child: Text(
+                          localizations.energy_unit_kwh,
+                          style: TextStyle(
+                            fontSize: unitFontSize,
+                            fontWeight: FontWeight.w300,
+                            color: unitColor,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               );
             },
+          ),
+          AppSpacings.spacingSmVertical,
+          // Description text
+          Text(
+            switch (_selectedRange) {
+              EnergyRange.today => localizations.energy_consumed_today,
+              EnergyRange.week => localizations.energy_consumed_week,
+              EnergyRange.month => localizations.energy_consumed_month,
+            },
+            style: TextStyle(
+              fontSize: AppFontSize.small,
+              fontWeight: FontWeight.w400,
+              color: isDark
+                  ? AppTextColorDark.placeholder
+                  : AppTextColorLight.placeholder,
+            ),
           ),
           // Production & Net row
           if (_summary!.hasProduction) ...[

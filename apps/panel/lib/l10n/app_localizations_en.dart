@@ -1495,6 +1495,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get energy_load_failed => 'Failed to load energy data';
 
   @override
+  String get energy_consumed_today => 'Total energy consumed today';
+
+  @override
+  String get energy_consumed_week => 'Total energy consumed this week';
+
+  @override
+  String get energy_consumed_month => 'Total energy consumed this month';
+
+  @override
   String energy_device_count(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
