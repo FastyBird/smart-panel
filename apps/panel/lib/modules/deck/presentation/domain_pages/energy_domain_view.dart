@@ -58,6 +58,14 @@ import 'package:fastybird_smart_panel/modules/energy/export.dart';
 
 class _EnergyViewConstants {
   static const int breakdownLimit = 10;
+
+  /// Adaptive decimal places for energy values so large numbers stay compact.
+  static int energyDecimals(double value) {
+    final abs = value.abs();
+    if (abs >= 100) return 0;
+    if (abs >= 10) return 1;
+    return 2;
+  }
 }
 
 // =============================================================================
@@ -397,13 +405,15 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
     if (_summary != null) {
       final consumption = NumberFormatUtils.defaultFormat.formatDecimal(
         _summary!.consumption,
-        decimalPlaces: 2,
+        decimalPlaces:
+            _EnergyViewConstants.energyDecimals(_summary!.consumption),
       );
       subtitle = '$consumption ${localizations.energy_unit_kwh}';
       if (_summary!.hasProduction) {
         final production = NumberFormatUtils.defaultFormat.formatDecimal(
           _summary!.production!,
-          decimalPlaces: 2,
+          decimalPlaces:
+              _EnergyViewConstants.energyDecimals(_summary!.production!),
         );
         subtitle +=
             ' / $production ${localizations.energy_unit_kwh} ${localizations.energy_production.toLowerCase()}';
@@ -492,7 +502,8 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
                 label: localizations.energy_production,
                 value: NumberFormatUtils.defaultFormat.formatDecimal(
                   _summary!.production!,
-                  decimalPlaces: 2,
+                  decimalPlaces: _EnergyViewConstants.energyDecimals(
+                      _summary!.production!),
                 ),
                 unit: localizations.energy_unit_kwh,
                 colorFamily: successFamily,
@@ -505,7 +516,8 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
                   label: localizations.energy_net,
                   value: NumberFormatUtils.defaultFormat.formatDecimal(
                     _summary!.net!,
-                    decimalPlaces: 2,
+                    decimalPlaces:
+                        _EnergyViewConstants.energyDecimals(_summary!.net!),
                   ),
                   unit: localizations.energy_unit_kwh,
                   colorFamily:
@@ -622,7 +634,8 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
                       Text(
                         NumberFormatUtils.defaultFormat.formatDecimal(
                           _summary!.consumption,
-                          decimalPlaces: 2,
+                          decimalPlaces: _EnergyViewConstants.energyDecimals(
+                              _summary!.consumption),
                         ),
                         style: TextStyle(
                           fontSize: fontSize,
@@ -681,7 +694,8 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
                       label: localizations.energy_production,
                       value: NumberFormatUtils.defaultFormat.formatDecimal(
                         _summary!.production!,
-                        decimalPlaces: 2,
+                        decimalPlaces: _EnergyViewConstants.energyDecimals(
+                            _summary!.production!),
                       ),
                       unit: localizations.energy_unit_kwh,
                       colorFamily: successFamily,
@@ -695,7 +709,8 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
                         label: localizations.energy_net,
                         value: NumberFormatUtils.defaultFormat.formatDecimal(
                           _summary!.net!,
-                          decimalPlaces: 2,
+                          decimalPlaces: _EnergyViewConstants.energyDecimals(
+                              _summary!.net!),
                         ),
                         unit: localizations.energy_unit_kwh,
                         colorFamily:
@@ -1276,7 +1291,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
                 ),
               ),
               Text(
-                '${NumberFormatUtils.defaultFormat.formatDecimal(device.consumption, decimalPlaces: 2)} ${localizations.energy_unit_kwh}',
+                '${NumberFormatUtils.defaultFormat.formatDecimal(device.consumption, decimalPlaces: _EnergyViewConstants.energyDecimals(device.consumption))} ${localizations.energy_unit_kwh}',
                 style: TextStyle(
                   fontSize: AppFontSize.base,
                   fontWeight: FontWeight.w600,
