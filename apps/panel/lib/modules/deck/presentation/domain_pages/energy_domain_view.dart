@@ -1196,15 +1196,30 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
         children: [
           Row(
             children: [
-              Icon(
-                MdiIcons.flashOutline,
-                size: AppSpacings.scale(16),
-                color: infoFamily.base,
+              Container(
+                width: AppSpacings.scale(32),
+                height: AppSpacings.scale(32),
+                decoration: BoxDecoration(
+                  color: infoFamily.light8,
+                  borderRadius:
+                      BorderRadius.circular(AppBorderRadius.base),
+                ),
+                child: Icon(
+                  MdiIcons.flashOutline,
+                  size: AppSpacings.scale(24),
+                  color: infoFamily.base,
+                ),
               ),
               AppSpacings.spacingSmHorizontal,
               Expanded(
                 child: Text(
-                  device.deviceName,
+                  device.roomName != null &&
+                          device.deviceName
+                              .startsWith(device.roomName!)
+                      ? device.deviceName
+                          .substring(device.roomName!.length)
+                          .trimLeft()
+                      : device.deviceName,
                   style: TextStyle(
                     fontSize: AppFontSize.base,
                     fontWeight: FontWeight.w500,
@@ -1238,16 +1253,6 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
               ),
             ),
           ),
-          if (device.roomName != null)
-            Text(
-              device.roomName!,
-              style: TextStyle(
-                fontSize: AppFontSize.extraSmall,
-                color: isDark
-                    ? AppTextColorDark.placeholder
-                    : AppTextColorLight.placeholder,
-              ),
-            ),
         ],
       ),
     );
