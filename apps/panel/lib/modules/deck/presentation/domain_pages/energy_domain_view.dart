@@ -19,8 +19,10 @@
 // - TOP CONSUMERS LIST
 // - EMPTY STATE
 
+import 'dart:async';
 import 'dart:math';
 
+import 'package:event_bus/event_bus.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -32,16 +34,20 @@ import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_card.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_right_drawer.dart';
-import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
+import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/deck/models/bottom_nav_mode_config.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_item_sheet.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_mode_chip.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/domain_state_view.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/domain_data_loader.dart';
+import 'package:fastybird_smart_panel/modules/deck/services/bottom_nav_mode_notifier.dart';
+import 'package:fastybird_smart_panel/modules/deck/types/deck_page_activated_event.dart';
 import 'package:fastybird_smart_panel/modules/energy/export.dart';
 
 // =============================================================================
@@ -70,6 +76,11 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
   final ScreenService _screenService = locator<ScreenService>();
 
   EnergyService? _energyService;
+  EventBus? _eventBus;
+  BottomNavModeNotifier? _bottomNavModeNotifier;
+  StreamSubscription<DeckPageActivatedEvent>? _pageActivatedSubscription;
+  bool _isActivePage = false;
+
   EnergyRange _selectedRange = EnergyRange.today;
   bool _isRangeChangeInFlight = false;
 
@@ -95,7 +106,25 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
       }
     }
 
-    loadDomainData();
+    if (locator.isRegistered<EventBus>()) {
+      _eventBus = locator<EventBus>();
+    }
+    if (locator.isRegistered<BottomNavModeNotifier>()) {
+      _bottomNavModeNotifier = locator<BottomNavModeNotifier>();
+    }
+
+    _pageActivatedSubscription =
+        _eventBus?.on<DeckPageActivatedEvent>().listen(_onPageActivated);
+
+    loadDomainData().then((_) {
+      if (mounted) _registerRangeModeConfig();
+    });
+  }
+
+  @override
+  void dispose() {
+    _pageActivatedSubscription?.cancel();
+    super.dispose();
   }
 
   // --------------------------------------------------------------------------
@@ -153,7 +182,158 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
       await loadDomainData();
     } finally {
       _isRangeChangeInFlight = false;
+      _registerRangeModeConfig();
     }
+  }
+
+  // --------------------------------------------------------------------------
+  // BOTTOM NAV MODE REGISTRATION
+  // --------------------------------------------------------------------------
+
+  void _onPageActivated(DeckPageActivatedEvent event) {
+    if (!mounted) return;
+    _isActivePage = event.itemId == widget.viewItem.id;
+
+    if (_isActivePage) {
+      _registerRangeModeConfig();
+    }
+  }
+
+  void _registerRangeModeConfig() {
+    if (!_isActivePage || _summary == null) {
+      _bottomNavModeNotifier?.clear();
+      return;
+    }
+
+    final localizations = AppLocalizations.of(context)!;
+    final rangeOptions = _getRangeOptions(localizations);
+    final currentOption = rangeOptions.firstWhere(
+      (o) => o.value == _selectedRange,
+      orElse: () => rangeOptions.first,
+    );
+
+    _bottomNavModeNotifier?.setConfig(BottomNavModeConfig(
+      icon: currentOption.icon,
+      label: currentOption.label,
+      color: ThemeColors.info,
+      popupBuilder: _buildRangePopupContent,
+    ));
+  }
+
+  List<ModeOption<EnergyRange>> _getRangeOptions(
+    AppLocalizations localizations,
+  ) {
+    return [
+      ModeOption(
+        value: EnergyRange.today,
+        icon: MdiIcons.calendarToday,
+        label: localizations.energy_range_today,
+      ),
+      ModeOption(
+        value: EnergyRange.week,
+        icon: MdiIcons.calendarWeek,
+        label: localizations.energy_range_week,
+      ),
+      ModeOption(
+        value: EnergyRange.month,
+        icon: MdiIcons.calendarMonth,
+        label: localizations.energy_range_month,
+      ),
+    ];
+  }
+
+  Widget _buildRangePopupContent(BuildContext context, VoidCallback dismiss) {
+    final localizations = AppLocalizations.of(context)!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final rangeOptions = _getRangeOptions(localizations);
+    final infoFamily = ThemeColorFamily.get(
+      isDark ? Brightness.dark : Brightness.light,
+      ThemeColors.info,
+    );
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: EdgeInsets.only(bottom: AppSpacings.pSm),
+          child: Text(
+            localizations.popup_label_mode.toUpperCase(),
+            style: TextStyle(
+              fontSize: AppFontSize.extraSmall,
+              fontWeight: FontWeight.w600,
+              letterSpacing: AppSpacings.scale(1),
+              color: isDark
+                  ? AppTextColorDark.placeholder
+                  : AppTextColorLight.placeholder,
+            ),
+          ),
+        ),
+        for (final option in rangeOptions)
+          GestureDetector(
+            onTap: () {
+              _onRangeChanged(option.value);
+              dismiss();
+            },
+            behavior: HitTestBehavior.opaque,
+            child: Container(
+              padding: EdgeInsets.symmetric(
+                vertical: AppSpacings.pMd,
+                horizontal: AppSpacings.pMd,
+              ),
+              margin: EdgeInsets.only(bottom: AppSpacings.pXs),
+              decoration: BoxDecoration(
+                color: option.value == _selectedRange
+                    ? infoFamily.light9
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(AppBorderRadius.small),
+                border: option.value == _selectedRange
+                    ? Border.all(
+                        color: infoFamily.light7,
+                        width: AppSpacings.scale(1),
+                      )
+                    : null,
+              ),
+              child: Row(
+                spacing: AppSpacings.pMd,
+                children: [
+                  Icon(
+                    option.icon,
+                    color: option.value == _selectedRange
+                        ? infoFamily.base
+                        : (isDark
+                            ? AppTextColorDark.secondary
+                            : AppTextColorLight.secondary),
+                    size: AppSpacings.scale(20),
+                  ),
+                  Expanded(
+                    child: Text(
+                      option.label,
+                      style: TextStyle(
+                        fontSize: AppFontSize.base,
+                        fontWeight: option.value == _selectedRange
+                            ? FontWeight.w600
+                            : FontWeight.w400,
+                        color: option.value == _selectedRange
+                            ? infoFamily.base
+                            : (isDark
+                                ? AppTextColorDark.regular
+                                : AppTextColorLight.regular),
+                      ),
+                    ),
+                  ),
+                  if (option.value == _selectedRange)
+                    Icon(
+                      Icons.check,
+                      color: infoFamily.base,
+                      size: AppSpacings.scale(16),
+                    ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
   }
 
   // --------------------------------------------------------------------------
@@ -235,6 +415,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
         icon: MdiIcons.flashOutline,
         color: ThemeColors.info,
       ),
+      landscapeAction: const DeckModeChip(),
       trailing: _breakdown != null && _breakdown!.isNotEmpty
           ? HeaderIconButton(
               icon: MdiIcons.podium,
@@ -251,13 +432,12 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
 
   Widget _buildPortraitLayout(BuildContext context) {
     return PortraitViewLayout(
+      scrollable: false,
       content: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         spacing: AppSpacings.pSm,
         children: [
           _buildConsumptionCard(context),
-          if (_summary!.hasProduction) _buildSecondaryCards(context),
-          _buildRangeSelector(context),
           if (_timeseries != null && _timeseries!.isNotEmpty)
             _buildTimeseriesChart(context),
         ],
@@ -271,7 +451,6 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
 
   Widget _buildLandscapeLayout(BuildContext context) {
     return LandscapeViewLayout(
-      mainContentScrollable: true,
       mainContentPadding: EdgeInsets.only(
         right: AppSpacings.pMd,
         left: AppSpacings.pMd,
@@ -281,7 +460,6 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
         crossAxisAlignment: CrossAxisAlignment.start,
         spacing: AppSpacings.pLg,
         children: [
-          _buildRangeSelector(context),
           if (_timeseries != null && _timeseries!.isNotEmpty)
             _buildTimeseriesChart(context),
         ],
@@ -296,42 +474,8 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
         spacing: AppSpacings.pMd,
         children: [
           _buildConsumptionCard(context),
-          if (_summary!.hasProduction)
-            _buildSecondaryCards(context, vertical: true),
         ],
       ),
-    );
-  }
-
-  // =============================================================================
-  // RANGE SELECTOR
-  // =============================================================================
-
-  Widget _buildRangeSelector(BuildContext context) {
-    final localizations = AppLocalizations.of(context)!;
-
-    return ModeSelector<EnergyRange>(
-      modes: [
-        ModeOption(
-          value: EnergyRange.today,
-          icon: MdiIcons.calendarToday,
-          label: localizations.energy_range_today,
-        ),
-        ModeOption(
-          value: EnergyRange.week,
-          icon: MdiIcons.calendarWeek,
-          label: localizations.energy_range_week,
-        ),
-        ModeOption(
-          value: EnergyRange.month,
-          icon: MdiIcons.calendarMonth,
-          label: localizations.energy_range_month,
-        ),
-      ],
-      selectedValue: _selectedRange,
-      onChanged: _onRangeChanged,
-      showIcon: false,
-      color: ThemeColors.info,
     );
   }
 
@@ -342,109 +486,28 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
   Widget _buildConsumptionCard(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final brightness = isDark ? Brightness.dark : Brightness.light;
     final infoColor = isDark ? AppColorsDark.info : AppColorsLight.info;
+    final successFamily = ThemeColorFamily.get(brightness, ThemeColors.success);
+    final warningFamily = ThemeColorFamily.get(brightness, ThemeColors.warning);
 
-    return _buildSummaryCard(
-      context,
-      title: localizations.energy_consumption,
-      value: NumberFormatUtils.defaultFormat.formatDecimal(
-        _summary!.consumption,
-        decimalPlaces: 2,
-      ),
-      unit: localizations.energy_unit_kwh,
-      icon: MdiIcons.flashOutline,
-      color: infoColor,
-    );
-  }
-
-  Widget _buildSecondaryCards(BuildContext context, {bool vertical = false}) {
-    final localizations = AppLocalizations.of(context)!;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final successColor =
-        isDark ? AppColorsDark.success : AppColorsLight.success;
-
-    final cardWidgets = <Widget>[];
-
-    // Production card
-    cardWidgets.add(_buildSummaryCard(
-      context,
-      title: localizations.energy_production,
-      value: NumberFormatUtils.defaultFormat.formatDecimal(
-        _summary!.production!,
-        decimalPlaces: 2,
-      ),
-      unit: localizations.energy_unit_kwh,
-      icon: MdiIcons.solarPower,
-      color: successColor,
-    ));
-
-    // Net card (if available)
-    if (_summary!.net != null) {
-      final netColor = _summary!.net! > 0
-          ? (isDark ? AppColorsDark.warning : AppColorsLight.warning)
-          : successColor;
-
-      cardWidgets.add(_buildSummaryCard(
-        context,
-        title: localizations.energy_net,
-        value: NumberFormatUtils.defaultFormat.formatDecimal(
-          _summary!.net!,
-          decimalPlaces: 2,
-        ),
-        unit: localizations.energy_unit_kwh,
-        icon: MdiIcons.swapVertical,
-        color: netColor,
-      ));
-    }
-
-    if (vertical) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        spacing: AppSpacings.pMd,
-        children: cardWidgets,
-      );
-    }
-
-    return IntrinsicHeight(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        spacing: AppSpacings.pMd,
-        children: cardWidgets.map((c) => Expanded(child: c)).toList(),
-      ),
-    );
-  }
-
-  Widget _buildSummaryCard(
-    BuildContext context, {
-    required String title,
-    required String value,
-    required String unit,
-    required IconData icon,
-    required Color color,
-  }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Container(
-      padding: AppSpacings.paddingMd,
-      decoration: BoxDecoration(
-        color: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
-        borderRadius: BorderRadius.circular(AppBorderRadius.base),
-        border: Border.all(
-          color: isDark ? AppFillColorDark.light : AppBorderColorLight.darker,
-          width: AppSpacings.scale(1),
-        ),
-      ),
+    return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         spacing: AppSpacings.pSm,
         children: [
+          // Consumption - main value
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             spacing: AppSpacings.pSm,
             children: [
-              Icon(icon, size: AppSpacings.scale(18), color: color),
+              Icon(
+                MdiIcons.flashOutline,
+                size: AppSpacings.scale(18),
+                color: infoColor,
+              ),
               Text(
-                title,
+                localizations.energy_consumption,
                 style: TextStyle(
                   color: isDark
                       ? AppTextColorDark.secondary
@@ -464,18 +527,135 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
               text: TextSpan(
                 children: [
                   TextSpan(
-                    text: value,
+                    text: NumberFormatUtils.defaultFormat.formatDecimal(
+                      _summary!.consumption,
+                      decimalPlaces: 2,
+                    ),
                     style: TextStyle(
-                      color: color,
+                      color: infoColor,
                       fontSize: AppSpacings.scale(28),
                       fontWeight: FontWeight.w300,
                     ),
                   ),
                   TextSpan(
+                    text: ' ${localizations.energy_unit_kwh}',
+                    style: TextStyle(
+                      color: infoColor,
+                      fontSize: AppFontSize.base,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // Production & Net row
+          if (_summary!.hasProduction) ...[
+            SizedBox(height: AppSpacings.pXs),
+            IntrinsicHeight(
+              child: Row(
+                spacing: AppSpacings.pSm,
+                children: [
+                  // Production
+                  Expanded(
+                    child: _buildSecondaryValue(
+                      icon: MdiIcons.solarPower,
+                      label: localizations.energy_production,
+                      value: NumberFormatUtils.defaultFormat.formatDecimal(
+                        _summary!.production!,
+                        decimalPlaces: 2,
+                      ),
+                      unit: localizations.energy_unit_kwh,
+                      colorFamily: successFamily,
+                    ),
+                  ),
+                  // Net
+                  if (_summary!.net != null)
+                    Expanded(
+                      child: _buildSecondaryValue(
+                        icon: MdiIcons.swapVertical,
+                        label: localizations.energy_net,
+                        value: NumberFormatUtils.defaultFormat.formatDecimal(
+                          _summary!.net!,
+                          decimalPlaces: 2,
+                        ),
+                        unit: localizations.energy_unit_kwh,
+                        colorFamily: _summary!.net! > 0
+                            ? warningFamily
+                            : successFamily,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSecondaryValue({
+    required IconData icon,
+    required String label,
+    required String value,
+    required String unit,
+    required ThemeColorFamily colorFamily,
+  }) {
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: AppSpacings.pMd,
+        vertical: AppSpacings.pSm,
+      ),
+      decoration: BoxDecoration(
+        color: colorFamily.light9,
+        borderRadius: BorderRadius.circular(AppBorderRadius.base),
+        border: Border.all(
+          color: colorFamily.light7,
+          width: AppSpacings.scale(1),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.center,
+        spacing: AppSpacings.pXs,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            spacing: AppSpacings.pXs,
+            children: [
+              Icon(icon, size: AppSpacings.scale(14), color: colorFamily.base),
+              Flexible(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: colorFamily.base,
+                    fontSize: AppFontSize.extraSmall,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: RichText(
+              maxLines: 1,
+              text: TextSpan(
+                children: [
+                  TextSpan(
+                    text: value,
+                    style: TextStyle(
+                      color: colorFamily.base,
+                      fontSize: AppFontSize.base,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  TextSpan(
                     text: ' $unit',
                     style: TextStyle(
-                      color: color,
-                      fontSize: AppFontSize.base,
+                      color: colorFamily.base,
+                      fontSize: AppFontSize.extraSmall,
                       fontWeight: FontWeight.w400,
                     ),
                   ),
