@@ -434,7 +434,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
     return PortraitViewLayout(
       scrollable: false,
       content: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         spacing: AppSpacings.pSm,
         children: [
           _buildConsumptionCard(context),
@@ -488,36 +488,54 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final brightness = isDark ? Brightness.dark : Brightness.light;
     final infoColor = isDark ? AppColorsDark.info : AppColorsLight.info;
+    final infoFamily = ThemeColorFamily.get(brightness, ThemeColors.info);
     final successFamily = ThemeColorFamily.get(brightness, ThemeColors.success);
     final warningFamily = ThemeColorFamily.get(brightness, ThemeColors.warning);
+
+    final rangeLabel = switch (_selectedRange) {
+      EnergyRange.today => localizations.energy_range_today,
+      EnergyRange.week => localizations.energy_range_week,
+      EnergyRange.month => localizations.energy_range_month,
+    };
 
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         spacing: AppSpacings.pSm,
         children: [
-          // Consumption - main value
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            spacing: AppSpacings.pSm,
-            children: [
-              Icon(
-                MdiIcons.flashOutline,
-                size: AppSpacings.scale(18),
-                color: infoColor,
+          // Pill: ⚡ Consumption · Today
+          Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: AppSpacings.pMd,
+              vertical: AppSpacings.pXs,
+            ),
+            decoration: BoxDecoration(
+              color: infoFamily.light9,
+              borderRadius: BorderRadius.circular(AppBorderRadius.round),
+              border: Border.all(
+                color: infoFamily.light7,
+                width: AppSpacings.scale(1),
               ),
-              Text(
-                localizations.energy_consumption,
-                style: TextStyle(
-                  color: isDark
-                      ? AppTextColorDark.secondary
-                      : AppTextColorLight.secondary,
-                  fontSize: AppFontSize.extraSmall,
-                  fontWeight: FontWeight.w500,
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              spacing: AppSpacings.pXs,
+              children: [
+                Icon(
+                  MdiIcons.flashOutline,
+                  size: AppSpacings.scale(14),
+                  color: infoFamily.base,
                 ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
+                Text(
+                  '${localizations.energy_consumption} · $rangeLabel',
+                  style: TextStyle(
+                    color: infoFamily.base,
+                    fontSize: AppFontSize.extraSmall,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
           ),
           FittedBox(
             fit: BoxFit.scaleDown,
