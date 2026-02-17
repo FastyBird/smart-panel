@@ -669,7 +669,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
           ),
           // Production & Net row (portrait only, landscape has separate cards)
           if (!isLandscape && _summary!.hasProduction) ...[
-            SizedBox(height: AppSpacings.pXs),
+            AppSpacings.spacingXsVertical,
             IntrinsicHeight(
               child: Row(
                 spacing: AppSpacings.pSm,
@@ -708,7 +708,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
           ],
           // Comparison status
           if (_summary!.hasConsumptionComparison) ...[
-            SizedBox(height: AppSpacings.pSm),
+            AppSpacings.spacingSmVertical,
             _buildComparisonStatus(
               context,
               changePercent: _summary!.consumptionChangePercent!,
