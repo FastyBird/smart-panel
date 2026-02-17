@@ -387,7 +387,10 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
   Widget _buildHeader(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final infoColor = isDark ? AppColorsDark.info : AppColorsLight.info;
+    final infoFamily = ThemeColorFamily.get(
+      isDark ? Brightness.dark : Brightness.light,
+      ThemeColors.info,
+    );
 
     String subtitle;
     if (_summary != null) {
@@ -411,7 +414,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
     return PageHeader(
       title: localizations.domain_energy,
       subtitle: subtitle,
-      subtitleColor: _summary != null ? infoColor : null,
+      subtitleColor: _summary != null ? infoFamily.base : null,
       leading: HeaderMainIcon(
         icon: MdiIcons.flashOutline,
         color: ThemeColors.info,
@@ -1295,7 +1298,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
               backgroundColor:
                   isDark ? AppFillColorDark.darker : AppBorderColorLight.base,
               valueColor: AlwaysStoppedAnimation<Color>(
-                infoFamily.base.withValues(alpha: 0.6),
+                infoFamily.light3,
               ),
             ),
           ),
@@ -1311,9 +1314,10 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
   Widget _buildEmptyState(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final localizations = AppLocalizations.of(context)!;
-    final infoColor = isDark ? AppColorsDark.info : AppColorsLight.info;
-    final infoBgColor =
-        isDark ? AppColorsDark.infoLight8 : AppColorsLight.infoLight8;
+    final infoFamily = ThemeColorFamily.get(
+      isDark ? Brightness.dark : Brightness.light,
+      ThemeColors.info,
+    );
 
     return Center(
       child: Padding(
@@ -1326,13 +1330,13 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
               width: AppSpacings.scale(80),
               height: AppSpacings.scale(80),
               decoration: BoxDecoration(
-                color: infoBgColor,
+                color: infoFamily.light8,
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 MdiIcons.flashOff,
                 size: AppSpacings.scale(48),
-                color: infoColor,
+                color: infoFamily.base,
               ),
             ),
             Text(
