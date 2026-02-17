@@ -624,13 +624,6 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
                   : AppTextColorLight.placeholder,
             ),
           ),
-          // Comparison status
-          if (_summary!.hasConsumptionComparison)
-            _buildComparisonStatus(
-              context,
-              changePercent: _summary!.consumptionChangePercent!,
-              isDark: isDark,
-            ),
           // Production & Net row
           if (_summary!.hasProduction) ...[
             SizedBox(height: AppSpacings.pXs),
@@ -671,6 +664,15 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
               ),
             ),
           ],
+          // Comparison status
+          if (_summary!.hasConsumptionComparison) ...[
+            SizedBox(height: AppSpacings.pSm),
+            _buildComparisonStatus(
+              context,
+              changePercent: _summary!.consumptionChangePercent!,
+              isDark: isDark,
+            ),
+          ]
         ],
       ),
     );
@@ -1224,7 +1226,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
     final localizations = AppLocalizations.of(context)!;
     final infoColor = isDark ? AppColorsDark.info : AppColorsLight.info;
     final infoBgColor =
-        isDark ? AppColorsDark.infoLight9 : AppColorsLight.infoLight9;
+        isDark ? AppColorsDark.infoLight8 : AppColorsLight.infoLight8;
 
     return Center(
       child: Padding(
