@@ -20,7 +20,7 @@ enum EnergyRange {
       case EnergyRange.today:
         return '1h';
       case EnergyRange.week:
-        return '1h';
+        return '1d';
       case EnergyRange.month:
         return '1d';
     }

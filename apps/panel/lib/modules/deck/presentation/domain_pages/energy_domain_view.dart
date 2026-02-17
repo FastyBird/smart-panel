@@ -846,9 +846,11 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
     // Add 20% padding to max
     maxY = maxY > 0 ? maxY * 1.2 : 1.0;
 
-    final barWidth = _screenService.isSmallScreen
-        ? AppSpacings.scale(8)
-        : AppSpacings.scale(12);
+    final isCompact = _screenService.isSmallScreen ||
+        (_screenService.isMediumScreen && !_screenService.isPortrait);
+    final barWidth = points.length > 24
+        ? AppSpacings.scale(isCompact ? 5 : 8)
+        : AppSpacings.scale(isCompact ? 6 : 12);
 
     // Adaptive decimal places so Y-axis labels stay meaningful for small values
     final yInterval = maxY / 4;
@@ -968,24 +970,28 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
                         }
                         final point = points[index];
 
-                        // Show labels on even values to keep axis clean
+                        // Show labels at regular intervals, fewer on compact
                         final bool show;
                         String label;
                         if (_selectedRange == EnergyRange.month) {
-                          // Show even days (2nd, 4th, 6th, ...)
-                          show = point.timestamp.day.isEven;
+                          // Compact: every 5th day, normal: even days
+                          show = isCompact
+                              ? point.timestamp.day % 5 == 0
+                              : point.timestamp.day.isEven;
                           label = '${point.timestamp.day}';
                         } else if (_selectedRange == EnergyRange.week) {
-                          // Show day name at noon (center of each day)
-                          show = point.timestamp.hour == 12;
+                          // Daily interval — show day name for each point
+                          show = true;
                           const dayNames = [
                             'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun',
                           ];
                           label = dayNames[
                               point.timestamp.weekday - 1];
                         } else {
-                          // Today: show even hours (0, 2, 4, ...)
-                          show = point.timestamp.hour.isEven;
+                          // Compact: every 4th hour, normal: even hours
+                          show = isCompact
+                              ? point.timestamp.hour % 4 == 0
+                              : point.timestamp.hour.isEven;
                           label =
                               '${point.timestamp.hour.toString().padLeft(2, '0')}:00';
                         }
