@@ -487,7 +487,6 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
     final localizations = AppLocalizations.of(context)!;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final brightness = isDark ? Brightness.dark : Brightness.light;
-    final infoColor = isDark ? AppColorsDark.info : AppColorsLight.info;
     final infoFamily = ThemeColorFamily.get(brightness, ThemeColors.info);
     final successFamily = ThemeColorFamily.get(brightness, ThemeColors.success);
     final warningFamily = ThemeColorFamily.get(brightness, ThemeColors.warning);
@@ -537,35 +536,50 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
               ],
             ),
           ),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.center,
-            child: RichText(
-              maxLines: 1,
-              text: TextSpan(
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final fontSize = (constraints.maxWidth * 0.18)
+                  .clamp(AppSpacings.scale(32), AppSpacings.scale(64));
+              final unitFontSize = fontSize * 0.27;
+              final textColor = isDark
+                  ? AppTextColorDark.regular
+                  : AppTextColorLight.regular;
+              final unitColor = isDark
+                  ? AppTextColorDark.placeholder
+                  : AppTextColorLight.placeholder;
+
+              return Stack(
+                clipBehavior: Clip.none,
+                alignment: Alignment.center,
                 children: [
-                  TextSpan(
-                    text: NumberFormatUtils.defaultFormat.formatDecimal(
+                  Text(
+                    NumberFormatUtils.defaultFormat.formatDecimal(
                       _summary!.consumption,
                       decimalPlaces: 2,
                     ),
                     style: TextStyle(
-                      color: infoColor,
-                      fontSize: AppSpacings.scale(28),
-                      fontWeight: FontWeight.w300,
+                      fontSize: fontSize,
+                      fontWeight: FontWeight.w200,
+                      fontFamily: 'DIN1451',
+                      color: textColor,
+                      height: 0.9,
                     ),
                   ),
-                  TextSpan(
-                    text: ' ${localizations.energy_unit_kwh}',
-                    style: TextStyle(
-                      color: infoColor,
-                      fontSize: AppFontSize.base,
-                      fontWeight: FontWeight.w400,
+                  Positioned(
+                    top: 0,
+                    right: -unitFontSize * 2,
+                    child: Text(
+                      localizations.energy_unit_kwh,
+                      style: TextStyle(
+                        fontSize: unitFontSize,
+                        fontWeight: FontWeight.w300,
+                        color: unitColor,
+                      ),
                     ),
                   ),
                 ],
-              ),
-            ),
+              );
+            },
           ),
           // Production & Net row
           if (_summary!.hasProduction) ...[
