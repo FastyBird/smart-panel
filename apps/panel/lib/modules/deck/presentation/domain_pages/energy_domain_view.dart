@@ -34,6 +34,7 @@ import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_card.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_right_drawer.dart';
+import 'package:fastybird_smart_panel/core/widgets/hero_card.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
@@ -439,7 +440,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
         children: [
           _buildConsumptionCard(context),
           if (_timeseries != null && _timeseries!.isNotEmpty)
-            _buildTimeseriesChart(context),
+            Expanded(child: _buildTimeseriesChart(context)),
         ],
       ),
     );
@@ -461,7 +462,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
         spacing: AppSpacings.pLg,
         children: [
           if (_timeseries != null && _timeseries!.isNotEmpty)
-            _buildTimeseriesChart(context),
+            Expanded(child: _buildTimeseriesChart(context)),
         ],
       ),
       additionalContentScrollable: false,
@@ -502,9 +503,10 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
       EnergyRange.month => localizations.energy_range_month,
     };
 
-    return AppCard(
+    return HeroCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
+        mainAxisAlignment: MainAxisAlignment.center,
         spacing: AppSpacings.pSm,
         children: [
           // Hero row: badge + giant value
@@ -874,15 +876,21 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
     }
 
     return AppCard(
+      expanded: true,
       headerIcon: MdiIcons.chartBar,
       headerTitle: localizations.energy_chart_title,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        spacing: AppSpacings.pMd,
-        children: [
-          SizedBox(
-            height: AppSpacings.scale(200),
-            child: BarChart(
+      child: Expanded(
+        child: Padding(
+          padding: EdgeInsets.only(
+            left: AppSpacings.pMd,
+            right: AppSpacings.pMd,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            spacing: AppSpacings.pMd,
+            children: [
+              Expanded(
+                child: BarChart(
               BarChartData(
                 alignment: BarChartAlignment.spaceAround,
                 maxY: maxY,
@@ -1054,6 +1062,8 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
               ],
             ),
         ],
+          ),
+        ),
       ),
     );
   }
