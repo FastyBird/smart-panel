@@ -1504,6 +1504,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get energy_consumed_month => 'Total energy consumed this month';
 
   @override
+  String get energy_comparison_vs_yesterday => 'vs yesterday';
+
+  @override
+  String get energy_comparison_vs_last_week => 'vs last week';
+
+  @override
+  String get energy_comparison_vs_last_month => 'vs last month';
+
+  @override
+  String energy_comparison_same(String period) {
+    return 'Same as $period';
+  }
+
+  @override
   String energy_device_count(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,

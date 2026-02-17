@@ -2837,6 +2837,30 @@ abstract class AppLocalizations {
   /// **'Total energy consumed this month'**
   String get energy_consumed_month;
 
+  /// Comparison label for today range
+  ///
+  /// In en, this message translates to:
+  /// **'vs yesterday'**
+  String get energy_comparison_vs_yesterday;
+
+  /// Comparison label for week range
+  ///
+  /// In en, this message translates to:
+  /// **'vs last week'**
+  String get energy_comparison_vs_last_week;
+
+  /// Comparison label for month range
+  ///
+  /// In en, this message translates to:
+  /// **'vs last month'**
+  String get energy_comparison_vs_last_month;
+
+  /// Comparison text when change is 0%
+  ///
+  /// In en, this message translates to:
+  /// **'Same as {period}'**
+  String energy_comparison_same(String period);
+
   /// Count of energy devices
   ///
   /// In en, this message translates to:

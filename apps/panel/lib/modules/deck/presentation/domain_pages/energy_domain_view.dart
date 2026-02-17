@@ -624,6 +624,13 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
                   : AppTextColorLight.placeholder,
             ),
           ),
+          // Comparison status
+          if (_summary!.hasConsumptionComparison)
+            _buildComparisonStatus(
+              context,
+              changePercent: _summary!.consumptionChangePercent!,
+              isDark: isDark,
+            ),
           // Production & Net row
           if (_summary!.hasProduction) ...[
             SizedBox(height: AppSpacings.pXs),
@@ -736,6 +743,80 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
                   ),
                 ],
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildComparisonStatus(
+    BuildContext context, {
+    required double changePercent,
+    required bool isDark,
+  }) {
+    final localizations = AppLocalizations.of(context)!;
+    final brightness = isDark ? Brightness.dark : Brightness.light;
+
+    final periodLabel = switch (_selectedRange) {
+      EnergyRange.today => localizations.energy_comparison_vs_yesterday,
+      EnergyRange.week => localizations.energy_comparison_vs_last_week,
+      EnergyRange.month => localizations.energy_comparison_vs_last_month,
+    };
+
+    // Determine display: icon, color, text
+    final bool isZero = changePercent.abs() < 0.1;
+    final bool isDown = changePercent < -0.1;
+
+    final IconData arrowIcon;
+    final ThemeColorFamily colorFamily;
+    final String text;
+
+    if (isZero) {
+      arrowIcon = Icons.remove;
+      colorFamily = ThemeColorFamily.get(brightness, ThemeColors.neutral);
+      final periodName = switch (_selectedRange) {
+        EnergyRange.today => localizations.energy_comparison_vs_yesterday,
+        EnergyRange.week => localizations.energy_comparison_vs_last_week,
+        EnergyRange.month => localizations.energy_comparison_vs_last_month,
+      };
+      text = localizations.energy_comparison_same(periodName);
+    } else if (isDown) {
+      arrowIcon = Icons.arrow_downward;
+      // Less consumption = good (green)
+      colorFamily = ThemeColorFamily.get(brightness, ThemeColors.success);
+      text = '${changePercent.abs().toStringAsFixed(1)}% $periodLabel';
+    } else {
+      arrowIcon = Icons.arrow_upward;
+      // More consumption = warning (yellow)
+      colorFamily = ThemeColorFamily.get(brightness, ThemeColors.warning);
+      text = '${changePercent.abs().toStringAsFixed(1)}% $periodLabel';
+    }
+
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: AppSpacings.pMd,
+        vertical: AppSpacings.pXs,
+      ),
+      decoration: BoxDecoration(
+        color: colorFamily.light8,
+        borderRadius: BorderRadius.circular(AppBorderRadius.round),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        spacing: AppSpacings.pXs,
+        children: [
+          Icon(
+            arrowIcon,
+            size: AppFontSize.small,
+            color: colorFamily.base,
+          ),
+          Text(
+            text,
+            style: TextStyle(
+              fontSize: AppFontSize.extraSmall,
+              fontWeight: FontWeight.w600,
+              color: colorFamily.base,
             ),
           ),
         ],

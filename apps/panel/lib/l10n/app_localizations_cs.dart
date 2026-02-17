@@ -1516,6 +1516,20 @@ class AppLocalizationsCs extends AppLocalizations {
   String get energy_consumed_month => 'Celková spotřeba energie tento měsíc';
 
   @override
+  String get energy_comparison_vs_yesterday => 'oproti včerejšku';
+
+  @override
+  String get energy_comparison_vs_last_week => 'oproti minulému týdnu';
+
+  @override
+  String get energy_comparison_vs_last_month => 'oproti minulému měsíci';
+
+  @override
+  String energy_comparison_same(String period) {
+    return 'Stejně jako $period';
+  }
+
+  @override
   String energy_device_count(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,

@@ -2324,6 +2324,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   _buildModeBadge(context),
+                  AppSpacings.spacingSmHorizontal,
                   _buildGiantTemp(context, fontSize),
                 ],
               ),

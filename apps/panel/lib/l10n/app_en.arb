@@ -1974,6 +1974,27 @@
   "@energy_consumed_month": {
     "description": "Description under consumption value for month range"
   },
+  "energy_comparison_vs_yesterday": "vs yesterday",
+  "@energy_comparison_vs_yesterday": {
+    "description": "Comparison label for today range"
+  },
+  "energy_comparison_vs_last_week": "vs last week",
+  "@energy_comparison_vs_last_week": {
+    "description": "Comparison label for week range"
+  },
+  "energy_comparison_vs_last_month": "vs last month",
+  "@energy_comparison_vs_last_month": {
+    "description": "Comparison label for month range"
+  },
+  "energy_comparison_same": "Same as {period}",
+  "@energy_comparison_same": {
+    "description": "Comparison text when change is 0%",
+    "placeholders": {
+      "period": {
+        "type": "String"
+      }
+    }
+  },
   "energy_device_count": "{count, plural, =1{1 device} other{{count} devices}}",
   "@energy_device_count": {
     "description": "Count of energy devices",
