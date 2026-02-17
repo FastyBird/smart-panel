@@ -9,6 +9,12 @@
 // - Local state: summary, timeseries, breakdown, selected range, loading/error.
 // - Uses [DomainStateView] for loading/error states.
 //
+// **For AI:** When modifying this file:
+// - Keep layout logic in _buildPortraitLayout / _buildLandscapeLayout.
+// - Chart X-axis labels use localized day names via _getShortDayName.
+// - Top consumers: [DeckItemSheet] (portrait) vs [showAppRightDrawer] (landscape).
+// - Range switching is driven by [BottomNavModeNotifier] + [DeckPageActivatedEvent].
+//
 // **File structure:**
 // - CONSTANTS
 // - ENERGY DOMAIN VIEW PAGE (state, lifecycle, data loading, build)
@@ -56,7 +62,9 @@ import 'package:fastybird_smart_panel/modules/energy/export.dart';
 // CONSTANTS
 // =============================================================================
 
+/// Constants and helpers for the energy domain view.
 class _EnergyViewConstants {
+  /// Max number of devices shown in the top consumers list.
   static const int breakdownLimit = 10;
 
   /// Adaptive decimal places for energy values so large numbers stay compact.
@@ -72,6 +80,10 @@ class _EnergyViewConstants {
 // ENERGY DOMAIN VIEW PAGE
 // =============================================================================
 
+/// Energy domain page for a room: consumption, production, chart, top consumers.
+///
+/// Shown when the deck navigates to the energy domain for a space.
+/// Uses [DomainDataLoader] for loading/error/retry; [EnergyService] for API.
 class EnergyDomainViewPage extends StatefulWidget {
   final DomainViewItem viewItem;
 
@@ -85,24 +97,27 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
     with DomainDataLoader<EnergyDomainViewPage> {
   final ScreenService _screenService = locator<ScreenService>();
 
+  // Services & event bus
   EnergyService? _energyService;
   EventBus? _eventBus;
   BottomNavModeNotifier? _bottomNavModeNotifier;
   StreamSubscription<DeckPageActivatedEvent>? _pageActivatedSubscription;
   bool _isActivePage = false;
 
+  // Range selection (today/week/month)
   EnergyRange _selectedRange = EnergyRange.today;
   bool _isRangeChangeInFlight = false;
 
+  // Loaded data
   EnergySummary? _summary;
   EnergyTimeseries? _timeseries;
   EnergyBreakdown? _breakdown;
 
   String get _roomId => widget.viewItem.roomId;
 
-  // --------------------------------------------------------------------------
+  // ─────────────────────────────────────────────────────────────────────────
   // LIFECYCLE
-  // --------------------------------------------------------------------------
+  // ─────────────────────────────────────────────────────────────────────────
 
   @override
   void initState() {
@@ -137,9 +152,9 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
     super.dispose();
   }
 
-  // --------------------------------------------------------------------------
+  // ─────────────────────────────────────────────────────────────────────────
   // DOMAIN DATA LOADER
-  // --------------------------------------------------------------------------
+  // ─────────────────────────────────────────────────────────────────────────
 
   @override
   bool hasExistingData() => _summary != null;
@@ -152,6 +167,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
   @override
   bool isDataEmpty() => _summary == null;
 
+  /// Fetches summary, timeseries, and breakdown in parallel for current range.
   Future<void> _fetchAllData() async {
     if (_energyService == null) {
       throw Exception('EnergyService not available');
@@ -172,6 +188,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
     _breakdown = results[2] as EnergyBreakdown?;
   }
 
+  /// Handles range change from bottom nav popup; refetches all data.
   Future<void> _onRangeChanged(EnergyRange range) async {
     if (range == _selectedRange || _isRangeChangeInFlight) return;
 
@@ -196,10 +213,11 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
     }
   }
 
-  // --------------------------------------------------------------------------
-  // BOTTOM NAV MODE REGISTRATION
-  // --------------------------------------------------------------------------
+  // ─────────────────────────────────────────────────────────────────────────
+  // BOTTOM NAV MODE REGISTRATION (range selector in bottom bar)
+  // ─────────────────────────────────────────────────────────────────────────
 
+  /// Updates bottom nav chip when this page becomes active.
   void _onPageActivated(DeckPageActivatedEvent event) {
     if (!mounted) return;
     _isActivePage = event.itemId == widget.viewItem.id;
@@ -209,6 +227,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
     }
   }
 
+  /// Registers today/week/month range selector in bottom nav chip.
   void _registerRangeModeConfig() {
     if (!_isActivePage || _summary == null) {
       _bottomNavModeNotifier?.clear();
@@ -230,6 +249,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
     ));
   }
 
+  /// Options for today/week/month range selector in bottom nav popup.
   List<ModeOption<EnergyRange>> _getRangeOptions(
     AppLocalizations localizations,
   ) {
@@ -252,6 +272,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
     ];
   }
 
+  /// Popup content for range selector (today/week/month) in bottom nav.
   Widget _buildRangePopupContent(BuildContext context, VoidCallback dismiss) {
     final localizations = AppLocalizations.of(context)!;
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -346,9 +367,9 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
     );
   }
 
-  // --------------------------------------------------------------------------
+  // ─────────────────────────────────────────────────────────────────────────
   // BUILD
-  // --------------------------------------------------------------------------
+  // ─────────────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -393,6 +414,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
   // HEADER
   // =============================================================================
 
+  /// Page header with title, consumption subtitle, and optional top-consumers icon.
   Widget _buildHeader(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -445,6 +467,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
   // PORTRAIT LAYOUT
   // =============================================================================
 
+  /// Portrait: consumption card on top, chart below.
   Widget _buildPortraitLayout(BuildContext context) {
     return PortraitViewLayout(
       scrollable: false,
@@ -464,6 +487,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
   // LANDSCAPE LAYOUT
   // =============================================================================
 
+  /// Landscape: chart on left, consumption + production cards on right.
   Widget _buildLandscapeLayout(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -534,6 +558,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
   // SUMMARY CARDS
   // =============================================================================
 
+  /// Hero card with main consumption value, optional production/net, comparison.
   Widget _buildConsumptionCard(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -735,6 +760,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
     );
   }
 
+  /// Small labeled value tile (production, net) with icon and unit.
   Widget _buildSecondaryValue({
     required IconData icon,
     required String label,
@@ -809,6 +835,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
     );
   }
 
+  /// Badge showing consumption change vs previous period (up/down/same).
   Widget _buildComparisonStatus(
     BuildContext context, {
     required double changePercent,
@@ -882,6 +909,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
   // TIMESERIES CHART
   // =============================================================================
 
+  /// Bar chart of consumption (and production) over the selected range.
   Widget _buildTimeseriesChart(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -1042,18 +1070,12 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
                                   : point.timestamp.day.isEven;
                               label = '${point.timestamp.day}';
                             } else if (_selectedRange == EnergyRange.week) {
-                              // Daily interval — show day name for each point
+                              // Daily interval — show localized short day name
                               show = true;
-                              const dayNames = [
-                                'Mon',
-                                'Tue',
-                                'Wed',
-                                'Thu',
-                                'Fri',
-                                'Sat',
-                                'Sun',
-                              ];
-                              label = dayNames[point.timestamp.weekday - 1];
+                              label = _getShortDayName(
+                                localizations,
+                                point.timestamp.weekday,
+                              );
                             } else {
                               // Compact: every 4th hour, normal: even hours
                               show = isCompact
@@ -1155,6 +1177,20 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
     );
   }
 
+  /// Returns localized short day name for weekday (1=Monday, 7=Sunday).
+  static String _getShortDayName(AppLocalizations l10n, int weekday) {
+    return switch (weekday) {
+      1 => l10n.day_monday_short,
+      2 => l10n.day_tuesday_short,
+      3 => l10n.day_wednesday_short,
+      4 => l10n.day_thursday_short,
+      5 => l10n.day_friday_short,
+      6 => l10n.day_saturday_short,
+      7 => l10n.day_sunday_short,
+      _ => '',
+    };
+  }
+
   Widget _buildLegendItem(
     BuildContext context, {
     required Color color,
@@ -1191,6 +1227,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
   // TOP CONSUMERS (SHEET / DRAWER)
   // =============================================================================
 
+  /// Opens top consumers: bottom sheet (portrait) or right drawer (landscape).
   void _showTopConsumers(BuildContext context) {
     if (_breakdown == null || _breakdown!.isEmpty) return;
 
@@ -1233,6 +1270,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
     }
   }
 
+  /// Single device tile with name, consumption value, and progress bar.
   Widget _buildConsumerTileForSheet(BuildContext context, int index) {
     final localizations = AppLocalizations.of(context)!;
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -1321,6 +1359,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
   // EMPTY STATE
   // =============================================================================
 
+  /// Centered empty state when no energy data is available.
   Widget _buildEmptyState(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final localizations = AppLocalizations.of(context)!;
