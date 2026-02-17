@@ -1,4 +1,5 @@
-import { VALID_ENERGY_RANGES, normalizeEnergyRange, resolveEnergyRange } from './energy-range.helper';
+import { VALID_ENERGY_RANGES } from '../energy.constants';
+import { normalizeEnergyRange, resolveEnergyRange } from './energy-range.helper';
 
 describe('resolveEnergyRange', () => {
 	beforeEach(() => {

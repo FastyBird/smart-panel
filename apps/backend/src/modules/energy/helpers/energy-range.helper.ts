@@ -7,9 +7,9 @@
  * - month:  from 30 days ago midnight Europe/Prague to now
  */
 
-const TIMEZONE = 'Europe/Prague';
+import { VALID_ENERGY_RANGES } from '../energy.constants';
 
-export const VALID_ENERGY_RANGES = ['today', 'yesterday', 'week', 'month'] as const;
+const TIMEZONE = 'Europe/Prague';
 
 export type EnergyRange = (typeof VALID_ENERGY_RANGES)[number];
 
@@ -122,14 +122,20 @@ export function getLocalMidnightDaysAgo(date: Date, daysAgo: number): Date {
  * Resolve a range keyword to a UTC start/end date range for the previous
  * equivalent period. Used for comparison (e.g. today vs yesterday).
  *
- * - today  → yesterday (same duration)
- * - week   → previous 7 days (day -14 to day -7)
- * - month  → previous 30 days (day -60 to day -30)
+ * - today     → yesterday (same duration)
+ * - yesterday → day before yesterday
+ * - week      → previous 7 days (day -14 to day -7)
+ * - month     → previous 30 days (day -60 to day -30)
  */
 export function resolvePreviousEnergyRange(range?: string): DateRange {
 	const now = new Date();
 
 	switch (range) {
+		case 'yesterday': {
+			const yesterdayMidnight = getLocalMidnightDaysAgo(now, 1);
+			const twoDaysAgoMidnight = getLocalMidnightDaysAgo(now, 2);
+			return { start: twoDaysAgoMidnight, end: yesterdayMidnight };
+		}
 		case 'week': {
 			const weekAgo = getLocalMidnightDaysAgo(now, 7);
 			const twoWeeksAgo = getLocalMidnightDaysAgo(now, 14);
