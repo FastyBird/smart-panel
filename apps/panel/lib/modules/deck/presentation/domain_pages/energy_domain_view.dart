@@ -451,6 +451,12 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
   // =============================================================================
 
   Widget _buildLandscapeLayout(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final brightness = isDark ? Brightness.dark : Brightness.light;
+    final successFamily = ThemeColorFamily.get(brightness, ThemeColors.success);
+    final warningFamily = ThemeColorFamily.get(brightness, ThemeColors.warning);
+
     return LandscapeViewLayout(
       mainContentPadding: EdgeInsets.only(
         right: AppSpacings.pMd,
@@ -472,9 +478,38 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
       ),
       additionalContent: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        spacing: AppSpacings.pMd,
+        spacing: AppSpacings.pSm,
         children: [
-          _buildConsumptionCard(context),
+          Expanded(child: _buildConsumptionCard(context)),
+          if (_summary!.hasProduction) ...[
+            AppCard(
+              child: _buildSecondaryValue(
+                icon: MdiIcons.solarPower,
+                label: localizations.energy_production,
+                value: NumberFormatUtils.defaultFormat.formatDecimal(
+                  _summary!.production!,
+                  decimalPlaces: 2,
+                ),
+                unit: localizations.energy_unit_kwh,
+                colorFamily: successFamily,
+              ),
+            ),
+            if (_summary!.net != null)
+              AppCard(
+                child: _buildSecondaryValue(
+                  icon: MdiIcons.swapVertical,
+                  label: localizations.energy_net,
+                  value: NumberFormatUtils.defaultFormat.formatDecimal(
+                    _summary!.net!,
+                    decimalPlaces: 2,
+                  ),
+                  unit: localizations.energy_unit_kwh,
+                  colorFamily: _summary!.net! > 0
+                      ? warningFamily
+                      : successFamily,
+                ),
+              ),
+          ],
         ],
       ),
     );
@@ -488,20 +523,10 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
     final localizations = AppLocalizations.of(context)!;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final brightness = isDark ? Brightness.dark : Brightness.light;
-    final infoFamily = ThemeColorFamily.get(brightness, ThemeColors.info);
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
     final successFamily = ThemeColorFamily.get(brightness, ThemeColors.success);
     final warningFamily = ThemeColorFamily.get(brightness, ThemeColors.warning);
-
-    final rangeIcon = switch (_selectedRange) {
-      EnergyRange.today => MdiIcons.calendarToday,
-      EnergyRange.week => MdiIcons.calendarWeek,
-      EnergyRange.month => MdiIcons.calendarMonth,
-    };
-    final rangeLabel = switch (_selectedRange) {
-      EnergyRange.today => localizations.energy_range_today,
-      EnergyRange.week => localizations.energy_range_week,
-      EnergyRange.month => localizations.energy_range_month,
-    };
 
     return HeroCard(
       child: Column(
@@ -509,7 +534,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
         mainAxisAlignment: MainAxisAlignment.center,
         spacing: AppSpacings.pSm,
         children: [
-          // Hero row: badge + giant value
+          // Giant value
           LayoutBuilder(
             builder: (context, constraints) {
               final isCompactFont = _screenService.isPortrait
@@ -532,49 +557,11 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
               final unitColor = isDark
                   ? AppTextColorDark.placeholder
                   : AppTextColorLight.placeholder;
-              final badgeFontSize = isCompactFont
-                  ? AppFontSize.small
-                  : AppFontSize.base;
 
               return Row(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  // Badge pill
-                  Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: AppSpacings.pMd,
-                      vertical: AppSpacings.pXs,
-                    ),
-                    height: AppSpacings.scale(24),
-                    decoration: BoxDecoration(
-                      color: infoFamily.light9,
-                      borderRadius: BorderRadius.circular(
-                        AppBorderRadius.round,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          rangeIcon,
-                          size: badgeFontSize,
-                          color: infoFamily.base,
-                        ),
-                        AppSpacings.spacingSmHorizontal,
-                        Text(
-                          rangeLabel.toUpperCase(),
-                          style: TextStyle(
-                            fontSize: badgeFontSize,
-                            fontWeight: FontWeight.w700,
-                            color: infoFamily.base,
-                            letterSpacing: AppSpacings.scale(0.3),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  AppSpacings.spacingSmHorizontal,
                   // Giant value
                   Stack(
                     clipBehavior: Clip.none,
@@ -618,6 +605,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
               EnergyRange.week => localizations.energy_consumed_week,
               EnergyRange.month => localizations.energy_consumed_month,
             },
+            textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: AppFontSize.small,
               fontWeight: FontWeight.w400,
@@ -626,8 +614,8 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
                   : AppTextColorLight.placeholder,
             ),
           ),
-          // Production & Net row
-          if (_summary!.hasProduction) ...[
+          // Production & Net row (portrait only, landscape has separate cards)
+          if (!isLandscape && _summary!.hasProduction) ...[
             SizedBox(height: AppSpacings.pXs),
             IntrinsicHeight(
               child: Row(
