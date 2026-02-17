@@ -875,6 +875,14 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
       yDecimals = 3;
     }
 
+    // Calculate reserved size based on widest Y-axis label
+    final widestLabel = NumberFormatUtils.defaultFormat.formatDecimal(
+      maxY,
+      decimalPlaces: yDecimals,
+    );
+    final yReservedSize =
+        AppSpacings.scale(widestLabel.length * 7.0 + 4);
+
     return AppCard(
       expanded: true,
       headerIcon: MdiIcons.chartBar,
@@ -936,18 +944,25 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
                     sideTitles: SideTitles(
                       showTitles: true,
                       interval: yInterval,
-                      reservedSize: AppSpacings.scale(40),
+                      reservedSize: yReservedSize,
                       getTitlesWidget: (value, meta) {
-                        return Text(
-                          NumberFormatUtils.defaultFormat.formatDecimal(
-                            value,
-                            decimalPlaces: yDecimals,
-                          ),
-                          style: TextStyle(
-                            fontSize: AppFontSize.extraSmall,
-                            color: isDark
-                                ? AppTextColorDark.placeholder
-                                : AppTextColorLight.placeholder,
+                        return SizedBox(
+                          width: yReservedSize,
+                          child: Padding(
+                            padding: EdgeInsets.only(right: AppSpacings.pXs),
+                            child: Text(
+                              NumberFormatUtils.defaultFormat.formatDecimal(
+                                value,
+                                decimalPlaces: yDecimals,
+                              ),
+                              textAlign: TextAlign.right,
+                              style: TextStyle(
+                                fontSize: AppFontSize.extraExtraSmall,
+                                color: isDark
+                                    ? AppTextColorDark.placeholder
+                                    : AppTextColorLight.placeholder,
+                              ),
+                            ),
                           ),
                         );
                       },
@@ -956,36 +971,46 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
                   bottomTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
-                      reservedSize: AppSpacings.scale(24),
+                      reservedSize: AppSpacings.scale(20),
                       getTitlesWidget: (value, meta) {
                         final index = value.toInt();
                         if (index < 0 || index >= points.length) {
                           return const SizedBox.shrink();
                         }
-                        // Show every Nth label to avoid crowding
-                        final step =
-                            (points.length / 4).ceil().clamp(1, points.length);
-                        if (index % step != 0 && index != points.length - 1) {
-                          return const SizedBox.shrink();
-                        }
                         final point = points[index];
-                        final hour =
-                            point.timestamp.hour.toString().padLeft(2, '0');
+
+                        // Show labels on even values to keep axis clean
+                        final bool show;
                         String label;
                         if (_selectedRange == EnergyRange.month) {
+                          // Show even days (2nd, 4th, 6th, ...)
+                          show = point.timestamp.day.isEven;
                           label = '${point.timestamp.day}';
                         } else if (_selectedRange == EnergyRange.week) {
-                          label =
-                              '${point.timestamp.day}/${point.timestamp.month} $hour:00';
+                          // Show day name at noon (center of each day)
+                          show = point.timestamp.hour == 12;
+                          const dayNames = [
+                            'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun',
+                          ];
+                          label = dayNames[
+                              point.timestamp.weekday - 1];
                         } else {
-                          label = '$hour:00';
+                          // Today: show even hours (0, 2, 4, ...)
+                          show = point.timestamp.hour.isEven;
+                          label =
+                              '${point.timestamp.hour.toString().padLeft(2, '0')}:00';
                         }
+
+                        if (!show) {
+                          return const SizedBox.shrink();
+                        }
+
                         return Padding(
                           padding: EdgeInsets.only(top: AppSpacings.pXs),
                           child: Text(
                             label,
                             style: TextStyle(
-                              fontSize: AppFontSize.extraSmall,
+                              fontSize: AppFontSize.extraExtraSmall,
                               color: isDark
                                   ? AppTextColorDark.placeholder
                                   : AppTextColorLight.placeholder,
