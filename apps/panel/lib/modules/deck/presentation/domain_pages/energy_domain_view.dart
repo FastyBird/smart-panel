@@ -909,9 +909,10 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
                         ? AppFillColorDark.darker
                         : AppFillColorLight.darker,
                     tooltipPadding: EdgeInsets.symmetric(
-                      horizontal: AppSpacings.pSm,
-                      vertical: AppSpacings.pXs,
+                      horizontal: AppSpacings.pMd,
+                      vertical: AppSpacings.pSm,
                     ),
+                    maxContentWidth: AppSpacings.scale(150),
                     getTooltipItem: (group, groupIndex, rod, rodIndex) {
                       final value =
                           NumberFormatUtils.defaultFormat.formatDecimal(
