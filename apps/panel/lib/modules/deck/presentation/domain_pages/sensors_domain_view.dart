@@ -1284,33 +1284,33 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
         onTap: () => _showFilterPopup(sectionContext),
         behavior: HitTestBehavior.opaque,
         child: SectionTitle(
-        icon: MdiIcons.viewGrid,
-        title: _selectedCategory == null
-            ? localizations.sensors_domain_all_sensors
-            : _getCategoryLabel(localizations, _selectedCategory!),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          spacing: AppSpacings.pSm,
-          children: [
-            Text(
-              localizations.sensors_domain_sensor_count(filtered.length),
-              style: TextStyle(
-                color: isDark
-                    ? AppTextColorDark.placeholder
-                    : AppTextColorLight.placeholder,
-                fontSize: AppFontSize.extraSmall,
+          icon: MdiIcons.viewGrid,
+          title: _selectedCategory == null
+              ? localizations.sensors_domain_all_sensors
+              : _getCategoryLabel(localizations, _selectedCategory!),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            spacing: AppSpacings.pSm,
+            children: [
+              Text(
+                localizations.sensors_domain_sensor_count(filtered.length),
+                style: TextStyle(
+                  color: isDark
+                      ? AppTextColorDark.placeholder
+                      : AppTextColorLight.placeholder,
+                  fontSize: AppFontSize.extraSmall,
+                ),
               ),
-            ),
-            Icon(
-              MdiIcons.chevronDown,
-              color: isDark
-                  ? AppTextColorDark.secondary
-                  : AppTextColorLight.secondary,
-              size: AppFontSize.small,
-            ),
-          ],
+              Icon(
+                MdiIcons.chevronDown,
+                color: isDark
+                    ? AppTextColorDark.secondary
+                    : AppTextColorLight.secondary,
+                size: AppFontSize.small,
+              ),
+            ],
+          ),
         ),
-      ),
       ),
     );
   }
@@ -1408,11 +1408,10 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.center,
+                spacing: AppSpacings.pSm,
                 children: [
-                  if (!sensor.isBinary) ...[
+                  if (!sensor.isBinary)
                     _buildTrendIcon(context, sensor.trend, isAlert),
-                    AppSpacings.spacingSmHorizontal,
-                  ],
                   RichText(
                     maxLines: 1,
                     text: TextSpan(

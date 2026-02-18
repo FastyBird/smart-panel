@@ -1878,9 +1878,9 @@ class _ShadingHeroCard extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.end,
+      spacing: AppSpacings.pSm,
       children: [
         _buildBadge(isDark, colorFamily),
-        AppSpacings.spacingSmHorizontal,
         _buildGiantValue(isDark, fontSize),
       ],
     );
@@ -1920,13 +1920,13 @@ class _ShadingHeroCard extends StatelessWidget {
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
+              spacing: AppSpacings.pSm,
               children: [
                 Icon(
                   roleIcon,
                   size: fontSize,
                   color: activeColor,
                 ),
-                AppSpacings.spacingSmHorizontal,
                 Text(
                   roleName.toUpperCase(),
                   style: TextStyle(
@@ -1964,13 +1964,13 @@ class _ShadingHeroCard extends StatelessWidget {
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
+              spacing: AppSpacings.pSm,
               children: [
                 Icon(
                   statusIcon,
                   size: fontSize,
                   color: activeColor,
                 ),
-                AppSpacings.spacingSmHorizontal,
                 Container(
                   width: fontSize,
                   height: fontSize,

@@ -2362,22 +2362,21 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
 
           return Column(
             mainAxisAlignment: MainAxisAlignment.center,
+            spacing: AppSpacings.pLg,
             children: [
               Row(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.end,
+                spacing: AppSpacings.pSm,
                 children: [
                   _buildModeBadge(context),
-                  AppSpacings.spacingSmHorizontal,
                   _buildGiantTemp(context, fontSize),
                 ],
               ),
-              AppSpacings.spacingLgVertical,
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
                 child: _buildTemperatureSlider(context),
               ),
-              AppSpacings.spacingLgVertical,
               _buildControlsRow(context),
             ],
           );
@@ -2418,6 +2417,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
+          spacing: AppSpacings.pSm,
           children: [
             Container(
               width: AppSpacings.scale(8),
@@ -2427,7 +2427,6 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
                 shape: BoxShape.circle,
               ),
             ),
-            AppSpacings.spacingSmHorizontal,
             Text(
               modeLabel,
               style: TextStyle(

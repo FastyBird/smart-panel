@@ -447,27 +447,15 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
   }
 
   List<Widget> _buildStatusBadges(BuildContext context) {
-    final badges = <Widget>[];
     final model = _model;
 
-    // Lights status badge (using live data)
-    if (model != null && model.domainCounts.hasDomain(DomainType.lights)) {
-      badges.add(_buildLightsBadge(context));
-    }
-
-    // Temperature badge
-    if (_temperature != null) {
-      if (badges.isNotEmpty) badges.add(AppSpacings.spacingSmHorizontal);
-      badges.add(_buildTemperatureBadge(context));
-    }
-
-    // Energy badge
-    if (_energySummary != null && _energySummary!.consumption > 0) {
-      if (badges.isNotEmpty) badges.add(AppSpacings.spacingSmHorizontal);
-      badges.add(_buildEnergyBadge(context));
-    }
-
-    return badges;
+    return [
+      if (model != null && model.domainCounts.hasDomain(DomainType.lights))
+        _buildLightsBadge(context),
+      if (_temperature != null) _buildTemperatureBadge(context),
+      if (_energySummary != null && _energySummary!.consumption > 0)
+        _buildEnergyBadge(context),
+    ];
   }
 
   Widget _buildLightsBadge(BuildContext context) {

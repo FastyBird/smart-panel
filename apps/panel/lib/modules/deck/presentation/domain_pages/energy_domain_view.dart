@@ -554,7 +554,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage> {
       scrollable: false,
       content: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        spacing: AppSpacings.pSm,
+        spacing: AppSpacings.pMd,
         children: [
           _buildConsumptionCard(context),
           if (_timeseries != null && _timeseries!.isNotEmpty)
@@ -597,7 +597,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage> {
       ),
       additionalContent: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        spacing: AppSpacings.pSm,
+        spacing: AppSpacings.pMd,
         children: [
           Expanded(child: _buildConsumptionCard(context)),
           if (_summary!.hasProduction) ...[
@@ -695,9 +695,10 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage> {
               return Row(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.end,
+                spacing: AppSpacings.pSm,
                 children: [
                   // Badge pill (portrait only)
-                  if (!isLandscape) ...[
+                  if (!isLandscape)
                     Container(
                       padding: EdgeInsets.symmetric(
                         horizontal: AppSpacings.pMd,
@@ -712,13 +713,13 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage> {
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
+                        spacing: AppSpacings.pSm,
                         children: [
                           Icon(
                             rangeIcon,
                             size: badgeFontSize,
                             color: infoFamily.base,
                           ),
-                          AppSpacings.spacingSmHorizontal,
                           Text(
                             rangeLabel.toUpperCase(),
                             style: TextStyle(
@@ -731,8 +732,6 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage> {
                         ],
                       ),
                     ),
-                    AppSpacings.spacingSmHorizontal,
-                  ],
                   // Giant value
                   Stack(
                     clipBehavior: Clip.none,
@@ -1383,6 +1382,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage> {
         spacing: AppSpacings.pSm,
         children: [
           Row(
+            spacing: AppSpacings.pSm,
             children: [
               Container(
                 width: AppSpacings.scale(32),
@@ -1397,7 +1397,6 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage> {
                   color: infoFamily.base,
                 ),
               ),
-              AppSpacings.spacingSmHorizontal,
               Expanded(
                 child: Text(
                   device.roomName != null &&

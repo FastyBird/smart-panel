@@ -99,6 +99,7 @@ class AppTopBar extends StatelessWidget implements PreferredSizeWidget {
                             mainAxisAlignment: MainAxisAlignment.end,
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.center,
+                            spacing: AppSpacings.pSm,
                             children: actions,
                           ),
                         )

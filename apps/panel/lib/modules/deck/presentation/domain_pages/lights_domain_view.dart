@@ -3928,9 +3928,9 @@ class _LightsHeroCard extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.end,
+      spacing: AppSpacings.pSm,
       children: [
         _buildBadge(isDark, colorFamily),
-        AppSpacings.spacingSmHorizontal,
         _buildGiantValue(isDark, fontSize),
       ],
     );
@@ -3980,13 +3980,13 @@ class _LightsHeroCard extends StatelessWidget {
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
+              spacing: AppSpacings.pSm,
               children: [
                 Icon(
                   MdiIcons.power,
                   size: fontSize,
                   color: activeColor,
                 ),
-                AppSpacings.spacingSmHorizontal,
                 Text(
                   state.roleName.toUpperCase(),
                   style: TextStyle(
@@ -4024,13 +4024,13 @@ class _LightsHeroCard extends StatelessWidget {
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
+              spacing: AppSpacings.pSm,
               children: [
                 Icon(
                   state.statusIcon,
                   size: fontSize,
                   color: activeColor,
                 ),
-                AppSpacings.spacingSmHorizontal,
                 Container(
                   width: fontSize,
                   height: fontSize,
@@ -4208,6 +4208,7 @@ class _LightsHeroCard extends StatelessWidget {
         _sliderParams(isDark, colorFamily, mode, localizations);
 
     return Column(
+      spacing: AppSpacings.pMd,
       children: [
         Padding(
           padding: EdgeInsets.symmetric(
@@ -4229,7 +4230,6 @@ class _LightsHeroCard extends StatelessWidget {
                 : null,
           ),
         ),
-        AppSpacings.spacingMdVertical,
         _buildPresets(isDark, colorFamily, mode, localizations),
       ],
     );

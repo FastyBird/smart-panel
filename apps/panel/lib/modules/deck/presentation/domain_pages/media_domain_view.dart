@@ -1079,6 +1079,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			child: Column(
 				mainAxisAlignment: MainAxisAlignment.center,
 				mainAxisSize: MainAxisSize.min,
+				spacing: AppSpacings.pLg,
 				children: [
 					AnimatedBuilder(
 						animation: _pulseController,
@@ -1105,7 +1106,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 							);
 						},
 					),
-					SizedBox(height: AppSpacings.pLg),
 					Text(
 						localizations.media_starting_activity(activityName),
 						style: TextStyle(
@@ -1114,8 +1114,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 							color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
 						),
 					),
-					if (activeState.planSteps.isNotEmpty) ...[
-						SizedBox(height: AppSpacings.pLg),
+					if (activeState.planSteps.isNotEmpty)
 						Center(
 							child: IntrinsicWidth(
 								child: Column(
@@ -1126,7 +1125,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 								),
 							),
 						),
-					],
 				],
 			),
 		);
@@ -1190,6 +1188,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 				horizontal: AppSpacings.pLg,
 			),
 			child: Row(
+				spacing: AppSpacings.pMd,
 				children: [
 					AnimatedBuilder(
 						animation: _pulseController,
@@ -1202,7 +1201,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 							);
 						},
 					),
-					SizedBox(width: AppSpacings.pMd),
 					Expanded(
 						child: Text(
 							_translateStepLabel(context, step.label),

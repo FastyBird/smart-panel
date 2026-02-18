@@ -135,6 +135,7 @@ class ConfigErrorScreen extends StatelessWidget {
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
+          spacing: AppSpacings.pMd + AppSpacings.pSm,
           children: [
             Container(
               width: screenService.scale(40),
@@ -150,7 +151,6 @@ class ConfigErrorScreen extends StatelessWidget {
                 size: screenService.scale(22),
               ),
             ),
-            SizedBox(width: AppSpacings.pMd + AppSpacings.pSm),
             Flexible(
               child: Text(
                 hintText,
@@ -161,7 +161,6 @@ class ConfigErrorScreen extends StatelessWidget {
                 ),
               ),
             ),
-            SizedBox(width: AppSpacings.pMd + AppSpacings.pSm),
             Icon(
               MdiIcons.chevronRight,
               color: SystemPagesTheme.textMuted(isDark),

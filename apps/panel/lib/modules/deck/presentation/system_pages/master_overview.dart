@@ -366,25 +366,13 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
   }
 
   List<Widget> _buildStatusBadges(BuildContext context) {
-    final badges = <Widget>[];
-
-    // Devices status badge
-    badges.add(_buildDevicesBadge(context));
-
-    // Alerts badge
-    if (_alertsCount > 0) {
-      badges.add(AppSpacings.spacingSmHorizontal);
-      badges.add(_buildAlertsBadge(context));
-    }
-
-    // Energy header widget (whole-installation)
-    if (locator.isRegistered<EnergyRepository>() &&
-        locator<EnergyRepository>().isSupported) {
-      badges.add(AppSpacings.spacingSmHorizontal);
-      badges.add(const EnergyHeaderWidget());
-    }
-
-    return badges;
+    return [
+      _buildDevicesBadge(context),
+      if (_alertsCount > 0) _buildAlertsBadge(context),
+      if (locator.isRegistered<EnergyRepository>() &&
+          locator<EnergyRepository>().isSupported)
+        const EnergyHeaderWidget(),
+    ];
   }
 
   Widget _buildDevicesBadge(BuildContext context) {
@@ -748,13 +736,13 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
           borderRadius: BorderRadius.circular(AppBorderRadius.base),
         ),
         child: Row(
+          spacing: AppSpacings.pMd,
           children: [
             Icon(
               room.icon,
               size: iconSize,
               color: Theme.of(context).colorScheme.primary,
             ),
-            AppSpacings.spacingMdHorizontal,
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -782,7 +770,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
                 ],
               ),
             ),
-            if (room.temperature != null) ...[
+            if (room.temperature != null)
               Text(
                 '${NumberFormatUtils.defaultFormat.formatDecimal(room.temperature!, decimalPlaces: 1)}°',
                 style: TextStyle(
@@ -793,8 +781,6 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
                       : AppTextColorDark.regular,
                 ),
               ),
-              AppSpacings.spacingSmHorizontal,
-            ],
             Icon(
               MdiIcons.chevronRight,
               color: Theme.of(context).brightness == Brightness.light
