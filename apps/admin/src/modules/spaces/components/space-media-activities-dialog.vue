@@ -407,6 +407,7 @@ const {
 	activate,
 	saveBinding,
 	createBinding,
+	deleteBinding,
 	applyDefaults,
 	findBindingByActivity,
 	endpointsByType,
@@ -638,18 +639,27 @@ const performAutoSave = async (key: ConfiguredActivityKey): Promise<void> => {
 	try {
 		const existingBinding = findBindingByActivity(key);
 		const payload = buildPayload(key);
+		const isEmpty = !payload.displayEndpointId && !payload.audioEndpointId
+			&& !payload.sourceEndpointId && !payload.remoteEndpointId;
 
 		// Capture the form state that corresponds to what we're about to save,
 		// so edits made during the HTTP request aren't silently marked as saved.
 		const savedSnapshot = { ...forms[key] };
 
-		if (existingBinding) {
+		if (isEmpty && existingBinding) {
+			// All slots cleared — delete the binding so it reverts to "unconfigured"
+			await deleteBinding(existingBinding.id);
+			loadBindingIntoForm(key, undefined);
+		} else if (isEmpty) {
+			// No binding and nothing to create — just sync the snapshot
+			Object.assign(snapshots[key], savedSnapshot);
+		} else if (existingBinding) {
 			await saveBinding(existingBinding.id, payload);
+			Object.assign(snapshots[key], savedSnapshot);
 		} else {
 			await createBinding(key, payload);
+			Object.assign(snapshots[key], savedSnapshot);
 		}
-
-		Object.assign(snapshots[key], savedSnapshot);
 	} catch (e: unknown) {
 		activityErrors[key] = e instanceof Error ? e.message : 'Failed to save';
 	} finally {
