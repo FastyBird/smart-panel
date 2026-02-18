@@ -2,7 +2,7 @@
 
 This document describes the architecture of the media control system in the Smart Panel backend.
 
-> See `docs/dev/media-architecture.md` for additional implementation details.
+> See `docs/media-domain.md` for the full media domain documentation.
 
 ## Architecture Summary
 
@@ -179,7 +179,5 @@ npx jest "media" --no-coverage
 
 ## Documentation References
 
-- **Implementation Details**: `docs/dev/media-architecture.md`
-- **Admin Media Guide**: `docs/admin/media.md`
-- **Panel Media Guide**: `docs/panel/media.md`
+- **Full Media Domain Docs**: `docs/media-domain.md`
 - **Constants**: `apps/backend/src/modules/spaces/spaces.constants.ts`
