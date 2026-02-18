@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import { BadRequestException, Controller, Get, Param, Query } from '@nestjs/common';
 import { ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import {
@@ -6,8 +6,8 @@ import {
 	ApiInternalServerErrorResponse,
 	ApiSuccessResponse,
 } from '../../swagger/decorators/api-documentation.decorator';
-import { ENERGY_MODULE_API_TAG_NAME } from '../energy.constants';
-import { normalizeEnergyRange, resolveEnergyRange } from '../helpers/energy-range.helper';
+import { ENERGY_MODULE_API_TAG_NAME, VALID_ENERGY_RANGES } from '../energy.constants';
+import { normalizeEnergyRange, resolveEnergyRange, resolvePreviousEnergyRange } from '../helpers/energy-range.helper';
 import { EnergyBreakdownItemModel } from '../models/energy-breakdown-item.model';
 import {
 	EnergySpaceBreakdownResponseModel,
@@ -59,13 +59,37 @@ export class EnergySpacesController {
 		@Param('spaceId') spaceId: string,
 		@Query('range') range?: string,
 	): Promise<EnergySpaceSummaryResponseModel> {
+		if (range && !(VALID_ENERGY_RANGES as readonly string[]).includes(range)) {
+			throw new BadRequestException(`Invalid range "${range}". Must be one of: ${VALID_ENERGY_RANGES.join(', ')}`);
+		}
+
 		const resolvedRange = normalizeEnergyRange(range);
 		const cacheKey = `space:${spaceId}:summary:${resolvedRange}`;
 
 		const summary = await this.cache.getOrCompute(cacheKey, async () => {
 			const { start, end } = resolveEnergyRange(resolvedRange);
+			const previous = resolvePreviousEnergyRange(resolvedRange);
 
-			return this.energyData.getSpaceSummary(start, end, spaceId);
+			const [current, prev] = await Promise.all([
+				this.energyData.getSpaceSummary(start, end, spaceId),
+				this.energyData.getSpaceSummary(previous.start, previous.end, spaceId),
+			]);
+
+			const hasPrevConsumption = prev.totalConsumptionKwh > 0;
+			const hasPrevProduction = prev.totalProductionKwh > 0;
+
+			return {
+				...current,
+				previousConsumptionKwh: hasPrevConsumption ? prev.totalConsumptionKwh : null,
+				consumptionChangePercent: hasPrevConsumption
+					? Math.round(((current.totalConsumptionKwh - prev.totalConsumptionKwh) / prev.totalConsumptionKwh) * 1000) /
+						10
+					: null,
+				previousProductionKwh: hasPrevProduction ? prev.totalProductionKwh : null,
+				productionChangePercent: hasPrevProduction
+					? Math.round(((current.totalProductionKwh - prev.totalProductionKwh) / prev.totalProductionKwh) * 1000) / 10
+					: null,
+			};
 		});
 
 		const model = new EnergySpaceSummaryModel();
@@ -78,6 +102,10 @@ export class EnergySpacesController {
 		model.hasGridMetrics = summary.hasGridMetrics;
 		model.range = resolvedRange;
 		model.lastUpdatedAt = summary.lastUpdatedAt;
+		model.previousConsumptionKwh = summary.previousConsumptionKwh;
+		model.consumptionChangePercent = summary.consumptionChangePercent;
+		model.previousProductionKwh = summary.previousProductionKwh;
+		model.productionChangePercent = summary.productionChangePercent;
 
 		const response = new EnergySpaceSummaryResponseModel();
 		response.data = model;
@@ -125,6 +153,10 @@ export class EnergySpacesController {
 		@Query('range') range?: string,
 		@Query('interval') interval?: string,
 	): Promise<EnergySpaceTimeseriesResponseModel> {
+		if (range && !(VALID_ENERGY_RANGES as readonly string[]).includes(range)) {
+			throw new BadRequestException(`Invalid range "${range}". Must be one of: ${VALID_ENERGY_RANGES.join(', ')}`);
+		}
+
 		const resolvedRange = normalizeEnergyRange(range);
 		const resolvedInterval = interval || '1h';
 		const cacheKey = `space:${spaceId}:timeseries:${resolvedRange}:${resolvedInterval}`;
@@ -190,9 +222,14 @@ export class EnergySpacesController {
 		@Query('range') range?: string,
 		@Query('limit') limitStr?: string,
 	): Promise<EnergySpaceBreakdownResponseModel> {
+		if (range && !(VALID_ENERGY_RANGES as readonly string[]).includes(range)) {
+			throw new BadRequestException(`Invalid range "${range}". Must be one of: ${VALID_ENERGY_RANGES.join(', ')}`);
+		}
+
 		const parsedLimit = limitStr !== undefined ? parseInt(limitStr, 10) : NaN;
 		const limit = Number.isNaN(parsedLimit) ? 10 : Math.max(1, Math.min(100, parsedLimit));
-		const { start, end } = resolveEnergyRange(range);
+		const resolvedRange = normalizeEnergyRange(range);
+		const { start, end } = resolveEnergyRange(resolvedRange);
 		const items = await this.energyData.getSpaceBreakdown(start, end, spaceId, limit);
 
 		const models: EnergyBreakdownItemModel[] = items.map((item) => {

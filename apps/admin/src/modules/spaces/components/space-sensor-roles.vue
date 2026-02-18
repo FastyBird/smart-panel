@@ -179,6 +179,8 @@ const getChannelLabel = (category: string): string => {
 			return t('spacesModule.sensorRoles.categories.volatile_organic_compounds');
 		case 'electrical_energy':
 			return t('spacesModule.sensorRoles.categories.electrical_energy');
+		case 'electrical_generation':
+			return t('spacesModule.sensorRoles.categories.electrical_generation');
 		case 'electrical_power':
 			return t('spacesModule.sensorRoles.categories.electrical_power');
 		case 'battery':

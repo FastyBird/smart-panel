@@ -3941,6 +3941,7 @@ class _LightsHeroCard extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         _buildBadge(isDark, colorFamily),
+        AppSpacings.spacingSmHorizontal,
         _buildGiantValue(isDark, fontSize),
       ],
     );

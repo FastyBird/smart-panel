@@ -186,6 +186,8 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
         now: DateTime.now(),
         lightsOnCount: _lightsOnCount,
         displayCols: display.cols,
+        energyDeviceCount: _deckService.energyDeviceCount,
+        sensorReadingsCount: _deckService.sensorReadingsCount,
       );
 
       final model = buildRoomOverviewModel(input);

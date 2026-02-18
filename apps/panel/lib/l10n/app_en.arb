@@ -1962,6 +1962,51 @@
   "@energy_load_failed": {
     "description": "Message shown when energy data fetch fails due to network or server error"
   },
+  "energy_consumed_today": "Total energy consumed today",
+  "@energy_consumed_today": {
+    "description": "Description under consumption value for today range"
+  },
+  "energy_consumed_week": "Total energy consumed this week",
+  "@energy_consumed_week": {
+    "description": "Description under consumption value for week range"
+  },
+  "energy_consumed_month": "Total energy consumed this month",
+  "@energy_consumed_month": {
+    "description": "Description under consumption value for month range"
+  },
+  "energy_comparison_vs_yesterday": "vs yesterday",
+  "@energy_comparison_vs_yesterday": {
+    "description": "Comparison label for today range"
+  },
+  "energy_comparison_vs_last_week": "vs last week",
+  "@energy_comparison_vs_last_week": {
+    "description": "Comparison label for week range"
+  },
+  "energy_comparison_vs_last_month": "vs last month",
+  "@energy_comparison_vs_last_month": {
+    "description": "Comparison label for month range"
+  },
+  "energy_comparison_same": "Same as {period}",
+  "@energy_comparison_same": {
+    "description": "Comparison text when change is 0%. Period should be a bare noun (yesterday, not vs yesterday).",
+    "placeholders": {
+      "period": {
+        "type": "String"
+      }
+    }
+  },
+  "energy_period_yesterday": "yesterday",
+  "@energy_period_yesterday": {
+    "description": "Bare period name for zero-change comparison (Same as yesterday)"
+  },
+  "energy_period_last_week": "last week",
+  "@energy_period_last_week": {
+    "description": "Bare period name for zero-change comparison (Same as last week)"
+  },
+  "energy_period_last_month": "last month",
+  "@energy_period_last_month": {
+    "description": "Bare period name for zero-change comparison (Same as last month)"
+  },
   "energy_device_count": "{count, plural, =1{1 device} other{{count} devices}}",
   "@energy_device_count": {
     "description": "Count of energy devices",

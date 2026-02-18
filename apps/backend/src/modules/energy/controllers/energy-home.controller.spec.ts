@@ -108,12 +108,8 @@ describe('EnergyHomeController', () => {
 			expect(response.data.range).toBe('today');
 		});
 
-		it('should default to "today" for invalid range', async () => {
-			(dataService.getSpaceSummary as jest.Mock).mockResolvedValue(mockSummary);
-
-			const response = await controller.getHomeSummary('invalid');
-
-			expect(response.data.range).toBe('today');
+		it('should throw BadRequestException for invalid range', async () => {
+			await expect(controller.getHomeSummary('invalid')).rejects.toThrow('Invalid range "invalid"');
 		});
 	});
 

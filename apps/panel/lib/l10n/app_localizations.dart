@@ -2819,6 +2819,66 @@ abstract class AppLocalizations {
   /// **'Failed to load energy data'**
   String get energy_load_failed;
 
+  /// Description under consumption value for today range
+  ///
+  /// In en, this message translates to:
+  /// **'Total energy consumed today'**
+  String get energy_consumed_today;
+
+  /// Description under consumption value for week range
+  ///
+  /// In en, this message translates to:
+  /// **'Total energy consumed this week'**
+  String get energy_consumed_week;
+
+  /// Description under consumption value for month range
+  ///
+  /// In en, this message translates to:
+  /// **'Total energy consumed this month'**
+  String get energy_consumed_month;
+
+  /// Comparison label for today range
+  ///
+  /// In en, this message translates to:
+  /// **'vs yesterday'**
+  String get energy_comparison_vs_yesterday;
+
+  /// Comparison label for week range
+  ///
+  /// In en, this message translates to:
+  /// **'vs last week'**
+  String get energy_comparison_vs_last_week;
+
+  /// Comparison label for month range
+  ///
+  /// In en, this message translates to:
+  /// **'vs last month'**
+  String get energy_comparison_vs_last_month;
+
+  /// Comparison text when change is 0%. Period should be a bare noun (yesterday, not vs yesterday).
+  ///
+  /// In en, this message translates to:
+  /// **'Same as {period}'**
+  String energy_comparison_same(String period);
+
+  /// Bare period name for zero-change comparison (Same as yesterday)
+  ///
+  /// In en, this message translates to:
+  /// **'yesterday'**
+  String get energy_period_yesterday;
+
+  /// Bare period name for zero-change comparison (Same as last week)
+  ///
+  /// In en, this message translates to:
+  /// **'last week'**
+  String get energy_period_last_week;
+
+  /// Bare period name for zero-change comparison (Same as last month)
+  ///
+  /// In en, this message translates to:
+  /// **'last month'**
+  String get energy_period_last_month;
+
   /// Count of energy devices
   ///
   /// In en, this message translates to:

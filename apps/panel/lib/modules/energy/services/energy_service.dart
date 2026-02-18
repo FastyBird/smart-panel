@@ -20,7 +20,7 @@ enum EnergyRange {
       case EnergyRange.today:
         return '1h';
       case EnergyRange.week:
-        return '1h';
+        return '1d';
       case EnergyRange.month:
         return '1d';
     }
@@ -45,7 +45,7 @@ class EnergyService {
   Future<EnergySummary?> fetchSummary(String spaceId, EnergyRange range) async {
     try {
       final response = await _dio.get(
-        '/api/energy/spaces/$spaceId/summary',
+        '/modules/energy/energy/spaces/$spaceId/summary',
         queryParameters: {'range': range.value},
       );
 
@@ -80,7 +80,7 @@ class EnergyService {
 
     try {
       final response = await _dio.get(
-        '/api/energy/spaces/$spaceId/timeseries',
+        '/modules/energy/energy/spaces/$spaceId/timeseries',
         queryParameters: {
           'range': range.value,
           'interval': resolvedInterval,
@@ -125,7 +125,7 @@ class EnergyService {
   }) async {
     try {
       final response = await _dio.get(
-        '/api/energy/spaces/$spaceId/breakdown',
+        '/modules/energy/energy/spaces/$spaceId/breakdown',
         queryParameters: {
           'range': range.value,
           'limit': limit,

@@ -54,9 +54,9 @@ void main() {
 			test('returns false on 404 response', () async {
 				when(() => mockService.fetchSummary('home', EnergyRange.today))
 					.thenThrow(DioException(
-						requestOptions: RequestOptions(path: '/api/energy/spaces/home/summary'),
+						requestOptions: RequestOptions(path: '/modules/energy/energy/spaces/home/summary'),
 						response: Response(
-							requestOptions: RequestOptions(path: '/api/energy/spaces/home/summary'),
+							requestOptions: RequestOptions(path: '/modules/energy/energy/spaces/home/summary'),
 							statusCode: 404,
 						),
 						type: DioExceptionType.badResponse,
@@ -72,9 +72,9 @@ void main() {
 			test('returns false on 501 response', () async {
 				when(() => mockService.fetchSummary('home', EnergyRange.today))
 					.thenThrow(DioException(
-						requestOptions: RequestOptions(path: '/api/energy/spaces/home/summary'),
+						requestOptions: RequestOptions(path: '/modules/energy/energy/spaces/home/summary'),
 						response: Response(
-							requestOptions: RequestOptions(path: '/api/energy/spaces/home/summary'),
+							requestOptions: RequestOptions(path: '/modules/energy/energy/spaces/home/summary'),
 							statusCode: 501,
 						),
 						type: DioExceptionType.badResponse,

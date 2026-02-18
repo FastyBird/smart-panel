@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { ConfigService } from '../../config/services/config.service';
-import { DEFAULT_CACHE_TTL_SECONDS, ENERGY_MODULE_NAME } from '../energy.constants';
+import { DEFAULT_CACHE_TTL_SECONDS, ENERGY_MODULE_NAME, MAX_CACHE_ENTRIES } from '../energy.constants';
 import { EnergyConfigModel } from '../models/config.model';
 
 interface CacheEntry<T> {
@@ -36,8 +36,16 @@ export class EnergyCacheService {
 		const value = await compute();
 
 		if (ttlMs > 0) {
+			// Evict oldest entry if cache is at capacity
+			if (this.cache.size >= MAX_CACHE_ENTRIES && !this.cache.has(key)) {
+				const oldestKey: string | undefined = this.cache.keys().next().value as string | undefined;
+				if (oldestKey !== undefined) {
+					this.cache.delete(oldestKey);
+				}
+			}
+
 			this.cache.set(key, { value, expiresAt: Date.now() + ttlMs });
-			this.logger.debug(`Cache set: ${key} (TTL=${ttlMs}ms)`);
+			this.logger.debug(`Cache set: ${key} (TTL=${ttlMs}ms, size=${this.cache.size})`);
 		}
 
 		return value;

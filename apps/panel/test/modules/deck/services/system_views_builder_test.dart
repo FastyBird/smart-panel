@@ -140,6 +140,7 @@ void main() {
             DevicesModuleDeviceCategory.television,
             DevicesModuleDeviceCategory.sensor,
           ],
+          sensorReadingsCount: 1, // backend has sensor readings
         ));
 
         expect(result.indexByViewKey['room-overview:room-1'], 0);
@@ -198,6 +199,8 @@ void main() {
             DevicesModuleDeviceCategory.lighting, // lights = displayOrder 0
             DevicesModuleDeviceCategory.television, // media = displayOrder 2
           ],
+          energyDeviceCount: 1, // room has energy-capable devices
+          sensorReadingsCount: 1, // backend has sensor readings
         ));
 
         // Order should be: room overview, lights, climate, media, sensors, energy

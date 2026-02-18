@@ -6,10 +6,9 @@
  * - week:   from 7 days ago midnight Europe/Prague to now
  * - month:  from 30 days ago midnight Europe/Prague to now
  */
+import { VALID_ENERGY_RANGES } from '../energy.constants';
 
 const TIMEZONE = 'Europe/Prague';
-
-export const VALID_ENERGY_RANGES = ['today', 'yesterday', 'week', 'month'] as const;
 
 export type EnergyRange = (typeof VALID_ENERGY_RANGES)[number];
 
@@ -116,6 +115,51 @@ export function getLocalMidnightDaysAgo(date: Date, daysAgo: number): Date {
 	const targetDate = new Date(Date.UTC(year, month - 1, day - daysAgo));
 
 	return getLocalMidnight(targetDate);
+}
+
+/**
+ * Resolve a range keyword to a UTC start/end date range for the previous
+ * equivalent period. Used for comparison (e.g. today vs yesterday).
+ *
+ * For partial ranges (today, week, month), the previous period covers the
+ * same elapsed duration so that the comparison is fair. Three days into a
+ * week compares against the first three days of the previous week, not the
+ * full seven days.
+ *
+ * - today     → same elapsed time starting from yesterday midnight
+ * - yesterday → day before yesterday (midnight to midnight, both complete)
+ * - week      → same elapsed time starting from day -14
+ * - month     → same elapsed time starting from day -60
+ */
+export function resolvePreviousEnergyRange(range?: string): DateRange {
+	const now = new Date();
+
+	switch (range) {
+		case 'yesterday': {
+			const yesterdayMidnight = getLocalMidnightDaysAgo(now, 1);
+			const twoDaysAgoMidnight = getLocalMidnightDaysAgo(now, 2);
+			return { start: twoDaysAgoMidnight, end: yesterdayMidnight };
+		}
+		case 'week': {
+			const weekAgo = getLocalMidnightDaysAgo(now, 7);
+			const twoWeeksAgo = getLocalMidnightDaysAgo(now, 14);
+			const elapsedMs = now.getTime() - weekAgo.getTime();
+			return { start: twoWeeksAgo, end: new Date(twoWeeksAgo.getTime() + elapsedMs) };
+		}
+		case 'month': {
+			const monthAgo = getLocalMidnightDaysAgo(now, 30);
+			const twoMonthsAgo = getLocalMidnightDaysAgo(now, 60);
+			const elapsedMs = now.getTime() - monthAgo.getTime();
+			return { start: twoMonthsAgo, end: new Date(twoMonthsAgo.getTime() + elapsedMs) };
+		}
+		case 'today':
+		default: {
+			const todayMidnight = getLocalMidnight(now);
+			const yesterdayMidnight = getLocalMidnightDaysAgo(now, 1);
+			const elapsedMs = now.getTime() - todayMidnight.getTime();
+			return { start: yesterdayMidnight, end: new Date(yesterdayMidnight.getTime() + elapsedMs) };
+		}
+	}
 }
 
 /**

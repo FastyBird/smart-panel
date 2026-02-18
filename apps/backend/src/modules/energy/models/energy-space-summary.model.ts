@@ -104,4 +104,58 @@ export class EnergySpaceSummaryModel {
 	@IsOptional()
 	@IsString()
 	lastUpdatedAt: string | null;
+
+	@ApiPropertyOptional({
+		name: 'previous_consumption_kwh',
+		description: 'Total consumption in kWh for the previous equivalent period. Null if no previous data.',
+		type: 'number',
+		format: 'float',
+		nullable: true,
+		example: 11.2,
+	})
+	@Expose({ name: 'previous_consumption_kwh' })
+	@IsOptional()
+	@IsNumber()
+	previousConsumptionKwh: number | null;
+
+	@ApiPropertyOptional({
+		name: 'consumption_change_percent',
+		description:
+			'Percentage change in consumption vs previous period. Positive = increase, negative = decrease. Null if no previous data.',
+		type: 'number',
+		format: 'float',
+		nullable: true,
+		example: 8.5,
+	})
+	@Expose({ name: 'consumption_change_percent' })
+	@IsOptional()
+	@IsNumber()
+	consumptionChangePercent: number | null;
+
+	@ApiPropertyOptional({
+		name: 'previous_production_kwh',
+		description: 'Total production in kWh for the previous equivalent period. Null if no previous data.',
+		type: 'number',
+		format: 'float',
+		nullable: true,
+		example: 2.8,
+	})
+	@Expose({ name: 'previous_production_kwh' })
+	@IsOptional()
+	@IsNumber()
+	previousProductionKwh: number | null;
+
+	@ApiPropertyOptional({
+		name: 'production_change_percent',
+		description:
+			'Percentage change in production vs previous period. Positive = increase, negative = decrease. Null if no previous data.',
+		type: 'number',
+		format: 'float',
+		nullable: true,
+		example: -5.2,
+	})
+	@Expose({ name: 'production_change_percent' })
+	@IsOptional()
+	@IsNumber()
+	productionChangePercent: number | null;
 }

@@ -3,6 +3,7 @@ import 'package:fastybird_smart_panel/modules/dashboard/views/pages/view.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_result.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/system_views_builder.dart';
+import 'package:fastybird_smart_panel/modules/deck/types/domain_type.dart';
 import 'package:fastybird_smart_panel/modules/displays/models/display.dart';
 
 /// Input parameters for deck building.
@@ -16,6 +17,14 @@ class DeckBuildInput {
   /// Device categories for the room (only needed for ROOM role).
   /// Used to determine which domain views to create.
   final List<DevicesModuleDeviceCategory> deviceCategories;
+
+  /// Number of devices with energy-related channels in the room.
+  /// Determined from channel categories (electrical_energy, etc.).
+  final int energyDeviceCount;
+
+  /// Number of sensor readings reported by the backend for this room.
+  /// When 0 (no sensor roles assigned), the sensors domain is hidden.
+  final int sensorReadingsCount;
 
   /// Localized title for room system view.
   final String roomViewTitle;
@@ -54,6 +63,8 @@ class DeckBuildInput {
     required this.display,
     required this.pages,
     this.deviceCategories = const [],
+    this.energyDeviceCount = 0,
+    this.sensorReadingsCount = 0,
     this.roomViewTitle = 'Room',
     this.masterViewTitle = 'Home',
     this.entryViewTitle = 'Entry',
@@ -88,6 +99,8 @@ DeckResult buildDeck(DeckBuildInput input) {
   final systemViewsInput = SystemViewsBuildInput(
     display: display,
     deviceCategories: input.deviceCategories,
+    energyDeviceCount: input.energyDeviceCount,
+    sensorReadingsCount: input.sensorReadingsCount,
     roomViewTitle: input.roomViewTitle,
     masterViewTitle: input.masterViewTitle,
     entryViewTitle: input.entryViewTitle,
@@ -112,8 +125,14 @@ DeckResult buildDeck(DeckBuildInput input) {
   indexByViewKey['security-view'] = items.length;
   items.add(securityView);
 
-  // Add energy view (after security, before dashboard pages) if supported
-  if (input.energySupported) {
+  // Add energy view (after security, before dashboard pages) if supported.
+  // Skip for ROOM displays that already have an energy domain view
+  // to avoid duplicate energy screens in the deck.
+  final hasEnergyDomainView = items.any(
+    (item) => item is DomainViewItem && item.domainType == DomainType.energy,
+  );
+
+  if (input.energySupported && !hasEnergyDomainView) {
     final energyView = EnergyViewItem(
       id: EnergyViewItem.generateId(),
       title: input.energyScreenTitle,

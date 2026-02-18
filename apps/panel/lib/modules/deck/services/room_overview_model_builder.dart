@@ -31,6 +31,12 @@ class RoomOverviewBuildInput {
   /// Number of columns in display layout (for tiles-per-row calculation).
   final int displayCols;
 
+  /// Number of devices with energy-related channels.
+  final int energyDeviceCount;
+
+  /// Number of sensor readings reported by the backend.
+  final int sensorReadingsCount;
+
   const RoomOverviewBuildInput({
     required this.display,
     required this.room,
@@ -39,6 +45,8 @@ class RoomOverviewBuildInput {
     required this.now,
     this.lightsOnCount,
     this.displayCols = 4,
+    this.energyDeviceCount = 0,
+    this.sensorReadingsCount = 0,
   });
 }
 
@@ -180,7 +188,11 @@ RoomOverviewModel buildRoomOverviewModel(RoomOverviewBuildInput input) {
   final roomId = input.display.roomId ?? '';
 
   // Build domain counts
-  final domainCounts = buildDomainCounts(deviceCategories);
+  final domainCounts = buildDomainCounts(
+    deviceCategories,
+    energyDeviceCount: input.energyDeviceCount,
+    sensorReadingsCount: input.sensorReadingsCount,
+  );
 
   // Build header status chips
   final statusChips = _buildStatusChips(domainCounts, roomId);

@@ -1,4 +1,6 @@
-import { VALID_ENERGY_RANGES, normalizeEnergyRange, resolveEnergyRange } from './energy-range.helper';
+import { VALID_ENERGY_RANGES } from '../energy.constants';
+
+import { normalizeEnergyRange, resolveEnergyRange, resolvePreviousEnergyRange } from './energy-range.helper';
 
 describe('resolveEnergyRange', () => {
 	beforeEach(() => {
@@ -173,6 +175,64 @@ describe('resolveEnergyRange', () => {
 			// Midnight CEST on October 25 = 2026-10-24T22:00:00Z (UTC+2, still CEST at midnight)
 			expect(start.toISOString()).toBe('2026-10-24T22:00:00.000Z');
 		});
+	});
+});
+
+describe('resolvePreviousEnergyRange', () => {
+	beforeEach(() => {
+		jest.useFakeTimers();
+	});
+
+	afterEach(() => {
+		jest.useRealTimers();
+	});
+
+	it('should return same elapsed duration as current partial day for "today"', () => {
+		// 2026-02-09T14:30:00Z = 15:30 CET (6.5 hours into the Prague day)
+		jest.setSystemTime(new Date('2026-02-09T14:30:00Z'));
+		const previous = resolvePreviousEnergyRange('today');
+
+		// Yesterday midnight CET = 2026-02-07T23:00:00Z
+		expect(previous.start.toISOString()).toBe('2026-02-07T23:00:00.000Z');
+
+		// Previous end should be yesterday midnight + same elapsed time (15.5h UTC offset)
+		// Today midnight CET = 2026-02-08T23:00:00Z, now = 2026-02-09T14:30:00Z
+		// Elapsed = 15h30m, so previous end = 2026-02-07T23:00:00Z + 15h30m = 2026-02-08T14:30:00Z
+		expect(previous.end.toISOString()).toBe('2026-02-08T14:30:00.000Z');
+	});
+
+	it('should return full midnight-to-midnight for "yesterday"', () => {
+		jest.setSystemTime(new Date('2026-02-09T14:30:00Z'));
+		const previous = resolvePreviousEnergyRange('yesterday');
+
+		// Day before yesterday midnight CET = 2026-02-06T23:00:00Z
+		// Yesterday midnight CET = 2026-02-07T23:00:00Z
+		expect(previous.start.toISOString()).toBe('2026-02-06T23:00:00.000Z');
+		expect(previous.end.toISOString()).toBe('2026-02-07T23:00:00.000Z');
+	});
+
+	it('should return same elapsed duration as current partial week for "week"', () => {
+		jest.setSystemTime(new Date('2026-02-09T14:30:00Z'));
+		const previous = resolvePreviousEnergyRange('week');
+
+		// 14 days ago midnight CET = 2026-01-25T23:00:00Z
+		expect(previous.start.toISOString()).toBe('2026-01-25T23:00:00.000Z');
+
+		// Current week: 2026-02-01T23:00:00Z → 2026-02-09T14:30:00Z (7d 15h 30m)
+		// Previous end: 2026-01-25T23:00:00Z + 7d 15h 30m = 2026-02-02T14:30:00Z
+		expect(previous.end.toISOString()).toBe('2026-02-02T14:30:00.000Z');
+	});
+
+	it('should return same elapsed duration as current partial month for "month"', () => {
+		jest.setSystemTime(new Date('2026-02-09T14:30:00Z'));
+		const previous = resolvePreviousEnergyRange('month');
+
+		// 60 days ago midnight CET = 2025-12-10T23:00:00Z
+		expect(previous.start.toISOString()).toBe('2025-12-10T23:00:00.000Z');
+
+		// Current month: 2026-01-09T23:00:00Z → 2026-02-09T14:30:00Z (30d 15h 30m)
+		// Previous end: 2025-12-10T23:00:00Z + 30d 15h 30m = 2026-01-10T14:30:00Z
+		expect(previous.end.toISOString()).toBe('2026-01-10T14:30:00.000Z');
 	});
 });
 

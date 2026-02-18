@@ -14,6 +14,14 @@ class SystemViewsBuildInput {
   /// Used to determine which domain views to create.
   final List<DevicesModuleDeviceCategory> deviceCategories;
 
+  /// Number of devices with energy-related channels in the room.
+  /// Determined from channel categories (electrical_energy, etc.).
+  final int energyDeviceCount;
+
+  /// Number of sensor readings reported by the backend for this room.
+  /// When 0 (no sensor roles assigned), the sensors domain is hidden.
+  final int sensorReadingsCount;
+
   /// Localized titles.
   final String roomViewTitle;
   final String masterViewTitle;
@@ -28,6 +36,8 @@ class SystemViewsBuildInput {
   const SystemViewsBuildInput({
     required this.display,
     this.deviceCategories = const [],
+    this.energyDeviceCount = 0,
+    this.sensorReadingsCount = 0,
     this.roomViewTitle = 'Room',
     this.masterViewTitle = 'Home',
     this.entryViewTitle = 'Entry',
@@ -93,7 +103,11 @@ SystemViewsResult buildSystemViews(SystemViewsBuildInput input) {
       }
 
       // Build domain counts
-      final domainCounts = buildDomainCounts(input.deviceCategories);
+      final domainCounts = buildDomainCounts(
+        input.deviceCategories,
+        energyDeviceCount: input.energyDeviceCount,
+        sensorReadingsCount: input.sensorReadingsCount,
+      );
 
       // 1. Add room overview
       final roomOverview = SystemViewItem(

@@ -258,6 +258,84 @@ void main() {
       });
     });
 
+    group('energy view deduplication', () {
+      test('should not add EnergyViewItem when energy domain view exists for ROOM role', () {
+        final display = createTestDisplay(
+          role: DisplayRole.room,
+          roomId: 'room-1',
+        );
+        final input = DeckBuildInput(
+          display: display,
+          pages: [],
+          deviceCategories: [
+            DevicesModuleDeviceCategory.sensor,
+          ],
+          energyDeviceCount: 1, // room has devices with energy channels
+          energySupported: true,
+        );
+
+        final result = buildDeck(input);
+
+        // Should have: system view, sensors domain, energy domain, security — NO EnergyViewItem
+        final energyViewItems = result.items.whereType<EnergyViewItem>().toList();
+        final energyDomainViews = result.items
+            .whereType<DomainViewItem>()
+            .where((d) => d.domainType == DomainType.energy)
+            .toList();
+
+        expect(energyViewItems, isEmpty);
+        expect(energyDomainViews, hasLength(1));
+      });
+
+      test('should add EnergyViewItem for MASTER role when energy supported', () {
+        final display = createTestDisplay(role: DisplayRole.master);
+        final input = DeckBuildInput(
+          display: display,
+          pages: [],
+          energySupported: true,
+        );
+
+        final result = buildDeck(input);
+
+        final energyViewItems = result.items.whereType<EnergyViewItem>().toList();
+        expect(energyViewItems, hasLength(1));
+      });
+
+      test('should add EnergyViewItem for ENTRY role when energy supported', () {
+        final display = createTestDisplay(role: DisplayRole.entry);
+        final input = DeckBuildInput(
+          display: display,
+          pages: [],
+          energySupported: true,
+        );
+
+        final result = buildDeck(input);
+
+        final energyViewItems = result.items.whereType<EnergyViewItem>().toList();
+        expect(energyViewItems, hasLength(1));
+      });
+
+      test('should add EnergyViewItem for ROOM role without sensor devices', () {
+        final display = createTestDisplay(
+          role: DisplayRole.room,
+          roomId: 'room-1',
+        );
+        final input = DeckBuildInput(
+          display: display,
+          pages: [],
+          deviceCategories: [
+            DevicesModuleDeviceCategory.lighting, // no sensors → no energy domain view
+          ],
+          energySupported: true,
+        );
+
+        final result = buildDeck(input);
+
+        final energyViewItems = result.items.whereType<EnergyViewItem>().toList();
+        expect(energyViewItems, hasLength(1));
+      });
+    });
+
     group('indexByViewKey', () {
       test('should populate indexByViewKey for system view', () {
         final display = createTestDisplay(

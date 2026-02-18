@@ -65,7 +65,7 @@ class DomainStateView extends StatelessWidget {
     final localizations = AppLocalizations.of(context)!;
     final warningColor = isDark ? AppColorsDark.warning : AppColorsLight.warning;
     final warningBgColor =
-        isDark ? AppColorsDark.warningLight9 : AppColorsLight.warningLight9;
+        isDark ? AppColorsDark.warningLight8 : AppColorsLight.warningLight8;
 
     return Scaffold(
       backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
