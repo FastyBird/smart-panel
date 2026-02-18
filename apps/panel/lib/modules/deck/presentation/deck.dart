@@ -134,6 +134,21 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen>
     // Jump instantly (no intermediate onPageChanged events)
     _pageController?.jumpToPage(index);
 
+    // Explicitly update state — jumpToPage may not trigger onPageChanged
+    // when the PageView is invisible (opacity 0 during crossfade).
+    if (mounted && _currentIndex != index) {
+      final deckService = context.read<DeckService>();
+      setState(() {
+        _currentIndex = index;
+      });
+      _updateTrackedItem(deckService, index);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _fireDeckPageActivatedEvent(deckService, index);
+        }
+      });
+    }
+
     // Fade in
     await _fadeController.forward();
 
