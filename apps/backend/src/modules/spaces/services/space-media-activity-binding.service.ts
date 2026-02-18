@@ -1,6 +1,7 @@
 import { Repository } from 'typeorm';
 
 import { Injectable } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
 import { createExtensionLogger } from '../../../common/logger';
@@ -10,6 +11,7 @@ import { SpaceMediaActivityBindingEntity } from '../entities/space-media-activit
 import { DerivedMediaEndpointModel } from '../models/derived-media-endpoint.model';
 import {
 	CONFIGURABLE_ACTIVITY_KEYS,
+	EventType,
 	MediaActivityKey,
 	MediaEndpointType,
 	SPACES_MODULE_NAME,
@@ -51,6 +53,7 @@ export class SpaceMediaActivityBindingService {
 		private readonly spacesService: SpacesService,
 		private readonly derivedMediaEndpointService: DerivedMediaEndpointService,
 		private readonly mediaCapabilityService: MediaCapabilityService,
+		private readonly eventEmitter: EventEmitter2,
 	) {}
 
 	/**
@@ -166,6 +169,12 @@ export class SpaceMediaActivityBindingService {
 
 		this.logger.debug(`Created activity binding id=${saved.id} key=${dto.activityKey} for space=${spaceId}`);
 
+		this.eventEmitter.emit(EventType.MEDIA_BINDING_CREATED, {
+			id: saved.id,
+			space_id: spaceId,
+			activity_key: saved.activityKey,
+		});
+
 		return saved;
 	}
 
@@ -200,6 +209,12 @@ export class SpaceMediaActivityBindingService {
 		await this.repository.remove(binding);
 
 		this.logger.debug(`Deleted activity binding id=${bindingId}`);
+
+		this.eventEmitter.emit(EventType.MEDIA_BINDING_DELETED, {
+			id: bindingId,
+			space_id: spaceId,
+			activity_key: binding.activityKey,
+		});
 	}
 
 	/**
@@ -211,6 +226,12 @@ export class SpaceMediaActivityBindingService {
 		if (binding) {
 			await this.repository.remove(binding);
 			this.logger.debug(`Deleted activity binding id=${bindingId}`);
+
+			this.eventEmitter.emit(EventType.MEDIA_BINDING_DELETED, {
+				id: bindingId,
+				space_id: binding.spaceId,
+				activity_key: binding.activityKey,
+			});
 		}
 	}
 
@@ -366,6 +387,12 @@ export class SpaceMediaActivityBindingService {
 
 				const saved = await this.repository.save(binding);
 				created.push(saved);
+
+				this.eventEmitter.emit(EventType.MEDIA_BINDING_CREATED, {
+					id: saved.id,
+					space_id: spaceId,
+					activity_key: saved.activityKey,
+				});
 			} catch (error) {
 				const err = error as Error;
 				this.logger.warn(`Failed to auto-create binding for key=${key}: ${err.message}`);
@@ -617,6 +644,12 @@ export class SpaceMediaActivityBindingService {
 		const saved = await this.repository.save(binding);
 
 		this.logger.debug(`Updated activity binding id=${binding.id}`);
+
+		this.eventEmitter.emit(EventType.MEDIA_BINDING_UPDATED, {
+			id: saved.id,
+			space_id: saved.spaceId,
+			activity_key: saved.activityKey,
+		});
 
 		return saved;
 	}
