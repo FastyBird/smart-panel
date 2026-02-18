@@ -55,7 +55,6 @@ import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_item_sheet.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_mode_chip.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/domain_state_view.dart';
-import 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/domain_data_loader.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/bottom_nav_mode_notifier.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/deck_page_activated_event.dart';
 import 'package:fastybird_smart_panel/modules/energy/export.dart';
@@ -85,7 +84,7 @@ class _EnergyViewConstants {
 /// Energy domain page for a room: consumption, production, chart, top consumers.
 ///
 /// Shown when the deck navigates to the energy domain for a space.
-/// Uses [DomainDataLoader] for loading/error/retry; [EnergyService] for API.
+/// Uses [DomainStateView] for loading/error/retry; [EnergyService] for API.
 class EnergyDomainViewPage extends StatefulWidget {
   final DomainViewItem viewItem;
 
@@ -95,9 +94,15 @@ class EnergyDomainViewPage extends StatefulWidget {
   State<EnergyDomainViewPage> createState() => _EnergyDomainViewPageState();
 }
 
-class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
-    with DomainDataLoader<EnergyDomainViewPage> {
+class _EnergyDomainViewPageState extends State<EnergyDomainViewPage> {
   final ScreenService _screenService = locator<ScreenService>();
+
+  // Loading state (replaces DomainDataLoader mixin)
+  DomainLoadState _loadState = DomainLoadState.loading;
+  String? _errorMessage;
+
+  DomainLoadState get loadState => _loadState;
+  String? get errorMessage => _errorMessage;
 
   // Services & event bus
   EnergyService? _energyService;
@@ -149,7 +154,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
     _pageActivatedSubscription =
         _eventBus?.on<DeckPageActivatedEvent>().listen(_onPageActivated);
 
-    loadDomainData().then((_) {
+    _loadEnergyData().then((_) {
       if (mounted) _registerRangeModeConfig();
     });
   }
@@ -162,19 +167,53 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // DOMAIN DATA LOADER
+  // DATA LOADING
   // ─────────────────────────────────────────────────────────────────────────
 
-  @override
-  bool hasExistingData() => _summary != null;
+  /// Loads energy data: skips fetch when cached, otherwise fetches and updates
+  /// load state accordingly.
+  Future<void> _loadEnergyData() async {
+    if (_summary != null) {
+      if (mounted) {
+        setState(() {
+          _loadState = DomainLoadState.loaded;
+        });
+      }
+      return;
+    }
 
-  @override
-  Future<void> fetchData() async {
-    await _fetchAllData();
+    try {
+      await _fetchAllData();
+      if (mounted) {
+        setState(() {
+          _loadState = _summary == null
+              ? DomainLoadState.empty
+              : DomainLoadState.loaded;
+        });
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[EnergyDomainViewPage] Failed to fetch data: $e');
+      }
+      if (mounted) {
+        setState(() {
+          _loadState = DomainLoadState.error;
+          _errorMessage = e.toString();
+        });
+      }
+    }
   }
 
-  @override
-  bool isDataEmpty() => _summary == null;
+  /// Retry loading after an error.
+  Future<void> _retryLoad() async {
+    if (mounted) {
+      setState(() {
+        _loadState = DomainLoadState.loading;
+        _errorMessage = null;
+      });
+    }
+    await _loadEnergyData();
+  }
 
   /// Fetches summary, timeseries, and breakdown in parallel for current range.
   Future<void> _fetchAllData() async {
@@ -205,17 +244,14 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
 
     setState(() {
       _selectedRange = range;
-      // Clear stale data so hasExistingData() returns false
-      // and loadDomainData() will call fetchData() for the new range
       _summary = null;
       _timeseries = null;
       _breakdown = null;
+      _loadState = DomainLoadState.loading;
     });
 
-    setLoadState(DomainLoadState.loading);
-
     try {
-      await loadDomainData();
+      await _loadEnergyData();
     } finally {
       _isRangeChangeInFlight = false;
       if (mounted) _registerRangeModeConfig();
@@ -251,11 +287,11 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      // Clear cached data so loadDomainData will fetch fresh
+      // Clear cached data so _loadEnergyData will fetch fresh
       _summary = null;
       _timeseries = null;
       _breakdown = null;
-      loadDomainData().then((_) {
+      _loadEnergyData().then((_) {
         if (mounted) _registerRangeModeConfig();
       });
     });
@@ -416,7 +452,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
         loadState != DomainLoadState.empty) {
       return DomainStateView(
         state: loadState,
-        onRetry: retryLoad,
+        onRetry: _retryLoad,
         domainName: localizations.domain_energy,
         child: const SizedBox.shrink(),
       );
@@ -434,7 +470,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
               child: _summary == null
                   ? DomainStateView(
                       state: DomainLoadState.notConfigured,
-                      onRetry: retryLoad,
+                      onRetry: _retryLoad,
                       domainName: localizations.domain_energy,
                       notConfiguredIcon: MdiIcons.flashOff,
                       notConfiguredTitle: localizations.energy_empty_title,

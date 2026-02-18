@@ -3,7 +3,22 @@ import 'package:material_design_icons_flutter/material_design_icons_flutter.dart
 
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
-import 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/domain_data_loader.dart';
+
+/// States for domain data loading.
+///
+/// Represents the lifecycle of data loading in domain views:
+/// - [loading]: Initial fetch is in progress
+/// - [loaded]: Data was successfully loaded
+/// - [error]: Fetch failed, requires retry
+/// - [empty]: Loaded successfully but no data exists
+/// - [notConfigured]: Domain exists but is not configured (no roles/bindings)
+enum DomainLoadState {
+  loading,
+  loaded,
+  error,
+  empty,
+  notConfigured,
+}
 
 /// Widget that displays loading spinner, error with retry, not-configured
 /// info, or child content.
@@ -17,7 +32,7 @@ import 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/dom
 /// - [DomainLoadState.notConfigured]: Shows domain icon with title/description
 /// - [DomainLoadState.loaded] or [DomainLoadState.empty]: Shows [child]
 class DomainStateView extends StatelessWidget {
-  /// Current loading state from [DomainDataLoader].
+  /// Current loading state.
   final DomainLoadState state;
 
   /// Error message to display (optional).
