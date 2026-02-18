@@ -121,14 +121,15 @@ export function getLocalMidnightDaysAgo(date: Date, daysAgo: number): Date {
  * Resolve a range keyword to a UTC start/end date range for the previous
  * equivalent period. Used for comparison (e.g. today vs yesterday).
  *
- * For partial-day ranges (today), the previous period covers the same elapsed
- * duration so that the comparison is fair. At 6 AM today the previous period
- * is yesterday midnight → yesterday 6 AM, not the full 24-hour day.
+ * For partial ranges (today, week, month), the previous period covers the
+ * same elapsed duration so that the comparison is fair. Three days into a
+ * week compares against the first three days of the previous week, not the
+ * full seven days.
  *
  * - today     → same elapsed time starting from yesterday midnight
- * - yesterday → day before yesterday (midnight to midnight)
- * - week      → previous 7 days (day -14 to day -7)
- * - month     → previous 30 days (day -60 to day -30)
+ * - yesterday → day before yesterday (midnight to midnight, both complete)
+ * - week      → same elapsed time starting from day -14
+ * - month     → same elapsed time starting from day -60
  */
 export function resolvePreviousEnergyRange(range?: string): DateRange {
 	const now = new Date();
@@ -142,12 +143,14 @@ export function resolvePreviousEnergyRange(range?: string): DateRange {
 		case 'week': {
 			const weekAgo = getLocalMidnightDaysAgo(now, 7);
 			const twoWeeksAgo = getLocalMidnightDaysAgo(now, 14);
-			return { start: twoWeeksAgo, end: weekAgo };
+			const elapsedMs = now.getTime() - weekAgo.getTime();
+			return { start: twoWeeksAgo, end: new Date(twoWeeksAgo.getTime() + elapsedMs) };
 		}
 		case 'month': {
 			const monthAgo = getLocalMidnightDaysAgo(now, 30);
 			const twoMonthsAgo = getLocalMidnightDaysAgo(now, 60);
-			return { start: twoMonthsAgo, end: monthAgo };
+			const elapsedMs = now.getTime() - monthAgo.getTime();
+			return { start: twoMonthsAgo, end: new Date(twoMonthsAgo.getTime() + elapsedMs) };
 		}
 		case 'today':
 		default: {

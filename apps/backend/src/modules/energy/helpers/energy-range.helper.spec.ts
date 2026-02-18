@@ -211,14 +211,28 @@ describe('resolvePreviousEnergyRange', () => {
 		expect(previous.end.toISOString()).toBe('2026-02-07T23:00:00.000Z');
 	});
 
-	it('should return previous 7-day window for "week"', () => {
+	it('should return same elapsed duration as current partial week for "week"', () => {
 		jest.setSystemTime(new Date('2026-02-09T14:30:00Z'));
 		const previous = resolvePreviousEnergyRange('week');
 
 		// 14 days ago midnight CET = 2026-01-25T23:00:00Z
-		// 7 days ago midnight CET = 2026-02-01T23:00:00Z
 		expect(previous.start.toISOString()).toBe('2026-01-25T23:00:00.000Z');
-		expect(previous.end.toISOString()).toBe('2026-02-01T23:00:00.000Z');
+
+		// Current week: 2026-02-01T23:00:00Z → 2026-02-09T14:30:00Z (7d 15h 30m)
+		// Previous end: 2026-01-25T23:00:00Z + 7d 15h 30m = 2026-02-02T14:30:00Z
+		expect(previous.end.toISOString()).toBe('2026-02-02T14:30:00.000Z');
+	});
+
+	it('should return same elapsed duration as current partial month for "month"', () => {
+		jest.setSystemTime(new Date('2026-02-09T14:30:00Z'));
+		const previous = resolvePreviousEnergyRange('month');
+
+		// 60 days ago midnight CET = 2025-12-10T23:00:00Z
+		expect(previous.start.toISOString()).toBe('2025-12-10T23:00:00.000Z');
+
+		// Current month: 2026-01-09T23:00:00Z → 2026-02-09T14:30:00Z (30d 15h 30m)
+		// Previous end: 2025-12-10T23:00:00Z + 30d 15h 30m = 2026-01-10T14:30:00Z
+		expect(previous.end.toISOString()).toBe('2026-01-10T14:30:00.000Z');
 	});
 });
 

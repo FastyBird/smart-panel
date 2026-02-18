@@ -209,7 +209,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
       await loadDomainData();
     } finally {
       _isRangeChangeInFlight = false;
-      _registerRangeModeConfig();
+      if (mounted) _registerRangeModeConfig();
     }
   }
 
