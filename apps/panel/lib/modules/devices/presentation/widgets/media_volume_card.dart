@@ -97,7 +97,7 @@ class MediaVolumeCard extends StatelessWidget {
 		final isDark = brightness == Brightness.dark;
 		final screenService = locator<ScreenService>();
 		final visualDensityService = locator<VisualDensityService>();
-		final scale = (double v) => screenService.scale(v, density: visualDensityService.density);
+		double scale(double v) => screenService.scale(v, density: visualDensityService.density);
 		final columnWidth = scale(40);
 		final textColor = isDark ? AppTextColorDark.primary : AppTextColorLight.primary;
 

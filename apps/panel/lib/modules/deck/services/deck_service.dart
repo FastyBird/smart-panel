@@ -107,8 +107,11 @@ class DeckService extends ChangeNotifier {
       return;
     }
 
+    // Extract localizations before any async gaps
+    final localizations = context != null ? AppLocalizations.of(context) : null;
+
     // Build initial deck (may not have device categories yet for ROOM role)
-    _buildDeck(context);
+    _buildDeck(localizations);
     _isInitialized = true;
     notifyListeners();
 
@@ -122,7 +125,7 @@ class DeckService extends ChangeNotifier {
           '[DECK SERVICE] Will fetch devices for roomId: ${display.roomId}',
         );
       }
-      _fetchDeviceCategoriesAsync(display.roomId!, context);
+      _fetchDeviceCategoriesAsync(display.roomId!, localizations);
       _prefetchDomainData(display.roomId!);
     } else if (kDebugMode) {
       debugPrint(
@@ -135,7 +138,7 @@ class DeckService extends ChangeNotifier {
   /// Fetches device categories for a room and rebuilds the deck.
   Future<void> _fetchDeviceCategoriesAsync(
     String roomId,
-    BuildContext? context,
+    AppLocalizations? localizations,
   ) async {
     if (_devicesService == null) {
       if (kDebugMode) {
@@ -206,7 +209,7 @@ class DeckService extends ChangeNotifier {
       }
 
       // Rebuild deck with device categories
-      _buildDeck(context);
+      _buildDeck(localizations);
     } catch (e) {
       if (kDebugMode) {
         debugPrint(
@@ -232,11 +235,8 @@ class DeckService extends ChangeNotifier {
     }
   }
 
-  void _buildDeck(BuildContext? context) {
+  void _buildDeck(AppLocalizations? localizations) {
     if (_display == null) return;
-
-    // Get localized titles if context available
-    final localizations = context != null ? AppLocalizations.of(context) : null;
 
     // Get pages from dashboard service
     final pages = _dashboardService.pages.values.toList();
@@ -294,6 +294,9 @@ class DeckService extends ChangeNotifier {
     _configError = validateDisplayConfig(display);
 
     if (_configError == null) {
+      // Extract localizations before any async gaps
+      final localizations = context != null ? AppLocalizations.of(context) : null;
+
       // If room changed, reset device categories and refetch
       if (display.role == DisplayRole.room &&
           display.roomId != null &&
@@ -301,11 +304,11 @@ class DeckService extends ChangeNotifier {
         _deviceCategories = [];
         _energyDeviceCount = 0;
         _sensorReadingsCount = 0;
-        _buildDeck(context);
-        _fetchDeviceCategoriesAsync(display.roomId!, context);
+        _buildDeck(localizations);
+        _fetchDeviceCategoriesAsync(display.roomId!, localizations);
         _prefetchDomainData(display.roomId!);
       } else {
-        _buildDeck(context);
+        _buildDeck(localizations);
       }
     }
 
