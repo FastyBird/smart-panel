@@ -718,6 +718,16 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     return _spaceStateRepository?.getSensorState(_roomId)?.environment;
   }
 
+  /// Whether any environment summary data is available (temp, humidity, illuminance, pressure).
+  bool get _hasEnvironmentData {
+    final env = _environment;
+    return env != null &&
+        (env.averageTemperature != null ||
+            env.averageHumidity != null ||
+            env.averageIlluminance != null ||
+            env.averagePressure != null);
+  }
+
   // --------------------------------------------------------------------------
   // FILTERING & CATEGORIES
   // --------------------------------------------------------------------------
@@ -948,7 +958,8 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
         spacing: AppSpacings.pMd,
         children: [
           if (_hasAlerts) _buildAlertBanner(context),
-          _buildSummaryCards(context, compact: isSmallScreen),
+          if (_hasEnvironmentData)
+            _buildSummaryCards(context, compact: isSmallScreen),
           _buildSensorSectionTitle(context),
           Expanded(
             child: VerticalScrollWithGradient(
@@ -984,7 +995,8 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
 
   Widget _buildLandscapeLayout(BuildContext context) {
     final isLargeScreen = _screenService.isLargeScreen;
-    final sensorsPerRow = isLargeScreen ? 3 : 2;
+    final hasEnv = _hasEnvironmentData;
+    final sensorsPerRow = (isLargeScreen ? 3 : 2) + (hasEnv ? 0 : 1);
 
     return LandscapeViewLayout(
       mainContentPadding: EdgeInsets.only(
@@ -1027,7 +1039,9 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
         left: AppSpacings.pMd,
         bottom: AppSpacings.pMd,
       ),
-      additionalContent: _buildSummaryCards(context, compact: !isLargeScreen, vertical: true),
+      additionalContent: _hasEnvironmentData
+          ? _buildSummaryCards(context, compact: !isLargeScreen, vertical: true)
+          : null,
     );
   }
 
