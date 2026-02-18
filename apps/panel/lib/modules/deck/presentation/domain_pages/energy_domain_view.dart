@@ -392,7 +392,15 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
             _buildHeader(context),
             Expanded(
               child: _summary == null
-                  ? _buildEmptyState(context)
+                  ? DomainStateView(
+                      state: DomainLoadState.notConfigured,
+                      onRetry: retryLoad,
+                      domainName: localizations.domain_energy,
+                      notConfiguredIcon: MdiIcons.flashOff,
+                      notConfiguredTitle: localizations.energy_empty_title,
+                      notConfiguredDescription: localizations.energy_empty_description,
+                      child: const SizedBox.shrink(),
+                    )
                   : OrientationBuilder(
                       builder: (context, orientation) {
                         return orientation == Orientation.landscape
@@ -1360,63 +1368,4 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
     );
   }
 
-  // =============================================================================
-  // EMPTY STATE
-  // =============================================================================
-
-  /// Centered empty state when no energy data is available.
-  Widget _buildEmptyState(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final localizations = AppLocalizations.of(context)!;
-    final infoFamily = ThemeColorFamily.get(
-      isDark ? Brightness.dark : Brightness.light,
-      ThemeColors.info,
-    );
-
-    return Center(
-      child: Padding(
-        padding: AppSpacings.paddingXl,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          spacing: AppSpacings.pMd,
-          children: [
-            Container(
-              width: AppSpacings.scale(80),
-              height: AppSpacings.scale(80),
-              decoration: BoxDecoration(
-                color: infoFamily.light8,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                MdiIcons.flashOff,
-                size: AppSpacings.scale(48),
-                color: infoFamily.base,
-              ),
-            ),
-            Text(
-              localizations.energy_empty_title,
-              style: TextStyle(
-                fontSize: AppFontSize.large,
-                fontWeight: FontWeight.w600,
-                color: isDark
-                    ? AppTextColorDark.primary
-                    : AppTextColorLight.primary,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            Text(
-              localizations.energy_empty_description,
-              style: TextStyle(
-                fontSize: AppFontSize.base,
-                color: isDark
-                    ? AppTextColorDark.secondary
-                    : AppTextColorLight.secondary,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
