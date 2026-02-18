@@ -7,6 +7,7 @@ import 'package:fastybird_smart_panel/modules/devices/export.dart';
 import 'package:fastybird_smart_panel/modules/displays/models/display.dart';
 import 'package:fastybird_smart_panel/modules/energy/repositories/energy_repository.dart';
 import 'package:fastybird_smart_panel/modules/spaces/export.dart';
+import 'package:fastybird_smart_panel/modules/spaces/views/covers_targets/view.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -19,6 +20,7 @@ class DeckService extends ChangeNotifier {
   final IntentsService _intentsService;
   final DevicesService? _devicesService;
   SpacesService? _spacesService;
+  MediaActivityService? _mediaService;
 
   /// The current deck result.
   DeckResult? _deck;
@@ -34,6 +36,12 @@ class DeckService extends ChangeNotifier {
 
   /// Number of sensor readings reported by the backend for the current room.
   int _sensorReadingsCount = 0;
+
+  /// Configuration counts for domain visibility (null = not yet loaded).
+  int? _lightTargetsCount;
+  int? _climateTargetsCount;
+  int? _coversTargetsCount;
+  int? _mediaBindingsCount;
 
   /// Configuration validation error.
   String? _configError;
@@ -123,11 +131,19 @@ class DeckService extends ChangeNotifier {
     // Listen for device changes (devices added/removed from space)
     _devicesService?.addListener(_onDevicesChanged);
 
-    // Listen for spaces changes (sensor roles assigned/removed)
+    // Listen for spaces changes (sensor roles assigned/removed, targets changed)
     try {
       if (locator.isRegistered<SpacesService>()) {
         _spacesService = locator<SpacesService>();
         _spacesService?.addListener(_onSpacesChanged);
+      }
+    } catch (_) {}
+
+    // Listen for media activity changes (bindings added/removed)
+    try {
+      if (locator.isRegistered<MediaActivityService>()) {
+        _mediaService = locator<MediaActivityService>();
+        _mediaService?.addListener(_onMediaChanged);
       }
     } catch (_) {}
 
@@ -281,22 +297,60 @@ class DeckService extends ChangeNotifier {
     }
   }
 
-  /// Called when SpacesService notifies (sensor roles assigned/removed, etc.).
+  /// Called when SpacesService notifies (sensor roles, targets changed, etc.).
   ///
-  /// Re-reads cached sensor state count. Only rebuilds if it changed.
+  /// Re-reads cached sensor state and target counts. Only rebuilds if changed.
   void _onSpacesChanged() {
     final roomId = _display?.roomId;
     if (roomId == null || _display?.role != DisplayRole.room) return;
 
     final sensorState = _spacesService?.getSensorState(roomId);
-    final newCount = sensorState?.totalSensors ?? 0;
+    final newSensorCount = sensorState?.totalSensors ?? 0;
 
-    if (newCount != _sensorReadingsCount) {
-      _sensorReadingsCount = newCount;
+    final newLightTargets = _countConfiguredLights(roomId);
+    final newClimateTargets = _countConfiguredClimate(roomId);
+    final newCoversTargets = _countConfiguredCovers(roomId);
+
+    final changed = newSensorCount != _sensorReadingsCount ||
+        newLightTargets != _lightTargetsCount ||
+        newClimateTargets != _climateTargetsCount ||
+        newCoversTargets != _coversTargetsCount;
+
+    if (changed) {
+      _sensorReadingsCount = newSensorCount;
+      _lightTargetsCount = newLightTargets;
+      _climateTargetsCount = newClimateTargets;
+      _coversTargetsCount = newCoversTargets;
 
       if (kDebugMode) {
         debugPrint(
-          '[DECK SERVICE] Sensor count changed to $_sensorReadingsCount, '
+          '[DECK SERVICE] Spaces data changed '
+          '(sensors: $_sensorReadingsCount, lights: $_lightTargetsCount, '
+          'climate: $_climateTargetsCount, covers: $_coversTargetsCount), '
+          'rebuilding deck.',
+        );
+      }
+
+      _buildDeck(null);
+      notifyListeners();
+    }
+  }
+
+  /// Called when MediaActivityService notifies (bindings added/removed).
+  ///
+  /// Re-reads cached bindings count. Only rebuilds if changed.
+  void _onMediaChanged() {
+    final roomId = _display?.roomId;
+    if (roomId == null || _display?.role != DisplayRole.room) return;
+
+    final newMediaBindings = _mediaService?.getBindings(roomId).length;
+
+    if (newMediaBindings != _mediaBindingsCount) {
+      _mediaBindingsCount = newMediaBindings;
+
+      if (kDebugMode) {
+        debugPrint(
+          '[DECK SERVICE] Media bindings changed to $_mediaBindingsCount, '
           'rebuilding deck.',
         );
       }
@@ -327,6 +381,10 @@ class DeckService extends ChangeNotifier {
       deviceCategories: _deviceCategories,
       energyDeviceCount: _energyDeviceCount,
       sensorReadingsCount: _sensorReadingsCount,
+      lightTargetsCount: _lightTargetsCount,
+      climateTargetsCount: _climateTargetsCount,
+      coversTargetsCount: _coversTargetsCount,
+      mediaBindingsCount: _mediaBindingsCount,
       roomViewTitle: localizations?.system_view_room ?? 'Room',
       masterViewTitle: localizations?.system_view_master ?? 'Home',
       entryViewTitle: localizations?.system_view_entry ?? 'Entry',
@@ -368,13 +426,17 @@ class DeckService extends ChangeNotifier {
       // Extract localizations before any async gaps
       final localizations = context != null ? AppLocalizations.of(context) : null;
 
-      // If room changed, reset device categories and refetch
+      // If room changed, reset device categories and config counts, then refetch
       if (display.role == DisplayRole.room &&
           display.roomId != null &&
           display.roomId != oldRoomId) {
         _deviceCategories = [];
         _energyDeviceCount = 0;
         _sensorReadingsCount = 0;
+        _lightTargetsCount = null;
+        _climateTargetsCount = null;
+        _coversTargetsCount = null;
+        _mediaBindingsCount = null;
         _buildDeck(localizations);
         _fetchDeviceCategoriesAsync(display.roomId!, localizations);
         _prefetchDomainData(display.roomId!);
@@ -411,6 +473,41 @@ class DeckService extends ChangeNotifier {
   int indexOfItem(String id) {
     final items = _deck?.items ?? [];
     return items.indexWhere((item) => item.id == id);
+  }
+
+  /// Counts light targets that have a valid role assigned.
+  /// Matches the lights domain view's "not configured" condition.
+  int? _countConfiguredLights(String roomId) {
+    final targets = _spacesService?.getLightTargetsForSpace(roomId);
+    if (targets == null) return null;
+    return targets.where((t) {
+      final role = t.role;
+      return role != null &&
+          role != LightTargetRole.other &&
+          role != LightTargetRole.hidden;
+    }).length;
+  }
+
+  /// Counts climate targets that have an actuator role assigned.
+  /// Matches the climate domain view's "not configured" condition.
+  int? _countConfiguredClimate(String roomId) {
+    final targets = _spacesService?.getClimateTargetsForSpace(roomId);
+    if (targets == null) return null;
+    return targets.where((t) {
+      final role = t.role;
+      return role != null && role.isActuator;
+    }).length;
+  }
+
+  /// Counts covers targets that have a valid role assigned.
+  /// Matches the shading domain view's "not configured" condition.
+  int? _countConfiguredCovers(String roomId) {
+    final targets = _spacesService?.getCoversTargetsForSpace(roomId);
+    if (targets == null) return null;
+    return targets.where((t) {
+      final role = t.role;
+      return role != null && role != CoversTargetRole.hidden;
+    }).length;
   }
 
   /// Prefetches domain data (lighting, climate, shading, media, sensors) for a room.
@@ -528,6 +625,41 @@ class DeckService extends ChangeNotifier {
             '[DECK SERVICE] Domain data prefetch complete for roomId: $roomId',
           );
         }
+
+        // Read config counts from cache now that all fetches are done.
+        // SpacesService uses comparison-based notifications — if the cache was
+        // empty before fetch and empty after (unconfigured room), it won't
+        // notify listeners. So we must proactively read the counts here.
+        if (_display?.roomId != roomId) return;
+
+        final newLightTargets = _countConfiguredLights(roomId);
+        final newClimateTargets = _countConfiguredClimate(roomId);
+        final newCoversTargets = _countConfiguredCovers(roomId);
+        final newMediaBindings = mediaService?.getBindings(roomId).length;
+
+        final changed = newLightTargets != _lightTargetsCount ||
+            newClimateTargets != _climateTargetsCount ||
+            newCoversTargets != _coversTargetsCount ||
+            newMediaBindings != _mediaBindingsCount;
+
+        if (changed) {
+          _lightTargetsCount = newLightTargets;
+          _climateTargetsCount = newClimateTargets;
+          _coversTargetsCount = newCoversTargets;
+          _mediaBindingsCount = newMediaBindings;
+
+          if (kDebugMode) {
+            debugPrint(
+              '[DECK SERVICE] Config counts updated after prefetch '
+              '(lights: $_lightTargetsCount, climate: $_climateTargetsCount, '
+              'covers: $_coversTargetsCount, media: $_mediaBindingsCount), '
+              'rebuilding deck.',
+            );
+          }
+
+          _buildDeck(null);
+          notifyListeners();
+        }
       });
     } catch (e) {
       // Silently fail - prefetching is optional
@@ -544,6 +676,7 @@ class DeckService extends ChangeNotifier {
     _dashboardService.removeListener(_onDashboardChanged);
     _devicesService?.removeListener(_onDevicesChanged);
     _spacesService?.removeListener(_onSpacesChanged);
+    _mediaService?.removeListener(_onMediaChanged);
     super.dispose();
   }
 }
