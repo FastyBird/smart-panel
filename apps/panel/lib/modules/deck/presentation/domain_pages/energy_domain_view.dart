@@ -857,7 +857,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
 
     // Determine display: icon, color, text
     final bool isZero = changePercent.abs() < 0.1;
-    final bool isDown = changePercent < -0.1;
+    final bool isDown = !isZero && changePercent < 0;
 
     final IconData arrowIcon;
     final ThemeColorFamily colorFamily;
