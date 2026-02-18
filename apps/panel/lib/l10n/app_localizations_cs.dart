@@ -1530,6 +1530,15 @@ class AppLocalizationsCs extends AppLocalizations {
   }
 
   @override
+  String get energy_period_yesterday => 'včera';
+
+  @override
+  String get energy_period_last_week => 'minulý týden';
+
+  @override
+  String get energy_period_last_month => 'minulý měsíc';
+
+  @override
   String energy_device_count(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,

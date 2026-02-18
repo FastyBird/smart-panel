@@ -2855,11 +2855,29 @@ abstract class AppLocalizations {
   /// **'vs last month'**
   String get energy_comparison_vs_last_month;
 
-  /// Comparison text when change is 0%
+  /// Comparison text when change is 0%. Period should be a bare noun (yesterday, not vs yesterday).
   ///
   /// In en, this message translates to:
   /// **'Same as {period}'**
   String energy_comparison_same(String period);
+
+  /// Bare period name for zero-change comparison (Same as yesterday)
+  ///
+  /// In en, this message translates to:
+  /// **'yesterday'**
+  String get energy_period_yesterday;
+
+  /// Bare period name for zero-change comparison (Same as last week)
+  ///
+  /// In en, this message translates to:
+  /// **'last week'**
+  String get energy_period_last_week;
+
+  /// Bare period name for zero-change comparison (Same as last month)
+  ///
+  /// In en, this message translates to:
+  /// **'last month'**
+  String get energy_period_last_month;
 
   /// Count of energy devices
   ///

@@ -844,10 +844,18 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
     final localizations = AppLocalizations.of(context)!;
     final brightness = isDark ? Brightness.dark : Brightness.light;
 
+    // "vs yesterday" / "oproti včerejšku" — used with percentage values
     final periodLabel = switch (_selectedRange) {
       EnergyRange.today => localizations.energy_comparison_vs_yesterday,
       EnergyRange.week => localizations.energy_comparison_vs_last_week,
       EnergyRange.month => localizations.energy_comparison_vs_last_month,
+    };
+
+    // Bare period name — used with "Same as {period}" template
+    final barePeriod = switch (_selectedRange) {
+      EnergyRange.today => localizations.energy_period_yesterday,
+      EnergyRange.week => localizations.energy_period_last_week,
+      EnergyRange.month => localizations.energy_period_last_month,
     };
 
     // Determine display: icon, color, text
@@ -861,7 +869,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
     if (isZero) {
       arrowIcon = Icons.remove;
       colorFamily = ThemeColorFamily.get(brightness, ThemeColors.neutral);
-      text = localizations.energy_comparison_same(periodLabel);
+      text = localizations.energy_comparison_same(barePeriod);
     } else if (isDown) {
       arrowIcon = Icons.arrow_downward;
       // Less consumption = good (green)

@@ -1988,12 +1988,24 @@
   },
   "energy_comparison_same": "Same as {period}",
   "@energy_comparison_same": {
-    "description": "Comparison text when change is 0%",
+    "description": "Comparison text when change is 0%. Period should be a bare noun (yesterday, not vs yesterday).",
     "placeholders": {
       "period": {
         "type": "String"
       }
     }
+  },
+  "energy_period_yesterday": "yesterday",
+  "@energy_period_yesterday": {
+    "description": "Bare period name for zero-change comparison (Same as yesterday)"
+  },
+  "energy_period_last_week": "last week",
+  "@energy_period_last_week": {
+    "description": "Bare period name for zero-change comparison (Same as last week)"
+  },
+  "energy_period_last_month": "last month",
+  "@energy_period_last_month": {
+    "description": "Bare period name for zero-change comparison (Same as last month)"
   },
   "energy_device_count": "{count, plural, =1{1 device} other{{count} devices}}",
   "@energy_device_count": {

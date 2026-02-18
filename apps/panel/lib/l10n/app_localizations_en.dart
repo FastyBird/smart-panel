@@ -1518,6 +1518,15 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get energy_period_yesterday => 'yesterday';
+
+  @override
+  String get energy_period_last_week => 'last week';
+
+  @override
+  String get energy_period_last_month => 'last month';
+
+  @override
   String energy_device_count(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
