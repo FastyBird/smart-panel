@@ -4,12 +4,16 @@ This is a monorepo for the FastyBird Smart Panel project:
 - **Backend**: NestJS application (`apps/backend/`)
 - **Admin**: Vue.js admin interface (`apps/admin/`)
 - **Panel**: Flutter/Dart embedded app (`apps/panel/`)
+- **Website**: Next.js documentation site (`apps/website/`)
 
 ## Essential Documentation
 
 Read these files for detailed guidelines:
 - `.ai-rules/GUIDELINES.md` - Development setup, commands, coding style, AI guidelines
 - `.ai-rules/API_CONVENTIONS.md` - Backend API & Swagger conventions
+- `.ai-rules/CLIMATE_ARCHITECTURE.md` - Climate domain architecture
+- `.ai-rules/MEDIA_ARCHITECTURE.md` - Media domain architecture
+- `.ai-rules/OPTIMISTIC_UI_ARCHITECTURE.md` - Panel optimistic UI patterns
 - `tasks/` - Feature and technical task specifications
 
 ## Quick Reference
@@ -43,7 +47,7 @@ pnpm run generate:spec          # Generate device/channel specs
 1. **Generated code** - Never edit files in:
    - `spec/api/v1/openapi.json`
    - `apps/backend/src/spec/`
-   - `apps/admin/src/api/openapi.ts`
+   - `apps/admin/src/openapi.constants.ts`
    - `apps/panel/lib/api/`
    - `apps/panel/lib/spec/`
 
@@ -63,16 +67,39 @@ pnpm run generate:spec          # Generate device/channel specs
 ```
 apps/
 ├── backend/src/
-│   ├── modules/     # Core: auth, devices, dashboard, displays, users, weather
-│   └── plugins/     # Integrations: devices-*, pages-*, tiles-*, data-sources-*
+│   ├── modules/     # Core: api, auth, config, dashboard, devices, displays,
+│   │                #   energy, extensions, influxdb, intents, mdns, platform,
+│   │                #   scenes, security, seed, spaces, stats, swagger,
+│   │                #   system, users, weather, websocket
+│   └── plugins/     # Integrations: devices-*, pages-*, tiles-*,
+│                    #   data-sources-*, scenes-*, weather-*, logger-*
 ├── admin/src/
-│   ├── modules/     # Mirrors backend modules
+│   ├── modules/     # Mirrors backend modules (auth, config, dashboard,
+│   │                #   devices, displays, energy, extensions, influxdb,
+│   │                #   intents, mdns, scenes, security, spaces, stats,
+│   │                #   system, users, weather)
 │   └── plugins/     # Mirrors backend plugins
-└── panel/lib/
-    ├── modules/     # Feature modules
-    ├── api/         # Generated (DO NOT EDIT)
-    └── spec/        # Generated (DO NOT EDIT)
+├── panel/lib/
+│   ├── modules/     # Feature modules (config, dashboard, deck, devices,
+│   │                #   displays, energy, intents, scenes, security,
+│   │                #   spaces, system, weather)
+│   ├── features/    # UI features (deck, discovery, overlay, settings)
+│   ├── plugins/     # Plugin implementations
+│   ├── api/         # Generated API client (DO NOT EDIT)
+│   └── spec/        # Generated device/channel specs (DO NOT EDIT)
+└── website/         # Next.js documentation site
+
+packages/
+├── extension-sdk/       # SDK for building extensions
+└── example-extension/   # Example extension
 ```
+
+### Custom Slash Commands
+
+- `/test [backend|admin|all]` - Run tests
+- `/lint [backend|admin|all]` - Run linting and type checking
+- `/openapi` - Generate OpenAPI specification
+- `/task <task-id>` - Work on a task from `tasks/`
 
 ### Task Workflow
 
