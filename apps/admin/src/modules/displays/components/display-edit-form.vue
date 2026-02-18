@@ -59,11 +59,35 @@
 							<el-option
 								value="master"
 								:label="t('displaysModule.fields.displays.role.options.master')"
-							/>
+								disabled
+							>
+								<div class="flex items-center justify-between w-full">
+									<span>{{ t('displaysModule.fields.displays.role.options.master') }}</span>
+									<el-tag
+										size="small"
+										type="info"
+										class="ml-2"
+									>
+										{{ t('displaysModule.fields.displays.role.comingSoon') }}
+									</el-tag>
+								</div>
+							</el-option>
 							<el-option
 								value="entry"
 								:label="t('displaysModule.fields.displays.role.options.entry')"
-							/>
+								disabled
+							>
+								<div class="flex items-center justify-between w-full">
+									<span>{{ t('displaysModule.fields.displays.role.options.entry') }}</span>
+									<el-tag
+										size="small"
+										type="info"
+										class="ml-2"
+									>
+										{{ t('displaysModule.fields.displays.role.comingSoon') }}
+									</el-tag>
+								</div>
+							</el-option>
 						</el-select>
 						<div class="text-gray-500 text-sm mt-1">
 							{{ t('displaysModule.fields.displays.role.description') }}
