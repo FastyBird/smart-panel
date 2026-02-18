@@ -1,5 +1,7 @@
 import { v4 as uuid } from 'uuid';
 
+import { EventEmitter2 } from '@nestjs/event-emitter';
+
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 
@@ -109,6 +111,7 @@ describe('SpaceMediaActivityBindingService', () => {
 				{ provide: SpacesService, useValue: mockSpacesService },
 				{ provide: DerivedMediaEndpointService, useValue: mockDerivedEndpointService },
 				{ provide: MediaCapabilityService, useValue: mockMediaCapabilityService },
+				{ provide: EventEmitter2, useValue: { emit: jest.fn() } },
 			],
 		}).compile();
 

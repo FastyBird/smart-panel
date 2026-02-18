@@ -144,7 +144,9 @@ DeckResult buildDeck(DeckBuildInput input) {
   // screen is only for MASTER/ENTRY displays.
   final isRoomDisplay = display.role == DisplayRole.room;
 
-  if (input.energySupported && !isRoomDisplay) {
+  final hasEnergyDomainView = isRoomDisplay && input.energyDeviceCount > 0;
+
+  if (input.energySupported && !hasEnergyDomainView) {
     final energyView = EnergyViewItem(
       id: EnergyViewItem.generateId(),
       title: input.energyScreenTitle,

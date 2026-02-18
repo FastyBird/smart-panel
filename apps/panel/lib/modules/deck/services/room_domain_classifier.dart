@@ -162,7 +162,7 @@ class DomainCounts {
       case DomainType.media:
         return media;
       case DomainType.sensors:
-        return sensors;
+        return sensorReadings;
       case DomainType.energy:
         return energy;
     }
