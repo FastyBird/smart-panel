@@ -138,11 +138,6 @@ class DomainCounts {
   });
 
   /// Get count for a specific domain.
-  ///
-  /// For sensors, returns [sensorReadings] (backend-reported readings) instead
-  /// of device-category count, so the displayed count matches [hasDomain]
-  /// visibility. Sensor roles can be assigned to non-sensor-category devices
-  /// (e.g. a thermostat's temperature channel), so the two can diverge.
   int getCount(DomainType domain) {
     switch (domain) {
       case DomainType.lights:
@@ -154,27 +149,19 @@ class DomainCounts {
       case DomainType.media:
         return media;
       case DomainType.sensors:
-        return sensorReadings;
+        return sensors;
       case DomainType.energy:
         return energy;
     }
   }
 
   /// Returns true if a domain has any devices that make it visible.
-  /// For climate domain, requires at least one actuator device (thermostat, heater, AC).
   /// For energy domain, requires at least one device with energy-related channels.
-  /// For sensors domain, requires backend-reported sensor readings (roles must be assigned).
+  /// Climate and sensors are shown when any devices of that type exist (even
+  /// without full configuration) so users see a "not configured" message.
   bool hasDomain(DomainType domain) {
-    if (domain == DomainType.climate) {
-      // Climate domain is only visible when there are actuators
-      return climateActuators > 0;
-    }
     if (domain == DomainType.energy) {
       return energy > 0;
-    }
-    if (domain == DomainType.sensors) {
-      // Sensors domain requires backend-confirmed readings (sensor roles assigned)
-      return sensorReadings > 0;
     }
     return getCount(domain) > 0;
   }
@@ -188,9 +175,8 @@ class DomainCounts {
   }
 
   /// Returns true if any domain has devices that make it visible.
-  /// Uses hasDomain logic, so climate requires actuators, sensors requires readings.
   bool get hasAnyDomain =>
-      lights > 0 || climateActuators > 0 || shading > 0 || media > 0 || sensorReadings > 0 || energy > 0;
+      lights > 0 || climate > 0 || shading > 0 || media > 0 || sensors > 0 || energy > 0;
 
   /// Total device count across all domains.
   int get total => lights + climate + shading + media + sensors;

@@ -8,11 +8,13 @@ import 'package:flutter/widgets.dart';
 /// - [loaded]: Data was successfully loaded
 /// - [error]: Fetch failed, requires retry
 /// - [empty]: Loaded successfully but no data exists
+/// - [notConfigured]: Domain exists but is not configured (no roles/bindings)
 enum DomainLoadState {
   loading,
   loaded,
   error,
   empty,
+  notConfigured,
 }
 
 /// Mixin for unified domain data loading behavior.

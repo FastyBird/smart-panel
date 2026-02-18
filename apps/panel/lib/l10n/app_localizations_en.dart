@@ -41,6 +41,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get domain_data_load_failed_description => 'Unable to retrieve data. Please check your connection and try again.';
 
   @override
+  String get domain_not_configured_subtitle => 'Not configured';
+
+  @override
   String get services_not_available => 'Services not available';
 
   @override
@@ -1313,10 +1316,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get domain_lights_other => 'Other Lights';
 
   @override
-  String get domain_lights_empty_title => 'No Lights';
+  String get domain_lights_empty_title => 'Lighting Not Configured';
 
   @override
-  String get domain_lights_empty_description => 'No lighting devices found in this room';
+  String get domain_lights_empty_description => 'Lighting roles have not been set up for this room. Configure roles in the admin panel to control your lights.';
 
   @override
   String domain_lights_count_on(int count) {
@@ -1352,6 +1355,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get domain_climate => 'Climate';
+
+  @override
+  String get domain_climate_empty_title => 'Climate Not Configured';
+
+  @override
+  String get domain_climate_empty_description => 'No thermostats or climate actuators are set up for this room. Add climate devices in the admin panel.';
 
   @override
   String get domain_media => 'Media';
@@ -1997,10 +2006,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get domain_shading => 'Shading';
 
   @override
-  String get domain_shading_empty_title => 'No Window Coverings';
+  String get domain_shading_empty_title => 'Shading Not Configured';
 
   @override
-  String get domain_shading_empty_description => 'No window covering devices found in this room';
+  String get domain_shading_empty_description => 'Window covering roles have not been set up for this room. Configure roles in the admin panel to control your shades.';
 
   @override
   String get shading_modes_title => 'Modes';
@@ -2653,6 +2662,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get media_off_subtitle => 'Select an activity to begin';
 
   @override
+  String get media_not_configured_title => 'Media Not Configured';
+
+  @override
+  String get media_not_configured_description => 'Media activities have not been set up for this room. Configure activity bindings in the admin panel.';
+
+  @override
   String media_starting_activity(String activityName) {
     return 'Starting $activityName...';
   }
@@ -3123,10 +3138,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sensors_domain_title => 'Sensors';
 
   @override
-  String get sensors_domain_empty_title => 'No Sensors';
+  String get sensors_domain_empty_title => 'Sensors Not Configured';
 
   @override
-  String get sensors_domain_empty_description => 'No sensors are assigned to this room yet.';
+  String get sensors_domain_empty_description => 'Sensor roles have not been set up for this room. Configure sensor assignments in the admin panel.';
 
   @override
   String sensors_domain_alerts_active(int count) {

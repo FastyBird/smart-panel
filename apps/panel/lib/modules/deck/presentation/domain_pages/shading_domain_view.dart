@@ -283,8 +283,9 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     }
     final result = <CoversTargetRole, List<CoversTargetView>>{};
     for (final target in targets) {
-      final role = target.role ?? CoversTargetRole.primary;
-      if (role == CoversTargetRole.hidden) continue;
+      final role = target.role;
+      // Skip targets without a role (not configured) or hidden
+      if (role == null || role == CoversTargetRole.hidden) continue;
       result.putIfAbsent(role, () => []).add(target);
     }
     _cachedRoleGroups = result;
@@ -729,13 +730,37 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     return Consumer<DevicesService>(
       builder: (context, devicesService, _) {
         final targets = _coversTargets;
-        if (targets.isEmpty) {
-          return _buildEmptyState(context);
-        }
+        final roleDataList = targets.isNotEmpty ? _buildRoleDataList(targets) : <_CoverRoleData>[];
 
-        final roleDataList = _buildRoleDataList(targets);
+        // No configured roles — show not-configured state with header
         if (roleDataList.isEmpty) {
-          return _buildEmptyState(context);
+          return Scaffold(
+            backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
+            body: SafeArea(
+              child: Column(
+                children: [
+                  PageHeader(
+                    title: localizations.domain_shading,
+                    subtitle: localizations.domain_not_configured_subtitle,
+                    leading: HeaderMainIcon(
+                      icon: MdiIcons.blindsHorizontalClosed,
+                    ),
+                  ),
+                  Expanded(
+                    child: DomainStateView(
+                      state: DomainLoadState.notConfigured,
+                      onRetry: _retryLoad,
+                      domainName: localizations.domain_shading,
+                      notConfiguredIcon: MdiIcons.blindsHorizontalClosed,
+                      notConfiguredTitle: localizations.domain_shading_empty_title,
+                      notConfiguredDescription: localizations.domain_shading_empty_description,
+                      child: const SizedBox.shrink(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
         }
 
         final totalDevices = targets.length;
@@ -1734,69 +1759,6 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   }
 
   // --------------------------------------------------------------------------
-  // EMPTY STATE
-  // --------------------------------------------------------------------------
-
-  Widget _buildEmptyState(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final localizations = AppLocalizations.of(context)!;
-    final secondaryColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
-
-    return Scaffold(
-      backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
-      body: SafeArea(
-        child: Column(
-          children: [
-            PageHeader(
-              title: localizations.domain_shading,
-              subtitle: localizations.domain_shading_empty_title,
-              leading: HeaderMainIcon(
-                icon: MdiIcons.blindsHorizontalClosed,
-                color: ThemeColors.neutral,
-              ),
-            ),
-            Expanded(
-              child: Center(
-                child: Padding(
-                  padding: AppSpacings.paddingLg,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    spacing: AppSpacings.pMd,
-                    children: [
-                      Icon(
-                        MdiIcons.blindsHorizontalClosed,
-                        color: secondaryColor,
-                        size: AppSpacings.scale(64),
-                      ),
-                      Text(
-                        localizations.domain_shading_empty_title,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: AppFontSize.extraLarge,
-                          fontWeight: FontWeight.w600,
-                          color: isDark
-                              ? AppTextColorDark.primary
-                              : AppTextColorLight.primary,
-                        ),
-                      ),
-                      Text(
-                        localizations.domain_shading_empty_description,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: AppFontSize.base,
-                          color: secondaryColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 // =============================================================================

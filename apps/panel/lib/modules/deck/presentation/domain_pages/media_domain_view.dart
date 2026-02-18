@@ -499,6 +499,38 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 					);
 				}
 
+				// No activity bindings configured — show "not configured" state with header
+				final bindings = mediaService.getBindings(_roomId);
+				if (bindings.isEmpty) {
+					return Scaffold(
+						backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
+						body: SafeArea(
+							child: Column(
+								children: [
+									PageHeader(
+										title: localizations.domain_media,
+										subtitle: localizations.domain_not_configured_subtitle,
+										leading: HeaderMainIcon(
+											icon: MdiIcons.playBoxOutline,
+										),
+									),
+									Expanded(
+										child: DomainStateView(
+											state: DomainLoadState.notConfigured,
+											onRetry: _retryLoad,
+											domainName: localizations.domain_media,
+											notConfiguredIcon: MdiIcons.televisionOff,
+											notConfiguredTitle: localizations.media_not_configured_title,
+											notConfiguredDescription: localizations.media_not_configured_description,
+											child: const SizedBox.shrink(),
+										),
+									),
+								],
+							),
+						),
+					);
+				}
+
 				final isOff = activeState == null || activeState.isDeactivated;
 				final isDeactivating = activeState?.isDeactivating ?? false;
 				final showOffContent = isOff || isDeactivating;

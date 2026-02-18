@@ -1889,6 +1889,37 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
 
     return Consumer<DevicesService>(
       builder: (context, devicesService, _) {
+        // No climate actuators configured — show "not configured" state with header
+        if (_state.climateDevices.isEmpty) {
+          return Scaffold(
+            backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
+            body: SafeArea(
+              child: Column(
+                children: [
+                  PageHeader(
+                    title: localizations.domain_climate,
+                    subtitle: localizations.domain_not_configured_subtitle,
+                    leading: HeaderMainIcon(
+                      icon: MdiIcons.thermostat,
+                    ),
+                  ),
+                  Expanded(
+                    child: DomainStateView(
+                      state: DomainLoadState.notConfigured,
+                      onRetry: _retryLoad,
+                      domainName: localizations.domain_climate,
+                      notConfiguredIcon: MdiIcons.thermometerOff,
+                      notConfiguredTitle: localizations.domain_climate_empty_title,
+                      notConfiguredDescription: localizations.domain_climate_empty_description,
+                      child: const SizedBox.shrink(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
         return Scaffold(
           backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
           body: SafeArea(

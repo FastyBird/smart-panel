@@ -1453,8 +1453,10 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
     final result = <LightTargetRole, List<LightTargetView>>{};
     for (final target in targets) {
-      final role = target.role ?? LightTargetRole.other;
-      if (role == LightTargetRole.hidden) continue;
+      final role = target.role;
+      // Skip targets without a specific role — null, "other", and "hidden"
+      // are all considered not configured for this screen
+      if (role == null || role == LightTargetRole.other || role == LightTargetRole.hidden) continue;
       result.putIfAbsent(role, () => []).add(target);
     }
 
@@ -1600,10 +1602,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       builder: (context, devicesService, _) {
         final lightTargets = _spacesService?.getLightTargetsForSpace(_roomId) ?? [];
 
-        if (lightTargets.isEmpty) {
-          return _buildEmptyState(context);
-        }
-
         // Build role data
         final roleDataList = _buildRoleDataList(lightTargets, devicesService, localizations);
         final definedRoles = roleDataList
@@ -1614,6 +1612,39 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         final hasOtherLights = roleDataList.any(
           (r) => r.role == LightTargetRole.other && r.targets.isNotEmpty,
         );
+
+        // No configured roles — show not-configured state with header
+        if (roleDataList.isEmpty) {
+          return Scaffold(
+            backgroundColor: Theme.of(context).brightness == Brightness.dark
+                ? AppBgColorDark.page
+                : AppBgColorLight.page,
+            body: SafeArea(
+              child: Column(
+                children: [
+                  PageHeader(
+                    title: localizations.domain_lights,
+                    subtitle: localizations.domain_not_configured_subtitle,
+                    leading: HeaderMainIcon(
+                      icon: MdiIcons.lightbulbOutline,
+                    ),
+                  ),
+                  Expanded(
+                    child: DomainStateView(
+                      state: DomainLoadState.notConfigured,
+                      onRetry: _retryLoad,
+                      domainName: localizations.domain_lights,
+                      notConfiguredIcon: MdiIcons.lightbulbOffOutline,
+                      notConfiguredTitle: localizations.domain_lights_empty_title,
+                      notConfiguredDescription: localizations.domain_lights_empty_description,
+                      child: const SizedBox.shrink(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
         // Calculate totals
         final totalLights = lightTargets.length;
         final lightsOn = _countLightsOn(lightTargets, devicesService);
@@ -1718,11 +1749,11 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     DevicesService devicesService,
     AppLocalizations localizations,
   ) {
-    // Group targets by role
+    // Group targets by role — skip targets without a role (not configured) or hidden
     final Map<LightTargetRole, List<LightTargetView>> grouped = {};
     for (final target in targets) {
-      final role = target.role ?? LightTargetRole.other;
-      if (role == LightTargetRole.hidden) continue;
+      final role = target.role;
+      if (role == null || role == LightTargetRole.other || role == LightTargetRole.hidden) continue;
       grouped.putIfAbsent(role, () => []).add(target);
     }
 
@@ -3761,59 +3792,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     );
   }
 
-  // --------------------------------------------------------------------------
-  // EMPTY STATE
-  // --------------------------------------------------------------------------
-
-  Widget _buildEmptyState(BuildContext context) {
-    final localizations = AppLocalizations.of(context)!;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Scaffold(
-      backgroundColor: isDark
-          ? AppBgColorDark.page
-          : AppBgColorLight.page,
-      body: Center(
-        child: Padding(
-          padding: AppSpacings.paddingLg,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            spacing: AppSpacings.pMd,
-            children: [
-              Icon(
-                MdiIcons.lightbulbOffOutline,
-                color: isDark
-                    ? AppTextColorDark.secondary
-                    : AppTextColorLight.secondary,
-                size: AppSpacings.scale(64),
-              ),
-              Text(
-                localizations.domain_lights_empty_title,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: AppFontSize.extraLarge,
-                  fontWeight: FontWeight.w600,
-                  color: isDark
-                      ? AppTextColorDark.primary
-                      : AppTextColorLight.primary,
-                ),
-              ),
-              Text(
-                localizations.domain_lights_empty_description,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: AppFontSize.base,
-                  color: isDark
-                      ? AppTextColorDark.secondary
-                      : AppTextColorLight.secondary,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 // =============================================================================

@@ -851,7 +851,15 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
                 _buildHeader(context, alertCount),
                 Expanded(
                   child: _sensors.isEmpty
-                      ? _buildEmptyState(context)
+                      ? DomainStateView(
+                          state: DomainLoadState.notConfigured,
+                          onRetry: _retryLoad,
+                          domainName: localizations.domain_sensors,
+                          notConfiguredIcon: MdiIcons.accessPointNetworkOff,
+                          notConfiguredTitle: localizations.sensors_domain_empty_title,
+                          notConfiguredDescription: localizations.sensors_domain_empty_description,
+                          child: const SizedBox.shrink(),
+                        )
                       : OrientationBuilder(
                           builder: (context, orientation) {
                             return orientation == Orientation.landscape
@@ -865,64 +873,6 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
           ),
         );
       },
-    );
-  }
-
-  // =============================================================================
-  // EMPTY STATE
-  // =============================================================================
-  // Shown when [_sensors] is empty: icon, title, description.
-
-  Widget _buildEmptyState(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final localizations = AppLocalizations.of(context)!;
-    final warningColor = isDark ? AppColorsDark.warning : AppColorsLight.warning;
-    final warningBgColor =
-        isDark ? AppColorsDark.warningLight9 : AppColorsLight.warningLight9;
-
-    return Center(
-      child: Padding(
-        padding: AppSpacings.paddingXl,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          spacing: AppSpacings.pMd,
-          children: [
-            Container(
-              width: AppSpacings.scale(80),
-              height: AppSpacings.scale(80),
-              decoration: BoxDecoration(
-                color: warningBgColor,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                MdiIcons.accessPointNetworkOff,
-                size: AppSpacings.scale(48),
-                color: warningColor,
-              ),
-            ),
-            Text(
-              localizations.sensors_domain_empty_title,
-              style: TextStyle(
-                fontSize: AppFontSize.large,
-                fontWeight: FontWeight.w600,
-                color:
-                    isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            Text(
-              localizations.sensors_domain_empty_description,
-              style: TextStyle(
-                fontSize: AppFontSize.base,
-                color: isDark
-                    ? AppTextColorDark.secondary
-                    : AppTextColorLight.secondary,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
     );
   }
 

@@ -155,6 +155,12 @@ abstract class AppLocalizations {
   /// **'Unable to retrieve data. Please check your connection and try again.'**
   String get domain_data_load_failed_description;
 
+  /// Subtitle shown in domain page header when domain is not configured
+  ///
+  /// In en, this message translates to:
+  /// **'Not configured'**
+  String get domain_not_configured_subtitle;
+
   /// Displayed when required services are not initialized
   ///
   /// In en, this message translates to:
@@ -2483,16 +2489,16 @@ abstract class AppLocalizations {
   /// **'Other Lights'**
   String get domain_lights_other;
 
-  /// Title shown when no lights are found in the room
+  /// Title shown when lighting roles are not configured for this room
   ///
   /// In en, this message translates to:
-  /// **'No Lights'**
+  /// **'Lighting Not Configured'**
   String get domain_lights_empty_title;
 
-  /// Description shown when no lights are found in the room
+  /// Description shown when lighting roles are not configured for this room
   ///
   /// In en, this message translates to:
-  /// **'No lighting devices found in this room'**
+  /// **'Lighting roles have not been set up for this room. Configure roles in the admin panel to control your lights.'**
   String get domain_lights_empty_description;
 
   /// Count of lights that are on in a role group
@@ -2548,6 +2554,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Climate'**
   String get domain_climate;
+
+  /// Title shown when climate control is not configured for this room
+  ///
+  /// In en, this message translates to:
+  /// **'Climate Not Configured'**
+  String get domain_climate_empty_title;
+
+  /// Description shown when climate control is not configured for this room
+  ///
+  /// In en, this message translates to:
+  /// **'No thermostats or climate actuators are set up for this room. Add climate devices in the admin panel.'**
+  String get domain_climate_empty_description;
 
   /// Title for media domain view in room navigation
   ///
@@ -3791,16 +3809,16 @@ abstract class AppLocalizations {
   /// **'Shading'**
   String get domain_shading;
 
-  /// Title shown when no window coverings are found in the room
+  /// Title shown when shading roles are not configured for this room
   ///
   /// In en, this message translates to:
-  /// **'No Window Coverings'**
+  /// **'Shading Not Configured'**
   String get domain_shading_empty_title;
 
-  /// Description shown when no window coverings are found in the room
+  /// Description shown when shading roles are not configured for this room
   ///
   /// In en, this message translates to:
-  /// **'No window covering devices found in this room'**
+  /// **'Window covering roles have not been set up for this room. Configure roles in the admin panel to control your shades.'**
   String get domain_shading_empty_description;
 
   /// Title for modes section in shading domain
@@ -5075,6 +5093,18 @@ abstract class AppLocalizations {
   /// **'Select an activity to begin'**
   String get media_off_subtitle;
 
+  /// Title shown when no media activity bindings are configured for this room
+  ///
+  /// In en, this message translates to:
+  /// **'Media Not Configured'**
+  String get media_not_configured_title;
+
+  /// Description shown when no media activity bindings are configured for this room
+  ///
+  /// In en, this message translates to:
+  /// **'Media activities have not been set up for this room. Configure activity bindings in the admin panel.'**
+  String get media_not_configured_description;
+
   /// Shown when an activity is being activated
   ///
   /// In en, this message translates to:
@@ -5930,13 +5960,13 @@ abstract class AppLocalizations {
   /// No description provided for @sensors_domain_empty_title.
   ///
   /// In en, this message translates to:
-  /// **'No Sensors'**
+  /// **'Sensors Not Configured'**
   String get sensors_domain_empty_title;
 
   /// No description provided for @sensors_domain_empty_description.
   ///
   /// In en, this message translates to:
-  /// **'No sensors are assigned to this room yet.'**
+  /// **'Sensor roles have not been set up for this room. Configure sensor assignments in the admin panel.'**
   String get sensors_domain_empty_description;
 
   /// No description provided for @sensors_domain_alerts_active.
