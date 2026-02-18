@@ -616,7 +616,11 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			HeaderIconButton(
 				icon: MdiIcons.power,
 				color: isMediaOn ? ThemeColors.primary : ThemeColors.neutral,
-				onTap: isMediaOn ? _deactivateActivity : null,
+				onTap: isMediaOn
+					? _deactivateActivity
+					: _getSingleActivityKey() != null
+						? () => _onActivitySelected(_getSingleActivityKey()!)
+						: null,
 			),
 		];
 
@@ -876,9 +880,14 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		return activeState.activityKey ?? MediaActivityKey.off;
 	}
 
+	MediaActivityKey? _getSingleActivityKey() {
+		final options = _getActivityModeOptions();
+		return options.length == 1 ? options.first.value : null;
+	}
+
 	Widget _buildModeSelector(BuildContext context) {
 		final modeOptions = _getActivityModeOptions();
-		if (modeOptions.isEmpty) return const SizedBox.shrink();
+		if (modeOptions.length <= 1) return const SizedBox.shrink();
 
 		final activeState = _mediaService?.getActiveState(_roomId);
 		final selectedKey = _getSelectedActivityKey(activeState);
@@ -931,7 +940,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	List<Widget> _buildLandscapeModeTiles(BuildContext context) {
 		final localizations = AppLocalizations.of(context)!;
 		final modeOptions = _getActivityModeOptions();
-		if (modeOptions.isEmpty) return [];
+		if (modeOptions.length <= 1) return [];
 
 		final activeState = _mediaService?.getActiveState(_roomId);
 		final selectedKey = _getSelectedActivityKey(activeState);

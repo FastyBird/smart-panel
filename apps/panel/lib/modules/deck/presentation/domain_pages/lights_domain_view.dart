@@ -1686,7 +1686,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                 // Pre-calculate whether scenes fit inline in landscape
                 final hasScenes = _lightingScenes.isNotEmpty;
                 bool landscapeScenesInline = true;
-                if (isLandscape && hasScenes && definedRoles.isNotEmpty) {
+                if (isLandscape && hasScenes && definedRoles.length > 1) {
                   final tileHeight =
                       AppSpacings.scale(AppTileHeight.horizontal * 0.85);
                   final headerHeight = 2 * AppSpacings.pMd +
@@ -2735,7 +2735,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     _LightHeroState? heroState,
     LightTargetRole? effectiveRole,
   }) {
-    final hasRoles = roles.isNotEmpty;
     final hasScenes = _lightingScenes.isNotEmpty;
     final statusColor = _getStatusColor(context);
 
@@ -2774,7 +2773,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                   : null,
             ),
 
-          if (hasRoles) ...[
+          if (roles.length > 1) ...[
             AppSpacings.spacingMdVertical,
             _buildRoleSelector(context, roles, effectiveRole: effectiveRole),
           ],
@@ -2818,7 +2817,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         left: AppSpacings.pMd,
         bottom: AppSpacings.pMd,
       ),
-      additionalContent: (roles.isNotEmpty || hasScenes)
+      additionalContent: (roles.length > 1 || hasScenes)
           ? _buildLandscapeAdditionalColumn(
               context, roles, localizations,
               effectiveRole: effectiveRole,
@@ -2884,13 +2883,13 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (roles.isNotEmpty)
+        if (roles.length > 1)
           _buildLandscapeRolesCard(
             context, roles,
             effectiveRole: effectiveRole,
           ),
         if (showScenes) ...[
-          if (roles.isNotEmpty) AppSpacings.spacingMdVertical,
+          if (roles.length > 1) AppSpacings.spacingMdVertical,
           Expanded(
             child: _buildLandscapeScenesColumn(context, localizations),
           ),
