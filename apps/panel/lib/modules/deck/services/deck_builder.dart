@@ -138,12 +138,10 @@ DeckResult buildDeck(DeckBuildInput input) {
   indexByViewKey['security-view'] = items.length;
   items.add(securityView);
 
-  // Add energy view (after security, before dashboard pages) if supported.
-  // Skip for ROOM displays — energy is shown as a domain view (when energy
-  // devices exist) or not at all (when none exist). The standalone energy
-  // screen is only for MASTER/ENTRY displays.
+  // Add standalone energy view (after security, before dashboard pages) if
+  // energy is supported. For ROOM displays that already have an energy
+  // domain view (energyDeviceCount > 0), skip it to avoid duplication.
   final isRoomDisplay = display.role == DisplayRole.room;
-
   final hasEnergyDomainView = isRoomDisplay && input.energyDeviceCount > 0;
 
   if (input.energySupported && !hasEnergyDomainView) {
