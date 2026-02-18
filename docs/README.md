@@ -13,17 +13,9 @@ docs/
 ├── domains.md                         # Domain architecture (lights, climate, media, etc.)
 ├── energy-module.md                   # Energy module implementation
 ├── extensions.md                      # Extensions system documentation
-├── media-done-checklist.md            # Media domain implementation checklist
+├── media-domain.md                    # Media domain implementation
 ├── spaces_devices_relations.md        # Spaces and devices relationships
-├── spaces_rooms_and_zones.md          # Rooms and zones documentation
-├── admin/
-│   └── media.md                       # Admin media domain guide
-├── dev/
-│   └── media-architecture.md          # Media architecture implementation details
-├── features/
-│   └── media-domain-simulator-regression.md  # Media simulator regression notes
-└── panel/
-    └── media.md                       # Panel media domain guide
+└── spaces_rooms_and_zones.md          # Rooms and zones documentation
 ```
 
 ## Quick Links
@@ -35,8 +27,10 @@ docs/
 - [API Conventions](../.ai-rules/API_CONVENTIONS.md) - Backend API patterns
 - [Extensions System](./extensions.md) - How to build and register extensions
 - [Domain Architecture](./domains.md) - Domain definitions (lights, climate, media, security, sensors)
-- [Device Simulator](./device-simulator.md) - Create virtual devices for testing
+- [Climate Domain](./climate-domain.md) - Climate domain implementation details
+- [Media Domain](./media-domain.md) - Media domain implementation details
 - [Energy Module](./energy-module.md) - Energy tracking and aggregation
+- [Device Simulator](./device-simulator.md) - Create virtual devices for testing
 - [Spaces & Devices](./spaces_devices_relations.md) - Relationships between spaces and devices
 - [Rooms & Zones](./spaces_rooms_and_zones.md) - Room and zone conceptual model
 
