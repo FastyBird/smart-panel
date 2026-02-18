@@ -771,7 +771,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
           );
         }
 
-        final totalDevices = targets.length;
+        final totalDevices = roleDataList.fold<int>(0, (sum, r) => sum + r.deviceCount);
 
         // Clear stale selection if the role no longer exists in data
         if (_selectedRole != null &&
@@ -958,8 +958,8 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     final List<_CoverDeviceData> devices = [];
     final roomName = _spacesService?.getSpace(_roomId)?.name ?? '';
 
-    // Filter out hidden targets
-    final visibleTargets = targets.where((t) => t.role != CoversTargetRole.hidden).toList();
+    // Filter out targets without a role (not configured) or hidden
+    final visibleTargets = targets.where((t) => t.role != null && t.role != CoversTargetRole.hidden).toList();
 
     for (final target in visibleTargets) {
       final device = _devicesService?.getDevice(target.deviceId);
