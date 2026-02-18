@@ -650,6 +650,7 @@ const performAutoSave = async (key: ConfiguredActivityKey): Promise<void> => {
 			// All slots cleared — delete the binding so it reverts to "unconfigured"
 			await deleteBinding(existingBinding.id);
 			loadBindingIntoForm(key, undefined);
+			Object.assign(snapshots[key], savedSnapshot);
 		} else if (isEmpty) {
 			// No binding and nothing to create — just sync the snapshot
 			Object.assign(snapshots[key], savedSnapshot);

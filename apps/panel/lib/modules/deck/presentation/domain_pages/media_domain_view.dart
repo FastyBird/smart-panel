@@ -679,12 +679,13 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			return PortraitViewLayout(
 				scrollable: false,
 				content: Column(
-          spacing: AppSpacings.pMd,
+					spacing: AppSpacings.pMd,
 					children: [
 						HeroCard(
 							child: _buildOffStateContent(context),
 						),
-						_buildModeSelector(context),
+						if (_getActivityModeOptions().length > 1)
+							_buildModeSelector(context),
 					],
 				),
 			);
