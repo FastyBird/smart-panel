@@ -679,11 +679,11 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			return PortraitViewLayout(
 				scrollable: false,
 				content: Column(
+          spacing: AppSpacings.pMd,
 					children: [
 						HeroCard(
 							child: _buildOffStateContent(context),
 						),
-						AppSpacings.spacingMdVertical,
 						_buildModeSelector(context),
 					],
 				),
@@ -803,14 +803,15 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		// Off, deactivating, activating and failed are handled at layout level; this is only for active.
 		return Column(
 			crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: AppSpacings.pMd,
 			children: [
 				HeroCard(
 					child: _buildHeroCardContent(context, activeState!),
 				),
-				AppSpacings.spacingMdVertical,
-				_buildModeSelector(context),
-				AppSpacings.spacingMdVertical,
-				_buildCompositionCard(context),
+				if (_getActivityModeOptions().length > 1)
+					_buildModeSelector(context),
+				if ((_mediaService?.getActiveCompositionEntries(_roomId) ?? []).isNotEmpty)
+					_buildCompositionCard(context),
 			],
 		);
 	}
