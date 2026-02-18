@@ -39,6 +39,7 @@ class DeckBottomNavBar extends StatefulWidget {
 class _DeckBottomNavBarState extends State<DeckBottomNavBar> {
   final GlobalKey _selectedKey = GlobalKey();
   final ScrollController _scrollController = ScrollController();
+  bool _lastHadMode = false;
 
   @override
   void initState() {
@@ -82,6 +83,14 @@ class _DeckBottomNavBarState extends State<DeckBottomNavBar> {
     final localizations = AppLocalizations.of(context)!;
     final deckService = context.watch<DeckService>();
     final modeNotifier = context.watch<BottomNavModeNotifier>();
+
+    // Re-center active tab when mode button appears/disappears,
+    // since it changes the available width of the scrollable area.
+    final hasMode = modeNotifier.hasConfig;
+    if (hasMode != _lastHadMode) {
+      _lastHadMode = hasMode;
+      _scheduleScrollToSelected();
+    }
 
     final showLabels = !locator<ScreenService>().isSmallScreen;
 
