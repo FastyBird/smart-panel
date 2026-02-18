@@ -163,13 +163,15 @@ void main() {
         shading: 5,
         media: 1,
         sensors: 4,
+        sensorReadings: 7,
       );
 
       expect(counts.getCount(DomainType.lights), 3);
       expect(counts.getCount(DomainType.climate), 2);
       expect(counts.getCount(DomainType.shading), 5);
       expect(counts.getCount(DomainType.media), 1);
-      expect(counts.getCount(DomainType.sensors), 4);
+      // getCount returns sensorReadings (not sensors) to match hasDomain visibility
+      expect(counts.getCount(DomainType.sensors), 7);
     });
 
     test('hasDomain should return true for non-zero counts', () {

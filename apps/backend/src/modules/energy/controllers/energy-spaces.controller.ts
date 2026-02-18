@@ -228,7 +228,8 @@ export class EnergySpacesController {
 
 		const parsedLimit = limitStr !== undefined ? parseInt(limitStr, 10) : NaN;
 		const limit = Number.isNaN(parsedLimit) ? 10 : Math.max(1, Math.min(100, parsedLimit));
-		const { start, end } = resolveEnergyRange(range);
+		const resolvedRange = normalizeEnergyRange(range);
+		const { start, end } = resolveEnergyRange(resolvedRange);
 		const items = await this.energyData.getSpaceBreakdown(start, end, spaceId, limit);
 
 		const models: EnergyBreakdownItemModel[] = items.map((item) => {

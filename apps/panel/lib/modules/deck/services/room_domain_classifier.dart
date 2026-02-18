@@ -138,6 +138,11 @@ class DomainCounts {
   });
 
   /// Get count for a specific domain.
+  ///
+  /// For sensors, returns [sensorReadings] (backend-reported readings) instead
+  /// of device-category count, so the displayed count matches [hasDomain]
+  /// visibility. Sensor roles can be assigned to non-sensor-category devices
+  /// (e.g. a thermostat's temperature channel), so the two can diverge.
   int getCount(DomainType domain) {
     switch (domain) {
       case DomainType.lights:
@@ -149,7 +154,7 @@ class DomainCounts {
       case DomainType.media:
         return media;
       case DomainType.sensors:
-        return sensors;
+        return sensorReadings;
       case DomainType.energy:
         return energy;
     }

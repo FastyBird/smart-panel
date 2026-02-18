@@ -37,13 +37,6 @@ export interface SpaceEnergySummary {
 	lastUpdatedAt: string | null;
 }
 
-export interface SpaceEnergySummaryWithComparison extends SpaceEnergySummary {
-	previousConsumptionKwh: number | null;
-	consumptionChangePercent: number | null;
-	previousProductionKwh: number | null;
-	productionChangePercent: number | null;
-}
-
 export interface TimeseriesPoint {
 	intervalStart: string;
 	intervalEnd: string;
