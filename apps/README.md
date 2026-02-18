@@ -14,11 +14,12 @@ Each app serves a distinct purpose, built to run on different platforms for mana
 
 ## 📂 Overview
 
-| Folder     | Description                                                                 |
-|------------|-----------------------------------------------------------------------------|
-| `backend/` | 🧠 The core backend built with **NestJS**, handling plugins, APIs & storage |
-| `admin/`   | 🛠️ A **Vue.js**-powered web app for managing pages, tiles & data sources     |
-| `panel/`   | 📱 A **Flutter** app designed for embedded screens (e.g., Raspberry Pi)      |
+| Folder      | Description                                                                 |
+|-------------|-----------------------------------------------------------------------------|
+| `backend/`  | The core backend built with **NestJS**, handling plugins, APIs & storage    |
+| `admin/`    | A **Vue.js**-powered web app for managing pages, tiles & data sources       |
+| `panel/`    | A **Flutter** app designed for embedded screens (e.g., Raspberry Pi)        |
+| `website/`  | A **Next.js** documentation and marketing website                           |
 
 Each of these apps contains:
 
@@ -30,7 +31,7 @@ Each of these apps contains:
 ## 🧭 Project Structure
 
 Each application is **self-contained**, with its own dependencies and architecture.  
-They communicate via internal APIs and plugins defined in the [`plugins/`](../plugins/) folder, and are part of the larger monorepo.
+They communicate via internal APIs and share a plugin architecture, all part of the larger monorepo.
 
 - ✅ **Modular**: Each app can be developed or deployed independently
 - 🔌 **Extensible**: Plugins define how pages, tiles, and data sources behave across all apps
@@ -64,7 +65,7 @@ This way, each app remains lean and specialized — but plugins define the share
 
 ## 💡 Development Notes
 
-- Run `pnpm install` from the root to link all dependencies
+- Run `pnpm run bootstrap` from the root to install dependencies, generate code, and run migrations
 - Use per-app `README.md` files for details on dev & build commands
 
 ---

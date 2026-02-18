@@ -2,7 +2,7 @@
 
 This document describes the architecture of the media control system in the Smart Panel backend.
 
-> See `docs/features/media-domain-convergence.md` for the finalized design contracts and invariants.
+> See `docs/dev/media-architecture.md` for additional implementation details.
 
 ## Architecture Summary
 
@@ -179,6 +179,7 @@ npx jest "media" --no-coverage
 
 ## Documentation References
 
-- **Convergence Phase**: `docs/features/media-domain-convergence.md`
-- **Backend Refactor Spec**: `docs/features/media-domain-backend-refactor.md`
+- **Implementation Details**: `docs/dev/media-architecture.md`
+- **Admin Media Guide**: `docs/admin/media.md`
+- **Panel Media Guide**: `docs/panel/media.md`
 - **Constants**: `apps/backend/src/modules/spaces/spaces.constants.ts`

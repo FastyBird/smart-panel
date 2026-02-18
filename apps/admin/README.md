@@ -37,23 +37,39 @@ src/
 ├── locales/              # Internationalization files
 │
 ├── modules/              # Feature-based modules
-│   ├── auth/             # Authentication logic
-│   ├── dashboard/        # Authentication logic
-│   ├── devices/          # Authentication logic
+│   ├── auth/             # Authentication and session management
+│   ├── config/           # Configuration management
+│   ├── dashboard/        # Pages, tiles, and data sources
+│   ├── devices/          # Device, channel, and property management
+│   ├── displays/         # Display registration and management
+│   ├── energy/           # Energy tracking UI
+│   ├── extensions/       # Extension management
+│   ├── influxdb/         # InfluxDB configuration
+│   ├── intents/          # Intent management
+│   ├── mdns/             # mDNS configuration
+│   ├── scenes/           # Scene management
+│   ├── security/         # Security and alerts
+│   ├── spaces/           # Space (room/zone) management
+│   ├── stats/            # Statistics and logs
+│   ├── system/           # System settings and info
 │   ├── users/            # User management
-│   └── <other-modules>/  # User management
+│   └── weather/          # Weather configuration
 │
-├── plugins/              # Optional plugin extensions (tiles, pages, etc.)
-│   ├── pages-tiles/      #
-│   └── <other-plugins>/  #
+├── plugins/              # Plugin extensions (mirrors backend plugins)
+│   ├── devices-*/        # Device integration UIs
+│   ├── pages-*/          # Page type configuration
+│   ├── tiles-*/          # Tile type configuration
+│   ├── data-sources-*/   # Data source configuration
+│   ├── scenes-local/     # Local scene management
+│   └── weather-*/        # Weather provider configuration
 │
 ├── views/                # Main application views
 │
-├── app.constants.ts      # Constants for app-wide configuration
-├── app.main.ts           # Main entry file
-├── app.main.vue          # Root Vue component
-├── app.types.ts          # TypeScript type definitions
-└── openapi.ts            # OpenAPI-generated API client
+├── app.constants.ts          # Constants for app-wide configuration
+├── app.main.ts               # Main entry file
+├── app.main.vue              # Root Vue component
+├── app.types.ts              # TypeScript type definitions
+└── openapi.constants.ts      # OpenAPI-generated type definitions
 ```
 
 💡 Each plugin can define its own forms, UI logic, and schemas to seamlessly integrate with the Admin Panel.
@@ -72,7 +88,7 @@ src/
 Before starting, ensure you have:
 
 - Node.js v20+
-- PNPM v9+
+- PNPM v10+
 - Backend API running (FastyBird Smart Panel Backend)
 
 ## 🚀 Getting Started

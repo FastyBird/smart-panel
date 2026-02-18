@@ -19,72 +19,71 @@ It is responsible for managing **dashboards, pages, tiles, and data sources**—
 - ✅ **Built-In Validation & Error Handling** – Strong type safety and detailed errors
 - ✅ **Database Integration** – Works with relational databases via TypeORM
 
-## 📂 Project Structure
+## Project Structure
 
 ```plaintext
 src/
 ├── common/                  # Shared utilities, base classes, and helpers
 │   ├── entities/            # Base entities and abstract classes
-│   ├── dto/                 # Shared Data Transfer Objects (DTOs)
 │   ├── filters/             # Custom exception filters
-│   ├── interceptors/        # Global request/response interceptors
-│   ├── guards/              # Authentication and authorization guards
+│   ├── logger/              # Logging utilities
+│   ├── services/            # Shared services
 │   ├── utils/               # Utility functions and helpers
 │   └── validation/          # Custom validation rules and decorators
 │
-├── modules/                 # Modular feature-based structure
-│   ├── auth/                # Authentication and authorization module
-│   │   ├── controllers/     # API controllers for authentication
-│   │   ├── dto/             # Data Transfer Objects
-│   │   ├── entities/        # Database entities
-│   │   ├── services/        # Business logic and authentication services
-│   │   ├── guards/          # Auth guards for protecting routes
-│   │   ├── strategies/      # Authentication strategies (JWT, OAuth, etc.)
-│   │   └── auth.module.ts   # Module definition
-│   │
-│   ├── users/               # User management module
-│   │   ├── controllers/
-│   │   ├── dto/
-│   │   ├── entities/
-│   │   ├── services/
-│   │   └── users.module.ts
-│   │
-│   ├── devices/             # Device management module
-│   │   ├── controllers/
-│   │   ├── dto/
-│   │   ├── entities/
-│   │   ├── services/
-│   │   └── devices.module.ts
-│   │
-│   ├── dashboard/           # Dashboard module for UI representation
-│   │   ├── controllers/
-│   │   ├── dto/
-│   │   ├── entities/
-│   │   ├── services/
-│   │   └── dashboard.module.ts
-│   │
-│   ├── websocket/           # WebSocket-based real-time communication
-│   │   ├── gateway/
-│   │   ├── events/
-│   │   ├── services/
-│   │   └── websocket.module.ts
-│   │
-│   └── <other-modules>/     # Additional modules for extendability
-│       ├── controllers/
-│       ├── dto/
-│       ├── entities/
-│       ├── services/
-│       ├── events/
-│       ├── utils/
-│       └── <module-name>.module.ts
+├── modules/                 # Core feature modules
+│   ├── api/                 # API infrastructure
+│   ├── auth/                # Authentication & authorization
+│   ├── config/              # Configuration management
+│   ├── dashboard/           # Pages, tiles, and data sources
+│   ├── devices/             # Device, channel, and property management
+│   ├── displays/            # Display registration & management
+│   ├── energy/              # Energy tracking and aggregation
+│   ├── extensions/          # Extension system
+│   ├── influxdb/            # Time-series database integration
+│   ├── intents/             # Intent and automation system
+│   ├── mdns/                # mDNS discovery
+│   ├── platform/            # Platform core utilities
+│   ├── scenes/              # Scene management
+│   ├── security/            # Security and alerts
+│   ├── seed/                # Database seeding
+│   ├── spaces/              # Space (room/zone) management
+│   ├── stats/               # Statistics and timeseries
+│   ├── swagger/             # OpenAPI/Swagger documentation
+│   ├── system/              # System settings and info
+│   ├── users/               # User management
+│   ├── weather/             # Weather data
+│   └── websocket/           # WebSocket gateway
 │
-├── plugins/                 # Pluggable logic for tiles, pages, data sources
+├── plugins/                 # Pluggable integrations and features
+│   ├── devices-home-assistant/    # Home Assistant integration
+│   ├── devices-shelly-ng/         # Shelly Gen 2+ devices
+│   ├── devices-shelly-v1/         # Shelly Gen 1 devices
+│   ├── devices-simulator/         # Virtual device simulator
+│   ├── devices-third-party/       # Third-party device support
+│   ├── devices-wled/              # WLED RGB device support
+│   ├── devices-zigbee2mqtt/       # Zigbee2MQTT integration
+│   ├── data-sources-device-channel/  # Device channel data sources
+│   ├── data-sources-weather/      # Weather data sources
+│   ├── pages-cards/               # Card-based page layouts
+│   ├── pages-device-detail/       # Device detail pages
+│   ├── pages-tiles/               # Tile-based page layouts
+│   ├── scenes-local/              # Local scene management
+│   ├── tiles-device-preview/      # Device preview tiles
+│   ├── tiles-scene/               # Scene control tiles
+│   ├── tiles-time/                # Clock tiles
+│   ├── tiles-weather/             # Weather tiles
+│   ├── logger-rotating-file/      # File-based logging
+│   ├── weather-openweathermap/            # OpenWeatherMap API
+│   └── weather-openweathermap-onecall/    # OpenWeatherMap OneCall API
 │
+├── migrations/              # TypeORM database migrations
+├── spec/                    # Generated device/channel specifications
 ├── cli.ts                   # Command-line interface for administration
-├── main.ts                  # Application entry point
+└── main.ts                  # Application entry point
 ```
 
-💡 Each plugin or module may define its own entities, services, and OpenAPI schemas.
+Each module and plugin defines its own controllers, services, entities, DTOs, and OpenAPI schemas.
 
 ## 🛠️ Tech Stack
 
@@ -98,8 +97,8 @@ src/
 
 Before starting, make sure you have the following installed:
 - Node.js v20+
-- PNPM v9+
-- SQLite database
+- PNPM v10+
+- SQLite (bundled, no external installation needed)
 
 ## 🚀 Getting Started
 

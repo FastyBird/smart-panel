@@ -348,6 +348,6 @@ Extensions are accessible via:
 
 ## See Also
 
-- [API Conventions](.ai-rules/API_CONVENTIONS.md)
-- [Development Guidelines](.ai-rules/GUIDELINES.md)
-- [Example Extension](packages/example-extension/)
+- [API Conventions](../.ai-rules/API_CONVENTIONS.md)
+- [Development Guidelines](../.ai-rules/GUIDELINES.md)
+- [Example Extension](../packages/example-extension/)

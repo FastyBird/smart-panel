@@ -318,7 +318,7 @@ pnpm run generate:openapi
 
 This creates:
 - `spec/api/v1/openapi.json` - OpenAPI specification
-- `apps/admin/src/api/openapi.ts` - TypeScript types for admin
+- `apps/admin/src/openapi.constants.ts` - TypeScript type definitions for admin
 - `apps/panel/lib/api/` - Dart API client for panel
 
 ### Device/Channel Specs
@@ -347,7 +347,18 @@ apps/
   │   │   │   ├── dashboard/    # Dashboard (pages, tiles, data sources)
   │   │   │   ├── devices/      # Device/channel/property management
   │   │   │   ├── displays/     # Display registration & management
+  │   │   │   ├── energy/       # Energy tracking & aggregation
+  │   │   │   ├── extensions/   # Extension system
+  │   │   │   ├── influxdb/     # Time-series database integration
+  │   │   │   ├── intents/      # Intent/automation system
+  │   │   │   ├── mdns/         # mDNS discovery
+  │   │   │   ├── platform/     # Platform core utilities
+  │   │   │   ├── scenes/       # Scene management
+  │   │   │   ├── security/     # Security & alerts
+  │   │   │   ├── seed/         # Database seeding
+  │   │   │   ├── spaces/       # Space (room/zone) management
   │   │   │   ├── stats/        # Statistics & timeseries
+  │   │   │   ├── swagger/      # OpenAPI/Swagger docs
   │   │   │   ├── system/       # System settings
   │   │   │   ├── users/        # User management
   │   │   │   ├── weather/      # Weather module
@@ -374,6 +385,14 @@ apps/
   │       │   ├── dashboard/
   │       │   ├── devices/
   │       │   ├── displays/
+  │       │   ├── energy/
+  │       │   ├── extensions/
+  │       │   ├── influxdb/
+  │       │   ├── intents/
+  │       │   ├── mdns/
+  │       │   ├── scenes/
+  │       │   ├── security/
+  │       │   ├── spaces/
   │       │   ├── stats/
   │       │   ├── system/
   │       │   ├── users/
@@ -386,10 +405,18 @@ apps/
   │       ├── modules/      # Feature modules
   │       │   ├── config/
   │       │   ├── dashboard/
+  │       │   ├── deck/
   │       │   ├── devices/
   │       │   ├── displays/
+  │       │   ├── energy/
+  │       │   ├── intents/
+  │       │   ├── scenes/
+  │       │   ├── security/
+  │       │   ├── spaces/
   │       │   ├── system/
   │       │   └── weather/
+  │       ├── features/    # UI features (deck, discovery, overlay, settings)
+  │       ├── plugins/     # Plugin implementations
   │       └── spec/         # Generated device/channel specs (DO NOT EDIT)
   │
   └── website/              # Documentation website
@@ -423,7 +450,7 @@ Both TypeScript (via Prettier) and Dart (via analysis_options) enforce specific 
 Some directories contain auto-generated code that should not be manually edited:
 - `spec/api/v1/openapi.json` (from backend Swagger decorators)
 - `apps/backend/src/spec/` (device/channel specs)
-- `apps/admin/src/api/openapi.ts` (from OpenAPI spec)
+- `apps/admin/src/openapi.constants.ts` (from OpenAPI spec)
 - `apps/panel/lib/api/` (from OpenAPI spec)
 - `apps/panel/lib/spec/` (device/channel specs)
 
@@ -477,7 +504,7 @@ Generated code includes (but is not limited to):
 
 - `spec/api/v1/openapi.json`
 - `apps/backend/src/spec/**`
-- `apps/admin/src/api/openapi.ts`
+- `apps/admin/src/openapi.constants.ts`
 - `apps/panel/lib/api/**`
 - `apps/panel/lib/spec/**`
 

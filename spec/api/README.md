@@ -4,7 +4,7 @@ This directory contains the OpenAPI specification for the FastyBird Smart Panel 
 
 ## Files
 
-- `openapi.json` - OpenAPI 3.0 specification generated from the NestJS backend
+- `v1/openapi.json` - OpenAPI 3.0 specification generated from the NestJS backend
 
 ## Generating the Specification
 
@@ -65,5 +65,5 @@ pnpm --filter @fastybird/smart-panel-backend lint:openapi
 
 ## Related Documentation
 
-- Backend Swagger usage guide: `apps/backend/SWAGGER_USAGE.md`
+- API Conventions: `.ai-rules/API_CONVENTIONS.md`
 - API Documentation: `http://localhost:3000/api/docs` (when server is running)

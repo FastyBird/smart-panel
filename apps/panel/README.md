@@ -23,27 +23,50 @@ Built with **Flutter**, it’s optimized for **performance**, **simplicity**, an
 
 ---
 
-## 📂 Project Structure
+## Project Structure
 
 ```plaintext
 lib/
-├── app/                   # Core application entry point
-├── api/                   # API clients and generated models
+├── app/                   # Core application entry point and main widget
+├── api/                   # Generated API clients (DO NOT EDIT)
+├── spec/                  # Generated device/channel specs (DO NOT EDIT)
 ├── core/                  # Core utilities, services, and models
-│   ├── repositories/      # Data repositories for configuration & devices
+│   ├── interceptors/      # HTTP interceptors
+│   ├── models/            # Core data models
 │   ├── services/          # Global services (networking, storage, etc.)
+│   ├── types/             # Type definitions
 │   ├── utils/             # Helper functions (date, formatting, etc.)
 │   └── widgets/           # Reusable UI components (cards, tiles, etc.)
 │
-├── features/              # Feature-based structure
-│   ├── dashboard/         # Dashboard UI and widgets
+├── features/              # Feature-based screens
+│   ├── deck/              # Deck navigation feature
+│   ├── discovery/         # Device discovery feature
 │   ├── overlay/           # Overlay screens
 │   └── settings/          # Application settings screens
 │
-├── modules/               # 
+├── modules/               # Feature modules
+│   ├── config/            # Configuration management
+│   ├── dashboard/         # Dashboard data and UI
+│   ├── deck/              # Spaces + Deck navigation system
+│   ├── devices/           # Device management and control
+│   ├── displays/          # Display registration
+│   ├── energy/            # Energy tracking and display
+│   ├── intents/           # Intent execution
+│   ├── scenes/            # Scene control
+│   ├── security/          # Security and alerts
+│   ├── spaces/            # Space (room/zone) management
+│   ├── system/            # System info
+│   └── weather/           # Weather display
 │
-├── main.dart              # App entry point
-└── i10n/                  # Auto-generated localization files
+├── plugins/               # Plugin implementations
+│   ├── devices-*/         # Device integration plugins
+│   ├── pages-*/           # Page type renderers
+│   ├── tiles-*/           # Tile type renderers
+│   ├── data-sources-*/    # Data source plugins
+│   └── scenes-local/      # Local scene plugin
+│
+├── l10n/                  # Localization files
+└── main.dart              # App entry point
 ```
 
 ## 🛠️ Tech Stack
