@@ -600,6 +600,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			(activeState.isActive || activeState.isActivating || activeState.isFailed);
 		final targets = _mediaService?.resolveControlTargets(_roomId);
 		final showRemoteButton = isMediaOn && (targets?.hasRemote == true);
+		final singleActivityKey = _getSingleActivityKey();
 
 		final List<Widget> trailingWidgets = [
 			if (showDevicesButton)
@@ -617,8 +618,8 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 				color: isMediaOn ? ThemeColors.primary : ThemeColors.neutral,
 				onTap: isMediaOn
 					? _deactivateActivity
-					: _getSingleActivityKey() != null
-						? () => _onActivitySelected(_getSingleActivityKey()!)
+					: singleActivityKey != null
+						? () => _onActivitySelected(singleActivityKey)
 						: null,
 			),
 		];

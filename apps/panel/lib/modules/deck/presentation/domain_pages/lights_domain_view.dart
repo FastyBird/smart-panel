@@ -40,7 +40,7 @@
 //   - BUILD: scaffold, loading/empty/content; [Consumer] for [DevicesService].
 //   - DATA BUILDING: [_buildRoleDataList], [_buildOtherLights], [_getLightOptimisticOn].
 //   - HEADER: [_buildHeader], [_getStatusColor], [_getModeName].
-//   - SHEETS: [_showOtherLightsSheet], [_showRoleLightsSheet], [_showScenesSheet].
+//   - SHEETS: [_showRoleLightsSheet], [_showScenesSheet].
 //   - LIGHTING MODE CONTROLS: [_setLightingMode], [_toggleRoleLights], [_toggleLight].
 //   - HERO CONTROLS: [_onHeroValueChanged], [_heroSetBrightness], [_heroSetColor], etc.
 //   - LAYOUTS: [_buildPortraitLayout], [_buildLandscapeLayout], role selector, scenes.
@@ -1620,10 +1620,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                 r.role != LightTargetRole.other &&
                 r.role != LightTargetRole.hidden)
             .toList();
-        final hasOtherLights = roleDataList.any(
-          (r) => r.role == LightTargetRole.other && r.targets.isNotEmpty,
-        );
-
         // No configured roles — show not-configured state with header
         if (roleDataList.isEmpty) {
           return Scaffold(
@@ -1714,7 +1710,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                   children: [
                     _buildHeader(
                       context, lightsOn, totalLights,
-                      hasOtherLights: hasOtherLights,
                       showScenesButton: showScenesButton,
                     ),
                     Expanded(
@@ -2102,7 +2097,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     BuildContext context,
     int lightsOn,
     int totalLights, {
-    bool hasOtherLights = false,
     bool showScenesButton = false,
   }) {
     final localizations = AppLocalizations.of(context)!;
@@ -2156,11 +2150,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         HeaderIconButton(
           icon: MdiIcons.autoFix,
           onTap: _showScenesSheet,
-        ),
-      if (hasOtherLights)
-        HeaderIconButton(
-          icon: MdiIcons.lightbulbGroup,
-          onTap: _showOtherLightsSheet,
         ),
     ];
 
@@ -2231,84 +2220,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       isLocked: isLocked,
       lockedValue: lockedValue,
     ).toTuple();
-  }
-
-  // --------------------------------------------------------------------------
-  // OTHER LIGHTS SHEET / DRAWER
-  // --------------------------------------------------------------------------
-
-  void _showOtherLightsSheet() {
-    final targets = _spacesService?.getLightTargetsForSpace(_roomId) ?? [];
-    final roleGroups = _groupTargetsByRole(targets);
-    final otherTargets = roleGroups[LightTargetRole.other] ?? [];
-    if (otherTargets.isEmpty) return;
-
-    final devicesService = _devicesService;
-    if (devicesService == null) return;
-
-    final roomName = _spacesService?.getSpace(_roomId)?.name ?? '';
-    final initialLights = _buildOtherLights(otherTargets, devicesService, roomName);
-    if (initialLights.isEmpty) return;
-
-    final localizations = AppLocalizations.of(context)!;
-    final isLandscape =
-        MediaQuery.of(context).orientation == Orientation.landscape;
-
-    if (isLandscape) {
-      final isDark = Theme.of(context).brightness == Brightness.dark;
-      final drawerBgColor =
-          isDark ? AppFillColorDark.base : AppFillColorLight.blank;
-
-      showAppRightDrawer(
-        context,
-        title: localizations.domain_lights_other,
-        titleIcon: MdiIcons.lightbulbOutline,
-        scrollable: false,
-        content: ListenableBuilder(
-          listenable: _roleLightsSheetNotifier,
-          builder: (ctx, _) {
-            final lights = _buildOtherLights(
-              otherTargets,
-              devicesService,
-              roomName,
-            );
-            return VerticalScrollWithGradient(
-              gradientHeight: AppSpacings.pMd,
-              itemCount: lights.length,
-              separatorHeight: AppSpacings.pSm,
-              backgroundColor: drawerBgColor,
-              padding: EdgeInsets.symmetric(
-                horizontal: AppSpacings.pLg,
-                vertical: AppSpacings.pMd,
-              ),
-              itemBuilder: (context, index) =>
-                  _buildOtherLightTileForSheet(context, lights[index]),
-            );
-          },
-        ),
-      );
-    } else {
-      List<LightDeviceData> cachedLights = initialLights;
-
-      DeckItemSheet.showItemSheetWithUpdates(
-        context,
-        title: localizations.domain_lights_other,
-        icon: MdiIcons.lightbulbOutline,
-        rebuildWhen: _roleLightsSheetNotifier,
-        getItemCount: () {
-          cachedLights = _buildOtherLights(
-            otherTargets,
-            devicesService,
-            roomName,
-          );
-          return cachedLights.length;
-        },
-        itemBuilder: (context, index) => _buildOtherLightTileForSheet(
-          context,
-          cachedLights[index],
-        ),
-      );
-    }
   }
 
   /// Sync all lights in the role to current hero display values.
