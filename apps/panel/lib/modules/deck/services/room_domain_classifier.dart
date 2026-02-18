@@ -269,17 +269,3 @@ DomainCounts buildDomainCounts(
     sensorReadings: sensorReadingsCount,
   );
 }
-
-/// Builds domain counts from device views using their categories.
-DomainCounts buildDomainCountsFromCategories<T>({
-  required List<T> items,
-  required DevicesModuleDeviceCategory Function(T) getCategory,
-  int energyDeviceCount = 0,
-  int sensorReadingsCount = 0,
-}) {
-  return buildDomainCounts(
-    items.map(getCategory).toList(),
-    energyDeviceCount: energyDeviceCount,
-    sensorReadingsCount: sensorReadingsCount,
-  );
-}
