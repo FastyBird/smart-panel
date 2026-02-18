@@ -296,6 +296,9 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 				_registerModeConfig();
 			}
 		});
+		// Ensure a frame is scheduled so the post-frame callback runs promptly
+		// (addPostFrameCallback alone does not schedule a frame).
+		WidgetsBinding.instance.ensureVisualUpdate();
 	}
 
 	void _onDevicesChanged() {
@@ -310,6 +313,9 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 					_registerModeConfig();
 				}
 			});
+			// Ensure a frame is scheduled so the post-frame callback runs promptly
+			// (addPostFrameCallback alone does not schedule a frame).
+			WidgetsBinding.instance.ensureVisualUpdate();
 		}
 	}
 

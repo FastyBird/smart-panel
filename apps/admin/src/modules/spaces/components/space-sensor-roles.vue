@@ -219,7 +219,7 @@ const loadSensorTargets = async (): Promise<void> => {
 
 const onRoleChange = async (target: ISensorTarget, newRole: string): Promise<void> => {
 	try {
-		if (newRole === '') {
+		if (!newRole) {
 			const { error } = await backend.client.DELETE(
 				`/${MODULES_PREFIX}/${SPACES_MODULE_PREFIX}/spaces/{id}/sensors/roles/{deviceId}/{channelId}`,
 				{

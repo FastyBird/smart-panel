@@ -207,7 +207,7 @@ const loadClimateTargets = async (): Promise<void> => {
 
 const onRoleChange = async (target: IClimateTarget, newRole: string): Promise<void> => {
 	try {
-		if (newRole === '') {
+		if (!newRole) {
 			// Clear role - delete the assignment
 			// For sensor targets, include channelId in query params
 			const { error } = await backend.client.DELETE(

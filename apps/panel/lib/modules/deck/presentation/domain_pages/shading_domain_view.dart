@@ -672,6 +672,9 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
       _sheetNotifier.value++;
       _registerModeConfig();
     });
+    // Ensure a frame is scheduled so the post-frame callback runs promptly
+    // (addPostFrameCallback alone does not schedule a frame).
+    WidgetsBinding.instance.ensureVisualUpdate();
   }
 
   void _loadHeroCachedValuesIfNeeded(RoleCoversState roleState) {

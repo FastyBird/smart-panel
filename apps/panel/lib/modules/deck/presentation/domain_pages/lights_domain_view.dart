@@ -1195,6 +1195,8 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     _isActivePage = event.itemId == widget.viewItem.id;
 
     if (_isActivePage) {
+      // Trigger rebuild to pick up any data changes that occurred while offscreen
+      setState(() {});
       _registerModeConfig();
     }
   }
@@ -1408,6 +1410,9 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         _registerModeConfig();
       }
     });
+    // Ensure a frame is scheduled so the post-frame callback runs promptly
+    // (addPostFrameCallback alone does not schedule a frame).
+    WidgetsBinding.instance.ensureVisualUpdate();
   }
 
   /// Checks convergence for device-level on/off optimistic states set by
