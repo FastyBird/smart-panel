@@ -229,7 +229,12 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
 
   /// Registers today/week/month range selector in bottom nav chip.
   void _registerRangeModeConfig() {
-    if (!_isActivePage || _summary == null) return;
+    if (!_isActivePage) return;
+
+    if (_summary == null) {
+      _bottomNavModeNotifier?.clear();
+      return;
+    }
 
     final localizations = AppLocalizations.of(context)!;
     final rangeOptions = _getRangeOptions(localizations);

@@ -1203,9 +1203,12 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     if (!_isActivePage || _isLoading) return;
 
     final targets = _spacesService?.getLightTargetsForSpace(_roomId) ?? [];
-    final hasLights = targets.isNotEmpty;
+    final hasConfiguredLights = targets.any((t) =>
+        t.role != null &&
+        t.role != LightTargetRole.other &&
+        t.role != LightTargetRole.hidden);
 
-    if (!LightingConstants.useBackendIntents || !hasLights) {
+    if (!LightingConstants.useBackendIntents || !hasConfiguredLights) {
       _bottomNavModeNotifier?.clear();
       return;
     }

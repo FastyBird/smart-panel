@@ -495,8 +495,9 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     if (!_isActivePage || _isLoading) return;
 
     final targets = _coversTargets;
-    final hasCovers = targets.isNotEmpty;
-    if (!ShadingConstants.useBackendIntents || !hasCovers) {
+    final hasConfiguredCovers = targets.any((t) =>
+        t.role != null && t.role != CoversTargetRole.hidden);
+    if (!ShadingConstants.useBackendIntents || !hasConfiguredCovers) {
       _bottomNavModeNotifier?.clear();
       return;
     }

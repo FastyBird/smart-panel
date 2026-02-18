@@ -1242,6 +1242,11 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   void _registerModeConfig() {
     if (!_isActivePage || _isLoading) return;
 
+    if (_state.climateDevices.isEmpty) {
+      _bottomNavModeNotifier?.clear();
+      return;
+    }
+
     final localizations = AppLocalizations.of(context)!;
     final modeOptions = _getClimateModeOptions(localizations);
     if (modeOptions.isEmpty) return;
