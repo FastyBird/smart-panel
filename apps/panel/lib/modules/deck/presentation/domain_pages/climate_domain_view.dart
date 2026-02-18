@@ -87,7 +87,6 @@ import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/domain_s
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_item_sheet.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_mode_chip.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_mode_popup.dart';
-import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/domain_state_view.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/domain_control_state_service.dart';
 import 'package:fastybird_smart_panel/modules/deck/utils/lighting.dart';
 import 'package:fastybird_smart_panel/modules/devices/export.dart';

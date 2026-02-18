@@ -996,6 +996,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
   Widget _buildLandscapeLayout(BuildContext context) {
     final isLargeScreen = _screenService.isLargeScreen;
     final hasEnv = _hasEnvironmentData;
+    // Extra column when env summary sidebar is hidden (no env data available)
     final sensorsPerRow = (isLargeScreen ? 3 : 2) + (hasEnv ? 0 : 1);
 
     return LandscapeViewLayout(
