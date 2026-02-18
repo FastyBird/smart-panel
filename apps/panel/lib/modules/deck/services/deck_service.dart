@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/export.dart';
@@ -17,6 +18,7 @@ class DeckService extends ChangeNotifier {
   final DashboardService _dashboardService;
   final IntentsService _intentsService;
   final DevicesService? _devicesService;
+  SpacesService? _spacesService;
 
   /// The current deck result.
   DeckResult? _deck;
@@ -117,6 +119,17 @@ class DeckService extends ChangeNotifier {
 
     // Listen for dashboard changes
     _dashboardService.addListener(_onDashboardChanged);
+
+    // Listen for device changes (devices added/removed from space)
+    _devicesService?.addListener(_onDevicesChanged);
+
+    // Listen for spaces changes (sensor roles assigned/removed)
+    try {
+      if (locator.isRegistered<SpacesService>()) {
+        _spacesService = locator<SpacesService>();
+        _spacesService?.addListener(_onSpacesChanged);
+      }
+    } catch (_) {}
 
     // For ROOM role, fetch device categories and prefetch domain data asynchronously
     if (display.role == DisplayRole.room && display.roomId != null) {
@@ -230,6 +243,64 @@ class DeckService extends ChangeNotifier {
 
   void _onDashboardChanged() {
     if (_display != null && _configError == null) {
+      _buildDeck(null);
+      notifyListeners();
+    }
+  }
+
+  /// Called when DevicesService notifies (device added/removed/changed).
+  ///
+  /// Re-reads device categories and energy device count from cache.
+  /// Only rebuilds the deck if domain-relevant data actually changed.
+  void _onDevicesChanged() {
+    final roomId = _display?.roomId;
+    if (roomId == null || _display?.role != DisplayRole.room) return;
+
+    final devices = _devicesService?.getDevicesForRoom(roomId) ?? [];
+    final newCategories = devices.map((d) => d.category).toList();
+    final newEnergyCount = countEnergyDevices(devices);
+
+    final categoriesChanged = !const ListEquality<DevicesModuleDeviceCategory>()
+        .equals(newCategories, _deviceCategories);
+    final energyChanged = newEnergyCount != _energyDeviceCount;
+
+    if (categoriesChanged || energyChanged) {
+      _deviceCategories = newCategories;
+      _energyDeviceCount = newEnergyCount;
+
+      if (kDebugMode) {
+        debugPrint(
+          '[DECK SERVICE] Device change detected, rebuilding deck. '
+          'categories: ${_deviceCategories.length}, '
+          'energy: $_energyDeviceCount',
+        );
+      }
+
+      _buildDeck(null);
+      notifyListeners();
+    }
+  }
+
+  /// Called when SpacesService notifies (sensor roles assigned/removed, etc.).
+  ///
+  /// Re-reads cached sensor state count. Only rebuilds if it changed.
+  void _onSpacesChanged() {
+    final roomId = _display?.roomId;
+    if (roomId == null || _display?.role != DisplayRole.room) return;
+
+    final sensorState = _spacesService?.getSensorState(roomId);
+    final newCount = sensorState?.totalSensors ?? 0;
+
+    if (newCount != _sensorReadingsCount) {
+      _sensorReadingsCount = newCount;
+
+      if (kDebugMode) {
+        debugPrint(
+          '[DECK SERVICE] Sensor count changed to $_sensorReadingsCount, '
+          'rebuilding deck.',
+        );
+      }
+
       _buildDeck(null);
       notifyListeners();
     }
@@ -471,6 +542,8 @@ class DeckService extends ChangeNotifier {
   @override
   void dispose() {
     _dashboardService.removeListener(_onDashboardChanged);
+    _devicesService?.removeListener(_onDevicesChanged);
+    _spacesService?.removeListener(_onSpacesChanged);
     super.dispose();
   }
 }

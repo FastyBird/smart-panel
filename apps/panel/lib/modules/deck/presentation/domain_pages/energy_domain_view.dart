@@ -48,7 +48,9 @@ import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/devices/export.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/bottom_nav_mode_config.dart';
+import 'package:fastybird_smart_panel/modules/deck/services/room_domain_classifier.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_item_sheet.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_mode_chip.dart';
@@ -99,6 +101,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
 
   // Services & event bus
   EnergyService? _energyService;
+  DevicesService? _devicesServiceRef;
   EventBus? _eventBus;
   BottomNavModeNotifier? _bottomNavModeNotifier;
   StreamSubscription<DeckPageActivatedEvent>? _pageActivatedSubscription;
@@ -107,6 +110,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
   // Range selection (today/week/month)
   EnergyRange _selectedRange = EnergyRange.today;
   bool _isRangeChangeInFlight = false;
+  int _lastEnergyDeviceCount = -1;
 
   // Loaded data
   EnergySummary? _summary;
@@ -137,6 +141,10 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
     if (locator.isRegistered<BottomNavModeNotifier>()) {
       _bottomNavModeNotifier = locator<BottomNavModeNotifier>();
     }
+    if (locator.isRegistered<DevicesService>()) {
+      _devicesServiceRef = locator<DevicesService>();
+      _devicesServiceRef?.addListener(_onDevicesChanged);
+    }
 
     _pageActivatedSubscription =
         _eventBus?.on<DeckPageActivatedEvent>().listen(_onPageActivated);
@@ -149,6 +157,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
   @override
   void dispose() {
     _pageActivatedSubscription?.cancel();
+    _devicesServiceRef?.removeListener(_onDevicesChanged);
     super.dispose();
   }
 
@@ -225,6 +234,32 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
     if (_isActivePage) {
       _registerRangeModeConfig();
     }
+  }
+
+  /// Called when DevicesService notifies (device changes via WebSocket).
+  ///
+  /// Only re-fetches when the energy device count for this room changes,
+  /// avoiding unnecessary HTTP calls on unrelated device property updates.
+  void _onDevicesChanged() {
+    if (!mounted) return;
+
+    // Check if energy device count changed (cheap, sync read from cache)
+    final devices = _devicesServiceRef?.getDevicesForRoom(_roomId) ?? [];
+    final newCount = countEnergyDevices(devices);
+    if (newCount == _lastEnergyDeviceCount) return;
+    _lastEnergyDeviceCount = newCount;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      // Clear cached data so loadDomainData will fetch fresh
+      _summary = null;
+      _timeseries = null;
+      _breakdown = null;
+      loadDomainData().then((_) {
+        if (mounted) _registerRangeModeConfig();
+      });
+    });
+    WidgetsBinding.instance.ensureVisualUpdate();
   }
 
   /// Registers today/week/month range selector in bottom nav chip.
