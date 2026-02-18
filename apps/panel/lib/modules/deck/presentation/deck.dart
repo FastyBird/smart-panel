@@ -152,7 +152,15 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen>
     // Fade in
     await _fadeController.forward();
 
-    _isCrossfading = false;
+    // Must use setState so the PageView rebuilds with normal physics
+    // (replacing NeverScrollableScrollPhysics that blocks swipe).
+    if (mounted) {
+      setState(() {
+        _isCrossfading = false;
+      });
+    } else {
+      _isCrossfading = false;
+    }
   }
 
   void _fireDeckPageActivatedEvent(DeckService deckService, int index) {
