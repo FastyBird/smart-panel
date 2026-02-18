@@ -1652,9 +1652,9 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             ),
           );
         }
-        // Calculate totals
-        final totalLights = lightTargets.length;
-        final lightsOn = _countLightsOn(lightTargets, devicesService);
+        // Calculate totals from defined roles (excludes unconfigured/hidden targets)
+        final totalLights = definedRoles.fold<int>(0, (sum, r) => sum + r.totalCount);
+        final lightsOn = definedRoles.fold<int>(0, (sum, r) => sum + r.onCount);
 
         // Auto-select first role and build hero state
         final effectiveRole = _selectedRole ??
@@ -2082,8 +2082,12 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   ThemeColors _getStatusColor(BuildContext context) {
     final targets = _spacesService?.getLightTargetsForSpace(_roomId) ?? [];
     final devicesService = context.read<DevicesService>();
-    final totalLights = targets.length;
-    final lightsOn = _countLightsOn(targets, devicesService);
+    final configured = targets.where((t) =>
+        t.role != null &&
+        t.role != LightTargetRole.other &&
+        t.role != LightTargetRole.hidden);
+    final totalLights = configured.length;
+    final lightsOn = _countLightsOn(configured.toList(), devicesService);
     if (lightsOn == totalLights && totalLights > 0) return ThemeColors.success;
     if (lightsOn == 0) return ThemeColors.neutral;
     return ThemeColors.warning;

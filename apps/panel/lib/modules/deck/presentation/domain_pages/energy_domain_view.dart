@@ -287,15 +287,17 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage> {
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      // Clear cached data so _loadEnergyData will fetch fresh
-      _summary = null;
-      _timeseries = null;
-      _breakdown = null;
+      // Clear cached data and show loading state so _loadEnergyData will fetch fresh
+      setState(() {
+        _summary = null;
+        _timeseries = null;
+        _breakdown = null;
+        _loadState = DomainLoadState.loading;
+      });
       _loadEnergyData().then((_) {
         if (mounted) _registerRangeModeConfig();
       });
     });
-    WidgetsBinding.instance.ensureVisualUpdate();
   }
 
   /// Registers today/week/month range selector in bottom nav chip.
