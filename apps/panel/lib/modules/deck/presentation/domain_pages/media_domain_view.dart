@@ -196,8 +196,12 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		// Subscribe to page activation events for bottom nav mode registration
 		_pageActivatedSubscription = _eventBus?.on<DeckPageActivatedEvent>().listen(_onPageActivated);
 
-		// Fetch data immediately (not deferred)
-		_fetchMediaData();
+		// Defer fetch to after initState so inherited widgets (AppLocalizations,
+		// Theme) are accessible when data is already cached and the method runs
+		// synchronously through _registerModeConfig.
+		WidgetsBinding.instance.addPostFrameCallback((_) {
+			if (mounted) _fetchMediaData();
+		});
 	}
 
 	/// Fetches media activity for the room and syncs device state; clears loading.

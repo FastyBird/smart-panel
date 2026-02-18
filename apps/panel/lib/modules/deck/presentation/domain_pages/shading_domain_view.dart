@@ -410,7 +410,12 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
 
     _pageActivatedSubscription = _eventBus?.on<DeckPageActivatedEvent>().listen(_onPageActivated);
 
-    _fetchCoversData();
+    // Defer fetch to after initState so inherited widgets (AppLocalizations,
+    // Theme) are accessible when data is already cached and the method runs
+    // synchronously through _registerModeConfig.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _fetchCoversData();
+    });
   }
 
   Future<void> _fetchCoversData() async {

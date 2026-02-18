@@ -1101,8 +1101,12 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     // Subscribe to page activation events for bottom nav mode registration
     _pageActivatedSubscription = _eventBus?.on<DeckPageActivatedEvent>().listen(_onPageActivated);
 
-    // Fetch light targets for this space
-    _fetchLightTargets();
+    // Defer fetch to after initState so inherited widgets (AppLocalizations,
+    // Theme) are accessible when data is already cached and the method runs
+    // synchronously through _registerModeConfig.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _fetchLightTargets();
+    });
 
     // Load hero cached values when role is mixed (after first frame)
     WidgetsBinding.instance.addPostFrameCallback((_) {
