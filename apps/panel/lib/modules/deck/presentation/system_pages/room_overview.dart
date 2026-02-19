@@ -271,18 +271,19 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 			}
 
 			// Build sensor readings for the strip
+			final fmt = NumberFormatUtils.defaultFormat;
 			if (temperature != null) {
 				sensorReadings.add(SensorReading(
 					icon: MdiIcons.thermometer,
 					label: 'Temp',
-					value: '${temperature.toStringAsFixed(1)}\u00B0',
+					value: '${fmt.formatDecimal(temperature, decimalPlaces: 1)}\u00B0',
 				));
 			}
 			if (humidity != null) {
 				sensorReadings.add(SensorReading(
 					icon: MdiIcons.waterPercent,
 					label: 'Humidity',
-					value: '${humidity.toStringAsFixed(0)}%',
+					value: '${fmt.formatDecimal(humidity, decimalPlaces: 0)}%',
 				));
 			}
 
@@ -298,18 +299,11 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 	}
 
 	bool _isLightingDevice(DeviceView device) {
-		return device.category == DevicesModuleDeviceCategory.lighting;
+		return classifyDeviceToDomain(device.category) == DomainType.lights;
 	}
 
 	bool _isMediaDevice(DeviceView device) {
-		return device.category == DevicesModuleDeviceCategory.television ||
-			device.category == DevicesModuleDeviceCategory.media ||
-			device.category == DevicesModuleDeviceCategory.speaker ||
-			device.category == DevicesModuleDeviceCategory.avReceiver ||
-			device.category == DevicesModuleDeviceCategory.gameConsole ||
-			device.category == DevicesModuleDeviceCategory.projector ||
-			device.category == DevicesModuleDeviceCategory.setTopBox ||
-			device.category == DevicesModuleDeviceCategory.streamingService;
+		return classifyDeviceToDomain(device.category) == DomainType.media;
 	}
 
 	/// Check if a device is currently on by looking for the 'on' property
@@ -802,8 +796,8 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 						child: _buildDomainCardsGrid(context, isDark, model),
 					),
 
-				// Suggested actions (shown when no domain cards)
-				if (model.domainCards.isEmpty && model.suggestedActions.isNotEmpty)
+				// Suggested actions
+				if (model.suggestedActions.isNotEmpty)
 					_buildSuggestedActionsSection(context, model),
 
 				// Empty state when no devices and no scenes
