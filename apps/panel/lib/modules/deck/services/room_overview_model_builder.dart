@@ -47,9 +47,6 @@ class RoomOverviewBuildInput {
   /// Number of media devices currently playing.
   final int mediaPlayingCount;
 
-  /// Sensor readings for the strip display.
-  final List<SensorReading> sensorReadings;
-
   const RoomOverviewBuildInput({
     required this.display,
     required this.room,
@@ -63,7 +60,6 @@ class RoomOverviewBuildInput {
     this.humidity,
     this.shadingPosition,
     this.mediaPlayingCount = 0,
-    this.sensorReadings = const [],
   });
 }
 
@@ -229,13 +225,16 @@ RoomOverviewModel buildRoomOverviewModel(RoomOverviewBuildInput input) {
     input: input,
   );
 
+  // Build sensor readings for the strip
+  final sensorReadings = _buildSensorReadings(input);
+
   return RoomOverviewModel(
     icon: _mapSpaceIcon(room?.icon),
     title: room?.name ?? 'Room',
     domainCards: domainCards,
     quickScenes: quickScenes,
     suggestedActions: suggestedActions,
-    sensorReadings: input.sensorReadings,
+    sensorReadings: sensorReadings,
     domainCounts: domainCounts,
   );
 }
@@ -485,6 +484,30 @@ List<DomainCardInfo> _buildDomainCards({
   }
 
   return cards;
+}
+
+/// Builds sensor readings for the bottom strip from raw input values.
+List<SensorReading> _buildSensorReadings(RoomOverviewBuildInput input) {
+  final readings = <SensorReading>[];
+  final fmt = NumberFormatUtils.defaultFormat;
+
+  if (input.temperature != null) {
+    readings.add(SensorReading(
+      icon: MdiIcons.thermometer,
+      label: 'Temp',
+      value: '${fmt.formatDecimal(input.temperature!, decimalPlaces: 1)}\u00B0',
+    ));
+  }
+
+  if (input.humidity != null) {
+    readings.add(SensorReading(
+      icon: MdiIcons.waterPercent,
+      label: 'Humidity',
+      value: '${fmt.formatDecimal(input.humidity!, decimalPlaces: 0)}%',
+    ));
+  }
+
+  return readings;
 }
 
 /// Maps a space icon string identifier to IconData.

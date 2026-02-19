@@ -57,7 +57,6 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 	double? _humidity;
 	int? _shadingPosition;
 	int _mediaPlayingCount = 0;
-	List<SensorReading> _sensorReadings = [];
 	EnergySummary? _energySummary;
 
 	// Error state
@@ -155,7 +154,6 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 			humidity: _humidity,
 			shadingPosition: _shadingPosition,
 			mediaPlayingCount: _mediaPlayingCount,
-			sensorReadings: _sensorReadings,
 		);
 
 		setState(() {
@@ -234,7 +232,6 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 			double? humidity;
 			int? shadingPosition;
 			int mediaPlayingCount = 0;
-			final sensorReadings = <SensorReading>[];
 
 			for (final device in devices) {
 				// Count lights on
@@ -270,29 +267,11 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 				}
 			}
 
-			// Build sensor readings for the strip
-			final fmt = NumberFormatUtils.defaultFormat;
-			if (temperature != null) {
-				sensorReadings.add(SensorReading(
-					icon: MdiIcons.thermometer,
-					label: 'Temp',
-					value: '${fmt.formatDecimal(temperature, decimalPlaces: 1)}\u00B0',
-				));
-			}
-			if (humidity != null) {
-				sensorReadings.add(SensorReading(
-					icon: MdiIcons.waterPercent,
-					label: 'Humidity',
-					value: '${fmt.formatDecimal(humidity, decimalPlaces: 0)}%',
-				));
-			}
-
 			_lightsOnCount = lightsOnCount;
 			_temperature = temperature;
 			_humidity = humidity;
 			_shadingPosition = shadingPosition;
 			_mediaPlayingCount = mediaPlayingCount;
-			_sensorReadings = sensorReadings;
 		} catch (_) {
 			// Keep existing values on error
 		}
