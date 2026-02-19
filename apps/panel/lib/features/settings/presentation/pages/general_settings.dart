@@ -114,7 +114,8 @@ class GeneralSettingsPage extends StatelessWidget {
 									final availableWidth = constraints.maxWidth;
 									final availableHeight = constraints.maxHeight;
 									final tileWidth = (availableWidth - spacing * (columns - 1)) / columns;
-									final tileHeight = (availableHeight - spacing * (rows - 1)) / rows;
+									final rawTileHeight = (availableHeight - spacing * (rows - 1)) / rows;
+									final tileHeight = rawTileHeight > 0 ? rawTileHeight : 1.0;
 									final childAspectRatio = tileWidth / tileHeight;
 
 									return GridView.builder(

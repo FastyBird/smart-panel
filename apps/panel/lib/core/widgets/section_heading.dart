@@ -30,6 +30,9 @@ class SectionTitle extends StatelessWidget {
   /// Icon displayed before the title
   final IconData icon;
 
+  /// Optional color override for icon and text
+  final Color? color;
+
   /// Optional trailing widget (e.g., action button)
   final Widget? trailing;
 
@@ -37,12 +40,14 @@ class SectionTitle extends StatelessWidget {
     super.key,
     required this.title,
     required this.icon,
+    this.color,
     this.trailing,
   });
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final effectiveColor = color ?? (isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary);
 
     return Column(
       children: [
@@ -52,14 +57,14 @@ class SectionTitle extends StatelessWidget {
             AppSpacings.spacingXxsHorizontal,
             Icon(
               icon,
-              color: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
+              color: effectiveColor,
               size: AppFontSize.small,
             ),
             Expanded(
               child: Text(
                 title.toUpperCase(),
                 style: TextStyle(
-                  color: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
+                  color: effectiveColor,
                   fontSize: AppFontSize.small,
                   fontWeight: FontWeight.w600,
                   letterSpacing: 0.5,

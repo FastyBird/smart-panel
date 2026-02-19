@@ -100,7 +100,7 @@ class _AboutPageState extends State<AboutPage> {
 					SizedBox(height: AppSpacings.pLg),
 					_buildAboutSection(localizations, isDark, successColor, successBg),
 					SizedBox(height: AppSpacings.pLg),
-					_buildDeviceInfoSection(localizations, isDark, infoColor, infoBg, useGrid: false),
+					_buildDeviceInfoSection(localizations, isDark, infoColor, infoBg),
 				],
 			),
 		);
@@ -140,7 +140,7 @@ class _AboutPageState extends State<AboutPage> {
 					SizedBox(width: AppSpacings.pMd),
 					Expanded(
 						child: SingleChildScrollView(
-							child: _buildDeviceInfoSection(localizations, isDark, infoColor, infoBg, useGrid: false),
+							child: _buildDeviceInfoSection(localizations, isDark, infoColor, infoBg),
 						),
 					),
 				],
@@ -326,9 +326,8 @@ class _AboutPageState extends State<AboutPage> {
 		AppLocalizations localizations,
 		bool isDark,
 		Color infoColor,
-		Color infoBg, {
-		required bool useGrid,
-	}) {
+		Color infoBg,
+	) {
 		final infoCards = [
 			_buildDeviceInfoCard(
 				isDark: isDark,
@@ -411,26 +410,10 @@ class _AboutPageState extends State<AboutPage> {
 			children: [
 				SectionTitle(title: localizations.settings_about_device_information_heading, icon: MdiIcons.informationOutline),
 				AppSpacings.spacingSmVertical,
-				if (useGrid)
-					LayoutBuilder(
-						builder: (context, constraints) {
-							final cardWidth = (constraints.maxWidth - AppSpacings.pMd) / 2;
-							return Wrap(
-								spacing: AppSpacings.pMd,
-								runSpacing: AppSpacings.pMd,
-								children: infoCards.map((card) => SizedBox(width: cardWidth, child: card)).toList(),
-							);
-						},
-					)
-				else
-					Column(
-						children: [
-							for (int i = 0; i < infoCards.length; i++) ...[
-								infoCards[i],
-								if (i < infoCards.length - 1) SizedBox(height: AppSpacings.pMd),
-							],
-						],
-					),
+				for (int i = 0; i < infoCards.length; i++) ...[
+					infoCards[i],
+					if (i < infoCards.length - 1) SizedBox(height: AppSpacings.pMd),
+				],
 			],
 		);
 	}

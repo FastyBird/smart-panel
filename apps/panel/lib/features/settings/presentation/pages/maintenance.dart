@@ -176,6 +176,7 @@ class MaintenancePage extends StatelessWidget {
 															SectionTitle(
 																title: localizations.settings_maintenance_danger_heading,
 																icon: Icons.warning_amber_outlined,
+																color: dangerColor,
 															),
 															AppSpacings.spacingSmVertical,
 															...dangerCards,
@@ -207,6 +208,7 @@ class MaintenancePage extends StatelessWidget {
 												SectionTitle(
 													title: localizations.settings_maintenance_danger_heading,
 													icon: Icons.warning_amber_outlined,
+													color: dangerColor,
 												),
 												AppSpacings.spacingSmVertical,
 												for (final card in dangerCards) card,
