@@ -1,5 +1,4 @@
 import 'package:event_bus/event_bus.dart';
-import 'package:flutter/material.dart';
 
 import 'package:fastybird_smart_panel/features/overlay/services/overlay_manager.dart';
 import 'package:fastybird_smart_panel/features/overlay/types/overlay.dart';

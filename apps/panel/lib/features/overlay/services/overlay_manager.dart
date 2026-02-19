@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 import 'package:fastybird_smart_panel/features/overlay/types/overlay.dart';
