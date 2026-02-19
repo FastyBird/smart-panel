@@ -40,6 +40,7 @@ class _DeckBottomNavBarState extends State<DeckBottomNavBar> {
   final GlobalKey _selectedKey = GlobalKey();
   final ScrollController _scrollController = ScrollController();
   bool _lastHadMode = false;
+  bool _scrollScheduled = false;
 
   @override
   void initState() {
@@ -62,10 +63,13 @@ class _DeckBottomNavBarState extends State<DeckBottomNavBar> {
   }
 
   void _scheduleScrollToSelected() {
+    if (_scrollScheduled) return;
+    _scrollScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback(_scrollToSelected);
   }
 
   void _scrollToSelected(_) {
+    _scrollScheduled = false;
     final ctx = _selectedKey.currentContext;
     if (ctx == null || !mounted) return;
 
