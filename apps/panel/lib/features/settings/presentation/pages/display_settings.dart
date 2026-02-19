@@ -150,12 +150,15 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 			),
 		);
 
+		final themeData = (_isDarkMode ? AppTheme.darkTheme : AppTheme.lightTheme).copyWith(
+			scaffoldBackgroundColor: _isDarkMode ? AppBgColorDark.page : AppBgColorLight.page,
+		);
+
 		return AnimatedTheme(
 			duration: const Duration(milliseconds: 500),
 			curve: Curves.easeInOut,
-			data: _isDarkMode ? AppTheme.darkTheme : AppTheme.lightTheme,
+			data: themeData,
 			child: Scaffold(
-				backgroundColor: _isDarkMode ? AppBgColorDark.page : AppBgColorLight.page,
 				body: Column(
 					children: [
 						PageHeader(
