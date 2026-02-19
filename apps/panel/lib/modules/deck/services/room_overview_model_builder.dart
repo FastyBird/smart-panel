@@ -44,8 +44,8 @@ class RoomOverviewBuildInput {
   /// Shading position percentage (if available).
   final int? shadingPosition;
 
-  /// Number of media devices currently playing.
-  final int mediaPlayingCount;
+  /// Number of media devices currently on.
+  final int mediaOnCount;
 
   const RoomOverviewBuildInput({
     required this.display,
@@ -59,7 +59,7 @@ class RoomOverviewBuildInput {
     this.temperature,
     this.humidity,
     this.shadingPosition,
-    this.mediaPlayingCount = 0,
+    this.mediaOnCount = 0,
   });
 }
 
@@ -94,8 +94,6 @@ class DomainCardInfo {
   final String? targetValue;
   final String subtitle;
   final bool isActive;
-  final int count;
-  final String targetViewKey;
 
   const DomainCardInfo({
     required this.domain,
@@ -105,8 +103,6 @@ class DomainCardInfo {
     this.targetValue,
     required this.subtitle,
     this.isActive = false,
-    required this.count,
-    required this.targetViewKey,
   });
 }
 
@@ -199,8 +195,6 @@ RoomOverviewModel buildRoomOverviewModel(RoomOverviewBuildInput input) {
   final room = input.room;
   final deviceCategories = input.deviceCategories;
   final scenes = input.scenes;
-  final roomId = input.display.roomId ?? '';
-
   // Build domain counts
   final domainCounts = buildDomainCounts(
     deviceCategories,
@@ -221,7 +215,6 @@ RoomOverviewModel buildRoomOverviewModel(RoomOverviewBuildInput input) {
   // Build domain cards with rich summary data
   final domainCards = _buildDomainCards(
     domainCounts: domainCounts,
-    roomId: roomId,
     input: input,
   );
 
@@ -364,7 +357,6 @@ List<SuggestedAction> _buildSuggestedActions({
 
 List<DomainCardInfo> _buildDomainCards({
   required DomainCounts domainCounts,
-  required String roomId,
   required RoomOverviewBuildInput input,
 }) {
   final cards = <DomainCardInfo>[];
@@ -373,7 +365,6 @@ List<DomainCardInfo> _buildDomainCards({
     if (domain == DomainType.energy) continue;
 
     final count = domainCounts.getCount(domain);
-    final targetViewKey = 'domain:$roomId:${domain.name}';
 
     switch (domain) {
       case DomainType.climate:
@@ -398,8 +389,6 @@ List<DomainCardInfo> _buildDomainCards({
           primaryValue: primaryValue,
           subtitle: subtitleParts.join(' \u00B7 '),
           isActive: temp != null,
-          count: count,
-          targetViewKey: targetViewKey,
         ));
         break;
 
@@ -418,8 +407,6 @@ List<DomainCardInfo> _buildDomainCards({
           primaryValue: primaryValue,
           subtitle: subtitle,
           isActive: isActive,
-          count: count,
-          targetViewKey: targetViewKey,
         ));
         break;
 
@@ -441,15 +428,13 @@ List<DomainCardInfo> _buildDomainCards({
           primaryValue: primaryValue,
           subtitle: subtitle,
           isActive: position != null && position > 0,
-          count: count,
-          targetViewKey: targetViewKey,
         ));
         break;
 
       case DomainType.media:
-        final playing = input.mediaPlayingCount;
-        final isActive = playing > 0;
-        final primaryValue = isActive ? '$playing playing' : 'Off';
+        final mediaOn = input.mediaOnCount;
+        final isActive = mediaOn > 0;
+        final primaryValue = isActive ? '$mediaOn on' : 'Off';
         final subtitle = '$count device${count != 1 ? 's' : ''}';
 
         cards.add(DomainCardInfo(
@@ -459,8 +444,6 @@ List<DomainCardInfo> _buildDomainCards({
           primaryValue: primaryValue,
           subtitle: subtitle,
           isActive: isActive,
-          count: count,
-          targetViewKey: targetViewKey,
         ));
         break;
 
@@ -473,8 +456,6 @@ List<DomainCardInfo> _buildDomainCards({
           primaryValue: '$readingsCount',
           subtitle: '$readingsCount reading${readingsCount != 1 ? 's' : ''}',
           isActive: false,
-          count: count,
-          targetViewKey: targetViewKey,
         ));
         break;
 

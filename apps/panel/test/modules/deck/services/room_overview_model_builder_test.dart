@@ -192,11 +192,7 @@ void main() {
 
         expect(model.domainCards.length, 2);
         expect(model.domainCards[0].domain, DomainType.lights);
-        expect(model.domainCards[0].count, 1);
-        expect(model.domainCards[0].targetViewKey, 'domain:room-1:lights');
         expect(model.domainCards[1].domain, DomainType.climate);
-        expect(model.domainCards[1].count, 1);
-        expect(model.domainCards[1].targetViewKey, 'domain:room-1:climate');
       });
 
       test('should not create domain cards for domains with zero count', () {
@@ -233,12 +229,7 @@ void main() {
         expect(model.domainCards.length, 2);
 
         expect(model.domainCards[0].domain, DomainType.lights);
-        expect(model.domainCards[0].count, 2);
-        expect(model.domainCards[0].targetViewKey, 'domain:room-1:lights');
-
         expect(model.domainCards[1].domain, DomainType.sensors);
-        expect(model.domainCards[1].count, 1);
-        expect(model.domainCards[1].targetViewKey, 'domain:room-1:sensors');
       });
 
       test('should order cards by domain displayOrder', () {
@@ -744,8 +735,6 @@ void main() {
         primaryValue: '22.0\u00B0',
         subtitle: '65% humidity',
         isActive: true,
-        count: 3,
-        targetViewKey: 'domain:room-1:climate',
       );
 
       expect(card.domain, DomainType.climate);
@@ -754,8 +743,6 @@ void main() {
       expect(card.primaryValue, '22.0\u00B0');
       expect(card.subtitle, '65% humidity');
       expect(card.isActive, true);
-      expect(card.count, 3);
-      expect(card.targetViewKey, 'domain:room-1:climate');
     });
 
     test('should default isActive to false', () {
@@ -765,8 +752,6 @@ void main() {
         title: 'Sensors',
         primaryValue: '2',
         subtitle: '2 readings',
-        count: 1,
-        targetViewKey: 'domain:room-1:sensors',
       );
 
       expect(card.isActive, false);

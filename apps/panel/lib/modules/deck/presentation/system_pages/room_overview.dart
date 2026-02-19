@@ -56,7 +56,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 	double? _temperature;
 	double? _humidity;
 	int? _shadingPosition;
-	int _mediaPlayingCount = 0;
+	int _mediaOnCount = 0;
 	EnergySummary? _energySummary;
 
 	// Error state
@@ -153,7 +153,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 			temperature: _temperature,
 			humidity: _humidity,
 			shadingPosition: _shadingPosition,
-			mediaPlayingCount: _mediaPlayingCount,
+			mediaOnCount: _mediaOnCount,
 		);
 
 		setState(() {
@@ -231,7 +231,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 			double? temperature;
 			double? humidity;
 			int? shadingPosition;
-			int mediaPlayingCount = 0;
+			int mediaOnCount = 0;
 
 			for (final device in devices) {
 				// Count lights on
@@ -239,9 +239,9 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 					lightsOnCount++;
 				}
 
-				// Count media playing
+				// Count media devices that are on
 				if (_isMediaDevice(device) && _isDeviceOn(device)) {
-					mediaPlayingCount++;
+					mediaOnCount++;
 				}
 
 				// Extract property values from channels
@@ -273,7 +273,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 			_temperature = temperature;
 			_humidity = humidity;
 			_shadingPosition = shadingPosition;
-			_mediaPlayingCount = mediaPlayingCount;
+			_mediaOnCount = mediaOnCount;
 		} catch (_) {
 			// Keep existing values on error
 		}
