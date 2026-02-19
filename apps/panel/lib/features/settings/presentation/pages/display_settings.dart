@@ -241,7 +241,7 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 		}
 
 		setState(() {
-			_brightness = value.toInt();
+			_brightness = value.round();
 		});
 
 		_debounce?.cancel();

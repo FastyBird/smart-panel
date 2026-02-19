@@ -273,7 +273,7 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
 		}
 
 		setState(() {
-			_speakerVolume = value.toInt();
+			_speakerVolume = value.round();
 		});
 
 		_speakerDebounce?.cancel();
@@ -355,7 +355,7 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
 		}
 
 		setState(() {
-			_microphoneVolume = value.toInt();
+			_microphoneVolume = value.round();
 		});
 
 		_microphoneDebounce?.cancel();
