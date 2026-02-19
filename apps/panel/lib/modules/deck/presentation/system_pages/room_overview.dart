@@ -178,21 +178,12 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 		});
 
 		try {
-			// Get room data from SpacesService
-			final room = _spacesService?.getSpace(_roomId);
-
-			// Get device categories from DeckService
-			final deviceCategories = _deckService.deviceCategories;
-
 			debugPrint(
 				'[ROOM OVERVIEW] Loading room data. '
 				'roomId: $_roomId, '
-				'deviceCategories: ${deviceCategories.length}, '
+				'deviceCategories: ${_deckService.deviceCategories.length}, '
 				'isLoadingDevices: ${_deckService.isLoadingDevices}',
 			);
-
-			// Get scenes for this room
-			final scenes = _scenesService?.getScenesForSpace(_roomId) ?? [];
 
 			// Fetch live device property values (temperature, lights on, humidity, etc.)
 			await _fetchLiveDeviceData();
@@ -202,39 +193,9 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 
 			if (!mounted) return;
 
-			// Get display for model building
-			final display = locator<DisplayRepository>().display;
-
-			if (display == null) {
-				setState(() {
-					_isLoading = false;
-					_errorMessage = 'Display not configured';
-				});
-				return;
-			}
-
-			// Build the room overview model with all live data
-			final input = RoomOverviewBuildInput(
-				display: display,
-				room: room,
-				deviceCategories: deviceCategories,
-				scenes: scenes,
-				now: DateTime.now(),
-				lightsOnCount: _lightsOnCount,
-	
-				energyDeviceCount: _deckService.energyDeviceCount,
-				sensorReadingsCount: _deckService.sensorReadingsCount,
-				temperature: _temperature,
-				humidity: _humidity,
-				shadingPosition: _shadingPosition,
-				mediaPlayingCount: _mediaPlayingCount,
-				sensorReadings: _sensorReadings,
-			);
-
-			final model = buildRoomOverviewModel(input);
+			_rebuildModel();
 
 			setState(() {
-				_model = model;
 				_isLoading = false;
 			});
 		} catch (e) {
@@ -303,7 +264,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 				sensorReadings.add(SensorReading(
 					icon: MdiIcons.thermometer,
 					label: 'Temp',
-					value: '${temperature.toStringAsFixed(1)}\u00B0C',
+					value: '${temperature.toStringAsFixed(1)}\u00B0',
 				));
 			}
 			if (humidity != null) {
