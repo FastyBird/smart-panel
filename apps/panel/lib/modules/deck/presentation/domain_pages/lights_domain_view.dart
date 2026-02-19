@@ -1751,14 +1751,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     DevicesService devicesService,
     AppLocalizations localizations,
   ) {
-    // Group targets by role — skip targets without a role (not configured) or hidden
-    final Map<LightTargetRole, List<LightTargetView>> grouped = {};
-    for (final target in targets) {
-      final role = target.role;
-      if (role == null || role == LightTargetRole.other || role == LightTargetRole.hidden) continue;
-      grouped.putIfAbsent(role, () => []).add(target);
-    }
-
+    final grouped = _groupTargetsByRole(targets);
     final lightingState = _lightingState;
 
     final List<LightingRoleData> roles = [];

@@ -148,6 +148,9 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage> {
     }
     if (locator.isRegistered<DevicesService>()) {
       _devicesServiceRef = locator<DevicesService>();
+      // Seed count so first _onDevicesChanged only fires on actual change
+      final devices = _devicesServiceRef?.getDevicesForRoom(_roomId) ?? [];
+      _lastEnergyDeviceCount = countEnergyDevices(devices);
       _devicesServiceRef?.addListener(_onDevicesChanged);
     }
 
