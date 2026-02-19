@@ -1136,13 +1136,13 @@ abstract class AppLocalizations {
   /// Description explaining that the weather location can be selected from configured options.
   ///
   /// In en, this message translates to:
-  /// **'Select from available locations configured in the administrator app.'**
+  /// **'Choose weather data source location.'**
   String get settings_weather_settings_temperature_location_description;
 
   /// Description explaining that the weather location is configured externally when only one location exists.
   ///
   /// In en, this message translates to:
-  /// **'Location is configured in the administrator app.'**
+  /// **'Only one location available.'**
   String get settings_weather_settings_temperature_location_single;
 
   /// Title for the Maintenance section.
@@ -1160,7 +1160,7 @@ abstract class AppLocalizations {
   /// Description for the restart action, explaining its purpose.
   ///
   /// In en, this message translates to:
-  /// **'Restart the device to apply changes or resolve issues.'**
+  /// **'Reboot device to apply changes.'**
   String get settings_maintenance_restart_description;
 
   /// Title for the confirmation dialog when restarting the device.
@@ -1223,13 +1223,13 @@ abstract class AppLocalizations {
   /// **'Are you sure you want to erase all data and restore the device to its factory settings? This action is irreversible.'**
   String get settings_maintenance_factory_reset_confirm_description;
 
-  /// Heading for the system section in maintenance settings.
+  /// Section heading for system maintenance actions.
   ///
   /// In en, this message translates to:
   /// **'System'**
   String get settings_maintenance_system_heading;
 
-  /// Heading for the danger zone section in maintenance settings.
+  /// Section heading for dangerous maintenance actions.
   ///
   /// In en, this message translates to:
   /// **'Danger Zone'**
@@ -1262,7 +1262,7 @@ abstract class AppLocalizations {
   /// Description explaining the purpose of the timezone setting.
   ///
   /// In en, this message translates to:
-  /// **'Select your timezone.'**
+  /// **'Local timezone for time display.'**
   String get settings_language_settings_timezone_description;
 
   /// Label for selecting the time format.
@@ -1274,7 +1274,7 @@ abstract class AppLocalizations {
   /// Description explaining the purpose of the time format setting.
   ///
   /// In en, this message translates to:
-  /// **'Select your preferred time format.'**
+  /// **'12-hour or 24-hour clock.'**
   String get settings_language_settings_time_format_description;
 
   /// Title for the Display Settings section.
@@ -1292,7 +1292,7 @@ abstract class AppLocalizations {
   /// Description explaining the theme mode setting.
   ///
   /// In en, this message translates to:
-  /// **'Choose between light or dark mode.'**
+  /// **'Switch between light and dark theme.'**
   String get settings_display_settings_theme_mode_description;
 
   /// Label for adjusting the display brightness.
@@ -1300,6 +1300,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Brightness'**
   String get settings_display_settings_brightness_title;
+
+  /// Description for the brightness slider setting.
+  ///
+  /// In en, this message translates to:
+  /// **'Adjust screen brightness level.'**
+  String get settings_display_settings_brightness_description;
 
   /// Label for setting the screen lock delay.
   ///
@@ -1310,7 +1316,7 @@ abstract class AppLocalizations {
   /// Description explaining the screen lock delay setting.
   ///
   /// In en, this message translates to:
-  /// **'Set screen lock delay duration.'**
+  /// **'Auto-lock after inactivity.'**
   String get settings_display_settings_screen_lock_description;
 
   /// Label for enabling or disabling the screen saver.
@@ -1322,7 +1328,7 @@ abstract class AppLocalizations {
   /// Description explaining the screen saver setting.
   ///
   /// In en, this message translates to:
-  /// **'Enable or disable the screen saver.'**
+  /// **'Show screen saver when idle.'**
   String get settings_display_settings_screen_saver_description;
 
   /// Title for the Audio Settings section.
@@ -1349,6 +1355,12 @@ abstract class AppLocalizations {
   /// **'Speaker Volume'**
   String get settings_audio_settings_speaker_volume_title;
 
+  /// Description for the speaker volume slider.
+  ///
+  /// In en, this message translates to:
+  /// **'Adjust speaker output level.'**
+  String get settings_audio_settings_speaker_volume_description;
+
   /// Label for enabling or disabling the microphone.
   ///
   /// In en, this message translates to:
@@ -1366,6 +1378,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Microphone Volume'**
   String get settings_audio_settings_microphone_volume_title;
+
+  /// Description for the microphone volume slider.
+  ///
+  /// In en, this message translates to:
+  /// **'Adjust microphone input level.'**
+  String get settings_audio_settings_microphone_volume_description;
 
   /// Message shown when the display doesn't support audio.
   ///

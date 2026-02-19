@@ -4,6 +4,13 @@ import 'package:flutter/material.dart';
 
 /// Settings card with icon badge, label, description, trailing widget,
 /// and optional bottom content. Supports danger styling.
+///
+/// Layout:
+/// ```
+/// [Icon] [Title         ] [Trailing]
+///        [Description   ]
+/// [Bottom - full width              ]
+/// ```
 class SettingsCard extends StatelessWidget {
 	final IconData icon;
 	final Color iconColor;
@@ -39,7 +46,7 @@ class SettingsCard extends StatelessWidget {
 		final dangerBorderLight = dangerBorderColor.withValues(alpha: 0.18);
 		final dangerTextColor = isDark ? AppColorsDark.danger : AppColorsLight.danger;
 
-		final radius = BorderRadius.circular(AppBorderRadius.medium);
+		final radius = BorderRadius.circular(AppBorderRadius.base);
 
 		return Opacity(
 			opacity: opacity,
@@ -57,6 +64,7 @@ class SettingsCard extends StatelessWidget {
 						),
 						child: Column(
 							mainAxisSize: MainAxisSize.min,
+							crossAxisAlignment: CrossAxisAlignment.start,
 							children: [
 								Row(
 									children: [
@@ -66,12 +74,12 @@ class SettingsCard extends StatelessWidget {
 											height: AppSpacings.scale(36),
 											decoration: BoxDecoration(
 												color: iconBgColor,
-												borderRadius: BorderRadius.circular(AppSpacings.scale(10)),
+												borderRadius: BorderRadius.circular(AppBorderRadius.base),
 											),
 											child: Icon(icon, size: AppFontSize.large, color: iconColor),
 										),
 										SizedBox(width: AppSpacings.pMd),
-										// Text
+										// Title + description
 										Expanded(
 											child: Column(
 												crossAxisAlignment: CrossAxisAlignment.start,
@@ -101,7 +109,12 @@ class SettingsCard extends StatelessWidget {
 										),
 										if (trailing != null) ...[
 											SizedBox(width: AppSpacings.pMd),
-											trailing!,
+											ConstrainedBox(
+												constraints: BoxConstraints(
+													maxWidth: AppSpacings.scale(120),
+												),
+												child: trailing!,
+											),
 										],
 									],
 								),
@@ -122,8 +135,8 @@ class SettingsCard extends StatelessWidget {
 								decoration: BoxDecoration(
 									color: dangerTextColor,
 									borderRadius: BorderRadius.only(
-										topLeft: Radius.circular(AppBorderRadius.medium),
-										bottomLeft: Radius.circular(AppBorderRadius.medium),
+										topLeft: Radius.circular(AppBorderRadius.base),
+										bottomLeft: Radius.circular(AppBorderRadius.base),
 									),
 								),
 							),

@@ -20,14 +20,14 @@ class SettingsCardSurface {
 	factory SettingsCardSurface.of(BuildContext context) {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 
+		final surfaceColor = isDark ? AppFillColorDark.light : AppFillColorLight.blank;
+
 		return SettingsCardSurface._(
-			surfaceColor: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
-			borderColor: isDark ? AppBorderColorDark.light : AppBorderColorLight.light,
+			surfaceColor: surfaceColor,
+			borderColor: isDark ? surfaceColor : AppBorderColorLight.light,
 			textColor: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
 			secondaryTextColor: isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary,
-			shadow: isDark
-					? [BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 3, offset: const Offset(0, 1))]
-					: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 3, offset: const Offset(0, 1))],
+			shadow: [],
 		);
 	}
 }

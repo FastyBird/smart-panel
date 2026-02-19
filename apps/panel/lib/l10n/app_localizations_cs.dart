@@ -639,10 +639,10 @@ class AppLocalizationsCs extends AppLocalizations {
   String get settings_weather_settings_temperature_location_title => 'Poloha počasí';
 
   @override
-  String get settings_weather_settings_temperature_location_description => 'Vyberte z dostupných poloh nastavených v administrátorské aplikaci.';
+  String get settings_weather_settings_temperature_location_description => 'Vyberte zdroj meteorologických dat.';
 
   @override
-  String get settings_weather_settings_temperature_location_single => 'Poloha je nastavena v administrátorské aplikaci.';
+  String get settings_weather_settings_temperature_location_single => 'K dispozici je pouze jedna poloha.';
 
   @override
   String get settings_maintenance_title => 'Údržba';
@@ -651,7 +651,7 @@ class AppLocalizationsCs extends AppLocalizations {
   String get settings_maintenance_restart_title => 'Restart';
 
   @override
-  String get settings_maintenance_restart_description => 'Restartujte zařízení pro aplikování změn nebo řešení problémů.';
+  String get settings_maintenance_restart_description => 'Restartujte zařízení pro použití změn.';
 
   @override
   String get settings_maintenance_restart_confirm_title => 'Restart zařízení';
@@ -702,13 +702,13 @@ class AppLocalizationsCs extends AppLocalizations {
   String get settings_language_settings_timezone_title => 'Časové pásmo';
 
   @override
-  String get settings_language_settings_timezone_description => 'Vyberte své časové pásmo.';
+  String get settings_language_settings_timezone_description => 'Místní časové pásmo.';
 
   @override
   String get settings_language_settings_time_format_title => 'Formát času';
 
   @override
-  String get settings_language_settings_time_format_description => 'Vyberte svůj preferovaný formát času.';
+  String get settings_language_settings_time_format_description => '12hodinový nebo 24hodinový formát.';
 
   @override
   String get settings_display_settings_title => 'Nastavení displeje';
@@ -717,22 +717,25 @@ class AppLocalizationsCs extends AppLocalizations {
   String get settings_display_settings_theme_mode_title => 'Režim motivu';
 
   @override
-  String get settings_display_settings_theme_mode_description => 'Vyberte mezi světlým a tmavým režimem.';
+  String get settings_display_settings_theme_mode_description => 'Přepnout mezi světlým a tmavým motivem.';
 
   @override
   String get settings_display_settings_brightness_title => 'Jas';
 
   @override
+  String get settings_display_settings_brightness_description => 'Nastavení úrovně jasu obrazovky.';
+
+  @override
   String get settings_display_settings_screen_lock_title => 'Zamknutí obrazovky';
 
   @override
-  String get settings_display_settings_screen_lock_description => 'Nastavte prodlevu zamknutí obrazovky.';
+  String get settings_display_settings_screen_lock_description => 'Automatické zamknutí při nečinnosti.';
 
   @override
   String get settings_display_settings_screen_saver_title => 'Spořič obrazovky';
 
   @override
-  String get settings_display_settings_screen_saver_description => 'Povolit nebo zakázat spořič obrazovky.';
+  String get settings_display_settings_screen_saver_description => 'Zobrazit spořič při nečinnosti.';
 
   @override
   String get settings_audio_settings_title => 'Nastavení zvuku';
@@ -747,6 +750,9 @@ class AppLocalizationsCs extends AppLocalizations {
   String get settings_audio_settings_speaker_volume_title => 'Hlasitost reproduktoru';
 
   @override
+  String get settings_audio_settings_speaker_volume_description => 'Nastavení hlasitosti výstupu.';
+
+  @override
   String get settings_audio_settings_microphone_title => 'Mikrofon';
 
   @override
@@ -754,6 +760,9 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get settings_audio_settings_microphone_volume_title => 'Hlasitost mikrofonu';
+
+  @override
+  String get settings_audio_settings_microphone_volume_description => 'Nastavení citlivosti vstupu.';
 
   @override
   String get settings_audio_settings_no_support => 'Tento displej nepodporuje zvukový vstup ani výstup.';

@@ -3,10 +3,10 @@ import 'package:fastybird_smart_panel/app/routes.dart';
 import 'package:fastybird_smart_panel/core/services/navigation.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
-import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
+import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_action_button.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_card.dart';
-import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_section_heading.dart';
+import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/system/module.dart';
 import 'package:flutter/material.dart';
@@ -128,75 +128,93 @@ class MaintenancePage extends StatelessWidget {
 			),
 		];
 
-		if (isLandscape) {
-			return Scaffold(
-				appBar: AppTopBar(
-					title: localizations.settings_maintenance_title,
-				),
-				body: SingleChildScrollView(
-					padding: EdgeInsets.all(AppSpacings.pLg),
-					child: Row(
-						crossAxisAlignment: CrossAxisAlignment.start,
-						children: [
-							Expanded(
-								child: Column(
-									crossAxisAlignment: CrossAxisAlignment.start,
-									mainAxisSize: MainAxisSize.min,
-									children: [
-										SettingsSectionHeading(
-											text: localizations.settings_maintenance_system_heading,
-										),
-										for (int i = 0; i < systemCards.length; i++) ...[
-										systemCards[i],
-										if (i < systemCards.length - 1) SizedBox(height: AppSpacings.pMd),
-									],
-								],
-								),
-							),
-							SizedBox(width: AppSpacings.pMd),
-							Expanded(
-								child: Column(
-									crossAxisAlignment: CrossAxisAlignment.start,
-									mainAxisSize: MainAxisSize.min,
-									children: [
-										SettingsSectionHeading(
-											text: localizations.settings_maintenance_danger_heading,
-											color: dangerColor,
-										),
-										...dangerCards,
-									],
-								),
-							),
-						],
-					),
-				),
-			);
-		}
-
 		return Scaffold(
-			appBar: AppTopBar(
-				title: localizations.settings_maintenance_title,
-			),
-			body: SingleChildScrollView(
-				padding: EdgeInsets.all(AppSpacings.pLg),
-				child: Column(
-					crossAxisAlignment: CrossAxisAlignment.start,
-					children: [
-						SettingsSectionHeading(
-							text: localizations.settings_maintenance_system_heading,
+			backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
+			body: Column(
+				children: [
+					PageHeader(
+						title: localizations.settings_maintenance_title,
+						leading: HeaderIconButton(
+							icon: Icons.arrow_back,
+							onTap: () => Navigator.of(context).pop(),
 						),
-						for (int i = 0; i < systemCards.length; i++) ...[
-							systemCards[i],
-							if (i < systemCards.length - 1) SizedBox(height: AppSpacings.pMd),
-						],
-						SizedBox(height: AppSpacings.pLg),
-						SettingsSectionHeading(
-							text: localizations.settings_maintenance_danger_heading,
-							color: dangerColor,
-						),
-						for (final card in dangerCards) card,
-					],
-				),
+					),
+					Expanded(
+						child: isLandscape
+								? SingleChildScrollView(
+										padding: EdgeInsets.only(
+													left: AppSpacings.pMd,
+													right: AppSpacings.pMd,
+													bottom: AppSpacings.pMd,
+												),
+										child: Row(
+											crossAxisAlignment: CrossAxisAlignment.start,
+											children: [
+												Expanded(
+													child: Column(
+														crossAxisAlignment: CrossAxisAlignment.start,
+														mainAxisSize: MainAxisSize.min,
+														children: [
+															SectionTitle(
+																title: localizations.settings_maintenance_system_heading,
+																icon: Icons.build_outlined,
+															),
+															AppSpacings.spacingSmVertical,
+															for (int i = 0; i < systemCards.length; i++) ...[
+																systemCards[i],
+																if (i < systemCards.length - 1) SizedBox(height: AppSpacings.pMd),
+															],
+														],
+													),
+												),
+												SizedBox(width: AppSpacings.pMd),
+												Expanded(
+													child: Column(
+														crossAxisAlignment: CrossAxisAlignment.start,
+														mainAxisSize: MainAxisSize.min,
+														children: [
+															SectionTitle(
+																title: localizations.settings_maintenance_danger_heading,
+																icon: Icons.warning_amber_outlined,
+															),
+															AppSpacings.spacingSmVertical,
+															...dangerCards,
+														],
+													),
+												),
+											],
+										),
+									)
+								: SingleChildScrollView(
+										padding: EdgeInsets.only(
+													left: AppSpacings.pMd,
+													right: AppSpacings.pMd,
+													bottom: AppSpacings.pMd,
+												),
+										child: Column(
+											crossAxisAlignment: CrossAxisAlignment.start,
+											children: [
+												SectionTitle(
+													title: localizations.settings_maintenance_system_heading,
+													icon: Icons.build_outlined,
+												),
+												AppSpacings.spacingSmVertical,
+												for (int i = 0; i < systemCards.length; i++) ...[
+													systemCards[i],
+													if (i < systemCards.length - 1) SizedBox(height: AppSpacings.pMd),
+												],
+												SizedBox(height: AppSpacings.pLg),
+												SectionTitle(
+													title: localizations.settings_maintenance_danger_heading,
+													icon: Icons.warning_amber_outlined,
+												),
+												AppSpacings.spacingSmVertical,
+												for (final card in dangerCards) card,
+											],
+										),
+									),
+					),
+				],
 			),
 		);
 	}
