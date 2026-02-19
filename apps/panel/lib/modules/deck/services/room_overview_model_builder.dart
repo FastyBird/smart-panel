@@ -37,6 +37,21 @@ class RoomOverviewBuildInput {
   /// Number of sensor readings reported by the backend.
   final int sensorReadingsCount;
 
+  /// Current temperature reading (if available).
+  final double? temperature;
+
+  /// Current humidity reading (if available).
+  final double? humidity;
+
+  /// Shading position percentage (if available).
+  final int? shadingPosition;
+
+  /// Number of media devices currently playing.
+  final int mediaPlayingCount;
+
+  /// Sensor readings for the strip display.
+  final List<SensorReading> sensorReadings;
+
   const RoomOverviewBuildInput({
     required this.display,
     required this.room,
@@ -47,6 +62,11 @@ class RoomOverviewBuildInput {
     this.displayCols = 4,
     this.energyDeviceCount = 0,
     this.sensorReadingsCount = 0,
+    this.temperature,
+    this.humidity,
+    this.shadingPosition,
+    this.mediaPlayingCount = 0,
+    this.sensorReadings = const [],
   });
 }
 
@@ -94,6 +114,51 @@ class QuickScene {
     required this.name,
     required this.category,
     required this.icon,
+  });
+}
+
+/// Summary info for a domain card in the room overview.
+///
+/// This model provides the data needed to render a rich domain card,
+/// inspired by the deck mock designs. Each domain shows:
+/// - Primary value (e.g., temperature, "3 on", position)
+/// - Optional target value (e.g., setpoint temperature)
+/// - Subtitle with additional context
+/// - Active state for visual accent
+class DomainCardInfo {
+  final DomainType domain;
+  final IconData icon;
+  final String title;
+  final String primaryValue;
+  final String? targetValue;
+  final String subtitle;
+  final bool isActive;
+  final int count;
+  final String targetViewKey;
+
+  const DomainCardInfo({
+    required this.domain,
+    required this.icon,
+    required this.title,
+    required this.primaryValue,
+    this.targetValue,
+    required this.subtitle,
+    this.isActive = false,
+    required this.count,
+    required this.targetViewKey,
+  });
+}
+
+/// A sensor reading displayed in the sensor strip at the bottom.
+class SensorReading {
+  final IconData icon;
+  final String label;
+  final String value;
+
+  const SensorReading({
+    required this.icon,
+    required this.label,
+    required this.value,
   });
 }
 
@@ -148,11 +213,17 @@ class RoomOverviewModel {
   /// Domain tiles (only for present domains).
   final List<DomainTile> tiles;
 
+  /// Domain card infos with rich summary data for card rendering.
+  final List<DomainCardInfo> domainCards;
+
   /// Quick scenes (max 4).
   final List<QuickScene> quickScenes;
 
   /// Suggested actions (max 3).
   final List<SuggestedAction> suggestedActions;
+
+  /// Sensor readings for the bottom strip.
+  final List<SensorReading> sensorReadings;
 
   /// Layout hints for UI.
   final LayoutHints layoutHints;
@@ -166,13 +237,18 @@ class RoomOverviewModel {
   /// Whether the room has any scenes.
   bool get hasScenes => quickScenes.isNotEmpty;
 
+  /// Whether the room has sensor readings for the strip.
+  bool get hasSensorReadings => sensorReadings.isNotEmpty;
+
   const RoomOverviewModel({
     required this.icon,
     required this.title,
     required this.statusChips,
     required this.tiles,
+    required this.domainCards,
     required this.quickScenes,
     required this.suggestedActions,
+    required this.sensorReadings,
     required this.layoutHints,
     required this.domainCounts,
   });
@@ -216,13 +292,22 @@ RoomOverviewModel buildRoomOverviewModel(RoomOverviewBuildInput input) {
     displayCols: input.displayCols,
   );
 
+  // Build domain cards with rich summary data
+  final domainCards = _buildDomainCards(
+    domainCounts: domainCounts,
+    roomId: roomId,
+    input: input,
+  );
+
   return RoomOverviewModel(
     icon: _mapSpaceIcon(room?.icon),
     title: room?.name ?? 'Room',
     statusChips: statusChips,
     tiles: tiles,
+    domainCards: domainCards,
     quickScenes: quickScenes,
     suggestedActions: suggestedActions,
+    sensorReadings: input.sensorReadings,
     layoutHints: layoutHints,
     domainCounts: domainCounts,
   );
@@ -378,6 +463,129 @@ List<SuggestedAction> _buildSuggestedActions({
 
   // Return max 3 suggestions
   return suggestions.take(3).toList();
+}
+
+List<DomainCardInfo> _buildDomainCards({
+  required DomainCounts domainCounts,
+  required String roomId,
+  required RoomOverviewBuildInput input,
+}) {
+  final cards = <DomainCardInfo>[];
+
+  for (final domain in domainCounts.presentDomains) {
+    if (domain == DomainType.energy) continue;
+
+    final count = domainCounts.getCount(domain);
+    final targetViewKey = 'domain:$roomId:${domain.name}';
+
+    switch (domain) {
+      case DomainType.climate:
+        final temp = input.temperature;
+        final humidity = input.humidity;
+        final primaryValue = temp != null
+            ? '${temp.toStringAsFixed(1)}\u00B0'
+            : '$count';
+        final subtitleParts = <String>[];
+        if (humidity != null) {
+          subtitleParts.add('${humidity.toStringAsFixed(0)}% humidity');
+        }
+        if (subtitleParts.isEmpty) {
+          subtitleParts.add('$count device${count != 1 ? 's' : ''}');
+        }
+
+        cards.add(DomainCardInfo(
+          domain: domain,
+          icon: domain.icon,
+          title: domain.label,
+          primaryValue: primaryValue,
+          subtitle: subtitleParts.join(' \u00B7 '),
+          isActive: temp != null,
+          count: count,
+          targetViewKey: targetViewKey,
+        ));
+        break;
+
+      case DomainType.lights:
+        final lightsOn = input.lightsOnCount ?? 0;
+        final isActive = lightsOn > 0;
+        final primaryValue = isActive ? '$lightsOn on' : 'Off';
+        final subtitle = isActive
+            ? '$lightsOn of $count active'
+            : '$count light${count != 1 ? 's' : ''}';
+
+        cards.add(DomainCardInfo(
+          domain: domain,
+          icon: domain.icon,
+          title: domain.label,
+          primaryValue: primaryValue,
+          subtitle: subtitle,
+          isActive: isActive,
+          count: count,
+          targetViewKey: targetViewKey,
+        ));
+        break;
+
+      case DomainType.shading:
+        final position = input.shadingPosition;
+        final primaryValue = position != null ? '$position%' : '$count';
+        final subtitle = position != null
+            ? (position == 0
+                ? 'Fully closed'
+                : position == 100
+                    ? 'Fully open'
+                    : 'Partially open')
+            : '$count device${count != 1 ? 's' : ''}';
+
+        cards.add(DomainCardInfo(
+          domain: domain,
+          icon: domain.icon,
+          title: domain.label,
+          primaryValue: primaryValue,
+          subtitle: subtitle,
+          isActive: position != null && position > 0,
+          count: count,
+          targetViewKey: targetViewKey,
+        ));
+        break;
+
+      case DomainType.media:
+        final playing = input.mediaPlayingCount;
+        final isActive = playing > 0;
+        final primaryValue = isActive ? '$playing playing' : 'Off';
+        final subtitle = '$count device${count != 1 ? 's' : ''}';
+
+        cards.add(DomainCardInfo(
+          domain: domain,
+          icon: isActive ? MdiIcons.playCircle : domain.icon,
+          title: domain.label,
+          primaryValue: primaryValue,
+          subtitle: subtitle,
+          isActive: isActive,
+          count: count,
+          targetViewKey: targetViewKey,
+        ));
+        break;
+
+      case DomainType.sensors:
+        final readingsCount = domainCounts.sensorReadings;
+        cards.add(DomainCardInfo(
+          domain: domain,
+          icon: domain.icon,
+          title: domain.label,
+          primaryValue: '$readingsCount',
+          subtitle: '$readingsCount reading${readingsCount != 1 ? 's' : ''}',
+          isActive: false,
+          count: count,
+          targetViewKey: targetViewKey,
+        ));
+        break;
+
+      case DomainType.energy:
+        break;
+    }
+  }
+
+  return cards;
 }
 
 LayoutHints _calculateLayoutHints({
