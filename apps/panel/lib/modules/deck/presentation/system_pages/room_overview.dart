@@ -797,8 +797,10 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 					),
 
 				// Suggested actions
-				if (model.suggestedActions.isNotEmpty)
+				if (model.suggestedActions.isNotEmpty) ...[
+					SizedBox(height: AppSpacings.pMd),
 					_buildSuggestedActionsSection(context, model),
+				],
 
 				// Empty state when no devices and no scenes
 				if (!model.hasAnyDomain && !model.hasScenes)
