@@ -152,8 +152,11 @@ class MaintenancePage extends StatelessWidget {
 										SettingsSectionHeading(
 											text: localizations.settings_maintenance_system_heading,
 										),
-										...systemCards.expand((card) => [card, SizedBox(height: AppSpacings.pMd)]),
+										for (int i = 0; i < systemCards.length; i++) ...[
+										systemCards[i],
+										if (i < systemCards.length - 1) SizedBox(height: AppSpacings.pMd),
 									],
+								],
 								),
 							),
 							SizedBox(width: AppSpacings.pMd),

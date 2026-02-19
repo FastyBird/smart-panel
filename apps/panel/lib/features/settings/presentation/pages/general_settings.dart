@@ -110,8 +110,8 @@ class GeneralSettingsPage extends StatelessWidget {
 					)
 				],
 			),
-			body: Padding(
-				padding: EdgeInsets.all(isLandscape ? AppSpacings.pLg : AppSpacings.pLg),
+			body: SingleChildScrollView(
+				padding: EdgeInsets.all(AppSpacings.pLg),
 				child: Align(
 					alignment: Alignment.topLeft,
 					child: ConstrainedBox(

@@ -62,14 +62,24 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 		});
 	}
 
+	static const Map<int, String> _screenLockDurationLabels = {
+		15: '15s',
+		30: '30s',
+		60: '1min',
+		120: '2min',
+		300: '5min',
+		600: '10min',
+		1800: '30min',
+		0: 'Never',
+	};
+
 	@override
 	Widget build(BuildContext context) {
 		final localizations = AppLocalizations.of(context)!;
-		final isDark = Theme.of(context).brightness == Brightness.dark;
 		final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
 
-		final primaryColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
-		final primaryBg = isDark ? AppColorsDark.primaryLight5 : AppColorsLight.primaryLight9;
+		final primaryColor = _isDarkMode ? AppColorsDark.primary : AppColorsLight.primary;
+		final primaryBg = _isDarkMode ? AppColorsDark.primaryLight5 : AppColorsLight.primaryLight9;
 
 		final cards = <Widget>[
 			// Theme Mode
@@ -171,30 +181,11 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 	}
 
 	String _getScreenLockLabel(int duration) {
-		return switch (duration) {
-			15 => '15s',
-			30 => '30s',
-			60 => '1min',
-			120 => '2min',
-			300 => '5min',
-			600 => '10min',
-			1800 => '30min',
-			0 => 'Never',
-			_ => '${duration}s',
-		};
+		return _screenLockDurationLabels[duration] ?? '${duration}s';
 	}
 
 	List<DropdownMenuItem<int>> _getScreenLockDurationItems() {
-		return {
-			15: '15s',
-			30: '30s',
-			60: '1min',
-			120: '2min',
-			300: '5min',
-			600: '10min',
-			1800: '30min',
-			0: 'Never',
-		}.entries.map((entry) {
+		return _screenLockDurationLabels.entries.map((entry) {
 			return DropdownMenuItem<int>(
 				value: entry.key,
 				child: Text(

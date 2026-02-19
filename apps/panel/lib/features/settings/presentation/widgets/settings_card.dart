@@ -49,82 +49,98 @@ class SettingsCard extends StatelessWidget {
 				? [BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 3, offset: const Offset(0, 1))]
 				: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 3, offset: const Offset(0, 1))];
 
+		final radius = BorderRadius.circular(AppBorderRadius.medium);
+
 		return GestureDetector(
 			onTap: onTap,
 			child: Opacity(
 				opacity: opacity,
-				child: Container(
-					padding: EdgeInsets.all(AppSpacings.pLg),
-					decoration: BoxDecoration(
-						color: surfaceColor,
-						border: Border(
-							top: BorderSide(color: isDanger ? dangerBorderLight : borderColor),
-							right: BorderSide(color: isDanger ? dangerBorderLight : borderColor),
-							bottom: BorderSide(color: isDanger ? dangerBorderLight : borderColor),
-							left: BorderSide(
-								color: isDanger ? dangerTextColor : borderColor,
-								width: isDanger ? AppSpacings.scale(3) : AppSpacings.scale(1),
+				child: Stack(
+					children: [
+						Container(
+							padding: EdgeInsets.all(AppSpacings.pLg),
+							decoration: BoxDecoration(
+								color: surfaceColor,
+								border: Border.all(
+									color: isDanger ? dangerBorderLight : borderColor,
+								),
+								borderRadius: radius,
+								boxShadow: shadow,
 							),
-						),
-						borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-						boxShadow: shadow,
-					),
-					child: Column(
-						mainAxisSize: MainAxisSize.min,
-						children: [
-							Row(
+							child: Column(
+								mainAxisSize: MainAxisSize.min,
 								children: [
-									// Icon badge
-									Container(
-										width: AppSpacings.scale(36),
-										height: AppSpacings.scale(36),
-										decoration: BoxDecoration(
-											color: iconBgColor,
-											borderRadius: BorderRadius.circular(AppSpacings.scale(10)),
-										),
-										child: Icon(icon, size: AppFontSize.large, color: iconColor),
-									),
-									SizedBox(width: AppSpacings.pMd),
-									// Text
-									Expanded(
-										child: Column(
-											crossAxisAlignment: CrossAxisAlignment.start,
-											children: [
-												Text(
-													label,
-													style: TextStyle(
-														fontSize: AppFontSize.small,
-														fontWeight: FontWeight.w600,
-														color: isDanger ? dangerTextColor : textColor,
-													),
+									Row(
+										children: [
+											// Icon badge
+											Container(
+												width: AppSpacings.scale(36),
+												height: AppSpacings.scale(36),
+												decoration: BoxDecoration(
+													color: iconBgColor,
+													borderRadius: BorderRadius.circular(AppSpacings.scale(10)),
 												),
-												if (description != null)
-													Padding(
-														padding: EdgeInsets.only(top: AppSpacings.pXxs),
-														child: Text(
-															description!,
+												child: Icon(icon, size: AppFontSize.large, color: iconColor),
+											),
+											SizedBox(width: AppSpacings.pMd),
+											// Text
+											Expanded(
+												child: Column(
+													crossAxisAlignment: CrossAxisAlignment.start,
+													children: [
+														Text(
+															label,
 															style: TextStyle(
-																fontSize: AppFontSize.extraSmall,
-																color: descColor,
-																height: 1.3,
+																fontSize: AppFontSize.small,
+																fontWeight: FontWeight.w600,
+																color: isDanger ? dangerTextColor : textColor,
 															),
 														),
-													),
+														if (description != null)
+															Padding(
+																padding: EdgeInsets.only(top: AppSpacings.pXxs),
+																child: Text(
+																	description!,
+																	style: TextStyle(
+																		fontSize: AppFontSize.extraSmall,
+																		color: descColor,
+																		height: 1.3,
+																	),
+																),
+															),
+													],
+												),
+											),
+											if (trailing != null) ...[
+												SizedBox(width: AppSpacings.pMd),
+												trailing!,
 											],
-										),
+										],
 									),
-									if (trailing != null) ...[
-										SizedBox(width: AppSpacings.pMd),
-										trailing!,
+									if (bottom != null) ...[
+										SizedBox(height: AppSpacings.pMd),
+										bottom!,
 									],
 								],
 							),
-							if (bottom != null) ...[
-								SizedBox(height: AppSpacings.pMd),
-								bottom!,
-							],
-						],
-					),
+						),
+						if (isDanger)
+							Positioned(
+								left: 0,
+								top: 0,
+								bottom: 0,
+								child: Container(
+									width: AppSpacings.scale(3),
+									decoration: BoxDecoration(
+										color: dangerTextColor,
+										borderRadius: BorderRadius.only(
+											topLeft: Radius.circular(AppBorderRadius.medium),
+											bottomLeft: Radius.circular(AppBorderRadius.medium),
+										),
+									),
+								),
+							),
+					],
 				),
 			),
 		);
