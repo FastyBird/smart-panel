@@ -296,7 +296,7 @@ class _AboutPageState extends State<AboutPage> {
 									child: SingleChildScrollView(
 										padding: EdgeInsets.all(AppSpacings.pLg),
 										child: Text(
-											'Copyright 2024 FastyBird s.r.o.\n\n'
+											'Copyright 2025 FastyBird s.r.o.\n\n'
 											'Licensed under the Apache License, Version 2.0 (the "License"); '
 											'you may not use this file except in compliance with the License. '
 											'You may obtain a copy of the License at\n\n'

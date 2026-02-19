@@ -79,7 +79,7 @@ class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
 												.map((l) => SelectionOption(value: l.id, label: l.name))
 												.toList(),
 									);
-									if (result != null) {
+									if (result != null && context.mounted) {
 										_handleLocationChange(result);
 									}
 								},

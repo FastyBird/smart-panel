@@ -57,7 +57,6 @@ dependencies:
   material_design_icons_flutter: ^7.0.7296
   socket_io_client: ^3.0.2
   flutterpi_tool: ^0.6.0
-  dropdown_button2: ^2.3.9
   event_bus: ^2.0.1
   fl_chart: ^0.69.0
   bonsoir: ^5.1.4

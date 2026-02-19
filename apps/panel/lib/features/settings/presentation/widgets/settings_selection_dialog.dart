@@ -154,6 +154,7 @@ Future<T?> showSettingsSelectionDialog<T>({
 				child: ConstrainedBox(
 					constraints: BoxConstraints(
 						maxWidth: AppSpacings.scale(280),
+						maxHeight: MediaQuery.of(context).size.height * 0.7,
 					),
 					child: Column(
 						mainAxisSize: MainAxisSize.min,
