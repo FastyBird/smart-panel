@@ -844,6 +844,14 @@
   "@settings_maintenance_factory_reset_confirm_description": {
     "description": "Message displayed in the confirmation dialog for performing a factory reset."
   },
+  "settings_maintenance_system_heading": "System",
+  "@settings_maintenance_system_heading": {
+    "description": "Section heading for system maintenance actions."
+  },
+  "settings_maintenance_danger_heading": "Danger Zone",
+  "@settings_maintenance_danger_heading": {
+    "description": "Section heading for dangerous maintenance actions."
+  },
   "settings_language_settings_title": "Language Settings",
   "@settings_language_settings_title": {
     "description": "Title for the Language Settings section."

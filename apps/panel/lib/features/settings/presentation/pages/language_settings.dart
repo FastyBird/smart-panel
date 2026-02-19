@@ -5,7 +5,8 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
-import 'package:fastybird_smart_panel/features/settings/presentation/widgets/setting_row.dart';
+import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_card.dart';
+import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_dropdown_value.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/config/module.dart';
 import 'package:fastybird_smart_panel/modules/config/repositories/module_config_repository.dart';
@@ -13,489 +14,499 @@ import 'package:fastybird_smart_panel/modules/system/models/system.dart';
 import 'package:fastybird_smart_panel/modules/system/types/configuration.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 class LanguageSettingsPage extends StatefulWidget {
-  const LanguageSettingsPage({super.key});
+	const LanguageSettingsPage({super.key});
 
-  @override
-  State<LanguageSettingsPage> createState() => _LanguageSettingsPageState();
+	@override
+	State<LanguageSettingsPage> createState() => _LanguageSettingsPageState();
 }
 
 class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
-  final ConfigModuleService _configModule = locator<ConfigModuleService>();
-  late final ModuleConfigRepository<SystemConfigModel> _repository =
-      _configModule.getModuleRepository<SystemConfigModel>('system-module');
+	final ConfigModuleService _configModule = locator<ConfigModuleService>();
+	late final ModuleConfigRepository<SystemConfigModel> _repository =
+			_configModule.getModuleRepository<SystemConfigModel>('system-module');
 
-  String? _timezone;
-  Language _language = Language.english;
-  TimeFormat _timeFormat = TimeFormat.twentyFourHour;
+	String? _timezone;
+	Language _language = Language.english;
+	TimeFormat _timeFormat = TimeFormat.twentyFourHour;
 
-  @override
-  void initState() {
-    super.initState();
+	@override
+	void initState() {
+		super.initState();
 
-    _syncStateWithRepository();
+		_syncStateWithRepository();
 
-    // If repository data is null, fetch it
-    if (_repository.data == null) {
-      _repository.fetchConfiguration().then((_) {
-        _syncStateWithRepository();
-      }).catchError((_) {
-        // Error fetching configuration - will be handled by UI state
-      });
-    }
+		// If repository data is null, fetch it
+		if (_repository.data == null) {
+			_repository.fetchConfiguration().then((_) {
+				_syncStateWithRepository();
+			}).catchError((_) {
+				// Error fetching configuration - will be handled by UI state
+			});
+		}
 
-    _repository.addListener(_syncStateWithRepository);
-  }
+		_repository.addListener(_syncStateWithRepository);
+	}
 
-  @override
-  void dispose() {
-    super.dispose();
+	@override
+	void dispose() {
+		super.dispose();
 
-    _repository.removeListener(_syncStateWithRepository);
-  }
+		_repository.removeListener(_syncStateWithRepository);
+	}
 
-  void _syncStateWithRepository() {
-    final config = _repository.data;
-    if (config != null) {
-      setState(() {
-        _timezone = config.timezone;
-        _language = config.language;
-        _timeFormat = config.timeFormat;
-      });
-    }
-  }
+	void _syncStateWithRepository() {
+		final config = _repository.data;
+		if (config != null) {
+			setState(() {
+				_timezone = config.timezone;
+				_language = config.language;
+				_timeFormat = config.timeFormat;
+			});
+		}
+	}
 
-  @override
-  Widget build(BuildContext context) {
-    final localizations = AppLocalizations.of(context)!;
+	@override
+	Widget build(BuildContext context) {
+		final localizations = AppLocalizations.of(context)!;
+		final isDark = Theme.of(context).brightness == Brightness.dark;
+		final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
 
-    final List<String> timezones = [
-      'Africa/Cairo',
-      'Africa/Johannesburg',
-      'America/New_York',
-      'America/Los_Angeles',
-      'Asia/Dubai',
-      'Asia/Tokyo',
-      'Asia/Kolkata',
-      'Australia/Sydney',
-      'Europe/London',
-      'Europe/Berlin',
-      'Europe/Prague',
-    ];
+		final infoColor = isDark ? AppColorsDark.info : AppColorsLight.info;
+		final infoBg = isDark ? AppColorsDark.infoLight5 : AppColorsLight.infoLight9;
 
-    return Scaffold(
-      appBar: AppTopBar(
-        title: localizations.settings_language_settings_title,
-      ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: AppSpacings.paddingMd,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            spacing: AppSpacings.pMd,
-            children: [
-              SettingRow(
-                icon: MdiIcons.translate,
-                title: Text(
-                  localizations.settings_language_settings_language_title,
-                  style: TextStyle(
-                    fontSize: AppFontSize.extraSmall,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                subtitle: Text(
-                  localizations.settings_language_settings_language_description,
-                  style: TextStyle(
-                    fontSize: AppSpacings.scale(8),
-                  ),
-                ),
-                trailing: DropdownButtonHideUnderline(
-                  child: DropdownButton2<String>(
-                    isExpanded: false,
-                    isDense: true,
-                    items: getLanguageItems(),
-                    value: _language.value,
-                    onChanged: (String? value) async {
-                      _handleLanguageChange(context, value);
-                    },
-                    menuItemStyleData: MenuItemStyleData(
-                      padding: EdgeInsets.symmetric(
-                        vertical: 0,
-                        horizontal: AppSpacings.pLg,
-                      ),
-                      height: AppSpacings.scale(35),
-                    ),
-                    dropdownStyleData: DropdownStyleData(
-                      padding: EdgeInsets.all(0),
-                      maxHeight: AppSpacings.scale(200),
-                    ),
-                    iconStyleData: IconStyleData(
-                      openMenuIcon: Icon(MdiIcons.menuUp),
-                    ),
-                  ),
-                ),
-              ),
-              SettingRow(
-                icon: MdiIcons.web,
-                title: Text(
-                  localizations.settings_language_settings_timezone_title,
-                  style: TextStyle(
-                    fontSize: AppFontSize.extraSmall,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                subtitle: Text(
-                  localizations.settings_language_settings_timezone_description,
-                  style: TextStyle(
-                    fontSize: AppSpacings.scale(8),
-                  ),
-                ),
-                trailing: DropdownButtonHideUnderline(
-                  child: DropdownButton2<String>(
-                    isExpanded: false,
-                    isDense: true,
-                    items: getTimezoneItems(timezones),
-                    value: _timezone,
-                    onChanged: (String? value) async {
-                      _handleTimeZoneChange(context, value);
-                    },
-                    selectedItemBuilder: (BuildContext context) {
-                      return timezones.map<Widget>((String item) {
-                        return Container(
-                          alignment: Alignment.centerRight,
-                          width: AppSpacings.scale(120),
-                          child: Text(
-                            item,
-                            textAlign: TextAlign.end,
-                            style: TextStyle(
-                              fontSize: AppFontSize.extraSmall,
-                            ),
-                          ),
-                        );
-                      }).toList();
-                    },
-                    menuItemStyleData: MenuItemStyleData(
-                      padding: EdgeInsets.symmetric(
-                        vertical: 0,
-                        horizontal: AppSpacings.pLg,
-                      ),
-                      height: AppSpacings.scale(35),
-                    ),
-                    dropdownStyleData: DropdownStyleData(
-                      padding: EdgeInsets.all(0),
-                      width: AppSpacings.scale(150),
-                      maxHeight: AppSpacings.scale(200),
-                    ),
-                    iconStyleData: IconStyleData(
-                      openMenuIcon: Icon(MdiIcons.menuUp),
-                    ),
-                  ),
-                ),
-              ),
-              SettingRow(
-                icon: MdiIcons.clockOutline,
-                title: Text(
-                  localizations.settings_language_settings_time_format_title,
-                  style: TextStyle(
-                    fontSize: AppFontSize.extraSmall,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                subtitle: Text(
-                  localizations
-                      .settings_language_settings_time_format_description,
-                  style: TextStyle(
-                    fontSize: AppSpacings.scale(8),
-                  ),
-                ),
-                trailing: DropdownButtonHideUnderline(
-                  child: DropdownButton2<String>(
-                    isExpanded: false,
-                    isDense: true,
-                    items: getTimeFormatItems(context),
-                    value: _timeFormat.value,
-                    onChanged: (String? value) async {
-                      _handleTimeFormatChange(context, value);
-                    },
-                    menuItemStyleData: MenuItemStyleData(
-                      padding: EdgeInsets.symmetric(
-                        vertical: 0,
-                        horizontal: AppSpacings.pLg,
-                      ),
-                      height: AppSpacings.scale(35),
-                    ),
-                    dropdownStyleData: DropdownStyleData(
-                      padding: EdgeInsets.all(0),
-                      maxHeight: AppSpacings.scale(200),
-                    ),
-                    iconStyleData: IconStyleData(
-                      openMenuIcon: Icon(MdiIcons.menuUp),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+		final List<String> timezones = [
+			'Africa/Cairo',
+			'Africa/Johannesburg',
+			'America/New_York',
+			'America/Los_Angeles',
+			'Asia/Dubai',
+			'Asia/Tokyo',
+			'Asia/Kolkata',
+			'Australia/Sydney',
+			'Europe/London',
+			'Europe/Berlin',
+			'Europe/Prague',
+		];
 
-  List<DropdownMenuItem<String>> getTimezoneItems(List<String> timezones) {
-    return timezones.map((timezone) {
-      return DropdownMenuItem<String>(
-        value: timezone,
-        child: Text(
-          timezone,
-          style: TextStyle(
-            fontSize: AppFontSize.extraSmall,
-          ),
-        ),
-      );
-    }).toList();
-  }
+		final languageLabels = {
+			Language.english.value: 'English',
+			Language.czech.value: 'Česky',
+		};
 
-  List<DropdownMenuItem<String>> getLanguageItems() {
-    return {
-      Language.english.value: 'English',
-      Language.czech.value: 'Česky',
-    }.entries.map((entry) {
-      return DropdownMenuItem<String>(
-        value: entry.key,
-        child: Text(
-          entry.value,
-          style: TextStyle(
-            fontSize: AppFontSize.extraSmall,
-          ),
-        ),
-      );
-    }).toList();
-  }
+		final cards = <Widget>[
+			SettingsCard(
+				icon: Icons.language,
+				iconColor: infoColor,
+				iconBgColor: infoBg,
+				label: localizations.settings_language_settings_language_title,
+				description: localizations.settings_language_settings_language_description,
+				trailing: DropdownButtonHideUnderline(
+					child: DropdownButton2<String>(
+						isExpanded: false,
+						isDense: true,
+						items: _getLanguageItems(),
+						value: _language.value,
+						onChanged: (String? value) async {
+							_handleLanguageChange(context, value);
+						},
+						customButton: SettingsDropdownValue(
+							value: languageLabels[_language.value] ?? _language.value,
+						),
+						menuItemStyleData: MenuItemStyleData(
+							padding: EdgeInsets.symmetric(
+								vertical: 0,
+								horizontal: AppSpacings.pLg,
+							),
+							height: AppSpacings.scale(35),
+						),
+						dropdownStyleData: DropdownStyleData(
+							padding: EdgeInsets.all(0),
+							maxHeight: AppSpacings.scale(200),
+						),
+					),
+				),
+			),
+			SettingsCard(
+				icon: Icons.access_time,
+				iconColor: infoColor,
+				iconBgColor: infoBg,
+				label: localizations.settings_language_settings_timezone_title,
+				description: localizations.settings_language_settings_timezone_description,
+				trailing: DropdownButtonHideUnderline(
+					child: DropdownButton2<String>(
+						isExpanded: false,
+						isDense: true,
+						items: _getTimezoneItems(timezones),
+						value: _timezone,
+						onChanged: (String? value) async {
+							_handleTimeZoneChange(context, value);
+						},
+						customButton: SettingsDropdownValue(
+							value: _timezone ?? '—',
+						),
+						menuItemStyleData: MenuItemStyleData(
+							padding: EdgeInsets.symmetric(
+								vertical: 0,
+								horizontal: AppSpacings.pLg,
+							),
+							height: AppSpacings.scale(35),
+						),
+						dropdownStyleData: DropdownStyleData(
+							padding: EdgeInsets.all(0),
+							width: AppSpacings.scale(150),
+							maxHeight: AppSpacings.scale(200),
+						),
+					),
+				),
+			),
+			SettingsCard(
+				icon: Icons.calendar_today_outlined,
+				iconColor: infoColor,
+				iconBgColor: infoBg,
+				label: localizations.settings_language_settings_time_format_title,
+				description: localizations.settings_language_settings_time_format_description,
+				trailing: DropdownButtonHideUnderline(
+					child: DropdownButton2<String>(
+						isExpanded: false,
+						isDense: true,
+						items: _getTimeFormatItems(context),
+						value: _timeFormat.value,
+						onChanged: (String? value) async {
+							_handleTimeFormatChange(context, value);
+						},
+						customButton: SettingsDropdownValue(
+							value: _timeFormat == TimeFormat.twelveHour
+									? localizations.time_format_12h
+									: localizations.time_format_24h,
+						),
+						menuItemStyleData: MenuItemStyleData(
+							padding: EdgeInsets.symmetric(
+								vertical: 0,
+								horizontal: AppSpacings.pLg,
+							),
+							height: AppSpacings.scale(35),
+						),
+						dropdownStyleData: DropdownStyleData(
+							padding: EdgeInsets.all(0),
+							maxHeight: AppSpacings.scale(200),
+						),
+					),
+				),
+			),
+		];
 
-  List<DropdownMenuItem<String>> getTimeFormatItems(BuildContext context) {
-    final localizations = AppLocalizations.of(context)!;
+		return Scaffold(
+			appBar: AppTopBar(
+				title: localizations.settings_language_settings_title,
+			),
+			body: isLandscape
+					? Padding(
+							padding: EdgeInsets.all(AppSpacings.pLg),
+							child: _buildTwoColumnLayout(cards),
+						)
+					: ListView(
+							padding: EdgeInsets.all(AppSpacings.pLg),
+							children: [
+								for (int i = 0; i < cards.length; i++) ...[
+									cards[i],
+									if (i < cards.length - 1) SizedBox(height: AppSpacings.pMd),
+								],
+							],
+						),
+		);
+	}
 
-    return [
-      DropdownMenuItem(
-        value: TimeFormat.twelveHour.value,
-        child: Text(
-          localizations.time_format_12h,
-          style: TextStyle(
-            fontSize: AppFontSize.extraSmall,
-          ),
-        ),
-      ),
-      DropdownMenuItem(
-        value: TimeFormat.twentyFourHour.value,
-        child: Text(
-          localizations.time_format_24h,
-          style: TextStyle(
-            fontSize: AppFontSize.extraSmall,
-          ),
-        ),
-      ),
-    ];
-  }
+	Widget _buildTwoColumnLayout(List<Widget> cards) {
+		if (cards.length <= 2) {
+			return Row(
+				crossAxisAlignment: CrossAxisAlignment.start,
+				children: [
+					for (int i = 0; i < cards.length; i++) ...[
+						if (i > 0) SizedBox(width: AppSpacings.pMd),
+						Expanded(child: cards[i]),
+					],
+				],
+			);
+		}
 
-  Future<void> _handleLanguageChange(
-    BuildContext context,
-    String? value,
-  ) async {
-    if (value == null) return;
+		return ConstrainedBox(
+			constraints: BoxConstraints(maxWidth: AppSpacings.scale(640)),
+			child: Column(
+				crossAxisAlignment: CrossAxisAlignment.start,
+				mainAxisSize: MainAxisSize.min,
+				children: [
+					Row(
+						crossAxisAlignment: CrossAxisAlignment.start,
+						children: [
+							Expanded(child: cards[0]),
+							SizedBox(width: AppSpacings.pMd),
+							Expanded(child: cards[1]),
+						],
+					),
+					for (int i = 2; i < cards.length; i++) ...[
+						SizedBox(height: AppSpacings.pMd),
+						cards[i],
+					],
+				],
+			),
+		);
+	}
 
-    final language = Language.fromValue(value);
+	List<DropdownMenuItem<String>> _getTimezoneItems(List<String> timezones) {
+		return timezones.map((timezone) {
+			return DropdownMenuItem<String>(
+				value: timezone,
+				child: Text(
+					timezone,
+					style: TextStyle(
+						fontSize: AppFontSize.extraSmall,
+					),
+				),
+			);
+		}).toList();
+	}
 
-    if (language == null) return;
+	List<DropdownMenuItem<String>> _getLanguageItems() {
+		return {
+			Language.english.value: 'English',
+			Language.czech.value: 'Česky',
+		}.entries.map((entry) {
+			return DropdownMenuItem<String>(
+				value: entry.key,
+				child: Text(
+					entry.value,
+					style: TextStyle(
+						fontSize: AppFontSize.extraSmall,
+					),
+				),
+			);
+		}).toList();
+	}
 
-    HapticFeedback.lightImpact();
+	List<DropdownMenuItem<String>> _getTimeFormatItems(BuildContext context) {
+		final localizations = AppLocalizations.of(context)!;
 
-    final Language backup = _language;
+		return [
+			DropdownMenuItem(
+				value: TimeFormat.twelveHour.value,
+				child: Text(
+					localizations.time_format_12h,
+					style: TextStyle(
+						fontSize: AppFontSize.extraSmall,
+					),
+				),
+			),
+			DropdownMenuItem(
+				value: TimeFormat.twentyFourHour.value,
+				child: Text(
+					localizations.time_format_24h,
+					style: TextStyle(
+						fontSize: AppFontSize.extraSmall,
+					),
+				),
+			),
+		];
+	}
 
-    setState(() {
-      _language = language;
-    });
+	Future<void> _handleLanguageChange(
+		BuildContext context,
+		String? value,
+	) async {
+		if (value == null) return;
 
-    final success = await _updateLanguage(_language);
+		final language = Language.fromValue(value);
 
-    Future.microtask(
-      () async {
-        await Future.delayed(
-          const Duration(milliseconds: 500),
-        );
+		if (language == null) return;
 
-        if (!context.mounted) return;
+		HapticFeedback.lightImpact();
 
-        if (!success) {
-          setState(() {
-            _language = backup;
-          });
+		final Language backup = _language;
 
-          AppToast.showError(
-            context,
-            message: 'Save settings failed.',
-          );
-        }
-      },
-    );
-  }
+		setState(() {
+			_language = language;
+		});
 
-  Future<void> _handleTimeZoneChange(
-    BuildContext context,
-    String? value,
-  ) async {
-    if (value == null) return;
+		final success = await _updateLanguage(_language);
 
-    HapticFeedback.lightImpact();
+		Future.microtask(
+			() async {
+				await Future.delayed(
+					const Duration(milliseconds: 500),
+				);
 
-    final String? backup = _timezone;
+				if (!context.mounted) return;
 
-    setState(() {
-      _timezone = value;
-    });
+				if (!success) {
+					setState(() {
+						_language = backup;
+					});
 
-    final success = await _updateTimezone(_timezone);
+					AppToast.showError(
+						context,
+						message: 'Save settings failed.',
+					);
+				}
+			},
+		);
+	}
 
-    Future.microtask(
-      () async {
-        await Future.delayed(
-          const Duration(milliseconds: 500),
-        );
+	Future<void> _handleTimeZoneChange(
+		BuildContext context,
+		String? value,
+	) async {
+		if (value == null) return;
 
-        if (!context.mounted) return;
+		HapticFeedback.lightImpact();
 
-        if (!success) {
-          setState(() {
-            _timezone = backup;
-          });
+		final String? backup = _timezone;
 
-          AppToast.showError(
-            context,
-            message: 'Save settings failed.',
-          );
-        }
-      },
-    );
-  }
+		setState(() {
+			_timezone = value;
+		});
 
-  Future<void> _handleTimeFormatChange(
-    BuildContext context,
-    String? value,
-  ) async {
-    if (value == null) return;
+		final success = await _updateTimezone(_timezone);
 
-    final timeFormat = TimeFormat.fromValue(value);
+		Future.microtask(
+			() async {
+				await Future.delayed(
+					const Duration(milliseconds: 500),
+				);
 
-    if (timeFormat == null) return;
+				if (!context.mounted) return;
 
-    HapticFeedback.lightImpact();
+				if (!success) {
+					setState(() {
+						_timezone = backup;
+					});
 
-    final TimeFormat backup = _timeFormat;
+					AppToast.showError(
+						context,
+						message: 'Save settings failed.',
+					);
+				}
+			},
+		);
+	}
 
-    setState(() {
-      _timeFormat = timeFormat;
-    });
+	Future<void> _handleTimeFormatChange(
+		BuildContext context,
+		String? value,
+	) async {
+		if (value == null) return;
 
-    final success = await _updateTimeFormat(_timeFormat);
+		final timeFormat = TimeFormat.fromValue(value);
 
-    Future.microtask(
-      () async {
-        await Future.delayed(
-          const Duration(milliseconds: 500),
-        );
+		if (timeFormat == null) return;
 
-        if (!context.mounted) return;
+		HapticFeedback.lightImpact();
 
-        if (!success) {
-          setState(() {
-            _timeFormat = backup;
-          });
+		final TimeFormat backup = _timeFormat;
 
-          AppToast.showError(
-            context,
-            message: 'Save settings failed.',
-          );
-        }
-      },
-    );
-  }
+		setState(() {
+			_timeFormat = timeFormat;
+		});
 
-  Future<bool> _updateLanguage(Language language) async {
-    var current = _repository.data;
-    if (current == null) {
-      try {
-        await _repository.fetchConfiguration();
-        current = _repository.data;
-        if (current == null) {
-          return false;
-        }
-      } catch (e) {
-        return false;
-      }
-    }
+		final success = await _updateTimeFormat(_timeFormat);
 
-    final updateData = <String, dynamic>{
-      'type': 'system-module',
-      'language': language.value,
-      'timezone': current.timezone,
-      'time_format': current.timeFormat.value,
-    };
+		Future.microtask(
+			() async {
+				await Future.delayed(
+					const Duration(milliseconds: 500),
+				);
 
-    try {
-      return await _repository.updateConfiguration(updateData);
-    } catch (e) {
-      return false;
-    }
-  }
+				if (!context.mounted) return;
 
-  Future<bool> _updateTimezone(String? timezone) async {
-    if (timezone == null) return false;
+				if (!success) {
+					setState(() {
+						_timeFormat = backup;
+					});
 
-    var current = _repository.data;
-    if (current == null) {
-      try {
-        await _repository.fetchConfiguration();
-        current = _repository.data;
-        if (current == null) {
-          return false;
-        }
-      } catch (e) {
-        return false;
-      }
-    }
+					AppToast.showError(
+						context,
+						message: 'Save settings failed.',
+					);
+				}
+			},
+		);
+	}
 
-    final updateData = <String, dynamic>{
-      'type': 'system-module',
-      'language': current.language.value,
-      'timezone': timezone,
-      'time_format': current.timeFormat.value,
-    };
+	Future<bool> _updateLanguage(Language language) async {
+		var current = _repository.data;
+		if (current == null) {
+			try {
+				await _repository.fetchConfiguration();
+				current = _repository.data;
+				if (current == null) {
+					return false;
+				}
+			} catch (e) {
+				return false;
+			}
+		}
 
-    return await _repository.updateConfiguration(updateData);
-  }
+		final updateData = <String, dynamic>{
+			'type': 'system-module',
+			'language': language.value,
+			'timezone': current.timezone,
+			'time_format': current.timeFormat.value,
+		};
 
-  Future<bool> _updateTimeFormat(TimeFormat format) async {
-    var current = _repository.data;
-    if (current == null) {
-      try {
-        await _repository.fetchConfiguration();
-        current = _repository.data;
-        if (current == null) {
-          return false;
-        }
-      } catch (e) {
-        return false;
-      }
-    }
+		try {
+			return await _repository.updateConfiguration(updateData);
+		} catch (e) {
+			return false;
+		}
+	}
 
-    final updateData = <String, dynamic>{
-      'type': 'system-module',
-      'language': current.language.value,
-      'timezone': current.timezone,
-      'time_format': format.value,
-    };
+	Future<bool> _updateTimezone(String? timezone) async {
+		if (timezone == null) return false;
 
-    return await _repository.updateConfiguration(updateData);
-  }
+		var current = _repository.data;
+		if (current == null) {
+			try {
+				await _repository.fetchConfiguration();
+				current = _repository.data;
+				if (current == null) {
+					return false;
+				}
+			} catch (e) {
+				return false;
+			}
+		}
+
+		final updateData = <String, dynamic>{
+			'type': 'system-module',
+			'language': current.language.value,
+			'timezone': timezone,
+			'time_format': current.timeFormat.value,
+		};
+
+		return await _repository.updateConfiguration(updateData);
+	}
+
+	Future<bool> _updateTimeFormat(TimeFormat format) async {
+		var current = _repository.data;
+		if (current == null) {
+			try {
+				await _repository.fetchConfiguration();
+				current = _repository.data;
+				if (current == null) {
+					return false;
+				}
+			} catch (e) {
+				return false;
+			}
+		}
+
+		final updateData = <String, dynamic>{
+			'type': 'system-module',
+			'language': current.language.value,
+			'timezone': current.timezone,
+			'time_format': format.value,
+		};
+
+		return await _repository.updateConfiguration(updateData);
+	}
 }

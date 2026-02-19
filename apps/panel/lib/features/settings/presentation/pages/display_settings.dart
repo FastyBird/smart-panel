@@ -4,378 +4,397 @@ import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
-import 'package:fastybird_smart_panel/core/widgets/icon_switch.dart';
 import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
-import 'package:fastybird_smart_panel/features/settings/presentation/widgets/setting_row.dart';
-import 'package:fastybird_smart_panel/features/settings/presentation/widgets/setting_slider.dart';
+import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_card.dart';
+import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_dropdown_value.dart';
+import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_slider.dart';
+import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_toggle.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 class DisplaySettingsPage extends StatefulWidget {
-  const DisplaySettingsPage({super.key});
+	const DisplaySettingsPage({super.key});
 
-  @override
-  State<DisplaySettingsPage> createState() => _DisplaySettingsPageState();
+	@override
+	State<DisplaySettingsPage> createState() => _DisplaySettingsPageState();
 }
 
 class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
-  final DisplayRepository _repository = locator<DisplayRepository>();
+	final DisplayRepository _repository = locator<DisplayRepository>();
 
-  late bool _isDarkMode;
+	late bool _isDarkMode;
 
-  late int _brightness;
-  late int? _brightnessBackup;
-  late bool _savingBrightness = false;
+	late int _brightness;
+	late int? _brightnessBackup;
+	late bool _savingBrightness = false;
 
-  late int _screenLockDuration;
+	late int _screenLockDuration;
 
-  late bool _hasScreenSaver;
+	late bool _hasScreenSaver;
 
-  Timer? _debounce;
+	Timer? _debounce;
 
-  @override
-  void initState() {
-    super.initState();
+	@override
+	void initState() {
+		super.initState();
 
-    _syncStateWithRepository();
+		_syncStateWithRepository();
 
-    _repository.addListener(_syncStateWithRepository);
-  }
+		_repository.addListener(_syncStateWithRepository);
+	}
 
-  @override
-  void dispose() {
-    super.dispose();
+	@override
+	void dispose() {
+		super.dispose();
 
-    _repository.removeListener(_syncStateWithRepository);
-  }
+		_repository.removeListener(_syncStateWithRepository);
+	}
 
-  void _syncStateWithRepository() {
-    setState(() {
-      _isDarkMode = _repository.hasDarkMode;
-      _brightness = _repository.brightness;
-      _screenLockDuration = _repository.screenLockDuration;
-      _hasScreenSaver = _repository.hasScreenSaver;
-    });
-  }
+	void _syncStateWithRepository() {
+		setState(() {
+			_isDarkMode = _repository.hasDarkMode;
+			_brightness = _repository.brightness;
+			_screenLockDuration = _repository.screenLockDuration;
+			_hasScreenSaver = _repository.hasScreenSaver;
+		});
+	}
 
-  @override
-  Widget build(BuildContext context) {
-    final localizations = AppLocalizations.of(context)!;
+	@override
+	Widget build(BuildContext context) {
+		final localizations = AppLocalizations.of(context)!;
+		final isDark = Theme.of(context).brightness == Brightness.dark;
+		final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
 
-    return AnimatedTheme(
-      duration: const Duration(milliseconds: 500),
-      curve: Curves.easeInOut,
-      data: _isDarkMode ? AppTheme.darkTheme : AppTheme.lightTheme,
-      child: Scaffold(
-        appBar: AppTopBar(
-          title: localizations.settings_display_settings_title,
-        ),
-        body: SingleChildScrollView(
-          child: Padding(
-            padding: AppSpacings.paddingMd,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              spacing: AppSpacings.pMd,
-              children: [
-                SettingRow(
-                  icon: MdiIcons.brightness6,
-                  title: Text(
-                    localizations.settings_display_settings_theme_mode_title,
-                    style: TextStyle(
-                      fontSize: AppFontSize.extraSmall,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  subtitle: Text(
-                    localizations
-                        .settings_display_settings_theme_mode_description,
-                    style: TextStyle(
-                      fontSize: AppSpacings.scale(8),
-                    ),
-                  ),
-                  trailing: IconSwitch(
-                    switchState: _isDarkMode,
-                    iconOn: MdiIcons.weatherNight,
-                    iconOff: MdiIcons.weatherSunny,
-                    toggleMode: true,
-                    onChanged: (bool state) async {
-                      _handleDarkModeChange(context, state);
-                    },
-                  ),
-                ),
-                SettingRow(
-                  icon: MdiIcons.lightbulbOn40,
-                  title: Text(
-                    localizations.settings_display_settings_brightness_title,
-                    style: TextStyle(
-                      fontSize: AppFontSize.extraSmall,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  subtitle: SettingSlider(
-                    leftIcon: MdiIcons.brightness5,
-                    rightIcon: MdiIcons.brightness7,
-                    value: _brightness.toDouble(),
-                    enabled: true,
-                    onChanged: (double value) async {
-                      _handleBrightnessChange(context, value);
-                    },
-                  ),
-                ),
-                SettingRow(
-                  icon: MdiIcons.cellphoneLock,
-                  title: Text(
-                    localizations.settings_display_settings_screen_lock_title,
-                    style: TextStyle(
-                      fontSize: AppFontSize.extraSmall,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  subtitle: Text(
-                    localizations
-                        .settings_display_settings_screen_lock_description,
-                    style: TextStyle(
-                      fontSize: AppSpacings.scale(8),
-                    ),
-                  ),
-                  trailing: DropdownButtonHideUnderline(
-                    child: DropdownButton2<int>(
-                      isExpanded: false,
-                      isDense: true,
-                      items: _getScreenLockDurationItems(),
-                      value: _screenLockDuration,
-                      onChanged: (int? value) async {
-                        _handleScreenLockDurationChange(context, value);
-                      },
-                      menuItemStyleData: MenuItemStyleData(
-                        padding: EdgeInsets.symmetric(
-                          vertical: 0,
-                          horizontal: AppSpacings.pLg,
-                        ),
-                        height: AppSpacings.scale(35),
-                      ),
-                      dropdownStyleData: DropdownStyleData(
-                        padding: EdgeInsets.all(0),
-                        maxHeight: AppSpacings.scale(120),
-                      ),
-                      iconStyleData: IconStyleData(
-                        openMenuIcon: Icon(MdiIcons.menuUp),
-                      ),
-                    ),
-                  ),
-                ),
-                SettingRow(
-                  icon: MdiIcons.wallpaper,
-                  title: Text(
-                    localizations.settings_display_settings_screen_saver_title,
-                    style: TextStyle(
-                      fontSize: AppFontSize.extraSmall,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  subtitle: Text(
-                    localizations
-                        .settings_display_settings_screen_saver_description,
-                    style: TextStyle(
-                      fontSize: AppSpacings.scale(8),
-                    ),
-                  ),
-                  trailing: IconSwitch(
-                    switchState: _hasScreenSaver,
-                    iconOn: MdiIcons.eye,
-                    iconOff: MdiIcons.eyeOff,
-                    onChanged: (bool state) async {
-                      _handleScreenSaverChange(context, state);
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+		final primaryColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
+		final primaryBg = isDark ? AppColorsDark.primaryLight5 : AppColorsLight.primaryLight9;
 
-  List<DropdownMenuItem<int>> _getScreenLockDurationItems() {
-    return {
-      15: '15s',
-      30: '30s',
-      60: '1min',
-      120: '2min',
-      300: '5min',
-      600: '10min',
-      1800: '30min',
-      0: 'Never',
-    }.entries.map((entry) {
-      return DropdownMenuItem<int>(
-        value: entry.key,
-        child: Text(
-          entry.value,
-          style: TextStyle(
-            fontSize: AppFontSize.extraSmall,
-          ),
-        ),
-      );
-    }).toList();
-  }
+		final cards = <Widget>[
+			// Theme Mode
+			SettingsCard(
+				icon: Icons.dark_mode_outlined,
+				iconColor: primaryColor,
+				iconBgColor: primaryBg,
+				label: localizations.settings_display_settings_theme_mode_title,
+				description: localizations.settings_display_settings_theme_mode_description,
+				trailing: SettingsToggle(
+					value: _isDarkMode,
+					onChanged: (v) => _handleDarkModeChange(context, v),
+				),
+			),
+			// Screen Saver
+			SettingsCard(
+				icon: Icons.desktop_mac_outlined,
+				iconColor: primaryColor,
+				iconBgColor: primaryBg,
+				label: localizations.settings_display_settings_screen_saver_title,
+				description: localizations.settings_display_settings_screen_saver_description,
+				trailing: SettingsToggle(
+					value: _hasScreenSaver,
+					onChanged: (v) => _handleScreenSaverChange(context, v),
+				),
+			),
+			// Brightness
+			SettingsCard(
+				icon: Icons.wb_sunny_outlined,
+				iconColor: primaryColor,
+				iconBgColor: primaryBg,
+				label: localizations.settings_display_settings_brightness_title,
+				bottom: SettingsSlider(
+					value: _brightness / 100.0,
+					iconSmall: Icons.wb_sunny_outlined,
+					iconLarge: Icons.wb_sunny,
+					onChanged: (v) => _handleBrightnessChange(context, v * 100),
+				),
+			),
+			// Screen Lock
+			SettingsCard(
+				icon: Icons.lock_outline,
+				iconColor: primaryColor,
+				iconBgColor: primaryBg,
+				label: localizations.settings_display_settings_screen_lock_title,
+				description: localizations.settings_display_settings_screen_lock_description,
+				trailing: DropdownButtonHideUnderline(
+					child: DropdownButton2<int>(
+						isExpanded: false,
+						isDense: true,
+						items: _getScreenLockDurationItems(),
+						value: _screenLockDuration,
+						onChanged: (int? value) async {
+							_handleScreenLockDurationChange(context, value);
+						},
+						customButton: SettingsDropdownValue(
+							value: _getScreenLockLabel(_screenLockDuration),
+						),
+						menuItemStyleData: MenuItemStyleData(
+							padding: EdgeInsets.symmetric(
+								vertical: 0,
+								horizontal: AppSpacings.pLg,
+							),
+							height: AppSpacings.scale(35),
+						),
+						dropdownStyleData: DropdownStyleData(
+							padding: EdgeInsets.all(0),
+							maxHeight: AppSpacings.scale(200),
+						),
+					),
+				),
+			),
+		];
 
-  Future<void> _handleDarkModeChange(
-    BuildContext context,
-    bool state,
-  ) async {
-    HapticFeedback.lightImpact();
+		return AnimatedTheme(
+			duration: const Duration(milliseconds: 500),
+			curve: Curves.easeInOut,
+			data: _isDarkMode ? AppTheme.darkTheme : AppTheme.lightTheme,
+			child: Scaffold(
+				appBar: AppTopBar(
+					title: localizations.settings_display_settings_title,
+				),
+				body: isLandscape
+						? Padding(
+								padding: EdgeInsets.all(AppSpacings.pLg),
+								child: _buildTwoColumnLayout(cards),
+							)
+						: ListView(
+								padding: EdgeInsets.all(AppSpacings.pLg),
+								children: [
+									for (int i = 0; i < cards.length; i++) ...[
+										cards[i],
+										if (i < cards.length - 1) SizedBox(height: AppSpacings.pMd),
+									],
+								],
+							),
+			),
+		);
+	}
 
-    setState(() {
-      _isDarkMode = !_isDarkMode;
-    });
+	Widget _buildTwoColumnLayout(List<Widget> cards) {
+		if (cards.length <= 2) {
+			return Row(
+				crossAxisAlignment: CrossAxisAlignment.start,
+				children: [
+					for (int i = 0; i < cards.length; i++) ...[
+						if (i > 0) SizedBox(width: AppSpacings.pMd),
+						Expanded(child: cards[i]),
+					],
+				],
+			);
+		}
 
-    final success = await _repository.setDisplayDarkMode(_isDarkMode);
+		return ConstrainedBox(
+			constraints: BoxConstraints(maxWidth: AppSpacings.scale(640)),
+			child: Column(
+				crossAxisAlignment: CrossAxisAlignment.start,
+				mainAxisSize: MainAxisSize.min,
+				children: [
+					Row(
+						crossAxisAlignment: CrossAxisAlignment.start,
+						children: [
+							Expanded(child: cards[0]),
+							SizedBox(width: AppSpacings.pMd),
+							Expanded(child: cards[1]),
+						],
+					),
+					for (int i = 2; i < cards.length; i++) ...[
+						SizedBox(height: AppSpacings.pMd),
+						cards[i],
+					],
+				],
+			),
+		);
+	}
 
-    Future.microtask(
-      () async {
-        await Future.delayed(
-          const Duration(milliseconds: 500),
-        );
+	String _getScreenLockLabel(int duration) {
+		return switch (duration) {
+			15 => '15s',
+			30 => '30s',
+			60 => '1min',
+			120 => '2min',
+			300 => '5min',
+			600 => '10min',
+			1800 => '30min',
+			0 => 'Never',
+			_ => '${duration}s',
+		};
+	}
 
-        if (!context.mounted) return;
+	List<DropdownMenuItem<int>> _getScreenLockDurationItems() {
+		return {
+			15: '15s',
+			30: '30s',
+			60: '1min',
+			120: '2min',
+			300: '5min',
+			600: '10min',
+			1800: '30min',
+			0: 'Never',
+		}.entries.map((entry) {
+			return DropdownMenuItem<int>(
+				value: entry.key,
+				child: Text(
+					entry.value,
+					style: TextStyle(
+						fontSize: AppFontSize.extraSmall,
+					),
+				),
+			);
+		}).toList();
+	}
 
-        if (!success) {
-          setState(() {
-            _isDarkMode = !_isDarkMode;
-          });
+	Future<void> _handleDarkModeChange(
+		BuildContext context,
+		bool state,
+	) async {
+		HapticFeedback.lightImpact();
 
-          AppToast.showError(context, message: 'Save settings failed.');
-        }
-      },
-    );
-  }
+		setState(() {
+			_isDarkMode = !_isDarkMode;
+		});
 
-  Future<void> _handleBrightnessChange(
-    BuildContext context,
-    double value,
-  ) async {
-    HapticFeedback.lightImpact();
+		final success = await _repository.setDisplayDarkMode(_isDarkMode);
 
-    if (!_savingBrightness) {
-      setState(() {
-        _brightnessBackup = _brightness;
-        _savingBrightness = true;
-      });
-    }
+		Future.microtask(
+			() async {
+				await Future.delayed(
+					const Duration(milliseconds: 500),
+				);
 
-    setState(() {
-      _brightness = value.toInt();
-    });
+				if (!context.mounted) return;
 
-    _debounce?.cancel();
+				if (!success) {
+					setState(() {
+						_isDarkMode = !_isDarkMode;
+					});
 
-    _debounce = Timer(
-      const Duration(milliseconds: 500),
-      () async {
-        final success = await _repository.setDisplayBrightness(_brightness);
+					AppToast.showError(context, message: 'Save settings failed.');
+				}
+			},
+		);
+	}
 
-        Future.microtask(() async {
-          await Future.delayed(
-            const Duration(milliseconds: 500),
-          );
+	Future<void> _handleBrightnessChange(
+		BuildContext context,
+		double value,
+	) async {
+		HapticFeedback.lightImpact();
 
-          if (!context.mounted) return;
+		if (!_savingBrightness) {
+			setState(() {
+				_brightnessBackup = _brightness;
+				_savingBrightness = true;
+			});
+		}
 
-          setState(() {
-            _brightnessBackup = null;
-            _savingBrightness = false;
-          });
+		setState(() {
+			_brightness = value.toInt();
+		});
 
-          if (!success) {
-            setState(() {
-              _brightness = _brightnessBackup ?? 0;
-            });
+		_debounce?.cancel();
 
-            AppToast.showError(
-              context,
-              message: 'Save settings failed.',
-            );
-          }
-        });
-      },
-    );
-  }
+		_debounce = Timer(
+			const Duration(milliseconds: 500),
+			() async {
+				final success = await _repository.setDisplayBrightness(_brightness);
 
-  Future<void> _handleScreenLockDurationChange(
-    BuildContext context,
-    int? value,
-  ) async {
-    if (value == null) return;
+				Future.microtask(() async {
+					await Future.delayed(
+						const Duration(milliseconds: 500),
+					);
 
-    HapticFeedback.lightImpact();
+					if (!context.mounted) return;
 
-    final int backup = _screenLockDuration;
+					setState(() {
+						_brightnessBackup = null;
+						_savingBrightness = false;
+					});
 
-    setState(() {
-      _screenLockDuration = value;
-    });
+					if (!success) {
+						setState(() {
+							_brightness = _brightnessBackup ?? 0;
+						});
 
-    final success = await _repository.setDisplayScreenLockDuration(
-      _screenLockDuration,
-    );
+						AppToast.showError(
+							context,
+							message: 'Save settings failed.',
+						);
+					}
+				});
+			},
+		);
+	}
 
-    Future.microtask(
-      () async {
-        await Future.delayed(
-          const Duration(milliseconds: 500),
-        );
+	Future<void> _handleScreenLockDurationChange(
+		BuildContext context,
+		int? value,
+	) async {
+		if (value == null) return;
 
-        if (!context.mounted) return;
+		HapticFeedback.lightImpact();
 
-        if (!success) {
-          setState(() {
-            _screenLockDuration = backup;
-          });
+		final int backup = _screenLockDuration;
 
-          AppToast.showError(
-            context,
-            message: 'Save settings failed.',
-          );
-        }
-      },
-    );
-  }
+		setState(() {
+			_screenLockDuration = value;
+		});
 
-  Future<void> _handleScreenSaverChange(
-    BuildContext context,
-    bool state,
-  ) async {
-    HapticFeedback.lightImpact();
+		final success = await _repository.setDisplayScreenLockDuration(
+			_screenLockDuration,
+		);
 
-    setState(() {
-      _hasScreenSaver = !_hasScreenSaver;
-    });
+		Future.microtask(
+			() async {
+				await Future.delayed(
+					const Duration(milliseconds: 500),
+				);
 
-    final success = await _repository.setDisplayScreenSaver(_hasScreenSaver);
+				if (!context.mounted) return;
 
-    Future.microtask(
-      () async {
-        await Future.delayed(
-          const Duration(milliseconds: 500),
-        );
+				if (!success) {
+					setState(() {
+						_screenLockDuration = backup;
+					});
 
-        if (!context.mounted) return;
+					AppToast.showError(
+						context,
+						message: 'Save settings failed.',
+					);
+				}
+			},
+		);
+	}
 
-        if (!success) {
-          setState(() {
-            _hasScreenSaver = !_hasScreenSaver;
-          });
+	Future<void> _handleScreenSaverChange(
+		BuildContext context,
+		bool state,
+	) async {
+		HapticFeedback.lightImpact();
 
-          AppToast.showError(
-            context,
-            message: 'Save settings failed.',
-          );
-        }
-      },
-    );
-  }
+		setState(() {
+			_hasScreenSaver = !_hasScreenSaver;
+		});
+
+		final success = await _repository.setDisplayScreenSaver(_hasScreenSaver);
+
+		Future.microtask(
+			() async {
+				await Future.delayed(
+					const Duration(milliseconds: 500),
+				);
+
+				if (!context.mounted) return;
+
+				if (!success) {
+					setState(() {
+						_hasScreenSaver = !_hasScreenSaver;
+					});
+
+					AppToast.showError(
+						context,
+						message: 'Save settings failed.',
+					);
+				}
+			},
+		);
+	}
 }

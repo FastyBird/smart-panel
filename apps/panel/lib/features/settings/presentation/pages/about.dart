@@ -1,6 +1,8 @@
 import 'package:fastybird_smart_panel/core/utils/number.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
+import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_card.dart';
+import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_section_heading.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/system/export.dart';
 import 'package:flutter/material.dart';
@@ -9,351 +11,350 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 
 class AboutPage extends StatefulWidget {
-  const AboutPage({super.key});
+	const AboutPage({super.key});
 
-  @override
-  State<AboutPage> createState() => _AboutPageState();
+	@override
+	State<AboutPage> createState() => _AboutPageState();
 }
 
 class _AboutPageState extends State<AboutPage> {
-  String _appVersion = 'Loading...';
+	String _appVersion = 'Loading...';
 
-  @override
-  void initState() {
-    super.initState();
+	@override
+	void initState() {
+		super.initState();
 
-    _fetchDeviceInfo();
-  }
+		_fetchDeviceInfo();
+	}
 
-  Future<void> _fetchDeviceInfo() async {
-    try {
-      // Fetch app version
-      final packageInfo = await PackageInfo.fromPlatform();
+	Future<void> _fetchDeviceInfo() async {
+		try {
+			final packageInfo = await PackageInfo.fromPlatform();
 
-      setState(() {
-        _appVersion = packageInfo.version;
-      });
-    } catch (e) {
-      // Handle error gracefully
-      setState(() {
-        _appVersion = 'Error';
-      });
-    }
-  }
+			setState(() {
+				_appVersion = packageInfo.version;
+			});
+		} catch (e) {
+			setState(() {
+				_appVersion = 'Error';
+			});
+		}
+	}
 
-  @override
-  Widget build(BuildContext context) {
-    final localizations = AppLocalizations.of(context)!;
+	@override
+	Widget build(BuildContext context) {
+		final localizations = AppLocalizations.of(context)!;
+		final isDark = Theme.of(context).brightness == Brightness.dark;
+		final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
 
-    return Scaffold(
-      appBar: AppTopBar(
-        title: localizations.settings_about_title,
-      ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: AppSpacings.paddingMd,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            spacing: AppSpacings.pMd,
-            children: [
-              // App Icon and Title
-              Center(
-                child: Column(
-                  spacing: AppSpacings.pMd,
-                  children: [
-                    Icon(
-                      MdiIcons.cogOutline,
-                      size: AppSpacings.scale(72),
-                    ),
-                    Text(
-                      'FastyBird! Smart Panel',
-                      style: TextStyle(
-                        fontSize: AppFontSize.large,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      'Version $_appVersion',
-                      style: TextStyle(
-                        fontSize: AppFontSize.extraSmall,
-                        color: Theme.of(context).brightness == Brightness.light
-                            ? AppTextColorLight.secondary
-                            : AppTextColorDark.secondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+		final successColor = isDark ? AppColorsDark.success : AppColorsLight.success;
+		final successBg = isDark ? AppColorsDark.successLight5 : AppColorsLight.successLight9;
+		final infoColor = isDark ? AppColorsDark.info : AppColorsLight.info;
+		final infoBg = isDark ? AppColorsDark.infoLight5 : AppColorsLight.infoLight9;
+		final textColor = isDark ? AppTextColorDark.primary : AppTextColorLight.primary;
+		final subColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
 
-              Text(
-                localizations.settings_about_about_heading,
-                style: TextStyle(
-                  fontSize: AppFontSize.base,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              Text(
-                localizations.settings_about_about_info,
-                textAlign: TextAlign.justify,
-                style: TextStyle(
-                  fontSize: AppFontSize.extraSmall,
-                ),
-              ),
+		return Scaffold(
+			appBar: AppTopBar(
+				title: localizations.settings_about_title,
+			),
+			body: isLandscape
+					? _buildLandscapeBody(
+							localizations, isDark, successColor, successBg, infoColor, infoBg, textColor, subColor)
+					: _buildPortraitBody(
+							localizations, isDark, successColor, successBg, infoColor, infoBg, textColor, subColor),
+		);
+	}
 
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      spacing: AppSpacings.pMd,
-                      children: [
-                        Text(
-                          localizations.settings_about_developed_by_heading,
-                          style: TextStyle(
-                            fontSize: AppFontSize.base,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          'FastyBird Team',
-                          style: TextStyle(
-                            fontSize: AppFontSize.extraSmall,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Text(
-                          'https://fastybird.com',
-                          style: TextStyle(
-                            fontSize: AppSpacings.scale(8),
-                            color: AppColorsLight.primary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      spacing: AppSpacings.pSm,
-                      children: [
-                        Text(
-                          localizations.settings_about_license_heading,
-                          style: TextStyle(
-                            fontSize: AppFontSize.base,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        Theme(
-                          data: ThemeData(
-                            outlinedButtonTheme:
-                                Theme.of(context).brightness == Brightness.light
-                                    ? AppOutlinedButtonsLightThemes.primary
-                                    : AppOutlinedButtonsDarkThemes.primary,
-                          ),
-                          child: OutlinedButton(
-                            onPressed: () {
-                              // Navigate to Open Source Licenses page
-                            },
-                            style: OutlinedButton.styleFrom(
-                              padding: EdgeInsets.symmetric(
-                                vertical: AppSpacings.pSm,
-                                horizontal: AppSpacings.pSm,
-                              ),
-                            ),
-                            child: Text(
-                              localizations.settings_about_show_license_button,
-                              style: TextStyle(
-                                fontSize: AppFontSize.extraSmall,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
+	Widget _buildPortraitBody(
+		AppLocalizations localizations,
+		bool isDark,
+		Color successColor,
+		Color successBg,
+		Color infoColor,
+		Color infoBg,
+		Color textColor,
+		Color subColor,
+	) {
+		return SingleChildScrollView(
+			padding: EdgeInsets.all(AppSpacings.pLg),
+			child: Column(
+				crossAxisAlignment: CrossAxisAlignment.start,
+				children: [
+					_buildBrandingSection(localizations, isDark, textColor, subColor),
+					SizedBox(height: AppSpacings.pLg),
+					_buildAboutSection(localizations, isDark, successColor, successBg),
+					SizedBox(height: AppSpacings.pLg),
+					_buildDeviceInfoSection(localizations, isDark, infoColor, infoBg),
+				],
+			),
+		);
+	}
 
-              // Device Info Section
-              Text(
-                localizations.settings_about_device_information_heading,
-                style: TextStyle(
-                  fontSize: AppFontSize.base,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+	Widget _buildLandscapeBody(
+		AppLocalizations localizations,
+		bool isDark,
+		Color successColor,
+		Color successBg,
+		Color infoColor,
+		Color infoBg,
+		Color textColor,
+		Color subColor,
+	) {
+		return Padding(
+			padding: EdgeInsets.all(AppSpacings.pLg),
+			child: Row(
+				crossAxisAlignment: CrossAxisAlignment.start,
+				children: [
+					Expanded(
+						child: SingleChildScrollView(
+							child: Column(
+								crossAxisAlignment: CrossAxisAlignment.start,
+								children: [
+									_buildBrandingSection(localizations, isDark, textColor, subColor),
+									SizedBox(height: AppSpacings.pLg),
+									_buildAboutSection(localizations, isDark, successColor, successBg),
+								],
+							),
+						),
+					),
+					SizedBox(width: AppSpacings.pMd),
+					Expanded(
+						child: SingleChildScrollView(
+							child: _buildDeviceInfoSection(localizations, isDark, infoColor, infoBg),
+						),
+					),
+				],
+			),
+		);
+	}
 
-              Wrap(
-                spacing: AppSpacings.pSm,
-                runSpacing: AppSpacings.pSm,
-                children: [
-                  _renderIpAddressTile(context),
-                  _renderMacAddressTile(context),
-                  _renderCpuUsageTile(context),
-                  _renderMemoryUsageTile(context),
-                  // Add more ListTiles here in the same pattern for CPU and Memory
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+	Widget _buildBrandingSection(
+		AppLocalizations localizations,
+		bool isDark,
+		Color textColor,
+		Color subColor,
+	) {
+		return Center(
+			child: Column(
+				spacing: AppSpacings.pMd,
+				children: [
+					Icon(
+						MdiIcons.cogOutline,
+						size: AppSpacings.scale(60),
+						color: isDark ? AppColorsDark.primary : AppColorsLight.primary,
+					),
+					Text(
+						'FastyBird! Smart Panel',
+						style: TextStyle(
+							fontSize: AppFontSize.large,
+							fontWeight: FontWeight.bold,
+							color: textColor,
+						),
+					),
+					Text(
+						'Version $_appVersion',
+						style: TextStyle(
+							fontSize: AppFontSize.extraSmall,
+							color: subColor,
+						),
+					),
+				],
+			),
+		);
+	}
 
-  Widget _renderIpAddressTile(BuildContext context) {
-    final localizations = AppLocalizations.of(context)!;
+	Widget _buildAboutSection(
+		AppLocalizations localizations,
+		bool isDark,
+		Color successColor,
+		Color successBg,
+	) {
+		final primaryColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
 
-    return Consumer<SystemService>(
-      builder: (
-        context,
-        systemService,
-        _,
-      ) {
-        String? ipAddress = systemService.getSystemInfo()?.ipAddress;
+		return Column(
+			crossAxisAlignment: CrossAxisAlignment.start,
+			children: [
+				SettingsCard(
+					icon: Icons.info_outline,
+					iconColor: successColor,
+					iconBgColor: successBg,
+					label: localizations.settings_about_about_heading,
+					description: localizations.settings_about_about_info,
+				),
+				SizedBox(height: AppSpacings.pMd),
+				SettingsCard(
+					icon: Icons.code,
+					iconColor: successColor,
+					iconBgColor: successBg,
+					label: localizations.settings_about_developed_by_heading,
+					description: 'FastyBird Team',
+					trailing: Text(
+						'fastybird.com',
+						style: TextStyle(
+							fontSize: AppFontSize.extraSmall,
+							color: primaryColor,
+						),
+					),
+				),
+				SizedBox(height: AppSpacings.pMd),
+				SettingsCard(
+					icon: Icons.article_outlined,
+					iconColor: successColor,
+					iconBgColor: successBg,
+					label: localizations.settings_about_license_heading,
+					trailing: Theme(
+						data: ThemeData(
+							outlinedButtonTheme:
+									Theme.of(context).brightness == Brightness.light
+											? AppOutlinedButtonsLightThemes.primary
+											: AppOutlinedButtonsDarkThemes.primary,
+						),
+						child: OutlinedButton(
+							onPressed: () {
+								// Navigate to Open Source Licenses page
+							},
+							style: OutlinedButton.styleFrom(
+								padding: EdgeInsets.symmetric(
+									vertical: AppSpacings.pSm,
+									horizontal: AppSpacings.pMd,
+								),
+							),
+							child: Text(
+								localizations.settings_about_show_license_button,
+								style: TextStyle(
+									fontSize: AppFontSize.extraSmall,
+								),
+							),
+						),
+					),
+				),
+			],
+		);
+	}
 
-        return _renderInfoTile(
-          context: context,
-          icon: MdiIcons.lan,
-          title: localizations.settings_about_ip_address_title,
-          value: ipAddress ?? localizations.value_not_available,
-        );
-      },
-    );
-  }
+	Widget _buildDeviceInfoSection(
+		AppLocalizations localizations,
+		bool isDark,
+		Color infoColor,
+		Color infoBg,
+	) {
+		return Column(
+			crossAxisAlignment: CrossAxisAlignment.start,
+			children: [
+				SettingsSectionHeading(text: localizations.settings_about_device_information_heading),
+				Wrap(
+					spacing: AppSpacings.pMd,
+					runSpacing: AppSpacings.pMd,
+					children: [
+						_buildDeviceInfoCard(
+							localizations: localizations,
+							isDark: isDark,
+							infoColor: infoColor,
+							infoBg: infoBg,
+							icon: MdiIcons.lan,
+							title: localizations.settings_about_ip_address_title,
+							builder: (systemService) {
+								final ip = systemService.getSystemInfo()?.ipAddress;
+								return Text(
+									ip ?? localizations.value_not_available,
+									style: TextStyle(
+										fontSize: AppFontSize.extraSmall,
+										fontFamily: 'monospace',
+										color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
+									),
+								);
+							},
+						),
+						_buildDeviceInfoCard(
+							localizations: localizations,
+							isDark: isDark,
+							infoColor: infoColor,
+							infoBg: infoBg,
+							icon: MdiIcons.server,
+							title: localizations.settings_about_mac_address_title,
+							builder: (systemService) {
+								final mac = systemService.getSystemInfo()?.macAddress;
+								return Text(
+									mac ?? localizations.value_not_available,
+									style: TextStyle(
+										fontSize: AppFontSize.extraSmall,
+										fontFamily: 'monospace',
+										color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
+									),
+								);
+							},
+						),
+						_buildDeviceInfoCard(
+							localizations: localizations,
+							isDark: isDark,
+							infoColor: infoColor,
+							infoBg: infoBg,
+							icon: MdiIcons.gauge,
+							title: localizations.settings_about_cpu_usage_title,
+							builder: (systemService) {
+								final cpuLoad = systemService.getSystemInfo()?.cpuLoad;
+								return Text(
+									cpuLoad != null
+											? '${NumberUtils.formatNumber(cpuLoad, 2)}%'
+											: NumberUtils.formatUnavailableNumber(2),
+									style: TextStyle(
+										fontSize: AppFontSize.extraSmall,
+										color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
+									),
+								);
+							},
+						),
+						_buildDeviceInfoCard(
+							localizations: localizations,
+							isDark: isDark,
+							infoColor: infoColor,
+							infoBg: infoBg,
+							icon: MdiIcons.memory,
+							title: localizations.settings_about_memory_usage_title,
+							builder: (systemService) {
+								final memoryUsed = systemService.getSystemInfo()?.memoryUsed.toDouble();
+								return Text(
+									memoryUsed != null
+											? '${NumberUtils.formatNumber(memoryUsed / 1024 / 1024, 0)} MB'
+											: NumberUtils.formatUnavailableNumber(0),
+									style: TextStyle(
+										fontSize: AppFontSize.extraSmall,
+										color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
+									),
+								);
+							},
+						),
+					],
+				),
+			],
+		);
+	}
 
-  Widget _renderMacAddressTile(BuildContext context) {
-    final localizations = AppLocalizations.of(context)!;
-
-    return Consumer<SystemService>(
-      builder: (
-        context,
-        systemService,
-        _,
-      ) {
-        String? macAddress = systemService.getSystemInfo()?.macAddress;
-
-        return _renderInfoTile(
-          context: context,
-          icon: MdiIcons.server,
-          title: localizations.settings_about_mac_address_title,
-          value: macAddress ?? localizations.value_not_available,
-        );
-      },
-    );
-  }
-
-  Widget _renderCpuUsageTile(BuildContext context) {
-    final localizations = AppLocalizations.of(context)!;
-
-    return Consumer<SystemService>(
-      builder: (
-        context,
-        systemService,
-        _,
-      ) {
-        double? cpuLoad = systemService.getSystemInfo()?.cpuLoad;
-
-        return _renderInfoTile(
-          context: context,
-          icon: MdiIcons.gauge,
-          title: localizations.settings_about_cpu_usage_title,
-          value: cpuLoad != null
-              ? NumberUtils.formatNumber(cpuLoad, 2)
-              : NumberUtils.formatUnavailableNumber(2),
-          unit: '%',
-        );
-      },
-    );
-  }
-
-  Widget _renderMemoryUsageTile(BuildContext context) {
-    final localizations = AppLocalizations.of(context)!;
-
-    return Consumer<SystemService>(
-      builder: (
-        context,
-        systemService,
-        _,
-      ) {
-        double? memoryUsed = systemService.getSystemInfo()?.memoryUsed.toDouble();
-
-        return _renderInfoTile(
-          context: context,
-          icon: MdiIcons.memory,
-          title: localizations.settings_about_memory_usage_title,
-          value: memoryUsed != null
-              ? NumberUtils.formatNumber(memoryUsed / 1024 / 1024, 0)
-              : NumberUtils.formatUnavailableNumber(0),
-          unit: 'MB',
-        );
-      },
-    );
-  }
-
-  Widget _renderInfoTile({
-    required BuildContext context,
-    required IconData icon,
-    required String title,
-    required String value,
-    String? unit,
-    bool showLoading = false,
-  }) {
-    return SizedBox(
-      width: MediaQuery.of(context).size.width / 2 - // 2 columns layout
-          AppSpacings.pMd - // Screen vertical margin
-          AppSpacings.pSm / 2, // Grid spacing
-      child: Material(
-        elevation: 0,
-        color: AppColors.blank,
-        child: ListTile(
-          leading: showLoading
-              ? CircularProgressIndicator()
-              : Icon(
-                  icon,
-                  size: AppFontSize.large,
-                ),
-          title: Column(
-            mainAxisAlignment: MainAxisAlignment.start,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: AppFontSize.extraSmall,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.start,
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
-                children: [
-                  Text(
-                    value,
-                    style: TextStyle(
-                      fontSize: AppSpacings.scale(8),
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  unit != null ? AppSpacings.spacingXsHorizontal : null,
-                  unit != null
-                      ? Text(
-                          unit,
-                          style: TextStyle(
-                            fontSize: AppSpacings.scale(7),
-                          ),
-                        )
-                      : null
-                ].whereType<Widget>().toList(),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+	Widget _buildDeviceInfoCard({
+		required AppLocalizations localizations,
+		required bool isDark,
+		required Color infoColor,
+		required Color infoBg,
+		required IconData icon,
+		required String title,
+		required Widget Function(SystemService) builder,
+	}) {
+		return SizedBox(
+			width: MediaQuery.of(context).size.width / 2 -
+					AppSpacings.pLg -
+					AppSpacings.pMd / 2,
+			child: Consumer<SystemService>(
+				builder: (context, systemService, _) {
+					return SettingsCard(
+						icon: icon,
+						iconColor: infoColor,
+						iconBgColor: infoBg,
+						label: title,
+						trailing: builder(systemService),
+					);
+				},
+			),
+		);
+	}
 }
