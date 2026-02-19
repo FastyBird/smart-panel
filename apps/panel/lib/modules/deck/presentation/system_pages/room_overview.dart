@@ -255,9 +255,11 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 								humidity ??= _getNumericValue(property);
 								break;
 							case DevicesModulePropertyCategory.position:
-								final pos = _getNumericValue(property);
-								if (pos != null) {
-									shadingPosition ??= pos.round();
+								if (classifyDeviceToDomain(device.category) == DomainType.shading) {
+									final pos = _getNumericValue(property);
+									if (pos != null) {
+										shadingPosition ??= pos.round();
+									}
 								}
 								break;
 							default:
