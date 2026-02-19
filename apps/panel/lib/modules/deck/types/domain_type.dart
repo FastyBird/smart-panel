@@ -1,3 +1,4 @@
+import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
@@ -60,6 +61,24 @@ extension DomainTypeUI on DomainType {
         return 'Sensors';
       case DomainType.energy:
         return 'Energy';
+    }
+  }
+
+  /// Theme color for this domain, used for icon containers and accents.
+  ThemeColors get themeColor {
+    switch (this) {
+      case DomainType.lights:
+        return ThemeColors.warning;
+      case DomainType.climate:
+        return ThemeColors.info;
+      case DomainType.shading:
+        return ThemeColors.teal;
+      case DomainType.media:
+        return ThemeColors.danger;
+      case DomainType.sensors:
+        return ThemeColors.cyan;
+      case DomainType.energy:
+        return ThemeColors.success;
     }
   }
 

@@ -1,5 +1,6 @@
 import 'package:fastybird_smart_panel/api/models/devices_module_device_category.dart';
 import 'package:fastybird_smart_panel/api/models/scenes_module_data_scene_category.dart';
+import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/room_domain_classifier.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/domain_type.dart';
 import 'package:fastybird_smart_panel/modules/displays/models/display.dart';
@@ -28,14 +29,23 @@ class RoomOverviewBuildInput {
   /// Number of lights currently ON (if available).
   final int? lightsOnCount;
 
-  /// Number of columns in display layout (for tiles-per-row calculation).
-  final int displayCols;
-
   /// Number of devices with energy-related channels.
   final int energyDeviceCount;
 
   /// Number of sensor readings reported by the backend.
   final int sensorReadingsCount;
+
+  /// Current temperature reading (if available).
+  final double? temperature;
+
+  /// Current humidity reading (if available).
+  final double? humidity;
+
+  /// Shading position percentage (if available).
+  final int? shadingPosition;
+
+  /// Number of media devices currently on.
+  final int mediaOnCount;
 
   const RoomOverviewBuildInput({
     required this.display,
@@ -44,41 +54,12 @@ class RoomOverviewBuildInput {
     required this.scenes,
     required this.now,
     this.lightsOnCount,
-    this.displayCols = 4,
     this.energyDeviceCount = 0,
     this.sensorReadingsCount = 0,
-  });
-}
-
-/// A chip displayed in the header showing domain status.
-class HeaderStatusChip {
-  final DomainType domain;
-  final IconData icon;
-  final String text;
-  final String targetViewKey;
-
-  const HeaderStatusChip({
-    required this.domain,
-    required this.icon,
-    required this.text,
-    required this.targetViewKey,
-  });
-}
-
-/// A tile displayed in the room overview.
-class DomainTile {
-  final DomainType domain;
-  final IconData icon;
-  final String label;
-  final int count;
-  final String targetViewKey;
-
-  const DomainTile({
-    required this.domain,
-    required this.icon,
-    required this.label,
-    required this.count,
-    required this.targetViewKey,
+    this.temperature,
+    this.humidity,
+    this.shadingPosition,
+    this.mediaOnCount = 0,
   });
 }
 
@@ -94,6 +75,47 @@ class QuickScene {
     required this.name,
     required this.category,
     required this.icon,
+  });
+}
+
+/// Summary info for a domain card in the room overview.
+///
+/// This model provides the data needed to render a rich domain card,
+/// inspired by the deck mock designs. Each domain shows:
+/// - Primary value (e.g., temperature, "3 on", position)
+/// - Optional target value (e.g., setpoint temperature)
+/// - Subtitle with additional context
+/// - Active state for visual accent
+class DomainCardInfo {
+  final DomainType domain;
+  final IconData icon;
+  final String title;
+  final String primaryValue;
+  final String? targetValue;
+  final String subtitle;
+  final bool isActive;
+
+  const DomainCardInfo({
+    required this.domain,
+    required this.icon,
+    required this.title,
+    required this.primaryValue,
+    this.targetValue,
+    required this.subtitle,
+    this.isActive = false,
+  });
+}
+
+/// A sensor reading displayed in the sensor strip at the bottom.
+class SensorReading {
+  final IconData icon;
+  final String label;
+  final String value;
+
+  const SensorReading({
+    required this.icon,
+    required this.label,
+    required this.value,
   });
 }
 
@@ -123,17 +145,6 @@ enum SuggestedActionType {
   turnOffLights,
 }
 
-/// Layout hints for UI rendering.
-class LayoutHints {
-  final int tilesPerRow;
-  final int colSpan;
-
-  const LayoutHints({
-    required this.tilesPerRow,
-    required this.colSpan,
-  });
-}
-
 /// The complete room overview model for UI rendering.
 class RoomOverviewModel {
   /// Room icon.
@@ -142,11 +153,8 @@ class RoomOverviewModel {
   /// Room name/title.
   final String title;
 
-  /// Header status chips (only for present domains).
-  final List<HeaderStatusChip> statusChips;
-
-  /// Domain tiles (only for present domains).
-  final List<DomainTile> tiles;
+  /// Domain card infos with rich summary data for card rendering.
+  final List<DomainCardInfo> domainCards;
 
   /// Quick scenes (max 4).
   final List<QuickScene> quickScenes;
@@ -154,8 +162,8 @@ class RoomOverviewModel {
   /// Suggested actions (max 3).
   final List<SuggestedAction> suggestedActions;
 
-  /// Layout hints for UI.
-  final LayoutHints layoutHints;
+  /// Sensor readings for the bottom strip.
+  final List<SensorReading> sensorReadings;
 
   /// Domain counts.
   final DomainCounts domainCounts;
@@ -166,14 +174,16 @@ class RoomOverviewModel {
   /// Whether the room has any scenes.
   bool get hasScenes => quickScenes.isNotEmpty;
 
+  /// Whether the room has sensor readings for the strip.
+  bool get hasSensorReadings => sensorReadings.isNotEmpty;
+
   const RoomOverviewModel({
     required this.icon,
     required this.title,
-    required this.statusChips,
-    required this.tiles,
+    required this.domainCards,
     required this.quickScenes,
     required this.suggestedActions,
-    required this.layoutHints,
+    required this.sensorReadings,
     required this.domainCounts,
   });
 }
@@ -185,20 +195,12 @@ RoomOverviewModel buildRoomOverviewModel(RoomOverviewBuildInput input) {
   final room = input.room;
   final deviceCategories = input.deviceCategories;
   final scenes = input.scenes;
-  final roomId = input.display.roomId ?? '';
-
   // Build domain counts
   final domainCounts = buildDomainCounts(
     deviceCategories,
     energyDeviceCount: input.energyDeviceCount,
     sensorReadingsCount: input.sensorReadingsCount,
   );
-
-  // Build header status chips
-  final statusChips = _buildStatusChips(domainCounts, roomId);
-
-  // Build domain tiles
-  final tiles = _buildTiles(domainCounts, roomId);
 
   // Build quick scenes (max 4, ordered by priority)
   final quickScenes = _buildQuickScenes(scenes);
@@ -210,51 +212,24 @@ RoomOverviewModel buildRoomOverviewModel(RoomOverviewBuildInput input) {
     quickScenes: quickScenes,
   );
 
-  // Calculate layout hints
-  final layoutHints = _calculateLayoutHints(
-    numberOfTiles: tiles.length,
-    displayCols: input.displayCols,
+  // Build domain cards with rich summary data
+  final domainCards = _buildDomainCards(
+    domainCounts: domainCounts,
+    input: input,
   );
+
+  // Build sensor readings for the strip
+  final sensorReadings = _buildSensorReadings(input);
 
   return RoomOverviewModel(
     icon: _mapSpaceIcon(room?.icon),
     title: room?.name ?? 'Room',
-    statusChips: statusChips,
-    tiles: tiles,
+    domainCards: domainCards,
     quickScenes: quickScenes,
     suggestedActions: suggestedActions,
-    layoutHints: layoutHints,
+    sensorReadings: sensorReadings,
     domainCounts: domainCounts,
   );
-}
-
-List<HeaderStatusChip> _buildStatusChips(DomainCounts counts, String roomId) {
-  // Exclude energy — it has its own header badge and is not a device-count domain
-  return counts.presentDomains
-      .where((domain) => domain != DomainType.energy)
-      .map((domain) {
-    return HeaderStatusChip(
-      domain: domain,
-      icon: domain.icon,
-      text: '${counts.getCount(domain)}',
-      targetViewKey: 'domain:$roomId:${domain.name}',
-    );
-  }).toList();
-}
-
-List<DomainTile> _buildTiles(DomainCounts counts, String roomId) {
-  // Exclude energy — it has its own header badge and is not a device-count domain
-  return counts.presentDomains
-      .where((domain) => domain != DomainType.energy)
-      .map((domain) {
-    return DomainTile(
-      domain: domain,
-      icon: domain.icon,
-      label: domain.label,
-      count: counts.getCount(domain),
-      targetViewKey: 'domain:$roomId:${domain.name}',
-    );
-  }).toList();
 }
 
 /// Scene category priority for room quick scenes (lower = higher priority).
@@ -380,27 +355,140 @@ List<SuggestedAction> _buildSuggestedActions({
   return suggestions.take(3).toList();
 }
 
-LayoutHints _calculateLayoutHints({
-  required int numberOfTiles,
-  required int displayCols,
+List<DomainCardInfo> _buildDomainCards({
+  required DomainCounts domainCounts,
+  required RoomOverviewBuildInput input,
 }) {
-  int tilesPerRow;
+  final cards = <DomainCardInfo>[];
 
-  if (displayCols <= 3) {
-    tilesPerRow = 1;
-  } else if (displayCols <= 5) {
-    tilesPerRow = 2;
-  } else {
-    // cols >= 6
-    tilesPerRow = numberOfTiles <= 4 ? 2 : 3;
+  for (final domain in domainCounts.presentDomains) {
+    if (domain == DomainType.energy) continue;
+
+    final count = domainCounts.getCount(domain);
+
+    switch (domain) {
+      case DomainType.climate:
+        final fmt = NumberFormatUtils.defaultFormat;
+        final temp = input.temperature;
+        final humidity = input.humidity;
+        final primaryValue = temp != null
+            ? '${fmt.formatDecimal(temp, decimalPlaces: 1)}\u00B0'
+            : '$count';
+        final subtitleParts = <String>[];
+        if (humidity != null) {
+          subtitleParts.add('${fmt.formatDecimal(humidity, decimalPlaces: 0)}% humidity');
+        }
+        if (subtitleParts.isEmpty) {
+          subtitleParts.add('$count device${count != 1 ? 's' : ''}');
+        }
+
+        cards.add(DomainCardInfo(
+          domain: domain,
+          icon: domain.icon,
+          title: domain.label,
+          primaryValue: primaryValue,
+          subtitle: subtitleParts.join(' \u00B7 '),
+          isActive: temp != null,
+        ));
+        break;
+
+      case DomainType.lights:
+        final lightsOn = input.lightsOnCount ?? 0;
+        final isActive = lightsOn > 0;
+        final primaryValue = isActive ? '$lightsOn on' : 'Off';
+        final subtitle = isActive
+            ? '$lightsOn of $count active'
+            : '$count light${count != 1 ? 's' : ''}';
+
+        cards.add(DomainCardInfo(
+          domain: domain,
+          icon: domain.icon,
+          title: domain.label,
+          primaryValue: primaryValue,
+          subtitle: subtitle,
+          isActive: isActive,
+        ));
+        break;
+
+      case DomainType.shading:
+        final position = input.shadingPosition;
+        final primaryValue = position != null ? '$position%' : '$count';
+        final subtitle = position != null
+            ? (position == 0
+                ? 'Fully closed'
+                : position == 100
+                    ? 'Fully open'
+                    : 'Partially open')
+            : '$count device${count != 1 ? 's' : ''}';
+
+        cards.add(DomainCardInfo(
+          domain: domain,
+          icon: domain.icon,
+          title: domain.label,
+          primaryValue: primaryValue,
+          subtitle: subtitle,
+          isActive: position != null && position > 0,
+        ));
+        break;
+
+      case DomainType.media:
+        final mediaOn = input.mediaOnCount;
+        final isActive = mediaOn > 0;
+        final primaryValue = isActive ? '$mediaOn on' : 'Off';
+        final subtitle = '$count device${count != 1 ? 's' : ''}';
+
+        cards.add(DomainCardInfo(
+          domain: domain,
+          icon: isActive ? MdiIcons.playCircle : domain.icon,
+          title: domain.label,
+          primaryValue: primaryValue,
+          subtitle: subtitle,
+          isActive: isActive,
+        ));
+        break;
+
+      case DomainType.sensors:
+        final readingsCount = domainCounts.sensorReadings;
+        cards.add(DomainCardInfo(
+          domain: domain,
+          icon: domain.icon,
+          title: domain.label,
+          primaryValue: '$readingsCount',
+          subtitle: '$readingsCount reading${readingsCount != 1 ? 's' : ''}',
+          isActive: false,
+        ));
+        break;
+
+      case DomainType.energy:
+        break;
+    }
   }
 
-  final colSpan = displayCols ~/ tilesPerRow;
+  return cards;
+}
 
-  return LayoutHints(
-    tilesPerRow: tilesPerRow,
-    colSpan: colSpan,
-  );
+/// Builds sensor readings for the bottom strip from raw input values.
+List<SensorReading> _buildSensorReadings(RoomOverviewBuildInput input) {
+  final readings = <SensorReading>[];
+  final fmt = NumberFormatUtils.defaultFormat;
+
+  if (input.temperature != null) {
+    readings.add(SensorReading(
+      icon: MdiIcons.thermometer,
+      label: 'Temp',
+      value: '${fmt.formatDecimal(input.temperature!, decimalPlaces: 1)}\u00B0',
+    ));
+  }
+
+  if (input.humidity != null) {
+    readings.add(SensorReading(
+      icon: MdiIcons.waterPercent,
+      label: 'Humidity',
+      value: '${fmt.formatDecimal(input.humidity!, decimalPlaces: 0)}%',
+    ));
+  }
+
+  return readings;
 }
 
 /// Maps a space icon string identifier to IconData.

@@ -175,8 +175,8 @@ void main() {
       expect(model.icon, MdiIcons.homeOutline);
     });
 
-    group('status chips', () {
-      test('should create status chips for present domains', () {
+    group('domain cards', () {
+      test('should create domain cards for present domains', () {
         final input = RoomOverviewBuildInput(
           display: createDisplay(roomId: 'room-1'),
           room: createRoom(),
@@ -190,16 +190,12 @@ void main() {
 
         final model = buildRoomOverviewModel(input);
 
-        expect(model.statusChips.length, 2);
-        expect(model.statusChips[0].domain, DomainType.lights);
-        expect(model.statusChips[0].text, '1');
-        expect(model.statusChips[0].targetViewKey, 'domain:room-1:lights');
-        expect(model.statusChips[1].domain, DomainType.climate);
-        expect(model.statusChips[1].text, '1');
-        expect(model.statusChips[1].targetViewKey, 'domain:room-1:climate');
+        expect(model.domainCards.length, 2);
+        expect(model.domainCards[0].domain, DomainType.lights);
+        expect(model.domainCards[1].domain, DomainType.climate);
       });
 
-      test('should not create status chips for domains with zero count', () {
+      test('should not create domain cards for domains with zero count', () {
         final input = RoomOverviewBuildInput(
           display: createDisplay(),
           room: createRoom(),
@@ -210,13 +206,11 @@ void main() {
 
         final model = buildRoomOverviewModel(input);
 
-        expect(model.statusChips.length, 1);
-        expect(model.statusChips[0].domain, DomainType.lights);
+        expect(model.domainCards.length, 1);
+        expect(model.domainCards[0].domain, DomainType.lights);
       });
-    });
 
-    group('domain tiles', () {
-      test('should create tiles for present domains', () {
+      test('should create cards for multiple domains with correct counts', () {
         final input = RoomOverviewBuildInput(
           display: createDisplay(roomId: 'room-1'),
           room: createRoom(),
@@ -225,44 +219,92 @@ void main() {
             DevicesModuleDeviceCategory.lighting,
             DevicesModuleDeviceCategory.sensor,
           ],
-          sensorReadingsCount: 1, // backend has sensor readings
+          sensorReadingsCount: 1,
           scenes: [],
           now: DateTime(2024, 6, 15, 12, 0),
         );
 
         final model = buildRoomOverviewModel(input);
 
-        expect(model.tiles.length, 2);
+        expect(model.domainCards.length, 2);
 
-        expect(model.tiles[0].domain, DomainType.lights);
-        expect(model.tiles[0].count, 2);
-        expect(model.tiles[0].targetViewKey, 'domain:room-1:lights');
-
-        expect(model.tiles[1].domain, DomainType.sensors);
-        expect(model.tiles[1].count, 1);
-        expect(model.tiles[1].targetViewKey, 'domain:room-1:sensors');
+        expect(model.domainCards[0].domain, DomainType.lights);
+        expect(model.domainCards[1].domain, DomainType.sensors);
       });
 
-      test('should order tiles by domain displayOrder', () {
+      test('should order cards by domain displayOrder', () {
         final input = RoomOverviewBuildInput(
           display: createDisplay(),
           room: createRoom(),
           deviceCategories: [
-            DevicesModuleDeviceCategory.sensor, // sensors = 3
-            DevicesModuleDeviceCategory.television, // media = 2
+            DevicesModuleDeviceCategory.sensor, // sensors = 4
+            DevicesModuleDeviceCategory.television, // media = 3
             DevicesModuleDeviceCategory.lighting, // lights = 0
           ],
-          sensorReadingsCount: 1, // backend has sensor readings
+          sensorReadingsCount: 1,
           scenes: [],
           now: DateTime(2024, 6, 15, 12, 0),
         );
 
         final model = buildRoomOverviewModel(input);
 
-        expect(model.tiles.length, 3);
-        expect(model.tiles[0].domain, DomainType.lights);
-        expect(model.tiles[1].domain, DomainType.media);
-        expect(model.tiles[2].domain, DomainType.sensors);
+        expect(model.domainCards.length, 3);
+        expect(model.domainCards[0].domain, DomainType.lights);
+        expect(model.domainCards[1].domain, DomainType.media);
+        expect(model.domainCards[2].domain, DomainType.sensors);
+      });
+
+      test('should exclude energy from domain cards', () {
+        final input = RoomOverviewBuildInput(
+          display: createDisplay(),
+          room: createRoom(),
+          deviceCategories: [DevicesModuleDeviceCategory.lighting],
+          energyDeviceCount: 3,
+          scenes: [],
+          now: DateTime(2024, 6, 15, 12, 0),
+        );
+
+        final model = buildRoomOverviewModel(input);
+
+        expect(model.domainCards.any((c) => c.domain == DomainType.energy), false);
+      });
+
+      test('should show lights on count as primary value', () {
+        final input = RoomOverviewBuildInput(
+          display: createDisplay(),
+          room: createRoom(),
+          deviceCategories: [
+            DevicesModuleDeviceCategory.lighting,
+            DevicesModuleDeviceCategory.lighting,
+            DevicesModuleDeviceCategory.lighting,
+          ],
+          lightsOnCount: 2,
+          scenes: [],
+          now: DateTime(2024, 6, 15, 12, 0),
+        );
+
+        final model = buildRoomOverviewModel(input);
+
+        final lightsCard = model.domainCards.firstWhere((c) => c.domain == DomainType.lights);
+        expect(lightsCard.primaryValue, '2 on');
+        expect(lightsCard.isActive, true);
+      });
+
+      test('should show temperature as climate primary value', () {
+        final input = RoomOverviewBuildInput(
+          display: createDisplay(),
+          room: createRoom(),
+          deviceCategories: [DevicesModuleDeviceCategory.thermostat],
+          temperature: 21.5,
+          scenes: [],
+          now: DateTime(2024, 6, 15, 12, 0),
+        );
+
+        final model = buildRoomOverviewModel(input);
+
+        final climateCard = model.domainCards.firstWhere((c) => c.domain == DomainType.climate);
+        expect(climateCard.primaryValue, '21,5\u00B0');
+        expect(climateCard.isActive, true);
       });
     });
 
@@ -636,72 +678,6 @@ void main() {
       });
     });
 
-    group('layout hints', () {
-      test('should calculate tilesPerRow=1 for cols <= 3', () {
-        final input = RoomOverviewBuildInput(
-          display: createDisplay(),
-          room: createRoom(),
-          deviceCategories: [DevicesModuleDeviceCategory.lighting],
-          scenes: [],
-          now: DateTime(2024, 6, 15, 12, 0),
-          displayCols: 3,
-        );
-
-        final model = buildRoomOverviewModel(input);
-
-        expect(model.layoutHints.tilesPerRow, 1);
-      });
-
-      test('should calculate tilesPerRow=2 for cols 4-5', () {
-        final input = RoomOverviewBuildInput(
-          display: createDisplay(),
-          room: createRoom(),
-          deviceCategories: [DevicesModuleDeviceCategory.lighting],
-          scenes: [],
-          now: DateTime(2024, 6, 15, 12, 0),
-          displayCols: 4,
-        );
-
-        final model = buildRoomOverviewModel(input);
-
-        expect(model.layoutHints.tilesPerRow, 2);
-      });
-
-      test('should calculate tilesPerRow=2 for cols >= 6 with <= 4 tiles', () {
-        final input = RoomOverviewBuildInput(
-          display: createDisplay(),
-          room: createRoom(),
-          deviceCategories: [
-            DevicesModuleDeviceCategory.lighting,
-            DevicesModuleDeviceCategory.thermostat,
-          ],
-          scenes: [],
-          now: DateTime(2024, 6, 15, 12, 0),
-          displayCols: 6,
-        );
-
-        final model = buildRoomOverviewModel(input);
-
-        expect(model.layoutHints.tilesPerRow, 2);
-      });
-
-      test('should calculate colSpan correctly', () {
-        final input = RoomOverviewBuildInput(
-          display: createDisplay(),
-          room: createRoom(),
-          deviceCategories: [DevicesModuleDeviceCategory.lighting],
-          scenes: [],
-          now: DateTime(2024, 6, 15, 12, 0),
-          displayCols: 6,
-        );
-
-        final model = buildRoomOverviewModel(input);
-
-        // tilesPerRow = 2, colSpan = 6 ~/ 2 = 3
-        expect(model.layoutHints.colSpan, 3);
-      });
-    });
-
     group('domainCounts', () {
       test('should expose domainCounts', () {
         final input = RoomOverviewBuildInput(
@@ -750,46 +726,35 @@ void main() {
     });
   });
 
-  group('LayoutHints', () {
-    test('should have tilesPerRow and colSpan properties', () {
-      const hints = LayoutHints(tilesPerRow: 2, colSpan: 3);
-
-      expect(hints.tilesPerRow, 2);
-      expect(hints.colSpan, 3);
-    });
-  });
-
-  group('HeaderStatusChip', () {
+  group('DomainCardInfo', () {
     test('should have all required properties', () {
-      final chip = HeaderStatusChip(
-        domain: DomainType.lights,
-        icon: MdiIcons.lightbulb,
-        text: '5',
-        targetViewKey: 'domain:room-1:lights',
-      );
-
-      expect(chip.domain, DomainType.lights);
-      expect(chip.icon, MdiIcons.lightbulb);
-      expect(chip.text, '5');
-      expect(chip.targetViewKey, 'domain:room-1:lights');
-    });
-  });
-
-  group('DomainTile', () {
-    test('should have all required properties', () {
-      final tile = DomainTile(
+      final card = DomainCardInfo(
         domain: DomainType.climate,
         icon: MdiIcons.thermometer,
-        label: 'Climate',
-        count: 3,
-        targetViewKey: 'domain:room-1:climate',
+        title: 'Climate',
+        primaryValue: '22.0\u00B0',
+        subtitle: '65% humidity',
+        isActive: true,
       );
 
-      expect(tile.domain, DomainType.climate);
-      expect(tile.icon, MdiIcons.thermometer);
-      expect(tile.label, 'Climate');
-      expect(tile.count, 3);
-      expect(tile.targetViewKey, 'domain:room-1:climate');
+      expect(card.domain, DomainType.climate);
+      expect(card.icon, MdiIcons.thermometer);
+      expect(card.title, 'Climate');
+      expect(card.primaryValue, '22.0\u00B0');
+      expect(card.subtitle, '65% humidity');
+      expect(card.isActive, true);
+    });
+
+    test('should default isActive to false', () {
+      final card = DomainCardInfo(
+        domain: DomainType.sensors,
+        icon: MdiIcons.accessPoint,
+        title: 'Sensors',
+        primaryValue: '2',
+        subtitle: '2 readings',
+      );
+
+      expect(card.isActive, false);
     });
   });
 
