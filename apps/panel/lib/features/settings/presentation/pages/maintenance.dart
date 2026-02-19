@@ -35,7 +35,9 @@ class MaintenancePage extends StatelessWidget {
 				iconBgColor: primaryBg,
 				label: localizations.settings_maintenance_restart_title,
 				description: localizations.settings_maintenance_restart_description,
-				trailing: GestureDetector(
+				trailing: SettingsActionButton(
+					color: primaryColor,
+					bgColor: primaryBg,
 					onTap: () {
 						_showConfirmationDialog(
 							context: context,
@@ -56,10 +58,6 @@ class MaintenancePage extends StatelessWidget {
 							},
 						);
 					},
-					child: SettingsActionButton(
-						color: primaryColor,
-						bgColor: primaryBg,
-					),
 				),
 			),
 			SettingsCard(
@@ -68,7 +66,9 @@ class MaintenancePage extends StatelessWidget {
 				iconBgColor: primaryBg,
 				label: localizations.settings_maintenance_power_off_title,
 				description: localizations.settings_maintenance_power_off_description,
-				trailing: GestureDetector(
+				trailing: SettingsActionButton(
+					color: primaryColor,
+					bgColor: primaryBg,
 					onTap: () {
 						_showConfirmationDialog(
 							context: context,
@@ -89,10 +89,6 @@ class MaintenancePage extends StatelessWidget {
 							},
 						);
 					},
-					child: SettingsActionButton(
-						color: primaryColor,
-						bgColor: primaryBg,
-					),
 				),
 			),
 		];
@@ -105,7 +101,9 @@ class MaintenancePage extends StatelessWidget {
 				label: localizations.settings_maintenance_factory_reset_title,
 				description: localizations.settings_maintenance_factory_reset_description,
 				isDanger: true,
-				trailing: GestureDetector(
+				trailing: SettingsActionButton(
+					color: dangerColor,
+					bgColor: dangerBg,
 					onTap: () {
 						_showConfirmationDialog(
 							context: context,
@@ -126,10 +124,6 @@ class MaintenancePage extends StatelessWidget {
 							},
 						);
 					},
-					child: SettingsActionButton(
-						color: dangerColor,
-						bgColor: dangerBg,
-					),
 				),
 			),
 		];

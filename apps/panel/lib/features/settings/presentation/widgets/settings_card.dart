@@ -1,4 +1,5 @@
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_card_surface.dart';
 import 'package:flutter/material.dart';
 
 /// Settings card with icon badge, label, description, trailing widget,
@@ -30,22 +31,13 @@ class SettingsCard extends StatelessWidget {
 	@override
 	Widget build(BuildContext context) {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
+		final surface = SettingsCardSurface.of(context);
 
-		final surfaceColor = isDark ? AppFillColorDark.light : AppFillColorLight.blank;
-		final borderColor = isDark
-				? AppBorderColorDark.light
-				: AppBorderColorLight.light;
 		final dangerBorderColor = isDark
 				? AppColorsDark.danger
 				: AppColorsLight.danger;
 		final dangerBorderLight = dangerBorderColor.withValues(alpha: 0.18);
-		final textColor = isDark ? AppTextColorDark.primary : AppTextColorLight.primary;
-		final descColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
 		final dangerTextColor = isDark ? AppColorsDark.danger : AppColorsLight.danger;
-
-		final shadow = isDark
-				? [BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 3, offset: const Offset(0, 1))]
-				: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 3, offset: const Offset(0, 1))];
 
 		final radius = BorderRadius.circular(AppBorderRadius.medium);
 
@@ -56,12 +48,12 @@ class SettingsCard extends StatelessWidget {
 					Container(
 						padding: EdgeInsets.all(AppSpacings.pLg),
 						decoration: BoxDecoration(
-							color: surfaceColor,
+							color: surface.surfaceColor,
 							border: Border.all(
-								color: isDanger ? dangerBorderLight : borderColor,
+								color: isDanger ? dangerBorderLight : surface.borderColor,
 							),
 							borderRadius: radius,
-							boxShadow: shadow,
+							boxShadow: surface.shadow,
 						),
 						child: Column(
 							mainAxisSize: MainAxisSize.min,
@@ -89,7 +81,7 @@ class SettingsCard extends StatelessWidget {
 														style: TextStyle(
 															fontSize: AppFontSize.small,
 															fontWeight: FontWeight.w600,
-															color: isDanger ? dangerTextColor : textColor,
+															color: isDanger ? dangerTextColor : surface.textColor,
 														),
 													),
 													if (description != null)
@@ -99,7 +91,7 @@ class SettingsCard extends StatelessWidget {
 																description!,
 																style: TextStyle(
 																	fontSize: AppFontSize.extraSmall,
-																	color: descColor,
+																	color: surface.secondaryTextColor,
 																	height: 1.3,
 																),
 															),

@@ -1,4 +1,5 @@
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_card_surface.dart';
 import 'package:flutter/material.dart';
 
 /// Grid tile widget for the general settings screen.
@@ -22,63 +23,58 @@ class SettingsTile extends StatelessWidget {
 
 	@override
 	Widget build(BuildContext context) {
-		final isDark = Theme.of(context).brightness == Brightness.dark;
+		final surface = SettingsCardSurface.of(context);
 
-		final surfaceColor = isDark ? AppFillColorDark.light : AppFillColorLight.blank;
-		final borderColor = isDark
-				? AppBorderColorDark.light
-				: AppBorderColorLight.light;
-		final textColor = isDark ? AppTextColorDark.primary : AppTextColorLight.primary;
-		final subColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
+		final radius = BorderRadius.circular(AppBorderRadius.medium);
 
-		final shadow = isDark
-				? [BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 3, offset: const Offset(0, 1))]
-				: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 3, offset: const Offset(0, 1))];
-
-		return GestureDetector(
-			onTap: onTap,
-			child: Container(
-				padding: EdgeInsets.symmetric(
-					vertical: AppSpacings.pLg,
-					horizontal: AppSpacings.pLg,
-				),
-				decoration: BoxDecoration(
-					color: surfaceColor,
-					border: Border.all(color: borderColor),
-					borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-					boxShadow: shadow,
-				),
-				child: Column(
-					mainAxisAlignment: MainAxisAlignment.center,
-					children: [
-						Container(
-							width: AppSpacings.scale(42),
-							height: AppSpacings.scale(42),
-							decoration: BoxDecoration(
-								color: iconBgColor,
-								borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+		return Material(
+			color: surface.surfaceColor,
+			borderRadius: radius,
+			child: InkWell(
+				onTap: onTap,
+				borderRadius: radius,
+				child: Container(
+					padding: EdgeInsets.symmetric(
+						vertical: AppSpacings.pLg,
+						horizontal: AppSpacings.pLg,
+					),
+					decoration: BoxDecoration(
+						border: Border.all(color: surface.borderColor),
+						borderRadius: radius,
+						boxShadow: surface.shadow,
+					),
+					child: Column(
+						mainAxisAlignment: MainAxisAlignment.center,
+						children: [
+							Container(
+								width: AppSpacings.scale(42),
+								height: AppSpacings.scale(42),
+								decoration: BoxDecoration(
+									color: iconBgColor,
+									borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+								),
+								child: Icon(icon, size: AppFontSize.extraLarge, color: iconColor),
 							),
-							child: Icon(icon, size: AppFontSize.extraLarge, color: iconColor),
-						),
-						SizedBox(height: AppSpacings.pMd),
-						Text(
-							label,
-							style: TextStyle(
-								fontSize: AppFontSize.small,
-								fontWeight: FontWeight.w600,
-								color: textColor,
+							SizedBox(height: AppSpacings.pMd),
+							Text(
+								label,
+								style: TextStyle(
+									fontSize: AppFontSize.small,
+									fontWeight: FontWeight.w600,
+									color: surface.textColor,
+								),
 							),
-						),
-						SizedBox(height: AppSpacings.pXs),
-						Text(
-							sublabel,
-							style: TextStyle(
-								fontSize: AppFontSize.extraSmall,
-								color: subColor,
+							SizedBox(height: AppSpacings.pXs),
+							Text(
+								sublabel,
+								style: TextStyle(
+									fontSize: AppFontSize.extraSmall,
+									color: surface.secondaryTextColor,
+								),
+								textAlign: TextAlign.center,
 							),
-							textAlign: TextAlign.center,
-						),
-					],
+						],
+					),
 				),
 			),
 		);

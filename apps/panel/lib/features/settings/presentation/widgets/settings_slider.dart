@@ -1,5 +1,6 @@
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 /// Custom themed slider with left/right icons for settings screens.
 /// Value range is 0.0 to 1.0.
@@ -50,6 +51,7 @@ class SettingsSlider extends StatelessWidget {
 									: null,
 							onTapDown: onChanged != null
 									? (details) {
+											HapticFeedback.lightImpact();
 											final newVal =
 													((details.localPosition.dx - thumbRadius) / usableWidth)
 															.clamp(0.0, 1.0);

@@ -233,8 +233,6 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 		BuildContext context,
 		double value,
 	) async {
-		HapticFeedback.lightImpact();
-
 		if (!_savingBrightness) {
 			setState(() {
 				_brightnessBackup = _brightness;

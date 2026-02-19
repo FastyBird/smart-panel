@@ -5,23 +5,31 @@ import 'package:flutter/material.dart';
 class SettingsActionButton extends StatelessWidget {
 	final Color color;
 	final Color bgColor;
+	final VoidCallback? onTap;
 
 	const SettingsActionButton({
 		super.key,
 		required this.color,
 		required this.bgColor,
+		this.onTap,
 	});
 
 	@override
 	Widget build(BuildContext context) {
-		return Container(
-			width: AppSpacings.scale(36),
-			height: AppSpacings.scale(36),
-			decoration: BoxDecoration(
-				color: bgColor,
-				borderRadius: BorderRadius.circular(AppSpacings.scale(10)),
+		final radius = BorderRadius.circular(AppSpacings.scale(10));
+
+		return Material(
+			color: bgColor,
+			borderRadius: radius,
+			child: InkWell(
+				onTap: onTap,
+				borderRadius: radius,
+				child: SizedBox(
+					width: AppSpacings.scale(36),
+					height: AppSpacings.scale(36),
+					child: Icon(Icons.play_arrow, size: AppFontSize.large, color: color),
+				),
 			),
-			child: Icon(Icons.play_arrow, size: AppFontSize.large, color: color),
 		);
 	}
 }

@@ -265,8 +265,6 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
 		BuildContext context,
 		double value,
 	) async {
-		HapticFeedback.lightImpact();
-
 		if (!_savingSpeakerVolume) {
 			setState(() {
 				_speakerVolumeBackup = _speakerVolume;
@@ -347,8 +345,6 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
 		BuildContext context,
 		double value,
 	) async {
-		HapticFeedback.lightImpact();
-
 		if (!_savingMicrophoneVolume) {
 			setState(() {
 				_microphoneVolumeBackup = _microphoneVolume;
