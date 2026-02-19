@@ -16,6 +16,7 @@ import 'package:fastybird_smart_panel/modules/dashboard/export.dart'
     as dashboard_module;
 import 'package:fastybird_smart_panel/modules/deck/export.dart'
     as deck_module;
+import 'package:fastybird_smart_panel/features/overlay/services/overlay_manager.dart';
 import 'package:fastybird_smart_panel/modules/security/export.dart'
     as security_module;
 import 'package:fastybird_smart_panel/modules/devices/export.dart'
@@ -437,6 +438,9 @@ class _MyAppState extends State<MyApp> {
         ),
         ChangeNotifierProvider.value(
           value: locator<energy_module.EnergyRepository>(),
+        ),
+        ChangeNotifierProvider.value(
+          value: locator<OverlayManager>(),
         ),
       ],
       child: AppBody(),
