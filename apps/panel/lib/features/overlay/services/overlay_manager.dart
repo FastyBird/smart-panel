@@ -114,37 +114,6 @@ class OverlayManager extends ChangeNotifier {
 		}
 	}
 
-	/// Update properties of an existing overlay without changing its
-	/// active state.
-	void update(
-		String id, {
-		OverlayDisplayType? displayType,
-		WidgetBuilder? builder,
-		bool? closable,
-	}) {
-		final entry = _entries[id];
-		if (entry == null) return;
-
-		bool changed = false;
-
-		if (displayType != null && entry.displayType != displayType) {
-			entry.displayType = displayType;
-			changed = true;
-		}
-		if (builder != null) {
-			entry.builder = builder;
-			changed = true;
-		}
-		if (closable != null && entry.closable != closable) {
-			entry.closable = closable;
-			changed = true;
-		}
-
-		if (changed) {
-			notifyListeners();
-		}
-	}
-
 	/// Check if an overlay with the given [id] is registered.
 	bool isRegistered(String id) => _entries.containsKey(id);
 
