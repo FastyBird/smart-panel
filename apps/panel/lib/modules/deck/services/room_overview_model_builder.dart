@@ -28,9 +28,6 @@ class RoomOverviewBuildInput {
   /// Number of lights currently ON (if available).
   final int? lightsOnCount;
 
-  /// Number of columns in display layout (for tiles-per-row calculation).
-  final int displayCols;
-
   /// Number of devices with energy-related channels.
   final int energyDeviceCount;
 
@@ -59,7 +56,6 @@ class RoomOverviewBuildInput {
     required this.scenes,
     required this.now,
     this.lightsOnCount,
-    this.displayCols = 4,
     this.energyDeviceCount = 0,
     this.sensorReadingsCount = 0,
     this.temperature,
@@ -67,38 +63,6 @@ class RoomOverviewBuildInput {
     this.shadingPosition,
     this.mediaPlayingCount = 0,
     this.sensorReadings = const [],
-  });
-}
-
-/// A chip displayed in the header showing domain status.
-class HeaderStatusChip {
-  final DomainType domain;
-  final IconData icon;
-  final String text;
-  final String targetViewKey;
-
-  const HeaderStatusChip({
-    required this.domain,
-    required this.icon,
-    required this.text,
-    required this.targetViewKey,
-  });
-}
-
-/// A tile displayed in the room overview.
-class DomainTile {
-  final DomainType domain;
-  final IconData icon;
-  final String label;
-  final int count;
-  final String targetViewKey;
-
-  const DomainTile({
-    required this.domain,
-    required this.icon,
-    required this.label,
-    required this.count,
-    required this.targetViewKey,
   });
 }
 
@@ -188,17 +152,6 @@ enum SuggestedActionType {
   turnOffLights,
 }
 
-/// Layout hints for UI rendering.
-class LayoutHints {
-  final int tilesPerRow;
-  final int colSpan;
-
-  const LayoutHints({
-    required this.tilesPerRow,
-    required this.colSpan,
-  });
-}
-
 /// The complete room overview model for UI rendering.
 class RoomOverviewModel {
   /// Room icon.
@@ -206,12 +159,6 @@ class RoomOverviewModel {
 
   /// Room name/title.
   final String title;
-
-  /// Header status chips (only for present domains).
-  final List<HeaderStatusChip> statusChips;
-
-  /// Domain tiles (only for present domains).
-  final List<DomainTile> tiles;
 
   /// Domain card infos with rich summary data for card rendering.
   final List<DomainCardInfo> domainCards;
@@ -224,9 +171,6 @@ class RoomOverviewModel {
 
   /// Sensor readings for the bottom strip.
   final List<SensorReading> sensorReadings;
-
-  /// Layout hints for UI.
-  final LayoutHints layoutHints;
 
   /// Domain counts.
   final DomainCounts domainCounts;
@@ -243,13 +187,10 @@ class RoomOverviewModel {
   const RoomOverviewModel({
     required this.icon,
     required this.title,
-    required this.statusChips,
-    required this.tiles,
     required this.domainCards,
     required this.quickScenes,
     required this.suggestedActions,
     required this.sensorReadings,
-    required this.layoutHints,
     required this.domainCounts,
   });
 }
@@ -270,12 +211,6 @@ RoomOverviewModel buildRoomOverviewModel(RoomOverviewBuildInput input) {
     sensorReadingsCount: input.sensorReadingsCount,
   );
 
-  // Build header status chips
-  final statusChips = _buildStatusChips(domainCounts, roomId);
-
-  // Build domain tiles
-  final tiles = _buildTiles(domainCounts, roomId);
-
   // Build quick scenes (max 4, ordered by priority)
   final quickScenes = _buildQuickScenes(scenes);
 
@@ -284,12 +219,6 @@ RoomOverviewModel buildRoomOverviewModel(RoomOverviewBuildInput input) {
     input: input,
     domainCounts: domainCounts,
     quickScenes: quickScenes,
-  );
-
-  // Calculate layout hints
-  final layoutHints = _calculateLayoutHints(
-    numberOfTiles: tiles.length,
-    displayCols: input.displayCols,
   );
 
   // Build domain cards with rich summary data
@@ -302,44 +231,12 @@ RoomOverviewModel buildRoomOverviewModel(RoomOverviewBuildInput input) {
   return RoomOverviewModel(
     icon: _mapSpaceIcon(room?.icon),
     title: room?.name ?? 'Room',
-    statusChips: statusChips,
-    tiles: tiles,
     domainCards: domainCards,
     quickScenes: quickScenes,
     suggestedActions: suggestedActions,
     sensorReadings: input.sensorReadings,
-    layoutHints: layoutHints,
     domainCounts: domainCounts,
   );
-}
-
-List<HeaderStatusChip> _buildStatusChips(DomainCounts counts, String roomId) {
-  // Exclude energy — it has its own header badge and is not a device-count domain
-  return counts.presentDomains
-      .where((domain) => domain != DomainType.energy)
-      .map((domain) {
-    return HeaderStatusChip(
-      domain: domain,
-      icon: domain.icon,
-      text: '${counts.getCount(domain)}',
-      targetViewKey: 'domain:$roomId:${domain.name}',
-    );
-  }).toList();
-}
-
-List<DomainTile> _buildTiles(DomainCounts counts, String roomId) {
-  // Exclude energy — it has its own header badge and is not a device-count domain
-  return counts.presentDomains
-      .where((domain) => domain != DomainType.energy)
-      .map((domain) {
-    return DomainTile(
-      domain: domain,
-      icon: domain.icon,
-      label: domain.label,
-      count: counts.getCount(domain),
-      targetViewKey: 'domain:$roomId:${domain.name}',
-    );
-  }).toList();
 }
 
 /// Scene category priority for room quick scenes (lower = higher priority).
@@ -586,29 +483,6 @@ List<DomainCardInfo> _buildDomainCards({
   }
 
   return cards;
-}
-
-LayoutHints _calculateLayoutHints({
-  required int numberOfTiles,
-  required int displayCols,
-}) {
-  int tilesPerRow;
-
-  if (displayCols <= 3) {
-    tilesPerRow = 1;
-  } else if (displayCols <= 5) {
-    tilesPerRow = 2;
-  } else {
-    // cols >= 6
-    tilesPerRow = numberOfTiles <= 4 ? 2 : 3;
-  }
-
-  final colSpan = displayCols ~/ tilesPerRow;
-
-  return LayoutHints(
-    tilesPerRow: tilesPerRow,
-    colSpan: colSpan,
-  );
 }
 
 /// Maps a space icon string identifier to IconData.

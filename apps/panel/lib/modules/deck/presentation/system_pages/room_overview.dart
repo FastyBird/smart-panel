@@ -148,7 +148,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 			scenes: scenes,
 			now: DateTime.now(),
 			lightsOnCount: _lightsOnCount,
-			displayCols: display.cols,
+
 			energyDeviceCount: _deckService.energyDeviceCount,
 			sensorReadingsCount: _deckService.sensorReadingsCount,
 			temperature: _temperature,
@@ -221,7 +221,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 				scenes: scenes,
 				now: DateTime.now(),
 				lightsOnCount: _lightsOnCount,
-				displayCols: display.cols,
+	
 				energyDeviceCount: _deckService.energyDeviceCount,
 				sensorReadingsCount: _deckService.sensorReadingsCount,
 				temperature: _temperature,
@@ -333,7 +333,11 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 		return device.category == DevicesModuleDeviceCategory.television ||
 			device.category == DevicesModuleDeviceCategory.media ||
 			device.category == DevicesModuleDeviceCategory.speaker ||
-			device.category == DevicesModuleDeviceCategory.avReceiver;
+			device.category == DevicesModuleDeviceCategory.avReceiver ||
+			device.category == DevicesModuleDeviceCategory.gameConsole ||
+			device.category == DevicesModuleDeviceCategory.projector ||
+			device.category == DevicesModuleDeviceCategory.setTopBox ||
+			device.category == DevicesModuleDeviceCategory.streamingService;
 	}
 
 	/// Check if a device is currently on by looking for the 'on' property
