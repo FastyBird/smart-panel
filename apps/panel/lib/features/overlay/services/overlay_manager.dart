@@ -1,25 +1,36 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 
 import 'package:fastybird_smart_panel/features/overlay/types/overlay.dart';
 
 /// Central manager for all application overlays.
 ///
 /// Modules, plugins, and core services register their overlays here.
-/// The manager determines which overlays are active and their z-order.
+/// Each provider registers **one entry** per logical overlay and updates
+/// its properties (display type, builder, closable) as state changes.
 ///
 /// Example usage:
 /// ```dart
-/// // Register an overlay
+/// // Register an overlay once
 /// overlayManager.register(AppOverlayEntry(
-///   id: 'security-alert',
-///   displayType: OverlayDisplayType.fullScreen,
-///   priority: 100,
-///   builder: (context) => SecurityOverlay(),
+///   id: 'connection',
+///   displayType: OverlayDisplayType.banner,
+///   priority: 200,
+///   builder: (context) => ConnectionBanner(),
 /// ));
 ///
-/// // Show/hide the overlay
-/// overlayManager.show('security-alert');
-/// overlayManager.hide('security-alert');
+/// // Show it - optionally updating properties at the same time
+/// overlayManager.show('connection');
+///
+/// // Later escalate to a different display type + widget
+/// overlayManager.show(
+///   'connection',
+///   displayType: OverlayDisplayType.fullScreen,
+///   builder: (context) => NetworkErrorScreen(),
+/// );
+///
+/// // Hide when no longer needed
+/// overlayManager.hide('connection');
 /// ```
 class OverlayManager extends ChangeNotifier {
 	final Map<String, AppOverlayEntry> _entries = {};
@@ -47,6 +58,7 @@ class OverlayManager extends ChangeNotifier {
 	/// Register a new overlay entry.
 	///
 	/// If an entry with the same [id] already exists, it is replaced.
+	/// The entry starts inactive unless [AppOverlayEntry.isActive] is true.
 	void register(AppOverlayEntry entry) {
 		_entries[entry.id] = entry;
 		notifyListeners();
@@ -60,10 +72,36 @@ class OverlayManager extends ChangeNotifier {
 	}
 
 	/// Show (activate) an overlay by [id].
-	void show(String id) {
+	///
+	/// Optionally update [displayType], [builder], and [closable] at the
+	/// same time. This is the primary API for providers that need to
+	/// change how their overlay is presented based on current state.
+	void show(
+		String id, {
+		OverlayDisplayType? displayType,
+		WidgetBuilder? builder,
+		bool? closable,
+	}) {
 		final entry = _entries[id];
-		if (entry != null && !entry.isActive) {
-			entry.isActive = true;
+		if (entry == null) return;
+
+		bool changed = !entry.isActive;
+		entry.isActive = true;
+
+		if (displayType != null && entry.displayType != displayType) {
+			entry.displayType = displayType;
+			changed = true;
+		}
+		if (builder != null) {
+			entry.builder = builder;
+			changed = true;
+		}
+		if (closable != null && entry.closable != closable) {
+			entry.closable = closable;
+			changed = true;
+		}
+
+		if (changed) {
 			notifyListeners();
 		}
 	}
@@ -77,20 +115,33 @@ class OverlayManager extends ChangeNotifier {
 		}
 	}
 
-	/// Update the display type of an existing overlay.
-	///
-	/// This is useful for overlays that change their presentation mode,
-	/// e.g., connection overlay escalating from banner to overlay to fullScreen.
-	void updateDisplayType(String id, OverlayDisplayType displayType) {
+	/// Update properties of an existing overlay without changing its
+	/// active state.
+	void update(
+		String id, {
+		OverlayDisplayType? displayType,
+		WidgetBuilder? builder,
+		bool? closable,
+	}) {
 		final entry = _entries[id];
-		if (entry != null && entry.displayType != displayType) {
-			_entries[id] = AppOverlayEntry(
-				id: entry.id,
-				displayType: displayType,
-				priority: entry.priority,
-				builder: entry.builder,
-				isActive: entry.isActive,
-			);
+		if (entry == null) return;
+
+		bool changed = false;
+
+		if (displayType != null && entry.displayType != displayType) {
+			entry.displayType = displayType;
+			changed = true;
+		}
+		if (builder != null) {
+			entry.builder = builder;
+			changed = true;
+		}
+		if (closable != null && entry.closable != closable) {
+			entry.closable = closable;
+			changed = true;
+		}
+
+		if (changed) {
 			notifyListeners();
 		}
 	}

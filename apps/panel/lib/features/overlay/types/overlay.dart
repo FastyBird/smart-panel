@@ -17,23 +17,22 @@ enum OverlayDisplayType {
 	fullScreen,
 }
 
-/// A registered overlay entry in the [OverlayManager].
+/// A registered overlay in the [OverlayManager].
 ///
 /// Named [AppOverlayEntry] to avoid conflict with Flutter's built-in
 /// [OverlayEntry] class from the widgets library.
 ///
-/// Each overlay entry has:
-/// - [id]: Unique identifier for this registration
-/// - [displayType]: How the overlay should be rendered
-/// - [priority]: Higher values are rendered on top (connection > security)
-/// - [isActive]: Whether this overlay is currently visible
-/// - [builder]: Widget builder for the overlay content
+/// Each module/provider registers one entry per logical overlay. When
+/// the overlay is shown, the provider updates [displayType] and other
+/// properties to reflect the current state. For example, the connection
+/// provider registers a single `'connection'` entry and escalates its
+/// [displayType] from [banner] -> [overlay] -> [fullScreen] over time.
 class AppOverlayEntry {
 	/// Unique identifier for this overlay registration.
 	final String id;
 
-	/// How this overlay should be rendered.
-	final OverlayDisplayType displayType;
+	/// How this overlay is currently rendered.
+	OverlayDisplayType displayType;
 
 	/// Priority for z-ordering. Higher values render on top.
 	///
@@ -47,8 +46,11 @@ class AppOverlayEntry {
 	/// Whether this overlay is currently active/visible.
 	bool isActive;
 
+	/// Whether the user can dismiss this overlay.
+	bool closable;
+
 	/// Builder function that creates the overlay widget.
-	final WidgetBuilder builder;
+	WidgetBuilder builder;
 
 	AppOverlayEntry({
 		required this.id,
@@ -56,5 +58,6 @@ class AppOverlayEntry {
 		required this.priority,
 		required this.builder,
 		this.isActive = false,
+		this.closable = false,
 	});
 }

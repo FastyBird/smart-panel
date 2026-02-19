@@ -9,20 +9,20 @@ import 'package:fastybird_smart_panel/features/overlay/types/overlay.dart';
 
 /// Overlay IDs for connection overlays.
 class ConnectionOverlayIds {
-	static const String banner = 'connection:banner';
-	static const String overlay = 'connection:overlay';
-	static const String fullScreen = 'connection:full-screen';
-	static const String recoveryToast = 'connection:recovery-toast';
+	static const String connection = 'connection';
+	static const String recovery = 'connection:recovery';
 }
 
 /// Bridges [ConnectionStateManager] with [OverlayManager].
 ///
-/// Listens to connection state changes and registers/activates the
-/// appropriate connection overlay based on UI severity:
-/// - Banner for brief disconnections (2-10 seconds)
-/// - Overlay for prolonged reconnection (10-60 seconds)
-/// - Full-screen error for connection failures (60+ seconds)
-/// - Recovery toast when connection is restored
+/// Registers a **single** overlay entry for connection state and updates
+/// its display type as severity escalates:
+/// - [banner]: Brief disconnection (2-10 seconds), closable
+/// - [overlay]: Prolonged reconnection (10-60 seconds), closable
+/// - [fullScreen]: Connection failure (60+ seconds), not closable
+///
+/// A separate recovery toast entry is shown briefly when connection
+/// is restored after a disruption.
 class ConnectionOverlayProvider {
 	final OverlayManager _overlayManager;
 	final ConnectionStateManager _connectionManager;
@@ -47,37 +47,18 @@ class ConnectionOverlayProvider {
 		if (_isInitialized) return;
 		_isInitialized = true;
 
-		// Register all connection overlay entries
+		// Register a single connection overlay - starts as banner,
+		// will be updated to overlay/fullScreen as severity escalates
 		_overlayManager.register(AppOverlayEntry(
-			id: ConnectionOverlayIds.banner,
+			id: ConnectionOverlayIds.connection,
 			displayType: OverlayDisplayType.banner,
 			priority: 200,
-			builder: (context) => ConnectionBanner(
-				onRetry: onReconnect,
-			),
+			builder: (context) => ConnectionBanner(onRetry: onReconnect),
 		));
 
+		// Recovery toast is a separate logical overlay
 		_overlayManager.register(AppOverlayEntry(
-			id: ConnectionOverlayIds.overlay,
-			displayType: OverlayDisplayType.overlay,
-			priority: 210,
-			builder: (context) => ConnectionOverlay(
-				disconnectedDuration: _connectionManager.disconnectedDuration,
-				onRetry: onReconnect,
-			),
-		));
-
-		_overlayManager.register(AppOverlayEntry(
-			id: ConnectionOverlayIds.fullScreen,
-			displayType: OverlayDisplayType.fullScreen,
-			priority: 220,
-			builder: (context) => _buildFullScreenError(
-				_connectionManager.state,
-			),
-		));
-
-		_overlayManager.register(AppOverlayEntry(
-			id: ConnectionOverlayIds.recoveryToast,
+			id: ConnectionOverlayIds.recovery,
 			displayType: OverlayDisplayType.banner,
 			priority: 250,
 			builder: (context) => ConnectionRecoveryToast(
@@ -85,11 +66,8 @@ class ConnectionOverlayProvider {
 			),
 		));
 
-		// Listen for state changes
 		_connectionManager.addListener(_onConnectionStateChanged);
-
-		// Apply initial state
-		_syncOverlays();
+		_syncOverlay();
 	}
 
 	/// Clean up listeners.
@@ -98,68 +76,80 @@ class ConnectionOverlayProvider {
 		_isInitialized = false;
 
 		_connectionManager.removeListener(_onConnectionStateChanged);
-
-		_overlayManager.unregister(ConnectionOverlayIds.banner);
-		_overlayManager.unregister(ConnectionOverlayIds.overlay);
-		_overlayManager.unregister(ConnectionOverlayIds.fullScreen);
-		_overlayManager.unregister(ConnectionOverlayIds.recoveryToast);
+		_overlayManager.unregister(ConnectionOverlayIds.connection);
+		_overlayManager.unregister(ConnectionOverlayIds.recovery);
 	}
 
 	void _onConnectionStateChanged() {
 		final currentState = _connectionManager.state;
 		final severity = _connectionManager.uiSeverity;
 
-		// Check if we should show recovery toast
 		if (_connectionManager.shouldShowRecoveryToast(
 			_previousState ?? SocketConnectionState.initializing,
 		)) {
 			_showRecoveryToast = true;
 		}
 
-		// Dismiss recovery toast if entering a full-screen error state
 		if (severity == ConnectionUISeverity.fullScreen && _showRecoveryToast) {
 			_showRecoveryToast = false;
 		}
 
 		_previousState = currentState;
-		_syncOverlays();
+		_syncOverlay();
 	}
 
-	void _syncOverlays() {
+	void _syncOverlay() {
 		final severity = _connectionManager.uiSeverity;
+		final state = _connectionManager.state;
 
-		// Deactivate all connection overlays first
-		_overlayManager.hide(ConnectionOverlayIds.banner);
-		_overlayManager.hide(ConnectionOverlayIds.overlay);
-		_overlayManager.hide(ConnectionOverlayIds.fullScreen);
-
-		// Activate the appropriate overlay based on severity
 		switch (severity) {
 			case ConnectionUISeverity.none:
 			case ConnectionUISeverity.splash:
+				_overlayManager.hide(ConnectionOverlayIds.connection);
 				break;
+
 			case ConnectionUISeverity.banner:
-				_overlayManager.show(ConnectionOverlayIds.banner);
+				_overlayManager.show(
+					ConnectionOverlayIds.connection,
+					displayType: OverlayDisplayType.banner,
+					closable: true,
+					builder: (context) => ConnectionBanner(onRetry: onReconnect),
+				);
 				break;
+
 			case ConnectionUISeverity.overlay:
-				_overlayManager.show(ConnectionOverlayIds.overlay);
+				_overlayManager.show(
+					ConnectionOverlayIds.connection,
+					displayType: OverlayDisplayType.overlay,
+					closable: true,
+					builder: (context) => ConnectionOverlay(
+						disconnectedDuration: _connectionManager.disconnectedDuration,
+						onRetry: onReconnect,
+					),
+				);
 				break;
+
 			case ConnectionUISeverity.fullScreen:
-				_overlayManager.show(ConnectionOverlayIds.fullScreen);
+				_overlayManager.show(
+					ConnectionOverlayIds.connection,
+					displayType: OverlayDisplayType.fullScreen,
+					closable: false,
+					builder: (context) => _buildFullScreenError(state),
+				);
 				break;
 		}
 
 		// Recovery toast
 		if (_showRecoveryToast) {
-			_overlayManager.show(ConnectionOverlayIds.recoveryToast);
+			_overlayManager.show(ConnectionOverlayIds.recovery);
 		} else {
-			_overlayManager.hide(ConnectionOverlayIds.recoveryToast);
+			_overlayManager.hide(ConnectionOverlayIds.recovery);
 		}
 	}
 
 	void _dismissRecoveryToast() {
 		_showRecoveryToast = false;
-		_overlayManager.hide(ConnectionOverlayIds.recoveryToast);
+		_overlayManager.hide(ConnectionOverlayIds.recovery);
 	}
 
 	Widget _buildFullScreenError(SocketConnectionState state) {
