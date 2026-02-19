@@ -31,6 +31,8 @@ class ConnectionOverlayProvider {
 	final VoidCallback onChangeGateway;
 
 	SocketConnectionState? _previousState;
+	ConnectionUISeverity? _lastSyncedSeverity;
+	bool _userDismissedConnection = false;
 	bool _showRecoveryToast = false;
 	bool _isInitialized = false;
 
@@ -102,34 +104,55 @@ class ConnectionOverlayProvider {
 		final severity = _connectionManager.uiSeverity;
 		final state = _connectionManager.state;
 
+		// Detect user dismissal: we showed the overlay at this severity,
+		// but it's now inactive — the user dismissed it via OverlayRenderer.
+		if (_lastSyncedSeverity == severity &&
+			severity != ConnectionUISeverity.none &&
+			severity != ConnectionUISeverity.splash &&
+			!_overlayManager.isActive(ConnectionOverlayIds.connection)) {
+			_userDismissedConnection = true;
+		}
+
+		// Reset dismissal when severity changes (escalation should show the new level)
+		if (_lastSyncedSeverity != severity) {
+			_userDismissedConnection = false;
+		}
+		_lastSyncedSeverity = severity;
+
 		switch (severity) {
 			case ConnectionUISeverity.none:
 			case ConnectionUISeverity.splash:
 				_overlayManager.hide(ConnectionOverlayIds.connection);
+				_userDismissedConnection = false;
 				break;
 
 			case ConnectionUISeverity.banner:
-				_overlayManager.show(
-					ConnectionOverlayIds.connection,
-					displayType: OverlayDisplayType.banner,
-					closable: true,
-					builder: (context) => ConnectionBanner(onRetry: onReconnect),
-				);
+				if (!_userDismissedConnection) {
+					_overlayManager.show(
+						ConnectionOverlayIds.connection,
+						displayType: OverlayDisplayType.banner,
+						closable: true,
+						builder: (context) => ConnectionBanner(onRetry: onReconnect),
+					);
+				}
 				break;
 
 			case ConnectionUISeverity.overlay:
-				_overlayManager.show(
-					ConnectionOverlayIds.connection,
-					displayType: OverlayDisplayType.overlay,
-					closable: true,
-					builder: (context) => ConnectionOverlay(
-						disconnectedDuration: _connectionManager.disconnectedDuration,
-						onRetry: onReconnect,
-					),
-				);
+				if (!_userDismissedConnection) {
+					_overlayManager.show(
+						ConnectionOverlayIds.connection,
+						displayType: OverlayDisplayType.overlay,
+						closable: true,
+						builder: (context) => ConnectionOverlay(
+							disconnectedDuration: _connectionManager.disconnectedDuration,
+							onRetry: onReconnect,
+						),
+					);
+				}
 				break;
 
 			case ConnectionUISeverity.fullScreen:
+				_userDismissedConnection = false;
 				_overlayManager.show(
 					ConnectionOverlayIds.connection,
 					displayType: OverlayDisplayType.fullScreen,
