@@ -1613,15 +1613,11 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       builder: (context, devicesService, _) {
         final lightTargets = _spacesService?.getLightTargetsForSpace(_roomId) ?? [];
 
-        // Build role data
-        final roleDataList = _buildRoleDataList(lightTargets, devicesService, localizations);
-        final definedRoles = roleDataList
-            .where((r) =>
-                r.role != LightTargetRole.other &&
-                r.role != LightTargetRole.hidden)
-            .toList();
+        // Build role data (already excludes unconfigured/hidden targets)
+        final roles = _buildRoleDataList(lightTargets, devicesService, localizations);
+
         // No configured roles — show not-configured state with header
-        if (roleDataList.isEmpty) {
+        if (roles.isEmpty) {
           return Scaffold(
             backgroundColor: Theme.of(context).brightness == Brightness.dark
                 ? AppBgColorDark.page
@@ -1653,15 +1649,15 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
           );
         }
         // Calculate totals from defined roles (excludes unconfigured/hidden targets)
-        final totalLights = definedRoles.fold<int>(0, (sum, r) => sum + r.totalCount);
-        final lightsOn = definedRoles.fold<int>(0, (sum, r) => sum + r.onCount);
+        final totalLights = roles.fold<int>(0, (sum, r) => sum + r.totalCount);
+        final lightsOn = roles.fold<int>(0, (sum, r) => sum + r.onCount);
 
         // Auto-select first role and build hero state
         final effectiveRole = _selectedRole ??
-            (definedRoles.isNotEmpty ? definedRoles.first.role : null);
+            (roles.isNotEmpty ? roles.first.role : null);
         _LightHeroState? heroState;
         if (effectiveRole != null) {
-          final selectedRoleData = _getRoleDataForRole(definedRoles, effectiveRole);
+          final selectedRoleData = _getRoleDataForRole(roles, effectiveRole);
           if (selectedRoleData != null) {
             heroState = _buildHeroState(selectedRoleData, devicesService, localizations);
             heroState = _applyHeroOptimisticOverrides(heroState!, localizations);
@@ -1681,7 +1677,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                 // Pre-calculate whether scenes fit inline in landscape
                 final hasScenes = _lightingScenes.isNotEmpty;
                 bool landscapeScenesInline = true;
-                if (isLandscape && hasScenes && definedRoles.length > 1) {
+                if (isLandscape && hasScenes && roles.length > 1) {
                   final tileHeight =
                       AppSpacings.scale(AppTileHeight.horizontal * 0.85);
                   final headerHeight = 2 * AppSpacings.pMd +
@@ -1689,9 +1685,9 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                       AppFontSize.small * 1.4;
                   final columnHeight =
                       constraints.maxHeight - headerHeight - AppSpacings.pMd;
-                  final rolesHeight = definedRoles.length * tileHeight +
-                      (definedRoles.length > 1
-                          ? (definedRoles.length - 1) * AppSpacings.pSm
+                  final rolesHeight = roles.length * tileHeight +
+                      (roles.length > 1
+                          ? (roles.length - 1) * AppSpacings.pSm
                           : 0);
                   final remaining =
                       columnHeight - rolesHeight - AppSpacings.pMd;
@@ -1715,13 +1711,13 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                     Expanded(
                       child: isLandscape
                           ? _buildLandscapeLayout(
-                              context, definedRoles, localizations,
+                              context, roles, localizations,
                               heroState: heroState,
                               effectiveRole: effectiveRole,
                               showScenes: landscapeScenesInline,
                             )
                           : _buildPortraitLayout(
-                              context, definedRoles, localizations,
+                              context, roles, localizations,
                               heroState: heroState,
                               effectiveRole: effectiveRole,
                             ),
