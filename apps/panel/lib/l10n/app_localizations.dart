@@ -1223,6 +1223,18 @@ abstract class AppLocalizations {
   /// **'Are you sure you want to erase all data and restore the device to its factory settings? This action is irreversible.'**
   String get settings_maintenance_factory_reset_confirm_description;
 
+  /// Heading for the system section in maintenance settings.
+  ///
+  /// In en, this message translates to:
+  /// **'System'**
+  String get settings_maintenance_system_heading;
+
+  /// Heading for the danger zone section in maintenance settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Danger Zone'**
+  String get settings_maintenance_danger_heading;
+
   /// Title for the Language Settings section.
   ///
   /// In en, this message translates to:

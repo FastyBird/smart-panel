@@ -185,6 +185,8 @@
   "settings_maintenance_factory_reset_description": "Obnovte zařízení do původního továrního nastavení.",
   "settings_maintenance_factory_reset_confirm_title": "Obnovení továrního nastavení",
   "settings_maintenance_factory_reset_confirm_description": "Opravdu chcete vymazat všechna data a obnovit tovární nastavení zařízení? Tato akce je nevratná.",
+  "settings_maintenance_system_heading": "Systém",
+  "settings_maintenance_danger_heading": "Nebezpečná zóna",
   "settings_language_settings_title": "Nastavení jazyka",
   "settings_language_settings_language_title": "Jazyk",
   "settings_language_settings_language_description": "Vyberte svůj preferovaný jazyk.",
