@@ -34,26 +34,32 @@ class SettingsSlider extends StatelessWidget {
 				Expanded(
 					child: LayoutBuilder(builder: (context, constraints) {
 						final trackWidth = constraints.maxWidth;
-						final thumbPos = value.clamp(0.0, 1.0) * trackWidth;
+						final thumbRadius = AppSpacings.scale(9);
+						final clampedValue = value.clamp(0.0, 1.0);
+						final usableWidth = trackWidth - thumbRadius * 2;
+						final thumbCenter = thumbRadius + clampedValue * usableWidth;
 
 						return GestureDetector(
 							onHorizontalDragUpdate: onChanged != null
 									? (details) {
 											final newVal =
-													(details.localPosition.dx / trackWidth).clamp(0.0, 1.0);
+													((details.localPosition.dx - thumbRadius) / usableWidth)
+															.clamp(0.0, 1.0);
 											onChanged!(newVal);
 										}
 									: null,
 							onTapDown: onChanged != null
 									? (details) {
 											final newVal =
-													(details.localPosition.dx / trackWidth).clamp(0.0, 1.0);
+													((details.localPosition.dx - thumbRadius) / usableWidth)
+															.clamp(0.0, 1.0);
 											onChanged!(newVal);
 										}
 									: null,
 							child: SizedBox(
 								height: AppSpacings.scale(24),
 								child: Stack(
+									clipBehavior: Clip.none,
 									alignment: Alignment.centerLeft,
 									children: [
 										// Track background
@@ -67,7 +73,7 @@ class SettingsSlider extends StatelessWidget {
 										// Track fill
 										Container(
 											height: AppSpacings.scale(6),
-											width: thumbPos,
+											width: thumbCenter,
 											decoration: BoxDecoration(
 												color: activeColor,
 												borderRadius: BorderRadius.circular(AppSpacings.scale(3)),
@@ -75,10 +81,10 @@ class SettingsSlider extends StatelessWidget {
 										),
 										// Thumb
 										Positioned(
-											left: thumbPos - AppSpacings.scale(9),
+											left: thumbCenter - thumbRadius,
 											child: Container(
-												width: AppSpacings.scale(18),
-												height: AppSpacings.scale(18),
+												width: thumbRadius * 2,
+												height: thumbRadius * 2,
 												decoration: BoxDecoration(
 													color: activeColor,
 													shape: BoxShape.circle,

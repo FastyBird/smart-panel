@@ -7,6 +7,7 @@ import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_card.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_dropdown_value.dart';
+import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_two_column_layout.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/config/module.dart';
 import 'package:fastybird_smart_panel/modules/config/repositories/module_config_repository.dart';
@@ -204,7 +205,7 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
 			body: isLandscape
 					? Padding(
 							padding: EdgeInsets.all(AppSpacings.pLg),
-							child: _buildTwoColumnLayout(cards),
+							child: SettingsTwoColumnLayout(cards: cards),
 						)
 					: ListView(
 							padding: EdgeInsets.all(AppSpacings.pLg),
@@ -215,42 +216,6 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
 								],
 							],
 						),
-		);
-	}
-
-	Widget _buildTwoColumnLayout(List<Widget> cards) {
-		if (cards.length <= 2) {
-			return Row(
-				crossAxisAlignment: CrossAxisAlignment.start,
-				children: [
-					for (int i = 0; i < cards.length; i++) ...[
-						if (i > 0) SizedBox(width: AppSpacings.pMd),
-						Expanded(child: cards[i]),
-					],
-				],
-			);
-		}
-
-		return ConstrainedBox(
-			constraints: BoxConstraints(maxWidth: AppSpacings.scale(640)),
-			child: Column(
-				crossAxisAlignment: CrossAxisAlignment.start,
-				mainAxisSize: MainAxisSize.min,
-				children: [
-					Row(
-						crossAxisAlignment: CrossAxisAlignment.start,
-						children: [
-							Expanded(child: cards[0]),
-							SizedBox(width: AppSpacings.pMd),
-							Expanded(child: cards[1]),
-						],
-					),
-					for (int i = 2; i < cards.length; i++) ...[
-						SizedBox(height: AppSpacings.pMd),
-						cards[i],
-					],
-				],
-			),
 		);
 	}
 

@@ -243,96 +243,102 @@ class _AboutPageState extends State<AboutPage> {
 			crossAxisAlignment: CrossAxisAlignment.start,
 			children: [
 				SettingsSectionHeading(text: localizations.settings_about_device_information_heading),
-				Wrap(
-					spacing: AppSpacings.pMd,
-					runSpacing: AppSpacings.pMd,
-					children: [
-						_buildDeviceInfoCard(
-							localizations: localizations,
-							isDark: isDark,
-							infoColor: infoColor,
-							infoBg: infoBg,
-							icon: MdiIcons.lan,
-							title: localizations.settings_about_ip_address_title,
-							builder: (systemService) {
-								final ip = systemService.getSystemInfo()?.ipAddress;
-								return Text(
-									ip ?? localizations.value_not_available,
-									style: TextStyle(
-										fontSize: AppFontSize.extraSmall,
-										fontFamily: 'monospace',
-										color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
-									),
-								);
-							},
-						),
-						_buildDeviceInfoCard(
-							localizations: localizations,
-							isDark: isDark,
-							infoColor: infoColor,
-							infoBg: infoBg,
-							icon: MdiIcons.server,
-							title: localizations.settings_about_mac_address_title,
-							builder: (systemService) {
-								final mac = systemService.getSystemInfo()?.macAddress;
-								return Text(
-									mac ?? localizations.value_not_available,
-									style: TextStyle(
-										fontSize: AppFontSize.extraSmall,
-										fontFamily: 'monospace',
-										color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
-									),
-								);
-							},
-						),
-						_buildDeviceInfoCard(
-							localizations: localizations,
-							isDark: isDark,
-							infoColor: infoColor,
-							infoBg: infoBg,
-							icon: MdiIcons.gauge,
-							title: localizations.settings_about_cpu_usage_title,
-							builder: (systemService) {
-								final cpuLoad = systemService.getSystemInfo()?.cpuLoad;
-								return Text(
-									cpuLoad != null
-											? '${NumberUtils.formatNumber(cpuLoad, 2)}%'
-											: NumberUtils.formatUnavailableNumber(2),
-									style: TextStyle(
-										fontSize: AppFontSize.extraSmall,
-										color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
-									),
-								);
-							},
-						),
-						_buildDeviceInfoCard(
-							localizations: localizations,
-							isDark: isDark,
-							infoColor: infoColor,
-							infoBg: infoBg,
-							icon: MdiIcons.memory,
-							title: localizations.settings_about_memory_usage_title,
-							builder: (systemService) {
-								final memoryUsed = systemService.getSystemInfo()?.memoryUsed.toDouble();
-								return Text(
-									memoryUsed != null
-											? '${NumberUtils.formatNumber(memoryUsed / 1024 / 1024, 0)} MB'
-											: NumberUtils.formatUnavailableNumber(0),
-									style: TextStyle(
-										fontSize: AppFontSize.extraSmall,
-										color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
-									),
-								);
-							},
-						),
-					],
+				LayoutBuilder(
+					builder: (context, constraints) {
+						final cardWidth = (constraints.maxWidth - AppSpacings.pMd) / 2;
+
+						return Wrap(
+							spacing: AppSpacings.pMd,
+							runSpacing: AppSpacings.pMd,
+							children: [
+								_buildDeviceInfoCard(
+									width: cardWidth,
+									isDark: isDark,
+									infoColor: infoColor,
+									infoBg: infoBg,
+									icon: MdiIcons.lan,
+									title: localizations.settings_about_ip_address_title,
+									builder: (systemService) {
+										final ip = systemService.getSystemInfo()?.ipAddress;
+										return Text(
+											ip ?? localizations.value_not_available,
+											style: TextStyle(
+												fontSize: AppFontSize.extraSmall,
+												fontFamily: 'monospace',
+												color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
+											),
+										);
+									},
+								),
+								_buildDeviceInfoCard(
+									width: cardWidth,
+									isDark: isDark,
+									infoColor: infoColor,
+									infoBg: infoBg,
+									icon: MdiIcons.server,
+									title: localizations.settings_about_mac_address_title,
+									builder: (systemService) {
+										final mac = systemService.getSystemInfo()?.macAddress;
+										return Text(
+											mac ?? localizations.value_not_available,
+											style: TextStyle(
+												fontSize: AppFontSize.extraSmall,
+												fontFamily: 'monospace',
+												color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
+											),
+										);
+									},
+								),
+								_buildDeviceInfoCard(
+									width: cardWidth,
+									isDark: isDark,
+									infoColor: infoColor,
+									infoBg: infoBg,
+									icon: MdiIcons.gauge,
+									title: localizations.settings_about_cpu_usage_title,
+									builder: (systemService) {
+										final cpuLoad = systemService.getSystemInfo()?.cpuLoad;
+										return Text(
+											cpuLoad != null
+													? '${NumberUtils.formatNumber(cpuLoad, 2)}%'
+													: NumberUtils.formatUnavailableNumber(2),
+											style: TextStyle(
+												fontSize: AppFontSize.extraSmall,
+												color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
+											),
+										);
+									},
+								),
+								_buildDeviceInfoCard(
+									width: cardWidth,
+									isDark: isDark,
+									infoColor: infoColor,
+									infoBg: infoBg,
+									icon: MdiIcons.memory,
+									title: localizations.settings_about_memory_usage_title,
+									builder: (systemService) {
+										final memoryUsed = systemService.getSystemInfo()?.memoryUsed.toDouble();
+										return Text(
+											memoryUsed != null
+													? '${NumberUtils.formatNumber(memoryUsed / 1024 / 1024, 0)} MB'
+													: NumberUtils.formatUnavailableNumber(0),
+											style: TextStyle(
+												fontSize: AppFontSize.extraSmall,
+												color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
+											),
+										);
+									},
+								),
+							],
+						);
+					},
 				),
 			],
 		);
 	}
 
 	Widget _buildDeviceInfoCard({
-		required AppLocalizations localizations,
+		required double width,
 		required bool isDark,
 		required Color infoColor,
 		required Color infoBg,
@@ -341,9 +347,7 @@ class _AboutPageState extends State<AboutPage> {
 		required Widget Function(SystemService) builder,
 	}) {
 		return SizedBox(
-			width: MediaQuery.of(context).size.width / 2 -
-					AppSpacings.pLg -
-					AppSpacings.pMd / 2,
+			width: width,
 			child: Consumer<SystemService>(
 				builder: (context, systemService, _) {
 					return SettingsCard(
