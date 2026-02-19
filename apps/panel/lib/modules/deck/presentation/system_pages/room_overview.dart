@@ -806,8 +806,8 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 				if (model.domainCards.isEmpty && model.suggestedActions.isNotEmpty)
 					_buildSuggestedActionsSection(context, model),
 
-				// Empty state if nothing to show
-				if (model.domainCards.isEmpty && !model.hasScenes)
+				// Empty state if no domain cards
+				if (model.domainCards.isEmpty)
 					Expanded(child: _buildEmptyState(context, localizations)),
 
 				// Sensor readings strip
@@ -975,7 +975,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 								color: colorFamily.base,
 							),
 							Text(
-								reading.value,
+								'${reading.label} ${reading.value}',
 								style: TextStyle(
 									fontSize: AppFontSize.extraSmall,
 									fontWeight: FontWeight.w600,
