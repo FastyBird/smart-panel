@@ -857,6 +857,37 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
       builder: (context, _, __) {
         final isDark = Theme.of(context).brightness == Brightness.dark;
 
+        // No sensors — show not-configured state with header
+        if (_sensors.isEmpty) {
+          return Scaffold(
+            backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
+            body: SafeArea(
+              child: Column(
+                children: [
+                  PageHeader(
+                    title: localizations.domain_sensors,
+                    subtitle: localizations.domain_not_configured_subtitle,
+                    leading: HeaderMainIcon(
+                      icon: MdiIcons.accessPointNetwork,
+                    ),
+                  ),
+                  Expanded(
+                    child: DomainStateView(
+                      state: DomainLoadState.notConfigured,
+                      onRetry: _retryLoad,
+                      domainName: localizations.domain_sensors,
+                      notConfiguredIcon: MdiIcons.accessPointNetworkOff,
+                      notConfiguredTitle: localizations.sensors_domain_empty_title,
+                      notConfiguredDescription: localizations.sensors_domain_empty_description,
+                      child: const SizedBox.shrink(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
         final alertCount =
             _sensors.where((s) => s.status == SensorStatus.alert).length;
 
@@ -867,23 +898,13 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
               children: [
                 _buildHeader(context, alertCount),
                 Expanded(
-                  child: _sensors.isEmpty
-                      ? DomainStateView(
-                          state: DomainLoadState.notConfigured,
-                          onRetry: _retryLoad,
-                          domainName: localizations.domain_sensors,
-                          notConfiguredIcon: MdiIcons.accessPointNetworkOff,
-                          notConfiguredTitle: localizations.sensors_domain_empty_title,
-                          notConfiguredDescription: localizations.sensors_domain_empty_description,
-                          child: const SizedBox.shrink(),
-                        )
-                      : OrientationBuilder(
-                          builder: (context, orientation) {
-                            return orientation == Orientation.landscape
-                                ? _buildLandscapeLayout(context)
-                                : _buildPortraitLayout(context);
-                          },
-                        ),
+                  child: OrientationBuilder(
+                    builder: (context, orientation) {
+                      return orientation == Orientation.landscape
+                          ? _buildLandscapeLayout(context)
+                          : _buildPortraitLayout(context);
+                    },
+                  ),
                 ),
               ],
             ),
