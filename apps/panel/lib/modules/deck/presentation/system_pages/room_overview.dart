@@ -806,9 +806,12 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 				if (model.domainCards.isEmpty && model.suggestedActions.isNotEmpty)
 					_buildSuggestedActionsSection(context, model),
 
-				// Empty state if no domain cards
-				if (model.domainCards.isEmpty)
-					Expanded(child: _buildEmptyState(context, localizations)),
+				// Empty state when no devices and no scenes
+				if (!model.hasAnyDomain && !model.hasScenes)
+					Expanded(child: _buildEmptyState(context, localizations))
+				// Spacer when we have scenes but no domain cards
+				else if (model.domainCards.isEmpty)
+					const Spacer(),
 
 				// Sensor readings strip
 				if (model.hasSensorReadings) ...[
