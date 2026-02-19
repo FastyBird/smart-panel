@@ -14,9 +14,9 @@ import 'package:fastybird_smart_panel/modules/devices/presentation/device_detail
 import 'package:fastybird_smart_panel/features/overlay/presentation/lock.dart';
 import 'package:fastybird_smart_panel/features/overlay/presentation/overlay_renderer.dart';
 import 'package:fastybird_smart_panel/features/overlay/presentation/screen_saver.dart';
-import 'package:fastybird_smart_panel/features/overlay/services/connection_overlay_provider.dart';
+import 'package:fastybird_smart_panel/core/services/connection_overlay_provider.dart';
 import 'package:fastybird_smart_panel/features/overlay/services/overlay_manager.dart';
-import 'package:fastybird_smart_panel/features/overlay/services/security_overlay_provider.dart';
+import 'package:fastybird_smart_panel/modules/security/services/security_overlay_provider.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/config/module.dart';
 import 'package:fastybird_smart_panel/modules/config/repositories/module_config_repository.dart';
