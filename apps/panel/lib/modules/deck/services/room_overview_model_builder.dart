@@ -1,5 +1,6 @@
 import 'package:fastybird_smart_panel/api/models/devices_module_device_category.dart';
 import 'package:fastybird_smart_panel/api/models/scenes_module_data_scene_category.dart';
+import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/room_domain_classifier.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/domain_type.dart';
 import 'package:fastybird_smart_panel/modules/displays/models/display.dart';
@@ -377,14 +378,15 @@ List<DomainCardInfo> _buildDomainCards({
 
     switch (domain) {
       case DomainType.climate:
+        final fmt = NumberFormatUtils.defaultFormat;
         final temp = input.temperature;
         final humidity = input.humidity;
         final primaryValue = temp != null
-            ? '${temp.toStringAsFixed(1)}\u00B0'
+            ? '${fmt.formatDecimal(temp, decimalPlaces: 1)}\u00B0'
             : '$count';
         final subtitleParts = <String>[];
         if (humidity != null) {
-          subtitleParts.add('${humidity.toStringAsFixed(0)}% humidity');
+          subtitleParts.add('${fmt.formatDecimal(humidity, decimalPlaces: 0)}% humidity');
         }
         if (subtitleParts.isEmpty) {
           subtitleParts.add('$count device${count != 1 ? 's' : ''}');
