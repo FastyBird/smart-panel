@@ -193,6 +193,17 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 
 			if (!mounted) return;
 
+			// Check display availability before building model
+			final display = locator<DisplayRepository>().display;
+
+			if (display == null) {
+				setState(() {
+					_isLoading = false;
+					_errorMessage = 'Display not configured';
+				});
+				return;
+			}
+
 			_rebuildModel();
 
 			setState(() {
@@ -485,13 +496,16 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 				actions: _buildStatusBadges(context),
 			),
 			body: SafeArea(
-				child: _isLoading
-					? _buildLoadingState()
-					: _errorMessage != null
-						? _buildErrorState()
-						: model != null
-							? _buildContent(context, localizations, model)
-							: _buildEmptyState(context, localizations),
+				child: Padding(
+					padding: AppSpacings.paddingMd,
+					child: _isLoading
+						? _buildLoadingState()
+						: _errorMessage != null
+							? _buildErrorState()
+							: model != null
+								? _buildContent(context, localizations, model)
+								: _buildEmptyState(context, localizations),
+				),
 			),
 		);
 	}
@@ -773,38 +787,35 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 	) {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 
-		return Padding(
-			padding: AppSpacings.paddingMd,
-			child: Column(
-				crossAxisAlignment: CrossAxisAlignment.stretch,
-				children: [
-					// Scene pills row
-					if (model.hasScenes) ...[
-						_buildScenePills(context, isDark, model),
-						SizedBox(height: AppSpacings.pMd),
-					],
-
-					// Domain cards grid
-					if (model.domainCards.isNotEmpty)
-						Expanded(
-							child: _buildDomainCardsGrid(context, isDark, model),
-						),
-
-					// Suggested actions (shown when no domain cards)
-					if (model.domainCards.isEmpty && model.suggestedActions.isNotEmpty)
-						_buildSuggestedActionsSection(context, model),
-
-					// Empty state if nothing to show
-					if (model.domainCards.isEmpty && !model.hasScenes)
-						Expanded(child: _buildEmptyState(context, localizations)),
-
-					// Sensor readings strip
-					if (model.hasSensorReadings) ...[
-						SizedBox(height: AppSpacings.pMd),
-						_buildSensorStrip(context, isDark, model),
-					],
+		return Column(
+			crossAxisAlignment: CrossAxisAlignment.stretch,
+			children: [
+				// Scene pills row
+				if (model.hasScenes) ...[
+					_buildScenePills(context, isDark, model),
+					SizedBox(height: AppSpacings.pMd),
 				],
-			),
+
+				// Domain cards grid
+				if (model.domainCards.isNotEmpty)
+					Expanded(
+						child: _buildDomainCardsGrid(context, isDark, model),
+					),
+
+				// Suggested actions (shown when no domain cards)
+				if (model.domainCards.isEmpty && model.suggestedActions.isNotEmpty)
+					_buildSuggestedActionsSection(context, model),
+
+				// Empty state if nothing to show
+				if (model.domainCards.isEmpty && !model.hasScenes)
+					Expanded(child: _buildEmptyState(context, localizations)),
+
+				// Sensor readings strip
+				if (model.hasSensorReadings) ...[
+					SizedBox(height: AppSpacings.pMd),
+					_buildSensorStrip(context, isDark, model),
+				],
+			],
 		);
 	}
 
@@ -1053,127 +1064,134 @@ class _RoomDomainCard extends StatelessWidget {
 		);
 		final primaryColor = Theme.of(context).colorScheme.primary;
 
+		final accentWidth = AppSpacings.scale(3);
+		final borderRadius = BorderRadius.circular(AppBorderRadius.medium);
+
 		return GestureDetector(
 			onTap: onTap,
-			child: Container(
-				padding: EdgeInsets.all(AppSpacings.scale(12)),
-				decoration: BoxDecoration(
-					color: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
-					borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-					border: Border.all(
-						color: isDark
-							? AppBorderColorDark.extraLight
-							: AppBorderColorLight.lighter,
-					),
-				),
-				foregroundDecoration: cardInfo.isActive
-					? BoxDecoration(
-						borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-						border: Border(
-							left: BorderSide(
-								color: primaryColor,
-								width: AppSpacings.scale(3),
-							),
-						),
-					)
-					: null,
-				child: Column(
-					crossAxisAlignment: CrossAxisAlignment.start,
+			child: ClipRRect(
+				borderRadius: borderRadius,
+				child: Stack(
 					children: [
-						// Header row: icon + title + primary value
-						Row(
-							children: [
-								// Domain icon container
-								Container(
-									width: AppSpacings.scale(28),
-									height: AppSpacings.scale(28),
-									decoration: BoxDecoration(
-										color: colorFamily.base,
-										borderRadius: BorderRadius.circular(
-											AppBorderRadius.base,
-										),
-									),
-									child: Icon(
-										cardInfo.icon,
-										size: AppSpacings.scale(16),
-										color: AppColors.white,
-									),
+						Container(
+							padding: EdgeInsets.all(AppSpacings.scale(12)),
+							decoration: BoxDecoration(
+								color: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
+								borderRadius: borderRadius,
+								border: Border.all(
+									color: isDark
+										? AppBorderColorDark.extraLight
+										: AppBorderColorLight.lighter,
 								),
-								SizedBox(width: AppSpacings.pMd),
-								// Title and primary value
-								Expanded(
-									child: Column(
-										crossAxisAlignment: CrossAxisAlignment.start,
+							),
+							child: Column(
+								crossAxisAlignment: CrossAxisAlignment.start,
+								children: [
+									// Header row: icon + title + primary value
+									Row(
 										children: [
-											Text(
-												cardInfo.title,
-												style: TextStyle(
-													fontSize: AppFontSize.small,
-													fontWeight: FontWeight.w700,
-													color: isDark
-														? AppTextColorDark.primary
-														: AppTextColorLight.primary,
+											// Domain icon container
+											Container(
+												width: AppSpacings.scale(28),
+												height: AppSpacings.scale(28),
+												decoration: BoxDecoration(
+													color: colorFamily.base,
+													borderRadius: BorderRadius.circular(
+														AppBorderRadius.base,
+													),
+												),
+												child: Icon(
+													cardInfo.icon,
+													size: AppSpacings.scale(16),
+													color: AppColors.white,
 												),
 											),
-											Row(
-												children: [
-													Text(
-														cardInfo.primaryValue,
-														style: TextStyle(
-															fontSize: AppFontSize.extraLarge,
-															fontWeight: FontWeight.w700,
-															color: isDark
-																? AppTextColorDark.primary
-																: AppTextColorLight.primary,
-														),
-													),
-													if (cardInfo.targetValue != null) ...[
-														SizedBox(width: AppSpacings.pSm),
+											SizedBox(width: AppSpacings.pMd),
+											// Title and primary value
+											Expanded(
+												child: Column(
+													crossAxisAlignment: CrossAxisAlignment.start,
+													children: [
 														Text(
-															'\u2192 ${cardInfo.targetValue}',
+															cardInfo.title,
 															style: TextStyle(
-																fontSize: AppFontSize.extraSmall,
+																fontSize: AppFontSize.small,
+																fontWeight: FontWeight.w700,
 																color: isDark
-																	? AppTextColorDark.placeholder
-																	: AppTextColorLight.placeholder,
+																	? AppTextColorDark.primary
+																	: AppTextColorLight.primary,
 															),
 														),
+														Row(
+															children: [
+																Text(
+																	cardInfo.primaryValue,
+																	style: TextStyle(
+																		fontSize: AppFontSize.extraLarge,
+																		fontWeight: FontWeight.w700,
+																		color: isDark
+																			? AppTextColorDark.primary
+																			: AppTextColorLight.primary,
+																	),
+																),
+																if (cardInfo.targetValue != null) ...[
+																	SizedBox(width: AppSpacings.pSm),
+																	Text(
+																		'\u2192 ${cardInfo.targetValue}',
+																		style: TextStyle(
+																			fontSize: AppFontSize.extraSmall,
+																			color: isDark
+																				? AppTextColorDark.placeholder
+																				: AppTextColorLight.placeholder,
+																		),
+																	),
+																],
+															],
+														),
 													],
-												],
+												),
 											),
 										],
 									),
-								),
-							],
-						),
-						SizedBox(height: AppSpacings.pSm),
-						// Subtitle
-						Text(
-							cardInfo.subtitle,
-							style: TextStyle(
-								fontSize: AppFontSize.extraSmall,
-								fontWeight: FontWeight.w500,
-								color: isDark
-									? AppTextColorDark.secondary
-									: AppTextColorLight.secondary,
+									SizedBox(height: AppSpacings.pSm),
+									// Subtitle
+									Text(
+										cardInfo.subtitle,
+										style: TextStyle(
+											fontSize: AppFontSize.extraSmall,
+											fontWeight: FontWeight.w500,
+											color: isDark
+												? AppTextColorDark.secondary
+												: AppTextColorLight.secondary,
+										),
+										maxLines: 1,
+										overflow: TextOverflow.ellipsis,
+									),
+									const Spacer(),
+									// Navigate indicator
+									Row(
+										mainAxisAlignment: MainAxisAlignment.end,
+										children: [
+											Icon(
+												MdiIcons.chevronRight,
+												size: AppSpacings.scale(18),
+												color: isDark
+													? AppTextColorDark.placeholder
+													: AppTextColorLight.placeholder,
+											),
+										],
+									),
+								],
 							),
-							maxLines: 1,
-							overflow: TextOverflow.ellipsis,
 						),
-						const Spacer(),
-						// Navigate indicator
-						Row(
-							mainAxisAlignment: MainAxisAlignment.end,
-							children: [
-								Icon(
-									MdiIcons.chevronRight,
-									size: AppSpacings.scale(18),
-									color: isDark
-										? AppTextColorDark.placeholder
-										: AppTextColorLight.placeholder,
-								),
-							],
-						),
+						if (cardInfo.isActive)
+							Positioned(
+								left: 0,
+								top: 0,
+								bottom: 0,
+								width: accentWidth,
+								child: ColoredBox(color: primaryColor),
+							),
 					],
 				),
 			),
