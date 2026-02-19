@@ -55,6 +55,7 @@ import 'package:fastybird_smart_panel/modules/security/module.dart';
 import 'package:fastybird_smart_panel/modules/security/repositories/security_events.dart';
 import 'package:fastybird_smart_panel/modules/security/repositories/security_status.dart';
 import 'package:fastybird_smart_panel/modules/security/services/security_overlay_controller.dart';
+import 'package:fastybird_smart_panel/features/overlay/services/overlay_manager.dart';
 import 'package:fastybird_smart_panel/modules/intents/export.dart';
 import 'package:fastybird_smart_panel/modules/scenes/export.dart';
 import 'package:fastybird_smart_panel/modules/spaces/export.dart';
@@ -416,6 +417,12 @@ class StartupManagerService {
       try {
         locator<SecurityOverlayController>().dispose();
         locator.unregister<SecurityOverlayController>();
+      } catch (_) {}
+    }
+    if (locator.isRegistered<OverlayManager>()) {
+      try {
+        locator<OverlayManager>().dispose();
+        locator.unregister<OverlayManager>();
       } catch (_) {}
     }
     if (locator.isRegistered<EnergyModuleService>()) {
@@ -812,6 +819,8 @@ class StartupManagerService {
     locator.registerSingleton(securityModuleService.statusRepository);
     locator.registerSingleton(securityModuleService.eventsRepository);
     locator.registerSingleton(securityOverlayController);
+    var overlayManager = OverlayManager();
+    locator.registerSingleton(overlayManager);
     locator.registerSingleton(weatherModuleService);
     locator.registerSingleton(devicesModuleService);
     locator.registerSingleton(dashboardModuleService);

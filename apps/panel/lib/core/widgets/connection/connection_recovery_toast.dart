@@ -86,11 +86,9 @@ class _ConnectionRecoveryToastState extends State<ConnectionRecoveryToast>
         ? AppColorsDark.success
         : AppColorsLight.success;
 
-    return Positioned(
-      top: AppSpacings.pLg,
-      left: 0,
-      right: 0,
-      child: SafeArea(
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.only(top: AppSpacings.pLg),
         child: Center(
           child: SlideTransition(
             position: _slideAnimation,
@@ -101,38 +99,38 @@ class _ConnectionRecoveryToastState extends State<ConnectionRecoveryToast>
                 child: GestureDetector(
                   onTap: _dismiss,
                   child: Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: AppSpacings.pLg,
-                    vertical: AppSpacings.pMd + AppSpacings.pSm,
-                  ),
-                  decoration: BoxDecoration(
-                    color: backgroundColor,
-                    borderRadius: BorderRadius.circular(AppBorderRadius.round),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppShadowColor.medium,
-                        blurRadius: screenService.scale(10),
-                        offset: Offset(0, screenService.scale(2)),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        MdiIcons.checkCircle,
-                        color: AppColors.white,
-                        size: screenService.scale(18),
-                      ),
-                      AppSpacings.spacingMdHorizontal,
-                      Text(
-                        localizations.connection_recovery_connected,
-                        style: TextStyle(
-                          color: AppColors.white,
-                          fontSize: AppFontSize.base,
-                          fontWeight: FontWeight.w500,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: AppSpacings.pLg,
+                      vertical: AppSpacings.pMd + AppSpacings.pSm,
+                    ),
+                    decoration: BoxDecoration(
+                      color: backgroundColor,
+                      borderRadius: BorderRadius.circular(AppBorderRadius.round),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppShadowColor.medium,
+                          blurRadius: screenService.scale(10),
+                          offset: Offset(0, screenService.scale(2)),
                         ),
-                      ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          MdiIcons.checkCircle,
+                          color: AppColors.white,
+                          size: screenService.scale(18),
+                        ),
+                        AppSpacings.spacingMdHorizontal,
+                        Text(
+                          localizations.connection_recovery_connected,
+                          style: TextStyle(
+                            color: AppColors.white,
+                            fontSize: AppFontSize.base,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
                       ],
                     ),
                   ),

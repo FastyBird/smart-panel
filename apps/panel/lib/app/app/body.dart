@@ -10,17 +10,18 @@ import 'package:fastybird_smart_panel/core/services/startup_manager.dart';
 import 'package:fastybird_smart_panel/core/services/system_actions.dart';
 import 'package:fastybird_smart_panel/core/types/connection_state.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/connection/export.dart';
-import 'package:fastybird_smart_panel/core/widgets/screen_connection_lost.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_detail_page.dart';
 import 'package:fastybird_smart_panel/features/overlay/presentation/lock.dart';
+import 'package:fastybird_smart_panel/features/overlay/presentation/overlay_renderer.dart';
 import 'package:fastybird_smart_panel/features/overlay/presentation/screen_saver.dart';
+import 'package:fastybird_smart_panel/core/services/connection_overlay_provider.dart';
+import 'package:fastybird_smart_panel/features/overlay/services/overlay_manager.dart';
+import 'package:fastybird_smart_panel/modules/security/services/security_overlay_provider.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/config/module.dart';
 import 'package:fastybird_smart_panel/modules/config/repositories/module_config_repository.dart';
 import 'package:fastybird_smart_panel/modules/security/services/security_overlay_controller.dart';
 import 'package:fastybird_smart_panel/modules/security/repositories/security_status.dart';
-import 'package:fastybird_smart_panel/modules/security/presentation/security_overlay.dart';
 import 'package:fastybird_smart_panel/modules/system/models/system.dart';
 import 'package:fastybird_smart_panel/modules/system/types/configuration.dart';
 import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
@@ -46,6 +47,7 @@ class _AppBodyState extends State<AppBody> {
   final SocketService _socketService = locator<SocketService>();
   final SecurityOverlayController _securityOverlayController = locator<SecurityOverlayController>();
   final SecurityStatusRepository _securityStatusRepository = locator<SecurityStatusRepository>();
+  final OverlayManager _overlayManager = locator<OverlayManager>();
 
   bool _hasDarkMode = false;
   Language _language = Language.english;
@@ -54,8 +56,10 @@ class _AppBodyState extends State<AppBody> {
 
   // Connection state management
   final ConnectionStateManager _connectionManager = ConnectionStateManager();
-  SocketConnectionState? _previousSocketConnectionState;
-  bool _showRecoveryToast = false;
+
+  // Overlay providers
+  late final ConnectionOverlayProvider _connectionOverlayProvider;
+  late final SecurityOverlayProvider _securityOverlayProvider;
 
   Timer? _inactivityTimer;
 
@@ -84,13 +88,29 @@ class _AppBodyState extends State<AppBody> {
     _socketService.addConnectionListener(_onSocketConnectionChanged);
     _socketService.addErrorTypeListener(_onSocketErrorType);
 
-    // Listen to connection state manager for UI updates
+    // Listen to connection state manager for syncing offline state to security
     _connectionManager.addListener(_onSocketConnectionStateChanged);
 
     // Initialize connection state based on current socket status
     if (_socketService.isConnected) {
       _connectionManager.onConnected();
     }
+
+    // Initialize overlay providers
+    _connectionOverlayProvider = ConnectionOverlayProvider(
+      overlayManager: _overlayManager,
+      connectionManager: _connectionManager,
+      onReconnect: _handleReconnect,
+      onChangeGateway: _handleChangeGateway,
+    );
+    _connectionOverlayProvider.init();
+
+    _securityOverlayProvider = SecurityOverlayProvider(
+      overlayManager: _overlayManager,
+      securityController: _securityOverlayController,
+      eventBus: locator<EventBus>(),
+    );
+    _securityOverlayProvider.init();
 
     locator<SystemActionsService>().init();
   }
@@ -131,31 +151,12 @@ class _AppBodyState extends State<AppBody> {
     if (!mounted) return;
 
     final currentState = _connectionManager.state;
-    final severity = _connectionManager.uiSeverity;
-
-    // Check if we should show recovery toast
-    if (_connectionManager.shouldShowRecoveryToast(_previousSocketConnectionState ?? SocketConnectionState.initializing)) {
-      setState(() {
-        _showRecoveryToast = true;
-      });
-    }
-
-    // Dismiss recovery toast if entering a full-screen error state
-    // This prevents confusing UX where "Connected" toast appears with an error screen
-    if (severity == ConnectionUISeverity.fullScreen && _showRecoveryToast) {
-      setState(() {
-        _showRecoveryToast = false;
-      });
-    }
 
     // Sync offline state to security overlay controller
     _securityOverlayController.setConnectionOffline(
       currentState != SocketConnectionState.online &&
       currentState != SocketConnectionState.initializing,
     );
-
-    _previousSocketConnectionState = currentState;
-    setState(() {});
   }
 
   void _handleReconnect() {
@@ -176,14 +177,6 @@ class _AppBodyState extends State<AppBody> {
     // Reset to discovery state with proper cleanup
     // This clears credentials, backend URL, and disposes socket
     locator<StartupManagerService>().resetToDiscovery();
-  }
-
-  void _dismissRecoveryToast() {
-    if (mounted) {
-      setState(() {
-        _showRecoveryToast = false;
-      });
-    }
   }
 
   /// Initialize the deck with display settings
@@ -209,6 +202,9 @@ class _AppBodyState extends State<AppBody> {
   @override
   void dispose() {
     _inactivityTimer?.cancel();
+
+    _connectionOverlayProvider.dispose();
+    _securityOverlayProvider.dispose();
 
     _displayRepository.removeListener(_syncStateWithRepository);
     _displayRepository.removeListener(_onDisplayChanged);
@@ -261,68 +257,6 @@ class _AppBodyState extends State<AppBody> {
           _resetInactivityTimer();
         }
       });
-    }
-  }
-
-  /// Build connection UI based on current state and severity
-  List<Widget> _buildConnectionUI() {
-    final severity = _connectionManager.uiSeverity;
-    final state = _connectionManager.state;
-
-    return switch (severity) {
-      ConnectionUISeverity.none => [],
-      ConnectionUISeverity.banner => [
-        Positioned(
-          top: 0,
-          left: 0,
-          right: 0,
-          child: ConnectionBanner(
-            onRetry: _handleReconnect,
-          ),
-        ),
-      ],
-      ConnectionUISeverity.overlay => [
-        Positioned.fill(
-          child: ConnectionOverlay(
-            disconnectedDuration: _connectionManager.disconnectedDuration,
-            onRetry: _handleReconnect,
-          ),
-        ),
-      ],
-      // During initialization, don't show anything extra
-      // The app is already showing initialization UI
-      ConnectionUISeverity.splash => [],
-      ConnectionUISeverity.fullScreen => [
-        Positioned.fill(
-          child: _buildFullScreenError(state),
-        ),
-      ],
-    };
-  }
-
-  Widget _buildFullScreenError(SocketConnectionState state) {
-    switch (state) {
-      case SocketConnectionState.authError:
-        return AuthErrorScreen(
-          onReset: _handleChangeGateway,
-        );
-
-      case SocketConnectionState.networkUnavailable:
-        return NetworkErrorScreen(
-          onRetry: _handleReconnect,
-        );
-
-      case SocketConnectionState.serverUnavailable:
-        return ServerErrorScreen(
-          onRetry: _handleReconnect,
-        );
-
-      case SocketConnectionState.offline:
-      default:
-        return ConnectionLostScreen(
-          onReconnect: _handleReconnect,
-          onChangeGateway: _handleChangeGateway,
-        );
     }
   }
 
@@ -406,27 +340,8 @@ class _AppBodyState extends State<AppBody> {
               },
               child: child,
             ),
-            // Security overlay (below connection UI in precedence)
-            Positioned.fill(
-              child: SecurityOverlay(
-                onAcknowledge: () {
-                  _securityOverlayController.acknowledgeCurrentAlerts();
-                },
-                onOpenSecurity: () {
-                  _securityOverlayController.setOnSecurityScreen(true);
-                  locator<EventBus>().fire(
-                    NavigateToDeckItemEvent(SecurityViewItem.generateId()),
-                  );
-                },
-              ),
-            ),
-            // Connection UI layer (banner, overlay, or full-screen error)
-            ..._buildConnectionUI(),
-            // Recovery toast
-            if (_showRecoveryToast)
-              ConnectionRecoveryToast(
-                onDismiss: _dismissRecoveryToast,
-              ),
+            // All overlays rendered through the unified OverlayManager
+            const OverlayRenderer(),
           ],
         );
       },
