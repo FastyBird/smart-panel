@@ -10,6 +10,7 @@ import 'package:fastybird_smart_panel/modules/devices/export.dart';
 import 'package:fastybird_smart_panel/modules/energy/repositories/energy_repository.dart';
 import 'package:fastybird_smart_panel/modules/energy/widgets/energy_header_widget.dart';
 import 'package:fastybird_smart_panel/modules/scenes/export.dart';
+import 'package:fastybird_smart_panel/modules/security/services/security_overlay_controller.dart';
 import 'package:fastybird_smart_panel/modules/spaces/export.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -53,6 +54,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
   SpacesService? _spacesService;
   DevicesService? _devicesService;
   ScenesService? _scenesService;
+  SecurityOverlayController? _securityController;
 
   // Loading states
   bool _isLoading = true;
@@ -88,6 +90,11 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
 
     try {
       _scenesService = locator<ScenesService>();
+    } catch (_) {}
+
+    try {
+      _securityController = locator<SecurityOverlayController>();
+      _securityController?.addListener(_onSecurityChanged);
     } catch (_) {}
 
     _loadHouseData();
@@ -139,7 +146,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
         _roomsCount = rooms.length;
         _totalDevices = allDevices.length;
         _onlineDevices = onlineDeviceCount;
-        _alertsCount = 0; // TODO: Add alerts tracking when available
+        _alertsCount = _securityController?.status.activeAlertsCount ?? 0;
         _rooms = roomSummaries;
         _isLoading = false;
       });
@@ -304,12 +311,35 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
     }
   }
 
+  void _onSecurityChanged() {
+    if (!mounted) return;
+    setState(() {
+      _alertsCount = _securityController?.status.activeAlertsCount ?? 0;
+    });
+  }
+
   void _onRoomTap(RoomSummary room) {
-    // Navigate to room context via intent
     _intentsService.setRoomContextIntent(room.id);
 
-    // TODO: Navigate to room detail or room page when available
-    debugPrint('Navigate to room: ${room.name}');
+    final viewItem = SystemViewItem(
+      id: SystemViewItem.generateId(SystemViewType.room, room.id),
+      viewType: SystemViewType.room,
+      roomId: room.id,
+      title: room.name,
+    );
+
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => RoomOverviewPage(viewItem: viewItem),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _securityController?.removeListener(_onSecurityChanged);
+    super.dispose();
   }
 
   @override
@@ -336,25 +366,13 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
   }
 
   List<Widget> _buildStatusBadges(BuildContext context) {
-    final badges = <Widget>[];
-
-    // Devices status badge
-    badges.add(_buildDevicesBadge(context));
-
-    // Alerts badge
-    if (_alertsCount > 0) {
-      badges.add(AppSpacings.spacingSmHorizontal);
-      badges.add(_buildAlertsBadge(context));
-    }
-
-    // Energy header widget (whole-installation)
-    if (locator.isRegistered<EnergyRepository>() &&
-        locator<EnergyRepository>().isSupported) {
-      badges.add(AppSpacings.spacingSmHorizontal);
-      badges.add(const EnergyHeaderWidget());
-    }
-
-    return badges;
+    return [
+      _buildDevicesBadge(context),
+      if (_alertsCount > 0) _buildAlertsBadge(context),
+      if (locator.isRegistered<EnergyRepository>() &&
+          locator<EnergyRepository>().isSupported)
+        const EnergyHeaderWidget(),
+    ];
   }
 
   Widget _buildDevicesBadge(BuildContext context) {
@@ -718,13 +736,13 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
           borderRadius: BorderRadius.circular(AppBorderRadius.base),
         ),
         child: Row(
+          spacing: AppSpacings.pMd,
           children: [
             Icon(
               room.icon,
               size: iconSize,
               color: Theme.of(context).colorScheme.primary,
             ),
-            AppSpacings.spacingMdHorizontal,
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -752,7 +770,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
                 ],
               ),
             ),
-            if (room.temperature != null) ...[
+            if (room.temperature != null)
               Text(
                 '${NumberFormatUtils.defaultFormat.formatDecimal(room.temperature!, decimalPlaces: 1)}°',
                 style: TextStyle(
@@ -763,8 +781,6 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
                       : AppTextColorDark.regular,
                 ),
               ),
-              AppSpacings.spacingSmHorizontal,
-            ],
             Icon(
               MdiIcons.chevronRight,
               color: Theme.of(context).brightness == Brightness.light

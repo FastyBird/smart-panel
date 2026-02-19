@@ -286,27 +286,13 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
   }
 
   List<Widget> _buildStatusBadges(BuildContext context) {
-    final badges = <Widget>[];
-
-    // Locks status badge
-    if (_locksCount > 0) {
-      badges.add(_buildLocksBadge(context));
-    }
-
-    // Alarm status badge
-    if (_alarmsCount > 0) {
-      if (badges.isNotEmpty) badges.add(AppSpacings.spacingSmHorizontal);
-      badges.add(_buildAlarmBadge(context));
-    }
-
-    // Energy header widget (whole-installation)
-    if (locator.isRegistered<EnergyRepository>() &&
-        locator<EnergyRepository>().isSupported) {
-      if (badges.isNotEmpty) badges.add(AppSpacings.spacingSmHorizontal);
-      badges.add(const EnergyHeaderWidget());
-    }
-
-    return badges;
+    return [
+      if (_locksCount > 0) _buildLocksBadge(context),
+      if (_alarmsCount > 0) _buildAlarmBadge(context),
+      if (locator.isRegistered<EnergyRepository>() &&
+          locator<EnergyRepository>().isSupported)
+        const EnergyHeaderWidget(),
+    ];
   }
 
   Widget _buildLocksBadge(BuildContext context) {

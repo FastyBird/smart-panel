@@ -25,6 +25,10 @@ export enum EventType {
 	COVERS_TARGET_CREATED = 'SpacesModule.CoversTarget.Created',
 	COVERS_TARGET_UPDATED = 'SpacesModule.CoversTarget.Updated',
 	COVERS_TARGET_DELETED = 'SpacesModule.CoversTarget.Deleted',
+	// Media binding events
+	MEDIA_BINDING_CREATED = 'SpacesModule.MediaBinding.Created',
+	MEDIA_BINDING_UPDATED = 'SpacesModule.MediaBinding.Updated',
+	MEDIA_BINDING_DELETED = 'SpacesModule.MediaBinding.Deleted',
 	// Media activity activation events
 	MEDIA_ACTIVITY_ACTIVATING = 'SpacesModule.MediaActivity.Activating',
 	MEDIA_ACTIVITY_ACTIVATED = 'SpacesModule.MediaActivity.Activated',

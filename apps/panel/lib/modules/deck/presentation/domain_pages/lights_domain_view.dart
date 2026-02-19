@@ -40,7 +40,7 @@
 //   - BUILD: scaffold, loading/empty/content; [Consumer] for [DevicesService].
 //   - DATA BUILDING: [_buildRoleDataList], [_buildOtherLights], [_getLightOptimisticOn].
 //   - HEADER: [_buildHeader], [_getStatusColor], [_getModeName].
-//   - SHEETS: [_showOtherLightsSheet], [_showRoleLightsSheet], [_showScenesSheet].
+//   - SHEETS: [_showRoleLightsSheet], [_showScenesSheet].
 //   - LIGHTING MODE CONTROLS: [_setLightingMode], [_toggleRoleLights], [_toggleLight].
 //   - HERO CONTROLS: [_onHeroValueChanged], [_heroSetBrightness], [_heroSetColor], etc.
 //   - LAYOUTS: [_buildPortraitLayout], [_buildLandscapeLayout], role selector, scenes.
@@ -78,10 +78,9 @@ import 'package:fastybird_smart_panel/modules/deck/constants.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/bottom_nav_mode_config.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/lighting/role_mixed_state.dart';
-import 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/domain_data_loader.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/domain_state_view.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_item_sheet.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_mode_chip.dart';
-import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/domain_state_view.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/bottom_nav_mode_notifier.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/domain_control_state_service.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/deck_page_activated_event.dart';
@@ -1101,8 +1100,12 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     // Subscribe to page activation events for bottom nav mode registration
     _pageActivatedSubscription = _eventBus?.on<DeckPageActivatedEvent>().listen(_onPageActivated);
 
-    // Fetch light targets for this space
-    _fetchLightTargets();
+    // Defer fetch to after initState so inherited widgets (AppLocalizations,
+    // Theme) are accessible when data is already cached and the method runs
+    // synchronously through _registerModeConfig.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _fetchLightTargets();
+    });
 
     // Load hero cached values when role is mixed (after first frame)
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -1195,6 +1198,8 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     _isActivePage = event.itemId == widget.viewItem.id;
 
     if (_isActivePage) {
+      // Trigger rebuild to pick up any data changes that occurred while offscreen
+      setState(() {});
       _registerModeConfig();
     }
   }
@@ -1203,9 +1208,12 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     if (!_isActivePage || _isLoading) return;
 
     final targets = _spacesService?.getLightTargetsForSpace(_roomId) ?? [];
-    final hasLights = targets.isNotEmpty;
+    final hasConfiguredLights = targets.any((t) =>
+        t.role != null &&
+        t.role != LightTargetRole.other &&
+        t.role != LightTargetRole.hidden);
 
-    if (!LightingConstants.useBackendIntents || !hasLights) {
+    if (!LightingConstants.useBackendIntents || !hasConfiguredLights) {
       _bottomNavModeNotifier?.clear();
       return;
     }
@@ -1405,6 +1413,9 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         _registerModeConfig();
       }
     });
+    // Ensure a frame is scheduled so the post-frame callback runs promptly
+    // (addPostFrameCallback alone does not schedule a frame).
+    WidgetsBinding.instance.ensureVisualUpdate();
   }
 
   /// Checks convergence for device-level on/off optimistic states set by
@@ -1453,8 +1464,10 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
     final result = <LightTargetRole, List<LightTargetView>>{};
     for (final target in targets) {
-      final role = target.role ?? LightTargetRole.other;
-      if (role == LightTargetRole.hidden) continue;
+      final role = target.role;
+      // Skip targets without a specific role — null, "other", and "hidden"
+      // are all considered not configured for this screen
+      if (role == null || role == LightTargetRole.other || role == LightTargetRole.hidden) continue;
       result.putIfAbsent(role, () => []).add(target);
     }
 
@@ -1600,30 +1613,51 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       builder: (context, devicesService, _) {
         final lightTargets = _spacesService?.getLightTargetsForSpace(_roomId) ?? [];
 
-        if (lightTargets.isEmpty) {
-          return _buildEmptyState(context);
-        }
+        // Build role data (already excludes unconfigured/hidden targets)
+        final roles = _buildRoleDataList(lightTargets, devicesService, localizations);
 
-        // Build role data
-        final roleDataList = _buildRoleDataList(lightTargets, devicesService, localizations);
-        final definedRoles = roleDataList
-            .where((r) =>
-                r.role != LightTargetRole.other &&
-                r.role != LightTargetRole.hidden)
-            .toList();
-        final hasOtherLights = roleDataList.any(
-          (r) => r.role == LightTargetRole.other && r.targets.isNotEmpty,
-        );
-        // Calculate totals
-        final totalLights = lightTargets.length;
-        final lightsOn = _countLightsOn(lightTargets, devicesService);
+        // No configured roles — show not-configured state with header
+        if (roles.isEmpty) {
+          return Scaffold(
+            backgroundColor: Theme.of(context).brightness == Brightness.dark
+                ? AppBgColorDark.page
+                : AppBgColorLight.page,
+            body: SafeArea(
+              child: Column(
+                children: [
+                  PageHeader(
+                    title: localizations.domain_lights,
+                    subtitle: localizations.domain_not_configured_subtitle,
+                    leading: HeaderMainIcon(
+                      icon: MdiIcons.lightbulbOutline,
+                    ),
+                  ),
+                  Expanded(
+                    child: DomainStateView(
+                      state: DomainLoadState.notConfigured,
+                      onRetry: _retryLoad,
+                      domainName: localizations.domain_lights,
+                      notConfiguredIcon: MdiIcons.lightbulbOffOutline,
+                      notConfiguredTitle: localizations.domain_lights_empty_title,
+                      notConfiguredDescription: localizations.domain_lights_empty_description,
+                      child: const SizedBox.shrink(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+        // Calculate totals from defined roles (excludes unconfigured/hidden targets)
+        final totalLights = roles.fold<int>(0, (sum, r) => sum + r.totalCount);
+        final lightsOn = roles.fold<int>(0, (sum, r) => sum + r.onCount);
 
         // Auto-select first role and build hero state
         final effectiveRole = _selectedRole ??
-            (definedRoles.isNotEmpty ? definedRoles.first.role : null);
+            (roles.isNotEmpty ? roles.first.role : null);
         _LightHeroState? heroState;
         if (effectiveRole != null) {
-          final selectedRoleData = _getRoleDataForRole(definedRoles, effectiveRole);
+          final selectedRoleData = _getRoleDataForRole(roles, effectiveRole);
           if (selectedRoleData != null) {
             heroState = _buildHeroState(selectedRoleData, devicesService, localizations);
             heroState = _applyHeroOptimisticOverrides(heroState!, localizations);
@@ -1643,7 +1677,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                 // Pre-calculate whether scenes fit inline in landscape
                 final hasScenes = _lightingScenes.isNotEmpty;
                 bool landscapeScenesInline = true;
-                if (isLandscape && hasScenes && definedRoles.isNotEmpty) {
+                if (isLandscape && hasScenes && roles.length > 1) {
                   final tileHeight =
                       AppSpacings.scale(AppTileHeight.horizontal * 0.85);
                   final headerHeight = 2 * AppSpacings.pMd +
@@ -1651,9 +1685,9 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                       AppFontSize.small * 1.4;
                   final columnHeight =
                       constraints.maxHeight - headerHeight - AppSpacings.pMd;
-                  final rolesHeight = definedRoles.length * tileHeight +
-                      (definedRoles.length > 1
-                          ? (definedRoles.length - 1) * AppSpacings.pSm
+                  final rolesHeight = roles.length * tileHeight +
+                      (roles.length > 1
+                          ? (roles.length - 1) * AppSpacings.pSm
                           : 0);
                   final remaining =
                       columnHeight - rolesHeight - AppSpacings.pMd;
@@ -1672,19 +1706,18 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                   children: [
                     _buildHeader(
                       context, lightsOn, totalLights,
-                      hasOtherLights: hasOtherLights,
                       showScenesButton: showScenesButton,
                     ),
                     Expanded(
                       child: isLandscape
                           ? _buildLandscapeLayout(
-                              context, definedRoles, localizations,
+                              context, roles, localizations,
                               heroState: heroState,
                               effectiveRole: effectiveRole,
                               showScenes: landscapeScenesInline,
                             )
                           : _buildPortraitLayout(
-                              context, definedRoles, localizations,
+                              context, roles, localizations,
                               heroState: heroState,
                               effectiveRole: effectiveRole,
                             ),
@@ -1718,14 +1751,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     DevicesService devicesService,
     AppLocalizations localizations,
   ) {
-    // Group targets by role
-    final Map<LightTargetRole, List<LightTargetView>> grouped = {};
-    for (final target in targets) {
-      final role = target.role ?? LightTargetRole.other;
-      if (role == LightTargetRole.hidden) continue;
-      grouped.putIfAbsent(role, () => []).add(target);
-    }
-
+    final grouped = _groupTargetsByRole(targets);
     final lightingState = _lightingState;
 
     final List<LightingRoleData> roles = [];
@@ -2045,8 +2071,12 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   ThemeColors _getStatusColor(BuildContext context) {
     final targets = _spacesService?.getLightTargetsForSpace(_roomId) ?? [];
     final devicesService = context.read<DevicesService>();
-    final totalLights = targets.length;
-    final lightsOn = _countLightsOn(targets, devicesService);
+    final configured = targets.where((t) =>
+        t.role != null &&
+        t.role != LightTargetRole.other &&
+        t.role != LightTargetRole.hidden);
+    final totalLights = configured.length;
+    final lightsOn = _countLightsOn(configured.toList(), devicesService);
     if (lightsOn == totalLights && totalLights > 0) return ThemeColors.success;
     if (lightsOn == 0) return ThemeColors.neutral;
     return ThemeColors.warning;
@@ -2060,7 +2090,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     BuildContext context,
     int lightsOn,
     int totalLights, {
-    bool hasOtherLights = false,
     bool showScenesButton = false,
   }) {
     final localizations = AppLocalizations.of(context)!;
@@ -2114,11 +2143,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         HeaderIconButton(
           icon: MdiIcons.autoFix,
           onTap: _showScenesSheet,
-        ),
-      if (hasOtherLights)
-        HeaderIconButton(
-          icon: MdiIcons.lightbulbGroup,
-          onTap: _showOtherLightsSheet,
         ),
     ];
 
@@ -2189,84 +2213,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       isLocked: isLocked,
       lockedValue: lockedValue,
     ).toTuple();
-  }
-
-  // --------------------------------------------------------------------------
-  // OTHER LIGHTS SHEET / DRAWER
-  // --------------------------------------------------------------------------
-
-  void _showOtherLightsSheet() {
-    final targets = _spacesService?.getLightTargetsForSpace(_roomId) ?? [];
-    final roleGroups = _groupTargetsByRole(targets);
-    final otherTargets = roleGroups[LightTargetRole.other] ?? [];
-    if (otherTargets.isEmpty) return;
-
-    final devicesService = _devicesService;
-    if (devicesService == null) return;
-
-    final roomName = _spacesService?.getSpace(_roomId)?.name ?? '';
-    final initialLights = _buildOtherLights(otherTargets, devicesService, roomName);
-    if (initialLights.isEmpty) return;
-
-    final localizations = AppLocalizations.of(context)!;
-    final isLandscape =
-        MediaQuery.of(context).orientation == Orientation.landscape;
-
-    if (isLandscape) {
-      final isDark = Theme.of(context).brightness == Brightness.dark;
-      final drawerBgColor =
-          isDark ? AppFillColorDark.base : AppFillColorLight.blank;
-
-      showAppRightDrawer(
-        context,
-        title: localizations.domain_lights_other,
-        titleIcon: MdiIcons.lightbulbOutline,
-        scrollable: false,
-        content: ListenableBuilder(
-          listenable: _roleLightsSheetNotifier,
-          builder: (ctx, _) {
-            final lights = _buildOtherLights(
-              otherTargets,
-              devicesService,
-              roomName,
-            );
-            return VerticalScrollWithGradient(
-              gradientHeight: AppSpacings.pMd,
-              itemCount: lights.length,
-              separatorHeight: AppSpacings.pSm,
-              backgroundColor: drawerBgColor,
-              padding: EdgeInsets.symmetric(
-                horizontal: AppSpacings.pLg,
-                vertical: AppSpacings.pMd,
-              ),
-              itemBuilder: (context, index) =>
-                  _buildOtherLightTileForSheet(context, lights[index]),
-            );
-          },
-        ),
-      );
-    } else {
-      List<LightDeviceData> cachedLights = initialLights;
-
-      DeckItemSheet.showItemSheetWithUpdates(
-        context,
-        title: localizations.domain_lights_other,
-        icon: MdiIcons.lightbulbOutline,
-        rebuildWhen: _roleLightsSheetNotifier,
-        getItemCount: () {
-          cachedLights = _buildOtherLights(
-            otherTargets,
-            devicesService,
-            roomName,
-          );
-          return cachedLights.length;
-        },
-        itemBuilder: (context, index) => _buildOtherLightTileForSheet(
-          context,
-          cachedLights[index],
-        ),
-      );
-    }
   }
 
   /// Sync all lights in the role to current hero display values.
@@ -2692,7 +2638,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     _LightHeroState? heroState,
     LightTargetRole? effectiveRole,
   }) {
-    final hasRoles = roles.isNotEmpty;
     final hasScenes = _lightingScenes.isNotEmpty;
     final statusColor = _getStatusColor(context);
 
@@ -2731,7 +2676,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                   : null,
             ),
 
-          if (hasRoles) ...[
+          if (roles.length > 1) ...[
             AppSpacings.spacingMdVertical,
             _buildRoleSelector(context, roles, effectiveRole: effectiveRole),
           ],
@@ -2775,7 +2720,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         left: AppSpacings.pMd,
         bottom: AppSpacings.pMd,
       ),
-      additionalContent: (roles.isNotEmpty || hasScenes)
+      additionalContent: (roles.length > 1 || hasScenes)
           ? _buildLandscapeAdditionalColumn(
               context, roles, localizations,
               effectiveRole: effectiveRole,
@@ -2841,13 +2786,13 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        if (roles.isNotEmpty)
+        if (roles.length > 1)
           _buildLandscapeRolesCard(
             context, roles,
             effectiveRole: effectiveRole,
           ),
         if (showScenes) ...[
-          if (roles.isNotEmpty) AppSpacings.spacingMdVertical,
+          if (roles.length > 1) AppSpacings.spacingMdVertical,
           Expanded(
             child: _buildLandscapeScenesColumn(context, localizations),
           ),
@@ -3761,59 +3706,6 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     );
   }
 
-  // --------------------------------------------------------------------------
-  // EMPTY STATE
-  // --------------------------------------------------------------------------
-
-  Widget _buildEmptyState(BuildContext context) {
-    final localizations = AppLocalizations.of(context)!;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Scaffold(
-      backgroundColor: isDark
-          ? AppBgColorDark.page
-          : AppBgColorLight.page,
-      body: Center(
-        child: Padding(
-          padding: AppSpacings.paddingLg,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            spacing: AppSpacings.pMd,
-            children: [
-              Icon(
-                MdiIcons.lightbulbOffOutline,
-                color: isDark
-                    ? AppTextColorDark.secondary
-                    : AppTextColorLight.secondary,
-                size: AppSpacings.scale(64),
-              ),
-              Text(
-                localizations.domain_lights_empty_title,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: AppFontSize.extraLarge,
-                  fontWeight: FontWeight.w600,
-                  color: isDark
-                      ? AppTextColorDark.primary
-                      : AppTextColorLight.primary,
-                ),
-              ),
-              Text(
-                localizations.domain_lights_empty_description,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: AppFontSize.base,
-                  color: isDark
-                      ? AppTextColorDark.secondary
-                      : AppTextColorLight.secondary,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 // =============================================================================
@@ -3939,9 +3831,9 @@ class _LightsHeroCard extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.end,
+      spacing: AppSpacings.pSm,
       children: [
         _buildBadge(isDark, colorFamily),
-        AppSpacings.spacingSmHorizontal,
         _buildGiantValue(isDark, fontSize),
       ],
     );
@@ -3991,13 +3883,13 @@ class _LightsHeroCard extends StatelessWidget {
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
+              spacing: AppSpacings.pSm,
               children: [
                 Icon(
                   MdiIcons.power,
                   size: fontSize,
                   color: activeColor,
                 ),
-                AppSpacings.spacingSmHorizontal,
                 Text(
                   state.roleName.toUpperCase(),
                   style: TextStyle(
@@ -4035,13 +3927,13 @@ class _LightsHeroCard extends StatelessWidget {
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
+              spacing: AppSpacings.pSm,
               children: [
                 Icon(
                   state.statusIcon,
                   size: fontSize,
                   color: activeColor,
                 ),
-                AppSpacings.spacingSmHorizontal,
                 Container(
                   width: fontSize,
                   height: fontSize,
@@ -4219,6 +4111,7 @@ class _LightsHeroCard extends StatelessWidget {
         _sliderParams(isDark, colorFamily, mode, localizations);
 
     return Column(
+      spacing: AppSpacings.pMd,
       children: [
         Padding(
           padding: EdgeInsets.symmetric(
@@ -4240,7 +4133,6 @@ class _LightsHeroCard extends StatelessWidget {
                 : null,
           ),
         ),
-        AppSpacings.spacingMdVertical,
         _buildPresets(isDark, colorFamily, mode, localizations),
       ],
     );

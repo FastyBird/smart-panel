@@ -68,7 +68,6 @@ import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient
 import 'package:fastybird_smart_panel/core/widgets/tile_wrappers.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
-import 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/domain_data_loader.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/domain_state_view.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/bottom_nav_mode_notifier.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/deck_page_activated_event.dart';
@@ -271,7 +270,12 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     // Subscribe to page activation events for bottom nav mode registration
     _pageActivatedSubscription = _eventBus?.on<DeckPageActivatedEvent>().listen(_onPageActivated);
 
-    _fetchSensorData();
+    // Defer fetch to after initState so inherited widgets (AppLocalizations,
+    // Theme) are accessible when data is already cached and the method runs
+    // synchronously through _registerModeConfig.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _fetchSensorData();
+    });
 
     _freshnessTimer = Timer.periodic(
       _SensorsViewConstants.freshnessRefreshInterval,
@@ -537,6 +541,9 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
         _registerModeConfig();
       }
     });
+    // Ensure a frame is scheduled so the post-frame callback runs promptly
+    // (addPostFrameCallback alone does not schedule a frame).
+    WidgetsBinding.instance.ensureVisualUpdate();
   }
 
   // --------------------------------------------------------------------------
@@ -711,6 +718,16 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
     return _spaceStateRepository?.getSensorState(_roomId)?.environment;
   }
 
+  /// Whether any environment summary data is available (temp, humidity, illuminance, pressure).
+  bool get _hasEnvironmentData {
+    final env = _environment;
+    return env != null &&
+        (env.averageTemperature != null ||
+            env.averageHumidity != null ||
+            env.averageIlluminance != null ||
+            env.averagePressure != null);
+  }
+
   // --------------------------------------------------------------------------
   // FILTERING & CATEGORIES
   // --------------------------------------------------------------------------
@@ -840,6 +857,37 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
       builder: (context, _, __) {
         final isDark = Theme.of(context).brightness == Brightness.dark;
 
+        // No sensors — show not-configured state with header
+        if (_sensors.isEmpty) {
+          return Scaffold(
+            backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
+            body: SafeArea(
+              child: Column(
+                children: [
+                  PageHeader(
+                    title: localizations.domain_sensors,
+                    subtitle: localizations.domain_not_configured_subtitle,
+                    leading: HeaderMainIcon(
+                      icon: MdiIcons.accessPointNetwork,
+                    ),
+                  ),
+                  Expanded(
+                    child: DomainStateView(
+                      state: DomainLoadState.notConfigured,
+                      onRetry: _retryLoad,
+                      domainName: localizations.domain_sensors,
+                      notConfiguredIcon: MdiIcons.accessPointNetworkOff,
+                      notConfiguredTitle: localizations.sensors_domain_empty_title,
+                      notConfiguredDescription: localizations.sensors_domain_empty_description,
+                      child: const SizedBox.shrink(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
         final alertCount =
             _sensors.where((s) => s.status == SensorStatus.alert).length;
 
@@ -850,79 +898,19 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
               children: [
                 _buildHeader(context, alertCount),
                 Expanded(
-                  child: _sensors.isEmpty
-                      ? _buildEmptyState(context)
-                      : OrientationBuilder(
-                          builder: (context, orientation) {
-                            return orientation == Orientation.landscape
-                                ? _buildLandscapeLayout(context)
-                                : _buildPortraitLayout(context);
-                          },
-                        ),
+                  child: OrientationBuilder(
+                    builder: (context, orientation) {
+                      return orientation == Orientation.landscape
+                          ? _buildLandscapeLayout(context)
+                          : _buildPortraitLayout(context);
+                    },
+                  ),
                 ),
               ],
             ),
           ),
         );
       },
-    );
-  }
-
-  // =============================================================================
-  // EMPTY STATE
-  // =============================================================================
-  // Shown when [_sensors] is empty: icon, title, description.
-
-  Widget _buildEmptyState(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final localizations = AppLocalizations.of(context)!;
-    final warningColor = isDark ? AppColorsDark.warning : AppColorsLight.warning;
-    final warningBgColor =
-        isDark ? AppColorsDark.warningLight9 : AppColorsLight.warningLight9;
-
-    return Center(
-      child: Padding(
-        padding: AppSpacings.paddingXl,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          spacing: AppSpacings.pMd,
-          children: [
-            Container(
-              width: AppSpacings.scale(80),
-              height: AppSpacings.scale(80),
-              decoration: BoxDecoration(
-                color: warningBgColor,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                MdiIcons.accessPointNetworkOff,
-                size: AppSpacings.scale(48),
-                color: warningColor,
-              ),
-            ),
-            Text(
-              localizations.sensors_domain_empty_title,
-              style: TextStyle(
-                fontSize: AppFontSize.large,
-                fontWeight: FontWeight.w600,
-                color:
-                    isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            Text(
-              localizations.sensors_domain_empty_description,
-              style: TextStyle(
-                fontSize: AppFontSize.base,
-                color: isDark
-                    ? AppTextColorDark.secondary
-                    : AppTextColorLight.secondary,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -991,7 +979,8 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
         spacing: AppSpacings.pMd,
         children: [
           if (_hasAlerts) _buildAlertBanner(context),
-          _buildSummaryCards(context, compact: isSmallScreen),
+          if (_hasEnvironmentData)
+            _buildSummaryCards(context, compact: isSmallScreen),
           _buildSensorSectionTitle(context),
           Expanded(
             child: VerticalScrollWithGradient(
@@ -1027,7 +1016,9 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
 
   Widget _buildLandscapeLayout(BuildContext context) {
     final isLargeScreen = _screenService.isLargeScreen;
-    final sensorsPerRow = isLargeScreen ? 3 : 2;
+    final hasEnv = _hasEnvironmentData;
+    // Extra column when env summary sidebar is hidden (no env data available)
+    final sensorsPerRow = (isLargeScreen ? 3 : 2) + (hasEnv ? 0 : 1);
 
     return LandscapeViewLayout(
       mainContentPadding: EdgeInsets.only(
@@ -1070,7 +1061,9 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
         left: AppSpacings.pMd,
         bottom: AppSpacings.pMd,
       ),
-      additionalContent: _buildSummaryCards(context, compact: !isLargeScreen, vertical: true),
+      additionalContent: _hasEnvironmentData
+          ? _buildSummaryCards(context, compact: !isLargeScreen, vertical: true)
+          : null,
     );
   }
 
@@ -1313,33 +1306,33 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
         onTap: () => _showFilterPopup(sectionContext),
         behavior: HitTestBehavior.opaque,
         child: SectionTitle(
-        icon: MdiIcons.viewGrid,
-        title: _selectedCategory == null
-            ? localizations.sensors_domain_all_sensors
-            : _getCategoryLabel(localizations, _selectedCategory!),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          spacing: AppSpacings.pSm,
-          children: [
-            Text(
-              localizations.sensors_domain_sensor_count(filtered.length),
-              style: TextStyle(
-                color: isDark
-                    ? AppTextColorDark.placeholder
-                    : AppTextColorLight.placeholder,
-                fontSize: AppFontSize.extraSmall,
+          icon: MdiIcons.viewGrid,
+          title: _selectedCategory == null
+              ? localizations.sensors_domain_all_sensors
+              : _getCategoryLabel(localizations, _selectedCategory!),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            spacing: AppSpacings.pSm,
+            children: [
+              Text(
+                localizations.sensors_domain_sensor_count(filtered.length),
+                style: TextStyle(
+                  color: isDark
+                      ? AppTextColorDark.placeholder
+                      : AppTextColorLight.placeholder,
+                  fontSize: AppFontSize.extraSmall,
+                ),
               ),
-            ),
-            Icon(
-              MdiIcons.chevronDown,
-              color: isDark
-                  ? AppTextColorDark.secondary
-                  : AppTextColorLight.secondary,
-              size: AppFontSize.small,
-            ),
-          ],
+              Icon(
+                MdiIcons.chevronDown,
+                color: isDark
+                    ? AppTextColorDark.secondary
+                    : AppTextColorLight.secondary,
+                size: AppFontSize.small,
+              ),
+            ],
+          ),
         ),
-      ),
       ),
     );
   }
@@ -1437,11 +1430,10 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.center,
+                spacing: AppSpacings.pSm,
                 children: [
-                  if (!sensor.isBinary) ...[
+                  if (!sensor.isBinary)
                     _buildTrendIcon(context, sensor.trend, isAlert),
-                    AppSpacings.spacingSmHorizontal,
-                  ],
                   RichText(
                     maxLines: 1,
                     text: TextSpan(

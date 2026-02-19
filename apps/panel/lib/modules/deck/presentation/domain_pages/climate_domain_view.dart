@@ -83,11 +83,10 @@ import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
-import 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/domain_data_loader.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/domain_state_view.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_item_sheet.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_mode_chip.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_mode_popup.dart';
-import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/domain_state_view.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/domain_control_state_service.dart';
 import 'package:fastybird_smart_panel/modules/deck/utils/lighting.dart';
 import 'package:fastybird_smart_panel/modules/devices/export.dart';
@@ -473,7 +472,12 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     // Subscribe to page activation events for bottom nav mode registration
     _pageActivatedSubscription = _eventBus?.on<DeckPageActivatedEvent>().listen(_onPageActivated);
 
-    _fetchClimateData();
+    // Defer fetch to after initState so inherited widgets (AppLocalizations,
+    // Theme) are accessible when data is already cached and the method runs
+    // synchronously through _registerModeConfig.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _fetchClimateData();
+    });
   }
 
   /// Fetches climate targets and climate state for the room if not already
@@ -1242,6 +1246,11 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   void _registerModeConfig() {
     if (!_isActivePage || _isLoading) return;
 
+    if (_state.climateDevices.isEmpty) {
+      _bottomNavModeNotifier?.clear();
+      return;
+    }
+
     final localizations = AppLocalizations.of(context)!;
     final modeOptions = _getClimateModeOptions(localizations);
     if (modeOptions.isEmpty) return;
@@ -1459,6 +1468,9 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         }
       }
     });
+    // Ensure a frame is scheduled so the post-frame callback runs promptly
+    // (addPostFrameCallback alone does not schedule a frame).
+    WidgetsBinding.instance.ensureVisualUpdate();
   }
 
   // --------------------------------------------------------------------------
@@ -1889,6 +1901,37 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
 
     return Consumer<DevicesService>(
       builder: (context, devicesService, _) {
+        // No climate actuators configured — show "not configured" state with header
+        if (_state.climateDevices.isEmpty) {
+          return Scaffold(
+            backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
+            body: SafeArea(
+              child: Column(
+                children: [
+                  PageHeader(
+                    title: localizations.domain_climate,
+                    subtitle: localizations.domain_not_configured_subtitle,
+                    leading: HeaderMainIcon(
+                      icon: MdiIcons.thermostat,
+                    ),
+                  ),
+                  Expanded(
+                    child: DomainStateView(
+                      state: DomainLoadState.notConfigured,
+                      onRetry: _retryLoad,
+                      domainName: localizations.domain_climate,
+                      notConfiguredIcon: MdiIcons.thermometerOff,
+                      notConfiguredTitle: localizations.domain_climate_empty_title,
+                      notConfiguredDescription: localizations.domain_climate_empty_description,
+                      child: const SizedBox.shrink(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
         return Scaffold(
           backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
           body: SafeArea(
@@ -2318,22 +2361,21 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
 
           return Column(
             mainAxisAlignment: MainAxisAlignment.center,
+            spacing: AppSpacings.pLg,
             children: [
               Row(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.end,
+                spacing: AppSpacings.pSm,
                 children: [
                   _buildModeBadge(context),
-                  AppSpacings.spacingSmHorizontal,
                   _buildGiantTemp(context, fontSize),
                 ],
               ),
-              AppSpacings.spacingLgVertical,
               Padding(
                 padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
                 child: _buildTemperatureSlider(context),
               ),
-              AppSpacings.spacingLgVertical,
               _buildControlsRow(context),
             ],
           );
@@ -2374,6 +2416,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
+          spacing: AppSpacings.pSm,
           children: [
             Container(
               width: AppSpacings.scale(8),
@@ -2383,7 +2426,6 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
                 shape: BoxShape.circle,
               ),
             ),
-            AppSpacings.spacingSmHorizontal,
             Text(
               modeLabel,
               style: TextStyle(

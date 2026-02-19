@@ -46,6 +46,10 @@
   "@domain_data_load_failed_description": {
     "description": "Description for domain data load failure"
   },
+  "domain_not_configured_subtitle": "Not configured",
+  "@domain_not_configured_subtitle": {
+    "description": "Subtitle shown in domain page header when domain is not configured"
+  },
   "services_not_available": "Services not available",
   "@services_not_available": {
     "description": "Displayed when required services are not initialized"
@@ -1722,13 +1726,13 @@
   "@domain_lights_other": {
     "description": "Section header for uncategorized lights in lights domain view"
   },
-  "domain_lights_empty_title": "No Lights",
+  "domain_lights_empty_title": "Lighting Not Configured",
   "@domain_lights_empty_title": {
-    "description": "Title shown when no lights are found in the room"
+    "description": "Title shown when lighting roles are not configured for this room"
   },
-  "domain_lights_empty_description": "No lighting devices found in this room",
+  "domain_lights_empty_description": "Lighting roles have not been set up for this room. Configure roles in the admin panel to control your lights.",
   "@domain_lights_empty_description": {
-    "description": "Description shown when no lights are found in the room"
+    "description": "Description shown when lighting roles are not configured for this room"
   },
   "domain_lights_count_on": "{count, plural, =1{1 light on} other{{count} lights on}}",
   "@domain_lights_count_on": {
@@ -1770,6 +1774,14 @@
   "domain_climate": "Climate",
   "@domain_climate": {
     "description": "Title for climate domain view in room navigation"
+  },
+  "domain_climate_empty_title": "Climate Not Configured",
+  "@domain_climate_empty_title": {
+    "description": "Title shown when climate control is not configured for this room"
+  },
+  "domain_climate_empty_description": "No thermostats or climate actuators are set up for this room. Add climate devices in the admin panel.",
+  "@domain_climate_empty_description": {
+    "description": "Description shown when climate control is not configured for this room"
   },
   "domain_media": "Media",
   "@domain_media": {
@@ -2661,13 +2673,13 @@
   "@domain_shading": {
     "description": "Title for shading domain view in room navigation"
   },
-  "domain_shading_empty_title": "No Window Coverings",
+  "domain_shading_empty_title": "Shading Not Configured",
   "@domain_shading_empty_title": {
-    "description": "Title shown when no window coverings are found in the room"
+    "description": "Title shown when shading roles are not configured for this room"
   },
-  "domain_shading_empty_description": "No window covering devices found in this room",
+  "domain_shading_empty_description": "Window covering roles have not been set up for this room. Configure roles in the admin panel to control your shades.",
   "@domain_shading_empty_description": {
-    "description": "Description shown when no window coverings are found in the room"
+    "description": "Description shown when shading roles are not configured for this room"
   },
   "shading_modes_title": "Modes",
   "@shading_modes_title": {
@@ -3250,6 +3262,14 @@
   "@media_off_subtitle": {
     "description": "Subtitle shown when media is off"
   },
+  "media_not_configured_title": "Media Not Configured",
+  "@media_not_configured_title": {
+    "description": "Title shown when no media activity bindings are configured for this room"
+  },
+  "media_not_configured_description": "Media activities have not been set up for this room. Configure activity bindings in the admin panel.",
+  "@media_not_configured_description": {
+    "description": "Description shown when no media activity bindings are configured for this room"
+  },
   "media_starting_activity": "Starting {activityName}...",
   "@media_starting_activity": {
     "description": "Shown when an activity is being activated",
@@ -3681,8 +3701,8 @@
   "sensor_status_retry": "Retry",
 
   "sensors_domain_title": "Sensors",
-  "sensors_domain_empty_title": "No Sensors",
-  "sensors_domain_empty_description": "No sensors are assigned to this room yet.",
+  "sensors_domain_empty_title": "Sensors Not Configured",
+  "sensors_domain_empty_description": "Sensor roles have not been set up for this room. Configure sensor assignments in the admin panel.",
   "sensors_domain_alerts_active": "{count, plural, =1{Alert Active} other{Alerts Active}}",
   "@sensors_domain_alerts_active": {
     "placeholders": {

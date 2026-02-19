@@ -428,6 +428,11 @@ class MediaActivityRepository extends ChangeNotifier {
 		notifyListeners();
 	}
 
+	/// Re-fetch bindings for a space (called on WebSocket binding events).
+	Future<void> refreshBindings(String spaceId) async {
+		await fetchBindings(spaceId);
+	}
+
 	/// Clear data for a specific space.
 	void clearForSpace(String spaceId) {
 		_endpoints.remove(spaceId);

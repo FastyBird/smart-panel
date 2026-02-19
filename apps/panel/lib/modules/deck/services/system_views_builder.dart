@@ -22,6 +22,12 @@ class SystemViewsBuildInput {
   /// When 0 (no sensor roles assigned), the sensors domain is hidden.
   final int sensorReadingsCount;
 
+  /// Configuration counts (null = not yet loaded).
+  final int? lightTargetsCount;
+  final int? climateTargetsCount;
+  final int? coversTargetsCount;
+  final int? mediaBindingsCount;
+
   /// Localized titles.
   final String roomViewTitle;
   final String masterViewTitle;
@@ -38,6 +44,10 @@ class SystemViewsBuildInput {
     this.deviceCategories = const [],
     this.energyDeviceCount = 0,
     this.sensorReadingsCount = 0,
+    this.lightTargetsCount,
+    this.climateTargetsCount,
+    this.coversTargetsCount,
+    this.mediaBindingsCount,
     this.roomViewTitle = 'Room',
     this.masterViewTitle = 'Home',
     this.entryViewTitle = 'Entry',
@@ -107,6 +117,10 @@ SystemViewsResult buildSystemViews(SystemViewsBuildInput input) {
         input.deviceCategories,
         energyDeviceCount: input.energyDeviceCount,
         sensorReadingsCount: input.sensorReadingsCount,
+        lightTargetsCount: input.lightTargetsCount,
+        climateTargetsCount: input.climateTargetsCount,
+        coversTargetsCount: input.coversTargetsCount,
+        mediaBindingsCount: input.mediaBindingsCount,
       );
 
       // 1. Add room overview

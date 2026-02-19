@@ -101,7 +101,8 @@
 					"room": "Room (Single room control)",
 					"master": "Master (Whole-house overview)",
 					"entry": "Entry (House modes and security)"
-				}
+				},
+				"comingSoon": "Soon"
 			},
 			"unitSize": {
 				"title": "Unit size",

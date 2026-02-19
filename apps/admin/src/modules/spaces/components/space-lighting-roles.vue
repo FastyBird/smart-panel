@@ -172,7 +172,7 @@ const loadLightTargets = async (): Promise<void> => {
 
 const onRoleChange = async (target: ILightTarget, newRole: string): Promise<void> => {
 	try {
-		if (newRole === '') {
+		if (!newRole) {
 			// Clear role - delete the assignment
 			const { error } = await backend.client.DELETE(
 				`/${MODULES_PREFIX}/${SPACES_MODULE_PREFIX}/spaces/{id}/lighting/roles/{deviceId}/{channelId}`,

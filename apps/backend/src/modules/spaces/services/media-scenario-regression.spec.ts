@@ -250,6 +250,7 @@ describe('Media Regression – Default Bindings Quality', () => {
 				{ provide: SpacesService, useValue: harness.mockSpacesService },
 				{ provide: DerivedMediaEndpointService, useValue: harness.mockDerivedEndpointService },
 				{ provide: MediaCapabilityService, useValue: harness.mockMediaCapabilityService },
+				{ provide: EventEmitter2, useValue: harness.mockEventEmitter },
 			],
 		}).compile();
 

@@ -3,19 +3,36 @@ import 'package:material_design_icons_flutter/material_design_icons_flutter.dart
 
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
-import 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/domain_data_loader.dart';
 
-/// Widget that displays loading spinner, error with retry, or child content.
+/// States for domain data loading.
+///
+/// Represents the lifecycle of data loading in domain views:
+/// - [loading]: Initial fetch is in progress
+/// - [loaded]: Data was successfully loaded
+/// - [error]: Fetch failed, requires retry
+/// - [empty]: Loaded successfully but no data exists
+/// - [notConfigured]: Domain exists but is not configured (no roles/bindings)
+enum DomainLoadState {
+  loading,
+  loaded,
+  error,
+  empty,
+  notConfigured,
+}
+
+/// Widget that displays loading spinner, error with retry, not-configured
+/// info, or child content.
 ///
 /// Used by domain views (lights, climate, shading, media, sensors) to provide
-/// consistent loading and error UI states.
+/// consistent loading, error, and not-configured UI states.
 ///
 /// When [state] is:
 /// - [DomainLoadState.loading]: Shows centered circular progress indicator
 /// - [DomainLoadState.error]: Shows error icon, message, and retry button
+/// - [DomainLoadState.notConfigured]: Shows domain icon with title/description
 /// - [DomainLoadState.loaded] or [DomainLoadState.empty]: Shows [child]
 class DomainStateView extends StatelessWidget {
-  /// Current loading state from [DomainDataLoader].
+  /// Current loading state.
   final DomainLoadState state;
 
   /// Error message to display (optional).
@@ -30,6 +47,15 @@ class DomainStateView extends StatelessWidget {
   /// Domain name for error message (e.g., "Lights", "Climate").
   final String domainName;
 
+  /// Icon to show in the not-configured state. Defaults to [MdiIcons.cogOffOutline].
+  final IconData? notConfiguredIcon;
+
+  /// Title for the not-configured state.
+  final String? notConfiguredTitle;
+
+  /// Description for the not-configured state.
+  final String? notConfiguredDescription;
+
   const DomainStateView({
     super.key,
     required this.state,
@@ -37,6 +63,9 @@ class DomainStateView extends StatelessWidget {
     required this.onRetry,
     required this.child,
     required this.domainName,
+    this.notConfiguredIcon,
+    this.notConfiguredTitle,
+    this.notConfiguredDescription,
   });
 
   @override
@@ -48,6 +77,8 @@ class DomainStateView extends StatelessWidget {
         return _buildLoadingState(context, isDark);
       case DomainLoadState.error:
         return _buildErrorState(context, isDark);
+      case DomainLoadState.notConfigured:
+        return _buildNotConfiguredState(context, isDark);
       case DomainLoadState.loaded:
       case DomainLoadState.empty:
         return child;
@@ -129,6 +160,49 @@ class DomainStateView extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNotConfiguredState(BuildContext context, bool isDark) {
+    final secondaryColor =
+        isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
+
+    return Center(
+      child: Padding(
+        padding: AppSpacings.paddingLg,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          spacing: AppSpacings.pMd,
+          children: [
+            Icon(
+              notConfiguredIcon ?? MdiIcons.cogOffOutline,
+              color: secondaryColor,
+              size: AppSpacings.scale(64),
+            ),
+            if (notConfiguredTitle != null)
+              Text(
+                notConfiguredTitle!,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: AppFontSize.extraLarge,
+                  fontWeight: FontWeight.w600,
+                  color: isDark
+                      ? AppTextColorDark.primary
+                      : AppTextColorLight.primary,
+                ),
+              ),
+            if (notConfiguredDescription != null)
+              Text(
+                notConfiguredDescription!,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: AppFontSize.base,
+                  color: secondaryColor,
+                ),
+              ),
+          ],
         ),
       ),
     );

@@ -43,6 +43,14 @@ class SpacesModuleConstants {
   static const String sensorStateChangedEvent =
       'SpacesModule.Space.SensorStateChanged';
 
+  // Media binding events
+  static const String mediaBindingCreatedEvent =
+      'SpacesModule.MediaBinding.Created';
+  static const String mediaBindingUpdatedEvent =
+      'SpacesModule.MediaBinding.Updated';
+  static const String mediaBindingDeletedEvent =
+      'SpacesModule.MediaBinding.Deleted';
+
   // Media activity lifecycle events
   static const String mediaActivityActivatingEvent =
       'SpacesModule.MediaActivity.Activating';

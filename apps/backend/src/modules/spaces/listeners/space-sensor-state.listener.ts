@@ -157,13 +157,14 @@ export class SpaceSensorStateListener implements OnModuleInit, OnModuleDestroy {
 		try {
 			const state = await this.sensorStateService.getSensorState(roomId);
 
-			// Only emit event if state is valid (space exists and has sensors)
-			if (!state || !state.hasSensors) {
-				this.logger.debug(`No valid sensor state for room=${roomId}, skipping event emission`);
+			if (!state) {
+				this.logger.debug(`No sensor state for room=${roomId}, skipping event emission`);
 				return;
 			}
 
-			// Convert to data model and emit event
+			// Convert to data model and emit event.
+			// Always emit, even when hasSensors is false (all roles removed),
+			// so panel clients can update to "not configured" state.
 			const stateModel = toInstance(SensorStateDataModel, state);
 
 			this.eventEmitter.emit(EventType.SENSOR_STATE_CHANGED, {
@@ -171,7 +172,7 @@ export class SpaceSensorStateListener implements OnModuleInit, OnModuleDestroy {
 				state: stateModel,
 			});
 
-			this.logger.debug(`Emitted SENSOR_STATE_CHANGED for room=${roomId} due to property change`);
+			this.logger.debug(`Emitted SENSOR_STATE_CHANGED for room=${roomId} (hasSensors=${state.hasSensors})`);
 		} catch (error) {
 			const err = error as Error;
 			this.logger.warn(`Failed to emit sensor state change for room=${roomId}: ${err.message}`);

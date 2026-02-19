@@ -2,7 +2,7 @@ import 'package:fastybird_smart_panel/features/deck/presentation/deck.dart';
 import 'package:fastybird_smart_panel/features/overlay/presentation/power_off.dart';
 import 'package:fastybird_smart_panel/features/overlay/presentation/reboot.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/settings.dart';
-import 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/security_domain_view.dart';
+import 'package:fastybird_smart_panel/modules/security/presentation/security_screen.dart';
 import 'package:flutter/material.dart';
 
 class AppRouteNames {

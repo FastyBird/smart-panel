@@ -249,6 +249,15 @@ class SpacesModuleService {
       if (spaceId != null) {
         _mediaActivityRepository.updateActiveState(spaceId, payload);
       }
+
+      /// Media Binding CREATE/UPDATE/DELETE — re-fetch bindings
+    } else if (event == SpacesModuleConstants.mediaBindingCreatedEvent ||
+        event == SpacesModuleConstants.mediaBindingUpdatedEvent ||
+        event == SpacesModuleConstants.mediaBindingDeletedEvent) {
+      final spaceId = payload['space_id'] as String?;
+      if (spaceId != null) {
+        _mediaActivityRepository.refreshBindings(spaceId);
+      }
     }
   }
 

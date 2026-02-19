@@ -41,6 +41,9 @@ class AppLocalizationsCs extends AppLocalizations {
   String get domain_data_load_failed_description => 'Unable to retrieve data. Please check your connection and try again.';
 
   @override
+  String get domain_not_configured_subtitle => 'Nekonfigurováno';
+
+  @override
   String get services_not_available => 'Služby nejsou k dispozici';
 
   @override
@@ -1324,10 +1327,10 @@ class AppLocalizationsCs extends AppLocalizations {
   String get domain_lights_other => 'Ostatní světla';
 
   @override
-  String get domain_lights_empty_title => 'Žádná světla';
+  String get domain_lights_empty_title => 'Osvětlení nenastaveno';
 
   @override
-  String get domain_lights_empty_description => 'V této místnosti nebyla nalezena žádná světla';
+  String get domain_lights_empty_description => 'Role osvětlení nebyly pro tuto místnost nastaveny. Nakonfigurujte role v administraci.';
 
   @override
   String domain_lights_count_on(int count) {
@@ -1364,6 +1367,12 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get domain_climate => 'Klima';
+
+  @override
+  String get domain_climate_empty_title => 'Klima nenastaveno';
+
+  @override
+  String get domain_climate_empty_description => 'V této místnosti nejsou nastaveny žádné termostaty ani klimatizace. Přidejte klimatická zařízení v administraci.';
 
   @override
   String get domain_media => 'Média';
@@ -2010,10 +2019,10 @@ class AppLocalizationsCs extends AppLocalizations {
   String get domain_shading => 'Stínění';
 
   @override
-  String get domain_shading_empty_title => 'Žádné stínění';
+  String get domain_shading_empty_title => 'Stínění nenastaveno';
 
   @override
-  String get domain_shading_empty_description => 'V této místnosti nebylo nalezeno žádné stínění';
+  String get domain_shading_empty_description => 'Role stínění nebyly pro tuto místnost nastaveny. Nakonfigurujte role v administraci.';
 
   @override
   String get shading_modes_title => 'Režimy';
@@ -2667,6 +2676,12 @@ class AppLocalizationsCs extends AppLocalizations {
   String get media_off_subtitle => 'Vyberte aktivitu pro zahájení';
 
   @override
+  String get media_not_configured_title => 'Média nenastavena';
+
+  @override
+  String get media_not_configured_description => 'Mediální aktivity nebyly pro tuto místnost nastaveny. Nakonfigurujte vazby aktivit v administraci.';
+
+  @override
   String media_starting_activity(String activityName) {
     return 'Spouštění $activityName...';
   }
@@ -3140,10 +3155,10 @@ class AppLocalizationsCs extends AppLocalizations {
   String get sensors_domain_title => 'Senzory';
 
   @override
-  String get sensors_domain_empty_title => 'Žádné senzory';
+  String get sensors_domain_empty_title => 'Senzory nenastaveny';
 
   @override
-  String get sensors_domain_empty_description => 'V této místnosti zatím nejsou přiřazeny žádné senzory.';
+  String get sensors_domain_empty_description => 'Role senzorů nebyly pro tuto místnost nastaveny. Nakonfigurujte přiřazení senzorů v administraci.';
 
   @override
   String sensors_domain_alerts_active(int count) {

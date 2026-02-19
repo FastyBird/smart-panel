@@ -48,12 +48,13 @@ import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/devices/export.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/bottom_nav_mode_config.dart';
+import 'package:fastybird_smart_panel/modules/deck/services/room_domain_classifier.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_item_sheet.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_mode_chip.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/domain_state_view.dart';
-import 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/domain_data_loader.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/bottom_nav_mode_notifier.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/deck_page_activated_event.dart';
 import 'package:fastybird_smart_panel/modules/energy/export.dart';
@@ -83,7 +84,7 @@ class _EnergyViewConstants {
 /// Energy domain page for a room: consumption, production, chart, top consumers.
 ///
 /// Shown when the deck navigates to the energy domain for a space.
-/// Uses [DomainDataLoader] for loading/error/retry; [EnergyService] for API.
+/// Uses [DomainStateView] for loading/error/retry; [EnergyService] for API.
 class EnergyDomainViewPage extends StatefulWidget {
   final DomainViewItem viewItem;
 
@@ -93,12 +94,19 @@ class EnergyDomainViewPage extends StatefulWidget {
   State<EnergyDomainViewPage> createState() => _EnergyDomainViewPageState();
 }
 
-class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
-    with DomainDataLoader<EnergyDomainViewPage> {
+class _EnergyDomainViewPageState extends State<EnergyDomainViewPage> {
   final ScreenService _screenService = locator<ScreenService>();
+
+  // Loading state (replaces DomainDataLoader mixin)
+  DomainLoadState _loadState = DomainLoadState.loading;
+  String? _errorMessage;
+
+  DomainLoadState get loadState => _loadState;
+  String? get errorMessage => _errorMessage;
 
   // Services & event bus
   EnergyService? _energyService;
+  DevicesService? _devicesServiceRef;
   EventBus? _eventBus;
   BottomNavModeNotifier? _bottomNavModeNotifier;
   StreamSubscription<DeckPageActivatedEvent>? _pageActivatedSubscription;
@@ -107,6 +115,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
   // Range selection (today/week/month)
   EnergyRange _selectedRange = EnergyRange.today;
   bool _isRangeChangeInFlight = false;
+  int _lastEnergyDeviceCount = -1;
 
   // Loaded data
   EnergySummary? _summary;
@@ -137,11 +146,18 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
     if (locator.isRegistered<BottomNavModeNotifier>()) {
       _bottomNavModeNotifier = locator<BottomNavModeNotifier>();
     }
+    if (locator.isRegistered<DevicesService>()) {
+      _devicesServiceRef = locator<DevicesService>();
+      // Seed count so first _onDevicesChanged only fires on actual change
+      final devices = _devicesServiceRef?.getDevicesForRoom(_roomId) ?? [];
+      _lastEnergyDeviceCount = countEnergyDevices(devices);
+      _devicesServiceRef?.addListener(_onDevicesChanged);
+    }
 
     _pageActivatedSubscription =
         _eventBus?.on<DeckPageActivatedEvent>().listen(_onPageActivated);
 
-    loadDomainData().then((_) {
+    _loadEnergyData().then((_) {
       if (mounted) _registerRangeModeConfig();
     });
   }
@@ -149,23 +165,58 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
   @override
   void dispose() {
     _pageActivatedSubscription?.cancel();
+    _devicesServiceRef?.removeListener(_onDevicesChanged);
     super.dispose();
   }
 
   // ─────────────────────────────────────────────────────────────────────────
-  // DOMAIN DATA LOADER
+  // DATA LOADING
   // ─────────────────────────────────────────────────────────────────────────
 
-  @override
-  bool hasExistingData() => _summary != null;
+  /// Loads energy data: skips fetch when cached, otherwise fetches and updates
+  /// load state accordingly.
+  Future<void> _loadEnergyData() async {
+    if (_summary != null) {
+      if (mounted) {
+        setState(() {
+          _loadState = DomainLoadState.loaded;
+        });
+      }
+      return;
+    }
 
-  @override
-  Future<void> fetchData() async {
-    await _fetchAllData();
+    try {
+      await _fetchAllData();
+      if (mounted) {
+        setState(() {
+          _loadState = _summary == null
+              ? DomainLoadState.empty
+              : DomainLoadState.loaded;
+        });
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[EnergyDomainViewPage] Failed to fetch data: $e');
+      }
+      if (mounted) {
+        setState(() {
+          _loadState = DomainLoadState.error;
+          _errorMessage = e.toString();
+        });
+      }
+    }
   }
 
-  @override
-  bool isDataEmpty() => _summary == null;
+  /// Retry loading after an error.
+  Future<void> _retryLoad() async {
+    if (mounted) {
+      setState(() {
+        _loadState = DomainLoadState.loading;
+        _errorMessage = null;
+      });
+    }
+    await _loadEnergyData();
+  }
 
   /// Fetches summary, timeseries, and breakdown in parallel for current range.
   Future<void> _fetchAllData() async {
@@ -196,17 +247,14 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
 
     setState(() {
       _selectedRange = range;
-      // Clear stale data so hasExistingData() returns false
-      // and loadDomainData() will call fetchData() for the new range
       _summary = null;
       _timeseries = null;
       _breakdown = null;
+      _loadState = DomainLoadState.loading;
     });
 
-    setLoadState(DomainLoadState.loading);
-
     try {
-      await loadDomainData();
+      await _loadEnergyData();
     } finally {
       _isRangeChangeInFlight = false;
       if (mounted) _registerRangeModeConfig();
@@ -227,9 +275,42 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
     }
   }
 
+  /// Called when DevicesService notifies (device changes via WebSocket).
+  ///
+  /// Only re-fetches when the energy device count for this room changes,
+  /// avoiding unnecessary HTTP calls on unrelated device property updates.
+  void _onDevicesChanged() {
+    if (!mounted) return;
+
+    // Check if energy device count changed (cheap, sync read from cache)
+    final devices = _devicesServiceRef?.getDevicesForRoom(_roomId) ?? [];
+    final newCount = countEnergyDevices(devices);
+    if (newCount == _lastEnergyDeviceCount) return;
+    _lastEnergyDeviceCount = newCount;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      // Clear cached data and show loading state so _loadEnergyData will fetch fresh
+      setState(() {
+        _summary = null;
+        _timeseries = null;
+        _breakdown = null;
+        _loadState = DomainLoadState.loading;
+      });
+      _loadEnergyData().then((_) {
+        if (mounted) _registerRangeModeConfig();
+      });
+    });
+  }
+
   /// Registers today/week/month range selector in bottom nav chip.
   void _registerRangeModeConfig() {
-    if (!_isActivePage || _summary == null) return;
+    if (!_isActivePage) return;
+
+    if (_summary == null) {
+      _bottomNavModeNotifier?.clear();
+      return;
+    }
 
     final localizations = AppLocalizations.of(context)!;
     final rangeOptions = _getRangeOptions(localizations);
@@ -376,7 +457,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
         loadState != DomainLoadState.empty) {
       return DomainStateView(
         state: loadState,
-        onRetry: retryLoad,
+        onRetry: _retryLoad,
         domainName: localizations.domain_energy,
         child: const SizedBox.shrink(),
       );
@@ -392,7 +473,15 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
             _buildHeader(context),
             Expanded(
               child: _summary == null
-                  ? _buildEmptyState(context)
+                  ? DomainStateView(
+                      state: DomainLoadState.notConfigured,
+                      onRetry: _retryLoad,
+                      domainName: localizations.domain_energy,
+                      notConfiguredIcon: MdiIcons.flashOff,
+                      notConfiguredTitle: localizations.energy_empty_title,
+                      notConfiguredDescription: localizations.energy_empty_description,
+                      child: const SizedBox.shrink(),
+                    )
                   : OrientationBuilder(
                       builder: (context, orientation) {
                         return orientation == Orientation.landscape
@@ -470,7 +559,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
       scrollable: false,
       content: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        spacing: AppSpacings.pSm,
+        spacing: AppSpacings.pMd,
         children: [
           _buildConsumptionCard(context),
           if (_timeseries != null && _timeseries!.isNotEmpty)
@@ -513,7 +602,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
       ),
       additionalContent: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
-        spacing: AppSpacings.pSm,
+        spacing: AppSpacings.pMd,
         children: [
           Expanded(child: _buildConsumptionCard(context)),
           if (_summary!.hasProduction) ...[
@@ -611,9 +700,10 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
               return Row(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.end,
+                spacing: AppSpacings.pSm,
                 children: [
                   // Badge pill (portrait only)
-                  if (!isLandscape) ...[
+                  if (!isLandscape)
                     Container(
                       padding: EdgeInsets.symmetric(
                         horizontal: AppSpacings.pMd,
@@ -628,13 +718,13 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
+                        spacing: AppSpacings.pSm,
                         children: [
                           Icon(
                             rangeIcon,
                             size: badgeFontSize,
                             color: infoFamily.base,
                           ),
-                          AppSpacings.spacingSmHorizontal,
                           Text(
                             rangeLabel.toUpperCase(),
                             style: TextStyle(
@@ -647,8 +737,6 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
                         ],
                       ),
                     ),
-                    AppSpacings.spacingSmHorizontal,
-                  ],
                   // Giant value
                   Stack(
                     clipBehavior: Clip.none,
@@ -1299,6 +1387,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
         spacing: AppSpacings.pSm,
         children: [
           Row(
+            spacing: AppSpacings.pSm,
             children: [
               Container(
                 width: AppSpacings.scale(32),
@@ -1313,7 +1402,6 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
                   color: infoFamily.base,
                 ),
               ),
-              AppSpacings.spacingSmHorizontal,
               Expanded(
                 child: Text(
                   device.roomName != null &&
@@ -1360,63 +1448,4 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage>
     );
   }
 
-  // =============================================================================
-  // EMPTY STATE
-  // =============================================================================
-
-  /// Centered empty state when no energy data is available.
-  Widget _buildEmptyState(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final localizations = AppLocalizations.of(context)!;
-    final infoFamily = ThemeColorFamily.get(
-      isDark ? Brightness.dark : Brightness.light,
-      ThemeColors.info,
-    );
-
-    return Center(
-      child: Padding(
-        padding: AppSpacings.paddingXl,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          spacing: AppSpacings.pMd,
-          children: [
-            Container(
-              width: AppSpacings.scale(80),
-              height: AppSpacings.scale(80),
-              decoration: BoxDecoration(
-                color: infoFamily.light8,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                MdiIcons.flashOff,
-                size: AppSpacings.scale(48),
-                color: infoFamily.base,
-              ),
-            ),
-            Text(
-              localizations.energy_empty_title,
-              style: TextStyle(
-                fontSize: AppFontSize.large,
-                fontWeight: FontWeight.w600,
-                color: isDark
-                    ? AppTextColorDark.primary
-                    : AppTextColorLight.primary,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            Text(
-              localizations.energy_empty_description,
-              style: TextStyle(
-                fontSize: AppFontSize.base,
-                color: isDark
-                    ? AppTextColorDark.secondary
-                    : AppTextColorLight.secondary,
-              ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }

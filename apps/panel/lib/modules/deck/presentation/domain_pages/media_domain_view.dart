@@ -71,10 +71,9 @@ import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
-import 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/domain_data_loader.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/domain_state_view.dart';
 import 'package:fastybird_smart_panel/modules/deck/utils/lighting.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_item_sheet.dart';
-import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/domain_state_view.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/bottom_nav_mode_notifier.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/deck_page_activated_event.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
@@ -196,8 +195,12 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		// Subscribe to page activation events for bottom nav mode registration
 		_pageActivatedSubscription = _eventBus?.on<DeckPageActivatedEvent>().listen(_onPageActivated);
 
-		// Fetch data immediately (not deferred)
-		_fetchMediaData();
+		// Defer fetch to after initState so inherited widgets (AppLocalizations,
+		// Theme) are accessible when data is already cached and the method runs
+		// synchronously through _registerModeConfig.
+		WidgetsBinding.instance.addPostFrameCallback((_) {
+			if (mounted) _fetchMediaData();
+		});
 	}
 
 	/// Fetches media activity for the room and syncs device state; clears loading.
@@ -296,6 +299,9 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 				_registerModeConfig();
 			}
 		});
+		// Ensure a frame is scheduled so the post-frame callback runs promptly
+		// (addPostFrameCallback alone does not schedule a frame).
+		WidgetsBinding.instance.ensureVisualUpdate();
 	}
 
 	void _onDevicesChanged() {
@@ -310,6 +316,9 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 					_registerModeConfig();
 				}
 			});
+			// Ensure a frame is scheduled so the post-frame callback runs promptly
+			// (addPostFrameCallback alone does not schedule a frame).
+			WidgetsBinding.instance.ensureVisualUpdate();
 		}
 	}
 
@@ -499,6 +508,38 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 					);
 				}
 
+				// No activity bindings configured — show "not configured" state with header
+				final bindings = mediaService.getBindings(_roomId);
+				if (bindings.isEmpty) {
+					return Scaffold(
+						backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
+						body: SafeArea(
+							child: Column(
+								children: [
+									PageHeader(
+										title: localizations.domain_media,
+										subtitle: localizations.domain_not_configured_subtitle,
+										leading: HeaderMainIcon(
+											icon: MdiIcons.playBoxOutline,
+										),
+									),
+									Expanded(
+										child: DomainStateView(
+											state: DomainLoadState.notConfigured,
+											onRetry: _retryLoad,
+											domainName: localizations.domain_media,
+											notConfiguredIcon: MdiIcons.televisionOff,
+											notConfiguredTitle: localizations.media_not_configured_title,
+											notConfiguredDescription: localizations.media_not_configured_description,
+											child: const SizedBox.shrink(),
+										),
+									),
+								],
+							),
+						),
+					);
+				}
+
 				final isOff = activeState == null || activeState.isDeactivated;
 				final isDeactivating = activeState?.isDeactivating ?? false;
 				final showOffContent = isOff || isDeactivating;
@@ -559,6 +600,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			(activeState.isActive || activeState.isActivating || activeState.isFailed);
 		final targets = _mediaService?.resolveControlTargets(_roomId);
 		final showRemoteButton = isMediaOn && (targets?.hasRemote == true);
+		final singleActivityKey = _getSingleActivityKey();
 
 		final List<Widget> trailingWidgets = [
 			if (showDevicesButton)
@@ -574,7 +616,11 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			HeaderIconButton(
 				icon: MdiIcons.power,
 				color: isMediaOn ? ThemeColors.primary : ThemeColors.neutral,
-				onTap: isMediaOn ? _deactivateActivity : null,
+				onTap: isMediaOn
+					? _deactivateActivity
+					: singleActivityKey != null
+						? () => _onActivitySelected(singleActivityKey)
+						: null,
 			),
 		];
 
@@ -633,12 +679,13 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			return PortraitViewLayout(
 				scrollable: false,
 				content: Column(
+					spacing: AppSpacings.pMd,
 					children: [
 						HeroCard(
 							child: _buildOffStateContent(context),
 						),
-						AppSpacings.spacingMdVertical,
-						_buildModeSelector(context),
+						if (_getActivityModeOptions().length > 1)
+							_buildModeSelector(context),
 					],
 				),
 			);
@@ -757,14 +804,15 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		// Off, deactivating, activating and failed are handled at layout level; this is only for active.
 		return Column(
 			crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: AppSpacings.pMd,
 			children: [
 				HeroCard(
 					child: _buildHeroCardContent(context, activeState!),
 				),
-				AppSpacings.spacingMdVertical,
-				_buildModeSelector(context),
-				AppSpacings.spacingMdVertical,
-				_buildCompositionCard(context),
+				if (_getActivityModeOptions().length > 1)
+					_buildModeSelector(context),
+				if ((_mediaService?.getActiveCompositionEntries(_roomId) ?? []).isNotEmpty)
+					_buildCompositionCard(context),
 			],
 		);
 	}
@@ -834,9 +882,14 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		return activeState.activityKey ?? MediaActivityKey.off;
 	}
 
+	MediaActivityKey? _getSingleActivityKey() {
+		final options = _getActivityModeOptions();
+		return options.length == 1 ? options.first.value : null;
+	}
+
 	Widget _buildModeSelector(BuildContext context) {
 		final modeOptions = _getActivityModeOptions();
-		if (modeOptions.isEmpty) return const SizedBox.shrink();
+		if (modeOptions.length <= 1) return const SizedBox.shrink();
 
 		final activeState = _mediaService?.getActiveState(_roomId);
 		final selectedKey = _getSelectedActivityKey(activeState);
@@ -889,7 +942,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	List<Widget> _buildLandscapeModeTiles(BuildContext context) {
 		final localizations = AppLocalizations.of(context)!;
 		final modeOptions = _getActivityModeOptions();
-		if (modeOptions.isEmpty) return [];
+		if (modeOptions.length <= 1) return [];
 
 		final activeState = _mediaService?.getActiveState(_roomId);
 		final selectedKey = _getSelectedActivityKey(activeState);
@@ -1027,6 +1080,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			child: Column(
 				mainAxisAlignment: MainAxisAlignment.center,
 				mainAxisSize: MainAxisSize.min,
+				spacing: AppSpacings.pLg,
 				children: [
 					AnimatedBuilder(
 						animation: _pulseController,
@@ -1053,7 +1107,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 							);
 						},
 					),
-					SizedBox(height: AppSpacings.pLg),
 					Text(
 						localizations.media_starting_activity(activityName),
 						style: TextStyle(
@@ -1062,8 +1115,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 							color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
 						),
 					),
-					if (activeState.planSteps.isNotEmpty) ...[
-						SizedBox(height: AppSpacings.pLg),
+					if (activeState.planSteps.isNotEmpty)
 						Center(
 							child: IntrinsicWidth(
 								child: Column(
@@ -1074,7 +1126,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 								),
 							),
 						),
-					],
 				],
 			),
 		);
@@ -1138,6 +1189,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 				horizontal: AppSpacings.pLg,
 			),
 			child: Row(
+				spacing: AppSpacings.pMd,
 				children: [
 					AnimatedBuilder(
 						animation: _pulseController,
@@ -1150,7 +1202,6 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 							);
 						},
 					),
-					SizedBox(width: AppSpacings.pMd),
 					Expanded(
 						child: Text(
 							_translateStepLabel(context, step.label),

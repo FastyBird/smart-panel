@@ -166,6 +166,7 @@ export interface IUseSpaceMedia {
 		activityKey: PathsModulesSpacesSpacesIdMediaActivitiesActivityKeyPreviewPostParametersPathActivityKey,
 		payload: IBindingSavePayload,
 	) => Promise<IMediaActivityBinding>;
+	deleteBinding: (bindingId: string) => Promise<void>;
 	applyDefaults: () => Promise<void>;
 	endpointsByType: (
 		type: SpacesModuleDataMediaCapabilitySummarySuggested_endpoint_types,
@@ -551,6 +552,35 @@ export const useSpaceMedia = (spaceId: Ref<string | undefined>): IUseSpaceMedia 
 		}
 	};
 
+	const deleteBinding = async (bindingId: string): Promise<void> => {
+		if (!spaceId.value) throw new Error('Space ID is required');
+
+		savingBinding.value = true;
+		saveError.value = null;
+
+		try {
+			const { error } = await backend.client.DELETE(
+				`/${MODULES_PREFIX}/${SPACES_MODULE_PREFIX}/spaces/{id}/media/bindings/{bindingId}`,
+				{
+					params: { path: { id: spaceId.value, bindingId } },
+				},
+			);
+
+			if (error) {
+				const errBody = error as Record<string, unknown> | undefined;
+				const message = (errBody?.message as string) ?? 'Failed to delete binding';
+				throw new Error(message);
+			}
+
+			bindingsData.value = bindingsData.value.filter((b) => b.id !== bindingId);
+		} catch (e: unknown) {
+			saveError.value = e instanceof Error ? e.message : 'Unknown error';
+			throw e;
+		} finally {
+			savingBinding.value = false;
+		}
+	};
+
 	const applyDefaults = async (): Promise<void> => {
 		if (!spaceId.value) return;
 
@@ -766,6 +796,7 @@ export const useSpaceMedia = (spaceId: Ref<string | undefined>): IUseSpaceMedia 
 		deactivate,
 		saveBinding,
 		createBinding,
+		deleteBinding,
 		applyDefaults,
 		endpointsByType,
 		findBindingByActivity,

@@ -71,7 +71,6 @@ import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
 import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
-import 'package:fastybird_smart_panel/modules/deck/presentation/domain_pages/domain_data_loader.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/domain_control_state_service.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/domain_state_view.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_item_sheet.dart';
@@ -283,8 +282,9 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     }
     final result = <CoversTargetRole, List<CoversTargetView>>{};
     for (final target in targets) {
-      final role = target.role ?? CoversTargetRole.primary;
-      if (role == CoversTargetRole.hidden) continue;
+      final role = target.role;
+      // Skip targets without a role (not configured) or hidden
+      if (role == null || role == CoversTargetRole.hidden) continue;
       result.putIfAbsent(role, () => []).add(target);
     }
     _cachedRoleGroups = result;
@@ -409,7 +409,12 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
 
     _pageActivatedSubscription = _eventBus?.on<DeckPageActivatedEvent>().listen(_onPageActivated);
 
-    _fetchCoversData();
+    // Defer fetch to after initState so inherited widgets (AppLocalizations,
+    // Theme) are accessible when data is already cached and the method runs
+    // synchronously through _registerModeConfig.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _fetchCoversData();
+    });
   }
 
   Future<void> _fetchCoversData() async {
@@ -494,8 +499,9 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     if (!_isActivePage || _isLoading) return;
 
     final targets = _coversTargets;
-    final hasCovers = targets.isNotEmpty;
-    if (!ShadingConstants.useBackendIntents || !hasCovers) {
+    final hasConfiguredCovers = targets.any((t) =>
+        t.role != null && t.role != CoversTargetRole.hidden);
+    if (!ShadingConstants.useBackendIntents || !hasConfiguredCovers) {
       _bottomNavModeNotifier?.clear();
       return;
     }
@@ -670,6 +676,9 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
       _sheetNotifier.value++;
       _registerModeConfig();
     });
+    // Ensure a frame is scheduled so the post-frame callback runs promptly
+    // (addPostFrameCallback alone does not schedule a frame).
+    WidgetsBinding.instance.ensureVisualUpdate();
   }
 
   void _loadHeroCachedValuesIfNeeded(RoleCoversState roleState) {
@@ -729,16 +738,40 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     return Consumer<DevicesService>(
       builder: (context, devicesService, _) {
         final targets = _coversTargets;
-        if (targets.isEmpty) {
-          return _buildEmptyState(context);
-        }
+        final roleDataList = targets.isNotEmpty ? _buildRoleDataList(targets) : <_CoverRoleData>[];
 
-        final roleDataList = _buildRoleDataList(targets);
+        // No configured roles — show not-configured state with header
         if (roleDataList.isEmpty) {
-          return _buildEmptyState(context);
+          return Scaffold(
+            backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
+            body: SafeArea(
+              child: Column(
+                children: [
+                  PageHeader(
+                    title: localizations.domain_shading,
+                    subtitle: localizations.domain_not_configured_subtitle,
+                    leading: HeaderMainIcon(
+                      icon: MdiIcons.blindsHorizontalClosed,
+                    ),
+                  ),
+                  Expanded(
+                    child: DomainStateView(
+                      state: DomainLoadState.notConfigured,
+                      onRetry: _retryLoad,
+                      domainName: localizations.domain_shading,
+                      notConfiguredIcon: MdiIcons.blindsHorizontalClosed,
+                      notConfiguredTitle: localizations.domain_shading_empty_title,
+                      notConfiguredDescription: localizations.domain_shading_empty_description,
+                      child: const SizedBox.shrink(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
         }
 
-        final totalDevices = targets.length;
+        final totalDevices = roleDataList.fold<int>(0, (sum, r) => sum + r.deviceCount);
 
         // Clear stale selection if the role no longer exists in data
         if (_selectedRole != null &&
@@ -925,8 +958,8 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     final List<_CoverDeviceData> devices = [];
     final roomName = _spacesService?.getSpace(_roomId)?.name ?? '';
 
-    // Filter out hidden targets
-    final visibleTargets = targets.where((t) => t.role != CoversTargetRole.hidden).toList();
+    // Filter out targets without a role (not configured) or hidden
+    final visibleTargets = targets.where((t) => t.role != null && t.role != CoversTargetRole.hidden).toList();
 
     for (final target in visibleTargets) {
       final device = _devicesService?.getDevice(target.deviceId);
@@ -1734,69 +1767,6 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   }
 
   // --------------------------------------------------------------------------
-  // EMPTY STATE
-  // --------------------------------------------------------------------------
-
-  Widget _buildEmptyState(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final localizations = AppLocalizations.of(context)!;
-    final secondaryColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
-
-    return Scaffold(
-      backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
-      body: SafeArea(
-        child: Column(
-          children: [
-            PageHeader(
-              title: localizations.domain_shading,
-              subtitle: localizations.domain_shading_empty_title,
-              leading: HeaderMainIcon(
-                icon: MdiIcons.blindsHorizontalClosed,
-                color: ThemeColors.neutral,
-              ),
-            ),
-            Expanded(
-              child: Center(
-                child: Padding(
-                  padding: AppSpacings.paddingLg,
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    spacing: AppSpacings.pMd,
-                    children: [
-                      Icon(
-                        MdiIcons.blindsHorizontalClosed,
-                        color: secondaryColor,
-                        size: AppSpacings.scale(64),
-                      ),
-                      Text(
-                        localizations.domain_shading_empty_title,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: AppFontSize.extraLarge,
-                          fontWeight: FontWeight.w600,
-                          color: isDark
-                              ? AppTextColorDark.primary
-                              : AppTextColorLight.primary,
-                        ),
-                      ),
-                      Text(
-                        localizations.domain_shading_empty_description,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: AppFontSize.base,
-                          color: secondaryColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 // =============================================================================
@@ -1908,9 +1878,9 @@ class _ShadingHeroCard extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.end,
+      spacing: AppSpacings.pSm,
       children: [
         _buildBadge(isDark, colorFamily),
-        AppSpacings.spacingSmHorizontal,
         _buildGiantValue(isDark, fontSize),
       ],
     );
@@ -1950,13 +1920,13 @@ class _ShadingHeroCard extends StatelessWidget {
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
+              spacing: AppSpacings.pSm,
               children: [
                 Icon(
                   roleIcon,
                   size: fontSize,
                   color: activeColor,
                 ),
-                AppSpacings.spacingSmHorizontal,
                 Text(
                   roleName.toUpperCase(),
                   style: TextStyle(
@@ -1994,13 +1964,13 @@ class _ShadingHeroCard extends StatelessWidget {
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
+              spacing: AppSpacings.pSm,
               children: [
                 Icon(
                   statusIcon,
                   size: fontSize,
                   color: activeColor,
                 ),
-                AppSpacings.spacingSmHorizontal,
                 Container(
                   width: fontSize,
                   height: fontSize,
