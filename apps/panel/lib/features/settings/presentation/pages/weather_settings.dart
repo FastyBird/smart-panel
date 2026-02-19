@@ -101,7 +101,7 @@ class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
 		return Scaffold(
 			appBar: AppTopBar(title: localizations.settings_weather_settings_title),
 			body: isLandscape
-					? Padding(
+					? SingleChildScrollView(
 							padding: EdgeInsets.all(AppSpacings.pLg),
 							child: SettingsTwoColumnLayout(cards: cards),
 						)

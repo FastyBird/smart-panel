@@ -139,7 +139,7 @@ class MaintenancePage extends StatelessWidget {
 				appBar: AppTopBar(
 					title: localizations.settings_maintenance_title,
 				),
-				body: Padding(
+				body: SingleChildScrollView(
 					padding: EdgeInsets.all(AppSpacings.pLg),
 					child: Row(
 						crossAxisAlignment: CrossAxisAlignment.start,

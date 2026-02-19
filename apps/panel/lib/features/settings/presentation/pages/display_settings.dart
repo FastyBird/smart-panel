@@ -163,7 +163,7 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 					title: localizations.settings_display_settings_title,
 				),
 				body: isLandscape
-						? Padding(
+						? SingleChildScrollView(
 								padding: EdgeInsets.all(AppSpacings.pLg),
 								child: SettingsTwoColumnLayout(cards: cards),
 							)

@@ -82,7 +82,7 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
 			body: !_audioOutputSupported && !_audioInputSupported
 					? _buildNoAudioSupportMessage(localizations)
 					: isLandscape
-							? Padding(
+							? SingleChildScrollView(
 									padding: EdgeInsets.all(AppSpacings.pLg),
 									child: Row(
 										crossAxisAlignment: CrossAxisAlignment.start,

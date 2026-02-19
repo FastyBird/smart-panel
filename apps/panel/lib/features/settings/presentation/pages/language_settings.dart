@@ -203,7 +203,7 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
 				title: localizations.settings_language_settings_title,
 			),
 			body: isLandscape
-					? Padding(
+					? SingleChildScrollView(
 							padding: EdgeInsets.all(AppSpacings.pLg),
 							child: SettingsTwoColumnLayout(cards: cards),
 						)
