@@ -258,20 +258,22 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 
 					if (!context.mounted) return;
 
-					setState(() {
-						_brightnessBackup = null;
-						_savingBrightness = false;
-					});
-
 					if (!success) {
 						setState(() {
 							_brightness = _brightnessBackup ?? 0;
+							_brightnessBackup = null;
+							_savingBrightness = false;
 						});
 
 						AppToast.showError(
 							context,
 							message: 'Save settings failed.',
 						);
+					} else {
+						setState(() {
+							_brightnessBackup = null;
+							_savingBrightness = false;
+						});
 					}
 				});
 			},

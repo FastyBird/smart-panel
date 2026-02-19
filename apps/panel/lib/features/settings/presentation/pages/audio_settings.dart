@@ -290,20 +290,22 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
 
 					if (!context.mounted) return;
 
-					setState(() {
-						_speakerVolumeBackup = null;
-						_savingSpeakerVolume = false;
-					});
-
 					if (!success) {
 						setState(() {
 							_speakerVolume = _speakerVolumeBackup ?? 50;
+							_speakerVolumeBackup = null;
+							_savingSpeakerVolume = false;
 						});
 
 						AppToast.showError(
 							context,
 							message: 'Save settings failed.',
 						);
+					} else {
+						setState(() {
+							_speakerVolumeBackup = null;
+							_savingSpeakerVolume = false;
+						});
 					}
 				});
 			},
@@ -370,20 +372,22 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
 
 					if (!context.mounted) return;
 
-					setState(() {
-						_microphoneVolumeBackup = null;
-						_savingMicrophoneVolume = false;
-					});
-
 					if (!success) {
 						setState(() {
 							_microphoneVolume = _microphoneVolumeBackup ?? 50;
+							_microphoneVolumeBackup = null;
+							_savingMicrophoneVolume = false;
 						});
 
 						AppToast.showError(
 							context,
 							message: 'Save settings failed.',
 						);
+					} else {
+						setState(() {
+							_microphoneVolumeBackup = null;
+							_savingMicrophoneVolume = false;
+						});
 					}
 				});
 			},
