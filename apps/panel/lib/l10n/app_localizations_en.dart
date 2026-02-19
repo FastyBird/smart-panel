@@ -670,6 +670,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settings_maintenance_factory_reset_confirm_description => 'Are you sure you want to erase all data and restore the device to its factory settings? This action is irreversible.';
 
   @override
+  String get settings_maintenance_system_heading => 'System';
+
+  @override
+  String get settings_maintenance_danger_heading => 'Danger Zone';
+
+  @override
   String get settings_language_settings_title => 'Language Settings';
 
   @override

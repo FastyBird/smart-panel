@@ -681,6 +681,12 @@ class AppLocalizationsCs extends AppLocalizations {
   String get settings_maintenance_factory_reset_confirm_description => 'Opravdu chcete vymazat všechna data a obnovit tovární nastavení zařízení? Tato akce je nevratná.';
 
   @override
+  String get settings_maintenance_system_heading => 'Systém';
+
+  @override
+  String get settings_maintenance_danger_heading => 'Nebezpečná zóna';
+
+  @override
   String get settings_language_settings_title => 'Nastavení jazyka';
 
   @override
