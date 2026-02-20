@@ -2327,7 +2327,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
               children: [
                 Expanded(
                   child: VerticalScrollWithGradient(
-                    gradientHeight: AppSpacings.pMd,
+                    gradientHeight: AppSpacings.pLg,
                     itemCount: lights.length,
                     separatorHeight: AppSpacings.pSm,
                     backgroundColor: drawerBgColor,
@@ -2368,7 +2368,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
               children: [
                 Flexible(
                   child: VerticalScrollWithGradient(
-                    gradientHeight: AppSpacings.pMd,
+                    gradientHeight: AppSpacings.pLg,
                     itemCount: lights.length,
                     separatorHeight: AppSpacings.pSm,
                     backgroundColor: bgColor,
@@ -3089,7 +3089,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         titleIcon: MdiIcons.autoFix,
         scrollable: false,
         content: VerticalScrollWithGradient(
-          gradientHeight: AppSpacings.pMd,
+          gradientHeight: AppSpacings.pLg,
           itemCount: scenes.length,
           separatorHeight: AppSpacings.pSm,
           backgroundColor: drawerBgColor,

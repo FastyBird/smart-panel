@@ -2109,7 +2109,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 							builder: (ctx, _) {
 								final groups = getDeviceGroups();
 								return VerticalScrollWithGradient(
-									gradientHeight: AppSpacings.pMd,
+									gradientHeight: AppSpacings.pLg,
 									itemCount: groups.length,
 									separatorHeight: AppSpacings.pSm,
 									backgroundColor: drawerBgColor,
@@ -2123,7 +2123,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 							},
 						)
 					: VerticalScrollWithGradient(
-							gradientHeight: AppSpacings.pMd,
+							gradientHeight: AppSpacings.pLg,
 							itemCount: getDeviceGroups().length,
 							separatorHeight: AppSpacings.pSm,
 							backgroundColor: drawerBgColor,
@@ -2221,7 +2221,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 					? ListenableBuilder(
 							listenable: _devicesService!,
 							builder: (ctx, _) => VerticalScrollWithGradient(
-								gradientHeight: AppSpacings.pMd,
+								gradientHeight: AppSpacings.pLg,
 								itemCount: entries.length,
 								separatorHeight: AppSpacings.pSm,
 								backgroundColor: drawerBgColor,
@@ -2233,7 +2233,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 							),
 						)
 					: VerticalScrollWithGradient(
-							gradientHeight: AppSpacings.pMd,
+							gradientHeight: AppSpacings.pLg,
 							itemCount: entries.length,
 							separatorHeight: AppSpacings.pSm,
 							backgroundColor: drawerBgColor,

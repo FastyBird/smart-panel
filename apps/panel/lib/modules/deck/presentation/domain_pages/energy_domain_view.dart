@@ -1339,7 +1339,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage> {
         titleIcon: MdiIcons.podium,
         scrollable: false,
         content: VerticalScrollWithGradient(
-          gradientHeight: AppSpacings.pMd,
+          gradientHeight: AppSpacings.pLg,
           itemCount: _breakdown!.devices.length,
           separatorHeight: AppSpacings.pSm,
           backgroundColor: drawerBgColor,

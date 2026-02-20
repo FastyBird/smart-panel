@@ -1562,7 +1562,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
               children: [
                 Expanded(
                   child: VerticalScrollWithGradient(
-                    gradientHeight: AppSpacings.pMd,
+                    gradientHeight: AppSpacings.pLg,
                     itemCount: deviceDataList.length,
                     separatorHeight: AppSpacings.pSm,
                     backgroundColor: drawerBgColor,
