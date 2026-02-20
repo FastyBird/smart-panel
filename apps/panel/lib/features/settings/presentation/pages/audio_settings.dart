@@ -4,6 +4,7 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
+import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_card.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_slider.dart';
@@ -92,13 +93,15 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
 						child: !_audioOutputSupported && !_audioInputSupported
 								? _buildNoAudioSupportMessage(localizations)
 								: isLandscape
-										? SingleChildScrollView(
+										? VerticalScrollWithGradient(
+												gradientHeight: AppSpacings.pLg,
+												itemCount: 1,
 												padding: EdgeInsets.only(
 													left: AppSpacings.pMd,
 													right: AppSpacings.pMd,
 													bottom: AppSpacings.pMd,
 												),
-												child: Row(
+												itemBuilder: (context, index) => Row(
 													crossAxisAlignment: CrossAxisAlignment.start,
 													children: [
 														if (_audioOutputSupported)
@@ -110,13 +113,15 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
 													],
 												),
 											)
-										: SingleChildScrollView(
+										: VerticalScrollWithGradient(
+												gradientHeight: AppSpacings.pLg,
+												itemCount: 1,
 												padding: EdgeInsets.only(
 													left: AppSpacings.pMd,
 													right: AppSpacings.pMd,
 													bottom: AppSpacings.pMd,
 												),
-												child: Column(
+												itemBuilder: (context, index) => Column(
 													crossAxisAlignment: CrossAxisAlignment.start,
 													children: [
 														if (_audioOutputSupported) ...[

@@ -62,52 +62,55 @@ class AppLocalizationsEn extends AppLocalizations {
   String get button_done => 'Done';
 
   @override
-  String get unit_celsius => 'Celsius';
+  String get unit_system_default => 'Default';
 
   @override
-  String get unit_fahrenheit => 'Fahrenheit';
+  String get unit_celsius => 'Celsius (°C)';
 
   @override
-  String get unit_wind_speed_ms => 'm/s';
+  String get unit_fahrenheit => 'Fahrenheit (°F)';
 
   @override
-  String get unit_wind_speed_kmh => 'km/h';
+  String get unit_wind_speed_ms => 'Meters per second (m/s)';
 
   @override
-  String get unit_wind_speed_mph => 'mph';
+  String get unit_wind_speed_kmh => 'Kilometers per hour (km/h)';
 
   @override
-  String get unit_wind_speed_knots => 'Knots';
+  String get unit_wind_speed_mph => 'Miles per hour (mph)';
 
   @override
-  String get unit_pressure_hpa => 'hPa';
+  String get unit_wind_speed_knots => 'Knots (kn)';
 
   @override
-  String get unit_pressure_mbar => 'mbar';
+  String get unit_pressure_hpa => 'Hectopascal (hPa)';
 
   @override
-  String get unit_pressure_inhg => 'inHg';
+  String get unit_pressure_mbar => 'Millibar (mbar)';
 
   @override
-  String get unit_pressure_mmhg => 'mmHg';
+  String get unit_pressure_inhg => 'Inches of mercury (inHg)';
 
   @override
-  String get unit_precipitation_mm => 'mm';
+  String get unit_pressure_mmhg => 'Millimeters of mercury (mmHg)';
 
   @override
-  String get unit_precipitation_inches => 'Inches';
+  String get unit_precipitation_mm => 'Millimeters (mm)';
 
   @override
-  String get unit_distance_km => 'Kilometers';
+  String get unit_precipitation_inches => 'Inches (in)';
 
   @override
-  String get unit_distance_miles => 'Miles';
+  String get unit_distance_km => 'Kilometers (km)';
 
   @override
-  String get unit_distance_meters => 'Meters';
+  String get unit_distance_miles => 'Miles (mi)';
 
   @override
-  String get unit_distance_feet => 'Feet';
+  String get unit_distance_meters => 'Meters (m)';
+
+  @override
+  String get unit_distance_feet => 'Feet (ft)';
 
   @override
   String get time_format_12h => '12-hour';
@@ -658,42 +661,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settings_general_settings_button_maintenance => 'Maintenance';
 
   @override
-  String get settings_general_settings_button_units_settings => 'Units';
-
-  @override
-  String get settings_units_settings_title => 'Units Settings';
-
-  @override
-  String get settings_units_settings_temperature_title => 'Temperature';
-
-  @override
-  String get settings_units_settings_temperature_description => 'Unit for temperature values.';
-
-  @override
-  String get settings_units_settings_wind_speed_title => 'Wind Speed';
-
-  @override
-  String get settings_units_settings_wind_speed_description => 'Unit for wind speed values.';
-
-  @override
-  String get settings_units_settings_pressure_title => 'Pressure';
-
-  @override
-  String get settings_units_settings_pressure_description => 'Unit for atmospheric pressure.';
-
-  @override
-  String get settings_units_settings_precipitation_title => 'Precipitation';
-
-  @override
-  String get settings_units_settings_precipitation_description => 'Unit for precipitation amounts.';
-
-  @override
-  String get settings_units_settings_distance_title => 'Distance';
-
-  @override
-  String get settings_units_settings_distance_description => 'Unit for distance and visibility.';
-
-  @override
   String get settings_weather_settings_title => 'Weather Settings';
 
   @override
@@ -803,6 +770,39 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settings_display_settings_screen_saver_description => 'Show screen saver when idle.';
+
+  @override
+  String get settings_display_settings_unit_overrides_section => 'Unit Overrides';
+
+  @override
+  String get settings_display_settings_temperature_unit_title => 'Temperature Unit';
+
+  @override
+  String get settings_display_settings_temperature_unit_description => 'Override system temperature unit for this display.';
+
+  @override
+  String get settings_display_settings_wind_speed_unit_title => 'Wind Speed Unit';
+
+  @override
+  String get settings_display_settings_wind_speed_unit_description => 'Override system wind speed unit for this display.';
+
+  @override
+  String get settings_display_settings_pressure_unit_title => 'Pressure Unit';
+
+  @override
+  String get settings_display_settings_pressure_unit_description => 'Override system pressure unit for this display.';
+
+  @override
+  String get settings_display_settings_precipitation_unit_title => 'Precipitation Unit';
+
+  @override
+  String get settings_display_settings_precipitation_unit_description => 'Override system precipitation unit for this display.';
+
+  @override
+  String get settings_display_settings_distance_unit_title => 'Distance Unit';
+
+  @override
+  String get settings_display_settings_distance_unit_description => 'Override system distance unit for this display.';
 
   @override
   String get settings_audio_settings_title => 'Audio Settings';

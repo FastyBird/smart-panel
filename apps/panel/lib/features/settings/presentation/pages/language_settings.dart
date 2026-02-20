@@ -4,6 +4,7 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
+import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_card.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_dropdown_value.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_selection_dialog.dart';
@@ -201,26 +202,26 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
 					),
 					Expanded(
 						child: isLandscape
-								? SingleChildScrollView(
+								? VerticalScrollWithGradient(
+										gradientHeight: AppSpacings.pLg,
+										itemCount: 1,
 										padding: EdgeInsets.only(
 													left: AppSpacings.pMd,
 													right: AppSpacings.pMd,
 													bottom: AppSpacings.pMd,
 												),
-										child: SettingsTwoColumnLayout(cards: cards),
+										itemBuilder: (context, index) => SettingsTwoColumnLayout(cards: cards),
 									)
-								: ListView(
+								: VerticalScrollWithGradient(
+										gradientHeight: AppSpacings.pLg,
+										itemCount: cards.length,
+										separatorHeight: AppSpacings.pMd,
 										padding: EdgeInsets.only(
 													left: AppSpacings.pMd,
 													right: AppSpacings.pMd,
 													bottom: AppSpacings.pMd,
 												),
-										children: [
-											for (int i = 0; i < cards.length; i++) ...[
-												cards[i],
-												if (i < cards.length - 1) SizedBox(height: AppSpacings.pMd),
-											],
-										],
+										itemBuilder: (context, index) => cards[index],
 									),
 					),
 				],

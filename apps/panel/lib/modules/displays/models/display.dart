@@ -148,6 +148,9 @@ class DisplayModel {
     }
   }
 
+  /// Sentinel value used to explicitly set nullable fields to null in [copyWith].
+  static const _unset = Object();
+
   DisplayModel copyWith({
     String? id,
     String? macAddress,
@@ -175,11 +178,11 @@ class DisplayModel {
     HomeMode? homeMode,
     String? homePageId,
     String? resolvedHomePageId,
-    TemperatureUnit? temperatureUnit,
-    WindSpeedUnit? windSpeedUnit,
-    PressureUnit? pressureUnit,
-    PrecipitationUnit? precipitationUnit,
-    DistanceUnit? distanceUnit,
+    Object? temperatureUnit = _unset,
+    Object? windSpeedUnit = _unset,
+    Object? pressureUnit = _unset,
+    Object? precipitationUnit = _unset,
+    Object? distanceUnit = _unset,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -210,11 +213,21 @@ class DisplayModel {
       homeMode: homeMode ?? this.homeMode,
       homePageId: homePageId ?? this.homePageId,
       resolvedHomePageId: resolvedHomePageId ?? this.resolvedHomePageId,
-      temperatureUnit: temperatureUnit ?? this.temperatureUnit,
-      windSpeedUnit: windSpeedUnit ?? this.windSpeedUnit,
-      pressureUnit: pressureUnit ?? this.pressureUnit,
-      precipitationUnit: precipitationUnit ?? this.precipitationUnit,
-      distanceUnit: distanceUnit ?? this.distanceUnit,
+      temperatureUnit: identical(temperatureUnit, _unset)
+          ? this.temperatureUnit
+          : temperatureUnit as TemperatureUnit?,
+      windSpeedUnit: identical(windSpeedUnit, _unset)
+          ? this.windSpeedUnit
+          : windSpeedUnit as WindSpeedUnit?,
+      pressureUnit: identical(pressureUnit, _unset)
+          ? this.pressureUnit
+          : pressureUnit as PressureUnit?,
+      precipitationUnit: identical(precipitationUnit, _unset)
+          ? this.precipitationUnit
+          : precipitationUnit as PrecipitationUnit?,
+      distanceUnit: identical(distanceUnit, _unset)
+          ? this.distanceUnit
+          : distanceUnit as DistanceUnit?,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

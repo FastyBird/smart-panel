@@ -74,67 +74,71 @@
   "@button_done": {
     "description": "Text for Done button"
   },
-  "unit_celsius": "Celsius",
+  "unit_system_default": "Default",
+  "@unit_system_default": {
+    "description": "Short label for system default unit option."
+  },
+  "unit_celsius": "Celsius (°C)",
   "@unit_celsius": {
     "description": "Label for Celsius temperature unit."
   },
-  "unit_fahrenheit": "Fahrenheit",
+  "unit_fahrenheit": "Fahrenheit (°F)",
   "@unit_fahrenheit": {
     "description": "Label for Fahrenheit temperature unit."
   },
-  "unit_wind_speed_ms": "m/s",
+  "unit_wind_speed_ms": "Meters per second (m/s)",
   "@unit_wind_speed_ms": {
     "description": "Label for meters per second wind speed unit."
   },
-  "unit_wind_speed_kmh": "km/h",
+  "unit_wind_speed_kmh": "Kilometers per hour (km/h)",
   "@unit_wind_speed_kmh": {
     "description": "Label for kilometers per hour wind speed unit."
   },
-  "unit_wind_speed_mph": "mph",
+  "unit_wind_speed_mph": "Miles per hour (mph)",
   "@unit_wind_speed_mph": {
     "description": "Label for miles per hour wind speed unit."
   },
-  "unit_wind_speed_knots": "Knots",
+  "unit_wind_speed_knots": "Knots (kn)",
   "@unit_wind_speed_knots": {
     "description": "Label for knots wind speed unit."
   },
-  "unit_pressure_hpa": "hPa",
+  "unit_pressure_hpa": "Hectopascal (hPa)",
   "@unit_pressure_hpa": {
     "description": "Label for hectopascal pressure unit."
   },
-  "unit_pressure_mbar": "mbar",
+  "unit_pressure_mbar": "Millibar (mbar)",
   "@unit_pressure_mbar": {
     "description": "Label for millibar pressure unit."
   },
-  "unit_pressure_inhg": "inHg",
+  "unit_pressure_inhg": "Inches of mercury (inHg)",
   "@unit_pressure_inhg": {
     "description": "Label for inches of mercury pressure unit."
   },
-  "unit_pressure_mmhg": "mmHg",
+  "unit_pressure_mmhg": "Millimeters of mercury (mmHg)",
   "@unit_pressure_mmhg": {
     "description": "Label for millimeters of mercury pressure unit."
   },
-  "unit_precipitation_mm": "mm",
+  "unit_precipitation_mm": "Millimeters (mm)",
   "@unit_precipitation_mm": {
     "description": "Label for millimeters precipitation unit."
   },
-  "unit_precipitation_inches": "Inches",
+  "unit_precipitation_inches": "Inches (in)",
   "@unit_precipitation_inches": {
     "description": "Label for inches precipitation unit."
   },
-  "unit_distance_km": "Kilometers",
+  "unit_distance_km": "Kilometers (km)",
   "@unit_distance_km": {
     "description": "Label for kilometers distance unit."
   },
-  "unit_distance_miles": "Miles",
+  "unit_distance_miles": "Miles (mi)",
   "@unit_distance_miles": {
     "description": "Label for miles distance unit."
   },
-  "unit_distance_meters": "Meters",
+  "unit_distance_meters": "Meters (m)",
   "@unit_distance_meters": {
     "description": "Label for meters distance unit."
   },
-  "unit_distance_feet": "Feet",
+  "unit_distance_feet": "Feet (ft)",
   "@unit_distance_feet": {
     "description": "Label for feet distance unit."
   },
@@ -940,54 +944,6 @@
   "@settings_language_settings_time_format_description": {
     "description": "Description explaining the purpose of the time format setting."
   },
-  "settings_general_settings_button_units_settings": "Units",
-  "@settings_general_settings_button_units_settings": {
-    "description": "Button label for navigating to Units Settings section."
-  },
-  "settings_units_settings_title": "Units Settings",
-  "@settings_units_settings_title": {
-    "description": "Title for the Units Settings section."
-  },
-  "settings_units_settings_temperature_title": "Temperature",
-  "@settings_units_settings_temperature_title": {
-    "description": "Label for selecting the temperature unit."
-  },
-  "settings_units_settings_temperature_description": "Unit for temperature values.",
-  "@settings_units_settings_temperature_description": {
-    "description": "Description for the temperature unit setting."
-  },
-  "settings_units_settings_wind_speed_title": "Wind Speed",
-  "@settings_units_settings_wind_speed_title": {
-    "description": "Label for selecting the wind speed unit."
-  },
-  "settings_units_settings_wind_speed_description": "Unit for wind speed values.",
-  "@settings_units_settings_wind_speed_description": {
-    "description": "Description for the wind speed unit setting."
-  },
-  "settings_units_settings_pressure_title": "Pressure",
-  "@settings_units_settings_pressure_title": {
-    "description": "Label for selecting the pressure unit."
-  },
-  "settings_units_settings_pressure_description": "Unit for atmospheric pressure.",
-  "@settings_units_settings_pressure_description": {
-    "description": "Description for the pressure unit setting."
-  },
-  "settings_units_settings_precipitation_title": "Precipitation",
-  "@settings_units_settings_precipitation_title": {
-    "description": "Label for selecting the precipitation unit."
-  },
-  "settings_units_settings_precipitation_description": "Unit for precipitation amounts.",
-  "@settings_units_settings_precipitation_description": {
-    "description": "Description for the precipitation unit setting."
-  },
-  "settings_units_settings_distance_title": "Distance",
-  "@settings_units_settings_distance_title": {
-    "description": "Label for selecting the distance unit."
-  },
-  "settings_units_settings_distance_description": "Unit for distance and visibility.",
-  "@settings_units_settings_distance_description": {
-    "description": "Description for the distance unit setting."
-  },
   "settings_display_settings_title": "Display Settings",
   "@settings_display_settings_title": {
     "description": "Title for the Display Settings section."
@@ -1023,6 +979,50 @@
   "settings_display_settings_screen_saver_description": "Show screen saver when idle.",
   "@settings_display_settings_screen_saver_description": {
     "description": "Description explaining the screen saver setting."
+  },
+  "settings_display_settings_unit_overrides_section": "Unit Overrides",
+  "@settings_display_settings_unit_overrides_section": {
+    "description": "Section heading for display-level unit override settings."
+  },
+  "settings_display_settings_temperature_unit_title": "Temperature Unit",
+  "@settings_display_settings_temperature_unit_title": {
+    "description": "Label for temperature unit override on display."
+  },
+  "settings_display_settings_temperature_unit_description": "Override system temperature unit for this display.",
+  "@settings_display_settings_temperature_unit_description": {
+    "description": "Description for temperature unit override."
+  },
+  "settings_display_settings_wind_speed_unit_title": "Wind Speed Unit",
+  "@settings_display_settings_wind_speed_unit_title": {
+    "description": "Label for wind speed unit override on display."
+  },
+  "settings_display_settings_wind_speed_unit_description": "Override system wind speed unit for this display.",
+  "@settings_display_settings_wind_speed_unit_description": {
+    "description": "Description for wind speed unit override."
+  },
+  "settings_display_settings_pressure_unit_title": "Pressure Unit",
+  "@settings_display_settings_pressure_unit_title": {
+    "description": "Label for pressure unit override on display."
+  },
+  "settings_display_settings_pressure_unit_description": "Override system pressure unit for this display.",
+  "@settings_display_settings_pressure_unit_description": {
+    "description": "Description for pressure unit override."
+  },
+  "settings_display_settings_precipitation_unit_title": "Precipitation Unit",
+  "@settings_display_settings_precipitation_unit_title": {
+    "description": "Label for precipitation unit override on display."
+  },
+  "settings_display_settings_precipitation_unit_description": "Override system precipitation unit for this display.",
+  "@settings_display_settings_precipitation_unit_description": {
+    "description": "Description for precipitation unit override."
+  },
+  "settings_display_settings_distance_unit_title": "Distance Unit",
+  "@settings_display_settings_distance_unit_title": {
+    "description": "Label for distance unit override on display."
+  },
+  "settings_display_settings_distance_unit_description": "Override system distance unit for this display.",
+  "@settings_display_settings_distance_unit_description": {
+    "description": "Description for distance unit override."
   },
   "settings_audio_settings_title": "Audio Settings",
   "@settings_audio_settings_title": {

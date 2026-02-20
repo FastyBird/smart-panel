@@ -2,9 +2,15 @@ import 'package:dio/dio.dart';
 import 'package:fastybird_smart_panel/api/api_client.dart';
 import 'package:fastybird_smart_panel/api/models/displays_module_req_update_display.dart';
 import 'package:fastybird_smart_panel/api/models/displays_module_update_display.dart';
+import 'package:fastybird_smart_panel/api/models/displays_module_update_display_distance_unit.dart';
 import 'package:fastybird_smart_panel/api/models/displays_module_update_display_home_mode.dart';
+import 'package:fastybird_smart_panel/api/models/displays_module_update_display_precipitation_unit.dart';
+import 'package:fastybird_smart_panel/api/models/displays_module_update_display_pressure_unit.dart';
 import 'package:fastybird_smart_panel/api/models/displays_module_update_display_role.dart';
+import 'package:fastybird_smart_panel/api/models/displays_module_update_display_temperature_unit.dart';
+import 'package:fastybird_smart_panel/api/models/displays_module_update_display_wind_speed_unit.dart';
 import 'package:fastybird_smart_panel/modules/displays/models/display.dart';
+import 'package:fastybird_smart_panel/modules/system/types/configuration.dart';
 import 'package:flutter/foundation.dart';
 
 /// Result of fetching current display
@@ -105,6 +111,17 @@ class DisplayRepository extends ChangeNotifier {
   String? get homePageId => _display?.homePageId;
 
   String? get resolvedHomePageId => _display?.resolvedHomePageId;
+
+  // Unit override getters (null = use system default)
+  TemperatureUnit? get temperatureUnit => _display?.temperatureUnit;
+
+  WindSpeedUnit? get windSpeedUnit => _display?.windSpeedUnit;
+
+  PressureUnit? get pressureUnit => _display?.pressureUnit;
+
+  PrecipitationUnit? get precipitationUnit => _display?.precipitationUnit;
+
+  DistanceUnit? get distanceUnit => _display?.distanceUnit;
 
   /// Set display data from registration response
   /// Pass null to clear the display model
@@ -246,6 +263,21 @@ class DisplayRepository extends ChangeNotifier {
           speakerVolume: data.speakerVolume,
           microphone: data.microphone,
           microphoneVolume: data.microphoneVolume,
+          temperatureUnit: data.temperatureUnit?.json != null
+              ? TemperatureUnit.fromValue(data.temperatureUnit!.json!)
+              : null,
+          windSpeedUnit: data.windSpeedUnit?.json != null
+              ? WindSpeedUnit.fromValue(data.windSpeedUnit!.json!)
+              : null,
+          pressureUnit: data.pressureUnit?.json != null
+              ? PressureUnit.fromValue(data.pressureUnit!.json!)
+              : null,
+          precipitationUnit: data.precipitationUnit?.json != null
+              ? PrecipitationUnit.fromValue(data.precipitationUnit!.json!)
+              : null,
+          distanceUnit: data.distanceUnit?.json != null
+              ? DistanceUnit.fromValue(data.distanceUnit!.json!)
+              : null,
           createdAt: data.createdAt,
           updatedAt: data.updatedAt,
         );
@@ -318,6 +350,21 @@ class DisplayRepository extends ChangeNotifier {
           speakerVolume: data.speakerVolume,
           microphone: data.microphone,
           microphoneVolume: data.microphoneVolume,
+          temperatureUnit: data.temperatureUnit?.json != null
+              ? TemperatureUnit.fromValue(data.temperatureUnit!.json!)
+              : null,
+          windSpeedUnit: data.windSpeedUnit?.json != null
+              ? WindSpeedUnit.fromValue(data.windSpeedUnit!.json!)
+              : null,
+          pressureUnit: data.pressureUnit?.json != null
+              ? PressureUnit.fromValue(data.pressureUnit!.json!)
+              : null,
+          precipitationUnit: data.precipitationUnit?.json != null
+              ? PrecipitationUnit.fromValue(data.precipitationUnit!.json!)
+              : null,
+          distanceUnit: data.distanceUnit?.json != null
+              ? DistanceUnit.fromValue(data.distanceUnit!.json!)
+              : null,
           createdAt: data.createdAt,
           updatedAt: data.updatedAt,
         );
@@ -419,6 +466,39 @@ class DisplayRepository extends ChangeNotifier {
     }
   }
 
+  /// Convert local TemperatureUnit to API enum
+  DisplaysModuleUpdateDisplayTemperatureUnit? _toApiTemperatureUnit(TemperatureUnit? unit) {
+    if (unit == null) return null;
+    return DisplaysModuleUpdateDisplayTemperatureUnit.fromJson(unit.value);
+  }
+
+  /// Convert local WindSpeedUnit to API enum
+  DisplaysModuleUpdateDisplayWindSpeedUnit? _toApiWindSpeedUnit(WindSpeedUnit? unit) {
+    if (unit == null) return null;
+    return DisplaysModuleUpdateDisplayWindSpeedUnit.fromJson(unit.value);
+  }
+
+  /// Convert local PressureUnit to API enum
+  DisplaysModuleUpdateDisplayPressureUnit? _toApiPressureUnit(PressureUnit? unit) {
+    if (unit == null) return null;
+    return DisplaysModuleUpdateDisplayPressureUnit.fromJson(unit.value);
+  }
+
+  /// Convert local PrecipitationUnit to API enum
+  DisplaysModuleUpdateDisplayPrecipitationUnit? _toApiPrecipitationUnit(PrecipitationUnit? unit) {
+    if (unit == null) return null;
+    return DisplaysModuleUpdateDisplayPrecipitationUnit.fromJson(unit.value);
+  }
+
+  /// Convert local DistanceUnit to API enum
+  DisplaysModuleUpdateDisplayDistanceUnit? _toApiDistanceUnit(DistanceUnit? unit) {
+    if (unit == null) return null;
+    return DisplaysModuleUpdateDisplayDistanceUnit.fromJson(unit.value);
+  }
+
+  /// Sentinel to distinguish "not provided" from "set to null" in _buildUpdateData
+  static const _unset = Object();
+
   /// Build update data with all current values
   DisplaysModuleUpdateDisplay _buildUpdateData({
     bool? darkMode,
@@ -429,6 +509,11 @@ class DisplayRepository extends ChangeNotifier {
     int? speakerVolume,
     bool? microphone,
     int? microphoneVolume,
+    Object? temperatureUnit = _unset,
+    Object? windSpeedUnit = _unset,
+    Object? pressureUnit = _unset,
+    Object? precipitationUnit = _unset,
+    Object? distanceUnit = _unset,
   }) {
     return DisplaysModuleUpdateDisplay(
       version: _display!.version,
@@ -456,6 +541,32 @@ class DisplayRepository extends ChangeNotifier {
       speakerVolume: speakerVolume ?? _display!.speakerVolume,
       microphone: microphone ?? _display!.microphone,
       microphoneVolume: microphoneVolume ?? _display!.microphoneVolume,
+      // Unit overrides
+      temperatureUnit: _toApiTemperatureUnit(
+        identical(temperatureUnit, _unset)
+            ? _display!.temperatureUnit
+            : temperatureUnit as TemperatureUnit?,
+      ),
+      windSpeedUnit: _toApiWindSpeedUnit(
+        identical(windSpeedUnit, _unset)
+            ? _display!.windSpeedUnit
+            : windSpeedUnit as WindSpeedUnit?,
+      ),
+      pressureUnit: _toApiPressureUnit(
+        identical(pressureUnit, _unset)
+            ? _display!.pressureUnit
+            : pressureUnit as PressureUnit?,
+      ),
+      precipitationUnit: _toApiPrecipitationUnit(
+        identical(precipitationUnit, _unset)
+            ? _display!.precipitationUnit
+            : precipitationUnit as PrecipitationUnit?,
+      ),
+      distanceUnit: _toApiDistanceUnit(
+        identical(distanceUnit, _unset)
+            ? _display!.distanceUnit
+            : distanceUnit as DistanceUnit?,
+      ),
     );
   }
 
@@ -670,6 +781,136 @@ class DisplayRepository extends ChangeNotifier {
     } catch (e) {
       if (kDebugMode) {
         debugPrint('[DISPLAYS MODULE] Failed to update microphone volume: $e');
+      }
+      return false;
+    }
+  }
+
+  /// Update temperature unit override (null = system default)
+  Future<bool> setTemperatureUnit(TemperatureUnit? unit) async {
+    if (_display == null) return false;
+
+    try {
+      final response = await _apiClient.displaysModule.updateDisplaysModuleDisplayMe(
+        body: DisplaysModuleReqUpdateDisplay(
+          data: _buildUpdateData(temperatureUnit: unit),
+        ),
+      );
+
+      if (response.response.statusCode == 200) {
+        _display = _display!.copyWith(temperatureUnit: unit);
+        notifyListeners();
+        return true;
+      }
+
+      return false;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[DISPLAYS MODULE] Failed to update temperature unit: $e');
+      }
+      return false;
+    }
+  }
+
+  /// Update wind speed unit override (null = system default)
+  Future<bool> setWindSpeedUnit(WindSpeedUnit? unit) async {
+    if (_display == null) return false;
+
+    try {
+      final response = await _apiClient.displaysModule.updateDisplaysModuleDisplayMe(
+        body: DisplaysModuleReqUpdateDisplay(
+          data: _buildUpdateData(windSpeedUnit: unit),
+        ),
+      );
+
+      if (response.response.statusCode == 200) {
+        _display = _display!.copyWith(windSpeedUnit: unit);
+        notifyListeners();
+        return true;
+      }
+
+      return false;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[DISPLAYS MODULE] Failed to update wind speed unit: $e');
+      }
+      return false;
+    }
+  }
+
+  /// Update pressure unit override (null = system default)
+  Future<bool> setPressureUnit(PressureUnit? unit) async {
+    if (_display == null) return false;
+
+    try {
+      final response = await _apiClient.displaysModule.updateDisplaysModuleDisplayMe(
+        body: DisplaysModuleReqUpdateDisplay(
+          data: _buildUpdateData(pressureUnit: unit),
+        ),
+      );
+
+      if (response.response.statusCode == 200) {
+        _display = _display!.copyWith(pressureUnit: unit);
+        notifyListeners();
+        return true;
+      }
+
+      return false;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[DISPLAYS MODULE] Failed to update pressure unit: $e');
+      }
+      return false;
+    }
+  }
+
+  /// Update precipitation unit override (null = system default)
+  Future<bool> setPrecipitationUnit(PrecipitationUnit? unit) async {
+    if (_display == null) return false;
+
+    try {
+      final response = await _apiClient.displaysModule.updateDisplaysModuleDisplayMe(
+        body: DisplaysModuleReqUpdateDisplay(
+          data: _buildUpdateData(precipitationUnit: unit),
+        ),
+      );
+
+      if (response.response.statusCode == 200) {
+        _display = _display!.copyWith(precipitationUnit: unit);
+        notifyListeners();
+        return true;
+      }
+
+      return false;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[DISPLAYS MODULE] Failed to update precipitation unit: $e');
+      }
+      return false;
+    }
+  }
+
+  /// Update distance unit override (null = system default)
+  Future<bool> setDistanceUnit(DistanceUnit? unit) async {
+    if (_display == null) return false;
+
+    try {
+      final response = await _apiClient.displaysModule.updateDisplaysModuleDisplayMe(
+        body: DisplaysModuleReqUpdateDisplay(
+          data: _buildUpdateData(distanceUnit: unit),
+        ),
+      );
+
+      if (response.response.statusCode == 200) {
+        _display = _display!.copyWith(distanceUnit: unit);
+        notifyListeners();
+        return true;
+      }
+
+      return false;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[DISPLAYS MODULE] Failed to update distance unit: $e');
       }
       return false;
     }
