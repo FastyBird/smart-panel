@@ -69,7 +69,7 @@ import { ElAlert, ElForm, ElFormItem, ElInput, ElOption, ElSelect, ElSwitch, typ
 import type { z } from 'zod';
 
 import { FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
-import { WeatherOpenweathermapPluginDataConfigUnit } from '../../../openapi';
+import { TemperatureUnit } from '../weather-openweathermap-onecall.constants';
 import type { OpenWeatherMapOneCallConfigEditFormSchema } from '../schemas/config.schemas';
 
 import type { IOpenWeatherMapOneCallConfigFormProps } from './openweathermap-onecall-config-form.types';
@@ -106,11 +106,11 @@ const { formEl, model, formChanged, submit, formResult } = useConfigPluginEditFo
 
 const unitOptions = computed(() => [
 	{
-		value: WeatherOpenweathermapPluginDataConfigUnit.celsius,
+		value: TemperatureUnit.CELSIUS,
 		label: t('weatherOpenweathermapOnecallPlugin.fields.config.unit.values.celsius'),
 	},
 	{
-		value: WeatherOpenweathermapPluginDataConfigUnit.fahrenheit,
+		value: TemperatureUnit.FAHRENHEIT,
 		label: t('weatherOpenweathermapOnecallPlugin.fields.config.unit.values.fahrenheit'),
 	},
 ]);

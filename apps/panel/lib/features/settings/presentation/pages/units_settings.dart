@@ -491,33 +491,10 @@ class _UnitsSettingsPageState extends State<UnitsSettingsPage> {
 	}
 
 	Future<bool> _updateUnit(String unitKey, String value) async {
-		var current = _repository.data;
-		if (current == null) {
-			try {
-				await _repository.fetchConfiguration();
-				current = _repository.data;
-				if (current == null) {
-					return false;
-				}
-			} catch (e) {
-				return false;
-			}
-		}
-
 		final updateData = <String, dynamic>{
 			'type': 'system-module',
-			'language': current.language.value,
-			'timezone': current.timezone,
-			'time_format': current.timeFormat.value,
-			'temperature_unit': current.temperatureUnit.value,
-			'wind_speed_unit': current.windSpeedUnit.value,
-			'pressure_unit': current.pressureUnit.value,
-			'precipitation_unit': current.precipitationUnit.value,
-			'distance_unit': current.distanceUnit.value,
+			unitKey: value,
 		};
-
-		// Override the specific unit being changed
-		updateData[unitKey] = value;
 
 		try {
 			return await _repository.updateConfiguration(updateData);

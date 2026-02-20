@@ -315,7 +315,6 @@ export class UpdateDisplayDto {
 		type: 'string',
 		enum: TemperatureUnitType,
 		nullable: true,
-		example: null,
 	})
 	@Expose()
 	@IsOptional()
@@ -331,7 +330,6 @@ export class UpdateDisplayDto {
 		type: 'string',
 		enum: WindSpeedUnitType,
 		nullable: true,
-		example: null,
 	})
 	@Expose()
 	@IsOptional()
@@ -347,7 +345,6 @@ export class UpdateDisplayDto {
 		type: 'string',
 		enum: PressureUnitType,
 		nullable: true,
-		example: null,
 	})
 	@Expose()
 	@IsOptional()
@@ -363,7 +360,6 @@ export class UpdateDisplayDto {
 		type: 'string',
 		enum: PrecipitationUnitType,
 		nullable: true,
-		example: null,
 	})
 	@Expose()
 	@IsOptional()
@@ -379,7 +375,6 @@ export class UpdateDisplayDto {
 		type: 'string',
 		enum: DistanceUnitType,
 		nullable: true,
-		example: null,
 	})
 	@Expose()
 	@IsOptional()

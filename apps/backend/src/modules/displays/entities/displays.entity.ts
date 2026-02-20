@@ -419,7 +419,6 @@ export class DisplayEntity extends BaseEntity {
 		type: 'string',
 		enum: TemperatureUnitType,
 		nullable: true,
-		example: null,
 	})
 	@Expose({ name: 'temperature_unit' })
 	@IsOptional()
@@ -438,7 +437,6 @@ export class DisplayEntity extends BaseEntity {
 		type: 'string',
 		enum: WindSpeedUnitType,
 		nullable: true,
-		example: null,
 	})
 	@Expose({ name: 'wind_speed_unit' })
 	@IsOptional()
@@ -457,7 +455,6 @@ export class DisplayEntity extends BaseEntity {
 		type: 'string',
 		enum: PressureUnitType,
 		nullable: true,
-		example: null,
 	})
 	@Expose({ name: 'pressure_unit' })
 	@IsOptional()
@@ -476,7 +473,6 @@ export class DisplayEntity extends BaseEntity {
 		type: 'string',
 		enum: PrecipitationUnitType,
 		nullable: true,
-		example: null,
 	})
 	@Expose({ name: 'precipitation_unit' })
 	@IsOptional()
@@ -495,7 +491,6 @@ export class DisplayEntity extends BaseEntity {
 		type: 'string',
 		enum: DistanceUnitType,
 		nullable: true,
-		example: null,
 	})
 	@Expose({ name: 'distance_unit' })
 	@IsOptional()
