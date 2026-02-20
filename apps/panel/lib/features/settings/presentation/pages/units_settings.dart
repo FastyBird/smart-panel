@@ -54,9 +54,9 @@ class _UnitsSettingsPageState extends State<UnitsSettingsPage> {
 
 	@override
 	void dispose() {
-		super.dispose();
-
 		_repository.removeListener(_syncStateWithRepository);
+
+		super.dispose();
 	}
 
 	void _syncStateWithRepository() {
