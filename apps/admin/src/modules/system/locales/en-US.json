@@ -103,7 +103,7 @@
       "noMessage": "This log entry is without additional message",
       "noMoreEntries": "No more log entries"
     },
-    "aboutLanguageSettings": "Configure the interface language, timezone, and time format for the Smart Panel. These settings affect how dates, times, and text are displayed throughout the system.",
+    "aboutLanguageSettings": "Configure the interface language, timezone, time format, and temperature unit for the Smart Panel. These settings affect how dates, times, temperatures, and text are displayed throughout the system.",
     "aboutSystemSettings": "Manage system-wide logging configuration. Select which log severity levels to monitor and display in the application logs.",
     "aboutHouseModeSettings": "Set the current house mode to control how the Smart Panel and connected devices behave. Home mode is for normal occupancy, Away mode for when no one is home, and Night mode for sleeping hours."
   },
@@ -139,6 +139,18 @@
         },
         "validation": {
           "required": "Time format is required"
+        }
+      },
+      "temperatureUnit": {
+        "title": "Temperature Unit",
+        "description": "Temperature display unit",
+        "placeholder": "Select temperature unit",
+        "values": {
+          "celsius": "Celsius (\u00b0C)",
+          "fahrenheit": "Fahrenheit (\u00b0F)"
+        },
+        "validation": {
+          "required": "Temperature unit is required"
         }
       },
       "logLevels": {

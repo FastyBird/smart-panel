@@ -4,7 +4,7 @@ import { ArrayNotEmpty, IsArray, IsEnum, IsOptional, IsString } from 'class-vali
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { UpdateModuleConfigDto } from '../../config/dto/config.dto';
-import { HouseMode, LanguageType, LogLevelType, TimeFormatType } from '../system.constants';
+import { HouseMode, LanguageType, LogLevelType, TemperatureUnitType, TimeFormatType } from '../system.constants';
 import { SYSTEM_MODULE_NAME } from '../system.constants';
 
 @ApiSchema({ name: 'ConfigModuleUpdateSystem' })
@@ -53,6 +53,19 @@ export class UpdateSystemConfigDto extends UpdateModuleConfigDto {
 	@IsOptional()
 	@IsEnum(TimeFormatType, { message: '[{"field":"time_format","reason":"Time format must be a valid string."}]' })
 	time_format?: TimeFormatType;
+
+	@ApiPropertyOptional({
+		description: 'Sets the temperature display unit.',
+		enum: TemperatureUnitType,
+		example: TemperatureUnitType.CELSIUS,
+	})
+	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	@IsOptional()
+	@IsEnum(TemperatureUnitType, {
+		message: '[{"field":"temperature_unit","reason":"Temperature unit must be celsius or fahrenheit."}]',
+	})
+	temperature_unit?: TemperatureUnitType;
 
 	// System settings
 	@ApiPropertyOptional({

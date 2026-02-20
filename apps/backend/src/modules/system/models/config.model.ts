@@ -4,7 +4,7 @@ import { ArrayNotEmpty, IsArray, IsEnum, IsString } from 'class-validator';
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
 import { ModuleConfigModel } from '../../config/models/config.model';
-import { HouseMode, LanguageType, LogLevelType, TimeFormatType } from '../system.constants';
+import { HouseMode, LanguageType, LogLevelType, TemperatureUnitType, TimeFormatType } from '../system.constants';
 import { SYSTEM_MODULE_NAME } from '../system.constants';
 
 @ApiSchema({ name: 'ConfigModuleDataSystem' })
@@ -46,6 +46,16 @@ export class SystemConfigModel extends ModuleConfigModel {
 	@Expose({ name: 'time_format' })
 	@IsEnum(TimeFormatType)
 	timeFormat: TimeFormatType = TimeFormatType.HOUR_24;
+
+	@ApiProperty({
+		name: 'temperature_unit',
+		description: 'Temperature display unit',
+		enum: TemperatureUnitType,
+		example: TemperatureUnitType.CELSIUS,
+	})
+	@Expose({ name: 'temperature_unit' })
+	@IsEnum(TemperatureUnitType)
+	temperatureUnit: TemperatureUnitType = TemperatureUnitType.CELSIUS;
 
 	// System settings
 	@ApiProperty({
