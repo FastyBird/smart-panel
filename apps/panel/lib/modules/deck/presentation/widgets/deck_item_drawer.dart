@@ -132,7 +132,10 @@ class _Content extends StatelessWidget {
       itemCount: itemCount,
       separatorHeight: AppSpacings.pSm,
       backgroundColor: bgColor,
-      padding: EdgeInsets.symmetric(horizontal: AppSpacings.pLg),
+      padding: EdgeInsets.symmetric(
+        horizontal: AppSpacings.pMd,
+        vertical: AppSpacings.pMd,
+      ),
       itemBuilder: itemBuilder,
     );
 
