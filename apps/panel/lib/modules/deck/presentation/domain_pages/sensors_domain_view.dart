@@ -385,7 +385,6 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
         ),
         Flexible(
           child: VerticalScrollWithGradient(
-            gradientHeight: AppSpacings.pLg,
             backgroundColor: isDark ? AppBgColorDark.overlay : AppBgColorLight.overlay,
             borderRadius: BorderRadius.vertical(
               bottom: Radius.circular(AppBorderRadius.medium),
@@ -984,7 +983,6 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
           _buildSensorSectionTitle(context),
           Expanded(
             child: VerticalScrollWithGradient(
-              gradientHeight: AppSpacings.pLg,
               itemCount: 1,
               separatorHeight: 0,
               itemBuilder: (context, index) => GridView.builder(
@@ -1031,7 +1029,6 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
           _buildSensorSectionTitle(context),
           Expanded(
             child: VerticalScrollWithGradient(
-              gradientHeight: AppSpacings.pLg,
               padding: EdgeInsets.symmetric(
                 vertical: AppSpacings.pMd,
               ),

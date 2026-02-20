@@ -203,7 +203,6 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
 					Expanded(
 						child: isLandscape
 								? VerticalScrollWithGradient(
-										gradientHeight: AppSpacings.pLg,
 										itemCount: 1,
 										padding: EdgeInsets.only(
 													left: AppSpacings.pMd,
@@ -213,7 +212,6 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
 										itemBuilder: (context, index) => SettingsTwoColumnLayout(cards: cards),
 									)
 								: VerticalScrollWithGradient(
-										gradientHeight: AppSpacings.pLg,
 										itemCount: cards.length,
 										separatorHeight: AppSpacings.pMd,
 										padding: EdgeInsets.only(

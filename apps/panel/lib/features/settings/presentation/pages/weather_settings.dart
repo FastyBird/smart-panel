@@ -106,7 +106,6 @@ class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
 					Expanded(
 						child: isLandscape
 								? VerticalScrollWithGradient(
-										gradientHeight: AppSpacings.pLg,
 										itemCount: 1,
 										padding: EdgeInsets.only(
 													left: AppSpacings.pMd,
@@ -116,7 +115,6 @@ class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
 										itemBuilder: (context, index) => SettingsTwoColumnLayout(cards: cards),
 									)
 								: VerticalScrollWithGradient(
-										gradientHeight: AppSpacings.pLg,
 										itemCount: cards.length,
 										separatorHeight: AppSpacings.pMd,
 										padding: EdgeInsets.only(

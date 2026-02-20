@@ -11,7 +11,6 @@ import 'package:flutter/material.dart';
 /// Example usage:
 /// ```dart
 /// VerticalScrollWithGradient(
-///   gradientHeight: AppSpacings.pLg,
 ///   itemCount: items.length,
 ///   separatorHeight: AppSpacings.pSm,
 ///   padding: AppSpacings.paddingLg,
@@ -19,8 +18,8 @@ import 'package:flutter/material.dart';
 /// )
 /// ```
 class VerticalScrollWithGradient extends StatefulWidget {
-  /// Height of the gradient overlay at top and bottom
-  final double gradientHeight;
+  /// Height of the gradient overlay at top and bottom (defaults to [AppSpacings.pLg])
+  final double? gradientHeight;
 
   /// Number of items in the list
   final int itemCount;
@@ -54,7 +53,7 @@ class VerticalScrollWithGradient extends StatefulWidget {
 
   const VerticalScrollWithGradient({
     super.key,
-    required this.gradientHeight,
+    this.gradientHeight,
     required this.itemCount,
     required this.itemBuilder,
     this.separatorHeight = 0,
@@ -148,6 +147,7 @@ class _VerticalScrollWithGradientState
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = widget.backgroundColor ??
         (isDark ? AppBgColorDark.page : AppBgColorLight.page);
+    final effectiveGradientHeight = widget.gradientHeight ?? AppSpacings.pLg;
 
     // Resolve padding to get individual values
     final resolvedPadding = widget.padding.resolve(TextDirection.ltr);
@@ -188,7 +188,7 @@ class _VerticalScrollWithGradientState
           left: 0,
           right: 0,
           top: 0,
-          height: widget.gradientHeight,
+          height: effectiveGradientHeight,
           child: IgnorePointer(
             child: AnimatedOpacity(
               opacity: _showTopGradient ? 1.0 : 0.0,
@@ -215,7 +215,7 @@ class _VerticalScrollWithGradientState
           left: 0,
           right: 0,
           bottom: 0,
-          height: widget.gradientHeight,
+          height: effectiveGradientHeight,
           child: IgnorePointer(
             child: AnimatedOpacity(
               opacity: _showBottomGradient ? 1.0 : 0.0,

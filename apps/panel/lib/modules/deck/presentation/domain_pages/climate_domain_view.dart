@@ -1629,7 +1629,6 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         titleIcon: MdiIcons.homeThermometer,
         scrollable: false,
         content: VerticalScrollWithGradient(
-          gradientHeight: AppSpacings.pLg,
           itemCount: _state.climateDevices.length,
           separatorHeight: AppSpacings.pSm,
           backgroundColor: drawerBgColor,
@@ -1742,7 +1741,6 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         titleIcon: MdiIcons.devices,
         scrollable: false,
         content: VerticalScrollWithGradient(
-          gradientHeight: AppSpacings.pLg,
           itemCount: _state.auxiliaryDevices.length,
           separatorHeight: AppSpacings.pSm,
           backgroundColor: drawerBgColor,
@@ -2155,7 +2153,6 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         titleIcon: MdiIcons.eyeSettings,
         scrollable: false,
         content: VerticalScrollWithGradient(
-          gradientHeight: AppSpacings.pLg,
           itemCount: _state.sensors.length,
           separatorHeight: AppSpacings.pSm,
           backgroundColor: drawerBgColor,

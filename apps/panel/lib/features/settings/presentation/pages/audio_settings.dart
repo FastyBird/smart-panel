@@ -94,7 +94,6 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
 								? _buildNoAudioSupportMessage(localizations)
 								: isLandscape
 										? VerticalScrollWithGradient(
-												gradientHeight: AppSpacings.pLg,
 												itemCount: 1,
 												padding: EdgeInsets.only(
 													left: AppSpacings.pMd,
@@ -114,7 +113,6 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
 												),
 											)
 										: VerticalScrollWithGradient(
-												gradientHeight: AppSpacings.pLg,
 												itemCount: 1,
 												padding: EdgeInsets.only(
 													left: AppSpacings.pMd,

@@ -374,7 +374,6 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 						Expanded(
 							child: isLandscape
 									? VerticalScrollWithGradient(
-											gradientHeight: AppSpacings.pLg,
 											itemCount: 1,
 											padding: EdgeInsets.only(
 												left: AppSpacings.pMd,
@@ -435,7 +434,6 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 												),
 										)
 									: VerticalScrollWithGradient(
-											gradientHeight: AppSpacings.pLg,
 											itemCount: 1,
 											padding: EdgeInsets.only(
 												left: AppSpacings.pMd,

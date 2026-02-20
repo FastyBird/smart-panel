@@ -84,7 +84,7 @@ class DevicePortraitLayout extends StatelessWidget {
     Widget contentWidget;
     if (scrollable) {
       contentWidget = VerticalScrollWithGradient(
-        gradientHeight: gradientHeight ?? AppSpacings.pLg,
+        gradientHeight: gradientHeight,
         padding: contentPadding ?? defaultPadding,
         itemCount: 1,
         separatorHeight: 0,

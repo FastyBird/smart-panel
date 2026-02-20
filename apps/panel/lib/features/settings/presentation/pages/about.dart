@@ -89,7 +89,6 @@ class _AboutPageState extends State<AboutPage> {
 		Color subColor,
 	) {
 		return VerticalScrollWithGradient(
-			gradientHeight: AppSpacings.pLg,
 			itemCount: 1,
 			padding: EdgeInsets.only(
 				left: AppSpacings.pMd,
@@ -120,7 +119,6 @@ class _AboutPageState extends State<AboutPage> {
 		Color subColor,
 	) {
 		return VerticalScrollWithGradient(
-			gradientHeight: AppSpacings.pLg,
 			itemCount: 1,
 			padding: EdgeInsets.only(
 				left: AppSpacings.pMd,

@@ -634,7 +634,6 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
 
     if (inFlex) {
       return VerticalScrollWithGradient(
-        gradientHeight: AppSpacings.pLg,
         backgroundColor: backgroundColor ?? fillColor,
         itemCount: reversedEvents.length,
         separatorHeight: AppSpacings.scale(1),

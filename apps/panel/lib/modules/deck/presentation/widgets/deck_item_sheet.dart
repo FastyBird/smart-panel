@@ -132,7 +132,6 @@ class _Content extends StatelessWidget {
     final bgColor = isDark ? AppFillColorDark.base : AppFillColorLight.blank;
 
     return VerticalScrollWithGradient(
-      gradientHeight: AppSpacings.pLg,
       itemCount: itemCount,
       separatorHeight: AppSpacings.pSm,
       backgroundColor: bgColor,

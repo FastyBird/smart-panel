@@ -74,7 +74,6 @@ class LandscapeViewLayout extends StatelessWidget {
             flex: 1,
             child: additionalContentScrollable
               ? VerticalScrollWithGradient(
-                  gradientHeight: AppSpacings.pLg,
                   padding: resolvedAdditionalPadding,
                   backgroundColor: additionalBgColor,
                   itemCount: 1,
@@ -94,7 +93,6 @@ class LandscapeViewLayout extends StatelessWidget {
           child: ClipRect(
             child: mainContentScrollable
                 ? VerticalScrollWithGradient(
-                    gradientHeight: AppSpacings.pLg,
                     padding: resolvedMainPadding,
                     itemCount: 1,
                     separatorHeight: 0,

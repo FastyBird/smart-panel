@@ -143,7 +143,6 @@ class MaintenancePage extends StatelessWidget {
 					Expanded(
 						child: isLandscape
 								? VerticalScrollWithGradient(
-										gradientHeight: AppSpacings.pLg,
 										itemCount: 1,
 										padding: EdgeInsets.only(
 													left: AppSpacings.pMd,
@@ -190,7 +189,6 @@ class MaintenancePage extends StatelessWidget {
 										),
 									)
 								: VerticalScrollWithGradient(
-										gradientHeight: AppSpacings.pLg,
 										itemCount: 1,
 										padding: EdgeInsets.only(
 													left: AppSpacings.pMd,
