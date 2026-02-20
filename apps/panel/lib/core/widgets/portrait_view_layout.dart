@@ -49,7 +49,6 @@ class PortraitViewLayout extends StatelessWidget {
 
     if (scrollable) {
       return VerticalScrollWithGradient(
-        gradientHeight: AppSpacings.pMd,
         padding: resolvedPadding,
         itemCount: 1,
         separatorHeight: 0,

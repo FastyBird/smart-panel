@@ -65,6 +65,7 @@ import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_bottom_sheet.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_right_drawer.dart';
 import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_item_drawer.dart';
 import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
@@ -2327,14 +2328,10 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
               children: [
                 Expanded(
                   child: VerticalScrollWithGradient(
-                    gradientHeight: AppSpacings.pMd,
                     itemCount: lights.length,
                     separatorHeight: AppSpacings.pSm,
                     backgroundColor: drawerBgColor,
-                    padding: EdgeInsets.symmetric(
-                      horizontal: AppSpacings.pLg,
-                      vertical: AppSpacings.pMd,
-                    ),
+                    padding: EdgeInsets.symmetric(horizontal: AppSpacings.pLg),
                     itemBuilder: (context, index) =>
                         _buildOtherLightTileForSheet(context, lights[index]),
                   ),
@@ -2368,15 +2365,11 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
               children: [
                 Flexible(
                   child: VerticalScrollWithGradient(
-                    gradientHeight: AppSpacings.pMd,
                     itemCount: lights.length,
                     separatorHeight: AppSpacings.pSm,
                     backgroundColor: bgColor,
                     shrinkWrap: true,
-                    padding: EdgeInsets.symmetric(
-                      horizontal: AppSpacings.pLg,
-                      vertical: AppSpacings.pMd,
-                    ),
+                    padding: EdgeInsets.symmetric(horizontal: AppSpacings.pLg),
                     itemBuilder: (c, i) =>
                         _buildOtherLightTileForSheet(c, lights[i]),
                   ),
@@ -2462,10 +2455,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         ),
       ),
       child: Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: AppSpacings.pLg,
-          vertical: AppSpacings.pMd,
-        ),
+        padding: EdgeInsets.symmetric(horizontal: AppSpacings.pLg),
         child: Theme(
           data: Theme.of(context).copyWith(filledButtonTheme: filledTheme),
           child: SizedBox(
@@ -3079,28 +3069,14 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         MediaQuery.of(context).orientation == Orientation.landscape;
 
     if (isLandscape) {
-      final isDark = Theme.of(context).brightness == Brightness.dark;
-      final drawerBgColor =
-          isDark ? AppFillColorDark.base : AppFillColorLight.blank;
-
-      showAppRightDrawer(
+      DeckItemDrawer.showItemDrawer(
         context,
         title: localizations.space_scenes_title,
-        titleIcon: MdiIcons.autoFix,
-        scrollable: false,
-        content: VerticalScrollWithGradient(
-          gradientHeight: AppSpacings.pMd,
-          itemCount: scenes.length,
-          separatorHeight: AppSpacings.pSm,
-          backgroundColor: drawerBgColor,
-          padding: EdgeInsets.symmetric(
-            horizontal: AppSpacings.pLg,
-            vertical: AppSpacings.pMd,
-          ),
-          itemBuilder: (context, index) => _buildSceneTileForSheet(
-            context,
-            scenes[index],
-          ),
+        icon: MdiIcons.autoFix,
+        itemCount: scenes.length,
+        itemBuilder: (context, index) => _buildSceneTileForSheet(
+          context,
+          scenes[index],
         ),
       );
     } else {

@@ -291,6 +291,10 @@
 							clearable
 						>
 							<el-option
+								:label="t('displaysModule.fields.displays.temperatureUnit.placeholder')"
+								value=""
+							/>
+							<el-option
 								:label="t('displaysModule.fields.displays.temperatureUnit.values.celsius')"
 								value="celsius"
 							/>
@@ -311,6 +315,10 @@
 							name="windSpeedUnit"
 							clearable
 						>
+							<el-option
+								:label="t('displaysModule.fields.displays.windSpeedUnit.placeholder')"
+								value=""
+							/>
 							<el-option
 								:label="t('displaysModule.fields.displays.windSpeedUnit.values.ms')"
 								value="ms"
@@ -341,6 +349,10 @@
 							clearable
 						>
 							<el-option
+								:label="t('displaysModule.fields.displays.pressureUnit.placeholder')"
+								value=""
+							/>
+							<el-option
 								:label="t('displaysModule.fields.displays.pressureUnit.values.hpa')"
 								value="hpa"
 							/>
@@ -370,6 +382,10 @@
 							clearable
 						>
 							<el-option
+								:label="t('displaysModule.fields.displays.precipitationUnit.placeholder')"
+								value=""
+							/>
+							<el-option
 								:label="t('displaysModule.fields.displays.precipitationUnit.values.mm')"
 								value="mm"
 							/>
@@ -390,6 +406,10 @@
 							name="distanceUnit"
 							clearable
 						>
+							<el-option
+								:label="t('displaysModule.fields.displays.distanceUnit.placeholder')"
+								value=""
+							/>
 							<el-option
 								:label="t('displaysModule.fields.displays.distanceUnit.values.km')"
 								value="km"

@@ -1,6 +1,7 @@
 import 'package:fastybird_smart_panel/core/utils/number.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
+import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_card.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
@@ -87,13 +88,10 @@ class _AboutPageState extends State<AboutPage> {
 		Color textColor,
 		Color subColor,
 	) {
-		return SingleChildScrollView(
-			padding: EdgeInsets.only(
-				left: AppSpacings.pMd,
-				right: AppSpacings.pMd,
-				bottom: AppSpacings.pMd,
-			),
-			child: Column(
+		return VerticalScrollWithGradient(
+			itemCount: 1,
+			padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
+			itemBuilder: (context, index) => Column(
 				crossAxisAlignment: CrossAxisAlignment.start,
 				children: [
 					_buildBrandingSection(localizations, isDark, textColor, subColor),
@@ -116,18 +114,14 @@ class _AboutPageState extends State<AboutPage> {
 		Color textColor,
 		Color subColor,
 	) {
-		return Padding(
-			padding: EdgeInsets.only(
-				left: AppSpacings.pMd,
-				right: AppSpacings.pMd,
-				bottom: AppSpacings.pMd,
-			),
-			child: Row(
+		return VerticalScrollWithGradient(
+			itemCount: 1,
+			padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
+			itemBuilder: (context, index) => Row(
 				crossAxisAlignment: CrossAxisAlignment.start,
 				children: [
 					Expanded(
-						child: SingleChildScrollView(
-							child: Column(
+						child: Column(
 								crossAxisAlignment: CrossAxisAlignment.start,
 								children: [
 									_buildBrandingSection(localizations, isDark, textColor, subColor),
@@ -135,13 +129,10 @@ class _AboutPageState extends State<AboutPage> {
 									_buildAboutSection(localizations, isDark, successColor, successBg),
 								],
 							),
-						),
 					),
 					SizedBox(width: AppSpacings.pMd),
 					Expanded(
-						child: SingleChildScrollView(
-							child: _buildDeviceInfoSection(localizations, isDark, infoColor, infoBg),
-						),
+						child: _buildDeviceInfoSection(localizations, isDark, infoColor, infoBg),
 					),
 				],
 			),

@@ -1,6 +1,7 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
+import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_card.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_dropdown_value.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_selection_dialog.dart';
@@ -104,26 +105,16 @@ class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
 					),
 					Expanded(
 						child: isLandscape
-								? SingleChildScrollView(
-										padding: EdgeInsets.only(
-													left: AppSpacings.pMd,
-													right: AppSpacings.pMd,
-													bottom: AppSpacings.pMd,
-												),
-										child: SettingsTwoColumnLayout(cards: cards),
+								? VerticalScrollWithGradient(
+										itemCount: 1,
+										padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
+										itemBuilder: (context, index) => SettingsTwoColumnLayout(cards: cards),
 									)
-								: ListView(
-										padding: EdgeInsets.only(
-													left: AppSpacings.pMd,
-													right: AppSpacings.pMd,
-													bottom: AppSpacings.pMd,
-												),
-										children: [
-											for (int i = 0; i < cards.length; i++) ...[
-												cards[i],
-												if (i < cards.length - 1) SizedBox(height: AppSpacings.pMd),
-											],
-										],
+								: VerticalScrollWithGradient(
+										itemCount: cards.length,
+										separatorHeight: AppSpacings.pMd,
+										padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
+										itemBuilder: (context, index) => cards[index],
 									),
 					),
 				],

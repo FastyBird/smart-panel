@@ -774,11 +774,9 @@ class _EntryPointGrid extends StatelessWidget {
 				AppSpacings.spacingSmVertical,
 				Expanded(
 					child: VerticalScrollWithGradient(
-						gradientHeight: AppSpacings.pMd,
 						backgroundColor: bgColor,
 						itemCount: rowCount,
 						separatorHeight: AppSpacings.pSm,
-						padding: EdgeInsets.symmetric(vertical: AppSpacings.pMd),
 						itemBuilder: (context, rowIndex) => buildRow(context, rowIndex),
 					),
 				),
@@ -914,7 +912,6 @@ class _AlertStream extends StatelessWidget {
 				child: sortedAlerts.isEmpty
 					? Center(child: emptyState)
 					: VerticalScrollWithGradient(
-						gradientHeight: AppSpacings.pMd,
 						backgroundColor: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
 						itemCount: sortedAlerts.length,
 						separatorHeight: AppSpacings.scale(1),
@@ -1259,7 +1256,6 @@ class _EventsFeed extends StatelessWidget {
 				final displayEvents = eventsRepo.events.take(maxEvents).toList();
 
 				return VerticalScrollWithGradient(
-					gradientHeight: AppSpacings.pMd,
 					backgroundColor: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
 					itemCount: displayEvents.length,
 					separatorHeight: AppSpacings.scale(1),

@@ -368,11 +368,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: EdgeInsets.only(
-            top: AppSpacings.pMd,
-            left: AppSpacings.pMd,
-            right: AppSpacings.pMd,
-          ),
+          padding: EdgeInsets.only(bottom: AppSpacings.pSm),
           child: Text(
             AppLocalizations.of(context)!.sensor_label_filter.toUpperCase(),
             style: TextStyle(
@@ -385,15 +381,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
         ),
         Flexible(
           child: VerticalScrollWithGradient(
-            gradientHeight: AppSpacings.pMd,
             backgroundColor: isDark ? AppBgColorDark.overlay : AppBgColorLight.overlay,
-            borderRadius: BorderRadius.vertical(
-              bottom: Radius.circular(AppBorderRadius.medium),
-            ),
-            padding: EdgeInsets.symmetric(
-              vertical: AppSpacings.pMd,
-              horizontal: AppSpacings.pMd,
-            ),
             shrinkWrap: true,
             itemCount: modes.length,
             separatorHeight: 0,
@@ -432,10 +420,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Container(
-        padding: EdgeInsets.symmetric(
-          vertical: AppSpacings.pMd,
-          horizontal: AppSpacings.pMd,
-        ),
+        padding: EdgeInsets.symmetric(vertical: AppSpacings.pMd, horizontal: AppSpacings.pMd),
         margin: EdgeInsets.only(bottom: AppSpacings.pXs),
         decoration: BoxDecoration(
           color: isActive ? colorFamily.light9 : Colors.transparent,
@@ -517,9 +502,12 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
                     width: AppSpacings.scale(1),
                   ),
                 ),
-                child: _buildModePopupContent(
-                  dialogContext,
-                  () => Navigator.of(dialogContext).pop(),
+                child: Padding(
+                  padding: AppSpacings.paddingMd,
+                  child: _buildModePopupContent(
+                    dialogContext,
+                    () => Navigator.of(dialogContext).pop(),
+                  ),
                 ),
               ),
             ),
@@ -984,8 +972,6 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
           _buildSensorSectionTitle(context),
           Expanded(
             child: VerticalScrollWithGradient(
-              gradientHeight: AppSpacings.pMd,
-              padding: EdgeInsets.symmetric(vertical: AppSpacings.pMd),
               itemCount: 1,
               separatorHeight: 0,
               itemBuilder: (context, index) => GridView.builder(
@@ -1028,14 +1014,11 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
       ),
       mainContent: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: AppSpacings.pMd,
         children: [
           _buildSensorSectionTitle(context),
           Expanded(
             child: VerticalScrollWithGradient(
-              gradientHeight: AppSpacings.pMd,
-              padding: EdgeInsets.symmetric(
-                vertical: AppSpacings.pMd,
-              ),
               itemCount: 1,
               separatorHeight: 0,
               itemBuilder: (context, index) => GridView.builder(

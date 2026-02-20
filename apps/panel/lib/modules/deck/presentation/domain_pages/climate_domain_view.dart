@@ -74,8 +74,7 @@ import 'package:fastybird_smart_panel/modules/deck/services/bottom_nav_mode_noti
 import 'package:fastybird_smart_panel/modules/deck/types/deck_page_activated_event.dart';
 import 'package:fastybird_smart_panel/core/widgets/hero_card.dart';
 import 'package:fastybird_smart_panel/core/widgets/slider_with_steps.dart';
-import 'package:fastybird_smart_panel/core/widgets/app_right_drawer.dart';
-import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_item_drawer.dart';
 import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
@@ -1619,28 +1618,14 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         MediaQuery.of(context).orientation == Orientation.landscape;
 
     if (isLandscape) {
-      final isDark = Theme.of(context).brightness == Brightness.dark;
-      final drawerBgColor =
-          isDark ? AppFillColorDark.base : AppFillColorLight.blank;
-
-      showAppRightDrawer(
+      DeckItemDrawer.showItemDrawer(
         context,
         title: localizations.climate_devices_section,
-        titleIcon: MdiIcons.homeThermometer,
-        scrollable: false,
-        content: VerticalScrollWithGradient(
-          gradientHeight: AppSpacings.pMd,
-          itemCount: _state.climateDevices.length,
-          separatorHeight: AppSpacings.pSm,
-          backgroundColor: drawerBgColor,
-          padding: EdgeInsets.symmetric(
-            horizontal: AppSpacings.pLg,
-            vertical: AppSpacings.pMd,
-          ),
-          itemBuilder: (context, index) => _buildClimateDeviceTileForSheet(
-            context,
-            _state.climateDevices[index],
-          ),
+        icon: MdiIcons.homeThermometer,
+        itemCount: _state.climateDevices.length,
+        itemBuilder: (context, index) => _buildClimateDeviceTileForSheet(
+          context,
+          _state.climateDevices[index],
         ),
       );
     } else {
@@ -1732,28 +1717,14 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         MediaQuery.of(context).orientation == Orientation.landscape;
 
     if (isLandscape) {
-      final isDark = Theme.of(context).brightness == Brightness.dark;
-      final drawerBgColor =
-          isDark ? AppFillColorDark.base : AppFillColorLight.blank;
-
-      showAppRightDrawer(
+      DeckItemDrawer.showItemDrawer(
         context,
         title: localizations.climate_role_auxiliary,
-        titleIcon: MdiIcons.devices,
-        scrollable: false,
-        content: VerticalScrollWithGradient(
-          gradientHeight: AppSpacings.pMd,
-          itemCount: _state.auxiliaryDevices.length,
-          separatorHeight: AppSpacings.pSm,
-          backgroundColor: drawerBgColor,
-          padding: EdgeInsets.symmetric(
-            horizontal: AppSpacings.pLg,
-            vertical: AppSpacings.pMd,
-          ),
-          itemBuilder: (context, index) => _buildAuxiliaryDeviceTileForSheet(
-            context,
-            _state.auxiliaryDevices[index],
-          ),
+        icon: MdiIcons.devices,
+        itemCount: _state.auxiliaryDevices.length,
+        itemBuilder: (context, index) => _buildAuxiliaryDeviceTileForSheet(
+          context,
+          _state.auxiliaryDevices[index],
         ),
       );
     } else {
@@ -2145,27 +2116,13 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         MediaQuery.of(context).orientation == Orientation.landscape;
 
     if (isLandscape) {
-      final isDark = Theme.of(context).brightness == Brightness.dark;
-      final drawerBgColor =
-          isDark ? AppFillColorDark.base : AppFillColorLight.blank;
-
-      showAppRightDrawer(
+      DeckItemDrawer.showItemDrawer(
         context,
         title: localizations.device_sensors,
-        titleIcon: MdiIcons.eyeSettings,
-        scrollable: false,
-        content: VerticalScrollWithGradient(
-          gradientHeight: AppSpacings.pMd,
-          itemCount: _state.sensors.length,
-          separatorHeight: AppSpacings.pSm,
-          backgroundColor: drawerBgColor,
-          padding: EdgeInsets.symmetric(
-            horizontal: AppSpacings.pLg,
-            vertical: AppSpacings.pMd,
-          ),
-          itemBuilder: (context, index) =>
-              _buildSensorTileForSheet(context, _state.sensors[index]),
-        ),
+        icon: MdiIcons.eyeSettings,
+        itemCount: _state.sensors.length,
+        itemBuilder: (context, index) =>
+            _buildSensorTileForSheet(context, _state.sensors[index]),
       );
     } else {
       DeckItemSheet.showItemSheet(

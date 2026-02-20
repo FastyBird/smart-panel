@@ -4,6 +4,7 @@ import 'package:fastybird_smart_panel/core/services/navigation.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
+import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_action_button.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_card.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
@@ -141,13 +142,10 @@ class MaintenancePage extends StatelessWidget {
 					),
 					Expanded(
 						child: isLandscape
-								? SingleChildScrollView(
-										padding: EdgeInsets.only(
-													left: AppSpacings.pMd,
-													right: AppSpacings.pMd,
-													bottom: AppSpacings.pMd,
-												),
-										child: Row(
+								? VerticalScrollWithGradient(
+										itemCount: 1,
+										padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
+										itemBuilder: (context, index) => Row(
 											crossAxisAlignment: CrossAxisAlignment.start,
 											children: [
 												Expanded(
@@ -186,13 +184,10 @@ class MaintenancePage extends StatelessWidget {
 											],
 										),
 									)
-								: SingleChildScrollView(
-										padding: EdgeInsets.only(
-													left: AppSpacings.pMd,
-													right: AppSpacings.pMd,
-													bottom: AppSpacings.pMd,
-												),
-										child: Column(
+								: VerticalScrollWithGradient(
+										itemCount: 1,
+										padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
+										itemBuilder: (context, index) => Column(
 											crossAxisAlignment: CrossAxisAlignment.start,
 											children: [
 												SectionTitle(

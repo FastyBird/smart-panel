@@ -79,12 +79,12 @@ export interface IDisplayEditForm {
 	// Home page configuration
 	homeMode: HomeMode;
 	homePageId: string | null;
-	// Unit overrides (null = use system default)
-	temperatureUnit: TemperatureUnit | null;
-	windSpeedUnit: WindSpeedUnit | null;
-	pressureUnit: PressureUnit | null;
-	precipitationUnit: PrecipitationUnit | null;
-	distanceUnit: DistanceUnit | null;
+	// Unit overrides ('' = use system default; mapped to null on submit)
+	temperatureUnit: TemperatureUnit | '';
+	windSpeedUnit: WindSpeedUnit | '';
+	pressureUnit: PressureUnit | '';
+	precipitationUnit: PrecipitationUnit | '';
+	distanceUnit: DistanceUnit | '';
 }
 
 export interface IUseDisplayEditForm {

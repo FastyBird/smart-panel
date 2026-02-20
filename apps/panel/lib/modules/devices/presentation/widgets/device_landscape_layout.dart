@@ -92,7 +92,6 @@ class DeviceLandscapeLayout extends StatelessWidget {
           child: ClipRect(
             child: mainContentScrollable
                 ? VerticalScrollWithGradient(
-                    gradientHeight: AppSpacings.pMd,
                     padding: resolvedMainPadding,
                     itemCount: 1,
                     separatorHeight: 0,
@@ -126,7 +125,6 @@ class DeviceLandscapeLayout extends StatelessWidget {
               ),
               child: secondaryScrollable
                   ? VerticalScrollWithGradient(
-                      gradientHeight: AppSpacings.pMd,
                       padding: resolvedSecondaryPadding,
                       backgroundColor: secondaryBgColor,
                       itemCount: 1,

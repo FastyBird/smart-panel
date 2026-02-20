@@ -62,52 +62,55 @@ class AppLocalizationsCs extends AppLocalizations {
   String get button_done => 'Hotovo';
 
   @override
-  String get unit_celsius => 'Celsia';
+  String get unit_system_default => 'Výchozí';
 
   @override
-  String get unit_fahrenheit => 'Fahrenheit';
+  String get unit_celsius => 'Celsia (°C)';
 
   @override
-  String get unit_wind_speed_ms => 'm/s';
+  String get unit_fahrenheit => 'Fahrenheit (°F)';
 
   @override
-  String get unit_wind_speed_kmh => 'km/h';
+  String get unit_wind_speed_ms => 'Metry za sekundu (m/s)';
 
   @override
-  String get unit_wind_speed_mph => 'mph';
+  String get unit_wind_speed_kmh => 'Kilometry za hodinu (km/h)';
 
   @override
-  String get unit_wind_speed_knots => 'Uzly';
+  String get unit_wind_speed_mph => 'Míle za hodinu (mph)';
 
   @override
-  String get unit_pressure_hpa => 'hPa';
+  String get unit_wind_speed_knots => 'Uzly (kn)';
 
   @override
-  String get unit_pressure_mbar => 'mbar';
+  String get unit_pressure_hpa => 'Hektopascal (hPa)';
 
   @override
-  String get unit_pressure_inhg => 'inHg';
+  String get unit_pressure_mbar => 'Milibar (mbar)';
 
   @override
-  String get unit_pressure_mmhg => 'mmHg';
+  String get unit_pressure_inhg => 'Palce rtuti (inHg)';
 
   @override
-  String get unit_precipitation_mm => 'mm';
+  String get unit_pressure_mmhg => 'Milimetry rtuti (mmHg)';
 
   @override
-  String get unit_precipitation_inches => 'Palce';
+  String get unit_precipitation_mm => 'Milimetry (mm)';
 
   @override
-  String get unit_distance_km => 'Kilometry';
+  String get unit_precipitation_inches => 'Palce (in)';
 
   @override
-  String get unit_distance_miles => 'Míle';
+  String get unit_distance_km => 'Kilometry (km)';
 
   @override
-  String get unit_distance_meters => 'Metry';
+  String get unit_distance_miles => 'Míle (mi)';
 
   @override
-  String get unit_distance_feet => 'Stopy';
+  String get unit_distance_meters => 'Metry (m)';
+
+  @override
+  String get unit_distance_feet => 'Stopy (ft)';
 
   @override
   String get time_format_12h => '12 hodinový';
@@ -669,42 +672,6 @@ class AppLocalizationsCs extends AppLocalizations {
   String get settings_general_settings_button_maintenance => 'Údržba';
 
   @override
-  String get settings_general_settings_button_units_settings => 'Jednotky';
-
-  @override
-  String get settings_units_settings_title => 'Nastavení jednotek';
-
-  @override
-  String get settings_units_settings_temperature_title => 'Teplota';
-
-  @override
-  String get settings_units_settings_temperature_description => 'Jednotka pro hodnoty teploty.';
-
-  @override
-  String get settings_units_settings_wind_speed_title => 'Rychlost větru';
-
-  @override
-  String get settings_units_settings_wind_speed_description => 'Jednotka pro rychlost větru.';
-
-  @override
-  String get settings_units_settings_pressure_title => 'Tlak';
-
-  @override
-  String get settings_units_settings_pressure_description => 'Jednotka pro atmosférický tlak.';
-
-  @override
-  String get settings_units_settings_precipitation_title => 'Srážky';
-
-  @override
-  String get settings_units_settings_precipitation_description => 'Jednotka pro množství srážek.';
-
-  @override
-  String get settings_units_settings_distance_title => 'Vzdálenost';
-
-  @override
-  String get settings_units_settings_distance_description => 'Jednotka pro vzdálenost a viditelnost.';
-
-  @override
   String get settings_weather_settings_title => 'Nastavení počasí';
 
   @override
@@ -814,6 +781,39 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get settings_display_settings_screen_saver_description => 'Zobrazit spořič při nečinnosti.';
+
+  @override
+  String get settings_display_settings_unit_overrides_section => 'Přepsání jednotek';
+
+  @override
+  String get settings_display_settings_temperature_unit_title => 'Jednotka teploty';
+
+  @override
+  String get settings_display_settings_temperature_unit_description => 'Přepsat systémovou jednotku teploty pro tento displej.';
+
+  @override
+  String get settings_display_settings_wind_speed_unit_title => 'Jednotka rychlosti větru';
+
+  @override
+  String get settings_display_settings_wind_speed_unit_description => 'Přepsat systémovou jednotku rychlosti větru pro tento displej.';
+
+  @override
+  String get settings_display_settings_pressure_unit_title => 'Jednotka tlaku';
+
+  @override
+  String get settings_display_settings_pressure_unit_description => 'Přepsat systémovou jednotku tlaku pro tento displej.';
+
+  @override
+  String get settings_display_settings_precipitation_unit_title => 'Jednotka srážek';
+
+  @override
+  String get settings_display_settings_precipitation_unit_description => 'Přepsat systémovou jednotku srážek pro tento displej.';
+
+  @override
+  String get settings_display_settings_distance_unit_title => 'Jednotka vzdálenosti';
+
+  @override
+  String get settings_display_settings_distance_unit_description => 'Přepsat systémovou jednotku vzdálenosti pro tento displej.';
 
   @override
   String get settings_audio_settings_title => 'Nastavení zvuku';

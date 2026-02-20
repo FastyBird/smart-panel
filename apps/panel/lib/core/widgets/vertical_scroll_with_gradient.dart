@@ -3,22 +3,23 @@ import 'package:flutter/material.dart';
 
 /// A vertical scrollable list with gradient overlays on the edges.
 ///
-/// This widget displays a vertically scrolling list with gradient overlays
-/// at the top and bottom to indicate that more content is available.
+/// Gradients appear dynamically: the top gradient shows only when content
+/// is scrolled down (hidden above), and the bottom gradient shows only when
+/// more content is available below. When all content fits on screen,
+/// no gradients are shown.
 ///
 /// Example usage:
 /// ```dart
 /// VerticalScrollWithGradient(
-///   gradientHeight: AppSpacings.pLg,
 ///   itemCount: items.length,
 ///   separatorHeight: AppSpacings.pSm,
 ///   padding: AppSpacings.paddingLg,
 ///   itemBuilder: (context, index) => MyTile(item: items[index]),
 /// )
 /// ```
-class VerticalScrollWithGradient extends StatelessWidget {
-  /// Height of the gradient overlay at top and bottom
-  final double gradientHeight;
+class VerticalScrollWithGradient extends StatefulWidget {
+  /// Height of the gradient overlay at top and bottom (defaults to [AppSpacings.pLg])
+  final double? gradientHeight;
 
   /// Number of items in the list
   final int itemCount;
@@ -52,7 +53,7 @@ class VerticalScrollWithGradient extends StatelessWidget {
 
   const VerticalScrollWithGradient({
     super.key,
-    required this.gradientHeight,
+    this.gradientHeight,
     required this.itemCount,
     required this.itemBuilder,
     this.separatorHeight = 0,
@@ -65,33 +66,111 @@ class VerticalScrollWithGradient extends StatelessWidget {
   });
 
   @override
+  State<VerticalScrollWithGradient> createState() =>
+      _VerticalScrollWithGradientState();
+}
+
+class _VerticalScrollWithGradientState
+    extends State<VerticalScrollWithGradient> {
+  late ScrollController _scrollController;
+  bool _ownsController = false;
+  bool _showTopGradient = false;
+  bool _showBottomGradient = false;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _initController();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkGradients());
+  }
+
+  @override
+  void didUpdateWidget(VerticalScrollWithGradient oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (widget.controller != oldWidget.controller) {
+      _scrollController.removeListener(_checkGradients);
+
+      if (_ownsController) {
+        _scrollController.dispose();
+      }
+
+      _initController();
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => _checkGradients());
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_checkGradients);
+
+    if (_ownsController) {
+      _scrollController.dispose();
+    }
+
+    super.dispose();
+  }
+
+  void _initController() {
+    if (widget.controller != null) {
+      _scrollController = widget.controller!;
+      _ownsController = false;
+    } else {
+      _scrollController = ScrollController();
+      _ownsController = true;
+    }
+
+    _scrollController.addListener(_checkGradients);
+  }
+
+  void _checkGradients() {
+    if (!mounted) return;
+    if (!_scrollController.hasClients) return;
+
+    final position = _scrollController.position;
+    final showTop = position.pixels > 0;
+    final showBottom = position.pixels < position.maxScrollExtent;
+
+    if (showTop != _showTopGradient || showBottom != _showBottomGradient) {
+      setState(() {
+        _showTopGradient = showTop;
+        _showBottomGradient = showBottom;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor =
-        backgroundColor ?? (isDark ? AppBgColorDark.page : AppBgColorLight.page);
+    final bgColor = widget.backgroundColor ??
+        (isDark ? AppBgColorDark.page : AppBgColorLight.page);
+    final effectiveGradientHeight = widget.gradientHeight ?? AppSpacings.pLg;
 
     // Resolve padding to get individual values
-    final resolvedPadding = padding.resolve(TextDirection.ltr);
+    final resolvedPadding = widget.padding.resolve(TextDirection.ltr);
 
     final stack = Stack(
       children: [
         // Scrollable list
         ListView.separated(
-          controller: controller,
+          controller: _scrollController,
           scrollDirection: Axis.vertical,
-          shrinkWrap: shrinkWrap,
-          physics: shrinkWrap ? const ClampingScrollPhysics() : null,
-          itemCount: itemCount,
-          separatorBuilder: (_, __) => separatorColor != null
+          shrinkWrap: widget.shrinkWrap,
+          physics: widget.shrinkWrap ? const ClampingScrollPhysics() : null,
+          itemCount: widget.itemCount,
+          separatorBuilder: (_, __) => widget.separatorColor != null
               ? Divider(
-                  height: separatorHeight,
+                  height: widget.separatorHeight,
                   thickness: AppSpacings.scale(1),
-                  color: separatorColor,
+                  color: widget.separatorColor,
                 )
-              : SizedBox(height: separatorHeight),
+              : SizedBox(height: widget.separatorHeight),
           itemBuilder: (context, index) {
             final isFirst = index == 0;
-            final isLast = index == itemCount - 1;
+            final isLast = index == widget.itemCount - 1;
 
             return Padding(
               padding: EdgeInsets.only(
@@ -100,7 +179,7 @@ class VerticalScrollWithGradient extends StatelessWidget {
                 top: isFirst ? resolvedPadding.top : 0,
                 bottom: isLast ? resolvedPadding.bottom : 0,
               ),
-              child: itemBuilder(context, index),
+              child: widget.itemBuilder(context, index),
             );
           },
         ),
@@ -109,19 +188,23 @@ class VerticalScrollWithGradient extends StatelessWidget {
           left: 0,
           right: 0,
           top: 0,
-          height: gradientHeight,
+          height: effectiveGradientHeight,
           child: IgnorePointer(
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    bgColor,
-                    bgColor.withValues(alpha: 0.7),
-                    bgColor.withValues(alpha: 0),
-                  ],
-                  stops: const [0.0, 0.5, 1.0],
+            child: AnimatedOpacity(
+              opacity: _showTopGradient ? 1.0 : 0.0,
+              duration: const Duration(milliseconds: 200),
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      bgColor,
+                      bgColor.withValues(alpha: 0.7),
+                      bgColor.withValues(alpha: 0),
+                    ],
+                    stops: const [0.0, 0.5, 1.0],
+                  ),
                 ),
               ),
             ),
@@ -132,19 +215,23 @@ class VerticalScrollWithGradient extends StatelessWidget {
           left: 0,
           right: 0,
           bottom: 0,
-          height: gradientHeight,
+          height: effectiveGradientHeight,
           child: IgnorePointer(
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.bottomCenter,
-                  end: Alignment.topCenter,
-                  colors: [
-                    bgColor,
-                    bgColor.withValues(alpha: 0.7),
-                    bgColor.withValues(alpha: 0),
-                  ],
-                  stops: const [0.0, 0.5, 1.0],
+            child: AnimatedOpacity(
+              opacity: _showBottomGradient ? 1.0 : 0.0,
+              duration: const Duration(milliseconds: 200),
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.bottomCenter,
+                    end: Alignment.topCenter,
+                    colors: [
+                      bgColor,
+                      bgColor.withValues(alpha: 0.7),
+                      bgColor.withValues(alpha: 0),
+                    ],
+                    stops: const [0.0, 0.5, 1.0],
+                  ),
                 ),
               ),
             ),
@@ -153,9 +240,9 @@ class VerticalScrollWithGradient extends StatelessWidget {
       ],
     );
 
-    if (borderRadius != null) {
+    if (widget.borderRadius != null) {
       return ClipRRect(
-        borderRadius: borderRadius!,
+        borderRadius: widget.borderRadius!,
         child: stack,
       );
     }
