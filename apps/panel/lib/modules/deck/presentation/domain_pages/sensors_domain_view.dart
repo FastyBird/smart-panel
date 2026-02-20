@@ -1019,6 +1019,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
       ),
       mainContent: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        spacing: AppSpacings.pMd,
         children: [
           _buildSensorSectionTitle(context),
           Expanded(

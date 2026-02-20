@@ -3081,7 +3081,10 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
           itemCount: scenes.length,
           separatorHeight: AppSpacings.pSm,
           backgroundColor: drawerBgColor,
-          padding: EdgeInsets.symmetric(horizontal: AppSpacings.pLg),
+          padding: EdgeInsets.symmetric(
+            horizontal: AppSpacings.pLg,
+            vertical: AppSpacings.pMd,
+          ),
           itemBuilder: (context, index) => _buildSceneTileForSheet(
             context,
             scenes[index],

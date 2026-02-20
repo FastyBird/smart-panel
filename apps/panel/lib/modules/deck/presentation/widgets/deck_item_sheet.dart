@@ -136,7 +136,10 @@ class _Content extends StatelessWidget {
       separatorHeight: AppSpacings.pSm,
       backgroundColor: bgColor,
       shrinkWrap: true,
-      padding: EdgeInsets.symmetric(horizontal: AppSpacings.pLg),
+      padding: EdgeInsets.symmetric(
+        horizontal: AppSpacings.pMd,
+        vertical: AppSpacings.pMd,
+      ),
       itemBuilder: itemBuilder,
     );
   }
