@@ -196,46 +196,46 @@
 				"title": "Temperature Unit",
 				"placeholder": "System default",
 				"values": {
-					"celsius": "Celsius",
-					"fahrenheit": "Fahrenheit"
+					"celsius": "Celsius (°C)",
+					"fahrenheit": "Fahrenheit (°F)"
 				}
 			},
 			"windSpeedUnit": {
 				"title": "Wind Speed Unit",
 				"placeholder": "System default",
 				"values": {
-					"ms": "m/s",
-					"kmh": "km/h",
-					"mph": "mph",
-					"knots": "Knots"
+					"ms": "Meters per second (m/s)",
+					"kmh": "Kilometers per hour (km/h)",
+					"mph": "Miles per hour (mph)",
+					"knots": "Knots (kn)"
 				}
 			},
 			"pressureUnit": {
 				"title": "Pressure Unit",
 				"placeholder": "System default",
 				"values": {
-					"hpa": "hPa",
-					"mbar": "mbar",
-					"inhg": "inHg",
-					"mmhg": "mmHg"
+					"hpa": "Hectopascal (hPa)",
+					"mbar": "Millibar (mbar)",
+					"inhg": "Inches of mercury (inHg)",
+					"mmhg": "Millimeters of mercury (mmHg)"
 				}
 			},
 			"precipitationUnit": {
 				"title": "Precipitation Unit",
 				"placeholder": "System default",
 				"values": {
-					"mm": "mm",
-					"inches": "Inches"
+					"mm": "Millimeters (mm)",
+					"inches": "Inches (in)"
 				}
 			},
 			"distanceUnit": {
 				"title": "Distance Unit",
 				"placeholder": "System default",
 				"values": {
-					"km": "km",
-					"miles": "Miles",
-					"meters": "Meters",
-					"feet": "Feet"
+					"km": "Kilometers (km)",
+					"miles": "Miles (mi)",
+					"meters": "Meters (m)",
+					"feet": "Feet (ft)"
 				}
 			}
 		}
