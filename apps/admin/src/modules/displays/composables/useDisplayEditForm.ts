@@ -59,12 +59,12 @@ export const useDisplayEditForm = ({ display, messages }: IUseDisplayEditFormPro
 		// Home page configuration
 		homeMode: display.homeMode,
 		homePageId: display.homePageId,
-		// Unit overrides (null = use system default)
-		temperatureUnit: display.temperatureUnit,
-		windSpeedUnit: display.windSpeedUnit,
-		pressureUnit: display.pressureUnit,
-		precipitationUnit: display.precipitationUnit,
-		distanceUnit: display.distanceUnit,
+		// Unit overrides (empty string = use system default; mapped to null on submit)
+		temperatureUnit: display.temperatureUnit ?? '',
+		windSpeedUnit: display.windSpeedUnit ?? '',
+		pressureUnit: display.pressureUnit ?? '',
+		precipitationUnit: display.precipitationUnit ?? '',
+		distanceUnit: display.distanceUnit ?? '',
 	});
 
 	let initialModel: Reactive<IDisplayEditForm> = deepClone<Reactive<IDisplayEditForm>>(toRaw(model));
