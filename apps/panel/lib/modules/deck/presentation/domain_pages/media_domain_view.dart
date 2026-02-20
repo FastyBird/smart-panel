@@ -68,7 +68,7 @@ import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/slider_with_steps.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
-import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_item_drawer.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/domain_state_view.dart';
@@ -2076,7 +2076,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 	}
 
 	/// Opens media devices list: right drawer in landscape, bottom sheet in portrait.
-	/// Uses [DeckItemSheet] or [showAppRightDrawer] depending on orientation.
+	/// Uses [DeckItemSheet] or [DeckItemDrawer] depending on orientation.
 	void _showMediaDevicesSheet() {
 		final roomName = _spacesService?.getSpace(_roomId)?.name ?? '';
 		String? deviceNameResolver(String deviceId) {
@@ -2094,38 +2094,26 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			_mediaService?.getDeviceGroups(_roomId, deviceNameResolver: deviceNameResolver) ?? [];
 		final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
 
-		if (isLandscape) {
-			final isDark = Theme.of(context).brightness == Brightness.dark;
-			final drawerBgColor = isDark ? AppFillColorDark.base : AppFillColorLight.blank;
-
-			showAppRightDrawer(
+		if (isLandscape && _devicesService != null) {
+			DeckItemDrawer.showItemDrawerWithUpdates(
 				context,
 				title: localizations.media_targets_title,
-				titleIcon: MdiIcons.monitorSpeaker,
-				scrollable: false,
-				content: _devicesService != null
-					? ListenableBuilder(
-							listenable: _devicesService!,
-							builder: (ctx, _) {
-								final groups = getDeviceGroups();
-								return VerticalScrollWithGradient(
-									itemCount: groups.length,
-									separatorHeight: AppSpacings.pSm,
-									backgroundColor: drawerBgColor,
-									padding: EdgeInsets.symmetric(horizontal: AppSpacings.pLg),
-									itemBuilder: (context, index) =>
-										_buildMediaDeviceTileForSheet(context, groups[index]),
-								);
-							},
-						)
-					: VerticalScrollWithGradient(
-							itemCount: getDeviceGroups().length,
-							separatorHeight: AppSpacings.pSm,
-							backgroundColor: drawerBgColor,
-							padding: EdgeInsets.symmetric(horizontal: AppSpacings.pLg),
-							itemBuilder: (context, index) =>
-								_buildMediaDeviceTileForSheet(context, getDeviceGroups()[index]),
-						),
+				icon: MdiIcons.monitorSpeaker,
+				rebuildWhen: _devicesService!,
+				getItemCount: getItemCount,
+				itemBuilder: (context, index) {
+					final groups = getDeviceGroups();
+					return _buildMediaDeviceTileForSheet(context, groups[index]);
+				},
+			);
+		} else if (isLandscape) {
+			DeckItemDrawer.showItemDrawer(
+				context,
+				title: localizations.media_targets_title,
+				icon: MdiIcons.monitorSpeaker,
+				itemCount: getItemCount(),
+				itemBuilder: (context, index) =>
+					_buildMediaDeviceTileForSheet(context, getDeviceGroups()[index]),
 			);
 		} else if (_devicesService != null) {
 			DeckItemSheet.showItemSheetWithUpdates(
@@ -2200,33 +2188,22 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			);
 		}
 
-		if (isLandscape) {
-			final isDark = Theme.of(context).brightness == Brightness.dark;
-			final drawerBgColor = isDark ? AppFillColorDark.base : AppFillColorLight.blank;
-
-			showAppRightDrawer(
+		if (isLandscape && _devicesService != null) {
+			DeckItemDrawer.showItemDrawerWithUpdates(
 				context,
 				title: activityName,
-				titleIcon: _activityIcon(activityKey),
-				scrollable: false,
-				content: _devicesService != null
-					? ListenableBuilder(
-							listenable: _devicesService!,
-							builder: (ctx, _) => VerticalScrollWithGradient(
-								itemCount: entries.length,
-								separatorHeight: AppSpacings.pSm,
-								backgroundColor: drawerBgColor,
-								padding: EdgeInsets.symmetric(horizontal: AppSpacings.pLg),
-								itemBuilder: buildCompositionTile,
-							),
-						)
-					: VerticalScrollWithGradient(
-							itemCount: entries.length,
-							separatorHeight: AppSpacings.pSm,
-							backgroundColor: drawerBgColor,
-							padding: EdgeInsets.symmetric(horizontal: AppSpacings.pLg),
-							itemBuilder: buildCompositionTile,
-						),
+				icon: _activityIcon(activityKey),
+				rebuildWhen: _devicesService!,
+				getItemCount: () => entries.length,
+				itemBuilder: buildCompositionTile,
+			);
+		} else if (isLandscape) {
+			DeckItemDrawer.showItemDrawer(
+				context,
+				title: activityName,
+				icon: _activityIcon(activityKey),
+				itemCount: entries.length,
+				itemBuilder: buildCompositionTile,
 			);
 		} else if (_devicesService != null) {
 			DeckItemSheet.showItemSheetWithUpdates(

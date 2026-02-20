@@ -12,7 +12,7 @@
 // **For AI:** When modifying this file:
 // - Keep layout logic in _buildPortraitLayout / _buildLandscapeLayout.
 // - Chart X-axis labels use localized day names via _getShortDayName.
-// - Top consumers: [DeckItemSheet] (portrait) vs [showAppRightDrawer] (landscape).
+// - Top consumers: [DeckItemSheet] (portrait) vs [DeckItemDrawer] (landscape).
 // - Range switching is driven by [BottomNavModeNotifier] + [DeckPageActivatedEvent].
 //
 // **File structure:**
@@ -40,13 +40,12 @@ import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_card.dart';
-import 'package:fastybird_smart_panel/core/widgets/app_right_drawer.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_item_drawer.dart';
 import 'package:fastybird_smart_panel/core/widgets/hero_card.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
-import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/export.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/bottom_nav_mode_config.dart';
@@ -1329,23 +1328,13 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage> {
         MediaQuery.of(context).orientation == Orientation.landscape;
 
     if (isLandscape) {
-      final isDark = Theme.of(context).brightness == Brightness.dark;
-      final drawerBgColor =
-          isDark ? AppFillColorDark.base : AppFillColorLight.blank;
-
-      showAppRightDrawer(
+      DeckItemDrawer.showItemDrawer(
         context,
         title: localizations.energy_top_consumers,
-        titleIcon: MdiIcons.podium,
-        scrollable: false,
-        content: VerticalScrollWithGradient(
-          itemCount: _breakdown!.devices.length,
-          separatorHeight: AppSpacings.pSm,
-          backgroundColor: drawerBgColor,
-          padding: EdgeInsets.symmetric(horizontal: AppSpacings.pLg),
-          itemBuilder: (context, index) =>
-              _buildConsumerTileForSheet(context, index),
-        ),
+        icon: MdiIcons.podium,
+        itemCount: _breakdown!.devices.length,
+        itemBuilder: (context, index) =>
+            _buildConsumerTileForSheet(context, index),
       );
     } else {
       DeckItemSheet.showItemSheet(

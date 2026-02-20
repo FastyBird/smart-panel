@@ -58,7 +58,7 @@ import 'package:provider/provider.dart';
 
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/app_right_drawer.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_item_drawer.dart';
 import 'package:fastybird_smart_panel/core/widgets/hero_card.dart';
 import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
@@ -68,7 +68,6 @@ import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/slider_with_steps.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
-import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/domain_control_state_service.dart';
@@ -1545,36 +1544,17 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     final bottomSection = role != null ? _buildDevicesSheetFooter(context, role) : null;
 
     if (isLandscape) {
-      final isDark = Theme.of(context).brightness == Brightness.dark;
-      final drawerBgColor =
-          isDark ? AppFillColorDark.base : AppFillColorLight.blank;
-
-      showAppRightDrawer(
+      DeckItemDrawer.showItemDrawerWithUpdates(
         context,
         title: sheetTitle,
-        titleIcon: MdiIcons.windowShutterSettings,
-        scrollable: false,
-        content: ListenableBuilder(
-          listenable: _sheetNotifier,
-          builder: (ctx, _) {
-            final deviceDataList = _buildDeviceDataList(targets);
-            return Column(
-              children: [
-                Expanded(
-                  child: VerticalScrollWithGradient(
-                    itemCount: deviceDataList.length,
-                    separatorHeight: AppSpacings.pSm,
-                    backgroundColor: drawerBgColor,
-                    padding: EdgeInsets.symmetric(horizontal: AppSpacings.pLg),
-                    itemBuilder: (context, index) =>
-                        _buildShadingDeviceTile(context, deviceDataList[index]),
-                  ),
-                ),
-                if (bottomSection != null) bottomSection,
-              ],
-            );
-          },
-        ),
+        icon: MdiIcons.windowShutterSettings,
+        rebuildWhen: _sheetNotifier,
+        getItemCount: () => _buildDeviceDataList(targets).length,
+        itemBuilder: (context, index) {
+          final deviceDataList = _buildDeviceDataList(targets);
+          return _buildShadingDeviceTile(context, deviceDataList[index]);
+        },
+        bottomSection: bottomSection,
       );
     } else {
       DeckItemSheet.showItemSheetWithUpdates(
