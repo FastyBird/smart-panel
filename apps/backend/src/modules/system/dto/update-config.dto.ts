@@ -4,7 +4,17 @@ import { ArrayNotEmpty, IsArray, IsEnum, IsOptional, IsString } from 'class-vali
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { UpdateModuleConfigDto } from '../../config/dto/config.dto';
-import { HouseMode, LanguageType, LogLevelType, TemperatureUnitType, TimeFormatType } from '../system.constants';
+import {
+	DistanceUnitType,
+	HouseMode,
+	LanguageType,
+	LogLevelType,
+	PrecipitationUnitType,
+	PressureUnitType,
+	TemperatureUnitType,
+	TimeFormatType,
+	WindSpeedUnitType,
+} from '../system.constants';
 import { SYSTEM_MODULE_NAME } from '../system.constants';
 
 @ApiSchema({ name: 'ConfigModuleUpdateSystem' })
@@ -66,6 +76,58 @@ export class UpdateSystemConfigDto extends UpdateModuleConfigDto {
 		message: '[{"field":"temperature_unit","reason":"Temperature unit must be celsius or fahrenheit."}]',
 	})
 	temperature_unit?: TemperatureUnitType;
+
+	@ApiPropertyOptional({
+		description: 'Sets the wind speed display unit.',
+		enum: WindSpeedUnitType,
+		example: WindSpeedUnitType.METERS_PER_SECOND,
+	})
+	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	@IsOptional()
+	@IsEnum(WindSpeedUnitType, {
+		message: '[{"field":"wind_speed_unit","reason":"Wind speed unit must be ms, kmh, mph or knots."}]',
+	})
+	wind_speed_unit?: WindSpeedUnitType;
+
+	@ApiPropertyOptional({
+		description: 'Sets the pressure display unit.',
+		enum: PressureUnitType,
+		example: PressureUnitType.HECTOPASCAL,
+	})
+	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	@IsOptional()
+	@IsEnum(PressureUnitType, {
+		message: '[{"field":"pressure_unit","reason":"Pressure unit must be hpa, mbar, inhg or mmhg."}]',
+	})
+	pressure_unit?: PressureUnitType;
+
+	@ApiPropertyOptional({
+		description: 'Sets the precipitation display unit.',
+		enum: PrecipitationUnitType,
+		example: PrecipitationUnitType.MILLIMETERS,
+	})
+	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	@IsOptional()
+	@IsEnum(PrecipitationUnitType, {
+		message: '[{"field":"precipitation_unit","reason":"Precipitation unit must be mm or inches."}]',
+	})
+	precipitation_unit?: PrecipitationUnitType;
+
+	@ApiPropertyOptional({
+		description: 'Sets the distance display unit.',
+		enum: DistanceUnitType,
+		example: DistanceUnitType.KILOMETERS,
+	})
+	@Expose()
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	@IsOptional()
+	@IsEnum(DistanceUnitType, {
+		message: '[{"field":"distance_unit","reason":"Distance unit must be km, miles, meters or feet."}]',
+	})
+	distance_unit?: DistanceUnitType;
 
 	// System settings
 	@ApiPropertyOptional({

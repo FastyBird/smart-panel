@@ -4,7 +4,17 @@ import { ArrayNotEmpty, IsArray, IsEnum, IsString } from 'class-validator';
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
 import { ModuleConfigModel } from '../../config/models/config.model';
-import { HouseMode, LanguageType, LogLevelType, TemperatureUnitType, TimeFormatType } from '../system.constants';
+import {
+	DistanceUnitType,
+	HouseMode,
+	LanguageType,
+	LogLevelType,
+	PrecipitationUnitType,
+	PressureUnitType,
+	TemperatureUnitType,
+	TimeFormatType,
+	WindSpeedUnitType,
+} from '../system.constants';
 import { SYSTEM_MODULE_NAME } from '../system.constants';
 
 @ApiSchema({ name: 'ConfigModuleDataSystem' })
@@ -56,6 +66,46 @@ export class SystemConfigModel extends ModuleConfigModel {
 	@Expose({ name: 'temperature_unit' })
 	@IsEnum(TemperatureUnitType)
 	temperatureUnit: TemperatureUnitType = TemperatureUnitType.CELSIUS;
+
+	@ApiProperty({
+		name: 'wind_speed_unit',
+		description: 'Wind speed display unit',
+		enum: WindSpeedUnitType,
+		example: WindSpeedUnitType.METERS_PER_SECOND,
+	})
+	@Expose({ name: 'wind_speed_unit' })
+	@IsEnum(WindSpeedUnitType)
+	windSpeedUnit: WindSpeedUnitType = WindSpeedUnitType.METERS_PER_SECOND;
+
+	@ApiProperty({
+		name: 'pressure_unit',
+		description: 'Pressure display unit',
+		enum: PressureUnitType,
+		example: PressureUnitType.HECTOPASCAL,
+	})
+	@Expose({ name: 'pressure_unit' })
+	@IsEnum(PressureUnitType)
+	pressureUnit: PressureUnitType = PressureUnitType.HECTOPASCAL;
+
+	@ApiProperty({
+		name: 'precipitation_unit',
+		description: 'Precipitation display unit',
+		enum: PrecipitationUnitType,
+		example: PrecipitationUnitType.MILLIMETERS,
+	})
+	@Expose({ name: 'precipitation_unit' })
+	@IsEnum(PrecipitationUnitType)
+	precipitationUnit: PrecipitationUnitType = PrecipitationUnitType.MILLIMETERS;
+
+	@ApiProperty({
+		name: 'distance_unit',
+		description: 'Distance display unit',
+		enum: DistanceUnitType,
+		example: DistanceUnitType.KILOMETERS,
+	})
+	@Expose({ name: 'distance_unit' })
+	@IsEnum(DistanceUnitType)
+	distanceUnit: DistanceUnitType = DistanceUnitType.KILOMETERS;
 
 	// System settings
 	@ApiProperty({

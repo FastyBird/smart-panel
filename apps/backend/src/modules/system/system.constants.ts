@@ -43,6 +43,32 @@ export enum TemperatureUnitType {
 	FAHRENHEIT = 'fahrenheit',
 }
 
+export enum WindSpeedUnitType {
+	METERS_PER_SECOND = 'ms',
+	KILOMETERS_PER_HOUR = 'kmh',
+	MILES_PER_HOUR = 'mph',
+	KNOTS = 'knots',
+}
+
+export enum PressureUnitType {
+	HECTOPASCAL = 'hpa',
+	MILLIBAR = 'mbar',
+	INCHES_OF_MERCURY = 'inhg',
+	MILLIMETERS_OF_MERCURY = 'mmhg',
+}
+
+export enum PrecipitationUnitType {
+	MILLIMETERS = 'mm',
+	INCHES = 'inches',
+}
+
+export enum DistanceUnitType {
+	KILOMETERS = 'km',
+	MILES = 'miles',
+	METERS = 'meters',
+	FEET = 'feet',
+}
+
 export enum TimeFormatType {
 	HOUR_12 = '12h',
 	HOUR_24 = '24h',

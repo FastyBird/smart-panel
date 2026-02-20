@@ -35,6 +35,12 @@ export const transformDisplayResponse = (response: IDisplayRes): IDisplay => {
 		resolvedHomePageId: response.resolved_home_page_id ?? null,
 		// Room assignment (only for role=room displays)
 		roomId: response.room_id ?? null,
+		// Unit overrides (null = use system default)
+		temperatureUnit: response.temperature_unit ?? null,
+		windSpeedUnit: response.wind_speed_unit ?? null,
+		pressureUnit: response.pressure_unit ?? null,
+		precipitationUnit: response.precipitation_unit ?? null,
+		distanceUnit: response.distance_unit ?? null,
 		registeredFromIp: response.registered_from_ip ?? null,
 		currentIpAddress: response.current_ip_address ?? null,
 		online: response.online ?? false,
@@ -108,6 +114,23 @@ export const transformDisplayUpdateRequest = (display: IDisplaysEditActionPayloa
 	// Room assignment - explicitly include null to unassign
 	if ('roomId' in display) {
 		baseData.room_id = display.roomId ?? null;
+	}
+
+	// Unit overrides - explicitly include null to reset to system default
+	if ('temperatureUnit' in display) {
+		baseData.temperature_unit = display.temperatureUnit ?? null;
+	}
+	if ('windSpeedUnit' in display) {
+		baseData.wind_speed_unit = display.windSpeedUnit ?? null;
+	}
+	if ('pressureUnit' in display) {
+		baseData.pressure_unit = display.pressureUnit ?? null;
+	}
+	if ('precipitationUnit' in display) {
+		baseData.precipitation_unit = display.precipitationUnit ?? null;
+	}
+	if ('distanceUnit' in display) {
+		baseData.distance_unit = display.distanceUnit ?? null;
 	}
 
 	const parsedRequest = DisplayUpdateReqSchema.safeParse(baseData);

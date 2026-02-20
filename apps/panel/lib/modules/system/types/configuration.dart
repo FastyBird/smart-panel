@@ -36,6 +36,102 @@ enum TimeFormat {
   static bool contains(String value) => utils.contains(value);
 }
 
+enum TemperatureUnit {
+  celsius('celsius'),
+  fahrenheit('fahrenheit');
+
+  final String value;
+
+  const TemperatureUnit(this.value);
+
+  static final utils = StringEnumUtils(
+    TemperatureUnit.values,
+    (TemperatureUnit payload) => payload.value,
+  );
+
+  static TemperatureUnit? fromValue(String value) => utils.fromValue(value);
+
+  static bool contains(String value) => utils.contains(value);
+}
+
+enum WindSpeedUnit {
+  metersPerSecond('ms'),
+  kilometersPerHour('kmh'),
+  milesPerHour('mph'),
+  knots('knots');
+
+  final String value;
+
+  const WindSpeedUnit(this.value);
+
+  static final utils = StringEnumUtils(
+    WindSpeedUnit.values,
+    (WindSpeedUnit payload) => payload.value,
+  );
+
+  static WindSpeedUnit? fromValue(String value) => utils.fromValue(value);
+
+  static bool contains(String value) => utils.contains(value);
+}
+
+enum PressureUnit {
+  hectopascal('hpa'),
+  millibar('mbar'),
+  inchesOfMercury('inhg'),
+  millimetersOfMercury('mmhg');
+
+  final String value;
+
+  const PressureUnit(this.value);
+
+  static final utils = StringEnumUtils(
+    PressureUnit.values,
+    (PressureUnit payload) => payload.value,
+  );
+
+  static PressureUnit? fromValue(String value) => utils.fromValue(value);
+
+  static bool contains(String value) => utils.contains(value);
+}
+
+enum PrecipitationUnit {
+  millimeters('mm'),
+  inches('inches');
+
+  final String value;
+
+  const PrecipitationUnit(this.value);
+
+  static final utils = StringEnumUtils(
+    PrecipitationUnit.values,
+    (PrecipitationUnit payload) => payload.value,
+  );
+
+  static PrecipitationUnit? fromValue(String value) => utils.fromValue(value);
+
+  static bool contains(String value) => utils.contains(value);
+}
+
+enum DistanceUnit {
+  kilometers('km'),
+  miles('miles'),
+  meters('meters'),
+  feet('feet');
+
+  final String value;
+
+  const DistanceUnit(this.value);
+
+  static final utils = StringEnumUtils(
+    DistanceUnit.values,
+    (DistanceUnit payload) => payload.value,
+  );
+
+  static DistanceUnit? fromValue(String value) => utils.fromValue(value);
+
+  static bool contains(String value) => utils.contains(value);
+}
+
 enum HouseMode {
   home('home'),
   away('away'),
