@@ -68,6 +68,48 @@ class AppLocalizationsEn extends AppLocalizations {
   String get unit_fahrenheit => 'Fahrenheit';
 
   @override
+  String get unit_wind_speed_ms => 'm/s';
+
+  @override
+  String get unit_wind_speed_kmh => 'km/h';
+
+  @override
+  String get unit_wind_speed_mph => 'mph';
+
+  @override
+  String get unit_wind_speed_knots => 'Knots';
+
+  @override
+  String get unit_pressure_hpa => 'hPa';
+
+  @override
+  String get unit_pressure_mbar => 'mbar';
+
+  @override
+  String get unit_pressure_inhg => 'inHg';
+
+  @override
+  String get unit_pressure_mmhg => 'mmHg';
+
+  @override
+  String get unit_precipitation_mm => 'mm';
+
+  @override
+  String get unit_precipitation_inches => 'Inches';
+
+  @override
+  String get unit_distance_km => 'Kilometers';
+
+  @override
+  String get unit_distance_miles => 'Miles';
+
+  @override
+  String get unit_distance_meters => 'Meters';
+
+  @override
+  String get unit_distance_feet => 'Feet';
+
+  @override
   String get time_format_12h => '12-hour';
 
   @override
@@ -614,6 +656,42 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settings_general_settings_button_maintenance => 'Maintenance';
+
+  @override
+  String get settings_general_settings_button_units_settings => 'Units';
+
+  @override
+  String get settings_units_settings_title => 'Units Settings';
+
+  @override
+  String get settings_units_settings_temperature_title => 'Temperature';
+
+  @override
+  String get settings_units_settings_temperature_description => 'Unit for temperature values.';
+
+  @override
+  String get settings_units_settings_wind_speed_title => 'Wind Speed';
+
+  @override
+  String get settings_units_settings_wind_speed_description => 'Unit for wind speed values.';
+
+  @override
+  String get settings_units_settings_pressure_title => 'Pressure';
+
+  @override
+  String get settings_units_settings_pressure_description => 'Unit for atmospheric pressure.';
+
+  @override
+  String get settings_units_settings_precipitation_title => 'Precipitation';
+
+  @override
+  String get settings_units_settings_precipitation_description => 'Unit for precipitation amounts.';
+
+  @override
+  String get settings_units_settings_distance_title => 'Distance';
+
+  @override
+  String get settings_units_settings_distance_description => 'Unit for distance and visibility.';
 
   @override
   String get settings_weather_settings_title => 'Weather Settings';

@@ -49,6 +49,14 @@ class GeneralSettingsPage extends StatelessWidget {
 				iconBgColor: infoBg,
 				route: 'language-settings',
 			),
+			_TileData(
+				label: localizations.settings_general_settings_button_units_settings,
+				sublabel: localizations.settings_units_settings_title,
+				icon: Icons.straighten,
+				iconColor: primaryColor,
+				iconBgColor: primaryBg,
+				route: 'units-settings',
+			),
 			if (hasAudioSupport)
 				_TileData(
 					label: localizations.settings_general_settings_button_audio_settings,

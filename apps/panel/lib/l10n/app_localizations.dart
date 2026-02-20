@@ -209,6 +209,90 @@ abstract class AppLocalizations {
   /// **'Fahrenheit'**
   String get unit_fahrenheit;
 
+  /// Label for meters per second wind speed unit.
+  ///
+  /// In en, this message translates to:
+  /// **'m/s'**
+  String get unit_wind_speed_ms;
+
+  /// Label for kilometers per hour wind speed unit.
+  ///
+  /// In en, this message translates to:
+  /// **'km/h'**
+  String get unit_wind_speed_kmh;
+
+  /// Label for miles per hour wind speed unit.
+  ///
+  /// In en, this message translates to:
+  /// **'mph'**
+  String get unit_wind_speed_mph;
+
+  /// Label for knots wind speed unit.
+  ///
+  /// In en, this message translates to:
+  /// **'Knots'**
+  String get unit_wind_speed_knots;
+
+  /// Label for hectopascal pressure unit.
+  ///
+  /// In en, this message translates to:
+  /// **'hPa'**
+  String get unit_pressure_hpa;
+
+  /// Label for millibar pressure unit.
+  ///
+  /// In en, this message translates to:
+  /// **'mbar'**
+  String get unit_pressure_mbar;
+
+  /// Label for inches of mercury pressure unit.
+  ///
+  /// In en, this message translates to:
+  /// **'inHg'**
+  String get unit_pressure_inhg;
+
+  /// Label for millimeters of mercury pressure unit.
+  ///
+  /// In en, this message translates to:
+  /// **'mmHg'**
+  String get unit_pressure_mmhg;
+
+  /// Label for millimeters precipitation unit.
+  ///
+  /// In en, this message translates to:
+  /// **'mm'**
+  String get unit_precipitation_mm;
+
+  /// Label for inches precipitation unit.
+  ///
+  /// In en, this message translates to:
+  /// **'Inches'**
+  String get unit_precipitation_inches;
+
+  /// Label for kilometers distance unit.
+  ///
+  /// In en, this message translates to:
+  /// **'Kilometers'**
+  String get unit_distance_km;
+
+  /// Label for miles distance unit.
+  ///
+  /// In en, this message translates to:
+  /// **'Miles'**
+  String get unit_distance_miles;
+
+  /// Label for meters distance unit.
+  ///
+  /// In en, this message translates to:
+  /// **'Meters'**
+  String get unit_distance_meters;
+
+  /// Label for feet distance unit.
+  ///
+  /// In en, this message translates to:
+  /// **'Feet'**
+  String get unit_distance_feet;
+
   /// Label for 12-hour time format, commonly used in English-speaking countries.
   ///
   /// In en, this message translates to:
@@ -1108,6 +1192,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Maintenance'**
   String get settings_general_settings_button_maintenance;
+
+  /// Button label for navigating to Units Settings section.
+  ///
+  /// In en, this message translates to:
+  /// **'Units'**
+  String get settings_general_settings_button_units_settings;
+
+  /// Title for the Units Settings section.
+  ///
+  /// In en, this message translates to:
+  /// **'Units Settings'**
+  String get settings_units_settings_title;
+
+  /// Label for selecting the temperature unit.
+  ///
+  /// In en, this message translates to:
+  /// **'Temperature'**
+  String get settings_units_settings_temperature_title;
+
+  /// Description for the temperature unit setting.
+  ///
+  /// In en, this message translates to:
+  /// **'Unit for temperature values.'**
+  String get settings_units_settings_temperature_description;
+
+  /// Label for selecting the wind speed unit.
+  ///
+  /// In en, this message translates to:
+  /// **'Wind Speed'**
+  String get settings_units_settings_wind_speed_title;
+
+  /// Description for the wind speed unit setting.
+  ///
+  /// In en, this message translates to:
+  /// **'Unit for wind speed values.'**
+  String get settings_units_settings_wind_speed_description;
+
+  /// Label for selecting the pressure unit.
+  ///
+  /// In en, this message translates to:
+  /// **'Pressure'**
+  String get settings_units_settings_pressure_title;
+
+  /// Description for the pressure unit setting.
+  ///
+  /// In en, this message translates to:
+  /// **'Unit for atmospheric pressure.'**
+  String get settings_units_settings_pressure_description;
+
+  /// Label for selecting the precipitation unit.
+  ///
+  /// In en, this message translates to:
+  /// **'Precipitation'**
+  String get settings_units_settings_precipitation_title;
+
+  /// Description for the precipitation unit setting.
+  ///
+  /// In en, this message translates to:
+  /// **'Unit for precipitation amounts.'**
+  String get settings_units_settings_precipitation_description;
+
+  /// Label for selecting the distance unit.
+  ///
+  /// In en, this message translates to:
+  /// **'Distance'**
+  String get settings_units_settings_distance_title;
+
+  /// Description for the distance unit setting.
+  ///
+  /// In en, this message translates to:
+  /// **'Unit for distance and visibility.'**
+  String get settings_units_settings_distance_description;
 
   /// Title for the Weather Settings section.
   ///
