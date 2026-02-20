@@ -10,7 +10,15 @@ import { DisplaysApiException, DisplaysValidationException } from '../displays.e
 import type { IDisplay } from '../store/displays.store.types';
 import { displaysStoreKey } from '../store/keys';
 
-import type { IDisplayEditForm, IUseDisplayEditForm } from './types';
+import type {
+	DistanceUnit,
+	IDisplayEditForm,
+	IUseDisplayEditForm,
+	PrecipitationUnit,
+	PressureUnit,
+	TemperatureUnit,
+	WindSpeedUnit,
+} from './types';
 
 interface IUseDisplayEditFormProps {
 	display: IDisplay;
@@ -51,6 +59,12 @@ export const useDisplayEditForm = ({ display, messages }: IUseDisplayEditFormPro
 		// Home page configuration
 		homeMode: display.homeMode,
 		homePageId: display.homePageId,
+		// Unit overrides (null = use system default)
+		temperatureUnit: display.temperatureUnit,
+		windSpeedUnit: display.windSpeedUnit,
+		pressureUnit: display.pressureUnit,
+		precipitationUnit: display.precipitationUnit,
+		distanceUnit: display.distanceUnit,
 	});
 
 	let initialModel: Reactive<IDisplayEditForm> = deepClone<Reactive<IDisplayEditForm>>(toRaw(model));
@@ -93,6 +107,11 @@ export const useDisplayEditForm = ({ display, messages }: IUseDisplayEditFormPro
 				microphoneVolume?: number;
 				homeMode: 'auto_space' | 'explicit';
 				homePageId: string | null;
+				temperatureUnit: TemperatureUnit | null;
+				windSpeedUnit: WindSpeedUnit | null;
+				pressureUnit: PressureUnit | null;
+				precipitationUnit: PrecipitationUnit | null;
+				distanceUnit: DistanceUnit | null;
 			} = {
 				name: model.name || null,
 				role: model.role,
@@ -108,6 +127,12 @@ export const useDisplayEditForm = ({ display, messages }: IUseDisplayEditFormPro
 				homeMode: model.homeMode,
 				// Home page: clear if not explicit mode
 				homePageId: model.homeMode === 'explicit' ? model.homePageId : null,
+				// Unit overrides
+				temperatureUnit: model.temperatureUnit || null,
+				windSpeedUnit: model.windSpeedUnit || null,
+				pressureUnit: model.pressureUnit || null,
+				precipitationUnit: model.precipitationUnit || null,
+				distanceUnit: model.distanceUnit || null,
 			};
 
 			// Only include audio settings if the display supports them

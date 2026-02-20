@@ -52,6 +52,12 @@ export type HomeMode = 'auto_space' | 'explicit';
 
 export type DisplayRole = 'room' | 'master' | 'entry';
 
+export type TemperatureUnit = 'celsius' | 'fahrenheit';
+export type WindSpeedUnit = 'ms' | 'kmh' | 'mph' | 'knots';
+export type PressureUnit = 'hpa' | 'mbar' | 'inhg' | 'mmhg';
+export type PrecipitationUnit = 'mm' | 'inches';
+export type DistanceUnit = 'km' | 'miles' | 'meters' | 'feet';
+
 export interface IDisplayEditForm {
 	id: string;
 	name: string | null;
@@ -73,6 +79,12 @@ export interface IDisplayEditForm {
 	// Home page configuration
 	homeMode: HomeMode;
 	homePageId: string | null;
+	// Unit overrides (null = use system default)
+	temperatureUnit: TemperatureUnit | null;
+	windSpeedUnit: WindSpeedUnit | null;
+	pressureUnit: PressureUnit | null;
+	precipitationUnit: PrecipitationUnit | null;
+	distanceUnit: DistanceUnit | null;
 }
 
 export interface IUseDisplayEditForm {

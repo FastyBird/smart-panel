@@ -15,6 +15,13 @@ import {
 
 import { ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
+import {
+	DistanceUnitType,
+	PrecipitationUnitType,
+	PressureUnitType,
+	TemperatureUnitType,
+	WindSpeedUnitType,
+} from '../../system/system.constants';
 import { DisplayRole, HomeMode } from '../displays.constants';
 
 @ApiSchema({ name: 'DisplaysModuleUpdateDisplay' })
@@ -299,6 +306,83 @@ export class UpdateDisplayDto {
 	@Min(0, { message: '[{"field":"microphone_volume","reason":"Microphone volume must be at least 0."}]' })
 	@Max(100, { message: '[{"field":"microphone_volume","reason":"Microphone volume must be at most 100."}]' })
 	microphone_volume?: number;
+
+	// === Unit Overrides (null = use system default) ===
+
+	@ApiPropertyOptional({
+		name: 'temperature_unit',
+		description: 'Temperature display unit override (null = use system default)',
+		type: 'string',
+		enum: TemperatureUnitType,
+		nullable: true,
+	})
+	@Expose()
+	@IsOptional()
+	@IsEnum(TemperatureUnitType, {
+		message: '[{"field":"temperature_unit","reason":"Temperature unit must be celsius or fahrenheit."}]',
+	})
+	@ValidateIf((_, value) => value !== null)
+	temperature_unit?: TemperatureUnitType | null;
+
+	@ApiPropertyOptional({
+		name: 'wind_speed_unit',
+		description: 'Wind speed display unit override (null = use system default)',
+		type: 'string',
+		enum: WindSpeedUnitType,
+		nullable: true,
+	})
+	@Expose()
+	@IsOptional()
+	@IsEnum(WindSpeedUnitType, {
+		message: '[{"field":"wind_speed_unit","reason":"Wind speed unit must be ms, kmh, mph or knots."}]',
+	})
+	@ValidateIf((_, value) => value !== null)
+	wind_speed_unit?: WindSpeedUnitType | null;
+
+	@ApiPropertyOptional({
+		name: 'pressure_unit',
+		description: 'Pressure display unit override (null = use system default)',
+		type: 'string',
+		enum: PressureUnitType,
+		nullable: true,
+	})
+	@Expose()
+	@IsOptional()
+	@IsEnum(PressureUnitType, {
+		message: '[{"field":"pressure_unit","reason":"Pressure unit must be hpa, mbar, inhg or mmhg."}]',
+	})
+	@ValidateIf((_, value) => value !== null)
+	pressure_unit?: PressureUnitType | null;
+
+	@ApiPropertyOptional({
+		name: 'precipitation_unit',
+		description: 'Precipitation display unit override (null = use system default)',
+		type: 'string',
+		enum: PrecipitationUnitType,
+		nullable: true,
+	})
+	@Expose()
+	@IsOptional()
+	@IsEnum(PrecipitationUnitType, {
+		message: '[{"field":"precipitation_unit","reason":"Precipitation unit must be mm or inches."}]',
+	})
+	@ValidateIf((_, value) => value !== null)
+	precipitation_unit?: PrecipitationUnitType | null;
+
+	@ApiPropertyOptional({
+		name: 'distance_unit',
+		description: 'Distance display unit override (null = use system default)',
+		type: 'string',
+		enum: DistanceUnitType,
+		nullable: true,
+	})
+	@Expose()
+	@IsOptional()
+	@IsEnum(DistanceUnitType, {
+		message: '[{"field":"distance_unit","reason":"Distance unit must be km, miles, meters or feet."}]',
+	})
+	@ValidateIf((_, value) => value !== null)
+	distance_unit?: DistanceUnitType | null;
 
 	@ApiPropertyOptional({
 		name: 'current_ip_address',

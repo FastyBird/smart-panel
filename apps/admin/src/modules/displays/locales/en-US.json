@@ -191,6 +191,52 @@
 				"validation": {
 					"required": "Room assignment is required for displays with Room role"
 				}
+			},
+			"temperatureUnit": {
+				"title": "Temperature Unit",
+				"placeholder": "System default",
+				"values": {
+					"celsius": "Celsius",
+					"fahrenheit": "Fahrenheit"
+				}
+			},
+			"windSpeedUnit": {
+				"title": "Wind Speed Unit",
+				"placeholder": "System default",
+				"values": {
+					"ms": "m/s",
+					"kmh": "km/h",
+					"mph": "mph",
+					"knots": "Knots"
+				}
+			},
+			"pressureUnit": {
+				"title": "Pressure Unit",
+				"placeholder": "System default",
+				"values": {
+					"hpa": "hPa",
+					"mbar": "mbar",
+					"inhg": "inHg",
+					"mmhg": "mmHg"
+				}
+			},
+			"precipitationUnit": {
+				"title": "Precipitation Unit",
+				"placeholder": "System default",
+				"values": {
+					"mm": "mm",
+					"inches": "Inches"
+				}
+			},
+			"distanceUnit": {
+				"title": "Distance Unit",
+				"placeholder": "System default",
+				"values": {
+					"km": "km",
+					"miles": "Miles",
+					"meters": "Meters",
+					"feet": "Feet"
+				}
 			}
 		}
 	},
@@ -289,6 +335,10 @@
 			"homePage": {
 				"title": "Home page",
 				"autoRoomHint": "In <strong>Auto mode</strong>, the display opens the default system view based on its role and assignment."
+			},
+			"units": {
+				"title": "Unit overrides",
+				"description": "Override system-wide measurement units for this display. Leave empty to use the system default."
 			},
 			"audio": {
 				"title": "Audio",

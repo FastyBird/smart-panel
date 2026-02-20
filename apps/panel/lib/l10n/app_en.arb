@@ -82,6 +82,62 @@
   "@unit_fahrenheit": {
     "description": "Label for Fahrenheit temperature unit."
   },
+  "unit_wind_speed_ms": "m/s",
+  "@unit_wind_speed_ms": {
+    "description": "Label for meters per second wind speed unit."
+  },
+  "unit_wind_speed_kmh": "km/h",
+  "@unit_wind_speed_kmh": {
+    "description": "Label for kilometers per hour wind speed unit."
+  },
+  "unit_wind_speed_mph": "mph",
+  "@unit_wind_speed_mph": {
+    "description": "Label for miles per hour wind speed unit."
+  },
+  "unit_wind_speed_knots": "Knots",
+  "@unit_wind_speed_knots": {
+    "description": "Label for knots wind speed unit."
+  },
+  "unit_pressure_hpa": "hPa",
+  "@unit_pressure_hpa": {
+    "description": "Label for hectopascal pressure unit."
+  },
+  "unit_pressure_mbar": "mbar",
+  "@unit_pressure_mbar": {
+    "description": "Label for millibar pressure unit."
+  },
+  "unit_pressure_inhg": "inHg",
+  "@unit_pressure_inhg": {
+    "description": "Label for inches of mercury pressure unit."
+  },
+  "unit_pressure_mmhg": "mmHg",
+  "@unit_pressure_mmhg": {
+    "description": "Label for millimeters of mercury pressure unit."
+  },
+  "unit_precipitation_mm": "mm",
+  "@unit_precipitation_mm": {
+    "description": "Label for millimeters precipitation unit."
+  },
+  "unit_precipitation_inches": "Inches",
+  "@unit_precipitation_inches": {
+    "description": "Label for inches precipitation unit."
+  },
+  "unit_distance_km": "Kilometers",
+  "@unit_distance_km": {
+    "description": "Label for kilometers distance unit."
+  },
+  "unit_distance_miles": "Miles",
+  "@unit_distance_miles": {
+    "description": "Label for miles distance unit."
+  },
+  "unit_distance_meters": "Meters",
+  "@unit_distance_meters": {
+    "description": "Label for meters distance unit."
+  },
+  "unit_distance_feet": "Feet",
+  "@unit_distance_feet": {
+    "description": "Label for feet distance unit."
+  },
   "time_format_12h": "12-hour",
   "@time_format_12h": {
     "description": "Label for 12-hour time format, commonly used in English-speaking countries."
@@ -883,6 +939,54 @@
   "settings_language_settings_time_format_description": "12-hour or 24-hour clock.",
   "@settings_language_settings_time_format_description": {
     "description": "Description explaining the purpose of the time format setting."
+  },
+  "settings_general_settings_button_units_settings": "Units",
+  "@settings_general_settings_button_units_settings": {
+    "description": "Button label for navigating to Units Settings section."
+  },
+  "settings_units_settings_title": "Units Settings",
+  "@settings_units_settings_title": {
+    "description": "Title for the Units Settings section."
+  },
+  "settings_units_settings_temperature_title": "Temperature",
+  "@settings_units_settings_temperature_title": {
+    "description": "Label for selecting the temperature unit."
+  },
+  "settings_units_settings_temperature_description": "Unit for temperature values.",
+  "@settings_units_settings_temperature_description": {
+    "description": "Description for the temperature unit setting."
+  },
+  "settings_units_settings_wind_speed_title": "Wind Speed",
+  "@settings_units_settings_wind_speed_title": {
+    "description": "Label for selecting the wind speed unit."
+  },
+  "settings_units_settings_wind_speed_description": "Unit for wind speed values.",
+  "@settings_units_settings_wind_speed_description": {
+    "description": "Description for the wind speed unit setting."
+  },
+  "settings_units_settings_pressure_title": "Pressure",
+  "@settings_units_settings_pressure_title": {
+    "description": "Label for selecting the pressure unit."
+  },
+  "settings_units_settings_pressure_description": "Unit for atmospheric pressure.",
+  "@settings_units_settings_pressure_description": {
+    "description": "Description for the pressure unit setting."
+  },
+  "settings_units_settings_precipitation_title": "Precipitation",
+  "@settings_units_settings_precipitation_title": {
+    "description": "Label for selecting the precipitation unit."
+  },
+  "settings_units_settings_precipitation_description": "Unit for precipitation amounts.",
+  "@settings_units_settings_precipitation_description": {
+    "description": "Description for the precipitation unit setting."
+  },
+  "settings_units_settings_distance_title": "Distance",
+  "@settings_units_settings_distance_title": {
+    "description": "Label for selecting the distance unit."
+  },
+  "settings_units_settings_distance_description": "Unit for distance and visibility.",
+  "@settings_units_settings_distance_description": {
+    "description": "Description for the distance unit setting."
   },
   "settings_display_settings_title": "Display Settings",
   "@settings_display_settings_title": {

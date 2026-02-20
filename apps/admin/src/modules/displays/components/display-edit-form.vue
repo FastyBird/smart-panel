@@ -260,7 +260,158 @@
 				</div>
 			</el-collapse-item>
 
-			<!-- 4. Layout Section (Advanced) -->
+			<!-- 4. Unit Overrides Section -->
+			<el-collapse-item name="units">
+				<template #title>
+					<div class="flex items-center gap-2">
+						<el-icon :size="20">
+							<icon icon="mdi:ruler" />
+						</el-icon>
+						<span class="font-medium">{{ t('displaysModule.edit.sections.units.title') }}</span>
+					</div>
+				</template>
+
+				<div class="px-2">
+					<el-alert
+						:title="t('displaysModule.edit.sections.units.description')"
+						type="info"
+						:closable="false"
+						show-icon
+						class="mb-4!"
+					/>
+
+					<el-form-item
+						:label="t('displaysModule.fields.displays.temperatureUnit.title')"
+						:prop="['temperatureUnit']"
+					>
+						<el-select
+							v-model="model.temperatureUnit"
+							:placeholder="t('displaysModule.fields.displays.temperatureUnit.placeholder')"
+							name="temperatureUnit"
+							clearable
+						>
+							<el-option
+								:label="t('displaysModule.fields.displays.temperatureUnit.values.celsius')"
+								value="celsius"
+							/>
+							<el-option
+								:label="t('displaysModule.fields.displays.temperatureUnit.values.fahrenheit')"
+								value="fahrenheit"
+							/>
+						</el-select>
+					</el-form-item>
+
+					<el-form-item
+						:label="t('displaysModule.fields.displays.windSpeedUnit.title')"
+						:prop="['windSpeedUnit']"
+					>
+						<el-select
+							v-model="model.windSpeedUnit"
+							:placeholder="t('displaysModule.fields.displays.windSpeedUnit.placeholder')"
+							name="windSpeedUnit"
+							clearable
+						>
+							<el-option
+								:label="t('displaysModule.fields.displays.windSpeedUnit.values.ms')"
+								value="ms"
+							/>
+							<el-option
+								:label="t('displaysModule.fields.displays.windSpeedUnit.values.kmh')"
+								value="kmh"
+							/>
+							<el-option
+								:label="t('displaysModule.fields.displays.windSpeedUnit.values.mph')"
+								value="mph"
+							/>
+							<el-option
+								:label="t('displaysModule.fields.displays.windSpeedUnit.values.knots')"
+								value="knots"
+							/>
+						</el-select>
+					</el-form-item>
+
+					<el-form-item
+						:label="t('displaysModule.fields.displays.pressureUnit.title')"
+						:prop="['pressureUnit']"
+					>
+						<el-select
+							v-model="model.pressureUnit"
+							:placeholder="t('displaysModule.fields.displays.pressureUnit.placeholder')"
+							name="pressureUnit"
+							clearable
+						>
+							<el-option
+								:label="t('displaysModule.fields.displays.pressureUnit.values.hpa')"
+								value="hpa"
+							/>
+							<el-option
+								:label="t('displaysModule.fields.displays.pressureUnit.values.mbar')"
+								value="mbar"
+							/>
+							<el-option
+								:label="t('displaysModule.fields.displays.pressureUnit.values.inhg')"
+								value="inhg"
+							/>
+							<el-option
+								:label="t('displaysModule.fields.displays.pressureUnit.values.mmhg')"
+								value="mmhg"
+							/>
+						</el-select>
+					</el-form-item>
+
+					<el-form-item
+						:label="t('displaysModule.fields.displays.precipitationUnit.title')"
+						:prop="['precipitationUnit']"
+					>
+						<el-select
+							v-model="model.precipitationUnit"
+							:placeholder="t('displaysModule.fields.displays.precipitationUnit.placeholder')"
+							name="precipitationUnit"
+							clearable
+						>
+							<el-option
+								:label="t('displaysModule.fields.displays.precipitationUnit.values.mm')"
+								value="mm"
+							/>
+							<el-option
+								:label="t('displaysModule.fields.displays.precipitationUnit.values.inches')"
+								value="inches"
+							/>
+						</el-select>
+					</el-form-item>
+
+					<el-form-item
+						:label="t('displaysModule.fields.displays.distanceUnit.title')"
+						:prop="['distanceUnit']"
+					>
+						<el-select
+							v-model="model.distanceUnit"
+							:placeholder="t('displaysModule.fields.displays.distanceUnit.placeholder')"
+							name="distanceUnit"
+							clearable
+						>
+							<el-option
+								:label="t('displaysModule.fields.displays.distanceUnit.values.km')"
+								value="km"
+							/>
+							<el-option
+								:label="t('displaysModule.fields.displays.distanceUnit.values.miles')"
+								value="miles"
+							/>
+							<el-option
+								:label="t('displaysModule.fields.displays.distanceUnit.values.meters')"
+								value="meters"
+							/>
+							<el-option
+								:label="t('displaysModule.fields.displays.distanceUnit.values.feet')"
+								value="feet"
+							/>
+						</el-select>
+					</el-form-item>
+				</div>
+			</el-collapse-item>
+
+			<!-- 5. Layout Section (Advanced) -->
 			<el-collapse-item name="layout">
 				<template #title>
 					<div class="flex items-center gap-2">

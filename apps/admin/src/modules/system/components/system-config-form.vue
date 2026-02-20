@@ -73,6 +73,130 @@
 			</el-select>
 		</el-form-item>
 
+		<el-form-item
+			:label="t('systemModule.fields.config.temperatureUnit.title')"
+			prop="temperatureUnit"
+		>
+			<el-select
+				v-model="model.temperatureUnit"
+				:placeholder="t('systemModule.fields.config.temperatureUnit.placeholder')"
+				name="temperatureUnit"
+			>
+				<el-option
+					:label="t('systemModule.fields.config.temperatureUnit.values.celsius')"
+					value="celsius"
+				/>
+				<el-option
+					:label="t('systemModule.fields.config.temperatureUnit.values.fahrenheit')"
+					value="fahrenheit"
+				/>
+			</el-select>
+		</el-form-item>
+
+		<el-form-item
+			:label="t('systemModule.fields.config.windSpeedUnit.title')"
+			prop="windSpeedUnit"
+		>
+			<el-select
+				v-model="model.windSpeedUnit"
+				:placeholder="t('systemModule.fields.config.windSpeedUnit.placeholder')"
+				name="windSpeedUnit"
+			>
+				<el-option
+					:label="t('systemModule.fields.config.windSpeedUnit.values.ms')"
+					value="ms"
+				/>
+				<el-option
+					:label="t('systemModule.fields.config.windSpeedUnit.values.kmh')"
+					value="kmh"
+				/>
+				<el-option
+					:label="t('systemModule.fields.config.windSpeedUnit.values.mph')"
+					value="mph"
+				/>
+				<el-option
+					:label="t('systemModule.fields.config.windSpeedUnit.values.knots')"
+					value="knots"
+				/>
+			</el-select>
+		</el-form-item>
+
+		<el-form-item
+			:label="t('systemModule.fields.config.pressureUnit.title')"
+			prop="pressureUnit"
+		>
+			<el-select
+				v-model="model.pressureUnit"
+				:placeholder="t('systemModule.fields.config.pressureUnit.placeholder')"
+				name="pressureUnit"
+			>
+				<el-option
+					:label="t('systemModule.fields.config.pressureUnit.values.hpa')"
+					value="hpa"
+				/>
+				<el-option
+					:label="t('systemModule.fields.config.pressureUnit.values.mbar')"
+					value="mbar"
+				/>
+				<el-option
+					:label="t('systemModule.fields.config.pressureUnit.values.inhg')"
+					value="inhg"
+				/>
+				<el-option
+					:label="t('systemModule.fields.config.pressureUnit.values.mmhg')"
+					value="mmhg"
+				/>
+			</el-select>
+		</el-form-item>
+
+		<el-form-item
+			:label="t('systemModule.fields.config.precipitationUnit.title')"
+			prop="precipitationUnit"
+		>
+			<el-select
+				v-model="model.precipitationUnit"
+				:placeholder="t('systemModule.fields.config.precipitationUnit.placeholder')"
+				name="precipitationUnit"
+			>
+				<el-option
+					:label="t('systemModule.fields.config.precipitationUnit.values.mm')"
+					value="mm"
+				/>
+				<el-option
+					:label="t('systemModule.fields.config.precipitationUnit.values.inches')"
+					value="inches"
+				/>
+			</el-select>
+		</el-form-item>
+
+		<el-form-item
+			:label="t('systemModule.fields.config.distanceUnit.title')"
+			prop="distanceUnit"
+		>
+			<el-select
+				v-model="model.distanceUnit"
+				:placeholder="t('systemModule.fields.config.distanceUnit.placeholder')"
+				name="distanceUnit"
+			>
+				<el-option
+					:label="t('systemModule.fields.config.distanceUnit.values.km')"
+					value="km"
+				/>
+				<el-option
+					:label="t('systemModule.fields.config.distanceUnit.values.miles')"
+					value="miles"
+				/>
+				<el-option
+					:label="t('systemModule.fields.config.distanceUnit.values.meters')"
+					value="meters"
+				/>
+				<el-option
+					:label="t('systemModule.fields.config.distanceUnit.values.feet')"
+					value="feet"
+				/>
+			</el-select>
+		</el-form-item>
+
 		<el-divider />
 
 		<el-alert
@@ -175,6 +299,11 @@ const rules = reactive<FormRules<ISystemConfigEditForm>>({
 	language: [{ required: true, message: t('systemModule.fields.config.language.validation.required'), trigger: 'change' }],
 	timezone: [{ required: true, message: t('systemModule.fields.config.timezone.validation.required'), trigger: 'change' }],
 	timeFormat: [{ required: true, message: t('systemModule.fields.config.timeFormat.validation.required'), trigger: 'change' }],
+	temperatureUnit: [{ required: true, message: t('systemModule.fields.config.temperatureUnit.validation.required'), trigger: 'change' }],
+	windSpeedUnit: [{ required: true, message: t('systemModule.fields.config.windSpeedUnit.validation.required'), trigger: 'change' }],
+	pressureUnit: [{ required: true, message: t('systemModule.fields.config.pressureUnit.validation.required'), trigger: 'change' }],
+	precipitationUnit: [{ required: true, message: t('systemModule.fields.config.precipitationUnit.validation.required'), trigger: 'change' }],
+	distanceUnit: [{ required: true, message: t('systemModule.fields.config.distanceUnit.validation.required'), trigger: 'change' }],
 	logLevels: [
 		{ required: true, message: t('systemModule.fields.config.logLevels.validation.required'), trigger: 'change' },
 		{

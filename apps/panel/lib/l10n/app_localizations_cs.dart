@@ -68,6 +68,48 @@ class AppLocalizationsCs extends AppLocalizations {
   String get unit_fahrenheit => 'Fahrenheit';
 
   @override
+  String get unit_wind_speed_ms => 'm/s';
+
+  @override
+  String get unit_wind_speed_kmh => 'km/h';
+
+  @override
+  String get unit_wind_speed_mph => 'mph';
+
+  @override
+  String get unit_wind_speed_knots => 'Uzly';
+
+  @override
+  String get unit_pressure_hpa => 'hPa';
+
+  @override
+  String get unit_pressure_mbar => 'mbar';
+
+  @override
+  String get unit_pressure_inhg => 'inHg';
+
+  @override
+  String get unit_pressure_mmhg => 'mmHg';
+
+  @override
+  String get unit_precipitation_mm => 'mm';
+
+  @override
+  String get unit_precipitation_inches => 'Palce';
+
+  @override
+  String get unit_distance_km => 'Kilometry';
+
+  @override
+  String get unit_distance_miles => 'Míle';
+
+  @override
+  String get unit_distance_meters => 'Metry';
+
+  @override
+  String get unit_distance_feet => 'Stopy';
+
+  @override
   String get time_format_12h => '12 hodinový';
 
   @override
@@ -625,6 +667,42 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get settings_general_settings_button_maintenance => 'Údržba';
+
+  @override
+  String get settings_general_settings_button_units_settings => 'Jednotky';
+
+  @override
+  String get settings_units_settings_title => 'Nastavení jednotek';
+
+  @override
+  String get settings_units_settings_temperature_title => 'Teplota';
+
+  @override
+  String get settings_units_settings_temperature_description => 'Jednotka pro hodnoty teploty.';
+
+  @override
+  String get settings_units_settings_wind_speed_title => 'Rychlost větru';
+
+  @override
+  String get settings_units_settings_wind_speed_description => 'Jednotka pro rychlost větru.';
+
+  @override
+  String get settings_units_settings_pressure_title => 'Tlak';
+
+  @override
+  String get settings_units_settings_pressure_description => 'Jednotka pro atmosférický tlak.';
+
+  @override
+  String get settings_units_settings_precipitation_title => 'Srážky';
+
+  @override
+  String get settings_units_settings_precipitation_description => 'Jednotka pro množství srážek.';
+
+  @override
+  String get settings_units_settings_distance_title => 'Vzdálenost';
+
+  @override
+  String get settings_units_settings_distance_description => 'Jednotka pro vzdálenost a viditelnost.';
 
   @override
   String get settings_weather_settings_title => 'Nastavení počasí';

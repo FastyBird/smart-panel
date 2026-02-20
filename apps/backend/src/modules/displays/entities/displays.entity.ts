@@ -18,6 +18,13 @@ import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { PageEntity } from '../../dashboard/entities/dashboard.entity';
 import { SpaceEntity } from '../../spaces/entities/space.entity';
+import {
+	DistanceUnitType,
+	PrecipitationUnitType,
+	PressureUnitType,
+	TemperatureUnitType,
+	WindSpeedUnitType,
+} from '../../system/system.constants';
 import { ConnectionState, DisplayRole, HomeMode } from '../displays.constants';
 
 @ApiSchema({ name: 'DisplaysModuleDataDisplay' })
@@ -403,6 +410,98 @@ export class DisplayEntity extends BaseEntity {
 	)
 	@Column({ type: 'int', default: 50 })
 	microphoneVolume: number;
+
+	// === Unit Overrides (null = use system default) ===
+
+	@ApiPropertyOptional({
+		name: 'temperature_unit',
+		description: 'Temperature display unit override (null = use system default)',
+		type: 'string',
+		enum: TemperatureUnitType,
+		nullable: true,
+	})
+	@Expose({ name: 'temperature_unit' })
+	@IsOptional()
+	@IsEnum(TemperatureUnitType)
+	@Transform(
+		({ obj }: { obj: { temperature_unit?: string; temperatureUnit?: string } }) =>
+			obj.temperature_unit ?? obj.temperatureUnit ?? null,
+		{ toClassOnly: true },
+	)
+	@Column({ type: 'varchar', length: 20, nullable: true, default: null })
+	temperatureUnit: TemperatureUnitType | null;
+
+	@ApiPropertyOptional({
+		name: 'wind_speed_unit',
+		description: 'Wind speed display unit override (null = use system default)',
+		type: 'string',
+		enum: WindSpeedUnitType,
+		nullable: true,
+	})
+	@Expose({ name: 'wind_speed_unit' })
+	@IsOptional()
+	@IsEnum(WindSpeedUnitType)
+	@Transform(
+		({ obj }: { obj: { wind_speed_unit?: string; windSpeedUnit?: string } }) =>
+			obj.wind_speed_unit ?? obj.windSpeedUnit ?? null,
+		{ toClassOnly: true },
+	)
+	@Column({ type: 'varchar', length: 20, nullable: true, default: null })
+	windSpeedUnit: WindSpeedUnitType | null;
+
+	@ApiPropertyOptional({
+		name: 'pressure_unit',
+		description: 'Pressure display unit override (null = use system default)',
+		type: 'string',
+		enum: PressureUnitType,
+		nullable: true,
+	})
+	@Expose({ name: 'pressure_unit' })
+	@IsOptional()
+	@IsEnum(PressureUnitType)
+	@Transform(
+		({ obj }: { obj: { pressure_unit?: string; pressureUnit?: string } }) =>
+			obj.pressure_unit ?? obj.pressureUnit ?? null,
+		{ toClassOnly: true },
+	)
+	@Column({ type: 'varchar', length: 20, nullable: true, default: null })
+	pressureUnit: PressureUnitType | null;
+
+	@ApiPropertyOptional({
+		name: 'precipitation_unit',
+		description: 'Precipitation display unit override (null = use system default)',
+		type: 'string',
+		enum: PrecipitationUnitType,
+		nullable: true,
+	})
+	@Expose({ name: 'precipitation_unit' })
+	@IsOptional()
+	@IsEnum(PrecipitationUnitType)
+	@Transform(
+		({ obj }: { obj: { precipitation_unit?: string; precipitationUnit?: string } }) =>
+			obj.precipitation_unit ?? obj.precipitationUnit ?? null,
+		{ toClassOnly: true },
+	)
+	@Column({ type: 'varchar', length: 20, nullable: true, default: null })
+	precipitationUnit: PrecipitationUnitType | null;
+
+	@ApiPropertyOptional({
+		name: 'distance_unit',
+		description: 'Distance display unit override (null = use system default)',
+		type: 'string',
+		enum: DistanceUnitType,
+		nullable: true,
+	})
+	@Expose({ name: 'distance_unit' })
+	@IsOptional()
+	@IsEnum(DistanceUnitType)
+	@Transform(
+		({ obj }: { obj: { distance_unit?: string; distanceUnit?: string } }) =>
+			obj.distance_unit ?? obj.distanceUnit ?? null,
+		{ toClassOnly: true },
+	)
+	@Column({ type: 'varchar', length: 20, nullable: true, default: null })
+	distanceUnit: DistanceUnitType | null;
 
 	// === Registration Information ===
 

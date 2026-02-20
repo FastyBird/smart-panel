@@ -1,9 +1,9 @@
 import { z } from 'zod';
 
 import { ConfigPluginEditFormSchema } from '../../../modules/config';
-import { WeatherOpenweathermapPluginDataConfigUnit } from '../../../openapi';
+import { TemperatureUnit } from '../weather-openweathermap-onecall.constants';
 
 export const OpenWeatherMapOneCallConfigEditFormSchema = ConfigPluginEditFormSchema.extend({
 	apiKey: z.string().nullable(),
-	unit: z.nativeEnum(WeatherOpenweathermapPluginDataConfigUnit),
+	unit: z.nativeEnum(TemperatureUnit),
 });

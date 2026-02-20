@@ -52,9 +52,9 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
 
 	@override
 	void dispose() {
-		super.dispose();
-
 		_repository.removeListener(_syncStateWithRepository);
+
+		super.dispose();
 	}
 
 	void _syncStateWithRepository() {

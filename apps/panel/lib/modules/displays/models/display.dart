@@ -1,3 +1,5 @@
+import 'package:fastybird_smart_panel/modules/system/types/configuration.dart';
+
 enum HomeMode { autoSpace, explicit }
 
 enum DisplayRole { room, master, entry }
@@ -29,6 +31,12 @@ class DisplayModel {
   final HomeMode homeMode;
   final String? homePageId;
   final String? resolvedHomePageId;
+  // Unit overrides (null = use system default)
+  final TemperatureUnit? temperatureUnit;
+  final WindSpeedUnit? windSpeedUnit;
+  final PressureUnit? pressureUnit;
+  final PrecipitationUnit? precipitationUnit;
+  final DistanceUnit? distanceUnit;
   final DateTime createdAt;
   final DateTime? updatedAt;
 
@@ -59,6 +67,11 @@ class DisplayModel {
     this.homeMode = HomeMode.autoSpace,
     this.homePageId,
     this.resolvedHomePageId,
+    this.temperatureUnit,
+    this.windSpeedUnit,
+    this.pressureUnit,
+    this.precipitationUnit,
+    this.distanceUnit,
     required this.createdAt,
     this.updatedAt,
   });
@@ -91,6 +104,21 @@ class DisplayModel {
       homeMode: _parseHomeMode(json['home_mode'] as String?),
       homePageId: json['home_page_id'] as String?,
       resolvedHomePageId: json['resolved_home_page_id'] as String?,
+      temperatureUnit: json['temperature_unit'] != null
+          ? TemperatureUnit.fromValue(json['temperature_unit'] as String)
+          : null,
+      windSpeedUnit: json['wind_speed_unit'] != null
+          ? WindSpeedUnit.fromValue(json['wind_speed_unit'] as String)
+          : null,
+      pressureUnit: json['pressure_unit'] != null
+          ? PressureUnit.fromValue(json['pressure_unit'] as String)
+          : null,
+      precipitationUnit: json['precipitation_unit'] != null
+          ? PrecipitationUnit.fromValue(json['precipitation_unit'] as String)
+          : null,
+      distanceUnit: json['distance_unit'] != null
+          ? DistanceUnit.fromValue(json['distance_unit'] as String)
+          : null,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: json['updated_at'] != null
           ? DateTime.parse(json['updated_at'] as String)
@@ -147,6 +175,11 @@ class DisplayModel {
     HomeMode? homeMode,
     String? homePageId,
     String? resolvedHomePageId,
+    TemperatureUnit? temperatureUnit,
+    WindSpeedUnit? windSpeedUnit,
+    PressureUnit? pressureUnit,
+    PrecipitationUnit? precipitationUnit,
+    DistanceUnit? distanceUnit,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -177,6 +210,11 @@ class DisplayModel {
       homeMode: homeMode ?? this.homeMode,
       homePageId: homePageId ?? this.homePageId,
       resolvedHomePageId: resolvedHomePageId ?? this.resolvedHomePageId,
+      temperatureUnit: temperatureUnit ?? this.temperatureUnit,
+      windSpeedUnit: windSpeedUnit ?? this.windSpeedUnit,
+      pressureUnit: pressureUnit ?? this.pressureUnit,
+      precipitationUnit: precipitationUnit ?? this.precipitationUnit,
+      distanceUnit: distanceUnit ?? this.distanceUnit,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -211,7 +249,12 @@ class DisplayModel {
         other.roomId == roomId &&
         other.homeMode == homeMode &&
         other.homePageId == homePageId &&
-        other.resolvedHomePageId == resolvedHomePageId;
+        other.resolvedHomePageId == resolvedHomePageId &&
+        other.temperatureUnit == temperatureUnit &&
+        other.windSpeedUnit == windSpeedUnit &&
+        other.pressureUnit == pressureUnit &&
+        other.precipitationUnit == precipitationUnit &&
+        other.distanceUnit == distanceUnit;
   }
 
   @override
@@ -243,6 +286,11 @@ class DisplayModel {
       homeMode,
       homePageId,
       resolvedHomePageId,
+      temperatureUnit,
+      windSpeedUnit,
+      pressureUnit,
+      precipitationUnit,
+      distanceUnit,
     ]);
   }
 }

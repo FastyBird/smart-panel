@@ -51,7 +51,7 @@
       "detail": "Log info",
       "adjustFilters": "Filter logs"
     },
-    "aboutLanguageSettings": "Language Settings",
+    "aboutLanguageSettings": "Language & Units",
     "aboutSystemSettings": "System Settings",
     "aboutHouseModeSettings": "House Mode"
   },
@@ -103,7 +103,7 @@
       "noMessage": "This log entry is without additional message",
       "noMoreEntries": "No more log entries"
     },
-    "aboutLanguageSettings": "Configure the interface language, timezone, and time format for the Smart Panel. These settings affect how dates, times, and text are displayed throughout the system.",
+    "aboutLanguageSettings": "Configure the interface language, timezone, time format, and measurement units for the Smart Panel. These settings affect how dates, times, temperatures, and measurements are displayed throughout the system.",
     "aboutSystemSettings": "Manage system-wide logging configuration. Select which log severity levels to monitor and display in the application logs.",
     "aboutHouseModeSettings": "Set the current house mode to control how the Smart Panel and connected devices behave. Home mode is for normal occupancy, Away mode for when no one is home, and Night mode for sleeping hours."
   },
@@ -139,6 +139,72 @@
         },
         "validation": {
           "required": "Time format is required"
+        }
+      },
+      "temperatureUnit": {
+        "title": "Temperature Unit",
+        "description": "Temperature display unit",
+        "placeholder": "Select temperature unit",
+        "values": {
+          "celsius": "Celsius (\u00b0C)",
+          "fahrenheit": "Fahrenheit (\u00b0F)"
+        },
+        "validation": {
+          "required": "Temperature unit is required"
+        }
+      },
+      "windSpeedUnit": {
+        "title": "Wind Speed Unit",
+        "description": "Wind speed display unit",
+        "placeholder": "Select wind speed unit",
+        "values": {
+          "ms": "Meters per second (m/s)",
+          "kmh": "Kilometers per hour (km/h)",
+          "mph": "Miles per hour (mph)",
+          "knots": "Knots (kn)"
+        },
+        "validation": {
+          "required": "Wind speed unit is required"
+        }
+      },
+      "pressureUnit": {
+        "title": "Pressure Unit",
+        "description": "Pressure display unit",
+        "placeholder": "Select pressure unit",
+        "values": {
+          "hpa": "Hectopascal (hPa)",
+          "mbar": "Millibar (mbar)",
+          "inhg": "Inches of mercury (inHg)",
+          "mmhg": "Millimeters of mercury (mmHg)"
+        },
+        "validation": {
+          "required": "Pressure unit is required"
+        }
+      },
+      "precipitationUnit": {
+        "title": "Precipitation Unit",
+        "description": "Precipitation display unit",
+        "placeholder": "Select precipitation unit",
+        "values": {
+          "mm": "Millimeters (mm)",
+          "inches": "Inches (in)"
+        },
+        "validation": {
+          "required": "Precipitation unit is required"
+        }
+      },
+      "distanceUnit": {
+        "title": "Distance Unit",
+        "description": "Distance display unit",
+        "placeholder": "Select distance unit",
+        "values": {
+          "km": "Kilometers (km)",
+          "miles": "Miles (mi)",
+          "meters": "Meters (m)",
+          "feet": "Feet (ft)"
+        },
+        "validation": {
+          "required": "Distance unit is required"
         }
       },
       "logLevels": {

@@ -13,6 +13,12 @@ export const HomeModeSchema = z.enum(['auto_space', 'explicit', 'first_page']).t
 
 export const DisplayRoleSchema = z.enum(['room', 'master', 'entry']);
 
+export const TemperatureUnitSchema = z.enum(['celsius', 'fahrenheit']);
+export const WindSpeedUnitSchema = z.enum(['ms', 'kmh', 'mph', 'knots']);
+export const PressureUnitSchema = z.enum(['hpa', 'mbar', 'inhg', 'mmhg']);
+export const PrecipitationUnitSchema = z.enum(['mm', 'inches']);
+export const DistanceUnitSchema = z.enum(['km', 'miles', 'meters', 'feet']);
+
 export const DisplaySchema = z.object({
 	id: DisplayIdSchema,
 	draft: z.boolean().default(false),
@@ -45,6 +51,12 @@ export const DisplaySchema = z.object({
 	resolvedHomePageId: z.string().uuid().nullable().optional().default(null),
 	// Room assignment (only for role=room displays)
 	roomId: z.string().uuid().nullable().default(null),
+	// Unit overrides (null = use system default)
+	temperatureUnit: TemperatureUnitSchema.nullable().default(null),
+	windSpeedUnit: WindSpeedUnitSchema.nullable().default(null),
+	pressureUnit: PressureUnitSchema.nullable().default(null),
+	precipitationUnit: PrecipitationUnitSchema.nullable().default(null),
+	distanceUnit: DistanceUnitSchema.nullable().default(null),
 	registeredFromIp: z.string().nullable().default(null),
 	currentIpAddress: z.string().nullable().default(null),
 	online: z.boolean().default(false),
@@ -104,6 +116,12 @@ export const DisplaysSetActionPayloadSchema = z.object({
 		speakerVolume: z.number().min(0).max(100).optional(),
 		microphone: z.boolean().optional(),
 		microphoneVolume: z.number().min(0).max(100).optional(),
+		// Unit overrides
+		temperatureUnit: TemperatureUnitSchema.nullable().optional(),
+		windSpeedUnit: WindSpeedUnitSchema.nullable().optional(),
+		pressureUnit: PressureUnitSchema.nullable().optional(),
+		precipitationUnit: PrecipitationUnitSchema.nullable().optional(),
+		distanceUnit: DistanceUnitSchema.nullable().optional(),
 	}),
 });
 
@@ -153,6 +171,12 @@ export const DisplaysEditActionPayloadSchema = z.object({
 		homePageId: z.string().uuid().nullable().optional(),
 		// Room assignment (only for role=room displays)
 		roomId: z.string().uuid().nullable().optional(),
+		// Unit overrides (null = use system default)
+		temperatureUnit: TemperatureUnitSchema.nullable().optional(),
+		windSpeedUnit: WindSpeedUnitSchema.nullable().optional(),
+		pressureUnit: PressureUnitSchema.nullable().optional(),
+		precipitationUnit: PrecipitationUnitSchema.nullable().optional(),
+		distanceUnit: DistanceUnitSchema.nullable().optional(),
 	}),
 });
 
@@ -203,6 +227,12 @@ export const DisplayUpdateReqSchema = z.object({
 	home_page_id: z.string().uuid().nullable().optional(),
 	// Room assignment (only for role=room displays)
 	room_id: z.string().uuid().nullable().optional(),
+	// Unit overrides (null = use system default)
+	temperature_unit: TemperatureUnitSchema.nullable().optional(),
+	wind_speed_unit: WindSpeedUnitSchema.nullable().optional(),
+	pressure_unit: PressureUnitSchema.nullable().optional(),
+	precipitation_unit: PrecipitationUnitSchema.nullable().optional(),
+	distance_unit: DistanceUnitSchema.nullable().optional(),
 });
 
 export const DisplayResSchema = z.object({
@@ -236,6 +266,12 @@ export const DisplayResSchema = z.object({
 	resolved_home_page_id: z.string().uuid().nullable().optional().default(null),
 	// Room assignment (only for role=room displays)
 	room_id: z.string().uuid().nullable().optional().default(null),
+	// Unit overrides (null = use system default)
+	temperature_unit: TemperatureUnitSchema.nullable().optional().default(null),
+	wind_speed_unit: WindSpeedUnitSchema.nullable().optional().default(null),
+	pressure_unit: PressureUnitSchema.nullable().optional().default(null),
+	precipitation_unit: PrecipitationUnitSchema.nullable().optional().default(null),
+	distance_unit: DistanceUnitSchema.nullable().optional().default(null),
 	registered_from_ip: z.string().nullable().optional().default(null),
 	current_ip_address: z.string().nullable().optional().default(null),
 	online: z.boolean().optional().default(false),
