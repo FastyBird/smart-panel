@@ -319,8 +319,62 @@ The `EnergyService` (`apps/panel/lib/modules/energy/services/energy_service.dart
 | Range | Default Interval |
 |---|---|
 | `today` | `1h` |
-| `week` | `1h` |
+| `week` | `1d` |
 | `month` | `1d` |
+
+## Admin App
+
+### Module Registration
+
+The energy module is registered as a core module in the admin app via `apps/admin/src/modules/energy/energy.module.ts`. It declares the module with:
+
+- **Name:** Energy
+- **Type:** `energy-module`
+- **Core:** Yes (always present)
+- **Elements:** None (no standalone admin pages)
+
+The admin energy module has no dedicated routes or views. Energy configuration is integrated into the **Spaces** module as a header widget.
+
+### Energy Header Widget Configuration
+
+Space edit forms (`apps/admin/src/modules/spaces/components/space-edit-form.vue`) include a **Header Widgets** section where administrators can enable and configure an energy widget for each space.
+
+**Toggle:** Enable or disable the energy widget per space. When enabled, a new `HeaderWidget` entry of type `energy` is added to the space's `headerWidgets` array with default settings.
+
+**Settings:**
+
+| Setting | Type | Options | Default | Description |
+|---|---|---|---|---|
+| `range` | enum | `today`, `week`, `month` | `today` | Default time range displayed in the widget |
+| `showProduction` | boolean | true/false | `true` | Whether to show production alongside consumption |
+
+**Constants** (from `apps/admin/src/modules/spaces/spaces.constants.ts`):
+
+```typescript
+enum HeaderWidgetType {
+  ENERGY = 'energy',
+}
+
+enum EnergyWidgetRange {
+  TODAY = 'today',
+  WEEK = 'week',
+  MONTH = 'month',
+}
+
+interface IEnergyWidgetSettings {
+  range: EnergyWidgetRange;
+  showProduction: boolean;
+}
+
+const ENERGY_WIDGET_DEFAULTS: IEnergyWidgetSettings = {
+  range: EnergyWidgetRange.TODAY,
+  showProduction: true,
+};
+```
+
+### Sensor Role
+
+The admin app defines an `ENERGY` sensor role in `SensorRole` enum (`apps/admin/src/modules/spaces/spaces.constants.ts`). Devices with this role are categorized as energy sensors in the space device list.
 
 ## File Structure
 
@@ -382,6 +436,20 @@ apps/panel/lib/modules/energy/
 
 apps/panel/lib/modules/deck/presentation/domain_pages/
 └── energy_domain_view.dart                   # Space-level energy domain page
+```
+
+### Admin
+
+```
+apps/admin/src/modules/energy/
+├── energy.module.ts                         # Module registration (core module)
+├── energy.constants.ts                      # Module name constant
+└── index.ts                                 # Module exports
+
+apps/admin/src/modules/spaces/
+├── spaces.constants.ts                      # HeaderWidgetType, EnergyWidgetRange, IEnergyWidgetSettings
+└── components/
+    └── space-edit-form.vue                  # Energy header widget configuration UI
 ```
 
 ## Key Design Decisions
