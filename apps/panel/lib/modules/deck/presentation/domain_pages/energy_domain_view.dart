@@ -1342,10 +1342,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage> {
           itemCount: _breakdown!.devices.length,
           separatorHeight: AppSpacings.pSm,
           backgroundColor: drawerBgColor,
-          padding: EdgeInsets.symmetric(
-            horizontal: AppSpacings.pLg,
-            vertical: AppSpacings.pMd,
-          ),
+          padding: EdgeInsets.symmetric(horizontal: AppSpacings.pLg),
           itemBuilder: (context, index) =>
               _buildConsumerTileForSheet(context, index),
         ),

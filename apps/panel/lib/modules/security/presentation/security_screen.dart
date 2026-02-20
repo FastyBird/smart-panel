@@ -777,7 +777,6 @@ class _EntryPointGrid extends StatelessWidget {
 						backgroundColor: bgColor,
 						itemCount: rowCount,
 						separatorHeight: AppSpacings.pSm,
-						padding: EdgeInsets.symmetric(vertical: AppSpacings.pMd),
 						itemBuilder: (context, rowIndex) => buildRow(context, rowIndex),
 					),
 				),

@@ -1632,10 +1632,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           itemCount: _state.climateDevices.length,
           separatorHeight: AppSpacings.pSm,
           backgroundColor: drawerBgColor,
-          padding: EdgeInsets.symmetric(
-            horizontal: AppSpacings.pLg,
-            vertical: AppSpacings.pMd,
-          ),
+          padding: EdgeInsets.symmetric(horizontal: AppSpacings.pLg),
           itemBuilder: (context, index) => _buildClimateDeviceTileForSheet(
             context,
             _state.climateDevices[index],
@@ -1744,10 +1741,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           itemCount: _state.auxiliaryDevices.length,
           separatorHeight: AppSpacings.pSm,
           backgroundColor: drawerBgColor,
-          padding: EdgeInsets.symmetric(
-            horizontal: AppSpacings.pLg,
-            vertical: AppSpacings.pMd,
-          ),
+          padding: EdgeInsets.symmetric(horizontal: AppSpacings.pLg),
           itemBuilder: (context, index) => _buildAuxiliaryDeviceTileForSheet(
             context,
             _state.auxiliaryDevices[index],
@@ -2156,10 +2150,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           itemCount: _state.sensors.length,
           separatorHeight: AppSpacings.pSm,
           backgroundColor: drawerBgColor,
-          padding: EdgeInsets.symmetric(
-            horizontal: AppSpacings.pLg,
-            vertical: AppSpacings.pMd,
-          ),
+          padding: EdgeInsets.symmetric(horizontal: AppSpacings.pLg),
           itemBuilder: (context, index) =>
               _buildSensorTileForSheet(context, _state.sensors[index]),
         ),

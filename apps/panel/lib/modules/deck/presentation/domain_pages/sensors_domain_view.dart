@@ -389,10 +389,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
             borderRadius: BorderRadius.vertical(
               bottom: Radius.circular(AppBorderRadius.medium),
             ),
-            padding: EdgeInsets.symmetric(
-              vertical: AppSpacings.pMd,
-              horizontal: AppSpacings.pMd,
-            ),
+            padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
             shrinkWrap: true,
             itemCount: modes.length,
             separatorHeight: 0,
@@ -431,10 +428,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: Container(
-        padding: EdgeInsets.symmetric(
-          vertical: AppSpacings.pMd,
-          horizontal: AppSpacings.pMd,
-        ),
+        padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
         margin: EdgeInsets.only(bottom: AppSpacings.pXs),
         decoration: BoxDecoration(
           color: isActive ? colorFamily.light9 : Colors.transparent,
@@ -1029,9 +1023,6 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
           _buildSensorSectionTitle(context),
           Expanded(
             child: VerticalScrollWithGradient(
-              padding: EdgeInsets.symmetric(
-                vertical: AppSpacings.pMd,
-              ),
               itemCount: 1,
               separatorHeight: 0,
               itemBuilder: (context, index) => GridView.builder(

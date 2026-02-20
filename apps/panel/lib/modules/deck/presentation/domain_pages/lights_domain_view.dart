@@ -2330,10 +2330,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                     itemCount: lights.length,
                     separatorHeight: AppSpacings.pSm,
                     backgroundColor: drawerBgColor,
-                    padding: EdgeInsets.symmetric(
-                      horizontal: AppSpacings.pLg,
-                      vertical: AppSpacings.pMd,
-                    ),
+                    padding: EdgeInsets.symmetric(horizontal: AppSpacings.pLg),
                     itemBuilder: (context, index) =>
                         _buildOtherLightTileForSheet(context, lights[index]),
                   ),
@@ -2371,10 +2368,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                     separatorHeight: AppSpacings.pSm,
                     backgroundColor: bgColor,
                     shrinkWrap: true,
-                    padding: EdgeInsets.symmetric(
-                      horizontal: AppSpacings.pLg,
-                      vertical: AppSpacings.pMd,
-                    ),
+                    padding: EdgeInsets.symmetric(horizontal: AppSpacings.pLg),
                     itemBuilder: (c, i) =>
                         _buildOtherLightTileForSheet(c, lights[i]),
                   ),
@@ -2460,10 +2454,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         ),
       ),
       child: Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: AppSpacings.pLg,
-          vertical: AppSpacings.pMd,
-        ),
+        padding: EdgeInsets.symmetric(horizontal: AppSpacings.pLg),
         child: Theme(
           data: Theme.of(context).copyWith(filledButtonTheme: filledTheme),
           child: SizedBox(
@@ -3090,10 +3081,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
           itemCount: scenes.length,
           separatorHeight: AppSpacings.pSm,
           backgroundColor: drawerBgColor,
-          padding: EdgeInsets.symmetric(
-            horizontal: AppSpacings.pLg,
-            vertical: AppSpacings.pMd,
-          ),
+          padding: EdgeInsets.symmetric(horizontal: AppSpacings.pLg),
           itemBuilder: (context, index) => _buildSceneTileForSheet(
             context,
             scenes[index],

@@ -73,12 +73,7 @@ class DevicePortraitLayout extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final defaultPadding = EdgeInsets.only(
-      left: AppSpacings.pLg,
-      right: AppSpacings.pLg,
-      top: AppSpacings.pMd,
-      bottom: AppSpacings.pMd,
-    );
+    final defaultPadding = EdgeInsets.symmetric(horizontal: AppSpacings.pLg);
 
     // Build the scrollable content widget
     Widget contentWidget;

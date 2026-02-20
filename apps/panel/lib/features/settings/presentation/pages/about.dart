@@ -90,11 +90,7 @@ class _AboutPageState extends State<AboutPage> {
 	) {
 		return VerticalScrollWithGradient(
 			itemCount: 1,
-			padding: EdgeInsets.only(
-				left: AppSpacings.pMd,
-				right: AppSpacings.pMd,
-				bottom: AppSpacings.pMd,
-			),
+			padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
 			itemBuilder: (context, index) => Column(
 				crossAxisAlignment: CrossAxisAlignment.start,
 				children: [
@@ -120,11 +116,7 @@ class _AboutPageState extends State<AboutPage> {
 	) {
 		return VerticalScrollWithGradient(
 			itemCount: 1,
-			padding: EdgeInsets.only(
-				left: AppSpacings.pMd,
-				right: AppSpacings.pMd,
-				bottom: AppSpacings.pMd,
-			),
+			padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
 			itemBuilder: (context, index) => Row(
 				crossAxisAlignment: CrossAxisAlignment.start,
 				children: [

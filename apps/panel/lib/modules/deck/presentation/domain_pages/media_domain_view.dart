@@ -2112,10 +2112,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 									itemCount: groups.length,
 									separatorHeight: AppSpacings.pSm,
 									backgroundColor: drawerBgColor,
-									padding: EdgeInsets.symmetric(
-										horizontal: AppSpacings.pLg,
-										vertical: AppSpacings.pMd,
-									),
+									padding: EdgeInsets.symmetric(horizontal: AppSpacings.pLg),
 									itemBuilder: (context, index) =>
 										_buildMediaDeviceTileForSheet(context, groups[index]),
 								);
@@ -2125,10 +2122,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 							itemCount: getDeviceGroups().length,
 							separatorHeight: AppSpacings.pSm,
 							backgroundColor: drawerBgColor,
-							padding: EdgeInsets.symmetric(
-								horizontal: AppSpacings.pLg,
-								vertical: AppSpacings.pMd,
-							),
+							padding: EdgeInsets.symmetric(horizontal: AppSpacings.pLg),
 							itemBuilder: (context, index) =>
 								_buildMediaDeviceTileForSheet(context, getDeviceGroups()[index]),
 						),
@@ -2222,10 +2216,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 								itemCount: entries.length,
 								separatorHeight: AppSpacings.pSm,
 								backgroundColor: drawerBgColor,
-								padding: EdgeInsets.symmetric(
-									horizontal: AppSpacings.pLg,
-									vertical: AppSpacings.pMd,
-								),
+								padding: EdgeInsets.symmetric(horizontal: AppSpacings.pLg),
 								itemBuilder: buildCompositionTile,
 							),
 						)
@@ -2233,10 +2224,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 							itemCount: entries.length,
 							separatorHeight: AppSpacings.pSm,
 							backgroundColor: drawerBgColor,
-							padding: EdgeInsets.symmetric(
-								horizontal: AppSpacings.pLg,
-								vertical: AppSpacings.pMd,
-							),
+							padding: EdgeInsets.symmetric(horizontal: AppSpacings.pLg),
 							itemBuilder: buildCompositionTile,
 						),
 			);

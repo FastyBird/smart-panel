@@ -1565,10 +1565,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
                     itemCount: deviceDataList.length,
                     separatorHeight: AppSpacings.pSm,
                     backgroundColor: drawerBgColor,
-                    padding: EdgeInsets.symmetric(
-                      horizontal: AppSpacings.pLg,
-                      vertical: AppSpacings.pMd,
-                    ),
+                    padding: EdgeInsets.symmetric(horizontal: AppSpacings.pLg),
                     itemBuilder: (context, index) =>
                         _buildShadingDeviceTile(context, deviceDataList[index]),
                   ),
@@ -1634,10 +1631,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
         ),
       ),
       child: Padding(
-        padding: EdgeInsets.symmetric(
-          horizontal: AppSpacings.pLg,
-          vertical: AppSpacings.pMd,
-        ),
+        padding: EdgeInsets.symmetric(horizontal: AppSpacings.pLg),
         child: Theme(
           data: Theme.of(context).copyWith(filledButtonTheme: filledTheme),
           child: SizedBox(

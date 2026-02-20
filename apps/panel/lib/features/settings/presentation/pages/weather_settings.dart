@@ -107,21 +107,13 @@ class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
 						child: isLandscape
 								? VerticalScrollWithGradient(
 										itemCount: 1,
-										padding: EdgeInsets.only(
-													left: AppSpacings.pMd,
-													right: AppSpacings.pMd,
-													bottom: AppSpacings.pMd,
-												),
+										padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
 										itemBuilder: (context, index) => SettingsTwoColumnLayout(cards: cards),
 									)
 								: VerticalScrollWithGradient(
 										itemCount: cards.length,
 										separatorHeight: AppSpacings.pMd,
-										padding: EdgeInsets.only(
-													left: AppSpacings.pMd,
-													right: AppSpacings.pMd,
-													bottom: AppSpacings.pMd,
-												),
+										padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
 										itemBuilder: (context, index) => cards[index],
 									),
 					),
