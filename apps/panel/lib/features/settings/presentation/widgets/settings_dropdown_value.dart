@@ -20,12 +20,16 @@ class SettingsDropdownValue extends StatelessWidget {
 		return Row(
 			mainAxisSize: MainAxisSize.min,
 			children: [
-				Text(
-					value,
-					style: TextStyle(
-						fontSize: AppFontSize.small,
-						fontWeight: FontWeight.w600,
-						color: accentColor,
+				Flexible(
+					child: Text(
+						value,
+						style: TextStyle(
+							fontSize: AppFontSize.small,
+							fontWeight: FontWeight.w600,
+							color: accentColor,
+						),
+						overflow: TextOverflow.ellipsis,
+						maxLines: 1,
 					),
 				),
 				SizedBox(width: AppSpacings.scale(3)),

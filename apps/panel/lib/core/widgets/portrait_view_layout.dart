@@ -40,8 +40,8 @@ class PortraitViewLayout extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final defaultPadding = EdgeInsets.only(
-      left: AppSpacings.pLg,
-      right: AppSpacings.pLg,
+      left: AppSpacings.pMd,
+      right: AppSpacings.pMd,
       top: scrollable ? AppSpacings.pMd : 0,
       bottom: AppSpacings.pMd,
     );

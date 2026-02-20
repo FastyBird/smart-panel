@@ -1,6 +1,6 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
+import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_tile.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
@@ -87,64 +87,66 @@ class GeneralSettingsPage extends StatelessWidget {
 		final columns = isLandscape ? 3 : 2;
 
 		return Scaffold(
-			appBar: AppTopBar(
-				title: localizations.settings_general_settings_title,
-				icon: MdiIcons.cog,
-				actions: [
-					Theme(
-						data: ThemeData(
-							iconButtonTheme: isDark
-									? AppIconButtonsDarkThemes.primary
-									: AppIconButtonsLightThemes.primary,
+			backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
+			body: Column(
+				children: [
+					PageHeader(
+						title: localizations.settings_general_settings_title,
+						leading: HeaderMainIcon(
+							icon: MdiIcons.cog,
 						),
-						child: IconButton(
-							onPressed: () => Navigator.of(context, rootNavigator: true).pop(),
-							style: IconButton.styleFrom(
-								padding: AppSpacings.paddingSm,
-							),
-							icon: Icon(
-								MdiIcons.close,
-								size: AppSpacings.scale(14),
-							),
-						),
-					)
-				],
-			),
-			body: SingleChildScrollView(
-				padding: EdgeInsets.all(AppSpacings.pLg),
-				child: Align(
-					alignment: Alignment.topLeft,
-					child: ConstrainedBox(
-						constraints: BoxConstraints(
-							maxWidth: isLandscape ? AppSpacings.scale(600) : double.infinity,
-						),
-						child: GridView.builder(
-							shrinkWrap: true,
-							physics: const NeverScrollableScrollPhysics(),
-							gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-								crossAxisCount: columns,
-								crossAxisSpacing: AppSpacings.pMd,
-								mainAxisSpacing: AppSpacings.pMd,
-								childAspectRatio: isLandscape ? 1.35 : 1.2,
-							),
-							itemCount: tiles.length,
-							itemBuilder: (context, index) {
-								final tile = tiles[index];
-
-								return SettingsTile(
-									label: tile.label,
-									sublabel: tile.sublabel,
-									icon: tile.icon,
-									iconColor: tile.iconColor,
-									iconBgColor: tile.iconBgColor,
-									onTap: () {
-										Navigator.of(context).pushNamed(tile.route);
-									},
-								);
-							},
+						trailing: HeaderIconButton(
+							icon: MdiIcons.close,
+							onTap: () => Navigator.of(context, rootNavigator: true).pop(),
 						),
 					),
-				),
+					Expanded(
+						child: Padding(
+							padding: EdgeInsets.only(
+								left: AppSpacings.pMd,
+								right: AppSpacings.pMd,
+								bottom: AppSpacings.pMd,
+							),
+							child: LayoutBuilder(
+								builder: (context, constraints) {
+									final spacing = AppSpacings.pMd;
+									final rows = (tiles.length / columns).ceil();
+									final availableWidth = constraints.maxWidth;
+									final availableHeight = constraints.maxHeight;
+									final tileWidth = (availableWidth - spacing * (columns - 1)) / columns;
+									final rawTileHeight = (availableHeight - spacing * (rows - 1)) / rows;
+									final tileHeight = rawTileHeight > 0 ? rawTileHeight : 1.0;
+									final childAspectRatio = tileWidth / tileHeight;
+
+									return GridView.builder(
+										physics: const NeverScrollableScrollPhysics(),
+										gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+											crossAxisCount: columns,
+											crossAxisSpacing: spacing,
+											mainAxisSpacing: spacing,
+											childAspectRatio: childAspectRatio,
+										),
+										itemCount: tiles.length,
+										itemBuilder: (context, index) {
+											final tile = tiles[index];
+
+											return SettingsTile(
+												label: tile.label,
+												sublabel: tile.sublabel,
+												icon: tile.icon,
+												iconColor: tile.iconColor,
+												iconBgColor: tile.iconBgColor,
+												onTap: () {
+													Navigator.of(context).pushNamed(tile.route);
+												},
+											);
+										},
+									);
+								},
+							),
+						),
+					),
+				],
 			),
 		);
 	}

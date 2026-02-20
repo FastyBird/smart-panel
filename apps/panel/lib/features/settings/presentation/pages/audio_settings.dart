@@ -3,9 +3,9 @@ import 'dart:async';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
-import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
+import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_card.dart';
-import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_section_heading.dart';
+import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_slider.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_toggle.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
@@ -75,41 +75,62 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
 		final localizations = AppLocalizations.of(context)!;
 		final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
 
+		final isDark = Theme.of(context).brightness == Brightness.dark;
+
 		return Scaffold(
-			appBar: AppTopBar(
-				title: localizations.settings_audio_settings_title,
+			backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
+			body: Column(
+				children: [
+					PageHeader(
+						title: localizations.settings_audio_settings_title,
+						leading: HeaderIconButton(
+							icon: Icons.arrow_back,
+							onTap: () => Navigator.of(context).pop(),
+						),
+					),
+					Expanded(
+						child: !_audioOutputSupported && !_audioInputSupported
+								? _buildNoAudioSupportMessage(localizations)
+								: isLandscape
+										? SingleChildScrollView(
+												padding: EdgeInsets.only(
+													left: AppSpacings.pMd,
+													right: AppSpacings.pMd,
+													bottom: AppSpacings.pMd,
+												),
+												child: Row(
+													crossAxisAlignment: CrossAxisAlignment.start,
+													children: [
+														if (_audioOutputSupported)
+															Expanded(child: _buildSpeakerColumn(localizations)),
+														if (_audioOutputSupported && _audioInputSupported)
+															SizedBox(width: AppSpacings.pMd),
+														if (_audioInputSupported)
+															Expanded(child: _buildMicColumn(localizations)),
+													],
+												),
+											)
+										: SingleChildScrollView(
+												padding: EdgeInsets.only(
+													left: AppSpacings.pMd,
+													right: AppSpacings.pMd,
+													bottom: AppSpacings.pMd,
+												),
+												child: Column(
+													crossAxisAlignment: CrossAxisAlignment.start,
+													children: [
+														if (_audioOutputSupported) ...[
+															..._buildSpeakerCards(localizations),
+															SizedBox(height: AppSpacings.pLg),
+														],
+														if (_audioInputSupported)
+															..._buildMicCards(localizations),
+													],
+												),
+											),
+					),
+				],
 			),
-			body: !_audioOutputSupported && !_audioInputSupported
-					? _buildNoAudioSupportMessage(localizations)
-					: isLandscape
-							? SingleChildScrollView(
-									padding: EdgeInsets.all(AppSpacings.pLg),
-									child: Row(
-										crossAxisAlignment: CrossAxisAlignment.start,
-										children: [
-											if (_audioOutputSupported)
-												Expanded(child: _buildSpeakerColumn(localizations)),
-											if (_audioOutputSupported && _audioInputSupported)
-												SizedBox(width: AppSpacings.pMd),
-											if (_audioInputSupported)
-												Expanded(child: _buildMicColumn(localizations)),
-										],
-									),
-								)
-							: SingleChildScrollView(
-									padding: EdgeInsets.all(AppSpacings.pLg),
-									child: Column(
-										crossAxisAlignment: CrossAxisAlignment.start,
-										children: [
-											if (_audioOutputSupported) ...[
-												..._buildSpeakerCards(localizations),
-												SizedBox(height: AppSpacings.pLg),
-											],
-											if (_audioInputSupported)
-												..._buildMicCards(localizations),
-										],
-									),
-								),
 		);
 	}
 
@@ -162,7 +183,8 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
 		final warningBg = isDark ? AppColorsDark.warningLight5 : AppColorsLight.warningLight9;
 
 		return [
-			SettingsSectionHeading(text: localizations.settings_audio_settings_speaker_title),
+			SectionTitle(title: localizations.settings_audio_settings_speaker_title, icon: Icons.volume_up_outlined),
+			AppSpacings.spacingSmVertical,
 			SettingsCard(
 				icon: Icons.volume_up_outlined,
 				iconColor: warningColor,
@@ -180,6 +202,7 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
 				iconColor: warningColor,
 				iconBgColor: warningBg,
 				label: localizations.settings_audio_settings_speaker_volume_title,
+				description: localizations.settings_audio_settings_speaker_volume_description,
 				opacity: _hasSpeakerEnabled ? 1.0 : 0.4,
 				bottom: SettingsSlider(
 					value: _speakerVolume / 100.0,
@@ -199,7 +222,8 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
 		final warningBg = isDark ? AppColorsDark.warningLight5 : AppColorsLight.warningLight9;
 
 		return [
-			SettingsSectionHeading(text: localizations.settings_audio_settings_microphone_title),
+			SectionTitle(title: localizations.settings_audio_settings_microphone_title, icon: Icons.mic_outlined),
+			AppSpacings.spacingSmVertical,
 			SettingsCard(
 				icon: Icons.mic_outlined,
 				iconColor: warningColor,
@@ -217,6 +241,7 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
 				iconColor: warningColor,
 				iconBgColor: warningBg,
 				label: localizations.settings_audio_settings_microphone_volume_title,
+				description: localizations.settings_audio_settings_microphone_volume_description,
 				opacity: _hasMicrophoneEnabled ? 1.0 : 0.4,
 				bottom: SettingsSlider(
 					value: _microphoneVolume / 100.0,

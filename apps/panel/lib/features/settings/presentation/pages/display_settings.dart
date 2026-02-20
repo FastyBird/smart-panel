@@ -1,15 +1,14 @@
 import 'dart:async';
 
-import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
-import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
+import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_card.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_dropdown_value.dart';
+import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_selection_dialog.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_slider.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_toggle.dart';
-import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_two_column_layout.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
 import 'package:flutter/material.dart';
@@ -81,7 +80,8 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 		final primaryColor = _isDarkMode ? AppColorsDark.primary : AppColorsLight.primary;
 		final primaryBg = _isDarkMode ? AppColorsDark.primaryLight5 : AppColorsLight.primaryLight9;
 
-		final cards = <Widget>[
+		// Left column cards (landscape) / top cards (portrait)
+		final leftCards = <Widget>[
 			// Theme Mode
 			SettingsCard(
 				icon: Icons.dark_mode_outlined,
@@ -106,96 +106,130 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 					onChanged: (v) => _handleScreenSaverChange(context, v),
 				),
 			),
-			// Brightness
-			SettingsCard(
-				icon: Icons.wb_sunny_outlined,
-				iconColor: primaryColor,
-				iconBgColor: primaryBg,
-				label: localizations.settings_display_settings_brightness_title,
-				bottom: SettingsSlider(
-					value: _brightness / 100.0,
-					iconSmall: Icons.wb_sunny_outlined,
-					iconLarge: Icons.wb_sunny,
-					onChanged: (v) => _handleBrightnessChange(context, v * 100),
-				),
-			),
-			// Screen Lock
-			SettingsCard(
-				icon: Icons.lock_outline,
-				iconColor: primaryColor,
-				iconBgColor: primaryBg,
-				label: localizations.settings_display_settings_screen_lock_title,
-				description: localizations.settings_display_settings_screen_lock_description,
-				trailing: DropdownButtonHideUnderline(
-					child: DropdownButton2<int>(
-						isExpanded: false,
-						isDense: true,
-						items: _getScreenLockDurationItems(),
-						value: _screenLockDuration,
-						onChanged: (int? value) async {
-							_handleScreenLockDurationChange(context, value);
-						},
-						customButton: SettingsDropdownValue(
-							value: _getScreenLockLabel(_screenLockDuration),
-						),
-						menuItemStyleData: MenuItemStyleData(
-							padding: EdgeInsets.symmetric(
-								vertical: 0,
-								horizontal: AppSpacings.pLg,
-							),
-							height: AppSpacings.scale(35),
-						),
-						dropdownStyleData: DropdownStyleData(
-							padding: EdgeInsets.all(0),
-							maxHeight: AppSpacings.scale(200),
-						),
-					),
-				),
-			),
 		];
+
+		// Screen Lock card — right column on landscape
+		final screenLockCard = SettingsCard(
+			icon: Icons.lock_outline,
+			iconColor: primaryColor,
+			iconBgColor: primaryBg,
+			label: localizations.settings_display_settings_screen_lock_title,
+			description: localizations.settings_display_settings_screen_lock_description,
+			trailing: GestureDetector(
+				onTap: () async {
+					final result = await showSettingsSelectionDialog<int>(
+						context: context,
+						title: localizations.settings_display_settings_screen_lock_title,
+						currentValue: _screenLockDuration,
+						options: _screenLockDurationLabels.entries
+								.map((e) => SelectionOption(value: e.key, label: e.value))
+								.toList(),
+					);
+					if (result != null && context.mounted) {
+						_handleScreenLockDurationChange(context, result);
+					}
+				},
+				child: SettingsDropdownValue(
+					value: _getScreenLockLabel(_screenLockDuration),
+				),
+			),
+		);
+
+		// Brightness card (with slider) — placed in right column on landscape
+		final brightnessCard = SettingsCard(
+			icon: Icons.wb_sunny_outlined,
+			iconColor: primaryColor,
+			iconBgColor: primaryBg,
+			label: localizations.settings_display_settings_brightness_title,
+			description: localizations.settings_display_settings_brightness_description,
+			bottom: SettingsSlider(
+				value: _brightness / 100.0,
+				iconSmall: Icons.wb_sunny_outlined,
+				iconLarge: Icons.wb_sunny,
+				onChanged: (v) => _handleBrightnessChange(context, v * 100),
+			),
+		);
+
+		final themeData = (_isDarkMode ? AppTheme.darkTheme : AppTheme.lightTheme).copyWith(
+			scaffoldBackgroundColor: _isDarkMode ? AppBgColorDark.page : AppBgColorLight.page,
+		);
 
 		return AnimatedTheme(
 			duration: const Duration(milliseconds: 500),
 			curve: Curves.easeInOut,
-			data: _isDarkMode ? AppTheme.darkTheme : AppTheme.lightTheme,
+			data: themeData,
 			child: Scaffold(
-				appBar: AppTopBar(
-					title: localizations.settings_display_settings_title,
-				),
-				body: isLandscape
-						? SingleChildScrollView(
-								padding: EdgeInsets.all(AppSpacings.pLg),
-								child: SettingsTwoColumnLayout(cards: cards),
-							)
-						: ListView(
-								padding: EdgeInsets.all(AppSpacings.pLg),
-								children: [
-									for (int i = 0; i < cards.length; i++) ...[
-										cards[i],
-										if (i < cards.length - 1) SizedBox(height: AppSpacings.pMd),
-									],
-								],
+				body: Column(
+					children: [
+						PageHeader(
+							title: localizations.settings_display_settings_title,
+							leading: HeaderIconButton(
+								icon: Icons.arrow_back,
+								onTap: () => Navigator.of(context).pop(),
 							),
+						),
+						Expanded(
+							child: isLandscape
+									? Padding(
+											padding: EdgeInsets.only(
+												left: AppSpacings.pMd,
+												right: AppSpacings.pMd,
+												bottom: AppSpacings.pMd,
+											),
+											child: Row(
+												crossAxisAlignment: CrossAxisAlignment.start,
+												children: [
+													Expanded(
+														child: Column(
+															mainAxisSize: MainAxisSize.min,
+															children: [
+																for (int i = 0; i < leftCards.length; i++) ...[
+																	leftCards[i],
+																	if (i < leftCards.length - 1) SizedBox(height: AppSpacings.pMd),
+																],
+															],
+														),
+													),
+													SizedBox(width: AppSpacings.pMd),
+													Expanded(
+														child: Column(
+															mainAxisSize: MainAxisSize.min,
+															children: [
+																brightnessCard,
+																SizedBox(height: AppSpacings.pMd),
+																screenLockCard,
+															],
+														),
+													),
+												],
+											),
+										)
+									: ListView(
+											padding: EdgeInsets.only(
+												left: AppSpacings.pMd,
+												right: AppSpacings.pMd,
+												bottom: AppSpacings.pMd,
+											),
+											children: [
+												for (int i = 0; i < leftCards.length; i++) ...[
+													leftCards[i],
+													if (i < leftCards.length - 1) SizedBox(height: AppSpacings.pMd),
+												],
+												SizedBox(height: AppSpacings.pMd),
+												brightnessCard,
+												SizedBox(height: AppSpacings.pMd),
+												screenLockCard,
+											],
+										),
+						),
+					],
+				),
 			),
 		);
 	}
 
 	String _getScreenLockLabel(int duration) {
 		return _screenLockDurationLabels[duration] ?? '${duration}s';
-	}
-
-	List<DropdownMenuItem<int>> _getScreenLockDurationItems() {
-		return _screenLockDurationLabels.entries.map((entry) {
-			return DropdownMenuItem<int>(
-				value: entry.key,
-				child: Text(
-					entry.value,
-					style: TextStyle(
-						fontSize: AppFontSize.extraSmall,
-					),
-				),
-			);
-		}).toList();
 	}
 
 	Future<void> _handleDarkModeChange(

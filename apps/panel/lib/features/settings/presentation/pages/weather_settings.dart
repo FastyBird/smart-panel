@@ -1,9 +1,9 @@
-import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
+import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_card.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_dropdown_value.dart';
+import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_selection_dialog.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_two_column_layout.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/weather/models/location.dart';
@@ -69,29 +69,22 @@ class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
 				label: localizations.settings_weather_settings_temperature_location_title,
 				description: localizations.settings_weather_settings_temperature_location_description,
 				trailing: _locations.length > 1
-						? DropdownButtonHideUnderline(
-								child: DropdownButton2<String>(
-									isExpanded: false,
-									isDense: true,
-									items: _getLocationItems(),
-									value: _selectedLocationId,
-									onChanged: (String? value) {
-										_handleLocationChange(value);
-									},
-									customButton: SettingsDropdownValue(
-										value: selectedName,
-									),
-									menuItemStyleData: MenuItemStyleData(
-										padding: EdgeInsets.symmetric(
-											vertical: 0,
-											horizontal: AppSpacings.pLg,
-										),
-										height: AppSpacings.scale(35),
-									),
-									dropdownStyleData: DropdownStyleData(
-										padding: EdgeInsets.all(0),
-										maxHeight: AppSpacings.scale(250),
-									),
+						? GestureDetector(
+								onTap: () async {
+									final result = await showSettingsSelectionDialog<String>(
+										context: context,
+										title: localizations.settings_weather_settings_temperature_location_title,
+										currentValue: _selectedLocationId,
+										options: _locations
+												.map((l) => SelectionOption(value: l.id, label: l.name))
+												.toList(),
+									);
+									if (result != null && context.mounted) {
+										_handleLocationChange(result);
+									}
+								},
+								child: SettingsDropdownValue(
+									value: selectedName,
 								),
 							)
 						: null,
@@ -99,34 +92,43 @@ class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
 		];
 
 		return Scaffold(
-			appBar: AppTopBar(title: localizations.settings_weather_settings_title),
-			body: isLandscape
-					? SingleChildScrollView(
-							padding: EdgeInsets.all(AppSpacings.pLg),
-							child: SettingsTwoColumnLayout(cards: cards),
-						)
-					: ListView(
-							padding: EdgeInsets.all(AppSpacings.pLg),
-							children: [
-								for (int i = 0; i < cards.length; i++) ...[
-									cards[i],
-									if (i < cards.length - 1) SizedBox(height: AppSpacings.pMd),
-								],
-							],
+			backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
+			body: Column(
+				children: [
+					PageHeader(
+						title: localizations.settings_weather_settings_title,
+						leading: HeaderIconButton(
+							icon: Icons.arrow_back,
+							onTap: () => Navigator.of(context).pop(),
 						),
+					),
+					Expanded(
+						child: isLandscape
+								? SingleChildScrollView(
+										padding: EdgeInsets.only(
+													left: AppSpacings.pMd,
+													right: AppSpacings.pMd,
+													bottom: AppSpacings.pMd,
+												),
+										child: SettingsTwoColumnLayout(cards: cards),
+									)
+								: ListView(
+										padding: EdgeInsets.only(
+													left: AppSpacings.pMd,
+													right: AppSpacings.pMd,
+													bottom: AppSpacings.pMd,
+												),
+										children: [
+											for (int i = 0; i < cards.length; i++) ...[
+												cards[i],
+												if (i < cards.length - 1) SizedBox(height: AppSpacings.pMd),
+											],
+										],
+									),
+					),
+				],
+			),
 		);
-	}
-
-	List<DropdownMenuItem<String>> _getLocationItems() {
-		return _locations.map((location) {
-			return DropdownMenuItem<String>(
-				value: location.id,
-				child: Text(
-					location.name,
-					style: TextStyle(fontSize: AppFontSize.extraSmall),
-				),
-			);
-		}).toList();
 	}
 
 	void _handleLocationChange(String? locationId) {

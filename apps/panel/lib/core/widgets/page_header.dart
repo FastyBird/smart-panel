@@ -77,7 +77,7 @@ class PageHeader extends StatelessWidget {
 
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: isLandscape ? AppSpacings.pMd : AppSpacings.pLg,
+        horizontal: AppSpacings.pMd,
         vertical: isCompact ? AppSpacings.pSm : AppSpacings.pMd,
       ),
       decoration: BoxDecoration(

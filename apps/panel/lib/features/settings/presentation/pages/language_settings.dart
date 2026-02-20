@@ -1,12 +1,12 @@
 import 'dart:async';
 
-import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
-import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
+import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_card.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_dropdown_value.dart';
+import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_selection_dialog.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_two_column_layout.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/config/module.dart';
@@ -103,29 +103,22 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
 				iconBgColor: infoBg,
 				label: localizations.settings_language_settings_language_title,
 				description: localizations.settings_language_settings_language_description,
-				trailing: DropdownButtonHideUnderline(
-					child: DropdownButton2<String>(
-						isExpanded: false,
-						isDense: true,
-						items: _getLanguageItems(),
-						value: _language.value,
-						onChanged: (String? value) async {
-							_handleLanguageChange(context, value);
-						},
-						customButton: SettingsDropdownValue(
-							value: languageLabels[_language.value] ?? _language.value,
-						),
-						menuItemStyleData: MenuItemStyleData(
-							padding: EdgeInsets.symmetric(
-								vertical: 0,
-								horizontal: AppSpacings.pLg,
-							),
-							height: AppSpacings.scale(35),
-						),
-						dropdownStyleData: DropdownStyleData(
-							padding: EdgeInsets.all(0),
-							maxHeight: AppSpacings.scale(200),
-						),
+				trailing: GestureDetector(
+					onTap: () async {
+						final result = await showSettingsSelectionDialog<String>(
+							context: context,
+							title: localizations.settings_language_settings_language_title,
+							currentValue: _language.value,
+							options: languageLabels.entries
+									.map((e) => SelectionOption(value: e.key, label: e.value))
+									.toList(),
+						);
+						if (result != null && context.mounted) {
+							_handleLanguageChange(context, result);
+						}
+					},
+					child: SettingsDropdownValue(
+						value: languageLabels[_language.value] ?? _language.value,
 					),
 				),
 			),
@@ -135,30 +128,27 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
 				iconBgColor: infoBg,
 				label: localizations.settings_language_settings_timezone_title,
 				description: localizations.settings_language_settings_timezone_description,
-				trailing: DropdownButtonHideUnderline(
-					child: DropdownButton2<String>(
-						isExpanded: false,
-						isDense: true,
-						items: _getTimezoneItems(timezones),
-						value: _timezone,
-						onChanged: (String? value) async {
-							_handleTimeZoneChange(context, value);
-						},
-						customButton: SettingsDropdownValue(
-							value: _timezone ?? '—',
-						),
-						menuItemStyleData: MenuItemStyleData(
-							padding: EdgeInsets.symmetric(
-								vertical: 0,
-								horizontal: AppSpacings.pLg,
-							),
-							height: AppSpacings.scale(35),
-						),
-						dropdownStyleData: DropdownStyleData(
-							padding: EdgeInsets.all(0),
-							width: AppSpacings.scale(150),
-							maxHeight: AppSpacings.scale(200),
-						),
+				trailing: GestureDetector(
+					onTap: () async {
+						final result = await showSettingsSelectionDialog<String>(
+							context: context,
+							title: localizations.settings_language_settings_timezone_title,
+							currentValue: _timezone,
+							options: timezones.map((tz) {
+								final parts = tz.split('/');
+								return SelectionOption(
+									value: tz,
+									label: parts.last.replaceAll('_', ' '),
+									group: parts.first,
+								);
+							}).toList(),
+						);
+						if (result != null && context.mounted) {
+							_handleTimeZoneChange(context, result);
+						}
+					},
+					child: SettingsDropdownValue(
+						value: _formatTimezoneCity(_timezone),
 					),
 				),
 			),
@@ -168,111 +158,80 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
 				iconBgColor: infoBg,
 				label: localizations.settings_language_settings_time_format_title,
 				description: localizations.settings_language_settings_time_format_description,
-				trailing: DropdownButtonHideUnderline(
-					child: DropdownButton2<String>(
-						isExpanded: false,
-						isDense: true,
-						items: _getTimeFormatItems(context),
-						value: _timeFormat.value,
-						onChanged: (String? value) async {
-							_handleTimeFormatChange(context, value);
-						},
-						customButton: SettingsDropdownValue(
-							value: _timeFormat == TimeFormat.twelveHour
-									? localizations.time_format_12h
-									: localizations.time_format_24h,
-						),
-						menuItemStyleData: MenuItemStyleData(
-							padding: EdgeInsets.symmetric(
-								vertical: 0,
-								horizontal: AppSpacings.pLg,
-							),
-							height: AppSpacings.scale(35),
-						),
-						dropdownStyleData: DropdownStyleData(
-							padding: EdgeInsets.all(0),
-							maxHeight: AppSpacings.scale(200),
-						),
+				trailing: GestureDetector(
+					onTap: () async {
+						final result = await showSettingsSelectionDialog<String>(
+							context: context,
+							title: localizations.settings_language_settings_time_format_title,
+							currentValue: _timeFormat.value,
+							options: [
+								SelectionOption(
+									value: TimeFormat.twelveHour.value,
+									label: localizations.time_format_12h,
+								),
+								SelectionOption(
+									value: TimeFormat.twentyFourHour.value,
+									label: localizations.time_format_24h,
+								),
+							],
+						);
+						if (result != null && context.mounted) {
+							_handleTimeFormatChange(context, result);
+						}
+					},
+					child: SettingsDropdownValue(
+						value: _timeFormat == TimeFormat.twelveHour
+								? localizations.time_format_12h
+								: localizations.time_format_24h,
 					),
 				),
 			),
 		];
 
 		return Scaffold(
-			appBar: AppTopBar(
-				title: localizations.settings_language_settings_title,
-			),
-			body: isLandscape
-					? SingleChildScrollView(
-							padding: EdgeInsets.all(AppSpacings.pLg),
-							child: SettingsTwoColumnLayout(cards: cards),
-						)
-					: ListView(
-							padding: EdgeInsets.all(AppSpacings.pLg),
-							children: [
-								for (int i = 0; i < cards.length; i++) ...[
-									cards[i],
-									if (i < cards.length - 1) SizedBox(height: AppSpacings.pMd),
-								],
-							],
+			backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
+			body: Column(
+				children: [
+					PageHeader(
+						title: localizations.settings_language_settings_title,
+						leading: HeaderIconButton(
+							icon: Icons.arrow_back,
+							onTap: () => Navigator.of(context).pop(),
 						),
+					),
+					Expanded(
+						child: isLandscape
+								? SingleChildScrollView(
+										padding: EdgeInsets.only(
+													left: AppSpacings.pMd,
+													right: AppSpacings.pMd,
+													bottom: AppSpacings.pMd,
+												),
+										child: SettingsTwoColumnLayout(cards: cards),
+									)
+								: ListView(
+										padding: EdgeInsets.only(
+													left: AppSpacings.pMd,
+													right: AppSpacings.pMd,
+													bottom: AppSpacings.pMd,
+												),
+										children: [
+											for (int i = 0; i < cards.length; i++) ...[
+												cards[i],
+												if (i < cards.length - 1) SizedBox(height: AppSpacings.pMd),
+											],
+										],
+									),
+					),
+				],
+			),
 		);
 	}
 
-	List<DropdownMenuItem<String>> _getTimezoneItems(List<String> timezones) {
-		return timezones.map((timezone) {
-			return DropdownMenuItem<String>(
-				value: timezone,
-				child: Text(
-					timezone,
-					style: TextStyle(
-						fontSize: AppFontSize.extraSmall,
-					),
-				),
-			);
-		}).toList();
-	}
-
-	List<DropdownMenuItem<String>> _getLanguageItems() {
-		return {
-			Language.english.value: 'English',
-			Language.czech.value: 'Česky',
-		}.entries.map((entry) {
-			return DropdownMenuItem<String>(
-				value: entry.key,
-				child: Text(
-					entry.value,
-					style: TextStyle(
-						fontSize: AppFontSize.extraSmall,
-					),
-				),
-			);
-		}).toList();
-	}
-
-	List<DropdownMenuItem<String>> _getTimeFormatItems(BuildContext context) {
-		final localizations = AppLocalizations.of(context)!;
-
-		return [
-			DropdownMenuItem(
-				value: TimeFormat.twelveHour.value,
-				child: Text(
-					localizations.time_format_12h,
-					style: TextStyle(
-						fontSize: AppFontSize.extraSmall,
-					),
-				),
-			),
-			DropdownMenuItem(
-				value: TimeFormat.twentyFourHour.value,
-				child: Text(
-					localizations.time_format_24h,
-					style: TextStyle(
-						fontSize: AppFontSize.extraSmall,
-					),
-				),
-			),
-		];
+	String _formatTimezoneCity(String? timezone) {
+		if (timezone == null) return '—';
+		final parts = timezone.split('/');
+		return parts.last.replaceAll('_', ' ');
 	}
 
 	Future<void> _handleLanguageChange(

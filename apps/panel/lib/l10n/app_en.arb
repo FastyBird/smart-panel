@@ -788,11 +788,11 @@
   "@settings_weather_settings_temperature_location_title": {
     "description": "Label for displaying the weather location setting."
   },
-  "settings_weather_settings_temperature_location_description": "Select from available locations configured in the administrator app.",
+  "settings_weather_settings_temperature_location_description": "Choose weather data source location.",
   "@settings_weather_settings_temperature_location_description": {
     "description": "Description explaining that the weather location can be selected from configured options."
   },
-  "settings_weather_settings_temperature_location_single": "Location is configured in the administrator app.",
+  "settings_weather_settings_temperature_location_single": "Only one location available.",
   "@settings_weather_settings_temperature_location_single": {
     "description": "Description explaining that the weather location is configured externally when only one location exists."
   },
@@ -804,7 +804,7 @@
   "@settings_maintenance_restart_title": {
     "description": "Label for the restart action in Maintenance settings."
   },
-  "settings_maintenance_restart_description": "Restart the device to apply changes or resolve issues.",
+  "settings_maintenance_restart_description": "Reboot device to apply changes.",
   "@settings_maintenance_restart_description": {
     "description": "Description for the restart action, explaining its purpose."
   },
@@ -872,7 +872,7 @@
   "@settings_language_settings_timezone_title": {
     "description": "Label for selecting the timezone."
   },
-  "settings_language_settings_timezone_description": "Select your timezone.",
+  "settings_language_settings_timezone_description": "Local timezone for time display.",
   "@settings_language_settings_timezone_description": {
     "description": "Description explaining the purpose of the timezone setting."
   },
@@ -880,7 +880,7 @@
   "@settings_language_settings_time_format_title": {
     "description": "Label for selecting the time format."
   },
-  "settings_language_settings_time_format_description": "Select your preferred time format.",
+  "settings_language_settings_time_format_description": "12-hour or 24-hour clock.",
   "@settings_language_settings_time_format_description": {
     "description": "Description explaining the purpose of the time format setting."
   },
@@ -892,7 +892,7 @@
   "@settings_display_settings_theme_mode_title": {
     "description": "Label for selecting the theme mode."
   },
-  "settings_display_settings_theme_mode_description": "Choose between light or dark mode.",
+  "settings_display_settings_theme_mode_description": "Switch between light and dark theme.",
   "@settings_display_settings_theme_mode_description": {
     "description": "Description explaining the theme mode setting."
   },
@@ -900,11 +900,15 @@
   "@settings_display_settings_brightness_title": {
     "description": "Label for adjusting the display brightness."
   },
+  "settings_display_settings_brightness_description": "Adjust screen brightness level.",
+  "@settings_display_settings_brightness_description": {
+    "description": "Description for the brightness slider setting."
+  },
   "settings_display_settings_screen_lock_title": "Screen Lock",
   "@settings_display_settings_screen_lock_title": {
     "description": "Label for setting the screen lock delay."
   },
-  "settings_display_settings_screen_lock_description": "Set screen lock delay duration.",
+  "settings_display_settings_screen_lock_description": "Auto-lock after inactivity.",
   "@settings_display_settings_screen_lock_description": {
     "description": "Description explaining the screen lock delay setting."
   },
@@ -912,7 +916,7 @@
   "@settings_display_settings_screen_saver_title": {
     "description": "Label for enabling or disabling the screen saver."
   },
-  "settings_display_settings_screen_saver_description": "Enable or disable the screen saver.",
+  "settings_display_settings_screen_saver_description": "Show screen saver when idle.",
   "@settings_display_settings_screen_saver_description": {
     "description": "Description explaining the screen saver setting."
   },
@@ -932,6 +936,10 @@
   "@settings_audio_settings_speaker_volume_title": {
     "description": "Label for adjusting the speaker volume."
   },
+  "settings_audio_settings_speaker_volume_description": "Adjust speaker output level.",
+  "@settings_audio_settings_speaker_volume_description": {
+    "description": "Description for the speaker volume slider."
+  },
   "settings_audio_settings_microphone_title": "Microphone",
   "@settings_audio_settings_microphone_title": {
     "description": "Label for enabling or disabling the microphone."
@@ -943,6 +951,10 @@
   "settings_audio_settings_microphone_volume_title": "Microphone Volume",
   "@settings_audio_settings_microphone_volume_title": {
     "description": "Label for adjusting the microphone volume."
+  },
+  "settings_audio_settings_microphone_volume_description": "Adjust microphone input level.",
+  "@settings_audio_settings_microphone_volume_description": {
+    "description": "Description for the microphone volume slider."
   },
   "settings_audio_settings_no_support": "This display does not support audio input or output.",
   "@settings_audio_settings_no_support": {

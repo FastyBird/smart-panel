@@ -628,10 +628,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settings_weather_settings_temperature_location_title => 'Weather Location';
 
   @override
-  String get settings_weather_settings_temperature_location_description => 'Select from available locations configured in the administrator app.';
+  String get settings_weather_settings_temperature_location_description => 'Choose weather data source location.';
 
   @override
-  String get settings_weather_settings_temperature_location_single => 'Location is configured in the administrator app.';
+  String get settings_weather_settings_temperature_location_single => 'Only one location available.';
 
   @override
   String get settings_maintenance_title => 'Maintenance';
@@ -640,7 +640,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settings_maintenance_restart_title => 'Restart';
 
   @override
-  String get settings_maintenance_restart_description => 'Restart the device to apply changes or resolve issues.';
+  String get settings_maintenance_restart_description => 'Reboot device to apply changes.';
 
   @override
   String get settings_maintenance_restart_confirm_title => 'Restart Device';
@@ -691,13 +691,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settings_language_settings_timezone_title => 'Timezone';
 
   @override
-  String get settings_language_settings_timezone_description => 'Select your timezone.';
+  String get settings_language_settings_timezone_description => 'Local timezone for time display.';
 
   @override
   String get settings_language_settings_time_format_title => 'Time Format';
 
   @override
-  String get settings_language_settings_time_format_description => 'Select your preferred time format.';
+  String get settings_language_settings_time_format_description => '12-hour or 24-hour clock.';
 
   @override
   String get settings_display_settings_title => 'Display Settings';
@@ -706,22 +706,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settings_display_settings_theme_mode_title => 'Theme Mode';
 
   @override
-  String get settings_display_settings_theme_mode_description => 'Choose between light or dark mode.';
+  String get settings_display_settings_theme_mode_description => 'Switch between light and dark theme.';
 
   @override
   String get settings_display_settings_brightness_title => 'Brightness';
 
   @override
+  String get settings_display_settings_brightness_description => 'Adjust screen brightness level.';
+
+  @override
   String get settings_display_settings_screen_lock_title => 'Screen Lock';
 
   @override
-  String get settings_display_settings_screen_lock_description => 'Set screen lock delay duration.';
+  String get settings_display_settings_screen_lock_description => 'Auto-lock after inactivity.';
 
   @override
   String get settings_display_settings_screen_saver_title => 'Screen Saver';
 
   @override
-  String get settings_display_settings_screen_saver_description => 'Enable or disable the screen saver.';
+  String get settings_display_settings_screen_saver_description => 'Show screen saver when idle.';
 
   @override
   String get settings_audio_settings_title => 'Audio Settings';
@@ -736,6 +739,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settings_audio_settings_speaker_volume_title => 'Speaker Volume';
 
   @override
+  String get settings_audio_settings_speaker_volume_description => 'Adjust speaker output level.';
+
+  @override
   String get settings_audio_settings_microphone_title => 'Microphone';
 
   @override
@@ -743,6 +749,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settings_audio_settings_microphone_volume_title => 'Microphone Volume';
+
+  @override
+  String get settings_audio_settings_microphone_volume_description => 'Adjust microphone input level.';
 
   @override
   String get settings_audio_settings_no_support => 'This display does not support audio input or output.';
