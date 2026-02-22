@@ -1,9 +1,11 @@
-import 'package:flutter/material.dart';
+import 'dart:async';
+import 'dart:ui';
+
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 import 'package:fastybird_smart_panel/core/services/connection_state_manager.dart';
 import 'package:fastybird_smart_panel/core/types/connection_state.dart';
-import 'package:fastybird_smart_panel/core/widgets/connection/export.dart';
-import 'package:fastybird_smart_panel/core/widgets/screen_connection_lost.dart';
+import 'package:fastybird_smart_panel/core/widgets/connection/connection_recovery_toast.dart';
 import 'package:fastybird_smart_panel/features/overlay/services/overlay_manager.dart';
 import 'package:fastybird_smart_panel/features/overlay/types/overlay.dart';
 
@@ -36,6 +38,9 @@ class ConnectionOverlayProvider {
 	bool _showRecoveryToast = false;
 	bool _isInitialized = false;
 
+	bool _isRetrying = false;
+	Timer? _retryTimer;
+
 	ConnectionOverlayProvider({
 		required OverlayManager overlayManager,
 		required ConnectionStateManager connectionManager,
@@ -55,15 +60,17 @@ class ConnectionOverlayProvider {
 			id: ConnectionOverlayIds.connection,
 			displayType: OverlayDisplayType.banner,
 			priority: 200,
-			builder: (context) => ConnectionBanner(onRetry: onReconnect),
+			colorScheme: OverlayColorScheme.warning,
+			showProgress: true,
+			title: (l) => l.connection_banner_reconnecting,
 		));
 
-		// Recovery toast is a separate logical overlay
+		// Recovery toast is a separate logical overlay using customBuilder
 		_overlayManager.register(AppOverlayEntry(
 			id: ConnectionOverlayIds.recovery,
 			displayType: OverlayDisplayType.banner,
 			priority: 250,
-			builder: (context) => ConnectionRecoveryToast(
+			customBuilder: (context) => ConnectionRecoveryToast(
 				onDismiss: _dismissRecoveryToast,
 			),
 		));
@@ -77,6 +84,7 @@ class ConnectionOverlayProvider {
 		if (!_isInitialized) return;
 		_isInitialized = false;
 
+		_retryTimer?.cancel();
 		_connectionManager.removeListener(_onConnectionStateChanged);
 		_overlayManager.unregister(ConnectionOverlayIds.connection);
 		_overlayManager.unregister(ConnectionOverlayIds.recovery);
@@ -132,33 +140,53 @@ class ConnectionOverlayProvider {
 						ConnectionOverlayIds.connection,
 						displayType: OverlayDisplayType.banner,
 						closable: true,
-						builder: (context) => ConnectionBanner(onRetry: onReconnect),
+						colorScheme: OverlayColorScheme.warning,
+						showProgress: true,
+						title: (l) => l.connection_banner_reconnecting,
+						actions: [
+							OverlayAction(
+								label: (l) => l.connection_banner_retry,
+								onPressed: _handleRetry,
+								style: OverlayActionStyle.outlined,
+								loading: _isRetrying,
+							),
+						],
 					);
 				}
 				break;
 
 			case ConnectionUISeverity.overlay:
 				if (!_userDismissedConnection) {
+					final seconds = _connectionManager.disconnectedDuration.inSeconds;
+
 					_overlayManager.show(
 						ConnectionOverlayIds.connection,
 						displayType: OverlayDisplayType.overlay,
 						closable: true,
-						builder: (context) => ConnectionOverlay(
-							disconnectedDuration: _connectionManager.disconnectedDuration,
-							onRetry: onReconnect,
-						),
+						icon: MdiIcons.wifiStrength2,
+						colorScheme: OverlayColorScheme.warning,
+						showProgress: true,
+						title: (l) => l.connection_overlay_title_reconnecting,
+						message: (l) => seconds < 30
+								? l.connection_overlay_message_reconnecting
+								: l.connection_overlay_message_still_trying,
+						actions: [
+							OverlayAction(
+								label: (l) => _isRetrying
+										? l.connection_overlay_retrying
+										: l.connection_overlay_retry,
+								icon: _isRetrying ? null : MdiIcons.refresh,
+								onPressed: _handleRetry,
+								loading: _isRetrying,
+							),
+						],
 					);
 				}
 				break;
 
 			case ConnectionUISeverity.fullScreen:
 				_userDismissedConnection = false;
-				_overlayManager.show(
-					ConnectionOverlayIds.connection,
-					displayType: OverlayDisplayType.fullScreen,
-					closable: false,
-					builder: (context) => _buildFullScreenError(state),
-				);
+				_showFullScreenError(state);
 				break;
 		}
 
@@ -170,34 +198,116 @@ class ConnectionOverlayProvider {
 		}
 	}
 
+	void _handleRetry() {
+		if (_isRetrying) return;
+
+		_isRetrying = true;
+		onReconnect();
+
+		// Re-sync to update the loading state on the action
+		_syncOverlay();
+
+		// Reset after 2 seconds to allow another retry
+		_retryTimer?.cancel();
+		_retryTimer = Timer(const Duration(seconds: 2), () {
+			_isRetrying = false;
+			_syncOverlay();
+		});
+	}
+
 	void _dismissRecoveryToast() {
 		_showRecoveryToast = false;
 		_overlayManager.hide(ConnectionOverlayIds.recovery);
 	}
 
-	Widget _buildFullScreenError(SocketConnectionState state) {
+	void _showFullScreenError(SocketConnectionState state) {
 		switch (state) {
 			case SocketConnectionState.authError:
-				return AuthErrorScreen(
-					onReset: onChangeGateway,
+				_overlayManager.show(
+					ConnectionOverlayIds.connection,
+					displayType: OverlayDisplayType.fullScreen,
+					closable: false,
+					icon: MdiIcons.lockAlert,
+					colorScheme: OverlayColorScheme.error,
+					showProgress: false,
+					title: (l) => l.connection_auth_error_title,
+					message: (l) => l.connection_auth_error_message,
+					actions: [
+						OverlayAction(
+							label: (l) => l.connection_auth_error_button_reset,
+							icon: MdiIcons.restart,
+							onPressed: onChangeGateway,
+						),
+					],
 				);
+				break;
 
 			case SocketConnectionState.networkUnavailable:
-				return NetworkErrorScreen(
-					onRetry: onReconnect,
+				_overlayManager.show(
+					ConnectionOverlayIds.connection,
+					displayType: OverlayDisplayType.fullScreen,
+					closable: false,
+					icon: MdiIcons.networkOff,
+					colorScheme: OverlayColorScheme.error,
+					showProgress: false,
+					title: (l) => l.connection_network_error_title,
+					message: (l) => l.connection_network_error_message,
+					actions: [
+						OverlayAction(
+							label: (l) => l.connection_network_error_button_retry,
+							icon: MdiIcons.refresh,
+							onPressed: onReconnect,
+						),
+					],
 				);
+				break;
 
 			case SocketConnectionState.serverUnavailable:
-				return ServerErrorScreen(
-					onRetry: onReconnect,
+				_overlayManager.show(
+					ConnectionOverlayIds.connection,
+					displayType: OverlayDisplayType.fullScreen,
+					closable: false,
+					icon: MdiIcons.serverOff,
+					colorScheme: OverlayColorScheme.warning,
+					showProgress: false,
+					title: (l) => l.connection_server_error_title,
+					message: (l) => l.connection_server_error_message,
+					actions: [
+						OverlayAction(
+							label: (l) => l.connection_server_error_button_retry,
+							icon: MdiIcons.refresh,
+							onPressed: onReconnect,
+						),
+					],
 				);
+				break;
 
 			case SocketConnectionState.offline:
 			default:
-				return ConnectionLostScreen(
-					onReconnect: onReconnect,
-					onChangeGateway: onChangeGateway,
+				_overlayManager.show(
+					ConnectionOverlayIds.connection,
+					displayType: OverlayDisplayType.fullScreen,
+					closable: false,
+					icon: MdiIcons.wifiOff,
+					colorScheme: OverlayColorScheme.error,
+					showProgress: false,
+					title: (l) => l.connection_lost_title,
+					message: (l) => l.connection_lost_message,
+					actions: [
+						OverlayAction(
+							label: (l) => l.connection_lost_button_reconnect,
+							icon: MdiIcons.cached,
+							onPressed: onReconnect,
+						),
+						OverlayAction(
+							label: (l) => l.connection_lost_button_change_gateway,
+							icon: MdiIcons.wifi,
+							onPressed: onChangeGateway,
+							style: OverlayActionStyle.outlined,
+						),
+					],
 				);
+				break;
 		}
 	}
 }

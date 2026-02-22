@@ -4172,5 +4172,13 @@
   "security_overlay_default_title": "Security alert",
   "@security_overlay_default_title": {
     "description": "Default overlay title when no specific alert type is available"
+  },
+  "security_overlay_acknowledge": "Acknowledge",
+  "@security_overlay_acknowledge": {
+    "description": "Button label to acknowledge security alerts in the overlay"
+  },
+  "security_overlay_open_security": "Open Security",
+  "@security_overlay_open_security": {
+    "description": "Button label to navigate to the security screen from the overlay"
   }
 }

@@ -6562,6 +6562,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Security alert'**
   String get security_overlay_default_title;
+
+  /// Button label to acknowledge security alerts in the overlay
+  ///
+  /// In en, this message translates to:
+  /// **'Acknowledge'**
+  String get security_overlay_acknowledge;
+
+  /// Button label to navigate to the security screen from the overlay
+  ///
+  /// In en, this message translates to:
+  /// **'Open Security'**
+  String get security_overlay_open_security;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

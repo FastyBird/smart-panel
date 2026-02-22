@@ -1,8 +1,69 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
+import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/system_pages/export.dart';
 import 'package:fastybird_smart_panel/features/overlay/services/overlay_manager.dart';
 import 'package:fastybird_smart_panel/features/overlay/types/overlay.dart';
+import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+
+// ---------------------------------------------------------------------------
+// Color mapping helpers
+// ---------------------------------------------------------------------------
+
+Color _schemeColor(OverlayColorScheme scheme, bool isDark) => switch (scheme) {
+	OverlayColorScheme.error => SystemPagesTheme.error(isDark),
+	OverlayColorScheme.warning => SystemPagesTheme.warning(isDark),
+	OverlayColorScheme.info => SystemPagesTheme.info(isDark),
+	OverlayColorScheme.success => SystemPagesTheme.success(isDark),
+	OverlayColorScheme.primary => SystemPagesTheme.accent(isDark),
+};
+
+Color _schemeColorLight(OverlayColorScheme scheme, bool isDark) => switch (scheme) {
+	OverlayColorScheme.error => SystemPagesTheme.errorLight(isDark),
+	OverlayColorScheme.warning => SystemPagesTheme.warningLight(isDark),
+	OverlayColorScheme.info => SystemPagesTheme.infoLight(isDark),
+	OverlayColorScheme.success => SystemPagesTheme.successLight(isDark),
+	OverlayColorScheme.primary => SystemPagesTheme.accentLight(isDark),
+};
+
+Color _bannerBg(OverlayColorScheme scheme, bool isDark) => switch (scheme) {
+	OverlayColorScheme.error => isDark ? AppColorsDark.errorLight7 : AppColorsLight.errorLight9,
+	OverlayColorScheme.warning => isDark ? AppColorsDark.warningLight7 : AppColorsLight.warningLight9,
+	OverlayColorScheme.info => isDark ? AppColorsDark.infoLight7 : AppColorsLight.infoLight9,
+	OverlayColorScheme.success => isDark ? AppColorsDark.successLight7 : AppColorsLight.successLight9,
+	OverlayColorScheme.primary => isDark ? AppColorsDark.primaryLight7 : AppColorsLight.primaryLight9,
+};
+
+Color _bannerFg(OverlayColorScheme scheme, bool isDark) => switch (scheme) {
+	OverlayColorScheme.error => isDark ? AppColorsDark.error : AppColorsLight.errorDark2,
+	OverlayColorScheme.warning => isDark ? AppColorsDark.warning : AppColorsLight.warningDark2,
+	OverlayColorScheme.info => isDark ? AppColorsDark.info : AppColorsLight.infoDark2,
+	OverlayColorScheme.success => isDark ? AppColorsDark.success : AppColorsLight.successDark2,
+	OverlayColorScheme.primary => isDark ? AppColorsDark.primary : AppColorsLight.primaryDark2,
+};
+
+Color _bannerSpinner(OverlayColorScheme scheme, bool isDark) => switch (scheme) {
+	OverlayColorScheme.error => isDark ? AppColorsDark.error : AppColorsLight.error,
+	OverlayColorScheme.warning => isDark ? AppColorsDark.warning : AppColorsLight.warning,
+	OverlayColorScheme.info => isDark ? AppColorsDark.info : AppColorsLight.info,
+	OverlayColorScheme.success => isDark ? AppColorsDark.success : AppColorsLight.success,
+	OverlayColorScheme.primary => isDark ? AppColorsDark.primary : AppColorsLight.primary,
+};
+
+Color _bannerButtonBorder(OverlayColorScheme scheme, bool isDark) => switch (scheme) {
+	OverlayColorScheme.error => isDark ? AppColorsDark.errorDark2 : AppColorsLight.errorDark2,
+	OverlayColorScheme.warning => isDark ? AppColorsDark.warningDark2 : AppColorsLight.warningDark2,
+	OverlayColorScheme.info => isDark ? AppColorsDark.infoDark2 : AppColorsLight.infoDark2,
+	OverlayColorScheme.success => isDark ? AppColorsDark.successDark2 : AppColorsLight.successDark2,
+	OverlayColorScheme.primary => isDark ? AppColorsDark.primaryDark2 : AppColorsLight.primaryDark2,
+};
+
+// ---------------------------------------------------------------------------
+// OverlayRenderer
+// ---------------------------------------------------------------------------
 
 /// Renders active overlays from the [OverlayManager] as a Stack layer.
 ///
@@ -10,7 +71,11 @@ import 'package:fastybird_smart_panel/features/overlay/types/overlay.dart';
 /// the [OverlayManager] and renders all active overlays sorted by priority,
 /// with appropriate positioning based on their [OverlayDisplayType].
 ///
-/// Closable overlays get a dismiss tap on the background area.
+/// For each entry, if [AppOverlayEntry.customBuilder] is set it is rendered
+/// directly. Otherwise, a standard layout is used based on [displayType]:
+/// - **banner** — colored top bar with slide-in animation
+/// - **overlay** — dimmed background + centered modal card
+/// - **fullScreen** — scaffold page with icon, text, and responsive buttons
 class OverlayRenderer extends StatelessWidget {
 	const OverlayRenderer({super.key});
 
@@ -27,6 +92,8 @@ class OverlayRenderer extends StatelessWidget {
 				final children = <Widget>[];
 
 				for (final entry in active) {
+					final widget = _buildEntry(context, entry);
+
 					switch (entry.displayType) {
 						case OverlayDisplayType.banner:
 							children.add(
@@ -36,7 +103,7 @@ class OverlayRenderer extends StatelessWidget {
 									right: 0,
 									child: KeyedSubtree(
 										key: ValueKey(entry.id),
-										child: entry.builder(context),
+										child: widget,
 									),
 								),
 							);
@@ -46,7 +113,7 @@ class OverlayRenderer extends StatelessWidget {
 						case OverlayDisplayType.fullScreen:
 							Widget content = KeyedSubtree(
 								key: ValueKey(entry.id),
-								child: entry.builder(context),
+								child: widget,
 							);
 
 							if (entry.closable) {
@@ -68,4 +135,640 @@ class OverlayRenderer extends StatelessWidget {
 			},
 		);
 	}
+
+	Widget _buildEntry(BuildContext context, AppOverlayEntry entry) {
+		// Escape hatch: custom builder bypasses standard layout
+		if (entry.customBuilder != null) {
+			return entry.customBuilder!(context);
+		}
+
+		return switch (entry.displayType) {
+			OverlayDisplayType.banner => _AnimatedBanner(entry: entry),
+			OverlayDisplayType.overlay => _OverlayCard(entry: entry),
+			OverlayDisplayType.fullScreen => _FullScreenPage(entry: entry),
+		};
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Banner layout — colored top bar with slide-in animation
+// ---------------------------------------------------------------------------
+
+class _AnimatedBanner extends StatefulWidget {
+	final AppOverlayEntry entry;
+
+	const _AnimatedBanner({required this.entry});
+
+	@override
+	State<_AnimatedBanner> createState() => _AnimatedBannerState();
+}
+
+class _AnimatedBannerState extends State<_AnimatedBanner>
+		with SingleTickerProviderStateMixin {
+	late final AnimationController _controller;
+	late final Animation<Offset> _slideAnimation;
+
+	@override
+	void initState() {
+		super.initState();
+
+		_controller = AnimationController(
+			duration: const Duration(milliseconds: 300),
+			vsync: this,
+		);
+
+		_slideAnimation = Tween<Offset>(
+			begin: const Offset(0, -1),
+			end: Offset.zero,
+		).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+
+		_controller.forward();
+	}
+
+	@override
+	void dispose() {
+		_controller.dispose();
+		super.dispose();
+	}
+
+	@override
+	Widget build(BuildContext context) {
+		final localizations = AppLocalizations.of(context)!;
+		final isDark = Theme.of(context).brightness == Brightness.dark;
+		final entry = widget.entry;
+
+		final backgroundColor = _bannerBg(entry.colorScheme, isDark);
+		final textColor = _bannerFg(entry.colorScheme, isDark);
+		final spinnerColor = _bannerSpinner(entry.colorScheme, isDark);
+		final buttonBorderColor = _bannerButtonBorder(entry.colorScheme, isDark);
+
+		return SlideTransition(
+			position: _slideAnimation,
+			child: Material(
+				elevation: 2,
+				child: Container(
+					width: double.infinity,
+					padding: EdgeInsets.symmetric(
+						horizontal: AppSpacings.pLg,
+						vertical: AppSpacings.pMd,
+					),
+					color: backgroundColor,
+					child: SafeArea(
+						bottom: false,
+						child: Row(
+							mainAxisAlignment: MainAxisAlignment.center,
+							children: [
+								if (entry.showProgress) ...[
+									SizedBox(
+										width: AppSpacings.pLg,
+										height: AppSpacings.pLg,
+										child: CircularProgressIndicator(
+											strokeWidth: 2,
+											color: spinnerColor,
+										),
+									),
+									AppSpacings.spacingMdHorizontal,
+								],
+								if (entry.title != null)
+									Text(
+										entry.title!(localizations),
+										style: TextStyle(
+											color: textColor,
+											fontSize: AppFontSize.base,
+											fontWeight: FontWeight.w500,
+										),
+									),
+								if (entry.actions.isNotEmpty) ...[
+									AppSpacings.spacingMdHorizontal,
+									_buildBannerAction(
+										entry.actions.first,
+										localizations,
+										isDark,
+										spinnerColor,
+										buttonBorderColor,
+									),
+								],
+							],
+						),
+					),
+				),
+			),
+		);
+	}
+
+	Widget _buildBannerAction(
+		OverlayAction action,
+		AppLocalizations localizations,
+		bool isDark,
+		Color spinnerColor,
+		Color buttonBorderColor,
+	) {
+		return SizedBox(
+			height: AppSpacings.pLg + AppSpacings.pSm,
+			child: OutlinedButton(
+				onPressed: action.loading ? null : action.onPressed,
+				style: OutlinedButton.styleFrom(
+					padding: EdgeInsets.symmetric(
+						horizontal: AppSpacings.pSm,
+						vertical: 0,
+					),
+					minimumSize: Size.zero,
+					tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+					backgroundColor: Colors.transparent,
+					side: BorderSide(
+						color: action.loading
+								? buttonBorderColor.withValues(alpha: 0.5)
+								: buttonBorderColor,
+						width: AppSpacings.scale(1),
+					),
+					shape: RoundedRectangleBorder(
+						borderRadius: BorderRadius.circular(
+							AppBorderRadius.round,
+						),
+					),
+				),
+				child: action.loading
+						? SizedBox(
+								width: AppFontSize.small,
+								height: AppFontSize.small,
+								child: CircularProgressIndicator(
+									strokeWidth: 1.5,
+									color: spinnerColor.withValues(alpha: 0.7),
+								),
+							)
+						: Text(
+								action.label(localizations),
+								style: TextStyle(
+									color: spinnerColor,
+									fontSize: AppFontSize.small,
+									fontWeight: FontWeight.w600,
+								),
+							),
+			),
+		);
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Overlay layout — dimmed background + centered modal card
+// ---------------------------------------------------------------------------
+
+class _OverlayCard extends StatelessWidget {
+	final AppOverlayEntry entry;
+
+	const _OverlayCard({required this.entry});
+
+	@override
+	Widget build(BuildContext context) {
+		final localizations = AppLocalizations.of(context)!;
+		final isDark = Theme.of(context).brightness == Brightness.dark;
+		final screenService = locator<ScreenService>();
+		final color = _schemeColor(entry.colorScheme, isDark);
+		final colorLight = _schemeColorLight(entry.colorScheme, isDark);
+
+		return Material(
+			type: MaterialType.transparency,
+			child: Container(
+				color: isDark
+						? AppOverlayColorDark.lighter
+						: AppOverlayColorLight.lighter,
+				child: Center(
+					child: Container(
+						margin: EdgeInsets.all(AppSpacings.pXl),
+						padding: EdgeInsets.all(AppSpacings.pLg + AppSpacings.pMd),
+						constraints: BoxConstraints(
+							maxWidth: screenService.scale(320),
+						),
+						decoration: BoxDecoration(
+							color: SystemPagesTheme.card(isDark),
+							borderRadius: BorderRadius.circular(AppBorderRadius.base),
+							boxShadow: [
+								BoxShadow(
+									color: AppShadowColor.strong,
+									blurRadius: screenService.scale(20),
+									offset: Offset(0, screenService.scale(4)),
+								),
+							],
+						),
+						child: Column(
+							mainAxisSize: MainAxisSize.min,
+							children: [
+								// Scrollable body (icon, title, message, content)
+								Flexible(
+									child: SingleChildScrollView(
+										child: Column(
+											mainAxisSize: MainAxisSize.min,
+											children: [
+												// Icon or spinner
+												_buildOverlayIcon(
+													screenService,
+													isDark,
+													color,
+													colorLight,
+												),
+												AppSpacings.spacingLgVertical,
+												// Title
+												if (entry.title != null)
+													Text(
+														entry.title!(localizations),
+														style: TextStyle(
+															color: SystemPagesTheme.textPrimary(isDark),
+															fontSize: AppFontSize.extraLarge,
+															fontWeight: FontWeight.w600,
+														),
+														textAlign: TextAlign.center,
+													),
+												if (entry.message != null) ...[
+													AppSpacings.spacingMdVertical,
+													Text(
+														entry.message!(localizations),
+														style: TextStyle(
+															color: SystemPagesTheme.textMuted(isDark),
+															fontSize: AppFontSize.base,
+															height: 1.4,
+														),
+														textAlign: TextAlign.center,
+													),
+												],
+												if (entry.content != null) ...[
+													AppSpacings.spacingMdVertical,
+													entry.content!,
+												],
+											],
+										),
+									),
+								),
+								// Fixed footer actions
+								if (entry.actions.isNotEmpty) ...[
+									SizedBox(height: AppSpacings.pLg + AppSpacings.pMd),
+									..._buildCardActions(context, entry.actions, localizations, isDark),
+								],
+							],
+						),
+					),
+				),
+			),
+		);
+	}
+
+	Widget _buildOverlayIcon(
+		ScreenService screenService,
+		bool isDark,
+		Color color,
+		Color colorLight,
+	) {
+		if (entry.showProgress && entry.icon != null) {
+			// Spinner ring around icon
+			return Stack(
+				alignment: Alignment.center,
+				children: [
+					SizedBox(
+						width: screenService.scale(56),
+						height: screenService.scale(56),
+						child: CircularProgressIndicator(
+							strokeWidth: 3,
+							color: color,
+						),
+					),
+					Container(
+						width: screenService.scale(48),
+						height: screenService.scale(48),
+						decoration: BoxDecoration(
+							color: colorLight,
+							shape: BoxShape.circle,
+						),
+						child: Icon(
+							entry.icon,
+							size: screenService.scale(24),
+							color: color,
+						),
+					),
+				],
+			);
+		}
+
+		if (entry.showProgress) {
+			// Spinner only (no icon)
+			return SizedBox(
+				width: screenService.scale(48),
+				height: screenService.scale(48),
+				child: CircularProgressIndicator(
+					strokeWidth: 3,
+					color: color,
+				),
+			);
+		}
+
+		if (entry.icon != null) {
+			// Icon only
+			return Container(
+				width: screenService.scale(48),
+				height: screenService.scale(48),
+				decoration: BoxDecoration(
+					color: colorLight,
+					shape: BoxShape.circle,
+				),
+				child: Icon(
+					entry.icon,
+					size: screenService.scale(24),
+					color: color,
+				),
+			);
+		}
+
+		return const SizedBox.shrink();
+	}
+
+	List<Widget> _buildCardActions(
+		BuildContext context,
+		List<OverlayAction> actions,
+		AppLocalizations localizations,
+		bool isDark,
+	) {
+		return actions.map((action) {
+			return Padding(
+				padding: EdgeInsets.only(
+					bottom: action == actions.last ? 0 : AppSpacings.pMd,
+				),
+				child: SizedBox(
+					width: double.infinity,
+					child: _buildActionButton(context, action, localizations, isDark),
+				),
+			);
+		}).toList();
+	}
+}
+
+// ---------------------------------------------------------------------------
+// FullScreen layout — scaffold page with icon, text, responsive buttons
+// ---------------------------------------------------------------------------
+
+class _FullScreenPage extends StatelessWidget {
+	final AppOverlayEntry entry;
+
+	const _FullScreenPage({required this.entry});
+
+	@override
+	Widget build(BuildContext context) {
+		final localizations = AppLocalizations.of(context)!;
+		final isDark = Theme.of(context).brightness == Brightness.dark;
+		final screenService = locator<ScreenService>();
+		final color = _schemeColor(entry.colorScheme, isDark);
+
+		return Scaffold(
+			backgroundColor: SystemPagesTheme.background(isDark),
+			body: SafeArea(
+				child: LayoutBuilder(
+					builder: (context, constraints) {
+						final isLandscape = constraints.maxWidth > constraints.maxHeight;
+
+						return Center(
+							child: Padding(
+								padding: EdgeInsets.all(
+									SystemPagesLayout.getPagePadding(
+										screenService,
+										isLandscape,
+									),
+								),
+								child: Column(
+									mainAxisAlignment: MainAxisAlignment.center,
+									children: [
+										// Icon or spinner
+										_buildFullScreenIcon(
+											screenService,
+											isDark,
+											color,
+											isLandscape,
+										),
+										SizedBox(
+											height: SystemPagesLayout.getIconBottomSpacing(
+												screenService,
+												isLandscape,
+											),
+										),
+										// Title
+										if (entry.title != null)
+											Text(
+												entry.title!(localizations),
+												style: TextStyle(
+													color: SystemPagesTheme.textPrimary(isDark),
+													fontSize: AppFontSize.extraLarge,
+													fontWeight: FontWeight.w500,
+												),
+												textAlign: TextAlign.center,
+											),
+										if (entry.message != null) ...[
+											AppSpacings.spacingMdVertical,
+											Text(
+												entry.message!(localizations),
+												textAlign: TextAlign.center,
+												style: TextStyle(
+													color: SystemPagesTheme.textMuted(isDark),
+													fontSize: AppFontSize.base,
+													height: 1.5,
+												),
+											),
+										],
+										if (entry.content != null) ...[
+											AppSpacings.spacingMdVertical,
+											entry.content!,
+										],
+										if (entry.actions.isNotEmpty) ...[
+											AppSpacings.spacingXlVertical,
+											_buildFullScreenActions(
+												context,
+												entry.actions,
+												localizations,
+												isDark,
+												isLandscape,
+											),
+										],
+									],
+								),
+							),
+						);
+					},
+				),
+			),
+		);
+	}
+
+	Widget _buildFullScreenIcon(
+		ScreenService screenService,
+		bool isDark,
+		Color color,
+		bool isLandscape,
+	) {
+		if (entry.showProgress && entry.icon == null) {
+			// Spinner only (system action style)
+			return SizedBox(
+				width: screenService.scale(50),
+				height: screenService.scale(50),
+				child: CircularProgressIndicator(color: color),
+			);
+		}
+
+		if (entry.icon != null) {
+			return SystemPagesLayout.buildIcon(
+				screenService: screenService,
+				icon: entry.icon!,
+				color: color,
+				isLandscape: isLandscape,
+			);
+		}
+
+		return const SizedBox.shrink();
+	}
+
+	Widget _buildFullScreenActions(
+		BuildContext context,
+		List<OverlayAction> actions,
+		AppLocalizations localizations,
+		bool isDark,
+		bool isLandscape,
+	) {
+		if (isLandscape) {
+			return Row(
+				mainAxisAlignment: MainAxisAlignment.center,
+				children: actions.asMap().entries.map((mapEntry) {
+					final idx = mapEntry.key;
+					final action = mapEntry.value;
+					return Padding(
+						padding: EdgeInsets.only(
+							left: idx > 0 ? AppSpacings.pLg : 0,
+						),
+						child: _buildActionButton(context, action, localizations, isDark),
+					);
+				}).toList(),
+			);
+		}
+
+		return Column(
+			children: actions.asMap().entries.map((mapEntry) {
+				final idx = mapEntry.key;
+				final action = mapEntry.value;
+				return Padding(
+					padding: EdgeInsets.only(
+						top: idx > 0 ? AppSpacings.pMd + AppSpacings.pSm : 0,
+					),
+					child: SizedBox(
+						width: double.infinity,
+						child: _buildActionButton(context, action, localizations, isDark),
+					),
+				);
+			}).toList(),
+		);
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Shared action button builder
+// ---------------------------------------------------------------------------
+
+Widget _buildActionButton(
+	BuildContext context,
+	OverlayAction action,
+	AppLocalizations localizations,
+	bool isDark,
+) {
+	if (action.style == OverlayActionStyle.outlined) {
+		return Theme(
+			data: Theme.of(context).copyWith(
+				outlinedButtonTheme: isDark
+						? AppOutlinedButtonsDarkThemes.primary
+						: AppOutlinedButtonsLightThemes.primary,
+			),
+			child: action.loading
+					? OutlinedButton(
+							onPressed: null,
+							child: Row(
+								mainAxisAlignment: MainAxisAlignment.center,
+								mainAxisSize: MainAxisSize.min,
+								children: [
+									SizedBox(
+										width: AppFontSize.base,
+										height: AppFontSize.base,
+										child: CircularProgressIndicator(
+											strokeWidth: 2,
+											color: isDark
+													? AppOutlinedButtonsDarkThemes.primaryForegroundColor
+													: AppOutlinedButtonsLightThemes.primaryForegroundColor,
+										),
+									),
+									AppSpacings.spacingSmHorizontal,
+									Text(action.label(localizations)),
+								],
+							),
+						)
+					: OutlinedButton.icon(
+							onPressed: action.onPressed,
+							icon: action.icon != null
+									? Icon(
+											action.icon,
+											size: AppFontSize.base,
+											color: isDark
+													? AppOutlinedButtonsDarkThemes.primaryForegroundColor
+													: AppOutlinedButtonsLightThemes.primaryForegroundColor,
+										)
+									: const SizedBox.shrink(),
+							label: Text(action.label(localizations)),
+              style: FilledButton.styleFrom(
+                padding: EdgeInsets.symmetric(
+                  horizontal: AppSpacings.pMd,
+                  vertical: AppSpacings.pMd,
+                ),
+              ),
+						),
+		);
+	}
+
+	// Filled (default)
+	return Theme(
+		data: Theme.of(context).copyWith(
+			filledButtonTheme: isDark
+					? AppFilledButtonsDarkThemes.primary
+					: AppFilledButtonsLightThemes.primary,
+		),
+		child: action.loading
+				? FilledButton(
+						onPressed: null,
+						child: Row(
+							mainAxisAlignment: MainAxisAlignment.center,
+							mainAxisSize: MainAxisSize.min,
+							children: [
+								SizedBox(
+									width: AppFontSize.base,
+									height: AppFontSize.base,
+									child: CircularProgressIndicator(
+										strokeWidth: 2,
+										color: isDark
+												? AppFilledButtonsDarkThemes.primaryForegroundColor
+												: AppFilledButtonsLightThemes.primaryForegroundColor,
+									),
+								),
+								AppSpacings.spacingSmHorizontal,
+								Text(action.label(localizations)),
+							],
+						),
+					)
+				: FilledButton.icon(
+						onPressed: action.onPressed,
+						icon: action.icon != null
+								? Icon(
+										action.icon,
+										size: AppFontSize.base,
+										color: isDark
+												? AppFilledButtonsDarkThemes.primaryForegroundColor
+												: AppFilledButtonsLightThemes.primaryForegroundColor,
+									)
+								: const SizedBox.shrink(),
+						label: Text(action.label(localizations)),
+            style: FilledButton.styleFrom(
+              padding: EdgeInsets.symmetric(
+                horizontal: AppSpacings.pMd,
+                vertical: AppSpacings.pMd,
+              ),
+            ),
+					),
+	);
 }

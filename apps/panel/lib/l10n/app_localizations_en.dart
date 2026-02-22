@@ -3473,4 +3473,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get security_overlay_default_title => 'Security alert';
+
+  @override
+  String get security_overlay_acknowledge => 'Acknowledge';
+
+  @override
+  String get security_overlay_open_security => 'Open Security';
 }

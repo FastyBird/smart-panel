@@ -13,7 +13,6 @@ import 'package:fastybird_smart_panel/core/interceptors/token_refresh_intercepto
 import 'package:fastybird_smart_panel/core/services/navigation.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
-import 'package:fastybird_smart_panel/core/services/system_actions.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/application.dart';
 import 'package:fastybird_smart_panel/core/utils/secure_storage.dart';
@@ -732,13 +731,6 @@ class StartupManagerService {
       } catch (_) {}
     }
 
-    // Unregister SystemActionsService
-    if (locator.isRegistered<SystemActionsService>()) {
-      try {
-        locator.unregister<SystemActionsService>();
-      } catch (_) {}
-    }
-
     // Note: Core services like ScreenService, NavigationService, VisualDensityService
     // are NOT unregistered here as they persist across module reinitializations.
     // They are registered once at app startup in initializeCoreServices() and
@@ -860,10 +852,6 @@ class StartupManagerService {
     // Sockets client
     locator.registerSingleton(_socketClient);
 
-    // Misc services
-    locator.registerSingleton<SystemActionsService>(
-      SystemActionsService(_eventBus),
-    );
   }
 
   /// Callback for when token is refreshed - persists the new token

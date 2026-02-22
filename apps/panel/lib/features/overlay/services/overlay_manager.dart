@@ -6,7 +6,7 @@ import 'package:fastybird_smart_panel/features/overlay/types/overlay.dart';
 ///
 /// Modules, plugins, and core services register their overlays here.
 /// Each provider registers **one entry** per logical overlay and updates
-/// its properties (display type, builder, closable) as state changes.
+/// its properties (display type, config fields, closable) as state changes.
 ///
 /// Example usage:
 /// ```dart
@@ -15,17 +15,24 @@ import 'package:fastybird_smart_panel/features/overlay/types/overlay.dart';
 ///   id: 'connection',
 ///   displayType: OverlayDisplayType.banner,
 ///   priority: 200,
-///   builder: (context) => ConnectionBanner(),
+///   colorScheme: OverlayColorScheme.warning,
+///   showProgress: true,
+///   title: (l) => l.connection_banner_reconnecting,
 /// ));
 ///
 /// // Show it - optionally updating properties at the same time
 /// overlayManager.show('connection');
 ///
-/// // Later escalate to a different display type + widget
+/// // Later escalate to a different display type + config
 /// overlayManager.show(
 ///   'connection',
 ///   displayType: OverlayDisplayType.fullScreen,
-///   builder: (context) => NetworkErrorScreen(),
+///   icon: Icons.wifi_off,
+///   colorScheme: OverlayColorScheme.error,
+///   showProgress: false,
+///   title: (l) => l.connection_lost_title,
+///   message: (l) => l.connection_lost_message,
+///   actions: [...],
 /// );
 ///
 /// // Hide when no longer needed
@@ -72,14 +79,21 @@ class OverlayManager extends ChangeNotifier {
 
 	/// Show (activate) an overlay by [id].
 	///
-	/// Optionally update [displayType], [builder], and [closable] at the
-	/// same time. This is the primary API for providers that need to
-	/// change how their overlay is presented based on current state.
+	/// Optionally update any combination of config fields at the same time.
+	/// This is the primary API for providers that need to change how their
+	/// overlay is presented based on current state.
 	void show(
 		String id, {
 		OverlayDisplayType? displayType,
-		WidgetBuilder? builder,
 		bool? closable,
+		IconData? icon,
+		OverlayColorScheme? colorScheme,
+		bool? showProgress,
+		LocalizedString? title,
+		LocalizedString? message,
+		Widget? content,
+		List<OverlayAction>? actions,
+		WidgetBuilder? customBuilder,
 	}) {
 		final entry = _entries[id];
 		if (entry == null) return;
@@ -91,12 +105,40 @@ class OverlayManager extends ChangeNotifier {
 			entry.displayType = displayType;
 			changed = true;
 		}
-		if (builder != null) {
-			entry.builder = builder;
-			changed = true;
-		}
 		if (closable != null && entry.closable != closable) {
 			entry.closable = closable;
+			changed = true;
+		}
+		if (icon != null) {
+			entry.icon = icon;
+			changed = true;
+		}
+		if (colorScheme != null && entry.colorScheme != colorScheme) {
+			entry.colorScheme = colorScheme;
+			changed = true;
+		}
+		if (showProgress != null && entry.showProgress != showProgress) {
+			entry.showProgress = showProgress;
+			changed = true;
+		}
+		if (title != null) {
+			entry.title = title;
+			changed = true;
+		}
+		if (message != null) {
+			entry.message = message;
+			changed = true;
+		}
+		if (content != null) {
+			entry.content = content;
+			changed = true;
+		}
+		if (actions != null) {
+			entry.actions = actions;
+			changed = true;
+		}
+		if (customBuilder != null) {
+			entry.customBuilder = customBuilder;
 			changed = true;
 		}
 
