@@ -634,8 +634,31 @@ class _FullScreenPage extends StatelessWidget {
 		Color color,
 		bool isLandscape,
 	) {
-		if (entry.showProgress && entry.icon == null) {
-			// Spinner only (system action style)
+		if (entry.showProgress && entry.icon != null) {
+			// Spinner ring around icon (matches _OverlayCard behavior)
+			return Stack(
+				alignment: Alignment.center,
+				children: [
+					SizedBox(
+						width: screenService.scale(56),
+						height: screenService.scale(56),
+						child: CircularProgressIndicator(
+							strokeWidth: 3,
+							color: color,
+						),
+					),
+					SystemPagesLayout.buildIcon(
+						screenService: screenService,
+						icon: entry.icon!,
+						color: color,
+						isLandscape: isLandscape,
+					),
+				],
+			);
+		}
+
+		if (entry.showProgress) {
+			// Spinner only (no icon)
 			return SizedBox(
 				width: screenService.scale(50),
 				height: screenService.scale(50),

@@ -2,6 +2,14 @@ import 'package:flutter/widgets.dart';
 
 import 'package:fastybird_smart_panel/features/overlay/types/overlay.dart';
 
+/// Sentinel value used by [OverlayManager.show] to distinguish "parameter not
+/// passed" (keep current value) from "explicitly passed null" (clear the field).
+class _Unset {
+	const _Unset();
+}
+
+const _unset = _Unset();
+
 /// Central manager for all application overlays.
 ///
 /// Modules, plugins, and core services register their overlays here.
@@ -82,18 +90,22 @@ class OverlayManager extends ChangeNotifier {
 	/// Optionally update any combination of config fields at the same time.
 	/// This is the primary API for providers that need to change how their
 	/// overlay is presented based on current state.
+	///
+	/// Nullable fields ([icon], [title], [message], [content], [customBuilder])
+	/// use a sentinel default so that callers can explicitly pass `null` to
+	/// **clear** the field. Omitting the parameter keeps the current value.
 	void show(
 		String id, {
 		OverlayDisplayType? displayType,
 		bool? closable,
-		IconData? icon,
+		Object? icon = _unset,
 		OverlayColorScheme? colorScheme,
 		bool? showProgress,
-		LocalizedString? title,
-		LocalizedString? message,
-		Widget? content,
+		Object? title = _unset,
+		Object? message = _unset,
+		Object? content = _unset,
 		List<OverlayAction>? actions,
-		WidgetBuilder? customBuilder,
+		Object? customBuilder = _unset,
 	}) {
 		final entry = _entries[id];
 		if (entry == null) return;
@@ -109,8 +121,8 @@ class OverlayManager extends ChangeNotifier {
 			entry.closable = closable;
 			changed = true;
 		}
-		if (icon != null) {
-			entry.icon = icon;
+		if (icon is! _Unset) {
+			entry.icon = icon as IconData?;
 			changed = true;
 		}
 		if (colorScheme != null && entry.colorScheme != colorScheme) {
@@ -121,24 +133,24 @@ class OverlayManager extends ChangeNotifier {
 			entry.showProgress = showProgress;
 			changed = true;
 		}
-		if (title != null) {
-			entry.title = title;
+		if (title is! _Unset) {
+			entry.title = title as LocalizedString?;
 			changed = true;
 		}
-		if (message != null) {
-			entry.message = message;
+		if (message is! _Unset) {
+			entry.message = message as LocalizedString?;
 			changed = true;
 		}
-		if (content != null) {
-			entry.content = content;
+		if (content is! _Unset) {
+			entry.content = content as Widget?;
 			changed = true;
 		}
 		if (actions != null) {
 			entry.actions = actions;
 			changed = true;
 		}
-		if (customBuilder != null) {
-			entry.customBuilder = customBuilder;
+		if (customBuilder is! _Unset) {
+			entry.customBuilder = customBuilder as WidgetBuilder?;
 			changed = true;
 		}
 
