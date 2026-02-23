@@ -62,10 +62,6 @@ class DeckModuleService {
 
   /// Disposes the module services.
   void dispose() {
-    _deckService.dispose();
-    _intentsService.dispose();
-    _bottomNavModeNotifier.dispose();
-
     if (kDebugMode) {
       debugPrint('[DECK MODULE] Module disposed');
     }

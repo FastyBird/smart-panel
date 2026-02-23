@@ -127,28 +127,6 @@ class SpacesModuleService {
       DevicesModuleConstants.deviceUpdatedEvent,
       _deviceSocketEventHandler,
     );
-
-    // Dispose services first to remove their repository listeners
-    _spacesService.dispose();
-    _mediaActivityService.dispose();
-
-    // Clear all repository data to prevent memory leaks
-    _spacesRepository.clearAll();
-    _lightTargetsRepository.clearAll();
-    _climateTargetsRepository.clearAll();
-    _coversTargetsRepository.clearAll();
-    _spaceStateRepository.clearAll();
-    _mediaActivityRepository.clearAll();
-
-    // Unregister from GetIt to allow re-registration on restart
-    locator.unregister<SpacesService>();
-    locator.unregister<MediaActivityService>();
-    locator.unregister<MediaActivityRepository>();
-    locator.unregister<SpaceStateRepository>();
-    locator.unregister<CoversTargetsRepository>();
-    locator.unregister<ClimateTargetsRepository>();
-    locator.unregister<LightTargetsRepository>();
-    locator.unregister<SpacesRepository>();
   }
 
   /// ////////////////
