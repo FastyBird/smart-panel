@@ -130,9 +130,11 @@ class ConnectionOverlayProvider {
 						ConnectionOverlayIds.connection,
 						displayType: OverlayDisplayType.banner,
 						closable: true,
+						icon: null,
 						colorScheme: OverlayColorScheme.warning,
 						showProgress: true,
 						title: (l) => l.connection_banner_reconnecting,
+						message: null,
 						actions: [
 							OverlayAction(
 								label: (l) => l.connection_banner_retry,

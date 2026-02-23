@@ -91,6 +91,12 @@ class _AppBodyState extends State<AppBody> {
       overlayManager: _overlayManager,
     );
 
+    // Register overlay entries before any state sync that may start timers
+    _connectionOverlayProvider.init();
+    _securityOverlayProvider.init();
+    _systemActionsOverlayProvider.init();
+    _inactivityOverlayProvider.init();
+
     _syncStateWithRepository();
     _initializeDeck();
 
@@ -113,12 +119,6 @@ class _AppBodyState extends State<AppBody> {
     if (_socketService.isConnected) {
       _connectionManager.onConnected();
     }
-
-    // Start overlay providers
-    _connectionOverlayProvider.init();
-    _securityOverlayProvider.init();
-    _systemActionsOverlayProvider.init();
-    _inactivityOverlayProvider.init();
   }
 
   void _onSecurityStatusChanged() {
