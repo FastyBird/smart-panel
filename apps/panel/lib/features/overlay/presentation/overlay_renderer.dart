@@ -333,78 +333,90 @@ class _OverlayCard extends StatelessWidget {
 						? AppOverlayColorDark.lighter
 						: AppOverlayColorLight.lighter,
 				child: Center(
-					child: Container(
-						margin: EdgeInsets.all(AppSpacings.pXl),
-						padding: EdgeInsets.all(AppSpacings.pLg + AppSpacings.pMd),
-						constraints: BoxConstraints(
-							maxWidth: screenService.scale(320),
-						),
-						decoration: BoxDecoration(
-							color: SystemPagesTheme.card(isDark),
-							borderRadius: BorderRadius.circular(AppBorderRadius.base),
-							boxShadow: [
-								BoxShadow(
-									color: AppShadowColor.strong,
-									blurRadius: screenService.scale(20),
-									offset: Offset(0, screenService.scale(4)),
+					child: ListenableBuilder(
+						listenable: screenService,
+						builder: (context, _) {
+							final isCompact =
+									(screenService.isLandscape && !screenService.isLargeScreen) ||
+									(screenService.isPortrait && screenService.isSmallScreen);
+							final cardPadding = isCompact
+									? AppSpacings.pMd
+									: AppSpacings.pLg + AppSpacings.pMd;
+
+							return Container(
+								margin: EdgeInsets.all(AppSpacings.pXl),
+								padding: EdgeInsets.all(cardPadding),
+								constraints: BoxConstraints(
+									maxWidth: screenService.scale(320),
 								),
-							],
-						),
-						child: Column(
-							mainAxisSize: MainAxisSize.min,
-							children: [
-								// Scrollable body (icon, title, message, content)
-								Flexible(
-									child: SingleChildScrollView(
-										child: Column(
-											mainAxisSize: MainAxisSize.min,
-											children: [
-												// Icon or spinner
-												_buildOverlayIcon(
-													screenService,
-													isDark,
-													color,
-													colorLight,
-												),
-												AppSpacings.spacingLgVertical,
-												// Title
-												if (entry.title != null)
-													Text(
-														entry.title!(localizations),
-														style: TextStyle(
-															color: SystemPagesTheme.textPrimary(isDark),
-															fontSize: AppFontSize.extraLarge,
-															fontWeight: FontWeight.w600,
-														),
-														textAlign: TextAlign.center,
-													),
-												if (entry.message != null) ...[
-													AppSpacings.spacingMdVertical,
-													Text(
-														entry.message!(localizations),
-														style: TextStyle(
-															color: SystemPagesTheme.textMuted(isDark),
-															fontSize: AppFontSize.base,
-															height: 1.4,
-														),
-														textAlign: TextAlign.center,
-													),
-												],
-												if (entry.content != null) ...[
-													AppSpacings.spacingMdVertical,
-													entry.content!,
-												],
-											],
+								decoration: BoxDecoration(
+									color: SystemPagesTheme.card(isDark),
+									borderRadius: BorderRadius.circular(AppBorderRadius.base),
+									boxShadow: [
+										BoxShadow(
+											color: AppShadowColor.strong,
+											blurRadius: screenService.scale(20),
+											offset: Offset(0, screenService.scale(4)),
 										),
-									),
+									],
 								),
-								// Fixed footer actions
-								if (entry.actions.isNotEmpty) ...[
-									SizedBox(height: AppSpacings.pLg + AppSpacings.pMd),
-									..._buildCardActions(context, entry.actions, localizations, isDark),
-								],
-							],
-						),
+								child: Column(
+									mainAxisSize: MainAxisSize.min,
+									children: [
+										// Scrollable body (icon, title, message, content)
+										Flexible(
+											child: SingleChildScrollView(
+												child: Column(
+													mainAxisSize: MainAxisSize.min,
+													children: [
+														// Icon or spinner
+														_buildOverlayIcon(
+															screenService,
+															isDark,
+															color,
+															colorLight,
+														),
+														AppSpacings.spacingLgVertical,
+														// Title
+														if (entry.title != null)
+															Text(
+																entry.title!(localizations),
+																style: TextStyle(
+																	color: SystemPagesTheme.textPrimary(isDark),
+																	fontSize: AppFontSize.extraLarge,
+																	fontWeight: FontWeight.w600,
+																),
+																textAlign: TextAlign.center,
+															),
+														if (entry.message != null) ...[
+															AppSpacings.spacingMdVertical,
+															Text(
+																entry.message!(localizations),
+																style: TextStyle(
+																	color: SystemPagesTheme.textMuted(isDark),
+																	fontSize: AppFontSize.base,
+																	height: 1.4,
+																),
+																textAlign: TextAlign.center,
+															),
+														],
+														if (entry.content != null) ...[
+															AppSpacings.spacingMdVertical,
+															entry.content!,
+														],
+													],
+												),
+											),
+										),
+										// Fixed footer actions
+										if (entry.actions.isNotEmpty) ...[
+											SizedBox(height: AppSpacings.pMd),
+											_buildCardActions(context, entry.actions, localizations, isDark),
+										],
+									],
+								),
+							);
+						},
 					),
 				),
 			),
@@ -479,23 +491,46 @@ class _OverlayCard extends StatelessWidget {
 		return const SizedBox.shrink();
 	}
 
-	List<Widget> _buildCardActions(
+	Widget _buildCardActions(
 		BuildContext context,
 		List<OverlayAction> actions,
 		AppLocalizations localizations,
 		bool isDark,
 	) {
-		return actions.map((action) {
-			return Padding(
-				padding: EdgeInsets.only(
-					bottom: action == actions.last ? 0 : AppSpacings.pMd,
-				),
-				child: SizedBox(
-					width: double.infinity,
-					child: _buildActionButton(context, action, localizations, isDark),
-				),
+		final isLandscape = locator<ScreenService>().isLandscape;
+
+		if (isLandscape) {
+			return Row(
+				mainAxisAlignment: MainAxisAlignment.center,
+				children: actions.asMap().entries.map((mapEntry) {
+					final idx = mapEntry.key;
+					final action = mapEntry.value;
+					return Padding(
+						padding: EdgeInsets.only(
+							left: idx > 0 ? AppSpacings.pMd : 0,
+						),
+						child: _buildActionButton(context, action, localizations, isDark),
+					);
+				}).toList(),
 			);
-		}).toList();
+		}
+
+		return Column(
+			mainAxisSize: MainAxisSize.min,
+			children: actions.asMap().entries.map((mapEntry) {
+				final idx = mapEntry.key;
+				final action = mapEntry.value;
+				return Padding(
+					padding: EdgeInsets.only(
+						top: idx > 0 ? AppSpacings.pMd : 0,
+					),
+					child: SizedBox(
+						width: double.infinity,
+						child: _buildActionButton(context, action, localizations, isDark),
+					),
+				);
+			}).toList(),
+		);
 	}
 }
 
