@@ -1,18 +1,20 @@
 import 'dart:async';
 import 'dart:ui';
 
+import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 import 'package:fastybird_smart_panel/core/services/connection_state_manager.dart';
+import 'package:fastybird_smart_panel/core/services/navigation.dart';
 import 'package:fastybird_smart_panel/core/types/connection_state.dart';
-import 'package:fastybird_smart_panel/core/widgets/connection/connection_recovery_toast.dart';
+import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/features/overlay/services/overlay_manager.dart';
 import 'package:fastybird_smart_panel/features/overlay/types/overlay.dart';
+import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 
 /// Overlay IDs for connection overlays.
 class ConnectionOverlayIds {
 	static const String connection = 'connection';
-	static const String recovery = 'connection:recovery';
 }
 
 /// Bridges [ConnectionStateManager] with [OverlayManager].
@@ -23,11 +25,11 @@ class ConnectionOverlayIds {
 /// - [overlay]: Prolonged reconnection (10-60 seconds), closable
 /// - [fullScreen]: Connection failure (60+ seconds), not closable
 ///
-/// A separate recovery toast entry is shown briefly when connection
-/// is restored after a disruption.
+/// Shows an [AppToast] when connection is restored after a disruption.
 class ConnectionOverlayProvider {
 	final OverlayManager _overlayManager;
 	final ConnectionStateManager _connectionManager;
+	final NavigationService _navigationService;
 
 	final VoidCallback onReconnect;
 	final VoidCallback onChangeGateway;
@@ -35,7 +37,6 @@ class ConnectionOverlayProvider {
 	SocketConnectionState? _previousState;
 	ConnectionUISeverity? _lastSyncedSeverity;
 	bool _userDismissedConnection = false;
-	bool _showRecoveryToast = false;
 	bool _isInitialized = false;
 
 	bool _isRetrying = false;
@@ -44,10 +45,12 @@ class ConnectionOverlayProvider {
 	ConnectionOverlayProvider({
 		required OverlayManager overlayManager,
 		required ConnectionStateManager connectionManager,
+		required NavigationService navigationService,
 		required this.onReconnect,
 		required this.onChangeGateway,
 	})	: _overlayManager = overlayManager,
-		_connectionManager = connectionManager;
+		_connectionManager = connectionManager,
+		_navigationService = navigationService;
 
 	/// Initialize by registering overlay entries and listening for changes.
 	void init() {
@@ -65,16 +68,6 @@ class ConnectionOverlayProvider {
 			title: (l) => l.connection_banner_reconnecting,
 		));
 
-		// Recovery toast is a separate logical overlay using customBuilder
-		_overlayManager.register(AppOverlayEntry(
-			id: ConnectionOverlayIds.recovery,
-			displayType: OverlayDisplayType.banner,
-			priority: 250,
-			customBuilder: (context) => ConnectionRecoveryToast(
-				onDismiss: _dismissRecoveryToast,
-			),
-		));
-
 		_connectionManager.addListener(_onConnectionStateChanged);
 		_syncOverlay();
 	}
@@ -87,21 +80,19 @@ class ConnectionOverlayProvider {
 		_retryTimer?.cancel();
 		_connectionManager.removeListener(_onConnectionStateChanged);
 		_overlayManager.unregister(ConnectionOverlayIds.connection);
-		_overlayManager.unregister(ConnectionOverlayIds.recovery);
 	}
 
 	void _onConnectionStateChanged() {
 		final currentState = _connectionManager.state;
 		final severity = _connectionManager.uiSeverity;
 
-		if (_connectionManager.shouldShowRecoveryToast(
+		final shouldShowToast = _connectionManager.shouldShowRecoveryToast(
 			_previousState ?? SocketConnectionState.initializing,
-		)) {
-			_showRecoveryToast = true;
-		}
+		);
 
-		if (severity == ConnectionUISeverity.fullScreen && _showRecoveryToast) {
-			_showRecoveryToast = false;
+		// Don't show recovery toast if we're escalating to fullScreen
+		if (shouldShowToast && severity != ConnectionUISeverity.fullScreen) {
+			_showRecoveryToast();
 		}
 
 		_previousState = currentState;
@@ -189,13 +180,6 @@ class ConnectionOverlayProvider {
 				_showFullScreenError(state);
 				break;
 		}
-
-		// Recovery toast
-		if (_showRecoveryToast) {
-			_overlayManager.show(ConnectionOverlayIds.recovery);
-		} else {
-			_overlayManager.hide(ConnectionOverlayIds.recovery);
-		}
 	}
 
 	void _handleRetry() {
@@ -215,9 +199,18 @@ class ConnectionOverlayProvider {
 		});
 	}
 
-	void _dismissRecoveryToast() {
-		_showRecoveryToast = false;
-		_overlayManager.hide(ConnectionOverlayIds.recovery);
+	void _showRecoveryToast() {
+		final context = _navigationService.navigatorKey.currentContext;
+		if (context == null) return;
+
+		final localizations = AppLocalizations.of(context);
+		if (localizations == null) return;
+
+		AppToast.showSuccess(
+			context,
+			message: localizations.connection_recovery_connected,
+			duration: const Duration(seconds: 2),
+		);
 	}
 
 	void _showFullScreenError(SocketConnectionState state) {

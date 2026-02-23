@@ -71,6 +71,7 @@ class _AppBodyState extends State<AppBody> {
     _connectionOverlayProvider = ConnectionOverlayProvider(
       overlayManager: _overlayManager,
       connectionManager: _connectionManager,
+      navigationService: _navigator,
       onReconnect: _handleReconnect,
       onChangeGateway: _handleChangeGateway,
     );
