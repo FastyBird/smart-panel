@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/system_pages/export.dart';
+import 'package:fastybird_smart_panel/core/widgets/icon_container.dart';
 import 'package:fastybird_smart_panel/features/overlay/services/overlay_manager.dart';
 import 'package:fastybird_smart_panel/features/overlay/types/overlay.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
@@ -14,19 +14,19 @@ import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 // ---------------------------------------------------------------------------
 
 Color _schemeColor(OverlayColorScheme scheme, bool isDark) => switch (scheme) {
-	OverlayColorScheme.error => SystemPagesTheme.error(isDark),
-	OverlayColorScheme.warning => SystemPagesTheme.warning(isDark),
-	OverlayColorScheme.info => SystemPagesTheme.info(isDark),
-	OverlayColorScheme.success => SystemPagesTheme.success(isDark),
-	OverlayColorScheme.primary => SystemPagesTheme.accent(isDark),
+	OverlayColorScheme.error => isDark ? AppColorsDark.error : AppColorsLight.error,
+	OverlayColorScheme.warning => isDark ? AppColorsDark.warning : AppColorsLight.warning,
+	OverlayColorScheme.info => isDark ? AppColorsDark.info : AppColorsLight.info,
+	OverlayColorScheme.success => isDark ? AppColorsDark.success : AppColorsLight.success,
+	OverlayColorScheme.primary => isDark ? AppColorsDark.primary : AppColorsLight.primary,
 };
 
 Color _schemeColorLight(OverlayColorScheme scheme, bool isDark) => switch (scheme) {
-	OverlayColorScheme.error => SystemPagesTheme.errorLight(isDark),
-	OverlayColorScheme.warning => SystemPagesTheme.warningLight(isDark),
-	OverlayColorScheme.info => SystemPagesTheme.infoLight(isDark),
-	OverlayColorScheme.success => SystemPagesTheme.successLight(isDark),
-	OverlayColorScheme.primary => SystemPagesTheme.accentLight(isDark),
+	OverlayColorScheme.error => isDark ? AppColorsDark.errorLight9 : AppColorsLight.errorLight9,
+	OverlayColorScheme.warning => isDark ? AppColorsDark.warningLight9 : AppColorsLight.warningLight9,
+	OverlayColorScheme.info => isDark ? AppColorsDark.infoLight9 : AppColorsLight.infoLight9,
+	OverlayColorScheme.success => isDark ? AppColorsDark.successLight9 : AppColorsLight.successLight9,
+	OverlayColorScheme.primary => isDark ? AppColorsDark.primaryLight9 : AppColorsLight.primaryLight9,
 };
 
 Color _bannerBg(OverlayColorScheme scheme, bool isDark) => switch (scheme) {
@@ -350,7 +350,7 @@ class _OverlayCard extends StatelessWidget {
 									maxWidth: screenService.scale(320),
 								),
 								decoration: BoxDecoration(
-									color: SystemPagesTheme.card(isDark),
+									color: isDark ? AppFillColorDark.base : AppFillColorLight.blank,
 									borderRadius: BorderRadius.circular(AppBorderRadius.base),
 									boxShadow: [
 										BoxShadow(
@@ -382,7 +382,7 @@ class _OverlayCard extends StatelessWidget {
 															Text(
 																entry.title!(localizations),
 																style: TextStyle(
-																	color: SystemPagesTheme.textPrimary(isDark),
+																	color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
 																	fontSize: AppFontSize.extraLarge,
 																	fontWeight: FontWeight.w600,
 																),
@@ -393,7 +393,7 @@ class _OverlayCard extends StatelessWidget {
 															Text(
 																entry.message!(localizations),
 																style: TextStyle(
-																	color: SystemPagesTheme.textMuted(isDark),
+																	color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
 																	fontSize: AppFontSize.base,
 																	height: 1.4,
 																),
@@ -551,7 +551,7 @@ class _FullScreenPage extends StatelessWidget {
 		final color = _schemeColor(entry.colorScheme, isDark);
 
 		return Scaffold(
-			backgroundColor: SystemPagesTheme.background(isDark),
+			backgroundColor: isDark ? AppBgColorDark.base : AppBgColorLight.base,
 			body: SafeArea(
 				child: LayoutBuilder(
 					builder: (context, constraints) {
@@ -560,10 +560,9 @@ class _FullScreenPage extends StatelessWidget {
 						return Center(
 							child: Padding(
 								padding: EdgeInsets.all(
-									SystemPagesLayout.getPagePadding(
-										screenService,
-										isLandscape,
-									),
+									isLandscape
+											? (screenService.isLargeScreen ? AppSpacings.pXl : AppSpacings.pLg)
+											: (screenService.isSmallScreen ? AppSpacings.pLg : AppSpacings.pXl),
 								),
 								child: Column(
 									mainAxisAlignment: MainAxisAlignment.center,
@@ -576,9 +575,8 @@ class _FullScreenPage extends StatelessWidget {
 											isLandscape,
 										),
 										SizedBox(
-											height: SystemPagesLayout.getIconBottomSpacing(
-												screenService,
-												isLandscape,
+											height: screenService.scale(
+												(screenService.isSmallScreen || screenService.isMediumScreen) && isLandscape ? 12 : 24,
 											),
 										),
 										// Title
@@ -586,7 +584,7 @@ class _FullScreenPage extends StatelessWidget {
 											Text(
 												entry.title!(localizations),
 												style: TextStyle(
-													color: SystemPagesTheme.textPrimary(isDark),
+													color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
 													fontSize: AppFontSize.extraLarge,
 													fontWeight: FontWeight.w500,
 												),
@@ -598,7 +596,7 @@ class _FullScreenPage extends StatelessWidget {
 												entry.message!(localizations),
 												textAlign: TextAlign.center,
 												style: TextStyle(
-													color: SystemPagesTheme.textMuted(isDark),
+													color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
 													fontSize: AppFontSize.base,
 													height: 1.5,
 												),
@@ -635,15 +633,11 @@ class _FullScreenPage extends StatelessWidget {
 		bool isLandscape,
 	) {
 		if (entry.showProgress && entry.icon != null) {
-			// Spinner ring around icon — use inline sizing so the icon
-			// fits inside the ring (SystemPagesLayout.buildIcon produces
-			// a container that would cover the ring on non-compact screens).
+			// Spinner ring around icon
 			final isCompact =
 					screenService.isSmallScreen || screenService.isMediumScreen;
 			final isCompactLandscape = isCompact && isLandscape;
 			final ringSize = screenService.scale(isCompactLandscape ? 64 : 88);
-			final containerSize = screenService.scale(isCompactLandscape ? 56 : 80);
-			final iconSize = screenService.scale(isCompactLandscape ? 28 : 40);
 
 			return Stack(
 				alignment: Alignment.center,
@@ -657,10 +651,10 @@ class _FullScreenPage extends StatelessWidget {
 						),
 					),
 					IconContainer(
+						screenService: screenService,
 						icon: entry.icon!,
 						color: color,
-						size: containerSize,
-						iconSize: iconSize,
+						isLandscape: isLandscape,
 					),
 				],
 			);
@@ -676,7 +670,7 @@ class _FullScreenPage extends StatelessWidget {
 		}
 
 		if (entry.icon != null) {
-			return SystemPagesLayout.buildIcon(
+			return IconContainer(
 				screenService: screenService,
 				icon: entry.icon!,
 				color: color,
