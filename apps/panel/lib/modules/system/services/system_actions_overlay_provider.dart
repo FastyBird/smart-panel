@@ -34,6 +34,7 @@ class SystemActionsOverlayProvider {
   final EventBus _eventBus;
 
   bool _isInitialized = false;
+  Timer? _hideTimer;
 
   StreamSubscription? _rebootInProgressSub;
   StreamSubscription? _rebootDoneSub;
@@ -117,10 +118,16 @@ class SystemActionsOverlayProvider {
     _factoryResetDoneSub?.cancel();
     _factoryResetErrorSub?.cancel();
 
+    _hideTimer?.cancel();
+    _hideTimer = null;
+
     _overlayManager.unregister(SystemActionOverlayIds.action);
   }
 
   void _showAction(SystemActionType actionType) {
+    _hideTimer?.cancel();
+    _hideTimer = null;
+
     final (title, message) = _getMessages(actionType);
 
     _overlayManager.show(
@@ -152,10 +159,14 @@ class SystemActionsOverlayProvider {
   }
 
   void _hideAction({Duration delay = Duration.zero}) {
+    _hideTimer?.cancel();
+
     if (delay == Duration.zero) {
+      _hideTimer = null;
       _overlayManager.hide(SystemActionOverlayIds.action);
     } else {
-      Future.delayed(delay, () {
+      _hideTimer = Timer(delay, () {
+        _hideTimer = null;
         _overlayManager.hide(SystemActionOverlayIds.action);
       });
     }

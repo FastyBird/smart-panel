@@ -149,8 +149,6 @@ class ConnectionOverlayProvider {
 
 			case ConnectionUISeverity.overlay:
 				if (!_userDismissedConnection) {
-					final seconds = _connectionManager.disconnectedDuration.inSeconds;
-
 					_overlayManager.show(
 						ConnectionOverlayIds.connection,
 						displayType: OverlayDisplayType.overlay,
@@ -159,7 +157,7 @@ class ConnectionOverlayProvider {
 						colorScheme: OverlayColorScheme.warning,
 						showProgress: true,
 						title: (l) => l.connection_overlay_title_reconnecting,
-						message: (l) => seconds < 30
+						message: (l) => _connectionManager.disconnectedDuration.inSeconds < 30
 								? l.connection_overlay_message_reconnecting
 								: l.connection_overlay_message_still_trying,
 						actions: [
