@@ -29,24 +29,28 @@ class HeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isLandscape = locator<ScreenService>().isLandscape;
+    final screenService = locator<ScreenService>();
 
-    final card = AppCard(
-      width: double.infinity,
-      child: child,
-    );
+    return ListenableBuilder(
+      listenable: screenService,
+      builder: (context, _) {
+        final card = AppCard(
+          width: double.infinity,
+          child: child,
+        );
 
-    if (isLandscape) {
-      return card;
-    }
+        if (screenService.isLandscape) {
+          return card;
+        }
 
-    final screenHeight = locator<ScreenService>().logicalHeight;
-    final cap = maxHeight ?? AppSpacings.scale(500);
-    final height = (screenHeight * fraction).clamp(0.0, cap);
+        final cap = maxHeight ?? AppSpacings.scale(500);
+        final height = (screenService.logicalHeight * fraction).clamp(0.0, cap);
 
-    return SizedBox(
-      height: height,
-      child: card,
+        return SizedBox(
+          height: height,
+          child: card,
+        );
+      },
     );
   }
 }
