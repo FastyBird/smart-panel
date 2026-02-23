@@ -91,7 +91,6 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 	@override
 	Widget build(BuildContext context) {
 		final localizations = AppLocalizations.of(context)!;
-		final isLandscape = locator<ScreenService>().isLandscape;
 
 		final primaryColor = _isDarkMode ? AppColorsDark.primary : AppColorsLight.primary;
 		final primaryBg = _isDarkMode ? AppColorsDark.primaryLight5 : AppColorsLight.primaryLight9;
@@ -358,22 +357,27 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 			scaffoldBackgroundColor: _isDarkMode ? AppBgColorDark.page : AppBgColorLight.page,
 		);
 
-		return AnimatedTheme(
-			duration: const Duration(milliseconds: 500),
-			curve: Curves.easeInOut,
-			data: themeData,
-			child: Scaffold(
-				body: Column(
-					children: [
-						PageHeader(
-							title: localizations.settings_display_settings_title,
-							leading: HeaderIconButton(
-								icon: Icons.arrow_back,
-								onTap: () => Navigator.of(context).pop(),
-							),
-						),
-						Expanded(
-							child: isLandscape
+		return ListenableBuilder(
+			listenable: locator<ScreenService>(),
+			builder: (context, _) {
+				final isLandscape = locator<ScreenService>().isLandscape;
+
+				return AnimatedTheme(
+					duration: const Duration(milliseconds: 500),
+					curve: Curves.easeInOut,
+					data: themeData,
+					child: Scaffold(
+						body: Column(
+							children: [
+								PageHeader(
+									title: localizations.settings_display_settings_title,
+									leading: HeaderIconButton(
+										icon: Icons.arrow_back,
+										onTap: () => Navigator.of(context).pop(),
+									),
+								),
+								Expanded(
+									child: isLandscape
 									? VerticalScrollWithGradient(
 											itemCount: 1,
 											padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
@@ -457,10 +461,12 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 													],
 												),
 										),
+								),
+							],
 						),
-					],
-				),
-			),
+					),
+				);
+			},
 		);
 	}
 

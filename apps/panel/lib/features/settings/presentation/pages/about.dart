@@ -48,7 +48,6 @@ class _AboutPageState extends State<AboutPage> {
 	Widget build(BuildContext context) {
 		final localizations = AppLocalizations.of(context)!;
 		final isDark = Theme.of(context).brightness == Brightness.dark;
-		final isLandscape = locator<ScreenService>().isLandscape;
 
 		final successColor = isDark ? AppColorsDark.success : AppColorsLight.success;
 		final successBg = isDark ? AppColorsDark.successLight5 : AppColorsLight.successLight9;
@@ -57,26 +56,33 @@ class _AboutPageState extends State<AboutPage> {
 		final textColor = isDark ? AppTextColorDark.primary : AppTextColorLight.primary;
 		final subColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
 
-		return Scaffold(
-			backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
-			body: Column(
-				children: [
-					PageHeader(
-						title: localizations.settings_about_title,
-						leading: HeaderIconButton(
-							icon: Icons.arrow_back,
-							onTap: () => Navigator.of(context).pop(),
-						),
+		return ListenableBuilder(
+			listenable: locator<ScreenService>(),
+			builder: (context, _) {
+				final isLandscape = locator<ScreenService>().isLandscape;
+
+				return Scaffold(
+					backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
+					body: Column(
+						children: [
+							PageHeader(
+								title: localizations.settings_about_title,
+								leading: HeaderIconButton(
+									icon: Icons.arrow_back,
+									onTap: () => Navigator.of(context).pop(),
+								),
+							),
+							Expanded(
+								child: isLandscape
+										? _buildLandscapeBody(
+												localizations, isDark, successColor, successBg, infoColor, infoBg, textColor, subColor)
+										: _buildPortraitBody(
+												localizations, isDark, successColor, successBg, infoColor, infoBg, textColor, subColor),
+							),
+						],
 					),
-					Expanded(
-						child: isLandscape
-								? _buildLandscapeBody(
-										localizations, isDark, successColor, successBg, infoColor, infoBg, textColor, subColor)
-								: _buildPortraitBody(
-										localizations, isDark, successColor, successBg, infoColor, infoBg, textColor, subColor),
-					),
-				],
-			),
+				);
+			},
 		);
 	}
 

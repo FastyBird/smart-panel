@@ -21,7 +21,6 @@ class MaintenancePage extends StatelessWidget {
 	Widget build(BuildContext context) {
 		final localizations = AppLocalizations.of(context)!;
 		final isDark = Theme.of(context).brightness == Brightness.dark;
-		final isLandscape = locator<ScreenService>().isLandscape;
 
 		final primaryColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
 		final primaryBg = isDark ? AppColorsDark.primaryLight5 : AppColorsLight.primaryLight9;
@@ -116,90 +115,97 @@ class MaintenancePage extends StatelessWidget {
 			),
 		];
 
-		return Scaffold(
-			backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
-			body: Column(
-				children: [
-					PageHeader(
-						title: localizations.settings_maintenance_title,
-						leading: HeaderIconButton(
-							icon: Icons.arrow_back,
-							onTap: () => Navigator.of(context).pop(),
-						),
-					),
-					Expanded(
-						child: isLandscape
-								? VerticalScrollWithGradient(
-										itemCount: 1,
-										padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
-										itemBuilder: (context, index) => Row(
-											crossAxisAlignment: CrossAxisAlignment.start,
-											children: [
-												Expanded(
-													child: Column(
-														crossAxisAlignment: CrossAxisAlignment.start,
-														mainAxisSize: MainAxisSize.min,
-														children: [
-															SectionTitle(
-																title: localizations.settings_maintenance_system_heading,
-																icon: Icons.build_outlined,
+		return ListenableBuilder(
+			listenable: locator<ScreenService>(),
+			builder: (context, _) {
+				final isLandscape = locator<ScreenService>().isLandscape;
+
+				return Scaffold(
+					backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
+					body: Column(
+						children: [
+							PageHeader(
+								title: localizations.settings_maintenance_title,
+								leading: HeaderIconButton(
+									icon: Icons.arrow_back,
+									onTap: () => Navigator.of(context).pop(),
+								),
+							),
+							Expanded(
+								child: isLandscape
+										? VerticalScrollWithGradient(
+												itemCount: 1,
+												padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
+												itemBuilder: (context, index) => Row(
+													crossAxisAlignment: CrossAxisAlignment.start,
+													children: [
+														Expanded(
+															child: Column(
+																crossAxisAlignment: CrossAxisAlignment.start,
+																mainAxisSize: MainAxisSize.min,
+																children: [
+																	SectionTitle(
+																		title: localizations.settings_maintenance_system_heading,
+																		icon: Icons.build_outlined,
+																	),
+																	AppSpacings.spacingSmVertical,
+																	for (int i = 0; i < systemCards.length; i++) ...[
+																		systemCards[i],
+																		if (i < systemCards.length - 1) SizedBox(height: AppSpacings.pMd),
+																	],
+																],
 															),
-															AppSpacings.spacingSmVertical,
-															for (int i = 0; i < systemCards.length; i++) ...[
-																systemCards[i],
-																if (i < systemCards.length - 1) SizedBox(height: AppSpacings.pMd),
-															],
-														],
-													),
-												),
-												SizedBox(width: AppSpacings.pMd),
-												Expanded(
-													child: Column(
-														crossAxisAlignment: CrossAxisAlignment.start,
-														mainAxisSize: MainAxisSize.min,
-														children: [
-															SectionTitle(
-																title: localizations.settings_maintenance_danger_heading,
-																icon: Icons.warning_amber_outlined,
-																color: dangerColor,
+														),
+														SizedBox(width: AppSpacings.pMd),
+														Expanded(
+															child: Column(
+																crossAxisAlignment: CrossAxisAlignment.start,
+																mainAxisSize: MainAxisSize.min,
+																children: [
+																	SectionTitle(
+																		title: localizations.settings_maintenance_danger_heading,
+																		icon: Icons.warning_amber_outlined,
+																		color: dangerColor,
+																	),
+																	AppSpacings.spacingSmVertical,
+																	...dangerCards,
+																],
 															),
-															AppSpacings.spacingSmVertical,
-															...dangerCards,
+														),
+													],
+												),
+											)
+										: VerticalScrollWithGradient(
+												itemCount: 1,
+												padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
+												itemBuilder: (context, index) => Column(
+													crossAxisAlignment: CrossAxisAlignment.start,
+													children: [
+														SectionTitle(
+															title: localizations.settings_maintenance_system_heading,
+															icon: Icons.build_outlined,
+														),
+														AppSpacings.spacingSmVertical,
+														for (int i = 0; i < systemCards.length; i++) ...[
+															systemCards[i],
+															if (i < systemCards.length - 1) SizedBox(height: AppSpacings.pMd),
 														],
-													),
+														SizedBox(height: AppSpacings.pLg),
+														SectionTitle(
+															title: localizations.settings_maintenance_danger_heading,
+															icon: Icons.warning_amber_outlined,
+															color: dangerColor,
+														),
+														AppSpacings.spacingSmVertical,
+														for (final card in dangerCards) card,
+													],
 												),
-											],
-										),
-									)
-								: VerticalScrollWithGradient(
-										itemCount: 1,
-										padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
-										itemBuilder: (context, index) => Column(
-											crossAxisAlignment: CrossAxisAlignment.start,
-											children: [
-												SectionTitle(
-													title: localizations.settings_maintenance_system_heading,
-													icon: Icons.build_outlined,
-												),
-												AppSpacings.spacingSmVertical,
-												for (int i = 0; i < systemCards.length; i++) ...[
-													systemCards[i],
-													if (i < systemCards.length - 1) SizedBox(height: AppSpacings.pMd),
-												],
-												SizedBox(height: AppSpacings.pLg),
-												SectionTitle(
-													title: localizations.settings_maintenance_danger_heading,
-													icon: Icons.warning_amber_outlined,
-													color: dangerColor,
-												),
-												AppSpacings.spacingSmVertical,
-												for (final card in dangerCards) card,
-											],
-										),
-									),
+											),
+							),
+						],
 					),
-				],
-			),
+				);
+			},
 		);
 	}
 

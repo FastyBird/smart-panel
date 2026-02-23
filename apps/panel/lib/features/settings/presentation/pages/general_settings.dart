@@ -17,7 +17,6 @@ class GeneralSettingsPage extends StatelessWidget {
 	Widget build(BuildContext context) {
 		final localizations = AppLocalizations.of(context)!;
 		final isDark = Theme.of(context).brightness == Brightness.dark;
-		final isLandscape = locator<ScreenService>().isLandscape;
 
 		final hasAudioSupport = _displayRepository.audioOutputSupported ||
 				_displayRepository.audioInputSupported;
@@ -85,70 +84,76 @@ class GeneralSettingsPage extends StatelessWidget {
 			),
 		];
 
-		final columns = isLandscape ? 3 : 2;
+		return ListenableBuilder(
+			listenable: locator<ScreenService>(),
+			builder: (context, _) {
+				final isLandscape = locator<ScreenService>().isLandscape;
+				final columns = isLandscape ? 3 : 2;
 
-		return Scaffold(
-			backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
-			body: Column(
-				children: [
-					PageHeader(
-						title: localizations.settings_general_settings_title,
-						leading: HeaderMainIcon(
-							icon: MdiIcons.cog,
-						),
-						trailing: HeaderIconButton(
-							icon: MdiIcons.close,
-							onTap: () => Navigator.of(context, rootNavigator: true).pop(),
-						),
-					),
-					Expanded(
-						child: Padding(
-							padding: EdgeInsets.only(
-								left: AppSpacings.pMd,
-								right: AppSpacings.pMd,
-								bottom: AppSpacings.pMd,
+				return Scaffold(
+					backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
+					body: Column(
+						children: [
+							PageHeader(
+								title: localizations.settings_general_settings_title,
+								leading: HeaderMainIcon(
+									icon: MdiIcons.cog,
+								),
+								trailing: HeaderIconButton(
+									icon: MdiIcons.close,
+									onTap: () => Navigator.of(context, rootNavigator: true).pop(),
+								),
 							),
-							child: LayoutBuilder(
-								builder: (context, constraints) {
-									final spacing = AppSpacings.pMd;
-									final rows = (tiles.length / columns).ceil();
-									final availableWidth = constraints.maxWidth;
-									final availableHeight = constraints.maxHeight;
-									final tileWidth = (availableWidth - spacing * (columns - 1)) / columns;
-									final rawTileHeight = (availableHeight - spacing * (rows - 1)) / rows;
-									final tileHeight = rawTileHeight > 0 ? rawTileHeight : 1.0;
-									final childAspectRatio = tileWidth / tileHeight;
+							Expanded(
+								child: Padding(
+									padding: EdgeInsets.only(
+										left: AppSpacings.pMd,
+										right: AppSpacings.pMd,
+										bottom: AppSpacings.pMd,
+									),
+									child: LayoutBuilder(
+										builder: (context, constraints) {
+											final spacing = AppSpacings.pMd;
+											final rows = (tiles.length / columns).ceil();
+											final availableWidth = constraints.maxWidth;
+											final availableHeight = constraints.maxHeight;
+											final tileWidth = (availableWidth - spacing * (columns - 1)) / columns;
+											final rawTileHeight = (availableHeight - spacing * (rows - 1)) / rows;
+											final tileHeight = rawTileHeight > 0 ? rawTileHeight : 1.0;
+											final childAspectRatio = tileWidth / tileHeight;
 
-									return GridView.builder(
-										physics: const NeverScrollableScrollPhysics(),
-										gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-											crossAxisCount: columns,
-											crossAxisSpacing: spacing,
-											mainAxisSpacing: spacing,
-											childAspectRatio: childAspectRatio,
-										),
-										itemCount: tiles.length,
-										itemBuilder: (context, index) {
-											final tile = tiles[index];
+											return GridView.builder(
+												physics: const NeverScrollableScrollPhysics(),
+												gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+													crossAxisCount: columns,
+													crossAxisSpacing: spacing,
+													mainAxisSpacing: spacing,
+													childAspectRatio: childAspectRatio,
+												),
+												itemCount: tiles.length,
+												itemBuilder: (context, index) {
+													final tile = tiles[index];
 
-											return SettingsTile(
-												label: tile.label,
-												sublabel: tile.sublabel,
-												icon: tile.icon,
-												iconColor: tile.iconColor,
-												iconBgColor: tile.iconBgColor,
-												onTap: () {
-													Navigator.of(context).pushNamed(tile.route);
+													return SettingsTile(
+														label: tile.label,
+														sublabel: tile.sublabel,
+														icon: tile.icon,
+														iconColor: tile.iconColor,
+														iconBgColor: tile.iconBgColor,
+														onTap: () {
+															Navigator.of(context).pushNamed(tile.route);
+														},
+													);
 												},
 											);
 										},
-									);
-								},
+									),
+								),
 							),
-						),
+						],
 					),
-				],
-			),
+				);
+			},
 		);
 	}
 }
