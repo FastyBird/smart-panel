@@ -635,23 +635,32 @@ class _FullScreenPage extends StatelessWidget {
 		bool isLandscape,
 	) {
 		if (entry.showProgress && entry.icon != null) {
-			// Spinner ring around icon (matches _OverlayCard behavior)
+			// Spinner ring around icon — use inline sizing so the icon
+			// fits inside the ring (SystemPagesLayout.buildIcon produces
+			// a container that would cover the ring on non-compact screens).
+			final isCompact =
+					screenService.isSmallScreen || screenService.isMediumScreen;
+			final isCompactLandscape = isCompact && isLandscape;
+			final ringSize = screenService.scale(isCompactLandscape ? 64 : 88);
+			final containerSize = screenService.scale(isCompactLandscape ? 56 : 80);
+			final iconSize = screenService.scale(isCompactLandscape ? 28 : 40);
+
 			return Stack(
 				alignment: Alignment.center,
 				children: [
 					SizedBox(
-						width: screenService.scale(56),
-						height: screenService.scale(56),
+						width: ringSize,
+						height: ringSize,
 						child: CircularProgressIndicator(
 							strokeWidth: 3,
 							color: color,
 						),
 					),
-					SystemPagesLayout.buildIcon(
-						screenService: screenService,
+					IconContainer(
 						icon: entry.icon!,
 						color: color,
-						isLandscape: isLandscape,
+						size: containerSize,
+						iconSize: iconSize,
 					),
 				],
 			);
