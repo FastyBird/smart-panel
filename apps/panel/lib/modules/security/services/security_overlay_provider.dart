@@ -143,7 +143,7 @@ class _SecurityAlertListContent extends StatelessWidget {
 					Padding(
 						padding: EdgeInsets.only(top: AppSpacings.pSm),
 						child: Text(
-							'+${totalCount - 3} more alerts',
+							localizations.security_overlay_more_alerts(totalCount - 3),
 							style: TextStyle(
 								color: SystemPagesTheme.textMuted(isDark),
 								fontSize: AppFontSize.small,

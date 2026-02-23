@@ -4180,5 +4180,14 @@
   "security_overlay_open_security": "Open Security",
   "@security_overlay_open_security": {
     "description": "Button label to navigate to the security screen from the overlay"
+  },
+  "security_overlay_more_alerts": "+{count} more alerts",
+  "@security_overlay_more_alerts": {
+    "description": "Label shown when there are more security alerts than can be displayed",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
   }
 }

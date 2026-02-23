@@ -3479,4 +3479,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get security_overlay_open_security => 'Open Security';
+
+  @override
+  String security_overlay_more_alerts(int count) {
+    return '+$count more alerts';
+  }
 }

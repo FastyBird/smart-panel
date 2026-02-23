@@ -747,7 +747,7 @@ Widget _buildActionButton(
 										)
 									: const SizedBox.shrink(),
 							label: Text(action.label(localizations)),
-              style: FilledButton.styleFrom(
+              style: OutlinedButton.styleFrom(
                 padding: EdgeInsets.symmetric(
                   horizontal: AppSpacings.pMd,
                   vertical: AppSpacings.pMd,

@@ -6574,6 +6574,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Open Security'**
   String get security_overlay_open_security;
+
+  /// Label shown when there are more security alerts than can be displayed
+  ///
+  /// In en, this message translates to:
+  /// **'+{count} more alerts'**
+  String security_overlay_more_alerts(int count);
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {
