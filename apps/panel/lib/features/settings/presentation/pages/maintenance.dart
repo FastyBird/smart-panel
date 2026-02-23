@@ -1,4 +1,5 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
@@ -20,7 +21,7 @@ class MaintenancePage extends StatelessWidget {
 	Widget build(BuildContext context) {
 		final localizations = AppLocalizations.of(context)!;
 		final isDark = Theme.of(context).brightness == Brightness.dark;
-		final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+		final isLandscape = locator<ScreenService>().isLandscape;
 
 		final primaryColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
 		final primaryBg = isDark ? AppColorsDark.primaryLight5 : AppColorsLight.primaryLight9;

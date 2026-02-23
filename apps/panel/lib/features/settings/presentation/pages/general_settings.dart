@@ -1,4 +1,5 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_tile.dart';
@@ -16,7 +17,7 @@ class GeneralSettingsPage extends StatelessWidget {
 	Widget build(BuildContext context) {
 		final localizations = AppLocalizations.of(context)!;
 		final isDark = Theme.of(context).brightness == Brightness.dark;
-		final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+		final isLandscape = locator<ScreenService>().isLandscape;
 
 		final hasAudioSupport = _displayRepository.audioOutputSupported ||
 				_displayRepository.audioInputSupported;

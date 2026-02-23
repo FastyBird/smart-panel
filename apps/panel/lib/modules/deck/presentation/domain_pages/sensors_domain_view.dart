@@ -468,7 +468,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
       barrierColor: Colors.transparent,
       builder: (dialogContext) {
         final isDark = Theme.of(dialogContext).brightness == Brightness.dark;
-        final screenHeight = MediaQuery.of(dialogContext).size.height;
+        final screenHeight = locator<ScreenService>().logicalHeight;
         final popupTop = triggerRect != null
             ? triggerRect.bottom + AppSpacings.pSm
             : AppSpacings.scale(120);

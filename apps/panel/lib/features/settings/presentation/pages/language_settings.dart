@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
@@ -73,7 +74,7 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
 	Widget build(BuildContext context) {
 		final localizations = AppLocalizations.of(context)!;
 		final isDark = Theme.of(context).brightness == Brightness.dark;
-		final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+		final isLandscape = locator<ScreenService>().isLandscape;
 
 		final infoColor = isDark ? AppColorsDark.info : AppColorsLight.info;
 		final infoBg = isDark ? AppColorsDark.infoLight5 : AppColorsLight.infoLight9;

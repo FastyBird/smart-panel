@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
@@ -90,7 +91,7 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 	@override
 	Widget build(BuildContext context) {
 		final localizations = AppLocalizations.of(context)!;
-		final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+		final isLandscape = locator<ScreenService>().isLandscape;
 
 		final primaryColor = _isDarkMode ? AppColorsDark.primary : AppColorsLight.primary;
 		final primaryBg = _isDarkMode ? AppColorsDark.primaryLight5 : AppColorsLight.primaryLight9;

@@ -1614,8 +1614,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   void _showClimateDevicesSheet() {
     if (_state.climateDevices.isEmpty) return;
     final localizations = AppLocalizations.of(context)!;
-    final isLandscape =
-        MediaQuery.of(context).orientation == Orientation.landscape;
+    final isLandscape = locator<ScreenService>().isLandscape;
 
     if (isLandscape) {
       DeckItemDrawer.showItemDrawer(
@@ -1713,8 +1712,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   void _showAuxiliaryDevicesSheet() {
     if (_state.auxiliaryDevices.isEmpty) return;
     final localizations = AppLocalizations.of(context)!;
-    final isLandscape =
-        MediaQuery.of(context).orientation == Orientation.landscape;
+    final isLandscape = locator<ScreenService>().isLandscape;
 
     if (isLandscape) {
       DeckItemDrawer.showItemDrawer(
@@ -2112,8 +2110,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   void _showSensorsSheet() {
     if (_state.sensors.isEmpty) return;
     final localizations = AppLocalizations.of(context)!;
-    final isLandscape =
-        MediaQuery.of(context).orientation == Orientation.landscape;
+    final isLandscape = locator<ScreenService>().isLandscape;
 
     if (isLandscape) {
       DeckItemDrawer.showItemDrawer(

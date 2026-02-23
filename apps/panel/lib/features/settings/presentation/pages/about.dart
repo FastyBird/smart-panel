@@ -1,3 +1,5 @@
+import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/number.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
@@ -46,7 +48,7 @@ class _AboutPageState extends State<AboutPage> {
 	Widget build(BuildContext context) {
 		final localizations = AppLocalizations.of(context)!;
 		final isDark = Theme.of(context).brightness == Brightness.dark;
-		final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+		final isLandscape = locator<ScreenService>().isLandscape;
 
 		final successColor = isDark ? AppColorsDark.success : AppColorsLight.success;
 		final successBg = isDark ? AppColorsDark.successLight5 : AppColorsLight.successLight9;
@@ -262,7 +264,7 @@ class _AboutPageState extends State<AboutPage> {
 					child: ConstrainedBox(
 						constraints: BoxConstraints(
 							maxWidth: AppSpacings.scale(400),
-							maxHeight: MediaQuery.of(context).size.height * 0.7,
+							maxHeight: locator<ScreenService>().logicalHeight * 0.7,
 						),
 						child: Column(
 							mainAxisSize: MainAxisSize.min,

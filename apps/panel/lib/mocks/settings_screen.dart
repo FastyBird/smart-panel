@@ -13,6 +13,8 @@
 
 import 'dart:math' as math;
 
+import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -777,8 +779,7 @@ class _DisplaySettingsScreenState extends State<DisplaySettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isLandscape =
-        MediaQuery.of(context).orientation == Orientation.landscape;
+    final isLandscape = locator<ScreenService>().isLandscape;
 
     final cards = <Widget>[
       // Theme Mode
@@ -857,8 +858,7 @@ class LanguageSettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isLandscape =
-        MediaQuery.of(context).orientation == Orientation.landscape;
+    final isLandscape = locator<ScreenService>().isLandscape;
 
     final cards = <Widget>[
       SettingsCard(
@@ -923,8 +923,7 @@ class _AudioSettingsScreenState extends State<AudioSettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isLandscape =
-        MediaQuery.of(context).orientation == Orientation.landscape;
+    final isLandscape = locator<ScreenService>().isLandscape;
 
     if (isLandscape) {
       return _SubScreenScaffold(
@@ -1064,8 +1063,7 @@ class WeatherSettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isLandscape =
-        MediaQuery.of(context).orientation == Orientation.landscape;
+    final isLandscape = locator<ScreenService>().isLandscape;
 
     final cards = <Widget>[
       SettingsCard(
@@ -1109,8 +1107,7 @@ class AboutScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isLandscape =
-        MediaQuery.of(context).orientation == Orientation.landscape;
+    final isLandscape = locator<ScreenService>().isLandscape;
 
     if (isLandscape) {
       return _SubScreenScaffold(
@@ -1335,8 +1332,7 @@ class MaintenanceScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isLandscape =
-        MediaQuery.of(context).orientation == Orientation.landscape;
+    final isLandscape = locator<ScreenService>().isLandscape;
 
     if (isLandscape) {
       return _SubScreenScaffold(

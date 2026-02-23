@@ -1,3 +1,5 @@
+import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -101,7 +103,7 @@ class AppBottomSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final maxHeight = MediaQuery.of(context).size.height * maxHeightFactor;
+    final maxHeight = locator<ScreenService>().logicalHeight * maxHeightFactor;
     final bgColor = isDark ? AppFillColorDark.base : AppFillColorLight.blank;
     final handleColor =
         isDark ? AppFillColorDark.darker : AppFillColorLight.darker;

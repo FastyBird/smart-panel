@@ -2092,7 +2092,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		final localizations = AppLocalizations.of(context)!;
 		List<MediaDeviceGroup> getDeviceGroups() =>
 			_mediaService?.getDeviceGroups(_roomId, deviceNameResolver: deviceNameResolver) ?? [];
-		final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+		final isLandscape = locator<ScreenService>().isLandscape;
 
 		if (isLandscape && _devicesService != null) {
 			DeckItemDrawer.showItemDrawerWithUpdates(
@@ -2149,7 +2149,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		final activityKey = _getSelectedActivityKey(activeState);
 		final activityName = _activityLabel(context, activityKey);
 		final tileHeight = AppSpacings.scale(AppTileHeight.horizontal * 0.85);
-		final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+		final isLandscape = locator<ScreenService>().isLandscape;
 		final parentNavigator = Navigator.of(context);
 
 		Widget buildCompositionTile(BuildContext context, int index) {
@@ -2568,7 +2568,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 				.where((key) => navKeys.contains(key) && has(key))
 				.toList();
 
-		final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
+		final isLandscape = locator<ScreenService>().isLandscape;
 		final isCompact = _screenService.isSmallScreen || _screenService.isMediumScreen;
 
 		final remoteContent = Padding(

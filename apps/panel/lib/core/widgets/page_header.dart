@@ -62,8 +62,7 @@ class PageHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isLandscape =
-        MediaQuery.of(context).orientation == Orientation.landscape;
+    final isLandscape = locator<ScreenService>().isLandscape;
 
     final screenService = locator<ScreenService>();
     final isCompact = screenService.isSmallScreen && screenService.isPortrait;

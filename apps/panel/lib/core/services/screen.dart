@@ -79,6 +79,10 @@ class ScreenService extends ChangeNotifier with WidgetsBindingObserver {
 
   double get screenHeight => _screenHeight;
 
+  double get logicalWidth => _screenWidth / pixelRatio;
+
+  double get logicalHeight => _screenHeight / pixelRatio;
+
   int get columns => _profileColumns ?? _defaultColumns;
 
   int get rows => _profileRows ?? _defaultRows;

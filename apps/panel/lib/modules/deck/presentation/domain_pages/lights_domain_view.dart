@@ -1672,8 +1672,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
           body: SafeArea(
             child: LayoutBuilder(
               builder: (context, constraints) {
-                final isLandscape =
-                    MediaQuery.of(context).orientation == Orientation.landscape;
+                final isLandscape = locator<ScreenService>().isLandscape;
 
                 // Pre-calculate whether scenes fit inline in landscape
                 final hasScenes = _lightingScenes.isNotEmpty;
@@ -2303,8 +2302,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
     final localizations = AppLocalizations.of(context)!;
     final roleName = _getRoleName(roleData.role, localizations);
-    final isLandscape =
-        MediaQuery.of(context).orientation == Orientation.landscape;
+    final isLandscape = locator<ScreenService>().isLandscape;
 
     if (isLandscape) {
       final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -3065,8 +3063,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     if (scenes.isEmpty) return;
 
     final localizations = AppLocalizations.of(context)!;
-    final isLandscape =
-        MediaQuery.of(context).orientation == Orientation.landscape;
+    final isLandscape = locator<ScreenService>().isLandscape;
 
     if (isLandscape) {
       DeckItemDrawer.showItemDrawer(
