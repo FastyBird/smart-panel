@@ -236,7 +236,7 @@ class MaintenancePage extends StatelessWidget {
 							),
 							child: OutlinedButton(
 								onPressed: () => Navigator.of(context).pop(),
-                style: FilledButton.styleFrom(
+                style: OutlinedButton.styleFrom(
                   padding: EdgeInsets.symmetric(
                     horizontal: AppSpacings.pMd,
                     vertical: AppSpacings.pMd,

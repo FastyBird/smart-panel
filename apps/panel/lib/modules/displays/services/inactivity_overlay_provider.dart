@@ -17,6 +17,7 @@ class InactivityOverlayProvider {
 
   bool _isInitialized = false;
   Timer? _inactivityTimer;
+  bool _wasActive = false;
 
   int _screenLockDuration = 30;
   bool _hasScreenSaver = true;
@@ -98,12 +99,16 @@ class InactivityOverlayProvider {
   }
 
   /// Detect when the inactivity overlay is dismissed by the user
-  /// and restart the timer.
+  /// (active → inactive transition) and restart the timer.
   void _onOverlayChanged() {
     final entry = _overlayManager.getEntry(InactivityOverlayIds.inactivity);
-    if (entry != null && !entry.isActive) {
-      // Overlay was dismissed — restart timer
+    final isActive = entry?.isActive ?? false;
+
+    if (_wasActive && !isActive) {
+      // Overlay was just dismissed — restart timer
       resetTimer();
     }
+
+    _wasActive = isActive;
   }
 }
