@@ -1,3 +1,5 @@
+import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_bottom_sheet.dart';
 import 'package:fastybird_smart_panel/core/widgets/slider_with_steps.dart';
@@ -239,8 +241,7 @@ class ValueSelectorRow<T> extends StatelessWidget {
   }
 
   void _showSelectorSheet(BuildContext context, bool isDark) {
-    final isLandscape =
-        MediaQuery.of(context).orientation == Orientation.landscape;
+    final isLandscape = locator<ScreenService>().isLandscape;
 
     if (isLandscape) {
       _showSelectorDialog(context, isDark);
@@ -314,7 +315,7 @@ class ValueSelectorRow<T> extends StatelessWidget {
             child: Container(
               constraints: BoxConstraints(
                 maxWidth: AppSpacings.scale(360),
-                maxHeight: MediaQuery.of(context).size.height * 0.7,
+                maxHeight: locator<ScreenService>().logicalHeight * 0.7,
               ),
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(AppBorderRadius.medium),

@@ -3491,4 +3491,15 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get security_overlay_default_title => 'Bezpečnostní upozornění';
+
+  @override
+  String get security_overlay_acknowledge => 'Potvrdit';
+
+  @override
+  String get security_overlay_open_security => 'Otevřít zabezpečení';
+
+  @override
+  String security_overlay_more_alerts(int count) {
+    return '+$count dalších upozornění';
+  }
 }

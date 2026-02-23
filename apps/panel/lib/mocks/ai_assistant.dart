@@ -1,3 +1,5 @@
+import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 
@@ -631,7 +633,7 @@ class _MessageBubble extends StatelessWidget {
       return Align(
         alignment: Alignment.centerRight,
         child: Container(
-          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.7),
+          constraints: BoxConstraints(maxWidth: locator<ScreenService>().logicalWidth * 0.7),
           margin: const EdgeInsets.only(bottom: 16),
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
           decoration: BoxDecoration(
@@ -659,7 +661,7 @@ class _MessageBubble extends StatelessWidget {
       children: [
         // AI response bubble
         Container(
-          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.85),
+          constraints: BoxConstraints(maxWidth: locator<ScreenService>().logicalWidth * 0.85),
           margin: const EdgeInsets.only(bottom: 16),
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
           decoration: BoxDecoration(

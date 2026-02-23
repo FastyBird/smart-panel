@@ -1,3 +1,5 @@
+import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -154,7 +156,7 @@ Future<T?> showSettingsSelectionDialog<T>({
 				child: ConstrainedBox(
 					constraints: BoxConstraints(
 						maxWidth: AppSpacings.scale(280),
-						maxHeight: MediaQuery.of(context).size.height * 0.7,
+						maxHeight: locator<ScreenService>().logicalHeight * 0.7,
 					),
 					child: Column(
 						mainAxisSize: MainAxisSize.min,

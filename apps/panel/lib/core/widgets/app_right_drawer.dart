@@ -1,5 +1,7 @@
 import 'dart:math' as math;
 
+import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -118,7 +120,7 @@ class AppRightDrawer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final screenWidth = MediaQuery.of(context).size.width;
+    final screenWidth = locator<ScreenService>().logicalWidth;
     final bgColor = isDark ? AppFillColorDark.base : AppFillColorLight.blank;
     final textColor =
         isDark ? AppTextColorDark.primary : AppTextColorLight.primary;

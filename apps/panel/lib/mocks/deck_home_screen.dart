@@ -12,6 +12,8 @@
 import 'dart:math' as math;
 import 'dart:ui';
 
+import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:flutter/material.dart';
 
 // =============================================================================
@@ -429,15 +431,16 @@ class _DeckHomeScreenState extends State<DeckHomeScreen>
 
   @override
   Widget build(BuildContext context) {
-    final mq = MediaQuery.of(context);
-    final isLandscape = mq.size.width > mq.size.height;
+    final screenService = locator<ScreenService>();
+    final isLandscape = screenService.isLandscape;
+    final screenSize = Size(screenService.logicalWidth, screenService.logicalHeight);
 
     return Scaffold(
       backgroundColor: DeckHomeTheme.background(_isDark),
       body: SafeArea(
         child: isLandscape
-            ? _buildLandscape(mq.size)
-            : _buildPortrait(mq.size),
+            ? _buildLandscape(screenSize)
+            : _buildPortrait(screenSize),
       ),
     );
   }

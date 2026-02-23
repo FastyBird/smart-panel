@@ -2,11 +2,19 @@ import 'package:flutter/widgets.dart';
 
 import 'package:fastybird_smart_panel/features/overlay/types/overlay.dart';
 
+/// Sentinel value used by [OverlayManager.show] to distinguish "parameter not
+/// passed" (keep current value) from "explicitly passed null" (clear the field).
+class _Unset {
+	const _Unset();
+}
+
+const _unset = _Unset();
+
 /// Central manager for all application overlays.
 ///
 /// Modules, plugins, and core services register their overlays here.
 /// Each provider registers **one entry** per logical overlay and updates
-/// its properties (display type, builder, closable) as state changes.
+/// its properties (display type, config fields, closable) as state changes.
 ///
 /// Example usage:
 /// ```dart
@@ -15,17 +23,24 @@ import 'package:fastybird_smart_panel/features/overlay/types/overlay.dart';
 ///   id: 'connection',
 ///   displayType: OverlayDisplayType.banner,
 ///   priority: 200,
-///   builder: (context) => ConnectionBanner(),
+///   colorScheme: OverlayColorScheme.warning,
+///   showProgress: true,
+///   title: (l) => l.connection_banner_reconnecting,
 /// ));
 ///
 /// // Show it - optionally updating properties at the same time
 /// overlayManager.show('connection');
 ///
-/// // Later escalate to a different display type + widget
+/// // Later escalate to a different display type + config
 /// overlayManager.show(
 ///   'connection',
 ///   displayType: OverlayDisplayType.fullScreen,
-///   builder: (context) => NetworkErrorScreen(),
+///   icon: Icons.wifi_off,
+///   colorScheme: OverlayColorScheme.error,
+///   showProgress: false,
+///   title: (l) => l.connection_lost_title,
+///   message: (l) => l.connection_lost_message,
+///   actions: [...],
 /// );
 ///
 /// // Hide when no longer needed
@@ -72,14 +87,25 @@ class OverlayManager extends ChangeNotifier {
 
 	/// Show (activate) an overlay by [id].
 	///
-	/// Optionally update [displayType], [builder], and [closable] at the
-	/// same time. This is the primary API for providers that need to
-	/// change how their overlay is presented based on current state.
+	/// Optionally update any combination of config fields at the same time.
+	/// This is the primary API for providers that need to change how their
+	/// overlay is presented based on current state.
+	///
+	/// Nullable fields ([icon], [title], [message], [content], [customBuilder])
+	/// use a sentinel default so that callers can explicitly pass `null` to
+	/// **clear** the field. Omitting the parameter keeps the current value.
 	void show(
 		String id, {
 		OverlayDisplayType? displayType,
-		WidgetBuilder? builder,
 		bool? closable,
+		Object? icon = _unset,
+		OverlayColorScheme? colorScheme,
+		bool? showProgress,
+		Object? title = _unset,
+		Object? message = _unset,
+		Object? content = _unset,
+		List<OverlayAction>? actions,
+		Object? customBuilder = _unset,
 	}) {
 		final entry = _entries[id];
 		if (entry == null) return;
@@ -91,12 +117,40 @@ class OverlayManager extends ChangeNotifier {
 			entry.displayType = displayType;
 			changed = true;
 		}
-		if (builder != null) {
-			entry.builder = builder;
-			changed = true;
-		}
 		if (closable != null && entry.closable != closable) {
 			entry.closable = closable;
+			changed = true;
+		}
+		if (icon is! _Unset) {
+			entry.icon = icon as IconData?;
+			changed = true;
+		}
+		if (colorScheme != null && entry.colorScheme != colorScheme) {
+			entry.colorScheme = colorScheme;
+			changed = true;
+		}
+		if (showProgress != null && entry.showProgress != showProgress) {
+			entry.showProgress = showProgress;
+			changed = true;
+		}
+		if (title is! _Unset) {
+			entry.title = title as LocalizedString?;
+			changed = true;
+		}
+		if (message is! _Unset) {
+			entry.message = message as LocalizedString?;
+			changed = true;
+		}
+		if (content is! _Unset) {
+			entry.content = content as Widget?;
+			changed = true;
+		}
+		if (actions != null) {
+			entry.actions = actions;
+			changed = true;
+		}
+		if (customBuilder is! _Unset) {
+			entry.customBuilder = customBuilder as WidgetBuilder?;
 			changed = true;
 		}
 

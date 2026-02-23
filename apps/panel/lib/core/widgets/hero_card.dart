@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_card.dart';
 
@@ -27,24 +29,28 @@ class HeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final orientation = MediaQuery.of(context).orientation;
+    final screenService = locator<ScreenService>();
 
-    final card = AppCard(
-      width: double.infinity,
-      child: child,
-    );
+    return ListenableBuilder(
+      listenable: screenService,
+      builder: (context, _) {
+        final card = AppCard(
+          width: double.infinity,
+          child: child,
+        );
 
-    if (orientation == Orientation.landscape) {
-      return card;
-    }
+        if (screenService.isLandscape) {
+          return card;
+        }
 
-    final screenHeight = MediaQuery.of(context).size.height;
-    final cap = maxHeight ?? AppSpacings.scale(500);
-    final height = (screenHeight * fraction).clamp(0.0, cap);
+        final cap = maxHeight ?? AppSpacings.scale(500);
+        final height = (screenService.logicalHeight * fraction).clamp(0.0, cap);
 
-    return SizedBox(
-      height: height,
-      child: card,
+        return SizedBox(
+          height: height,
+          child: card,
+        );
+      },
     );
   }
 }

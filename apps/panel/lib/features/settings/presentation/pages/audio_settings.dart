@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
@@ -74,58 +75,64 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
 	@override
 	Widget build(BuildContext context) {
 		final localizations = AppLocalizations.of(context)!;
-		final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
 
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 
-		return Scaffold(
-			backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
-			body: Column(
-				children: [
-					PageHeader(
-						title: localizations.settings_audio_settings_title,
-						leading: HeaderIconButton(
-							icon: Icons.arrow_back,
-							onTap: () => Navigator.of(context).pop(),
-						),
+		return ListenableBuilder(
+			listenable: locator<ScreenService>(),
+			builder: (context, _) {
+				final isLandscape = locator<ScreenService>().isLandscape;
+
+				return Scaffold(
+					backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
+					body: Column(
+						children: [
+							PageHeader(
+								title: localizations.settings_audio_settings_title,
+								leading: HeaderIconButton(
+									icon: Icons.arrow_back,
+									onTap: () => Navigator.of(context).pop(),
+								),
+							),
+							Expanded(
+								child: !_audioOutputSupported && !_audioInputSupported
+										? _buildNoAudioSupportMessage(localizations)
+										: isLandscape
+												? VerticalScrollWithGradient(
+														itemCount: 1,
+														padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
+														itemBuilder: (context, index) => Row(
+															crossAxisAlignment: CrossAxisAlignment.start,
+															children: [
+																if (_audioOutputSupported)
+																	Expanded(child: _buildSpeakerColumn(localizations)),
+																if (_audioOutputSupported && _audioInputSupported)
+																	SizedBox(width: AppSpacings.pMd),
+																if (_audioInputSupported)
+																	Expanded(child: _buildMicColumn(localizations)),
+															],
+														),
+													)
+												: VerticalScrollWithGradient(
+														itemCount: 1,
+														padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
+														itemBuilder: (context, index) => Column(
+															crossAxisAlignment: CrossAxisAlignment.start,
+															children: [
+																if (_audioOutputSupported) ...[
+																	..._buildSpeakerCards(localizations),
+																	SizedBox(height: AppSpacings.pLg),
+																],
+																if (_audioInputSupported)
+																	..._buildMicCards(localizations),
+															],
+														),
+													),
+							),
+						],
 					),
-					Expanded(
-						child: !_audioOutputSupported && !_audioInputSupported
-								? _buildNoAudioSupportMessage(localizations)
-								: isLandscape
-										? VerticalScrollWithGradient(
-												itemCount: 1,
-												padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
-												itemBuilder: (context, index) => Row(
-													crossAxisAlignment: CrossAxisAlignment.start,
-													children: [
-														if (_audioOutputSupported)
-															Expanded(child: _buildSpeakerColumn(localizations)),
-														if (_audioOutputSupported && _audioInputSupported)
-															SizedBox(width: AppSpacings.pMd),
-														if (_audioInputSupported)
-															Expanded(child: _buildMicColumn(localizations)),
-													],
-												),
-											)
-										: VerticalScrollWithGradient(
-												itemCount: 1,
-												padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
-												itemBuilder: (context, index) => Column(
-													crossAxisAlignment: CrossAxisAlignment.start,
-													children: [
-														if (_audioOutputSupported) ...[
-															..._buildSpeakerCards(localizations),
-															SizedBox(height: AppSpacings.pLg),
-														],
-														if (_audioInputSupported)
-															..._buildMicCards(localizations),
-													],
-												),
-											),
-					),
-				],
-			),
+				);
+			},
 		);
 	}
 

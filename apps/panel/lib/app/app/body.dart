@@ -1,19 +1,16 @@
-import 'dart:async';
-
 import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/app/routes.dart';
 import 'package:fastybird_smart_panel/core/services/connection_state_manager.dart';
+import 'package:fastybird_smart_panel/modules/displays/services/inactivity_overlay_provider.dart';
 import 'package:fastybird_smart_panel/core/services/navigation.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/core/services/startup_manager.dart';
-import 'package:fastybird_smart_panel/core/services/system_actions.dart';
+import 'package:fastybird_smart_panel/modules/system/services/system_actions_overlay_provider.dart';
 import 'package:fastybird_smart_panel/core/types/connection_state.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_detail_page.dart';
-import 'package:fastybird_smart_panel/features/overlay/presentation/lock.dart';
 import 'package:fastybird_smart_panel/features/overlay/presentation/overlay_renderer.dart';
-import 'package:fastybird_smart_panel/features/overlay/presentation/screen_saver.dart';
 import 'package:fastybird_smart_panel/core/services/connection_overlay_provider.dart';
 import 'package:fastybird_smart_panel/features/overlay/services/overlay_manager.dart';
 import 'package:fastybird_smart_panel/modules/security/services/security_overlay_provider.dart';
@@ -51,8 +48,6 @@ class _AppBodyState extends State<AppBody> {
 
   bool _hasDarkMode = false;
   Language _language = Language.english;
-  int _screenLockDuration = 30;
-  bool _hasScreenSaver = true;
 
   // Connection state management
   final ConnectionStateManager _connectionManager = ConnectionStateManager();
@@ -60,8 +55,8 @@ class _AppBodyState extends State<AppBody> {
   // Overlay providers
   late final ConnectionOverlayProvider _connectionOverlayProvider;
   late final SecurityOverlayProvider _securityOverlayProvider;
-
-  Timer? _inactivityTimer;
+  late final SystemActionsOverlayProvider _systemActionsOverlayProvider;
+  late final InactivityOverlayProvider _inactivityOverlayProvider;
 
   Offset? _swipeStartPosition;
   bool _isSwipingVertically = false;
@@ -72,8 +67,37 @@ class _AppBodyState extends State<AppBody> {
   void initState() {
     super.initState();
 
+    // Initialize overlay providers early — _syncStateWithRepository uses them
+    _connectionOverlayProvider = ConnectionOverlayProvider(
+      overlayManager: _overlayManager,
+      connectionManager: _connectionManager,
+      navigationService: _navigator,
+      onReconnect: _handleReconnect,
+      onChangeGateway: _handleChangeGateway,
+    );
+
+    _securityOverlayProvider = SecurityOverlayProvider(
+      overlayManager: _overlayManager,
+      securityController: _securityOverlayController,
+      eventBus: locator<EventBus>(),
+    );
+
+    _systemActionsOverlayProvider = SystemActionsOverlayProvider(
+      overlayManager: _overlayManager,
+      eventBus: locator<EventBus>(),
+    );
+
+    _inactivityOverlayProvider = InactivityOverlayProvider(
+      overlayManager: _overlayManager,
+    );
+
+    // Register overlay entries before any state sync that may start timers
+    _connectionOverlayProvider.init();
+    _securityOverlayProvider.init();
+    _systemActionsOverlayProvider.init();
+    _inactivityOverlayProvider.init();
+
     _syncStateWithRepository();
-    _resetInactivityTimer();
     _initializeDeck();
 
     _displayRepository.addListener(_syncStateWithRepository);
@@ -95,24 +119,6 @@ class _AppBodyState extends State<AppBody> {
     if (_socketService.isConnected) {
       _connectionManager.onConnected();
     }
-
-    // Initialize overlay providers
-    _connectionOverlayProvider = ConnectionOverlayProvider(
-      overlayManager: _overlayManager,
-      connectionManager: _connectionManager,
-      onReconnect: _handleReconnect,
-      onChangeGateway: _handleChangeGateway,
-    );
-    _connectionOverlayProvider.init();
-
-    _securityOverlayProvider = SecurityOverlayProvider(
-      overlayManager: _overlayManager,
-      securityController: _securityOverlayController,
-      eventBus: locator<EventBus>(),
-    );
-    _securityOverlayProvider.init();
-
-    locator<SystemActionsService>().init();
   }
 
   void _onSecurityStatusChanged() {
@@ -201,10 +207,10 @@ class _AppBodyState extends State<AppBody> {
 
   @override
   void dispose() {
-    _inactivityTimer?.cancel();
-
     _connectionOverlayProvider.dispose();
     _securityOverlayProvider.dispose();
+    _systemActionsOverlayProvider.dispose();
+    _inactivityOverlayProvider.dispose();
 
     _displayRepository.removeListener(_syncStateWithRepository);
     _displayRepository.removeListener(_onDisplayChanged);
@@ -215,8 +221,6 @@ class _AppBodyState extends State<AppBody> {
     _connectionManager.removeListener(_onSocketConnectionStateChanged);
     _connectionManager.dispose();
 
-    locator<SystemActionsService>().dispose();
-
     super.dispose();
   }
 
@@ -225,39 +229,12 @@ class _AppBodyState extends State<AppBody> {
     setState(() {
       _hasDarkMode = _displayRepository.hasDarkMode;
       _language = config?.language ?? Language.english;
-      _screenLockDuration = _displayRepository.screenLockDuration;
-      _hasScreenSaver = _displayRepository.hasScreenSaver;
     });
-  }
 
-  void _resetInactivityTimer() {
-    _inactivityTimer?.cancel();
-
-    if (_screenLockDuration > 0) {
-      _inactivityTimer = Timer(Duration(seconds: _screenLockDuration), () {
-        if (_navigator.getCurrentRouteName() != AppRouteNames.reboot &&
-            _navigator.getCurrentRouteName() != AppRouteNames.powerOff &&
-            _navigator.getCurrentRouteName() != AppRouteNames.factoryReset) {
-          // After configured time of inactivity, navigate to the screen saver
-          _navigator.navigatorKey.currentState?.push(
-            MaterialPageRoute(
-              builder: (context) {
-                if (_hasScreenSaver) {
-                  return ScreenSaverScreen();
-                }
-
-                return LockScreen();
-              },
-            ),
-          ).then((_) {
-            // Reset inactivity timer or perform necessary actions
-            _resetInactivityTimer();
-          });
-        } else {
-          _resetInactivityTimer();
-        }
-      });
-    }
+    _inactivityOverlayProvider.updateConfig(
+      screenLockDuration: _displayRepository.screenLockDuration,
+      hasScreenSaver: _displayRepository.hasScreenSaver,
+    );
   }
 
   @override
@@ -270,16 +247,6 @@ class _AppBodyState extends State<AppBody> {
       title: 'FastyBird Smart Panel',
       navigatorKey: _navigator.navigatorKey,
       navigatorObservers: [
-        OverlayScreenObserver(
-          onOverlayScreenPushed: () {
-            // Stop the screensaver timer
-            _inactivityTimer?.cancel();
-          },
-          onOverlayScreenPopped: () {
-            // Restart the screensaver timer
-            _resetInactivityTimer();
-          },
-        ),
         SettingsScreenObserver(
           onSettingsPushed: () {
             // Track that settings is open
@@ -297,8 +264,8 @@ class _AppBodyState extends State<AppBody> {
           children: [
             GestureDetector(
               behavior: HitTestBehavior.translucent,
-              onTap: () => _resetInactivityTimer(),
-              onPanDown: (DragDownDetails details) => _resetInactivityTimer(),
+              onTap: () => _inactivityOverlayProvider.resetTimer(),
+              onPanDown: (DragDownDetails details) => _inactivityOverlayProvider.resetTimer(),
               onPanStart: (details) {
                 // Reset flag at the start of each new gesture
                 _swipeActionTriggered = false;
@@ -382,36 +349,6 @@ class _AppBodyState extends State<AppBody> {
         return locale;
       },
     );
-  }
-}
-
-class OverlayScreenObserver extends NavigatorObserver {
-  final VoidCallback onOverlayScreenPushed;
-  final VoidCallback onOverlayScreenPopped;
-
-  OverlayScreenObserver({
-    required this.onOverlayScreenPushed,
-    required this.onOverlayScreenPopped,
-  });
-
-  @override
-  void didPush(Route route, Route? previousRoute) {
-    if (route.settings.name != null &&
-        ['reboot', 'power_off', 'reset'].contains(route.settings.name)) {
-      onOverlayScreenPushed();
-    }
-
-    super.didPush(route, previousRoute);
-  }
-
-  @override
-  void didPop(Route route, Route? previousRoute) {
-    if (route.settings.name != null &&
-        ['reboot', 'power_off', 'reset'].contains(route.settings.name)) {
-      onOverlayScreenPopped();
-    }
-
-    super.didPop(route, previousRoute);
   }
 }
 

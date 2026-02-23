@@ -57,9 +57,6 @@ class IntentsModuleService {
       _socketEventHandler,
     );
     _socketService.removeConnectionListener(_handleConnectionChange);
-
-    _intentsRepository.dispose();
-    _intentOverlayService.dispose();
   }
 
   /// Handle socket connection state changes

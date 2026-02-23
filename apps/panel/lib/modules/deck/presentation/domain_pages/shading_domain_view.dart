@@ -1537,8 +1537,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
     if (initialDeviceDataList.isEmpty) return;
 
     final localizations = AppLocalizations.of(context)!;
-    final isLandscape =
-        MediaQuery.of(context).orientation == Orientation.landscape;
+    final isLandscape = locator<ScreenService>().isLandscape;
     final sheetTitle = role != null ? _getRoleName(role) : localizations.shading_devices_title;
 
     final bottomSection = role != null ? _buildDevicesSheetFooter(context, role) : null;

@@ -1,6 +1,5 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/app/routes.dart';
-import 'package:fastybird_smart_panel/core/services/navigation.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
@@ -22,7 +21,6 @@ class MaintenancePage extends StatelessWidget {
 	Widget build(BuildContext context) {
 		final localizations = AppLocalizations.of(context)!;
 		final isDark = Theme.of(context).brightness == Brightness.dark;
-		final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
 
 		final primaryColor = isDark ? AppColorsDark.primary : AppColorsLight.primary;
 		final primaryBg = isDark ? AppColorsDark.primaryLight5 : AppColorsLight.primaryLight9;
@@ -45,10 +43,6 @@ class MaintenancePage extends StatelessWidget {
 							title: localizations.settings_maintenance_restart_confirm_title,
 							content: localizations.settings_maintenance_restart_confirm_description,
 							onConfirm: () {
-								locator<NavigationService>().navigateTo(
-									AppRouteNames.reboot,
-								);
-
 								_systemModuleService.rebootDevice().then((bool result) {
 									if (!result) {
 										if (!context.mounted) return;
@@ -76,10 +70,6 @@ class MaintenancePage extends StatelessWidget {
 							title: localizations.settings_maintenance_power_off_confirm_title,
 							content: localizations.settings_maintenance_power_off_confirm_description,
 							onConfirm: () {
-								locator<NavigationService>().navigateTo(
-									AppRouteNames.powerOff,
-								);
-
 								_systemModuleService.powerOffDevice().then((bool result) {
 									if (!result) {
 										if (!context.mounted) return;
@@ -111,10 +101,6 @@ class MaintenancePage extends StatelessWidget {
 							title: localizations.settings_maintenance_factory_reset_confirm_title,
 							content: localizations.settings_maintenance_factory_reset_confirm_description,
 							onConfirm: () {
-								locator<NavigationService>().navigateTo(
-									AppRouteNames.factoryReset,
-								);
-
 								_systemModuleService.factoryResetDevice().then((bool result) {
 									if (!result) {
 										if (!context.mounted) return;
@@ -129,90 +115,97 @@ class MaintenancePage extends StatelessWidget {
 			),
 		];
 
-		return Scaffold(
-			backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
-			body: Column(
-				children: [
-					PageHeader(
-						title: localizations.settings_maintenance_title,
-						leading: HeaderIconButton(
-							icon: Icons.arrow_back,
-							onTap: () => Navigator.of(context).pop(),
-						),
-					),
-					Expanded(
-						child: isLandscape
-								? VerticalScrollWithGradient(
-										itemCount: 1,
-										padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
-										itemBuilder: (context, index) => Row(
-											crossAxisAlignment: CrossAxisAlignment.start,
-											children: [
-												Expanded(
-													child: Column(
-														crossAxisAlignment: CrossAxisAlignment.start,
-														mainAxisSize: MainAxisSize.min,
-														children: [
-															SectionTitle(
-																title: localizations.settings_maintenance_system_heading,
-																icon: Icons.build_outlined,
+		return ListenableBuilder(
+			listenable: locator<ScreenService>(),
+			builder: (context, _) {
+				final isLandscape = locator<ScreenService>().isLandscape;
+
+				return Scaffold(
+					backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
+					body: Column(
+						children: [
+							PageHeader(
+								title: localizations.settings_maintenance_title,
+								leading: HeaderIconButton(
+									icon: Icons.arrow_back,
+									onTap: () => Navigator.of(context).pop(),
+								),
+							),
+							Expanded(
+								child: isLandscape
+										? VerticalScrollWithGradient(
+												itemCount: 1,
+												padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
+												itemBuilder: (context, index) => Row(
+													crossAxisAlignment: CrossAxisAlignment.start,
+													children: [
+														Expanded(
+															child: Column(
+																crossAxisAlignment: CrossAxisAlignment.start,
+																mainAxisSize: MainAxisSize.min,
+																children: [
+																	SectionTitle(
+																		title: localizations.settings_maintenance_system_heading,
+																		icon: Icons.build_outlined,
+																	),
+																	AppSpacings.spacingSmVertical,
+																	for (int i = 0; i < systemCards.length; i++) ...[
+																		systemCards[i],
+																		if (i < systemCards.length - 1) SizedBox(height: AppSpacings.pMd),
+																	],
+																],
 															),
-															AppSpacings.spacingSmVertical,
-															for (int i = 0; i < systemCards.length; i++) ...[
-																systemCards[i],
-																if (i < systemCards.length - 1) SizedBox(height: AppSpacings.pMd),
-															],
-														],
-													),
-												),
-												SizedBox(width: AppSpacings.pMd),
-												Expanded(
-													child: Column(
-														crossAxisAlignment: CrossAxisAlignment.start,
-														mainAxisSize: MainAxisSize.min,
-														children: [
-															SectionTitle(
-																title: localizations.settings_maintenance_danger_heading,
-																icon: Icons.warning_amber_outlined,
-																color: dangerColor,
+														),
+														SizedBox(width: AppSpacings.pMd),
+														Expanded(
+															child: Column(
+																crossAxisAlignment: CrossAxisAlignment.start,
+																mainAxisSize: MainAxisSize.min,
+																children: [
+																	SectionTitle(
+																		title: localizations.settings_maintenance_danger_heading,
+																		icon: Icons.warning_amber_outlined,
+																		color: dangerColor,
+																	),
+																	AppSpacings.spacingSmVertical,
+																	...dangerCards,
+																],
 															),
-															AppSpacings.spacingSmVertical,
-															...dangerCards,
+														),
+													],
+												),
+											)
+										: VerticalScrollWithGradient(
+												itemCount: 1,
+												padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
+												itemBuilder: (context, index) => Column(
+													crossAxisAlignment: CrossAxisAlignment.start,
+													children: [
+														SectionTitle(
+															title: localizations.settings_maintenance_system_heading,
+															icon: Icons.build_outlined,
+														),
+														AppSpacings.spacingSmVertical,
+														for (int i = 0; i < systemCards.length; i++) ...[
+															systemCards[i],
+															if (i < systemCards.length - 1) SizedBox(height: AppSpacings.pMd),
 														],
-													),
+														SizedBox(height: AppSpacings.pLg),
+														SectionTitle(
+															title: localizations.settings_maintenance_danger_heading,
+															icon: Icons.warning_amber_outlined,
+															color: dangerColor,
+														),
+														AppSpacings.spacingSmVertical,
+														for (final card in dangerCards) card,
+													],
 												),
-											],
-										),
-									)
-								: VerticalScrollWithGradient(
-										itemCount: 1,
-										padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
-										itemBuilder: (context, index) => Column(
-											crossAxisAlignment: CrossAxisAlignment.start,
-											children: [
-												SectionTitle(
-													title: localizations.settings_maintenance_system_heading,
-													icon: Icons.build_outlined,
-												),
-												AppSpacings.spacingSmVertical,
-												for (int i = 0; i < systemCards.length; i++) ...[
-													systemCards[i],
-													if (i < systemCards.length - 1) SizedBox(height: AppSpacings.pMd),
-												],
-												SizedBox(height: AppSpacings.pLg),
-												SectionTitle(
-													title: localizations.settings_maintenance_danger_heading,
-													icon: Icons.warning_amber_outlined,
-													color: dangerColor,
-												),
-												AppSpacings.spacingSmVertical,
-												for (final card in dangerCards) card,
-											],
-										),
-									),
+											),
+							),
+						],
 					),
-				],
-			),
+				);
+			},
 		);
 	}
 
@@ -249,6 +242,12 @@ class MaintenancePage extends StatelessWidget {
 							),
 							child: OutlinedButton(
 								onPressed: () => Navigator.of(context).pop(),
+                style: OutlinedButton.styleFrom(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: AppSpacings.pMd,
+                    vertical: AppSpacings.pMd,
+                  ),
+                ),
 								child: Text(
 									localizations.button_cancel.toUpperCase(),
 									style: TextStyle(
@@ -270,12 +269,12 @@ class MaintenancePage extends StatelessWidget {
 									Navigator.of(context).pop();
 									onConfirm();
 								},
-								style: FilledButton.styleFrom(
-									padding: EdgeInsets.symmetric(
-										vertical: AppSpacings.pSm,
-										horizontal: AppSpacings.pMd,
-									),
-								),
+                style: FilledButton.styleFrom(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: AppSpacings.pMd,
+                    vertical: AppSpacings.pMd,
+                  ),
+                ),
 								child: Text(
 									localizations.button_confirm.toUpperCase(),
 									style: TextStyle(
@@ -295,18 +294,9 @@ class MaintenancePage extends StatelessWidget {
 	}) {
 		final localizations = AppLocalizations.of(context)!;
 
-		Future.delayed(
-			const Duration(milliseconds: 2000),
-			() {
-				if (!context.mounted) return;
-
-				Navigator.of(context, rootNavigator: true).pop();
-
-				AppToast.showError(
-					context,
-					message: localizations.action_failed,
-				);
-			},
+		AppToast.showError(
+			context,
+			message: localizations.action_failed,
 		);
 	}
 }

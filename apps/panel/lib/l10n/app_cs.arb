@@ -1161,5 +1161,8 @@
   "security_state_unknown": "neznámý",
 
   "security_overlay_alarm_triggered": "Alarm spuštěn",
-  "security_overlay_default_title": "Bezpečnostní upozornění"
+  "security_overlay_default_title": "Bezpečnostní upozornění",
+  "security_overlay_acknowledge": "Potvrdit",
+  "security_overlay_open_security": "Otevřít zabezpečení",
+  "security_overlay_more_alerts": "+{count} dalších upozornění"
 }

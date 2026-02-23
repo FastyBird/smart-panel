@@ -13,7 +13,6 @@ import 'package:fastybird_smart_panel/core/interceptors/token_refresh_intercepto
 import 'package:fastybird_smart_panel/core/services/navigation.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
-import 'package:fastybird_smart_panel/core/services/system_actions.dart';
 import 'package:fastybird_smart_panel/core/services/visual_density.dart';
 import 'package:fastybird_smart_panel/core/utils/application.dart';
 import 'package:fastybird_smart_panel/core/utils/secure_storage.dart';
@@ -372,118 +371,74 @@ class StartupManagerService {
       );
     }
 
-    // Unregister all module services - call dispose() first to clean up socket handlers
+    // Unregister all module services - dispose() and unregister() in separate
+    // try blocks so a dispose failure never skips the unregister
     if (locator.isRegistered<ConfigModuleService>()) {
-      try {
-        final module = locator<ConfigModuleService>();
-        module.dispose();
-        locator.unregister<ConfigModuleService>();
-      } catch (_) {}
+      try { locator<ConfigModuleService>().dispose(); } catch (_) {}
+      try { locator.unregister<ConfigModuleService>(); } catch (_) {}
     }
     if (locator.isRegistered<DisplaysModuleService>()) {
-      try {
-        final module = locator<DisplaysModuleService>();
-        module.dispose();
-        locator.unregister<DisplaysModuleService>();
-      } catch (_) {}
+      try { locator<DisplaysModuleService>().dispose(); } catch (_) {}
+      try { locator.unregister<DisplaysModuleService>(); } catch (_) {}
     }
     if (locator.isRegistered<SystemModuleService>()) {
-      try {
-        final module = locator<SystemModuleService>();
-        module.dispose();
-        locator.unregister<SystemModuleService>();
-      } catch (_) {}
+      try { locator<SystemModuleService>().dispose(); } catch (_) {}
+      try { locator.unregister<SystemModuleService>(); } catch (_) {}
     }
     if (locator.isRegistered<SecurityModuleService>()) {
-      try {
-        final module = locator<SecurityModuleService>();
-        module.dispose();
-        locator.unregister<SecurityModuleService>();
-      } catch (_) {}
+      try { locator<SecurityModuleService>().dispose(); } catch (_) {}
+      try { locator.unregister<SecurityModuleService>(); } catch (_) {}
     }
     if (locator.isRegistered<SecurityStatusRepository>()) {
-      try {
-        locator<SecurityStatusRepository>().dispose();
-        locator.unregister<SecurityStatusRepository>();
-      } catch (_) {}
+      try { locator<SecurityStatusRepository>().dispose(); } catch (_) {}
+      try { locator.unregister<SecurityStatusRepository>(); } catch (_) {}
     }
     if (locator.isRegistered<SecurityEventsRepository>()) {
-      try {
-        locator<SecurityEventsRepository>().dispose();
-        locator.unregister<SecurityEventsRepository>();
-      } catch (_) {}
+      try { locator<SecurityEventsRepository>().dispose(); } catch (_) {}
+      try { locator.unregister<SecurityEventsRepository>(); } catch (_) {}
     }
     if (locator.isRegistered<SecurityOverlayController>()) {
-      try {
-        locator<SecurityOverlayController>().dispose();
-        locator.unregister<SecurityOverlayController>();
-      } catch (_) {}
+      try { locator<SecurityOverlayController>().dispose(); } catch (_) {}
+      try { locator.unregister<SecurityOverlayController>(); } catch (_) {}
     }
     if (locator.isRegistered<OverlayManager>()) {
-      try {
-        locator<OverlayManager>().dispose();
-        locator.unregister<OverlayManager>();
-      } catch (_) {}
+      try { locator<OverlayManager>().dispose(); } catch (_) {}
+      try { locator.unregister<OverlayManager>(); } catch (_) {}
     }
     if (locator.isRegistered<EnergyModuleService>()) {
-      try {
-        final module = locator<EnergyModuleService>();
-        module.dispose();
-        locator.unregister<EnergyModuleService>();
-      } catch (_) {}
+      try { locator<EnergyModuleService>().dispose(); } catch (_) {}
+      try { locator.unregister<EnergyModuleService>(); } catch (_) {}
     }
     if (locator.isRegistered<EnergyRepository>()) {
-      try {
-        locator<EnergyRepository>().dispose();
-        locator.unregister<EnergyRepository>();
-      } catch (_) {}
+      try { locator<EnergyRepository>().dispose(); } catch (_) {}
+      try { locator.unregister<EnergyRepository>(); } catch (_) {}
     }
     if (locator.isRegistered<EnergyService>()) {
-      try {
-        locator.unregister<EnergyService>();
-      } catch (_) {}
+      try { locator.unregister<EnergyService>(); } catch (_) {}
     }
     if (locator.isRegistered<WeatherModuleService>()) {
-      try {
-        final module = locator<WeatherModuleService>();
-        module.dispose();
-        locator.unregister<WeatherModuleService>();
-      } catch (_) {}
+      try { locator<WeatherModuleService>().dispose(); } catch (_) {}
+      try { locator.unregister<WeatherModuleService>(); } catch (_) {}
     }
     if (locator.isRegistered<DevicesModuleService>()) {
-      try {
-        final module = locator<DevicesModuleService>();
-        module.dispose();
-        locator.unregister<DevicesModuleService>();
-      } catch (_) {}
+      try { locator<DevicesModuleService>().dispose(); } catch (_) {}
+      try { locator.unregister<DevicesModuleService>(); } catch (_) {}
     }
     if (locator.isRegistered<DashboardModuleService>()) {
-      try {
-        final module = locator<DashboardModuleService>();
-        module.dispose();
-        locator.unregister<DashboardModuleService>();
-      } catch (_) {}
+      try { locator<DashboardModuleService>().dispose(); } catch (_) {}
+      try { locator.unregister<DashboardModuleService>(); } catch (_) {}
     }
     if (locator.isRegistered<SpacesModuleService>()) {
-      try {
-        final module = locator<SpacesModuleService>();
-        module.dispose();
-        locator.unregister<SpacesModuleService>();
-      } catch (_) {}
+      try { locator<SpacesModuleService>().dispose(); } catch (_) {}
+      try { locator.unregister<SpacesModuleService>(); } catch (_) {}
     }
     if (locator.isRegistered<ScenesModuleService>()) {
-      try {
-        final module = locator<ScenesModuleService>();
-        module.dispose();
-        locator.unregister<ScenesModuleService>();
-      } catch (_) {}
+      try { locator<ScenesModuleService>().dispose(); } catch (_) {}
+      try { locator.unregister<ScenesModuleService>(); } catch (_) {}
     }
     if (locator.isRegistered<IntentsModuleService>()) {
-      try {
-        final module = locator<IntentsModuleService>();
-        module.dispose();
-        locator.unregister<IntentsModuleService>();
-      } catch (_) {}
+      try { locator<IntentsModuleService>().dispose(); } catch (_) {}
+      try { locator.unregister<IntentsModuleService>(); } catch (_) {}
     }
 
     // Unregister all repositories and services registered by modules
@@ -493,224 +448,179 @@ class StartupManagerService {
 
     // Displays module repositories
     if (locator.isRegistered<DisplayRepository>()) {
-      try {
-        locator.unregister<DisplayRepository>();
-      } catch (_) {}
+      try { locator<DisplayRepository>().dispose(); } catch (_) {}
+      try { locator.unregister<DisplayRepository>(); } catch (_) {}
     }
 
     // System module repositories and services
     if (locator.isRegistered<SystemInfoRepository>()) {
-      try {
-        locator.unregister<SystemInfoRepository>();
-      } catch (_) {}
+      try { locator<SystemInfoRepository>().dispose(); } catch (_) {}
+      try { locator.unregister<SystemInfoRepository>(); } catch (_) {}
     }
     if (locator.isRegistered<ThrottleStatusRepository>()) {
-      try {
-        locator.unregister<ThrottleStatusRepository>();
-      } catch (_) {}
+      try { locator<ThrottleStatusRepository>().dispose(); } catch (_) {}
+      try { locator.unregister<ThrottleStatusRepository>(); } catch (_) {}
     }
     if (locator.isRegistered<SystemService>()) {
-      try {
-        locator.unregister<SystemService>();
-      } catch (_) {}
+      try { locator<SystemService>().dispose(); } catch (_) {}
+      try { locator.unregister<SystemService>(); } catch (_) {}
     }
 
     // Weather module repositories and services
     if (locator.isRegistered<CurrentWeatherRepository>()) {
-      try {
-        locator.unregister<CurrentWeatherRepository>();
-      } catch (_) {}
+      try { locator<CurrentWeatherRepository>().dispose(); } catch (_) {}
+      try { locator.unregister<CurrentWeatherRepository>(); } catch (_) {}
     }
     if (locator.isRegistered<ForecastWeatherRepository>()) {
-      try {
-        locator.unregister<ForecastWeatherRepository>();
-      } catch (_) {}
+      try { locator<ForecastWeatherRepository>().dispose(); } catch (_) {}
+      try { locator.unregister<ForecastWeatherRepository>(); } catch (_) {}
     }
     if (locator.isRegistered<LocationsRepository>()) {
-      try {
-        locator.unregister<LocationsRepository>();
-      } catch (_) {}
+      try { locator<LocationsRepository>().dispose(); } catch (_) {}
+      try { locator.unregister<LocationsRepository>(); } catch (_) {}
     }
     if (locator.isRegistered<WeatherService>()) {
-      try {
-        locator.unregister<WeatherService>();
-      } catch (_) {}
+      try { locator<WeatherService>().dispose(); } catch (_) {}
+      try { locator.unregister<WeatherService>(); } catch (_) {}
     }
 
     // Devices module repositories and services
     if (locator.isRegistered<DevicesRepository>()) {
-      try {
-        locator.unregister<DevicesRepository>();
-      } catch (_) {}
+      try { locator<DevicesRepository>().dispose(); } catch (_) {}
+      try { locator.unregister<DevicesRepository>(); } catch (_) {}
     }
     if (locator.isRegistered<DeviceControlsRepository>()) {
-      try {
-        locator.unregister<DeviceControlsRepository>();
-      } catch (_) {}
+      try { locator<DeviceControlsRepository>().dispose(); } catch (_) {}
+      try { locator.unregister<DeviceControlsRepository>(); } catch (_) {}
     }
     if (locator.isRegistered<ChannelsRepository>()) {
-      try {
-        locator.unregister<ChannelsRepository>();
-      } catch (_) {}
+      try { locator<ChannelsRepository>().dispose(); } catch (_) {}
+      try { locator.unregister<ChannelsRepository>(); } catch (_) {}
     }
     if (locator.isRegistered<ChannelControlsRepository>()) {
-      try {
-        locator.unregister<ChannelControlsRepository>();
-      } catch (_) {}
+      try { locator<ChannelControlsRepository>().dispose(); } catch (_) {}
+      try { locator.unregister<ChannelControlsRepository>(); } catch (_) {}
     }
     if (locator.isRegistered<ChannelPropertiesRepository>()) {
-      try {
-        locator.unregister<ChannelPropertiesRepository>();
-      } catch (_) {}
+      try { locator<ChannelPropertiesRepository>().dispose(); } catch (_) {}
+      try { locator.unregister<ChannelPropertiesRepository>(); } catch (_) {}
     }
     if (locator.isRegistered<DeviceValidationRepository>()) {
-      try {
-        locator.unregister<DeviceValidationRepository>();
-      } catch (_) {}
+      try { locator<DeviceValidationRepository>().dispose(); } catch (_) {}
+      try { locator.unregister<DeviceValidationRepository>(); } catch (_) {}
     }
     if (locator.isRegistered<RoleControlStateRepository>()) {
-      try {
-        locator<RoleControlStateRepository>().dispose();
-        locator.unregister<RoleControlStateRepository>();
-      } catch (_) {}
+      try { locator<RoleControlStateRepository>().dispose(); } catch (_) {}
+      try { locator.unregister<RoleControlStateRepository>(); } catch (_) {}
     }
     if (locator.isRegistered<DeviceControlStateService>()) {
-      try {
-        locator<DeviceControlStateService>().dispose();
-        locator.unregister<DeviceControlStateService>();
-      } catch (_) {}
+      try { locator<DeviceControlStateService>().dispose(); } catch (_) {}
+      try { locator.unregister<DeviceControlStateService>(); } catch (_) {}
     }
     if (locator.isRegistered<DevicesService>()) {
-      try {
-        locator.unregister<DevicesService>();
-      } catch (_) {}
+      try { locator<DevicesService>().dispose(); } catch (_) {}
+      try { locator.unregister<DevicesService>(); } catch (_) {}
     }
 
     // Dashboard module repositories and services
     if (locator.isRegistered<PagesRepository>()) {
-      try {
-        locator.unregister<PagesRepository>();
-      } catch (_) {}
+      try { locator<PagesRepository>().dispose(); } catch (_) {}
+      try { locator.unregister<PagesRepository>(); } catch (_) {}
     }
     if (locator.isRegistered<CardsRepository>()) {
-      try {
-        locator.unregister<CardsRepository>();
-      } catch (_) {}
+      try { locator<CardsRepository>().dispose(); } catch (_) {}
+      try { locator.unregister<CardsRepository>(); } catch (_) {}
     }
     if (locator.isRegistered<TilesRepository>()) {
-      try {
-        locator.unregister<TilesRepository>();
-      } catch (_) {}
+      try { locator<TilesRepository>().dispose(); } catch (_) {}
+      try { locator.unregister<TilesRepository>(); } catch (_) {}
     }
     if (locator.isRegistered<DataSourcesRepository>()) {
-      try {
-        locator.unregister<DataSourcesRepository>();
-      } catch (_) {}
+      try { locator<DataSourcesRepository>().dispose(); } catch (_) {}
+      try { locator.unregister<DataSourcesRepository>(); } catch (_) {}
     }
     if (locator.isRegistered<DashboardService>()) {
-      try {
-        locator.unregister<DashboardService>();
-      } catch (_) {}
+      try { locator<DashboardService>().dispose(); } catch (_) {}
+      try { locator.unregister<DashboardService>(); } catch (_) {}
     }
 
     // Spaces module repositories and services
     if (locator.isRegistered<SpacesRepository>()) {
-      try {
-        locator.unregister<SpacesRepository>();
-      } catch (_) {}
+      try { locator<SpacesRepository>().dispose(); } catch (_) {}
+      try { locator.unregister<SpacesRepository>(); } catch (_) {}
     }
     if (locator.isRegistered<LightTargetsRepository>()) {
-      try {
-        locator<LightTargetsRepository>().dispose();
-        locator.unregister<LightTargetsRepository>();
-      } catch (_) {}
+      try { locator<LightTargetsRepository>().dispose(); } catch (_) {}
+      try { locator.unregister<LightTargetsRepository>(); } catch (_) {}
     }
     if (locator.isRegistered<ClimateTargetsRepository>()) {
-      try {
-        locator<ClimateTargetsRepository>().dispose();
-        locator.unregister<ClimateTargetsRepository>();
-      } catch (_) {}
+      try { locator<ClimateTargetsRepository>().dispose(); } catch (_) {}
+      try { locator.unregister<ClimateTargetsRepository>(); } catch (_) {}
     }
     if (locator.isRegistered<CoversTargetsRepository>()) {
-      try {
-        locator<CoversTargetsRepository>().dispose();
-        locator.unregister<CoversTargetsRepository>();
-      } catch (_) {}
+      try { locator<CoversTargetsRepository>().dispose(); } catch (_) {}
+      try { locator.unregister<CoversTargetsRepository>(); } catch (_) {}
     }
     if (locator.isRegistered<SpaceStateRepository>()) {
-      try {
-        locator<SpaceStateRepository>().dispose();
-        locator.unregister<SpaceStateRepository>();
-      } catch (_) {}
+      try { locator<SpaceStateRepository>().dispose(); } catch (_) {}
+      try { locator.unregister<SpaceStateRepository>(); } catch (_) {}
     }
     if (locator.isRegistered<MediaActivityRepository>()) {
-      try {
-        locator<MediaActivityRepository>().dispose();
-        locator.unregister<MediaActivityRepository>();
-      } catch (_) {}
+      try { locator<MediaActivityRepository>().dispose(); } catch (_) {}
+      try { locator.unregister<MediaActivityRepository>(); } catch (_) {}
     }
     if (locator.isRegistered<MediaActivityService>()) {
-      try {
-        locator<MediaActivityService>().dispose();
-        locator.unregister<MediaActivityService>();
-      } catch (_) {}
+      try { locator<MediaActivityService>().dispose(); } catch (_) {}
+      try { locator.unregister<MediaActivityService>(); } catch (_) {}
     }
     if (locator.isRegistered<SpacesService>()) {
-      try {
-        locator.unregister<SpacesService>();
-      } catch (_) {}
+      try { locator<SpacesService>().dispose(); } catch (_) {}
+      try { locator.unregister<SpacesService>(); } catch (_) {}
     }
 
     // Scenes module repositories and services
     if (locator.isRegistered<ScenesRepository>()) {
-      try {
-        locator.unregister<ScenesRepository>();
-      } catch (_) {}
+      try { locator<ScenesRepository>().dispose(); } catch (_) {}
+      try { locator.unregister<ScenesRepository>(); } catch (_) {}
     }
     if (locator.isRegistered<ActionsRepository>()) {
-      try {
-        locator.unregister<ActionsRepository>();
-      } catch (_) {}
+      try { locator<ActionsRepository>().dispose(); } catch (_) {}
+      try { locator.unregister<ActionsRepository>(); } catch (_) {}
     }
     if (locator.isRegistered<ScenesService>()) {
-      try {
-        locator.unregister<ScenesService>();
-      } catch (_) {}
+      try { locator<ScenesService>().dispose(); } catch (_) {}
+      try { locator.unregister<ScenesService>(); } catch (_) {}
     }
 
     // Intents module repositories and services
     if (locator.isRegistered<IntentsRepository>()) {
-      try {
-        locator.unregister<IntentsRepository>();
-      } catch (_) {}
+      try { locator<IntentsRepository>().dispose(); } catch (_) {}
+      try { locator.unregister<IntentsRepository>(); } catch (_) {}
     }
     if (locator.isRegistered<IntentOverlayService>()) {
-      try {
-        locator.unregister<IntentOverlayService>();
-      } catch (_) {}
+      try { locator<IntentOverlayService>().dispose(); } catch (_) {}
+      try { locator.unregister<IntentOverlayService>(); } catch (_) {}
     }
 
     // Deck module services
     if (locator.isRegistered<DeckModuleService>()) {
-      try {
-        locator<DeckModuleService>().dispose();
-        locator.unregister<DeckModuleService>();
-      } catch (_) {}
+      try { locator<DeckModuleService>().dispose(); } catch (_) {}
+      try { locator.unregister<DeckModuleService>(); } catch (_) {}
     }
     if (locator.isRegistered<DeckService>()) {
-      try {
-        locator.unregister<DeckService>();
-      } catch (_) {}
+      try { locator<DeckService>().dispose(); } catch (_) {}
+      try { locator.unregister<DeckService>(); } catch (_) {}
     }
     if (locator.isRegistered<IntentsService>()) {
-      try {
-        locator.unregister<IntentsService>();
-      } catch (_) {}
+      try { locator<IntentsService>().dispose(); } catch (_) {}
+      try { locator.unregister<IntentsService>(); } catch (_) {}
+    }
+    if (locator.isRegistered<BottomNavModeNotifier>()) {
+      try { locator<BottomNavModeNotifier>().dispose(); } catch (_) {}
+      try { locator.unregister<BottomNavModeNotifier>(); } catch (_) {}
     }
     if (locator.isRegistered<PropertyTimeseriesService>()) {
-      try {
-        locator.unregister<PropertyTimeseriesService>();
-      } catch (_) {}
+      try { locator.unregister<PropertyTimeseriesService>(); } catch (_) {}
     }
 
     // Unregister API client and Dio instance
@@ -729,13 +639,6 @@ class StartupManagerService {
     if (locator.isRegistered<SocketService>()) {
       try {
         locator.unregister<SocketService>();
-      } catch (_) {}
-    }
-
-    // Unregister SystemActionsService
-    if (locator.isRegistered<SystemActionsService>()) {
-      try {
-        locator.unregister<SystemActionsService>();
       } catch (_) {}
     }
 
@@ -860,10 +763,6 @@ class StartupManagerService {
     // Sockets client
     locator.registerSingleton(_socketClient);
 
-    // Misc services
-    locator.registerSingleton<SystemActionsService>(
-      SystemActionsService(_eventBus),
-    );
   }
 
   /// Callback for when token is refreshed - persists the new token

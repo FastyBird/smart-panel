@@ -648,8 +648,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage> {
     final localizations = AppLocalizations.of(context)!;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final brightness = isDark ? Brightness.dark : Brightness.light;
-    final isLandscape =
-        MediaQuery.of(context).orientation == Orientation.landscape;
+    final isLandscape = locator<ScreenService>().isLandscape;
     final infoFamily = ThemeColorFamily.get(brightness, ThemeColors.info);
     final successFamily = ThemeColorFamily.get(brightness, ThemeColors.success);
     final warningFamily = ThemeColorFamily.get(brightness, ThemeColors.warning);
@@ -1324,8 +1323,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage> {
     if (_breakdown == null || _breakdown!.isEmpty) return;
 
     final localizations = AppLocalizations.of(context)!;
-    final isLandscape =
-        MediaQuery.of(context).orientation == Orientation.landscape;
+    final isLandscape = locator<ScreenService>().isLandscape;
 
     if (isLandscape) {
       DeckItemDrawer.showItemDrawer(

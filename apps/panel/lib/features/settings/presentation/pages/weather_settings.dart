@@ -1,4 +1,5 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
@@ -52,7 +53,6 @@ class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
 	Widget build(BuildContext context) {
 		final localizations = AppLocalizations.of(context)!;
 		final isDark = Theme.of(context).brightness == Brightness.dark;
-		final isLandscape = MediaQuery.of(context).orientation == Orientation.landscape;
 
 		final infoColor = isDark ? AppColorsDark.info : AppColorsLight.info;
 		final infoBg = isDark ? AppColorsDark.infoLight5 : AppColorsLight.infoLight9;
@@ -92,33 +92,40 @@ class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
 			),
 		];
 
-		return Scaffold(
-			backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
-			body: Column(
-				children: [
-					PageHeader(
-						title: localizations.settings_weather_settings_title,
-						leading: HeaderIconButton(
-							icon: Icons.arrow_back,
-							onTap: () => Navigator.of(context).pop(),
-						),
+		return ListenableBuilder(
+			listenable: locator<ScreenService>(),
+			builder: (context, _) {
+				final isLandscape = locator<ScreenService>().isLandscape;
+
+				return Scaffold(
+					backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
+					body: Column(
+						children: [
+							PageHeader(
+								title: localizations.settings_weather_settings_title,
+								leading: HeaderIconButton(
+									icon: Icons.arrow_back,
+									onTap: () => Navigator.of(context).pop(),
+								),
+							),
+							Expanded(
+								child: isLandscape
+										? VerticalScrollWithGradient(
+												itemCount: 1,
+												padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
+												itemBuilder: (context, index) => SettingsTwoColumnLayout(cards: cards),
+											)
+										: VerticalScrollWithGradient(
+												itemCount: cards.length,
+												separatorHeight: AppSpacings.pMd,
+												padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
+												itemBuilder: (context, index) => cards[index],
+											),
+							),
+						],
 					),
-					Expanded(
-						child: isLandscape
-								? VerticalScrollWithGradient(
-										itemCount: 1,
-										padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
-										itemBuilder: (context, index) => SettingsTwoColumnLayout(cards: cards),
-									)
-								: VerticalScrollWithGradient(
-										itemCount: cards.length,
-										separatorHeight: AppSpacings.pMd,
-										padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
-										itemBuilder: (context, index) => cards[index],
-									),
-					),
-				],
-			),
+				);
+			},
 		);
 	}
 
