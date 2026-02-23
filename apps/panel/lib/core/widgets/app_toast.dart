@@ -30,11 +30,12 @@ class AppToast {
     required ToastType type,
     IconData? icon,
     Duration duration = const Duration(seconds: 3),
+    OverlayState? overlay,
   }) {
     // Dismiss any existing toast
     dismiss();
 
-    final overlay = Overlay.of(context);
+    final overlayState = overlay ?? Overlay.of(context);
     final screenService = locator<ScreenService>();
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -54,7 +55,7 @@ class AppToast {
     );
 
     _currentToast = entry;
-    overlay.insert(entry);
+    overlayState.insert(entry);
 
     // Schedule auto-dismiss
     _dismissTimer = Timer(duration + const Duration(milliseconds: 300), () {
@@ -75,12 +76,14 @@ class AppToast {
     BuildContext context, {
     required String message,
     Duration duration = const Duration(seconds: 3),
+    OverlayState? overlay,
   }) =>
       show(
         context,
         message: message,
         type: ToastType.success,
         duration: duration,
+        overlay: overlay,
       );
 
   /// Shows an info toast.
@@ -88,12 +91,14 @@ class AppToast {
     BuildContext context, {
     required String message,
     Duration duration = const Duration(seconds: 3),
+    OverlayState? overlay,
   }) =>
       show(
         context,
         message: message,
         type: ToastType.info,
         duration: duration,
+        overlay: overlay,
       );
 
   /// Shows a warning toast.
@@ -101,12 +106,14 @@ class AppToast {
     BuildContext context, {
     required String message,
     Duration duration = const Duration(seconds: 3),
+    OverlayState? overlay,
   }) =>
       show(
         context,
         message: message,
         type: ToastType.warning,
         duration: duration,
+        overlay: overlay,
       );
 
   /// Shows an error toast.
@@ -114,12 +121,14 @@ class AppToast {
     BuildContext context, {
     required String message,
     Duration duration = const Duration(seconds: 4),
+    OverlayState? overlay,
   }) =>
       show(
         context,
         message: message,
         type: ToastType.error,
         duration: duration,
+        overlay: overlay,
       );
 }
 

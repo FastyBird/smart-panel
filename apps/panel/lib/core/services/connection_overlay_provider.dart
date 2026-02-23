@@ -199,9 +199,13 @@ class ConnectionOverlayProvider {
 	}
 
 	void _showRecoveryToast() {
-		final context = _navigationService.navigatorKey.currentContext;
-		if (context == null) return;
+		final navigatorState = _navigationService.navigatorKey.currentState;
+		if (navigatorState == null) return;
 
+		final overlay = navigatorState.overlay;
+		if (overlay == null) return;
+
+		final context = navigatorState.context;
 		final localizations = AppLocalizations.of(context);
 		if (localizations == null) return;
 
@@ -209,6 +213,7 @@ class ConnectionOverlayProvider {
 			context,
 			message: localizations.connection_recovery_connected,
 			duration: const Duration(seconds: 2),
+			overlay: overlay,
 		);
 	}
 
