@@ -748,6 +748,12 @@ Widget _buildActionButton(
 			child: action.loading
 					? OutlinedButton(
 							onPressed: null,
+							style: OutlinedButton.styleFrom(
+								padding: EdgeInsets.symmetric(
+									horizontal: AppSpacings.pMd,
+									vertical: AppSpacings.pMd,
+								),
+							),
 							child: Row(
 								mainAxisAlignment: MainAxisAlignment.center,
 								mainAxisSize: MainAxisSize.min,
@@ -799,6 +805,12 @@ Widget _buildActionButton(
 		child: action.loading
 				? FilledButton(
 						onPressed: null,
+						style: FilledButton.styleFrom(
+							padding: EdgeInsets.symmetric(
+								horizontal: AppSpacings.pMd,
+								vertical: AppSpacings.pMd,
+							),
+						),
 						child: Row(
 							mainAxisAlignment: MainAxisAlignment.center,
 							mainAxisSize: MainAxisSize.min,
