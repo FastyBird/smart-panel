@@ -75,22 +75,13 @@ class _MyAppState extends State<MyApp> {
 
     _appState = ValueNotifier<AppState>(AppState.loading);
 
+    final view = WidgetsBinding.instance.platformDispatcher.views.first;
+    final physicalSize = view.physicalSize;
+
     _startupManager = StartupManagerService(
-      screenHeight: MediaQueryData.fromView(
-            WidgetsBinding.instance.platformDispatcher.views.first,
-          ).size.height *
-          MediaQueryData.fromView(
-            WidgetsBinding.instance.platformDispatcher.views.first,
-          ).devicePixelRatio,
-      screenWidth: MediaQueryData.fromView(
-            WidgetsBinding.instance.platformDispatcher.views.first,
-          ).size.width *
-          MediaQueryData.fromView(
-            WidgetsBinding.instance.platformDispatcher.views.first,
-          ).devicePixelRatio,
-      pixelRatio: MediaQueryData.fromView(
-        WidgetsBinding.instance.platformDispatcher.views.first,
-      ).devicePixelRatio,
+      screenHeight: physicalSize.height,
+      screenWidth: physicalSize.width,
+      pixelRatio: view.devicePixelRatio,
     );
 
     locator.registerSingleton(_startupManager);
