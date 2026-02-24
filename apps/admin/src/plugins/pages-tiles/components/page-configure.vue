@@ -706,20 +706,37 @@ watch(
 	}
 );
 
-// Auto-select first applicable display when displays load
+// Auto-select first applicable display, or reset if current selection becomes invalid
 watch(
 	(): IDisplay[] => applicableDisplays.value,
 	(val: IDisplay[]): void => {
 		const first = val[0];
 
-		if (first && !selectedDisplayId.value) {
+		if (!first) {
+			selectedDisplayId.value = null;
+
+			return;
+		}
+
+		if (!selectedDisplayId.value || !val.some((d) => d.id === selectedDisplayId.value)) {
 			selectedDisplayId.value = first.id;
 		}
 	},
 	{ immediate: true }
 );
 
-// Re-initialize grids when display selection or grid layout changes
+// Recalculate cell sizes when display changes without grid layout change
+// (e.g. same rows/cols but different screenWidth/screenHeight)
+watch(
+	(): string | null => selectedDisplayId.value,
+	(): void => {
+		nextTick(() => {
+			updateSquareCells();
+		});
+	}
+);
+
+// Re-initialize grids when grid layout (rows/cols) actually changes
 watch(
 	(): { rows: number; cols: number } | null => gridLayout.value,
 	(newVal, oldVal): void => {
