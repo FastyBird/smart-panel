@@ -13,9 +13,23 @@ class SystemModuleConstants {
       'SystemModule.System.PowerOff.Set';
   static const String systemFactoryResetSetEvent =
       'SystemModule.System.FactoryReset.Set';
+
+  // Display-specific socket event names
+  static const String displayRebootEvent = 'SystemModule.Display.Reboot';
+  static const String displayPowerOffEvent = 'SystemModule.Display.PowerOff';
+  static const String displayFactoryResetEvent =
+      'SystemModule.Display.FactoryReset';
+  static const String displayRebootSetEvent =
+      'SystemModule.Display.Reboot.Set';
+  static const String displayPowerOffSetEvent =
+      'SystemModule.Display.PowerOff.Set';
+  static const String displayFactoryResetSetEvent =
+      'SystemModule.Display.FactoryReset.Set';
 }
 
 class SystemModuleEventHandlerName {
   static const String systemInternalPlatformAction =
       'SystemModule.Internal.PlatformAction';
+  static const String systemInternalDisplayAction =
+      'SystemModule.Internal.DisplayAction';
 }

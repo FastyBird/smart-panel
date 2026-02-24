@@ -9,6 +9,7 @@ export const SYSTEM_MODULE_API_TAG_DESCRIPTION =
 
 export enum EventHandlerName {
 	INTERNAL_PLATFORM_ACTION = 'SystemModule.Internal.PlatformAction',
+	INTERNAL_DISPLAY_ACTION = 'SystemModule.Internal.DisplayAction',
 }
 
 export enum EventType {
@@ -20,6 +21,14 @@ export enum EventType {
 	SYSTEM_REBOOT_SET = 'SystemModule.System.Reboot.Set',
 	SYSTEM_POWER_OFF_SET = 'SystemModule.System.PowerOff.Set',
 	SYSTEM_FACTORY_RESET_SET = 'SystemModule.System.FactoryReset.Set',
+
+	DISPLAY_REBOOT = 'SystemModule.Display.Reboot',
+	DISPLAY_POWER_OFF = 'SystemModule.Display.PowerOff',
+	DISPLAY_FACTORY_RESET = 'SystemModule.Display.FactoryReset',
+
+	DISPLAY_REBOOT_SET = 'SystemModule.Display.Reboot.Set',
+	DISPLAY_POWER_OFF_SET = 'SystemModule.Display.PowerOff.Set',
+	DISPLAY_FACTORY_RESET_SET = 'SystemModule.Display.FactoryReset.Set',
 
 	HOUSE_MODE_CHANGED = 'SystemModule.HouseMode.Changed',
 }

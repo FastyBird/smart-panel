@@ -724,6 +724,33 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settings_maintenance_danger_heading => 'Danger Zone';
 
   @override
+  String get settings_maintenance_restart_display_description => 'Reboot this display to apply changes.';
+
+  @override
+  String get settings_maintenance_restart_display_confirm_title => 'Restart Display';
+
+  @override
+  String get settings_maintenance_restart_display_confirm_description => 'Are you sure you want to restart this display? The gateway and other displays will not be affected.';
+
+  @override
+  String get settings_maintenance_power_off_display_description => 'Power off this display completely.';
+
+  @override
+  String get settings_maintenance_power_off_display_confirm_title => 'Power Off Display';
+
+  @override
+  String get settings_maintenance_power_off_display_confirm_description => 'Are you sure you want to power off this display? It will need to be manually turned on again. The gateway will not be affected.';
+
+  @override
+  String get settings_maintenance_factory_reset_display_description => 'Remove this display from the gateway and restore it to factory settings.';
+
+  @override
+  String get settings_maintenance_factory_reset_display_confirm_title => 'Factory Reset Display';
+
+  @override
+  String get settings_maintenance_factory_reset_display_confirm_description => 'Are you sure you want to factory reset this display? It will be removed from the gateway and all local data will be erased. This action is irreversible.';
+
+  @override
   String get settings_language_settings_title => 'Language Settings';
 
   @override

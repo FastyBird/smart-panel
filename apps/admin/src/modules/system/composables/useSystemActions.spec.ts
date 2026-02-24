@@ -59,6 +59,12 @@ vi.mock('../services/system-actions.service', () => ({
 	injectSystemActionsService: vi.fn(() => systemActionsService),
 }));
 
+vi.mock('../../config/composables/composables', () => ({
+	useConfigModule: () => ({
+		configModule: { value: null },
+	}),
+}));
+
 const backendClient = {
 	GET: vi.fn(),
 };

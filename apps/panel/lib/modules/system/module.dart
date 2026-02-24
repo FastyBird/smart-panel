@@ -3,8 +3,11 @@ import 'dart:async';
 import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/api/api_client.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/services/platform_actions.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
+import 'package:fastybird_smart_panel/core/services/startup_manager.dart';
 import 'package:fastybird_smart_panel/modules/config/module.dart';
+import 'package:fastybird_smart_panel/modules/displays/module.dart';
 import 'package:fastybird_smart_panel/modules/system/constants.dart';
 import 'package:fastybird_smart_panel/modules/system/export.dart';
 import 'package:fastybird_smart_panel/modules/system/events/factory_reset_done.dart';
@@ -92,7 +95,7 @@ class SystemModuleService {
     try {
       final configModule = locator<ConfigModuleService>();
       final repo = configModule.getModuleRepository<SystemConfigModel>(name);
-      
+
       // Build update data with all current fields
       final currentConfig = repo.data;
       if (currentConfig == null) {
@@ -142,7 +145,60 @@ class SystemModuleService {
     );
   }
 
+  /// Check if the system is in gateway mode (display is separate from backend)
+  bool get _isGatewayMode {
+    try {
+      final displaysModule = locator<DisplaysModuleService>();
+      return displaysModule.isGatewayMode;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          '[SYSTEM MODULE] Could not determine deployment mode, defaulting to all-in-one: $e',
+        );
+      }
+      return false;
+    }
+  }
+
+  /// Reboot the device.
+  ///
+  /// In all-in-one mode: sends command to backend (reboots shared device).
+  /// In gateway mode: executes reboot locally on the display device.
   Future<bool> rebootDevice() {
+    if (_isGatewayMode) {
+      return _rebootDisplayLocally();
+    }
+
+    return _rebootViaBackend();
+  }
+
+  /// Power off the device.
+  ///
+  /// In all-in-one mode: sends command to backend (powers off shared device).
+  /// In gateway mode: executes power off locally on the display device.
+  Future<bool> powerOffDevice() {
+    if (_isGatewayMode) {
+      return _powerOffDisplayLocally();
+    }
+
+    return _powerOffViaBackend();
+  }
+
+  /// Factory reset the device.
+  ///
+  /// In all-in-one mode: sends command to backend (resets backend + panel).
+  /// In gateway mode: unregisters display from the backend, then resets local data.
+  Future<bool> factoryResetDevice() {
+    if (_isGatewayMode) {
+      return _factoryResetDisplay();
+    }
+
+    return _factoryResetViaBackend();
+  }
+
+  // ---- All-in-one mode methods (existing behavior) ----
+
+  Future<bool> _rebootViaBackend() {
     final completer = Completer<bool>();
 
     _socketService.sendCommand(
@@ -167,7 +223,7 @@ class SystemModuleService {
     return completer.future;
   }
 
-  Future<bool> powerOffDevice() {
+  Future<bool> _powerOffViaBackend() {
     final completer = Completer<bool>();
 
     _socketService.sendCommand(
@@ -192,7 +248,7 @@ class SystemModuleService {
     return completer.future;
   }
 
-  Future<bool> factoryResetDevice() {
+  Future<bool> _factoryResetViaBackend() {
     final completer = Completer<bool>();
 
     _socketService.sendCommand(
@@ -217,69 +273,269 @@ class SystemModuleService {
     return completer.future;
   }
 
+  // ---- Gateway mode methods (display-specific) ----
+
+  Future<bool> _rebootDisplayLocally() async {
+    try {
+      if (kDebugMode) {
+        debugPrint('[SYSTEM MODULE] Rebooting display locally (gateway mode)');
+      }
+
+      _eventBus.fire(RebootInProgressEvent());
+
+      final platformActions = PlatformActionsService();
+      final success = await platformActions.reboot();
+
+      if (!success) {
+        _eventBus.fire(RebootErrorEvent());
+        return false;
+      }
+
+      // If reboot command succeeded, the device will reboot shortly
+      _eventBus.fire(RebootDoneEvent());
+      return true;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[SYSTEM MODULE] Local reboot failed: $e');
+      }
+      _eventBus.fire(RebootErrorEvent());
+      return false;
+    }
+  }
+
+  Future<bool> _powerOffDisplayLocally() async {
+    try {
+      if (kDebugMode) {
+        debugPrint('[SYSTEM MODULE] Powering off display locally (gateway mode)');
+      }
+
+      _eventBus.fire(PowerOffInProgressEvent());
+
+      final platformActions = PlatformActionsService();
+      final success = await platformActions.powerOff();
+
+      if (!success) {
+        _eventBus.fire(PowerOffErrorEvent());
+        return false;
+      }
+
+      // If power off command succeeded, the device will power off shortly
+      _eventBus.fire(PowerOffDoneEvent());
+      return true;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[SYSTEM MODULE] Local power off failed: $e');
+      }
+      _eventBus.fire(PowerOffErrorEvent());
+      return false;
+    }
+  }
+
+  Future<bool> _factoryResetDisplay() async {
+    try {
+      if (kDebugMode) {
+        debugPrint(
+          '[SYSTEM MODULE] Factory resetting display (gateway mode) - unregistering from backend',
+        );
+      }
+
+      _eventBus.fire(FactoryResetInProgressEvent());
+
+      // Send the display factory reset command to the backend
+      // This will unregister the display and revoke its tokens
+      final completer = Completer<bool>();
+
+      _socketService.sendCommand(
+        SystemModuleConstants.displayFactoryResetSetEvent,
+        null,
+        SystemModuleEventHandlerName.systemInternalDisplayAction,
+        onAck: (SocketCommandResponseModel? result) {
+          bool success = !(result == null || result.status == false);
+
+          if (kDebugMode) {
+            debugPrint(
+              success
+                  ? '[SYSTEM MODULE] Display factory reset command acknowledged'
+                  : '[SYSTEM MODULE] Display factory reset command failed',
+            );
+          }
+
+          completer.complete(success);
+        },
+      );
+
+      final success = await completer.future;
+
+      if (!success) {
+        _eventBus.fire(FactoryResetErrorEvent());
+        return false;
+      }
+
+      // The backend will delete the display and revoke tokens.
+      // The display deleted event handler in DisplaysModuleService will
+      // trigger resetToDiscovery() which clears local data.
+      _eventBus.fire(FactoryResetDoneEvent());
+
+      // As a fallback, also explicitly trigger reset to discovery
+      try {
+        final startupManager = locator.get<StartupManagerService>();
+        startupManager.resetToDiscovery();
+      } catch (e) {
+        if (kDebugMode) {
+          debugPrint(
+            '[SYSTEM MODULE] Could not trigger resetToDiscovery: $e',
+          );
+        }
+      }
+
+      return true;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[SYSTEM MODULE] Display factory reset failed: $e');
+      }
+      _eventBus.fire(FactoryResetErrorEvent());
+      return false;
+    }
+  }
+
+  // ---- Socket event handling ----
+
   void _socketEventHandler(String event, Map<String, dynamic> payload) {
     if (event == SystemModuleConstants.systemInfoEvent) {
       _systemInfoRepository.insert(payload);
     } else if (event == SystemModuleConstants.systemRebootEvent ||
         event == SystemModuleConstants.systemPowerOffEvent ||
         event == SystemModuleConstants.systemFactoryResetEvent) {
-      SystemActionModel status = SystemActionModel.fromJson(payload);
+      _handleSystemActionEvent(event, payload);
+    } else if (event == SystemModuleConstants.displayRebootEvent ||
+        event == SystemModuleConstants.displayPowerOffEvent ||
+        event == SystemModuleConstants.displayFactoryResetEvent) {
+      _handleDisplayActionEvent(event, payload);
+    }
+  }
 
-      if (event == SystemModuleConstants.systemRebootEvent) {
-        if (status.status == 'processing') {
-          if (kDebugMode) {
-            debugPrint(
-              '[SYSTEM MODULE] System is rebooting',
-            );
-          }
+  void _handleSystemActionEvent(String event, Map<String, dynamic> payload) {
+    SystemActionModel status = SystemActionModel.fromJson(payload);
 
-          processingReboot = true;
-
-          _eventBus.fire(RebootInProgressEvent());
-        } else if (processingReboot == true) {
-          processingReboot = false;
-
-          _eventBus.fire(
-            status.status == 'ok' ? RebootDoneEvent() : RebootErrorEvent(),
+    if (event == SystemModuleConstants.systemRebootEvent) {
+      if (status.status == 'processing') {
+        if (kDebugMode) {
+          debugPrint(
+            '[SYSTEM MODULE] System is rebooting',
           );
         }
-      } else if (event == SystemModuleConstants.systemPowerOffEvent) {
-        if (status.status == 'processing') {
-          if (kDebugMode) {
-            debugPrint(
-              '[SYSTEM MODULE] System is powering off',
-            );
-          }
 
-          processingPowerOff = true;
+        processingReboot = true;
 
-          _eventBus.fire(PowerOffInProgressEvent());
-        } else if (processingPowerOff == true) {
-          processingPowerOff = false;
+        _eventBus.fire(RebootInProgressEvent());
+      } else if (processingReboot == true) {
+        processingReboot = false;
 
-          _eventBus.fire(
-            status.status == 'ok' ? PowerOffDoneEvent() : PowerOffErrorEvent(),
+        _eventBus.fire(
+          status.status == 'ok' ? RebootDoneEvent() : RebootErrorEvent(),
+        );
+      }
+    } else if (event == SystemModuleConstants.systemPowerOffEvent) {
+      if (status.status == 'processing') {
+        if (kDebugMode) {
+          debugPrint(
+            '[SYSTEM MODULE] System is powering off',
           );
         }
-      } else if (event == SystemModuleConstants.systemFactoryResetEvent) {
-        if (status.status == 'processing') {
+
+        processingPowerOff = true;
+
+        _eventBus.fire(PowerOffInProgressEvent());
+      } else if (processingPowerOff == true) {
+        processingPowerOff = false;
+
+        _eventBus.fire(
+          status.status == 'ok' ? PowerOffDoneEvent() : PowerOffErrorEvent(),
+        );
+      }
+    } else if (event == SystemModuleConstants.systemFactoryResetEvent) {
+      if (status.status == 'processing') {
+        if (kDebugMode) {
+          debugPrint(
+            '[SYSTEM MODULE] System is reset to factory state',
+          );
+        }
+
+        processingFactoryReset = true;
+
+        _eventBus.fire(FactoryResetInProgressEvent());
+      } else if (processingFactoryReset == true) {
+        processingFactoryReset = false;
+
+        _eventBus.fire(
+          status.status == 'ok'
+              ? FactoryResetDoneEvent()
+              : FactoryResetErrorEvent(),
+        );
+      }
+    }
+  }
+
+  void _handleDisplayActionEvent(String event, Map<String, dynamic> payload) {
+    SystemActionModel status = SystemActionModel.fromJson(payload);
+
+    if (event == SystemModuleConstants.displayRebootEvent) {
+      if (status.status == 'processing') {
+        if (kDebugMode) {
+          debugPrint('[SYSTEM MODULE] Display reboot event received - executing local reboot');
+        }
+
+        // The backend confirmed the reboot - execute it locally
+        _eventBus.fire(RebootInProgressEvent());
+
+        final platformActions = PlatformActionsService();
+        platformActions.reboot().then((success) {
+          if (!success) {
+            _eventBus.fire(RebootErrorEvent());
+          }
+        });
+      }
+    } else if (event == SystemModuleConstants.displayPowerOffEvent) {
+      if (status.status == 'processing') {
+        if (kDebugMode) {
+          debugPrint('[SYSTEM MODULE] Display power off event received - executing local power off');
+        }
+
+        // The backend confirmed the power off - execute it locally
+        _eventBus.fire(PowerOffInProgressEvent());
+
+        final platformActions = PlatformActionsService();
+        platformActions.powerOff().then((success) {
+          if (!success) {
+            _eventBus.fire(PowerOffErrorEvent());
+          }
+        });
+      }
+    } else if (event == SystemModuleConstants.displayFactoryResetEvent) {
+      if (status.status == 'processing') {
+        if (kDebugMode) {
+          debugPrint(
+            '[SYSTEM MODULE] Display factory reset event received from gateway - resetting locally',
+          );
+        }
+
+        // Gateway initiated factory reset for this display
+        _eventBus.fire(FactoryResetInProgressEvent());
+
+        // The DisplaysModuleService will handle the display deleted event
+        // and trigger resetToDiscovery(). We just fire the UI event here.
+        _eventBus.fire(FactoryResetDoneEvent());
+
+        // Trigger reset to discovery state
+        try {
+          final startupManager = locator.get<StartupManagerService>();
+          startupManager.resetToDiscovery();
+        } catch (e) {
           if (kDebugMode) {
             debugPrint(
-              '[SYSTEM MODULE] System is reset to factory state',
+              '[SYSTEM MODULE] Could not trigger resetToDiscovery: $e',
             );
           }
-
-          processingFactoryReset = true;
-
-          _eventBus.fire(FactoryResetInProgressEvent());
-        } else if (processingFactoryReset == true) {
-          processingFactoryReset = false;
-
-          _eventBus.fire(
-            status.status == 'ok'
-                ? FactoryResetDoneEvent()
-                : FactoryResetErrorEvent(),
-          );
         }
       }
     }

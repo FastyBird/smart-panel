@@ -1325,6 +1325,60 @@ abstract class AppLocalizations {
   /// **'Danger Zone'**
   String get settings_maintenance_danger_heading;
 
+  /// Description for the restart action in gateway mode, targeting the display only.
+  ///
+  /// In en, this message translates to:
+  /// **'Reboot this display to apply changes.'**
+  String get settings_maintenance_restart_display_description;
+
+  /// Title for the confirmation dialog when restarting the display in gateway mode.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart Display'**
+  String get settings_maintenance_restart_display_confirm_title;
+
+  /// Message displayed in the confirmation dialog for restarting the display in gateway mode.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to restart this display? The gateway and other displays will not be affected.'**
+  String get settings_maintenance_restart_display_confirm_description;
+
+  /// Description for the power off action in gateway mode, targeting the display only.
+  ///
+  /// In en, this message translates to:
+  /// **'Power off this display completely.'**
+  String get settings_maintenance_power_off_display_description;
+
+  /// Title for the confirmation dialog when powering off the display in gateway mode.
+  ///
+  /// In en, this message translates to:
+  /// **'Power Off Display'**
+  String get settings_maintenance_power_off_display_confirm_title;
+
+  /// Message displayed in the confirmation dialog for powering off the display in gateway mode.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to power off this display? It will need to be manually turned on again. The gateway will not be affected.'**
+  String get settings_maintenance_power_off_display_confirm_description;
+
+  /// Description for the factory reset action in gateway mode, targeting the display only.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove this display from the gateway and restore it to factory settings.'**
+  String get settings_maintenance_factory_reset_display_description;
+
+  /// Title for the confirmation dialog when performing a factory reset on the display in gateway mode.
+  ///
+  /// In en, this message translates to:
+  /// **'Factory Reset Display'**
+  String get settings_maintenance_factory_reset_display_confirm_title;
+
+  /// Message displayed in the confirmation dialog for performing a factory reset on the display in gateway mode.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to factory reset this display? It will be removed from the gateway and all local data will be erased. This action is irreversible.'**
+  String get settings_maintenance_factory_reset_display_confirm_description;
+
   /// Title for the Language Settings section.
   ///
   /// In en, this message translates to:

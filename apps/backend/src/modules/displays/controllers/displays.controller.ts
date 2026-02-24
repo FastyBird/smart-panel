@@ -162,6 +162,36 @@ export class DisplaysController {
 		return response;
 	}
 
+	@Delete('me')
+	@ApiOperation({
+		operationId: 'delete-displays-module-display-me',
+		summary: 'Unregister current display',
+		description:
+			'Removes the current display from the system and revokes its tokens. Used by displays to self-unregister during factory reset. Only accessible by displays.',
+	})
+	@ApiNoContentResponse({ description: 'Display unregistered successfully' })
+	@ApiForbiddenResponse('Not authenticated as a display')
+	@ApiNotFoundResponse('Display not found')
+	@HttpCode(204)
+	async unregisterMe(@Req() req: AuthenticatedRequest): Promise<void> {
+		const auth = req.auth;
+
+		if (!auth || auth.type !== 'token' || auth.ownerType !== TokenOwnerType.DISPLAY || !auth.ownerId) {
+			this.logger.warn('Attempted access by non-display entity');
+			throw new ForbiddenException('This endpoint is only accessible by displays');
+		}
+
+		this.logger.debug(`Display self-unregistering with id=${auth.ownerId}`);
+
+		// Revoke all tokens for this display
+		await this.tokensService.revokeByOwnerId(auth.ownerId, TokenOwnerType.DISPLAY);
+
+		// Remove the display
+		await this.displaysService.remove(auth.ownerId);
+
+		this.logger.debug(`Display ${auth.ownerId} successfully self-unregistered`);
+	}
+
 	@Get()
 	@ApiOperation({
 		operationId: 'get-displays-module-displays',

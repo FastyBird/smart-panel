@@ -717,6 +717,11 @@ class StartupManagerService {
 
     locator.registerSingleton(configModuleService);
     locator.registerSingleton(displaysModuleService);
+
+    // Register displays config model with config module
+    // This must happen after both configModuleService and displaysModuleService are registered
+    displaysModuleService.registerConfig();
+
     locator.registerSingleton(systemModuleService);
     locator.registerSingleton(securityModuleService);
     locator.registerSingleton(securityModuleService.statusRepository);
