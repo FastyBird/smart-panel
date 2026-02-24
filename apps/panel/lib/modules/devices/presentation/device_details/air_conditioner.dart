@@ -1208,8 +1208,10 @@ class _AirConditionerDeviceDetailState
     final units = DisplayUnits.fromLocator();
     final tempUnit = units.temperature;
     final step = tempUnit == TemperatureUnit.fahrenheit ? 1.0 : 0.5;
-    final dialMin = (UnitConverter.convertTemperature(minSetpoint, tempUnit) / step).roundToDouble() * step;
-    final dialMax = (UnitConverter.convertTemperature(maxSetpoint, tempUnit) / step).roundToDouble() * step;
+    final rawDialMin = (UnitConverter.convertTemperature(minSetpoint, tempUnit) / step).roundToDouble() * step;
+    final rawDialMax = (UnitConverter.convertTemperature(maxSetpoint, tempUnit) / step).roundToDouble() * step;
+    final dialMin = rawDialMin;
+    final dialMax = rawDialMax <= rawDialMin ? rawDialMin + step : rawDialMax;
     final dialValue =
         (UnitConverter.convertTemperature(targetSetpoint, tempUnit) / step).roundToDouble() * step;
 
@@ -1247,8 +1249,10 @@ class _AirConditionerDeviceDetailState
     final units = DisplayUnits.fromLocator();
     final tempUnit = units.temperature;
     final step = tempUnit == TemperatureUnit.fahrenheit ? 1.0 : 0.5;
-    final dialMin = (UnitConverter.convertTemperature(minSetpoint, tempUnit) / step).roundToDouble() * step;
-    final dialMax = (UnitConverter.convertTemperature(maxSetpoint, tempUnit) / step).roundToDouble() * step;
+    final rawDialMin = (UnitConverter.convertTemperature(minSetpoint, tempUnit) / step).roundToDouble() * step;
+    final rawDialMax = (UnitConverter.convertTemperature(maxSetpoint, tempUnit) / step).roundToDouble() * step;
+    final dialMin = rawDialMin;
+    final dialMax = rawDialMax <= rawDialMin ? rawDialMin + step : rawDialMax;
     final dialValue =
         (UnitConverter.convertTemperature(targetSetpoint, tempUnit) / step).roundToDouble() * step;
 

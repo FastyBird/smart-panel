@@ -130,14 +130,37 @@ class WeatherForecastDayDataSourceWidget
                     forecastDay.toCelsius(temp), units.temperature),
                 1)
             : localizations.value_not_available;
+      case WeatherDataField.feelsLike:
+        final feelsLike = forecastDay.weatherModel.feelsLike.day;
+        return feelsLike != null
+            ? NumberUtils.formatNumber(
+                UnitConverter.convertTemperature(
+                    forecastDay.toCelsius(feelsLike), units.temperature),
+                1)
+            : localizations.value_not_available;
       case WeatherDataField.humidity:
         return forecastDay.humidity.toString();
+      case WeatherDataField.pressure:
+        final decimals = UnitConverter.pressureDecimals(units.pressure);
+        return NumberUtils.formatNumber(
+          UnitConverter.convertPressure(
+              forecastDay.weatherModel.pressure.toDouble(), units.pressure),
+          decimals,
+        );
       case WeatherDataField.weatherIcon:
         return '';
       case WeatherDataField.weatherMain:
       case WeatherDataField.weatherDescription:
         return WeatherConditionMapper.getDescription(
             forecastDay.weatherCode, context);
+      case WeatherDataField.windSpeed:
+        return NumberUtils.formatNumber(
+          UnitConverter.convertWindSpeed(
+              forecastDay
+                  .toMetersPerSecond(forecastDay.weatherModel.wind.speed),
+              units.windSpeed),
+          1,
+        );
       default:
         return localizations.value_not_available;
     }
