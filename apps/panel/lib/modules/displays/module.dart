@@ -75,7 +75,7 @@ class DisplaysModuleService {
       final configModule = locator<ConfigModuleService>();
       final repo =
           configModule.getModuleRepository<DisplaysConfigModel>('displays-module');
-      final config = repo.config;
+      final config = repo.data;
 
       if (config != null) {
         return config.deploymentMode;
