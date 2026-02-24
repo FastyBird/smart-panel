@@ -96,6 +96,34 @@ class UnitConverter {
 		}
 	}
 
+	/// Converts a display-unit temperature value back to Celsius, rounding
+	/// to the display-unit step grid (1°F or 0.5°C) first.
+	static double displayToCelsius(double displayValue, TemperatureUnit from) {
+		if (from == TemperatureUnit.fahrenheit) {
+			return temperatureToCelsius(displayValue.roundToDouble(), from);
+		}
+		return (displayValue * 2).round() / 2;
+	}
+
+	/// Computes dial-ready temperature parameters snapped to the step grid.
+	///
+	/// Returns a record with [value], [min], [max], and [step] suitable for
+	/// passing directly to [CircularControlDial]. All inputs are in Celsius;
+	/// the returned values are in the display unit.
+	static ({double value, double min, double max, double step}) dialTemperatureRange({
+		required double celsiusValue,
+		required double celsiusMin,
+		required double celsiusMax,
+		required TemperatureUnit unit,
+	}) {
+		final step = unit == TemperatureUnit.fahrenheit ? 1.0 : 0.5;
+		final rawMin = (convertTemperature(celsiusMin, unit) / step).roundToDouble() * step;
+		final rawMax = (convertTemperature(celsiusMax, unit) / step).roundToDouble() * step;
+		final max = rawMax <= rawMin ? rawMin + step : rawMax;
+		final value = (convertTemperature(celsiusValue, unit) / step).roundToDouble() * step;
+		return (value: value.clamp(rawMin, max), min: rawMin, max: max, step: step);
+	}
+
 	/// Returns the display symbol for a temperature unit.
 	static String temperatureSymbol(TemperatureUnit unit) {
 		switch (unit) {

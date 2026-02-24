@@ -161,8 +161,6 @@ class WeatherForecastDayDataSourceWidget
               units.windSpeed),
           1,
         );
-      default:
-        return localizations.value_not_available;
     }
   }
 

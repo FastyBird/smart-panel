@@ -549,7 +549,7 @@ class _AirConditionerDeviceDetailState
     }
   }
 
-  void _onSetpointChanged(double displayValue) {
+  void _onSetpointChanged(double displayValue, TemperatureUnit tempUnit) {
     final controller = _controller;
     final setpointProp = _activeSetpointProp;
     final channelId = _activeSetpointChannelId;
@@ -557,14 +557,7 @@ class _AirConditionerDeviceDetailState
 
     // Round in the display unit then convert to Celsius once.
     // The dial emits values in the display unit (°F or °C).
-    final tempUnit = DisplayUnits.fromLocator().temperature;
-    double celsiusValue;
-    if (tempUnit == TemperatureUnit.fahrenheit) {
-      celsiusValue = UnitConverter.temperatureToCelsius(
-          displayValue.roundToDouble(), TemperatureUnit.fahrenheit);
-    } else {
-      celsiusValue = (displayValue * 2).round() / 2;
-    }
+    final celsiusValue = UnitConverter.displayToCelsius(displayValue, tempUnit);
 
     // Clamp to valid range
     final clampedValue = celsiusValue.clamp(_minSetpoint, _maxSetpoint);
@@ -1205,15 +1198,13 @@ class _AirConditionerDeviceDetailState
   }) {
     final (minSetpoint, maxSetpoint) = _validSetpointRange;
     final targetSetpoint = _targetSetpoint.clamp(minSetpoint, maxSetpoint);
-    final units = DisplayUnits.fromLocator();
-    final tempUnit = units.temperature;
-    final step = tempUnit == TemperatureUnit.fahrenheit ? 1.0 : 0.5;
-    final rawDialMin = (UnitConverter.convertTemperature(minSetpoint, tempUnit) / step).roundToDouble() * step;
-    final rawDialMax = (UnitConverter.convertTemperature(maxSetpoint, tempUnit) / step).roundToDouble() * step;
-    final dialMin = rawDialMin;
-    final dialMax = rawDialMax <= rawDialMin ? rawDialMin + step : rawDialMax;
-    final dialValue =
-        (UnitConverter.convertTemperature(targetSetpoint, tempUnit) / step).roundToDouble() * step;
+    final tempUnit = DisplayUnits.fromLocator().temperature;
+    final dial = UnitConverter.dialTemperatureRange(
+      celsiusValue: targetSetpoint,
+      celsiusMin: minSetpoint,
+      celsiusMax: maxSetpoint,
+      unit: tempUnit,
+    );
 
     return AppCard(
       width: double.infinity,
@@ -1222,11 +1213,11 @@ class _AirConditionerDeviceDetailState
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           CircularControlDial(
-            value: dialValue.clamp(dialMin, dialMax),
+            value: dial.value,
             currentValue: UnitConverter.convertTemperature(_currentTemperature, tempUnit),
-            minValue: dialMin,
-            maxValue: dialMax,
-            step: step,
+            minValue: dial.min,
+            maxValue: dial.max,
+            step: dial.step,
             size: dialSize,
             accentType: _getDialAccentColor(),
             isActive: _isActive,
@@ -1234,7 +1225,7 @@ class _AirConditionerDeviceDetailState
             modeLabel: _currentMode.value,
             displayFormat: DialDisplayFormat.temperature,
             temperatureUnitSymbol: UnitConverter.temperatureSymbol(tempUnit),
-            onChanged: _onSetpointChanged,
+            onChanged: (v) => _onSetpointChanged(v, tempUnit),
           ),
           _buildModeSelector(context, ModeSelectorOrientation.horizontal),
         ],
@@ -1246,15 +1237,13 @@ class _AirConditionerDeviceDetailState
   Widget _buildCompactDialWithModes(BuildContext context, bool isDark) {
     final (minSetpoint, maxSetpoint) = _validSetpointRange;
     final targetSetpoint = _targetSetpoint.clamp(minSetpoint, maxSetpoint);
-    final units = DisplayUnits.fromLocator();
-    final tempUnit = units.temperature;
-    final step = tempUnit == TemperatureUnit.fahrenheit ? 1.0 : 0.5;
-    final rawDialMin = (UnitConverter.convertTemperature(minSetpoint, tempUnit) / step).roundToDouble() * step;
-    final rawDialMax = (UnitConverter.convertTemperature(maxSetpoint, tempUnit) / step).roundToDouble() * step;
-    final dialMin = rawDialMin;
-    final dialMax = rawDialMax <= rawDialMin ? rawDialMin + step : rawDialMax;
-    final dialValue =
-        (UnitConverter.convertTemperature(targetSetpoint, tempUnit) / step).roundToDouble() * step;
+    final tempUnit = DisplayUnits.fromLocator().temperature;
+    final dial = UnitConverter.dialTemperatureRange(
+      celsiusValue: targetSetpoint,
+      celsiusMin: minSetpoint,
+      celsiusMax: maxSetpoint,
+      unit: tempUnit,
+    );
 
     return AppCard(
       child: LayoutBuilder(
@@ -1273,11 +1262,11 @@ class _AirConditionerDeviceDetailState
               Expanded(
                 child: Center(
                   child: CircularControlDial(
-                    value: dialValue.clamp(dialMin, dialMax),
+                    value: dial.value,
                     currentValue: UnitConverter.convertTemperature(_currentTemperature, tempUnit),
-                    minValue: dialMin,
-                    maxValue: dialMax,
-                    step: step,
+                    minValue: dial.min,
+                    maxValue: dial.max,
+                    step: dial.step,
                     size: dialSize,
                     accentType: _getDialAccentColor(),
                     isActive: _isActive,
@@ -1285,7 +1274,7 @@ class _AirConditionerDeviceDetailState
                     modeLabel: _currentMode.value,
                     displayFormat: DialDisplayFormat.temperature,
                     temperatureUnitSymbol: UnitConverter.temperatureSymbol(tempUnit),
-                    onChanged: _onSetpointChanged,
+                    onChanged: (v) => _onSetpointChanged(v, tempUnit),
                   ),
                 ),
               ),
