@@ -679,7 +679,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 	) {
 		final cards = model.domainCards;
 		final spacing = AppSpacings.pMd;
-		final maxTileHeight = AppSpacings.scale(76);
+		final maxTileHeight = AppSpacings.scale(75);
 
 		return LayoutBuilder(
 			builder: (context, constraints) {
