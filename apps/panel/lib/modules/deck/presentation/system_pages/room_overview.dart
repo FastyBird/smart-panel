@@ -678,24 +678,35 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 		RoomOverviewModel model,
 	) {
 		final cards = model.domainCards;
+		final spacing = AppSpacings.pMd;
+		final maxTileHeight = AppSpacings.scale(90);
 
-		return GridView.builder(
-			gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-				crossAxisCount: 2,
-				childAspectRatio: 1.6,
-				mainAxisSpacing: AppSpacings.pMd,
-				crossAxisSpacing: AppSpacings.pMd,
-			),
-			padding: EdgeInsets.zero,
-			physics: cards.length <= 4
-				? const NeverScrollableScrollPhysics()
-				: null,
-			itemCount: cards.length,
-			itemBuilder: (context, index) {
-				return _RoomDomainCard(
-					cardInfo: cards[index],
-					isDark: isDark,
-					onTap: () => _navigateToDomainView(cards[index].domain),
+		return LayoutBuilder(
+			builder: (context, constraints) {
+				final tileWidth = (constraints.maxWidth - spacing) / 2;
+				final tileHeight = tileWidth / 1.6;
+				final clampedHeight = tileHeight.clamp(0, maxTileHeight).toDouble();
+				final aspectRatio = tileWidth / clampedHeight;
+
+				return GridView.builder(
+					gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+						crossAxisCount: 2,
+						childAspectRatio: aspectRatio,
+						mainAxisSpacing: spacing,
+						crossAxisSpacing: spacing,
+					),
+					padding: EdgeInsets.zero,
+					physics: cards.length <= 4
+						? const NeverScrollableScrollPhysics()
+						: null,
+					itemCount: cards.length,
+					itemBuilder: (context, index) {
+						return _RoomDomainCard(
+							cardInfo: cards[index],
+							isDark: isDark,
+							onTap: () => _navigateToDomainView(cards[index].domain),
+						);
+					},
 				);
 			},
 		);
