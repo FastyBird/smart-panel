@@ -414,6 +414,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 
 				if (isPortrait) {
 					return Column(
+            spacing: AppSpacings.pMd,
 						children: [
 							SizedBox(
 								height: AppSpacings.scale(180),
@@ -569,7 +570,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 				// Scene pills row (portrait only — landscape shows them on the sky panel)
 				if (isPortrait && model.hasScenes) ...[
 					Padding(
-						padding: EdgeInsets.symmetric(horizontal: AppSpacings.pLg),
+						padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
 						child: _buildScenePills(context, isDark, model),
 					),
 					SizedBox(height: AppSpacings.pMd),
@@ -602,7 +603,6 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 	) {
 		return HorizontalScrollWithGradient(
 			height: AppSpacings.scale(30),
-			layoutPadding: AppSpacings.pLg,
 			itemCount: model.quickScenes.length,
 			separatorWidth: AppSpacings.pSm,
 			itemBuilder: (_, i) => _buildScenePill(context, isDark, model.quickScenes[i]),
@@ -631,7 +631,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 						? null
 						: Border.all(
 							color: isDark
-								? AppBorderColorDark.light
+								? AppFillColorDark.light
 								: AppBorderColorLight.light,
 						),
 				),
@@ -696,7 +696,11 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 				return VerticalScrollWithGradient(
 					itemCount: rowCount,
 					separatorHeight: spacing,
-					padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
+					padding: EdgeInsets.only(
+            left: AppSpacings.pMd,
+            right: AppSpacings.pMd,
+            bottom: AppSpacings.pMd,
+          ),
 					itemBuilder: (context, rowIndex) {
 						final firstIndex = rowIndex * 2;
 						final secondIndex = firstIndex + 1;
@@ -771,7 +775,7 @@ class _RoomDomainCard extends StatelessWidget {
 					borderRadius: borderRadius,
 					border: Border.all(
 						color: isDark
-							? AppBorderColorDark.darker
+							? AppFillColorDark.light
 							: AppBorderColorLight.darker,
 					),
 				),
