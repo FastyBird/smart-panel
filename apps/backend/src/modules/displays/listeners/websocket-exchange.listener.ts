@@ -1,11 +1,12 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import { OnEvent } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { TokenOwnerType } from '../../auth/auth.constants';
 import { WsClientDto } from '../../websocket/dto/ws-client.dto';
 import { WsEventType } from '../../websocket/websocket.constants';
-import { ConnectionState, DISPLAYS_MODULE_NAME } from '../displays.constants';
+import { ConnectionState, DISPLAYS_MODULE_NAME, EventType } from '../displays.constants';
 import { DisplayConnectionStateService } from '../services/display-connection-state.service';
 import { DisplaysService } from '../services/displays.service';
 
@@ -16,6 +17,7 @@ export class WebsocketExchangeListener implements OnModuleInit {
 	constructor(
 		private readonly displaysService: DisplaysService,
 		private readonly displayConnectionStateService: DisplayConnectionStateService,
+		private readonly eventEmitter: EventEmitter2,
 	) {}
 
 	onModuleInit() {}
@@ -36,15 +38,22 @@ export class WebsocketExchangeListener implements OnModuleInit {
 					return;
 				}
 
+				// Write connection state to InfluxDB FIRST so afterLoad reads fresh state
+				await this.displayConnectionStateService.write(display, ConnectionState.CONNECTED);
+				this.logger.debug(`Updated connection state for display=${payload.user.id} to CONNECTED`);
+
 				// Update current IP address if provided
 				if (payload.ipAddress && payload.ipAddress !== 'unknown') {
 					await this.displaysService.update(payload.user.id, { current_ip_address: payload.ipAddress });
 					this.logger.debug(`Updated current IP address for display=${payload.user.id} to ${payload.ipAddress}`);
 				}
 
-				// Write connection state to InfluxDB
-				await this.displayConnectionStateService.write(display, ConnectionState.CONNECTED);
-				this.logger.debug(`Updated connection state for display=${payload.user.id} to CONNECTED`);
+				// Re-fetch entity to get fresh online/status from afterLoad, then emit update event
+				const updatedDisplay = await this.displaysService.findOne(payload.user.id);
+
+				if (updatedDisplay) {
+					this.eventEmitter.emit(EventType.DISPLAY_UPDATED, updatedDisplay);
+				}
 			}
 		} catch (error) {
 			const err = error as Error;
@@ -71,6 +80,13 @@ export class WebsocketExchangeListener implements OnModuleInit {
 				// Write disconnection state to InfluxDB
 				await this.displayConnectionStateService.write(display, ConnectionState.DISCONNECTED);
 				this.logger.debug(`Updated connection state for display=${payload.user.id} to DISCONNECTED`);
+
+				// Re-fetch entity to get fresh online/status from afterLoad, then emit update event
+				const updatedDisplay = await this.displaysService.findOne(payload.user.id);
+
+				if (updatedDisplay) {
+					this.eventEmitter.emit(EventType.DISPLAY_UPDATED, updatedDisplay);
+				}
 			}
 		} catch (error) {
 			const err = error as Error;
@@ -97,6 +113,13 @@ export class WebsocketExchangeListener implements OnModuleInit {
 				// Write lost connection state to InfluxDB
 				await this.displayConnectionStateService.write(display, ConnectionState.LOST);
 				this.logger.debug(`Updated connection state for display=${payload.user.id} to LOST`);
+
+				// Re-fetch entity to get fresh online/status from afterLoad, then emit update event
+				const updatedDisplay = await this.displaysService.findOne(payload.user.id);
+
+				if (updatedDisplay) {
+					this.eventEmitter.emit(EventType.DISPLAY_UPDATED, updatedDisplay);
+				}
 			}
 		} catch (error) {
 			const err = error as Error;
