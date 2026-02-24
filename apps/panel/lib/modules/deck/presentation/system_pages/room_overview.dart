@@ -599,7 +599,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 	) {
 		return HorizontalScrollWithGradient(
 			height: AppSpacings.scale(30),
-			layoutPadding: AppSpacings.pMd,
+			layoutPadding: AppSpacings.pLg,
 			itemCount: model.quickScenes.length,
 			separatorWidth: AppSpacings.pSm,
 			itemBuilder: (_, i) => _buildScenePill(context, isDark, model.quickScenes[i]),
