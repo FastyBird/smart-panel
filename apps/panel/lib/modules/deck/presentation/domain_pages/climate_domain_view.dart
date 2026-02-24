@@ -2489,7 +2489,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
       onChanged: (v) {
         final newTemp = _state.minSetpoint + range * v;
         // Round to appropriate step based on display unit
-        final tempUnit = DisplayUnits.fromLocator().temperature;
+        final tempUnit = units.temperature;
         double rounded;
         if (tempUnit == TemperatureUnit.fahrenheit) {
           final fahrenheit = UnitConverter.convertTemperature(newTemp, TemperatureUnit.fahrenheit);

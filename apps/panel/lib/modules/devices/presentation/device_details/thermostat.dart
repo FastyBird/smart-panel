@@ -510,26 +510,25 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     }
   }
 
-  void _onSetpointChanged(double value) {
+  void _onSetpointChanged(double displayValue) {
     final controller = _controller;
     final setpointProp = _activeSetpointProp;
     final channelId = _activeSetpointChannelId;
     if (controller == null || setpointProp == null || channelId == null) return;
 
-    // Round to appropriate step based on display unit.
-    // For Fahrenheit, round in °F (1°F step) then convert back to avoid drift.
-    // For Celsius, round to 0.5°C step.
+    // Round in the display unit then convert to Celsius once.
+    // The dial emits values in the display unit (°F or °C).
     final tempUnit = DisplayUnits.fromLocator().temperature;
-    double steppedValue;
+    double celsiusValue;
     if (tempUnit == TemperatureUnit.fahrenheit) {
-      final fahrenheit = UnitConverter.convertTemperature(value, TemperatureUnit.fahrenheit);
-      steppedValue = UnitConverter.temperatureToCelsius(fahrenheit.roundToDouble(), TemperatureUnit.fahrenheit);
+      celsiusValue = UnitConverter.temperatureToCelsius(
+          displayValue.roundToDouble(), TemperatureUnit.fahrenheit);
     } else {
-      steppedValue = (value * 2).round() / 2;
+      celsiusValue = (displayValue * 2).round() / 2;
     }
 
     // Clamp to valid range
-    final clampedValue = steppedValue.clamp(_minSetpoint, _maxSetpoint);
+    final clampedValue = celsiusValue.clamp(_minSetpoint, _maxSetpoint);
 
     // Set PENDING state immediately for responsive UI (for dial visual feedback)
     _deviceControlStateService?.setPending(
@@ -1045,10 +1044,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
             modeLabel: _currentMode.value,
             displayFormat: DialDisplayFormat.temperature,
             temperatureUnitSymbol: UnitConverter.temperatureSymbol(tempUnit),
-            onChanged: (displayValue) {
-              _onSetpointChanged(
-                  UnitConverter.temperatureToCelsius(displayValue, tempUnit));
-            },
+            onChanged: _onSetpointChanged,
           ),
           _buildModeSelector(context, ModeSelectorOrientation.horizontal),
         ],
@@ -1093,10 +1089,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
                     modeLabel: _currentMode.value,
                     displayFormat: DialDisplayFormat.temperature,
                     temperatureUnitSymbol: UnitConverter.temperatureSymbol(tempUnit),
-                    onChanged: (displayValue) {
-                      _onSetpointChanged(
-                          UnitConverter.temperatureToCelsius(displayValue, tempUnit));
-                    },
+                    onChanged: _onSetpointChanged,
                   ),
                 ),
               ),
