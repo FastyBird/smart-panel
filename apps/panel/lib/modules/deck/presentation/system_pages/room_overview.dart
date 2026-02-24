@@ -821,19 +821,6 @@ class _RoomDomainCard extends StatelessWidget {
 							maxLines: 1,
 							overflow: TextOverflow.ellipsis,
 						),
-						const Spacer(),
-						Row(
-							mainAxisAlignment: MainAxisAlignment.end,
-							children: [
-								Icon(
-									MdiIcons.chevronRight,
-									size: AppSpacings.scale(18),
-									color: isDark
-										? AppTextColorDark.placeholder
-										: AppTextColorLight.placeholder,
-								),
-							],
-						),
 					],
 				),
 			),
