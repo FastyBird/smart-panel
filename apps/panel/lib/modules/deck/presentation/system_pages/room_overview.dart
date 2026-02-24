@@ -377,66 +377,6 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 		}
 	}
 
-	Future<void> _handleSuggestedAction(SuggestedAction action) async {
-		switch (action.actionType) {
-			case SuggestedActionType.scene:
-				if (action.sceneId != null) {
-					await _triggerScene(action.sceneId!);
-				}
-				break;
-			case SuggestedActionType.turnOffLights:
-				await _turnOffAllLights();
-				break;
-		}
-	}
-
-	Future<void> _turnOffAllLights() async {
-		final lightDevices =
-			_devicesService?.getDevicesForRoomByCategory(_roomId, DevicesModuleDeviceCategory.lighting) ?? [];
-
-		if (lightDevices.isEmpty) return;
-
-		int successCount = 0;
-		int failCount = 0;
-
-		for (final device in lightDevices) {
-			if (_isDeviceOn(device)) {
-				final result = await _intentsService.toggleDevice(device.id);
-				if (result.isSuccess) {
-					successCount++;
-				} else {
-					failCount++;
-				}
-			}
-		}
-
-		if (!mounted) return;
-
-		await _fetchLiveDeviceData();
-
-		if (!mounted) return;
-
-		_rebuildModel();
-
-		final feedbackLocalizations = AppLocalizations.of(context);
-		if (failCount == 0 && successCount > 0) {
-			Toast.showSuccess(
-				context,
-				message: 'Lights turned off',
-			);
-		} else if (successCount > 0) {
-			Toast.showInfo(
-				context,
-				message: 'Some lights turned off',
-			);
-		} else if (failCount > 0) {
-			Toast.showError(
-				context,
-				message: feedbackLocalizations?.action_failed ?? 'Failed to turn off lights',
-			);
-		}
-	}
-
 	// ===========================================================================
 	// BUILD
 	// ===========================================================================
@@ -633,24 +573,12 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 						child: _buildDomainCardsGrid(context, isDark, model),
 					),
 
-				// Suggested actions
-				if (model.suggestedActions.isNotEmpty) ...[
-					SizedBox(height: AppSpacings.pMd),
-					_buildSuggestedActionsSection(context, model),
-				],
-
 				// Empty state when no domain cards and no scenes
 				if (model.domainCards.isEmpty && !model.hasScenes)
 					Expanded(child: _buildEmptyState(context, localizations))
 				// Spacer when we have scenes but no domain cards
 				else if (model.domainCards.isEmpty)
 					const Spacer(),
-
-				// Sensor readings strip
-				if (model.hasSensorReadings) ...[
-					SizedBox(height: AppSpacings.pMd),
-					_buildSensorStrip(context, isDark, model),
-				],
 			],
 		);
 	}
@@ -773,104 +701,6 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 		);
 	}
 
-	// ===========================================================================
-	// SENSOR STRIP
-	// ===========================================================================
-
-	Widget _buildSensorStrip(
-		BuildContext context,
-		bool isDark,
-		RoomOverviewModel model,
-	) {
-		return Wrap(
-			spacing: AppSpacings.pMd,
-			runSpacing: AppSpacings.pSm,
-			children: model.sensorReadings.map((reading) {
-				final colorFamily = ThemeColorFamily.get(
-					Theme.of(context).brightness,
-					ThemeColors.info,
-				);
-
-				return Container(
-					padding: EdgeInsets.symmetric(
-						horizontal: AppSpacings.pMd,
-						vertical: AppSpacings.pSm,
-					),
-					decoration: BoxDecoration(
-						color: colorFamily.light9,
-						borderRadius: BorderRadius.circular(AppBorderRadius.base),
-						border: Border.all(color: colorFamily.light7),
-					),
-					child: Row(
-						mainAxisSize: MainAxisSize.min,
-						spacing: AppSpacings.pSm,
-						children: [
-							Icon(
-								reading.icon,
-								size: AppSpacings.scale(14),
-								color: colorFamily.base,
-							),
-							Text(
-								'${reading.label} ${reading.value}',
-								style: TextStyle(
-									fontSize: AppFontSize.extraSmall,
-									fontWeight: FontWeight.w600,
-									color: colorFamily.base,
-								),
-							),
-						],
-					),
-				);
-			}).toList(),
-		);
-	}
-
-	// ===========================================================================
-	// SUGGESTED ACTIONS
-	// ===========================================================================
-
-	Widget _buildSuggestedActionsSection(
-		BuildContext context,
-		RoomOverviewModel model,
-	) {
-		return Column(
-			crossAxisAlignment: CrossAxisAlignment.start,
-			spacing: AppSpacings.pSm,
-			children: [
-				Text(
-					'Suggested',
-					style: TextStyle(
-						fontSize: AppFontSize.small,
-						fontWeight: FontWeight.w600,
-						color: Theme.of(context).brightness == Brightness.light
-							? AppTextColorLight.regular
-							: AppTextColorDark.regular,
-					),
-				),
-				Wrap(
-					spacing: AppSpacings.pSm,
-					runSpacing: AppSpacings.pSm,
-					children: model.suggestedActions
-						.map((action) => _buildSuggestedActionChip(context, action))
-						.toList(),
-				),
-			],
-		);
-	}
-
-	Widget _buildSuggestedActionChip(
-		BuildContext context,
-		SuggestedAction action,
-	) {
-		return ActionChip(
-			avatar: Icon(
-				action.icon,
-				size: AppSpacings.scale(18),
-			),
-			label: Text(action.label),
-			onPressed: () => _handleSuggestedAction(action),
-		);
-	}
 }
 
 // =============================================================================
