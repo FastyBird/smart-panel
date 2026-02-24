@@ -217,7 +217,7 @@ const { configModule: displaysConfig } = useConfigModule({ type: 'displays-modul
 const isGateway = computed<boolean>((): boolean => {
 	const config = displaysConfig.value as IDisplaysConfigModule | null;
 
-	return config?.deploymentMode !== 'all-in-one';
+	return config !== null && config.deploymentMode !== 'all-in-one';
 });
 
 const { onRestart, onPowerOff, onFactoryReset } = useSystemActions();

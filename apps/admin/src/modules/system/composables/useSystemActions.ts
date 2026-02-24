@@ -22,7 +22,7 @@ export const useSystemActions = (): IUseSystemActions => {
 	const isGatewayMode = (): boolean => {
 		const config = displaysConfig.value as IDisplaysConfigModule | null;
 
-		return config?.deploymentMode !== 'all-in-one';
+		return config !== null && config.deploymentMode !== 'all-in-one';
 	};
 
 	const onRestart = (): void => {
