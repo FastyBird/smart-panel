@@ -28,7 +28,7 @@ class WeatherTileWidget extends TileWidget<DayWeatherTileView> {
       String currentTemperature = currentWeather != null
           ? NumberUtils.formatNumber(
               UnitConverter.convertTemperature(
-                currentWeather.temperature,
+                currentWeather.toCelsius(currentWeather.temperature),
                 units.temperature,
               ),
               1,

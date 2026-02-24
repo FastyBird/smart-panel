@@ -21,4 +21,26 @@ abstract class WeatherView<M extends Model> {
 
   /// Temperature unit used for weather data
   WeatherUnit get unit => _unit;
+
+  /// Normalizes a temperature value from this view's source unit to Celsius.
+  ///
+  /// Weather data unit depends on the backend's OpenWeatherMap configuration:
+  /// metric → Celsius, imperial → Fahrenheit. All display-layer conversion
+  /// expects Celsius input, so call this before [UnitConverter.convertTemperature].
+  double toCelsius(double value) {
+    if (_unit == WeatherUnit.fahrenheit) {
+      return (value - 32) * 5 / 9;
+    }
+    return value;
+  }
+
+  /// Normalizes a wind speed value from this view's source unit to m/s.
+  ///
+  /// Imperial mode (fahrenheit) provides wind speed in mph.
+  double toMetersPerSecond(double value) {
+    if (_unit == WeatherUnit.fahrenheit) {
+      return value * 0.44704;
+    }
+    return value;
+  }
 }

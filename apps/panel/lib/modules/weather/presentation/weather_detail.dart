@@ -143,7 +143,7 @@ class WeatherDetailPage extends StatelessWidget {
     String currentTemperature = currentDay != null
         ? NumberUtils.formatNumber(
             UnitConverter.convertTemperature(
-                currentDay.temperature, units.temperature),
+                currentDay.toCelsius(currentDay.temperature), units.temperature),
             1,
           )
         : NumberUtils.formatUnavailableNumber(1);
@@ -151,7 +151,7 @@ class WeatherDetailPage extends StatelessWidget {
     String feelsLikeTemperature = currentDay != null
         ? NumberUtils.formatNumber(
             UnitConverter.convertTemperature(
-                currentDay.feelsLike, units.temperature),
+                currentDay.toCelsius(currentDay.feelsLike), units.temperature),
             1,
           )
         : NumberUtils.formatUnavailableNumber(1);
@@ -159,7 +159,7 @@ class WeatherDetailPage extends StatelessWidget {
     String windSpeedText = currentDay != null
         ? NumberUtils.formatNumber(
             UnitConverter.convertWindSpeed(
-                currentDay.windSpeed, units.windSpeed),
+                currentDay.toMetersPerSecond(currentDay.windSpeed), units.windSpeed),
             1,
           )
         : localizations.value_not_available;
@@ -364,7 +364,7 @@ class WeatherDetailPage extends StatelessWidget {
     String wholeDayTemp = averageDayTemp != null
         ? NumberUtils.formatNumber(
             UnitConverter.convertTemperature(
-                averageDayTemp, units.temperature),
+                forecast.toCelsius(averageDayTemp), units.temperature),
             1,
           )
         : NumberUtils.formatUnavailableNumber(1);
@@ -372,7 +372,7 @@ class WeatherDetailPage extends StatelessWidget {
     String wholeNightTemp = averageNightTemp != null
         ? NumberUtils.formatNumber(
             UnitConverter.convertTemperature(
-                averageNightTemp, units.temperature),
+                forecast.toCelsius(averageNightTemp), units.temperature),
             1,
           )
         : NumberUtils.formatUnavailableNumber(1);

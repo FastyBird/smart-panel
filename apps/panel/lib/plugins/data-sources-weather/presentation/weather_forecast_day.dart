@@ -110,19 +110,25 @@ class WeatherForecastDayDataSourceWidget
         final temp = forecastDay.temperatureDay;
         return temp != null
             ? NumberUtils.formatNumber(
-                UnitConverter.convertTemperature(temp, units.temperature), 1)
+                UnitConverter.convertTemperature(
+                    forecastDay.toCelsius(temp), units.temperature),
+                1)
             : localizations.value_not_available;
       case WeatherDataField.temperatureMin:
         final temp = forecastDay.temperatureNight;
         return temp != null
             ? NumberUtils.formatNumber(
-                UnitConverter.convertTemperature(temp, units.temperature), 1)
+                UnitConverter.convertTemperature(
+                    forecastDay.toCelsius(temp), units.temperature),
+                1)
             : localizations.value_not_available;
       case WeatherDataField.temperatureMax:
         final temp = forecastDay.temperatureDay;
         return temp != null
             ? NumberUtils.formatNumber(
-                UnitConverter.convertTemperature(temp, units.temperature), 1)
+                UnitConverter.convertTemperature(
+                    forecastDay.toCelsius(temp), units.temperature),
+                1)
             : localizations.value_not_available;
       case WeatherDataField.humidity:
         return forecastDay.humidity.toString();

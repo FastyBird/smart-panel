@@ -111,13 +111,13 @@ class WeatherCurrentDataSourceWidget
       case WeatherDataField.temperature:
         return NumberUtils.formatNumber(
           UnitConverter.convertTemperature(
-              currentDay.temperature, units.temperature),
+              currentDay.toCelsius(currentDay.temperature), units.temperature),
           1,
         );
       case WeatherDataField.feelsLike:
         return NumberUtils.formatNumber(
           UnitConverter.convertTemperature(
-              currentDay.feelsLike, units.temperature),
+              currentDay.toCelsius(currentDay.feelsLike), units.temperature),
           1,
         );
       case WeatherDataField.humidity:
@@ -137,7 +137,8 @@ class WeatherCurrentDataSourceWidget
             currentDay.weatherCode, context);
       case WeatherDataField.windSpeed:
         return NumberUtils.formatNumber(
-          UnitConverter.convertWindSpeed(currentDay.windSpeed, units.windSpeed),
+          UnitConverter.convertWindSpeed(
+              currentDay.toMetersPerSecond(currentDay.windSpeed), units.windSpeed),
           1,
         );
       default:

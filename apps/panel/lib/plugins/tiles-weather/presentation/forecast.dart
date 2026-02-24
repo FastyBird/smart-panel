@@ -70,7 +70,7 @@ class ForecastTileWidget extends TileWidget<ForecastWeatherTileView> {
     String wholeDayTemp = averageDayTemp != null
         ? NumberUtils.formatNumber(
             UnitConverter.convertTemperature(
-                averageDayTemp, units.temperature),
+                forecast.toCelsius(averageDayTemp), units.temperature),
             1,
           )
         : NumberUtils.formatUnavailableNumber(1);
@@ -78,7 +78,7 @@ class ForecastTileWidget extends TileWidget<ForecastWeatherTileView> {
     String wholeNightTemp = averageNightTemp != null
         ? NumberUtils.formatNumber(
             UnitConverter.convertTemperature(
-                averageNightTemp, units.temperature),
+                forecast.toCelsius(averageNightTemp), units.temperature),
             1,
           )
         : NumberUtils.formatUnavailableNumber(1);

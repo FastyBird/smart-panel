@@ -147,6 +147,10 @@ class SensorUtils {
   }
 
   /// Converts a raw metric value to the display unit for the given category.
+  ///
+  /// Device sensor pressure is stored internally in kPa (the Home Assistant
+  /// mapper normalizes all pressure sources to kPa). [UnitConverter.convertPressure]
+  /// expects hPa, so we multiply by 10 before converting.
   static double _convertValue(
     double value,
     DevicesModuleChannelCategory category,
@@ -157,7 +161,8 @@ class SensorUtils {
         return UnitConverter.convertTemperature(
             value, displayUnits.temperature);
       case DevicesModuleChannelCategory.pressure:
-        return UnitConverter.convertPressure(value, displayUnits.pressure);
+        // Sensor data is in kPa; convertPressure expects hPa (1 kPa = 10 hPa)
+        return UnitConverter.convertPressure(value * 10, displayUnits.pressure);
       default:
         return value;
     }
