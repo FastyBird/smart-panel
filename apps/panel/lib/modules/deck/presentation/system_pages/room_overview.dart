@@ -777,12 +777,15 @@ class _RoomDomainCard extends StatelessWidget {
 								Expanded(
 									child: Column(
 										crossAxisAlignment: CrossAxisAlignment.start,
+										mainAxisSize: MainAxisSize.min,
+										spacing: 0,
 										children: [
 											Text(
 												cardInfo.title,
 												style: TextStyle(
 													fontSize: AppFontSize.small,
 													fontWeight: FontWeight.w700,
+													height: 1.1,
 													color: isDark
 														? AppTextColorDark.primary
 														: AppTextColorLight.primary,
