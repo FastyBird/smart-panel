@@ -2539,14 +2539,14 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     // For Fahrenheit, adjust by 1°F; for Celsius, adjust by 0.5°C
     double stepDown() {
       if (tempUnit == TemperatureUnit.fahrenheit) {
-        final fahrenheit = UnitConverter.convertTemperature(_state.targetTemp, TemperatureUnit.fahrenheit);
+        final fahrenheit = UnitConverter.convertTemperature(_state.targetTemp, TemperatureUnit.fahrenheit).roundToDouble();
         return UnitConverter.temperatureToCelsius(fahrenheit - 1, TemperatureUnit.fahrenheit);
       }
       return _state.targetTemp - 0.5;
     }
     double stepUp() {
       if (tempUnit == TemperatureUnit.fahrenheit) {
-        final fahrenheit = UnitConverter.convertTemperature(_state.targetTemp, TemperatureUnit.fahrenheit);
+        final fahrenheit = UnitConverter.convertTemperature(_state.targetTemp, TemperatureUnit.fahrenheit).roundToDouble();
         return UnitConverter.temperatureToCelsius(fahrenheit + 1, TemperatureUnit.fahrenheit);
       }
       return _state.targetTemp + 0.5;
