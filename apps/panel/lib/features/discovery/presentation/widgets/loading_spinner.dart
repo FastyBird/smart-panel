@@ -2,8 +2,6 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
-import 'package:fastybird_smart_panel/core/utils/theme.dart';
-
 /// Custom loading spinner with arc animation
 class LoadingSpinner extends StatefulWidget {
   final double size;

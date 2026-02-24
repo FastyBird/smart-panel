@@ -54,6 +54,12 @@ export class DisplaysService {
 		return this.findByField('registeredFromIp', ip);
 	}
 
+	async updateCurrentIpAddress(id: string, ipAddress: string): Promise<void> {
+		await this.repository.update(id, { currentIpAddress: ipAddress });
+
+		this.logger.debug(`Updated current IP address for display=${id}`);
+	}
+
 	async getOneOrThrow(id: string): Promise<DisplayEntity> {
 		const display = await this.findOne(id);
 

@@ -42,9 +42,9 @@ export class WebsocketExchangeListener implements OnModuleInit {
 				await this.displayConnectionStateService.write(display, ConnectionState.CONNECTED);
 				this.logger.debug(`Updated connection state for display=${payload.user.id} to CONNECTED`);
 
-				// Update current IP address if provided
+				// Update current IP address if provided (bypass full update validation)
 				if (payload.ipAddress && payload.ipAddress !== 'unknown') {
-					await this.displaysService.update(payload.user.id, { current_ip_address: payload.ipAddress });
+					await this.displaysService.updateCurrentIpAddress(payload.user.id, payload.ipAddress);
 					this.logger.debug(`Updated current IP address for display=${payload.user.id} to ${payload.ipAddress}`);
 				}
 
