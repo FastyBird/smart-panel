@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:fastybird_smart_panel/features/discovery/presentation/backend_discovery.dart';
+import 'package:fastybird_smart_panel/features/discovery/presentation/discovery.dart';
 
 void main() {
   group('DiscoveryState', () {
@@ -14,16 +14,16 @@ void main() {
     });
   });
 
-  // Note: Full widget tests for BackendDiscoveryScreen require:
+  // Note: Full widget tests for DiscoveryScreen require:
   // - Mocking ScreenService in locator
   // - Mocking MdnsDiscoveryService
   // - Setting up MaterialApp wrapper
   //
   // The following tests document expected widget behavior.
 
-  group('BackendDiscoveryScreen - Documentation', () {
+  group('DiscoveryScreen - Documentation', () {
     test('should require onBackendSelected callback', () {
-      // BackendDiscoveryScreen requires:
+      // DiscoveryScreen requires:
       // - onBackendSelected: Function(DiscoveredBackend)
       // - onManualUrlEntered: Function(String)
       expect(true, isTrue);

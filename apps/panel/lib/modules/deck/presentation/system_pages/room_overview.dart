@@ -2,7 +2,7 @@ import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
+import 'package:fastybird_smart_panel/core/widgets/toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
@@ -363,18 +363,18 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 			final localizations = AppLocalizations.of(context);
 
 			if (result.isSuccess) {
-				AppToast.showSuccess(
+				Toast.showSuccess(
 					context,
 					message: localizations?.space_scene_triggered ?? 'Scene activated',
 				);
 			} else if (result.isPartialSuccess) {
-				AppToast.showInfo(
+				Toast.showInfo(
 					context,
 					message: localizations?.space_scene_partial_success ??
 						'Scene partially activated',
 				);
 			} else {
-				AppToast.showError(
+				Toast.showError(
 					context,
 					message: result.message ?? localizations?.action_failed ?? 'Failed',
 				);
@@ -388,7 +388,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 			});
 
 			final localizations = AppLocalizations.of(context);
-			AppToast.showError(
+			Toast.showError(
 				context,
 				message: localizations?.action_failed ?? 'Failed to activate scene',
 			);
@@ -438,17 +438,17 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 
 		final feedbackLocalizations = AppLocalizations.of(context);
 		if (failCount == 0 && successCount > 0) {
-			AppToast.showSuccess(
+			Toast.showSuccess(
 				context,
 				message: 'Lights turned off',
 			);
 		} else if (successCount > 0) {
-			AppToast.showInfo(
+			Toast.showInfo(
 				context,
 				message: 'Some lights turned off',
 			);
 		} else if (failCount > 0) {
-			AppToast.showError(
+			Toast.showError(
 				context,
 				message: feedbackLocalizations?.action_failed ?? 'Failed to turn off lights',
 			);

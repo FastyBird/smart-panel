@@ -1,7 +1,7 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/app_bottom_sheet.dart';
+import 'package:fastybird_smart_panel/core/widgets/bottom_sheet_dialog.dart';
 import 'package:fastybird_smart_panel/core/widgets/slider_with_steps.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -259,7 +259,7 @@ class ValueSelectorRow<T> extends StatelessWidget {
         : (found < 0 ? 0 : found.clamp(0, options.length - 1));
     final selectedIndexNotifier = ValueNotifier<int>(initialIndex);
 
-    showAppBottomSheet(
+    showBottomSheetDialog(
       context,
       title: sheetTitle,
       scrollable: false,
@@ -667,7 +667,7 @@ enum ValueSelectorOptionStyle {
 }
 
 /// A bottom sheet widget for selecting a value from a grid of options.
-/// When used with [showAppBottomSheet], pass [selectedIndexNotifier] so the
+/// When used with [showBottomSheetDialog], pass [selectedIndexNotifier] so the
 /// Done button in [bottomSection] can read the current selection.
 class ValueSelectorSheet<T> extends StatefulWidget {
   /// Currently selected value

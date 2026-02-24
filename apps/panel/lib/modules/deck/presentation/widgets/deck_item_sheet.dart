@@ -1,5 +1,5 @@
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/app_bottom_sheet.dart';
+import 'package:fastybird_smart_panel/core/widgets/bottom_sheet_dialog.dart';
 import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:flutter/material.dart';
 
@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 // ═══════════════════════════════════════════════════════════════════════════════
 //
 // Purpose: Generic bottom sheet for listing deck items (channels, devices, etc.)
-// in domain views (lights, climate, shading, media). Uses [AppBottomSheet] for
+// in domain views (lights, climate, shading, media). Uses [BottomSheetDialog] for
 // consistent chrome; content is a vertical list of horizontally laid-out tiles.
 //
 // For AI: Prefer [showItemSheet] when the list is static. Use
@@ -51,7 +51,7 @@ class DeckItemSheet {
     if (itemCount == 0) return;
     final sheetTitle = showCountInHeader ? '$title ($itemCount)' : title;
 
-    showAppBottomSheet(
+    showBottomSheetDialog(
       context,
       title: titleWidget != null ? null : sheetTitle,
       titleWidget: titleWidget,
@@ -89,7 +89,7 @@ class DeckItemSheet {
     if (itemCount == 0) return;
     final sheetTitle = showCountInHeader ? '$title ($itemCount)' : title;
 
-    showAppBottomSheet(
+    showBottomSheetDialog(
       context,
       title: titleWidget != null ? null : sheetTitle,
       titleWidget: titleWidget,

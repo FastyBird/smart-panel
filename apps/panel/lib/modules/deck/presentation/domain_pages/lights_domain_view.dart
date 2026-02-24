@@ -61,9 +61,9 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/hero_card.dart';
-import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
-import 'package:fastybird_smart_panel/core/widgets/app_bottom_sheet.dart';
-import 'package:fastybird_smart_panel/core/widgets/app_right_drawer.dart';
+import 'package:fastybird_smart_panel/core/widgets/toast.dart';
+import 'package:fastybird_smart_panel/core/widgets/bottom_sheet_dialog.dart';
+import 'package:fastybird_smart_panel/core/widgets/right_drawer.dart';
 import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_item_drawer.dart';
 import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
@@ -2236,7 +2236,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       if (!state.isOn) {
         final result = await spacesService.turnRoleOff(_roomId, stateRole);
         if (mounted) IntentResultHandler.showOfflineAlertIfNeeded(context, result);
-        if (mounted && result == null) AppToast.showError(context, message: localizations.action_failed);
+        if (mounted && result == null) Toast.showError(context, message: localizations.action_failed);
         return;
       }
 
@@ -2244,7 +2244,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       if (mounted) IntentResultHandler.showOfflineAlertIfNeeded(context, result);
       if (!mounted) return;
       if (result == null) {
-        AppToast.showError(context, message: localizations.action_failed);
+        Toast.showError(context, message: localizations.action_failed);
         return;
       }
 
@@ -2253,13 +2253,13 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         result = await spacesService.setRoleBrightness(_roomId, stateRole, state.brightness.round());
         if (mounted) IntentResultHandler.showOfflineAlertIfNeeded(context, result);
         if (!mounted) return;
-        if (result == null) AppToast.showError(context, message: localizations.action_failed);
+        if (result == null) Toast.showError(context, message: localizations.action_failed);
       }
       if (capabilities.contains(LightHeroCapability.colorTemp)) {
         result = await spacesService.setRoleColorTemp(_roomId, stateRole, state.colorTemp.round());
         if (mounted) IntentResultHandler.showOfflineAlertIfNeeded(context, result);
         if (!mounted) return;
-        if (result == null) AppToast.showError(context, message: localizations.action_failed);
+        if (result == null) Toast.showError(context, message: localizations.action_failed);
       }
       if (capabilities.contains(LightHeroCapability.hue) || capabilities.contains(LightHeroCapability.saturation)) {
         final color = HSVColor.fromAHSV(
@@ -2274,16 +2274,16 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         result = await spacesService.setRoleColor(_roomId, stateRole, hex);
         if (mounted) IntentResultHandler.showOfflineAlertIfNeeded(context, result);
         if (!mounted) return;
-        if (result == null) AppToast.showError(context, message: localizations.action_failed);
+        if (result == null) Toast.showError(context, message: localizations.action_failed);
       }
       if (capabilities.contains(LightHeroCapability.whiteChannel)) {
         result = await spacesService.setRoleWhite(_roomId, stateRole, state.whiteChannel.round());
         if (mounted) IntentResultHandler.showOfflineAlertIfNeeded(context, result);
         if (!mounted) return;
-        if (result == null) AppToast.showError(context, message: localizations.action_failed);
+        if (result == null) Toast.showError(context, message: localizations.action_failed);
       }
     } catch (e) {
-      if (mounted) AppToast.showError(context, message: localizations.action_failed);
+      if (mounted) Toast.showError(context, message: localizations.action_failed);
     }
   }
 
@@ -2309,7 +2309,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       final drawerBgColor =
           isDark ? AppFillColorDark.base : AppFillColorLight.blank;
 
-      showAppRightDrawer(
+      showRightDrawer(
         context,
         title: roleName,
         titleIcon: MdiIcons.lightbulbGroup,
@@ -2341,7 +2341,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         ),
       );
     } else {
-      showAppBottomSheet(
+      showBottomSheetDialog(
         context,
         title: roleName,
         titleIcon: MdiIcons.lightbulbGroup,
@@ -3186,7 +3186,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         }
         // If intents repository is available, _onIntentChanged will handle completion
       } else if (!success && mounted) {
-        AppToast.showError(context, message: localizations.action_failed);
+        Toast.showError(context, message: localizations.action_failed);
         _modeControlStateService.setIdle(LightingConstants.modeChannelId);
         _modeWasLocked = false; // Reset to prevent inconsistent state
       }
@@ -3196,7 +3196,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         debugPrint('[LightsDomainView] Failed to set lighting mode: $e');
       }
       if (mounted) {
-        AppToast.showError(context, message: localizations.action_failed);
+        Toast.showError(context, message: localizations.action_failed);
         _modeControlStateService.setIdle(LightingConstants.modeChannelId);
         _modeWasLocked = false; // Reset to prevent inconsistent state
       }
@@ -3356,7 +3356,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       if (!mounted) return;
 
       if (!success) {
-        AppToast.showError(context, message: localizations.action_failed);
+        Toast.showError(context, message: localizations.action_failed);
         if (updateHero) {
           _heroControlStateService.setIdle(LightingConstants.onOffChannelId);
           setState(() {
@@ -3377,7 +3377,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       }
     } catch (e) {
       if (!mounted) return;
-      AppToast.showError(context, message: localizations.action_failed);
+      Toast.showError(context, message: localizations.action_failed);
       if (updateHero) {
         _heroControlStateService.setIdle(LightingConstants.onOffChannelId);
         setState(() {
@@ -3496,12 +3496,12 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       if (mounted) IntentResultHandler.showOfflineAlertIfNeeded(context, result);
       if (!mounted) return;
       if (result == null) {
-        AppToast.showError(context, message: localizations.action_failed);
+        Toast.showError(context, message: localizations.action_failed);
         _heroControlStateService.setIdle(LightingConstants.brightnessChannelId);
       }
     } catch (e) {
       if (!mounted) return;
-      AppToast.showError(context, message: localizations.action_failed);
+      Toast.showError(context, message: localizations.action_failed);
       _heroControlStateService.setIdle(LightingConstants.brightnessChannelId);
     }
   }
@@ -3520,12 +3520,12 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       if (mounted) IntentResultHandler.showOfflineAlertIfNeeded(context, result);
       if (!mounted) return;
       if (result == null) {
-        AppToast.showError(context, message: localizations.action_failed);
+        Toast.showError(context, message: localizations.action_failed);
         _heroControlStateService.setIdle(LightingConstants.temperatureChannelId);
       }
     } catch (e) {
       if (!mounted) return;
-      AppToast.showError(context, message: localizations.action_failed);
+      Toast.showError(context, message: localizations.action_failed);
       _heroControlStateService.setIdle(LightingConstants.temperatureChannelId);
     }
   }
@@ -3572,13 +3572,13 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       if (mounted) IntentResultHandler.showOfflineAlertIfNeeded(context, result);
       if (!mounted) return;
       if (result == null) {
-        AppToast.showError(context, message: localizations.action_failed);
+        Toast.showError(context, message: localizations.action_failed);
         _heroControlStateService.setIdle(LightingConstants.hueChannelId);
         _heroControlStateService.setIdle(LightingConstants.saturationChannelId);
       }
     } catch (e) {
       if (!mounted) return;
-      AppToast.showError(context, message: localizations.action_failed);
+      Toast.showError(context, message: localizations.action_failed);
       _heroControlStateService.setIdle(LightingConstants.hueChannelId);
       _heroControlStateService.setIdle(LightingConstants.saturationChannelId);
     }
@@ -3598,12 +3598,12 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       if (mounted) IntentResultHandler.showOfflineAlertIfNeeded(context, result);
       if (!mounted) return;
       if (result == null) {
-        AppToast.showError(context, message: localizations.action_failed);
+        Toast.showError(context, message: localizations.action_failed);
         _heroControlStateService.setIdle(LightingConstants.whiteChannelId);
       }
     } catch (e) {
       if (!mounted) return;
-      AppToast.showError(context, message: localizations.action_failed);
+      Toast.showError(context, message: localizations.action_failed);
       _heroControlStateService.setIdle(LightingConstants.whiteChannelId);
     }
   }

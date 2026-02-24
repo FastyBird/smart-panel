@@ -8,7 +8,7 @@ import 'package:fastybird_smart_panel/core/models/discovered_backend.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/startup_manager.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/features/discovery/presentation/backend_discovery.dart';
+import 'package:fastybird_smart_panel/features/discovery/presentation/discovery.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/foundation.dart';
 import 'package:fastybird_smart_panel/modules/system/types/configuration.dart';
@@ -340,7 +340,7 @@ class _MyAppState extends State<MyApp> {
         Language.english.value.split('_')[0],
         Language.english.value.split('_')[1],
       ),
-      home: BackendDiscoveryScreen(
+      home: DiscoveryScreen(
         onBackendSelected: _onBackendSelected,
         onManualUrlEntered: _onManualUrlEntered,
         errorMessage: _errorMessage,

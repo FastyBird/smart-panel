@@ -1,5 +1,5 @@
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/app_bottom_sheet.dart';
+import 'package:fastybird_smart_panel/core/widgets/bottom_sheet_dialog.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_playback_card.dart';
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
@@ -29,7 +29,7 @@ void showMediaPlaybackSheet(
 }) {
   final localizations = AppLocalizations.of(context)!;
 
-  showAppBottomSheet(
+  showBottomSheetDialog(
     context,
     title: localizations.media_playback,
     titleIcon: MdiIcons.playCircle,

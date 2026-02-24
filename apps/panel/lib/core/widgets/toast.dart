@@ -17,7 +17,7 @@ enum ToastType { success, info, warning, error }
 /// - Dismisses on tap (no close icon)
 /// - Auto-dismisses after duration
 /// - Pill/rounded style matching the app design
-class AppToast {
+class Toast {
   static OverlayEntry? _currentToast;
   static Timer? _dismissTimer;
 

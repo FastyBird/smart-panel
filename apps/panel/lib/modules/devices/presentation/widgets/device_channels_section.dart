@@ -1,5 +1,5 @@
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/app_bottom_sheet.dart';
+import 'package:fastybird_smart_panel/core/widgets/bottom_sheet_dialog.dart';
 import 'package:flutter/material.dart';
 
 /// Shared channels sheet used by lighting and window covering device details.
@@ -40,7 +40,7 @@ class DeviceChannelsSection {
           tileBuilder: tileBuilder,
         );
 
-    showAppBottomSheet(
+    showBottomSheetDialog(
       context,
       title: titleWidget != null ? null : sheetTitle,
       titleWidget: titleWidget,

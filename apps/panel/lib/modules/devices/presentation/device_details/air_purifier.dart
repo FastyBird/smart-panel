@@ -5,8 +5,8 @@ import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/app_card.dart';
-import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
+import 'package:fastybird_smart_panel/core/widgets/base_card.dart';
+import 'package:fastybird_smart_panel/core/widgets/toast.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_landscape_layout.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_portrait_layout.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_offline_overlay.dart';
@@ -130,7 +130,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
     }
     final localizations = AppLocalizations.of(context);
     if (mounted && localizations != null) {
-      AppToast.showError(context, message: localizations.action_failed);
+      Toast.showError(context, message: localizations.action_failed);
     }
     if (mounted) {
       setState(() {});
@@ -791,7 +791,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
   Widget _buildControlCard(
       BuildContext context, bool isDark, Color airColor) {
     final localizations = AppLocalizations.of(context)!;
-    return AppCard(
+    return BaseCard(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -993,7 +993,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
       BuildContext context, bool isDark, Color airColor) {
     final localizations = AppLocalizations.of(context)!;
 
-    return AppCard(
+    return BaseCard(
       child: LayoutBuilder(
         builder: (context, constraints) {
           return Row(

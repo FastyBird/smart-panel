@@ -39,7 +39,7 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/app_card.dart';
+import 'package:fastybird_smart_panel/core/widgets/base_card.dart';
 import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
@@ -902,7 +902,7 @@ class _AlertStream extends StatelessWidget {
 			),
 		);
 
-		return AppCard(
+		return BaseCard(
 			expanded: true,
 			headerIcon: MdiIcons.alertOutline,
 			headerTitle: localizations.security_tab_alerts,
@@ -1160,7 +1160,7 @@ class _EventsFeed extends StatelessWidget {
 				: null,
 		);
 
-		return AppCard(
+		return BaseCard(
 			color: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
 			expanded: true,
 			headerIcon: MdiIcons.history,
