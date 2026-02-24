@@ -1,7 +1,8 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
+import 'package:fastybird_smart_panel/core/utils/screen_layout.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/system_pages/export.dart';
+import 'package:fastybird_smart_panel/core/widgets/icon_container.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -27,7 +28,7 @@ class ConfigErrorScreen extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: SystemPagesTheme.background(isDark),
+      backgroundColor: isDark ? AppBgColorDark.base : AppBgColorLight.base,
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -36,29 +37,26 @@ class ConfigErrorScreen extends StatelessWidget {
             return Center(
               child: Padding(
                 padding: EdgeInsets.all(
-                  SystemPagesLayout.getPagePadding(screenService, isLandscape),
+                  screenService.systemPagePadding(isLandscape),
                 ),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     // Warning icon
-                    SystemPagesLayout.buildIcon(
+                    IconContainer(
                       screenService: screenService,
                       icon: MdiIcons.cogOff,
-                      color: SystemPagesTheme.warning(isDark),
+                      color: isDark ? AppColorsDark.warning : AppColorsLight.warning,
                       isLandscape: isLandscape,
                     ),
                     SizedBox(
-                      height: SystemPagesLayout.getIconBottomSpacing(
-                        screenService,
-                        isLandscape,
-                      ),
+                      height: screenService.iconBottomSpacing(isLandscape),
                     ),
                     // Title
                     Text(
                       localizations.config_error_title,
                       style: TextStyle(
-                        color: SystemPagesTheme.textPrimary(isDark),
+                        color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
                         fontSize: AppFontSize.extraLarge,
                         fontWeight: FontWeight.w500,
                       ),
@@ -70,7 +68,7 @@ class ConfigErrorScreen extends StatelessWidget {
                       errorMessage,
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: SystemPagesTheme.textMuted(isDark),
+                        color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
                         fontSize: AppFontSize.base,
                         height: 1.5,
                       ),
@@ -121,7 +119,7 @@ class ConfigErrorScreen extends StatelessWidget {
           vertical: verticalPadding,
         ),
         decoration: BoxDecoration(
-          color: SystemPagesTheme.card(isDark),
+          color: isDark ? AppFillColorDark.base : AppFillColorLight.blank,
           borderRadius: BorderRadius.circular(AppBorderRadius.base),
           boxShadow: isDark
               ? null
@@ -142,12 +140,12 @@ class ConfigErrorScreen extends StatelessWidget {
               height: screenService.scale(40),
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: SystemPagesTheme.infoLight(isDark),
+                color: isDark ? AppColorsDark.infoLight9 : AppColorsLight.infoLight9,
                 borderRadius: BorderRadius.circular(screenService.scale(10)),
               ),
               child: Icon(
                 MdiIcons.informationOutline,
-                color: SystemPagesTheme.info(isDark),
+                color: isDark ? AppColorsDark.info : AppColorsLight.info,
                 size: screenService.scale(22),
               ),
             ),
@@ -155,7 +153,7 @@ class ConfigErrorScreen extends StatelessWidget {
               child: Text(
                 hintText,
                 style: TextStyle(
-                  color: SystemPagesTheme.info(isDark),
+                  color: isDark ? AppColorsDark.info : AppColorsLight.info,
                   fontSize: AppFontSize.base,
                   height: 1.1,
                 ),
@@ -163,7 +161,7 @@ class ConfigErrorScreen extends StatelessWidget {
             ),
             Icon(
               MdiIcons.chevronRight,
-              color: SystemPagesTheme.textMuted(isDark),
+              color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
               size: AppSpacings.pLg + AppSpacings.pSm,
             ),
           ],

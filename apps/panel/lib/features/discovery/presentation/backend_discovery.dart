@@ -8,9 +8,11 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/models/discovered_backend.dart';
 import 'package:fastybird_smart_panel/core/services/mdns_discovery.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
+import 'package:fastybird_smart_panel/core/utils/screen_layout.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
-import 'package:fastybird_smart_panel/core/widgets/system_pages/export.dart';
+import 'package:fastybird_smart_panel/core/widgets/icon_container.dart';
+import 'package:fastybird_smart_panel/features/discovery/presentation/backend_discovery_widgets.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 
 /// Discovery state enum
@@ -291,7 +293,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: SystemPagesTheme.background(isDark),
+      backgroundColor: isDark ? AppBgColorDark.base : AppBgColorLight.base,
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
@@ -339,14 +341,14 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
     bool isLandscape,
   ) {
     final localizations = AppLocalizations.of(context)!;
-    final accent = SystemPagesTheme.accent(isDark);
+    final accent = isDark ? AppColorsDark.primary : AppColorsLight.primary;
     final isCompact =
         _screenService.isSmallScreen || _screenService.isMediumScreen;
     final isCompactLandscape = isCompact && isLandscape;
 
     return Center(
       child: Padding(
-        padding: EdgeInsets.all(SystemPagesLayout.getPagePadding(_screenService, isLandscape)),
+        padding: EdgeInsets.all(_screenService.systemPagePadding(isLandscape)),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -377,7 +379,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
             Text(
               localizations.discovery_searching_title,
               style: TextStyle(
-                color: SystemPagesTheme.textPrimary(isDark),
+                color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
                 fontSize: AppFontSize.extraLarge,
                 fontWeight: FontWeight.w500,
               ),
@@ -387,7 +389,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
               localizations.discovery_searching_description,
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: SystemPagesTheme.textMuted(isDark),
+                color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
                 fontSize: AppFontSize.base,
                 height: 1.5,
               ),
@@ -448,7 +450,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
     bool isLandscape,
   ) {
     final localizations = AppLocalizations.of(context)!;
-    final accent = SystemPagesTheme.accent(isDark);
+    final accent = isDark ? AppColorsDark.primary : AppColorsLight.primary;
 
     if (isLandscape) {
       return _buildFoundStateLandscape(
@@ -474,22 +476,22 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
     Color accent,
   ) {
     return Padding(
-      padding: EdgeInsets.all(SystemPagesLayout.getPagePadding(_screenService, false)),
+      padding: EdgeInsets.all(_screenService.systemPagePadding(false)),
       child: Column(
         children: [
           // Header
-          SystemPagesLayout.buildIcon(
+          IconContainer(
             screenService: _screenService,
             icon: MdiIcons.accessPointNetwork,
             color: accent,
             isLandscape: false,
             useContainer: false,
           ),
-          SizedBox(height: SystemPagesLayout.getIconBottomSpacing(_screenService, false)),
+          SizedBox(height: _screenService.iconBottomSpacing(false)),
           Text(
             localizations.discovery_select_title,
             style: TextStyle(
-              color: SystemPagesTheme.textPrimary(isDark),
+              color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
               fontSize: AppFontSize.extraLarge,
               fontWeight: FontWeight.w500,
             ),
@@ -498,7 +500,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
           Text(
             localizations.discovery_select_description(_backends.length),
             style: TextStyle(
-              color: SystemPagesTheme.textMuted(isDark),
+              color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
               fontSize: AppFontSize.small,
             ),
           ),
@@ -622,7 +624,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
         _screenService.isSmallScreen || _screenService.isMediumScreen;
 
     return Padding(
-      padding: EdgeInsets.all(SystemPagesLayout.getPagePadding(_screenService, true)),
+      padding: EdgeInsets.all(_screenService.systemPagePadding(true)),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -632,18 +634,18 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                SystemPagesLayout.buildIcon(
+                IconContainer(
                   screenService: _screenService,
                   icon: MdiIcons.accessPointNetwork,
                   color: accent,
                   isLandscape: true,
                   useContainer: false,
                 ),
-                SizedBox(height: SystemPagesLayout.getIconBottomSpacing(_screenService, true)),
+                SizedBox(height: _screenService.iconBottomSpacing(true)),
                 Text(
                   localizations.discovery_select_title,
                   style: TextStyle(
-                    color: SystemPagesTheme.textPrimary(isDark),
+                    color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
                     fontSize: AppFontSize.extraLarge,
                     fontWeight: FontWeight.w500,
                   ),
@@ -652,7 +654,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
                 Text(
                   localizations.discovery_select_description(_backends.length),
                   style: TextStyle(
-                    color: SystemPagesTheme.textMuted(isDark),
+                    color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
                     fontSize: AppFontSize.small,
                   ),
                 ),
@@ -779,24 +781,23 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
     final isCompactLandscape = isCompact && isLandscape;
     return Center(
       child: Padding(
-        padding: EdgeInsets.all(SystemPagesLayout.getPagePadding(_screenService, isLandscape)),
+        padding: EdgeInsets.all(_screenService.systemPagePadding(isLandscape)),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             // Warning icon
-            SystemPagesLayout.buildIcon(
+            IconContainer(
               screenService: _screenService,
               icon: MdiIcons.serverOff,
-              color: SystemPagesTheme.warning(isDark),
+              color: isDark ? AppColorsDark.warning : AppColorsLight.warning,
               isLandscape: isLandscape,
-              useContainer: true,
             ),
-            SizedBox(height: SystemPagesLayout.getIconBottomSpacing(_screenService, isLandscape)),
+            SizedBox(height: _screenService.iconBottomSpacing(isLandscape)),
             // Title
             Text(
               localizations.discovery_not_found_title,
               style: TextStyle(
-                color: SystemPagesTheme.textPrimary(isDark),
+                color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
                 fontSize: AppFontSize.extraLarge,
                 fontWeight: FontWeight.w500,
               ),
@@ -810,7 +811,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
               localizations.discovery_not_found_description,
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: SystemPagesTheme.textMuted(isDark),
+                color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
                 fontSize: AppSpacings.scale(isCompactLandscape ? 12 : 14),
                 height: 1.5,
               ),
@@ -936,24 +937,23 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
 
     return Center(
       child: Padding(
-        padding: EdgeInsets.all(SystemPagesLayout.getPagePadding(_screenService, isLandscape)),
+        padding: EdgeInsets.all(_screenService.systemPagePadding(isLandscape)),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             // Error icon
-            SystemPagesLayout.buildIcon(
+            IconContainer(
               screenService: _screenService,
               icon: MdiIcons.alertCircle,
-              color: SystemPagesTheme.error(isDark),
+              color: isDark ? AppColorsDark.error : AppColorsLight.error,
               isLandscape: isLandscape,
-              useContainer: true,
             ),
-            SizedBox(height: SystemPagesLayout.getIconBottomSpacing(_screenService, isLandscape)),
+            SizedBox(height: _screenService.iconBottomSpacing(isLandscape)),
             // Title
             Text(
               localizations.discovery_error_title,
               style: TextStyle(
-                color: SystemPagesTheme.textPrimary(isDark),
+                color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
                 fontSize: AppFontSize.extraLarge,
                 fontWeight: FontWeight.w500,
               ),
@@ -964,7 +964,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
               localizations.discovery_error_description,
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: SystemPagesTheme.textMuted(isDark),
+                color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
                 fontSize: AppFontSize.base,
                 height: 1.5,
               ),
@@ -984,7 +984,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
     bool isLandscape,
   ) {
     final localizations = AppLocalizations.of(context)!;
-    final accent = SystemPagesTheme.accent(isDark);
+    final accent = isDark ? AppColorsDark.primary : AppColorsLight.primary;
 
     final address = _wasManualEntry
         ? _manualUrlController.text.trim()
@@ -993,22 +993,22 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
 
     return Center(
       child: Padding(
-        padding: EdgeInsets.all(SystemPagesLayout.getPagePadding(_screenService, isLandscape)),
+        padding: EdgeInsets.all(_screenService.systemPagePadding(isLandscape)),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            SystemPagesLayout.buildIcon(
+            IconContainer(
               screenService: _screenService,
               icon: MdiIcons.serverNetwork,
               color: accent,
               isLandscape: isLandscape,
               useContainer: false,
             ),
-            SizedBox(height: SystemPagesLayout.getIconBottomSpacing(_screenService, isLandscape)),
+            SizedBox(height: _screenService.iconBottomSpacing(isLandscape)),
             Text(
               localizations.discovery_connecting_title,
               style: TextStyle(
-                color: SystemPagesTheme.textPrimary(isDark),
+                color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
                 fontSize: AppFontSize.extraLarge,
                 fontWeight: FontWeight.w500,
               ),
@@ -1018,7 +1018,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
               localizations.discovery_connecting_description(address),
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: SystemPagesTheme.textMuted(isDark),
+                color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
                 fontSize: AppFontSize.base,
               ),
             ),
@@ -1039,26 +1039,26 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
     bool isLandscape,
   ) {
     final localizations = AppLocalizations.of(context)!;
-    final accent = SystemPagesTheme.accent(isDark);
+    final accent = isDark ? AppColorsDark.primary : AppColorsLight.primary;
 
     return Center(
       child: Padding(
-        padding: EdgeInsets.all(SystemPagesLayout.getPagePadding(_screenService, isLandscape)),
+        padding: EdgeInsets.all(_screenService.systemPagePadding(isLandscape)),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            SystemPagesLayout.buildIcon(
+            IconContainer(
               screenService: _screenService,
               icon: MdiIcons.keyboard,
               color: accent,
               isLandscape: isLandscape,
               useContainer: false,
             ),
-            SizedBox(height: SystemPagesLayout.getIconBottomSpacing(_screenService, isLandscape)),
+            SizedBox(height: _screenService.iconBottomSpacing(isLandscape)),
             Text(
               localizations.discovery_manual_entry_title,
               style: TextStyle(
-                color: SystemPagesTheme.textPrimary(isDark),
+                color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
                 fontSize: AppFontSize.extraLarge,
                 fontWeight: FontWeight.w500,
               ),
@@ -1082,7 +1082,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
             Text(
               localizations.discovery_manual_entry_help,
               style: TextStyle(
-                color: SystemPagesTheme.textMuted(isDark),
+                color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
                 fontSize: AppFontSize.small,
               ),
               textAlign: TextAlign.center,

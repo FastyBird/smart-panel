@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
+import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/system_pages/export.dart';
+import 'package:fastybird_smart_panel/core/widgets/icon_container.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/system/types/configuration.dart';
 
@@ -38,7 +40,7 @@ class AppError extends StatelessWidget {
       ),
       locale: const Locale('en', 'US'),
       home: Scaffold(
-        backgroundColor: SystemPagesTheme.background(isDark),
+        backgroundColor: isDark ? AppBgColorDark.base : AppBgColorLight.base,
         body: SafeArea(
           child: LayoutBuilder(
             builder: (context, constraints) {
@@ -55,12 +57,19 @@ class AppError extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       // Error icon
-                      IconContainer(
-                        icon: MdiIcons.alertCircle,
-                        color: SystemPagesTheme.error(isDark),
-                        size: AppSpacings.scale(80),
-                        iconSize: AppSpacings.scale(40),
-                      ),
+                      if (locator.isRegistered<ScreenService>())
+                        IconContainer(
+                          screenService: locator<ScreenService>(),
+                          icon: MdiIcons.alertCircle,
+                          color: isDark ? AppColorsDark.error : AppColorsLight.error,
+                          isLandscape: isLandscape,
+                        )
+                      else
+                        Icon(
+                          MdiIcons.alertCircle,
+                          color: isDark ? AppColorsDark.error : AppColorsLight.error,
+                          size: AppSpacings.scale(48),
+                        ),
                       AppSpacings.spacingXlVertical,
                       // Title
                       Text(
@@ -69,7 +78,7 @@ class AppError extends StatelessWidget {
                             : 'Failed to Start',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: SystemPagesTheme.textPrimary(isDark),
+                          color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
                           fontSize: AppFontSize.extraLarge,
                           fontWeight: FontWeight.w500,
                         ),
@@ -85,7 +94,7 @@ class AppError extends StatelessWidget {
                                 : _errorMessage,
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: SystemPagesTheme.textMuted(isDark),
+                          color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
                           fontSize: AppSpacings.scale(14),
                           height: 1.5,
                         ),
@@ -139,7 +148,7 @@ class AppError extends StatelessWidget {
     return Container(
       padding: EdgeInsets.all(AppSpacings.scale(16)),
       decoration: BoxDecoration(
-        color: SystemPagesTheme.card(isDark),
+        color: isDark ? AppFillColorDark.base : AppFillColorLight.blank,
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
         boxShadow: isDark
             ? null
@@ -158,12 +167,12 @@ class AppError extends StatelessWidget {
             height: AppSpacings.scale(40),
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: SystemPagesTheme.infoLight(isDark),
+              color: isDark ? AppColorsDark.infoLight9 : AppColorsLight.infoLight9,
               borderRadius: BorderRadius.circular(AppBorderRadius.small),
             ),
             child: Icon(
               MdiIcons.informationOutline,
-              color: SystemPagesTheme.info(isDark),
+              color: isDark ? AppColorsDark.info : AppColorsLight.info,
               size: AppSpacings.scale(22),
             ),
           ),
@@ -172,7 +181,7 @@ class AppError extends StatelessWidget {
             child: Text(
               'Please ask the administrator to activate "Permit Join" in the admin panel, then restart the application.',
               style: TextStyle(
-                color: SystemPagesTheme.info(isDark),
+                color: isDark ? AppColorsDark.info : AppColorsLight.info,
                 fontSize: AppSpacings.scale(14),
               ),
             ),
@@ -194,14 +203,14 @@ class AppError extends StatelessWidget {
         vertical: AppSpacings.scale(8),
       ),
       decoration: BoxDecoration(
-        color: SystemPagesTheme.card(isDark),
+        color: isDark ? AppFillColorDark.base : AppFillColorLight.blank,
         borderRadius: BorderRadius.circular(AppBorderRadius.small),
       ),
       child: Text(
         errorCode,
         textAlign: TextAlign.center,
         style: TextStyle(
-          color: SystemPagesTheme.textMuted(isDark),
+          color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
           fontSize: AppSpacings.scale(12),
           fontFamily: 'monospace',
         ),

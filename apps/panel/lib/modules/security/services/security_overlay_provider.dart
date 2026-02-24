@@ -6,7 +6,6 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/system_pages/export.dart';
 import 'package:fastybird_smart_panel/features/overlay/services/overlay_manager.dart';
 import 'package:fastybird_smart_panel/features/overlay/types/overlay.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
@@ -145,7 +144,7 @@ class _SecurityAlertListContent extends StatelessWidget {
 						child: Text(
 							localizations.security_overlay_more_alerts(totalCount - 3),
 							style: TextStyle(
-								color: SystemPagesTheme.textMuted(isDark),
+								color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
 								fontSize: AppFontSize.small,
 							),
 						),
@@ -174,7 +173,7 @@ class _SecurityAlertListContent extends StatelessWidget {
 						child: Text(
 							alert.message ?? securityAlertTypeTitle(alert.type, localizations),
 							style: TextStyle(
-								color: SystemPagesTheme.textPrimary(isDark),
+								color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
 								fontSize: AppFontSize.small,
 							),
 							maxLines: 1,
@@ -185,7 +184,7 @@ class _SecurityAlertListContent extends StatelessWidget {
 					Text(
 						DatetimeUtils.formatTimeAgo(alert.timestamp, localizations),
 						style: TextStyle(
-							color: SystemPagesTheme.textMuted(isDark),
+							color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
 							fontSize: AppFontSize.extraSmall,
 						),
 					),

@@ -1,4 +1,4 @@
-import 'package:fastybird_smart_panel/core/widgets/system_pages/export.dart';
+import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/modules/security/types/security.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -19,16 +19,16 @@ IconData alertTypeIcon(SecurityAlertType type) {
 
 Color severityColor(Severity severity, bool isDark) {
 	return switch (severity) {
-		Severity.critical => SystemPagesTheme.error(isDark),
-		Severity.warning => SystemPagesTheme.warning(isDark),
-		Severity.info => SystemPagesTheme.info(isDark),
+		Severity.critical => isDark ? AppColorsDark.error : AppColorsLight.error,
+		Severity.warning => isDark ? AppColorsDark.warning : AppColorsLight.warning,
+		Severity.info => isDark ? AppColorsDark.info : AppColorsLight.info,
 	};
 }
 
 Color severityBgColor(Severity severity, bool isDark) {
 	return switch (severity) {
-		Severity.critical => SystemPagesTheme.errorLight(isDark),
-		Severity.warning => SystemPagesTheme.warningLight(isDark),
-		Severity.info => SystemPagesTheme.infoLight(isDark),
+		Severity.critical => isDark ? AppColorsDark.errorLight9 : AppColorsLight.errorLight9,
+		Severity.warning => isDark ? AppColorsDark.warningLight9 : AppColorsLight.warningLight9,
+		Severity.info => isDark ? AppColorsDark.infoLight9 : AppColorsLight.infoLight9,
 	};
 }
