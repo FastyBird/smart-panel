@@ -4,6 +4,7 @@ import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/icon_container.dart';
 import 'package:fastybird_smart_panel/core/widgets/toast.dart';
+import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
 import 'package:fastybird_smart_panel/modules/devices/export.dart';
@@ -680,31 +681,44 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 		final cards = model.domainCards;
 		final spacing = AppSpacings.pMd;
 		final maxTileHeight = AppSpacings.scale(75);
+		final rowCount = (cards.length / 2).ceil();
 
 		return LayoutBuilder(
 			builder: (context, constraints) {
 				final tileWidth = (constraints.maxWidth - spacing) / 2;
-				final tileHeight = tileWidth / 1.8;
-				final clampedHeight = tileHeight.clamp(0, maxTileHeight).toDouble();
-				final aspectRatio = tileWidth / clampedHeight;
+				final tileHeight = (tileWidth / 1.8).clamp(0, maxTileHeight).toDouble();
 
-				return GridView.builder(
-					gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-						crossAxisCount: 2,
-						childAspectRatio: aspectRatio,
-						mainAxisSpacing: spacing,
-						crossAxisSpacing: spacing,
-					),
-					padding: EdgeInsets.zero,
-					physics: cards.length <= 4
-						? const NeverScrollableScrollPhysics()
-						: null,
-					itemCount: cards.length,
-					itemBuilder: (context, index) {
-						return _RoomDomainCard(
-							cardInfo: cards[index],
-							isDark: isDark,
-							onTap: () => _navigateToDomainView(cards[index].domain),
+				return VerticalScrollWithGradient(
+					itemCount: rowCount,
+					separatorHeight: spacing,
+					itemBuilder: (context, rowIndex) {
+						final firstIndex = rowIndex * 2;
+						final secondIndex = firstIndex + 1;
+
+						return SizedBox(
+							height: tileHeight,
+							child: Row(
+								spacing: spacing,
+								children: [
+									Expanded(
+										child: _RoomDomainCard(
+											cardInfo: cards[firstIndex],
+											isDark: isDark,
+											onTap: () => _navigateToDomainView(cards[firstIndex].domain),
+										),
+									),
+									if (secondIndex < cards.length)
+										Expanded(
+											child: _RoomDomainCard(
+												cardInfo: cards[secondIndex],
+												isDark: isDark,
+												onTap: () => _navigateToDomainView(cards[secondIndex].domain),
+											),
+										)
+									else
+										const Expanded(child: SizedBox.shrink()),
+								],
+							),
 						);
 					},
 				);
