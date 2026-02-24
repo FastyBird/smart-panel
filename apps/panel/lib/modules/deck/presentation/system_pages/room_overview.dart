@@ -1,7 +1,9 @@
 import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/utils/number_format.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/icon_container.dart';
 import 'package:fastybird_smart_panel/core/widgets/toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
@@ -717,12 +719,14 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 				mainAxisAlignment: MainAxisAlignment.center,
 				spacing: AppSpacings.pMd,
 				children: [
-					Icon(
-						MdiIcons.homeOffOutline,
-						size: AppSpacings.scale(64),
+					IconContainer(
+						screenService: locator<ScreenService>(),
+						icon: MdiIcons.homeOffOutline,
 						color: Theme.of(context).brightness == Brightness.light
 							? AppTextColorLight.placeholder
 							: AppTextColorDark.placeholder,
+						isLandscape: false,
+						useContainer: false,
 					),
 					Text(
 						localizations?.space_empty_state_title ?? 'No Devices',

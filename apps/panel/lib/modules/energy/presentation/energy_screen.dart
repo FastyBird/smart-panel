@@ -27,6 +27,7 @@ import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/portrait_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
+import 'package:fastybird_smart_panel/core/widgets/icon_container.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/energy/models/energy_breakdown.dart';
@@ -873,8 +874,7 @@ class _EnergyScreenState extends State<EnergyScreen> {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 		final localizations = AppLocalizations.of(context)!;
 		final infoColor = isDark ? AppColorsDark.info : AppColorsLight.info;
-		final infoBgColor = isDark ? AppColorsDark.infoLight9 : AppColorsLight.infoLight9;
-
+	
 		return Center(
 			child: Padding(
 				padding: AppSpacings.paddingXl,
@@ -882,18 +882,11 @@ class _EnergyScreenState extends State<EnergyScreen> {
 					mainAxisAlignment: MainAxisAlignment.center,
 					spacing: AppSpacings.pMd,
 					children: [
-						Container(
-							width: AppSpacings.scale(80),
-							height: AppSpacings.scale(80),
-							decoration: BoxDecoration(
-								color: infoBgColor,
-								shape: BoxShape.circle,
-							),
-							child: Icon(
-								MdiIcons.flashOff,
-								size: AppSpacings.scale(48),
-								color: infoColor,
-							),
+						IconContainer(
+							screenService: locator<ScreenService>(),
+							icon: MdiIcons.flashOff,
+							color: infoColor,
+							isLandscape: false,
 						),
 						Text(
 							localizations.energy_empty_title,
