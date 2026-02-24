@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
+import { ModuleRef } from '@nestjs/core';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger';
@@ -15,17 +16,24 @@ import { EventType, SYSTEM_MODULE_NAME } from '../system.constants';
 import { FactoryResetRegistryService } from './factory-reset-registry.service';
 
 @Injectable()
-export class SystemCommandService {
+export class SystemCommandService implements OnModuleInit {
 	private readonly logger = createExtensionLogger(SYSTEM_MODULE_NAME, 'SystemCommandService');
 
+	private displaysService!: DisplaysService;
+	private permitJoinService!: PermitJoinService;
+
 	constructor(
+		private readonly moduleRef: ModuleRef,
 		private readonly factoryResetRegistry: FactoryResetRegistryService,
 		private readonly platformService: PlatformService,
-		private readonly displaysService: DisplaysService,
 		private readonly tokensService: TokensService,
-		private readonly permitJoinService: PermitJoinService,
 		private readonly eventEmitter: EventEmitter2,
 	) {}
+
+	onModuleInit() {
+		this.displaysService = this.moduleRef.get(DisplaysService, { strict: false });
+		this.permitJoinService = this.moduleRef.get(PermitJoinService, { strict: false });
+	}
 
 	async reboot(user: ClientUserDto): Promise<{ success: boolean; reason?: string }> {
 		try {

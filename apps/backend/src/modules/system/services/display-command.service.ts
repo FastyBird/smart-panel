@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
+import { ModuleRef } from '@nestjs/core';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger';
@@ -9,14 +10,20 @@ import { ClientUserDto } from '../../websocket/dto/client-user.dto';
 import { EventType, SYSTEM_MODULE_NAME } from '../system.constants';
 
 @Injectable()
-export class DisplayCommandService {
+export class DisplayCommandService implements OnModuleInit {
 	private readonly logger = createExtensionLogger(SYSTEM_MODULE_NAME, 'DisplayCommandService');
 
+	private displaysService!: DisplaysService;
+
 	constructor(
-		private readonly displaysService: DisplaysService,
+		private readonly moduleRef: ModuleRef,
 		private readonly tokensService: TokensService,
 		private readonly eventEmitter: EventEmitter2,
 	) {}
+
+	onModuleInit() {
+		this.displaysService = this.moduleRef.get(DisplaysService, { strict: false });
+	}
 
 	displayReboot(user: ClientUserDto): { success: boolean; reason?: string } {
 		const displayId = this.getDisplayId(user);

@@ -5,7 +5,6 @@ import { AuthModule } from '../auth/auth.module';
 import { ConfigModule } from '../config/config.module';
 import { ConfigService } from '../config/services/config.service';
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
-import { DisplaysModule } from '../displays/displays.module';
 import { ExtensionsModule } from '../extensions/extensions.module';
 import { ExtensionsService } from '../extensions/services/extensions.service';
 import { InfluxDbModule } from '../influxdb/influxdb.module';
@@ -56,7 +55,6 @@ import { SYSTEM_SWAGGER_EXTRA_MODELS } from './system.openapi';
 		forwardRef(() => ConfigModule),
 		forwardRef(() => ExtensionsModule),
 		forwardRef(() => SpacesModule),
-		forwardRef(() => DisplaysModule),
 	],
 	providers: [
 		SystemService,
