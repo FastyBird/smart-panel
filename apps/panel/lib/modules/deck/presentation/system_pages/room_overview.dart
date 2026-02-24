@@ -769,8 +769,8 @@ class _RoomDomainCard extends StatelessWidget {
 					borderRadius: borderRadius,
 					border: Border.all(
 						color: isDark
-							? AppBorderColorDark.extraLight
-							: AppBorderColorLight.lighter,
+							? AppBorderColorDark.darker
+							: AppBorderColorLight.darker,
 					),
 				),
 				child: Column(
