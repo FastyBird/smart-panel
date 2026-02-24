@@ -757,6 +757,7 @@ class _RoomDomainCard extends StatelessWidget {
 				),
 				child: Column(
 					crossAxisAlignment: CrossAxisAlignment.start,
+					mainAxisAlignment: MainAxisAlignment.center,
 					children: [
 						Row(
 							children: [
