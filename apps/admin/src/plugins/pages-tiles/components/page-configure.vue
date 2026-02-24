@@ -173,6 +173,8 @@ const removedTiles = new Set<ITile['id']>();
 
 const initialized = ref<boolean>(false);
 
+const suppressMarkChanged = ref<boolean>(false);
+
 const pageChanged = ref<boolean>(false);
 
 const selectedDisplayId = ref<string | null>(null);
@@ -255,14 +257,26 @@ const updateSquareCells = (): void => {
 	}
 };
 
+const unmountGridComponents = (grid: GridStack): void => {
+	for (const el of grid.getGridItems()) {
+		const content = el.querySelector('.grid-stack-item-content');
+
+		if (content) {
+			render(null, content as HTMLElement);
+		}
+	}
+};
+
 const destroyGrids = (): void => {
 	if (pageGrid) {
+		unmountGridComponents(pageGrid);
 		pageGrid.removeAll(true);
 		pageGrid.destroy(false);
 		pageGrid = undefined;
 	}
 
 	if (draftGrid) {
+		unmountGridComponents(draftGrid);
 		draftGrid.removeAll(true);
 		draftGrid.destroy(false);
 		draftGrid = undefined;
@@ -493,8 +507,10 @@ const initializeGrids = (): void => {
 
 	updateSquareCells();
 
-	// Re-add existing tiles to the new grids
+	// Re-add existing tiles to the new grids without triggering false dirty state
+	suppressMarkChanged.value = true;
 	addTilesToGrids();
+	suppressMarkChanged.value = false;
 };
 
 const addTilesToGrids = (): void => {
@@ -535,7 +551,7 @@ const addTilesToGrids = (): void => {
 };
 
 const markChanged = () => {
-	if (!initialized.value) {
+	if (!initialized.value || suppressMarkChanged.value) {
 		return;
 	}
 
