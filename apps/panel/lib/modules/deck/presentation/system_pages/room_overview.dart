@@ -785,7 +785,7 @@ class _RoomDomainCard extends StatelessWidget {
 												style: TextStyle(
 													fontSize: AppFontSize.small,
 													fontWeight: FontWeight.w700,
-													height: 1.1,
+													height: 1.0,
 													color: isDark
 														? AppTextColorDark.primary
 														: AppTextColorLight.primary,
@@ -798,6 +798,7 @@ class _RoomDomainCard extends StatelessWidget {
 														style: TextStyle(
 															fontSize: AppFontSize.extraLarge,
 															fontWeight: FontWeight.w700,
+															height: 1.0,
 															color: isDark
 																? AppTextColorDark.primary
 																: AppTextColorLight.primary,
