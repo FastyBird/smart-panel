@@ -2,6 +2,7 @@ import 'package:fastybird_smart_panel/api/models/devices_module_channel_category
 import 'package:fastybird_smart_panel/api/models/devices_module_data_type.dart';
 import 'package:fastybird_smart_panel/api/models/devices_module_property_category.dart';
 import 'package:fastybird_smart_panel/core/utils/number_format.dart';
+import 'package:fastybird_smart_panel/core/utils/unit_converter.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/channel.dart'
     show buildChannelIcon;
@@ -30,15 +31,24 @@ class SensorUtils {
 
   /// Canonical display unit for a channel category.
   ///
+  /// When [displayUnits] is provided, temperature and pressure units are
+  /// resolved from display/system settings instead of using hardcoded defaults.
   /// Returns an empty string for binary/enum-only categories (contact, leak, …).
-  static String unitForCategory(DevicesModuleChannelCategory category) {
+  static String unitForCategory(
+    DevicesModuleChannelCategory category, {
+    DisplayUnits? displayUnits,
+  }) {
     switch (category) {
       case DevicesModuleChannelCategory.temperature:
-        return '°C';
+        return displayUnits != null
+            ? UnitConverter.temperatureSymbol(displayUnits.temperature)
+            : '°C';
       case DevicesModuleChannelCategory.humidity:
         return '%';
       case DevicesModuleChannelCategory.pressure:
-        return 'kPa';
+        return displayUnits != null
+            ? UnitConverter.pressureSymbol(displayUnits.pressure)
+            : 'kPa';
       case DevicesModuleChannelCategory.illuminance:
         return 'lux';
       case DevicesModuleChannelCategory.carbonDioxide:
@@ -99,28 +109,79 @@ class SensorUtils {
 
   /// Format a numeric [value] using the scale for [category].
   ///
+  /// When [displayUnits] is provided, the value is converted from the system
+  /// unit (Celsius, hPa, etc.) to the user's preferred display unit.
   /// Returns a locale-formatted string (e.g. "23,5" for temperature,
   /// "1 013" for CO₂).
   static String formatNumericValue(
     num value,
-    DevicesModuleChannelCategory category,
-  ) {
-    final scale = scaleForCategory(category);
+    DevicesModuleChannelCategory category, {
+    DisplayUnits? displayUnits,
+  }) {
+    final converted = displayUnits != null
+        ? _convertValue(value.toDouble(), category, displayUnits)
+        : value.toDouble();
+    final scale = displayUnits != null
+        ? _scaleForConvertedCategory(category, displayUnits)
+        : scaleForCategory(category);
     if (scale > 0) {
-      return _formatter.formatDecimal(value.toDouble(), decimalPlaces: scale);
+      return _formatter.formatDecimal(converted, decimalPlaces: scale);
     }
-    return _formatter.formatInteger(value.toInt());
+    return _formatter.formatInteger(converted.toInt());
   }
 
   /// Format a numeric [value] with its unit appended (e.g. "23,5°C", "45%").
+  ///
+  /// When [displayUnits] is provided, both the value and unit string are
+  /// resolved from display/system settings.
   static String formatNumericValueWithUnit(
     num value,
-    DevicesModuleChannelCategory category,
-  ) {
-    final formatted = formatNumericValue(value, category);
-    final unit = unitForCategory(category);
+    DevicesModuleChannelCategory category, {
+    DisplayUnits? displayUnits,
+  }) {
+    final formatted =
+        formatNumericValue(value, category, displayUnits: displayUnits);
+    final unit = unitForCategory(category, displayUnits: displayUnits);
     if (unit.isEmpty) return formatted;
     return '$formatted$unit';
+  }
+
+  /// Converts a raw metric value to the display unit for the given category.
+  ///
+  /// Device sensor pressure is stored internally in kPa (the Home Assistant
+  /// mapper normalizes all pressure sources to kPa). [UnitConverter.convertPressure]
+  /// expects hPa, so we multiply by 10 before converting.
+  static double _convertValue(
+    double value,
+    DevicesModuleChannelCategory category,
+    DisplayUnits displayUnits,
+  ) {
+    switch (category) {
+      case DevicesModuleChannelCategory.temperature:
+        return UnitConverter.convertTemperature(
+            value, displayUnits.temperature);
+      case DevicesModuleChannelCategory.pressure:
+        // Sensor data is in kPa; convertPressure expects hPa (1 kPa = 10 hPa)
+        return UnitConverter.convertPressure(value * 10, displayUnits.pressure);
+      default:
+        return value;
+    }
+  }
+
+  /// Returns the appropriate decimal scale when displaying a converted value.
+  ///
+  /// For pressure, uses [UnitConverter.pressureDecimals] so that e.g. inHg
+  /// gets 2 decimal places instead of the default 1.
+  static int _scaleForConvertedCategory(
+    DevicesModuleChannelCategory category,
+    DisplayUnits displayUnits,
+  ) {
+    switch (category) {
+      case DevicesModuleChannelCategory.pressure:
+        return UnitConverter.pressureDecimals(displayUnits.pressure);
+      default:
+        return scaleForCategory(category);
+    }
   }
 
   // ===========================================================================

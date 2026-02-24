@@ -1,12 +1,12 @@
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/number.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/utils/unit_converter.dart';
 import 'package:fastybird_smart_panel/modules/weather/presentation/weather_detail.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/presentation/widgets/tiles/tile.dart';
 import 'package:fastybird_smart_panel/modules/weather/utils/openweather.dart';
 import 'package:fastybird_smart_panel/plugins/tiles-weather/views/forecast.dart';
 import 'package:fastybird_smart_panel/modules/weather/service.dart';
-import 'package:fastybird_smart_panel/modules/weather/types/configuration.dart';
 import 'package:fastybird_smart_panel/modules/weather/views/forecast_day.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -18,6 +18,8 @@ class ForecastTileWidget extends TileWidget<ForecastWeatherTileView> {
 
   @override
   Widget build(BuildContext context) {
+    final units = DisplayUnits.fromLocator();
+
     return Consumer<WeatherService>(builder: (
       context,
       weatherService,
@@ -46,7 +48,8 @@ class ForecastTileWidget extends TileWidget<ForecastWeatherTileView> {
             scrollDirection: Axis.horizontal,
             itemCount: weatherForecast.length,
             itemBuilder: (context, index) {
-              return _renderForecastDay(context, weatherForecast[index]);
+              return _renderForecastDay(
+                  context, weatherForecast[index], units);
             },
           ),
         ),
@@ -54,7 +57,8 @@ class ForecastTileWidget extends TileWidget<ForecastWeatherTileView> {
     });
   }
 
-  Widget _renderForecastDay(BuildContext context, ForecastDayView forecast) {
+  Widget _renderForecastDay(
+      BuildContext context, ForecastDayView forecast, DisplayUnits units) {
     double? mornTemp = forecast.temperatureMorn;
     double? dayTemp = forecast.temperatureDay;
     double? eveTemp = forecast.temperatureEve;
@@ -65,14 +69,16 @@ class ForecastTileWidget extends TileWidget<ForecastWeatherTileView> {
 
     String wholeDayTemp = averageDayTemp != null
         ? NumberUtils.formatNumber(
-            averageDayTemp,
+            UnitConverter.convertTemperature(
+                forecast.toCelsius(averageDayTemp), units.temperature),
             1,
           )
         : NumberUtils.formatUnavailableNumber(1);
 
     String wholeNightTemp = averageNightTemp != null
         ? NumberUtils.formatNumber(
-            averageNightTemp,
+            UnitConverter.convertTemperature(
+                forecast.toCelsius(averageNightTemp), units.temperature),
             1,
           )
         : NumberUtils.formatUnavailableNumber(1);
@@ -138,7 +144,7 @@ class ForecastTileWidget extends TileWidget<ForecastWeatherTileView> {
                 ),
               ),
               Text(
-                _getUnit(forecast),
+                _getUnit(units),
                 style: TextStyle(
                   fontFamily: 'DIN1451',
                   fontSize: AppFontSize.extraSmall,
@@ -154,11 +160,7 @@ class ForecastTileWidget extends TileWidget<ForecastWeatherTileView> {
     );
   }
 
-  String _getUnit(ForecastDayView? forecast) {
-    if (forecast == null) {
-      return '°C';
-    }
-
-    return forecast.unit == WeatherUnit.fahrenheit ? '°F' : '°C';
+  String _getUnit(DisplayUnits units) {
+    return UnitConverter.temperatureSymbol(units.temperature);
   }
 }

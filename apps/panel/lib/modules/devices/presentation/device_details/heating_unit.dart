@@ -6,6 +6,7 @@ import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/utils/unit_converter.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_card.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/circular_control_dial.dart';
@@ -287,14 +288,16 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
     setState(() {});
   }
 
-  void _onSetpointChanged(double value) {
+  void _onSetpointChanged(double displayValue, TemperatureUnit tempUnit) {
     final controller = _controller;
     final setpointProp = _device.heaterChannel.temperatureProp;
     final channelId = _device.heaterChannel.id;
     if (controller == null) return;
 
-    final steppedValue = (value * 2).round() / 2;
-    final clampedValue = steppedValue.clamp(_minSetpoint, _maxSetpoint);
+    // Round in the display unit then convert to Celsius once.
+    // The dial emits values in the display unit (°F or °C).
+    final celsiusValue = UnitConverter.displayToCelsius(displayValue, tempUnit);
+    final clampedValue = celsiusValue.clamp(_minSetpoint, _maxSetpoint);
 
     _deviceControlStateService?.setPending(
       _device.id,
@@ -509,11 +512,12 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
     final sensors = <_SensorInfo>[];
 
     final temperatureChannel = _device.temperatureChannel;
+    final displayUnits = DisplayUnits.fromLocator();
     sensors.add(_SensorInfo(
       id: 'temperature',
       label: localizations.device_current_temperature,
-      value: SensorUtils.formatNumericValue(_currentTemperature, temperatureChannel.category),
-      unit: SensorUtils.unitForCategory(temperatureChannel.category),
+      value: SensorUtils.formatNumericValue(_currentTemperature, temperatureChannel.category, displayUnits: displayUnits),
+      unit: SensorUtils.unitForCategory(temperatureChannel.category, displayUnits: displayUnits),
       icon: buildChannelIcon(temperatureChannel.category),
       themeColor: SensorColors.temperature,
       sensorData: SensorUtils.buildSensorData(temperatureChannel,
@@ -673,6 +677,13 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
   }) {
     final (minSetpoint, maxSetpoint) = _validSetpointRange;
     final targetSetpoint = _targetSetpoint.clamp(minSetpoint, maxSetpoint);
+    final tempUnit = DisplayUnits.fromLocator().temperature;
+    final dial = UnitConverter.dialTemperatureRange(
+      celsiusValue: targetSetpoint,
+      celsiusMin: minSetpoint,
+      celsiusMax: maxSetpoint,
+      unit: tempUnit,
+    );
 
     return AppCard(
       width: double.infinity,
@@ -681,18 +692,19 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           CircularControlDial(
-            value: targetSetpoint,
-            currentValue: _currentTemperature,
-            minValue: minSetpoint,
-            maxValue: maxSetpoint,
-            step: 0.5,
+            value: dial.value,
+            currentValue: UnitConverter.convertTemperature(_currentTemperature, tempUnit),
+            minValue: dial.min,
+            maxValue: dial.max,
+            step: dial.step,
             size: dialSize,
             accentType: _getDialAccentColor(),
             isActive: _isActive,
             enabled: _currentMode == HeaterMode.heat,
             modeLabel: _currentMode.value,
             displayFormat: DialDisplayFormat.temperature,
-            onChanged: _onSetpointChanged,
+            temperatureUnitSymbol: UnitConverter.temperatureSymbol(tempUnit),
+            onChanged: (v) => _onSetpointChanged(v, tempUnit),
           ),
           _buildModeSelector(context, ModeSelectorOrientation.horizontal),
         ],
@@ -703,6 +715,13 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
   Widget _buildCompactDialWithModes(BuildContext context, bool isDark) {
     final (minSetpoint, maxSetpoint) = _validSetpointRange;
     final targetSetpoint = _targetSetpoint.clamp(minSetpoint, maxSetpoint);
+    final tempUnit = DisplayUnits.fromLocator().temperature;
+    final dial = UnitConverter.dialTemperatureRange(
+      celsiusValue: targetSetpoint,
+      celsiusMin: minSetpoint,
+      celsiusMax: maxSetpoint,
+      unit: tempUnit,
+    );
 
     return AppCard(
       child: LayoutBuilder(
@@ -721,18 +740,19 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
               Expanded(
                 child: Center(
                   child: CircularControlDial(
-                    value: targetSetpoint,
-                    currentValue: _currentTemperature,
-                    minValue: minSetpoint,
-                    maxValue: maxSetpoint,
-                    step: 0.5,
+                    value: dial.value,
+                    currentValue: UnitConverter.convertTemperature(_currentTemperature, tempUnit),
+                    minValue: dial.min,
+                    maxValue: dial.max,
+                    step: dial.step,
                     size: dialSize,
                     accentType: _getDialAccentColor(),
                     isActive: _isActive,
                     enabled: _currentMode == HeaterMode.heat,
                     modeLabel: _currentMode.value,
                     displayFormat: DialDisplayFormat.temperature,
-                    onChanged: _onSetpointChanged,
+                    temperatureUnitSymbol: UnitConverter.temperatureSymbol(tempUnit),
+                    onChanged: (v) => _onSetpointChanged(v, tempUnit),
                   ),
                 ),
               ),

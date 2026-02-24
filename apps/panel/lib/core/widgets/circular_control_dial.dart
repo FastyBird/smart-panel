@@ -127,6 +127,10 @@ class CircularControlDial extends StatefulWidget {
   /// Number of major ticks to show
   final int majorTickCount;
 
+  /// Custom temperature unit symbol (e.g. '°F') for [DialDisplayFormat.temperature].
+  /// Defaults to '°C' if not provided.
+  final String? temperatureUnitSymbol;
+
   const CircularControlDial({
     super.key,
     required this.value,
@@ -145,6 +149,7 @@ class CircularControlDial extends StatefulWidget {
     this.showButtons = true,
     this.showTicks = true,
     this.majorTickCount = 10,
+    this.temperatureUnitSymbol,
   })  : assert(maxValue > minValue, 'maxValue must be greater than minValue'),
         assert(step > 0, 'step must be greater than zero');
 
@@ -390,9 +395,10 @@ class _CircularControlDialState extends State<CircularControlDial>
     final formatter = NumberFormatUtils.defaultFormat;
     switch (widget.displayFormat) {
       case DialDisplayFormat.temperature:
+        final unitSymbol = widget.temperatureUnitSymbol ?? '°C';
         return value == value.roundToDouble()
-            ? '${formatter.formatInteger(value.toInt())}°C'
-            : '${formatter.formatDecimal(value, decimalPlaces: 1)}°C';
+            ? '${formatter.formatInteger(value.toInt())}$unitSymbol'
+            : '${formatter.formatDecimal(value, decimalPlaces: 1)}$unitSymbol';
       case DialDisplayFormat.percentage:
         return '${formatter.formatInteger((value * 100).toInt())}%';
       case DialDisplayFormat.integer:

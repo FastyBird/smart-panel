@@ -69,6 +69,7 @@ import 'package:provider/provider.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/utils/unit_converter.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/bottom_nav_mode_config.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/bottom_nav_mode_notifier.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/deck_page_activated_event.dart';
@@ -718,13 +719,14 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     // Add temperature sensor from climate state if not already present
     if (climateState?.currentTemperature != null &&
         !sensors.any((s) => s.type == DevicesModuleChannelCategory.temperature)) {
+      final displayUnits = DisplayUnits.fromLocator();
       sensors.insert(
         0,
         ClimateSensor(
           id: 'state_temp',
           label: AppLocalizations.of(context)!.device_current_temperature,
           value:
-              SensorUtils.formatNumericValueWithUnit(climateState!.currentTemperature!, DevicesModuleChannelCategory.temperature),
+              SensorUtils.formatNumericValueWithUnit(climateState!.currentTemperature!, DevicesModuleChannelCategory.temperature, displayUnits: displayUnits),
           type: DevicesModuleChannelCategory.temperature,
           isOnline: true,
         ),
@@ -801,11 +803,12 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         }
 
         if (tempValue != null) {
+          final displayUnits = DisplayUnits.fromLocator();
           sensors.add(ClimateSensor(
             id: '${target.id}_temp',
             label: target.displayName,
             value:
-                SensorUtils.formatNumericValueWithUnit(tempValue, DevicesModuleChannelCategory.temperature),
+                SensorUtils.formatNumericValueWithUnit(tempValue, DevicesModuleChannelCategory.temperature, displayUnits: displayUnits),
             type: DevicesModuleChannelCategory.temperature,
             isOnline: device.isOnline,
             sensorData: tempSensorData,
@@ -1001,11 +1004,12 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     if (target.hasPressure) {
       if (device is SensorDeviceView && device.pressureChannel != null) {
         final pressureChannel = device.pressureChannel!;
+        final displayUnits = DisplayUnits.fromLocator();
         sensors.add(ClimateSensor(
           id: '${target.id}_pressure',
           label: target.displayName,
           value:
-              SensorUtils.formatNumericValueWithUnit(pressureChannel.pressure, DevicesModuleChannelCategory.pressure),
+              SensorUtils.formatNumericValueWithUnit(pressureChannel.pressure, DevicesModuleChannelCategory.pressure, displayUnits: displayUnits),
           type: DevicesModuleChannelCategory.pressure,
           isOnline: device.isOnline,
           sensorData: SensorUtils.buildSensorData(pressureChannel),
@@ -1830,7 +1834,8 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     }
 
     final climateState = _spacesService?.getClimateState(_roomId);
-    final tempStr = SensorUtils.formatNumericValueWithUnit(_state.targetTemp, DevicesModuleChannelCategory.temperature);
+    final displayUnits = DisplayUnits.fromLocator();
+    final tempStr = SensorUtils.formatNumericValueWithUnit(_state.targetTemp, DevicesModuleChannelCategory.temperature, displayUnits: displayUnits);
 
     if (climateState?.isCooling ?? false) {
       return localizations.thermostat_state_cooling_to(tempStr);
@@ -2398,7 +2403,10 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   Widget _buildGiantTemp(BuildContext context, double fontSize) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isOff = _state.mode == ClimateMode.off;
-    final tempText = _state.targetTemp.toStringAsFixed(0);
+    final units = DisplayUnits.fromLocator();
+    final displayTemp = UnitConverter.convertTemperature(
+        _state.targetTemp, units.temperature);
+    final tempText = displayTemp.toStringAsFixed(0);
     final unitFontSize = fontSize * 0.27;
 
     final textColor = isOff
@@ -2423,7 +2431,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           top: 0,
           right: -unitFontSize,
           child: Text(
-            '°C',
+            UnitConverter.temperatureSymbol(units.temperature),
             style: TextStyle(
               fontSize: unitFontSize,
               fontWeight: FontWeight.w300,
@@ -2462,10 +2470,13 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
 
     final thumbColor = _sampleGradient(_temperatureGradientColors, normalizedValue);
 
+    final units = DisplayUnits.fromLocator();
     final step = range / 3;
     final labels = List.generate(4, (i) {
       final value = _state.minSetpoint + step * i;
-      return '${value.toStringAsFixed(0)}°';
+      final displayValue =
+          UnitConverter.convertTemperature(value, units.temperature);
+      return '${displayValue.toStringAsFixed(0)}°';
     });
 
     return SliderWithSteps(
@@ -2477,8 +2488,15 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
       steps: labels,
       onChanged: (v) {
         final newTemp = _state.minSetpoint + range * v;
-        // Round to nearest 0.5
-        final rounded = (newTemp * 2).round() / 2;
+        // Round to appropriate step based on display unit
+        final tempUnit = units.temperature;
+        double rounded;
+        if (tempUnit == TemperatureUnit.fahrenheit) {
+          final fahrenheit = UnitConverter.convertTemperature(newTemp, TemperatureUnit.fahrenheit);
+          rounded = UnitConverter.temperatureToCelsius(fahrenheit.roundToDouble(), TemperatureUnit.fahrenheit);
+        } else {
+          rounded = (newTemp * 2).round() / 2;
+        }
         _onSetpointSliderChanged(rounded);
       },
     );
@@ -2517,6 +2535,23 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
       );
     }
 
+    final tempUnit = DisplayUnits.fromLocator().temperature;
+    // For Fahrenheit, adjust by 1°F; for Celsius, adjust by 0.5°C
+    double stepDown() {
+      if (tempUnit == TemperatureUnit.fahrenheit) {
+        final fahrenheit = UnitConverter.convertTemperature(_state.targetTemp, TemperatureUnit.fahrenheit).roundToDouble();
+        return UnitConverter.temperatureToCelsius(fahrenheit - 1, TemperatureUnit.fahrenheit);
+      }
+      return _state.targetTemp - 0.5;
+    }
+    double stepUp() {
+      if (tempUnit == TemperatureUnit.fahrenheit) {
+        final fahrenheit = UnitConverter.convertTemperature(_state.targetTemp, TemperatureUnit.fahrenheit).roundToDouble();
+        return UnitConverter.temperatureToCelsius(fahrenheit + 1, TemperatureUnit.fahrenheit);
+      }
+      return _state.targetTemp + 0.5;
+    }
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       spacing: AppSpacings.pXl,
@@ -2527,7 +2562,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
               ? null
               : () {
                   HapticFeedback.lightImpact();
-                  _setTargetTemp(_state.targetTemp - 0.5);
+                  _setTargetTemp(stepDown());
                 },
         ),
         buildAdjustButton(
@@ -2536,7 +2571,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
               ? null
               : () {
                   HapticFeedback.lightImpact();
-                  _setTargetTemp(_state.targetTemp + 0.5);
+                  _setTargetTemp(stepUp());
                 },
         ),
       ],

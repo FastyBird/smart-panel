@@ -6,6 +6,7 @@ import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/utils/unit_converter.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_card.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/circular_control_dial.dart';
@@ -548,17 +549,18 @@ class _AirConditionerDeviceDetailState
     }
   }
 
-  void _onSetpointChanged(double value) {
+  void _onSetpointChanged(double displayValue, TemperatureUnit tempUnit) {
     final controller = _controller;
     final setpointProp = _activeSetpointProp;
     final channelId = _activeSetpointChannelId;
     if (controller == null || setpointProp == null || channelId == null) return;
 
-    // Round to step value (0.5)
-    final steppedValue = (value * 2).round() / 2;
+    // Round in the display unit then convert to Celsius once.
+    // The dial emits values in the display unit (°F or °C).
+    final celsiusValue = UnitConverter.displayToCelsius(displayValue, tempUnit);
 
     // Clamp to valid range
-    final clampedValue = steppedValue.clamp(_minSetpoint, _maxSetpoint);
+    final clampedValue = celsiusValue.clamp(_minSetpoint, _maxSetpoint);
 
     // Set PENDING state immediately for responsive UI
     _deviceControlStateService?.setPending(
@@ -986,11 +988,12 @@ class _AirConditionerDeviceDetailState
 
     // Temperature (always present)
     final temperatureChannel = _device.temperatureChannel;
+    final displayUnits = DisplayUnits.fromLocator();
     sensors.add(_SensorInfo(
       id: 'temperature',
       label: localizations.device_current_temperature,
-      value: SensorUtils.formatNumericValue(_currentTemperature, temperatureChannel.category),
-      unit: SensorUtils.unitForCategory(temperatureChannel.category),
+      value: SensorUtils.formatNumericValue(_currentTemperature, temperatureChannel.category, displayUnits: displayUnits),
+      unit: SensorUtils.unitForCategory(temperatureChannel.category, displayUnits: displayUnits),
       icon: buildChannelIcon(temperatureChannel.category),
       themeColor: SensorColors.temperature,
       sensorData: SensorUtils.buildSensorData(temperatureChannel,
@@ -1195,6 +1198,13 @@ class _AirConditionerDeviceDetailState
   }) {
     final (minSetpoint, maxSetpoint) = _validSetpointRange;
     final targetSetpoint = _targetSetpoint.clamp(minSetpoint, maxSetpoint);
+    final tempUnit = DisplayUnits.fromLocator().temperature;
+    final dial = UnitConverter.dialTemperatureRange(
+      celsiusValue: targetSetpoint,
+      celsiusMin: minSetpoint,
+      celsiusMax: maxSetpoint,
+      unit: tempUnit,
+    );
 
     return AppCard(
       width: double.infinity,
@@ -1203,18 +1213,19 @@ class _AirConditionerDeviceDetailState
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           CircularControlDial(
-            value: targetSetpoint,
-            currentValue: _currentTemperature,
-            minValue: minSetpoint,
-            maxValue: maxSetpoint,
-            step: 0.5,
+            value: dial.value,
+            currentValue: UnitConverter.convertTemperature(_currentTemperature, tempUnit),
+            minValue: dial.min,
+            maxValue: dial.max,
+            step: dial.step,
             size: dialSize,
             accentType: _getDialAccentColor(),
             isActive: _isActive,
             enabled: _currentMode == AcMode.heat || _currentMode == AcMode.cool,
             modeLabel: _currentMode.value,
             displayFormat: DialDisplayFormat.temperature,
-            onChanged: _onSetpointChanged,
+            temperatureUnitSymbol: UnitConverter.temperatureSymbol(tempUnit),
+            onChanged: (v) => _onSetpointChanged(v, tempUnit),
           ),
           _buildModeSelector(context, ModeSelectorOrientation.horizontal),
         ],
@@ -1226,6 +1237,13 @@ class _AirConditionerDeviceDetailState
   Widget _buildCompactDialWithModes(BuildContext context, bool isDark) {
     final (minSetpoint, maxSetpoint) = _validSetpointRange;
     final targetSetpoint = _targetSetpoint.clamp(minSetpoint, maxSetpoint);
+    final tempUnit = DisplayUnits.fromLocator().temperature;
+    final dial = UnitConverter.dialTemperatureRange(
+      celsiusValue: targetSetpoint,
+      celsiusMin: minSetpoint,
+      celsiusMax: maxSetpoint,
+      unit: tempUnit,
+    );
 
     return AppCard(
       child: LayoutBuilder(
@@ -1244,18 +1262,19 @@ class _AirConditionerDeviceDetailState
               Expanded(
                 child: Center(
                   child: CircularControlDial(
-                    value: targetSetpoint,
-                    currentValue: _currentTemperature,
-                    minValue: minSetpoint,
-                    maxValue: maxSetpoint,
-                    step: 0.5,
+                    value: dial.value,
+                    currentValue: UnitConverter.convertTemperature(_currentTemperature, tempUnit),
+                    minValue: dial.min,
+                    maxValue: dial.max,
+                    step: dial.step,
                     size: dialSize,
                     accentType: _getDialAccentColor(),
                     isActive: _isActive,
                     enabled: _currentMode == AcMode.heat || _currentMode == AcMode.cool,
                     modeLabel: _currentMode.value,
                     displayFormat: DialDisplayFormat.temperature,
-                    onChanged: _onSetpointChanged,
+                    temperatureUnitSymbol: UnitConverter.temperatureSymbol(tempUnit),
+                    onChanged: (v) => _onSetpointChanged(v, tempUnit),
                   ),
                 ),
               ),

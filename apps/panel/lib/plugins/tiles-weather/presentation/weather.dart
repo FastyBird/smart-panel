@@ -1,11 +1,10 @@
 import 'package:fastybird_smart_panel/core/utils/number.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/utils/unit_converter.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/presentation/widgets/tiles/tile.dart';
 import 'package:fastybird_smart_panel/modules/weather/utils/openweather.dart';
 import 'package:fastybird_smart_panel/plugins/tiles-weather/views/weather.dart';
 import 'package:fastybird_smart_panel/modules/weather/service.dart';
-import 'package:fastybird_smart_panel/modules/weather/types/configuration.dart';
-import 'package:fastybird_smart_panel/modules/weather/views/current_day.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:weather_icons/weather_icons.dart';
@@ -15,6 +14,8 @@ class WeatherTileWidget extends TileWidget<DayWeatherTileView> {
 
   @override
   Widget build(BuildContext context) {
+    final units = DisplayUnits.fromLocator();
+
     return Consumer<WeatherService>(builder: (
       context,
       weatherService,
@@ -26,7 +27,10 @@ class WeatherTileWidget extends TileWidget<DayWeatherTileView> {
 
       String currentTemperature = currentWeather != null
           ? NumberUtils.formatNumber(
-              currentWeather.temperature,
+              UnitConverter.convertTemperature(
+                currentWeather.toCelsius(currentWeather.temperature),
+                units.temperature,
+              ),
               1,
             )
           : NumberUtils.formatUnavailableNumber(1);
@@ -82,7 +86,7 @@ class WeatherTileWidget extends TileWidget<DayWeatherTileView> {
                           ),
                         ),
                         Text(
-                          _getUnit(currentWeather),
+                          _getUnit(units),
                           style: TextStyle(
                             fontFamily: 'DIN1451',
                             fontSize: AppSpacings.scale(20),
@@ -116,12 +120,8 @@ class WeatherTileWidget extends TileWidget<DayWeatherTileView> {
     });
   }
 
-  String _getUnit(CurrentDayView? currentDay) {
-    if (currentDay == null) {
-      return '°C';
-    }
-
-    return currentDay.unit == WeatherUnit.fahrenheit ? '°F' : '°C';
+  String _getUnit(DisplayUnits units) {
+    return UnitConverter.temperatureSymbol(units.temperature);
   }
 
   bool _isNightTime(DateTime sunrise, DateTime sunset) {
