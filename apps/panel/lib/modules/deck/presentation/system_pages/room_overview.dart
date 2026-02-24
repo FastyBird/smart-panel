@@ -415,12 +415,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 								height: AppSpacings.scale(180),
 								child: skyPanel,
 							),
-							Expanded(
-								child: Padding(
-									padding: AppSpacings.paddingMd,
-									child: contentBody,
-								),
-							),
+							Expanded(child: contentBody),
 						],
 					);
 				}
@@ -431,12 +426,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 							width: constraints.maxWidth * 0.44,
 							child: skyPanel,
 						),
-						Expanded(
-							child: Padding(
-								padding: AppSpacings.paddingMd,
-								child: contentBody,
-							),
-						),
+						Expanded(child: contentBody),
 					],
 				);
 			},
