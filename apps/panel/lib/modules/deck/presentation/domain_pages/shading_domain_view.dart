@@ -61,7 +61,7 @@ import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_item_drawer.dart';
 import 'package:fastybird_smart_panel/core/widgets/hero_card.dart';
 import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
-import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
+import 'package:fastybird_smart_panel/core/widgets/toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
@@ -1326,7 +1326,7 @@ class _ShadingDomainViewPageState extends State<ShadingDomainViewPage> {
   void _showActionFailed({bool clearHeroPosition = false}) {
     if (!mounted) return;
     final localizations = AppLocalizations.of(context)!;
-    AppToast.showError(context, message: localizations.action_failed);
+    Toast.showError(context, message: localizations.action_failed);
     if (clearHeroPosition) {
       _heroControlStateService.setIdle(ShadingConstants.positionChannelId);
       setState(() {});

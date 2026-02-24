@@ -4,8 +4,8 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/app_card.dart';
-import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
+import 'package:fastybird_smart_panel/core/widgets/base_card.dart';
+import 'package:fastybird_smart_panel/core/widgets/toast.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_landscape_layout.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_portrait_layout.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_offline_overlay.dart';
@@ -171,7 +171,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   void _showActionFailed() {
     final localizations = AppLocalizations.of(context);
     if (mounted && localizations != null) {
-      AppToast.showError(context, message: localizations.action_failed);
+      Toast.showError(context, message: localizations.action_failed);
     }
   }
 
@@ -524,7 +524,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   /// On large displays: uses portrait-style horizontal buttons below slider.
   /// On small/medium displays: uses vertical icon-only buttons on the side.
   Widget _buildLandscapeMainControl(BuildContext context) {
-    return AppCard(
+    return BaseCard(
       child: LayoutBuilder(
         builder: (context, constraints) {
           // Use screen service breakpoints for consistent behavior
@@ -1116,7 +1116,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
   // --------------------------------------------------------------------------
 
   Widget _buildMainControlCard(BuildContext context) {
-    return AppCard(
+    return BaseCard(
       width: double.infinity,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,

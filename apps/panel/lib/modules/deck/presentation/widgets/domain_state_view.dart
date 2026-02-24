@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
+import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/icon_container.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 
 /// States for domain data loading.
@@ -95,8 +98,6 @@ class DomainStateView extends StatelessWidget {
   Widget _buildErrorState(BuildContext context, bool isDark) {
     final localizations = AppLocalizations.of(context)!;
     final warningColor = isDark ? AppColorsDark.warning : AppColorsLight.warning;
-    final warningBgColor =
-        isDark ? AppColorsDark.warningLight8 : AppColorsLight.warningLight8;
 
     return Scaffold(
       backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
@@ -107,18 +108,11 @@ class DomainStateView extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             spacing: AppSpacings.pMd,
             children: [
-              Container(
-                width: AppSpacings.scale(80),
-                height: AppSpacings.scale(80),
-                decoration: BoxDecoration(
-                  color: warningBgColor,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  MdiIcons.alertCircleOutline,
-                  size: AppSpacings.scale(48),
-                  color: warningColor,
-                ),
+              IconContainer(
+                screenService: locator<ScreenService>(),
+                icon: MdiIcons.alertCircleOutline,
+                color: warningColor,
+                isLandscape: locator<ScreenService>().isLandscape,
               ),
               Text(
                 localizations.domain_data_load_failed(domainName),
@@ -176,10 +170,12 @@ class DomainStateView extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           spacing: AppSpacings.pMd,
           children: [
-            Icon(
-              notConfiguredIcon ?? MdiIcons.cogOffOutline,
+            IconContainer(
+              screenService: locator<ScreenService>(),
+              icon: notConfiguredIcon ?? MdiIcons.cogOffOutline,
               color: secondaryColor,
-              size: AppSpacings.scale(64),
+              isLandscape: locator<ScreenService>().isLandscape,
+              useContainer: false,
             ),
             if (notConfiguredTitle != null)
               Text(

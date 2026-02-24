@@ -6,7 +6,7 @@ import 'package:material_design_icons_flutter/material_design_icons_flutter.dart
 import 'package:fastybird_smart_panel/core/services/connection_state_manager.dart';
 import 'package:fastybird_smart_panel/core/services/navigation.dart';
 import 'package:fastybird_smart_panel/core/types/connection_state.dart';
-import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
+import 'package:fastybird_smart_panel/core/widgets/toast.dart';
 import 'package:fastybird_smart_panel/features/overlay/services/overlay_manager.dart';
 import 'package:fastybird_smart_panel/features/overlay/types/overlay.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
@@ -24,7 +24,7 @@ class ConnectionOverlayIds {
 /// - [overlay]: Prolonged reconnection (10-60 seconds), closable
 /// - [fullScreen]: Connection failure (60+ seconds), not closable
 ///
-/// Shows an [AppToast] when connection is restored after a disruption.
+/// Shows an [Toast] when connection is restored after a disruption.
 class ConnectionOverlayProvider {
 	final OverlayManager _overlayManager;
 	final ConnectionStateManager _connectionManager;
@@ -209,7 +209,7 @@ class ConnectionOverlayProvider {
 		final localizations = AppLocalizations.of(context);
 		if (localizations == null) return;
 
-		AppToast.showSuccess(
+		Toast.showSuccess(
 			context,
 			message: localizations.connection_recovery_connected,
 			duration: const Duration(seconds: 2),

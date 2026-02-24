@@ -10,9 +10,11 @@ import 'package:fastybird_smart_panel/core/services/mdns_discovery.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/screen_layout.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
+import 'package:fastybird_smart_panel/core/widgets/toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/icon_container.dart';
-import 'package:fastybird_smart_panel/features/discovery/presentation/backend_discovery_widgets.dart';
+import 'package:fastybird_smart_panel/features/discovery/presentation/widgets/gateway_list_item.dart';
+import 'package:fastybird_smart_panel/features/discovery/presentation/widgets/loading_spinner.dart';
+import 'package:fastybird_smart_panel/features/discovery/presentation/widgets/pulse_rings.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 
 /// Discovery state enum
@@ -26,7 +28,7 @@ enum DiscoveryState {
 }
 
 /// Screen for discovering and selecting backend servers
-class BackendDiscoveryScreen extends StatefulWidget {
+class DiscoveryScreen extends StatefulWidget {
   /// Callback when a backend is selected
   final void Function(DiscoveredBackend backend) onBackendSelected;
 
@@ -39,7 +41,7 @@ class BackendDiscoveryScreen extends StatefulWidget {
   /// Whether this is a retry after connection failure
   final bool isRetry;
 
-  const BackendDiscoveryScreen({
+  const DiscoveryScreen({
     required this.onBackendSelected,
     required this.onManualUrlEntered,
     this.errorMessage,
@@ -48,10 +50,10 @@ class BackendDiscoveryScreen extends StatefulWidget {
   });
 
   @override
-  State<BackendDiscoveryScreen> createState() => _BackendDiscoveryScreenState();
+  State<DiscoveryScreen> createState() => _DiscoveryScreenState();
 }
 
-class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
+class _DiscoveryScreenState extends State<DiscoveryScreen> {
   final ScreenService _screenService = locator<ScreenService>();
   final MdnsDiscoveryService _discoveryService = MdnsDiscoveryService();
   final TextEditingController _manualUrlController = TextEditingController();
@@ -86,7 +88,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
       // Use post-frame callback to show toast after build
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted && widget.errorMessage != null) {
-          AppToast.showError(context, message: widget.errorMessage!);
+          Toast.showError(context, message: widget.errorMessage!);
         }
       });
     }
@@ -111,7 +113,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
     final currentSession = ++_discoverySessionId;
 
     // Dismiss any existing toast when starting new discovery
-    AppToast.dismiss();
+    Toast.dismiss();
 
     setState(() {
       _state = DiscoveryState.searching;
@@ -164,7 +166,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
           _state = DiscoveryState.error;
         });
         final localizations = AppLocalizations.of(context)!;
-        AppToast.showError(
+        Toast.showError(
           context,
           message: localizations.discovery_error_failed(e.toString()),
         );
@@ -193,7 +195,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
 
   void _confirmSelection() {
     if (_selectedBackend != null) {
-      AppToast.dismiss();
+      Toast.dismiss();
       setState(() {
         _state = DiscoveryState.connecting;
         _wasManualEntry = false;
@@ -246,7 +248,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
     final localizations = AppLocalizations.of(context)!;
 
     if (url.isEmpty) {
-      AppToast.showWarning(
+      Toast.showWarning(
         context,
         message: localizations.discovery_validation_empty,
       );
@@ -254,14 +256,14 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
     }
 
     if (!_isValidAddress(url)) {
-      AppToast.showError(
+      Toast.showError(
         context,
         message: localizations.discovery_validation_invalid,
       );
       return;
     }
 
-    AppToast.dismiss();
+    Toast.dismiss();
     setState(() {
       _state = DiscoveryState.connecting;
       _wasManualEntry = true;
@@ -575,7 +577,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
                         : AppTextButtonsLightThemes.neutralForegroundColor,
                   ),
                   label: Text(localizations.discovery_button_rescan),
-                  style: FilledButton.styleFrom(
+                  style: TextButton.styleFrom(
                     padding: EdgeInsets.symmetric(
                       horizontal: AppSpacings.pMd,
                       vertical: AppSpacings.pMd,
@@ -599,7 +601,7 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
                         : AppTextButtonsLightThemes.neutralForegroundColor,
                   ),
                   label: Text(localizations.discovery_button_manual),
-                  style: FilledButton.styleFrom(
+                  style: TextButton.styleFrom(
                     padding: EdgeInsets.symmetric(
                       horizontal: AppSpacings.pMd,
                       vertical: AppSpacings.pMd,
@@ -709,8 +711,13 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
                             : AppFilledButtonsLightThemes
                                 .primaryForegroundColor,
                       ),
-                      label: Text(
-                          localizations.discovery_button_connect_selected),
+                      label: Text(localizations.discovery_button_connect_selected),
+                      style: FilledButton.styleFrom(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: AppSpacings.pMd,
+                          vertical: AppSpacings.pMd,
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -735,8 +742,13 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
                               : AppTextButtonsLightThemes
                                   .primaryForegroundColor,
                         ),
-                        label:
-                            Text(localizations.discovery_button_rescan),
+                        label: Text(localizations.discovery_button_rescan),
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: AppSpacings.pMd,
+                            vertical: AppSpacings.pMd,
+                          ),
+                        ),
                       ),
                     ),
                     Theme(
@@ -756,8 +768,13 @@ class _BackendDiscoveryScreenState extends State<BackendDiscoveryScreen> {
                               : AppTextButtonsLightThemes
                                   .primaryForegroundColor,
                         ),
-                        label:
-                            Text(localizations.discovery_button_manual),
+                        label: Text(localizations.discovery_button_manual),
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: AppSpacings.pMd,
+                            vertical: AppSpacings.pMd,
+                          ),
+                        ),
                       ),
                     ),
                   ],

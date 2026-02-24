@@ -7,20 +7,20 @@ import 'package:material_design_icons_flutter/material_design_icons_flutter.dart
 
 /// Shows a modal bottom sheet with consistent styling across the app.
 ///
-/// Use [showAppBottomSheet] to present a bottom sheet with optional title
+/// Use [showBottomSheetDialog] to present a bottom sheet with optional title
 /// bar, handle, main content, and optional bottom section (e.g. action buttons).
 /// When [title] is null and [titleWidget] is null, no default header is shown.
 ///
 /// Example with title and bottom section:
 /// ```dart
-/// showAppBottomSheet(
+/// showBottomSheetDialog(
 ///   context,
 ///   title: 'Select option',
 ///   content: ListView(...),
 ///   bottomSection: FilledButton(onPressed: () => ..., child: Text('Done')),
 /// );
 /// ```
-void showAppBottomSheet(
+void showBottomSheetDialog(
   BuildContext context, {
   /// Optional title. Shown in the header when [titleWidget] is null.
   /// Header is shown when [title] is non-null or [titleWidget] is non-null.
@@ -55,7 +55,7 @@ void showAppBottomSheet(
     context: context,
     isScrollControlled: isScrollControlled,
     backgroundColor: AppColors.blank,
-    builder: (sheetContext) => AppBottomSheet(
+    builder: (sheetContext) => BottomSheetDialog(
       title: title,
       titleWidget: titleWidget,
       titleIcon: titleIcon,
@@ -70,10 +70,10 @@ void showAppBottomSheet(
   );
 }
 
-/// Content widget for [showAppBottomSheet]. Builds the sheet container with
+/// Content widget for [showBottomSheetDialog]. Builds the sheet container with
 /// optional handle, optional title bar (with full-width bottom border), main content, and optional bottom section.
-class AppBottomSheet extends StatelessWidget {
-  const AppBottomSheet({
+class BottomSheetDialog extends StatelessWidget {
+  const BottomSheetDialog({
     super.key,
     this.title,
     this.titleWidget,

@@ -6,7 +6,7 @@ import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_landscape_layout.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_portrait_layout.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_offline_overlay.dart';
-import 'package:fastybird_smart_panel/core/widgets/app_bottom_sheet.dart';
+import 'package:fastybird_smart_panel/core/widgets/bottom_sheet_dialog.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_playback_sheet.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
@@ -549,7 +549,7 @@ class _ProjectorDeviceDetailState extends State<ProjectorDeviceDetail> {
 		final settingsIcon = hasBrightness ? MdiIcons.cogOutline : MdiIcons.remote;
 		final settingsTitle = hasBrightness ? localizations.settings_general_settings_title : localizations.media_remote_control;
 
-		showAppBottomSheet(
+		showBottomSheetDialog(
 			context,
 			title: settingsTitle,
 			titleIcon: settingsIcon,

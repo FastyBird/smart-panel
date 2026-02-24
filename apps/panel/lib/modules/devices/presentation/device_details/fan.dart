@@ -4,7 +4,7 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/app_card.dart';
+import 'package:fastybird_smart_panel/core/widgets/base_card.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_landscape_layout.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_portrait_layout.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_offline_overlay.dart';
@@ -503,7 +503,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
 
   Widget _buildControlCard(BuildContext context, bool isDark) {
     final localizations = AppLocalizations.of(context)!;
-    return AppCard(
+    return BaseCard(
       child: Column(
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -712,7 +712,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
 
   Widget _buildCompactControlCard(BuildContext context, bool isDark) {
     final localizations = AppLocalizations.of(context)!;
-    return AppCard(
+    return BaseCard(
       child: LayoutBuilder(
         builder: (context, constraints) {
           return Row(

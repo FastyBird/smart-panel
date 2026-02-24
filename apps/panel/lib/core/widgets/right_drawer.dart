@@ -9,14 +9,14 @@ import 'package:material_design_icons_flutter/material_design_icons_flutter.dart
 
 /// Shows a right-side drawer with consistent styling across the app.
 ///
-/// Use [showAppRightDrawer] to present a drawer that slides in from the right
+/// Use [showRightDrawer] to present a drawer that slides in from the right
 /// with optional title bar, main content, and optional bottom section
 /// (e.g. action buttons). Designed for landscape overlays where bottom sheets
 /// feel unnatural.
 ///
 /// Example:
 /// ```dart
-/// showAppRightDrawer(
+/// showRightDrawer(
 ///   context,
 ///   title: 'Lights',
 ///   titleIcon: MdiIcons.lightbulbGroup,
@@ -24,7 +24,7 @@ import 'package:material_design_icons_flutter/material_design_icons_flutter.dart
 ///   footerSection: FilledButton(onPressed: () => ..., child: Text('Sync')),
 /// );
 /// ```
-Future<T?> showAppRightDrawer<T>(
+Future<T?> showRightDrawer<T>(
   BuildContext context, {
   /// Optional title. Shown in the header when [titleWidget] is null.
   String? title,
@@ -62,7 +62,7 @@ Future<T?> showAppRightDrawer<T>(
     barrierColor: Colors.black54,
     transitionDuration: const Duration(milliseconds: 300),
     pageBuilder: (context, animation, secondaryAnimation) {
-      return AppRightDrawer(
+      return RightDrawer(
         title: title,
         titleWidget: titleWidget,
         titleIcon: titleIcon,
@@ -90,11 +90,11 @@ Future<T?> showAppRightDrawer<T>(
   );
 }
 
-/// Content widget for [showAppRightDrawer]. Builds the drawer panel with
+/// Content widget for [showRightDrawer]. Builds the drawer panel with
 /// optional title bar (with full-width bottom border), main content, and
 /// optional footer section.
-class AppRightDrawer extends StatelessWidget {
-  const AppRightDrawer({
+class RightDrawer extends StatelessWidget {
+  const RightDrawer({
     super.key,
     this.title,
     this.titleWidget,

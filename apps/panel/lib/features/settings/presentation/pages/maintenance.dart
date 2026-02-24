@@ -1,7 +1,7 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
+import 'package:fastybird_smart_panel/core/widgets/toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_action_button.dart';
@@ -336,7 +336,7 @@ class MaintenancePage extends StatelessWidget {
 	}) {
 		final localizations = AppLocalizations.of(context)!;
 
-		AppToast.showError(
+		Toast.showError(
 			context,
 			message: localizations.action_failed,
 		);

@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
+import 'package:fastybird_smart_panel/core/widgets/toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
 import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
@@ -499,7 +499,7 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 						_isDarkMode = !_isDarkMode;
 					});
 
-					AppToast.showError(context, message: 'Save settings failed.');
+					Toast.showError(context, message: 'Save settings failed.');
 				}
 			},
 		);
@@ -541,7 +541,7 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 							_savingBrightness = false;
 						});
 
-						AppToast.showError(
+						Toast.showError(
 							context,
 							message: 'Save settings failed.',
 						);
@@ -587,7 +587,7 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 						_screenLockDuration = backup;
 					});
 
-					AppToast.showError(
+					Toast.showError(
 						context,
 						message: 'Save settings failed.',
 					);
@@ -621,7 +621,7 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 						_hasScreenSaver = !_hasScreenSaver;
 					});
 
-					AppToast.showError(
+					Toast.showError(
 						context,
 						message: 'Save settings failed.',
 					);
@@ -730,7 +730,7 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 				if (!success) {
 					setState(revert);
 
-					AppToast.showError(context, message: 'Save settings failed.');
+					Toast.showError(context, message: 'Save settings failed.');
 				}
 			},
 		);

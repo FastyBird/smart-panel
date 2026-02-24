@@ -1,5 +1,5 @@
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/app_card.dart';
+import 'package:fastybird_smart_panel/core/widgets/base_card.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -145,7 +145,7 @@ class MediaRemoteCard<T extends Enum> extends StatelessWidget {
 			? ThemeData(filledButtonTheme: AppFilledButtonsLightThemes.neutral)
 			: ThemeData(filledButtonTheme: AppFilledButtonsDarkThemes.neutral);
 
-		return AppCard(
+		return BaseCard(
 			child: Theme(
 				data: themeData,
 				child: Column(

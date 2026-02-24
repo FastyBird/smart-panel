@@ -39,7 +39,7 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/app_card.dart';
+import 'package:fastybird_smart_panel/core/widgets/base_card.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_item_drawer.dart';
 import 'package:fastybird_smart_panel/core/widgets/hero_card.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
@@ -605,7 +605,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage> {
         children: [
           Expanded(child: _buildConsumptionCard(context)),
           if (_summary!.hasProduction) ...[
-            AppCard(
+            BaseCard(
               child: _buildSecondaryValue(
                 icon: MdiIcons.solarPower,
                 label: localizations.energy_production,
@@ -619,7 +619,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage> {
               ),
             ),
             if (_summary!.net != null)
-              AppCard(
+              BaseCard(
                 child: _buildSecondaryValue(
                   icon: MdiIcons.swapVertical,
                   label: localizations.energy_net,
@@ -1053,7 +1053,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage> {
     );
     final yReservedSize = AppSpacings.scale(widestLabel.length * 7.0 + 4);
 
-    return AppCard(
+    return BaseCard(
       expanded: true,
       headerIcon: MdiIcons.chartBar,
       headerTitle: localizations.energy_chart_title,
@@ -1363,7 +1363,7 @@ class _EnergyDomainViewPageState extends State<EnergyDomainViewPage> {
     final ratio =
         maxConsumption > 0 ? device.consumption / maxConsumption : 0.0;
 
-    return AppCard(
+    return BaseCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,

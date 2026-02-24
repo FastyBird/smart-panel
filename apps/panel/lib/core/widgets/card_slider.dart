@@ -1,5 +1,5 @@
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/app_card.dart';
+import 'package:fastybird_smart_panel/core/widgets/base_card.dart';
 import 'package:fastybird_smart_panel/core/widgets/slider_with_steps.dart';
 import 'package:flutter/material.dart';
 
@@ -164,7 +164,7 @@ class _CardSliderState extends State<CardSlider> {
     return AnimatedOpacity(
       opacity: widget.enabled ? 1.0 : 0.5,
       duration: const Duration(milliseconds: 200),
-      child: AppCard(
+      child: BaseCard(
         color: widget.cardColor,
         borderColor: widget.borderColor,
         headerIcon: widget.icon,

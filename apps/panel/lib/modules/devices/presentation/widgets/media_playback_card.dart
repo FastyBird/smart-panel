@@ -1,7 +1,7 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/app_card.dart';
+import 'package:fastybird_smart_panel/core/widgets/base_card.dart';
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -94,7 +94,7 @@ class MediaPlaybackCard extends StatelessWidget {
 		return AnimatedOpacity(
 			opacity: isEnabled ? 1.0 : 0.5,
 			duration: const Duration(milliseconds: 200),
-			child: AppCard(
+			child: BaseCard(
 				width: double.infinity,
 				child: Column(
 				spacing: AppSpacings.pMd,

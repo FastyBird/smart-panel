@@ -10,7 +10,7 @@ import 'package:flutter/material.dart';
 /// Optionally includes a built-in header row with [headerIcon], [headerTitle],
 /// and [headerTrailing]. When a header is provided, the card body ([child]) is
 /// rendered below it.
-class AppCard extends StatelessWidget {
+class BaseCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry? padding;
   final double? width;
@@ -46,7 +46,7 @@ class AppCard extends StatelessWidget {
   /// [Expanded] children work correctly. Defaults to false ([MainAxisSize.min]).
   final bool expanded;
 
-  const AppCard({
+  const BaseCard({
     super.key,
     required this.child,
     this.padding,
@@ -110,7 +110,7 @@ class AppCard extends StatelessWidget {
               left: resolvedEdgeInsets.left,
               right: resolvedEdgeInsets.right,
             ),
-            child: _AppCardHeader(
+            child: _BaseCardHeader(
               icon: headerIcon,
               title: headerTitle!,
               titleColor: headerTitleColor,
@@ -147,14 +147,14 @@ class AppCard extends StatelessWidget {
   }
 }
 
-class _AppCardHeader extends StatelessWidget {
+class _BaseCardHeader extends StatelessWidget {
   final IconData? icon;
   final String title;
   final Color? titleColor;
   final Widget? trailing;
   final EdgeInsetsGeometry? padding;
 
-  const _AppCardHeader({
+  const _BaseCardHeader({
     this.icon,
     required this.title,
     this.titleColor,

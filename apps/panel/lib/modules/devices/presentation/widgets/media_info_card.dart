@@ -1,5 +1,5 @@
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/app_card.dart';
+import 'package:fastybird_smart_panel/core/widgets/base_card.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
@@ -52,7 +52,7 @@ class MediaInfoCard extends StatelessWidget {
 			sourceLabel != null &&
 			onSourceChanged != null;
 
-		return AppCard(
+		return BaseCard(
 			width: double.infinity,
 			expanded: expanded,
 			child: Column(

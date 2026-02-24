@@ -2,7 +2,7 @@ import 'package:fastybird_smart_panel/api/models/devices_module_data_type.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/app_card.dart';
+import 'package:fastybird_smart_panel/core/widgets/base_card.dart';
 import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/utils/sensor_utils.dart';
@@ -516,7 +516,7 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
       );
     }
 
-    return AppCard(
+    return BaseCard(
       color: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
       expanded: flexible,
       headerTitle: localizations.sensor_ui_event_log,
@@ -825,7 +825,7 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
       cardChild = Expanded(child: cardChild);
     }
 
-    return AppCard(
+    return BaseCard(
       color: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
       expanded: flexible,
       headerTitle: localizations.sensor_ui_history,

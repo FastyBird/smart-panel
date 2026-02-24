@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/icon_container.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/export.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
 import 'package:fastybird_smart_panel/modules/security/services/security_overlay_controller.dart';
@@ -335,8 +337,6 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen>
   Widget _buildEmptyState(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final warningColor = isDark ? AppColorsDark.warning : AppColorsLight.warning;
-    final warningBgColor =
-        isDark ? AppColorsDark.warningLight9 : AppColorsLight.warningLight9;
 
     return Scaffold(
       body: Center(
@@ -346,18 +346,11 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen>
             mainAxisAlignment: MainAxisAlignment.center,
             spacing: AppSpacings.pMd,
             children: [
-              Container(
-                width: AppSpacings.scale(80),
-                height: AppSpacings.scale(80),
-                decoration: BoxDecoration(
-                  color: warningBgColor,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  MdiIcons.alertCircleOutline,
-                  size: AppSpacings.scale(48),
-                  color: warningColor,
-                ),
+              IconContainer(
+                screenService: locator<ScreenService>(),
+                icon: MdiIcons.alertCircleOutline,
+                color: warningColor,
+                isLandscape: locator<ScreenService>().isLandscape,
               ),
               Text(
                 'No pages configured',

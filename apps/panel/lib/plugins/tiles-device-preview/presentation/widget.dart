@@ -1,5 +1,5 @@
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
+import 'package:fastybird_smart_panel/core/widgets/toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/button_tile.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/mappers/data_source.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/presentation/widgets/tiles/tile.dart';
@@ -54,7 +54,7 @@ class DevicePreviewTileWidget extends TileWidget<DevicePreviewTileView> {
                 );
 
                 if (!res && context.mounted) {
-                  AppToast.showError(
+                  Toast.showError(
                     context,
                     message: localizations.action_failed,
                   );

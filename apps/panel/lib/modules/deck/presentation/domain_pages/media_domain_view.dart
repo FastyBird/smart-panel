@@ -59,8 +59,8 @@ import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/alert_banner.dart';
-import 'package:fastybird_smart_panel/core/widgets/app_bottom_sheet.dart';
-import 'package:fastybird_smart_panel/core/widgets/app_right_drawer.dart';
+import 'package:fastybird_smart_panel/core/widgets/bottom_sheet_dialog.dart';
+import 'package:fastybird_smart_panel/core/widgets/right_drawer.dart';
 import 'package:fastybird_smart_panel/core/widgets/hero_card.dart';
 import 'package:fastybird_smart_panel/core/widgets/landscape_view_layout.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
@@ -1788,7 +1788,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		final errors = lastResult?.errors ?? [];
 		final warnings = lastResult?.warnings ?? [];
 
-		showAppBottomSheet(
+		showBottomSheetDialog(
 			context,
 			title: AppLocalizations.of(context)!.media_failure_details_title,
 			content: Padding(
@@ -2660,7 +2660,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 		);
 
 		if (isLandscape) {
-			showAppRightDrawer(
+			showRightDrawer(
 				context,
 				title: remoteLocalizations.media_remote_control,
 				titleIcon: MdiIcons.remote,
@@ -2668,7 +2668,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 				content: Center(child: remoteContent),
 			);
 		} else {
-			showAppBottomSheet(
+			showBottomSheetDialog(
 				context,
 				title: remoteLocalizations.media_remote_control,
 				titleIcon: MdiIcons.remote,

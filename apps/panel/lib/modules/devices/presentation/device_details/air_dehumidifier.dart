@@ -6,8 +6,8 @@ import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/api/models/devices_module_channel_category.dart';
-import 'package:fastybird_smart_panel/core/widgets/app_card.dart';
-import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
+import 'package:fastybird_smart_panel/core/widgets/base_card.dart';
+import 'package:fastybird_smart_panel/core/widgets/toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/circular_control_dial.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_landscape_layout.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_portrait_layout.dart';
@@ -133,7 +133,7 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
     }
     final localizations = AppLocalizations.of(context);
     if (mounted && localizations != null) {
-      AppToast.showError(context, message: localizations.action_failed);
+      Toast.showError(context, message: localizations.action_failed);
     }
     if (mounted) {
       setState(() {});
@@ -330,7 +330,7 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
         if (mounted) {
           final localizations = AppLocalizations.of(context);
           if (localizations != null) {
-            AppToast.showError(context, message: localizations.action_failed);
+            Toast.showError(context, message: localizations.action_failed);
           }
           setState(() {});
         }
@@ -613,7 +613,7 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
     bool isDark, {
     required double dialSize,
   }) {
-    return AppCard(
+    return BaseCard(
       width: double.infinity,
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -627,7 +627,7 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
   }
 
   Widget _buildCompactControlCard(BuildContext context, bool isDark) {
-    return AppCard(
+    return BaseCard(
       child: LayoutBuilder(
         builder: (context, constraints) {
           final modeIconsWidth = AppSpacings.scale(50);
