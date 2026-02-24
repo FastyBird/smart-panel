@@ -1,10 +1,14 @@
 import type { App } from 'vue';
+import { markRaw } from 'vue';
 
 import { type IPlugin, type PluginInjectionKey, injectPluginsManager } from '../../common';
 import { DASHBOARD_MODULE_NAME, type ITilePluginsComponents, type ITilePluginsSchemas } from '../../modules/dashboard';
 
+import { TimeTilePreview } from './components/components';
 import { TimeTileCreateReqSchema, TimeTileSchema, TimeTileUpdateReqSchema } from './store/tiles.store.schemas';
 import { TILES_TIME_PLUGIN_NAME, TILES_TIME_TYPE } from './tiles-time.constants';
+
+const timeTilePreviewComponent = markRaw(TimeTilePreview) as unknown as ITilePluginsComponents['tilePreview'];
 
 export const tilesTimePluginKey: PluginInjectionKey<IPlugin<ITilePluginsComponents, ITilePluginsSchemas>> = Symbol('FB-Plugin-TilesTime');
 
@@ -27,6 +31,9 @@ export default {
 				{
 					type: TILES_TIME_TYPE,
 					name: 'Clock',
+					components: {
+						tilePreview: timeTilePreviewComponent,
+					},
 					schemas: {
 						tileSchema: TimeTileSchema,
 						tileCreateReqSchema: TimeTileCreateReqSchema,

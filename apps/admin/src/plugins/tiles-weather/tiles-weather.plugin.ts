@@ -7,7 +7,12 @@ import type { IPluginOptions } from '../../app.types';
 import { type IPlugin, type PluginInjectionKey, injectPluginsManager } from '../../common';
 import { DASHBOARD_MODULE_NAME, type ITilePluginsComponents, type ITilePluginsSchemas } from '../../modules/dashboard';
 
-import { WeatherTileAddForm, WeatherTileEditForm } from './components/components';
+import {
+	DayWeatherTilePreview,
+	ForecastWeatherTilePreview,
+	WeatherTileAddForm,
+	WeatherTileEditForm,
+} from './components/components';
 import enUS from './locales/en-US.json';
 import { WeatherTileAddFormSchema, WeatherTileEditFormSchema } from './schemas/tiles.schemas';
 import {
@@ -23,6 +28,8 @@ import { TILES_WEATHER_PLUGIN_DAY_TYPE, TILES_WEATHER_PLUGIN_FORECAST_TYPE, TILE
 // Cast the components to the expected types - the weather tile forms handle both ITile and weather-specific tiles
 const weatherTileAddFormComponent = markRaw(WeatherTileAddForm) as unknown as ITilePluginsComponents['tileAddForm'];
 const weatherTileEditFormComponent = markRaw(WeatherTileEditForm) as unknown as ITilePluginsComponents['tileEditForm'];
+const dayWeatherTilePreviewComponent = markRaw(DayWeatherTilePreview) as unknown as ITilePluginsComponents['tilePreview'];
+const forecastWeatherTilePreviewComponent = markRaw(ForecastWeatherTilePreview) as unknown as ITilePluginsComponents['tilePreview'];
 
 export const tilesWeatherPluginKey: PluginInjectionKey<IPlugin<ITilePluginsComponents, ITilePluginsSchemas>> = Symbol('FB-Plugin-TilesWeather');
 
@@ -57,6 +64,7 @@ export default {
 					components: {
 						tileAddForm: weatherTileAddFormComponent,
 						tileEditForm: weatherTileEditFormComponent,
+						tilePreview: dayWeatherTilePreviewComponent,
 					},
 					schemas: {
 						tileSchema: DayWeatherTileSchema,
@@ -73,6 +81,7 @@ export default {
 					components: {
 						tileAddForm: weatherTileAddFormComponent,
 						tileEditForm: weatherTileEditFormComponent,
+						tilePreview: forecastWeatherTilePreviewComponent,
 					},
 					schemas: {
 						tileSchema: ForecastWeatherTileSchema,

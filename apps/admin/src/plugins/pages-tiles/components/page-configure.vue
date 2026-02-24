@@ -1,4 +1,47 @@
 <template>
+	<div class="mb-2">
+		<el-row
+			:gutter="10"
+			align="middle"
+			class="px-2"
+		>
+			<el-col :span="12">
+				<div class="flex items-center gap-2">
+					<el-text
+						type="info"
+						size="small"
+					>
+						Display:
+					</el-text>
+					<el-select
+						v-model="selectedDisplayId"
+						size="small"
+						style="min-width: 200px"
+						:disabled="applicableDisplays.length <= 1"
+					>
+						<el-option
+							v-for="d in applicableDisplays"
+							:key="d.id"
+							:value="d.id"
+							:label="d.name || d.macAddress"
+						/>
+					</el-select>
+				</div>
+			</el-col>
+			<el-col :span="12">
+				<el-text
+					v-if="selectedDisplay"
+					type="info"
+					size="small"
+				>
+					{{ selectedDisplay.screenWidth }}x{{ selectedDisplay.screenHeight }}px
+					&middot;
+					{{ gridLayout?.cols ?? '?' }}x{{ gridLayout?.rows ?? '?' }} grid
+				</el-text>
+			</el-col>
+		</el-row>
+	</div>
+
 	<el-row
 		:gutter="10"
 		class="mt-2"
@@ -9,7 +52,8 @@
 		>
 			<el-card
 				body-class="p-1!"
-				:class="`max-w-[${display?.screenWidth ?? 540}px]`"
+				class="page-grid-card"
+				:style="gridCardStyle"
 			>
 				<div ref="pageGridContainer" />
 			</el-card>
@@ -21,7 +65,8 @@
 		>
 			<el-card
 				body-class="p-1!"
-				:class="`max-w-[${display?.screenWidth ?? 540}px]`"
+				class="page-grid-card"
+				:style="gridCardStyle"
 			>
 				<div
 					id="trash"
@@ -59,7 +104,7 @@
 <script setup lang="ts">
 import { computed, h, nextTick, onBeforeMount, onBeforeUnmount, onMounted, ref, render, watch } from 'vue';
 
-import { ElCard, ElCol, ElIcon, ElRow, ElText } from 'element-plus';
+import { ElCard, ElCol, ElIcon, ElOption, ElRow, ElSelect, ElText } from 'element-plus';
 import { GridStack, type GridStackWidget } from 'gridstack';
 import 'gridstack/dist/gridstack.min.css';
 
@@ -75,22 +120,6 @@ import {
 	useTilesActions,
 } from '../../../modules/dashboard';
 import { type IDisplay, useDisplays } from '../../../modules/displays';
-
-// Simple layout calculation - displays now contain rows, cols, and unitSize
-const calculateLayout = (
-	display: IDisplay | null,
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any
-	_pageSettings?: any
-): { rows: number; cols: number; unitSize: number } => {
-	if (!display) {
-		return { rows: 12, cols: 24, unitSize: 8 };
-	}
-	return {
-		rows: display.rows ?? 12,
-		cols: display.cols ?? 24,
-		unitSize: display.unitSize ?? 8,
-	};
-};
 
 import type { IPageConfigureProps } from './page-configure.types';
 import TilePreview from './tile-preview.vue';
@@ -117,7 +146,12 @@ const emit = defineEmits<{
 
 const { displays, fetchDisplays, isLoading: loadingDisplays } = useDisplays();
 const { tiles, fetchTiles, areLoading: loadingTiles } = useTiles({ parent: 'page', parentId: props.page.id });
-const { findById: findTileById, edit: editTile, save: saveTile, removeDirectly: removeTile } = useTilesActions({ parent: 'page', parentId: props.page.id });
+const {
+	findById: findTileById,
+	edit: editTile,
+	save: saveTile,
+	removeDirectly: removeTile,
+} = useTilesActions({ parent: 'page', parentId: props.page.id });
 
 let pageGrid: GridStack | undefined;
 
@@ -141,32 +175,49 @@ const initialized = ref<boolean>(false);
 
 const pageChanged = ref<boolean>(false);
 
-const display = computed<IDisplay | null>((): IDisplay | null => {
-	// Get the first display as default
-	const defaultDisplay = displays.value[0] ?? null;
+const selectedDisplayId = ref<string | null>(null);
 
-	// If page has displays assigned, use the first one; otherwise use default
+// Displays applicable to this page (filtered by page's displays list, or all if null)
+const applicableDisplays = computed<IDisplay[]>((): IDisplay[] => {
 	if (props.page.displays !== null && props.page.displays.length > 0) {
-		return displays.value.find((d) => d.id === props.page.displays![0]) ?? defaultDisplay;
+		return displays.value.filter((d) => props.page.displays!.includes(d.id));
 	}
 
-	return defaultDisplay;
+	return displays.value;
 });
 
+// Currently selected display
+const selectedDisplay = computed<IDisplay | null>((): IDisplay | null => {
+	if (selectedDisplayId.value) {
+		return applicableDisplays.value.find((d) => d.id === selectedDisplayId.value) ?? applicableDisplays.value[0] ?? null;
+	}
+
+	return applicableDisplays.value[0] ?? null;
+});
+
+// Layout calculation: page overrides take priority over display defaults
 const gridLayout = computed<{ rows: number; cols: number } | null>((): { rows: number; cols: number } | null => {
-	if (display.value === null) {
+	if (selectedDisplay.value === null) {
 		return null;
 	}
 
-	const grid = calculateLayout(display.value, {
-		rows: props.page.rows,
-		cols: props.page.cols,
-		tileSize: props.page.tileSize,
-	});
+	const rows = props.page.rows ?? selectedDisplay.value.rows ?? 12;
+	const cols = props.page.cols ?? selectedDisplay.value.cols ?? 24;
+
+	return { rows, cols };
+});
+
+// Card style to reflect display aspect ratio
+const gridCardStyle = computed<Record<string, string>>((): Record<string, string> => {
+	const display = selectedDisplay.value;
+
+	if (!display || !display.screenWidth || !display.screenHeight) {
+		return { maxWidth: '540px' };
+	}
 
 	return {
-		rows: grid.rows,
-		cols: grid.cols,
+		maxWidth: `${Math.min(display.screenWidth, 600)}px`,
+		aspectRatio: `${display.screenWidth} / ${display.screenHeight}`,
 	};
 });
 
@@ -204,10 +255,49 @@ const updateSquareCells = (): void => {
 	}
 };
 
+const destroyGrids = (): void => {
+	if (pageGrid) {
+		pageGrid.removeAll(true);
+		pageGrid.destroy(false);
+		pageGrid = undefined;
+	}
+
+	if (draftGrid) {
+		draftGrid.removeAll(true);
+		draftGrid.destroy(false);
+		draftGrid = undefined;
+	}
+
+	pageTiles.clear();
+	draftTiles.clear();
+};
+
+const renderTileContent = (itemElContent: Element, tile: ITile): void => {
+	const itemContentVNode = h(TilePreview, {
+		tile,
+		onDetail: (id: ITile['id']): void => {
+			emit('tileDetail', id);
+		},
+		onEdit: (id: ITile['id']): void => {
+			emit('editTile', id);
+		},
+		onRemove: (id: ITile['id']): void => {
+			onTileRemove(id);
+		},
+		onDataSourceAdd: (id: ITile['id']): void => {
+			emit('addTileDataSource', id);
+		},
+	});
+
+	render(itemContentVNode, itemElContent as HTMLElement);
+};
+
 const initializeGrids = (): void => {
 	if (gridLayout.value === null) {
 		return;
 	}
+
+	destroyGrids();
 
 	pageGrid = GridStack.init(
 		{
@@ -299,23 +389,7 @@ const initializeGrids = (): void => {
 				return;
 			}
 
-			const itemContentVNode = h(TilePreview, {
-				tile,
-				onDetail: (id: ITile['id']): void => {
-					emit('tileDetail', id);
-				},
-				onEdit: (id: ITile['id']): void => {
-					emit('editTile', id);
-				},
-				onRemove: (id: ITile['id']): void => {
-					onTileRemove(id);
-				},
-				onDataSourceAdd: (id: ITile['id']): void => {
-					emit('addTileDataSource', id);
-				},
-			});
-
-			render(itemContentVNode, itemElContent);
+			renderTileContent(itemElContent, tile);
 
 			pageTiles.add(tile.id);
 
@@ -337,7 +411,7 @@ const initializeGrids = (): void => {
 				return;
 			}
 
-			render(null, itemElContent);
+			render(null, itemElContent as HTMLElement);
 
 			if (item.id) {
 				pageTiles.delete(item.id);
@@ -377,23 +451,7 @@ const initializeGrids = (): void => {
 
 			draftGrid?.update(itemEl, { w: 2, h: 1 });
 
-			const itemContentVNode = h(TilePreview, {
-				tile,
-				onDetail: (id: ITile['id']): void => {
-					emit('tileDetail', id);
-				},
-				onEdit: (id: ITile['id']): void => {
-					emit('editTile', id);
-				},
-				onRemove: (id: ITile['id']): void => {
-					onTileRemove(id);
-				},
-				onDataSourceAdd: (id: ITile['id']): void => {
-					emit('addTileDataSource', id);
-				},
-			});
-
-			render(itemContentVNode, itemElContent);
+			renderTileContent(itemElContent, tile);
 
 			draftTiles.add(tile.id);
 
@@ -417,7 +475,7 @@ const initializeGrids = (): void => {
 				return;
 			}
 
-			render(null, itemElContent);
+			render(null, itemElContent as HTMLElement);
 
 			if (item.id) {
 				draftTiles.delete(item.id);
@@ -434,6 +492,38 @@ const initializeGrids = (): void => {
 	});
 
 	updateSquareCells();
+
+	// Re-add existing tiles to the new grids
+	addTilesToGrids();
+};
+
+const addTilesToGrids = (): void => {
+	for (const tile of tiles.value) {
+		const fitsHorizontally = tile.col + tile.colSpan - 1 <= (gridLayout.value?.cols ?? 0);
+		const fitsVertically = tile.row + tile.rowSpan - 1 <= (gridLayout.value?.rows ?? 0);
+
+		if (fitsHorizontally && fitsVertically && !tile.hidden && !tile.draft) {
+			if (!pageTiles.has(tile.id)) {
+				pageGrid?.addWidget({
+					id: tile.id,
+					x: tile.col - 1,
+					y: tile.row - 1,
+					w: tile.colSpan,
+					h: tile.rowSpan,
+				});
+			}
+		} else if (!draftTiles.has(tile.id) && !pageTiles.has(tile.id)) {
+			draftGrid?.addWidget({
+				id: tile.id,
+				x: 0,
+				y: 2,
+				w: 1,
+				h: 1,
+			});
+		}
+	}
+
+	draftGrid?.compact();
 };
 
 const markChanged = () => {
@@ -483,8 +573,7 @@ onMounted((): void => {
 onBeforeUnmount((): void => {
 	window.removeEventListener('resize', updateSquareCells);
 
-	pageGrid?.destroy();
-	draftGrid?.destroy();
+	destroyGrids();
 });
 
 watch(
@@ -611,17 +700,41 @@ watch(
 	}
 );
 
+// Auto-select first applicable display when displays load
+watch(
+	(): IDisplay[] => applicableDisplays.value,
+	(val: IDisplay[]): void => {
+		const first = val[0];
+
+		if (first && !selectedDisplayId.value) {
+			selectedDisplayId.value = first.id;
+		}
+	},
+	{ immediate: true }
+);
+
+// Re-initialize grids when display selection or grid layout changes
 watch(
 	(): { rows: number; cols: number } | null => gridLayout.value,
-	(): void => {
-		initializeGrids();
+	(newVal, oldVal): void => {
+		if (newVal && oldVal && newVal.rows === oldVal.rows && newVal.cols === oldVal.cols) {
+			return;
+		}
+
+		nextTick(() => {
+			initializeGrids();
+		});
 	}
 );
 </script>
 
-<style rel="stylesheet/scss" lang="scss">
+<style lang="scss">
 .grid-stack .grid-stack-item-content {
 	display: flex;
 	flex-direction: column;
+}
+
+.page-grid-card {
+	overflow: hidden;
 }
 </style>
