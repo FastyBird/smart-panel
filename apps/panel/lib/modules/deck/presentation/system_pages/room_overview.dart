@@ -796,7 +796,7 @@ class _RoomDomainCard extends StatelessWidget {
 													Text(
 														cardInfo.primaryValue,
 														style: TextStyle(
-															fontSize: AppFontSize.extraLarge,
+															fontSize: AppFontSize.large,
 															fontWeight: FontWeight.w700,
 															height: 1.0,
 															color: isDark
