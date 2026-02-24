@@ -302,9 +302,6 @@ const renderTileContent = (itemElContent: Element, tile: ITile): void => {
 		onRemove: (id: ITile['id']): void => {
 			onTileRemove(id);
 		},
-		onDataSourceAdd: (id: ITile['id']): void => {
-			emit('addTileDataSource', id);
-		},
 	});
 
 	if (appContext) {
