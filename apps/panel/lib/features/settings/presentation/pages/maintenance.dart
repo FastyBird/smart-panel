@@ -8,6 +8,7 @@ import 'package:fastybird_smart_panel/features/settings/presentation/widgets/set
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_card.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/displays/module.dart';
 import 'package:fastybird_smart_panel/modules/system/module.dart';
 import 'package:flutter/material.dart';
 
@@ -27,21 +28,53 @@ class MaintenancePage extends StatelessWidget {
 		final dangerColor = isDark ? AppColorsDark.danger : AppColorsLight.danger;
 		final dangerBg = isDark ? AppColorsDark.dangerLight5 : AppColorsLight.dangerLight9;
 
+		final isGateway = _isGatewayMode();
+
+		final restartDescription = isGateway
+				? localizations.settings_maintenance_restart_display_description
+				: localizations.settings_maintenance_restart_description;
+		final restartConfirmTitle = isGateway
+				? localizations.settings_maintenance_restart_display_confirm_title
+				: localizations.settings_maintenance_restart_confirm_title;
+		final restartConfirmDescription = isGateway
+				? localizations.settings_maintenance_restart_display_confirm_description
+				: localizations.settings_maintenance_restart_confirm_description;
+
+		final powerOffDescription = isGateway
+				? localizations.settings_maintenance_power_off_display_description
+				: localizations.settings_maintenance_power_off_description;
+		final powerOffConfirmTitle = isGateway
+				? localizations.settings_maintenance_power_off_display_confirm_title
+				: localizations.settings_maintenance_power_off_confirm_title;
+		final powerOffConfirmDescription = isGateway
+				? localizations.settings_maintenance_power_off_display_confirm_description
+				: localizations.settings_maintenance_power_off_confirm_description;
+
+		final factoryResetDescription = isGateway
+				? localizations.settings_maintenance_factory_reset_display_description
+				: localizations.settings_maintenance_factory_reset_description;
+		final factoryResetConfirmTitle = isGateway
+				? localizations.settings_maintenance_factory_reset_display_confirm_title
+				: localizations.settings_maintenance_factory_reset_confirm_title;
+		final factoryResetConfirmDescription = isGateway
+				? localizations.settings_maintenance_factory_reset_display_confirm_description
+				: localizations.settings_maintenance_factory_reset_confirm_description;
+
 		final systemCards = <Widget>[
 			SettingsCard(
 				icon: Icons.restart_alt,
 				iconColor: primaryColor,
 				iconBgColor: primaryBg,
 				label: localizations.settings_maintenance_restart_title,
-				description: localizations.settings_maintenance_restart_description,
+				description: restartDescription,
 				trailing: SettingsActionButton(
 					color: primaryColor,
 					bgColor: primaryBg,
 					onTap: () {
 						_showConfirmationDialog(
 							context: context,
-							title: localizations.settings_maintenance_restart_confirm_title,
-							content: localizations.settings_maintenance_restart_confirm_description,
+							title: restartConfirmTitle,
+							content: restartConfirmDescription,
 							onConfirm: () {
 								_systemModuleService.rebootDevice().then((bool result) {
 									if (!result) {
@@ -60,15 +93,15 @@ class MaintenancePage extends StatelessWidget {
 				iconColor: primaryColor,
 				iconBgColor: primaryBg,
 				label: localizations.settings_maintenance_power_off_title,
-				description: localizations.settings_maintenance_power_off_description,
+				description: powerOffDescription,
 				trailing: SettingsActionButton(
 					color: primaryColor,
 					bgColor: primaryBg,
 					onTap: () {
 						_showConfirmationDialog(
 							context: context,
-							title: localizations.settings_maintenance_power_off_confirm_title,
-							content: localizations.settings_maintenance_power_off_confirm_description,
+							title: powerOffConfirmTitle,
+							content: powerOffConfirmDescription,
 							onConfirm: () {
 								_systemModuleService.powerOffDevice().then((bool result) {
 									if (!result) {
@@ -90,7 +123,7 @@ class MaintenancePage extends StatelessWidget {
 				iconColor: dangerColor,
 				iconBgColor: dangerBg,
 				label: localizations.settings_maintenance_factory_reset_title,
-				description: localizations.settings_maintenance_factory_reset_description,
+				description: factoryResetDescription,
 				isDanger: true,
 				trailing: SettingsActionButton(
 					color: dangerColor,
@@ -98,8 +131,8 @@ class MaintenancePage extends StatelessWidget {
 					onTap: () {
 						_showConfirmationDialog(
 							context: context,
-							title: localizations.settings_maintenance_factory_reset_confirm_title,
-							content: localizations.settings_maintenance_factory_reset_confirm_description,
+							title: factoryResetConfirmTitle,
+							content: factoryResetConfirmDescription,
 							onConfirm: () {
 								_systemModuleService.factoryResetDevice().then((bool result) {
 									if (!result) {
@@ -287,6 +320,15 @@ class MaintenancePage extends StatelessWidget {
 				);
 			},
 		);
+	}
+
+	bool _isGatewayMode() {
+		try {
+			final displaysModule = locator<DisplaysModuleService>();
+			return displaysModule.isGatewayMode;
+		} catch (_) {
+			return false;
+		}
 	}
 
 	void _handleCommandError({

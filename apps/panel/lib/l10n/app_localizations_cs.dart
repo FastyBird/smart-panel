@@ -735,6 +735,33 @@ class AppLocalizationsCs extends AppLocalizations {
   String get settings_maintenance_danger_heading => 'Nebezpečná zóna';
 
   @override
+  String get settings_maintenance_restart_display_description => 'Restartujte tento displej pro aplikaci změn.';
+
+  @override
+  String get settings_maintenance_restart_display_confirm_title => 'Restartovat displej';
+
+  @override
+  String get settings_maintenance_restart_display_confirm_description => 'Opravdu chcete restartovat tento displej? Brána a ostatní displeje nebudou ovlivněny.';
+
+  @override
+  String get settings_maintenance_power_off_display_description => 'Vypněte tento displej úplně.';
+
+  @override
+  String get settings_maintenance_power_off_display_confirm_title => 'Vypnout displej';
+
+  @override
+  String get settings_maintenance_power_off_display_confirm_description => 'Opravdu chcete vypnout tento displej? Bude nutné ho znovu ručně zapnout. Brána nebude ovlivněna.';
+
+  @override
+  String get settings_maintenance_factory_reset_display_description => 'Odeberte tento displej z brány a obnovte tovární nastavení.';
+
+  @override
+  String get settings_maintenance_factory_reset_display_confirm_title => 'Tovární nastavení displeje';
+
+  @override
+  String get settings_maintenance_factory_reset_display_confirm_description => 'Opravdu chcete obnovit tovární nastavení tohoto displeje? Bude odebrán z brány a všechna lokální data budou vymazána. Tato akce je nevratná.';
+
+  @override
   String get settings_language_settings_title => 'Nastavení jazyka';
 
   @override

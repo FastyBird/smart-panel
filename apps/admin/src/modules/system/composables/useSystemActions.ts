@@ -3,6 +3,8 @@ import { useI18n } from 'vue-i18n';
 import { ElMessageBox } from 'element-plus';
 
 import { useFlashMessage, useSockets } from '../../../common';
+import { useConfigModule } from '../../config/composables/composables';
+import type { IDisplaysConfigModule } from '../../displays/store/config.store.types';
 import { injectSystemActionsService } from '../services/system-actions.service';
 import { EventHandlerName, EventType } from '../system.constants';
 
@@ -15,8 +17,21 @@ export const useSystemActions = (): IUseSystemActions => {
 	const { sendCommand } = useSockets();
 	const flashMessage = useFlashMessage();
 
+	const { configModule: displaysConfig } = useConfigModule({ type: 'displays-module' });
+
+	const isGatewayMode = (): boolean => {
+		const config = displaysConfig.value as IDisplaysConfigModule | null;
+
+		return config !== null && config.deploymentMode !== 'all-in-one';
+	};
+
 	const onRestart = (): void => {
-		ElMessageBox.confirm(t('systemModule.messages.manage.confirmRestart'), t('systemModule.headings.manage.restart'), {
+		const gateway = isGatewayMode();
+		const confirmMsg = gateway
+			? t('systemModule.messages.manage.confirmRestartGateway')
+			: t('systemModule.messages.manage.confirmRestart');
+
+		ElMessageBox.confirm(confirmMsg, t('systemModule.headings.manage.restart'), {
 			confirmButtonText: t('systemModule.buttons.yes.title'),
 			cancelButtonText: t('systemModule.buttons.no.title'),
 			type: 'warning',
@@ -48,7 +63,12 @@ export const useSystemActions = (): IUseSystemActions => {
 	};
 
 	const onPowerOff = (): void => {
-		ElMessageBox.confirm(t('systemModule.messages.manage.confirmPowerOff'), t('systemModule.headings.manage.powerOff'), {
+		const gateway = isGatewayMode();
+		const confirmMsg = gateway
+			? t('systemModule.messages.manage.confirmPowerOffGateway')
+			: t('systemModule.messages.manage.confirmPowerOff');
+
+		ElMessageBox.confirm(confirmMsg, t('systemModule.headings.manage.powerOff'), {
 			confirmButtonText: t('systemModule.buttons.yes.title'),
 			cancelButtonText: t('systemModule.buttons.no.title'),
 			type: 'warning',
@@ -80,7 +100,12 @@ export const useSystemActions = (): IUseSystemActions => {
 	};
 
 	const onFactoryReset = (): void => {
-		ElMessageBox.confirm(t('systemModule.messages.manage.confirmFactoryReset'), t('systemModule.headings.manage.factoryReset'), {
+		const gateway = isGatewayMode();
+		const confirmMsg = gateway
+			? t('systemModule.messages.manage.confirmFactoryResetGateway')
+			: t('systemModule.messages.manage.confirmFactoryReset');
+
+		ElMessageBox.confirm(confirmMsg, t('systemModule.headings.manage.factoryReset'), {
 			confirmButtonText: t('systemModule.buttons.yes.title'),
 			cancelButtonText: t('systemModule.buttons.no.title'),
 			type: 'warning',

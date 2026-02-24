@@ -26,6 +26,12 @@ vi.mock('../../composables/composables', () => ({
 	}),
 }));
 
+vi.mock('../../../config/composables/composables', () => ({
+	useConfigModule: () => ({
+		configModule: { value: { deploymentMode: 'all-in-one' } },
+	}),
+}));
+
 describe('ManageSystem.vue', () => {
 	let wrapper: VueWrapper<ManageSystemInstance>;
 

@@ -1,6 +1,7 @@
 import { Module, OnApplicationBootstrap, OnModuleInit, forwardRef } from '@nestjs/common';
 import { ConfigModule as NestConfigModule } from '@nestjs/config/dist/config.module';
 
+import { AuthModule } from '../auth/auth.module';
 import { ConfigModule } from '../config/config.module';
 import { ConfigService } from '../config/services/config.service';
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
@@ -22,6 +23,7 @@ import { SystemController } from './controllers/system.controller';
 import { UpdateSystemConfigDto } from './dto/update-config.dto';
 import { SystemConfigModel } from './models/config.model';
 import { SystemStatsProvider } from './providers/system-stats.provider';
+import { DisplayCommandService } from './services/display-command.service';
 import { FactoryResetRegistryService } from './services/factory-reset-registry.service';
 import { HouseModeActionsService } from './services/house-mode-actions.service';
 import { SystemCommandService } from './services/system-command.service';
@@ -47,6 +49,7 @@ import { SYSTEM_SWAGGER_EXTRA_MODELS } from './system.openapi';
 		NestConfigModule,
 		PlatformModule,
 		WebsocketModule,
+		AuthModule,
 		forwardRef(() => InfluxDbModule),
 		StatsModule,
 		forwardRef(() => ConfigModule),
@@ -56,6 +59,7 @@ import { SYSTEM_SWAGGER_EXTRA_MODELS } from './system.openapi';
 	providers: [
 		SystemService,
 		SystemCommandService,
+		DisplayCommandService,
 		FactoryResetRegistryService,
 		SystemLoggerService,
 		SystemStatsProvider,
@@ -68,6 +72,7 @@ export class SystemModule implements OnModuleInit, OnApplicationBootstrap {
 	constructor(
 		private readonly eventRegistry: CommandEventRegistryService,
 		private readonly systemCommandService: SystemCommandService,
+		private readonly displayCommandService: DisplayCommandService,
 		private readonly systemLoggerService: SystemLoggerService,
 		private readonly systemStatsProvider: SystemStatsProvider,
 		private readonly statsRegistryService: StatsRegistryService,
@@ -104,6 +109,27 @@ export class SystemModule implements OnModuleInit, OnApplicationBootstrap {
 			EventHandlerName.INTERNAL_PLATFORM_ACTION,
 			async (user: ClientUserDto, _payload?: object): Promise<{ success: boolean; reason?: string }> =>
 				this.systemCommandService.factoryReset(user),
+		);
+
+		this.eventRegistry.register(
+			EventType.DISPLAY_REBOOT_SET,
+			EventHandlerName.INTERNAL_DISPLAY_ACTION,
+			(user: ClientUserDto, _payload?: object): Promise<{ success: boolean; reason?: string }> =>
+				Promise.resolve(this.displayCommandService.displayReboot(user)),
+		);
+
+		this.eventRegistry.register(
+			EventType.DISPLAY_POWER_OFF_SET,
+			EventHandlerName.INTERNAL_DISPLAY_ACTION,
+			(user: ClientUserDto, _payload?: object): Promise<{ success: boolean; reason?: string }> =>
+				Promise.resolve(this.displayCommandService.displayPowerOff(user)),
+		);
+
+		this.eventRegistry.register(
+			EventType.DISPLAY_FACTORY_RESET_SET,
+			EventHandlerName.INTERNAL_DISPLAY_ACTION,
+			async (user: ClientUserDto, _payload?: object): Promise<{ success: boolean; reason?: string }> =>
+				this.displayCommandService.displayFactoryReset(user),
 		);
 
 		this.statsRegistryService.register(SYSTEM_MODULE_NAME, this.systemStatsProvider);

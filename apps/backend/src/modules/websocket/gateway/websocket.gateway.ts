@@ -98,6 +98,11 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 
 			if (clientData.user && clientData.user.type === 'token' && clientData.user.ownerType === TokenOwnerType.DISPLAY) {
 				await client.join(DISPLAY_INTERNAL_ROOM);
+
+				// Join a per-display room for targeted messaging
+				if (clientData.user.id) {
+					await client.join(`display-${clientData.user.id}`);
+				}
 			}
 
 			// Emit client connected event to exchange bus
@@ -247,6 +252,11 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 		'ha.adapter.', // Home Assistant adapter
 	];
 
+	// Display-specific event prefixes that should be sent to a specific display only
+	private static readonly DISPLAY_TARGETED_EVENT_PREFIXES = [
+		'SystemModule.Display.', // Display-specific maintenance events
+	];
+
 	private handleBusEvent(event: string, payload: Record<string, any>): void {
 		if (!this.enabled) {
 			return;
@@ -270,6 +280,23 @@ export class WebsocketGateway implements OnGatewayInit, OnGatewayConnection, OnG
 				timestamp: new Date().toISOString(),
 			},
 		};
+
+		// Check if this is a display-targeted event
+		const displayId = (payload as Record<string, unknown> | undefined)?.display_id as string | undefined;
+		const isDisplayTargeted =
+			WebsocketGateway.DISPLAY_TARGETED_EVENT_PREFIXES.some((prefix) => event.startsWith(prefix)) && displayId;
+
+		if (isDisplayTargeted) {
+			const displayRoom = `display-${displayId}`;
+
+			this.logger.debug(`Emitting targeted event to ${displayRoom}: ${JSON.stringify(message)}`);
+
+			// Send to the specific display and to the exchange room (admin)
+			this.server.to(displayRoom).emit('event', message);
+			this.server.to(EXCHANGE_ROOM).emit('event', message);
+
+			return;
+		}
 
 		this.logger.debug(`Emitting event bus message: ${JSON.stringify(message)}`);
 

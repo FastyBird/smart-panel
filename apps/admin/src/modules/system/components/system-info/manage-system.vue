@@ -28,7 +28,7 @@
 				class="block"
 				data-test-id="restart-info"
 			>
-				{{ t('systemModule.texts.manage.rebootDevice') }}
+				{{ isGateway ? t('systemModule.texts.manage.rebootGateway') : t('systemModule.texts.manage.rebootDevice') }}
 			</el-text>
 		</el-col>
 		<el-col
@@ -75,7 +75,7 @@
 				class="block"
 				data-test-id="power-off-info"
 			>
-				{{ t('systemModule.texts.manage.powerOffDevice') }}
+				{{ isGateway ? t('systemModule.texts.manage.powerOffGateway') : t('systemModule.texts.manage.powerOffDevice') }}
 			</el-text>
 		</el-col>
 		<el-col
@@ -122,7 +122,7 @@
 				class="block"
 				data-test-id="factory-reset-info"
 			>
-				{{ t('systemModule.texts.manage.factoryResetDevice') }}
+				{{ isGateway ? t('systemModule.texts.manage.factoryResetGateway') : t('systemModule.texts.manage.factoryResetDevice') }}
 			</el-text>
 		</el-col>
 		<el-col
@@ -187,6 +187,8 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue';
+
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
@@ -194,6 +196,8 @@ import { ElAvatar, ElCol, ElDivider, ElRow, ElText } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
+import { useConfigModule } from '../../../config/composables/composables';
+import type { IDisplaysConfigModule } from '../../../displays/store/config.store.types';
 import { useSystemActions } from '../../composables/composables';
 import { RouteNames } from '../../system.constants';
 
@@ -207,6 +211,14 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 const router = useRouter();
+
+const { configModule: displaysConfig } = useConfigModule({ type: 'displays-module' });
+
+const isGateway = computed<boolean>((): boolean => {
+	const config = displaysConfig.value as IDisplaysConfigModule | null;
+
+	return config !== null && config.deploymentMode !== 'all-in-one';
+});
 
 const { onRestart, onPowerOff, onFactoryReset } = useSystemActions();
 

@@ -4,8 +4,10 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/core/services/startup_manager.dart';
+import 'package:fastybird_smart_panel/modules/config/module.dart';
 import 'package:fastybird_smart_panel/modules/displays/constants.dart';
 import 'package:fastybird_smart_panel/modules/displays/models/display.dart';
+import 'package:fastybird_smart_panel/modules/displays/models/displays_config.dart';
 import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
 import 'package:flutter/foundation.dart';
 
@@ -43,6 +45,57 @@ class DisplaysModuleService {
       getCurrentToken: getCurrentToken,
     );
   }
+
+  /// Register the displays config model with the config module
+  void registerConfig() {
+    try {
+      final configModule = locator<ConfigModuleService>();
+      configModule.registerModule<DisplaysConfigModel>(
+        'displays-module',
+        DisplaysConfigModel.fromJson,
+      );
+
+      if (kDebugMode) {
+        debugPrint(
+          '[DISPLAYS MODULE][MODULE] Displays config model registered',
+        );
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          '[DISPLAYS MODULE][MODULE] Failed to register config model: $e',
+        );
+      }
+    }
+  }
+
+  /// Get the current deployment mode from the displays config
+  DeploymentMode getDeploymentMode() {
+    try {
+      final configModule = locator<ConfigModuleService>();
+      final repo =
+          configModule.getModuleRepository<DisplaysConfigModel>('displays-module');
+      final config = repo.data;
+
+      if (config != null) {
+        return config.deploymentMode;
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint(
+          '[DISPLAYS MODULE][MODULE] Failed to get deployment mode: $e',
+        );
+      }
+    }
+
+    return DeploymentMode.combined;
+  }
+
+  /// Whether the system is running in all-in-one mode (single device)
+  bool get isAllInOneMode => getDeploymentMode() == DeploymentMode.allInOne;
+
+  /// Whether the system is running in gateway mode (standalone or combined)
+  bool get isGatewayMode => !isAllInOneMode;
 
   /// Initialize the displays module by fetching the current display data
   /// using the stored access token.
