@@ -408,6 +408,9 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 										? _buildContent(context, localizations, model, isPortrait)
 										: _buildEmptyState(context, localizations);
 
+				final isDark = Theme.of(context).brightness == Brightness.dark;
+				final pageBg = isDark ? AppBgColorDark.page : AppBgColorLight.page;
+
 				if (isPortrait) {
 					return Column(
 						children: [
@@ -415,7 +418,12 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 								height: AppSpacings.scale(180),
 								child: skyPanel,
 							),
-							Expanded(child: contentBody),
+							Expanded(
+								child: ColoredBox(
+									color: pageBg,
+									child: contentBody,
+								),
+							),
 						],
 					);
 				}
@@ -426,7 +434,12 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 							width: constraints.maxWidth * 0.44,
 							child: skyPanel,
 						),
-						Expanded(child: contentBody),
+						Expanded(
+							child: ColoredBox(
+								color: pageBg,
+								child: contentBody,
+							),
+						),
 					],
 				);
 			},
