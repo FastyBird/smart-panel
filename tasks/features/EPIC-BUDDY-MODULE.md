@@ -1,4 +1,5 @@
-# Task: Buddy Module — AI Assistant for Smart Panel
+# Epic: Buddy module — AI assistant for Smart Panel
+
 ID: EPIC-BUDDY-MODULE
 Type: feature
 Scope: backend, admin, panel
@@ -9,52 +10,74 @@ Status: planned
 ## 1. Business goal
 
 In order to make the smart panel more intelligent and proactive,
-As a home operator using the panel,
-I want an AI "buddy" that observes my actions, learns my patterns, and suggests automations or optimizations — starting with text interaction and evolving toward voice.
+As a home operator using the wall panel,
+I want an AI "buddy" that observes my actions, learns my patterns, and suggests automations or optimisations — starting with text interaction and evolving toward voice and multi-channel messaging.
 
-Inspired by the [OpenClaw](https://github.com/openclaw/openclaw) project's proactive agent model, but purpose-built for the smart panel's device/space/scene domain.
+Inspired by the [OpenClaw](https://github.com/openclaw/openclaw) project's proactive agent model, but purpose-built for the smart panel's device / space / scene domain.
 
 ## 2. Context
 
-- **Existing foundation**: `SpaceSuggestionService` in `apps/backend/src/modules/spaces/` already implements time-based lighting suggestions with cooldown management, feedback tracking, and intent execution. The buddy module generalises this pattern.
-- **Intents module**: Tracks every operator action (30+ intent types) with full context (origin, space, device, targets, timestamps). This is the "action recognition" backbone.
-- **Scenes module**: Scene executor with platform registry — buddy can suggest scene creation from detected patterns and trigger scenes.
-- **WebSocket gateway**: Real-time bidirectional communication via Socket.IO with room-based routing. All `EventEmitter2` events are forwarded to subscribed clients.
-- **Extension system**: Mature plugin lifecycle management (`IManagedPluginService`) with health checks, dependency ordering, config persistence, and enable/disable toggling.
-- **OpenClaw reference**: Self-hosted AI agent with heartbeat daemon, proactive suggestions, persistent memory, multi-channel messaging, and voice support. We adopt the concepts but integrate deeply with smart panel's domain model.
+### Existing infrastructure to build on
+
+| System | What it provides | Key files |
+|--------|-----------------|-----------|
+| **Intents module** | Tracks every operator action (30+ intent types) with full context: origin, space, device, targets, timestamps. This is the "action recognition" backbone. | `modules/intents/intents.service.ts`, `intents.constants.ts` |
+| **Space suggestion service** | Time-based lighting suggestions with cooldown, feedback tracking, and intent execution. This is the pattern the buddy generalises. | `modules/spaces/services/space-suggestion.service.ts` |
+| **Scenes module** | Scene executor with platform registry — buddy can suggest scene creation from detected patterns and trigger existing scenes. | `modules/scenes/` |
+| **WebSocket gateway** | Real-time bidirectional Socket.IO with room-based routing. All `EventEmitter2` events forwarded to subscribed clients. | `modules/websocket/` |
+| **Config module** | Per-module configuration with `ModulesTypeMapperService` registration pattern. | `modules/config/` |
+| **Extensions service** | Module metadata registration for the extensions UI. | `modules/extensions/services/extensions.service.ts` |
+| **Security listener** | Reference for `@OnEvent` listener pattern with debounce. | `modules/security/listeners/security-state.listener.ts` |
+
+### Architecture decisions
+
+- **Buddy is a module** (not a plugin). Modules are core building blocks; plugins are add-ons to modules.
+- **Buddy module does not replace** the existing `SpaceSuggestionService` — it is a higher-level system that can incorporate those suggestions along with many other types.
+- **LLM provider is swappable** — Claude, OpenAI, Ollama, or none (rule-based only).
+- **Offline-first** — rule-based suggestions work without any AI provider configured; chat requires a provider.
 
 ## 3. Scope
 
 ### In scope (phased)
 
-**Phase 1 — Observer + Text Suggestions (MVP)**
-- Backend `buddy` module with event observation service
-- Action pattern detection from intent stream
-- Rule-based + LLM-powered suggestion engine
-- REST API for chat/conversation, suggestions, feedback
-- WebSocket events for real-time suggestion delivery
-- Panel: chat drawer UI for text interaction
-- Panel: suggestion notification badges
-- Admin: buddy settings page (enable/disable, AI provider config)
-- Conversation history persistence (SQLite/TypeORM)
+**Phase 1 — Observer + Text Chat (MVP)** `FEATURE-BUDDY-*`
 
-**Phase 2 — Proactive Intelligence**
-- Heartbeat service (periodic state evaluation)
-- Anomaly detection (sensor drift, unusual patterns)
-- Energy optimisation suggestions
-- Scene creation suggestions from repeated patterns
-- Conflict detection (heating + open window)
+| Sub-task | Scope | Size |
+|----------|-------|------|
+| FEATURE-BUDDY-BACKEND-FOUNDATION | backend | medium |
+| FEATURE-BUDDY-BACKEND-CONVERSATION | backend | medium |
+| FEATURE-BUDDY-BACKEND-SUGGESTIONS | backend | medium |
+| FEATURE-BUDDY-PANEL-MODULE | panel | medium |
+| FEATURE-BUDDY-ADMIN-MODULE | admin | small |
+| FEATURE-BUDDY-BACKEND-TESTS | backend | small |
 
-**Phase 3 — Voice Interaction**
-- Wake word detection on panel device
-- Speech-to-text (Whisper local or cloud STT)
-- Text-to-speech (ElevenLabs or local TTS)
-- Voice commands routed through intent system
+**Phase 2 — Proactive Intelligence** `FEATURE-BUDDY-PROACTIVE-*`
 
-**Phase 4 — Multi-Channel**
-- Telegram/Signal/WhatsApp adapters
-- Admin web chat interface
-- SOUL.md personality configuration
+| Sub-task | Scope | Size |
+|----------|-------|------|
+| FEATURE-BUDDY-PROACTIVE-HEARTBEAT | backend | medium |
+| FEATURE-BUDDY-PROACTIVE-ANOMALY | backend | medium |
+| FEATURE-BUDDY-PROACTIVE-ENERGY | backend | small |
+| FEATURE-BUDDY-PROACTIVE-CONFLICTS | backend | small |
+| FEATURE-BUDDY-PROACTIVE-SCENE-SUGGEST | backend | medium |
+| FEATURE-BUDDY-PROACTIVE-PANEL | panel | small |
+
+**Phase 3 — Voice Interaction** `FEATURE-BUDDY-VOICE-*`
+
+| Sub-task | Scope | Size |
+|----------|-------|------|
+| FEATURE-BUDDY-VOICE-STT | backend, panel | medium |
+| FEATURE-BUDDY-VOICE-TTS | backend, panel | medium |
+| FEATURE-BUDDY-VOICE-WAKE-WORD | panel | medium |
+| FEATURE-BUDDY-VOICE-INTENT-ROUTING | backend | small |
+
+**Phase 4 — Multi-Channel** `FEATURE-BUDDY-CHANNEL-*`
+
+| Sub-task | Scope | Size |
+|----------|-------|------|
+| FEATURE-BUDDY-CHANNEL-TELEGRAM | backend | medium |
+| FEATURE-BUDDY-CHANNEL-ADMIN-CHAT | admin | small |
+| FEATURE-BUDDY-CHANNEL-PERSONALITY | backend | small |
 
 ### Out of scope
 
@@ -62,164 +85,244 @@ Inspired by the [OpenClaw](https://github.com/openclaw/openclaw) project's proac
 - Image/camera-based recognition
 - Third-party skill marketplace (OpenClaw ClawHub equivalent)
 - Multi-tenant / multi-user buddy personalities
+- Replacing existing `SpaceSuggestionService`
 
 ## 4. Acceptance criteria
 
 ### Phase 1 (MVP)
 
-- [ ] Backend `BuddyModule` registered as a toggleable module
-- [ ] `ActionObserverService` subscribes to intent events and records action history
-- [ ] `PatternDetectorService` identifies repeated action sequences (rule-based MVP)
-- [ ] `SuggestionEngine` generates context-aware suggestions (time, space, device state)
-- [ ] `BuddyConversationService` handles text chat with LLM integration (configurable provider: Claude, OpenAI, Ollama)
-- [ ] REST API endpoints:
+- [ ] Backend `BuddyModule` registered in `app.module.ts` with route prefix `buddy` under `MODULES_PREFIX`
+- [ ] Module constants follow naming: `BUDDY_MODULE_PREFIX`, `BUDDY_MODULE_NAME = 'buddy-module'`, `BUDDY_MODULE_API_TAG_NAME = 'Buddy module'`
+- [ ] Module registers with `ExtensionsService.registerModuleMetadata()` and `ModulesTypeMapperService.registerMapping()`
+- [ ] Swagger models registered via `buddy.openapi.ts` pattern
+- [ ] `ActionObserverListener` subscribes to `IntentEventType.COMPLETED` events and records action history in-memory (ring buffer)
+- [ ] `BuddyContextService` aggregates: spaces, devices (state), scenes, weather, energy, recent intents — into a structured context object
+- [ ] `LlmProviderService` abstracts LLM calls with swappable provider: `claude` | `openai` | `ollama` | `none`
+- [ ] `BuddyConversationService` handles text chat with conversation history persistence (TypeORM entities)
+- [ ] `SuggestionEngineService` generates context-aware suggestions with cooldown management
+- [ ] `PatternDetectorService` identifies repeated action sequences from the action history buffer (rule-based MVP)
+- [ ] REST API endpoints following API conventions (controllers return `*ResponseModel`, DTOs are input only):
   - `GET /v1/modules/buddy/conversations` — list conversations
   - `POST /v1/modules/buddy/conversations` — start new conversation
-  - `POST /v1/modules/buddy/conversations/:id/messages` — send message
-  - `GET /v1/modules/buddy/suggestions` — get active suggestions for a space
+  - `GET /v1/modules/buddy/conversations/:id` — get conversation with messages
+  - `POST /v1/modules/buddy/conversations/:id/messages` — send message, get buddy response
+  - `DELETE /v1/modules/buddy/conversations/:id` — delete conversation
+  - `GET /v1/modules/buddy/suggestions` — get active suggestions (optional `?space_id=`)
   - `POST /v1/modules/buddy/suggestions/:id/feedback` — accept/dismiss suggestion
-  - `GET /v1/modules/buddy/config` — get buddy configuration
-  - `PATCH /v1/modules/buddy/config` — update configuration
-- [ ] WebSocket events emitted:
+- [ ] WebSocket events emitted via `EventEmitter2`:
   - `BuddyModule.Suggestion.Created` — new suggestion available
   - `BuddyModule.Conversation.MessageReceived` — buddy response ready
-- [ ] Panel app: buddy module with chat drawer accessible from deck UI
-- [ ] Panel app: suggestion cards displayed as dismissible notifications
-- [ ] Admin app: buddy settings page (enable/disable, provider selection, API key)
-- [ ] Buddy has full context of spaces, devices, scenes, energy, weather when responding
-- [ ] Conversation history persisted in database
-- [ ] Suggestions respect cooldown (reuse existing pattern from SpaceSuggestionService)
-- [ ] Unit tests for pattern detection and suggestion rules
+- [ ] Database entities: `BuddyConversationEntity`, `BuddyMessageEntity` with migration
+- [ ] Panel: buddy module with chat drawer accessible from deck UI
+- [ ] Panel: suggestion cards displayed as dismissible notifications
+- [ ] Admin: buddy settings page (enable/disable, provider selection, API key configuration)
+- [ ] Works without an AI provider configured (rule-based suggestions only, chat returns 503)
+- [ ] Unit tests for pattern detection, suggestion rules, context building
 - [ ] E2E tests for conversation and suggestion API endpoints
+
+### Phase 2 (Proactive)
+
+- [ ] `HeartbeatService` runs periodic evaluation (configurable interval, default 5 min) via `@nestjs/schedule`
+- [ ] Anomaly detection: sensor drift (temperature deviation > threshold), unusual device activity
+- [ ] Energy suggestions: excess solar, high consumption alerts
+- [ ] Conflict detection: heating + open window, AC + open door, lights on in empty room
+- [ ] Scene creation suggestions: repeated action patterns → "Create a scene for this?"
+- [ ] Panel: proactive suggestion notifications in buddy drawer
+
+### Phase 3 (Voice)
+
+- [ ] Speech-to-text integration (Whisper local or cloud provider)
+- [ ] Text-to-speech integration (system TTS, ElevenLabs, or similar)
+- [ ] Wake word detection on panel hardware
+- [ ] Voice commands routed through buddy conversation → intent system
+- [ ] Panel: microphone button in buddy drawer, audio playback for responses
+
+### Phase 4 (Multi-Channel)
+
+- [ ] Telegram bot adapter for buddy conversations
+- [ ] Admin web chat interface embedded in admin settings
+- [ ] `personality.md` configuration file for buddy tone/style customisation
 
 ## 5. Example scenarios
 
-### Scenario: Repeated action detection
+### Scenario: Repeated action detection (Phase 1)
 
 Given the operator turns off living room lights at ~23:00 for 5 consecutive days
-When the buddy detects this pattern
-Then it emits a `BuddyModule.Suggestion.Created` event
-And the panel shows a suggestion: "You turn off the living room lights around 11 PM every night. Want me to create a scene for this?"
+When the pattern detector identifies this sequence
+Then a suggestion is created: "You turn off the living room lights around 11 PM every night. Want me to create a scene for this?"
+And a `BuddyModule.Suggestion.Created` event is emitted
 
-### Scenario: Text conversation
+### Scenario: Text conversation (Phase 1)
 
 Given the operator opens the buddy chat drawer on the panel
 When they type "What's the temperature in the bedroom?"
-Then the buddy queries the devices module for bedroom temperature sensors
-And responds with "The bedroom is currently 21.5°C (humidity 45%). The thermostat is set to 22°C."
+Then the buddy builds context from the devices module (bedroom temperature sensors)
+And responds: "The bedroom is currently 21.5°C (humidity 45%). The thermostat is set to 22°C."
 
-### Scenario: Energy suggestion
+### Scenario: Chat without AI provider (Phase 1)
 
-Given solar production exceeds current consumption by 2kW
-When the buddy's heartbeat evaluates the energy state
-Then it suggests "Your solar panels are producing 2kW excess energy. Consider running the dishwasher or charging your EV."
+Given no AI provider is configured in buddy settings
+When the operator tries to open the buddy chat
+Then the chat is disabled with a message: "Configure an AI provider in admin settings to enable chat."
+And rule-based suggestions still work normally
 
-### Scenario: Conflict detection
+### Scenario: Conflict detection (Phase 2)
 
 Given the heating is set to 25°C in the living room
 And a window sensor shows the living room window is open
-When the buddy detects this conflict
-Then it suggests "The living room window is open but heating is on at 25°C. Want to lower the setpoint or close the window?"
+When the heartbeat service evaluates the state
+Then it creates a suggestion: "The living room window is open but heating is at 25°C. Lower the setpoint?"
+
+### Scenario: Energy optimisation (Phase 2)
+
+Given solar production exceeds consumption by 2kW
+When the heartbeat service evaluates the energy state
+Then it suggests: "Excess solar energy available (2kW). Good time to run the dishwasher or charge your EV."
+
+### Scenario: Voice command (Phase 3)
+
+Given the operator says "Hey panel, turn off the kitchen lights"
+When the wake word is detected and speech is transcribed
+Then the text is sent through the buddy conversation service
+And the buddy creates a lighting intent for the kitchen space
+And responds via TTS: "Done, kitchen lights are off."
 
 ## 6. Technical constraints
 
-- Follow the existing module structure in `apps/backend/src/modules/`
-- Follow API conventions from `.ai-rules/API_CONVENTIONS.md`
-- Follow panel module patterns from `apps/panel/lib/modules/`
+- **Module, not plugin** — follows `apps/backend/src/modules/` structure, registered in `app.module.ts` `RouterModule` under `MODULES_PREFIX`
+- Follow API conventions from `.ai-rules/API_CONVENTIONS.md`:
+  - Controllers return `*ResponseModel` (extend `BaseSuccessResponseModel<T>`)
+  - DTOs are input only, never in `@ApiOkResponse`
+  - `@ApiOperation` required with tags, summary, description, operationId
+  - Swagger schema names: `BuddyModule*`
+- Follow panel module patterns from `apps/panel/lib/modules/` (module.dart, repositories, services, presentation)
+- Follow admin module patterns from `apps/admin/src/modules/` (stores, pages, router)
 - Do not modify generated code (OpenAPI spec, panel API client, etc.)
-- AI provider integration must be configurable and swappable (no hard dependency on a single provider)
-- Must work without an AI provider configured (rule-based suggestions only, chat disabled)
-- Must not introduce excessive latency on the main event loop
-- LLM calls must be async with proper error handling and timeouts
+- AI provider integration must be configurable and swappable
+- Must work without an AI provider configured (rule-based suggestions only)
+- LLM calls must be async with proper error handling and timeouts (30s default)
+- Do not introduce new dependencies unless really needed; exceptions:
+  - `@anthropic-ai/sdk` or `openai` for LLM provider (optional peer dependency)
 - Respect existing auth patterns (JWT tokens, display tokens)
-- Do not introduce new dependencies unless really needed
 - Tests are expected for new business logic
 
 ## 7. Implementation hints
 
 ### Backend module structure
+
 ```
 apps/backend/src/modules/buddy/
-├── buddy.constants.ts
-├── buddy.exceptions.ts
-├── buddy.module.ts
-├── buddy.openapi.ts
+├── buddy.constants.ts                      # Module name, prefix, event types, enums
+├── buddy.exceptions.ts                     # Custom exceptions
+├── buddy.module.ts                         # @ApiTag + @Module + OnModuleInit
+├── buddy.openapi.ts                        # BUDDY_SWAGGER_EXTRA_MODELS array
 ├── controllers/
-│   ├── buddy-conversations.controller.ts
-│   └── buddy-suggestions.controller.ts
+│   ├── buddy-conversations.controller.ts   # Conversation CRUD + message send
+│   └── buddy-suggestions.controller.ts     # Suggestions list + feedback
 ├── dto/
 │   ├── create-conversation.dto.ts
 │   ├── send-message.dto.ts
 │   ├── suggestion-feedback.dto.ts
 │   └── update-config.dto.ts
 ├── entities/
-│   ├── buddy-conversation.entity.ts
-│   ├── buddy-message.entity.ts
-│   └── buddy-suggestion.entity.ts
+│   ├── buddy-conversation.entity.ts        # Table: buddy_module_conversations
+│   └── buddy-message.entity.ts             # Table: buddy_module_messages
 ├── models/
-│   ├── config.model.ts
-│   ├── conversation.model.ts
-│   ├── message.model.ts
-│   └── suggestion.model.ts
+│   ├── config.model.ts                     # BuddyModuleConfigModel
+│   ├── conversation-response.model.ts      # Response models for API
+│   ├── message-response.model.ts
+│   └── suggestion-response.model.ts
 ├── services/
-│   ├── action-observer.service.ts        # Listens to intent events
-│   ├── buddy-context.service.ts          # Aggregates device/space/weather state
-│   ├── buddy-conversation.service.ts     # Chat with LLM
-│   ├── llm-provider.service.ts           # Swappable LLM integration
-│   ├── pattern-detector.service.ts       # Detects repeated actions
-│   └── suggestion-engine.service.ts      # Generates suggestions
+│   ├── action-observer.service.ts          # Ring buffer of completed intents
+│   ├── buddy-context.service.ts            # Aggregates home state for LLM
+│   ├── buddy-conversation.service.ts       # Conversation + message CRUD
+│   ├── llm-provider.service.ts             # Swappable LLM abstraction
+│   ├── pattern-detector.service.ts         # Rule-based repeated action detection
+│   └── suggestion-engine.service.ts        # Suggestion generation + cooldown
 └── listeners/
-    └── intent-event.listener.ts          # EventEmitter2 subscriber
-```
-
-### Panel module structure
-```
-apps/panel/lib/modules/buddy/
-├── constants.dart
-├── export.dart
-├── module.dart
-├── models/
-│   ├── conversation.dart
-│   ├── message.dart
-│   └── suggestion.dart
-├── repositories/
-│   └── buddy_repository.dart
-├── services/
-│   └── buddy_service.dart
-├── presentation/
-│   ├── buddy_chat_drawer.dart
-│   ├── buddy_suggestion_card.dart
-│   └── widgets/
-│       ├── message_bubble.dart
-│       └── suggestion_badge.dart
-└── types/
-    └── buddy_event_type.dart
+    └── intent-event.listener.ts            # @OnEvent(IntentEventType.COMPLETED)
 ```
 
 ### Key patterns to follow
-- Look at `SpaceSuggestionService` for suggestion + cooldown + feedback pattern
-- Look at `IntentsService` for event emission pattern
-- Look at `SceneExecutorService` for platform registry pattern (for LLM providers)
-- Look at `WebsocketGateway.handleBusEvent()` for event forwarding to clients
-- Look at `CommandEventRegistryService` for WebSocket command handling
-- Look at existing panel modules (deck, intents) for Flutter module structure
+
+| Pattern | Reference implementation |
+|---------|------------------------|
+| Module registration + OnModuleInit | `modules/weather/weather.module.ts` |
+| Constants (prefix, name, event types) | `modules/security/security.constants.ts` |
+| Entity (TypeORM + SQLite) | `modules/security/entities/security-alert-ack.entity.ts` |
+| Event listener with @OnEvent | `modules/security/listeners/security-state.listener.ts` |
+| Suggestion + cooldown + feedback | `modules/spaces/services/space-suggestion.service.ts` |
+| Intent event emission | `modules/intents/services/intents.service.ts` |
+| Config model + DTO registration | `modules/weather/weather.module.ts` onModuleInit |
+| Swagger model registration | `modules/weather/weather.openapi.ts` |
+| Migration (SQLite) | `migrations/1766000000000-SecurityModuleInfluxMigration.ts` |
 
 ### LLM context building
-The buddy should build a system prompt that includes:
-- Current space layout (rooms, zones, device counts)
-- Active device states (lights on/off, thermostat setpoints, sensor readings)
-- Recent intent history (last N actions)
-- Active scenes
-- Weather conditions
-- Energy state (if energy module enabled)
-- Time of day, day of week
 
-## 8. AI instructions
+The `BuddyContextService` should build a structured snapshot:
+
+```typescript
+interface BuddyContext {
+  timestamp: string;
+  spaces: { id: string; name: string; category: string; deviceCount: number }[];
+  devices: { id: string; name: string; space: string; category: string; state: Record<string, unknown> }[];
+  scenes: { id: string; name: string; space: string; enabled: boolean }[];
+  weather: { temperature: number; conditions: string; humidity: number } | null;
+  energy: { solarProduction: number; gridConsumption: number; batteryLevel: number } | null;
+  recentIntents: { type: string; space: string; timestamp: string }[];
+}
+```
+
+This context is serialised into the LLM system prompt so the buddy can answer questions about the home.
+
+## 8. Child tasks
+
+### Phase 1 — MVP
+
+| ID | Title | Scope | Size |
+|----|-------|-------|------|
+| [FEATURE-BUDDY-BACKEND-FOUNDATION](./FEATURE-BUDDY-BACKEND-FOUNDATION.md) | Backend buddy module foundation (module, entities, constants, context service, action observer) | backend | medium |
+| [FEATURE-BUDDY-BACKEND-CONVERSATION](./FEATURE-BUDDY-BACKEND-CONVERSATION.md) | Backend conversation API (LLM provider, chat service, conversation CRUD endpoints) | backend | medium |
+| [FEATURE-BUDDY-BACKEND-SUGGESTIONS](./FEATURE-BUDDY-BACKEND-SUGGESTIONS.md) | Backend suggestion engine (pattern detector, suggestion generation, feedback API) | backend | medium |
+| [FEATURE-BUDDY-PANEL-MODULE](./FEATURE-BUDDY-PANEL-MODULE.md) | Panel buddy module (chat drawer, suggestion cards, WebSocket integration) | panel | medium |
+| [FEATURE-BUDDY-ADMIN-MODULE](./FEATURE-BUDDY-ADMIN-MODULE.md) | Admin buddy settings page (enable/disable, provider config, API key) | admin | small |
+| [FEATURE-BUDDY-BACKEND-TESTS](./FEATURE-BUDDY-BACKEND-TESTS.md) | Backend unit + E2E tests for buddy module | backend | small |
+
+### Phase 2 — Proactive Intelligence
+
+| ID | Title | Scope | Size |
+|----|-------|-------|------|
+| [FEATURE-BUDDY-PROACTIVE-HEARTBEAT](./FEATURE-BUDDY-PROACTIVE-HEARTBEAT.md) | Heartbeat service for periodic state evaluation | backend | medium |
+| [FEATURE-BUDDY-PROACTIVE-ANOMALY](./FEATURE-BUDDY-PROACTIVE-ANOMALY.md) | Anomaly detection (sensor drift, unusual patterns) | backend | medium |
+| [FEATURE-BUDDY-PROACTIVE-ENERGY](./FEATURE-BUDDY-PROACTIVE-ENERGY.md) | Energy optimisation suggestions | backend | small |
+| [FEATURE-BUDDY-PROACTIVE-CONFLICTS](./FEATURE-BUDDY-PROACTIVE-CONFLICTS.md) | Conflict detection rules (heating + open window, etc.) | backend | small |
+| [FEATURE-BUDDY-PROACTIVE-SCENE-SUGGEST](./FEATURE-BUDDY-PROACTIVE-SCENE-SUGGEST.md) | Scene creation suggestions from repeated patterns | backend | medium |
+| [FEATURE-BUDDY-PROACTIVE-PANEL](./FEATURE-BUDDY-PROACTIVE-PANEL.md) | Panel UI for proactive suggestion notifications | panel | small |
+
+### Phase 3 — Voice Interaction
+
+| ID | Title | Scope | Size |
+|----|-------|-------|------|
+| [FEATURE-BUDDY-VOICE-STT](./FEATURE-BUDDY-VOICE-STT.md) | Speech-to-text integration (Whisper / cloud STT) | backend, panel | medium |
+| [FEATURE-BUDDY-VOICE-TTS](./FEATURE-BUDDY-VOICE-TTS.md) | Text-to-speech integration (system TTS / ElevenLabs) | backend, panel | medium |
+| [FEATURE-BUDDY-VOICE-WAKE-WORD](./FEATURE-BUDDY-VOICE-WAKE-WORD.md) | Wake word detection on panel device | panel | medium |
+| [FEATURE-BUDDY-VOICE-INTENT-ROUTING](./FEATURE-BUDDY-VOICE-INTENT-ROUTING.md) | Voice commands routed through intent system | backend | small |
+
+### Phase 4 — Multi-Channel
+
+| ID | Title | Scope | Size |
+|----|-------|-------|------|
+| [FEATURE-BUDDY-CHANNEL-TELEGRAM](./FEATURE-BUDDY-CHANNEL-TELEGRAM.md) | Telegram bot adapter | backend | medium |
+| [FEATURE-BUDDY-CHANNEL-ADMIN-CHAT](./FEATURE-BUDDY-CHANNEL-ADMIN-CHAT.md) | Admin web chat interface | admin | small |
+| [FEATURE-BUDDY-CHANNEL-PERSONALITY](./FEATURE-BUDDY-CHANNEL-PERSONALITY.md) | Personality configuration (personality.md) | backend | small |
+
+## 9. AI instructions
 
 - Read this file entirely before making any code changes.
 - Start by replying with a short implementation plan (max 10 steps).
-- Keep changes scoped to this task and its `Scope`.
+- Keep changes scoped to this epic and its child tasks.
 - For each acceptance criterion, either implement it or explain why it's skipped.
 - Respect global AI rules from `/.ai-rules/GUIDELINES.md`.
-- Start with Phase 1 only. Phases 2-4 are documented for architectural planning but should not be implemented yet.
-- The existing `SpaceSuggestionService` should NOT be modified or replaced — it continues to serve space-specific lighting suggestions independently. The buddy module is a higher-level system that can incorporate those suggestions along with many other types.
+- **Start with Phase 1 only.** Phases 2-4 are documented for architectural planning but should not be implemented until Phase 1 is complete and reviewed.
+- The existing `SpaceSuggestionService` should NOT be modified or replaced — it continues to serve space-specific lighting suggestions independently.
+- Follow the implementation order: Foundation → Conversation → Suggestions → Panel → Admin → Tests.
