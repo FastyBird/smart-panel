@@ -319,6 +319,10 @@ const initializeGrids = (): void => {
 		return;
 	}
 
+	// Suppress all event side effects (markChanged, removedTiles) during
+	// programmatic teardown and re-population of grids
+	suppressMarkChanged.value = true;
+
 	destroyGrids();
 
 	pageGrid = GridStack.init(
@@ -438,7 +442,7 @@ const initializeGrids = (): void => {
 			if (item.id) {
 				pageTiles.delete(item.id);
 
-				if (!draftTiles.has(item.id)) {
+				if (!draftTiles.has(item.id) && !suppressMarkChanged.value) {
 					removedTiles.add(item.id);
 				}
 
@@ -502,7 +506,7 @@ const initializeGrids = (): void => {
 			if (item.id) {
 				draftTiles.delete(item.id);
 
-				if (!pageTiles.has(item.id)) {
+				if (!pageTiles.has(item.id) && !suppressMarkChanged.value) {
 					removedTiles.add(item.id);
 				}
 
@@ -515,8 +519,6 @@ const initializeGrids = (): void => {
 
 	updateSquareCells();
 
-	// Re-add existing tiles to the new grids without triggering false dirty state
-	suppressMarkChanged.value = true;
 	addTilesToGrids();
 	suppressMarkChanged.value = false;
 };
