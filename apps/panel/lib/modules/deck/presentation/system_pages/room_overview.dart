@@ -3,6 +3,7 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/icon_container.dart';
+import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
@@ -596,14 +597,12 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 		bool isDark,
 		RoomOverviewModel model,
 	) {
-		return SizedBox(
+		return HorizontalScrollWithGradient(
 			height: AppSpacings.scale(30),
-			child: ListView.separated(
-				scrollDirection: Axis.horizontal,
-				itemCount: model.quickScenes.length,
-				separatorBuilder: (_, __) => SizedBox(width: AppSpacings.pSm),
-				itemBuilder: (_, i) => _buildScenePill(context, isDark, model.quickScenes[i]),
-			),
+			layoutPadding: AppSpacings.pMd,
+			itemCount: model.quickScenes.length,
+			separatorWidth: AppSpacings.pSm,
+			itemBuilder: (_, i) => _buildScenePill(context, isDark, model.quickScenes[i]),
 		);
 	}
 
@@ -623,13 +622,13 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 						? primaryColor
 						: (isDark
 							? AppFillColorDark.light
-							: AppFillColorLight.base),
+							: AppFillColorLight.blank),
 					borderRadius: BorderRadius.circular(AppBorderRadius.base),
 					border: isTriggering
 						? null
 						: Border.all(
 							color: isDark
-								? AppBorderColorDark.extraLight
+								? AppBorderColorDark.light
 								: AppBorderColorLight.light,
 						),
 				),
