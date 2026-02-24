@@ -577,7 +577,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                         : AppTextButtonsLightThemes.neutralForegroundColor,
                   ),
                   label: Text(localizations.discovery_button_rescan),
-                  style: FilledButton.styleFrom(
+                  style: TextButton.styleFrom(
                     padding: EdgeInsets.symmetric(
                       horizontal: AppSpacings.pMd,
                       vertical: AppSpacings.pMd,
@@ -601,7 +601,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                         : AppTextButtonsLightThemes.neutralForegroundColor,
                   ),
                   label: Text(localizations.discovery_button_manual),
-                  style: FilledButton.styleFrom(
+                  style: TextButton.styleFrom(
                     padding: EdgeInsets.symmetric(
                       horizontal: AppSpacings.pMd,
                       vertical: AppSpacings.pMd,
@@ -711,8 +711,13 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                             : AppFilledButtonsLightThemes
                                 .primaryForegroundColor,
                       ),
-                      label: Text(
-                          localizations.discovery_button_connect_selected),
+                      label: Text(localizations.discovery_button_connect_selected),
+                      style: FilledButton.styleFrom(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: AppSpacings.pMd,
+                          vertical: AppSpacings.pMd,
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -737,8 +742,13 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                               : AppTextButtonsLightThemes
                                   .primaryForegroundColor,
                         ),
-                        label:
-                            Text(localizations.discovery_button_rescan),
+                        label: Text(localizations.discovery_button_rescan),
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: AppSpacings.pMd,
+                            vertical: AppSpacings.pMd,
+                          ),
+                        ),
                       ),
                     ),
                     Theme(
@@ -758,8 +768,13 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
                               : AppTextButtonsLightThemes
                                   .primaryForegroundColor,
                         ),
-                        label:
-                            Text(localizations.discovery_button_manual),
+                        label: Text(localizations.discovery_button_manual),
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: AppSpacings.pMd,
+                            vertical: AppSpacings.pMd,
+                          ),
+                        ),
                       ),
                     ),
                   ],
