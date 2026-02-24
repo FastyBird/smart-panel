@@ -1,17 +1,14 @@
 import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/icon_container.dart';
 import 'package:fastybird_smart_panel/core/widgets/toast.dart';
-import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
 import 'package:fastybird_smart_panel/modules/devices/export.dart';
 import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
 import 'package:fastybird_smart_panel/modules/scenes/export.dart';
-import 'package:fastybird_smart_panel/modules/energy/export.dart';
 import 'package:fastybird_smart_panel/modules/spaces/export.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -59,7 +56,6 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 	double? _humidity;
 	int? _shadingPosition;
 	int _mediaOnCount = 0;
-	EnergySummary? _energySummary;
 
 	// Error state
 	String? _errorMessage;
@@ -188,9 +184,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 			// Fetch live device property values (temperature, lights on, humidity, etc.)
 			await _fetchLiveDeviceData();
 
-			// Fetch energy summary for header badge (non-blocking)
-			_fetchEnergySummary();
-
+	
 			if (!mounted) return;
 
 			// Check display availability before building model
@@ -320,20 +314,6 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 			}
 		}
 		return null;
-	}
-
-	Future<void> _fetchEnergySummary() async {
-		try {
-			final energyService = locator<EnergyService>();
-			final summary = await energyService.fetchSummary(_roomId, EnergyRange.today);
-			if (mounted && summary != null) {
-				setState(() {
-					_energySummary = summary;
-				});
-			}
-		} catch (_) {
-			// Silently fail — energy badge is optional
-		}
 	}
 
 	void _navigateToDomainView(DomainType domain) {
@@ -466,191 +446,62 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 		final localizations = AppLocalizations.of(context);
 		final model = _model;
 
-		return Scaffold(
-			appBar: AppTopBar(
-				title: model?.title ?? widget.viewItem.title,
-				icon: model?.icon ?? MdiIcons.homeOutline,
-				actions: _buildStatusBadges(context),
-			),
-			body: SafeArea(
-				child: Padding(
-					padding: AppSpacings.paddingMd,
-					child: _isLoading
+		return LayoutBuilder(
+			builder: (context, constraints) {
+				final isPortrait = constraints.maxHeight > constraints.maxWidth;
+
+				final skyPanel = SkyPanel(
+					roomName: model?.title ?? widget.viewItem.title,
+					isPortrait: isPortrait,
+					scenes: model?.quickScenes ?? [],
+					isSceneTriggering: _isSceneTriggering,
+					triggeringSceneId: _triggeringSceneId,
+					onSceneTap: _triggerScene,
+				);
+
+				final contentBody = _isLoading
 						? _buildLoadingState()
 						: _errorMessage != null
-							? _buildErrorState()
-							: model != null
-								? _buildContent(context, localizations, model)
-								: _buildEmptyState(context, localizations),
-				),
-			),
-		);
-	}
+								? _buildErrorState()
+								: model != null
+										? _buildContent(context, localizations, model, isPortrait)
+										: _buildEmptyState(context, localizations);
 
-	// ===========================================================================
-	// STATUS BADGES (header)
-	// ===========================================================================
+				if (isPortrait) {
+					return Column(
+						children: [
+							SizedBox(
+								height: AppSpacings.scale(180),
+								child: skyPanel,
+							),
+							Expanded(
+								child: Padding(
+									padding: AppSpacings.paddingMd,
+									child: contentBody,
+								),
+							),
+						],
+					);
+				}
 
-	List<Widget> _buildStatusBadges(BuildContext context) {
-		final model = _model;
-
-		return [
-			if (model != null && model.domainCounts.hasDomain(DomainType.lights))
-				_buildLightsBadge(context),
-			if (_temperature != null) _buildTemperatureBadge(context),
-			if (_energySummary != null && _energySummary!.consumption > 0)
-				_buildEnergyBadge(context),
-		];
-	}
-
-	Widget _buildLightsBadge(BuildContext context) {
-		final model = _model;
-		final lightsCount = model?.domainCounts.lights ?? 0;
-		final isOn = _lightsOnCount > 0;
-		final iconSize = AppSpacings.scale(14);
-
-		return GestureDetector(
-			onTap: () => _navigateToDomainView(DomainType.lights),
-			child: Container(
-				padding: EdgeInsets.symmetric(
-					horizontal: AppSpacings.pSm,
-					vertical: AppSpacings.pXs,
-				),
-				decoration: BoxDecoration(
-					color: isOn
-						? (Theme.of(context).brightness == Brightness.light
-							? AppColorsLight.warningLight9
-							: AppColorsDark.warningLight9)
-						: (Theme.of(context).brightness == Brightness.light
-							? AppFillColorLight.base
-							: AppFillColorDark.base),
-					borderRadius: BorderRadius.circular(AppBorderRadius.base),
-				),
-				child: Row(
-					spacing: AppSpacings.pXs,
-					mainAxisSize: MainAxisSize.min,
+				return Row(
 					children: [
-						Icon(
-							isOn ? MdiIcons.lightbulbOn : MdiIcons.lightbulbOutline,
-							size: iconSize,
-							color: isOn
-								? (Theme.of(context).brightness == Brightness.light
-									? AppColorsLight.warning
-									: AppColorsDark.warning)
-								: (Theme.of(context).brightness == Brightness.light
-									? AppTextColorLight.placeholder
-									: AppTextColorDark.placeholder),
+						SizedBox(
+							width: constraints.maxWidth * 0.44,
+							child: skyPanel,
 						),
-						Text(
-							isOn ? '$_lightsOnCount/$lightsCount' : 'Off',
-							style: TextStyle(
-								fontSize: AppFontSize.extraSmall,
-								fontWeight: FontWeight.w500,
-								color: isOn
-									? (Theme.of(context).brightness == Brightness.light
-										? AppColorsLight.warningDark2
-										: AppColorsDark.warningDark2)
-									: (Theme.of(context).brightness == Brightness.light
-										? AppTextColorLight.placeholder
-										: AppTextColorDark.placeholder),
+						Expanded(
+							child: Padding(
+								padding: AppSpacings.paddingMd,
+								child: contentBody,
 							),
 						),
 					],
-				),
-			),
+				);
+			},
 		);
 	}
 
-	Widget _buildTemperatureBadge(BuildContext context) {
-		final iconSize = AppSpacings.scale(14);
-
-		return Container(
-			padding: EdgeInsets.symmetric(
-				horizontal: AppSpacings.pSm,
-				vertical: AppSpacings.pXs,
-			),
-			decoration: BoxDecoration(
-				color: Theme.of(context).brightness == Brightness.light
-					? AppColorsLight.infoLight9
-					: AppColorsDark.infoLight7,
-				borderRadius: BorderRadius.circular(AppBorderRadius.base),
-			),
-			child: Row(
-				spacing: AppSpacings.pXs,
-				mainAxisSize: MainAxisSize.min,
-				children: [
-					Icon(
-						MdiIcons.thermometer,
-						size: iconSize,
-						color: Theme.of(context).brightness == Brightness.light
-							? AppColorsLight.info
-							: AppColorsDark.info,
-					),
-					Text(
-						'${NumberFormatUtils.defaultFormat.formatDecimal(_temperature!, decimalPlaces: 1)}\u00B0',
-						style: TextStyle(
-							fontSize: AppFontSize.extraSmall,
-							fontWeight: FontWeight.w500,
-							color: Theme.of(context).brightness == Brightness.light
-								? AppColorsLight.infoDark2
-								: AppTextColorDark.primary,
-						),
-					),
-				],
-			),
-		);
-	}
-
-	Widget _buildEnergyBadge(BuildContext context) {
-		final localizations = AppLocalizations.of(context);
-		final iconSize = AppSpacings.scale(14);
-		final consumption = NumberFormatUtils.defaultFormat.formatDecimal(
-			_energySummary!.consumption,
-			decimalPlaces: 1,
-		);
-		final unit = localizations?.energy_unit_kwh ?? 'kWh';
-
-		return GestureDetector(
-			onTap: () => _navigateToDomainView(DomainType.energy),
-			child: Container(
-				padding: EdgeInsets.symmetric(
-					horizontal: AppSpacings.pSm,
-					vertical: AppSpacings.pXs,
-				),
-				decoration: BoxDecoration(
-					color: Theme.of(context).brightness == Brightness.light
-						? AppColorsLight.infoLight9
-						: AppColorsDark.infoLight7,
-					borderRadius: BorderRadius.circular(AppBorderRadius.base),
-				),
-				child: Row(
-					spacing: AppSpacings.pXs,
-					mainAxisSize: MainAxisSize.min,
-					children: [
-						Icon(
-							_energySummary!.hasProduction
-								? MdiIcons.solarPower
-								: MdiIcons.flashOutline,
-							size: iconSize,
-							color: Theme.of(context).brightness == Brightness.light
-								? AppColorsLight.info
-								: AppColorsDark.info,
-						),
-						Text(
-							'$consumption $unit',
-							style: TextStyle(
-								fontSize: AppFontSize.extraSmall,
-								fontWeight: FontWeight.w500,
-								color: Theme.of(context).brightness == Brightness.light
-									? AppColorsLight.infoDark2
-									: AppTextColorDark.primary,
-							),
-						),
-					],
-				),
-			),
-		);
-	}
 
 	// ===========================================================================
 	// LOADING / ERROR / EMPTY STATES
@@ -763,14 +614,15 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 		BuildContext context,
 		AppLocalizations? localizations,
 		RoomOverviewModel model,
+		bool isPortrait,
 	) {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 
 		return Column(
 			crossAxisAlignment: CrossAxisAlignment.stretch,
 			children: [
-				// Scene pills row
-				if (model.hasScenes) ...[
+				// Scene pills row (portrait only — landscape shows them on the sky panel)
+				if (isPortrait && model.hasScenes) ...[
 					_buildScenePills(context, isDark, model),
 					SizedBox(height: AppSpacings.pMd),
 				],
