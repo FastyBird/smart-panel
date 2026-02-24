@@ -1,5 +1,6 @@
 import 'package:fastybird_smart_panel/core/utils/number.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/utils/unit_converter.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/presentation/widgets/data_sources/data_source.dart';
 import 'package:fastybird_smart_panel/modules/weather/utils/openweather.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
@@ -17,6 +18,8 @@ class WeatherForecastDayDataSourceWidget
 
   @override
   Widget build(BuildContext context) {
+    final units = DisplayUnits.fromLocator();
+
     return Consumer<WeatherService>(builder: (
       context,
       weatherService,
@@ -31,7 +34,7 @@ class WeatherForecastDayDataSourceWidget
       }
 
       final ForecastDayView forecastDay = forecast[dataSource.dayOffset];
-      final value = _getValue(forecastDay, context);
+      final value = _getValue(forecastDay, context, units);
       final icon = _getIcon(forecastDay);
 
       final List<Widget> parts = [
@@ -49,7 +52,7 @@ class WeatherForecastDayDataSourceWidget
       ];
 
       final String? unit =
-          dataSource.unit ?? _getDefaultUnit(dataSource.field);
+          dataSource.unit ?? _getDefaultUnit(dataSource.field, units);
 
       if (unit != null && value.isNotEmpty) {
         parts.add(
@@ -98,24 +101,28 @@ class WeatherForecastDayDataSourceWidget
     }
   }
 
-  String _getValue(ForecastDayView forecastDay, BuildContext context) {
+  String _getValue(
+      ForecastDayView forecastDay, BuildContext context, DisplayUnits units) {
     final localizations = AppLocalizations.of(context)!;
 
     switch (dataSource.field) {
       case WeatherDataField.temperature:
         final temp = forecastDay.temperatureDay;
         return temp != null
-            ? NumberUtils.formatNumber(temp, 1)
+            ? NumberUtils.formatNumber(
+                UnitConverter.convertTemperature(temp, units.temperature), 1)
             : localizations.value_not_available;
       case WeatherDataField.temperatureMin:
         final temp = forecastDay.temperatureNight;
         return temp != null
-            ? NumberUtils.formatNumber(temp, 1)
+            ? NumberUtils.formatNumber(
+                UnitConverter.convertTemperature(temp, units.temperature), 1)
             : localizations.value_not_available;
       case WeatherDataField.temperatureMax:
         final temp = forecastDay.temperatureDay;
         return temp != null
-            ? NumberUtils.formatNumber(temp, 1)
+            ? NumberUtils.formatNumber(
+                UnitConverter.convertTemperature(temp, units.temperature), 1)
             : localizations.value_not_available;
       case WeatherDataField.humidity:
         return forecastDay.humidity.toString();
@@ -130,19 +137,19 @@ class WeatherForecastDayDataSourceWidget
     }
   }
 
-  String? _getDefaultUnit(WeatherDataField field) {
+  String? _getDefaultUnit(WeatherDataField field, DisplayUnits units) {
     switch (field) {
       case WeatherDataField.temperature:
       case WeatherDataField.temperatureMin:
       case WeatherDataField.temperatureMax:
       case WeatherDataField.feelsLike:
-        return '°';
+        return UnitConverter.temperatureDegreeSymbol(units.temperature);
       case WeatherDataField.humidity:
         return '%';
       case WeatherDataField.pressure:
-        return 'hPa';
+        return UnitConverter.pressureSymbol(units.pressure);
       case WeatherDataField.windSpeed:
-        return 'm/s';
+        return UnitConverter.windSpeedSymbol(units.windSpeed);
       default:
         return null;
     }

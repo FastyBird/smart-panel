@@ -69,6 +69,7 @@ import 'package:provider/provider.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/utils/unit_converter.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/bottom_nav_mode_config.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/bottom_nav_mode_notifier.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/deck_page_activated_event.dart';
@@ -718,13 +719,14 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     // Add temperature sensor from climate state if not already present
     if (climateState?.currentTemperature != null &&
         !sensors.any((s) => s.type == DevicesModuleChannelCategory.temperature)) {
+      final displayUnits = DisplayUnits.fromLocator();
       sensors.insert(
         0,
         ClimateSensor(
           id: 'state_temp',
           label: AppLocalizations.of(context)!.device_current_temperature,
           value:
-              SensorUtils.formatNumericValueWithUnit(climateState!.currentTemperature!, DevicesModuleChannelCategory.temperature),
+              SensorUtils.formatNumericValueWithUnit(climateState!.currentTemperature!, DevicesModuleChannelCategory.temperature, displayUnits: displayUnits),
           type: DevicesModuleChannelCategory.temperature,
           isOnline: true,
         ),
@@ -2398,7 +2400,10 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
   Widget _buildGiantTemp(BuildContext context, double fontSize) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final isOff = _state.mode == ClimateMode.off;
-    final tempText = _state.targetTemp.toStringAsFixed(0);
+    final units = DisplayUnits.fromLocator();
+    final displayTemp = UnitConverter.convertTemperature(
+        _state.targetTemp, units.temperature);
+    final tempText = displayTemp.toStringAsFixed(0);
     final unitFontSize = fontSize * 0.27;
 
     final textColor = isOff
@@ -2423,7 +2428,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
           top: 0,
           right: -unitFontSize,
           child: Text(
-            '°C',
+            UnitConverter.temperatureSymbol(units.temperature),
             style: TextStyle(
               fontSize: unitFontSize,
               fontWeight: FontWeight.w300,
@@ -2462,10 +2467,13 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
 
     final thumbColor = _sampleGradient(_temperatureGradientColors, normalizedValue);
 
+    final units = DisplayUnits.fromLocator();
     final step = range / 3;
     final labels = List.generate(4, (i) {
       final value = _state.minSetpoint + step * i;
-      return '${value.toStringAsFixed(0)}°';
+      final displayValue =
+          UnitConverter.convertTemperature(value, units.temperature);
+      return '${displayValue.toStringAsFixed(0)}°';
     });
 
     return SliderWithSteps(

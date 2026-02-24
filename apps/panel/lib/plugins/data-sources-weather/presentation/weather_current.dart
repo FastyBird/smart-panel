@@ -1,5 +1,6 @@
 import 'package:fastybird_smart_panel/core/utils/number.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/utils/unit_converter.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/presentation/widgets/data_sources/data_source.dart';
 import 'package:fastybird_smart_panel/modules/weather/utils/openweather.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
@@ -17,6 +18,8 @@ class WeatherCurrentDataSourceWidget
 
   @override
   Widget build(BuildContext context) {
+    final units = DisplayUnits.fromLocator();
+
     return Consumer<WeatherService>(builder: (
       context,
       weatherService,
@@ -30,7 +33,7 @@ class WeatherCurrentDataSourceWidget
         return _renderLoader(context);
       }
 
-      final value = _getValue(currentDay, context);
+      final value = _getValue(currentDay, context, units);
       final icon = _getIcon(currentDay);
 
       final List<Widget> parts = [
@@ -48,7 +51,7 @@ class WeatherCurrentDataSourceWidget
       ];
 
       final String? unit =
-          dataSource.unit ?? _getDefaultUnit(dataSource.field);
+          dataSource.unit ?? _getDefaultUnit(dataSource.field, units);
 
       if (unit != null && value.isNotEmpty) {
         parts.add(
@@ -100,18 +103,32 @@ class WeatherCurrentDataSourceWidget
     }
   }
 
-  String _getValue(CurrentDayView currentDay, BuildContext context) {
+  String _getValue(
+      CurrentDayView currentDay, BuildContext context, DisplayUnits units) {
     final localizations = AppLocalizations.of(context)!;
 
     switch (dataSource.field) {
       case WeatherDataField.temperature:
-        return NumberUtils.formatNumber(currentDay.temperature, 1);
+        return NumberUtils.formatNumber(
+          UnitConverter.convertTemperature(
+              currentDay.temperature, units.temperature),
+          1,
+        );
       case WeatherDataField.feelsLike:
-        return NumberUtils.formatNumber(currentDay.feelsLike, 1);
+        return NumberUtils.formatNumber(
+          UnitConverter.convertTemperature(
+              currentDay.feelsLike, units.temperature),
+          1,
+        );
       case WeatherDataField.humidity:
         return currentDay.humidity.toString();
       case WeatherDataField.pressure:
-        return currentDay.pressure.toString();
+        final decimals = UnitConverter.pressureDecimals(units.pressure);
+        return NumberUtils.formatNumber(
+          UnitConverter.convertPressure(
+              currentDay.pressure.toDouble(), units.pressure),
+          decimals,
+        );
       case WeatherDataField.weatherIcon:
         return '';
       case WeatherDataField.weatherMain:
@@ -119,25 +136,28 @@ class WeatherCurrentDataSourceWidget
         return WeatherConditionMapper.getDescription(
             currentDay.weatherCode, context);
       case WeatherDataField.windSpeed:
-        return NumberUtils.formatNumber(currentDay.windSpeed, 1);
+        return NumberUtils.formatNumber(
+          UnitConverter.convertWindSpeed(currentDay.windSpeed, units.windSpeed),
+          1,
+        );
       default:
         return localizations.value_not_available;
     }
   }
 
-  String? _getDefaultUnit(WeatherDataField field) {
+  String? _getDefaultUnit(WeatherDataField field, DisplayUnits units) {
     switch (field) {
       case WeatherDataField.temperature:
       case WeatherDataField.temperatureMin:
       case WeatherDataField.temperatureMax:
       case WeatherDataField.feelsLike:
-        return '°';
+        return UnitConverter.temperatureDegreeSymbol(units.temperature);
       case WeatherDataField.humidity:
         return '%';
       case WeatherDataField.pressure:
-        return 'hPa';
+        return UnitConverter.pressureSymbol(units.pressure);
       case WeatherDataField.windSpeed:
-        return 'm/s';
+        return UnitConverter.windSpeedSymbol(units.windSpeed);
       default:
         return null;
     }

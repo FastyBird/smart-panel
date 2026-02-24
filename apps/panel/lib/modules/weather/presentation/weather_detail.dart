@@ -1,13 +1,13 @@
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/number.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/utils/unit_converter.dart';
 import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/modules/weather/utils/openweather.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/weather/export.dart';
 import 'package:fastybird_smart_panel/modules/weather/views/current_day.dart';
 import 'package:fastybird_smart_panel/modules/weather/views/forecast_day.dart';
-import 'package:fastybird_smart_panel/modules/weather/views/view.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -19,6 +19,7 @@ class WeatherDetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
+    final units = DisplayUnits.fromLocator();
 
     return Consumer<WeatherService>(builder: (
       context,
@@ -54,14 +55,14 @@ class WeatherDetailPage extends StatelessWidget {
                     vertical: AppSpacings.pMd,
                     horizontal: AppSpacings.pLg,
                   ),
-                  child: _renderCurrent(context, currentDay),
+                  child: _renderCurrent(context, currentDay, units),
                 ),
                 Wrap(
                   spacing: AppSpacings.pSm,
                   runSpacing: AppSpacings.pSm,
                   children: forecast
                       .map((day) {
-                        return _renderForecastDay(context, day);
+                        return _renderForecastDay(context, day, units);
                       })
                       .whereType<Widget>()
                       .toList(),
@@ -132,22 +133,45 @@ class WeatherDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _renderCurrent(BuildContext context, CurrentDayView? currentDay) {
+  Widget _renderCurrent(
+      BuildContext context, CurrentDayView? currentDay, DisplayUnits units) {
     final localizations = AppLocalizations.of(context)!;
+    final tempSymbol = UnitConverter.temperatureSymbol(units.temperature);
+    final windSymbol = UnitConverter.windSpeedSymbol(units.windSpeed);
+    final pressSymbol = UnitConverter.pressureSymbol(units.pressure);
 
     String currentTemperature = currentDay != null
         ? NumberUtils.formatNumber(
-            currentDay.temperature,
+            UnitConverter.convertTemperature(
+                currentDay.temperature, units.temperature),
             1,
           )
         : NumberUtils.formatUnavailableNumber(1);
 
     String feelsLikeTemperature = currentDay != null
         ? NumberUtils.formatNumber(
-            currentDay.feelsLike,
+            UnitConverter.convertTemperature(
+                currentDay.feelsLike, units.temperature),
             1,
           )
         : NumberUtils.formatUnavailableNumber(1);
+
+    String windSpeedText = currentDay != null
+        ? NumberUtils.formatNumber(
+            UnitConverter.convertWindSpeed(
+                currentDay.windSpeed, units.windSpeed),
+            1,
+          )
+        : localizations.value_not_available;
+
+    final pressDecimals = UnitConverter.pressureDecimals(units.pressure);
+    String pressureText = currentDay != null
+        ? NumberUtils.formatNumber(
+            UnitConverter.convertPressure(
+                currentDay.pressure.toDouble(), units.pressure),
+            pressDecimals,
+          )
+        : localizations.value_not_available;
 
     IconData weatherIcon = currentDay != null
         ? WeatherConditionMapper.getIcon(
@@ -193,7 +217,7 @@ class WeatherDetailPage extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      _getUnit(currentDay),
+                      tempSymbol,
                       style: TextStyle(
                         fontFamily: 'DIN1451',
                         fontSize: AppFontSize.base,
@@ -227,7 +251,7 @@ class WeatherDetailPage extends StatelessWidget {
                     ),
                     AppSpacings.spacingXsHorizontal,
                     Text(
-                      _getUnit(currentDay),
+                      tempSymbol,
                       style: TextStyle(
                         fontSize: AppFontSize.extraSmall,
                       ),
@@ -252,15 +276,14 @@ class WeatherDetailPage extends StatelessWidget {
                 ),
                 AppSpacings.spacingXsHorizontal,
                 Text(
-                  currentDay?.windSpeed.toString() ??
-                      localizations.value_not_available,
+                  windSpeedText,
                   style: TextStyle(
                     fontSize: AppFontSize.extraSmall,
                   ),
                 ),
                 AppSpacings.spacingXsHorizontal,
                 Text(
-                  'm/s',
+                  windSymbol,
                   style: TextStyle(
                     fontSize: AppSpacings.scale(8),
                   ),
@@ -272,15 +295,14 @@ class WeatherDetailPage extends StatelessWidget {
                 ),
                 AppSpacings.spacingXsHorizontal,
                 Text(
-                  currentDay?.pressure.toString() ??
-                      localizations.value_not_available,
+                  pressureText,
                   style: TextStyle(
                     fontSize: AppFontSize.extraSmall,
                   ),
                 ),
                 AppSpacings.spacingXsHorizontal,
                 Text(
-                  'hPa',
+                  pressSymbol,
                   style: TextStyle(
                     fontSize: AppSpacings.scale(8),
                   ),
@@ -326,8 +348,10 @@ class WeatherDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _renderForecastDay(BuildContext context, ForecastDayView forecast) {
+  Widget _renderForecastDay(
+      BuildContext context, ForecastDayView forecast, DisplayUnits units) {
     final localizations = AppLocalizations.of(context)!;
+    final tempSymbol = UnitConverter.temperatureSymbol(units.temperature);
 
     double? mornTemp = forecast.temperatureMorn;
     double? dayTemp = forecast.temperatureDay;
@@ -339,14 +363,16 @@ class WeatherDetailPage extends StatelessWidget {
 
     String wholeDayTemp = averageDayTemp != null
         ? NumberUtils.formatNumber(
-            averageDayTemp,
+            UnitConverter.convertTemperature(
+                averageDayTemp, units.temperature),
             1,
           )
         : NumberUtils.formatUnavailableNumber(1);
 
     String wholeNightTemp = averageNightTemp != null
         ? NumberUtils.formatNumber(
-            averageNightTemp,
+            UnitConverter.convertTemperature(
+                averageNightTemp, units.temperature),
             1,
           )
         : NumberUtils.formatUnavailableNumber(1);
@@ -423,7 +449,7 @@ class WeatherDetailPage extends StatelessWidget {
                 ),
               ),
               Text(
-                _getUnit(forecast),
+                tempSymbol,
                 style: TextStyle(
                   fontSize: AppSpacings.scale(8),
                 ),
@@ -463,14 +489,6 @@ class WeatherDetailPage extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  String _getUnit(WeatherView? weather) {
-    if (weather == null) {
-      return '°C';
-    }
-
-    return weather.unit == WeatherUnit.fahrenheit ? '°F' : '°C';
   }
 
   bool _isNightTime(DateTime sunrise, DateTime sunset) {

@@ -6,6 +6,7 @@ import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/utils/unit_converter.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_card.dart';
 import 'package:fastybird_smart_panel/core/widgets/app_toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/circular_control_dial.dart';
@@ -1011,6 +1012,8 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
   }) {
     final (minSetpoint, maxSetpoint) = _validSetpointRange;
     final targetSetpoint = _targetSetpoint.clamp(minSetpoint, maxSetpoint);
+    final units = DisplayUnits.fromLocator();
+    final tempUnit = units.temperature;
 
     return AppCard(
       width: double.infinity,
@@ -1019,11 +1022,13 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           CircularControlDial(
-            value: targetSetpoint,
-            currentValue: _currentTemperature,
-            minValue: minSetpoint,
-            maxValue: maxSetpoint,
-            step: 0.5,
+            value: UnitConverter.convertTemperature(targetSetpoint, tempUnit),
+            currentValue: _currentTemperature != null
+                ? UnitConverter.convertTemperature(_currentTemperature!, tempUnit)
+                : null,
+            minValue: UnitConverter.convertTemperature(minSetpoint, tempUnit),
+            maxValue: UnitConverter.convertTemperature(maxSetpoint, tempUnit),
+            step: tempUnit == TemperatureUnit.fahrenheit ? 1.0 : 0.5,
             size: dialSize,
             accentType: _getDialAccentColor(),
             isActive: _isActive,
@@ -1031,7 +1036,11 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
                 _currentMode == ThermostatMode.cool,
             modeLabel: _currentMode.value,
             displayFormat: DialDisplayFormat.temperature,
-            onChanged: _onSetpointChanged,
+            temperatureUnitSymbol: UnitConverter.temperatureSymbol(tempUnit),
+            onChanged: (displayValue) {
+              _onSetpointChanged(
+                  UnitConverter.temperatureToCelsius(displayValue, tempUnit));
+            },
           ),
           _buildModeSelector(context, ModeSelectorOrientation.horizontal),
         ],
@@ -1043,6 +1052,8 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
   Widget _buildCompactDialWithModes(BuildContext context, bool isDark) {
     final (minSetpoint, maxSetpoint) = _validSetpointRange;
     final targetSetpoint = _targetSetpoint.clamp(minSetpoint, maxSetpoint);
+    final units = DisplayUnits.fromLocator();
+    final tempUnit = units.temperature;
 
     return AppCard(
       child: LayoutBuilder(
@@ -1061,11 +1072,13 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
               Expanded(
                 child: Center(
                   child: CircularControlDial(
-                    value: targetSetpoint,
-                    currentValue: _currentTemperature,
-                    minValue: minSetpoint,
-                    maxValue: maxSetpoint,
-                    step: 0.5,
+                    value: UnitConverter.convertTemperature(targetSetpoint, tempUnit),
+                    currentValue: _currentTemperature != null
+                        ? UnitConverter.convertTemperature(_currentTemperature!, tempUnit)
+                        : null,
+                    minValue: UnitConverter.convertTemperature(minSetpoint, tempUnit),
+                    maxValue: UnitConverter.convertTemperature(maxSetpoint, tempUnit),
+                    step: tempUnit == TemperatureUnit.fahrenheit ? 1.0 : 0.5,
                     size: dialSize,
                     accentType: _getDialAccentColor(),
                     isActive: _isActive,
@@ -1073,7 +1086,11 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
                     _currentMode == ThermostatMode.cool,
                     modeLabel: _currentMode.value,
                     displayFormat: DialDisplayFormat.temperature,
-                    onChanged: _onSetpointChanged,
+                    temperatureUnitSymbol: UnitConverter.temperatureSymbol(tempUnit),
+                    onChanged: (displayValue) {
+                      _onSetpointChanged(
+                          UnitConverter.temperatureToCelsius(displayValue, tempUnit));
+                    },
                   ),
                 ),
               ),
