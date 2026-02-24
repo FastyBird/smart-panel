@@ -57,12 +57,19 @@ class AppError extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       // Error icon
-                      IconContainer(
-                        screenService: locator<ScreenService>(),
-                        icon: MdiIcons.alertCircle,
-                        color: isDark ? AppColorsDark.error : AppColorsLight.error,
-                        isLandscape: isLandscape,
-                      ),
+                      if (locator.isRegistered<ScreenService>())
+                        IconContainer(
+                          screenService: locator<ScreenService>(),
+                          icon: MdiIcons.alertCircle,
+                          color: isDark ? AppColorsDark.error : AppColorsLight.error,
+                          isLandscape: isLandscape,
+                        )
+                      else
+                        Icon(
+                          MdiIcons.alertCircle,
+                          color: isDark ? AppColorsDark.error : AppColorsLight.error,
+                          size: AppSpacings.scale(48),
+                        ),
                       AppSpacings.spacingXlVertical,
                       // Title
                       Text(

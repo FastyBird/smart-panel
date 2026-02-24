@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
+import 'package:fastybird_smart_panel/core/utils/screen_layout.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/icon_container.dart';
 import 'package:fastybird_smart_panel/features/overlay/services/overlay_manager.dart';
@@ -560,9 +561,7 @@ class _FullScreenPage extends StatelessWidget {
 						return Center(
 							child: Padding(
 								padding: EdgeInsets.all(
-									isLandscape
-											? (screenService.isLargeScreen ? AppSpacings.pXl : AppSpacings.pLg)
-											: (screenService.isSmallScreen ? AppSpacings.pLg : AppSpacings.pXl),
+									screenService.systemPagePadding(isLandscape),
 								),
 								child: Column(
 									mainAxisAlignment: MainAxisAlignment.center,
@@ -575,9 +574,7 @@ class _FullScreenPage extends StatelessWidget {
 											isLandscape,
 										),
 										SizedBox(
-											height: screenService.scale(
-												(screenService.isSmallScreen || screenService.isMediumScreen) && isLandscape ? 12 : 24,
-											),
+											height: screenService.iconBottomSpacing(isLandscape),
 										),
 										// Title
 										if (entry.title != null)

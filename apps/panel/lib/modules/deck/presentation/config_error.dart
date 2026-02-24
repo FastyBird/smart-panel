@@ -1,5 +1,6 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
+import 'package:fastybird_smart_panel/core/utils/screen_layout.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/icon_container.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
@@ -36,9 +37,7 @@ class ConfigErrorScreen extends StatelessWidget {
             return Center(
               child: Padding(
                 padding: EdgeInsets.all(
-                  isLandscape
-                      ? (screenService.isLargeScreen ? AppSpacings.pXl : AppSpacings.pLg)
-                      : (screenService.isSmallScreen ? AppSpacings.pLg : AppSpacings.pXl),
+                  screenService.systemPagePadding(isLandscape),
                 ),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -51,9 +50,7 @@ class ConfigErrorScreen extends StatelessWidget {
                       isLandscape: isLandscape,
                     ),
                     SizedBox(
-                      height: screenService.scale(
-                        (screenService.isSmallScreen || screenService.isMediumScreen) && isLandscape ? 12 : 24,
-                      ),
+                      height: screenService.iconBottomSpacing(isLandscape),
                     ),
                     // Title
                     Text(
