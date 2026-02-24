@@ -499,20 +499,28 @@ const initializeGrids = (): void => {
 
 const addTilesToGrids = (): void => {
 	for (const tile of tiles.value) {
+		// Skip tiles the user already dragged to trash
+		if (removedTiles.has(tile.id)) {
+			continue;
+		}
+
+		// Skip tiles already tracked in either grid
+		if (pageTiles.has(tile.id) || draftTiles.has(tile.id)) {
+			continue;
+		}
+
 		const fitsHorizontally = tile.col + tile.colSpan - 1 <= (gridLayout.value?.cols ?? 0);
 		const fitsVertically = tile.row + tile.rowSpan - 1 <= (gridLayout.value?.rows ?? 0);
 
 		if (fitsHorizontally && fitsVertically && !tile.hidden && !tile.draft) {
-			if (!pageTiles.has(tile.id)) {
-				pageGrid?.addWidget({
-					id: tile.id,
-					x: tile.col - 1,
-					y: tile.row - 1,
-					w: tile.colSpan,
-					h: tile.rowSpan,
-				});
-			}
-		} else if (!draftTiles.has(tile.id) && !pageTiles.has(tile.id)) {
+			pageGrid?.addWidget({
+				id: tile.id,
+				x: tile.col - 1,
+				y: tile.row - 1,
+				w: tile.colSpan,
+				h: tile.rowSpan,
+			});
+		} else {
 			draftGrid?.addWidget({
 				id: tile.id,
 				x: 0,
@@ -579,36 +587,11 @@ onBeforeUnmount((): void => {
 watch(
 	(): ITile[] => tiles.value,
 	(val: ITile[]): void => {
-		for (const tile of val) {
-			const fitsHorizontally = tile.col + tile.colSpan - 1 <= (gridLayout.value?.cols ?? 0);
-			const fitsVertically = tile.row + tile.rowSpan - 1 <= (gridLayout.value?.rows ?? 0);
+		addTilesToGrids();
 
-			if (fitsHorizontally && fitsVertically && !tile.hidden && !tile.draft) {
-				if (!pageTiles.has(tile.id)) {
-					pageGrid?.addWidget({
-						id: tile.id,
-						x: tile.col - 1,
-						y: tile.row - 1,
-						w: tile.colSpan,
-						h: tile.rowSpan,
-					});
-				}
-			} else if (!draftTiles.has(tile.id) && !pageTiles.has(tile.id)) {
-				draftGrid?.addWidget({
-					id: tile.id,
-					x: 0,
-					y: 2,
-					w: 1,
-					h: 1,
-				});
-			}
-		}
-
-		if (val.filter((tile) => tile.draft).length > 0) {
+		if (val.some((tile) => tile.draft)) {
 			markChanged();
 		}
-
-		draftGrid?.compact();
 	}
 );
 
