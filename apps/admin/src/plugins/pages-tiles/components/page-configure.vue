@@ -102,7 +102,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, h, nextTick, onBeforeMount, onBeforeUnmount, onMounted, ref, render, watch } from 'vue';
+import { computed, getCurrentInstance, h, nextTick, onBeforeMount, onBeforeUnmount, onMounted, ref, render, watch } from 'vue';
 
 import { ElCard, ElCol, ElIcon, ElOption, ElRow, ElSelect, ElText } from 'element-plus';
 import { GridStack, type GridStackWidget } from 'gridstack';
@@ -152,6 +152,10 @@ const {
 	save: saveTile,
 	removeDirectly: removeTile,
 } = useTilesActions({ parent: 'page', parentId: props.page.id });
+
+// Capture the app context so VNodes created via h() for GridStack cells
+// inherit the provide/inject chain (plugins manager, stores manager, etc.)
+const appContext = getCurrentInstance()?.appContext ?? null;
 
 let pageGrid: GridStack | undefined;
 
@@ -287,7 +291,7 @@ const destroyGrids = (): void => {
 };
 
 const renderTileContent = (itemElContent: Element, tile: ITile): void => {
-	const itemContentVNode = h(TilePreview, {
+	const vnode = h(TilePreview, {
 		tile,
 		onDetail: (id: ITile['id']): void => {
 			emit('tileDetail', id);
@@ -303,7 +307,11 @@ const renderTileContent = (itemElContent: Element, tile: ITile): void => {
 		},
 	});
 
-	render(itemContentVNode, itemElContent as HTMLElement);
+	if (appContext) {
+		vnode.appContext = appContext;
+	}
+
+	render(vnode, itemElContent as HTMLElement);
 };
 
 const initializeGrids = (): void => {
