@@ -679,12 +679,12 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 	) {
 		final cards = model.domainCards;
 		final spacing = AppSpacings.pMd;
-		final maxTileHeight = AppSpacings.scale(90);
+		final maxTileHeight = AppSpacings.scale(76);
 
 		return LayoutBuilder(
 			builder: (context, constraints) {
 				final tileWidth = (constraints.maxWidth - spacing) / 2;
-				final tileHeight = tileWidth / 1.6;
+				final tileHeight = tileWidth / 1.8;
 				final clampedHeight = tileHeight.clamp(0, maxTileHeight).toDouble();
 				final aspectRatio = tileWidth / clampedHeight;
 
