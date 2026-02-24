@@ -568,7 +568,10 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 			children: [
 				// Scene pills row (portrait only — landscape shows them on the sky panel)
 				if (isPortrait && model.hasScenes) ...[
-					_buildScenePills(context, isDark, model),
+					Padding(
+						padding: EdgeInsets.symmetric(horizontal: AppSpacings.pLg),
+						child: _buildScenePills(context, isDark, model),
+					),
 					SizedBox(height: AppSpacings.pMd),
 				],
 
