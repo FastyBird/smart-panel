@@ -350,7 +350,7 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen>
                 screenService: locator<ScreenService>(),
                 icon: MdiIcons.alertCircleOutline,
                 color: warningColor,
-                isLandscape: false,
+                isLandscape: locator<ScreenService>().isLandscape,
               ),
               Text(
                 'No pages configured',

@@ -112,7 +112,7 @@ class DomainStateView extends StatelessWidget {
                 screenService: locator<ScreenService>(),
                 icon: MdiIcons.alertCircleOutline,
                 color: warningColor,
-                isLandscape: false,
+                isLandscape: locator<ScreenService>().isLandscape,
               ),
               Text(
                 localizations.domain_data_load_failed(domainName),
@@ -174,7 +174,7 @@ class DomainStateView extends StatelessWidget {
               screenService: locator<ScreenService>(),
               icon: notConfiguredIcon ?? MdiIcons.cogOffOutline,
               color: secondaryColor,
-              isLandscape: false,
+              isLandscape: locator<ScreenService>().isLandscape,
               useContainer: false,
             ),
             if (notConfiguredTitle != null)

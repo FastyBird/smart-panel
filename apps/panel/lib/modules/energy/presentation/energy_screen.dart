@@ -886,7 +886,7 @@ class _EnergyScreenState extends State<EnergyScreen> {
 							screenService: locator<ScreenService>(),
 							icon: MdiIcons.flashOff,
 							color: infoColor,
-							isLandscape: false,
+							isLandscape: locator<ScreenService>().isLandscape,
 						),
 						Text(
 							localizations.energy_empty_title,

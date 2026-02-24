@@ -725,7 +725,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 						color: Theme.of(context).brightness == Brightness.light
 							? AppTextColorLight.placeholder
 							: AppTextColorDark.placeholder,
-						isLandscape: false,
+						isLandscape: locator<ScreenService>().isLandscape,
 						useContainer: false,
 					),
 					Text(
