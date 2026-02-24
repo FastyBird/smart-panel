@@ -294,7 +294,17 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
     final channelId = _device.heaterChannel.id;
     if (controller == null) return;
 
-    final steppedValue = (value * 2).round() / 2;
+    // Round to appropriate step based on display unit.
+    // For Fahrenheit, round in °F (1°F step) then convert back to avoid drift.
+    // For Celsius, round to 0.5°C step.
+    final tempUnit = DisplayUnits.fromLocator().temperature;
+    double steppedValue;
+    if (tempUnit == TemperatureUnit.fahrenheit) {
+      final fahrenheit = UnitConverter.convertTemperature(value, TemperatureUnit.fahrenheit);
+      steppedValue = UnitConverter.temperatureToCelsius(fahrenheit.roundToDouble(), TemperatureUnit.fahrenheit);
+    } else {
+      steppedValue = (value * 2).round() / 2;
+    }
     final clampedValue = steppedValue.clamp(_minSetpoint, _maxSetpoint);
 
     _deviceControlStateService?.setPending(
@@ -510,11 +520,12 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
     final sensors = <_SensorInfo>[];
 
     final temperatureChannel = _device.temperatureChannel;
+    final displayUnits = DisplayUnits.fromLocator();
     sensors.add(_SensorInfo(
       id: 'temperature',
       label: localizations.device_current_temperature,
-      value: SensorUtils.formatNumericValue(_currentTemperature, temperatureChannel.category),
-      unit: SensorUtils.unitForCategory(temperatureChannel.category),
+      value: SensorUtils.formatNumericValue(_currentTemperature, temperatureChannel.category, displayUnits: displayUnits),
+      unit: SensorUtils.unitForCategory(temperatureChannel.category, displayUnits: displayUnits),
       icon: buildChannelIcon(temperatureChannel.category),
       themeColor: SensorColors.temperature,
       sensorData: SensorUtils.buildSensorData(temperatureChannel,
@@ -685,9 +696,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
         children: [
           CircularControlDial(
             value: UnitConverter.convertTemperature(targetSetpoint, tempUnit),
-            currentValue: _currentTemperature != null
-                ? UnitConverter.convertTemperature(_currentTemperature!, tempUnit)
-                : null,
+            currentValue: UnitConverter.convertTemperature(_currentTemperature, tempUnit),
             minValue: UnitConverter.convertTemperature(minSetpoint, tempUnit),
             maxValue: UnitConverter.convertTemperature(maxSetpoint, tempUnit),
             step: tempUnit == TemperatureUnit.fahrenheit ? 1.0 : 0.5,
@@ -733,9 +742,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
                 child: Center(
                   child: CircularControlDial(
                     value: UnitConverter.convertTemperature(targetSetpoint, tempUnit),
-                    currentValue: _currentTemperature != null
-                        ? UnitConverter.convertTemperature(_currentTemperature!, tempUnit)
-                        : null,
+                    currentValue: UnitConverter.convertTemperature(_currentTemperature, tempUnit),
                     minValue: UnitConverter.convertTemperature(minSetpoint, tempUnit),
                     maxValue: UnitConverter.convertTemperature(maxSetpoint, tempUnit),
                     step: tempUnit == TemperatureUnit.fahrenheit ? 1.0 : 0.5,

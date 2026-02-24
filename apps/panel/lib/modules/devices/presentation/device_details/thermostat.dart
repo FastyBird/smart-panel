@@ -516,8 +516,17 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     final channelId = _activeSetpointChannelId;
     if (controller == null || setpointProp == null || channelId == null) return;
 
-    // Round to step value (0.5)
-    final steppedValue = (value * 2).round() / 2;
+    // Round to appropriate step based on display unit.
+    // For Fahrenheit, round in °F (1°F step) then convert back to avoid drift.
+    // For Celsius, round to 0.5°C step.
+    final tempUnit = DisplayUnits.fromLocator().temperature;
+    double steppedValue;
+    if (tempUnit == TemperatureUnit.fahrenheit) {
+      final fahrenheit = UnitConverter.convertTemperature(value, TemperatureUnit.fahrenheit);
+      steppedValue = UnitConverter.temperatureToCelsius(fahrenheit.roundToDouble(), TemperatureUnit.fahrenheit);
+    } else {
+      steppedValue = (value * 2).round() / 2;
+    }
 
     // Clamp to valid range
     final clampedValue = steppedValue.clamp(_minSetpoint, _maxSetpoint);
@@ -803,11 +812,12 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
 
     // Temperature (always present)
     final temperatureChannel = _device.temperatureChannel;
+    final displayUnits = DisplayUnits.fromLocator();
     sensors.add(_SensorInfo(
       id: 'temperature',
       label: localizations.device_current_temperature,
-      value: SensorUtils.formatNumericValue(_currentTemperature, temperatureChannel.category),
-      unit: SensorUtils.unitForCategory(temperatureChannel.category),
+      value: SensorUtils.formatNumericValue(_currentTemperature, temperatureChannel.category, displayUnits: displayUnits),
+      unit: SensorUtils.unitForCategory(temperatureChannel.category, displayUnits: displayUnits),
       icon: buildChannelIcon(temperatureChannel.category),
       themeColor: SensorColors.temperature,
       sensorData: SensorUtils.buildSensorData(temperatureChannel,
@@ -1023,9 +1033,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
         children: [
           CircularControlDial(
             value: UnitConverter.convertTemperature(targetSetpoint, tempUnit),
-            currentValue: _currentTemperature != null
-                ? UnitConverter.convertTemperature(_currentTemperature!, tempUnit)
-                : null,
+            currentValue: UnitConverter.convertTemperature(_currentTemperature, tempUnit),
             minValue: UnitConverter.convertTemperature(minSetpoint, tempUnit),
             maxValue: UnitConverter.convertTemperature(maxSetpoint, tempUnit),
             step: tempUnit == TemperatureUnit.fahrenheit ? 1.0 : 0.5,
@@ -1073,9 +1081,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
                 child: Center(
                   child: CircularControlDial(
                     value: UnitConverter.convertTemperature(targetSetpoint, tempUnit),
-                    currentValue: _currentTemperature != null
-                        ? UnitConverter.convertTemperature(_currentTemperature!, tempUnit)
-                        : null,
+                    currentValue: UnitConverter.convertTemperature(_currentTemperature, tempUnit),
                     minValue: UnitConverter.convertTemperature(minSetpoint, tempUnit),
                     maxValue: UnitConverter.convertTemperature(maxSetpoint, tempUnit),
                     step: tempUnit == TemperatureUnit.fahrenheit ? 1.0 : 0.5,

@@ -121,7 +121,9 @@ class SensorUtils {
     final converted = displayUnits != null
         ? _convertValue(value.toDouble(), category, displayUnits)
         : value.toDouble();
-    final scale = scaleForCategory(category);
+    final scale = displayUnits != null
+        ? _scaleForConvertedCategory(category, displayUnits)
+        : scaleForCategory(category);
     if (scale > 0) {
       return _formatter.formatDecimal(converted, decimalPlaces: scale);
     }
@@ -158,6 +160,22 @@ class SensorUtils {
         return UnitConverter.convertPressure(value, displayUnits.pressure);
       default:
         return value;
+    }
+  }
+
+  /// Returns the appropriate decimal scale when displaying a converted value.
+  ///
+  /// For pressure, uses [UnitConverter.pressureDecimals] so that e.g. inHg
+  /// gets 2 decimal places instead of the default 1.
+  static int _scaleForConvertedCategory(
+    DevicesModuleChannelCategory category,
+    DisplayUnits displayUnits,
+  ) {
+    switch (category) {
+      case DevicesModuleChannelCategory.pressure:
+        return UnitConverter.pressureDecimals(displayUnits.pressure);
+      default:
+        return scaleForCategory(category);
     }
   }
 

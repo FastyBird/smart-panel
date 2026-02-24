@@ -803,11 +803,12 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         }
 
         if (tempValue != null) {
+          final displayUnits = DisplayUnits.fromLocator();
           sensors.add(ClimateSensor(
             id: '${target.id}_temp',
             label: target.displayName,
             value:
-                SensorUtils.formatNumericValueWithUnit(tempValue, DevicesModuleChannelCategory.temperature),
+                SensorUtils.formatNumericValueWithUnit(tempValue, DevicesModuleChannelCategory.temperature, displayUnits: displayUnits),
             type: DevicesModuleChannelCategory.temperature,
             isOnline: device.isOnline,
             sensorData: tempSensorData,
@@ -1003,11 +1004,12 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     if (target.hasPressure) {
       if (device is SensorDeviceView && device.pressureChannel != null) {
         final pressureChannel = device.pressureChannel!;
+        final displayUnits = DisplayUnits.fromLocator();
         sensors.add(ClimateSensor(
           id: '${target.id}_pressure',
           label: target.displayName,
           value:
-              SensorUtils.formatNumericValueWithUnit(pressureChannel.pressure, DevicesModuleChannelCategory.pressure),
+              SensorUtils.formatNumericValueWithUnit(pressureChannel.pressure, DevicesModuleChannelCategory.pressure, displayUnits: displayUnits),
           type: DevicesModuleChannelCategory.pressure,
           isOnline: device.isOnline,
           sensorData: SensorUtils.buildSensorData(pressureChannel),
@@ -1832,7 +1834,8 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
     }
 
     final climateState = _spacesService?.getClimateState(_roomId);
-    final tempStr = SensorUtils.formatNumericValueWithUnit(_state.targetTemp, DevicesModuleChannelCategory.temperature);
+    final displayUnits = DisplayUnits.fromLocator();
+    final tempStr = SensorUtils.formatNumericValueWithUnit(_state.targetTemp, DevicesModuleChannelCategory.temperature, displayUnits: displayUnits);
 
     if (climateState?.isCooling ?? false) {
       return localizations.thermostat_state_cooling_to(tempStr);
@@ -2485,8 +2488,15 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
       steps: labels,
       onChanged: (v) {
         final newTemp = _state.minSetpoint + range * v;
-        // Round to nearest 0.5
-        final rounded = (newTemp * 2).round() / 2;
+        // Round to appropriate step based on display unit
+        final tempUnit = DisplayUnits.fromLocator().temperature;
+        double rounded;
+        if (tempUnit == TemperatureUnit.fahrenheit) {
+          final fahrenheit = UnitConverter.convertTemperature(newTemp, TemperatureUnit.fahrenheit);
+          rounded = UnitConverter.temperatureToCelsius(fahrenheit.roundToDouble(), TemperatureUnit.fahrenheit);
+        } else {
+          rounded = (newTemp * 2).round() / 2;
+        }
         _onSetpointSliderChanged(rounded);
       },
     );
@@ -2525,6 +2535,23 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
       );
     }
 
+    final tempUnit = DisplayUnits.fromLocator().temperature;
+    // For Fahrenheit, adjust by 1°F; for Celsius, adjust by 0.5°C
+    double stepDown() {
+      if (tempUnit == TemperatureUnit.fahrenheit) {
+        final fahrenheit = UnitConverter.convertTemperature(_state.targetTemp, TemperatureUnit.fahrenheit);
+        return UnitConverter.temperatureToCelsius(fahrenheit - 1, TemperatureUnit.fahrenheit);
+      }
+      return _state.targetTemp - 0.5;
+    }
+    double stepUp() {
+      if (tempUnit == TemperatureUnit.fahrenheit) {
+        final fahrenheit = UnitConverter.convertTemperature(_state.targetTemp, TemperatureUnit.fahrenheit);
+        return UnitConverter.temperatureToCelsius(fahrenheit + 1, TemperatureUnit.fahrenheit);
+      }
+      return _state.targetTemp + 0.5;
+    }
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       spacing: AppSpacings.pXl,
@@ -2535,7 +2562,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
               ? null
               : () {
                   HapticFeedback.lightImpact();
-                  _setTargetTemp(_state.targetTemp - 0.5);
+                  _setTargetTemp(stepDown());
                 },
         ),
         buildAdjustButton(
@@ -2544,7 +2571,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
               ? null
               : () {
                   HapticFeedback.lightImpact();
-                  _setTargetTemp(_state.targetTemp + 0.5);
+                  _setTargetTemp(stepUp());
                 },
         ),
       ],
