@@ -675,12 +675,13 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 
 		return LayoutBuilder(
 			builder: (context, constraints) {
-				final tileWidth = (constraints.maxWidth - spacing) / 2;
+				final tileWidth = (constraints.maxWidth - spacing - AppSpacings.pMd * 2) / 2;
 				final tileHeight = (tileWidth / 1.8).clamp(0, maxTileHeight).toDouble();
 
 				return VerticalScrollWithGradient(
 					itemCount: rowCount,
 					separatorHeight: spacing,
+					padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
 					itemBuilder: (context, rowIndex) {
 						final firstIndex = rowIndex * 2;
 						final secondIndex = firstIndex + 1;
