@@ -310,18 +310,22 @@ class _WindPainter extends CustomPainter {
 
 	@override
 	void paint(Canvas canvas, Size size) {
+		final color = isNight ? Colors.white : const Color(0xFF4A6A80);
+		final alphaScale = isNight ? 1.0 : 2.5;
+
 		for (final s in streaks) {
 			final x = ((s.offset + t * s.speed) % 1.3) * size.width - s.length;
 			final y = s.y * size.height;
+			final a = (s.opacity * alphaScale).clamp(0.0, 1.0);
 			canvas.drawLine(
 				Offset(x, y),
 				Offset(x + s.length, y - 2),
 				Paint()
 					..shader = LinearGradient(
 						colors: [
-							Colors.white.withValues(alpha: 0),
-							Colors.white.withValues(alpha: s.opacity),
-							Colors.white.withValues(alpha: 0),
+							color.withValues(alpha: 0),
+							color.withValues(alpha: a),
+							color.withValues(alpha: 0),
 						],
 					).createShader(Rect.fromLTWH(x, y, s.length, 2))
 					..strokeWidth = 1.5

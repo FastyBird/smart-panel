@@ -282,21 +282,18 @@ class SkyVisualConfig {
 	}
 
 	switch (condition) {
-		case SkyCondition.foggy:
-		case SkyCondition.overcast:
-			return (const Color(0xDD2A3E4A), const Color(0x994A5E6A));
-		case SkyCondition.snowy:
-			return (Colors.white, const Color(0xA6FFFFFF));
-		case SkyCondition.cloudy:
 		case SkyCondition.rainy:
-			return (Colors.white, const Color(0xB3FFFFFF));
 		case SkyCondition.heavyRain:
 		case SkyCondition.stormy:
 			return (Colors.white, const Color(0xB3FFFFFF));
 		case SkyCondition.clear:
 		case SkyCondition.partlyCloudy:
+		case SkyCondition.cloudy:
+		case SkyCondition.overcast:
+		case SkyCondition.snowy:
 		case SkyCondition.windy:
-			return (Colors.white, const Color(0xBFFFFFFF));
+		case SkyCondition.foggy:
+			return (const Color(0xDD2A3E4A), const Color(0x994A5E6A));
 	}
 }
 
