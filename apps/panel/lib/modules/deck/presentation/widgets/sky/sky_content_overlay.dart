@@ -3,7 +3,7 @@ import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/sky/sky_
 import 'package:fastybird_smart_panel/modules/deck/services/room_overview_model_builder.dart';
 import 'package:flutter/material.dart';
 
-/// Text content overlay on the sky panel: room name, clock, date,
+/// Text content overlay on the sky panel: clock, date,
 /// weather glass card, and scene pills (landscape only).
 class SkyContentOverlay extends StatelessWidget {
 	final bool isPortrait;
@@ -13,6 +13,8 @@ class SkyContentOverlay extends StatelessWidget {
 	final String date;
 	final String? temperature;
 	final String? weatherDescription;
+	final Color primaryTextColor;
+	final Color secondaryTextColor;
 	final List<QuickScene> scenes;
 	final bool isSceneTriggering;
 	final String? triggeringSceneId;
@@ -27,6 +29,8 @@ class SkyContentOverlay extends StatelessWidget {
 		required this.date,
 		this.temperature,
 		this.weatherDescription,
+		this.primaryTextColor = Colors.white,
+		this.secondaryTextColor = const Color(0xBFFFFFFF),
 		this.scenes = const [],
 		this.isSceneTriggering = false,
 		this.triggeringSceneId,
@@ -36,48 +40,37 @@ class SkyContentOverlay extends StatelessWidget {
 	@override
 	Widget build(BuildContext context) {
 		return Padding(
-			padding: isPortrait
-					? const EdgeInsets.symmetric(horizontal: 20, vertical: 16)
-					: const EdgeInsets.fromLTRB(24, 28, 24, 28),
+			padding: EdgeInsets.symmetric(
+				horizontal: AppSpacings.pLg,
+				vertical: AppSpacings.pLg,
+			),
 			child: isPortrait ? _buildPortrait() : _buildLandscape(),
 		);
 	}
 
 	Widget _buildLandscape() {
-		final dim = Colors.white.withValues(alpha: isNight ? 0.5 : 0.75);
-
 		return Column(
 			crossAxisAlignment: CrossAxisAlignment.start,
 			mainAxisAlignment: MainAxisAlignment.center,
 			children: [
 				Text(
-					roomName,
-					style: TextStyle(
-						fontSize: 11,
-						fontWeight: FontWeight.w600,
-						color: Colors.white.withValues(alpha: isNight ? 0.5 : 0.8),
-						letterSpacing: 1.5,
-					),
-				),
-				const SizedBox(height: 4),
-				Text(
 					time,
 					style: TextStyle(
-						fontSize: 64,
+						fontSize: AppSpacings.scale(72),
 						fontWeight: FontWeight.w200,
-						color: Colors.white.withValues(alpha: isNight ? 0.9 : 1.0),
+						color: primaryTextColor,
 						height: 1.0,
 						letterSpacing: -2,
 					),
 				),
-				const SizedBox(height: 4),
-				Text(date, style: TextStyle(fontSize: 12, color: dim)),
+				SizedBox(height: AppSpacings.pSm),
+				Text(date, style: TextStyle(fontSize: AppFontSize.large, color: secondaryTextColor)),
 				if (temperature != null) ...[
-					const SizedBox(height: 16),
+					SizedBox(height: AppSpacings.pLg),
 					_buildWeatherCard(),
 				],
 				if (scenes.isNotEmpty) ...[
-					const SizedBox(height: 12),
+					SizedBox(height: AppSpacings.pMd),
 					_buildScenePills(),
 				],
 			],
@@ -89,35 +82,25 @@ class SkyContentOverlay extends StatelessWidget {
 			mainAxisAlignment: MainAxisAlignment.center,
 			children: [
 				Text(
-					roomName,
-					style: TextStyle(
-						fontSize: 10,
-						fontWeight: FontWeight.w600,
-						color: Colors.white.withValues(alpha: isNight ? 0.45 : 0.8),
-						letterSpacing: 1.5,
-					),
-				),
-				const SizedBox(height: 2),
-				Text(
 					time,
 					style: TextStyle(
-						fontSize: 48,
+						fontSize: AppSpacings.scale(56),
 						fontWeight: FontWeight.w200,
-						color: Colors.white.withValues(alpha: isNight ? 0.85 : 1.0),
+						color: primaryTextColor,
 						height: 1.0,
 						letterSpacing: -1.5,
 					),
 				),
-				const SizedBox(height: 4),
+				SizedBox(height: AppSpacings.pSm),
 				Text(
 					date,
 					style: TextStyle(
-						fontSize: 11,
-						color: Colors.white.withValues(alpha: isNight ? 0.35 : 0.7),
+						fontSize: AppFontSize.base,
+						color: secondaryTextColor,
 					),
 				),
 				if (temperature != null) ...[
-					const SizedBox(height: 10),
+					SizedBox(height: AppSpacings.pMd),
 					_buildCompactWeatherCard(),
 				],
 			],
@@ -125,8 +108,6 @@ class SkyContentOverlay extends StatelessWidget {
 	}
 
 	Widget _buildWeatherCard() {
-		final muted = Colors.white.withValues(alpha: isNight ? 0.4 : 0.65);
-
 		return SkyGlassCard(
 			isNight: isNight,
 			child: Row(
@@ -138,16 +119,16 @@ class SkyContentOverlay extends StatelessWidget {
 						children: [
 							Text(
 								temperature ?? '',
-								style: const TextStyle(
-									fontSize: 16,
+								style: TextStyle(
+									fontSize: AppFontSize.extraLarge,
 									fontWeight: FontWeight.w700,
-									color: Colors.white,
+									color: primaryTextColor,
 								),
 							),
 							if (weatherDescription != null)
 								Text(
 									weatherDescription!,
-									style: TextStyle(fontSize: 10, color: muted),
+									style: TextStyle(fontSize: AppFontSize.base, color: secondaryTextColor),
 								),
 						],
 					),
@@ -159,25 +140,28 @@ class SkyContentOverlay extends StatelessWidget {
 	Widget _buildCompactWeatherCard() {
 		return SkyGlassCard(
 			isNight: isNight,
-			padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+			padding: EdgeInsets.symmetric(
+				horizontal: AppSpacings.pMd,
+				vertical: AppSpacings.pSm,
+			),
 			child: Row(
 				mainAxisSize: MainAxisSize.min,
 				children: [
 					Text(
 						temperature ?? '',
-						style: const TextStyle(
-							fontSize: 13,
+						style: TextStyle(
+							fontSize: AppFontSize.large,
 							fontWeight: FontWeight.w700,
-							color: Colors.white,
+							color: primaryTextColor,
 						),
 					),
 					if (weatherDescription != null) ...[
-						const SizedBox(width: 6),
+						SizedBox(width: AppSpacings.pSm),
 						Text(
 							weatherDescription!,
 							style: TextStyle(
-								fontSize: 9,
-								color: Colors.white.withValues(alpha: 0.8),
+								fontSize: AppFontSize.small,
+								color: secondaryTextColor,
 							),
 						),
 					],
@@ -188,8 +172,8 @@ class SkyContentOverlay extends StatelessWidget {
 
 	Widget _buildScenePills() {
 		return Wrap(
-			spacing: 5,
-			runSpacing: 5,
+			spacing: AppSpacings.pSm,
+			runSpacing: AppSpacings.pSm,
 			children: scenes.map((scene) {
 				final isTriggering = triggeringSceneId == scene.sceneId;
 
@@ -198,20 +182,23 @@ class SkyContentOverlay extends StatelessWidget {
 							? null
 							: () => onSceneTap!(scene.sceneId),
 					child: Container(
-						padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+						padding: EdgeInsets.symmetric(
+							horizontal: AppSpacings.pMd,
+							vertical: AppSpacings.pSm,
+						),
 						decoration: BoxDecoration(
 							color: isTriggering
 									? AppColors.white
 									: Colors.white.withValues(alpha: isNight ? 0.06 : 0.25),
-							borderRadius: BorderRadius.circular(8),
+							borderRadius: BorderRadius.circular(AppBorderRadius.base),
 							border: isNight && !isTriggering
 									? Border.all(color: Colors.white.withValues(alpha: 0.08))
 									: null,
 						),
 						child: isTriggering
 								? SizedBox(
-										width: 12,
-										height: 12,
+										width: AppSpacings.scale(12),
+										height: AppSpacings.scale(12),
 										child: CircularProgressIndicator(
 											strokeWidth: 1.5,
 											color: Colors.white.withValues(alpha: 0.7),
@@ -219,17 +206,17 @@ class SkyContentOverlay extends StatelessWidget {
 									)
 								: Row(
 										mainAxisSize: MainAxisSize.min,
+										spacing: AppSpacings.pSm,
 										children: [
 											Icon(
 												scene.icon,
-												size: 12,
+												size: AppSpacings.scale(12),
 												color: Colors.white.withValues(alpha: isNight ? 0.5 : 0.9),
 											),
-											const SizedBox(width: 4),
 											Text(
 												scene.name,
 												style: TextStyle(
-													fontSize: 10,
+													fontSize: AppFontSize.extraSmall,
 													fontWeight: FontWeight.w600,
 													color: Colors.white.withValues(
 														alpha: isNight ? 0.5 : 0.9,

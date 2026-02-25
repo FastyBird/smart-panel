@@ -58,6 +58,8 @@ class SkyVisualConfig {
 	final bool showWind;
 	final bool showLightning;
 	final bool showFog;
+	final Color primaryTextColor;
+	final Color secondaryTextColor;
 
 	const SkyVisualConfig({
 		required this.condition,
@@ -76,6 +78,8 @@ class SkyVisualConfig {
 		this.showWind = false,
 		this.showLightning = false,
 		this.showFog = false,
+		this.primaryTextColor = Colors.white,
+		this.secondaryTextColor = const Color(0xBFFFFFFF),
 	});
 
 	bool get isNight => timeOfDay == SkyTimeOfDay.night;
@@ -84,6 +88,7 @@ class SkyVisualConfig {
 	factory SkyVisualConfig.fromCondition(SkyCondition condition, SkyTimeOfDay timeOfDay) {
 		final isNight = timeOfDay == SkyTimeOfDay.night;
 		final gradient = skyGradientColors(condition, isNight);
+		final (primary, secondary) = _skyTextColors(condition, isNight);
 
 		switch (condition) {
 			case SkyCondition.clear:
@@ -94,12 +99,16 @@ class SkyVisualConfig {
 								gradientColors: gradient,
 								showMoon: true,
 								showStars: true,
+								primaryTextColor: primary,
+								secondaryTextColor: secondary,
 							)
 						: SkyVisualConfig(
 								condition: condition,
 								timeOfDay: timeOfDay,
 								gradientColors: gradient,
 								showSun: true,
+								primaryTextColor: primary,
+								secondaryTextColor: secondary,
 							);
 			case SkyCondition.partlyCloudy:
 				return isNight
@@ -111,6 +120,8 @@ class SkyVisualConfig {
 								showStars: true,
 								cloudCount: 2,
 								cloudOpacity: 0.2,
+								primaryTextColor: primary,
+								secondaryTextColor: secondary,
 							)
 						: SkyVisualConfig(
 								condition: condition,
@@ -120,6 +131,8 @@ class SkyVisualConfig {
 								cloudCount: 2,
 								cloudOpacity: 0.35,
 								sunOpacity: 0.9,
+								primaryTextColor: primary,
+								secondaryTextColor: secondary,
 							);
 			case SkyCondition.cloudy:
 				return isNight
@@ -130,6 +143,8 @@ class SkyVisualConfig {
 								showMoon: true,
 								cloudCount: 4,
 								cloudOpacity: 0.3,
+								primaryTextColor: primary,
+								secondaryTextColor: secondary,
 							)
 						: SkyVisualConfig(
 								condition: condition,
@@ -139,6 +154,8 @@ class SkyVisualConfig {
 								cloudCount: 4,
 								cloudOpacity: 0.5,
 								sunOpacity: 0.5,
+								primaryTextColor: primary,
+								secondaryTextColor: secondary,
 							);
 			case SkyCondition.overcast:
 				return isNight
@@ -148,6 +165,8 @@ class SkyVisualConfig {
 								gradientColors: gradient,
 								cloudCount: 5,
 								cloudOpacity: 0.45,
+								primaryTextColor: primary,
+								secondaryTextColor: secondary,
 							)
 						: SkyVisualConfig(
 								condition: condition,
@@ -156,6 +175,8 @@ class SkyVisualConfig {
 								cloudCount: 5,
 								cloudOpacity: 0.6,
 								sunOpacity: 0.0,
+								primaryTextColor: primary,
+								secondaryTextColor: secondary,
 							);
 			case SkyCondition.rainy:
 				return SkyVisualConfig(
@@ -166,6 +187,8 @@ class SkyVisualConfig {
 					cloudOpacity: isNight ? 0.35 : 0.5,
 					showRain: true,
 					rainIntensity: 40,
+					primaryTextColor: primary,
+					secondaryTextColor: secondary,
 				);
 			case SkyCondition.heavyRain:
 				return SkyVisualConfig(
@@ -176,6 +199,8 @@ class SkyVisualConfig {
 					cloudOpacity: isNight ? 0.45 : 0.6,
 					showRain: true,
 					rainIntensity: 80,
+					primaryTextColor: primary,
+					secondaryTextColor: secondary,
 				);
 			case SkyCondition.stormy:
 				return SkyVisualConfig(
@@ -187,6 +212,8 @@ class SkyVisualConfig {
 					showRain: true,
 					rainIntensity: 80,
 					showLightning: true,
+					primaryTextColor: primary,
+					secondaryTextColor: secondary,
 				);
 			case SkyCondition.snowy:
 				return SkyVisualConfig(
@@ -197,6 +224,8 @@ class SkyVisualConfig {
 					cloudOpacity: isNight ? 0.25 : 0.4,
 					showSnow: true,
 					snowIntensity: 40,
+					primaryTextColor: primary,
+					secondaryTextColor: secondary,
 				);
 			case SkyCondition.windy:
 				return isNight
@@ -209,6 +238,8 @@ class SkyVisualConfig {
 								cloudCount: 2,
 								cloudOpacity: 0.2,
 								showWind: true,
+								primaryTextColor: primary,
+								secondaryTextColor: secondary,
 							)
 						: SkyVisualConfig(
 								condition: condition,
@@ -218,6 +249,8 @@ class SkyVisualConfig {
 								cloudCount: 2,
 								cloudOpacity: 0.35,
 								showWind: true,
+								primaryTextColor: primary,
+								secondaryTextColor: secondary,
 							);
 			case SkyCondition.foggy:
 				return SkyVisualConfig(
@@ -227,6 +260,8 @@ class SkyVisualConfig {
 					cloudCount: 2,
 					cloudOpacity: isNight ? 0.15 : 0.25,
 					showFog: true,
+					primaryTextColor: primary,
+					secondaryTextColor: secondary,
 				);
 		}
 	}
@@ -234,6 +269,34 @@ class SkyVisualConfig {
 	/// Default fallback config when no weather data is available.
 	factory SkyVisualConfig.defaultSky() {
 		return SkyVisualConfig.fromCondition(SkyCondition.clear, SkyTimeOfDay.day);
+	}
+}
+
+/// Returns (primary, secondary) text colors for sky content overlay.
+///
+/// Light backgrounds (foggy day, snowy day) use dark text for contrast;
+/// dark backgrounds (night, stormy) use bright white text.
+(Color, Color) _skyTextColors(SkyCondition condition, bool isNight) {
+	if (isNight) {
+		return (const Color(0xE6FFFFFF), const Color(0x80FFFFFF));
+	}
+
+	switch (condition) {
+		case SkyCondition.foggy:
+		case SkyCondition.overcast:
+			return (const Color(0xDD2A3E4A), const Color(0x994A5E6A));
+		case SkyCondition.snowy:
+			return (Colors.white, const Color(0xA6FFFFFF));
+		case SkyCondition.cloudy:
+		case SkyCondition.rainy:
+			return (Colors.white, const Color(0xB3FFFFFF));
+		case SkyCondition.heavyRain:
+		case SkyCondition.stormy:
+			return (Colors.white, const Color(0xB3FFFFFF));
+		case SkyCondition.clear:
+		case SkyCondition.partlyCloudy:
+		case SkyCondition.windy:
+			return (Colors.white, const Color(0xBFFFFFFF));
 	}
 }
 

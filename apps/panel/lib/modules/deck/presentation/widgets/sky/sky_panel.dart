@@ -153,6 +153,8 @@ class _SkyPanelState extends State<SkyPanel> {
 							date: dateStr,
 							temperature: _temperature,
 							weatherDescription: _weatherDescription,
+							primaryTextColor: _config.primaryTextColor,
+							secondaryTextColor: _config.secondaryTextColor,
 							scenes: widget.isPortrait ? [] : widget.scenes,
 							isSceneTriggering: widget.isSceneTriggering,
 							triggeringSceneId: widget.triggeringSceneId,

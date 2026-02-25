@@ -463,47 +463,50 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 
 	Widget _buildErrorState() {
 		return Center(
-			child: Column(
-				mainAxisAlignment: MainAxisAlignment.center,
-				spacing: AppSpacings.pMd,
-				children: [
-					Icon(
-						MdiIcons.alertCircleOutline,
-						size: AppSpacings.scale(64),
-						color: Theme.of(context).brightness == Brightness.light
-							? AppColorsLight.danger
-							: AppColorsDark.danger,
-					),
-					Text(
-						_errorMessage!,
-						style: TextStyle(
-							fontSize: AppFontSize.base,
-							color: Theme.of(context).brightness == Brightness.light
-								? AppTextColorLight.regular
-								: AppTextColorDark.regular,
-						),
-						textAlign: TextAlign.center,
-					),
-					Theme(
-						data: ThemeData(
-							filledButtonTheme: Theme.of(context).brightness == Brightness.dark
-								? AppFilledButtonsDarkThemes.primary
-								: AppFilledButtonsLightThemes.primary,
-						),
-						child: FilledButton.icon(
-							onPressed: _loadRoomData,
-							icon: Icon(
-								MdiIcons.refresh,
-								size: AppFontSize.base,
-								color: Theme.of(context).brightness == Brightness.dark
-									? AppFilledButtonsDarkThemes.primaryForegroundColor
-									: AppFilledButtonsLightThemes.primaryForegroundColor,
-							),
-							label: const Text('Retry'),
-						),
-					),
-				],
-			),
+			child: Padding(
+        padding: AppSpacings.paddingXl,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          spacing: AppSpacings.pMd,
+          children: [
+            Icon(
+              MdiIcons.alertCircleOutline,
+              size: AppSpacings.scale(64),
+              color: Theme.of(context).brightness == Brightness.light
+                ? AppColorsLight.danger
+                : AppColorsDark.danger,
+            ),
+            Text(
+              _errorMessage!,
+              style: TextStyle(
+                fontSize: AppFontSize.base,
+                color: Theme.of(context).brightness == Brightness.light
+                  ? AppTextColorLight.regular
+                  : AppTextColorDark.regular,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            Theme(
+              data: ThemeData(
+                filledButtonTheme: Theme.of(context).brightness == Brightness.dark
+                  ? AppFilledButtonsDarkThemes.primary
+                  : AppFilledButtonsLightThemes.primary,
+              ),
+              child: FilledButton.icon(
+                onPressed: _loadRoomData,
+                icon: Icon(
+                  MdiIcons.refresh,
+                  size: AppFontSize.base,
+                  color: Theme.of(context).brightness == Brightness.dark
+                    ? AppFilledButtonsDarkThemes.primaryForegroundColor
+                    : AppFilledButtonsLightThemes.primaryForegroundColor,
+                ),
+                label: const Text('Retry'),
+              ),
+            ),
+          ],
+        ),
+      ),
 		);
 	}
 
@@ -512,43 +515,46 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 		AppLocalizations? localizations,
 	) {
 		return Center(
-			child: Column(
-				mainAxisAlignment: MainAxisAlignment.center,
-				spacing: AppSpacings.pMd,
-				children: [
-					IconContainer(
-						screenService: locator<ScreenService>(),
-						icon: MdiIcons.homeOffOutline,
-						color: Theme.of(context).brightness == Brightness.light
-							? AppTextColorLight.placeholder
-							: AppTextColorDark.placeholder,
-						isLandscape: locator<ScreenService>().isLandscape,
-						useContainer: false,
-					),
-					Text(
-						localizations?.space_empty_state_title ?? 'No Devices',
-						style: TextStyle(
-							fontSize: AppFontSize.large,
-							fontWeight: FontWeight.w600,
-							color: Theme.of(context).brightness == Brightness.light
-								? AppTextColorLight.regular
-								: AppTextColorDark.regular,
-						),
-						textAlign: TextAlign.center,
-					),
-					Text(
-						localizations?.space_empty_state_description ??
-							'Assign devices to this room in Admin',
-						style: TextStyle(
-							fontSize: AppFontSize.small,
-							color: Theme.of(context).brightness == Brightness.light
-								? AppTextColorLight.placeholder
-								: AppTextColorDark.placeholder,
-						),
-						textAlign: TextAlign.center,
-					),
-				],
-			),
+			child: Padding(
+        padding: AppSpacings.paddingXl,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          spacing: AppSpacings.pMd,
+          children: [
+            IconContainer(
+              screenService: locator<ScreenService>(),
+              icon: MdiIcons.homeOffOutline,
+              color: Theme.of(context).brightness == Brightness.light
+                ? AppTextColorLight.placeholder
+                : AppTextColorDark.placeholder,
+              isLandscape: locator<ScreenService>().isLandscape,
+              useContainer: false,
+            ),
+            Text(
+              localizations?.space_empty_state_title ?? 'No Devices',
+              style: TextStyle(
+                fontSize: AppFontSize.large,
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context).brightness == Brightness.light
+                  ? AppTextColorLight.regular
+                  : AppTextColorDark.regular,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            Text(
+              localizations?.space_empty_state_description ??
+                'Assign devices to this room in Admin',
+              style: TextStyle(
+                fontSize: AppFontSize.small,
+                color: Theme.of(context).brightness == Brightness.light
+                  ? AppTextColorLight.placeholder
+                  : AppTextColorDark.placeholder,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
 		);
 	}
 
