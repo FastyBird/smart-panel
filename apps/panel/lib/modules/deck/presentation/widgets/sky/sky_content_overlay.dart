@@ -190,9 +190,15 @@ class SkyContentOverlay extends StatelessWidget {
 	}
 
 	Widget _buildScenePills() {
-		return Wrap(
-			spacing: AppSpacings.pSm,
-			runSpacing: AppSpacings.pSm,
+		final maxRows = isCompact ? 3 : 4;
+		final pillHeight = AppSpacings.pSm * 2 + AppFontSize.extraSmall + 2;
+		final maxHeight = maxRows * pillHeight + (maxRows - 1) * AppSpacings.pSm;
+
+		return ConstrainedBox(
+			constraints: BoxConstraints(maxHeight: maxHeight),
+			child: Wrap(
+				spacing: AppSpacings.pSm,
+				runSpacing: AppSpacings.pSm,
 			children: scenes.map((scene) {
 				final isTriggering = triggeringSceneId == scene.sceneId;
 
@@ -245,6 +251,7 @@ class SkyContentOverlay extends StatelessWidget {
 					),
 				);
 			}).toList(),
+			),
 		);
 	}
 }
