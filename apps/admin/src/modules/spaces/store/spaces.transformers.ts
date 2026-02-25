@@ -5,7 +5,7 @@ import {
 	SpacesModuleDataSpaceCategory,
 } from '../../../openapi';
 
-import { type IHeaderWidget, SpaceCategory, SpaceType } from '../spaces.constants';
+import { type IStatusWidget, SpaceCategory, SpaceType } from '../spaces.constants';
 
 import type { ISpace, ISpaceCreateData, ISpaceEditData } from './spaces.store.types';
 
@@ -53,9 +53,9 @@ const spaceCategoryToApiCategory = (
 	return category as unknown as SpacesModuleCreateSpaceCategory;
 };
 
-const transformApiHeaderWidgets = (
-	apiWidgets: ApiSpace['header_widgets'],
-): IHeaderWidget[] | null => {
+const transformApiStatusWidgets = (
+	apiWidgets: ApiSpace['status_widgets'],
+): IStatusWidget[] | null => {
 	if (!apiWidgets || !Array.isArray(apiWidgets)) return null;
 
 	return apiWidgets.map((widget) => ({
@@ -70,8 +70,8 @@ const transformApiHeaderWidgets = (
 	}));
 };
 
-const transformHeaderWidgetsToApi = (
-	widgets: IHeaderWidget[] | null | undefined,
+const transformStatusWidgetsToApi = (
+	widgets: IStatusWidget[] | null | undefined,
 ): Record<string, unknown>[] | null | undefined => {
 	if (widgets === undefined) return undefined;
 	if (widgets === null) return null;
@@ -99,7 +99,7 @@ export const transformSpaceResponse = (response: ApiSpace): ISpace => {
 		displayOrder: response.display_order ?? 0,
 		parentId: response.parent_id ?? null,
 		suggestionsEnabled: response.suggestions_enabled ?? true,
-		headerWidgets: transformApiHeaderWidgets(response.header_widgets),
+		statusWidgets: transformApiStatusWidgets(response.status_widgets),
 		createdAt: new Date(response.created_at),
 		updatedAt: response.updated_at ? new Date(response.updated_at) : null,
 		draft: false,
@@ -116,7 +116,7 @@ export const transformSpaceCreateRequest = (data: ISpaceCreateData): ApiSpaceCre
 		display_order: data.displayOrder,
 		parent_id: data.parentId ?? undefined,
 		suggestions_enabled: data.suggestionsEnabled,
-		header_widgets: transformHeaderWidgetsToApi(data.headerWidgets) as ApiSpaceCreate['header_widgets'],
+		status_widgets: transformStatusWidgetsToApi(data.statusWidgets) as ApiSpaceCreate['status_widgets'],
 	};
 };
 
@@ -137,9 +137,9 @@ export const transformSpaceEditRequest = (data: ISpaceEditData): ApiSpaceUpdate 
 		baseData.parent_id = data.parentId ?? null;
 	}
 
-	// Header widgets - explicitly include when present
-	if ('headerWidgets' in data) {
-		baseData.header_widgets = transformHeaderWidgetsToApi(data.headerWidgets);
+	// Status widgets - explicitly include when present
+	if ('statusWidgets' in data) {
+		baseData.status_widgets = transformStatusWidgetsToApi(data.statusWidgets);
 	}
 
 	return baseData as ApiSpaceUpdate;

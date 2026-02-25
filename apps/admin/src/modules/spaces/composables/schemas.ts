@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { SpaceCategory, SpaceType } from '../spaces.constants';
-import { HeaderWidgetSchema } from '../store/spaces.store.schemas';
+import { StatusWidgetSchema } from '../store/spaces.store.schemas';
 
 export const SpacesFilterSchema = z.object({
 	search: z.string().optional(),
@@ -33,7 +33,7 @@ export const SpaceEditFormSchema = SpaceFormBaseSchema.extend({
 	id: z.string().uuid(),
 	type: z.nativeEnum(SpaceType),
 	suggestionsEnabled: z.boolean().default(true),
-	headerWidgets: z.array(HeaderWidgetSchema).nullable().optional(),
+	statusWidgets: z.array(StatusWidgetSchema).nullable().optional(),
 });
 
 export type SpaceEditFormSchemaType = z.infer<typeof SpaceEditFormSchema>;

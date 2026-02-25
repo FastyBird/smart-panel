@@ -29,9 +29,9 @@
 				"manageDevices": "Manage devices",
 				"manageDisplays": "Manage displays"
 			},
-			"headerWidgets": {
-				"title": "Header widgets",
-				"hint": "Configure widgets displayed in the space header area on the panel."
+			"statusWidgets": {
+				"title": "Status widgets",
+				"hint": "Configure widgets displayed in the space status area on the panel."
 			},
 			"smartOverrides": {
 				"title": "Smart overrides",
@@ -242,7 +242,7 @@
 				"title": "Enable suggestions",
 				"hint": "When enabled, the panel will show non-intrusive lighting suggestions based on time of day and current state."
 			},
-			"headerWidgets": {
+			"statusWidgets": {
 				"energy": {
 					"title": "Energy",
 					"range": {

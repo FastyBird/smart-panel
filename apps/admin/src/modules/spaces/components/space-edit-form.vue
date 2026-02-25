@@ -146,20 +146,20 @@
 				</div>
 			</el-collapse-item>
 
-			<!-- 3. Header Widgets Section -->
-			<el-collapse-item name="headerWidgets">
+			<!-- 3. Status Widgets Section -->
+			<el-collapse-item name="statusWidgets">
 				<template #title>
 					<div class="flex items-center gap-2">
 						<el-icon :size="20">
 							<icon icon="mdi:view-dashboard-variant" />
 						</el-icon>
-						<span class="font-medium">{{ t('spacesModule.edit.sections.headerWidgets.title') }}</span>
+						<span class="font-medium">{{ t('spacesModule.edit.sections.statusWidgets.title') }}</span>
 					</div>
 				</template>
 
 				<div class="px-2">
 					<el-alert
-						:title="t('spacesModule.edit.sections.headerWidgets.hint')"
+						:title="t('spacesModule.edit.sections.statusWidgets.hint')"
 						type="info"
 						:closable="false"
 						show-icon
@@ -171,7 +171,7 @@
 						<div class="flex items-center justify-between mb-3">
 							<div class="flex items-center gap-2">
 								<icon icon="mdi:flash-outline" class="text-lg" />
-								<span class="font-medium">{{ t('spacesModule.fields.spaces.headerWidgets.energy.title') }}</span>
+								<span class="font-medium">{{ t('spacesModule.fields.spaces.statusWidgets.energy.title') }}</span>
 							</div>
 							<el-switch
 								:model-value="isEnergyWidgetEnabled"
@@ -180,7 +180,7 @@
 						</div>
 
 						<template v-if="isEnergyWidgetEnabled">
-							<el-form-item :label="t('spacesModule.fields.spaces.headerWidgets.energy.range.title')">
+							<el-form-item :label="t('spacesModule.fields.spaces.statusWidgets.energy.range.title')">
 								<el-segmented
 									v-model="energyWidgetRange"
 									:options="energyRangeOptions"
@@ -190,7 +190,7 @@
 
 							<el-form-item label-position="left">
 								<template #label>
-									{{ t('spacesModule.fields.spaces.headerWidgets.energy.showProduction.title') }}
+									{{ t('spacesModule.fields.spaces.statusWidgets.energy.showProduction.title') }}
 								</template>
 								<el-switch v-model="energyWidgetShowProduction" />
 							</el-form-item>
@@ -291,8 +291,8 @@ import {
 	ENERGY_WIDGET_DEFAULTS,
 	EnergyWidgetRange,
 	FormResult,
-	HeaderWidgetType,
-	type IHeaderWidget,
+	StatusWidgetType,
+	type IStatusWidget,
 	isValidCategoryForType,
 	type SpaceCategory,
 	SpaceType,
@@ -353,18 +353,18 @@ const availableZones = computed(() =>
 	zoneSpaces.value.filter((s) => !props.space || s.id !== props.space.id)
 );
 
-// --- Header Widgets: Energy ---
+// --- Status Widgets: Energy ---
 
-const getEnergyWidget = (): IHeaderWidget | undefined => {
-	return model.headerWidgets?.find((w: IHeaderWidget) => w.type === HeaderWidgetType.ENERGY);
+const getEnergyWidget = (): IStatusWidget | undefined => {
+	return model.statusWidgets?.find((w: IStatusWidget) => w.type === StatusWidgetType.ENERGY);
 };
 
 const isEnergyWidgetEnabled = computed(() => !!getEnergyWidget());
 
 const energyRangeOptions = computed(() => [
-	{ label: t('spacesModule.fields.spaces.headerWidgets.energy.range.options.today'), value: EnergyWidgetRange.TODAY },
-	{ label: t('spacesModule.fields.spaces.headerWidgets.energy.range.options.week'), value: EnergyWidgetRange.WEEK },
-	{ label: t('spacesModule.fields.spaces.headerWidgets.energy.range.options.month'), value: EnergyWidgetRange.MONTH },
+	{ label: t('spacesModule.fields.spaces.statusWidgets.energy.range.options.today'), value: EnergyWidgetRange.TODAY },
+	{ label: t('spacesModule.fields.spaces.statusWidgets.energy.range.options.week'), value: EnergyWidgetRange.WEEK },
+	{ label: t('spacesModule.fields.spaces.statusWidgets.energy.range.options.month'), value: EnergyWidgetRange.MONTH },
 ]);
 
 const energyWidgetRange = computed({
@@ -395,23 +395,23 @@ const energyWidgetShowProduction = computed({
 
 const onEnergyWidgetToggle = (enabled: boolean | string | number): void => {
 	if (enabled) {
-		const widgets = model.headerWidgets ?? [];
+		const widgets = model.statusWidgets ?? [];
 		// Prevent duplicate energy widgets
-		if (widgets.some((w: IHeaderWidget) => w.type === HeaderWidgetType.ENERGY)) {
+		if (widgets.some((w: IStatusWidget) => w.type === StatusWidgetType.ENERGY)) {
 			return;
 		}
 		widgets.push({
-			type: HeaderWidgetType.ENERGY,
+			type: StatusWidgetType.ENERGY,
 			order: widgets.length,
 			settings: {
 				range: ENERGY_WIDGET_DEFAULTS.range,
 				showProduction: ENERGY_WIDGET_DEFAULTS.showProduction,
 			},
 		});
-		model.headerWidgets = widgets;
+		model.statusWidgets = widgets;
 	} else {
-		model.headerWidgets = (model.headerWidgets ?? []).filter(
-			(w: IHeaderWidget) => w.type !== HeaderWidgetType.ENERGY
+		model.statusWidgets = (model.statusWidgets ?? []).filter(
+			(w: IStatusWidget) => w.type !== StatusWidgetType.ENERGY
 		);
 	}
 };

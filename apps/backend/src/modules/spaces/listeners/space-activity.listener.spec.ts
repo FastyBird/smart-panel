@@ -25,7 +25,7 @@ describe('SpaceActivityListener', () => {
 		icon: 'mdi:sofa',
 		displayOrder: 0,
 		suggestionsEnabled: true,
-		headerWidgets: null,
+		statusWidgets: null,
 		lastActivityAt: null,
 		parentId: null,
 		parent: null,

@@ -55,7 +55,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 	// Room overview model (built from pure function)
 	RoomOverviewModel? _model;
 
-	// Energy widget settings from header_widgets
+	// Energy widget settings from status_widgets
 	bool _showEnergyPill = false;
 	bool _energyShowProduction = true;
 
@@ -194,7 +194,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 			// Fetch live device property values (temperature, lights on, humidity, etc.)
 			await _fetchLiveDeviceData();
 
-			// Read energy widget settings from room header_widgets
+			// Read energy widget settings from room status_widgets
 			_applyEnergyWidgetSettings();
 
 			if (!mounted) return;
@@ -225,15 +225,15 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 		}
 	}
 
-	/// Reads energy widget settings from the room's header_widgets config.
+	/// Reads energy widget settings from the room's status_widgets config.
 	///
 	/// The energy pill is hidden by default and only shown when the space
-	/// has an energy entry in its [headerWidgets] list.
+	/// has an energy entry in its [statusWidgets] list.
 	void _applyEnergyWidgetSettings() {
 		final room = _spacesService?.getSpace(_roomId);
 		if (room == null) return;
 
-		final energyWidget = room.headerWidgets
+		final energyWidget = room.statusWidgets
 				?.where((w) => w.type == 'energy')
 				.firstOrNull;
 
