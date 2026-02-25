@@ -7,29 +7,58 @@ import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/energy/models/energy_summary.dart';
 import 'package:fastybird_smart_panel/modules/energy/repositories/energy_repository.dart';
+import 'package:fastybird_smart_panel/modules/energy/services/energy_service.dart';
 
-/// Compact energy pill showing today's consumption (and production if available).
+/// Compact energy pill showing consumption (and optionally production).
 ///
-/// Renders as a pill-shaped badge matching the security screen badge style.
-/// Color adapts based on production-to-consumption ratio:
-/// - No production data → info (blue)
-/// - Production >= consumption → success (green)
-/// - Production covers 50-99% → info (blue)
-/// - Production covers < 50% → warning (orange)
+/// Fetches data for the given [spaceId] and [range] on mount and whenever
+/// those parameters change. Use `spaceId: 'home'` for whole-installation
+/// data (entry/master overviews) and a room ID for room-specific data.
 ///
 /// Returns [SizedBox.shrink] when energy is not supported or not yet checked.
-/// Displays "\u2014" on error or when data is unavailable.
-class EnergySummaryPill extends StatelessWidget {
+class EnergySummaryPill extends StatefulWidget {
+	final String spaceId;
+	final EnergyRange range;
 	final bool showProduction;
 
 	const EnergySummaryPill({
 		super.key,
+		this.spaceId = 'home',
+		this.range = EnergyRange.today,
 		this.showProduction = true,
 	});
 
+	@override
+	State<EnergySummaryPill> createState() => _EnergySummaryPillState();
+}
+
+class _EnergySummaryPillState extends State<EnergySummaryPill> {
+	@override
+	void initState() {
+		super.initState();
+		_fetchData();
+	}
+
+	@override
+	void didUpdateWidget(EnergySummaryPill oldWidget) {
+		super.didUpdateWidget(oldWidget);
+
+		if (oldWidget.spaceId != widget.spaceId || oldWidget.range != widget.range) {
+			_fetchData();
+		}
+	}
+
+	void _fetchData() {
+		final repository = context.read<EnergyRepository>();
+
+		if (repository.isSupported) {
+			repository.refreshHeaderSummary(widget.spaceId, widget.range);
+		}
+	}
+
 	/// Determine pill color based on production/consumption ratio.
 	ThemeColors _resolveColor(EnergySummary? summary) {
-		if (summary == null || !showProduction || !summary.hasProduction) {
+		if (summary == null || !widget.showProduction || !summary.hasProduction) {
 			return ThemeColors.info;
 		}
 
@@ -92,7 +121,7 @@ class EnergySummaryPill extends StatelessWidget {
 									letterSpacing: 0.3,
 								),
 							),
-							if (showProduction && summary != null && summary.hasProduction) ...[
+							if (widget.showProduction && summary != null && summary.hasProduction) ...[
 								Container(
 									width: AppSpacings.scale(1),
 									height: AppSpacings.scale(12),

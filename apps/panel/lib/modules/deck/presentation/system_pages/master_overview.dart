@@ -371,7 +371,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
       if (_alertsCount > 0) _buildAlertsBadge(context),
       if (locator.isRegistered<EnergyRepository>() &&
           locator<EnergyRepository>().isSupported)
-        const EnergySummaryPill(),
+        const EnergySummaryPill(spaceId: 'home'),
     ];
   }
 

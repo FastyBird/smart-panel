@@ -291,7 +291,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
       if (_alarmsCount > 0) _buildAlarmBadge(context),
       if (locator.isRegistered<EnergyRepository>() &&
           locator<EnergyRepository>().isSupported)
-        const EnergySummaryPill(),
+        const EnergySummaryPill(spaceId: 'home'),
     ];
   }
 

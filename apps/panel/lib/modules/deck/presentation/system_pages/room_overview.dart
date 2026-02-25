@@ -10,7 +10,6 @@ import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
 import 'package:fastybird_smart_panel/modules/devices/export.dart';
 import 'package:fastybird_smart_panel/modules/energy/presentation/widgets/energy_summary_pill.dart';
-import 'package:fastybird_smart_panel/modules/energy/repositories/energy_repository.dart';
 import 'package:fastybird_smart_panel/modules/energy/services/energy_service.dart';
 import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
 import 'package:fastybird_smart_panel/modules/scenes/export.dart';
@@ -58,6 +57,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 	// Energy widget settings from status_widgets
 	bool _showEnergyPill = false;
 	bool _energyShowProduction = true;
+	EnergyRange _energyRange = EnergyRange.today;
 
 	// Additional live data (not in model)
 	int _lightsOnCount = 0;
@@ -246,18 +246,9 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 		_energyShowProduction = energyWidget.settings['show_production'] as bool? ?? true;
 
 		final rangeStr = energyWidget.settings['range'] as String?;
-		final range = rangeStr != null
-				? EnergyRange.values.where((r) => r.value == rangeStr).firstOrNull
-				: null;
-
-		try {
-			if (locator.isRegistered<EnergyRepository>()) {
-				locator<EnergyRepository>().refreshHeaderSummary(
-					'home',
-					range ?? EnergyRange.today,
-				);
-			}
-		} catch (_) {}
+		_energyRange = rangeStr != null
+				? EnergyRange.values.where((r) => r.value == rangeStr).firstOrNull ?? EnergyRange.today
+				: EnergyRange.today;
 	}
 
 	/// Fetches live device property values for all domains.
@@ -838,7 +829,13 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 						child: _buildSensorPill(context, isDark, model.sensorReadings[i]),
 					);
 				}
-				return Center(child: EnergySummaryPill(showProduction: _energyShowProduction));
+				return Center(
+					child: EnergySummaryPill(
+						spaceId: _roomId,
+						range: _energyRange,
+						showProduction: _energyShowProduction,
+					),
+				);
 			},
 		);
 	}
