@@ -413,9 +413,6 @@ const onEnergyWidgetToggle = (enabled: boolean | string | number): void => {
 		model.headerWidgets = (model.headerWidgets ?? []).filter(
 			(w: IHeaderWidget) => w.type !== HeaderWidgetType.ENERGY
 		);
-		if (model.headerWidgets.length === 0) {
-			model.headerWidgets = null;
-		}
 	}
 };
 

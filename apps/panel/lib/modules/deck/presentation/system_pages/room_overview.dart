@@ -56,6 +56,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 	RoomOverviewModel? _model;
 
 	// Energy widget settings from header_widgets
+	bool _showEnergyPill = false;
 	bool _energyShowProduction = true;
 
 	// Additional live data (not in model)
@@ -125,6 +126,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 	Future<void> _refreshLiveData() async {
 		await _fetchLiveDeviceData();
 		if (mounted) {
+			_applyEnergyWidgetSettings();
 			_rebuildModel();
 		}
 	}
@@ -223,35 +225,39 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 		}
 	}
 
-	/// Reads energy widget settings from the room's header_widgets config
-	/// and refreshes the header summary if a non-default range is configured.
+	/// Reads energy widget settings from the room's header_widgets config.
+	///
+	/// The energy pill is hidden by default and only shown when the space
+	/// has an energy entry in its [headerWidgets] list.
 	void _applyEnergyWidgetSettings() {
 		final room = _spacesService?.getSpace(_roomId);
 		if (room == null) return;
 
-		final headerWidgets = room.headerWidgets;
-		if (headerWidgets == null) return;
+		final energyWidget = room.headerWidgets
+				?.where((w) => w.type == 'energy')
+				.firstOrNull;
 
-		for (final widget in headerWidgets) {
-			if (widget.type == 'energy') {
-				_energyShowProduction = widget.settings['show_production'] as bool? ?? true;
-
-				final rangeStr = widget.settings['range'] as String?;
-				if (rangeStr != null) {
-					final range = EnergyRange.values.where((r) => r.value == rangeStr).firstOrNull;
-
-					if (range != null && range != EnergyRange.today) {
-						try {
-							if (locator.isRegistered<EnergyRepository>()) {
-								locator<EnergyRepository>().refreshHeaderSummary('home', range);
-							}
-						} catch (_) {}
-					}
-				}
-
-				break;
-			}
+		if (energyWidget == null) {
+			_showEnergyPill = false;
+			return;
 		}
+
+		_showEnergyPill = true;
+		_energyShowProduction = energyWidget.settings['show_production'] as bool? ?? true;
+
+		final rangeStr = energyWidget.settings['range'] as String?;
+		final range = rangeStr != null
+				? EnergyRange.values.where((r) => r.value == rangeStr).firstOrNull
+				: null;
+
+		try {
+			if (locator.isRegistered<EnergyRepository>()) {
+				locator<EnergyRepository>().refreshHeaderSummary(
+					'home',
+					range ?? EnergyRange.today,
+				);
+			}
+		} catch (_) {}
 	}
 
 	/// Fetches live device property values for all domains.
@@ -819,7 +825,8 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 		bool isDark,
 		RoomOverviewModel model,
 	) {
-		final totalCount = model.sensorReadings.length + 1; // +1 for energy pill
+		final energySlot = _showEnergyPill ? 1 : 0;
+		final totalCount = model.sensorReadings.length + energySlot;
 
 		return HorizontalScrollWithGradient(
 			height: AppSpacings.scale(22),
