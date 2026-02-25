@@ -260,7 +260,52 @@
 				</div>
 			</el-collapse-item>
 
-			<!-- 4. Unit Overrides Section -->
+			<!-- 4. Weather Location Section -->
+			<el-collapse-item name="weather">
+				<template #title>
+					<div class="flex items-center gap-2">
+						<el-icon :size="20">
+							<icon icon="mdi:weather-partly-cloudy" />
+						</el-icon>
+						<span class="font-medium">{{ t('displaysModule.edit.sections.weather.title') }}</span>
+					</div>
+				</template>
+
+				<div class="px-2">
+					<el-alert
+						:title="t('displaysModule.edit.sections.weather.description')"
+						type="info"
+						:closable="false"
+						show-icon
+						class="mb-4!"
+					/>
+
+					<el-form-item
+						:label="t('displaysModule.fields.displays.weatherLocationId.title')"
+						:prop="['weatherLocationId']"
+					>
+						<el-select
+							v-model="model.weatherLocationId"
+							:placeholder="t('displaysModule.fields.displays.weatherLocationId.placeholder')"
+							name="weatherLocationId"
+							clearable
+							filterable
+						>
+							<el-option
+								v-for="location in weatherLocations"
+								:key="location.id"
+								:value="location.id"
+								:label="location.name"
+							/>
+						</el-select>
+						<div class="text-gray-500 text-sm mt-1">
+							{{ t('displaysModule.fields.displays.weatherLocationId.description') }}
+						</div>
+					</el-form-item>
+				</div>
+			</el-collapse-item>
+
+			<!-- 5. Unit Overrides Section -->
 			<el-collapse-item name="units">
 				<template #title>
 					<div class="flex items-center gap-2">
@@ -594,6 +639,7 @@ import { Icon } from '@iconify/vue';
 
 import { usePages } from '../../dashboard/composables/composables';
 import { useSpaces } from '../../spaces/composables';
+import { useLocations as useWeatherLocations } from '../../weather/composables/composables';
 import { useDisplayEditForm } from '../composables/useDisplayEditForm';
 import { FormResult, type FormResultType } from '../displays.constants';
 import type { IDisplayEditForm } from '../composables/types';
@@ -621,6 +667,7 @@ const { t } = useI18n();
 
 const { pages, fetchPages } = usePages();
 const { roomSpaces, fetchSpaces, firstLoadFinished } = useSpaces();
+const { locations: weatherLocations, fetchLocations: fetchWeatherLocations } = useWeatherLocations();
 
 // Filter pages to only show those visible to the current display
 // Pages with null/undefined/empty displays array are visible to all displays
@@ -644,6 +691,9 @@ onMounted(async () => {
 			firstLoadFinished.value ? Promise.resolve() : fetchSpaces(),
 			fetchPages().catch(() => {
 				// Pages fetch may fail if already fetching, that's OK
+			}),
+			fetchWeatherLocations().catch(() => {
+				// Weather locations fetch may fail, that's OK
 			}),
 		]);
 	} catch {

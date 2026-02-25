@@ -2,6 +2,8 @@ import 'package:fastybird_smart_panel/api/api_client.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/modules/config/module.dart';
+import 'package:fastybird_smart_panel/modules/config/repositories/module_config_repository.dart';
+import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
 import 'package:fastybird_smart_panel/modules/weather/models/weather.dart';
 import 'package:fastybird_smart_panel/modules/weather/constants.dart';
 import 'package:fastybird_smart_panel/modules/weather/repositories/current.dart';
@@ -18,8 +20,16 @@ class WeatherModuleService {
   late LocationsRepository _locationsRepository;
 
   late WeatherService _weatherService;
+  late ModuleConfigRepository<WeatherConfigModel> _weatherConfigRepo;
 
   bool _isLoading = true;
+
+  /// Track display listener for cleanup
+  VoidCallback? _displayListener;
+  /// Track weather config listener for cleanup
+  VoidCallback? _weatherConfigListener;
+  /// Track last known resolved location ID to detect changes
+  String? _lastResolvedLocationId;
 
   WeatherModuleService({
     required ApiClient apiClient,
@@ -52,25 +62,37 @@ class WeatherModuleService {
     );
 
     // Get weather config repository from config module
-    final weatherConfigRepo = configModule.getModuleRepository<WeatherConfigModel>('weather-module');
+    _weatherConfigRepo = configModule.getModuleRepository<WeatherConfigModel>('weather-module');
 
-    // Set up primary location provider so locations repository can use it for auto-selection
-    _locationsRepository.setPrimaryLocationIdProvider(
-      () => weatherConfigRepo.data?.primaryLocationId,
-    );
+    // Resolve weather location: display override > weather config primary
+    String? resolveLocationId() {
+      try {
+        final displayRepo = locator<DisplayRepository>();
+        final displayOverride = displayRepo.weatherLocationId;
+        if (displayOverride != null) return displayOverride;
+      } catch (_) {
+        // Display repository not yet available
+      }
+      return _weatherConfigRepo.data?.primaryLocationId;
+    }
+
+    // Set up primary location provider so repositories can filter by primary location
+    _locationsRepository.setPrimaryLocationIdProvider(resolveLocationId);
+    _currentWeatherRepository.setPrimaryLocationIdProvider(resolveLocationId);
+    _forecastWeatherRepository.setPrimaryLocationIdProvider(resolveLocationId);
 
     // Create weather service with config from config module
     _weatherService = WeatherService(
       currentDayRepository: _currentWeatherRepository,
       forecastRepository: _forecastWeatherRepository,
       locationsRepository: _locationsRepository,
-      configurationRepository: weatherConfigRepo,
+      configurationRepository: _weatherConfigRepo,
     );
 
     locator.registerSingleton(_weatherService);
 
     // Fetch configuration (will be done by config module, but ensure it's loaded)
-    await weatherConfigRepo.fetchConfiguration();
+    await _weatherConfigRepo.fetchConfiguration();
 
     // Fetch locations first, then weather data
     await _initializeLocations();
@@ -79,6 +101,29 @@ class WeatherModuleService {
     await _weatherService.initialize();
 
     _isLoading = false;
+
+    // Track the initial resolved location ID
+    _lastResolvedLocationId = resolveLocationId();
+
+    // Listen for display weatherLocationId changes to re-resolve primary weather data
+    try {
+      final displayRepo = locator<DisplayRepository>();
+
+      _displayListener = () {
+        _checkAndReresolvePrimary(resolveLocationId);
+      };
+
+      displayRepo.addListener(_displayListener!);
+    } catch (_) {
+      // Display repository not available
+    }
+
+    // Listen for weather config primaryLocationId changes to re-resolve primary weather data
+    _weatherConfigListener = () {
+      _checkAndReresolvePrimary(resolveLocationId);
+    };
+
+    _weatherConfigRepo.addListener(_weatherConfigListener!);
 
     _socketService.registerEventHandler(
       WeatherModuleConstants.weatherInfoEvent,
@@ -139,7 +184,45 @@ class WeatherModuleService {
 
   LocationsRepository get locationsRepository => _locationsRepository;
 
+  /// Check if the resolved location ID changed and re-resolve if needed
+  void _checkAndReresolvePrimary(String? Function() resolveLocationId) {
+    final newResolvedId = resolveLocationId();
+
+    if (newResolvedId != _lastResolvedLocationId) {
+      _lastResolvedLocationId = newResolvedId;
+
+      if (kDebugMode) {
+        debugPrint(
+          '[WEATHER MODULE] Resolved weather location changed to: $newResolvedId — re-resolving primary',
+        );
+      }
+
+      _currentWeatherRepository.reresolvePrimary();
+      _forecastWeatherRepository.reresolvePrimary();
+    }
+  }
+
   void dispose() {
+    // Remove display listener
+    if (_displayListener != null) {
+      try {
+        locator<DisplayRepository>().removeListener(_displayListener!);
+      } catch (_) {
+        // Display repository may already be disposed
+      }
+      _displayListener = null;
+    }
+
+    // Remove weather config listener
+    if (_weatherConfigListener != null) {
+      try {
+        _weatherConfigRepo.removeListener(_weatherConfigListener!);
+      } catch (_) {
+        // Config repository may already be disposed
+      }
+      _weatherConfigListener = null;
+    }
+
     _socketService.unregisterEventHandler(
       WeatherModuleConstants.weatherInfoEvent,
       _socketEventHandler,

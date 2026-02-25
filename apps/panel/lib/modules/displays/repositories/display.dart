@@ -123,6 +123,9 @@ class DisplayRepository extends ChangeNotifier {
 
   DistanceUnit? get distanceUnit => _display?.distanceUnit;
 
+  // Weather location override (null = use primary from weather config)
+  String? get weatherLocationId => _display?.weatherLocationId;
+
   /// Set display data from registration response
   /// Pass null to clear the display model
   void setDisplay(DisplayModel? display) {
@@ -278,6 +281,7 @@ class DisplayRepository extends ChangeNotifier {
           distanceUnit: data.distanceUnit?.json != null
               ? DistanceUnit.fromValue(data.distanceUnit!.json!)
               : null,
+          weatherLocationId: data.weatherLocationId,
           createdAt: data.createdAt,
           updatedAt: data.updatedAt,
         );
@@ -365,6 +369,7 @@ class DisplayRepository extends ChangeNotifier {
           distanceUnit: data.distanceUnit?.json != null
               ? DistanceUnit.fromValue(data.distanceUnit!.json!)
               : null,
+          weatherLocationId: data.weatherLocationId,
           createdAt: data.createdAt,
           updatedAt: data.updatedAt,
         );
@@ -514,6 +519,7 @@ class DisplayRepository extends ChangeNotifier {
     Object? pressureUnit = _unset,
     Object? precipitationUnit = _unset,
     Object? distanceUnit = _unset,
+    Object? weatherLocationId = _unset,
   }) {
     return DisplaysModuleUpdateDisplay(
       version: _display!.version,
@@ -567,6 +573,9 @@ class DisplayRepository extends ChangeNotifier {
             ? _display!.distanceUnit
             : distanceUnit as DistanceUnit?,
       ),
+      weatherLocationId: identical(weatherLocationId, _unset)
+          ? _display!.weatherLocationId
+          : weatherLocationId as String?,
     );
   }
 
@@ -911,6 +920,32 @@ class DisplayRepository extends ChangeNotifier {
     } catch (e) {
       if (kDebugMode) {
         debugPrint('[DISPLAYS MODULE] Failed to update distance unit: $e');
+      }
+      return false;
+    }
+  }
+
+  /// Update weather location ID override (null = use primary from weather config)
+  Future<bool> setWeatherLocationId(String? locationId) async {
+    if (_display == null) return false;
+
+    try {
+      final response = await _apiClient.displaysModule.updateDisplaysModuleDisplayMe(
+        body: DisplaysModuleReqUpdateDisplay(
+          data: _buildUpdateData(weatherLocationId: locationId),
+        ),
+      );
+
+      if (response.response.statusCode == 200) {
+        _display = _display!.copyWith(weatherLocationId: locationId);
+        notifyListeners();
+        return true;
+      }
+
+      return false;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[DISPLAYS MODULE] Failed to update weather location: $e');
       }
       return false;
     }

@@ -384,6 +384,23 @@ export class UpdateDisplayDto {
 	@ValidateIf((_, value) => value !== null)
 	distance_unit?: DistanceUnitType | null;
 
+	// === Weather Location Override (null = use system default) ===
+
+	@ApiPropertyOptional({
+		name: 'weather_location_id',
+		description: 'Weather location ID override (null = use primary location from weather config)',
+		type: 'string',
+		format: 'uuid',
+		nullable: true,
+	})
+	@Expose()
+	@IsOptional()
+	@IsUUID('4', {
+		message: '[{"field":"weather_location_id","reason":"Weather location ID must be a valid UUID (version 4)."}]',
+	})
+	@ValidateIf((_, value) => value !== null)
+	weather_location_id?: string | null;
+
 	@ApiPropertyOptional({
 		name: 'current_ip_address',
 		description: 'Current IP address from which the display is connected via WebSocket',

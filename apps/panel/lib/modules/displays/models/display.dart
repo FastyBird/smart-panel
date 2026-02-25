@@ -37,6 +37,8 @@ class DisplayModel {
   final PressureUnit? pressureUnit;
   final PrecipitationUnit? precipitationUnit;
   final DistanceUnit? distanceUnit;
+  // Weather location override (null = use primary from weather config)
+  final String? weatherLocationId;
   final DateTime createdAt;
   final DateTime? updatedAt;
 
@@ -72,6 +74,7 @@ class DisplayModel {
     this.pressureUnit,
     this.precipitationUnit,
     this.distanceUnit,
+    this.weatherLocationId,
     required this.createdAt,
     this.updatedAt,
   });
@@ -119,6 +122,7 @@ class DisplayModel {
       distanceUnit: json['distance_unit'] != null
           ? DistanceUnit.fromValue(json['distance_unit'] as String)
           : null,
+      weatherLocationId: json['weather_location_id'] as String?,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: json['updated_at'] != null
           ? DateTime.parse(json['updated_at'] as String)
@@ -183,6 +187,7 @@ class DisplayModel {
     Object? pressureUnit = _unset,
     Object? precipitationUnit = _unset,
     Object? distanceUnit = _unset,
+    Object? weatherLocationId = _unset,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -228,6 +233,9 @@ class DisplayModel {
       distanceUnit: identical(distanceUnit, _unset)
           ? this.distanceUnit
           : distanceUnit as DistanceUnit?,
+      weatherLocationId: identical(weatherLocationId, _unset)
+          ? this.weatherLocationId
+          : weatherLocationId as String?,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -267,7 +275,8 @@ class DisplayModel {
         other.windSpeedUnit == windSpeedUnit &&
         other.pressureUnit == pressureUnit &&
         other.precipitationUnit == precipitationUnit &&
-        other.distanceUnit == distanceUnit;
+        other.distanceUnit == distanceUnit &&
+        other.weatherLocationId == weatherLocationId;
   }
 
   @override
@@ -304,6 +313,7 @@ class DisplayModel {
       pressureUnit,
       precipitationUnit,
       distanceUnit,
+      weatherLocationId,
     ]);
   }
 }

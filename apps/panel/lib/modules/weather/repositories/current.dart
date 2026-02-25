@@ -9,7 +9,15 @@ class CurrentWeatherRepository extends Repository<CurrentDayModel> {
   /// Per-location weather data storage
   final Map<String, CurrentDayModel> _locationData = {};
 
+  /// Provider for the primary location ID from config.
+  String? Function()? _primaryLocationIdProvider;
+
   CurrentWeatherRepository({required super.apiClient});
+
+  /// Set a function to provide the primary location ID.
+  void setPrimaryLocationIdProvider(String? Function() provider) {
+    _primaryLocationIdProvider = provider;
+  }
 
   /// Get weather data for a specific location
   CurrentDayModel? getByLocation(String locationId) {
@@ -37,38 +45,7 @@ class CurrentWeatherRepository extends Repository<CurrentDayModel> {
     try {
       CurrentDayModel newData = CurrentDayModel.fromJson(json);
 
-      bool changed = false;
-
-      // Store by location if locationId provided
-      if (locationId != null) {
-        final existingData = _locationData[locationId];
-        if (existingData != newData) {
-          if (kDebugMode) {
-            debugPrint(
-              '[WEATHER MODULE][DAY] Current day weather for location $locationId was successfully updated',
-            );
-          }
-
-          _locationData[locationId] = newData;
-          changed = true;
-        }
-      }
-
-      // Also update the primary/global data
-      if (data != newData) {
-        if (kDebugMode) {
-          debugPrint(
-            '[WEATHER MODULE][DAY] Current day weather was successfully updated',
-          );
-        }
-
-        data = newData;
-        changed = true;
-      }
-
-      if (changed) {
-        notifyListeners();
-      }
+      await _insertCurrentDayModel(newData, locationId: locationId);
     } catch (e) {
       if (kDebugMode) {
         debugPrint(
@@ -155,11 +132,14 @@ class CurrentWeatherRepository extends Repository<CurrentDayModel> {
       }
     }
 
-    // Also update the primary/global data
-    if (data != newData) {
+    // Update global data only for the primary location (or if no location specified)
+    final primaryId = _primaryLocationIdProvider?.call();
+    final isPrimary = locationId == null || locationId == primaryId || primaryId == null;
+
+    if (isPrimary && data != newData) {
       if (kDebugMode) {
         debugPrint(
-          '[WEATHER MODULE][DAY] Current day weather was successfully updated',
+          '[WEATHER MODULE][DAY] Current day weather was successfully updated (primary: $locationId)',
         );
       }
 
@@ -169,6 +149,35 @@ class CurrentWeatherRepository extends Repository<CurrentDayModel> {
 
     if (changed) {
       notifyListeners();
+    }
+  }
+
+  /// Re-resolve which location's data should be the global `data`.
+  /// Call this when the primary location ID changes (e.g., display override changed).
+  void reresolvePrimary() {
+    final primaryId = _primaryLocationIdProvider?.call();
+
+    if (primaryId != null && _locationData.containsKey(primaryId)) {
+      final primaryData = _locationData[primaryId]!;
+
+      if (data != primaryData) {
+        if (kDebugMode) {
+          debugPrint(
+            '[WEATHER MODULE][DAY] Re-resolved primary location to $primaryId',
+          );
+        }
+
+        data = primaryData;
+        notifyListeners();
+      }
+    } else if (primaryId == null && _locationData.isNotEmpty) {
+      // No primary set, use first available
+      final firstData = _locationData.values.first;
+
+      if (data != firstData) {
+        data = firstData;
+        notifyListeners();
+      }
     }
   }
 

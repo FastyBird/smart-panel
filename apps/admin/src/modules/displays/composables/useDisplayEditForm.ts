@@ -65,6 +65,8 @@ export const useDisplayEditForm = ({ display, messages }: IUseDisplayEditFormPro
 		pressureUnit: display.pressureUnit ?? '',
 		precipitationUnit: display.precipitationUnit ?? '',
 		distanceUnit: display.distanceUnit ?? '',
+		// Weather location override
+		weatherLocationId: display.weatherLocationId ?? null,
 	});
 
 	let initialModel: Reactive<IDisplayEditForm> = deepClone<Reactive<IDisplayEditForm>>(toRaw(model));
@@ -112,6 +114,7 @@ export const useDisplayEditForm = ({ display, messages }: IUseDisplayEditFormPro
 				pressureUnit: PressureUnit | null;
 				precipitationUnit: PrecipitationUnit | null;
 				distanceUnit: DistanceUnit | null;
+				weatherLocationId: string | null;
 			} = {
 				name: model.name || null,
 				role: model.role,
@@ -133,6 +136,7 @@ export const useDisplayEditForm = ({ display, messages }: IUseDisplayEditFormPro
 				pressureUnit: model.pressureUnit || null,
 				precipitationUnit: model.precipitationUnit || null,
 				distanceUnit: model.distanceUnit || null,
+				weatherLocationId: model.weatherLocationId || null,
 			};
 
 			// Only include audio settings if the display supports them

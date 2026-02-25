@@ -57,6 +57,8 @@ export const DisplaySchema = z.object({
 	pressureUnit: PressureUnitSchema.nullable().default(null),
 	precipitationUnit: PrecipitationUnitSchema.nullable().default(null),
 	distanceUnit: DistanceUnitSchema.nullable().default(null),
+	// Weather location override (null = use primary from weather config)
+	weatherLocationId: z.string().uuid().nullable().default(null),
 	registeredFromIp: z.string().nullable().default(null),
 	currentIpAddress: z.string().nullable().default(null),
 	online: z.boolean().default(false),
@@ -122,6 +124,8 @@ export const DisplaysSetActionPayloadSchema = z.object({
 		pressureUnit: PressureUnitSchema.nullable().optional(),
 		precipitationUnit: PrecipitationUnitSchema.nullable().optional(),
 		distanceUnit: DistanceUnitSchema.nullable().optional(),
+		// Weather location override
+		weatherLocationId: z.string().uuid().nullable().optional(),
 	}),
 });
 
@@ -177,6 +181,8 @@ export const DisplaysEditActionPayloadSchema = z.object({
 		pressureUnit: PressureUnitSchema.nullable().optional(),
 		precipitationUnit: PrecipitationUnitSchema.nullable().optional(),
 		distanceUnit: DistanceUnitSchema.nullable().optional(),
+		// Weather location override
+		weatherLocationId: z.string().uuid().nullable().optional(),
 	}),
 });
 
@@ -233,6 +239,8 @@ export const DisplayUpdateReqSchema = z.object({
 	pressure_unit: PressureUnitSchema.nullable().optional(),
 	precipitation_unit: PrecipitationUnitSchema.nullable().optional(),
 	distance_unit: DistanceUnitSchema.nullable().optional(),
+	// Weather location override
+	weather_location_id: z.string().uuid().nullable().optional(),
 });
 
 export const DisplayResSchema = z.object({
@@ -272,6 +280,8 @@ export const DisplayResSchema = z.object({
 	pressure_unit: PressureUnitSchema.nullable().optional().default(null),
 	precipitation_unit: PrecipitationUnitSchema.nullable().optional().default(null),
 	distance_unit: DistanceUnitSchema.nullable().optional().default(null),
+	// Weather location override
+	weather_location_id: z.string().uuid().nullable().optional().default(null),
 	registered_from_ip: z.string().nullable().optional().default(null),
 	current_ip_address: z.string().nullable().optional().default(null),
 	online: z.boolean().optional().default(false),
