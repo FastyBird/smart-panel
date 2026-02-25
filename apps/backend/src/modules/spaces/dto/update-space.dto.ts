@@ -18,6 +18,8 @@ import { ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 import { ALL_SPACE_CATEGORIES, SpaceCategory, SpaceType } from '../spaces.constants';
 import { IsValidSpaceCategory } from '../validators/space-category-constraint.validator';
 
+import { HeaderWidgetDto } from './header-widget.dto';
+
 @ApiSchema({ name: 'SpacesModuleUpdateSpace' })
 export class UpdateSpaceDto {
 	@ApiPropertyOptional({
@@ -147,7 +149,10 @@ export class UpdateSpaceDto {
 	@IsArray({
 		message: '[{"field":"header_widgets","reason":"Header widgets must be an array."}]',
 	})
-	header_widgets?: Record<string, unknown>[] | null;
+	@ValidateNested({ each: true })
+	@Type(() => HeaderWidgetDto)
+	@ValidateIf((_, value) => value !== null)
+	header_widgets?: HeaderWidgetDto[] | null;
 }
 
 @ApiSchema({ name: 'SpacesModuleReqUpdateSpace' })
