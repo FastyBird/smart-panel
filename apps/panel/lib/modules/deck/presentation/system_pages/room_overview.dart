@@ -773,7 +773,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 	Widget _buildSensorPill(BuildContext context, bool isDark, SensorReading reading) {
 		final colorFamily = ThemeColorFamily.get(
 			Theme.of(context).brightness,
-			ThemeColors.info,
+			reading.color,
 		);
 
 		return Container(

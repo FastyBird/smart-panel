@@ -1,6 +1,8 @@
 import 'package:fastybird_smart_panel/api/models/devices_module_device_category.dart';
 import 'package:fastybird_smart_panel/api/models/scenes_module_data_scene_category.dart';
 import 'package:fastybird_smart_panel/core/utils/number_format.dart';
+import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_colors.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/room_domain_classifier.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/domain_type.dart';
 import 'package:fastybird_smart_panel/modules/displays/models/display.dart';
@@ -111,11 +113,13 @@ class SensorReading {
   final IconData icon;
   final String label;
   final String value;
+  final ThemeColors color;
 
   const SensorReading({
     required this.icon,
     required this.label,
     required this.value,
+    this.color = ThemeColors.info,
   });
 }
 
@@ -477,6 +481,7 @@ List<SensorReading> _buildSensorReadings(RoomOverviewBuildInput input) {
       icon: MdiIcons.thermometer,
       label: 'Temp',
       value: '${fmt.formatDecimal(input.temperature!, decimalPlaces: 1)}\u00B0',
+      color: SensorColors.temperature,
     ));
   }
 
@@ -485,6 +490,7 @@ List<SensorReading> _buildSensorReadings(RoomOverviewBuildInput input) {
       icon: MdiIcons.waterPercent,
       label: 'Humidity',
       value: '${fmt.formatDecimal(input.humidity!, decimalPlaces: 0)}%',
+      color: SensorColors.humidity,
     ));
   }
 
