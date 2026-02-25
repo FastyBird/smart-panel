@@ -192,11 +192,11 @@ class SkyContentOverlay extends StatelessWidget {
 						),
 						decoration: BoxDecoration(
 							color: isTriggering
-									? AppColors.white
-									: Colors.white.withValues(alpha: isNight ? 0.06 : 0.25),
+									? primaryTextColor
+									: secondaryTextColor.withValues(alpha: 0.15),
 							borderRadius: BorderRadius.circular(AppBorderRadius.base),
-							border: isNight && !isTriggering
-									? Border.all(color: Colors.white.withValues(alpha: 0.08))
+							border: !isTriggering
+									? Border.all(color: secondaryTextColor.withValues(alpha: 0.12))
 									: null,
 						),
 						child: isTriggering
@@ -215,16 +215,14 @@ class SkyContentOverlay extends StatelessWidget {
 											Icon(
 												scene.icon,
 												size: AppSpacings.scale(12),
-												color: Colors.white.withValues(alpha: isNight ? 0.5 : 0.9),
+												color: primaryTextColor,
 											),
 											Text(
 												scene.name,
 												style: TextStyle(
 													fontSize: AppFontSize.extraSmall,
 													fontWeight: FontWeight.w600,
-													color: Colors.white.withValues(
-														alpha: isNight ? 0.5 : 0.9,
-													),
+													color: primaryTextColor,
 												),
 											),
 										],

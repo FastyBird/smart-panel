@@ -164,7 +164,7 @@ class _SkyPanelState extends State<SkyPanel> {
 							onSceneTap: widget.onSceneTap,
 						),
 					),
-				],
+					],
 			),
 		);
 	}
