@@ -20,11 +20,16 @@ import 'package:fastybird_smart_panel/modules/energy/repositories/energy_reposit
 /// Returns [SizedBox.shrink] when energy is not supported or not yet checked.
 /// Displays "\u2014" on error or when data is unavailable.
 class EnergySummaryPill extends StatelessWidget {
-	const EnergySummaryPill({super.key});
+	final bool showProduction;
+
+	const EnergySummaryPill({
+		super.key,
+		this.showProduction = true,
+	});
 
 	/// Determine pill color based on production/consumption ratio.
 	ThemeColors _resolveColor(EnergySummary? summary) {
-		if (summary == null || !summary.hasProduction) {
+		if (summary == null || !showProduction || !summary.hasProduction) {
 			return ThemeColors.info;
 		}
 
@@ -87,7 +92,7 @@ class EnergySummaryPill extends StatelessWidget {
 									letterSpacing: 0.3,
 								),
 							),
-							if (summary != null && summary.hasProduction) ...[
+							if (showProduction && summary != null && summary.hasProduction) ...[
 								Container(
 									width: AppSpacings.scale(1),
 									height: AppSpacings.scale(12),

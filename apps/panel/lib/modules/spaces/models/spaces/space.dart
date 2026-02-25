@@ -2,6 +2,7 @@ import 'package:fastybird_smart_panel/api/models/spaces_module_data_space_catego
 import 'package:fastybird_smart_panel/api/models/spaces_module_data_space_type.dart';
 import 'package:fastybird_smart_panel/core/utils/uuid.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/model.dart';
+import 'package:fastybird_smart_panel/modules/spaces/models/spaces/header_widget.dart';
 
 class SpaceModel extends Model {
   final SpacesModuleDataSpaceType _type;
@@ -14,6 +15,7 @@ class SpaceModel extends Model {
   final String? _icon;
   final DateTime? _lastActivityAt;
   final List<String> _children;
+  final List<HeaderWidget>? _headerWidgets;
 
   SpaceModel({
     required super.id,
@@ -27,6 +29,7 @@ class SpaceModel extends Model {
     String? icon,
     DateTime? lastActivityAt,
     List<String> children = const [],
+    List<HeaderWidget>? headerWidgets,
     super.createdAt,
     super.updatedAt,
   })  : _type = type,
@@ -38,7 +41,8 @@ class SpaceModel extends Model {
         _suggestionsEnabled = suggestionsEnabled,
         _icon = icon,
         _lastActivityAt = lastActivityAt,
-        _children = UuidUtils.validateUuidList(children);
+        _children = UuidUtils.validateUuidList(children),
+        _headerWidgets = headerWidgets;
 
   SpacesModuleDataSpaceType get type => _type;
 
@@ -60,6 +64,8 @@ class SpaceModel extends Model {
 
   List<String> get children => _children;
 
+  List<HeaderWidget>? get headerWidgets => _headerWidgets;
+
   bool get isRoom => _type == SpacesModuleDataSpaceType.room;
 
   bool get isZone => _type == SpacesModuleDataSpaceType.zone;
@@ -75,6 +81,15 @@ class SpaceModel extends Model {
           childIds.add(child['id']);
         }
       }
+    }
+
+    List<HeaderWidget>? headerWidgets;
+
+    if (json['header_widgets'] is List && (json['header_widgets'] as List).isNotEmpty) {
+      headerWidgets = (json['header_widgets'] as List)
+          .whereType<Map<String, dynamic>>()
+          .map(HeaderWidget.fromJson)
+          .toList();
     }
 
     return SpaceModel(
@@ -93,6 +108,7 @@ class SpaceModel extends Model {
           ? DateTime.parse(json['last_activity_at'])
           : null,
       children: childIds,
+      headerWidgets: headerWidgets,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'])
           : null,

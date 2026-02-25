@@ -58,11 +58,11 @@ class EnergyRepository extends ChangeNotifier {
 	/// Returns true if the backend returns a valid response (even with zeros).
 	/// Returns false on 404, 501, or clear "not available" errors.
 	/// Caches the result to avoid repeated probing.
-	Future<bool> checkSupport(String spaceId) async {
+	Future<bool> checkSupport(String spaceId, {EnergyRange range = EnergyRange.today}) async {
 		if (_supportChecked) return _isSupported;
 
 		try {
-			final summary = await _service.fetchSummary(spaceId, EnergyRange.today);
+			final summary = await _service.fetchSummary(spaceId, range);
 			_isSupported = summary != null;
 			_headerSummary = summary;
 		} on DioException {
@@ -77,6 +77,23 @@ class EnergyRepository extends ChangeNotifier {
 		_supportChecked = true;
 		notifyListeners();
 		return _isSupported;
+	}
+
+	/// Re-fetches the header summary for a specific range.
+	///
+	/// Unlike [checkSupport], this always fetches fresh data regardless of
+	/// whether support has already been checked.
+	Future<void> refreshHeaderSummary(String spaceId, EnergyRange range) async {
+		if (!_isSupported) return;
+
+		try {
+			_headerSummary = await _service.fetchSummary(spaceId, range);
+			notifyListeners();
+		} catch (e) {
+			if (kDebugMode) {
+				debugPrint('[ENERGY REPOSITORY] Header summary refresh failed: $e');
+			}
+		}
 	}
 
 	// ---------------------------------------------------------------------------

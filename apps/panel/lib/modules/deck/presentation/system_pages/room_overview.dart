@@ -10,6 +10,8 @@ import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
 import 'package:fastybird_smart_panel/modules/devices/export.dart';
 import 'package:fastybird_smart_panel/modules/energy/presentation/widgets/energy_summary_pill.dart';
+import 'package:fastybird_smart_panel/modules/energy/repositories/energy_repository.dart';
+import 'package:fastybird_smart_panel/modules/energy/services/energy_service.dart';
 import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
 import 'package:fastybird_smart_panel/modules/scenes/export.dart';
 import 'package:fastybird_smart_panel/modules/spaces/export.dart';
@@ -52,6 +54,9 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 
 	// Room overview model (built from pure function)
 	RoomOverviewModel? _model;
+
+	// Energy widget settings from header_widgets
+	bool _energyShowProduction = true;
 
 	// Additional live data (not in model)
 	int _lightsOnCount = 0;
@@ -187,7 +192,9 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 			// Fetch live device property values (temperature, lights on, humidity, etc.)
 			await _fetchLiveDeviceData();
 
-	
+			// Read energy widget settings from room header_widgets
+			_applyEnergyWidgetSettings();
+
 			if (!mounted) return;
 
 			// Check display availability before building model
@@ -213,6 +220,37 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 				_isLoading = false;
 				_errorMessage = 'Failed to load room data';
 			});
+		}
+	}
+
+	/// Reads energy widget settings from the room's header_widgets config
+	/// and refreshes the header summary if a non-default range is configured.
+	void _applyEnergyWidgetSettings() {
+		final room = _spacesService?.getSpace(_roomId);
+		if (room == null) return;
+
+		final headerWidgets = room.headerWidgets;
+		if (headerWidgets == null) return;
+
+		for (final widget in headerWidgets) {
+			if (widget.type == 'energy') {
+				_energyShowProduction = widget.settings['show_production'] as bool? ?? true;
+
+				final rangeStr = widget.settings['range'] as String?;
+				if (rangeStr != null) {
+					final range = EnergyRange.values.where((r) => r.value == rangeStr).firstOrNull;
+
+					if (range != null && range != EnergyRange.today) {
+						try {
+							if (locator.isRegistered<EnergyRepository>()) {
+								locator<EnergyRepository>().refreshHeaderSummary('home', range);
+							}
+						} catch (_) {}
+					}
+				}
+
+				break;
+			}
 		}
 	}
 
@@ -793,7 +831,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 						child: _buildSensorPill(context, isDark, model.sensorReadings[i]),
 					);
 				}
-				return const Center(child: EnergySummaryPill());
+				return Center(child: EnergySummaryPill(showProduction: _energyShowProduction));
 			},
 		);
 	}
