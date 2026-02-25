@@ -10,6 +10,7 @@ import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/sky/sky_
 import 'package:fastybird_smart_panel/modules/deck/services/room_overview_model_builder.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/sky_condition.dart';
 import 'package:fastybird_smart_panel/modules/weather/service.dart';
+import 'package:fastybird_smart_panel/modules/weather/utils/openweather.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -49,6 +50,7 @@ class _SkyPanelState extends State<SkyPanel> {
 	SkyVisualConfig _config = SkyVisualConfig.defaultSky();
 	String? _temperature;
 	String? _weatherDescription;
+	IconData? _weatherIcon;
 
 	@override
 	void initState() {
@@ -109,6 +111,7 @@ class _SkyPanelState extends State<SkyPanel> {
 				_config = SkyVisualConfig.fromCondition(condition, timeOfDay);
 				_temperature = '$temp\u00B0';
 				_weatherDescription = currentDay.weatherModel.weather.description;
+				_weatherIcon = WeatherConditionMapper.getIcon(weatherCode, _config.isNight);
 			});
 		} else {
 			// Fallback: use time-based day/night with clear sky
@@ -120,6 +123,7 @@ class _SkyPanelState extends State<SkyPanel> {
 				_config = SkyVisualConfig.fromCondition(SkyCondition.clear, timeOfDay);
 				_temperature = null;
 				_weatherDescription = null;
+				_weatherIcon = null;
 			});
 		}
 	}
@@ -156,6 +160,7 @@ class _SkyPanelState extends State<SkyPanel> {
 							date: dateStr,
 							temperature: _temperature,
 							weatherDescription: _weatherDescription,
+							weatherIcon: _weatherIcon,
 							primaryTextColor: _config.primaryTextColor,
 							secondaryTextColor: _config.secondaryTextColor,
 							scenes: widget.isPortrait ? [] : widget.scenes,

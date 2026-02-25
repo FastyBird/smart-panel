@@ -2,6 +2,7 @@ import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/sky/sky_glass_card.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/room_overview_model_builder.dart';
 import 'package:flutter/material.dart';
+import 'package:weather_icons/weather_icons.dart';
 
 /// Text content overlay on the sky panel: clock, date,
 /// weather glass card, and scene pills (landscape only).
@@ -13,6 +14,7 @@ class SkyContentOverlay extends StatelessWidget {
 	final String date;
 	final String? temperature;
 	final String? weatherDescription;
+	final IconData? weatherIcon;
 	final Color primaryTextColor;
 	final Color secondaryTextColor;
 	final bool isCompact;
@@ -30,6 +32,7 @@ class SkyContentOverlay extends StatelessWidget {
 		required this.date,
 		this.temperature,
 		this.weatherDescription,
+		this.weatherIcon,
 		this.primaryTextColor = Colors.white,
 		this.secondaryTextColor = const Color(0xBFFFFFFF),
 		this.isCompact = false,
@@ -114,28 +117,35 @@ class SkyContentOverlay extends StatelessWidget {
 	Widget _buildWeatherCard() {
 		return SkyGlassCard(
 			isNight: isNight,
-			child: Row(
+			child: Column(
+				crossAxisAlignment: CrossAxisAlignment.start,
 				mainAxisSize: MainAxisSize.min,
 				children: [
-					Column(
-						crossAxisAlignment: CrossAxisAlignment.start,
+					Row(
 						mainAxisSize: MainAxisSize.min,
+						spacing: AppSpacings.pMd,
 						children: [
+							if (weatherIcon != null)
+								BoxedIcon(
+									weatherIcon!,
+									size: AppSpacings.scale(22),
+									color: primaryTextColor,
+								),
 							Text(
 								temperature ?? '',
 								style: TextStyle(
-									fontSize: AppFontSize.extraLarge,
+									fontSize: AppSpacings.scale(22),
 									fontWeight: FontWeight.w700,
 									color: primaryTextColor,
 								),
 							),
-							if (weatherDescription != null)
-								Text(
-									weatherDescription!,
-									style: TextStyle(fontSize: AppFontSize.base, color: secondaryTextColor),
-								),
 						],
 					),
+					if (weatherDescription != null)
+						Text(
+							weatherDescription!,
+							style: TextStyle(fontSize: AppFontSize.base, color: secondaryTextColor),
+						),
 				],
 			),
 		);
@@ -150,7 +160,14 @@ class SkyContentOverlay extends StatelessWidget {
 			),
 			child: Row(
 				mainAxisSize: MainAxisSize.min,
+				spacing: AppSpacings.pSm,
 				children: [
+					if (weatherIcon != null)
+						BoxedIcon(
+							weatherIcon!,
+							size: AppSpacings.scale(16),
+							color: primaryTextColor,
+						),
 					Text(
 						temperature ?? '',
 						style: TextStyle(
@@ -159,8 +176,7 @@ class SkyContentOverlay extends StatelessWidget {
 							color: primaryTextColor,
 						),
 					),
-					if (weatherDescription != null) ...[
-						SizedBox(width: AppSpacings.pSm),
+					if (weatherDescription != null)
 						Text(
 							weatherDescription!,
 							style: TextStyle(
@@ -168,7 +184,6 @@ class SkyContentOverlay extends StatelessWidget {
 								color: secondaryTextColor,
 							),
 						),
-					],
 				],
 			),
 		);
