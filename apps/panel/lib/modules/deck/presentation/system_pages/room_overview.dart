@@ -362,6 +362,17 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 		_eventBus.fire(NavigateToDeckItemEvent(domainViewId));
 	}
 
+	void _navigateToEnergyView() {
+		// Try room-specific energy domain view first, then standalone energy screen
+		final domainViewId = DomainViewItem.generateId(DomainType.energy, _roomId);
+
+		if (_deckService.indexOfItem(domainViewId) >= 0) {
+			_eventBus.fire(NavigateToDeckItemEvent(domainViewId));
+		} else {
+			_eventBus.fire(NavigateToDeckItemEvent(EnergyViewItem.generateId()));
+		}
+	}
+
 	Future<void> _triggerScene(String sceneId) async {
 		if (_isSceneTriggering) return;
 
@@ -834,7 +845,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 						spaceId: _roomId,
 						range: _energyRange,
 						showProduction: _energyShowProduction,
-						onTap: () => _eventBus.fire(NavigateToDeckItemEvent(EnergyViewItem.generateId())),
+						onTap: () => _navigateToEnergyView(),
 					),
 				);
 			},
