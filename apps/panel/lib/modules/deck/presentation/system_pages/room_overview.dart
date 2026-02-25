@@ -415,7 +415,6 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 
 				if (isPortrait) {
 					return Column(
-            spacing: AppSpacings.pMd,
 						children: [
 							SizedBox(
 								height: AppSpacings.scale(180),
@@ -571,10 +570,9 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 				// Scene pills row (portrait only — landscape shows them on the sky panel)
 				if (isPortrait && model.hasScenes) ...[
 					Padding(
-						padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
+						padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd, vertical: AppSpacings.pMd),
 						child: _buildScenePills(context, isDark, model),
 					),
-					SizedBox(height: AppSpacings.pMd),
 				],
 
 				// Domain cards grid
@@ -592,10 +590,9 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 
 				// Status pills strip (sensor readings + energy summary)
 				Padding(
-					padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
+					padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd, vertical: AppSpacings.pSm),
 					child: _buildStatusStrip(context, isDark, model),
 				),
-				SizedBox(height: AppSpacings.pSm),
 			],
 		);
 	}
