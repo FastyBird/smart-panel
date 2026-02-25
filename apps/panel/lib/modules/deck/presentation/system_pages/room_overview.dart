@@ -9,6 +9,7 @@ import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
 import 'package:fastybird_smart_panel/modules/devices/export.dart';
+import 'package:fastybird_smart_panel/modules/energy/presentation/widgets/energy_summary_pill.dart';
 import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
 import 'package:fastybird_smart_panel/modules/scenes/export.dart';
 import 'package:fastybird_smart_panel/modules/spaces/export.dart';
@@ -589,15 +590,12 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 				else if (model.domainCards.isEmpty)
 					const Spacer(),
 
-				// Sensor readings strip
-				if (model.hasSensorReadings) ...[
-					SizedBox(height: AppSpacings.pMd),
-					Padding(
-						padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
-						child: _buildSensorStrip(context, isDark, model),
-					),
-					SizedBox(height: AppSpacings.pSm),
-				],
+				// Status pills strip (sensor readings + energy summary)
+				Padding(
+					padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
+					child: _buildStatusStrip(context, isDark, model),
+				),
+				SizedBox(height: AppSpacings.pSm),
 			],
 		);
 	}
@@ -750,18 +748,25 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 	// SENSOR STRIP
 	// ===========================================================================
 
-	Widget _buildSensorStrip(
+	Widget _buildStatusStrip(
 		BuildContext context,
 		bool isDark,
 		RoomOverviewModel model,
 	) {
+		final totalCount = model.sensorReadings.length + 1; // +1 for energy pill
+
 		return HorizontalScrollWithGradient(
 			height: AppSpacings.scale(22),
-			itemCount: model.sensorReadings.length,
+			itemCount: totalCount,
 			separatorWidth: AppSpacings.pSm,
-			itemBuilder: (_, i) => Center(
-				child: _buildSensorPill(context, isDark, model.sensorReadings[i]),
-			),
+			itemBuilder: (_, i) {
+				if (i < model.sensorReadings.length) {
+					return Center(
+						child: _buildSensorPill(context, isDark, model.sensorReadings[i]),
+					);
+				}
+				return const Center(child: EnergySummaryPill());
+			},
 		);
 	}
 

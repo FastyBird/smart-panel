@@ -16,4 +16,4 @@ export 'package:fastybird_smart_panel/modules/energy/services/energy_service.dar
 export 'package:fastybird_smart_panel/modules/energy/presentation/energy_screen.dart';
 
 // Widgets
-export 'package:fastybird_smart_panel/modules/energy/widgets/energy_header_widget.dart';
+export 'package:fastybird_smart_panel/modules/energy/presentation/widgets/energy_summary_pill.dart';

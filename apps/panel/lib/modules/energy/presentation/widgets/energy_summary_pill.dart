@@ -7,13 +7,13 @@ import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/energy/repositories/energy_repository.dart';
 
-/// Compact energy widget for the space header area.
+/// Compact energy pill showing today's consumption (and production if available).
 ///
-/// Shows today's consumption (and production if available).
-/// Displays "—" on error or when data is unavailable.
-/// Does not crash on failure — silently degrades.
-class EnergyHeaderWidget extends StatelessWidget {
-	const EnergyHeaderWidget({super.key});
+/// Renders as a pill-shaped badge matching the security screen badge style.
+/// Returns [SizedBox.shrink] when energy is not supported or not yet checked.
+/// Displays "\u2014" on error or when data is unavailable.
+class EnergySummaryPill extends StatelessWidget {
+	const EnergySummaryPill({super.key});
 
 	@override
 	Widget build(BuildContext context) {
@@ -46,7 +46,7 @@ class EnergyHeaderWidget extends StatelessWidget {
 				return Container(
 					padding: EdgeInsets.symmetric(
 						horizontal: AppSpacings.pMd,
-						vertical: AppSpacings.pXs,
+						vertical: AppSpacings.pSm,
 					),
 					decoration: BoxDecoration(
 						color: infoFamily.light8,
@@ -65,8 +65,9 @@ class EnergyHeaderWidget extends StatelessWidget {
 								consumptionText,
 								style: TextStyle(
 									fontSize: AppFontSize.extraSmall,
-									fontWeight: FontWeight.w600,
+									fontWeight: FontWeight.w700,
 									color: infoFamily.base,
+									letterSpacing: 0.3,
 								),
 							),
 							if (summary != null && summary.hasProduction) ...[
@@ -87,8 +88,9 @@ class EnergyHeaderWidget extends StatelessWidget {
 									)} ${localizations.energy_unit_kwh}',
 									style: TextStyle(
 										fontSize: AppFontSize.extraSmall,
-										fontWeight: FontWeight.w600,
+										fontWeight: FontWeight.w700,
 										color: isDark ? AppColorsDark.success : AppColorsLight.success,
+										letterSpacing: 0.3,
 									),
 								),
 							],
