@@ -588,6 +588,16 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 				// Spacer when we have scenes but no domain cards
 				else if (model.domainCards.isEmpty)
 					const Spacer(),
+
+				// Sensor readings strip
+				if (model.hasSensorReadings) ...[
+					SizedBox(height: AppSpacings.pMd),
+					Padding(
+						padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd),
+						child: _buildSensorStrip(context, isDark, model),
+					),
+					SizedBox(height: AppSpacings.pSm),
+				],
 			],
 		);
 	}
@@ -733,6 +743,63 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 					},
 				);
 			},
+		);
+	}
+
+	// ===========================================================================
+	// SENSOR STRIP
+	// ===========================================================================
+
+	Widget _buildSensorStrip(
+		BuildContext context,
+		bool isDark,
+		RoomOverviewModel model,
+	) {
+		return HorizontalScrollWithGradient(
+			height: AppSpacings.scale(22),
+			itemCount: model.sensorReadings.length,
+			separatorWidth: AppSpacings.pSm,
+			itemBuilder: (_, i) => Center(
+				child: _buildSensorPill(context, isDark, model.sensorReadings[i]),
+			),
+		);
+	}
+
+	Widget _buildSensorPill(BuildContext context, bool isDark, SensorReading reading) {
+		final colorFamily = ThemeColorFamily.get(
+			Theme.of(context).brightness,
+			ThemeColors.info,
+		);
+
+		return Container(
+			padding: EdgeInsets.symmetric(
+				horizontal: AppSpacings.pMd,
+				vertical: AppSpacings.pSm,
+			),
+			decoration: BoxDecoration(
+				color: colorFamily.light8,
+				borderRadius: BorderRadius.circular(AppBorderRadius.base),
+			),
+			child: Row(
+				mainAxisSize: MainAxisSize.min,
+				spacing: AppSpacings.pSm,
+				children: [
+					Icon(
+						reading.icon,
+						size: AppSpacings.scale(14),
+						color: colorFamily.base,
+					),
+					Text(
+						'${reading.label} ${reading.value}',
+						style: TextStyle(
+							fontSize: AppFontSize.extraSmall,
+							fontWeight: FontWeight.w700,
+							color: colorFamily.base,
+							letterSpacing: 0.3,
+						),
+					),
+				],
+			),
 		);
 	}
 
