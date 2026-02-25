@@ -414,10 +414,14 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 				final pageBg = isDark ? AppBgColorDark.page : AppBgColorLight.page;
 
 				if (isPortrait) {
+					final screenService = locator<ScreenService>();
+					final skyHeight = (screenService.logicalHeight * 0.4)
+							.clamp(0.0, AppSpacings.scale(500));
+
 					return Column(
 						children: [
 							SizedBox(
-								height: AppSpacings.scale(180),
+								height: skyHeight,
 								child: skyPanel,
 							),
 							Expanded(
