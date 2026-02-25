@@ -20,12 +20,14 @@ class EnergySummaryPill extends StatefulWidget {
 	final String spaceId;
 	final EnergyRange range;
 	final bool showProduction;
+	final VoidCallback? onTap;
 
 	const EnergySummaryPill({
 		super.key,
 		this.spaceId = 'home',
 		this.range = EnergyRange.today,
 		this.showProduction = true,
+		this.onTap,
 	});
 
 	@override
@@ -94,7 +96,9 @@ class _EnergySummaryPillState extends State<EnergySummaryPill> {
 					consumptionText = '\u2014'; // em dash
 				}
 
-				return Container(
+				return GestureDetector(
+				onTap: widget.onTap,
+				child: Container(
 					padding: EdgeInsets.symmetric(
 						horizontal: AppSpacings.pMd,
 						vertical: AppSpacings.pSm,
@@ -147,7 +151,8 @@ class _EnergySummaryPillState extends State<EnergySummaryPill> {
 							],
 						],
 					),
-				);
+				),
+			);
 			},
 		);
 	}

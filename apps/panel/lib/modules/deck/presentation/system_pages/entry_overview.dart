@@ -1,3 +1,4 @@
+import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/api/models/scenes_module_data_scene_category.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
@@ -291,7 +292,10 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
       if (_alarmsCount > 0) _buildAlarmBadge(context),
       if (locator.isRegistered<EnergyRepository>() &&
           locator<EnergyRepository>().isSupported)
-        const EnergySummaryPill(spaceId: 'home'),
+        EnergySummaryPill(
+          spaceId: 'home',
+          onTap: () => locator<EventBus>().fire(NavigateToDeckItemEvent(EnergyViewItem.generateId())),
+        ),
     ];
   }
 

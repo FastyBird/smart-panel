@@ -834,6 +834,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 						spaceId: _roomId,
 						range: _energyRange,
 						showProduction: _energyShowProduction,
+						onTap: () => _eventBus.fire(NavigateToDeckItemEvent(EnergyViewItem.generateId())),
 					),
 				);
 			},
