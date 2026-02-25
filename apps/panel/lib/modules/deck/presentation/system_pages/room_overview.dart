@@ -2,6 +2,7 @@ import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/utils/unit_converter.dart';
 import 'package:fastybird_smart_panel/core/widgets/icon_container.dart';
 import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/toast.dart';
@@ -154,6 +155,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 			deviceCategories: deviceCategories,
 			scenes: scenes,
 			now: DateTime.now(),
+			displayUnits: DisplayUnits.fromLocator(),
 			lightsOnCount: _lightsOnCount,
 
 			energyDeviceCount: _deckService.energyDeviceCount,
