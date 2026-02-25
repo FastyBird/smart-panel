@@ -15,6 +15,7 @@ class SkyContentOverlay extends StatelessWidget {
 	final String? weatherDescription;
 	final Color primaryTextColor;
 	final Color secondaryTextColor;
+	final bool isCompact;
 	final List<QuickScene> scenes;
 	final bool isSceneTriggering;
 	final String? triggeringSceneId;
@@ -31,6 +32,7 @@ class SkyContentOverlay extends StatelessWidget {
 		this.weatherDescription,
 		this.primaryTextColor = Colors.white,
 		this.secondaryTextColor = const Color(0xBFFFFFFF),
+		this.isCompact = false,
 		this.scenes = const [],
 		this.isSceneTriggering = false,
 		this.triggeringSceneId,
@@ -49,6 +51,8 @@ class SkyContentOverlay extends StatelessWidget {
 	}
 
 	Widget _buildLandscape() {
+		final clockSize = AppSpacings.scale(isCompact ? 48 : 72);
+
 		return Column(
 			crossAxisAlignment: CrossAxisAlignment.start,
 			mainAxisAlignment: MainAxisAlignment.center,
@@ -56,7 +60,7 @@ class SkyContentOverlay extends StatelessWidget {
 				Text(
 					time,
 					style: TextStyle(
-						fontSize: AppSpacings.scale(72),
+						fontSize: clockSize,
 						fontWeight: FontWeight.w200,
 						color: primaryTextColor,
 						height: 1.0,
@@ -64,7 +68,7 @@ class SkyContentOverlay extends StatelessWidget {
 					),
 				),
 				SizedBox(height: AppSpacings.pSm),
-				Text(date, style: TextStyle(fontSize: AppFontSize.large, color: secondaryTextColor)),
+				Text(date, style: TextStyle(fontSize: isCompact ? AppFontSize.base : AppFontSize.large, color: secondaryTextColor)),
 				if (temperature != null) ...[
 					SizedBox(height: AppSpacings.pLg),
 					_buildWeatherCard(),

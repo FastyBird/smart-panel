@@ -392,10 +392,14 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 		return LayoutBuilder(
 			builder: (context, constraints) {
 				final isPortrait = constraints.maxHeight > constraints.maxWidth;
+				final screenService = locator<ScreenService>();
+				final isCompact = !isPortrait &&
+						(screenService.isSmallScreen || screenService.isMediumScreen);
 
 				final skyPanel = SkyPanel(
 					roomName: model?.title ?? widget.viewItem.title,
 					isPortrait: isPortrait,
+					isCompact: isCompact,
 					scenes: model?.quickScenes ?? [],
 					isSceneTriggering: _isSceneTriggering,
 					triggeringSceneId: _triggeringSceneId,
@@ -414,7 +418,6 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 				final pageBg = isDark ? AppBgColorDark.page : AppBgColorLight.page;
 
 				if (isPortrait) {
-					final screenService = locator<ScreenService>();
 					final skyHeight = (screenService.logicalHeight * 0.4)
 							.clamp(0.0, AppSpacings.scale(500));
 
@@ -577,6 +580,13 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 		return Column(
 			crossAxisAlignment: CrossAxisAlignment.stretch,
 			children: [
+				// Status pills strip — top in landscape, bottom in portrait
+				if (!isPortrait)
+					Padding(
+						padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd, vertical: AppSpacings.pSm),
+						child: _buildStatusStrip(context, isDark, model),
+					),
+
 				// Scene pills row (portrait only — landscape shows them on the sky panel)
 				if (isPortrait && model.hasScenes) ...[
 					Padding(
@@ -588,7 +598,12 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 				// Domain cards grid
 				if (model.domainCards.isNotEmpty)
 					Expanded(
-						child: _buildDomainCardsGrid(context, isDark, model),
+						child: isPortrait ?
+              _buildDomainCardsGrid(context, isDark, model, isPortrait)
+              : Padding(
+                padding: EdgeInsets.symmetric(vertical: AppSpacings.pSm),
+                child: _buildDomainCardsGrid(context, isDark, model, isPortrait),
+              )
 					),
 
 				// Empty state when no domain cards and no scenes
@@ -598,11 +613,12 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 				else if (model.domainCards.isEmpty)
 					const Spacer(),
 
-				// Status pills strip (sensor readings + energy summary)
-				Padding(
-					padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd, vertical: AppSpacings.pSm),
-					child: _buildStatusStrip(context, isDark, model),
-				),
+				// Status pills strip — bottom in portrait
+				if (isPortrait)
+					Padding(
+						padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd, vertical: AppSpacings.pSm),
+						child: _buildStatusStrip(context, isDark, model),
+					),
 			],
 		);
 	}
@@ -697,16 +713,21 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 		BuildContext context,
 		bool isDark,
 		RoomOverviewModel model,
+		bool isPortrait,
 	) {
 		final cards = model.domainCards;
 		final spacing = AppSpacings.pMd;
-		final maxTileHeight = AppSpacings.scale(75);
+		final screenService = locator<ScreenService>();
+		final isCompact = !isPortrait &&
+				(screenService.isSmallScreen || screenService.isMediumScreen);
+		final maxTileHeight = AppSpacings.scale(isCompact ? 90 : 75);
 		final rowCount = (cards.length / 2).ceil();
 
 		return LayoutBuilder(
 			builder: (context, constraints) {
 				final tileWidth = (constraints.maxWidth - spacing - AppSpacings.pMd * 2) / 2;
-				final tileHeight = (tileWidth / 1.8).clamp(0, maxTileHeight).toDouble();
+				final aspectRatio = isCompact ? 1.5 : 1.8;
+				final tileHeight = (tileWidth / aspectRatio).clamp(0, maxTileHeight).toDouble();
 
 				return VerticalScrollWithGradient(
 					itemCount: rowCount,

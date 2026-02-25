@@ -20,6 +20,7 @@ import 'package:intl/intl.dart';
 class SkyPanel extends StatefulWidget {
 	final String roomName;
 	final bool isPortrait;
+	final bool isCompact;
 	final List<QuickScene> scenes;
 	final bool isSceneTriggering;
 	final String? triggeringSceneId;
@@ -29,6 +30,7 @@ class SkyPanel extends StatefulWidget {
 		super.key,
 		required this.roomName,
 		required this.isPortrait,
+		this.isCompact = false,
 		this.scenes = const [],
 		this.isSceneTriggering = false,
 		this.triggeringSceneId,
@@ -148,6 +150,7 @@ class _SkyPanelState extends State<SkyPanel> {
 						child: SkyContentOverlay(
 							isPortrait: widget.isPortrait,
 							isNight: _config.isNight,
+							isCompact: widget.isCompact,
 							roomName: widget.roomName,
 							time: timeStr,
 							date: dateStr,
