@@ -91,12 +91,12 @@ Inspired by the [OpenClaw](https://github.com/openclaw/openclaw) project's proac
 
 ### Phase 1 (MVP)
 
-- [ ] Backend `BuddyModule` registered in `app.module.ts` with route prefix `buddy` under `MODULES_PREFIX`
-- [ ] Module constants follow naming: `BUDDY_MODULE_PREFIX`, `BUDDY_MODULE_NAME = 'buddy-module'`, `BUDDY_MODULE_API_TAG_NAME = 'Buddy module'`
-- [ ] Module registers with `ExtensionsService.registerModuleMetadata()` and `ModulesTypeMapperService.registerMapping()`
-- [ ] Swagger models registered via `buddy.openapi.ts` pattern
-- [ ] `ActionObserverListener` subscribes to `IntentEventType.COMPLETED` events and records action history in-memory (ring buffer)
-- [ ] `BuddyContextService` aggregates: spaces, devices (state), scenes, weather, energy, recent intents — into a structured context object
+- [x] Backend `BuddyModule` registered in `app.module.ts` with route prefix `buddy` under `MODULES_PREFIX`
+- [x] Module constants follow naming: `BUDDY_MODULE_PREFIX`, `BUDDY_MODULE_NAME = 'buddy-module'`, `BUDDY_MODULE_API_TAG_NAME = 'Buddy module'`
+- [x] Module registers with `ExtensionsService.registerModuleMetadata()` and `ModulesTypeMapperService.registerMapping()`
+- [x] Swagger models registered via `buddy.openapi.ts` pattern
+- [x] `ActionObserverListener` subscribes to `IntentEventType.COMPLETED` events and records action history in-memory (ring buffer)
+- [x] `BuddyContextService` aggregates: spaces, devices (state), scenes, weather, energy, recent intents — into a structured context object
 - [ ] `LlmProviderService` abstracts LLM calls with swappable provider: `claude` | `openai` | `ollama` | `none`
 - [ ] `BuddyConversationService` handles text chat with conversation history persistence (TypeORM entities)
 - [ ] `SuggestionEngineService` generates context-aware suggestions with cooldown management
