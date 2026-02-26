@@ -1,8 +1,14 @@
-import { NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import { GatewayTimeoutException, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 
 export class BuddyProviderNotConfiguredException extends ServiceUnavailableException {
 	constructor() {
 		super('No AI provider is configured. Configure an AI provider in admin settings to enable chat.');
+	}
+}
+
+export class BuddyProviderTimeoutException extends GatewayTimeoutException {
+	constructor() {
+		super('AI provider timeout. The provider did not respond in time.');
 	}
 }
 

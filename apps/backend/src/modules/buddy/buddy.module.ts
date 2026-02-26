@@ -16,6 +16,7 @@ import { WeatherModule } from '../weather/weather.module';
 
 import { BUDDY_MODULE_API_TAG_DESCRIPTION, BUDDY_MODULE_API_TAG_NAME, BUDDY_MODULE_NAME } from './buddy.constants';
 import { BUDDY_SWAGGER_EXTRA_MODELS } from './buddy.openapi';
+import { BuddyConversationsController } from './controllers/buddy-conversations.controller';
 import { UpdateBuddyConfigDto } from './dto/update-config.dto';
 import { BuddyConversationEntity } from './entities/buddy-conversation.entity';
 import { BuddyMessageEntity } from './entities/buddy-message.entity';
@@ -23,6 +24,8 @@ import { IntentEventListener } from './listeners/intent-event.listener';
 import { BuddyConfigModel } from './models/config.model';
 import { ActionObserverService } from './services/action-observer.service';
 import { BuddyContextService } from './services/buddy-context.service';
+import { BuddyConversationService } from './services/buddy-conversation.service';
+import { LlmProviderService } from './services/llm-provider.service';
 
 @ApiTag({
 	tagName: BUDDY_MODULE_NAME,
@@ -41,9 +44,15 @@ import { BuddyContextService } from './services/buddy-context.service';
 		WeatherModule,
 		EnergyModule,
 	],
-	controllers: [],
-	providers: [ActionObserverService, BuddyContextService, IntentEventListener],
-	exports: [ActionObserverService, BuddyContextService],
+	controllers: [BuddyConversationsController],
+	providers: [
+		ActionObserverService,
+		BuddyContextService,
+		IntentEventListener,
+		LlmProviderService,
+		BuddyConversationService,
+	],
+	exports: [ActionObserverService, BuddyContextService, LlmProviderService, BuddyConversationService],
 })
 export class BuddyModule implements OnModuleInit {
 	constructor(

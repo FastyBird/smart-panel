@@ -97,8 +97,8 @@ Inspired by the [OpenClaw](https://github.com/openclaw/openclaw) project's proac
 - [x] Swagger models registered via `buddy.openapi.ts` pattern
 - [x] `ActionObserverListener` subscribes to `IntentEventType.COMPLETED` events and records action history in-memory (ring buffer)
 - [x] `BuddyContextService` aggregates: spaces, devices (state), scenes, weather, energy, recent intents — into a structured context object
-- [ ] `LlmProviderService` abstracts LLM calls with swappable provider: `claude` | `openai` | `ollama` | `none`
-- [ ] `BuddyConversationService` handles text chat with conversation history persistence (TypeORM entities)
+- [x] `LlmProviderService` abstracts LLM calls with swappable provider: `claude` | `openai` | `ollama` | `none`
+- [x] `BuddyConversationService` handles text chat with conversation history persistence (TypeORM entities)
 - [ ] `SuggestionEngineService` generates context-aware suggestions with cooldown management
 - [ ] `PatternDetectorService` identifies repeated action sequences from the action history buffer (rule-based MVP)
 - [ ] REST API endpoints following API conventions (controllers return `*ResponseModel`, DTOs are input only):
