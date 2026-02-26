@@ -159,18 +159,24 @@ class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
 
 		final success = await _displayRepository.setWeatherLocationId(locationId);
 
-		_isSaving = false;
+		if (!context.mounted) {
+			_isSaving = false;
 
-		await Future.delayed(const Duration(milliseconds: 500));
-
-		if (!context.mounted) return;
+			return;
+		}
 
 		if (!success) {
+			_isSaving = false;
+
 			setState(() {
 				_weatherLocationId = backup;
 			});
 
 			Toast.showError(context, message: AppLocalizations.of(context)!.action_failed);
+
+			return;
 		}
+
+		_isSaving = false;
 	}
 }
