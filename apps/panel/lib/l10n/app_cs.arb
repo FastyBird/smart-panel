@@ -1173,5 +1173,21 @@
   "security_overlay_default_title": "Bezpečnostní upozornění",
   "security_overlay_acknowledge": "Potvrdit",
   "security_overlay_open_security": "Otevřít zabezpečení",
-  "security_overlay_more_alerts": "+{count} dalších upozornění"
+  "security_overlay_more_alerts": "+{count} dalších upozornění",
+
+  "action_retry": "Opakovat",
+  "room_overview_no_room": "K tomuto displeji není přiřazena žádná místnost",
+  "room_overview_display_not_configured": "Displej není nakonfigurován",
+  "room_overview_load_failed": "Nepodařilo se načíst data místnosti",
+  "room_overview_lights_active": "{lightsOn} z {totalLights} aktivních",
+  "room_overview_light_count": "{count, plural, =1{1 světlo} few{{count} světla} other{{count} světel}}",
+  "room_overview_device_count": "{count, plural, =1{1 zařízení} few{{count} zařízení} other{{count} zařízení}}",
+  "room_overview_reading_count": "{count, plural, =1{1 měření} few{{count} měření} other{{count} měření}}",
+  "room_overview_action_failed": "Akce selhala",
+  "suggested_action_turn_off_lights": "Vypnout světla",
+  "suggested_action_movie_mode": "Režim filmu",
+  "suggested_action_night_mode": "Noční režim",
+  "shading_fully_closed": "Zcela zavřeno",
+  "shading_fully_open": "Zcela otevřeno",
+  "sensor_label_light": "Světlo"
 }

@@ -3511,4 +3511,72 @@ class AppLocalizationsEn extends AppLocalizations {
   String security_overlay_more_alerts(int count) {
     return '+$count more alerts';
   }
+
+  @override
+  String get room_overview_no_room => 'No room assigned to this display';
+
+  @override
+  String get room_overview_display_not_configured => 'Display not configured';
+
+  @override
+  String get room_overview_load_failed => 'Failed to load room data';
+
+  @override
+  String room_overview_lights_active(int lightsOn, int totalLights) {
+    return '$lightsOn of $totalLights active';
+  }
+
+  @override
+  String room_overview_light_count(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count lights',
+      one: '1 light',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String room_overview_device_count(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count devices',
+      one: '1 device',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String room_overview_reading_count(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count readings',
+      one: '1 reading',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get room_overview_action_failed => 'Action failed';
+
+  @override
+  String get suggested_action_turn_off_lights => 'Turn off lights';
+
+  @override
+  String get suggested_action_movie_mode => 'Movie mode';
+
+  @override
+  String get suggested_action_night_mode => 'Night mode';
+
+  @override
+  String get shading_fully_closed => 'Fully closed';
+
+  @override
+  String get shading_fully_open => 'Fully open';
+
+  @override
+  String get sensor_label_light => 'Light';
 }

@@ -6634,6 +6634,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'+{count} more alerts'**
   String security_overlay_more_alerts(int count);
+
+  /// Error shown when no room is assigned to the display
+  ///
+  /// In en, this message translates to:
+  /// **'No room assigned to this display'**
+  String get room_overview_no_room;
+
+  /// Error shown when display configuration is missing
+  ///
+  /// In en, this message translates to:
+  /// **'Display not configured'**
+  String get room_overview_display_not_configured;
+
+  /// Error shown when room data fails to load
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to load room data'**
+  String get room_overview_load_failed;
+
+  /// Subtitle for lights card showing active count
+  ///
+  /// In en, this message translates to:
+  /// **'{lightsOn} of {totalLights} active'**
+  String room_overview_lights_active(int lightsOn, int totalLights);
+
+  /// Light count label for lights card subtitle
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 light} other{{count} lights}}'**
+  String room_overview_light_count(int count);
+
+  /// Device count label for domain card subtitle
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 device} other{{count} devices}}'**
+  String room_overview_device_count(int count);
+
+  /// Reading count label for sensors card subtitle
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 reading} other{{count} readings}}'**
+  String room_overview_reading_count(int count);
+
+  /// Toast message when a quick action fails
+  ///
+  /// In en, this message translates to:
+  /// **'Action failed'**
+  String get room_overview_action_failed;
+
+  /// Label for suggested action to turn off all lights
+  ///
+  /// In en, this message translates to:
+  /// **'Turn off lights'**
+  String get suggested_action_turn_off_lights;
+
+  /// Label for suggested movie mode action
+  ///
+  /// In en, this message translates to:
+  /// **'Movie mode'**
+  String get suggested_action_movie_mode;
+
+  /// Label for suggested night mode action
+  ///
+  /// In en, this message translates to:
+  /// **'Night mode'**
+  String get suggested_action_night_mode;
+
+  /// Shading subtitle when position is 0%
+  ///
+  /// In en, this message translates to:
+  /// **'Fully closed'**
+  String get shading_fully_closed;
+
+  /// Shading subtitle when position is 100%
+  ///
+  /// In en, this message translates to:
+  /// **'Fully open'**
+  String get shading_fully_open;
+
+  /// Label for light/illuminance sensor reading
+  ///
+  /// In en, this message translates to:
+  /// **'Light'**
+  String get sensor_label_light;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

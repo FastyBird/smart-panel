@@ -2,6 +2,7 @@ import 'package:fastybird_smart_panel/api/models/devices_module_device_category.
 import 'package:fastybird_smart_panel/api/models/scenes_module_data_scene_category.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_data_space_category.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_data_space_type.dart';
+import 'package:fastybird_smart_panel/l10n/app_localizations_en.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/room_overview_model_builder.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/domain_type.dart';
 import 'package:fastybird_smart_panel/modules/displays/models/display.dart';
@@ -103,6 +104,8 @@ SceneView createScene({
   );
 }
 
+final _l = AppLocalizationsEn();
+
 void main() {
   group('buildRoomOverviewModel', () {
     test('should return model with room name as title', () {
@@ -112,6 +115,7 @@ void main() {
         deviceCategories: [],
         scenes: [],
         now: DateTime(2024, 6, 15, 12, 0),
+        localizations: _l,
       );
 
       final model = buildRoomOverviewModel(input);
@@ -126,6 +130,7 @@ void main() {
         deviceCategories: [],
         scenes: [],
         now: DateTime(2024, 6, 15, 12, 0),
+        localizations: _l,
       );
 
       final model = buildRoomOverviewModel(input);
@@ -140,6 +145,7 @@ void main() {
         deviceCategories: [],
         scenes: [],
         now: DateTime(2024, 6, 15, 12, 0),
+        localizations: _l,
       );
 
       final model = buildRoomOverviewModel(input);
@@ -154,6 +160,7 @@ void main() {
         deviceCategories: [],
         scenes: [],
         now: DateTime(2024, 6, 15, 12, 0),
+        localizations: _l,
       );
 
       final model = buildRoomOverviewModel(input);
@@ -168,6 +175,7 @@ void main() {
         deviceCategories: [],
         scenes: [],
         now: DateTime(2024, 6, 15, 12, 0),
+        localizations: _l,
       );
 
       final model = buildRoomOverviewModel(input);
@@ -186,6 +194,7 @@ void main() {
           ],
           scenes: [],
           now: DateTime(2024, 6, 15, 12, 0),
+        localizations: _l,
         );
 
         final model = buildRoomOverviewModel(input);
@@ -202,6 +211,7 @@ void main() {
           deviceCategories: [DevicesModuleDeviceCategory.lighting],
           scenes: [],
           now: DateTime(2024, 6, 15, 12, 0),
+        localizations: _l,
         );
 
         final model = buildRoomOverviewModel(input);
@@ -222,6 +232,7 @@ void main() {
           sensorReadingsCount: 1,
           scenes: [],
           now: DateTime(2024, 6, 15, 12, 0),
+        localizations: _l,
         );
 
         final model = buildRoomOverviewModel(input);
@@ -244,6 +255,7 @@ void main() {
           sensorReadingsCount: 1,
           scenes: [],
           now: DateTime(2024, 6, 15, 12, 0),
+        localizations: _l,
         );
 
         final model = buildRoomOverviewModel(input);
@@ -262,6 +274,7 @@ void main() {
           energyDeviceCount: 3,
           scenes: [],
           now: DateTime(2024, 6, 15, 12, 0),
+        localizations: _l,
         );
 
         final model = buildRoomOverviewModel(input);
@@ -281,6 +294,7 @@ void main() {
           lightsOnCount: 2,
           scenes: [],
           now: DateTime(2024, 6, 15, 12, 0),
+        localizations: _l,
         );
 
         final model = buildRoomOverviewModel(input);
@@ -298,6 +312,7 @@ void main() {
           temperature: 21.5,
           scenes: [],
           now: DateTime(2024, 6, 15, 12, 0),
+        localizations: _l,
         );
 
         final model = buildRoomOverviewModel(input);
@@ -316,6 +331,7 @@ void main() {
           deviceCategories: [],
           scenes: [],
           now: DateTime(2024, 6, 15, 12, 0),
+        localizations: _l,
         );
 
         final model = buildRoomOverviewModel(input);
@@ -334,6 +350,7 @@ void main() {
             createScene(id: _scene2Uuid, enabled: false, triggerable: true),
           ],
           now: DateTime(2024, 6, 15, 12, 0),
+        localizations: _l,
         );
 
         final model = buildRoomOverviewModel(input);
@@ -352,6 +369,7 @@ void main() {
             createScene(id: _scene2Uuid, triggerable: false),
           ],
           now: DateTime(2024, 6, 15, 12, 0),
+        localizations: _l,
         );
 
         final model = buildRoomOverviewModel(input);
@@ -378,6 +396,7 @@ void main() {
                 id: _scene5Uuid, category: ScenesModuleDataSceneCategory.party),
           ],
           now: DateTime(2024, 6, 15, 12, 0),
+        localizations: _l,
         );
 
         final model = buildRoomOverviewModel(input);
@@ -402,6 +421,7 @@ void main() {
                 category: ScenesModuleDataSceneCategory.relax),
           ],
           now: DateTime(2024, 6, 15, 12, 0),
+        localizations: _l,
         );
 
         final model = buildRoomOverviewModel(input);
@@ -428,6 +448,7 @@ void main() {
                 order: 1),
           ],
           now: DateTime(2024, 6, 15, 12, 0),
+        localizations: _l,
         );
 
         final model = buildRoomOverviewModel(input);
@@ -445,6 +466,7 @@ void main() {
           deviceCategories: [DevicesModuleDeviceCategory.lighting],
           scenes: [],
           now: DateTime(2024, 6, 15, 12, 0),
+        localizations: _l,
           lightsOnCount: 3,
         );
 
@@ -465,6 +487,7 @@ void main() {
           deviceCategories: [DevicesModuleDeviceCategory.lighting],
           scenes: [],
           now: DateTime(2024, 6, 15, 12, 0),
+        localizations: _l,
           lightsOnCount: 0,
         );
 
@@ -482,6 +505,7 @@ void main() {
           deviceCategories: [DevicesModuleDeviceCategory.lighting],
           scenes: [],
           now: DateTime(2024, 6, 15, 12, 0),
+        localizations: _l,
           lightsOnCount: null,
         );
 
@@ -511,6 +535,7 @@ void main() {
             ),
           ],
           now: DateTime(2024, 6, 15, 12, 0),
+        localizations: _l,
         );
 
         final model = buildRoomOverviewModel(input);
@@ -536,6 +561,7 @@ void main() {
             ),
           ],
           now: DateTime(2024, 6, 15, 12, 0),
+        localizations: _l,
         );
 
         final model = buildRoomOverviewModel(input);
@@ -570,6 +596,7 @@ void main() {
             ),
           ],
           now: DateTime(2024, 6, 15, 22, 0), // 10 PM
+        localizations: _l,
         );
 
         final model = buildRoomOverviewModel(input);
@@ -608,6 +635,7 @@ void main() {
             ),
           ],
           now: DateTime(2024, 6, 15, 5, 0), // 5 AM
+        localizations: _l,
         );
 
         final model = buildRoomOverviewModel(input);
@@ -630,6 +658,7 @@ void main() {
             ),
           ],
           now: DateTime(2024, 6, 15, 7, 0), // 7 AM - not night hours
+        localizations: _l,
         );
 
         final model = buildRoomOverviewModel(input);
@@ -669,6 +698,7 @@ void main() {
                 category: ScenesModuleDataSceneCategory.morning),
           ],
           now: DateTime(2024, 6, 15, 22, 0), // Night hours
+        localizations: _l,
           lightsOnCount: 5, // Lights are on
         );
 
@@ -690,6 +720,7 @@ void main() {
           ],
           scenes: [],
           now: DateTime(2024, 6, 15, 12, 0),
+        localizations: _l,
         );
 
         final model = buildRoomOverviewModel(input);
@@ -707,6 +738,7 @@ void main() {
           deviceCategories: [DevicesModuleDeviceCategory.lighting],
           scenes: [],
           now: DateTime(2024, 6, 15, 12, 0),
+        localizations: _l,
         );
 
         final inputWithoutDevices = RoomOverviewBuildInput(
@@ -715,6 +747,7 @@ void main() {
           deviceCategories: [],
           scenes: [],
           now: DateTime(2024, 6, 15, 12, 0),
+        localizations: _l,
         );
 
         final modelWithDevices = buildRoomOverviewModel(inputWithDevices);

@@ -151,7 +151,7 @@ Future<T?> showSettingsSelectionDialog<T>({
 				backgroundColor: bgColor,
 				shape: RoundedRectangleBorder(
 					borderRadius: BorderRadius.circular(AppBorderRadius.base),
-					side: BorderSide(color: borderColor),
+					side: BorderSide(color: borderColor, width: AppSpacings.scale(1)),
 				),
 				child: ConstrainedBox(
 					constraints: BoxConstraints(

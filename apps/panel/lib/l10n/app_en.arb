@@ -4225,5 +4225,85 @@
         "type": "int"
       }
     }
+  },
+
+  "room_overview_no_room": "No room assigned to this display",
+  "@room_overview_no_room": {
+    "description": "Error shown when no room is assigned to the display"
+  },
+  "room_overview_display_not_configured": "Display not configured",
+  "@room_overview_display_not_configured": {
+    "description": "Error shown when display configuration is missing"
+  },
+  "room_overview_load_failed": "Failed to load room data",
+  "@room_overview_load_failed": {
+    "description": "Error shown when room data fails to load"
+  },
+  "room_overview_lights_active": "{lightsOn} of {totalLights} active",
+  "@room_overview_lights_active": {
+    "description": "Subtitle for lights card showing active count",
+    "placeholders": {
+      "lightsOn": {
+        "type": "int"
+      },
+      "totalLights": {
+        "type": "int"
+      }
+    }
+  },
+  "room_overview_light_count": "{count, plural, =1{1 light} other{{count} lights}}",
+  "@room_overview_light_count": {
+    "description": "Light count label for lights card subtitle",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "room_overview_device_count": "{count, plural, =1{1 device} other{{count} devices}}",
+  "@room_overview_device_count": {
+    "description": "Device count label for domain card subtitle",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "room_overview_reading_count": "{count, plural, =1{1 reading} other{{count} readings}}",
+  "@room_overview_reading_count": {
+    "description": "Reading count label for sensors card subtitle",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "room_overview_action_failed": "Action failed",
+  "@room_overview_action_failed": {
+    "description": "Toast message when a quick action fails"
+  },
+  "suggested_action_turn_off_lights": "Turn off lights",
+  "@suggested_action_turn_off_lights": {
+    "description": "Label for suggested action to turn off all lights"
+  },
+  "suggested_action_movie_mode": "Movie mode",
+  "@suggested_action_movie_mode": {
+    "description": "Label for suggested movie mode action"
+  },
+  "suggested_action_night_mode": "Night mode",
+  "@suggested_action_night_mode": {
+    "description": "Label for suggested night mode action"
+  },
+  "shading_fully_closed": "Fully closed",
+  "@shading_fully_closed": {
+    "description": "Shading subtitle when position is 0%"
+  },
+  "shading_fully_open": "Fully open",
+  "@shading_fully_open": {
+    "description": "Shading subtitle when position is 100%"
+  },
+  "sensor_label_light": "Light",
+  "@sensor_label_light": {
+    "description": "Label for light/illuminance sensor reading"
   }
 }

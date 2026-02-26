@@ -197,6 +197,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 			deviceCategories: deviceCategories,
 			scenes: scenes,
 			now: DateTime.now(),
+			localizations: AppLocalizations.of(context)!,
 			displayUnits: DisplayUnits.fromLocator(),
 			lightsOnCount: _lightsOnCount,
 			energyDeviceCount: _deckService.energyDeviceCount,
@@ -259,7 +260,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 		if (_roomId.isEmpty) {
 			setState(() {
 				_isLoading = false;
-				_errorMessage = 'No room assigned to this display';
+				_errorMessage = AppLocalizations.of(context)!.room_overview_no_room;
 			});
 			return;
 		}
@@ -297,7 +298,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 			if (display == null) {
 				setState(() {
 					_isLoading = false;
-					_errorMessage = 'Display not configured';
+					_errorMessage = AppLocalizations.of(context)!.room_overview_display_not_configured;
 				});
 				return;
 			}
@@ -312,7 +313,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 
 			setState(() {
 				_isLoading = false;
-				_errorMessage = 'Failed to load room data';
+				_errorMessage = AppLocalizations.of(context)!.room_overview_load_failed;
 			});
 		}
 	}
@@ -525,15 +526,16 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 	}
 
 	(String, IconData) _climateModeInfo(ClimateMode mode) {
+		final l = AppLocalizations.of(context)!;
 		switch (mode) {
 			case ClimateMode.heat:
-				return ('Heat', MdiIcons.fire);
+				return (l.thermostat_mode_heat, MdiIcons.fire);
 			case ClimateMode.cool:
-				return ('Cool', MdiIcons.snowflake);
+				return (l.thermostat_mode_cool, MdiIcons.snowflake);
 			case ClimateMode.auto:
-				return ('Auto', MdiIcons.autorenew);
+				return (l.thermostat_mode_auto, MdiIcons.autorenew);
 			case ClimateMode.off:
-				return ('Off', MdiIcons.power);
+				return (l.thermostat_mode_off, MdiIcons.power);
 		}
 	}
 
@@ -617,11 +619,12 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 		final cs = spacesService.getClimateState(_roomId);
 		final currentMode = cs?.mode ?? ClimateMode.off;
 
+		final l = AppLocalizations.of(context)!;
 		final modes = <(ClimateMode, IconData, String, ThemeColors)>[
-			(ClimateMode.heat, MdiIcons.fire, 'Heat', ThemeColors.danger),
-			(ClimateMode.cool, MdiIcons.snowflake, 'Cool', ThemeColors.info),
-			(ClimateMode.auto, MdiIcons.autorenew, 'Auto', ThemeColors.success),
-			(ClimateMode.off, MdiIcons.power, 'Off', ThemeColors.neutral),
+			(ClimateMode.heat, MdiIcons.fire, l.thermostat_mode_heat, ThemeColors.danger),
+			(ClimateMode.cool, MdiIcons.snowflake, l.thermostat_mode_cool, ThemeColors.info),
+			(ClimateMode.auto, MdiIcons.autorenew, l.thermostat_mode_auto, ThemeColors.success),
+			(ClimateMode.off, MdiIcons.power, l.thermostat_mode_off, ThemeColors.neutral),
 		];
 
 		showDialog(
@@ -678,7 +681,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 													_setOptimistic(
 														DomainType.climate,
 														primaryValue: mode == ClimateMode.off
-																? 'Off'
+																? l.thermostat_mode_off
 																: (cs?.effectiveTargetTemperature != null
 																		? _formatTemp(cs!.effectiveTargetTemperature!)
 																		: null),
@@ -742,16 +745,18 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 		final spacesService = _spacesService;
 		if (spacesService == null) return;
 
+		final l = AppLocalizations.of(context)!;
+
 		try {
 			switch (type) {
 				case QuickActionType.lightsOff:
-					_setOptimistic(DomainType.lights, primaryValue: 'Off', isActive: false);
+					_setOptimistic(DomainType.lights, primaryValue: l.space_lighting_mode_off, isActive: false);
 					final result = await spacesService.setLightingMode(_roomId, LightingMode.off);
 					if (mounted) IntentResultHandler.showOfflineAlertIfNeeded(context, result);
 					break;
 				case QuickActionType.lightsHalf:
 				case QuickActionType.lightsFull:
-					_setOptimistic(DomainType.lights, primaryValue: 'Custom', isActive: true);
+					_setOptimistic(DomainType.lights, primaryValue: l.domain_mode_custom, isActive: true);
 					final brightness = type == QuickActionType.lightsFull ? 100 : 50;
 					await spacesService.turnRoleOn(_roomId, LightingStateRole.main);
 					final result = await spacesService.setRoleBrightness(_roomId, LightingStateRole.main, brightness);
@@ -776,17 +781,17 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 					if (mounted) IntentResultHandler.showOfflineAlertIfNeededForClimate(context, result);
 					break;
 				case QuickActionType.coversClose:
-					_setOptimistic(DomainType.shading, primaryValue: 'Closed', isActive: false);
+					_setOptimistic(DomainType.shading, primaryValue: l.covers_mode_closed, isActive: false);
 					final result = await spacesService.setCoversMode(_roomId, CoversMode.closed);
 					if (mounted) IntentResultHandler.showOfflineAlertIfNeededForCovers(context, result);
 					break;
 				case QuickActionType.coversHalf:
-					_setOptimistic(DomainType.shading, primaryValue: 'Custom', isActive: true);
+					_setOptimistic(DomainType.shading, primaryValue: l.domain_mode_custom, isActive: true);
 					final result = await spacesService.setCoversPosition(_roomId, 50);
 					if (mounted) IntentResultHandler.showOfflineAlertIfNeededForCovers(context, result);
 					break;
 				case QuickActionType.coversOpen:
-					_setOptimistic(DomainType.shading, primaryValue: 'Open', isActive: true);
+					_setOptimistic(DomainType.shading, primaryValue: l.covers_mode_open, isActive: true);
 					final result = await spacesService.setCoversMode(_roomId, CoversMode.open);
 					if (mounted) IntentResultHandler.showOfflineAlertIfNeededForCovers(context, result);
 					break;
@@ -803,7 +808,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 					_optimistic.remove(domain);
 					_rebuildModel();
 				}
-				Toast.showError(context, message: 'Action failed');
+				Toast.showError(context, message: l.room_overview_action_failed);
 			}
 		}
 	}
@@ -932,6 +937,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 	}
 
 	Widget _buildErrorState() {
+		final l = AppLocalizations.of(context)!;
 		return Center(
 			child: Padding(
         padding: AppSpacings.paddingXl,
@@ -971,7 +977,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
                     ? AppFilledButtonsDarkThemes.primaryForegroundColor
                     : AppFilledButtonsLightThemes.primaryForegroundColor,
                 ),
-                label: const Text('Retry'),
+                label: Text(l.action_retry),
               ),
             ),
           ],
@@ -1435,7 +1441,7 @@ class _RoomDomainCard extends StatelessWidget {
 							border: Border(
 								left: BorderSide(
 									color: colorFamily.base,
-									width: 3.0,
+									width: AppSpacings.scale(3),
 								),
 							),
 						)
@@ -1459,7 +1465,7 @@ class _RoomDomainCard extends StatelessWidget {
 										color: AppColors.white,
 									),
 								),
-								SizedBox(width: AppSpacings.pMd),
+								AppSpacings.spacingMdHorizontal,
 								Expanded(
 									child: Column(
 										crossAxisAlignment: CrossAxisAlignment.start,
@@ -1520,7 +1526,7 @@ class _RoomDomainCard extends StatelessWidget {
 								),
 							],
 						),
-						SizedBox(height: AppSpacings.pSm),
+						AppSpacings.spacingSmVertical,
 						// Subtitle items (always shown when present)
 						if (cardInfo.subtitleItems.isNotEmpty)
 							Builder(builder: (_) {
@@ -1616,7 +1622,7 @@ class _RoomDomainCard extends StatelessWidget {
 									child: Row(
 										children: [
 											for (int i = 0; i < cardInfo.actions.length; i++) ...[
-												if (i > 0) SizedBox(width: AppSpacings.pSm),
+												if (i > 0) AppSpacings.spacingSmHorizontal,
 												Builder(builder: (_) {
 													final action = cardInfo.actions[i];
 													final useIcon = action.label == null || (isCompact && _compactIconActions.contains(action.type));
