@@ -5,7 +5,7 @@ Type: feature
 Scope: backend
 Size: medium
 Parent: EPIC-BUDDY-MODULE
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -52,16 +52,16 @@ I want a backend `BuddyModule` with entity persistence, context aggregation, act
 
 ## 4. Acceptance criteria
 
-- [ ] `buddy.constants.ts` exports: `BUDDY_MODULE_PREFIX = 'buddy'`, `BUDDY_MODULE_NAME = 'buddy-module'`, `BUDDY_MODULE_API_TAG_NAME = 'Buddy module'`, `BUDDY_MODULE_API_TAG_DESCRIPTION`, `EventType` enum with `SUGGESTION_CREATED`, `CONVERSATION_MESSAGE_RECEIVED`, and `LlmProvider` enum with `CLAUDE`, `OPENAI`, `OLLAMA`, `NONE`
-- [ ] `BuddyConversationEntity` has columns: `id` (UUID PK), `title` (varchar, nullable), `spaceId` (varchar, nullable), `createdAt` (datetime), `updatedAt` (datetime). Table name: `buddy_module_conversations`
-- [ ] `BuddyMessageEntity` has columns: `id` (UUID PK), `conversationId` (varchar FK), `role` (varchar: 'user' | 'assistant' | 'system'), `content` (text), `createdAt` (datetime). Table name: `buddy_module_messages`
-- [ ] Migration creates both tables with proper column types for SQLite
-- [ ] `BuddyContextService` exposes `buildContext(spaceId?: string): Promise<BuddyContext>` that returns aggregated home state
-- [ ] `ActionObserverService` exposes `getRecentActions(limit?: number): ActionRecord[]` and internally stores completed intents in a ring buffer
-- [ ] `IntentEventListener` uses `@OnEvent(IntentEventType.COMPLETED)` decorator and passes completed intent data to `ActionObserverService`
-- [ ] `BuddyModule` is registered in `app.module.ts` with route prefix `BUDDY_MODULE_PREFIX` under `MODULES_PREFIX` in the `RouterModule.register` children, and in the direct imports list
-- [ ] `BuddyModule.onModuleInit()` registers: Swagger models, config mapping (`ModulesTypeMapperService`), and extension metadata (`ExtensionsService`)
-- [ ] Module compiles without errors (`pnpm run lint:js` passes)
+- [x] `buddy.constants.ts` exports: `BUDDY_MODULE_PREFIX = 'buddy'`, `BUDDY_MODULE_NAME = 'buddy-module'`, `BUDDY_MODULE_API_TAG_NAME = 'Buddy module'`, `BUDDY_MODULE_API_TAG_DESCRIPTION`, `EventType` enum with `SUGGESTION_CREATED`, `CONVERSATION_MESSAGE_RECEIVED`, and `LlmProvider` enum with `CLAUDE`, `OPENAI`, `OLLAMA`, `NONE`
+- [x] `BuddyConversationEntity` has columns: `id` (UUID PK), `title` (varchar, nullable), `spaceId` (varchar, nullable), `createdAt` (datetime), `updatedAt` (datetime). Table name: `buddy_module_conversations`
+- [x] `BuddyMessageEntity` has columns: `id` (UUID PK), `conversationId` (varchar FK), `role` (varchar: 'user' | 'assistant' | 'system'), `content` (text), `createdAt` (datetime). Table name: `buddy_module_messages`
+- [x] Migration creates both tables with proper column types for SQLite
+- [x] `BuddyContextService` exposes `buildContext(spaceId?: string): Promise<BuddyContext>` that returns aggregated home state
+- [x] `ActionObserverService` exposes `getRecentActions(limit?: number): ActionRecord[]` and internally stores completed intents in a ring buffer
+- [x] `IntentEventListener` uses `@OnEvent(IntentEventType.COMPLETED)` decorator and passes completed intent data to `ActionObserverService`
+- [x] `BuddyModule` is registered in `app.module.ts` with route prefix `BUDDY_MODULE_PREFIX` under `MODULES_PREFIX` in the `RouterModule.register` children, and in the direct imports list
+- [x] `BuddyModule.onModuleInit()` registers: Swagger models, config mapping (`ModulesTypeMapperService`), and extension metadata (`ExtensionsService`)
+- [x] Module compiles without errors (`pnpm run lint:js` passes)
 
 ## 5. Example scenarios
 
