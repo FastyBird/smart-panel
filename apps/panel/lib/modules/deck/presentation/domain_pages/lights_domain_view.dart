@@ -84,7 +84,9 @@ import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_ite
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_mode_chip.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/bottom_nav_mode_notifier.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/domain_control_state_service.dart';
+import 'package:fastybird_smart_panel/modules/deck/models/intent_result.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/intents_service.dart';
+import 'package:fastybird_smart_panel/modules/deck/types/intent_type.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/deck_page_activated_event.dart';
 import 'package:fastybird_smart_panel/modules/deck/utils/intent_mode_status.dart';
 import 'package:fastybird_smart_panel/modules/deck/utils/lighting.dart';
@@ -3674,9 +3676,18 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     });
 
     try {
-      final result = _intentsService != null
-          ? await _intentsService!.activateScene(scene.id)
-          : null;
+      IntentResult? result;
+
+      if (_intentsService != null) {
+        result = await _intentsService!.activateScene(scene.id);
+      } else if (_scenesService != null) {
+        final triggerResult = await _scenesService!.triggerScene(scene.id);
+        result = triggerResult.success
+            ? (triggerResult.failureCount > 0
+                ? IntentResult.partialSuccess(IntentType.activateScene, message: triggerResult.errorMessage)
+                : IntentResult.success(IntentType.activateScene))
+            : IntentResult.failure(IntentType.activateScene, message: triggerResult.errorMessage);
+      }
 
       if (!mounted) return;
 

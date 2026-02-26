@@ -154,7 +154,7 @@ class _HorizontalScrollWithGradientState
 				(isDark ? AppBgColorDark.page : AppBgColorLight.page);
 		final effectiveGradientWidth = widget.gradientWidth ?? AppSpacings.pLg;
 
-		final resolvedPadding = widget.padding.resolve(TextDirection.ltr);
+		final resolvedPadding = widget.padding.resolve(Directionality.of(context));
 
 		return SizedBox(
 			height: widget.height,
