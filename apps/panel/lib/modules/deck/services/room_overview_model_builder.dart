@@ -148,6 +148,13 @@ class QuickActionInfo {
   final bool disabled;
 
   const QuickActionInfo({required this.type, required this.icon, this.label, this.disabled = false});
+
+  QuickActionInfo copyWith({IconData? icon, String? label}) => QuickActionInfo(
+    type: type,
+    icon: icon ?? this.icon,
+    label: label ?? this.label,
+    disabled: disabled,
+  );
 }
 
 class DomainCardInfo {
@@ -174,6 +181,23 @@ class DomainCardInfo {
     this.actions = const [],
     this.isActive = false,
   });
+
+  DomainCardInfo copyWith({
+    String? primaryValue,
+    bool? isActive,
+    List<QuickActionInfo>? actions,
+  }) => DomainCardInfo(
+    domain: domain,
+    icon: icon,
+    title: title,
+    primaryValue: primaryValue ?? this.primaryValue,
+    targetValue: targetValue,
+    targetIcon: targetIcon,
+    subtitle: subtitle,
+    subtitleItems: subtitleItems,
+    actions: actions ?? this.actions,
+    isActive: isActive ?? this.isActive,
+  );
 }
 
 /// A sensor reading displayed in the sensor strip at the bottom.

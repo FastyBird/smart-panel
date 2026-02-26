@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
+import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/utils/unit_converter.dart';
 import 'package:fastybird_smart_panel/core/widgets/icon_container.dart';
@@ -18,6 +21,22 @@ import 'package:fastybird_smart_panel/modules/scenes/export.dart';
 import 'package:fastybird_smart_panel/modules/spaces/export.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
+
+class _DomainOptimistic {
+	final String? primaryValue;
+	final bool? isActive;
+	final ClimateMode? climateMode;
+	final DateTime createdAt;
+
+	const _DomainOptimistic({
+		this.primaryValue,
+		this.isActive,
+		this.climateMode,
+		required this.createdAt,
+	});
+
+	bool get isExpired => DateTime.now().difference(createdAt).inSeconds > 5;
+}
 
 /// Room system view - shows room-specific devices, scenes, and controls.
 ///
@@ -68,6 +87,10 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 	double? _humidity;
 	int? _shadingPosition;
 	int _mediaOnCount = 0;
+
+	// Optimistic overrides per domain
+	final Map<DomainType, _DomainOptimistic> _optimistic = {};
+	Timer? _optimisticCleanupTimer;
 
 	// Error state
 	String? _errorMessage;
@@ -143,6 +166,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 
 	@override
 	void dispose() {
+		_optimisticCleanupTimer?.cancel();
 		_deckService.removeListener(_onDeckServiceChanged);
 		_devicesService?.removeListener(_onDevicesDataChanged);
 		_spacesService?.removeListener(_onSpacesDataChanged);
@@ -187,8 +211,46 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 			mediaState: mediaState,
 		);
 
+		final freshModel = buildRoomOverviewModel(input);
+
+		// Clear confirmed overrides (backend matches expected state)
+		_clearConfirmedOverrides(freshModel);
+
+		// Apply remaining overrides
+		final adjustedCards = freshModel.domainCards.map((card) {
+			final override = _optimistic[card.domain];
+			if (override == null || override.isExpired) return card;
+
+			var updated = card.copyWith(
+				primaryValue: override.primaryValue,
+				isActive: override.isActive,
+			);
+
+			// Climate mode button update
+			if (override.climateMode != null &&
+					card.domain == DomainType.climate &&
+					card.actions.isNotEmpty) {
+				final (label, icon) = _climateModeInfo(override.climateMode!);
+				final newActions = [
+					card.actions[0].copyWith(label: label, icon: icon),
+					...card.actions.skip(1),
+				];
+				updated = updated.copyWith(actions: newActions);
+			}
+
+			return updated;
+		}).toList();
+
 		setState(() {
-			_model = buildRoomOverviewModel(input);
+			_model = RoomOverviewModel(
+				icon: freshModel.icon,
+				title: freshModel.title,
+				domainCards: adjustedCards,
+				quickScenes: freshModel.quickScenes,
+				suggestedActions: freshModel.suggestedActions,
+				sensorReadings: freshModel.sensorReadings,
+				domainCounts: freshModel.domainCounts,
+			);
 		});
 	}
 
@@ -402,6 +464,97 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 		}
 	}
 
+	void _setOptimistic(DomainType domain, {String? primaryValue, bool? isActive, ClimateMode? climateMode}) {
+		_optimistic[domain] = _DomainOptimistic(
+			primaryValue: primaryValue,
+			isActive: isActive,
+			climateMode: climateMode,
+			createdAt: DateTime.now(),
+		);
+		_rebuildModel();
+		_scheduleOptimisticCleanup();
+	}
+
+	void _clearConfirmedOverrides(RoomOverviewModel freshModel) {
+		final toRemove = <DomainType>[];
+		for (final entry in _optimistic.entries) {
+			if (entry.value.isExpired) {
+				toRemove.add(entry.key);
+				continue;
+			}
+			final card = freshModel.domainCards.where((c) => c.domain == entry.key).firstOrNull;
+			if (card == null) continue;
+
+			final override = entry.value;
+			final primaryMatches = override.primaryValue == null || card.primaryValue == override.primaryValue;
+			final activeMatches = override.isActive == null || card.isActive == override.isActive;
+
+			// For climate mode overrides, also check the mode button label
+			var modeMatches = true;
+			if (override.climateMode != null &&
+					card.domain == DomainType.climate &&
+					card.actions.isNotEmpty) {
+				final (expectedLabel, _) = _climateModeInfo(override.climateMode!);
+				modeMatches = card.actions[0].label == expectedLabel;
+			}
+
+			if (primaryMatches && activeMatches && modeMatches) {
+				toRemove.add(entry.key);
+			}
+		}
+		for (final domain in toRemove) {
+			_optimistic.remove(domain);
+		}
+	}
+
+	void _scheduleOptimisticCleanup() {
+		_optimisticCleanupTimer?.cancel();
+		_optimisticCleanupTimer = Timer(const Duration(seconds: 6), () {
+			if (!mounted) return;
+			_optimistic.removeWhere((_, v) => v.isExpired);
+			if (mounted) _rebuildModel();
+		});
+	}
+
+	String _formatTemp(double temp) {
+		final fmt = NumberFormatUtils.defaultFormat;
+		final displayUnits = DisplayUnits.fromLocator();
+		final tempUnit = displayUnits.temperature;
+		return '${fmt.formatDecimal(UnitConverter.convertTemperature(temp, tempUnit), decimalPlaces: 1)}${UnitConverter.temperatureSymbol(tempUnit)}';
+	}
+
+	(String, IconData) _climateModeInfo(ClimateMode mode) {
+		switch (mode) {
+			case ClimateMode.heat:
+				return ('Heat', MdiIcons.fire);
+			case ClimateMode.cool:
+				return ('Cool', MdiIcons.snowflake);
+			case ClimateMode.auto:
+				return ('Auto', MdiIcons.autorenew);
+			case ClimateMode.off:
+				return ('Off', MdiIcons.power);
+		}
+	}
+
+	DomainType? _domainForAction(QuickActionType type) {
+		switch (type) {
+			case QuickActionType.lightsOff:
+			case QuickActionType.lightsHalf:
+			case QuickActionType.lightsFull:
+				return DomainType.lights;
+			case QuickActionType.climateMode:
+			case QuickActionType.climateMinus:
+			case QuickActionType.climatePlus:
+				return DomainType.climate;
+			case QuickActionType.coversClose:
+			case QuickActionType.coversHalf:
+			case QuickActionType.coversOpen:
+				return DomainType.shading;
+			default:
+				return null;
+		}
+	}
+
 	Future<void> _triggerScene(String sceneId) async {
 		if (_isSceneTriggering) return;
 
@@ -519,6 +672,17 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 											return GestureDetector(
 												onTap: () async {
 													Navigator.of(dialogContext).pop();
+													final cs = spacesService.getClimateState(_roomId);
+													_setOptimistic(
+														DomainType.climate,
+														primaryValue: mode == ClimateMode.off
+																? 'Off'
+																: (cs?.effectiveTargetTemperature != null
+																		? _formatTemp(cs!.effectiveTargetTemperature!)
+																		: null),
+														isActive: mode != ClimateMode.off,
+														climateMode: mode,
+													);
 													final result = await spacesService.setClimateMode(_roomId, mode);
 													if (mounted) {
 														IntentResultHandler.showOfflineAlertIfNeededForClimate(context, result);
@@ -579,11 +743,13 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 		try {
 			switch (type) {
 				case QuickActionType.lightsOff:
+					_setOptimistic(DomainType.lights, primaryValue: 'Off', isActive: false);
 					final result = await spacesService.setLightingMode(_roomId, LightingMode.off);
 					if (mounted) IntentResultHandler.showOfflineAlertIfNeeded(context, result);
 					break;
 				case QuickActionType.lightsHalf:
 				case QuickActionType.lightsFull:
+					_setOptimistic(DomainType.lights, primaryValue: 'Custom', isActive: true);
 					final brightness = type == QuickActionType.lightsFull ? 100 : 50;
 					await spacesService.turnRoleOn(_roomId, LightingStateRole.main);
 					final result = await spacesService.setRoleBrightness(_roomId, LightingStateRole.main, brightness);
@@ -603,18 +769,22 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 							? target + 1.0
 							: target - 1.0;
 					final clamped = newTarget.clamp(cs.minSetpoint, cs.maxSetpoint);
+					_setOptimistic(DomainType.climate, primaryValue: _formatTemp(clamped));
 					final result = await spacesService.setSetpoint(_roomId, clamped, mode: mode);
 					if (mounted) IntentResultHandler.showOfflineAlertIfNeededForClimate(context, result);
 					break;
 				case QuickActionType.coversClose:
+					_setOptimistic(DomainType.shading, primaryValue: 'Closed', isActive: false);
 					final result = await spacesService.setCoversMode(_roomId, CoversMode.closed);
 					if (mounted) IntentResultHandler.showOfflineAlertIfNeededForCovers(context, result);
 					break;
 				case QuickActionType.coversHalf:
+					_setOptimistic(DomainType.shading, primaryValue: 'Custom', isActive: true);
 					final result = await spacesService.setCoversPosition(_roomId, 50);
 					if (mounted) IntentResultHandler.showOfflineAlertIfNeededForCovers(context, result);
 					break;
 				case QuickActionType.coversOpen:
+					_setOptimistic(DomainType.shading, primaryValue: 'Open', isActive: true);
 					final result = await spacesService.setCoversMode(_roomId, CoversMode.open);
 					if (mounted) IntentResultHandler.showOfflineAlertIfNeededForCovers(context, result);
 					break;
@@ -626,6 +796,11 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 			}
 		} catch (e) {
 			if (mounted) {
+				final domain = _domainForAction(type);
+				if (domain != null) {
+					_optimistic.remove(domain);
+					_rebuildModel();
+				}
 				Toast.showError(context, message: 'Action failed');
 			}
 		}
