@@ -10,6 +10,7 @@ import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart' hide ClimateMode;
 import 'package:fastybird_smart_panel/modules/devices/export.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/devices/mixins.dart';
 import 'package:fastybird_smart_panel/modules/energy/presentation/widgets/energy_summary_pill.dart';
 import 'package:fastybird_smart_panel/modules/energy/services/energy_service.dart';
 import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
@@ -519,11 +520,44 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 					final result = await spacesService.openCovers(_roomId);
 					if (mounted) IntentResultHandler.showOfflineAlertIfNeededForCovers(context, result);
 					break;
+				case QuickActionType.mediaPlay:
+				case QuickActionType.mediaPause:
+				case QuickActionType.mediaStop:
+					_sendMediaPlaybackCommand(type);
+					break;
 			}
 		} catch (e) {
 			if (mounted) {
 				Toast.showError(context, message: 'Action failed');
 			}
+		}
+	}
+
+	void _sendMediaPlaybackCommand(QuickActionType type) {
+		final devicesService = _devicesService;
+		if (devicesService == null) return;
+
+		final command = switch (type) {
+			QuickActionType.mediaPlay => 'play',
+			QuickActionType.mediaPause => 'pause',
+			QuickActionType.mediaStop => 'stop',
+			_ => null,
+		};
+		if (command == null) return;
+
+		final devices = devicesService.getDevicesForRoom(_roomId);
+		for (final device in devices) {
+			if (device is! DeviceMediaPlaybackMixin) continue;
+			final playback = device as DeviceMediaPlaybackMixin;
+			final channel = playback.mediaPlaybackChannel;
+			if (channel == null || !channel.hasCommand) continue;
+
+			devicesService.setPropertyValueWithContext(
+				deviceId: device.id,
+				channelId: channel.id,
+				propertyId: channel.commandProp!.id,
+				value: command,
+			);
 		}
 	}
 
@@ -1296,9 +1330,10 @@ class _RoomDomainCard extends StatelessWidget {
 												Builder(builder: (_) {
 													final action = cardInfo.actions[i];
 													final useIcon = action.label == null || (isCompact && _compactIconActions.contains(action.type));
+													final onPressed = action.disabled ? null : () => onQuickAction?.call(action.type);
 													if (useIcon) {
 														return OutlinedButton(
-															onPressed: () => onQuickAction?.call(action.type),
+															onPressed: onPressed,
 															style: OutlinedButton.styleFrom(
 																padding: EdgeInsets.symmetric(
 																	horizontal: AppSpacings.pMd,
@@ -1310,12 +1345,12 @@ class _RoomDomainCard extends StatelessWidget {
 															child: Icon(
 																action.icon,
 																size: isCompact ? AppFontSize.extraSmall : AppFontSize.small,
-																color: fgColor,
+																color: action.disabled ? null : fgColor,
 															),
 														);
 													}
 													return OutlinedButton(
-														onPressed: () => onQuickAction?.call(action.type),
+														onPressed: onPressed,
 														style: OutlinedButton.styleFrom(
 															padding: EdgeInsets.symmetric(
 																horizontal: isCompact ? AppSpacings.pSm : AppSpacings.pMd,
@@ -1328,7 +1363,7 @@ class _RoomDomainCard extends StatelessWidget {
 																fontSize: isCompact ? AppFontSize.extraSmall : AppFontSize.small,
 																fontWeight: FontWeight.w600,
 																height: 1.0,
-																color: fgColor,
+																color: action.disabled ? null : fgColor,
 															),
 														),
 													);

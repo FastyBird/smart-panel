@@ -135,6 +135,9 @@ enum QuickActionType {
   coversClose,
   coversHalf,
   coversOpen,
+  mediaPlay,
+  mediaPause,
+  mediaStop,
 }
 
 /// A quick action button on a domain card.
@@ -142,8 +145,9 @@ class QuickActionInfo {
   final QuickActionType type;
   final IconData icon;
   final String? label;
+  final bool disabled;
 
-  const QuickActionInfo({required this.type, required this.icon, this.label});
+  const QuickActionInfo({required this.type, required this.icon, this.label, this.disabled = false});
 }
 
 class DomainCardInfo {
@@ -674,6 +678,11 @@ DomainCardInfo _buildMediaCard(
     title: domain.label,
     primaryValue: primaryValue,
     subtitle: subtitle,
+    actions: [
+      QuickActionInfo(type: QuickActionType.mediaPlay, icon: MdiIcons.play, disabled: !isActive),
+      QuickActionInfo(type: QuickActionType.mediaPause, icon: MdiIcons.pause, disabled: !isActive),
+      QuickActionInfo(type: QuickActionType.mediaStop, icon: MdiIcons.stop, disabled: !isActive),
+    ],
     isActive: isActive,
   );
 }
