@@ -138,7 +138,7 @@ export class BuddyContextService {
 				return {
 					id: device.id,
 					name: device.name,
-					space: null,
+					space: spaceId ?? device.roomId ?? null,
 					category: device.category,
 					state,
 				};
@@ -165,8 +165,8 @@ export class BuddyContextService {
 			return scenes.map((scene) => ({
 				id: scene.id,
 				name: scene.name,
-				space: null,
-				enabled: true,
+				space: scene.primarySpaceId ?? null,
+				enabled: scene.enabled,
 			}));
 		} catch (error) {
 			this.logger.warn(`Failed to get scenes: ${error}`);
