@@ -406,7 +406,7 @@ List<DomainCardInfo> _buildDomainCards({
   final cards = <DomainCardInfo>[];
 
   for (final domain in domainCounts.presentDomains) {
-    if (domain == DomainType.energy) continue;
+    if (domain == DomainType.energy || domain == DomainType.sensors) continue;
 
     final count = domainCounts.getCount(domain);
 
@@ -778,6 +778,19 @@ List<SensorReading> _buildSensorReadings(RoomOverviewBuildInput input) {
         displayUnits: displayUnits,
       ),
       color: SensorColors.humidity,
+    ));
+  }
+
+  if (env?.averageIlluminance != null) {
+    readings.add(SensorReading(
+      icon: MdiIcons.weatherSunny,
+      label: 'Light',
+      value: SensorUtils.formatNumericValueWithUnit(
+        env!.averageIlluminance!,
+        DevicesModuleChannelCategory.illuminance,
+        displayUnits: displayUnits,
+      ),
+      color: SensorColors.themeColorForCategory(DevicesModuleChannelCategory.illuminance),
     ));
   }
 

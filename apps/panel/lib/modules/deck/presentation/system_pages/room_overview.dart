@@ -954,19 +954,30 @@ class _RoomDomainCard extends StatelessWidget {
 
 		final borderRadius = BorderRadius.circular(AppBorderRadius.base);
 
+		final borderColor = isDark ? AppFillColorDark.light : AppBorderColorLight.darker;
+
 		return GestureDetector(
 			onTap: onTap,
-			child: Container(
-				padding: EdgeInsets.all(AppSpacings.scale(12)),
-				decoration: BoxDecoration(
-					color: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
-					borderRadius: borderRadius,
-					border: Border.all(
-						color: isDark
-							? AppFillColorDark.light
-							: AppBorderColorLight.darker,
+			child: ClipRRect(
+				borderRadius: borderRadius,
+				child: Container(
+					padding: EdgeInsets.all(AppSpacings.scale(12)),
+					decoration: BoxDecoration(
+						color: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
+						borderRadius: borderRadius,
+						border: Border.all(color: borderColor),
 					),
-				),
+					foregroundDecoration: cardInfo.isActive
+						? BoxDecoration(
+							borderRadius: borderRadius,
+							border: Border(
+								left: BorderSide(
+									color: colorFamily.base,
+									width: 3.0,
+								),
+							),
+						)
+						: null,
 				child: Column(
 					crossAxisAlignment: CrossAxisAlignment.start,
 					mainAxisAlignment: MainAxisAlignment.center,
@@ -1124,6 +1135,7 @@ class _RoomDomainCard extends StatelessWidget {
 							),
 					],
 				),
+			),
 			),
 		);
 	}
