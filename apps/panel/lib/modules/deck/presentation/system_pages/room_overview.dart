@@ -587,7 +587,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 				return Row(
 					children: [
 						SizedBox(
-							width: constraints.maxWidth * 0.44,
+							width: constraints.maxWidth * 0.42,
 							child: skyPanel,
 						),
 						Expanded(
