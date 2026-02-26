@@ -22,19 +22,19 @@ class SkyWeatherOverlays extends StatelessWidget {
 					Positioned.fill(
 						child: _RainOverlay(
 							intensity: config.rainIntensity,
-							isNight: config.isNight,
+							isNight: config.isDark,
 						),
 					),
 				if (config.showSnow)
 					Positioned.fill(
 						child: _SnowOverlay(
 							intensity: config.snowIntensity,
-							isNight: config.isNight,
+							isNight: config.isDark,
 						),
 					),
 				if (config.showWind)
 					Positioned.fill(
-						child: _WindOverlay(isNight: config.isNight),
+						child: _WindOverlay(isNight: config.isDark),
 					),
 				if (config.showLightning)
 					const Positioned.fill(
@@ -42,7 +42,7 @@ class SkyWeatherOverlays extends StatelessWidget {
 					),
 				if (config.showFog)
 					Positioned.fill(
-						child: _FogOverlay(isNight: config.isNight),
+						child: _FogOverlay(isNight: config.isDark),
 					),
 			],
 		);

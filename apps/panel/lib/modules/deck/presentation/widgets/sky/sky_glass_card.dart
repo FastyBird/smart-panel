@@ -4,13 +4,13 @@ import 'package:flutter/material.dart';
 
 /// Frosted-glass card for displaying weather info on the sky panel.
 class SkyGlassCard extends StatelessWidget {
-	final bool isNight;
+	final bool isDark;
 	final Widget child;
 	final EdgeInsets? padding;
 
 	const SkyGlassCard({
 		super.key,
-		required this.isNight,
+		required this.isDark,
 		required this.child,
 		this.padding,
 	});
@@ -24,12 +24,12 @@ class SkyGlassCard extends StatelessWidget {
 				child: Container(
 					padding: padding ?? const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
 					decoration: BoxDecoration(
-						color: isNight
+						color: isDark
 								? Colors.white.withValues(alpha: 0.08)
 								: Colors.white.withValues(alpha: 0.3),
 						borderRadius: BorderRadius.circular(12),
 						border: Border.all(
-							color: isNight
+							color: isDark
 									? Colors.white.withValues(alpha: 0.12)
 									: Colors.white.withValues(alpha: 0.45),
 						),

@@ -116,10 +116,15 @@ class _SkyPanelState extends State<SkyPanel> {
 				_weatherIcon = WeatherConditionMapper.getIcon(weatherCode, _config.isNight);
 			});
 		} else {
-			// Fallback: use time-based day/night with clear sky
+			// Fallback: use time-based 4-period resolution with clear sky
 			final hour = _now.hour;
-			final isNight = hour < 6 || hour >= 20;
-			final timeOfDay = isNight ? SkyTimeOfDay.night : SkyTimeOfDay.day;
+			final timeOfDay = (hour >= 6 && hour < 11)
+					? SkyTimeOfDay.morning
+					: (hour >= 11 && hour < 17)
+							? SkyTimeOfDay.noon
+							: (hour >= 17 && hour < 21)
+									? SkyTimeOfDay.evening
+									: SkyTimeOfDay.night;
 
 			setState(() {
 				_config = SkyVisualConfig.fromCondition(SkyCondition.clear, timeOfDay);
@@ -155,7 +160,7 @@ class _SkyPanelState extends State<SkyPanel> {
 					Positioned.fill(
 						child: SkyContentOverlay(
 							isPortrait: widget.isPortrait,
-							isNight: _config.isNight,
+							isDark: _config.isDark,
 							isCompact: widget.isCompact,
 							roomName: widget.roomName,
 							time: timeStr,

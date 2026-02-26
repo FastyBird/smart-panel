@@ -32,7 +32,7 @@ class SkyCloudsLayer extends StatelessWidget {
 					child: _CloudWidget(
 						width: w,
 						opacity: config.cloudOpacity * (0.7 + rng.nextDouble() * 0.3),
-						isNight: config.isNight,
+						isNight: config.isDark,
 					),
 				);
 			}),

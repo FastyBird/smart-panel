@@ -4,6 +4,9 @@ import 'package:fastybird_smart_panel/modules/deck/types/sky_condition.dart';
 import 'package:flutter/material.dart';
 
 /// Renders sun, moon, and/or twinkling stars based on [SkyVisualConfig].
+///
+/// Sun position tracks across an arc: 0.0 = right (sunrise), 0.5 = top (noon),
+/// 1.0 = left (sunset). Stars use [SkyVisualConfig.starOpacity] for fading.
 class SkyCelestialElements extends StatelessWidget {
 	final SkyVisualConfig config;
 	final bool isPortrait;
@@ -16,22 +19,42 @@ class SkyCelestialElements extends StatelessWidget {
 
 	@override
 	Widget build(BuildContext context) {
-		return Stack(
-			children: [
-				if (config.showSun)
-					Positioned(
-						top: isPortrait ? 16 : 30,
-						right: isPortrait ? 32 : 48,
-						child: _SunWidget(size: 40, opacity: config.sunOpacity),
-					),
-				if (config.showMoon)
-					Positioned(
-						top: isPortrait ? 12 : 24,
-						right: isPortrait ? 32 : 48,
-						child: const _MoonWidget(size: 34),
-					),
-				if (config.showStars) ..._buildStars(),
-			],
+		return LayoutBuilder(
+			builder: (context, constraints) {
+				return Stack(
+					children: [
+						if (config.showSun) _buildSun(constraints),
+						if (config.showMoon)
+							Positioned(
+								top: isPortrait ? 12 : 24,
+								right: isPortrait ? 32 : 48,
+								child: const _MoonWidget(size: 34),
+							),
+						if (config.showStars) ..._buildStars(),
+					],
+				);
+			},
+		);
+	}
+
+	Widget _buildSun(BoxConstraints constraints) {
+		// Sun travels along a semicircular arc from right to left.
+		// sunPosition: 0.0 = right (sunrise), 0.5 = top (noon), 1.0 = left (sunset)
+		final w = constraints.maxWidth;
+		final h = constraints.maxHeight;
+		final margin = isPortrait ? 32.0 : 48.0;
+
+		// Horizontal: map sunPosition 0→1 to (w - margin) → margin
+		final cx = w - margin - (w - 2 * margin) * config.sunPosition;
+		// Vertical: arc peaking at top — sin(π * sunPosition) gives 0→1→0
+		final arcHeight = (isPortrait ? h * 0.7 : h * 0.6);
+		final baseY = isPortrait ? h * 0.3 : h * 0.35;
+		final cy = baseY - math.sin(math.pi * config.sunPosition) * arcHeight + margin;
+
+		return Positioned(
+			left: cx - 20,
+			top: cy - 20,
+			child: _SunWidget(size: 40, opacity: config.sunOpacity),
 		);
 	}
 
@@ -43,7 +66,10 @@ class SkyCelestialElements extends StatelessWidget {
 			(i) => Positioned(
 				top: rng.nextDouble() * (isPortrait ? 180 : 400),
 				left: rng.nextDouble() * (isPortrait ? 360 : 340),
-				child: _StarWidget(delay: Duration(milliseconds: (i * 300) % 3000)),
+				child: _StarWidget(
+					delay: Duration(milliseconds: (i * 300) % 3000),
+					maxOpacity: config.starOpacity,
+				),
 			),
 		);
 	}
@@ -116,8 +142,9 @@ class _MoonWidget extends StatelessWidget {
 
 class _StarWidget extends StatefulWidget {
 	final Duration delay;
+	final double maxOpacity;
 
-	const _StarWidget({required this.delay});
+	const _StarWidget({required this.delay, this.maxOpacity = 1.0});
 
 	@override
 	State<_StarWidget> createState() => _StarWidgetState();
@@ -146,7 +173,7 @@ class _StarWidgetState extends State<_StarWidget> with SingleTickerProviderState
 		return AnimatedBuilder(
 			animation: _ctrl,
 			builder: (_, __) => Opacity(
-				opacity: 0.3 + (_ctrl.value * 0.7),
+				opacity: (0.3 + (_ctrl.value * 0.7)) * widget.maxOpacity,
 				child: Container(
 					width: 2,
 					height: 2,

@@ -8,7 +8,7 @@ import 'package:weather_icons/weather_icons.dart';
 /// weather glass card, and scene pills (landscape only).
 class SkyContentOverlay extends StatelessWidget {
 	final bool isPortrait;
-	final bool isNight;
+	final bool isDark;
 	final String roomName;
 	final String time;
 	final String date;
@@ -27,7 +27,7 @@ class SkyContentOverlay extends StatelessWidget {
 	const SkyContentOverlay({
 		super.key,
 		required this.isPortrait,
-		required this.isNight,
+		required this.isDark,
 		required this.roomName,
 		required this.time,
 		required this.date,
@@ -120,7 +120,7 @@ class SkyContentOverlay extends StatelessWidget {
 		return GestureDetector(
 		onTap: onWeatherTap,
 		child: SkyGlassCard(
-			isNight: isNight,
+			isDark: isDark,
 			child: Column(
 				crossAxisAlignment: CrossAxisAlignment.start,
 				mainAxisSize: MainAxisSize.min,
@@ -160,7 +160,7 @@ class SkyContentOverlay extends StatelessWidget {
 		return GestureDetector(
 		onTap: onWeatherTap,
 		child: SkyGlassCard(
-			isNight: isNight,
+			isDark: isDark,
 			padding: EdgeInsets.symmetric(
 				horizontal: AppSpacings.pMd,
 				vertical: AppSpacings.pSm,
