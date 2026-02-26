@@ -410,9 +410,10 @@ const onEnergyWidgetToggle = (enabled: boolean | string | number): void => {
 		});
 		model.statusWidgets = widgets;
 	} else {
-		model.statusWidgets = (model.statusWidgets ?? []).filter(
+		const filtered = (model.statusWidgets ?? []).filter(
 			(w: IStatusWidget) => w.type !== StatusWidgetType.ENERGY
 		);
+		model.statusWidgets = filtered.length > 0 ? filtered : null;
 	}
 };
 
