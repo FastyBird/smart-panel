@@ -14,6 +14,8 @@ import { getEnvValue, resolveStaticPath } from './common/utils/config.utils';
 import { ApiModule } from './modules/api/api.module';
 import { AUTH_MODULE_PREFIX } from './modules/auth/auth.constants';
 import { AuthModule } from './modules/auth/auth.module';
+import { BUDDY_MODULE_PREFIX } from './modules/buddy/buddy.constants';
+import { BuddyModule } from './modules/buddy/buddy.module';
 import { CONFIG_MODULE_PREFIX } from './modules/config/config.constants';
 import { ConfigModule } from './modules/config/config.module';
 import { DASHBOARD_MODULE_PREFIX } from './modules/dashboard/dashboard.constants';
@@ -200,6 +202,10 @@ export class AppModule {
 								module: SecurityModule,
 							},
 							{
+								path: BUDDY_MODULE_PREFIX,
+								module: BuddyModule,
+							},
+							{
 								path: AUTH_MODULE_PREFIX,
 								module: ApiModule,
 							},
@@ -263,6 +269,7 @@ export class AppModule {
 				PlatformModule,
 				ScenesModule,
 				SecurityModule,
+				BuddyModule,
 				SpacesModule,
 				SeedModule,
 				StatsModule,
