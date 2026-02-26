@@ -1001,6 +1001,12 @@ abstract class AppLocalizations {
   /// **'Unlocked'**
   String get thermostat_lock_unlocked;
 
+  /// Section label for climate mode selection
+  ///
+  /// In en, this message translates to:
+  /// **'Mode'**
+  String get thermostat_mode_label;
+
   /// Thermostat is turned off
   ///
   /// In en, this message translates to:

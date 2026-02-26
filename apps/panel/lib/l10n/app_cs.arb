@@ -147,6 +147,7 @@
   "leak_sensor_dry": "Sucho",
   "thermostat_lock_locked": "Uzamčeno",
   "thermostat_lock_unlocked": "Odemčeno",
+  "thermostat_mode_label": "Režim",
   "thermostat_mode_off": "Vypnuto",
   "thermostat_mode_heat": "Topení",
   "thermostat_mode_cool": "Chlazení",

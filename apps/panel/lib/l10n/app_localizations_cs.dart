@@ -567,6 +567,9 @@ class AppLocalizationsCs extends AppLocalizations {
   String get thermostat_lock_unlocked => 'Odemčeno';
 
   @override
+  String get thermostat_mode_label => 'Režim';
+
+  @override
   String get thermostat_mode_off => 'Vypnuto';
 
   @override

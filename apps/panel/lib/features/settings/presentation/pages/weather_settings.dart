@@ -166,11 +166,11 @@ class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
 		}
 
 		if (!success) {
-			_isSaving = false;
-
 			setState(() {
 				_weatherLocationId = backup;
 			});
+
+			_isSaving = false;
 
 			Toast.showError(context, message: AppLocalizations.of(context)!.action_failed);
 

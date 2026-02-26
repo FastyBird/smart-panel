@@ -682,6 +682,10 @@
   "@thermostat_lock_unlocked": {
     "description": "Indicates the child lock is not active"
   },
+  "thermostat_mode_label": "Mode",
+  "@thermostat_mode_label": {
+    "description": "Section label for climate mode selection"
+  },
   "thermostat_mode_off": "Off",
   "@thermostat_mode_off": {
     "description": "Thermostat is turned off"

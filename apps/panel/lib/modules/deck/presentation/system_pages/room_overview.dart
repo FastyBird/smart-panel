@@ -658,7 +658,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 									Padding(
 										padding: EdgeInsets.only(bottom: AppSpacings.pSm),
 										child: Text(
-											'MODE',
+											l.thermostat_mode_label,
 											style: TextStyle(
 												fontSize: AppFontSize.extraSmall,
 												fontWeight: FontWeight.w600,

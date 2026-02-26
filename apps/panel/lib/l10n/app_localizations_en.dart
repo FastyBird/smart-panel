@@ -556,6 +556,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get thermostat_lock_unlocked => 'Unlocked';
 
   @override
+  String get thermostat_mode_label => 'Mode';
+
+  @override
   String get thermostat_mode_off => 'Off';
 
   @override
