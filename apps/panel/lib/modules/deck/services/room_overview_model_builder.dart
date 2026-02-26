@@ -747,26 +747,36 @@ DomainCardInfo _buildSensorsCard(
   );
 }
 
-/// Builds sensor readings for the bottom strip from raw input values.
+/// Builds sensor readings for the bottom strip from sensor state environment averages.
 List<SensorReading> _buildSensorReadings(RoomOverviewBuildInput input) {
   final readings = <SensorReading>[];
-  final fmt = NumberFormatUtils.defaultFormat;
+  final env = input.sensorState?.environment;
+  final displayUnits = input.displayUnits;
 
-  if (input.temperature != null) {
-    final tempUnit = input.displayUnits.temperature;
+  final temp = env?.averageTemperature ?? input.temperature;
+  if (temp != null) {
     readings.add(SensorReading(
       icon: MdiIcons.thermometer,
       label: 'Temp',
-      value: '${fmt.formatDecimal(UnitConverter.convertTemperature(input.temperature!, tempUnit), decimalPlaces: 1)}${UnitConverter.temperatureSymbol(tempUnit)}',
+      value: SensorUtils.formatNumericValueWithUnit(
+        temp,
+        DevicesModuleChannelCategory.temperature,
+        displayUnits: displayUnits,
+      ),
       color: SensorColors.temperature,
     ));
   }
 
-  if (input.humidity != null) {
+  final humidity = env?.averageHumidity ?? input.humidity;
+  if (humidity != null) {
     readings.add(SensorReading(
       icon: MdiIcons.waterPercent,
       label: 'Humidity',
-      value: '${fmt.formatDecimal(input.humidity!, decimalPlaces: 0)}%',
+      value: SensorUtils.formatNumericValueWithUnit(
+        humidity,
+        DevicesModuleChannelCategory.humidity,
+        displayUnits: displayUnits,
+      ),
       color: SensorColors.humidity,
     ));
   }
