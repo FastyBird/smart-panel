@@ -1,4 +1,4 @@
-import { Repository } from 'typeorm';
+import { DataSource as OrmDataSource, Repository } from 'typeorm';
 import { v4 as uuid } from 'uuid';
 
 import { Injectable, Logger } from '@nestjs/common';
@@ -24,6 +24,7 @@ export class BuddyConversationService {
 		private readonly conversationRepository: Repository<BuddyConversationEntity>,
 		@InjectRepository(BuddyMessageEntity)
 		private readonly messageRepository: Repository<BuddyMessageEntity>,
+		private readonly dataSource: OrmDataSource,
 		private readonly llmProvider: LlmProviderService,
 		private readonly contextService: BuddyContextService,
 		private readonly eventEmitter: EventEmitter2,
@@ -98,31 +99,35 @@ export class BuddyConversationService {
 		// 3. Call LLM provider (before persisting, so no orphaned messages on failure)
 		const response = await this.llmProvider.sendMessage(systemPrompt, chatMessages);
 
-		// 4. Persist both user message and assistant response
-		const userMessage = this.messageRepository.create({
-			id: uuid(),
-			conversationId: conversation.id,
-			role: MessageRole.USER,
-			content,
+		// 4. Persist both user message and assistant response in a single transaction
+		const savedAssistant = await this.dataSource.transaction(async (manager) => {
+			const userMessage = manager.create(BuddyMessageEntity, {
+				id: uuid(),
+				conversationId: conversation.id,
+				role: MessageRole.USER,
+				content,
+			});
+
+			await manager.save(userMessage);
+
+			const assistantMsg = manager.create(BuddyMessageEntity, {
+				id: uuid(),
+				conversationId: conversation.id,
+				role: MessageRole.ASSISTANT,
+				content: response,
+			});
+
+			const saved = await manager.save(assistantMsg);
+
+			// Update conversation title from first message if no title set
+			if (!conversation.title) {
+				const autoTitle = content.length > 50 ? content.substring(0, 47) + '...' : content;
+
+				await manager.update(BuddyConversationEntity, conversation.id, { title: autoTitle });
+			}
+
+			return saved;
 		});
-
-		await this.messageRepository.save(userMessage);
-
-		const assistantMessage = this.messageRepository.create({
-			id: uuid(),
-			conversationId: conversation.id,
-			role: MessageRole.ASSISTANT,
-			content: response,
-		});
-
-		const savedAssistant = await this.messageRepository.save(assistantMessage);
-
-		// 6. Update conversation title from first message if no title set
-		if (!conversation.title) {
-			const autoTitle = content.length > 50 ? content.substring(0, 47) + '...' : content;
-
-			await this.conversationRepository.update(conversation.id, { title: autoTitle });
-		}
 
 		// 7. Emit WebSocket event
 		this.eventEmitter.emit(EventType.CONVERSATION_MESSAGE_RECEIVED, {
