@@ -205,7 +205,8 @@ class ScenesRepository extends Repository<SceneModel> {
         ),
       );
 
-      if (response.response.statusCode == 200) {
+      final code = response.response.statusCode ?? 0;
+      if (code >= 200 && code < 300) {
         final result = response.data.data;
 
         return {
