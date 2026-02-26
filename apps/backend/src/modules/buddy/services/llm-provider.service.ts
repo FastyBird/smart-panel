@@ -186,14 +186,24 @@ export class LlmProviderService {
 
 	private handleProviderError(provider: string, error: unknown, timeout: number): never {
 		const err = error as Error;
+		const name = err.name ?? '';
+		const message = err.message ?? '';
 
-		if (err.name === 'AbortError' || err.message?.includes('timeout') || err.message?.includes('ETIMEDOUT')) {
+		const isTimeout =
+			name === 'AbortError' ||
+			name.includes('Timeout') ||
+			message.includes('timeout') ||
+			message.includes('timed out') ||
+			message.includes('ETIMEDOUT') ||
+			message.includes('ECONNABORTED');
+
+		if (isTimeout) {
 			this.logger.error(`${provider} provider timeout after ${timeout}ms`);
 
 			throw new BuddyProviderTimeoutException();
 		}
 
-		this.logger.error(`${provider} provider error: ${err.message}`);
+		this.logger.error(`${provider} provider error: ${message}`);
 
 		throw err;
 	}

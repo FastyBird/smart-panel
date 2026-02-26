@@ -87,12 +87,14 @@ export class BuddyConversationService {
 		const context = await this.contextService.buildContext(conversation.spaceId ?? undefined);
 		const systemPrompt = this.buildSystemPrompt(context);
 
-		// 3. Load conversation history
+		// 3. Load most recent conversation history (query DESC to get latest, then reverse for chronological order)
 		const history = await this.messageRepository.find({
 			where: { conversationId: conversation.id },
-			order: { createdAt: 'ASC' },
+			order: { createdAt: 'DESC' },
 			take: MAX_HISTORY_MESSAGES,
 		});
+
+		history.reverse();
 
 		const chatMessages: ChatMessage[] = history
 			.filter((m) => m.role === (MessageRole.USER as string) || m.role === (MessageRole.ASSISTANT as string))
