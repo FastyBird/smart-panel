@@ -23,6 +23,10 @@ const DEFAULT_MODELS: Record<string, string> = {
 	[LlmProvider.OLLAMA]: 'llama3',
 };
 
+// Module paths as variables to prevent TypeScript from statically resolving optional peer dependencies
+const ANTHROPIC_SDK_MODULE = '@anthropic-ai/sdk';
+const OPENAI_SDK_MODULE = 'openai';
+
 @Injectable()
 export class LlmProviderService {
 	private readonly logger = new Logger(LlmProviderService.name);
@@ -78,7 +82,7 @@ export class LlmProviderService {
 	): Promise<string> {
 		try {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-			const { default: Anthropic } = await import('@anthropic-ai/sdk');
+			const { default: Anthropic } = await import(ANTHROPIC_SDK_MODULE);
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
 			const client = new Anthropic({ apiKey, timeout });
 
@@ -112,7 +116,7 @@ export class LlmProviderService {
 	): Promise<string> {
 		try {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-			const { default: OpenAI } = await import('openai');
+			const { default: OpenAI } = await import(OPENAI_SDK_MODULE);
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
 			const client = new OpenAI({ apiKey, timeout });
 
