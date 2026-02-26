@@ -475,15 +475,14 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 		try {
 			switch (type) {
 				case QuickActionType.lightsOff:
-					final result = await spacesService.turnLightsOff(_roomId);
+					final result = await spacesService.setLightingMode(_roomId, LightingMode.off);
 					if (mounted) IntentResultHandler.showOfflineAlertIfNeeded(context, result);
 					break;
 				case QuickActionType.lightsHalf:
-					final result = await spacesService.setLightingMode(_roomId, LightingMode.relax);
-					if (mounted) IntentResultHandler.showOfflineAlertIfNeeded(context, result);
-					break;
 				case QuickActionType.lightsFull:
-					final result = await spacesService.turnLightsOn(_roomId);
+					final brightness = type == QuickActionType.lightsFull ? 100 : 50;
+					await spacesService.turnRoleOn(_roomId, LightingStateRole.main);
+					final result = await spacesService.setRoleBrightness(_roomId, LightingStateRole.main, brightness);
 					if (mounted) IntentResultHandler.showOfflineAlertIfNeeded(context, result);
 					break;
 				case QuickActionType.climateMode:
