@@ -874,7 +874,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 		return LayoutBuilder(
 			builder: (context, constraints) {
 				final tileWidth = (constraints.maxWidth - spacing - AppSpacings.pMd * 2) / 2;
-				final aspectRatio = isCompact ? 1.5 : 1.4;
+				final aspectRatio = isCompact ? 1.5 : 1.6;
 				final tileHeight = (tileWidth / aspectRatio).clamp(0, maxTileHeight).toDouble();
 
 				return VerticalScrollWithGradient(
