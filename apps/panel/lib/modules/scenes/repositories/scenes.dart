@@ -229,17 +229,6 @@ class ScenesRepository extends Repository<SceneModel> {
       } else if (statusCode == 400) {
         throw Exception('Scene cannot be triggered');
       }
-    } on TypeError catch (_) {
-      // Generated model deserialization can fail when backend returns null
-      // for required fields (e.g. status). Treat as successful trigger since
-      // the HTTP request itself succeeded.
-      return {
-        'sceneId': sceneId,
-        'status': 'completed',
-        'totalActions': 0,
-        'successfulActions': 0,
-        'failedActions': 0,
-      };
     }
     return null;
   }
