@@ -94,6 +94,7 @@ describe('PagesController', () => {
 		pressureUnit: null,
 		precipitationUnit: null,
 		distanceUnit: null,
+		weatherLocationId: null,
 		room: null,
 		homeMode: HomeMode.AUTO_SPACE,
 		homePageId: null,
