@@ -1019,7 +1019,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 						color: colorFamily.base,
 					),
 					Text(
-						'${reading.label} ${reading.value}',
+						reading.value,
 						style: TextStyle(
 							fontSize: AppFontSize.extraSmall,
 							fontWeight: FontWeight.w700,
