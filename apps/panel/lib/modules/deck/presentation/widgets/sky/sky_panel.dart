@@ -9,6 +9,7 @@ import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/sky/sky_
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/sky/sky_weather_overlays.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/room_overview_model_builder.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/sky_condition.dart';
+import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
 import 'package:fastybird_smart_panel/modules/weather/service.dart';
 import 'package:fastybird_smart_panel/modules/weather/utils/openweather.dart';
 import 'package:flutter/material.dart';
@@ -46,6 +47,7 @@ class SkyPanel extends StatefulWidget {
 
 class _SkyPanelState extends State<SkyPanel> {
 	WeatherService? _weatherService;
+	DisplayRepository? _displayRepository;
 	Timer? _clockTimer;
 	DateTime _now = DateTime.now();
 
@@ -63,6 +65,12 @@ class _SkyPanelState extends State<SkyPanel> {
 			_weatherService?.addListener(_onWeatherChanged);
 		} catch (_) {
 			// Weather module not available
+		}
+
+		try {
+			_displayRepository = locator<DisplayRepository>();
+		} catch (_) {
+			// Display module not available
 		}
 
 		_updateFromWeather();
@@ -94,7 +102,8 @@ class _SkyPanelState extends State<SkyPanel> {
 	}
 
 	void _updateFromWeather() {
-		final currentDay = _weatherService?.currentDay;
+		final locationId = _displayRepository?.weatherLocationId;
+		final currentDay = _weatherService?.getCurrentDayByLocation(locationId);
 		_now = DateTime.now();
 
 		if (currentDay != null) {
