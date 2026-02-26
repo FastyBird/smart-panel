@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
 	SpacesModuleCreateSpaceCategory,
-	SpacesModuleCreateSpaceHeader_widgetsSettingsRange,
+	SpacesModuleCreateSpaceStatus_widgetsSettingsRange,
 	SpacesModuleCreateSpaceType,
 	SpacesModuleDataSpaceCategory,
 } from '../../../openapi';
@@ -317,7 +317,7 @@ describe('Spaces Transformers', (): void => {
 						type: 'energy',
 						order: 0,
 						settings: {
-							range: SpacesModuleCreateSpaceHeader_widgetsSettingsRange.today,
+							range: SpacesModuleCreateSpaceStatus_widgetsSettingsRange.today,
 							show_production: true,
 						},
 					},
@@ -363,7 +363,7 @@ describe('Spaces Transformers', (): void => {
 						type: 'energy',
 						order: 0,
 						settings: {
-							range: SpacesModuleCreateSpaceHeader_widgetsSettingsRange.week,
+							range: SpacesModuleCreateSpaceStatus_widgetsSettingsRange.week,
 							show_production: false,
 						},
 					},
@@ -500,7 +500,7 @@ describe('Spaces Transformers', (): void => {
 						type: 'energy',
 						order: 0,
 						settings: {
-							range: SpacesModuleCreateSpaceHeader_widgetsSettingsRange.today,
+							range: SpacesModuleCreateSpaceStatus_widgetsSettingsRange.today,
 							show_production: true,
 						},
 					},
