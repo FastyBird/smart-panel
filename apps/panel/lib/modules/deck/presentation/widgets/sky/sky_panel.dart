@@ -174,10 +174,10 @@ class _SkyPanelState extends State<SkyPanel> {
 							isSceneTriggering: widget.isSceneTriggering,
 							triggeringSceneId: widget.triggeringSceneId,
 							onSceneTap: widget.onSceneTap,
-						onWeatherTap: widget.onWeatherTap,
+							onWeatherTap: widget.onWeatherTap,
 						),
 					),
-					],
+				],
 			),
 		);
 	}
