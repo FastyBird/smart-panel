@@ -118,7 +118,10 @@ class ConfigModuleService {
       entries = items
           .whereType<Map<String, dynamic>>()
           .where((item) => item['type'] is String)
-          .map((item) => MapEntry(item['type'] as String, item));
+          .map((item) {
+            final config = Map<String, dynamic>.of(item)..remove('type');
+            return MapEntry(item['type'] as String, config);
+          });
     } else if (items is Map<String, dynamic>) {
       // Legacy map format keyed by name
       entries = items.entries
