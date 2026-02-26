@@ -73,25 +73,15 @@ export class BuddyConversationService {
 	async sendMessage(conversationId: string, content: string): Promise<BuddyMessageEntity> {
 		const conversation = await this.findOneOrThrow(conversationId);
 
-		// 1. Persist user message
-		const userMessage = this.messageRepository.create({
-			id: uuid(),
-			conversationId: conversation.id,
-			role: MessageRole.USER,
-			content,
-		});
-
-		await this.messageRepository.save(userMessage);
-
-		// 2. Build system prompt with context
+		// 1. Build system prompt with context
 		const context = await this.contextService.buildContext(conversation.spaceId ?? undefined);
 		const systemPrompt = this.buildSystemPrompt(context);
 
-		// 3. Load most recent conversation history (query DESC to get latest, then reverse for chronological order)
+		// 2. Load most recent conversation history and append the new user message
 		const history = await this.messageRepository.find({
 			where: { conversationId: conversation.id },
 			order: { createdAt: 'DESC' },
-			take: MAX_HISTORY_MESSAGES,
+			take: MAX_HISTORY_MESSAGES - 1,
 		});
 
 		history.reverse();
@@ -103,10 +93,21 @@ export class BuddyConversationService {
 				content: m.content,
 			}));
 
-		// 4. Call LLM provider
+		chatMessages.push({ role: MessageRole.USER, content });
+
+		// 3. Call LLM provider (before persisting, so no orphaned messages on failure)
 		const response = await this.llmProvider.sendMessage(systemPrompt, chatMessages);
 
-		// 5. Persist assistant response
+		// 4. Persist both user message and assistant response
+		const userMessage = this.messageRepository.create({
+			id: uuid(),
+			conversationId: conversation.id,
+			role: MessageRole.USER,
+			content,
+		});
+
+		await this.messageRepository.save(userMessage);
+
 		const assistantMessage = this.messageRepository.create({
 			id: uuid(),
 			conversationId: conversation.id,

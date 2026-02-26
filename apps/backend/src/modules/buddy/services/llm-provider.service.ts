@@ -49,7 +49,7 @@ export class LlmProviderService {
 			case LlmProvider.OPENAI:
 				return this.sendOpenAi(systemPrompt, messages, config.apiKey ?? '', model, timeout);
 			case LlmProvider.OLLAMA:
-				return this.sendOllama(systemPrompt, messages, model, timeout);
+				return this.sendOllama(systemPrompt, messages, model, timeout, config.ollamaUrl ?? 'http://localhost:11434');
 			default:
 				throw new BuddyProviderNotConfiguredException();
 		}
@@ -134,10 +134,8 @@ export class LlmProviderService {
 		messages: ChatMessage[],
 		model: string,
 		timeout: number,
+		baseUrl: string,
 	): Promise<string> {
-		const config = this.getConfig();
-		const baseUrl: string = config.ollamaUrl ?? 'http://localhost:11434';
-
 		const controller = new AbortController();
 		const timeoutId = setTimeout(() => controller.abort(), timeout);
 
