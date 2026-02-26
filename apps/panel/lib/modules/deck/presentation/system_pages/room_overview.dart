@@ -1083,6 +1083,10 @@ class _RoomDomainCard extends StatelessWidget {
 				return isDark
 						? AppOutlinedButtonsDarkThemes.teal
 						: AppOutlinedButtonsLightThemes.teal;
+			case DomainType.media:
+				return isDark
+						? AppOutlinedButtonsDarkThemes.danger
+						: AppOutlinedButtonsLightThemes.danger;
 			default:
 				return isDark
 						? AppOutlinedButtonsDarkThemes.base
@@ -1107,6 +1111,10 @@ class _RoomDomainCard extends StatelessWidget {
 				return isDark
 						? AppOutlinedButtonsDarkThemes.tealForegroundColor
 						: AppOutlinedButtonsLightThemes.tealForegroundColor;
+			case DomainType.media:
+				return isDark
+						? AppOutlinedButtonsDarkThemes.dangerForegroundColor
+						: AppOutlinedButtonsLightThemes.dangerForegroundColor;
 			default:
 				return isDark
 						? AppOutlinedButtonsDarkThemes.baseForegroundColor
