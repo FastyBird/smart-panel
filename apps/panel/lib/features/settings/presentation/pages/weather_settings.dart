@@ -28,6 +28,7 @@ class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
 
 	String? _weatherLocationId;
 	List<WeatherLocationModel> _locations = [];
+	bool _isSaving = false;
 
 	@override
 	void initState() {
@@ -48,6 +49,8 @@ class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
 	}
 
 	void _syncState() {
+		if (_isSaving) return;
+
 		setState(() {
 			_locations = _weatherService.locations;
 			_weatherLocationId = _displayRepository.weatherLocationId;
@@ -148,11 +151,15 @@ class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
 
 		final String? backup = _weatherLocationId;
 
+		_isSaving = true;
+
 		setState(() {
 			_weatherLocationId = locationId;
 		});
 
 		final success = await _displayRepository.setWeatherLocationId(locationId);
+
+		_isSaving = false;
 
 		await Future.delayed(const Duration(milliseconds: 500));
 

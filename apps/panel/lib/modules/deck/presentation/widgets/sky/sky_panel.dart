@@ -69,6 +69,7 @@ class _SkyPanelState extends State<SkyPanel> {
 
 		try {
 			_displayRepository = locator<DisplayRepository>();
+			_displayRepository?.addListener(_onWeatherChanged);
 		} catch (_) {
 			// Display module not available
 		}
@@ -80,6 +81,7 @@ class _SkyPanelState extends State<SkyPanel> {
 	@override
 	void dispose() {
 		_weatherService?.removeListener(_onWeatherChanged);
+		_displayRepository?.removeListener(_onWeatherChanged);
 		_clockTimer?.cancel();
 		super.dispose();
 	}
