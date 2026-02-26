@@ -124,6 +124,28 @@ class SubtitleItem {
   const SubtitleItem({this.icon, required this.text, this.compactHidden = false});
 }
 
+/// Types of quick actions available on domain cards.
+enum QuickActionType {
+  lightsOff,
+  lightsHalf,
+  lightsFull,
+  climateMode,
+  climateMinus,
+  climatePlus,
+  coversClose,
+  coversHalf,
+  coversOpen,
+}
+
+/// A quick action button on a domain card.
+class QuickActionInfo {
+  final QuickActionType type;
+  final IconData icon;
+  final String? label;
+
+  const QuickActionInfo({required this.type, required this.icon, this.label});
+}
+
 class DomainCardInfo {
   final DomainType domain;
   final IconData icon;
@@ -133,6 +155,7 @@ class DomainCardInfo {
   final IconData? targetIcon;
   final String subtitle;
   final List<SubtitleItem> subtitleItems;
+  final List<QuickActionInfo> actions;
   final bool isActive;
 
   const DomainCardInfo({
@@ -144,6 +167,7 @@ class DomainCardInfo {
     this.targetIcon,
     required this.subtitle,
     this.subtitleItems = const [],
+    this.actions = const [],
     this.isActive = false,
   });
 }
@@ -475,6 +499,11 @@ DomainCardInfo _buildLightsCard(
     title: domain.label,
     primaryValue: primaryValue,
     subtitle: subtitle,
+    actions: [
+      QuickActionInfo(type: QuickActionType.lightsOff, icon: MdiIcons.lightbulbOff, label: 'Off'),
+      QuickActionInfo(type: QuickActionType.lightsHalf, icon: MdiIcons.brightnessAuto, label: '50%'),
+      QuickActionInfo(type: QuickActionType.lightsFull, icon: MdiIcons.brightness7, label: '100%'),
+    ],
     isActive: isActive,
   );
 }
@@ -501,12 +530,13 @@ DomainCardInfo _buildClimateCard(
   final fmt = NumberFormatUtils.defaultFormat;
   final tempUnit = input.displayUnits.temperature;
 
-  // Primary: mode label when available, fallback to temperature value
+  // Primary: target temp when available, fallback to current temp, then count
   String primaryValue;
-  if (cs?.mode != null && cs!.mode != ClimateMode.off) {
-    primaryValue = _climateModeLabel(cs.mode!);
-  } else if (cs?.isOff == true) {
+  if (cs?.isOff == true) {
     primaryValue = 'Off';
+  } else if (cs?.effectiveTargetTemperature != null) {
+    final target = cs!.effectiveTargetTemperature!;
+    primaryValue = '${fmt.formatDecimal(UnitConverter.convertTemperature(target, tempUnit), decimalPlaces: 1)}${UnitConverter.temperatureSymbol(tempUnit)}';
   } else {
     final temp = cs?.currentTemperature ?? input.temperature;
     if (temp != null) {
@@ -516,47 +546,32 @@ DomainCardInfo _buildClimateCard(
     }
   }
 
-  // Subtitle items with icons — same formatting as sensors domain view
-  final items = <SubtitleItem>[];
+  // Mode label and icon for the mode action button
+  String modeLabel;
+  IconData modeIcon;
+  final currentMode = cs?.mode;
+  switch (currentMode) {
+    case ClimateMode.heat:
+      modeLabel = 'Heat';
+      modeIcon = MdiIcons.fire;
+      break;
+    case ClimateMode.cool:
+      modeLabel = 'Cool';
+      modeIcon = MdiIcons.snowflake;
+      break;
+    case ClimateMode.auto:
+      modeLabel = 'Auto';
+      modeIcon = MdiIcons.autorenew;
+      break;
+    case ClimateMode.off:
+    case null:
+      modeLabel = 'Off';
+      modeIcon = MdiIcons.power;
+      break;
+  }
+
+  final subtitle = '$count device${count != 1 ? 's' : ''}';
   final temp = cs?.currentTemperature ?? input.temperature;
-  final humidity = cs?.currentHumidity ?? input.humidity;
-  if (temp != null) {
-    items.add(SubtitleItem(
-      icon: MdiIcons.thermometer,
-      text: SensorUtils.formatNumericValueWithUnit(
-        temp,
-        DevicesModuleChannelCategory.temperature,
-        displayUnits: input.displayUnits,
-      ),
-    ));
-  }
-  if (humidity != null) {
-    items.add(SubtitleItem(
-      icon: MdiIcons.waterPercent,
-      text: SensorUtils.formatNumericValueWithUnit(
-        humidity,
-        DevicesModuleChannelCategory.humidity,
-        displayUnits: input.displayUnits,
-      ),
-    ));
-  }
-
-  // Plain text fallback for subtitle
-  final subtitleText = items.isNotEmpty
-      ? items.map((i) => i.text).join(' \u00B7 ')
-      : '$count device${count != 1 ? 's' : ''}';
-
-  // Target value with icon: setpoint when heating/cooling
-  String? targetValue;
-  IconData? targetIcon;
-  if (cs != null) {
-    final target = cs.effectiveTargetTemperature;
-    if (target != null && cs.mode != ClimateMode.off) {
-      targetValue = '${fmt.formatDecimal(UnitConverter.convertTemperature(target, tempUnit), decimalPlaces: 0)}${UnitConverter.temperatureSymbol(tempUnit)}';
-      targetIcon = cs.isHeating ? MdiIcons.fire : (cs.isCooling ? MdiIcons.snowflake : MdiIcons.thermometer);
-    }
-  }
-
   final isActive = cs != null ? (cs.mode != ClimateMode.off && cs.mode != null) : temp != null;
 
   return DomainCardInfo(
@@ -564,25 +579,14 @@ DomainCardInfo _buildClimateCard(
     icon: domain.icon,
     title: domain.label,
     primaryValue: primaryValue,
-    targetValue: targetValue,
-    targetIcon: targetIcon,
-    subtitle: subtitleText,
-    subtitleItems: items,
+    subtitle: subtitle,
+    actions: [
+      QuickActionInfo(type: QuickActionType.climateMode, icon: modeIcon, label: modeLabel),
+      QuickActionInfo(type: QuickActionType.climateMinus, icon: MdiIcons.minus),
+      QuickActionInfo(type: QuickActionType.climatePlus, icon: MdiIcons.plus),
+    ],
     isActive: isActive,
   );
-}
-
-String _climateModeLabel(ClimateMode mode) {
-  switch (mode) {
-    case ClimateMode.heat:
-      return 'Heat';
-    case ClimateMode.cool:
-      return 'Cool';
-    case ClimateMode.auto:
-      return 'Auto';
-    case ClimateMode.off:
-      return 'Off';
-  }
 }
 
 DomainCardInfo _buildShadingCard(
@@ -628,6 +632,11 @@ DomainCardInfo _buildShadingCard(
     title: domain.label,
     primaryValue: primaryValue,
     subtitle: subtitle,
+    actions: [
+      QuickActionInfo(type: QuickActionType.coversClose, icon: MdiIcons.arrowCollapseVertical, label: 'Close'),
+      QuickActionInfo(type: QuickActionType.coversHalf, icon: MdiIcons.arrowSplitHorizontal, label: '50%'),
+      QuickActionInfo(type: QuickActionType.coversOpen, icon: MdiIcons.arrowExpandVertical, label: 'Open'),
+    ],
     isActive: isActive,
   );
 }

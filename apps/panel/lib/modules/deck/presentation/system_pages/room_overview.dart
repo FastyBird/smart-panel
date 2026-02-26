@@ -8,7 +8,7 @@ import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradie
 import 'package:fastybird_smart_panel/core/widgets/toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
-import 'package:fastybird_smart_panel/modules/deck/export.dart';
+import 'package:fastybird_smart_panel/modules/deck/export.dart' hide ClimateMode;
 import 'package:fastybird_smart_panel/modules/devices/export.dart';
 import 'package:fastybird_smart_panel/modules/energy/presentation/widgets/energy_summary_pill.dart';
 import 'package:fastybird_smart_panel/modules/energy/services/energy_service.dart';
@@ -454,6 +454,79 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 		}
 	}
 
+	ClimateMode _nextClimateMode(ClimateMode current) {
+		switch (current) {
+			case ClimateMode.off:
+				return ClimateMode.heat;
+			case ClimateMode.heat:
+				return ClimateMode.cool;
+			case ClimateMode.cool:
+				return ClimateMode.auto;
+			case ClimateMode.auto:
+				return ClimateMode.off;
+		}
+	}
+
+	Future<void> _handleQuickAction(QuickActionType type) async {
+		final spacesService = _spacesService;
+		if (spacesService == null) return;
+
+		try {
+			switch (type) {
+				case QuickActionType.lightsOff:
+					final result = await spacesService.turnLightsOff(_roomId);
+					if (mounted) IntentResultHandler.showOfflineAlertIfNeeded(context, result);
+					break;
+				case QuickActionType.lightsHalf:
+					final result = await spacesService.setLightingMode(_roomId, LightingMode.relax);
+					if (mounted) IntentResultHandler.showOfflineAlertIfNeeded(context, result);
+					break;
+				case QuickActionType.lightsFull:
+					final result = await spacesService.turnLightsOn(_roomId);
+					if (mounted) IntentResultHandler.showOfflineAlertIfNeeded(context, result);
+					break;
+				case QuickActionType.climateMode:
+					final csMode = spacesService.getClimateState(_roomId);
+					if (csMode == null) return;
+					final currentMode = csMode.mode ?? ClimateMode.off;
+					final nextMode = _nextClimateMode(currentMode);
+					final modeResult = await spacesService.setClimateMode(_roomId, nextMode);
+					if (mounted) IntentResultHandler.showOfflineAlertIfNeededForClimate(context, modeResult);
+					break;
+				case QuickActionType.climateMinus:
+				case QuickActionType.climatePlus:
+					final cs = spacesService.getClimateState(_roomId);
+					if (cs == null) return;
+					final target = cs.effectiveTargetTemperature;
+					if (target == null) return;
+					final mode = cs.mode ?? ClimateMode.heat;
+					final newTarget = type == QuickActionType.climatePlus
+							? target + 1.0
+							: target - 1.0;
+					final clamped = newTarget.clamp(cs.minSetpoint, cs.maxSetpoint);
+					final result = await spacesService.setSetpoint(_roomId, clamped, mode: mode);
+					if (mounted) IntentResultHandler.showOfflineAlertIfNeededForClimate(context, result);
+					break;
+				case QuickActionType.coversClose:
+					final result = await spacesService.closeCovers(_roomId);
+					if (mounted) IntentResultHandler.showOfflineAlertIfNeededForCovers(context, result);
+					break;
+				case QuickActionType.coversHalf:
+					final result = await spacesService.setCoversPosition(_roomId, 50);
+					if (mounted) IntentResultHandler.showOfflineAlertIfNeededForCovers(context, result);
+					break;
+				case QuickActionType.coversOpen:
+					final result = await spacesService.openCovers(_roomId);
+					if (mounted) IntentResultHandler.showOfflineAlertIfNeededForCovers(context, result);
+					break;
+			}
+		} catch (e) {
+			if (mounted) {
+				Toast.showError(context, message: 'Action failed');
+			}
+		}
+	}
+
 	// ===========================================================================
 	// BUILD
 	// ===========================================================================
@@ -792,17 +865,17 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 		final cards = model.domainCards;
 		final spacing = AppSpacings.pMd;
 		final screenService = locator<ScreenService>();
-		final isCompact = !isPortrait &&
-				(screenService.isSmallScreen || screenService.isMediumScreen);
+		final isCompact = screenService.isSmallScreen ||
+				(!isPortrait && screenService.isMediumScreen);
 		final hideTargetValue = !isPortrait ||
 				screenService.isSmallScreen;
-		final maxTileHeight = AppSpacings.scale(isCompact ? 90 : 75);
+		final maxTileHeight = AppSpacings.scale(isCompact ? 90 : 95);
 		final rowCount = (cards.length / 2).ceil();
 
 		return LayoutBuilder(
 			builder: (context, constraints) {
 				final tileWidth = (constraints.maxWidth - spacing - AppSpacings.pMd * 2) / 2;
-				final aspectRatio = isCompact ? 1.5 : 1.8;
+				final aspectRatio = isCompact ? 1.5 : 1.4;
 				final tileHeight = (tileWidth / aspectRatio).clamp(0, maxTileHeight).toDouble();
 
 				return VerticalScrollWithGradient(
@@ -827,7 +900,9 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 											cardInfo: cards[firstIndex],
 											isDark: isDark,
 											hideTargetValue: hideTargetValue,
+											isCompact: isCompact,
 											onTap: () => _navigateToDomainView(cards[firstIndex].domain),
+											onQuickAction: _handleQuickAction,
 										),
 									),
 									if (secondIndex < cards.length)
@@ -836,7 +911,9 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 												cardInfo: cards[secondIndex],
 												isDark: isDark,
 												hideTargetValue: hideTargetValue,
+												isCompact: isCompact,
 												onTap: () => _navigateToDomainView(cards[secondIndex].domain),
+												onQuickAction: _handleQuickAction,
 											),
 										)
 									else
@@ -936,14 +1013,73 @@ class _RoomDomainCard extends StatelessWidget {
 	final DomainCardInfo cardInfo;
 	final bool isDark;
 	final bool hideTargetValue;
+	final bool isCompact;
 	final VoidCallback onTap;
+	final void Function(QuickActionType)? onQuickAction;
 
 	const _RoomDomainCard({
 		required this.cardInfo,
 		required this.isDark,
 		this.hideTargetValue = false,
+		this.isCompact = false,
 		required this.onTap,
+		this.onQuickAction,
 	});
+
+	/// Action types that switch from label to icon on compact screens.
+	static const _compactIconActions = {
+		QuickActionType.lightsOff,
+		QuickActionType.coversClose,
+		QuickActionType.coversOpen,
+	};
+
+	static OutlinedButtonThemeData _domainOutlinedButtonTheme(
+		DomainType domain,
+		bool isDark,
+	) {
+		switch (domain) {
+			case DomainType.lights:
+				return isDark
+						? AppOutlinedButtonsDarkThemes.warning
+						: AppOutlinedButtonsLightThemes.warning;
+			case DomainType.climate:
+				return isDark
+						? AppOutlinedButtonsDarkThemes.info
+						: AppOutlinedButtonsLightThemes.info;
+			case DomainType.shading:
+				return isDark
+						? AppOutlinedButtonsDarkThemes.teal
+						: AppOutlinedButtonsLightThemes.teal;
+			default:
+				return isDark
+						? AppOutlinedButtonsDarkThemes.base
+						: AppOutlinedButtonsLightThemes.base;
+		}
+	}
+
+	static Color _domainOutlinedButtonForegroundColor(
+		DomainType domain,
+		bool isDark,
+	) {
+		switch (domain) {
+			case DomainType.lights:
+				return isDark
+						? AppOutlinedButtonsDarkThemes.warningForegroundColor
+						: AppOutlinedButtonsLightThemes.warningForegroundColor;
+			case DomainType.climate:
+				return isDark
+						? AppOutlinedButtonsDarkThemes.infoForegroundColor
+						: AppOutlinedButtonsLightThemes.infoForegroundColor;
+			case DomainType.shading:
+				return isDark
+						? AppOutlinedButtonsDarkThemes.tealForegroundColor
+						: AppOutlinedButtonsLightThemes.tealForegroundColor;
+			default:
+				return isDark
+						? AppOutlinedButtonsDarkThemes.baseForegroundColor
+						: AppOutlinedButtonsLightThemes.baseForegroundColor;
+		}
+	}
 
 	@override
 	Widget build(BuildContext context) {
@@ -952,8 +1088,8 @@ class _RoomDomainCard extends StatelessWidget {
 			cardInfo.domain.themeColor,
 		);
 
+		final showActions = cardInfo.actions.isNotEmpty;
 		final borderRadius = BorderRadius.circular(AppBorderRadius.base);
-
 		final borderColor = isDark ? AppFillColorDark.light : AppBorderColorLight.darker;
 
 		return GestureDetector(
@@ -1059,6 +1195,7 @@ class _RoomDomainCard extends StatelessWidget {
 							],
 						),
 						SizedBox(height: AppSpacings.pSm),
+						// Subtitle items (always shown when present)
 						if (cardInfo.subtitleItems.isNotEmpty)
 							Builder(builder: (_) {
 								final visibleItems = hideTargetValue
@@ -1120,7 +1257,8 @@ class _RoomDomainCard extends StatelessWidget {
 									],
 								);
 							})
-						else
+						// Plain subtitle fallback (only when no subtitle items and no actions)
+						else if (!showActions && cardInfo.subtitle.isNotEmpty)
 							Text(
 								cardInfo.subtitle,
 								style: TextStyle(
@@ -1133,6 +1271,73 @@ class _RoomDomainCard extends StatelessWidget {
 								maxLines: 1,
 								overflow: TextOverflow.ellipsis,
 							),
+						// Quick action buttons
+						if (showActions) ...[
+							if (cardInfo.subtitleItems.isNotEmpty)
+								SizedBox(height: AppSpacings.scale(2)),
+							Builder(builder: (_) {
+								final fgColor = _domainOutlinedButtonForegroundColor(
+									cardInfo.domain,
+									isDark,
+								);
+								final btnTheme = _domainOutlinedButtonTheme(
+									cardInfo.domain,
+									isDark,
+								);
+								return Theme(
+									data: ThemeData(
+										outlinedButtonTheme: btnTheme,
+									),
+									child: Row(
+										children: [
+											for (int i = 0; i < cardInfo.actions.length; i++) ...[
+												if (i > 0) SizedBox(width: AppSpacings.pSm),
+												Builder(builder: (_) {
+													final action = cardInfo.actions[i];
+													final useIcon = action.label == null || (isCompact && _compactIconActions.contains(action.type));
+													if (useIcon) {
+														return OutlinedButton(
+															onPressed: () => onQuickAction?.call(action.type),
+															style: OutlinedButton.styleFrom(
+																padding: EdgeInsets.symmetric(
+																	horizontal: AppSpacings.pMd,
+																	vertical: AppSpacings.pMd,
+																),
+																minimumSize: Size.zero,
+																tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+															),
+															child: Icon(
+																action.icon,
+																size: AppFontSize.small,
+																color: fgColor,
+															),
+														);
+													}
+													return OutlinedButton(
+														onPressed: () => onQuickAction?.call(action.type),
+														style: OutlinedButton.styleFrom(
+															padding: EdgeInsets.symmetric(
+																horizontal: isCompact ? AppSpacings.pSm : AppSpacings.pMd,
+																vertical: AppSpacings.pMd,
+															),
+														),
+														child: Text(
+															action.label!,
+															style: TextStyle(
+																fontSize: AppFontSize.small,
+																fontWeight: FontWeight.w600,
+																height: 1.0,
+																color: fgColor,
+															),
+														),
+													);
+												}),
+											],
+										],
+									),
+								);
+							}),
+						],
 					],
 				),
 			),
