@@ -350,8 +350,7 @@ List<QuickScene> _buildQuickScenes(List<SceneView> scenes) {
     return a.order.compareTo(b.order);
   });
 
-  // Take first 4
-  return triggerableScenes.take(4).map((scene) {
+  return triggerableScenes.map((scene) {
     return QuickScene(
       sceneId: scene.id,
       name: scene.name,
