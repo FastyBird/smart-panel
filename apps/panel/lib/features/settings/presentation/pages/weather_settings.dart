@@ -178,5 +178,6 @@ class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
 		}
 
 		_isSaving = false;
+		_syncState();
 	}
 }
