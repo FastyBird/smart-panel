@@ -1,14 +1,16 @@
+import 'package:fastybird_smart_panel/api/models/devices_module_channel_category.dart';
 import 'package:fastybird_smart_panel/api/models/devices_module_device_category.dart';
 import 'package:fastybird_smart_panel/api/models/scenes_module_data_scene_category.dart';
 import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/utils/unit_converter.dart';
+import 'package:fastybird_smart_panel/modules/devices/presentation/utils/sensor_utils.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/sensor_colors.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/room_domain_classifier.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/domain_type.dart';
 import 'package:fastybird_smart_panel/modules/displays/models/display.dart';
 import 'package:fastybird_smart_panel/modules/scenes/export.dart';
-import 'package:fastybird_smart_panel/modules/spaces/views/spaces/view.dart';
+import 'package:fastybird_smart_panel/modules/spaces/export.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
@@ -53,6 +55,21 @@ class RoomOverviewBuildInput {
   /// Resolved display units for temperature formatting.
   final DisplayUnits displayUnits;
 
+  /// Cached lighting state from the space state API.
+  final LightingStateModel? lightingState;
+
+  /// Cached climate state from the space state API.
+  final ClimateStateModel? climateState;
+
+  /// Cached covers state from the space state API.
+  final CoversStateModel? coversState;
+
+  /// Cached sensor state from the space state API.
+  final SensorStateModel? sensorState;
+
+  /// Cached media active state from the media activity service.
+  final MediaActiveStateModel? mediaState;
+
   const RoomOverviewBuildInput({
     required this.display,
     required this.room,
@@ -67,6 +84,11 @@ class RoomOverviewBuildInput {
     this.humidity,
     this.shadingPosition,
     this.mediaOnCount = 0,
+    this.lightingState,
+    this.climateState,
+    this.coversState,
+    this.sensorState,
+    this.mediaState,
   });
 }
 
@@ -93,13 +115,24 @@ class QuickScene {
 /// - Optional target value (e.g., setpoint temperature)
 /// - Subtitle with additional context
 /// - Active state for visual accent
+/// An icon + text pair for subtitle items.
+class SubtitleItem {
+  final IconData? icon;
+  final String text;
+  final bool compactHidden;
+
+  const SubtitleItem({this.icon, required this.text, this.compactHidden = false});
+}
+
 class DomainCardInfo {
   final DomainType domain;
   final IconData icon;
   final String title;
   final String primaryValue;
   final String? targetValue;
+  final IconData? targetIcon;
   final String subtitle;
+  final List<SubtitleItem> subtitleItems;
   final bool isActive;
 
   const DomainCardInfo({
@@ -108,7 +141,9 @@ class DomainCardInfo {
     required this.title,
     required this.primaryValue,
     this.targetValue,
+    this.targetIcon,
     required this.subtitle,
+    this.subtitleItems = const [],
     this.isActive = false,
   });
 }
@@ -376,97 +411,24 @@ List<DomainCardInfo> _buildDomainCards({
     final count = domainCounts.getCount(domain);
 
     switch (domain) {
-      case DomainType.climate:
-        final fmt = NumberFormatUtils.defaultFormat;
-        final temp = input.temperature;
-        final humidity = input.humidity;
-        final tempUnit = input.displayUnits.temperature;
-        final primaryValue = temp != null
-            ? '${fmt.formatDecimal(UnitConverter.convertTemperature(temp, tempUnit), decimalPlaces: 1)}${UnitConverter.temperatureSymbol(tempUnit)}'
-            : '$count';
-        final subtitleParts = <String>[];
-        if (humidity != null) {
-          subtitleParts.add('${fmt.formatDecimal(humidity, decimalPlaces: 0)}% humidity');
-        }
-        if (subtitleParts.isEmpty) {
-          subtitleParts.add('$count device${count != 1 ? 's' : ''}');
-        }
-
-        cards.add(DomainCardInfo(
-          domain: domain,
-          icon: domain.icon,
-          title: domain.label,
-          primaryValue: primaryValue,
-          subtitle: subtitleParts.join(' \u00B7 '),
-          isActive: temp != null,
-        ));
+      case DomainType.lights:
+        cards.add(_buildLightsCard(domain, count, input));
         break;
 
-      case DomainType.lights:
-        final lightsOn = input.lightsOnCount ?? 0;
-        final isActive = lightsOn > 0;
-        final primaryValue = isActive ? '$lightsOn on' : 'Off';
-        final subtitle = isActive
-            ? '$lightsOn of $count active'
-            : '$count light${count != 1 ? 's' : ''}';
-
-        cards.add(DomainCardInfo(
-          domain: domain,
-          icon: domain.icon,
-          title: domain.label,
-          primaryValue: primaryValue,
-          subtitle: subtitle,
-          isActive: isActive,
-        ));
+      case DomainType.climate:
+        cards.add(_buildClimateCard(domain, count, input));
         break;
 
       case DomainType.shading:
-        final position = input.shadingPosition;
-        final primaryValue = position != null ? '$position%' : '$count';
-        final subtitle = position != null
-            ? (position == 0
-                ? 'Fully closed'
-                : position == 100
-                    ? 'Fully open'
-                    : 'Partially open')
-            : '$count device${count != 1 ? 's' : ''}';
-
-        cards.add(DomainCardInfo(
-          domain: domain,
-          icon: domain.icon,
-          title: domain.label,
-          primaryValue: primaryValue,
-          subtitle: subtitle,
-          isActive: position != null && position > 0,
-        ));
+        cards.add(_buildShadingCard(domain, count, input));
         break;
 
       case DomainType.media:
-        final mediaOn = input.mediaOnCount;
-        final isActive = mediaOn > 0;
-        final primaryValue = isActive ? '$mediaOn on' : 'Off';
-        final subtitle = '$count device${count != 1 ? 's' : ''}';
-
-        cards.add(DomainCardInfo(
-          domain: domain,
-          icon: isActive ? MdiIcons.playCircle : domain.icon,
-          title: domain.label,
-          primaryValue: primaryValue,
-          subtitle: subtitle,
-          isActive: isActive,
-        ));
+        cards.add(_buildMediaCard(domain, input));
         break;
 
       case DomainType.sensors:
-        final readingsCount = domainCounts.sensorReadings;
-        cards.add(DomainCardInfo(
-          domain: domain,
-          icon: domain.icon,
-          title: domain.label,
-          primaryValue: '$readingsCount',
-          subtitle: '$readingsCount reading${readingsCount != 1 ? 's' : ''}',
-          isActive: false,
-        ));
+        cards.add(_buildSensorsCard(domain, domainCounts, input));
         break;
 
       case DomainType.energy:
@@ -475,6 +437,314 @@ List<DomainCardInfo> _buildDomainCards({
   }
 
   return cards;
+}
+
+DomainCardInfo _buildLightsCard(
+  DomainType domain,
+  int count,
+  RoomOverviewBuildInput input,
+) {
+  final ls = input.lightingState;
+  final lightsOn = ls?.lightsOn ?? input.lightsOnCount ?? 0;
+  final totalLights = ls?.totalLights ?? count;
+  final isActive = lightsOn > 0;
+
+  // Primary value — same intent logic as the mode selector in lights domain view:
+  // 1. Intent active and confirmed (isModeFromIntent + detectedMode) → mode name
+  // 2. Lights on but no active intent → "Custom"
+  // 3. All off → "Off"
+  String primaryValue;
+  if (ls != null &&
+      ls.isModeFromIntent &&
+      ls.detectedMode != null &&
+      ls.detectedMode != LightingMode.off) {
+    primaryValue = _lightingModeLabel(ls.detectedMode!);
+  } else if (isActive) {
+    primaryValue = 'Custom';
+  } else {
+    primaryValue = 'Off';
+  }
+
+  final subtitle = isActive
+      ? '$lightsOn of $totalLights active'
+      : '$totalLights light${totalLights != 1 ? 's' : ''}';
+
+  return DomainCardInfo(
+    domain: domain,
+    icon: domain.icon,
+    title: domain.label,
+    primaryValue: primaryValue,
+    subtitle: subtitle,
+    isActive: isActive,
+  );
+}
+
+String _lightingModeLabel(LightingMode mode) {
+  switch (mode) {
+    case LightingMode.work:
+      return 'Work';
+    case LightingMode.relax:
+      return 'Relax';
+    case LightingMode.night:
+      return 'Night';
+    case LightingMode.off:
+      return 'Off';
+  }
+}
+
+DomainCardInfo _buildClimateCard(
+  DomainType domain,
+  int count,
+  RoomOverviewBuildInput input,
+) {
+  final cs = input.climateState;
+  final fmt = NumberFormatUtils.defaultFormat;
+  final tempUnit = input.displayUnits.temperature;
+
+  // Primary: mode label when available, fallback to temperature value
+  String primaryValue;
+  if (cs?.mode != null && cs!.mode != ClimateMode.off) {
+    primaryValue = _climateModeLabel(cs.mode!);
+  } else if (cs?.isOff == true) {
+    primaryValue = 'Off';
+  } else {
+    final temp = cs?.currentTemperature ?? input.temperature;
+    if (temp != null) {
+      primaryValue = '${fmt.formatDecimal(UnitConverter.convertTemperature(temp, tempUnit), decimalPlaces: 1)}${UnitConverter.temperatureSymbol(tempUnit)}';
+    } else {
+      primaryValue = '$count';
+    }
+  }
+
+  // Subtitle items with icons — same formatting as sensors domain view
+  final items = <SubtitleItem>[];
+  final temp = cs?.currentTemperature ?? input.temperature;
+  final humidity = cs?.currentHumidity ?? input.humidity;
+  if (temp != null) {
+    items.add(SubtitleItem(
+      icon: MdiIcons.thermometer,
+      text: SensorUtils.formatNumericValueWithUnit(
+        temp,
+        DevicesModuleChannelCategory.temperature,
+        displayUnits: input.displayUnits,
+      ),
+    ));
+  }
+  if (humidity != null) {
+    items.add(SubtitleItem(
+      icon: MdiIcons.waterPercent,
+      text: SensorUtils.formatNumericValueWithUnit(
+        humidity,
+        DevicesModuleChannelCategory.humidity,
+        displayUnits: input.displayUnits,
+      ),
+    ));
+  }
+
+  // Plain text fallback for subtitle
+  final subtitleText = items.isNotEmpty
+      ? items.map((i) => i.text).join(' \u00B7 ')
+      : '$count device${count != 1 ? 's' : ''}';
+
+  // Target value with icon: setpoint when heating/cooling
+  String? targetValue;
+  IconData? targetIcon;
+  if (cs != null) {
+    final target = cs.effectiveTargetTemperature;
+    if (target != null && cs.mode != ClimateMode.off) {
+      targetValue = '${fmt.formatDecimal(UnitConverter.convertTemperature(target, tempUnit), decimalPlaces: 0)}${UnitConverter.temperatureSymbol(tempUnit)}';
+      targetIcon = cs.isHeating ? MdiIcons.fire : (cs.isCooling ? MdiIcons.snowflake : MdiIcons.thermometer);
+    }
+  }
+
+  final isActive = cs != null ? (cs.mode != ClimateMode.off && cs.mode != null) : temp != null;
+
+  return DomainCardInfo(
+    domain: domain,
+    icon: domain.icon,
+    title: domain.label,
+    primaryValue: primaryValue,
+    targetValue: targetValue,
+    targetIcon: targetIcon,
+    subtitle: subtitleText,
+    subtitleItems: items,
+    isActive: isActive,
+  );
+}
+
+String _climateModeLabel(ClimateMode mode) {
+  switch (mode) {
+    case ClimateMode.heat:
+      return 'Heat';
+    case ClimateMode.cool:
+      return 'Cool';
+    case ClimateMode.auto:
+      return 'Auto';
+    case ClimateMode.off:
+      return 'Off';
+  }
+}
+
+DomainCardInfo _buildShadingCard(
+  DomainType domain,
+  int count,
+  RoomOverviewBuildInput input,
+) {
+  final cvs = input.coversState;
+
+  // Primary: detected mode label if intent active, else "Custom" when open, "Closed" when all closed
+  final isActive = cvs?.anyOpen ?? (input.shadingPosition != null && input.shadingPosition! > 0);
+  final allClosed = cvs?.allClosed ?? !isActive;
+
+  String primaryValue;
+  if (cvs != null &&
+      cvs.isModeFromIntent &&
+      cvs.detectedMode != null) {
+    primaryValue = _coversModeLabel(cvs.detectedMode!);
+  } else if (allClosed) {
+    primaryValue = 'Closed';
+  } else {
+    primaryValue = 'Custom';
+  }
+
+  // Subtitle: position description
+  String subtitle;
+  final pos = cvs?.averagePosition ?? input.shadingPosition;
+  if (pos != null) {
+    if (pos == 0) {
+      subtitle = 'Fully closed';
+    } else if (pos == 100) {
+      subtitle = 'Fully open';
+    } else {
+      subtitle = '$pos% open';
+    }
+  } else {
+    subtitle = '$count device${count != 1 ? 's' : ''}';
+  }
+
+  return DomainCardInfo(
+    domain: domain,
+    icon: domain.icon,
+    title: domain.label,
+    primaryValue: primaryValue,
+    subtitle: subtitle,
+    isActive: isActive,
+  );
+}
+
+String _coversModeLabel(CoversMode mode) {
+  switch (mode) {
+    case CoversMode.open:
+      return 'Open';
+    case CoversMode.closed:
+      return 'Closed';
+    case CoversMode.privacy:
+      return 'Privacy';
+    case CoversMode.daylight:
+      return 'Daylight';
+  }
+}
+
+DomainCardInfo _buildMediaCard(
+  DomainType domain,
+  RoomOverviewBuildInput input,
+) {
+  final ms = input.mediaState;
+
+  // Primary: activity label if active, else "Off"
+  final isActive = ms?.isActive ?? false;
+  final primaryValue = isActive && ms?.activityKey != null && ms!.activityKey != MediaActivityKey.off
+      ? _mediaActivityLabel(ms.activityKey!)
+      : 'Off';
+
+  final subtitle = '';
+
+  return DomainCardInfo(
+    domain: domain,
+    icon: isActive ? MdiIcons.playCircle : domain.icon,
+    title: domain.label,
+    primaryValue: primaryValue,
+    subtitle: subtitle,
+    isActive: isActive,
+  );
+}
+
+String _mediaActivityLabel(MediaActivityKey key) {
+  switch (key) {
+    case MediaActivityKey.watch:
+      return 'Watch';
+    case MediaActivityKey.listen:
+      return 'Listen';
+    case MediaActivityKey.gaming:
+      return 'Gaming';
+    case MediaActivityKey.background:
+      return 'Background';
+    case MediaActivityKey.off:
+      return 'Off';
+  }
+}
+
+DomainCardInfo _buildSensorsCard(
+  DomainType domain,
+  DomainCounts domainCounts,
+  RoomOverviewBuildInput input,
+) {
+  final ss = input.sensorState;
+  final readingsCount = domainCounts.sensorReadings;
+  final displayUnits = input.displayUnits;
+
+  final primaryValue = '$readingsCount';
+
+  // Subtitle items with icons — same values as sensors domain view env summary
+  final items = <SubtitleItem>[];
+  final env = ss?.environment;
+  if (env?.averageTemperature != null) {
+    items.add(SubtitleItem(
+      icon: MdiIcons.thermometer,
+      text: SensorUtils.formatNumericValueWithUnit(
+        env!.averageTemperature!,
+        DevicesModuleChannelCategory.temperature,
+        displayUnits: displayUnits,
+      ),
+    ));
+  }
+  if (env?.averageHumidity != null) {
+    items.add(SubtitleItem(
+      icon: MdiIcons.waterPercent,
+      text: SensorUtils.formatNumericValueWithUnit(
+        env!.averageHumidity!,
+        DevicesModuleChannelCategory.humidity,
+        displayUnits: displayUnits,
+      ),
+    ));
+  }
+  if (env?.averageIlluminance != null) {
+    items.add(SubtitleItem(
+      icon: MdiIcons.weatherSunny,
+      text: SensorUtils.formatNumericValueWithUnit(
+        env!.averageIlluminance!,
+        DevicesModuleChannelCategory.illuminance,
+        displayUnits: displayUnits,
+      ),
+      compactHidden: true,
+    ));
+  }
+
+  final subtitleText = items.isNotEmpty
+      ? items.map((i) => i.text).join(' \u00B7 ')
+      : '$readingsCount reading${readingsCount != 1 ? 's' : ''}';
+
+  final hasEnv = items.isNotEmpty;
+
+  return DomainCardInfo(
+    domain: domain,
+    icon: domain.icon,
+    title: domain.label,
+    primaryValue: primaryValue,
+    subtitle: subtitleText,
+    subtitleItems: items,
+    isActive: hasEnv,
+  );
 }
 
 /// Builds sensor readings for the bottom strip from raw input values.

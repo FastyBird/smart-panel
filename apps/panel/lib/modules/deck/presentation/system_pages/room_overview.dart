@@ -46,6 +46,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 	DevicesService? _devicesService;
 	ScenesService? _scenesService;
 	SpacesService? _spacesService;
+	MediaActivityService? _mediaActivityService;
 
 	// Loading states
 	bool _isLoading = true;
@@ -90,6 +91,13 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 		try {
 			_spacesService = locator<SpacesService>();
 			_spacesService?.addListener(_onSpacesDataChanged);
+		} catch (_) {}
+
+		try {
+			if (locator.isRegistered<MediaActivityService>()) {
+				_mediaActivityService = locator<MediaActivityService>();
+				_mediaActivityService?.addListener(_onSpacesDataChanged);
+			}
 		} catch (_) {}
 
 		// Listen for DeckService changes (e.g., when device categories are loaded)
@@ -137,6 +145,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 		_deckService.removeListener(_onDeckServiceChanged);
 		_devicesService?.removeListener(_onDevicesDataChanged);
 		_spacesService?.removeListener(_onSpacesDataChanged);
+		_mediaActivityService?.removeListener(_onSpacesDataChanged);
 		super.dispose();
 	}
 
@@ -149,6 +158,13 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 
 		if (display == null) return;
 
+		// Fetch cached state models (same pattern as domain screens)
+		final lightingState = _spacesService?.getLightingState(_roomId);
+		final climateState = _spacesService?.getClimateState(_roomId);
+		final coversState = _spacesService?.getCoversState(_roomId);
+		final sensorState = _spacesService?.getSensorState(_roomId);
+		final mediaState = _mediaActivityService?.getActiveState(_roomId);
+
 		final input = RoomOverviewBuildInput(
 			display: display,
 			room: room,
@@ -157,13 +173,17 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 			now: DateTime.now(),
 			displayUnits: DisplayUnits.fromLocator(),
 			lightsOnCount: _lightsOnCount,
-
 			energyDeviceCount: _deckService.energyDeviceCount,
 			sensorReadingsCount: _deckService.sensorReadingsCount,
 			temperature: _temperature,
 			humidity: _humidity,
 			shadingPosition: _shadingPosition,
 			mediaOnCount: _mediaOnCount,
+			lightingState: lightingState,
+			climateState: climateState,
+			coversState: coversState,
+			sensorState: sensorState,
+			mediaState: mediaState,
 		);
 
 		setState(() {
@@ -195,6 +215,12 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 
 			// Fetch live device property values (temperature, lights on, humidity, etc.)
 			await _fetchLiveDeviceData();
+
+			// Trigger initial API fetches for state models (fire-and-forget, same as domain screens)
+			_spacesService?.fetchLightingState(_roomId).catchError((_) => null);
+			_spacesService?.fetchClimateState(_roomId).catchError((_) => null);
+			_spacesService?.fetchCoversState(_roomId).catchError((_) => null);
+			_spacesService?.fetchSensorState(_roomId).catchError((_) => null);
 
 			// Read energy widget settings from room status_widgets
 			_applyEnergyWidgetSettings();
@@ -768,6 +794,8 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 		final screenService = locator<ScreenService>();
 		final isCompact = !isPortrait &&
 				(screenService.isSmallScreen || screenService.isMediumScreen);
+		final hideTargetValue = !isPortrait ||
+				screenService.isSmallScreen;
 		final maxTileHeight = AppSpacings.scale(isCompact ? 90 : 75);
 		final rowCount = (cards.length / 2).ceil();
 
@@ -798,6 +826,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 										child: _RoomDomainCard(
 											cardInfo: cards[firstIndex],
 											isDark: isDark,
+											hideTargetValue: hideTargetValue,
 											onTap: () => _navigateToDomainView(cards[firstIndex].domain),
 										),
 									),
@@ -806,6 +835,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 											child: _RoomDomainCard(
 												cardInfo: cards[secondIndex],
 												isDark: isDark,
+												hideTargetValue: hideTargetValue,
 												onTap: () => _navigateToDomainView(cards[secondIndex].domain),
 											),
 										)
@@ -905,11 +935,13 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 class _RoomDomainCard extends StatelessWidget {
 	final DomainCardInfo cardInfo;
 	final bool isDark;
+	final bool hideTargetValue;
 	final VoidCallback onTap;
 
 	const _RoomDomainCard({
 		required this.cardInfo,
 		required this.isDark,
+		this.hideTargetValue = false,
 		required this.onTap,
 	});
 
@@ -985,12 +1017,23 @@ class _RoomDomainCard extends StatelessWidget {
 																: AppTextColorLight.primary,
 														),
 													),
-													if (cardInfo.targetValue != null) ...[
-														SizedBox(width: AppSpacings.pSm),
+													if (cardInfo.targetValue != null && !hideTargetValue) ...[
+														Padding(
+															padding: EdgeInsets.symmetric(horizontal: AppSpacings.scale(3)),
+															child: Icon(
+																cardInfo.targetIcon ?? MdiIcons.arrowRight,
+																size: AppFontSize.small,
+																color: isDark
+																	? AppTextColorDark.placeholder
+																	: AppTextColorLight.placeholder,
+															),
+														),
 														Text(
-															'\u2192 ${cardInfo.targetValue}',
+															cardInfo.targetValue!,
 															style: TextStyle(
-																fontSize: AppFontSize.extraSmall,
+																fontSize: AppFontSize.small,
+																fontWeight: FontWeight.w700,
+																height: 1.0,
 																color: isDark
 																	? AppTextColorDark.placeholder
 																	: AppTextColorLight.placeholder,
@@ -1005,18 +1048,80 @@ class _RoomDomainCard extends StatelessWidget {
 							],
 						),
 						SizedBox(height: AppSpacings.pSm),
-						Text(
-							cardInfo.subtitle,
-							style: TextStyle(
-								fontSize: AppFontSize.extraSmall,
-								fontWeight: FontWeight.w500,
-								color: isDark
-									? AppTextColorDark.secondary
-									: AppTextColorLight.secondary,
+						if (cardInfo.subtitleItems.isNotEmpty)
+							Builder(builder: (_) {
+								final visibleItems = hideTargetValue
+									? cardInfo.subtitleItems.where((item) => !item.compactHidden).toList()
+									: cardInfo.subtitleItems;
+								if (visibleItems.isEmpty) {
+									return Text(
+										cardInfo.subtitle,
+										style: TextStyle(
+											fontSize: AppFontSize.extraSmall,
+											fontWeight: FontWeight.w500,
+											color: isDark
+												? AppTextColorDark.secondary
+												: AppTextColorLight.secondary,
+										),
+										maxLines: 1,
+										overflow: TextOverflow.ellipsis,
+									);
+								}
+								return Row(
+									children: [
+										for (int i = 0; i < visibleItems.length; i++) ...[
+											if (i > 0)
+												Padding(
+													padding: EdgeInsets.symmetric(horizontal: AppSpacings.scale(4)),
+													child: Text(
+														'\u00B7',
+														style: TextStyle(
+															fontSize: AppFontSize.extraSmall,
+															fontWeight: FontWeight.w500,
+															color: isDark
+																? AppTextColorDark.secondary
+																: AppTextColorLight.secondary,
+														),
+													),
+												),
+											if (visibleItems[i].icon != null)
+												Padding(
+													padding: EdgeInsets.only(right: AppSpacings.scale(2)),
+													child: Icon(
+														visibleItems[i].icon,
+														size: AppFontSize.extraSmall,
+														color: isDark
+															? AppTextColorDark.secondary
+															: AppTextColorLight.secondary,
+													),
+												),
+											Text(
+												visibleItems[i].text,
+												style: TextStyle(
+													fontSize: AppFontSize.extraSmall,
+													fontWeight: FontWeight.w500,
+													color: isDark
+														? AppTextColorDark.secondary
+														: AppTextColorLight.secondary,
+												),
+											),
+										],
+									],
+								);
+							})
+						else
+							Text(
+								cardInfo.subtitle,
+								style: TextStyle(
+									fontSize: AppFontSize.extraSmall,
+									fontWeight: FontWeight.w500,
+									color: isDark
+										? AppTextColorDark.secondary
+										: AppTextColorLight.secondary,
+								),
+								maxLines: 1,
+								overflow: TextOverflow.ellipsis,
 							),
-							maxLines: 1,
-							overflow: TextOverflow.ellipsis,
-						),
 					],
 				),
 			),
