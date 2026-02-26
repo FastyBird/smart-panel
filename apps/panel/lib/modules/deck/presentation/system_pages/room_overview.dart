@@ -863,12 +863,11 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 		bool isPortrait,
 	) {
 		final cards = model.domainCards;
-		final spacing = AppSpacings.pMd;
 		final screenService = locator<ScreenService>();
-		final isCompact = screenService.isSmallScreen ||
-				(!isPortrait && screenService.isMediumScreen);
+		final isCompact = !isPortrait || screenService.isSmallScreen;
 		final hideTargetValue = !isPortrait ||
 				screenService.isSmallScreen;
+		final spacing = AppSpacings.pMd;
 		final maxTileHeight = AppSpacings.scale(isCompact ? 90 : 95);
 		final rowCount = (cards.length / 2).ceil();
 
@@ -1097,7 +1096,7 @@ class _RoomDomainCard extends StatelessWidget {
 			child: ClipRRect(
 				borderRadius: borderRadius,
 				child: Container(
-					padding: EdgeInsets.all(AppSpacings.scale(12)),
+					padding: EdgeInsets.all(isCompact ? AppSpacings.pMd : AppSpacings.pLg),
 					decoration: BoxDecoration(
 						color: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
 						borderRadius: borderRadius,
@@ -1308,7 +1307,7 @@ class _RoomDomainCard extends StatelessWidget {
 															),
 															child: Icon(
 																action.icon,
-																size: AppFontSize.small,
+																size: isCompact ? AppFontSize.extraSmall : AppFontSize.small,
 																color: fgColor,
 															),
 														);
@@ -1324,7 +1323,7 @@ class _RoomDomainCard extends StatelessWidget {
 														child: Text(
 															action.label!,
 															style: TextStyle(
-																fontSize: AppFontSize.small,
+																fontSize: isCompact ? AppFontSize.extraSmall : AppFontSize.small,
 																fontWeight: FontWeight.w600,
 																height: 1.0,
 																color: fgColor,
