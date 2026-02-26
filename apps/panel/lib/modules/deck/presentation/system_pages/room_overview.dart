@@ -874,7 +874,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 		return LayoutBuilder(
 			builder: (context, constraints) {
 				final tileWidth = (constraints.maxWidth - spacing - AppSpacings.pMd * 2) / 2;
-				final aspectRatio = isCompact ? 1.5 : 1.6;
+				final aspectRatio = isCompact ? 1.4 : 2;
 				final tileHeight = (tileWidth / aspectRatio).clamp(0, maxTileHeight).toDouble();
 
 				return VerticalScrollWithGradient(
@@ -1096,7 +1096,10 @@ class _RoomDomainCard extends StatelessWidget {
 			child: ClipRRect(
 				borderRadius: borderRadius,
 				child: Container(
-					padding: EdgeInsets.all(isCompact ? AppSpacings.pMd : AppSpacings.pLg),
+					padding: EdgeInsets.symmetric(
+            horizontal: isCompact ? AppSpacings.pMd : AppSpacings.pLg,
+            vertical: AppSpacings.pMd,
+          ),
 					decoration: BoxDecoration(
 						color: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
 						borderRadius: borderRadius,
@@ -1272,8 +1275,7 @@ class _RoomDomainCard extends StatelessWidget {
 							),
 						// Quick action buttons
 						if (showActions) ...[
-							if (cardInfo.subtitleItems.isNotEmpty)
-								SizedBox(height: AppSpacings.scale(2)),
+							AppSpacings.spacingMdVertical,
 							Builder(builder: (_) {
 								final fgColor = _domainOutlinedButtonForegroundColor(
 									cardInfo.domain,
