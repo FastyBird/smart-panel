@@ -127,8 +127,10 @@ export class BuddyContextService {
 				if (device.channels) {
 					for (const channel of device.channels) {
 						if (channel.properties) {
+							const channelKey = channel.identifier ?? channel.name ?? channel.id;
+
 							for (const property of channel.properties) {
-								const key = `${channel.category}.${property.category}`;
+								const key = `${channelKey}.${property.category}`;
 								state[key] = property.value?.value ?? null;
 							}
 						}
