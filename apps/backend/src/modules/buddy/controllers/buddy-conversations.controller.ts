@@ -54,9 +54,9 @@ export class BuddyConversationsController {
 
 	@ApiOperation({
 		tags: [BUDDY_MODULE_API_TAG_NAME],
-		summary: 'Get a conversation with messages',
+		summary: 'Get a conversation',
 		description:
-			'Retrieves the details of a specific conversation by its unique ID, including all messages in chronological order.',
+			'Retrieves the metadata of a specific conversation by its unique ID (title, space, timestamps). Use GET /conversations/:id/messages to retrieve the messages.',
 		operationId: 'get-buddy-module-conversation',
 	})
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Conversation ID' })

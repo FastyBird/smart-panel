@@ -55,16 +55,6 @@ export class LlmProviderService {
 		}
 	}
 
-	isProviderConfigured(): boolean {
-		try {
-			const config = this.getConfig();
-
-			return config.provider !== LlmProvider.NONE && !!config.provider;
-		} catch {
-			return false;
-		}
-	}
-
 	private getConfig(): BuddyConfigModel {
 		try {
 			return this.configService.getModuleConfig<BuddyConfigModel>(BUDDY_MODULE_NAME);

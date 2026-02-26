@@ -10,7 +10,7 @@ import { BuddyConversationNotFoundException } from '../buddy.exceptions';
 import { BuddyConversationEntity } from '../entities/buddy-conversation.entity';
 import { BuddyMessageEntity } from '../entities/buddy-message.entity';
 
-import { BuddyContextService } from './buddy-context.service';
+import { BuddyContext, BuddyContextService } from './buddy-context.service';
 import { ChatMessage, LlmProviderService } from './llm-provider.service';
 
 const MAX_HISTORY_MESSAGES = 20;
@@ -146,15 +146,7 @@ export class BuddyConversationService {
 		this.logger.debug(`Deleted conversation id=${id}`);
 	}
 
-	private buildSystemPrompt(context: {
-		timestamp: string;
-		spaces: { id: string; name: string; category: string | null; deviceCount: number }[];
-		devices: { id: string; name: string; space: string | null; category: string; state: Record<string, unknown> }[];
-		scenes: { id: string; name: string; space: string | null; enabled: boolean }[];
-		weather: { temperature: number; conditions: string; humidity: number } | null;
-		energy: { solarProduction: number; gridConsumption: number; batteryLevel: number } | null;
-		recentIntents: { type: string; space: string | null; timestamp: string }[];
-	}): string {
+	private buildSystemPrompt(context: BuddyContext): string {
 		const lines: string[] = [
 			'You are a smart home assistant for the FastyBird Smart Panel.',
 			'Answer questions about the home, suggest improvements, and help the user manage their smart home.',
