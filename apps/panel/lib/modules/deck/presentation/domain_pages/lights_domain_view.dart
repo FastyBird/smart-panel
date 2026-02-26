@@ -3683,10 +3683,10 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       } else if (_scenesService != null) {
         final triggerResult = await _scenesService!.triggerScene(scene.id);
         result = triggerResult.success
-            ? (triggerResult.failureCount > 0
+            ? IntentResult.success(IntentType.activateScene)
+            : (triggerResult.successCount > 0
                 ? IntentResult.partialSuccess(IntentType.activateScene, message: triggerResult.errorMessage)
-                : IntentResult.success(IntentType.activateScene))
-            : IntentResult.failure(IntentType.activateScene, message: triggerResult.errorMessage);
+                : IntentResult.failure(IntentType.activateScene, message: triggerResult.errorMessage));
       }
 
       if (!mounted) return;
