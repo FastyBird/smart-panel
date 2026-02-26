@@ -26,6 +26,7 @@ class SkyPanel extends StatefulWidget {
 	final bool isSceneTriggering;
 	final String? triggeringSceneId;
 	final ValueChanged<String>? onSceneTap;
+	final VoidCallback? onWeatherTap;
 
 	const SkyPanel({
 		super.key,
@@ -36,6 +37,7 @@ class SkyPanel extends StatefulWidget {
 		this.isSceneTriggering = false,
 		this.triggeringSceneId,
 		this.onSceneTap,
+		this.onWeatherTap,
 	});
 
 	@override
@@ -167,6 +169,7 @@ class _SkyPanelState extends State<SkyPanel> {
 							isSceneTriggering: widget.isSceneTriggering,
 							triggeringSceneId: widget.triggeringSceneId,
 							onSceneTap: widget.onSceneTap,
+						onWeatherTap: widget.onWeatherTap,
 						),
 					),
 					],

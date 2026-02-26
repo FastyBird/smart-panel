@@ -22,6 +22,7 @@ class SkyContentOverlay extends StatelessWidget {
 	final bool isSceneTriggering;
 	final String? triggeringSceneId;
 	final ValueChanged<String>? onSceneTap;
+	final VoidCallback? onWeatherTap;
 
 	const SkyContentOverlay({
 		super.key,
@@ -40,6 +41,7 @@ class SkyContentOverlay extends StatelessWidget {
 		this.isSceneTriggering = false,
 		this.triggeringSceneId,
 		this.onSceneTap,
+		this.onWeatherTap,
 	});
 
 	@override
@@ -92,7 +94,7 @@ class SkyContentOverlay extends StatelessWidget {
 					time,
 					style: TextStyle(
 						fontSize: AppSpacings.scale(56),
-						fontWeight: FontWeight.w200,
+						fontWeight: FontWeight.w100,
 						color: primaryTextColor,
 						height: 1.0,
 						letterSpacing: -1.5,
@@ -115,7 +117,9 @@ class SkyContentOverlay extends StatelessWidget {
 	}
 
 	Widget _buildWeatherCard() {
-		return SkyGlassCard(
+		return GestureDetector(
+		onTap: onWeatherTap,
+		child: SkyGlassCard(
 			isNight: isNight,
 			child: Column(
 				crossAxisAlignment: CrossAxisAlignment.start,
@@ -148,11 +152,14 @@ class SkyContentOverlay extends StatelessWidget {
 						),
 				],
 			),
+		),
 		);
 	}
 
 	Widget _buildCompactWeatherCard() {
-		return SkyGlassCard(
+		return GestureDetector(
+		onTap: onWeatherTap,
+		child: SkyGlassCard(
 			isNight: isNight,
 			padding: EdgeInsets.symmetric(
 				horizontal: AppSpacings.pMd,
@@ -186,6 +193,7 @@ class SkyContentOverlay extends StatelessWidget {
 						),
 				],
 			),
+		),
 		);
 	}
 

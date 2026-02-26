@@ -19,6 +19,7 @@ import 'package:fastybird_smart_panel/modules/energy/services/energy_service.dar
 import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
 import 'package:fastybird_smart_panel/modules/scenes/export.dart';
 import 'package:fastybird_smart_panel/modules/spaces/export.dart';
+import 'package:fastybird_smart_panel/modules/weather/presentation/weather_detail.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
@@ -859,6 +860,13 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 					isSceneTriggering: _isSceneTriggering,
 					triggeringSceneId: _triggeringSceneId,
 					onSceneTap: _triggerScene,
+					onWeatherTap: () {
+						Navigator.of(context).push(
+							MaterialPageRoute(
+								builder: (_) => const WeatherDetailPage(),
+							),
+						);
+					},
 				);
 
 				final contentBody = _isLoading
