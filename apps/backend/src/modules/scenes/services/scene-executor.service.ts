@@ -149,9 +149,7 @@ export class SceneExecutorService {
 			if (result.failedActions === 0) {
 				result.status = SceneExecutionStatus.COMPLETED;
 			} else {
-				const uniqueReasons = [
-					...new Set(actionResults.filter((r) => !r.success && r.error).map((r) => r.error)),
-				];
+				const uniqueReasons = [...new Set(actionResults.filter((r) => !r.success && r.error).map((r) => r.error))];
 				const reasonsSuffix = uniqueReasons.length > 0 ? `: ${uniqueReasons.join('; ')}` : '';
 
 				if (result.successfulActions > 0) {
