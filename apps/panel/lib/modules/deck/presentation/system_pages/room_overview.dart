@@ -509,7 +509,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 					if (mounted) IntentResultHandler.showOfflineAlertIfNeededForClimate(context, result);
 					break;
 				case QuickActionType.coversClose:
-					final result = await spacesService.closeCovers(_roomId);
+					final result = await spacesService.setCoversMode(_roomId, CoversMode.closed);
 					if (mounted) IntentResultHandler.showOfflineAlertIfNeededForCovers(context, result);
 					break;
 				case QuickActionType.coversHalf:
@@ -517,7 +517,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 					if (mounted) IntentResultHandler.showOfflineAlertIfNeededForCovers(context, result);
 					break;
 				case QuickActionType.coversOpen:
-					final result = await spacesService.openCovers(_roomId);
+					final result = await spacesService.setCoversMode(_roomId, CoversMode.open);
 					if (mounted) IntentResultHandler.showOfflineAlertIfNeededForCovers(context, result);
 					break;
 				case QuickActionType.mediaPlay:
