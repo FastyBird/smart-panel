@@ -455,17 +455,121 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 		}
 	}
 
-	ClimateMode _nextClimateMode(ClimateMode current) {
-		switch (current) {
-			case ClimateMode.off:
-				return ClimateMode.heat;
-			case ClimateMode.heat:
-				return ClimateMode.cool;
-			case ClimateMode.cool:
-				return ClimateMode.auto;
-			case ClimateMode.auto:
-				return ClimateMode.off;
-		}
+	void _showClimateModeSelect() {
+		final spacesService = _spacesService;
+		if (spacesService == null) return;
+
+		final cs = spacesService.getClimateState(_roomId);
+		final currentMode = cs?.mode ?? ClimateMode.off;
+
+		final modes = <(ClimateMode, IconData, String, ThemeColors)>[
+			(ClimateMode.heat, MdiIcons.fire, 'Heat', ThemeColors.danger),
+			(ClimateMode.cool, MdiIcons.snowflake, 'Cool', ThemeColors.info),
+			(ClimateMode.auto, MdiIcons.autorenew, 'Auto', ThemeColors.success),
+			(ClimateMode.off, MdiIcons.power, 'Off', ThemeColors.neutral),
+		];
+
+		showDialog(
+			context: context,
+			barrierColor: Colors.transparent,
+			builder: (dialogContext) {
+				final isDark = Theme.of(dialogContext).brightness == Brightness.dark;
+				return Align(
+					alignment: Alignment.center,
+					child: Material(
+						elevation: 8,
+						borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+						color: isDark ? AppBgColorDark.overlay : AppBgColorLight.overlay,
+						child: Container(
+							constraints: BoxConstraints(
+								minWidth: AppSpacings.scale(180),
+								maxWidth: AppSpacings.scale(220),
+							),
+							decoration: BoxDecoration(
+								borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+								border: Border.all(
+									color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light,
+									width: AppSpacings.scale(1),
+								),
+							),
+							padding: AppSpacings.paddingMd,
+							child: Column(
+								mainAxisSize: MainAxisSize.min,
+								crossAxisAlignment: CrossAxisAlignment.start,
+								children: [
+									Padding(
+										padding: EdgeInsets.only(bottom: AppSpacings.pSm),
+										child: Text(
+											'MODE',
+											style: TextStyle(
+												fontSize: AppFontSize.extraSmall,
+												fontWeight: FontWeight.w600,
+												letterSpacing: AppSpacings.scale(1),
+												color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
+											),
+										),
+									),
+									for (final (mode, icon, label, themeColor) in modes)
+										Builder(builder: (_) {
+											final isActive = currentMode == mode;
+											final colorFamily = ThemeColorFamily.get(
+												isDark ? Brightness.dark : Brightness.light,
+												themeColor,
+											);
+											return GestureDetector(
+												onTap: () async {
+													Navigator.of(dialogContext).pop();
+													final result = await spacesService.setClimateMode(_roomId, mode);
+													if (mounted) {
+														IntentResultHandler.showOfflineAlertIfNeededForClimate(context, result);
+													}
+												},
+												behavior: HitTestBehavior.opaque,
+												child: Container(
+													padding: EdgeInsets.symmetric(
+														vertical: AppSpacings.pMd,
+														horizontal: AppSpacings.pMd,
+													),
+													margin: EdgeInsets.only(bottom: AppSpacings.pXs),
+													decoration: BoxDecoration(
+														color: isActive ? colorFamily.light9 : Colors.transparent,
+														borderRadius: BorderRadius.circular(AppBorderRadius.small),
+														border: isActive
+																? Border.all(color: colorFamily.light7, width: AppSpacings.scale(1))
+																: null,
+													),
+													child: Row(
+														spacing: AppSpacings.pMd,
+														children: [
+															Icon(
+																icon,
+																color: isActive ? colorFamily.base : (isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary),
+																size: AppSpacings.scale(20),
+															),
+															Expanded(
+																child: Text(
+																	label,
+																	style: TextStyle(
+																		fontSize: AppFontSize.base,
+																		fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+																		color: isActive ? colorFamily.base : (isDark ? AppTextColorDark.regular : AppTextColorLight.regular),
+																	),
+																),
+															),
+															if (isActive)
+																Icon(Icons.check, color: colorFamily.base, size: AppSpacings.scale(16)),
+														],
+													),
+												),
+											);
+										}),
+								],
+							),
+						),
+					),
+				);
+			},
+		);
 	}
 
 	Future<void> _handleQuickAction(QuickActionType type) async {
@@ -486,12 +590,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 					if (mounted) IntentResultHandler.showOfflineAlertIfNeeded(context, result);
 					break;
 				case QuickActionType.climateMode:
-					final csMode = spacesService.getClimateState(_roomId);
-					if (csMode == null) return;
-					final currentMode = csMode.mode ?? ClimateMode.off;
-					final nextMode = _nextClimateMode(currentMode);
-					final modeResult = await spacesService.setClimateMode(_roomId, nextMode);
-					if (mounted) IntentResultHandler.showOfflineAlertIfNeededForClimate(context, modeResult);
+					_showClimateModeSelect();
 					break;
 				case QuickActionType.climateMinus:
 				case QuickActionType.climatePlus:

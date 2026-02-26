@@ -636,9 +636,9 @@ DomainCardInfo _buildShadingCard(
     primaryValue: primaryValue,
     subtitle: subtitle,
     actions: [
-      QuickActionInfo(type: QuickActionType.coversClose, icon: MdiIcons.arrowCollapseVertical, label: 'Close'),
-      QuickActionInfo(type: QuickActionType.coversHalf, icon: MdiIcons.arrowSplitHorizontal, label: '50%'),
       QuickActionInfo(type: QuickActionType.coversOpen, icon: MdiIcons.arrowExpandVertical, label: 'Open'),
+      QuickActionInfo(type: QuickActionType.coversHalf, icon: MdiIcons.arrowSplitHorizontal, label: '50%'),
+      QuickActionInfo(type: QuickActionType.coversClose, icon: MdiIcons.arrowCollapseVertical, label: 'Close'),
     ],
     isActive: isActive,
   );
