@@ -129,7 +129,7 @@ export class BuddyContextService {
 						if (channel.properties) {
 							for (const property of channel.properties) {
 								const key = `${channel.category}.${property.category}`;
-								state[key] = property.value ?? null;
+								state[key] = property.value?.value ?? null;
 							}
 						}
 					}
