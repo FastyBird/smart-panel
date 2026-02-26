@@ -1,5 +1,5 @@
 import { Expose, Type } from 'class-transformer';
-import { IsNotEmpty, IsString, ValidateNested } from 'class-validator';
+import { IsDefined, IsNotEmpty, IsObject, IsString, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
@@ -20,6 +20,8 @@ export class SendMessageDto {
 export class ReqSendMessageDto {
 	@ApiProperty({ description: 'Message data', type: () => SendMessageDto })
 	@Expose()
+	@IsDefined({ message: '[{"field":"data","reason":"Message data is required."}]' })
+	@IsObject({ message: '[{"field":"data","reason":"Message data must be an object."}]' })
 	@ValidateNested()
 	@Type(() => SendMessageDto)
 	data: SendMessageDto;

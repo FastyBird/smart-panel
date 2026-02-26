@@ -50,4 +50,16 @@ export class UpdateBuddyConfigDto extends UpdateModuleConfigDto {
 	@IsOptional()
 	@IsString({ message: '[{"field":"model","reason":"Model must be a valid string."}]' })
 	model?: string | null;
+
+	@ApiPropertyOptional({
+		name: 'ollama_url',
+		description: 'Base URL for the Ollama API endpoint',
+		type: 'string',
+		nullable: true,
+		example: 'http://localhost:11434',
+	})
+	@Expose({ name: 'ollama_url' })
+	@IsOptional()
+	@IsString({ message: '[{"field":"ollama_url","reason":"Ollama URL must be a valid string."}]' })
+	ollama_url?: string | null;
 }

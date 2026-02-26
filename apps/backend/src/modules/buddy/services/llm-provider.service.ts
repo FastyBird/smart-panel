@@ -136,8 +136,7 @@ export class LlmProviderService {
 		timeout: number,
 	): Promise<string> {
 		const config = this.getConfig();
-		const ollamaUrl = (config as unknown as Record<string, unknown>)['ollamaUrl'];
-		const baseUrl: string = typeof ollamaUrl === 'string' ? ollamaUrl : 'http://localhost:11434';
+		const baseUrl: string = config.ollamaUrl ?? 'http://localhost:11434';
 
 		const controller = new AbortController();
 		const timeoutId = setTimeout(() => controller.abort(), timeout);
