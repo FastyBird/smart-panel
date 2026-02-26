@@ -166,10 +166,13 @@ class ScenesRepository extends Repository<SceneModel> {
           );
         }
 
+        final error = data?['error'] as String?;
+
         return TriggerSceneResult(
           success: failureCount == 0,
           successCount: successCount,
           failureCount: failureCount,
+          errorMessage: error,
         );
       } else {
         if (kDebugMode) {
@@ -215,6 +218,7 @@ class ScenesRepository extends Repository<SceneModel> {
           'totalActions': result.totalActions,
           'successfulActions': result.successfulActions,
           'failedActions': result.failedActions,
+          'error': result.error,
         };
       }
     } on DioException catch (e) {

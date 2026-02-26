@@ -237,7 +237,8 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
         final localizations = AppLocalizations.of(context);
         Toast.showInfo(
           context,
-          message: localizations?.space_scene_partial_success ??
+          message: result.message ??
+              localizations?.space_scene_partial_success ??
               'Mode partially activated',
         );
       } else {

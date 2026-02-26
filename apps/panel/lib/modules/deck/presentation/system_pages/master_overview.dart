@@ -286,7 +286,8 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
         final localizations = AppLocalizations.of(context);
         Toast.showInfo(
           context,
-          message: localizations?.space_scene_partial_success ??
+          message: result.message ??
+              localizations?.space_scene_partial_success ??
               'Scene partially activated',
         );
       } else {

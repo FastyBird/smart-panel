@@ -583,7 +583,8 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 			} else if (result.isPartialSuccess) {
 				Toast.showInfo(
 					context,
-					message: localizations?.space_scene_partial_success ??
+					message: result.message ??
+						localizations?.space_scene_partial_success ??
 						'Scene partially activated',
 				);
 			} else {

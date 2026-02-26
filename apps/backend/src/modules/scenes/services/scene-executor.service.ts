@@ -150,9 +150,22 @@ export class SceneExecutorService {
 				result.status = SceneExecutionStatus.COMPLETED;
 			} else if (result.successfulActions > 0) {
 				result.status = SceneExecutionStatus.PARTIALLY_COMPLETED;
+				const reasons = actionResults
+					.filter((r) => !r.success && r.error)
+					.map((r) => r.error);
+				const uniqueReasons = [...new Set(reasons)];
+				result.error = uniqueReasons.length > 0
+					? `${result.failedActions} action(s) failed: ${uniqueReasons.join('; ')}`
+					: `${result.failedActions} action(s) failed`;
 			} else {
 				result.status = SceneExecutionStatus.FAILED;
-				result.error = 'All actions failed';
+				const reasons = actionResults
+					.filter((r) => !r.success && r.error)
+					.map((r) => r.error);
+				const uniqueReasons = [...new Set(reasons)];
+				result.error = uniqueReasons.length > 0
+					? `All actions failed: ${uniqueReasons.join('; ')}`
+					: 'All actions failed';
 			}
 
 			result.completedAt = new Date().toISOString();

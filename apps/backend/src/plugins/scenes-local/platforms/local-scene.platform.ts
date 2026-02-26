@@ -92,7 +92,7 @@ export class LocalScenePlatform implements IScenePlatform {
 		if (!device) {
 			return {
 				valid: false,
-				error: `Device with id=${action.deviceId} not found.`,
+				error: 'Referenced device no longer exists',
 			};
 		}
 
@@ -105,7 +105,7 @@ export class LocalScenePlatform implements IScenePlatform {
 			if (!channel) {
 				return {
 					valid: false,
-					error: `Channel with id=${action.channelId} not found for device id=${action.deviceId}.`,
+					error: 'Referenced channel no longer exists',
 				};
 			}
 		} else {
@@ -124,7 +124,7 @@ export class LocalScenePlatform implements IScenePlatform {
 			if (!channel) {
 				return {
 					valid: false,
-					error: `Could not find channel containing property id=${action.propertyId} for device id=${action.deviceId}.`,
+					error: 'Referenced channel no longer exists',
 				};
 			}
 		}
@@ -135,7 +135,7 @@ export class LocalScenePlatform implements IScenePlatform {
 		if (!property) {
 			return {
 				valid: false,
-				error: `Property with id=${action.propertyId} not found in channel id=${channel.id}.`,
+				error: 'Referenced property no longer exists',
 			};
 		}
 
@@ -147,7 +147,7 @@ export class LocalScenePlatform implements IScenePlatform {
 		if (!isWritable) {
 			return {
 				valid: false,
-				error: `Property with id=${action.propertyId} is not writable. Permissions: ${property.permissions?.join(', ') || 'none'}.`,
+				error: 'Referenced property is not writable',
 			};
 		}
 
@@ -157,7 +157,7 @@ export class LocalScenePlatform implements IScenePlatform {
 		if (!valueTypeValid) {
 			return {
 				valid: false,
-				error: `Value type mismatch for property id=${action.propertyId}. Expected ${property.dataType}, got ${typeof action.value}.`,
+				error: `Value type mismatch (expected ${property.dataType})`,
 			};
 		}
 
