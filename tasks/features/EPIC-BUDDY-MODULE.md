@@ -101,7 +101,7 @@ Inspired by the [OpenClaw](https://github.com/openclaw/openclaw) project's proac
 - [x] `BuddyConversationService` handles text chat with conversation history persistence (TypeORM entities)
 - [ ] `SuggestionEngineService` generates context-aware suggestions with cooldown management
 - [ ] `PatternDetectorService` identifies repeated action sequences from the action history buffer (rule-based MVP)
-- [ ] REST API endpoints following API conventions (controllers return `*ResponseModel`, DTOs are input only):
+- [x] REST API endpoints following API conventions (controllers return `*ResponseModel`, DTOs are input only):
   - `GET /v1/modules/buddy/conversations` — list conversations
   - `POST /v1/modules/buddy/conversations` — start new conversation
   - `GET /v1/modules/buddy/conversations/:id` — get conversation with messages
@@ -111,12 +111,12 @@ Inspired by the [OpenClaw](https://github.com/openclaw/openclaw) project's proac
   - `POST /v1/modules/buddy/suggestions/:id/feedback` — accept/dismiss suggestion
 - [ ] WebSocket events emitted via `EventEmitter2`:
   - `BuddyModule.Suggestion.Created` — new suggestion available
-  - `BuddyModule.Conversation.MessageReceived` — buddy response ready
-- [ ] Database entities: `BuddyConversationEntity`, `BuddyMessageEntity` with migration
+  - [x] `BuddyModule.Conversation.MessageReceived` — buddy response ready
+- [x] Database entities: `BuddyConversationEntity`, `BuddyMessageEntity` with migration
 - [ ] Panel: buddy module with chat drawer accessible from deck UI
 - [ ] Panel: suggestion cards displayed as dismissible notifications
 - [ ] Admin: buddy settings page (enable/disable, provider selection, API key configuration)
-- [ ] Works without an AI provider configured (rule-based suggestions only, chat returns 503)
+- [x] Works without an AI provider configured (rule-based suggestions only, chat returns 503)
 - [ ] Unit tests for pattern detection, suggestion rules, context building
 - [ ] E2E tests for conversation and suggestion API endpoints
 
