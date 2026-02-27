@@ -150,16 +150,47 @@ export class PatternDetectorService {
 				}
 			}
 
-			const totalMinutes = cluster.reduce((sum, a) => sum + minuteOfDay(a.timestamp), 0);
-			const avgTotalMinutes = Math.round(totalMinutes / cluster.length);
+			const { hour, minute } = this.circularMeanTime(cluster);
 
 			clusters.push({
 				actions: cluster,
-				avgHour: Math.floor(avgTotalMinutes / 60),
-				avgMinute: avgTotalMinutes % 60,
+				avgHour: hour,
+				avgMinute: minute,
 			});
 		}
 
 		return clusters;
+	}
+
+	/**
+	 * Compute the circular mean of time-of-day values.
+	 * Uses circular statistics (atan2 of mean sin/cos) to correctly average
+	 * times that span midnight (e.g. 23:50 and 00:10 → ~00:00, not 12:00).
+	 */
+	private circularMeanTime(cluster: ActionRecord[]): { hour: number; minute: number } {
+		const TWO_PI = 2 * Math.PI;
+		const MINUTES_IN_DAY = 1440;
+
+		let sinSum = 0;
+		let cosSum = 0;
+
+		for (const action of cluster) {
+			const minutes = action.timestamp.getHours() * 60 + action.timestamp.getMinutes();
+			const angle = (minutes / MINUTES_IN_DAY) * TWO_PI;
+			sinSum += Math.sin(angle);
+			cosSum += Math.cos(angle);
+		}
+
+		const meanAngle = Math.atan2(sinSum / cluster.length, cosSum / cluster.length);
+		let meanMinutes = Math.round(((meanAngle < 0 ? meanAngle + TWO_PI : meanAngle) / TWO_PI) * MINUTES_IN_DAY);
+
+		if (meanMinutes >= MINUTES_IN_DAY) {
+			meanMinutes = 0;
+		}
+
+		return {
+			hour: Math.floor(meanMinutes / 60),
+			minute: meanMinutes % 60,
+		};
 	}
 }

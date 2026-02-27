@@ -71,6 +71,7 @@ export class SuggestionEngineService implements OnModuleDestroy {
 	private readonly logger = new Logger(SuggestionEngineService.name);
 	private readonly suggestions = new Map<string, BuddySuggestion>();
 	private cleanupTimer: ReturnType<typeof setInterval> | null = null;
+	private generating = false;
 
 	constructor(
 		private readonly patternDetector: PatternDetectorService,
@@ -90,8 +91,23 @@ export class SuggestionEngineService implements OnModuleDestroy {
 	/**
 	 * Generate suggestions from detected patterns.
 	 * Creates new suggestions for patterns that are not on cooldown.
+	 * Uses a lock to prevent concurrent calls from creating duplicate suggestions.
 	 */
 	async generateSuggestions(): Promise<BuddySuggestion[]> {
+		if (this.generating) {
+			return [];
+		}
+
+		this.generating = true;
+
+		try {
+			return await this.doGenerateSuggestions();
+		} finally {
+			this.generating = false;
+		}
+	}
+
+	private async doGenerateSuggestions(): Promise<BuddySuggestion[]> {
 		const patterns = this.patternDetector.detectPatterns();
 		const newSuggestions: BuddySuggestion[] = [];
 
@@ -107,6 +123,11 @@ export class SuggestionEngineService implements OnModuleDestroy {
 			const spaceName = await this.resolveSpaceName(pattern.spaceId);
 			const intentLabel = this.formatIntentType(pattern.intentType);
 			const timeLabel = this.formatTime(pattern.timeOfDay.hour, pattern.timeOfDay.minute);
+
+			// Re-check after async gap to prevent duplicates
+			if (this.hasSuggestionForPattern(pattern)) {
+				continue;
+			}
 
 			const suggestion: BuddySuggestion = {
 				id: uuid(),
@@ -192,10 +213,16 @@ export class SuggestionEngineService implements OnModuleDestroy {
 	}
 
 	/**
-	 * Check if a suggestion already exists for a given pattern (same intent type + space).
+	 * Check if a non-expired suggestion already exists for a given pattern (same intent type + space).
 	 */
 	private hasSuggestionForPattern(pattern: DetectedPattern): boolean {
+		const now = Date.now();
+
 		for (const suggestion of this.suggestions.values()) {
+			if (suggestion.expiresAt.getTime() <= now) {
+				continue;
+			}
+
 			if (suggestion.spaceId === pattern.spaceId && suggestion.metadata.intentType === pattern.intentType) {
 				return true;
 			}
