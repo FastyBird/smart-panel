@@ -10,11 +10,11 @@
 				class="h-full overflow-hidden p-2"
 			>
 				<el-card
-					body-class="p-0! flex flex-col"
-					class="page-grid-card mx-auto h-full"
+					body-class="p-0! flex flex-col overflow-hidden h-full"
+					:class="[ns.b(), 'mx-auto h-full overflow-hidden']"
 					:style="props.gridCardStyle"
 				>
-					<div class="page-grid-header flex items-center justify-between px-2 flex-shrink-0">
+					<div :class="[ns.e('header'), 'flex items-center justify-between px-2 flex-shrink-0 h-9 min-h-9 b-b b-b-solid']">
 						<div class="flex items-center gap-1 min-w-0">
 							<el-icon
 								:size="14"
@@ -51,11 +51,11 @@
 				class="h-full overflow-hidden p-2"
 			>
 				<el-card
-					body-class="p-0! flex flex-col"
-					class="page-grid-card mx-auto h-full"
+					body-class="p-0! flex flex-col overflow-hidden h-full"
+					:class="[ns.b(), 'mx-auto h-full overflow-hidden']"
 					:style="props.gridCardStyle"
 				>
-					<div class="page-grid-header flex items-center justify-between px-2 flex-shrink-0">
+					<div :class="[ns.e('header'), 'flex items-center justify-between px-2 flex-shrink-0 h-9 min-h-9 b-b b-b-solid']">
 						<div class="flex items-center gap-1 min-w-0">
 							<el-icon
 								:size="14"
@@ -168,7 +168,7 @@
 <script setup lang="ts">
 import { computed, getCurrentInstance, h, nextTick, onBeforeMount, onBeforeUnmount, onMounted, ref, render, watch } from 'vue';
 
-import { ElButton, ElCard, ElCol, ElIcon, ElOption, ElRow, ElSelect, ElText } from 'element-plus';
+import { ElButton, ElCard, ElCol, ElIcon, ElOption, ElRow, ElSelect, ElText, useNamespace } from 'element-plus';
 import { GridStack, type GridStackWidget } from 'gridstack';
 import 'gridstack/dist/gridstack.min.css';
 
@@ -191,6 +191,8 @@ import TilePreview from './tile-preview.vue';
 defineOptions({
 	name: 'PageConfigure',
 });
+
+const ns = useNamespace('page-configure');
 
 const props = withDefaults(defineProps<IPageConfigureProps>(), {
 	remotePageResult: FormResult.NONE,
@@ -260,8 +262,8 @@ const onTileRemove = (id: ITile['id']): void => {
 
 const updateSquareCells = (): void => {
 	// Reset maxHeight on both cards so we measure unconstrained column height
-	const pageCard = pageGridContainer.value?.closest('.page-grid-card') as HTMLElement | null;
-	const draftCard = draftGridContainer.value?.closest('.page-grid-card') as HTMLElement | null;
+	const pageCard = pageGridContainer.value?.closest(`.${ns.b()}`) as HTMLElement | null;
+	const draftCard = draftGridContainer.value?.closest(`.${ns.b()}`) as HTMLElement | null;
 
 	if (pageCard) pageCard.style.maxHeight = '';
 	if (draftCard) draftCard.style.maxHeight = '';
@@ -281,7 +283,7 @@ const updateSquareCells = (): void => {
 
 		// Cap card to actual content so there's no white space on large screens
 		if (pageCard) {
-			const headerEl = pageCard.querySelector('.page-grid-header') as HTMLElement | null;
+			const headerEl = pageCard.querySelector(`.${ns.e('header')}`) as HTMLElement | null;
 			const headerH = headerEl?.offsetHeight ?? 0;
 			const cs = getComputedStyle(pageGridContainer.value);
 			const padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
@@ -304,7 +306,7 @@ const updateSquareCells = (): void => {
 
 		// Cap card to actual content
 		if (draftCard) {
-			const draftHeaderEl = draftCard.querySelector('.page-grid-header') as HTMLElement | null;
+			const draftHeaderEl = draftCard.querySelector(`.${ns.e('header')}`) as HTMLElement | null;
 			const draftHeaderH = draftHeaderEl?.offsetHeight ?? 0;
 			const cs = getComputedStyle(draftGridContainer.value);
 			const padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
@@ -775,25 +777,6 @@ watch(
 );
 </script>
 
-<style lang="scss">
-.grid-stack .grid-stack-item-content {
-	display: flex;
-	flex-direction: column;
-}
-
-.page-grid-card {
-	overflow: hidden;
-
-	.el-card__body {
-		overflow: hidden;
-		height: 100%;
-	}
-}
-
-.page-grid-header {
-	height: 36px;
-	min-height: 36px;
-	border-bottom: 1px solid var(--el-border-color-lighter);
-	background-color: var(--el-fill-color-light);
-}
+<style rel="stylesheet/scss" lang="scss">
+@use 'page-configure.scss';
 </style>
