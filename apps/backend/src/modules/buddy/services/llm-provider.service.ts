@@ -10,7 +10,7 @@ export interface ChatMessage {
 	content: string;
 }
 
-export interface LlmOptions {
+interface LlmOptions {
 	timeout?: number;
 	model?: string;
 }
