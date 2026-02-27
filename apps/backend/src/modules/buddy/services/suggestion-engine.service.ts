@@ -3,6 +3,7 @@ import { v4 as uuid } from 'uuid';
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
+import { CooldownManager } from '../../../common/utils/cooldown-manager';
 import { SpacesService } from '../../spaces/services/spaces.service';
 import { SuggestionFeedback } from '../../spaces/spaces.constants';
 import {
@@ -27,44 +28,7 @@ export interface BuddySuggestion {
 	expiresAt: Date;
 }
 
-/**
- * In-memory cooldown storage (per space + suggestion type)
- */
-const suggestionCooldowns = new Map<string, number>();
-
-function getCooldownKey(spaceId: string, suggestionType: SuggestionType): string {
-	return `${spaceId}:${suggestionType}`;
-}
-
-export function isOnCooldown(spaceId: string, suggestionType: SuggestionType, now: number = Date.now()): boolean {
-	const key = getCooldownKey(spaceId, suggestionType);
-	const cooldownUntil = suggestionCooldowns.get(key);
-
-	if (!cooldownUntil) {
-		return false;
-	}
-
-	return now < cooldownUntil;
-}
-
-export function setCooldown(
-	spaceId: string,
-	suggestionType: SuggestionType,
-	durationMs: number = SUGGESTION_COOLDOWN_MS,
-	now: number = Date.now(),
-): void {
-	const key = getCooldownKey(spaceId, suggestionType);
-	suggestionCooldowns.set(key, now + durationMs);
-}
-
-export function clearCooldown(spaceId: string, suggestionType: SuggestionType): void {
-	const key = getCooldownKey(spaceId, suggestionType);
-	suggestionCooldowns.delete(key);
-}
-
-export function clearAllCooldowns(): void {
-	suggestionCooldowns.clear();
-}
+export const buddyCooldowns = new CooldownManager<SuggestionType>();
 
 @Injectable()
 export class SuggestionEngineService implements OnModuleDestroy {
@@ -112,7 +76,7 @@ export class SuggestionEngineService implements OnModuleDestroy {
 		const newSuggestions: BuddySuggestion[] = [];
 
 		for (const pattern of patterns) {
-			if (isOnCooldown(pattern.spaceId, SuggestionType.PATTERN_SCENE_CREATE)) {
+			if (buddyCooldowns.isOnCooldown(pattern.spaceId, SuggestionType.PATTERN_SCENE_CREATE)) {
 				continue;
 			}
 
@@ -170,7 +134,7 @@ export class SuggestionEngineService implements OnModuleDestroy {
 				continue;
 			}
 
-			if (isOnCooldown(suggestion.spaceId, suggestion.type, now)) {
+			if (buddyCooldowns.isOnCooldown(suggestion.spaceId, suggestion.type, now)) {
 				continue;
 			}
 
@@ -204,7 +168,7 @@ export class SuggestionEngineService implements OnModuleDestroy {
 	recordFeedback(id: string, feedback: SuggestionFeedback): { success: boolean } {
 		const suggestion = this.getSuggestionOrThrow(id);
 
-		setCooldown(suggestion.spaceId, suggestion.type);
+		buddyCooldowns.setCooldown(suggestion.spaceId, suggestion.type, SUGGESTION_COOLDOWN_MS);
 		this.suggestions.delete(id);
 
 		this.logger.debug(`Feedback "${feedback}" recorded for suggestion id=${id}, cooldown set`);
