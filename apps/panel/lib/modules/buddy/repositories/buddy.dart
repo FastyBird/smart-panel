@@ -28,8 +28,10 @@ class BuddyRepository extends ChangeNotifier {
 	/// Loading states
 	bool _isLoadingConversations = false;
 	bool _isLoadingMessages = false;
-	bool _isSendingMessage = false;
 	bool _isLoadingSuggestions = false;
+
+	/// Number of in-flight sendMessage calls. The UI treats > 0 as "sending".
+	int _activeSendCount = 0;
 
 	/// Error state
 	String? _error;
@@ -53,7 +55,7 @@ class BuddyRepository extends ChangeNotifier {
 
 	bool get isLoadingConversations => _isLoadingConversations;
 	bool get isLoadingMessages => _isLoadingMessages;
-	bool get isSendingMessage => _isSendingMessage;
+	bool get isSendingMessage => _activeSendCount > 0;
 	bool get isLoadingSuggestions => _isLoadingSuggestions;
 	String? get error => _error;
 	bool get isProviderNotConfigured => _isProviderNotConfigured;
@@ -205,7 +207,7 @@ class BuddyRepository extends ChangeNotifier {
 		String conversationId,
 		String content,
 	) async {
-		_isSendingMessage = true;
+		_activeSendCount++;
 		_error = null;
 		_isProviderNotConfigured = false;
 
@@ -236,9 +238,10 @@ class BuddyRepository extends ChangeNotifier {
 					// so it's visible even if the subsequent refresh fails.
 					_messages.add(assistantMessage);
 
-					// Clear sending state before reconciliation so the UI
-					// hides the "Thinking…" indicator and re-enables input.
-					_isSendingMessage = false;
+					// Decrement before reconciliation so the UI hides the
+					// "Thinking…" indicator for this send while still showing
+					// it if another send is in-flight.
+					_activeSendCount--;
 					notifyListeners();
 
 					// Silently reconcile optimistic user message with server
@@ -251,10 +254,10 @@ class BuddyRepository extends ChangeNotifier {
 				}
 			}
 
-			// Non-200 status or unexpected data shape — clear sending state
-			// and reconcile from the server so the optimistic pending_*
+			// Non-200 status or unexpected data shape — decrement and
+			// reconcile from the server so the optimistic pending_*
 			// message is replaced.
-			_isSendingMessage = false;
+			_activeSendCount--;
 			notifyListeners();
 
 			await _reconcileMessages(conversationId);
@@ -279,7 +282,11 @@ class BuddyRepository extends ChangeNotifier {
 				debugPrint('[BUDDY MODULE] Error sending message: $e');
 			}
 		} finally {
-			_isSendingMessage = false;
+			// Only decrement if we haven't already (error paths).
+			// Success paths decrement before reconciliation above.
+			if (_activeSendCount > 0 && _error != null) {
+				_activeSendCount--;
+			}
 			notifyListeners();
 		}
 
@@ -499,6 +506,10 @@ class BuddyRepository extends ChangeNotifier {
 	/// Used after a successful [sendMessage] to reconcile the optimistic
 	/// pending user message with the real server data. Failures are logged
 	/// but never surface to the UI — the locally-added messages remain.
+	///
+	/// Any optimistic `pending_*` messages that were added by concurrent
+	/// [sendMessage] calls are preserved and appended after the server data
+	/// so they are not silently dropped.
 	Future<void> _reconcileMessages(String conversationId) async {
 		try {
 			final response = await _dio.get(
@@ -509,11 +520,22 @@ class BuddyRepository extends ChangeNotifier {
 				final data = response.data['data'];
 
 				if (data is List) {
+					// Collect any optimistic pending messages that are not
+					// yet on the server so they survive the list replacement.
+					final pendingMessages = _messages
+						.where((m) => m.id.startsWith('pending_'))
+						.toList();
+
 					_messages = data
 						.map((json) => BuddyMessageModel.fromJson(
 							json as Map<String, dynamic>,
 						))
 						.toList();
+
+					if (pendingMessages.isNotEmpty) {
+						_messages.addAll(pendingMessages);
+					}
+
 					notifyListeners();
 				}
 			}
