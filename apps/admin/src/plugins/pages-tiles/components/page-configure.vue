@@ -203,7 +203,6 @@ const props = withDefaults(defineProps<IPageConfigureProps>(), {
 
 const emit = defineEmits<{
 	(e: 'selectDisplay', displayId: string): void;
-	(e: 'addTile'): void;
 	(e: 'addPageDataSource'): void;
 	(e: 'addTileOfType', type: string): void;
 	(e: 'editTile', id: ITile['id']): void;

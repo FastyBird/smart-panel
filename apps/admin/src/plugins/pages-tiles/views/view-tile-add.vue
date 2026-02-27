@@ -214,9 +214,7 @@ const selectedType = ref<string | undefined>((route.query.tileType as string) ||
 watch(
 	(): string | undefined => (route.query.tileType as string) || undefined,
 	(val: string | undefined): void => {
-		if (val) {
-			selectedType.value = val;
-		}
+		selectedType.value = val;
 	}
 );
 

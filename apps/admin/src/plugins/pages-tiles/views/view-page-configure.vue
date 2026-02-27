@@ -81,7 +81,6 @@
 		:displays="applicableDisplays"
 		:selected-display="selectedDisplay"
 		@select-display="onDisplaySelect"
-		@add-tile="onTileAdd"
 		@add-tile-of-type="onTileAddOfType"
 		@add-page-data-source="onPageDataSourceAdd"
 		@edit-tile="onTileEdit"
