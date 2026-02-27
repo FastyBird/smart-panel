@@ -367,6 +367,8 @@ const renderTileContent = (itemElContent: Element, tile: ITile): void => {
 
 const initializeGrids = (): void => {
 	if (props.gridLayout === null) {
+		destroyGrids();
+
 		return;
 	}
 
