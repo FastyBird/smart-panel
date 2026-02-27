@@ -74,28 +74,26 @@
 				:span="4"
 				class="p-2"
 			>
-				<div class="flex flex-col gap-2">
-					<el-text
-						type="info"
-						size="small"
-						class="mb-1"
-					>
+				<el-card body-class="p-2!">
+					<template #header>
 						Quick add tile
-					</el-text>
+					</template>
 
-					<el-button
-						v-for="opt in enabledTileOptions"
-						:key="opt.value"
-						size="small"
-						class="w-full ml-0!"
-						@click="emit('addTileOfType', opt.value)"
-					>
-						<template #icon>
-							<icon icon="mdi:plus" />
-						</template>
-						{{ opt.label }}
-					</el-button>
-				</div>
+					<div class="flex flex-col gap-2">
+						<el-button
+							v-for="opt in enabledTileOptions"
+							:key="opt.value"
+							size="small"
+							class="w-full ml-0!"
+							@click="emit('addTileOfType', opt.value)"
+						>
+							<template #icon>
+								<icon icon="mdi:plus" />
+							</template>
+							{{ opt.label }}
+						</el-button>
+					</div>
+				</el-card>
 			</el-col>
 		</el-row>
 	</div>
