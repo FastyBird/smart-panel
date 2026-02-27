@@ -56,6 +56,7 @@ import 'package:fastybird_smart_panel/modules/security/repositories/security_sta
 import 'package:fastybird_smart_panel/modules/security/services/security_overlay_controller.dart';
 import 'package:fastybird_smart_panel/features/overlay/services/overlay_manager.dart';
 import 'package:fastybird_smart_panel/modules/intents/export.dart';
+import 'package:fastybird_smart_panel/modules/buddy/export.dart';
 import 'package:fastybird_smart_panel/modules/scenes/export.dart';
 import 'package:fastybird_smart_panel/modules/spaces/export.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
@@ -315,6 +316,7 @@ class StartupManagerService {
         locator.get<IntentsModuleService>().initialize(),
         locator.get<DashboardModuleService>().initialize(),
         locator.get<EnergyModuleService>().initialize(),
+        locator.get<BuddyModuleService>().initialize(),
       ]);
     } catch (e) {
       if (kDebugMode) {
@@ -439,6 +441,18 @@ class StartupManagerService {
     if (locator.isRegistered<IntentsModuleService>()) {
       try { locator<IntentsModuleService>().dispose(); } catch (_) {}
       try { locator.unregister<IntentsModuleService>(); } catch (_) {}
+    }
+    if (locator.isRegistered<BuddyModuleService>()) {
+      try { locator<BuddyModuleService>().dispose(); } catch (_) {}
+      try { locator.unregister<BuddyModuleService>(); } catch (_) {}
+    }
+    if (locator.isRegistered<BuddyRepository>()) {
+      try { locator<BuddyRepository>().dispose(); } catch (_) {}
+      try { locator.unregister<BuddyRepository>(); } catch (_) {}
+    }
+    if (locator.isRegistered<BuddyService>()) {
+      try { locator<BuddyService>().dispose(); } catch (_) {}
+      try { locator.unregister<BuddyService>(); } catch (_) {}
     }
 
     // Unregister all repositories and services registered by modules
@@ -750,6 +764,13 @@ class StartupManagerService {
     );
     locator.registerSingleton(energyModuleService);
     locator.registerSingleton(energyModuleService.repository);
+
+    // Buddy module service
+    var buddyModuleService = BuddyModuleService(
+      dio: _apiIoService,
+      socketService: _socketClient,
+    );
+    locator.registerSingleton(buddyModuleService);
 
     // Deck module services
     var deckModuleService = DeckModuleService(
