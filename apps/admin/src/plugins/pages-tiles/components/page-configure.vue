@@ -178,7 +178,6 @@ import {
 	DashboardException,
 	FormResult,
 	type FormResultType,
-	type IDataSource,
 	type ITile,
 	useTiles,
 	useTilesActions,
@@ -206,8 +205,6 @@ const emit = defineEmits<{
 	(e: 'addTileOfType', type: string): void;
 	(e: 'editTile', id: ITile['id']): void;
 	(e: 'tileDetail', id: ITile['id']): void;
-	(e: 'addTileDataSource', tileId: ITile['id']): void;
-	(e: 'editTileDataSource', id: IDataSource['id']): void;
 	(e: 'update:remote-page-submit', remotePageSubmit: boolean): void;
 	(e: 'update:remote-page-result', remotePageResult: FormResultType): void;
 	(e: 'update:remote-page-changed', formChanged: boolean): void;
