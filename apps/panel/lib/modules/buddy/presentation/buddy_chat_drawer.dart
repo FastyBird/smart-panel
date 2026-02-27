@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/modules/buddy/models/message.dart';
 import 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/message_bubble.dart';
 import 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/suggestion_card.dart';
 import 'package:fastybird_smart_panel/modules/buddy/service.dart';
@@ -82,7 +81,7 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 		_scrollToBottom();
 	}
 
-	Future<void> _handleSuggestionFeedback(
+	Future<bool> _handleSuggestionFeedback(
 		String suggestionId,
 		String feedback,
 	) async {

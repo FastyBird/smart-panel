@@ -340,7 +340,10 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen>
               if (!_buddyDrawerOpen)
                 Positioned(
                   right: AppSpacings.pLg,
-                  bottom: AppSpacings.pLg,
+                  // Position above the bottom nav bar in portrait mode
+                  bottom: MediaQuery.of(context).orientation == Orientation.portrait
+                      ? AppSpacings.scale(52) + AppSpacings.pMd
+                      : AppSpacings.pLg,
                   child: _BuddyFab(
                     onTap: () {
                       setState(() {
