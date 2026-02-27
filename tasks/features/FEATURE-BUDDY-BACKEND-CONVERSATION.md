@@ -5,7 +5,7 @@ Type: feature
 Scope: backend
 Size: medium
 Parent: EPIC-BUDDY-MODULE
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -56,13 +56,13 @@ I want to chat with the buddy about my home — ask questions, request actions, 
 
 ## 4. Acceptance criteria
 
-- [ ] `LlmProviderService` supports provider selection: `claude`, `openai`, `ollama`, `none`
-- [ ] When provider is `none` or not configured, `sendMessage()` throws `BuddyProviderNotConfiguredException`
-- [ ] For `claude` provider: uses `@anthropic-ai/sdk` to call Claude API (API key from config)
-- [ ] For `openai` provider: uses `openai` npm package (API key from config)
-- [ ] For `ollama` provider: uses HTTP fetch to local Ollama endpoint (configurable URL, default `http://localhost:11434`)
-- [ ] LLM calls have configurable timeout (default 30s) and proper error handling
-- [ ] `BuddyConversationService.sendMessage()`:
+- [x] `LlmProviderService` supports provider selection: `claude`, `openai`, `ollama`, `none`
+- [x] When provider is `none` or not configured, `sendMessage()` throws `BuddyProviderNotConfiguredException`
+- [x] For `claude` provider: uses `@anthropic-ai/sdk` to call Claude API (API key from config)
+- [x] For `openai` provider: uses `openai` npm package (API key from config)
+- [x] For `ollama` provider: uses HTTP fetch to local Ollama endpoint (configurable URL, default `http://localhost:11434`)
+- [x] LLM calls have configurable timeout (default 30s) and proper error handling
+- [x] `BuddyConversationService.sendMessage()`:
   1. Persists user message to DB
   2. Builds system prompt with `BuddyContextService.buildContext()`
   3. Loads conversation history from DB
@@ -70,12 +70,12 @@ I want to chat with the buddy about my home — ask questions, request actions, 
   5. Persists assistant response to DB
   6. Emits `BuddyModule.Conversation.MessageReceived` event
   7. Returns the assistant message
-- [ ] `POST /v1/modules/buddy/conversations/:id/messages` returns the assistant's response message
-- [ ] `GET /v1/modules/buddy/conversations` returns paginated list (newest first)
-- [ ] `DELETE /v1/modules/buddy/conversations/:id` cascades to delete messages
-- [ ] All controller methods have proper Swagger decorators (`@ApiOperation`, `@ApiSuccessResponse`, etc.)
-- [ ] Response models follow naming convention: `BuddyModuleRes*` for Swagger schema names
-- [ ] System prompt includes: current timestamp, space layout, device states, scenes, weather, energy, recent actions
+- [x] `POST /v1/modules/buddy/conversations/:id/messages` returns the assistant's response message
+- [x] `GET /v1/modules/buddy/conversations` returns paginated list (newest first)
+- [x] `DELETE /v1/modules/buddy/conversations/:id` cascades to delete messages
+- [x] All controller methods have proper Swagger decorators (`@ApiOperation`, `@ApiSuccessResponse`, etc.)
+- [x] Response models follow naming convention: `BuddyModuleRes*` for Swagger schema names
+- [x] System prompt includes: current timestamp, space layout, device states, scenes, weather, energy, recent actions
 
 ## 5. Example scenarios
 
