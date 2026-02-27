@@ -29,6 +29,15 @@
 								{{ props.page.title }}
 							</el-text>
 						</div>
+						<el-button
+							size="small"
+							plain
+							@click="emit('addPageDataSource')"
+						>
+							<template #icon>
+								<icon icon="mdi:plus" />
+							</template>
+						</el-button>
 					</div>
 					<div
 						ref="pageGridContainer"
@@ -191,6 +200,7 @@ const props = withDefaults(defineProps<IPageConfigureProps>(), {
 const emit = defineEmits<{
 	(e: 'selectDisplay', displayId: string): void;
 	(e: 'addTile'): void;
+	(e: 'addPageDataSource'): void;
 	(e: 'addTileOfType', type: string): void;
 	(e: 'editTile', id: ITile['id']): void;
 	(e: 'tileDetail', id: ITile['id']): void;
@@ -781,8 +791,8 @@ watch(
 }
 
 .page-grid-header {
-	height: 28px;
-	min-height: 28px;
+	height: 36px;
+	min-height: 36px;
 	border-bottom: 1px solid var(--el-border-color-lighter);
 	background-color: var(--el-fill-color-light);
 }
