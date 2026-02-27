@@ -56,7 +56,7 @@ export class PatternDetectorService {
 
 			for (const cluster of clusters) {
 				if (cluster.actions.length >= PATTERN_MIN_OCCURRENCES) {
-					const confidence = Math.min(1, cluster.actions.length / 7);
+					const confidence = Math.min(1, cluster.actions.length / PATTERN_LOOKBACK_DAYS);
 					const timestamps = cluster.actions.map((a) => a.timestamp.getTime());
 
 					patterns.push({
