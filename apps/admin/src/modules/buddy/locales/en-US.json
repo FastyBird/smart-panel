@@ -1,0 +1,40 @@
+{
+	"headings": {
+		"aboutBuddy": "AI Assistant Configuration"
+	},
+	"texts": {
+		"aboutBuddy": "Configure the AI buddy assistant that provides smart home suggestions and conversational support. Select your preferred LLM provider and configure the connection settings."
+	},
+	"fields": {
+		"config": {
+			"llmProvider": {
+				"title": "AI Provider",
+				"placeholder": "Select an AI provider",
+				"options": {
+					"none": "None (Disabled)",
+					"claude": "Anthropic Claude",
+					"openai": "OpenAI",
+					"ollama": "Ollama (Local)"
+				}
+			},
+			"apiKey": {
+				"title": "API Key",
+				"placeholder": "Enter your API key"
+			},
+			"llmModel": {
+				"title": "Model",
+				"placeholder": "Enter model name"
+			},
+			"ollamaUrl": {
+				"title": "Ollama URL",
+				"placeholder": "http://localhost:11434"
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Buddy configuration was successfully updated.",
+			"notEdited": "Failed to update buddy configuration."
+		}
+	}
+}

@@ -35,6 +35,7 @@ import { provideLogger } from './common';
 import CommonModule from './common/common.module';
 import i18n from './locales';
 import { AuthModule } from './modules/auth';
+import { BuddyModule } from './modules/buddy';
 import { ConfigModule } from './modules/config';
 import { DashboardModule } from './modules/dashboard';
 import { DevicesModule } from './modules/devices';
@@ -150,6 +151,7 @@ app.use(InfluxDbModule, moduleOptions);
 app.use(IntentsModule, moduleOptions);
 app.use(SecurityModule, moduleOptions);
 app.use(EnergyModule, moduleOptions);
+app.use(BuddyModule, moduleOptions);
 
 // Plugins
 const pluginOptions: IModuleOptions = {
