@@ -6,7 +6,7 @@ import { BuddyProviderNotConfiguredException, BuddyProviderTimeoutException } fr
 import { BuddyConfigModel } from '../models/config.model';
 
 export interface ChatMessage {
-	role: MessageRole;
+	role: MessageRole.USER | MessageRole.ASSISTANT;
 	content: string;
 }
 

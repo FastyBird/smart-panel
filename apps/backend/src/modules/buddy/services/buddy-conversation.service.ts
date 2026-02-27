@@ -90,7 +90,7 @@ export class BuddyConversationService {
 		const chatMessages: ChatMessage[] = history
 			.filter((m) => m.role === (MessageRole.USER as string) || m.role === (MessageRole.ASSISTANT as string))
 			.map((m) => ({
-				role: m.role as MessageRole,
+				role: m.role as MessageRole.USER | MessageRole.ASSISTANT,
 				content: m.content,
 			}));
 
