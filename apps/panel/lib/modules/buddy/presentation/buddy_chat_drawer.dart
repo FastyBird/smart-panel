@@ -37,6 +37,7 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 
 	bool _initialized = false;
 	bool _initFailed = false;
+	bool _initProviderMissing = false;
 
 	/// Track message count so _scrollToBottom fires only on new messages.
 	int _lastMessageCount = 0;
@@ -57,6 +58,7 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 
 			if (conversation == null && mounted) {
 				setState(() {
+					_initProviderMissing = buddyService.isProviderNotConfigured;
 					_initFailed = true;
 					_initialized = true;
 				});
@@ -153,7 +155,9 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 						Expanded(
 							child: _initialized
 								? _initFailed
-									? _buildInitFailedState(context, isDark)
+									? _initProviderMissing
+										? _buildProviderNotConfiguredState(context, isDark)
+										: _buildInitFailedState(context, isDark)
 									: _buildBody(context, isDark)
 								: Center(
 									child: CircularProgressIndicator(
@@ -374,10 +378,55 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 		);
 	}
 
+	Widget _buildProviderNotConfiguredState(BuildContext context, bool isDark) {
+		final secondaryColor = isDark
+			? AppTextColorDark.secondary
+			: AppTextColorLight.secondary;
+		final placeholderColor = isDark
+			? AppTextColorDark.placeholder
+			: AppTextColorLight.placeholder;
+
+		return Center(
+			child: Padding(
+				padding: AppSpacings.paddingXl,
+				child: Column(
+					mainAxisAlignment: MainAxisAlignment.center,
+					children: [
+						Icon(
+							Icons.smart_toy_outlined,
+							size: AppSpacings.scale(48),
+							color: placeholderColor,
+						),
+						SizedBox(height: AppSpacings.pLg),
+						Text(
+							'AI provider not configured',
+							style: TextStyle(
+								fontSize: AppFontSize.base,
+								fontWeight: FontWeight.w600,
+								color: secondaryColor,
+							),
+							textAlign: TextAlign.center,
+						),
+						SizedBox(height: AppSpacings.pSm),
+						Text(
+							'Configure an AI provider in admin settings to enable chat.',
+							style: TextStyle(
+								fontSize: AppFontSize.small,
+								color: placeholderColor,
+							),
+							textAlign: TextAlign.center,
+						),
+					],
+				),
+			),
+		);
+	}
+
 	Future<void> _retryInitialization() async {
 		setState(() {
 			_initialized = false;
 			_initFailed = false;
+			_initProviderMissing = false;
 		});
 		await _initializeConversation();
 	}
@@ -513,11 +562,13 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 											color: textColor,
 										),
 										decoration: InputDecoration(
-											hintText: _initFailed
-												? 'Failed to start conversation'
-												: isDisabled
-													? 'AI provider not configured'
-													: 'Ask about your home...',
+											hintText: _initProviderMissing
+												? 'AI provider not configured'
+												: _initFailed
+													? 'Failed to start conversation'
+													: isDisabled
+														? 'AI provider not configured'
+														: 'Ask about your home...',
 											hintStyle: TextStyle(
 												fontSize: AppFontSize.base,
 												color: hintColor,
