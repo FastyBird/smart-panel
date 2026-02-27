@@ -70,30 +70,87 @@
 			</el-col>
 
 			<el-col
-				v-if="enabledTileOptions.length"
 				:span="4"
 				class="p-2"
 			>
-				<el-card body-class="p-2!">
-					<template #header>
-						Quick add tile
-					</template>
+				<div class="flex flex-col gap-2">
+					<el-card
+						v-if="props.displays.length > 0"
+						body-class="p-2!"
+					>
+						<template #header>
+							Display
+						</template>
 
-					<div class="flex flex-col gap-2">
-						<el-button
-							v-for="opt in enabledTileOptions"
-							:key="opt.value"
+						<el-select
+							v-if="props.displays.length > 1"
+							:model-value="props.selectedDisplay?.id"
 							size="small"
-							class="w-full ml-0!"
-							@click="emit('addTileOfType', opt.value)"
+							class="w-full"
+							@change="(val: string) => emit('selectDisplay', val)"
 						>
-							<template #icon>
-								<icon icon="mdi:plus" />
-							</template>
-							{{ opt.label }}
-						</el-button>
-					</div>
-				</el-card>
+							<el-option
+								v-for="d in props.displays"
+								:key="d.id"
+								:value="d.id"
+								:label="d.name || d.macAddress"
+							>
+								<div class="flex items-center justify-between w-full">
+									<span>{{ d.name || d.macAddress }}</span>
+									<el-text
+										v-if="d.screenWidth && d.screenHeight"
+										type="info"
+										size="small"
+									>
+										{{ d.screenWidth }}x{{ d.screenHeight }}
+									</el-text>
+								</div>
+							</el-option>
+						</el-select>
+
+						<div
+							v-else-if="props.selectedDisplay"
+							class="flex flex-col"
+						>
+							<el-text size="small">
+								{{ props.selectedDisplay.name || props.selectedDisplay.macAddress }}
+							</el-text>
+							<el-text
+								v-if="props.selectedDisplay.screenWidth && props.selectedDisplay.screenHeight"
+								type="info"
+								size="small"
+							>
+								{{ props.selectedDisplay.screenWidth }}x{{ props.selectedDisplay.screenHeight }}
+								&middot;
+								{{ props.gridLayout?.cols ?? '?' }}x{{ props.gridLayout?.rows ?? '?' }}
+							</el-text>
+						</div>
+					</el-card>
+
+					<el-card
+						v-if="enabledTileOptions.length"
+						body-class="p-2!"
+					>
+						<template #header>
+							Quick add tile
+						</template>
+
+						<div class="flex flex-col gap-2">
+							<el-button
+								v-for="opt in enabledTileOptions"
+								:key="opt.value"
+								size="small"
+								class="w-full ml-0!"
+								@click="emit('addTileOfType', opt.value)"
+							>
+								<template #icon>
+									<icon icon="mdi:plus" />
+								</template>
+								{{ opt.label }}
+							</el-button>
+						</div>
+					</el-card>
+				</div>
 			</el-col>
 		</el-row>
 	</div>
@@ -102,7 +159,7 @@
 <script setup lang="ts">
 import { computed, getCurrentInstance, h, nextTick, onBeforeMount, onBeforeUnmount, onMounted, ref, render, watch } from 'vue';
 
-import { ElButton, ElCard, ElCol, ElIcon, ElRow, ElText } from 'element-plus';
+import { ElButton, ElCard, ElCol, ElIcon, ElOption, ElRow, ElSelect, ElText } from 'element-plus';
 import { GridStack, type GridStackWidget } from 'gridstack';
 import 'gridstack/dist/gridstack.min.css';
 
@@ -132,6 +189,7 @@ const props = withDefaults(defineProps<IPageConfigureProps>(), {
 });
 
 const emit = defineEmits<{
+	(e: 'selectDisplay', displayId: string): void;
 	(e: 'addTile'): void;
 	(e: 'addTileOfType', type: string): void;
 	(e: 'editTile', id: ITile['id']): void;

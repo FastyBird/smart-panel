@@ -3,74 +3,6 @@
 		v-if="mounted"
 		to="#page-manage-actions"
 	>
-		<el-dropdown
-			v-if="applicableDisplays.length > 1"
-			trigger="click"
-			@command="onDisplaySelect"
-		>
-			<el-button
-				plain
-				class="px-4! ml-2!"
-			>
-				<template #icon>
-					<icon icon="mdi:monitor" />
-				</template>
-				{{ selectedDisplay?.name || selectedDisplay?.macAddress || 'Display' }}
-				<el-text
-					v-if="selectedDisplay?.screenWidth && selectedDisplay?.screenHeight"
-					type="info"
-					size="small"
-					class="ml-2"
-				>
-					{{ selectedDisplay.screenWidth }}x{{ selectedDisplay.screenHeight }}
-					&middot;
-					{{ gridLayout?.cols ?? '?' }}x{{ gridLayout?.rows ?? '?' }}
-				</el-text>
-			</el-button>
-
-			<template #dropdown>
-				<el-dropdown-menu>
-					<el-dropdown-item
-						v-for="d in applicableDisplays"
-						:key="d.id"
-						:command="d.id"
-					>
-						{{ d.name || d.macAddress }}
-						<el-text
-							v-if="d.screenWidth && d.screenHeight"
-							type="info"
-							size="small"
-							class="ml-2"
-						>
-							{{ d.screenWidth }}x{{ d.screenHeight }}
-						</el-text>
-					</el-dropdown-item>
-				</el-dropdown-menu>
-			</template>
-		</el-dropdown>
-
-		<el-button
-			v-else-if="selectedDisplay"
-			plain
-			class="px-4! ml-2!"
-			disabled
-		>
-			<template #icon>
-				<icon icon="mdi:monitor" />
-			</template>
-			{{ selectedDisplay.name || selectedDisplay.macAddress || 'Display' }}
-			<el-text
-				v-if="selectedDisplay.screenWidth && selectedDisplay.screenHeight"
-				type="info"
-				size="small"
-				class="ml-2"
-			>
-				{{ selectedDisplay.screenWidth }}x{{ selectedDisplay.screenHeight }}
-				&middot;
-				{{ gridLayout?.cols ?? '?' }}x{{ gridLayout?.rows ?? '?' }}
-			</el-text>
-		</el-button>
-
 		<el-dropdown trigger="click">
 			<el-button
 				plain
@@ -146,6 +78,9 @@
 		:page="page"
 		:grid-layout="gridLayout"
 		:grid-card-style="gridCardStyle"
+		:displays="applicableDisplays"
+		:selected-display="selectedDisplay"
+		@select-display="onDisplaySelect"
 		@add-tile="onTileAdd"
 		@add-tile-of-type="onTileAddOfType"
 		@edit-tile="onTileEdit"
@@ -209,7 +144,7 @@ import { computed, onBeforeMount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElDrawer, ElDropdown, ElDropdownItem, ElDropdownMenu, ElIcon, ElMessageBox, ElText } from 'element-plus';
+import { ElButton, ElDrawer, ElDropdown, ElDropdownItem, ElDropdownMenu, ElIcon, ElMessageBox } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
