@@ -31,11 +31,6 @@ export enum SuggestionType {
 	GENERAL_TIP = 'general_tip',
 }
 
-export enum SuggestionFeedback {
-	APPLIED = 'applied',
-	DISMISSED = 'dismissed',
-}
-
 export const ACTION_OBSERVER_BUFFER_SIZE = 200;
 
 export const SUGGESTION_COOLDOWN_MS = 4 * 60 * 60 * 1000; // 4 hours

@@ -7,7 +7,7 @@ import type { ISpace } from '../store';
 
 import {
 	SpacesModuleSuggestionFeedbackSuggestion_type,
-	SpacesModuleSuggestionFeedbackFeedback,
+	BuddyModuleSuggestionFeedbackFeedback,
 } from '../../../openapi';
 
 import type { LightingMode } from './useSpaceIntents';
@@ -19,7 +19,7 @@ import type { LightingMode } from './useSpaceIntents';
 /** Type of suggestion provided by the backend */
 export type SuggestionType = `${SpacesModuleSuggestionFeedbackSuggestion_type}`;
 /** User feedback on a suggestion */
-export type SuggestionFeedback = `${SpacesModuleSuggestionFeedbackFeedback}`;
+export type SuggestionFeedback = `${BuddyModuleSuggestionFeedbackFeedback}`;
 
 /**
  * A smart suggestion for the space based on context (time, occupancy, etc.).
@@ -181,7 +181,7 @@ export const useSpaceSuggestion = (spaceId: Ref<ISpace['id'] | undefined>): IUse
 						data: {
 							suggestion_type:
 								suggestionData.value.type as SpacesModuleSuggestionFeedbackSuggestion_type,
-							feedback: feedback as SpacesModuleSuggestionFeedbackFeedback,
+							feedback: feedback as BuddyModuleSuggestionFeedbackFeedback,
 						},
 					},
 				}

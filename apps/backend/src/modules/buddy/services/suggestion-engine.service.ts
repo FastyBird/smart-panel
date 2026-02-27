@@ -4,12 +4,12 @@ import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { SpacesService } from '../../spaces/services/spaces.service';
+import { SuggestionFeedback } from '../../spaces/spaces.constants';
 import {
 	EventType,
 	SUGGESTION_CLEANUP_INTERVAL_MS,
 	SUGGESTION_COOLDOWN_MS,
 	SUGGESTION_EXPIRY_MS,
-	SuggestionFeedback,
 	SuggestionType,
 } from '../buddy.constants';
 import { BuddySuggestionNotFoundException } from '../buddy.exceptions';
