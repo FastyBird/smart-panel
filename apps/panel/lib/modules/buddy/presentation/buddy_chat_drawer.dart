@@ -33,6 +33,8 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 	final ScrollController _scrollController = ScrollController();
 	final FocusNode _inputFocusNode = FocusNode();
 
+	late final BuddyService _buddyService;
+
 	bool _initialized = false;
 	bool _initFailed = false;
 
@@ -42,7 +44,8 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 	@override
 	void initState() {
 		super.initState();
-		context.read<BuddyService>().addListener(_onBuddyServiceChanged);
+		_buddyService = context.read<BuddyService>();
+		_buddyService.addListener(_onBuddyServiceChanged);
 		_initializeConversation();
 	}
 
@@ -117,8 +120,7 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 	}
 
 	void _onBuddyServiceChanged() {
-		final buddyService = context.read<BuddyService>();
-		final messageCount = buddyService.messages.length;
+		final messageCount = _buddyService.messages.length;
 
 		if (messageCount > _lastMessageCount) {
 			_scrollToBottom();
@@ -129,7 +131,7 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 
 	@override
 	void dispose() {
-		context.read<BuddyService>().removeListener(_onBuddyServiceChanged);
+		_buddyService.removeListener(_onBuddyServiceChanged);
 		_inputController.dispose();
 		_scrollController.dispose();
 		_inputFocusNode.dispose();
