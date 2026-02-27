@@ -66,6 +66,7 @@ class BuddyRepository extends ChangeNotifier {
 	Future<void> fetchConversations() async {
 		_isLoadingConversations = true;
 		_error = null;
+		_isProviderNotConfigured = false;
 		notifyListeners();
 
 		try {
@@ -110,6 +111,7 @@ class BuddyRepository extends ChangeNotifier {
 		String? spaceId,
 	}) async {
 		_error = null;
+		_isProviderNotConfigured = false;
 
 		try {
 			final body = <String, dynamic>{};
@@ -159,6 +161,7 @@ class BuddyRepository extends ChangeNotifier {
 		_isLoadingMessages = true;
 		_activeConversationId = conversationId;
 		_error = null;
+		_isProviderNotConfigured = false;
 		notifyListeners();
 
 		try {
@@ -204,6 +207,7 @@ class BuddyRepository extends ChangeNotifier {
 	) async {
 		_isSendingMessage = true;
 		_error = null;
+		_isProviderNotConfigured = false;
 
 		// Add user message immediately for optimistic UI
 		final userMessage = BuddyMessageModel(
