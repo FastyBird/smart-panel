@@ -230,6 +230,10 @@ class BuddyRepository extends ChangeNotifier {
 					return assistantMessage;
 				}
 			}
+
+			// Non-200 status or unexpected data shape — reconcile by refreshing
+			// from the server so the optimistic pending_* message is replaced.
+			await fetchConversationMessages(conversationId);
 		} on DioException catch (e) {
 			_error = _parseError(e);
 
@@ -338,7 +342,12 @@ class BuddyRepository extends ChangeNotifier {
 		}
 	}
 
-	/// Submit feedback for a suggestion
+	/// Submit feedback for a suggestion.
+	///
+	/// Returns `true` when the API call succeeds. The suggestion is NOT
+	/// removed from [_suggestions] here — call [removeSuggestion] after
+	/// the exit animation completes to avoid the widget being ripped out
+	/// of the tree mid-animation.
 	Future<bool> submitSuggestionFeedback(
 		String suggestionId,
 		String feedback,
@@ -350,9 +359,6 @@ class BuddyRepository extends ChangeNotifier {
 			);
 
 			if (response.statusCode == 200) {
-				_suggestions.removeWhere((s) => s.id == suggestionId);
-				notifyListeners();
-
 				return true;
 			}
 		} on DioException catch (e) {
@@ -368,6 +374,13 @@ class BuddyRepository extends ChangeNotifier {
 		}
 
 		return false;
+	}
+
+	/// Remove a suggestion from the local list after the UI exit animation
+	/// has completed.
+	void removeSuggestion(String suggestionId) {
+		_suggestions.removeWhere((s) => s.id == suggestionId);
+		notifyListeners();
 	}
 
 	// ============================================

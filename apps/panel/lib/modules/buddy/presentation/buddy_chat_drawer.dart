@@ -35,6 +35,9 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 
 	bool _initialized = false;
 
+	/// Track message count so _scrollToBottom fires only on new messages.
+	int _lastMessageCount = 0;
+
 	@override
 	void initState() {
 		super.initState();
@@ -57,8 +60,10 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 	}
 
 	void _scrollToBottom() {
+		if (!mounted) return;
+
 		WidgetsBinding.instance.addPostFrameCallback((_) {
-			if (_scrollController.hasClients) {
+			if (mounted && _scrollController.hasClients) {
 				_scrollController.animateTo(
 					_scrollController.position.maxScrollExtent,
 					duration: const Duration(milliseconds: 200),
@@ -78,7 +83,9 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 		final buddyService = context.read<BuddyService>();
 		await buddyService.sendMessage(text);
 
-		_scrollToBottom();
+		if (mounted) {
+			_scrollToBottom();
+		}
 	}
 
 	Future<bool> _handleSuggestionFeedback(
@@ -195,10 +202,11 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 				final hasMessages = messages.isNotEmpty;
 				final hasSuggestions = suggestions.isNotEmpty;
 
-				// Auto-scroll when new messages arrive
-				if (hasMessages) {
+				// Auto-scroll only when the message count actually increases
+				if (messages.length > _lastMessageCount) {
 					_scrollToBottom();
 				}
+				_lastMessageCount = messages.length;
 
 				return ListView(
 					controller: _scrollController,
@@ -228,6 +236,9 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 									suggestion: suggestion,
 									onFeedback: (id, feedback) =>
 										_handleSuggestionFeedback(id, feedback),
+									onAnimationComplete: (id) {
+										context.read<BuddyService>().removeSuggestion(id);
+									},
 								),
 							),
 							SizedBox(height: AppSpacings.pMd),

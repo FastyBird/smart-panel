@@ -11,10 +11,15 @@ class BuddySuggestionCard extends StatefulWidget {
 	final BuddySuggestionModel suggestion;
 	final Future<bool> Function(String suggestionId, String feedback) onFeedback;
 
+	/// Called after the exit animation completes so the parent can remove
+	/// the suggestion from the data layer without cutting the animation short.
+	final void Function(String suggestionId)? onAnimationComplete;
+
 	const BuddySuggestionCard({
 		super.key,
 		required this.suggestion,
 		required this.onFeedback,
+		this.onAnimationComplete,
 	});
 
 	@override
@@ -60,6 +65,12 @@ class _BuddySuggestionCardState extends State<BuddySuggestionCard>
 
 		if (success && mounted) {
 			await _animController.forward();
+
+			// Notify parent to remove the suggestion from the data layer
+			// only after the exit animation has fully completed.
+			if (mounted) {
+				widget.onAnimationComplete?.call(widget.suggestion.id);
+			}
 		} else if (mounted) {
 			setState(() {
 				_isProcessing = false;

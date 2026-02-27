@@ -129,6 +129,12 @@ class BuddyService extends ChangeNotifier {
 		);
 	}
 
+	/// Remove a suggestion from the local list after its exit animation
+	/// has completed.
+	void removeSuggestion(String suggestionId) {
+		_buddyRepository.removeSuggestion(suggestionId);
+	}
+
 	/// Refresh suggestions
 	Future<void> refreshSuggestions({String? spaceId}) async {
 		await _buddyRepository.fetchSuggestions(spaceId: spaceId);
