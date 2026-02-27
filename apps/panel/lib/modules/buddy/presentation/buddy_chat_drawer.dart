@@ -34,6 +34,7 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 	final FocusNode _inputFocusNode = FocusNode();
 
 	bool _initialized = false;
+	bool _initFailed = false;
 
 	/// Track message count so _scrollToBottom fires only on new messages.
 	int _lastMessageCount = 0;
@@ -48,11 +49,21 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 		final buddyService = context.read<BuddyService>();
 
 		if (!buddyService.hasActiveConversation) {
-			await buddyService.startNewConversation();
+			final conversation = await buddyService.startNewConversation();
+
+			if (conversation == null && mounted) {
+				setState(() {
+					_initFailed = true;
+					_initialized = true;
+				});
+
+				return;
+			}
 		}
 
 		if (mounted) {
 			setState(() {
+				_initFailed = false;
 				_initialized = true;
 			});
 			_scrollToBottom();
@@ -78,9 +89,12 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 
 		if (text.isEmpty) return;
 
+		final buddyService = context.read<BuddyService>();
+
+		if (!buddyService.hasActiveConversation) return;
+
 		_inputController.clear();
 
-		final buddyService = context.read<BuddyService>();
 		await buddyService.sendMessage(text);
 
 		if (mounted) {
@@ -123,7 +137,9 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 						_buildHeader(context, isDark),
 						Expanded(
 							child: _initialized
-								? _buildBody(context, isDark)
+								? _initFailed
+									? _buildInitFailedState(context, isDark)
+									: _buildBody(context, isDark)
 								: Center(
 									child: CircularProgressIndicator(
 										color: Theme.of(context).colorScheme.primary,
@@ -303,6 +319,60 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 		);
 	}
 
+	Widget _buildInitFailedState(BuildContext context, bool isDark) {
+		final warningColor = isDark ? AppColorsDark.warning : AppColorsLight.warning;
+		final secondaryColor = isDark
+			? AppTextColorDark.secondary
+			: AppTextColorLight.secondary;
+
+		return Center(
+			child: Padding(
+				padding: AppSpacings.paddingXl,
+				child: Column(
+					mainAxisAlignment: MainAxisAlignment.center,
+					children: [
+						Icon(
+							Icons.cloud_off_outlined,
+							size: AppSpacings.scale(48),
+							color: warningColor,
+						),
+						SizedBox(height: AppSpacings.pLg),
+						Text(
+							'Could not start a conversation',
+							style: TextStyle(
+								fontSize: AppFontSize.base,
+								color: secondaryColor,
+							),
+							textAlign: TextAlign.center,
+						),
+						SizedBox(height: AppSpacings.pMd),
+						TextButton.icon(
+							onPressed: _retryInitialization,
+							icon: Icon(
+								Icons.refresh,
+								size: AppSpacings.scale(16),
+							),
+							label: Text(
+								'Retry',
+								style: TextStyle(
+									fontSize: AppFontSize.base,
+								),
+							),
+						),
+					],
+				),
+			),
+		);
+	}
+
+	Future<void> _retryInitialization() async {
+		setState(() {
+			_initialized = false;
+			_initFailed = false;
+		});
+		await _initializeConversation();
+	}
+
 	Widget _buildTypingIndicator(BuildContext context, bool isDark) {
 		final overlayColor = isDark ? AppBgColorDark.overlay : AppBgColorLight.overlay;
 
@@ -403,7 +473,7 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 
 		return Consumer<BuddyService>(
 			builder: (context, buddyService, _) {
-				final isDisabled = buddyService.isProviderNotConfigured;
+				final isDisabled = buddyService.isProviderNotConfigured || _initFailed;
 				final isSending = buddyService.isSendingMessage;
 
 				return Container(
@@ -434,9 +504,11 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 											color: textColor,
 										),
 										decoration: InputDecoration(
-											hintText: isDisabled
-												? 'AI provider not configured'
-												: 'Ask about your home...',
+											hintText: _initFailed
+												? 'Failed to start conversation'
+												: isDisabled
+													? 'AI provider not configured'
+													: 'Ask about your home...',
 											hintStyle: TextStyle(
 												fontSize: AppFontSize.base,
 												color: hintColor,
