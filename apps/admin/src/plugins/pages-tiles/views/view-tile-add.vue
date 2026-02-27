@@ -211,6 +211,15 @@ const remoteFormChanged = ref<boolean>(false);
 
 const selectedType = ref<string | undefined>((route.query.tileType as string) || undefined);
 
+watch(
+	(): string | undefined => (route.query.tileType as string) || undefined,
+	(val: string | undefined): void => {
+		if (val) {
+			selectedType.value = val;
+		}
+	}
+);
+
 const plugin = computed<IPlugin<ITilePluginsComponents, ITilePluginsSchemas> | undefined>(() => {
 	return plugins.value.find((plugin) => (plugin.elements ?? []).some((element) => element.type === selectedType.value));
 });

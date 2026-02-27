@@ -391,7 +391,6 @@ const initializeGrids = (): void => {
 	draftGrid = GridStack.init(
 		{
 			column: props.gridLayout.cols,
-			row: props.gridLayout.rows,
 			minRow: props.gridLayout.rows,
 			cellHeight: 'auto',
 			margin: 4,
