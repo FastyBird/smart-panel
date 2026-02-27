@@ -16,6 +16,7 @@ import { WeatherModule } from '../weather/weather.module';
 import { BUDDY_MODULE_API_TAG_DESCRIPTION, BUDDY_MODULE_API_TAG_NAME, BUDDY_MODULE_NAME } from './buddy.constants';
 import { BUDDY_SWAGGER_EXTRA_MODELS } from './buddy.openapi';
 import { BuddyConversationsController } from './controllers/buddy-conversations.controller';
+import { BuddySuggestionsController } from './controllers/buddy-suggestions.controller';
 import { UpdateBuddyConfigDto } from './dto/update-config.dto';
 import { BuddyConversationEntity } from './entities/buddy-conversation.entity';
 import { BuddyMessageEntity } from './entities/buddy-message.entity';
@@ -25,6 +26,8 @@ import { ActionObserverService } from './services/action-observer.service';
 import { BuddyContextService } from './services/buddy-context.service';
 import { BuddyConversationService } from './services/buddy-conversation.service';
 import { LlmProviderService } from './services/llm-provider.service';
+import { PatternDetectorService } from './services/pattern-detector.service';
+import { SuggestionEngineService } from './services/suggestion-engine.service';
 
 @ApiTag({
 	tagName: BUDDY_MODULE_NAME,
@@ -42,15 +45,23 @@ import { LlmProviderService } from './services/llm-provider.service';
 		forwardRef(() => EnergyModule),
 		ExtensionsModule,
 	],
-	controllers: [BuddyConversationsController],
+	controllers: [BuddyConversationsController, BuddySuggestionsController],
 	providers: [
 		ActionObserverService,
 		BuddyContextService,
 		BuddyConversationService,
 		LlmProviderService,
+		PatternDetectorService,
+		SuggestionEngineService,
 		IntentEventListener,
 	],
-	exports: [ActionObserverService, BuddyContextService, BuddyConversationService, LlmProviderService],
+	exports: [
+		ActionObserverService,
+		BuddyContextService,
+		BuddyConversationService,
+		LlmProviderService,
+		SuggestionEngineService,
+	],
 })
 export class BuddyModule implements OnModuleInit {
 	constructor(
