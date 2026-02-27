@@ -235,23 +235,29 @@ class BuddyRepository extends ChangeNotifier {
 					// Add the assistant message to the local list immediately
 					// so it's visible even if the subsequent refresh fails.
 					_messages.add(assistantMessage);
+
+					// Clear sending state before reconciliation so the UI
+					// hides the "Thinking…" indicator and re-enables input.
+					_isSendingMessage = false;
 					notifyListeners();
 
-					// Try to reconcile optimistic user message with server state.
-					// If the refresh fails, the user still sees the AI response.
-					try {
-						await fetchConversationMessages(conversationId);
-					} catch (_) {
-						// Refresh failed — keep local state as-is.
-					}
+					// Silently reconcile optimistic user message with server
+					// state. This must NOT reset _error or toggle
+					// _isLoadingMessages — a fetch failure here should not
+					// overwrite the successful send context.
+					await _reconcileMessages(conversationId);
 
 					return assistantMessage;
 				}
 			}
 
-			// Non-200 status or unexpected data shape — reconcile by refreshing
-			// from the server so the optimistic pending_* message is replaced.
-			await fetchConversationMessages(conversationId);
+			// Non-200 status or unexpected data shape — clear sending state
+			// and reconcile from the server so the optimistic pending_*
+			// message is replaced.
+			_isSendingMessage = false;
+			notifyListeners();
+
+			await _reconcileMessages(conversationId);
 		} on DioException catch (e) {
 			_error = _parseError(e);
 
@@ -486,6 +492,39 @@ class BuddyRepository extends ChangeNotifier {
 	// ============================================
 	// HELPERS
 	// ============================================
+
+	/// Silently refresh the message list from the server without touching
+	/// [_error], [_isProviderNotConfigured], or [_isLoadingMessages].
+	///
+	/// Used after a successful [sendMessage] to reconcile the optimistic
+	/// pending user message with the real server data. Failures are logged
+	/// but never surface to the UI — the locally-added messages remain.
+	Future<void> _reconcileMessages(String conversationId) async {
+		try {
+			final response = await _dio.get(
+				'${BuddyModuleConstants.conversationsPath}/$conversationId/messages',
+			);
+
+			if (response.statusCode == 200 && response.data != null) {
+				final data = response.data['data'];
+
+				if (data is List) {
+					_messages = data
+						.map((json) => BuddyMessageModel.fromJson(
+							json as Map<String, dynamic>,
+						))
+						.toList();
+					notifyListeners();
+				}
+			}
+		} catch (e) {
+			if (kDebugMode) {
+				debugPrint(
+					'[BUDDY MODULE] Silent message reconciliation failed: $e',
+				);
+			}
+		}
+	}
 
 	/// Clear error state
 	void clearError() {
