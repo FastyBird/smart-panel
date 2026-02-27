@@ -42,6 +42,7 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 	@override
 	void initState() {
 		super.initState();
+		context.read<BuddyService>().addListener(_onBuddyServiceChanged);
 		_initializeConversation();
 	}
 
@@ -115,8 +116,20 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 		}
 	}
 
+	void _onBuddyServiceChanged() {
+		final buddyService = context.read<BuddyService>();
+		final messageCount = buddyService.messages.length;
+
+		if (messageCount > _lastMessageCount) {
+			_scrollToBottom();
+		}
+
+		_lastMessageCount = messageCount;
+	}
+
 	@override
 	void dispose() {
+		context.read<BuddyService>().removeListener(_onBuddyServiceChanged);
 		_inputController.dispose();
 		_scrollController.dispose();
 		_inputFocusNode.dispose();
@@ -217,12 +230,6 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 				final suggestions = buddyService.suggestions;
 				final hasMessages = messages.isNotEmpty;
 				final hasSuggestions = suggestions.isNotEmpty;
-
-				// Auto-scroll only when the message count actually increases
-				if (messages.length > _lastMessageCount) {
-					_scrollToBottom();
-				}
-				_lastMessageCount = messages.length;
 
 				return ListView(
 					controller: _scrollController,
