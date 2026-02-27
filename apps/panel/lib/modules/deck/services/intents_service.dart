@@ -115,7 +115,7 @@ class IntentsService extends ChangeNotifier {
         if (result.failureCount > 0) {
           return IntentResult.partialSuccess(
             IntentType.activateScene,
-            message: 'Scene activated with some failures',
+            message: result.errorMessage ?? 'Scene partially activated',
             data: {
               'sceneId': sceneId,
               'successCount': result.successCount,

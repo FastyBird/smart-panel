@@ -1,4 +1,5 @@
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
@@ -61,6 +62,24 @@ extension DomainTypeUI on DomainType {
         return 'Sensors';
       case DomainType.energy:
         return 'Energy';
+    }
+  }
+
+  /// Localized label for this domain.
+  String localizedLabel(AppLocalizations l) {
+    switch (this) {
+      case DomainType.lights:
+        return l.domain_lights;
+      case DomainType.climate:
+        return l.domain_climate;
+      case DomainType.shading:
+        return l.domain_shading;
+      case DomainType.media:
+        return l.domain_media;
+      case DomainType.sensors:
+        return l.domain_sensors;
+      case DomainType.energy:
+        return l.domain_energy;
     }
   }
 

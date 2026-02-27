@@ -11,7 +11,15 @@ class ForecastWeatherRepository extends Repository<List<ForecastDayModel>> {
   /// Per-location forecast data storage
   final Map<String, List<ForecastDayModel>> _locationData = {};
 
+  /// Provider for the primary location ID from config.
+  String? Function()? _primaryLocationIdProvider;
+
   ForecastWeatherRepository({required super.apiClient});
+
+  /// Set a function to provide the primary location ID.
+  void setPrimaryLocationIdProvider(String? Function() provider) {
+    _primaryLocationIdProvider = provider;
+  }
 
   /// Get forecast data for a specific location
   List<ForecastDayModel>? getByLocation(String locationId) {
@@ -71,11 +79,14 @@ class ForecastWeatherRepository extends Repository<List<ForecastDayModel>> {
       }
     }
 
-    // Also update the primary/global data
-    if (data != insertData) {
+    // Update global data only for the primary location (or if no location specified)
+    final primaryId = _primaryLocationIdProvider?.call();
+    final isPrimary = locationId == null || locationId == primaryId || primaryId == null;
+
+    if (isPrimary && data != insertData) {
       if (kDebugMode) {
         debugPrint(
-          '[WEATHER MODULE][FORECAST] Weather forecast was successfully updated',
+          '[WEATHER MODULE][FORECAST] Weather forecast was successfully updated (primary: $locationId)',
         );
       }
 
@@ -177,11 +188,14 @@ class ForecastWeatherRepository extends Repository<List<ForecastDayModel>> {
       }
     }
 
-    // Also update the primary/global data
-    if (data != insertData) {
+    // Update global data only for the primary location (or if no location specified)
+    final primaryId = _primaryLocationIdProvider?.call();
+    final isPrimary = locationId == null || locationId == primaryId || primaryId == null;
+
+    if (isPrimary && data != insertData) {
       if (kDebugMode) {
         debugPrint(
-          '[WEATHER MODULE][FORECAST] Weather forecast was successfully updated',
+          '[WEATHER MODULE][FORECAST] Weather forecast was successfully updated (primary: $locationId)',
         );
       }
 
@@ -191,6 +205,35 @@ class ForecastWeatherRepository extends Repository<List<ForecastDayModel>> {
 
     if (changed) {
       notifyListeners();
+    }
+  }
+
+  /// Re-resolve which location's data should be the global `data`.
+  /// Call this when the primary location ID changes (e.g., display override changed).
+  void reresolvePrimary() {
+    final primaryId = _primaryLocationIdProvider?.call();
+
+    if (primaryId != null && _locationData.containsKey(primaryId)) {
+      final primaryData = _locationData[primaryId]!;
+
+      if (data != primaryData) {
+        if (kDebugMode) {
+          debugPrint(
+            '[WEATHER MODULE][FORECAST] Re-resolved primary location to $primaryId',
+          );
+        }
+
+        data = primaryData;
+        notifyListeners();
+      }
+    } else if (primaryId == null && _locationData.isNotEmpty) {
+      // No primary set, use first available
+      final firstData = _locationData.values.first;
+
+      if (data != firstData) {
+        data = firstData;
+        notifyListeners();
+      }
     }
   }
 

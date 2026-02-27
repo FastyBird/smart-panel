@@ -143,8 +143,8 @@ export class SpaceEntity extends BaseEntity {
 	suggestionsEnabled: boolean;
 
 	@ApiPropertyOptional({
-		name: 'header_widgets',
-		description: 'Ordered list of header widgets configured for this space',
+		name: 'status_widgets',
+		description: 'Ordered list of status widgets configured for this space',
 		type: 'array',
 		nullable: true,
 		items: {
@@ -164,16 +164,16 @@ export class SpaceEntity extends BaseEntity {
 		},
 		example: [{ type: 'energy', order: 0, settings: { range: 'today', show_production: true } }],
 	})
-	@Expose({ name: 'header_widgets' })
+	@Expose({ name: 'status_widgets' })
 	@IsOptional()
 	@IsArray()
 	@Transform(
-		({ obj }: { obj: { header_widgets?: unknown[] | null; headerWidgets?: unknown[] | null } }) =>
-			obj.header_widgets ?? obj.headerWidgets ?? null,
+		({ obj }: { obj: { status_widgets?: unknown[] | null; statusWidgets?: unknown[] | null } }) =>
+			obj.status_widgets ?? obj.statusWidgets ?? null,
 		{ toClassOnly: true },
 	)
 	@Column({ type: 'simple-json', nullable: true, default: null })
-	headerWidgets: Record<string, unknown>[] | null;
+	statusWidgets: Record<string, unknown>[] | null;
 
 	@ApiPropertyOptional({
 		name: 'last_activity_at',

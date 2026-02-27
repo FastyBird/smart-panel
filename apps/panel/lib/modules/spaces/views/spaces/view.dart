@@ -1,5 +1,6 @@
 import 'package:fastybird_smart_panel/api/models/spaces_module_data_space_category.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_data_space_type.dart';
+import 'package:fastybird_smart_panel/modules/spaces/models/spaces/status_widget.dart';
 import 'package:fastybird_smart_panel/modules/spaces/models/spaces/space.dart';
 import 'package:fastybird_smart_panel/modules/spaces/views/light_targets/view.dart';
 
@@ -41,6 +42,8 @@ class SpaceView {
   List<SpaceView> get children => _children;
 
   List<LightTargetView> get lightTargets => _lightTargets;
+
+  List<StatusWidget>? get statusWidgets => _model.statusWidgets;
 
   bool get isRoom => _model.isRoom;
 

@@ -23,6 +23,15 @@ class DisplayUnits {
 		required this.distance,
 	});
 
+	/// Default metric units (Celsius, m/s, hPa, mm, km).
+	static const metric = DisplayUnits(
+		temperature: TemperatureUnit.celsius,
+		windSpeed: WindSpeedUnit.metersPerSecond,
+		pressure: PressureUnit.hectopascal,
+		precipitation: PrecipitationUnit.millimeters,
+		distance: DistanceUnit.kilometers,
+	);
+
 	/// Resolves display units from the display repository and system config.
 	factory DisplayUnits.resolve({
 		required DisplayRepository displayRepository,

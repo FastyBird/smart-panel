@@ -503,6 +503,28 @@ export class DisplayEntity extends BaseEntity {
 	@Column({ type: 'varchar', length: 20, nullable: true, default: null })
 	distanceUnit: DistanceUnitType | null;
 
+	// === Weather Location Override (null = use system default) ===
+
+	@ApiPropertyOptional({
+		name: 'weather_location_id',
+		description: 'Weather location ID override (null = use primary location from weather config)',
+		type: 'string',
+		format: 'uuid',
+		nullable: true,
+	})
+	@Expose({ name: 'weather_location_id' })
+	@IsOptional()
+	@IsUUID('4', {
+		message: '[{"field":"weather_location_id","reason":"Weather location ID must be a valid UUID (version 4)."}]',
+	})
+	@Transform(
+		({ obj }: { obj: { weather_location_id?: string; weatherLocationId?: string } }) =>
+			obj.weather_location_id ?? obj.weatherLocationId ?? null,
+		{ toClassOnly: true },
+	)
+	@Column({ type: 'varchar', length: 36, nullable: true, default: null })
+	weatherLocationId: string | null;
+
 	// === Registration Information ===
 
 	@ApiPropertyOptional({

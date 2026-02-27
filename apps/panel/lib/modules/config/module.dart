@@ -95,48 +95,59 @@ class ConfigModuleService {
 
   void _socketEventHandler(String event, Map<String, dynamic> payload) {
     // Handle module config updates
-    if (payload.containsKey('modules') &&
-        payload['modules'] is Map<String, dynamic>) {
-      final modules = payload['modules'] as Map<String, dynamic>;
-
-      for (final entry in modules.entries) {
-        final moduleName = entry.key;
-        if (_registrationService.isModuleRegistered(moduleName)) {
-          try {
-            final repo = _repositoryManager.getModuleRepository(moduleName);
-            if (entry.value is Map<String, dynamic>) {
-              repo.insertConfiguration(entry.value as Map<String, dynamic>);
-            }
-          } catch (e) {
-            if (kDebugMode) {
-              debugPrint(
-                '[CONFIG MODULE] Failed to update configuration for module $moduleName: ${e.toString()}',
-              );
-            }
-          }
-        }
-      }
+    if (payload.containsKey('modules')) {
+      _processConfigItems(payload['modules'], isModule: true);
     }
 
     // Handle plugin config updates
-    if (payload.containsKey('plugins') &&
-        payload['plugins'] is Map<String, dynamic>) {
-      final plugins = payload['plugins'] as Map<String, dynamic>;
+    if (payload.containsKey('plugins')) {
+      _processConfigItems(payload['plugins'], isModule: false);
+    }
+  }
 
-      for (final entry in plugins.entries) {
-        final pluginName = entry.key;
-        if (_registrationService.isPluginRegistered(pluginName)) {
-          try {
-            final repo = _repositoryManager.getPluginRepository(pluginName);
-            if (entry.value is Map<String, dynamic>) {
-              repo.insertConfiguration(entry.value as Map<String, dynamic>);
-            }
-          } catch (e) {
-            if (kDebugMode) {
-              debugPrint(
-                '[CONFIG MODULE] Failed to update configuration for plugin $pluginName: ${e.toString()}',
-              );
-            }
+  /// Process config items from WebSocket payload.
+  /// Supports both array format (backend sends: [{"type": "weather-module", ...}])
+  /// and map format (keyed by name: {"weather-module": {...}}).
+  void _processConfigItems(dynamic items, {required bool isModule}) {
+    final label = isModule ? 'module' : 'plugin';
+
+    Iterable<MapEntry<String, Map<String, dynamic>>> entries;
+
+    if (items is List) {
+      // Backend sends an array of objects, each with a "type" field
+      entries = items
+          .whereType<Map<String, dynamic>>()
+          .where((item) => item['type'] is String)
+          .map((item) {
+            final config = Map<String, dynamic>.of(item)..remove('type');
+            return MapEntry(item['type'] as String, config);
+          });
+    } else if (items is Map<String, dynamic>) {
+      // Legacy map format keyed by name
+      entries = items.entries
+          .where((e) => e.value is Map<String, dynamic>)
+          .map((e) => MapEntry(e.key, e.value as Map<String, dynamic>));
+    } else {
+      return;
+    }
+
+    for (final entry in entries) {
+      final name = entry.key;
+      final isRegistered = isModule
+          ? _registrationService.isModuleRegistered(name)
+          : _registrationService.isPluginRegistered(name);
+
+      if (isRegistered) {
+        try {
+          final repo = isModule
+              ? _repositoryManager.getModuleRepository(name)
+              : _repositoryManager.getPluginRepository(name);
+          repo.insertConfiguration(entry.value);
+        } catch (e) {
+          if (kDebugMode) {
+            debugPrint(
+              '[CONFIG MODULE] Failed to update configuration for $label $name: ${e.toString()}',
+            );
           }
         }
       }

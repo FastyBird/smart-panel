@@ -4,6 +4,7 @@ export 'package:fastybird_smart_panel/modules/spaces/constants.dart';
 // Models
 export 'package:fastybird_smart_panel/modules/spaces/models/model.dart';
 export 'package:fastybird_smart_panel/modules/spaces/models/spaces/space.dart';
+export 'package:fastybird_smart_panel/modules/spaces/models/spaces/status_widget.dart';
 export 'package:fastybird_smart_panel/modules/spaces/models/light_targets/light_target.dart';
 export 'package:fastybird_smart_panel/modules/spaces/models/climate_targets/climate_target.dart';
 export 'package:fastybird_smart_panel/modules/spaces/models/lighting_state/lighting_state.dart';

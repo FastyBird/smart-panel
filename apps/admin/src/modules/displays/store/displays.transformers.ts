@@ -41,6 +41,8 @@ export const transformDisplayResponse = (response: IDisplayRes): IDisplay => {
 		pressureUnit: response.pressure_unit ?? null,
 		precipitationUnit: response.precipitation_unit ?? null,
 		distanceUnit: response.distance_unit ?? null,
+		// Weather location override (null = use primary from weather config)
+		weatherLocationId: response.weather_location_id ?? null,
 		registeredFromIp: response.registered_from_ip ?? null,
 		currentIpAddress: response.current_ip_address ?? null,
 		online: response.online ?? false,
@@ -131,6 +133,11 @@ export const transformDisplayUpdateRequest = (display: IDisplaysEditActionPayloa
 	}
 	if ('distanceUnit' in display) {
 		baseData.distance_unit = display.distanceUnit ?? null;
+	}
+
+	// Weather location override - explicitly include null to reset to system default
+	if ('weatherLocationId' in display) {
+		baseData.weather_location_id = display.weatherLocationId ?? null;
 	}
 
 	const parsedRequest = DisplayUpdateReqSchema.safeParse(baseData);

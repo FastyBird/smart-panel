@@ -1,20 +1,43 @@
+import 'dart:async';
+
 import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
-import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
+import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/utils/unit_converter.dart';
 import 'package:fastybird_smart_panel/core/widgets/icon_container.dart';
+import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/toast.dart';
-import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
+import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
-import 'package:fastybird_smart_panel/modules/deck/export.dart';
+import 'package:fastybird_smart_panel/modules/deck/export.dart' hide ClimateMode;
 import 'package:fastybird_smart_panel/modules/devices/export.dart';
+import 'package:fastybird_smart_panel/modules/devices/views/devices/mixins.dart';
+import 'package:fastybird_smart_panel/modules/energy/presentation/widgets/energy_summary_pill.dart';
+import 'package:fastybird_smart_panel/modules/energy/services/energy_service.dart';
 import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
 import 'package:fastybird_smart_panel/modules/scenes/export.dart';
-import 'package:fastybird_smart_panel/modules/energy/export.dart';
 import 'package:fastybird_smart_panel/modules/spaces/export.dart';
+import 'package:fastybird_smart_panel/modules/weather/presentation/weather_detail.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
+
+class _DomainOptimistic {
+	final String? primaryValue;
+	final bool? isActive;
+	final ClimateMode? climateMode;
+	final DateTime createdAt;
+
+	const _DomainOptimistic({
+		this.primaryValue,
+		this.isActive,
+		this.climateMode,
+		required this.createdAt,
+	});
+
+	bool get isExpired => DateTime.now().difference(createdAt).inSeconds > 5;
+}
 
 /// Room system view - shows room-specific devices, scenes, and controls.
 ///
@@ -44,6 +67,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 	DevicesService? _devicesService;
 	ScenesService? _scenesService;
 	SpacesService? _spacesService;
+	MediaActivityService? _mediaActivityService;
 
 	// Loading states
 	bool _isLoading = true;
@@ -53,13 +77,21 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 	// Room overview model (built from pure function)
 	RoomOverviewModel? _model;
 
+	// Energy widget settings from status_widgets
+	bool _showEnergyPill = false;
+	bool _energyShowProduction = true;
+	EnergyRange _energyRange = EnergyRange.today;
+
 	// Additional live data (not in model)
 	int _lightsOnCount = 0;
 	double? _temperature;
 	double? _humidity;
 	int? _shadingPosition;
 	int _mediaOnCount = 0;
-	EnergySummary? _energySummary;
+
+	// Optimistic overrides per domain
+	final Map<DomainType, _DomainOptimistic> _optimistic = {};
+	Timer? _optimisticCleanupTimer;
 
 	// Error state
 	String? _errorMessage;
@@ -84,6 +116,13 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 		try {
 			_spacesService = locator<SpacesService>();
 			_spacesService?.addListener(_onSpacesDataChanged);
+		} catch (_) {}
+
+		try {
+			if (locator.isRegistered<MediaActivityService>()) {
+				_mediaActivityService = locator<MediaActivityService>();
+				_mediaActivityService?.addListener(_onSpacesDataChanged);
+			}
 		} catch (_) {}
 
 		// Listen for DeckService changes (e.g., when device categories are loaded)
@@ -121,15 +160,18 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 	Future<void> _refreshLiveData() async {
 		await _fetchLiveDeviceData();
 		if (mounted) {
+			_applyEnergyWidgetSettings();
 			_rebuildModel();
 		}
 	}
 
 	@override
 	void dispose() {
+		_optimisticCleanupTimer?.cancel();
 		_deckService.removeListener(_onDeckServiceChanged);
 		_devicesService?.removeListener(_onDevicesDataChanged);
 		_spacesService?.removeListener(_onSpacesDataChanged);
+		_mediaActivityService?.removeListener(_onSpacesDataChanged);
 		super.dispose();
 	}
 
@@ -142,24 +184,75 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 
 		if (display == null) return;
 
+		// Fetch cached state models (same pattern as domain screens)
+		final lightingState = _spacesService?.getLightingState(_roomId);
+		final climateState = _spacesService?.getClimateState(_roomId);
+		final coversState = _spacesService?.getCoversState(_roomId);
+		final sensorState = _spacesService?.getSensorState(_roomId);
+		final mediaState = _mediaActivityService?.getActiveState(_roomId);
+
 		final input = RoomOverviewBuildInput(
 			display: display,
 			room: room,
 			deviceCategories: deviceCategories,
 			scenes: scenes,
 			now: DateTime.now(),
+			localizations: AppLocalizations.of(context)!,
+			displayUnits: DisplayUnits.fromLocator(),
 			lightsOnCount: _lightsOnCount,
-
 			energyDeviceCount: _deckService.energyDeviceCount,
 			sensorReadingsCount: _deckService.sensorReadingsCount,
 			temperature: _temperature,
 			humidity: _humidity,
 			shadingPosition: _shadingPosition,
 			mediaOnCount: _mediaOnCount,
+			lightingState: lightingState,
+			climateState: climateState,
+			coversState: coversState,
+			sensorState: sensorState,
+			mediaState: mediaState,
 		);
 
+		final freshModel = buildRoomOverviewModel(input);
+
+		// Clear confirmed overrides (backend matches expected state)
+		_clearConfirmedOverrides(freshModel);
+
+		// Apply remaining overrides
+		final adjustedCards = freshModel.domainCards.map((card) {
+			final override = _optimistic[card.domain];
+			if (override == null || override.isExpired) return card;
+
+			var updated = card.copyWith(
+				primaryValue: override.primaryValue,
+				isActive: override.isActive,
+			);
+
+			// Climate mode button update
+			if (override.climateMode != null &&
+					card.domain == DomainType.climate &&
+					card.actions.isNotEmpty) {
+				final (label, icon) = _climateModeInfo(override.climateMode!);
+				final newActions = [
+					card.actions[0].copyWith(label: label, icon: icon),
+					...card.actions.skip(1),
+				];
+				updated = updated.copyWith(actions: newActions);
+			}
+
+			return updated;
+		}).toList();
+
 		setState(() {
-			_model = buildRoomOverviewModel(input);
+			_model = RoomOverviewModel(
+				icon: freshModel.icon,
+				title: freshModel.title,
+				domainCards: adjustedCards,
+				quickScenes: freshModel.quickScenes,
+				suggestedActions: freshModel.suggestedActions,
+				sensorReadings: freshModel.sensorReadings,
+				domainCounts: freshModel.domainCounts,
+			);
 		});
 	}
 
@@ -167,7 +260,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 		if (_roomId.isEmpty) {
 			setState(() {
 				_isLoading = false;
-				_errorMessage = 'No room assigned to this display';
+				_errorMessage = AppLocalizations.of(context)!.room_overview_no_room;
 			});
 			return;
 		}
@@ -188,8 +281,14 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 			// Fetch live device property values (temperature, lights on, humidity, etc.)
 			await _fetchLiveDeviceData();
 
-			// Fetch energy summary for header badge (non-blocking)
-			_fetchEnergySummary();
+			// Trigger initial API fetches for state models (fire-and-forget, same as domain screens)
+			_spacesService?.fetchLightingState(_roomId).catchError((_) => null);
+			_spacesService?.fetchClimateState(_roomId).catchError((_) => null);
+			_spacesService?.fetchCoversState(_roomId).catchError((_) => null);
+			_spacesService?.fetchSensorState(_roomId).catchError((_) => null);
+
+			// Read energy widget settings from room status_widgets
+			_applyEnergyWidgetSettings();
 
 			if (!mounted) return;
 
@@ -199,7 +298,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 			if (display == null) {
 				setState(() {
 					_isLoading = false;
-					_errorMessage = 'Display not configured';
+					_errorMessage = AppLocalizations.of(context)!.room_overview_display_not_configured;
 				});
 				return;
 			}
@@ -214,9 +313,35 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 
 			setState(() {
 				_isLoading = false;
-				_errorMessage = 'Failed to load room data';
+				_errorMessage = AppLocalizations.of(context)!.room_overview_load_failed;
 			});
 		}
+	}
+
+	/// Reads energy widget settings from the room's status_widgets config.
+	///
+	/// The energy pill is hidden by default and only shown when the space
+	/// has an energy entry in its [statusWidgets] list.
+	void _applyEnergyWidgetSettings() {
+		final room = _spacesService?.getSpace(_roomId);
+		if (room == null) return;
+
+		final energyWidget = room.statusWidgets
+				?.where((w) => w.type == 'energy')
+				.firstOrNull;
+
+		if (energyWidget == null) {
+			_showEnergyPill = false;
+			return;
+		}
+
+		_showEnergyPill = true;
+		_energyShowProduction = energyWidget.settings['show_production'] as bool? ?? true;
+
+		final rangeStr = energyWidget.settings['range'] as String?;
+		_energyRange = rangeStr != null
+				? EnergyRange.values.where((r) => r.value == rangeStr).firstOrNull ?? EnergyRange.today
+				: EnergyRange.today;
 	}
 
 	/// Fetches live device property values for all domains.
@@ -322,26 +447,115 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 		return null;
 	}
 
-	Future<void> _fetchEnergySummary() async {
-		try {
-			final energyService = locator<EnergyService>();
-			final summary = await energyService.fetchSummary(_roomId, EnergyRange.today);
-			if (mounted && summary != null) {
-				setState(() {
-					_energySummary = summary;
-				});
-			}
-		} catch (_) {
-			// Silently fail — energy badge is optional
-		}
-	}
-
 	void _navigateToDomainView(DomainType domain) {
 		final roomId = widget.viewItem.roomId;
 		if (roomId == null) return;
 
 		final domainViewId = DomainViewItem.generateId(domain, roomId);
 		_eventBus.fire(NavigateToDeckItemEvent(domainViewId));
+	}
+
+	void _navigateToEnergyView() {
+		// Try room-specific energy domain view first, then standalone energy screen
+		final domainViewId = DomainViewItem.generateId(DomainType.energy, _roomId);
+
+		if (_deckService.indexOfItem(domainViewId) >= 0) {
+			_eventBus.fire(NavigateToDeckItemEvent(domainViewId));
+		} else {
+			_eventBus.fire(NavigateToDeckItemEvent(EnergyViewItem.generateId()));
+		}
+	}
+
+	void _setOptimistic(DomainType domain, {String? primaryValue, bool? isActive, ClimateMode? climateMode}) {
+		_optimistic[domain] = _DomainOptimistic(
+			primaryValue: primaryValue,
+			isActive: isActive,
+			climateMode: climateMode,
+			createdAt: DateTime.now(),
+		);
+		_rebuildModel();
+		_scheduleOptimisticCleanup();
+	}
+
+	void _clearConfirmedOverrides(RoomOverviewModel freshModel) {
+		final toRemove = <DomainType>[];
+		for (final entry in _optimistic.entries) {
+			if (entry.value.isExpired) {
+				toRemove.add(entry.key);
+				continue;
+			}
+			final card = freshModel.domainCards.where((c) => c.domain == entry.key).firstOrNull;
+			if (card == null) continue;
+
+			final override = entry.value;
+			final primaryMatches = override.primaryValue == null || card.primaryValue == override.primaryValue;
+			final activeMatches = override.isActive == null || card.isActive == override.isActive;
+
+			// For climate mode overrides, also check the mode button label
+			var modeMatches = true;
+			if (override.climateMode != null &&
+					card.domain == DomainType.climate &&
+					card.actions.isNotEmpty) {
+				final (expectedLabel, _) = _climateModeInfo(override.climateMode!);
+				modeMatches = card.actions[0].label == expectedLabel;
+			}
+
+			if (primaryMatches && activeMatches && modeMatches) {
+				toRemove.add(entry.key);
+			}
+		}
+		for (final domain in toRemove) {
+			_optimistic.remove(domain);
+		}
+	}
+
+	void _scheduleOptimisticCleanup() {
+		_optimisticCleanupTimer?.cancel();
+		_optimisticCleanupTimer = Timer(const Duration(seconds: 6), () {
+			if (!mounted) return;
+			_optimistic.removeWhere((_, v) => v.isExpired);
+			if (mounted) _rebuildModel();
+		});
+	}
+
+	String _formatTemp(double temp) {
+		final fmt = NumberFormatUtils.defaultFormat;
+		final displayUnits = DisplayUnits.fromLocator();
+		final tempUnit = displayUnits.temperature;
+		return '${fmt.formatDecimal(UnitConverter.convertTemperature(temp, tempUnit), decimalPlaces: 1)}${UnitConverter.temperatureSymbol(tempUnit)}';
+	}
+
+	(String, IconData) _climateModeInfo(ClimateMode mode) {
+		final l = AppLocalizations.of(context)!;
+		switch (mode) {
+			case ClimateMode.heat:
+				return (l.thermostat_mode_heat, MdiIcons.fire);
+			case ClimateMode.cool:
+				return (l.thermostat_mode_cool, MdiIcons.snowflake);
+			case ClimateMode.auto:
+				return (l.thermostat_mode_auto, MdiIcons.autorenew);
+			case ClimateMode.off:
+				return (l.thermostat_mode_off, MdiIcons.power);
+		}
+	}
+
+	DomainType? _domainForAction(QuickActionType type) {
+		switch (type) {
+			case QuickActionType.lightsOff:
+			case QuickActionType.lightsHalf:
+			case QuickActionType.lightsFull:
+				return DomainType.lights;
+			case QuickActionType.climateMode:
+			case QuickActionType.climateMinus:
+			case QuickActionType.climatePlus:
+				return DomainType.climate;
+			case QuickActionType.coversClose:
+			case QuickActionType.coversHalf:
+			case QuickActionType.coversOpen:
+				return DomainType.shading;
+			default:
+				return null;
+		}
 	}
 
 	Future<void> _triggerScene(String sceneId) async {
@@ -372,7 +586,8 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 			} else if (result.isPartialSuccess) {
 				Toast.showInfo(
 					context,
-					message: localizations?.space_scene_partial_success ??
+					message: result.message ??
+						localizations?.space_scene_partial_success ??
 						'Scene partially activated',
 				);
 			} else {
@@ -397,62 +612,231 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 		}
 	}
 
-	Future<void> _handleSuggestedAction(SuggestedAction action) async {
-		switch (action.actionType) {
-			case SuggestedActionType.scene:
-				if (action.sceneId != null) {
-					await _triggerScene(action.sceneId!);
+	void _showClimateModeSelect() {
+		final spacesService = _spacesService;
+		if (spacesService == null) return;
+
+		final cs = spacesService.getClimateState(_roomId);
+		final currentMode = cs?.mode ?? ClimateMode.off;
+
+		final l = AppLocalizations.of(context)!;
+		final modes = <(ClimateMode, IconData, String, ThemeColors)>[
+			(ClimateMode.heat, MdiIcons.fire, l.thermostat_mode_heat, ThemeColors.danger),
+			(ClimateMode.cool, MdiIcons.snowflake, l.thermostat_mode_cool, ThemeColors.info),
+			(ClimateMode.auto, MdiIcons.autorenew, l.thermostat_mode_auto, ThemeColors.success),
+			(ClimateMode.off, MdiIcons.power, l.thermostat_mode_off, ThemeColors.neutral),
+		];
+
+		showDialog(
+			context: context,
+			barrierColor: Colors.transparent,
+			builder: (dialogContext) {
+				final isDark = Theme.of(dialogContext).brightness == Brightness.dark;
+				return Align(
+					alignment: Alignment.center,
+					child: Material(
+						elevation: 8,
+						borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+						color: isDark ? AppBgColorDark.overlay : AppBgColorLight.overlay,
+						child: Container(
+							constraints: BoxConstraints(
+								minWidth: AppSpacings.scale(180),
+								maxWidth: AppSpacings.scale(220),
+							),
+							decoration: BoxDecoration(
+								borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+								border: Border.all(
+									color: isDark ? AppBorderColorDark.light : AppBorderColorLight.light,
+									width: AppSpacings.scale(1),
+								),
+							),
+							padding: AppSpacings.paddingMd,
+							child: Column(
+								mainAxisSize: MainAxisSize.min,
+								crossAxisAlignment: CrossAxisAlignment.start,
+								children: [
+									Padding(
+										padding: EdgeInsets.only(bottom: AppSpacings.pSm),
+										child: Text(
+											l.thermostat_mode_label,
+											style: TextStyle(
+												fontSize: AppFontSize.extraSmall,
+												fontWeight: FontWeight.w600,
+												letterSpacing: AppSpacings.scale(1),
+												color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
+											),
+										),
+									),
+									for (final (mode, icon, label, themeColor) in modes)
+										Builder(builder: (_) {
+											final isActive = currentMode == mode;
+											final colorFamily = ThemeColorFamily.get(
+												isDark ? Brightness.dark : Brightness.light,
+												themeColor,
+											);
+											return GestureDetector(
+												onTap: () async {
+													Navigator.of(dialogContext).pop();
+													final cs = spacesService.getClimateState(_roomId);
+													_setOptimistic(
+														DomainType.climate,
+														primaryValue: mode == ClimateMode.off
+																? l.thermostat_mode_off
+																: (cs?.effectiveTargetTemperature != null
+																		? _formatTemp(cs!.effectiveTargetTemperature!)
+																		: null),
+														isActive: mode != ClimateMode.off,
+														climateMode: mode,
+													);
+													final result = await spacesService.setClimateMode(_roomId, mode);
+													if (mounted) {
+														IntentResultHandler.showOfflineAlertIfNeededForClimate(context, result);
+													}
+												},
+												behavior: HitTestBehavior.opaque,
+												child: Container(
+													padding: EdgeInsets.symmetric(
+														vertical: AppSpacings.pMd,
+														horizontal: AppSpacings.pMd,
+													),
+													margin: EdgeInsets.only(bottom: AppSpacings.pXs),
+													decoration: BoxDecoration(
+														color: isActive ? colorFamily.light9 : Colors.transparent,
+														borderRadius: BorderRadius.circular(AppBorderRadius.small),
+														border: isActive
+																? Border.all(color: colorFamily.light7, width: AppSpacings.scale(1))
+																: null,
+													),
+													child: Row(
+														spacing: AppSpacings.pMd,
+														children: [
+															Icon(
+																icon,
+																color: isActive ? colorFamily.base : (isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary),
+																size: AppSpacings.scale(20),
+															),
+															Expanded(
+																child: Text(
+																	label,
+																	style: TextStyle(
+																		fontSize: AppFontSize.base,
+																		fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+																		color: isActive ? colorFamily.base : (isDark ? AppTextColorDark.regular : AppTextColorLight.regular),
+																	),
+																),
+															),
+															if (isActive)
+																Icon(Icons.check, color: colorFamily.base, size: AppSpacings.scale(16)),
+														],
+													),
+												),
+											);
+										}),
+								],
+							),
+						),
+					),
+				);
+			},
+		);
+	}
+
+	Future<void> _handleQuickAction(QuickActionType type) async {
+		final spacesService = _spacesService;
+		if (spacesService == null) return;
+
+		final l = AppLocalizations.of(context)!;
+
+		try {
+			switch (type) {
+				case QuickActionType.lightsOff:
+					_setOptimistic(DomainType.lights, primaryValue: l.space_lighting_mode_off, isActive: false);
+					final result = await spacesService.setLightingMode(_roomId, LightingMode.off);
+					if (mounted) IntentResultHandler.showOfflineAlertIfNeeded(context, result);
+					break;
+				case QuickActionType.lightsHalf:
+				case QuickActionType.lightsFull:
+					_setOptimistic(DomainType.lights, primaryValue: l.domain_mode_custom, isActive: true);
+					final brightness = type == QuickActionType.lightsFull ? 100 : 50;
+					await spacesService.turnRoleOn(_roomId, LightingStateRole.main);
+					final result = await spacesService.setRoleBrightness(_roomId, LightingStateRole.main, brightness);
+					if (mounted) IntentResultHandler.showOfflineAlertIfNeeded(context, result);
+					break;
+				case QuickActionType.climateMode:
+					_showClimateModeSelect();
+					break;
+				case QuickActionType.climateMinus:
+				case QuickActionType.climatePlus:
+					final cs = spacesService.getClimateState(_roomId);
+					if (cs == null) return;
+					final target = cs.effectiveTargetTemperature;
+					if (target == null) return;
+					final mode = cs.mode ?? ClimateMode.heat;
+					final newTarget = type == QuickActionType.climatePlus
+							? target + 1.0
+							: target - 1.0;
+					final clamped = newTarget.clamp(cs.minSetpoint, cs.maxSetpoint);
+					_setOptimistic(DomainType.climate, primaryValue: _formatTemp(clamped));
+					final result = await spacesService.setSetpoint(_roomId, clamped, mode: mode);
+					if (mounted) IntentResultHandler.showOfflineAlertIfNeededForClimate(context, result);
+					break;
+				case QuickActionType.coversClose:
+					_setOptimistic(DomainType.shading, primaryValue: l.covers_mode_closed, isActive: false);
+					final result = await spacesService.setCoversMode(_roomId, CoversMode.closed);
+					if (mounted) IntentResultHandler.showOfflineAlertIfNeededForCovers(context, result);
+					break;
+				case QuickActionType.coversHalf:
+					_setOptimistic(DomainType.shading, primaryValue: l.domain_mode_custom, isActive: true);
+					final result = await spacesService.setCoversPosition(_roomId, 50);
+					if (mounted) IntentResultHandler.showOfflineAlertIfNeededForCovers(context, result);
+					break;
+				case QuickActionType.coversOpen:
+					_setOptimistic(DomainType.shading, primaryValue: l.covers_mode_open, isActive: true);
+					final result = await spacesService.setCoversMode(_roomId, CoversMode.open);
+					if (mounted) IntentResultHandler.showOfflineAlertIfNeededForCovers(context, result);
+					break;
+				case QuickActionType.mediaPlay:
+				case QuickActionType.mediaPause:
+				case QuickActionType.mediaStop:
+					_sendMediaPlaybackCommand(type);
+					break;
+			}
+		} catch (e) {
+			if (mounted) {
+				final domain = _domainForAction(type);
+				if (domain != null) {
+					_optimistic.remove(domain);
+					_rebuildModel();
 				}
-				break;
-			case SuggestedActionType.turnOffLights:
-				await _turnOffAllLights();
-				break;
+				Toast.showError(context, message: l.room_overview_action_failed);
+			}
 		}
 	}
 
-	Future<void> _turnOffAllLights() async {
-		final lightDevices =
-			_devicesService?.getDevicesForRoomByCategory(_roomId, DevicesModuleDeviceCategory.lighting) ?? [];
+	void _sendMediaPlaybackCommand(QuickActionType type) {
+		final devicesService = _devicesService;
+		if (devicesService == null) return;
 
-		if (lightDevices.isEmpty) return;
+		final command = switch (type) {
+			QuickActionType.mediaPlay => 'play',
+			QuickActionType.mediaPause => 'pause',
+			QuickActionType.mediaStop => 'stop',
+			_ => null,
+		};
+		if (command == null) return;
 
-		int successCount = 0;
-		int failCount = 0;
+		final devices = devicesService.getDevicesForRoom(_roomId);
+		for (final device in devices) {
+			if (device is! DeviceMediaPlaybackMixin) continue;
+			final playback = device as DeviceMediaPlaybackMixin;
+			final channel = playback.mediaPlaybackChannel;
+			if (channel == null || !channel.hasCommand) continue;
 
-		for (final device in lightDevices) {
-			if (_isDeviceOn(device)) {
-				final result = await _intentsService.toggleDevice(device.id);
-				if (result.isSuccess) {
-					successCount++;
-				} else {
-					failCount++;
-				}
-			}
-		}
-
-		if (!mounted) return;
-
-		await _fetchLiveDeviceData();
-
-		if (!mounted) return;
-
-		_rebuildModel();
-
-		final feedbackLocalizations = AppLocalizations.of(context);
-		if (failCount == 0 && successCount > 0) {
-			Toast.showSuccess(
-				context,
-				message: 'Lights turned off',
-			);
-		} else if (successCount > 0) {
-			Toast.showInfo(
-				context,
-				message: 'Some lights turned off',
-			);
-		} else if (failCount > 0) {
-			Toast.showError(
-				context,
-				message: feedbackLocalizations?.action_failed ?? 'Failed to turn off lights',
+			devicesService.setPropertyValueWithContext(
+				deviceId: device.id,
+				channelId: channel.id,
+				propertyId: channel.commandProp!.id,
+				value: command,
 			);
 		}
 	}
@@ -466,191 +850,79 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 		final localizations = AppLocalizations.of(context);
 		final model = _model;
 
-		return Scaffold(
-			appBar: AppTopBar(
-				title: model?.title ?? widget.viewItem.title,
-				icon: model?.icon ?? MdiIcons.homeOutline,
-				actions: _buildStatusBadges(context),
-			),
-			body: SafeArea(
-				child: Padding(
-					padding: AppSpacings.paddingMd,
-					child: _isLoading
+		return LayoutBuilder(
+			builder: (context, constraints) {
+				final isPortrait = constraints.maxHeight > constraints.maxWidth;
+				final screenService = locator<ScreenService>();
+				final isCompact = !isPortrait &&
+						(screenService.isSmallScreen || screenService.isMediumScreen);
+
+				final skyPanel = SkyPanel(
+					roomName: model?.title ?? widget.viewItem.title,
+					isPortrait: isPortrait,
+					isCompact: isCompact,
+					scenes: model?.quickScenes ?? [],
+					isSceneTriggering: _isSceneTriggering,
+					triggeringSceneId: _triggeringSceneId,
+					onSceneTap: _triggerScene,
+					onWeatherTap: () {
+						Navigator.of(context).push(
+							MaterialPageRoute(
+								builder: (_) => const WeatherDetailPage(),
+							),
+						);
+					},
+				);
+
+				final contentBody = _isLoading
 						? _buildLoadingState()
 						: _errorMessage != null
-							? _buildErrorState()
-							: model != null
-								? _buildContent(context, localizations, model)
-								: _buildEmptyState(context, localizations),
-				),
-			),
-		);
-	}
+								? _buildErrorState()
+								: model != null
+										? _buildContent(context, localizations, model, isPortrait)
+										: _buildEmptyState(context, localizations);
 
-	// ===========================================================================
-	// STATUS BADGES (header)
-	// ===========================================================================
+				final isDark = Theme.of(context).brightness == Brightness.dark;
+				final pageBg = isDark ? AppBgColorDark.page : AppBgColorLight.page;
 
-	List<Widget> _buildStatusBadges(BuildContext context) {
-		final model = _model;
+				if (isPortrait) {
+					final skyHeight = (screenService.logicalHeight * 0.4)
+							.clamp(0.0, AppSpacings.scale(500));
 
-		return [
-			if (model != null && model.domainCounts.hasDomain(DomainType.lights))
-				_buildLightsBadge(context),
-			if (_temperature != null) _buildTemperatureBadge(context),
-			if (_energySummary != null && _energySummary!.consumption > 0)
-				_buildEnergyBadge(context),
-		];
-	}
+					return Column(
+						children: [
+							SizedBox(
+								height: skyHeight,
+								child: skyPanel,
+							),
+							Expanded(
+								child: ColoredBox(
+									color: pageBg,
+									child: contentBody,
+								),
+							),
+						],
+					);
+				}
 
-	Widget _buildLightsBadge(BuildContext context) {
-		final model = _model;
-		final lightsCount = model?.domainCounts.lights ?? 0;
-		final isOn = _lightsOnCount > 0;
-		final iconSize = AppSpacings.scale(14);
-
-		return GestureDetector(
-			onTap: () => _navigateToDomainView(DomainType.lights),
-			child: Container(
-				padding: EdgeInsets.symmetric(
-					horizontal: AppSpacings.pSm,
-					vertical: AppSpacings.pXs,
-				),
-				decoration: BoxDecoration(
-					color: isOn
-						? (Theme.of(context).brightness == Brightness.light
-							? AppColorsLight.warningLight9
-							: AppColorsDark.warningLight9)
-						: (Theme.of(context).brightness == Brightness.light
-							? AppFillColorLight.base
-							: AppFillColorDark.base),
-					borderRadius: BorderRadius.circular(AppBorderRadius.base),
-				),
-				child: Row(
-					spacing: AppSpacings.pXs,
-					mainAxisSize: MainAxisSize.min,
+				return Row(
 					children: [
-						Icon(
-							isOn ? MdiIcons.lightbulbOn : MdiIcons.lightbulbOutline,
-							size: iconSize,
-							color: isOn
-								? (Theme.of(context).brightness == Brightness.light
-									? AppColorsLight.warning
-									: AppColorsDark.warning)
-								: (Theme.of(context).brightness == Brightness.light
-									? AppTextColorLight.placeholder
-									: AppTextColorDark.placeholder),
+						SizedBox(
+							width: constraints.maxWidth * 0.42,
+							child: skyPanel,
 						),
-						Text(
-							isOn ? '$_lightsOnCount/$lightsCount' : 'Off',
-							style: TextStyle(
-								fontSize: AppFontSize.extraSmall,
-								fontWeight: FontWeight.w500,
-								color: isOn
-									? (Theme.of(context).brightness == Brightness.light
-										? AppColorsLight.warningDark2
-										: AppColorsDark.warningDark2)
-									: (Theme.of(context).brightness == Brightness.light
-										? AppTextColorLight.placeholder
-										: AppTextColorDark.placeholder),
+						Expanded(
+							child: ColoredBox(
+								color: pageBg,
+								child: contentBody,
 							),
 						),
 					],
-				),
-			),
+				);
+			},
 		);
 	}
 
-	Widget _buildTemperatureBadge(BuildContext context) {
-		final iconSize = AppSpacings.scale(14);
-
-		return Container(
-			padding: EdgeInsets.symmetric(
-				horizontal: AppSpacings.pSm,
-				vertical: AppSpacings.pXs,
-			),
-			decoration: BoxDecoration(
-				color: Theme.of(context).brightness == Brightness.light
-					? AppColorsLight.infoLight9
-					: AppColorsDark.infoLight7,
-				borderRadius: BorderRadius.circular(AppBorderRadius.base),
-			),
-			child: Row(
-				spacing: AppSpacings.pXs,
-				mainAxisSize: MainAxisSize.min,
-				children: [
-					Icon(
-						MdiIcons.thermometer,
-						size: iconSize,
-						color: Theme.of(context).brightness == Brightness.light
-							? AppColorsLight.info
-							: AppColorsDark.info,
-					),
-					Text(
-						'${NumberFormatUtils.defaultFormat.formatDecimal(_temperature!, decimalPlaces: 1)}\u00B0',
-						style: TextStyle(
-							fontSize: AppFontSize.extraSmall,
-							fontWeight: FontWeight.w500,
-							color: Theme.of(context).brightness == Brightness.light
-								? AppColorsLight.infoDark2
-								: AppTextColorDark.primary,
-						),
-					),
-				],
-			),
-		);
-	}
-
-	Widget _buildEnergyBadge(BuildContext context) {
-		final localizations = AppLocalizations.of(context);
-		final iconSize = AppSpacings.scale(14);
-		final consumption = NumberFormatUtils.defaultFormat.formatDecimal(
-			_energySummary!.consumption,
-			decimalPlaces: 1,
-		);
-		final unit = localizations?.energy_unit_kwh ?? 'kWh';
-
-		return GestureDetector(
-			onTap: () => _navigateToDomainView(DomainType.energy),
-			child: Container(
-				padding: EdgeInsets.symmetric(
-					horizontal: AppSpacings.pSm,
-					vertical: AppSpacings.pXs,
-				),
-				decoration: BoxDecoration(
-					color: Theme.of(context).brightness == Brightness.light
-						? AppColorsLight.infoLight9
-						: AppColorsDark.infoLight7,
-					borderRadius: BorderRadius.circular(AppBorderRadius.base),
-				),
-				child: Row(
-					spacing: AppSpacings.pXs,
-					mainAxisSize: MainAxisSize.min,
-					children: [
-						Icon(
-							_energySummary!.hasProduction
-								? MdiIcons.solarPower
-								: MdiIcons.flashOutline,
-							size: iconSize,
-							color: Theme.of(context).brightness == Brightness.light
-								? AppColorsLight.info
-								: AppColorsDark.info,
-						),
-						Text(
-							'$consumption $unit',
-							style: TextStyle(
-								fontSize: AppFontSize.extraSmall,
-								fontWeight: FontWeight.w500,
-								color: Theme.of(context).brightness == Brightness.light
-									? AppColorsLight.infoDark2
-									: AppTextColorDark.primary,
-							),
-						),
-					],
-				),
-			),
-		);
-	}
 
 	// ===========================================================================
 	// LOADING / ERROR / EMPTY STATES
@@ -665,48 +937,52 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 	}
 
 	Widget _buildErrorState() {
+		final l = AppLocalizations.of(context)!;
 		return Center(
-			child: Column(
-				mainAxisAlignment: MainAxisAlignment.center,
-				spacing: AppSpacings.pMd,
-				children: [
-					Icon(
-						MdiIcons.alertCircleOutline,
-						size: AppSpacings.scale(64),
-						color: Theme.of(context).brightness == Brightness.light
-							? AppColorsLight.danger
-							: AppColorsDark.danger,
-					),
-					Text(
-						_errorMessage!,
-						style: TextStyle(
-							fontSize: AppFontSize.base,
-							color: Theme.of(context).brightness == Brightness.light
-								? AppTextColorLight.regular
-								: AppTextColorDark.regular,
-						),
-						textAlign: TextAlign.center,
-					),
-					Theme(
-						data: ThemeData(
-							filledButtonTheme: Theme.of(context).brightness == Brightness.dark
-								? AppFilledButtonsDarkThemes.primary
-								: AppFilledButtonsLightThemes.primary,
-						),
-						child: FilledButton.icon(
-							onPressed: _loadRoomData,
-							icon: Icon(
-								MdiIcons.refresh,
-								size: AppFontSize.base,
-								color: Theme.of(context).brightness == Brightness.dark
-									? AppFilledButtonsDarkThemes.primaryForegroundColor
-									: AppFilledButtonsLightThemes.primaryForegroundColor,
-							),
-							label: const Text('Retry'),
-						),
-					),
-				],
-			),
+			child: Padding(
+        padding: AppSpacings.paddingXl,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          spacing: AppSpacings.pMd,
+          children: [
+            Icon(
+              MdiIcons.alertCircleOutline,
+              size: AppSpacings.scale(64),
+              color: Theme.of(context).brightness == Brightness.light
+                ? AppColorsLight.danger
+                : AppColorsDark.danger,
+            ),
+            Text(
+              _errorMessage!,
+              style: TextStyle(
+                fontSize: AppFontSize.base,
+                color: Theme.of(context).brightness == Brightness.light
+                  ? AppTextColorLight.regular
+                  : AppTextColorDark.regular,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            Theme(
+              data: ThemeData(
+                filledButtonTheme: Theme.of(context).brightness == Brightness.dark
+                  ? AppFilledButtonsDarkThemes.primary
+                  : AppFilledButtonsLightThemes.primary,
+              ),
+              child: FilledButton.icon(
+                onPressed: _loadRoomData,
+                icon: Icon(
+                  MdiIcons.refresh,
+                  size: AppFontSize.base,
+                  color: Theme.of(context).brightness == Brightness.dark
+                    ? AppFilledButtonsDarkThemes.primaryForegroundColor
+                    : AppFilledButtonsLightThemes.primaryForegroundColor,
+                ),
+                label: Text(l.action_retry),
+              ),
+            ),
+          ],
+        ),
+      ),
 		);
 	}
 
@@ -715,43 +991,46 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 		AppLocalizations? localizations,
 	) {
 		return Center(
-			child: Column(
-				mainAxisAlignment: MainAxisAlignment.center,
-				spacing: AppSpacings.pMd,
-				children: [
-					IconContainer(
-						screenService: locator<ScreenService>(),
-						icon: MdiIcons.homeOffOutline,
-						color: Theme.of(context).brightness == Brightness.light
-							? AppTextColorLight.placeholder
-							: AppTextColorDark.placeholder,
-						isLandscape: locator<ScreenService>().isLandscape,
-						useContainer: false,
-					),
-					Text(
-						localizations?.space_empty_state_title ?? 'No Devices',
-						style: TextStyle(
-							fontSize: AppFontSize.large,
-							fontWeight: FontWeight.w600,
-							color: Theme.of(context).brightness == Brightness.light
-								? AppTextColorLight.regular
-								: AppTextColorDark.regular,
-						),
-						textAlign: TextAlign.center,
-					),
-					Text(
-						localizations?.space_empty_state_description ??
-							'Assign devices to this room in Admin',
-						style: TextStyle(
-							fontSize: AppFontSize.small,
-							color: Theme.of(context).brightness == Brightness.light
-								? AppTextColorLight.placeholder
-								: AppTextColorDark.placeholder,
-						),
-						textAlign: TextAlign.center,
-					),
-				],
-			),
+			child: Padding(
+        padding: AppSpacings.paddingXl,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          spacing: AppSpacings.pMd,
+          children: [
+            IconContainer(
+              screenService: locator<ScreenService>(),
+              icon: MdiIcons.homeOffOutline,
+              color: Theme.of(context).brightness == Brightness.light
+                ? AppTextColorLight.placeholder
+                : AppTextColorDark.placeholder,
+              isLandscape: locator<ScreenService>().isLandscape,
+              useContainer: false,
+            ),
+            Text(
+              localizations?.space_empty_state_title ?? 'No Devices',
+              style: TextStyle(
+                fontSize: AppFontSize.large,
+                fontWeight: FontWeight.w600,
+                color: Theme.of(context).brightness == Brightness.light
+                  ? AppTextColorLight.regular
+                  : AppTextColorDark.regular,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            Text(
+              localizations?.space_empty_state_description ??
+                'Assign devices to this room in Admin',
+              style: TextStyle(
+                fontSize: AppFontSize.small,
+                color: Theme.of(context).brightness == Brightness.light
+                  ? AppTextColorLight.placeholder
+                  : AppTextColorDark.placeholder,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
 		);
 	}
 
@@ -763,29 +1042,38 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 		BuildContext context,
 		AppLocalizations? localizations,
 		RoomOverviewModel model,
+		bool isPortrait,
 	) {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 
 		return Column(
 			crossAxisAlignment: CrossAxisAlignment.stretch,
 			children: [
-				// Scene pills row
-				if (model.hasScenes) ...[
-					_buildScenePills(context, isDark, model),
-					SizedBox(height: AppSpacings.pMd),
+				// Status pills strip — top in landscape, bottom in portrait
+				if (!isPortrait)
+					Padding(
+						padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd, vertical: AppSpacings.pSm),
+						child: _buildStatusStrip(context, isDark, model),
+					),
+
+				// Scene pills row (portrait only — landscape shows them on the sky panel)
+				if (isPortrait && model.hasScenes) ...[
+					Padding(
+						padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd, vertical: AppSpacings.pMd),
+						child: _buildScenePills(context, isDark, model),
+					),
 				],
 
 				// Domain cards grid
 				if (model.domainCards.isNotEmpty)
 					Expanded(
-						child: _buildDomainCardsGrid(context, isDark, model),
+						child: isPortrait ?
+              _buildDomainCardsGrid(context, isDark, model, isPortrait)
+              : Padding(
+                padding: EdgeInsets.symmetric(vertical: AppSpacings.pSm),
+                child: _buildDomainCardsGrid(context, isDark, model, isPortrait),
+              )
 					),
-
-				// Suggested actions
-				if (model.suggestedActions.isNotEmpty) ...[
-					SizedBox(height: AppSpacings.pMd),
-					_buildSuggestedActionsSection(context, model),
-				],
 
 				// Empty state when no domain cards and no scenes
 				if (model.domainCards.isEmpty && !model.hasScenes)
@@ -794,11 +1082,12 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 				else if (model.domainCards.isEmpty)
 					const Spacer(),
 
-				// Sensor readings strip
-				if (model.hasSensorReadings) ...[
-					SizedBox(height: AppSpacings.pMd),
-					_buildSensorStrip(context, isDark, model),
-				],
+				// Status pills strip — bottom in portrait
+				if (isPortrait)
+					Padding(
+						padding: EdgeInsets.symmetric(horizontal: AppSpacings.pMd, vertical: AppSpacings.pSm),
+						child: _buildStatusStrip(context, isDark, model),
+					),
 			],
 		);
 	}
@@ -812,14 +1101,11 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 		bool isDark,
 		RoomOverviewModel model,
 	) {
-		return SizedBox(
+		return HorizontalScrollWithGradient(
 			height: AppSpacings.scale(30),
-			child: ListView.separated(
-				scrollDirection: Axis.horizontal,
-				itemCount: model.quickScenes.length,
-				separatorBuilder: (_, __) => SizedBox(width: AppSpacings.pSm),
-				itemBuilder: (_, i) => _buildScenePill(context, isDark, model.quickScenes[i]),
-			),
+			itemCount: model.quickScenes.length,
+			separatorWidth: AppSpacings.pSm,
+			itemBuilder: (_, i) => _buildScenePill(context, isDark, model.quickScenes[i]),
 		);
 	}
 
@@ -839,13 +1125,13 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 						? primaryColor
 						: (isDark
 							? AppFillColorDark.light
-							: AppFillColorLight.base),
+							: AppFillColorLight.blank),
 					borderRadius: BorderRadius.circular(AppBorderRadius.base),
 					border: isTriggering
 						? null
 						: Border.all(
 							color: isDark
-								? AppBorderColorDark.extraLight
+								? AppFillColorDark.light
 								: AppBorderColorLight.light,
 						),
 				),
@@ -896,26 +1182,67 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 		BuildContext context,
 		bool isDark,
 		RoomOverviewModel model,
+		bool isPortrait,
 	) {
 		final cards = model.domainCards;
+		final screenService = locator<ScreenService>();
+		final isCompact = !isPortrait || screenService.isSmallScreen;
+		final hideTargetValue = !isPortrait ||
+				screenService.isSmallScreen;
+		final spacing = AppSpacings.pMd;
+		final maxTileHeight = AppSpacings.scale(isCompact ? 90 : 95);
+		final rowCount = (cards.length / 2).ceil();
 
-		return GridView.builder(
-			gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-				crossAxisCount: 2,
-				childAspectRatio: 1.3,
-				mainAxisSpacing: AppSpacings.pMd,
-				crossAxisSpacing: AppSpacings.pMd,
-			),
-			padding: EdgeInsets.zero,
-			physics: cards.length <= 4
-				? const NeverScrollableScrollPhysics()
-				: null,
-			itemCount: cards.length,
-			itemBuilder: (context, index) {
-				return _RoomDomainCard(
-					cardInfo: cards[index],
-					isDark: isDark,
-					onTap: () => _navigateToDomainView(cards[index].domain),
+		return LayoutBuilder(
+			builder: (context, constraints) {
+				final tileWidth = (constraints.maxWidth - spacing - AppSpacings.pMd * 2) / 2;
+				final aspectRatio = isCompact ? 1.4 : 2;
+				final tileHeight = (tileWidth / aspectRatio).clamp(0, maxTileHeight).toDouble();
+
+				return VerticalScrollWithGradient(
+					itemCount: rowCount,
+					separatorHeight: spacing,
+					padding: EdgeInsets.only(
+            left: AppSpacings.pMd,
+            right: AppSpacings.pMd,
+            bottom: AppSpacings.pMd,
+          ),
+					itemBuilder: (context, rowIndex) {
+						final firstIndex = rowIndex * 2;
+						final secondIndex = firstIndex + 1;
+
+						return SizedBox(
+							height: tileHeight,
+							child: Row(
+								spacing: spacing,
+								children: [
+									Expanded(
+										child: _RoomDomainCard(
+											cardInfo: cards[firstIndex],
+											isDark: isDark,
+											hideTargetValue: hideTargetValue,
+											isCompact: isCompact,
+											onTap: () => _navigateToDomainView(cards[firstIndex].domain),
+											onQuickAction: _handleQuickAction,
+										),
+									),
+									if (secondIndex < cards.length)
+										Expanded(
+											child: _RoomDomainCard(
+												cardInfo: cards[secondIndex],
+												isDark: isDark,
+												hideTargetValue: hideTargetValue,
+												isCompact: isCompact,
+												onTap: () => _navigateToDomainView(cards[secondIndex].domain),
+												onQuickAction: _handleQuickAction,
+											),
+										)
+									else
+										const Expanded(child: SizedBox.shrink()),
+								],
+							),
+						);
+					},
 				);
 			},
 		);
@@ -925,100 +1252,74 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 	// SENSOR STRIP
 	// ===========================================================================
 
-	Widget _buildSensorStrip(
+	Widget _buildStatusStrip(
 		BuildContext context,
 		bool isDark,
 		RoomOverviewModel model,
 	) {
-		return Wrap(
-			spacing: AppSpacings.pMd,
-			runSpacing: AppSpacings.pSm,
-			children: model.sensorReadings.map((reading) {
-				final colorFamily = ThemeColorFamily.get(
-					Theme.of(context).brightness,
-					ThemeColors.info,
-				);
+		final energySlot = _showEnergyPill ? 1 : 0;
+		final totalCount = model.sensorReadings.length + energySlot;
 
-				return Container(
-					padding: EdgeInsets.symmetric(
-						horizontal: AppSpacings.pMd,
-						vertical: AppSpacings.pSm,
-					),
-					decoration: BoxDecoration(
-						color: colorFamily.light9,
-						borderRadius: BorderRadius.circular(AppBorderRadius.base),
-						border: Border.all(color: colorFamily.light7),
-					),
-					child: Row(
-						mainAxisSize: MainAxisSize.min,
-						spacing: AppSpacings.pSm,
-						children: [
-							Icon(
-								reading.icon,
-								size: AppSpacings.scale(14),
-								color: colorFamily.base,
-							),
-							Text(
-								'${reading.label} ${reading.value}',
-								style: TextStyle(
-									fontSize: AppFontSize.extraSmall,
-									fontWeight: FontWeight.w600,
-									color: colorFamily.base,
-								),
-							),
-						],
+		return HorizontalScrollWithGradient(
+			height: AppSpacings.scale(22),
+			itemCount: totalCount,
+			separatorWidth: AppSpacings.pSm,
+			itemBuilder: (_, i) {
+				if (i < model.sensorReadings.length) {
+					return Center(
+						child: _buildSensorPill(context, isDark, model.sensorReadings[i]),
+					);
+				}
+				return Center(
+					child: EnergySummaryPill(
+						spaceId: _roomId,
+						range: _energyRange,
+						showProduction: _energyShowProduction,
+						onTap: () => _navigateToEnergyView(),
 					),
 				);
-			}).toList(),
+			},
 		);
 	}
 
-	// ===========================================================================
-	// SUGGESTED ACTIONS
-	// ===========================================================================
-
-	Widget _buildSuggestedActionsSection(
-		BuildContext context,
-		RoomOverviewModel model,
-	) {
-		return Column(
-			crossAxisAlignment: CrossAxisAlignment.start,
-			spacing: AppSpacings.pSm,
-			children: [
-				Text(
-					'Suggested',
-					style: TextStyle(
-						fontSize: AppFontSize.small,
-						fontWeight: FontWeight.w600,
-						color: Theme.of(context).brightness == Brightness.light
-							? AppTextColorLight.regular
-							: AppTextColorDark.regular,
-					),
-				),
-				Wrap(
-					spacing: AppSpacings.pSm,
-					runSpacing: AppSpacings.pSm,
-					children: model.suggestedActions
-						.map((action) => _buildSuggestedActionChip(context, action))
-						.toList(),
-				),
-			],
+	Widget _buildSensorPill(BuildContext context, bool isDark, SensorReading reading) {
+		final colorFamily = ThemeColorFamily.get(
+			Theme.of(context).brightness,
+			reading.color,
 		);
-	}
 
-	Widget _buildSuggestedActionChip(
-		BuildContext context,
-		SuggestedAction action,
-	) {
-		return ActionChip(
-			avatar: Icon(
-				action.icon,
-				size: AppSpacings.scale(18),
+		return Container(
+			padding: EdgeInsets.symmetric(
+				horizontal: AppSpacings.pMd,
+				vertical: AppSpacings.pSm,
 			),
-			label: Text(action.label),
-			onPressed: () => _handleSuggestedAction(action),
+			decoration: BoxDecoration(
+				color: colorFamily.light8,
+				borderRadius: BorderRadius.circular(AppBorderRadius.base),
+			),
+			child: Row(
+				mainAxisSize: MainAxisSize.min,
+				spacing: AppSpacings.pSm,
+				children: [
+					Icon(
+						reading.icon,
+						size: AppSpacings.scale(14),
+						color: colorFamily.base,
+					),
+					Text(
+						reading.value,
+						style: TextStyle(
+							fontSize: AppFontSize.extraSmall,
+							fontWeight: FontWeight.w700,
+							color: colorFamily.base,
+							letterSpacing: 0.3,
+						),
+					),
+				],
+			),
 		);
 	}
+
 }
 
 // =============================================================================
@@ -1032,13 +1333,82 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 class _RoomDomainCard extends StatelessWidget {
 	final DomainCardInfo cardInfo;
 	final bool isDark;
+	final bool hideTargetValue;
+	final bool isCompact;
 	final VoidCallback onTap;
+	final void Function(QuickActionType)? onQuickAction;
 
 	const _RoomDomainCard({
 		required this.cardInfo,
 		required this.isDark,
+		this.hideTargetValue = false,
+		this.isCompact = false,
 		required this.onTap,
+		this.onQuickAction,
 	});
+
+	/// Action types that switch from label to icon on compact screens.
+	static const _compactIconActions = {
+		QuickActionType.lightsOff,
+		QuickActionType.coversClose,
+		QuickActionType.coversOpen,
+	};
+
+	static OutlinedButtonThemeData _domainOutlinedButtonTheme(
+		DomainType domain,
+		bool isDark,
+	) {
+		switch (domain) {
+			case DomainType.lights:
+				return isDark
+						? AppOutlinedButtonsDarkThemes.warning
+						: AppOutlinedButtonsLightThemes.warning;
+			case DomainType.climate:
+				return isDark
+						? AppOutlinedButtonsDarkThemes.info
+						: AppOutlinedButtonsLightThemes.info;
+			case DomainType.shading:
+				return isDark
+						? AppOutlinedButtonsDarkThemes.teal
+						: AppOutlinedButtonsLightThemes.teal;
+			case DomainType.media:
+				return isDark
+						? AppOutlinedButtonsDarkThemes.danger
+						: AppOutlinedButtonsLightThemes.danger;
+			default:
+				return isDark
+						? AppOutlinedButtonsDarkThemes.base
+						: AppOutlinedButtonsLightThemes.base;
+		}
+	}
+
+	static Color _domainOutlinedButtonForegroundColor(
+		DomainType domain,
+		bool isDark,
+	) {
+		switch (domain) {
+			case DomainType.lights:
+				return isDark
+						? AppOutlinedButtonsDarkThemes.warningForegroundColor
+						: AppOutlinedButtonsLightThemes.warningForegroundColor;
+			case DomainType.climate:
+				return isDark
+						? AppOutlinedButtonsDarkThemes.infoForegroundColor
+						: AppOutlinedButtonsLightThemes.infoForegroundColor;
+			case DomainType.shading:
+				return isDark
+						? AppOutlinedButtonsDarkThemes.tealForegroundColor
+						: AppOutlinedButtonsLightThemes.tealForegroundColor;
+			case DomainType.media:
+				return isDark
+						? AppOutlinedButtonsDarkThemes.dangerForegroundColor
+						: AppOutlinedButtonsLightThemes.dangerForegroundColor;
+			default:
+				return isDark
+						? AppOutlinedButtonsDarkThemes.baseForegroundColor
+						: AppOutlinedButtonsLightThemes.baseForegroundColor;
+		}
+	}
 
 	@override
 	Widget build(BuildContext context) {
@@ -1046,100 +1416,125 @@ class _RoomDomainCard extends StatelessWidget {
 			Theme.of(context).brightness,
 			cardInfo.domain.themeColor,
 		);
-		final primaryColor = Theme.of(context).colorScheme.primary;
 
-		final accentWidth = AppSpacings.scale(3);
-		final borderRadius = BorderRadius.circular(AppBorderRadius.medium);
+		final showActions = cardInfo.actions.isNotEmpty;
+		final borderRadius = BorderRadius.circular(AppBorderRadius.base);
+		final borderColor = isDark ? AppFillColorDark.light : AppBorderColorLight.darker;
 
 		return GestureDetector(
 			onTap: onTap,
 			child: ClipRRect(
 				borderRadius: borderRadius,
-				child: Stack(
-					children: [
-						Container(
-							padding: EdgeInsets.all(AppSpacings.scale(12)),
-							decoration: BoxDecoration(
-								color: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
-								borderRadius: borderRadius,
-								border: Border.all(
-									color: isDark
-										? AppBorderColorDark.extraLight
-										: AppBorderColorLight.lighter,
+				child: Container(
+					padding: EdgeInsets.symmetric(
+            horizontal: isCompact ? AppSpacings.pMd : AppSpacings.pLg,
+            vertical: AppSpacings.pMd,
+          ),
+					decoration: BoxDecoration(
+						color: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
+						borderRadius: borderRadius,
+						border: Border.all(color: borderColor),
+					),
+					foregroundDecoration: cardInfo.isActive
+						? BoxDecoration(
+							borderRadius: borderRadius,
+							border: Border(
+								left: BorderSide(
+									color: colorFamily.base,
+									width: AppSpacings.scale(3),
 								),
 							),
-							child: Column(
-								crossAxisAlignment: CrossAxisAlignment.start,
-								children: [
-									// Header row: icon + title + primary value
-									Row(
+						)
+						: null,
+				child: Column(
+					crossAxisAlignment: CrossAxisAlignment.start,
+					mainAxisAlignment: MainAxisAlignment.center,
+					children: [
+						Row(
+							children: [
+								Container(
+									width: AppSpacings.scale(28),
+									height: AppSpacings.scale(28),
+									decoration: BoxDecoration(
+										color: colorFamily.base,
+										borderRadius: BorderRadius.circular(AppBorderRadius.base),
+									),
+									child: Icon(
+										cardInfo.icon,
+										size: AppSpacings.scale(16),
+										color: AppColors.white,
+									),
+								),
+								AppSpacings.spacingMdHorizontal,
+								Expanded(
+									child: Column(
+										crossAxisAlignment: CrossAxisAlignment.start,
+										mainAxisSize: MainAxisSize.min,
+										spacing: 0,
 										children: [
-											// Domain icon container
-											Container(
-												width: AppSpacings.scale(28),
-												height: AppSpacings.scale(28),
-												decoration: BoxDecoration(
-													color: colorFamily.base,
-													borderRadius: BorderRadius.circular(
-														AppBorderRadius.base,
-													),
-												),
-												child: Icon(
-													cardInfo.icon,
-													size: AppSpacings.scale(16),
-													color: AppColors.white,
+											Text(
+												cardInfo.title,
+												style: TextStyle(
+													fontSize: AppFontSize.small,
+													fontWeight: FontWeight.w700,
+													height: 1.0,
+													color: isDark
+														? AppTextColorDark.primary
+														: AppTextColorLight.primary,
 												),
 											),
-											SizedBox(width: AppSpacings.pMd),
-											// Title and primary value
-											Expanded(
-												child: Column(
-													crossAxisAlignment: CrossAxisAlignment.start,
-													children: [
+											Row(
+												children: [
+													Text(
+														cardInfo.primaryValue,
+														style: TextStyle(
+															fontSize: AppFontSize.large,
+															fontWeight: FontWeight.w700,
+															height: 1.0,
+															color: isDark
+																? AppTextColorDark.primary
+																: AppTextColorLight.primary,
+														),
+													),
+													if (cardInfo.targetValue != null && !hideTargetValue) ...[
+														Padding(
+															padding: EdgeInsets.symmetric(horizontal: AppSpacings.scale(3)),
+															child: Icon(
+																cardInfo.targetIcon ?? MdiIcons.arrowRight,
+																size: AppFontSize.small,
+																color: isDark
+																	? AppTextColorDark.placeholder
+																	: AppTextColorLight.placeholder,
+															),
+														),
 														Text(
-															cardInfo.title,
+															cardInfo.targetValue!,
 															style: TextStyle(
 																fontSize: AppFontSize.small,
 																fontWeight: FontWeight.w700,
+																height: 1.0,
 																color: isDark
-																	? AppTextColorDark.primary
-																	: AppTextColorLight.primary,
+																	? AppTextColorDark.placeholder
+																	: AppTextColorLight.placeholder,
 															),
 														),
-														Row(
-															children: [
-																Text(
-																	cardInfo.primaryValue,
-																	style: TextStyle(
-																		fontSize: AppFontSize.extraLarge,
-																		fontWeight: FontWeight.w700,
-																		color: isDark
-																			? AppTextColorDark.primary
-																			: AppTextColorLight.primary,
-																	),
-																),
-																if (cardInfo.targetValue != null) ...[
-																	SizedBox(width: AppSpacings.pSm),
-																	Text(
-																		'\u2192 ${cardInfo.targetValue}',
-																		style: TextStyle(
-																			fontSize: AppFontSize.extraSmall,
-																			color: isDark
-																				? AppTextColorDark.placeholder
-																				: AppTextColorLight.placeholder,
-																		),
-																	),
-																],
-															],
-														),
 													],
-												),
+												],
 											),
 										],
 									),
-									SizedBox(height: AppSpacings.pSm),
-									// Subtitle
-									Text(
+								),
+							],
+						),
+						AppSpacings.spacingSmVertical,
+						// Subtitle items (always shown when present)
+						if (cardInfo.subtitleItems.isNotEmpty)
+							Builder(builder: (_) {
+								final visibleItems = hideTargetValue
+									? cardInfo.subtitleItems.where((item) => !item.compactHidden).toList()
+									: cardInfo.subtitleItems;
+								if (visibleItems.isEmpty) {
+									return Text(
 										cardInfo.subtitle,
 										style: TextStyle(
 											fontSize: AppFontSize.extraSmall,
@@ -1150,34 +1545,134 @@ class _RoomDomainCard extends StatelessWidget {
 										),
 										maxLines: 1,
 										overflow: TextOverflow.ellipsis,
-									),
-									const Spacer(),
-									// Navigate indicator
-									Row(
-										mainAxisAlignment: MainAxisAlignment.end,
-										children: [
-											Icon(
-												MdiIcons.chevronRight,
-												size: AppSpacings.scale(18),
-												color: isDark
-													? AppTextColorDark.placeholder
-													: AppTextColorLight.placeholder,
+									);
+								}
+								return Row(
+									children: [
+										for (int i = 0; i < visibleItems.length; i++) ...[
+											if (i > 0)
+												Padding(
+													padding: EdgeInsets.symmetric(horizontal: AppSpacings.scale(4)),
+													child: Text(
+														'\u00B7',
+														style: TextStyle(
+															fontSize: AppFontSize.extraSmall,
+															fontWeight: FontWeight.w500,
+															color: isDark
+																? AppTextColorDark.secondary
+																: AppTextColorLight.secondary,
+														),
+													),
+												),
+											if (visibleItems[i].icon != null)
+												Padding(
+													padding: EdgeInsets.only(right: AppSpacings.scale(2)),
+													child: Icon(
+														visibleItems[i].icon,
+														size: AppFontSize.extraSmall,
+														color: isDark
+															? AppTextColorDark.secondary
+															: AppTextColorLight.secondary,
+													),
+												),
+											Text(
+												visibleItems[i].text,
+												style: TextStyle(
+													fontSize: AppFontSize.extraSmall,
+													fontWeight: FontWeight.w500,
+													color: isDark
+														? AppTextColorDark.secondary
+														: AppTextColorLight.secondary,
+												),
 											),
 										],
+									],
+								);
+							})
+						// Plain subtitle fallback (only when no subtitle items and no actions)
+						else if (!showActions && cardInfo.subtitle.isNotEmpty)
+							Text(
+								cardInfo.subtitle,
+								style: TextStyle(
+									fontSize: AppFontSize.extraSmall,
+									fontWeight: FontWeight.w500,
+									color: isDark
+										? AppTextColorDark.secondary
+										: AppTextColorLight.secondary,
+								),
+								maxLines: 1,
+								overflow: TextOverflow.ellipsis,
+							),
+						// Quick action buttons
+						if (showActions) ...[
+							AppSpacings.spacingMdVertical,
+							Builder(builder: (_) {
+								final fgColor = _domainOutlinedButtonForegroundColor(
+									cardInfo.domain,
+									isDark,
+								);
+								final btnTheme = _domainOutlinedButtonTheme(
+									cardInfo.domain,
+									isDark,
+								);
+								return Theme(
+									data: ThemeData(
+										outlinedButtonTheme: btnTheme,
 									),
-								],
-							),
-						),
-						if (cardInfo.isActive)
-							Positioned(
-								left: 0,
-								top: 0,
-								bottom: 0,
-								width: accentWidth,
-								child: ColoredBox(color: primaryColor),
-							),
+									child: Row(
+										children: [
+											for (int i = 0; i < cardInfo.actions.length; i++) ...[
+												if (i > 0) AppSpacings.spacingSmHorizontal,
+												Builder(builder: (_) {
+													final action = cardInfo.actions[i];
+													final useIcon = action.label == null || (isCompact && _compactIconActions.contains(action.type));
+													final onPressed = action.disabled ? null : () => onQuickAction?.call(action.type);
+													if (useIcon) {
+														return OutlinedButton(
+															onPressed: onPressed,
+															style: OutlinedButton.styleFrom(
+																padding: EdgeInsets.symmetric(
+																	horizontal: AppSpacings.pMd,
+																	vertical: AppSpacings.pMd,
+																),
+																minimumSize: Size.zero,
+																tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+															),
+															child: Icon(
+																action.icon,
+																size: isCompact ? AppFontSize.extraSmall : AppFontSize.small,
+																color: action.disabled ? null : fgColor,
+															),
+														);
+													}
+													return OutlinedButton(
+														onPressed: onPressed,
+														style: OutlinedButton.styleFrom(
+															padding: EdgeInsets.symmetric(
+																horizontal: isCompact ? AppSpacings.pSm : AppSpacings.pMd,
+																vertical: AppSpacings.pMd,
+															),
+														),
+														child: Text(
+															action.label!,
+															style: TextStyle(
+																fontSize: isCompact ? AppFontSize.extraSmall : AppFontSize.small,
+																fontWeight: FontWeight.w600,
+																height: 1.0,
+																color: action.disabled ? null : fgColor,
+															),
+														),
+													);
+												}),
+											],
+										],
+									),
+								);
+							}),
+						],
 					],
 				),
+			),
 			),
 		);
 	}

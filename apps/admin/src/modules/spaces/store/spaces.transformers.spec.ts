@@ -3,14 +3,14 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
 	SpacesModuleCreateSpaceCategory,
-	SpacesModuleCreateSpaceHeader_widgetsSettingsRange,
+	SpacesModuleCreateSpaceStatus_widgetsSettingsRange,
 	SpacesModuleCreateSpaceType,
 	SpacesModuleDataSpaceCategory,
 } from '../../../openapi';
 import {
 	ENERGY_WIDGET_DEFAULTS,
 	EnergyWidgetRange,
-	HeaderWidgetType,
+	StatusWidgetType,
 	SpaceCategory,
 	SpaceType,
 } from '../spaces.constants';
@@ -100,7 +100,7 @@ describe('Spaces Transformers', (): void => {
 				displayOrder: 1,
 				parentId: parentId.toString(),
 				suggestionsEnabled: true,
-				headerWidgets: null,
+				statusWidgets: null,
 				createdAt: new Date('2024-03-01T12:00:00Z'),
 				updatedAt: new Date('2024-03-02T12:00:00Z'),
 				draft: false,
@@ -154,7 +154,7 @@ describe('Spaces Transformers', (): void => {
 				display_order: 5,
 				parent_id: parentId.toString(),
 				suggestions_enabled: true,
-				header_widgets: undefined,
+				status_widgets: undefined,
 			});
 		});
 
@@ -254,12 +254,12 @@ describe('Spaces Transformers', (): void => {
 			expect(result!.category).toBeNull();
 		});
 
-		it('should include header_widgets when present in data', (): void => {
+		it('should include status_widgets when present in data', (): void => {
 			const payloadWithWidgets: ISpaceEditData = {
 				name: 'Room',
-				headerWidgets: [
+				statusWidgets: [
 					{
-						type: HeaderWidgetType.ENERGY,
+						type: StatusWidgetType.ENERGY,
 						order: 0,
 						settings: {
 							range: EnergyWidgetRange.TODAY,
@@ -272,7 +272,7 @@ describe('Spaces Transformers', (): void => {
 			const result = transformSpaceEditRequest(payloadWithWidgets);
 
 			expect(result).toBeDefined();
-			expect((result as Record<string, unknown>).header_widgets).toEqual([
+			expect((result as Record<string, unknown>).status_widgets).toEqual([
 				{
 					type: 'energy',
 					order: 0,
@@ -284,7 +284,7 @@ describe('Spaces Transformers', (): void => {
 			]);
 		});
 
-		it('should not include header_widgets when not in data', (): void => {
+		it('should not include status_widgets when not in data', (): void => {
 			const payloadWithoutWidgets: ISpaceEditData = {
 				name: 'Room',
 			};
@@ -292,32 +292,32 @@ describe('Spaces Transformers', (): void => {
 			const result = transformSpaceEditRequest(payloadWithoutWidgets);
 
 			expect(result).toBeDefined();
-			expect('header_widgets' in result!).toBe(false);
+			expect('status_widgets' in result!).toBe(false);
 		});
 
-		it('should include null header_widgets when explicitly set to null', (): void => {
+		it('should include null status_widgets when explicitly set to null', (): void => {
 			const payloadWithNullWidgets: ISpaceEditData = {
 				name: 'Room',
-				headerWidgets: null,
+				statusWidgets: null,
 			};
 
 			const result = transformSpaceEditRequest(payloadWithNullWidgets);
 
 			expect(result).toBeDefined();
-			expect((result as Record<string, unknown>).header_widgets).toBeNull();
+			expect((result as Record<string, unknown>).status_widgets).toBeNull();
 		});
 	});
 
-	describe('header widgets transformations', (): void => {
-		it('should transform API response with energy header widget', (): void => {
+	describe('status widgets transformations', (): void => {
+		it('should transform API response with energy status widget', (): void => {
 			const responseWithWidget: ApiSpace = {
 				...validRoomResponse,
-				header_widgets: [
+				status_widgets: [
 					{
 						type: 'energy',
 						order: 0,
 						settings: {
-							range: SpacesModuleCreateSpaceHeader_widgetsSettingsRange.today,
+							range: SpacesModuleCreateSpaceStatus_widgetsSettingsRange.today,
 							show_production: true,
 						},
 					},
@@ -326,7 +326,7 @@ describe('Spaces Transformers', (): void => {
 
 			const result = transformSpaceResponse(responseWithWidget);
 
-			expect(result.headerWidgets).toEqual([
+			expect(result.statusWidgets).toEqual([
 				{
 					type: 'energy',
 					order: 0,
@@ -338,32 +338,32 @@ describe('Spaces Transformers', (): void => {
 			]);
 		});
 
-		it('should transform API response with null header_widgets', (): void => {
+		it('should transform API response with null status_widgets', (): void => {
 			const responseWithNull: ApiSpace = {
 				...validRoomResponse,
-				header_widgets: null,
+				status_widgets: null,
 			};
 
 			const result = transformSpaceResponse(responseWithNull);
 
-			expect(result.headerWidgets).toBeNull();
+			expect(result.statusWidgets).toBeNull();
 		});
 
-		it('should transform API response with no header_widgets field', (): void => {
+		it('should transform API response with no status_widgets field', (): void => {
 			const result = transformSpaceResponse(validRoomResponse);
 
-			expect(result.headerWidgets).toBeNull();
+			expect(result.statusWidgets).toBeNull();
 		});
 
 		it('should correctly transform showProduction from snake_case to camelCase', (): void => {
 			const responseWithWidget: ApiSpace = {
 				...validRoomResponse,
-				header_widgets: [
+				status_widgets: [
 					{
 						type: 'energy',
 						order: 0,
 						settings: {
-							range: SpacesModuleCreateSpaceHeader_widgetsSettingsRange.week,
+							range: SpacesModuleCreateSpaceStatus_widgetsSettingsRange.week,
 							show_production: false,
 						},
 					},
@@ -372,10 +372,10 @@ describe('Spaces Transformers', (): void => {
 
 			const result = transformSpaceResponse(responseWithWidget);
 
-			expect(result.headerWidgets).not.toBeNull();
-			expect(result.headerWidgets!.length).toBeGreaterThan(0);
+			expect(result.statusWidgets).not.toBeNull();
+			expect(result.statusWidgets!.length).toBeGreaterThan(0);
 
-			const widget = result.headerWidgets![0]!;
+			const widget = result.statusWidgets![0]!;
 
 			expect(widget.settings).toEqual({
 				range: 'week',
@@ -386,9 +386,9 @@ describe('Spaces Transformers', (): void => {
 		it('should transform create request with energy widget', (): void => {
 			const payloadWithWidget: ISpaceCreateData = {
 				name: 'Room with Energy Widget',
-				headerWidgets: [
+				statusWidgets: [
 					{
-						type: HeaderWidgetType.ENERGY,
+						type: StatusWidgetType.ENERGY,
 						order: 0,
 						settings: {
 							range: EnergyWidgetRange.MONTH,
@@ -400,7 +400,7 @@ describe('Spaces Transformers', (): void => {
 
 			const result = transformSpaceCreateRequest(payloadWithWidget);
 
-			expect(result.header_widgets).toEqual([
+			expect(result.status_widgets).toEqual([
 				{
 					type: 'energy',
 					order: 0,
@@ -420,9 +420,9 @@ describe('Spaces Transformers', (): void => {
 		});
 
 		it('enabling energy widget creates correct payload with defaults', (): void => {
-			const headerWidgets = [
+			const statusWidgets = [
 				{
-					type: HeaderWidgetType.ENERGY,
+					type: StatusWidgetType.ENERGY,
 					order: 0,
 					settings: {
 						range: ENERGY_WIDGET_DEFAULTS.range,
@@ -433,12 +433,12 @@ describe('Spaces Transformers', (): void => {
 
 			const payloadWithDefaults: ISpaceEditData = {
 				name: 'Room',
-				headerWidgets,
+				statusWidgets,
 			};
 
 			const result = transformSpaceEditRequest(payloadWithDefaults);
 
-			expect((result as Record<string, unknown>).header_widgets).toEqual([
+			expect((result as Record<string, unknown>).status_widgets).toEqual([
 				{
 					type: 'energy',
 					order: 0,
@@ -451,9 +451,9 @@ describe('Spaces Transformers', (): void => {
 		});
 
 		it('updating range updates payload correctly', (): void => {
-			const headerWidgets = [
+			const statusWidgets = [
 				{
-					type: HeaderWidgetType.ENERGY,
+					type: StatusWidgetType.ENERGY,
 					order: 0,
 					settings: {
 						range: EnergyWidgetRange.WEEK,
@@ -464,11 +464,11 @@ describe('Spaces Transformers', (): void => {
 
 			const payload: ISpaceEditData = {
 				name: 'Room',
-				headerWidgets,
+				statusWidgets,
 			};
 
 			const result = transformSpaceEditRequest(payload);
-			const widgets = (result as Record<string, unknown>).header_widgets as Record<string, unknown>[];
+			const widgets = (result as Record<string, unknown>).status_widgets as Record<string, unknown>[];
 
 			expect(widgets[0]).toEqual({
 				type: 'energy',
@@ -483,24 +483,24 @@ describe('Spaces Transformers', (): void => {
 		it('disabling energy widget removes it from payload', (): void => {
 			const payload: ISpaceEditData = {
 				name: 'Room',
-				headerWidgets: null,
+				statusWidgets: null,
 			};
 
 			const result = transformSpaceEditRequest(payload);
 
-			expect((result as Record<string, unknown>).header_widgets).toBeNull();
+			expect((result as Record<string, unknown>).status_widgets).toBeNull();
 		});
 
 		it('saving space without touching widget preserves existing config', (): void => {
 			// Simulate a response from the API with a widget
 			const apiResponse: ApiSpace = {
 				...validRoomResponse,
-				header_widgets: [
+				status_widgets: [
 					{
 						type: 'energy',
 						order: 0,
 						settings: {
-							range: SpacesModuleCreateSpaceHeader_widgetsSettingsRange.today,
+							range: SpacesModuleCreateSpaceStatus_widgetsSettingsRange.today,
 							show_production: true,
 						},
 					},
@@ -510,16 +510,16 @@ describe('Spaces Transformers', (): void => {
 			// Transform to internal format
 			const space = transformSpaceResponse(apiResponse);
 
-			// Edit only the name (don't change headerWidgets)
+			// Edit only the name (don't change statusWidgets)
 			const editPayload: ISpaceEditData = {
 				name: 'Updated Name',
-				headerWidgets: space.headerWidgets,
+				statusWidgets: space.statusWidgets,
 			};
 
 			const result = transformSpaceEditRequest(editPayload);
 
 			// Verify the widget config is preserved
-			expect((result as Record<string, unknown>).header_widgets).toEqual([
+			expect((result as Record<string, unknown>).status_widgets).toEqual([
 				{
 					type: 'energy',
 					order: 0,

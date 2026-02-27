@@ -45,7 +45,7 @@ export const useSpaceEditForm = <TForm extends ISpaceEditForm = ISpaceEditForm>(
 		displayOrder: space.displayOrder,
 		parentId: space.parentId,
 		suggestionsEnabled: space.suggestionsEnabled,
-		headerWidgets: space.headerWidgets ? [...space.headerWidgets.map((w) => ({ ...w, settings: { ...w.settings } }))] : null,
+		statusWidgets: space.statusWidgets ? [...space.statusWidgets.map((w) => ({ ...w, settings: { ...w.settings } }))] : null,
 	} as TForm);
 
 	let initialModel: Reactive<TForm> = deepClone<Reactive<TForm>>(toRaw(model));
@@ -83,7 +83,7 @@ export const useSpaceEditForm = <TForm extends ISpaceEditForm = ISpaceEditForm>(
 					displayOrder: parsedModel.data.displayOrder,
 					parentId: parsedModel.data.parentId ?? null,
 					suggestionsEnabled: parsedModel.data.suggestionsEnabled,
-					headerWidgets: parsedModel.data.headerWidgets ?? null,
+					statusWidgets: parsedModel.data.statusWidgets ?? null,
 				},
 			});
 		} catch (error: unknown) {
@@ -132,9 +132,9 @@ export const useSpaceEditForm = <TForm extends ISpaceEditForm = ISpaceEditForm>(
 				model.displayOrder = newSpace.displayOrder as TForm['displayOrder'];
 				model.parentId = newSpace.parentId as TForm['parentId'];
 				model.suggestionsEnabled = newSpace.suggestionsEnabled as TForm['suggestionsEnabled'];
-				model.headerWidgets = (newSpace.headerWidgets
-					? [...newSpace.headerWidgets.map((w: { settings: Record<string, unknown> }) => ({ ...w, settings: { ...w.settings } }))]
-					: null) as TForm['headerWidgets'];
+				model.statusWidgets = (newSpace.statusWidgets
+					? [...newSpace.statusWidgets.map((w: { settings: Record<string, unknown> }) => ({ ...w, settings: { ...w.settings } }))]
+					: null) as TForm['statusWidgets'];
 
 				initialModel = deepClone<Reactive<TForm>>(toRaw(model));
 				formChanged.value = false;

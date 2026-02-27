@@ -1,3 +1,4 @@
+import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/api/models/scenes_module_data_scene_category.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
@@ -7,7 +8,7 @@ import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
 import 'package:fastybird_smart_panel/modules/devices/export.dart';
 import 'package:fastybird_smart_panel/modules/energy/repositories/energy_repository.dart';
-import 'package:fastybird_smart_panel/modules/energy/widgets/energy_header_widget.dart';
+import 'package:fastybird_smart_panel/modules/energy/presentation/widgets/energy_summary_pill.dart';
 import 'package:fastybird_smart_panel/modules/scenes/export.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -236,7 +237,8 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
         final localizations = AppLocalizations.of(context);
         Toast.showInfo(
           context,
-          message: localizations?.space_scene_partial_success ??
+          message: result.message ??
+              localizations?.space_scene_partial_success ??
               'Mode partially activated',
         );
       } else {
@@ -291,7 +293,10 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
       if (_alarmsCount > 0) _buildAlarmBadge(context),
       if (locator.isRegistered<EnergyRepository>() &&
           locator<EnergyRepository>().isSupported)
-        const EnergyHeaderWidget(),
+        EnergySummaryPill(
+          spaceId: 'home',
+          onTap: () => locator<EventBus>().fire(NavigateToDeckItemEvent(EnergyViewItem.generateId())),
+        ),
     ];
   }
 

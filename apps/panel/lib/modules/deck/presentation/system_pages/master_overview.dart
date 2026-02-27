@@ -1,3 +1,4 @@
+import 'package:event_bus/event_bus.dart';
 import 'package:fastybird_smart_panel/api/models/spaces_module_data_space_category.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/utils/number_format.dart';
@@ -8,7 +9,7 @@ import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
 import 'package:fastybird_smart_panel/modules/devices/export.dart';
 import 'package:fastybird_smart_panel/modules/energy/repositories/energy_repository.dart';
-import 'package:fastybird_smart_panel/modules/energy/widgets/energy_header_widget.dart';
+import 'package:fastybird_smart_panel/modules/energy/presentation/widgets/energy_summary_pill.dart';
 import 'package:fastybird_smart_panel/modules/scenes/export.dart';
 import 'package:fastybird_smart_panel/modules/security/services/security_overlay_controller.dart';
 import 'package:fastybird_smart_panel/modules/spaces/export.dart';
@@ -285,7 +286,8 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
         final localizations = AppLocalizations.of(context);
         Toast.showInfo(
           context,
-          message: localizations?.space_scene_partial_success ??
+          message: result.message ??
+              localizations?.space_scene_partial_success ??
               'Scene partially activated',
         );
       } else {
@@ -371,7 +373,10 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
       if (_alertsCount > 0) _buildAlertsBadge(context),
       if (locator.isRegistered<EnergyRepository>() &&
           locator<EnergyRepository>().isSupported)
-        const EnergyHeaderWidget(),
+        EnergySummaryPill(
+          spaceId: 'home',
+          onTap: () => locator<EventBus>().fire(NavigateToDeckItemEvent(EnergyViewItem.generateId())),
+        ),
     ];
   }
 

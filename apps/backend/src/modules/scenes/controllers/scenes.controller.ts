@@ -37,6 +37,7 @@ import { ReqTriggerSceneDto, TriggerSceneDto } from '../dto/trigger-scene.dto';
 import { ReqUpdateSceneDto, UpdateSceneDto } from '../dto/update-scene.dto';
 import { SceneEntity } from '../entities/scenes.entity';
 import { SceneExecutionResponseModel, SceneResponseModel, ScenesResponseModel } from '../models/scenes-response.model';
+import { SceneExecutionResultModel } from '../models/scenes.model';
 import { SCENES_MODULE_API_TAG_NAME, SCENES_MODULE_PREFIX } from '../scenes.constants';
 import { ScenesException, ScenesNotEditableException, ScenesNotTriggerableException } from '../scenes.exceptions';
 import { SceneExecutorService } from '../services/scene-executor.service';
@@ -289,7 +290,7 @@ export class ScenesController {
 			const result = await this.sceneExecutorService.triggerScene(id, triggerDto.data?.source || 'manual');
 
 			const response = new SceneExecutionResponseModel();
-			response.data = result;
+			response.data = toInstance(SceneExecutionResultModel, result, { excludeExtraneousValues: false });
 
 			return response;
 		} catch (error) {

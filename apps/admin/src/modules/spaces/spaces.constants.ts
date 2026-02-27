@@ -493,7 +493,7 @@ export const SENSOR_ROLE_ORDER: SensorRole[] = [
 
 export { DevicesModuleDeviceCategory as DeviceCategory } from '../../openapi.constants';
 
-export enum HeaderWidgetType {
+export enum StatusWidgetType {
 	ENERGY = 'energy',
 }
 
@@ -503,7 +503,7 @@ export enum EnergyWidgetRange {
 	MONTH = 'month',
 }
 
-export interface IHeaderWidget {
+export interface IStatusWidget {
 	type: string;
 	order: number;
 	settings: Record<string, unknown>;

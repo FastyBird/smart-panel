@@ -45,7 +45,7 @@ describe('useSpaces', () => {
 		displayOrder: 0,
 		parentId: null,
 		suggestionsEnabled: true,
-		headerWidgets: null,
+		statusWidgets: null,
 		createdAt: new Date(),
 		updatedAt: null,
 		draft: false,

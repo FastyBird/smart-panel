@@ -70,6 +70,7 @@ describe('SpacesController', () => {
 		id: uuid().toString(),
 		name: 'Living Room Panel',
 		roomId: mockSpace.id,
+		weatherLocationId: null,
 		createdAt: new Date(),
 		updatedAt: new Date(),
 	} as DisplayEntity;

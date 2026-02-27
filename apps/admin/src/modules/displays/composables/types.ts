@@ -85,6 +85,8 @@ export interface IDisplayEditForm {
 	pressureUnit: PressureUnit | '';
 	precipitationUnit: PrecipitationUnit | '';
 	distanceUnit: DistanceUnit | '';
+	// Weather location override (null = use primary from weather config)
+	weatherLocationId: string | null;
 }
 
 export interface IUseDisplayEditForm {

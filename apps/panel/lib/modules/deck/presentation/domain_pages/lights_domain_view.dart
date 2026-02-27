@@ -84,6 +84,9 @@ import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_ite
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/deck_mode_chip.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/bottom_nav_mode_notifier.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/domain_control_state_service.dart';
+import 'package:fastybird_smart_panel/modules/deck/models/intent_result.dart';
+import 'package:fastybird_smart_panel/modules/deck/services/intents_service.dart';
+import 'package:fastybird_smart_panel/modules/deck/types/intent_type.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/deck_page_activated_event.dart';
 import 'package:fastybird_smart_panel/modules/deck/utils/intent_mode_status.dart';
 import 'package:fastybird_smart_panel/modules/deck/utils/lighting.dart';
@@ -380,6 +383,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   DisplayRepository? _displayRepository;
   DevicesService? _devicesService;
   ScenesService? _scenesService;
+  IntentsService? _intentsService;
   EventBus? _eventBus;
   IntentsRepository? _intentsRepository;
   IntentOverlayService? _intentOverlayService;
@@ -389,6 +393,8 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   bool _isActivePage = false;
   bool _isLoading = true;
   bool _hasError = false;
+  bool _isSceneTriggering = false;
+  String? _triggeringSceneId;
 
   /// Currently selected role tab in the ModeSelector.
   LightTargetRole? _selectedRole;
@@ -1088,6 +1094,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
     _spacesService = _tryLocator<SpacesService>('SpacesService', onSuccess: (s) => s.addListener(_onDataChanged));
     _devicesService = _tryLocator<DevicesService>('DevicesService', onSuccess: (s) => s.addListener(_onDataChanged));
     _scenesService = _tryLocator<ScenesService>('ScenesService', onSuccess: (s) => s.addListener(_onDataChanged));
+    _intentsService = _tryLocator<IntentsService>('IntentsService');
     _eventBus = _tryLocator<EventBus>('EventBus');
     _intentsRepository = _tryLocator<IntentsRepository>('IntentsRepository', onSuccess: (s) => s.addListener(_onIntentChanged));
     if (locator.isRegistered<IntentOverlayService>()) {
@@ -2935,12 +2942,12 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                     layout: TileLayout.horizontal,
                     icon: _getSceneIcon(scene),
                     name: scene.name,
-                    isActive: false,
+                    isActive: _triggeringSceneId == scene.id,
                     activeColor: _getStatusColor(context),
                     showGlow: false,
                     showDoubleBorder: false,
                     showInactiveBorder: false,
-                    onTileTap: () => _activateScene(scene),
+                    onTileTap: _isSceneTriggering ? null : () => _activateScene(scene),
                   ),
                 ),
               );
@@ -3025,8 +3032,9 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
             return _SceneTile(
               scene: scene,
               icon: _getSceneIcon(scene),
-              onTap: () => _activateScene(scene),
+              onTap: _isSceneTriggering ? null : () => _activateScene(scene),
               isVertical: !isSmallScreen,
+              isTriggering: _triggeringSceneId == scene.id,
             );
           },
         );
@@ -3099,11 +3107,11 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         layout: TileLayout.horizontal,
         icon: _getSceneIcon(scene),
         name: scene.name,
-        isActive: false,
+        isActive: _triggeringSceneId == scene.id,
         showGlow: false,
         showWarningBadge: false,
         showInactiveBorder: false,
-        onTileTap: () {
+        onTileTap: _isSceneTriggering ? null : () {
           Navigator.of(context).pop();
           _activateScene(scene);
         },
@@ -3660,7 +3668,70 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
   }
 
   Future<void> _activateScene(SceneView scene) async {
-    await _scenesService?.triggerScene(scene.id);
+    if (_isSceneTriggering) return;
+
+    setState(() {
+      _isSceneTriggering = true;
+      _triggeringSceneId = scene.id;
+    });
+
+    try {
+      IntentResult? result;
+
+      if (_intentsService != null) {
+        result = await _intentsService!.activateScene(scene.id);
+      } else if (_scenesService != null) {
+        final triggerResult = await _scenesService!.triggerScene(scene.id);
+        result = triggerResult.success
+            ? IntentResult.success(IntentType.activateScene)
+            : (triggerResult.successCount > 0
+                ? IntentResult.partialSuccess(IntentType.activateScene, message: triggerResult.errorMessage)
+                : IntentResult.failure(IntentType.activateScene, message: triggerResult.errorMessage));
+      }
+
+      if (!mounted) return;
+
+      setState(() {
+        _isSceneTriggering = false;
+        _triggeringSceneId = null;
+      });
+
+      if (result == null) return;
+
+      final localizations = AppLocalizations.of(context);
+
+      if (result.isSuccess) {
+        Toast.showSuccess(
+          context,
+          message: localizations?.space_scene_triggered ?? 'Scene activated',
+        );
+      } else if (result.isPartialSuccess) {
+        Toast.showInfo(
+          context,
+          message: result.message ??
+              localizations?.space_scene_partial_success ??
+              'Scene partially activated',
+        );
+      } else {
+        Toast.showError(
+          context,
+          message: result.message ?? localizations?.action_failed ?? 'Failed',
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _isSceneTriggering = false;
+        _triggeringSceneId = null;
+      });
+
+      final localizations = AppLocalizations.of(context);
+      Toast.showError(
+        context,
+        message: localizations?.action_failed ?? 'Failed to activate scene',
+      );
+    }
   }
 
   // --------------------------------------------------------------------------
@@ -4569,12 +4640,14 @@ class _SceneTile extends StatelessWidget {
   final IconData icon;
   final VoidCallback? onTap;
   final bool isVertical;
+  final bool isTriggering;
 
   const _SceneTile({
     required this.scene,
     required this.icon,
     this.onTap,
     this.isVertical = true,
+    this.isTriggering = false,
   });
 
   @override
@@ -4583,7 +4656,7 @@ class _SceneTile extends StatelessWidget {
       layout: isVertical ? TileLayout.vertical : TileLayout.horizontal,
       icon: icon,
       name: scene.name,
-      isActive: false,
+      isActive: isTriggering,
       onTileTap: onTap,
       showGlow: false,
       showWarningBadge: false,

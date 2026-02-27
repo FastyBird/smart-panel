@@ -1,6 +1,7 @@
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/toast.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_card.dart';
@@ -8,6 +9,7 @@ import 'package:fastybird_smart_panel/features/settings/presentation/widgets/set
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_selection_dialog.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_two_column_layout.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
 import 'package:fastybird_smart_panel/modules/weather/models/location.dart';
 import 'package:fastybird_smart_panel/modules/weather/service.dart';
 import 'package:flutter/material.dart';
@@ -22,30 +24,36 @@ class WeatherSettingsPage extends StatefulWidget {
 
 class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
 	final WeatherService _weatherService = locator<WeatherService>();
+	final DisplayRepository _displayRepository = locator<DisplayRepository>();
 
-	String? _selectedLocationId;
+	String? _weatherLocationId;
 	List<WeatherLocationModel> _locations = [];
+	bool _isSaving = false;
 
 	@override
 	void initState() {
 		super.initState();
 
-		_syncLocations();
+		_syncState();
 
-		_weatherService.addListener(_syncLocations);
+		_weatherService.addListener(_syncState);
+		_displayRepository.addListener(_syncState);
 	}
 
 	@override
 	void dispose() {
-		_weatherService.removeListener(_syncLocations);
+		_weatherService.removeListener(_syncState);
+		_displayRepository.removeListener(_syncState);
 
 		super.dispose();
 	}
 
-	void _syncLocations() {
+	void _syncState() {
+		if (_isSaving) return;
+
 		setState(() {
 			_locations = _weatherService.locations;
-			_selectedLocationId = _weatherService.selectedLocationId;
+			_weatherLocationId = _displayRepository.weatherLocationId;
 		});
 	}
 
@@ -57,10 +65,17 @@ class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
 		final infoColor = isDark ? AppColorsDark.info : AppColorsLight.info;
 		final infoBg = isDark ? AppColorsDark.infoLight5 : AppColorsLight.infoLight9;
 
-		final selectedName = _locations
-				.where((l) => l.id == _selectedLocationId)
-				.map((l) => l.name)
-				.firstOrNull ?? '—';
+		final systemDefaultLabel = localizations.unit_system_default;
+
+		// Sentinel value for "System default" (primary from weather config)
+		const systemDefaultValue = '';
+
+		final selectedName = _weatherLocationId != null
+				? _locations
+						.where((l) => l.id == _weatherLocationId)
+						.map((l) => l.name)
+						.firstOrNull ?? _weatherLocationId!
+				: systemDefaultLabel;
 
 		final cards = <Widget>[
 			SettingsCard(
@@ -75,13 +90,15 @@ class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
 									final result = await showSettingsSelectionDialog<String>(
 										context: context,
 										title: localizations.settings_weather_settings_temperature_location_title,
-										currentValue: _selectedLocationId,
-										options: _locations
-												.map((l) => SelectionOption(value: l.id, label: l.name))
-												.toList(),
+										currentValue: _weatherLocationId ?? systemDefaultValue,
+										options: [
+											SelectionOption(value: systemDefaultValue, label: systemDefaultLabel),
+											..._locations
+													.map((l) => SelectionOption(value: l.id, label: l.name)),
+										],
 									);
 									if (result != null && context.mounted) {
-										_handleLocationChange(result);
+										_handleLocationChange(context, result.isEmpty ? null : result);
 									}
 								},
 								child: SettingsDropdownValue(
@@ -129,11 +146,38 @@ class _WeatherSettingsPageState extends State<WeatherSettingsPage> {
 		);
 	}
 
-	void _handleLocationChange(String? locationId) {
-		if (locationId == null) return;
-
+	Future<void> _handleLocationChange(BuildContext context, String? locationId) async {
 		HapticFeedback.lightImpact();
 
-		_weatherService.selectLocation(locationId);
+		final String? backup = _weatherLocationId;
+
+		_isSaving = true;
+
+		setState(() {
+			_weatherLocationId = locationId;
+		});
+
+		final success = await _displayRepository.setWeatherLocationId(locationId);
+
+		if (!context.mounted) {
+			_isSaving = false;
+
+			return;
+		}
+
+		if (!success) {
+			setState(() {
+				_weatherLocationId = backup;
+			});
+
+			_isSaving = false;
+
+			Toast.showError(context, message: AppLocalizations.of(context)!.action_failed);
+
+			return;
+		}
+
+		_isSaving = false;
+		_syncState();
 	}
 }

@@ -30,7 +30,7 @@ class AppLocalizationsCs extends AppLocalizations {
   String get action_failed => 'Akci se nepodařilo zpracovat';
 
   @override
-  String get action_retry => 'Retry';
+  String get action_retry => 'Opakovat';
 
   @override
   String domain_data_load_failed(String domain) {
@@ -565,6 +565,9 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get thermostat_lock_unlocked => 'Odemčeno';
+
+  @override
+  String get thermostat_mode_label => 'Režim';
 
   @override
   String get thermostat_mode_off => 'Vypnuto';
@@ -3529,4 +3532,75 @@ class AppLocalizationsCs extends AppLocalizations {
   String security_overlay_more_alerts(int count) {
     return '+$count dalších upozornění';
   }
+
+  @override
+  String get room_overview_no_room => 'K tomuto displeji není přiřazena žádná místnost';
+
+  @override
+  String get room_overview_display_not_configured => 'Displej není nakonfigurován';
+
+  @override
+  String get room_overview_load_failed => 'Nepodařilo se načíst data místnosti';
+
+  @override
+  String room_overview_lights_active(int lightsOn, int totalLights) {
+    return '$lightsOn z $totalLights aktivních';
+  }
+
+  @override
+  String room_overview_light_count(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count světel',
+      few: '$count světla',
+      one: '1 světlo',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String room_overview_device_count(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count zařízení',
+      few: '$count zařízení',
+      one: '1 zařízení',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String room_overview_reading_count(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count měření',
+      few: '$count měření',
+      one: '1 měření',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get room_overview_action_failed => 'Akce selhala';
+
+  @override
+  String get suggested_action_turn_off_lights => 'Vypnout světla';
+
+  @override
+  String get suggested_action_movie_mode => 'Režim filmu';
+
+  @override
+  String get suggested_action_night_mode => 'Noční režim';
+
+  @override
+  String get shading_fully_closed => 'Zcela zavřeno';
+
+  @override
+  String get shading_fully_open => 'Zcela otevřeno';
+
+  @override
+  String get sensor_label_light => 'Světlo';
 }

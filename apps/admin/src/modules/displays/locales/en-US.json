@@ -237,6 +237,11 @@
 					"meters": "Meters (m)",
 					"feet": "Feet (ft)"
 				}
+			},
+			"weatherLocationId": {
+				"title": "Weather location",
+				"placeholder": "System default (primary location)",
+				"description": "Override the weather location for this display. Leave empty to use the primary location from weather configuration."
 			}
 		}
 	},
@@ -335,6 +340,10 @@
 			"homePage": {
 				"title": "Home page",
 				"autoRoomHint": "In <strong>Auto mode</strong>, the display opens the default system view based on its role and assignment."
+			},
+			"weather": {
+				"title": "Weather location",
+				"description": "Override the weather location for this display. When not set, the primary location from the weather configuration will be used."
 			},
 			"units": {
 				"title": "Unit overrides",
