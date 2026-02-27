@@ -25,4 +25,22 @@ export enum MessageRole {
 	SYSTEM = 'system',
 }
 
+export enum SuggestionType {
+	PATTERN_SCENE_CREATE = 'pattern_scene_create',
+	LIGHTING_OPTIMISE = 'lighting_optimise',
+	GENERAL_TIP = 'general_tip',
+}
+
 export const ACTION_OBSERVER_BUFFER_SIZE = 200;
+
+export const SUGGESTION_COOLDOWN_MS = 4 * 60 * 60 * 1000; // 4 hours
+
+export const SUGGESTION_EXPIRY_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+export const SUGGESTION_CLEANUP_INTERVAL_MS = 60 * 1000; // 60 seconds
+
+export const PATTERN_MIN_OCCURRENCES = 3;
+
+export const PATTERN_TIME_WINDOW_MINUTES = 60;
+
+export const PATTERN_LOOKBACK_DAYS = 7;

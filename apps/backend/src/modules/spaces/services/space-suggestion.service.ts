@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
+import { CooldownManager } from '../../../common/utils/cooldown-manager';
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
 import { ChannelPropertyEntity, DeviceEntity } from '../../devices/entities/devices.entity';
 import { SpaceEntity } from '../entities/space.entity';
@@ -37,60 +38,7 @@ export interface SuggestionContext {
 	averageBrightness: number | null;
 }
 
-/**
- * In-memory cooldown storage (per space + suggestion type)
- * In production, this could be stored in Redis or database for persistence
- */
-const suggestionCooldowns = new Map<string, number>();
-
-/**
- * Get a cooldown key for a space + suggestion type
- */
-function getCooldownKey(spaceId: string, suggestionType: SuggestionType): string {
-	return `${spaceId}:${suggestionType}`;
-}
-
-/**
- * Check if a suggestion is on cooldown
- */
-export function isOnCooldown(spaceId: string, suggestionType: SuggestionType, now: number = Date.now()): boolean {
-	const key = getCooldownKey(spaceId, suggestionType);
-	const cooldownUntil = suggestionCooldowns.get(key);
-
-	if (!cooldownUntil) {
-		return false;
-	}
-
-	return now < cooldownUntil;
-}
-
-/**
- * Set a cooldown for a suggestion
- */
-export function setCooldown(
-	spaceId: string,
-	suggestionType: SuggestionType,
-	durationMs: number = SUGGESTION_COOLDOWN_MS,
-	now: number = Date.now(),
-): void {
-	const key = getCooldownKey(spaceId, suggestionType);
-	suggestionCooldowns.set(key, now + durationMs);
-}
-
-/**
- * Clear cooldown for testing purposes
- */
-export function clearCooldown(spaceId: string, suggestionType: SuggestionType): void {
-	const key = getCooldownKey(spaceId, suggestionType);
-	suggestionCooldowns.delete(key);
-}
-
-/**
- * Clear all cooldowns (for testing)
- */
-export function clearAllCooldowns(): void {
-	suggestionCooldowns.clear();
-}
+export const spaceCooldowns = new CooldownManager<SuggestionType>();
 
 /**
  * Check if a space name matches bedroom patterns
@@ -195,7 +143,7 @@ export class SpaceSuggestionService {
 		}
 
 		// Check cooldown
-		if (isOnCooldown(spaceId, suggestion.type)) {
+		if (spaceCooldowns.isOnCooldown(spaceId, suggestion.type)) {
 			return null;
 		}
 
@@ -226,7 +174,7 @@ export class SpaceSuggestionService {
 
 		// If dismissed, set cooldown and return
 		if (feedback === SuggestionFeedback.DISMISSED) {
-			setCooldown(spaceId, suggestionType);
+			spaceCooldowns.setCooldown(spaceId, suggestionType, SUGGESTION_COOLDOWN_MS);
 
 			return { success: true };
 		}
@@ -237,7 +185,7 @@ export class SpaceSuggestionService {
 
 			// Only set cooldown if intent execution succeeded
 			if (intentResult) {
-				setCooldown(spaceId, suggestionType);
+				spaceCooldowns.setCooldown(spaceId, suggestionType, SUGGESTION_COOLDOWN_MS);
 			}
 
 			return {
