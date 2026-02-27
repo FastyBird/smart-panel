@@ -55,6 +55,9 @@ import 'package:fastybird_smart_panel/modules/security/repositories/security_eve
 import 'package:fastybird_smart_panel/modules/security/repositories/security_status.dart';
 import 'package:fastybird_smart_panel/modules/security/services/security_overlay_controller.dart';
 import 'package:fastybird_smart_panel/features/overlay/services/overlay_manager.dart';
+import 'package:fastybird_smart_panel/modules/buddy/module.dart';
+import 'package:fastybird_smart_panel/modules/buddy/repositories/buddy.dart';
+import 'package:fastybird_smart_panel/modules/buddy/service.dart';
 import 'package:fastybird_smart_panel/modules/intents/export.dart';
 import 'package:fastybird_smart_panel/modules/scenes/export.dart';
 import 'package:fastybird_smart_panel/modules/spaces/export.dart';
@@ -315,6 +318,7 @@ class StartupManagerService {
         locator.get<IntentsModuleService>().initialize(),
         locator.get<DashboardModuleService>().initialize(),
         locator.get<EnergyModuleService>().initialize(),
+        locator.get<BuddyModuleService>().initialize(),
       ]);
     } catch (e) {
       if (kDebugMode) {
@@ -602,6 +606,20 @@ class StartupManagerService {
       try { locator.unregister<IntentOverlayService>(); } catch (_) {}
     }
 
+    // Buddy module repositories and services
+    if (locator.isRegistered<BuddyRepository>()) {
+      try { locator<BuddyRepository>().dispose(); } catch (_) {}
+      try { locator.unregister<BuddyRepository>(); } catch (_) {}
+    }
+    if (locator.isRegistered<BuddyService>()) {
+      try { locator<BuddyService>().dispose(); } catch (_) {}
+      try { locator.unregister<BuddyService>(); } catch (_) {}
+    }
+    if (locator.isRegistered<BuddyModuleService>()) {
+      try { locator<BuddyModuleService>().dispose(); } catch (_) {}
+      try { locator.unregister<BuddyModuleService>(); } catch (_) {}
+    }
+
     // Deck module services
     if (locator.isRegistered<DeckModuleService>()) {
       try { locator<DeckModuleService>().dispose(); } catch (_) {}
@@ -735,6 +753,13 @@ class StartupManagerService {
     locator.registerSingleton(scenesModuleService);
     locator.registerSingleton(intentsModuleService);
     locator.registerSingleton(spacesModuleService);
+
+    // Buddy module service
+    var buddyModuleService = BuddyModuleService(
+      dio: _apiIoService,
+      socketService: _socketClient,
+    );
+    locator.registerSingleton(buddyModuleService);
 
     // Property timeseries service
     var propertyTimeseriesService = PropertyTimeseriesService(dio: _apiIoService);

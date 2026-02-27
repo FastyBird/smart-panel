@@ -5,10 +5,12 @@ import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/icon_container.dart';
+import 'package:fastybird_smart_panel/modules/buddy/presentation/buddy_chat_drawer.dart';
+import 'package:fastybird_smart_panel/modules/buddy/service.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/export.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
-import 'package:fastybird_smart_panel/modules/security/services/security_overlay_controller.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/swipe_event.dart';
+import 'package:fastybird_smart_panel/modules/security/services/security_overlay_controller.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -255,6 +257,9 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen>
         }
 
         return Scaffold(
+          floatingActionButton: _BuddyFab(
+            onTap: () => _openBuddyDrawer(context),
+          ),
           body: OrientationBuilder(
             builder: (context, orientation) {
               final isPortrait = orientation == Orientation.portrait;
@@ -334,6 +339,40 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen>
     );
   }
 
+  void _openBuddyDrawer(BuildContext context) {
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Buddy',
+      barrierColor: Colors.black54,
+      transitionDuration: const Duration(milliseconds: 300),
+      pageBuilder: (context, animation, secondaryAnimation) {
+        return Align(
+          alignment: Alignment.centerRight,
+          child: SizedBox(
+            width: MediaQuery.of(context).size.width * 0.85,
+            child: const Material(
+              child: BuddyChatDrawer(),
+            ),
+          ),
+        );
+      },
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        final slideAnimation = Tween<Offset>(
+          begin: const Offset(1.0, 0.0),
+          end: Offset.zero,
+        ).animate(
+          CurvedAnimation(parent: animation, curve: Curves.easeInOut),
+        );
+
+        return SlideTransition(
+          position: slideAnimation,
+          child: child,
+        );
+      },
+    );
+  }
+
   Widget _buildEmptyState(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final warningColor = isDark ? AppColorsDark.warning : AppColorsLight.warning;
@@ -379,4 +418,95 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen>
     );
   }
 
+}
+
+class _BuddyFab extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _BuddyFab({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final accentColor = ThemeColorFamily.get(
+      isDark ? Brightness.dark : Brightness.light,
+      ThemeColors.primary,
+    ).base;
+
+    BuddyService? buddyService;
+    try {
+      buddyService = locator<BuddyService>();
+    } catch (_) {
+      // Buddy module not registered
+    }
+
+    if (buddyService == null) return const SizedBox.shrink();
+
+    return ListenableBuilder(
+      listenable: buddyService,
+      builder: (context, _) {
+        final badgeCount = buddyService!.suggestionCount;
+
+        return GestureDetector(
+          onTap: onTap,
+          child: Container(
+            width: AppSpacings.scale(48),
+            height: AppSpacings.scale(48),
+            decoration: BoxDecoration(
+              color: accentColor,
+              borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+              boxShadow: [
+                BoxShadow(
+                  color: accentColor.withValues(alpha: 0.3),
+                  blurRadius: AppSpacings.scale(8),
+                  offset: Offset(0, AppSpacings.scale(2)),
+                ),
+              ],
+            ),
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                Center(
+                  child: Icon(
+                    MdiIcons.robotHappyOutline,
+                    color: Colors.white,
+                    size: AppSpacings.scale(24),
+                  ),
+                ),
+                if (badgeCount > 0)
+                  Positioned(
+                    right: -AppSpacings.scale(4),
+                    top: -AppSpacings.scale(4),
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: AppSpacings.scale(5),
+                        vertical: AppSpacings.scale(1),
+                      ),
+                      decoration: BoxDecoration(
+                        color: isDark ? Colors.red.shade400 : Colors.red,
+                        borderRadius:
+                            BorderRadius.circular(AppSpacings.scale(10)),
+                      ),
+                      constraints: BoxConstraints(
+                        minWidth: AppSpacings.scale(18),
+                        minHeight: AppSpacings.scale(18),
+                      ),
+                      child: Text(
+                        '$badgeCount',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: AppSpacings.scale(10),
+                          fontWeight: FontWeight.w600,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
 }
