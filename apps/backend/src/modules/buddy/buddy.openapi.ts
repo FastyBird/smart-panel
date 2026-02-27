@@ -4,6 +4,8 @@
 import { BuddyConversationEntity } from './entities/buddy-conversation.entity';
 import { BuddyMessageEntity } from './entities/buddy-message.entity';
 import { BuddyConfigModel } from './models/config.model';
+import { ConversationResponseModel, ConversationsResponseModel } from './models/conversation-response.model';
+import { MessageResponseModel, MessagesResponseModel } from './models/message-response.model';
 
 export const BUDDY_SWAGGER_EXTRA_MODELS = [
 	// Entities
@@ -11,4 +13,9 @@ export const BUDDY_SWAGGER_EXTRA_MODELS = [
 	BuddyMessageEntity,
 	// Config model
 	BuddyConfigModel,
+	// Response models
+	ConversationResponseModel,
+	ConversationsResponseModel,
+	MessageResponseModel,
+	MessagesResponseModel,
 ];

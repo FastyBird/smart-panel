@@ -49,4 +49,16 @@ export class BuddyConfigModel extends ModuleConfigModel {
 	@IsOptional()
 	@IsString()
 	model: string | null = null;
+
+	@ApiPropertyOptional({
+		name: 'ollama_url',
+		description: 'Base URL for the Ollama API endpoint',
+		type: 'string',
+		nullable: true,
+		example: 'http://localhost:11434',
+	})
+	@Expose({ name: 'ollama_url' })
+	@IsOptional()
+	@IsString()
+	ollamaUrl: string | null = null;
 }
