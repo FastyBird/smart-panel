@@ -1,5 +1,5 @@
 <template>
-	<div class="flex flex-row items-center h-full w-full p-2 gap-2 overflow-hidden">
+	<div class="flex flex-row items-center justify-center h-full w-full p-2 gap-2 overflow-hidden">
 		<el-icon
 			:size="iconSize"
 			color="var(--el-color-warning)"
