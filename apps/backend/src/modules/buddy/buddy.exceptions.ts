@@ -17,3 +17,9 @@ export class BuddyConversationNotFoundException extends NotFoundException {
 		super(`Conversation with ID "${id}" was not found.`);
 	}
 }
+
+export class BuddySuggestionNotFoundException extends NotFoundException {
+	constructor(id: string) {
+		super(`Suggestion with ID "${id}" was not found.`);
+	}
+}
