@@ -531,7 +531,7 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 
 		return Consumer<BuddyService>(
 			builder: (context, buddyService, _) {
-				final isDisabled = buddyService.isProviderNotConfigured || _initFailed;
+				final isDisabled = !_initialized || buddyService.isProviderNotConfigured || _initFailed;
 				final isSending = buddyService.isSendingMessage;
 
 				return Container(
@@ -566,9 +566,11 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 												? 'AI provider not configured'
 												: _initFailed
 													? 'Failed to start conversation'
-													: isDisabled
-														? 'AI provider not configured'
-														: 'Ask about your home...',
+													: !_initialized
+														? 'Starting conversation...'
+														: buddyService.isProviderNotConfigured
+															? 'AI provider not configured'
+															: 'Ask about your home...',
 											hintStyle: TextStyle(
 												fontSize: AppFontSize.base,
 												color: hintColor,
