@@ -8,7 +8,6 @@ import { ActionObserverService, ActionRecord } from './action-observer.service';
 export interface DetectedPattern {
 	intentType: IntentType;
 	spaceId: string;
-	spaceName: string;
 	timeOfDay: { hour: number; minute: number };
 	occurrences: number;
 	confidence: number;
@@ -62,7 +61,6 @@ export class PatternDetectorService {
 					patterns.push({
 						intentType: group.intentType,
 						spaceId: group.spaceId,
-						spaceName: '',
 						timeOfDay: { hour: cluster.avgHour, minute: cluster.avgMinute },
 						occurrences: cluster.actions.length,
 						confidence,
