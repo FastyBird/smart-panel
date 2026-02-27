@@ -1,4 +1,7 @@
 {
+	"preview": {
+		"defaultName": "Scene"
+	},
 	"fields": {
 		"scene": {
 			"title": "Scene",

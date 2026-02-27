@@ -18,6 +18,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeMount } from 'vue';
+import { useI18n } from 'vue-i18n';
 
 import { ElIcon, ElText } from 'element-plus';
 
@@ -32,6 +33,8 @@ defineOptions({
 });
 
 const props = defineProps<ITilePreviewProps>();
+
+const { t } = useI18n();
 
 const sceneId = computed<string | null>((): string | null => {
 	return (props.tile as { scene?: string }).scene ?? null;
@@ -49,7 +52,7 @@ const sceneIcon = computed<string>((): string => {
 });
 
 const sceneName = computed<string>((): string => {
-	return scene.value?.name ?? 'Scene';
+	return scene.value?.name ?? t('tilesScenePlugin.preview.defaultName');
 });
 
 const iconSize = computed<number>((): number => {

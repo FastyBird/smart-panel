@@ -67,7 +67,7 @@
 								size="small"
 								class="truncate"
 							>
-								Draft
+								{{ t('pagesTilesPlugin.headings.configure.draft') }}
 							</el-text>
 						</div>
 					</div>
@@ -88,7 +88,7 @@
 						body-class="p-2!"
 					>
 						<template #header>
-							Display
+							{{ t('pagesTilesPlugin.headings.configure.display') }}
 						</template>
 
 						<el-select
@@ -141,7 +141,7 @@
 						body-class="p-2!"
 					>
 						<template #header>
-							Quick add tile
+							{{ t('pagesTilesPlugin.headings.configure.quickAddTile') }}
 						</template>
 
 						<div class="flex flex-col gap-2">
@@ -167,6 +167,7 @@
 
 <script setup lang="ts">
 import { computed, getCurrentInstance, h, nextTick, onBeforeMount, onBeforeUnmount, onMounted, ref, render, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 
 import { ElButton, ElCard, ElCol, ElIcon, ElOption, ElRow, ElSelect, ElText, useNamespace } from 'element-plus';
 import { GridStack, type GridStackWidget } from 'gridstack';
@@ -190,6 +191,8 @@ import TilePreview from './tile-preview.vue';
 defineOptions({
 	name: 'PageConfigure',
 });
+
+const { t } = useI18n();
 
 const ns = useNamespace('page-configure');
 

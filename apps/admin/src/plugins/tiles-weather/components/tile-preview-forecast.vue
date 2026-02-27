@@ -26,6 +26,8 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+
 import { ElIcon, ElText } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
@@ -38,10 +40,12 @@ defineOptions({
 
 defineProps<ITilePreviewProps>();
 
+const { t } = useI18n();
+
 const forecastDays = [
-	{ label: 'Mon', icon: 'mdi:weather-sunny', color: 'var(--el-color-warning)', temp: '22°' },
-	{ label: 'Tue', icon: 'mdi:weather-partly-cloudy', color: 'var(--el-color-info)', temp: '19°' },
-	{ label: 'Wed', icon: 'mdi:weather-rainy', color: 'var(--el-color-primary)', temp: '16°' },
-	{ label: 'Thu', icon: 'mdi:weather-sunny', color: 'var(--el-color-warning)', temp: '21°' },
+	{ label: t('tilesWeatherPlugin.preview.forecast.mon'), icon: 'mdi:weather-sunny', color: 'var(--el-color-warning)', temp: '22°' },
+	{ label: t('tilesWeatherPlugin.preview.forecast.tue'), icon: 'mdi:weather-partly-cloudy', color: 'var(--el-color-info)', temp: '19°' },
+	{ label: t('tilesWeatherPlugin.preview.forecast.wed'), icon: 'mdi:weather-rainy', color: 'var(--el-color-primary)', temp: '16°' },
+	{ label: t('tilesWeatherPlugin.preview.forecast.thu'), icon: 'mdi:weather-sunny', color: 'var(--el-color-warning)', temp: '21°' },
 ];
 </script>

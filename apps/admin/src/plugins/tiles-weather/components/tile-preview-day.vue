@@ -11,14 +11,14 @@
 				class="font-bold leading-none"
 				style="font-size: clamp(14px, 2.5vw, 24px)"
 			>
-				22°C
+				{{ t('tilesWeatherPlugin.preview.day.temperature') }}
 			</el-text>
 			<el-text
 				type="info"
 				size="small"
 				class="truncate"
 			>
-				Sunny
+				{{ t('tilesWeatherPlugin.preview.day.condition') }}
 			</el-text>
 		</div>
 	</div>
@@ -26,6 +26,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 
 import { ElIcon, ElText } from 'element-plus';
 
@@ -38,6 +39,8 @@ defineOptions({
 });
 
 const props = defineProps<ITilePreviewProps>();
+
+const { t } = useI18n();
 
 const iconSize = computed<number>((): number => {
 	return props.tile.rowSpan >= 2 ? 36 : 24;

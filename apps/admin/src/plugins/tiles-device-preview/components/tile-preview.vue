@@ -35,6 +35,7 @@
 
 <script setup lang="ts">
 import { computed, onBeforeMount } from 'vue';
+import { useI18n } from 'vue-i18n';
 
 import { ElIcon, ElText } from 'element-plus';
 
@@ -49,6 +50,8 @@ defineOptions({
 });
 
 const props = defineProps<ITilePreviewProps>();
+
+const { t } = useI18n();
 
 const deviceId = computed<string | null>((): string | null => {
 	return (props.tile as { device?: string }).device ?? null;
@@ -66,7 +69,7 @@ const deviceIcon = computed<string>((): string => {
 });
 
 const deviceName = computed<string>((): string => {
-	return (device.value?.name as string | undefined) ?? 'Device';
+	return (device.value?.name as string | undefined) ?? t('tilesDevicePreviewPlugin.preview.defaultName');
 });
 
 const deviceStatus = computed<string>((): string => {
@@ -76,7 +79,7 @@ const deviceStatus = computed<string>((): string => {
 
 	const status = device.value.status as { online?: boolean } | undefined;
 
-	return status?.online ? 'Online' : 'Offline';
+	return status?.online ? t('tilesDevicePreviewPlugin.preview.statusOnline') : t('tilesDevicePreviewPlugin.preview.statusOffline');
 });
 
 const isButton = computed<boolean>((): boolean => {

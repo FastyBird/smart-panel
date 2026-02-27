@@ -1,4 +1,9 @@
 {
+  "preview": {
+    "defaultName": "Device",
+    "statusOnline": "Online",
+    "statusOffline": "Offline"
+  },
   "fields": {
     "device": {
       "title": "Device",

@@ -1,4 +1,16 @@
 {
+	"preview": {
+		"day": {
+			"temperature": "22°C",
+			"condition": "Sunny"
+		},
+		"forecast": {
+			"mon": "Mon",
+			"tue": "Tue",
+			"wed": "Wed",
+			"thu": "Thu"
+		}
+	},
 	"fields": {
 		"locationId": {
 			"title": "Weather location",
