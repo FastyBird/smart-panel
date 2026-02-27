@@ -57,6 +57,7 @@
 					v-model:remote-form-result="remoteFormResult"
 					v-model:remote-form-reset="remoteFormReset"
 					v-model:remote-form-changed="remoteFormChanged"
+					:type="selectedType"
 					:parent="'page'"
 					:parent-id="props.page.id"
 					:schema="formSchema"
@@ -146,7 +147,7 @@
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
-import { type RouteLocationResolvedGeneric, useRouter } from 'vue-router';
+import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
 
 import { ElAlert, ElButton, ElDivider, ElIcon, ElMessageBox, ElScrollbar } from 'element-plus';
 
@@ -187,6 +188,7 @@ const emit = defineEmits<{
 	(e: 'update:remote-form-changed', formChanged: boolean): void;
 }>();
 
+const route = useRoute();
 const router = useRouter();
 const { t } = useI18n();
 
@@ -207,7 +209,7 @@ const remoteFormResult = ref<FormResultType>(FormResult.NONE);
 const remoteFormReset = ref<boolean>(false);
 const remoteFormChanged = ref<boolean>(false);
 
-const selectedType = ref<string | undefined>(undefined);
+const selectedType = ref<string | undefined>((route.query.tileType as string) || undefined);
 
 const plugin = computed<IPlugin<ITilePluginsComponents, ITilePluginsSchemas> | undefined>(() => {
 	return plugins.value.find((plugin) => (plugin.elements ?? []).some((element) => element.type === selectedType.value));

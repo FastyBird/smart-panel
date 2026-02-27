@@ -1,110 +1,110 @@
 <template>
-	<div class="mb-2">
+	<div class="h-full box-border overflow-hidden p-2">
 		<el-row
 			:gutter="10"
-			align="middle"
-			class="px-2"
+			justify="center"
+			class="h-full"
 		>
-			<el-col :span="12">
-				<div class="flex items-center gap-2">
+			<el-col
+				:span="10"
+				class="h-full overflow-hidden p-2"
+			>
+				<el-card
+					body-class="p-0! flex flex-col"
+					class="page-grid-card mx-auto h-full"
+					:style="props.gridCardStyle"
+				>
+					<div class="page-grid-header flex items-center justify-between px-2 flex-shrink-0">
+						<div class="flex items-center gap-1 min-w-0">
+							<el-icon
+								:size="14"
+								color="var(--el-text-color-regular)"
+							>
+								<icon :icon="props.page.icon || 'mdi:view-dashboard'" />
+							</el-icon>
+							<el-text
+								size="small"
+								class="truncate"
+							>
+								{{ props.page.title }}
+							</el-text>
+						</div>
+					</div>
+					<div
+						ref="pageGridContainer"
+						class="flex-1 min-h-0 p-1"
+					/>
+				</el-card>
+			</el-col>
+
+			<el-col
+				:span="10"
+				class="h-full overflow-hidden p-2"
+			>
+				<el-card
+					body-class="p-0! flex flex-col"
+					class="page-grid-card mx-auto h-full"
+					:style="props.gridCardStyle"
+				>
+					<div class="page-grid-header flex items-center justify-between px-2 flex-shrink-0">
+						<div class="flex items-center gap-1 min-w-0">
+							<el-icon
+								:size="14"
+								color="var(--el-text-color-regular)"
+							>
+								<icon icon="mdi:pencil-ruler" />
+							</el-icon>
+							<el-text
+								size="small"
+								class="truncate"
+							>
+								Draft
+							</el-text>
+						</div>
+					</div>
+					<div
+						ref="draftGridContainer"
+						class="flex-1 min-h-0 overflow-hidden p-1"
+					/>
+				</el-card>
+			</el-col>
+
+			<el-col
+				v-if="enabledTileOptions.length"
+				:span="4"
+				class="p-2"
+			>
+				<div class="flex flex-col gap-2">
 					<el-text
 						type="info"
 						size="small"
+						class="mb-1"
 					>
-						Display:
+						Quick add tile
 					</el-text>
-					<el-select
-						v-model="selectedDisplayId"
+
+					<el-button
+						v-for="opt in enabledTileOptions"
+						:key="opt.value"
 						size="small"
-						style="min-width: 200px"
-						:disabled="applicableDisplays.length <= 1"
+						class="w-full ml-0!"
+						@click="emit('addTileOfType', opt.value)"
 					>
-						<el-option
-							v-for="d in applicableDisplays"
-							:key="d.id"
-							:value="d.id"
-							:label="d.name || d.macAddress"
-						/>
-					</el-select>
+						<template #icon>
+							<icon icon="mdi:plus" />
+						</template>
+						{{ opt.label }}
+					</el-button>
 				</div>
-			</el-col>
-			<el-col :span="12">
-				<el-text
-					v-if="selectedDisplay"
-					type="info"
-					size="small"
-				>
-					{{ selectedDisplay.screenWidth }}x{{ selectedDisplay.screenHeight }}px
-					&middot;
-					{{ gridLayout?.cols ?? '?' }}x{{ gridLayout?.rows ?? '?' }} grid
-				</el-text>
 			</el-col>
 		</el-row>
 	</div>
-
-	<el-row
-		:gutter="10"
-		class="mt-2"
-	>
-		<el-col
-			:span="12"
-			class="px-2 pb-2"
-		>
-			<el-card
-				body-class="p-1!"
-				class="page-grid-card"
-				:style="gridCardStyle"
-			>
-				<div ref="pageGridContainer" />
-			</el-card>
-		</el-col>
-
-		<el-col
-			:span="12"
-			class="px-2 pb-2"
-		>
-			<el-card
-				body-class="p-1!"
-				class="page-grid-card"
-				:style="gridCardStyle"
-			>
-				<div
-					id="trash"
-					ref="trashContainer"
-					class="overflow-hidden p-1"
-				>
-					<div
-						class="flex flex-col items-center justify-center h-full w-full rounded-2"
-						style="background-color: var(--el-color-error-light-9)"
-					>
-						<el-icon
-							:size="48"
-							color="var(--el-color-danger)"
-							class="mb-4"
-						>
-							<icon icon="mdi:trash-can-outline" />
-						</el-icon>
-
-						<el-text
-							type="danger"
-							size="large"
-							class="text-center"
-						>
-							Drop here to remove tile!
-						</el-text>
-					</div>
-				</div>
-
-				<div ref="draftGridContainer" />
-			</el-card>
-		</el-col>
-	</el-row>
 </template>
 
 <script setup lang="ts">
 import { computed, getCurrentInstance, h, nextTick, onBeforeMount, onBeforeUnmount, onMounted, ref, render, watch } from 'vue';
 
-import { ElCard, ElCol, ElIcon, ElOption, ElRow, ElSelect, ElText } from 'element-plus';
+import { ElButton, ElCard, ElCol, ElIcon, ElRow, ElText } from 'element-plus';
 import { GridStack, type GridStackWidget } from 'gridstack';
 import 'gridstack/dist/gridstack.min.css';
 
@@ -118,8 +118,8 @@ import {
 	type ITile,
 	useTiles,
 	useTilesActions,
+	useTilesPlugins,
 } from '../../../modules/dashboard';
-import { type IDisplay, useDisplays } from '../../../modules/displays';
 
 import type { IPageConfigureProps } from './page-configure.types';
 import TilePreview from './tile-preview.vue';
@@ -135,6 +135,7 @@ const props = withDefaults(defineProps<IPageConfigureProps>(), {
 
 const emit = defineEmits<{
 	(e: 'addTile'): void;
+	(e: 'addTileOfType', type: string): void;
 	(e: 'editTile', id: ITile['id']): void;
 	(e: 'tileDetail', id: ITile['id']): void;
 	(e: 'addTileDataSource', tileId: ITile['id']): void;
@@ -144,7 +145,9 @@ const emit = defineEmits<{
 	(e: 'update:remote-page-changed', formChanged: boolean): void;
 }>();
 
-const { displays, fetchDisplays, isLoading: loadingDisplays } = useDisplays();
+const { options: tileOptions } = useTilesPlugins();
+
+const enabledTileOptions = computed(() => tileOptions.value.filter((opt) => !opt.disabled));
 const { tiles, fetchTiles, areLoading: loadingTiles } = useTiles({ parent: 'page', parentId: props.page.id });
 const {
 	findById: findTileById,
@@ -160,10 +163,6 @@ const appContext = getCurrentInstance()?.appContext ?? null;
 let pageGrid: GridStack | undefined;
 
 let draftGrid: GridStack | undefined;
-
-const mounted = ref<boolean>(false);
-
-const trashContainer = ref<HTMLElement | null>(null);
 
 const pageGridContainer = ref<HTMLElement | null>(null);
 
@@ -181,52 +180,6 @@ const suppressMarkChanged = ref<boolean>(false);
 
 const pageChanged = ref<boolean>(false);
 
-const selectedDisplayId = ref<string | null>(null);
-
-// Displays applicable to this page (filtered by page's displays list, or all if null)
-const applicableDisplays = computed<IDisplay[]>((): IDisplay[] => {
-	if (props.page.displays !== null && props.page.displays.length > 0) {
-		return displays.value.filter((d) => props.page.displays!.includes(d.id));
-	}
-
-	return displays.value;
-});
-
-// Currently selected display
-const selectedDisplay = computed<IDisplay | null>((): IDisplay | null => {
-	if (selectedDisplayId.value) {
-		return applicableDisplays.value.find((d) => d.id === selectedDisplayId.value) ?? applicableDisplays.value[0] ?? null;
-	}
-
-	return applicableDisplays.value[0] ?? null;
-});
-
-// Layout calculation: page overrides take priority over display defaults
-const gridLayout = computed<{ rows: number; cols: number } | null>((): { rows: number; cols: number } | null => {
-	if (selectedDisplay.value === null) {
-		return null;
-	}
-
-	const rows = props.page.rows ?? selectedDisplay.value.rows ?? 12;
-	const cols = props.page.cols ?? selectedDisplay.value.cols ?? 24;
-
-	return { rows, cols };
-});
-
-// Card style to reflect display aspect ratio
-const gridCardStyle = computed<Record<string, string>>((): Record<string, string> => {
-	const display = selectedDisplay.value;
-
-	if (!display || !display.screenWidth || !display.screenHeight) {
-		return { maxWidth: '540px' };
-	}
-
-	return {
-		maxWidth: `${Math.min(display.screenWidth, 600)}px`,
-		aspectRatio: `${display.screenWidth} / ${display.screenHeight}`,
-	};
-});
-
 let changeTimeout: ReturnType<typeof setTimeout>;
 
 const onTileRemove = (id: ITile['id']): void => {
@@ -240,24 +193,57 @@ const onTileRemove = (id: ITile['id']): void => {
 };
 
 const updateSquareCells = (): void => {
+	// Reset maxHeight on both cards so we measure unconstrained column height
+	const pageCard = pageGridContainer.value?.closest('.page-grid-card') as HTMLElement | null;
+	const draftCard = draftGridContainer.value?.closest('.page-grid-card') as HTMLElement | null;
+
+	if (pageCard) pageCard.style.maxHeight = '';
+	if (draftCard) draftCard.style.maxHeight = '';
+
 	if (pageGridContainer.value && pageGrid) {
 		const width = pageGridContainer.value.clientWidth;
 		const cols = pageGrid.getColumn();
-		const size = width / cols;
+		const rows = props.gridLayout?.rows ?? 12;
+		const sizeByWidth = width / cols;
+
+		const availableHeight = pageGridContainer.value.clientHeight;
+		const sizeByHeight = rows > 0 ? availableHeight / rows : sizeByWidth;
+
+		const size = Math.min(sizeByWidth, sizeByHeight);
 
 		pageGrid.cellHeight(size);
 
-		if (trashContainer.value) {
-			trashContainer.value.style.height = `${2 * size - (draftGrid?.getMargin() || 0) - 4}px`;
+		// Cap card to actual content so there's no white space on large screens
+		if (pageCard) {
+			const headerEl = pageCard.querySelector('.page-grid-header') as HTMLElement | null;
+			const headerH = headerEl?.offsetHeight ?? 0;
+			const cs = getComputedStyle(pageGridContainer.value);
+			const padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+			pageCard.style.maxHeight = `${headerH + rows * size + padY + 2}px`;
 		}
 	}
 
 	if (draftGridContainer.value && draftGrid) {
 		const width = draftGridContainer.value.clientWidth;
 		const cols = draftGrid.getColumn();
-		const size = width / cols;
+		const draftRows = props.gridLayout?.rows ?? 12;
+		const sizeByWidth = width / cols;
+
+		const availableHeight = draftGridContainer.value.clientHeight;
+		const sizeByHeight = draftRows > 0 ? availableHeight / draftRows : sizeByWidth;
+
+		const size = Math.min(sizeByWidth, sizeByHeight);
 
 		draftGrid.cellHeight(size);
+
+		// Cap card to actual content
+		if (draftCard) {
+			const draftHeaderEl = draftCard.querySelector('.page-grid-header') as HTMLElement | null;
+			const draftHeaderH = draftHeaderEl?.offsetHeight ?? 0;
+			const cs = getComputedStyle(draftGridContainer.value);
+			const padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+			draftCard.style.maxHeight = `${draftHeaderH + draftRows * size + padY + 2}px`;
+		}
 	}
 };
 
@@ -312,7 +298,7 @@ const renderTileContent = (itemElContent: Element, tile: ITile): void => {
 };
 
 const initializeGrids = (): void => {
-	if (gridLayout.value === null) {
+	if (props.gridLayout === null) {
 		return;
 	}
 
@@ -324,21 +310,21 @@ const initializeGrids = (): void => {
 
 	pageGrid = GridStack.init(
 		{
-			column: gridLayout.value.cols,
-			row: gridLayout.value.rows,
+			column: props.gridLayout.cols,
+			row: props.gridLayout.rows,
 			cellHeight: 'auto',
 			margin: 4,
 			float: true,
 			acceptWidgets: true,
-			removable: '#trash',
 		},
 		pageGridContainer.value!
 	);
 
 	draftGrid = GridStack.init(
 		{
-			column: gridLayout.value.cols,
-			minRow: gridLayout.value.rows - 2,
+			column: props.gridLayout.cols,
+			row: props.gridLayout.rows,
+			minRow: props.gridLayout.rows,
 			cellHeight: 'auto',
 			margin: 4,
 			float: true,
@@ -474,8 +460,6 @@ const initializeGrids = (): void => {
 
 			draftGrid?.update(itemEl, { w: 2, h: 1 });
 
-			renderTileContent(itemElContent, tile);
-
 			draftTiles.add(tile.id);
 
 			draftTiles.forEach((item) => {
@@ -485,6 +469,10 @@ const initializeGrids = (): void => {
 			});
 
 			draftGrid?.compact();
+
+			nextTick(() => {
+				renderTileContent(itemElContent, tile);
+			});
 		}
 	});
 
@@ -532,8 +520,8 @@ const addTilesToGrids = (): void => {
 			continue;
 		}
 
-		const fitsHorizontally = tile.col + tile.colSpan - 1 <= (gridLayout.value?.cols ?? 0);
-		const fitsVertically = tile.row + tile.rowSpan - 1 <= (gridLayout.value?.rows ?? 0);
+		const fitsHorizontally = tile.col + tile.colSpan - 1 <= (props.gridLayout?.cols ?? 0);
+		const fitsVertically = tile.row + tile.rowSpan - 1 <= (props.gridLayout?.rows ?? 0);
 
 		if (fitsHorizontally && fitsVertically && !tile.hidden && !tile.draft) {
 			pageGrid?.addWidget({
@@ -570,14 +558,6 @@ const markChanged = () => {
 };
 
 onBeforeMount((): void => {
-	if (!loadingDisplays.value) {
-		fetchDisplays().catch((error: unknown): void => {
-			const err = error as Error;
-
-			throw new DashboardException('Something went wrong', err);
-		});
-	}
-
 	if (!loadingTiles.value) {
 		fetchTiles().catch((error: unknown): void => {
 			const err = error as Error;
@@ -593,8 +573,6 @@ onMounted((): void => {
 	});
 
 	window.addEventListener('resize', updateSquareCells);
-
-	mounted.value = true;
 
 	setTimeout(() => {
 		initialized.value = true;
@@ -706,39 +684,9 @@ watch(
 	}
 );
 
-// Auto-select first applicable display, or reset if current selection becomes invalid
+// Re-initialize grids when grid layout (rows/cols) changes
 watch(
-	(): IDisplay[] => applicableDisplays.value,
-	(val: IDisplay[]): void => {
-		const first = val[0];
-
-		if (!first) {
-			selectedDisplayId.value = null;
-
-			return;
-		}
-
-		if (!selectedDisplayId.value || !val.some((d) => d.id === selectedDisplayId.value)) {
-			selectedDisplayId.value = first.id;
-		}
-	},
-	{ immediate: true }
-);
-
-// Recalculate cell sizes when display changes without grid layout change
-// (e.g. same rows/cols but different screenWidth/screenHeight)
-watch(
-	(): string | null => selectedDisplayId.value,
-	(): void => {
-		nextTick(() => {
-			updateSquareCells();
-		});
-	}
-);
-
-// Re-initialize grids when grid layout (rows/cols) actually changes
-watch(
-	(): { rows: number; cols: number } | null => gridLayout.value,
+	(): { rows: number; cols: number } | null => props.gridLayout,
 	(newVal, oldVal): void => {
 		if (newVal && oldVal && newVal.rows === oldVal.rows && newVal.cols === oldVal.cols) {
 			return;
@@ -746,6 +694,16 @@ watch(
 
 		nextTick(() => {
 			initializeGrids();
+		});
+	}
+);
+
+// Recalculate cell sizes when card style changes (e.g. different aspect ratio)
+watch(
+	(): Record<string, string> => props.gridCardStyle,
+	(): void => {
+		nextTick(() => {
+			updateSquareCells();
 		});
 	}
 );
@@ -759,5 +717,17 @@ watch(
 
 .page-grid-card {
 	overflow: hidden;
+
+	.el-card__body {
+		overflow: hidden;
+		height: 100%;
+	}
+}
+
+.page-grid-header {
+	height: 28px;
+	min-height: 28px;
+	border-bottom: 1px solid var(--el-border-color-lighter);
+	background-color: var(--el-fill-color-light);
 }
 </style>

@@ -48,11 +48,7 @@
 		</template>
 	</view-header>
 
-	<el-scrollbar
-		v-if="isLGDevice"
-		class="grow-1 flex flex-col lt-sm:mx-1 sm:mx-2"
-		view-class="overflow-hidden"
-	>
+	<div class="flex-1 overflow-hidden lt-sm:mx-1 sm:mx-2 lt-sm:mb-1 sm:mb-2">
 		<router-view
 			:key="props.id"
 			v-slot="{ Component }"
@@ -63,19 +59,7 @@
 				:page="page"
 			/>
 		</router-view>
-	</el-scrollbar>
-
-	<router-view
-		v-else
-		:key="props.id"
-		v-slot="{ Component }"
-	>
-		<component
-			:is="Component"
-			v-if="page"
-			:page="page"
-		/>
-	</router-view>
+	</div>
 </template>
 
 <script setup lang="ts">
@@ -84,7 +68,7 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRouter } from 'vue-router';
 
-import { ElIcon, ElScrollbar } from 'element-plus';
+import { ElIcon } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
