@@ -216,7 +216,7 @@ const gridLayout = computed<{ rows: number; cols: number } | null>((): { rows: n
 const gridCardStyle = computed<Record<string, string>>((): Record<string, string> => {
 	const display = selectedDisplay.value;
 
-	if (!display || !display.screenWidth || !display.screenHeight) {
+	if (!display || !display.screenWidth) {
 		return { maxWidth: '540px' };
 	}
 
