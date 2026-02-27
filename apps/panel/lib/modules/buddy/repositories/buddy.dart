@@ -34,6 +34,9 @@ class BuddyRepository extends ChangeNotifier {
 	/// Error state
 	String? _error;
 
+	/// Whether the last error was a 503 indicating no AI provider is configured.
+	bool _isProviderNotConfigured = false;
+
 	BuddyRepository({
 		required Dio dio,
 	}) : _dio = dio;
@@ -53,6 +56,7 @@ class BuddyRepository extends ChangeNotifier {
 	bool get isSendingMessage => _isSendingMessage;
 	bool get isLoadingSuggestions => _isLoadingSuggestions;
 	String? get error => _error;
+	bool get isProviderNotConfigured => _isProviderNotConfigured;
 
 	// ============================================
 	// CONVERSATIONS API
@@ -426,16 +430,26 @@ class BuddyRepository extends ChangeNotifier {
 
 			// Only add if it's for the active conversation
 			if (conversationId != null && conversationId == _activeConversationId) {
+				final rawId = payload['message_id'] as String?;
+				final hasServerId = rawId != null && rawId.isNotEmpty;
+				final messageId = hasServerId
+					? rawId
+					: 'ws_${DateTime.now().millisecondsSinceEpoch}';
+
 				final message = BuddyMessageModel(
-					id: payload['message_id'] as String? ?? '',
+					id: messageId,
 					conversationId: conversationId,
 					role: BuddyMessageRole.fromString(payload['role'] as String? ?? 'assistant'),
 					content: payload['content'] as String? ?? '',
 					createdAt: DateTime.now(),
 				);
 
-				// Avoid duplicates
-				if (!_messages.any((m) => m.id == message.id)) {
+				// Only deduplicate when the server provided a real ID;
+				// messages without an ID get a unique synthetic one above.
+				final isDuplicate = hasServerId &&
+					_messages.any((m) => m.id == message.id);
+
+				if (!isDuplicate) {
 					_messages.add(message);
 					notifyListeners();
 				}
@@ -462,6 +476,7 @@ class BuddyRepository extends ChangeNotifier {
 	/// Clear error state
 	void clearError() {
 		_error = null;
+		_isProviderNotConfigured = false;
 		notifyListeners();
 	}
 
@@ -473,7 +488,9 @@ class BuddyRepository extends ChangeNotifier {
 	}
 
 	String _parseError(DioException e) {
-		if (e.response?.statusCode == 503) {
+		_isProviderNotConfigured = e.response?.statusCode == 503;
+
+		if (_isProviderNotConfigured) {
 			return 'AI provider not configured';
 		}
 

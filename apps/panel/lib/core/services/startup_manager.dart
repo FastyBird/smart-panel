@@ -446,13 +446,15 @@ class StartupManagerService {
       try { locator<BuddyModuleService>().dispose(); } catch (_) {}
       try { locator.unregister<BuddyModuleService>(); } catch (_) {}
     }
-    if (locator.isRegistered<BuddyRepository>()) {
-      try { locator<BuddyRepository>().dispose(); } catch (_) {}
-      try { locator.unregister<BuddyRepository>(); } catch (_) {}
-    }
+    // BuddyService must dispose before BuddyRepository because
+    // BuddyService.dispose() calls removeListener on the repository.
     if (locator.isRegistered<BuddyService>()) {
       try { locator<BuddyService>().dispose(); } catch (_) {}
       try { locator.unregister<BuddyService>(); } catch (_) {}
+    }
+    if (locator.isRegistered<BuddyRepository>()) {
+      try { locator<BuddyRepository>().dispose(); } catch (_) {}
+      try { locator.unregister<BuddyRepository>(); } catch (_) {}
     }
 
     // Unregister all repositories and services registered by modules

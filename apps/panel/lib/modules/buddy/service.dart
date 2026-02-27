@@ -57,7 +57,7 @@ class BuddyService extends ChangeNotifier {
 	String? get error => _buddyRepository.error;
 	bool get hasError => _buddyRepository.error != null;
 
-	bool get isProviderNotConfigured => _buddyRepository.error == 'AI provider not configured';
+	bool get isProviderNotConfigured => _buddyRepository.isProviderNotConfigured;
 
 	// ============================================
 	// CONVERSATION ACTIONS
