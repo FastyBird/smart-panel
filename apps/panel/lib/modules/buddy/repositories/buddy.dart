@@ -232,8 +232,18 @@ class BuddyRepository extends ChangeNotifier {
 				if (data is Map<String, dynamic>) {
 					final assistantMessage = BuddyMessageModel.fromJson(data);
 
-					// Replace pending user message with server version by refreshing
-					await fetchConversationMessages(conversationId);
+					// Add the assistant message to the local list immediately
+					// so it's visible even if the subsequent refresh fails.
+					_messages.add(assistantMessage);
+					notifyListeners();
+
+					// Try to reconcile optimistic user message with server state.
+					// If the refresh fails, the user still sees the AI response.
+					try {
+						await fetchConversationMessages(conversationId);
+					} catch (_) {
+						// Refresh failed — keep local state as-is.
+					}
 
 					return assistantMessage;
 				}
