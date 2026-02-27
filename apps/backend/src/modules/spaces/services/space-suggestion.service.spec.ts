@@ -3,19 +3,11 @@ import { v4 as uuid } from 'uuid';
 import { SpaceEntity } from '../entities/space.entity';
 import { LightingMode, SpaceType, SuggestionType } from '../spaces.constants';
 
-import {
-	SuggestionContext,
-	clearAllCooldowns,
-	clearCooldown,
-	evaluateSuggestionRules,
-	isBedroomSpace,
-	isOnCooldown,
-	setCooldown,
-} from './space-suggestion.service';
+import { SuggestionContext, evaluateSuggestionRules, isBedroomSpace, spaceCooldowns } from './space-suggestion.service';
 
 describe('SpaceSuggestionService - Pure Functions', () => {
 	beforeEach(() => {
-		clearAllCooldowns();
+		spaceCooldowns.clearAll();
 	});
 
 	describe('isBedroomSpace', () => {
@@ -59,34 +51,34 @@ describe('SpaceSuggestionService - Pure Functions', () => {
 
 		describe('isOnCooldown', () => {
 			it('should return false when no cooldown is set', () => {
-				expect(isOnCooldown(roomId, suggestionType)).toBe(false);
+				expect(spaceCooldowns.isOnCooldown(roomId, suggestionType)).toBe(false);
 			});
 
 			it('should return true when cooldown is active', () => {
 				const now = Date.now();
-				setCooldown(roomId, suggestionType, 30000, now); // 30 second cooldown
+				spaceCooldowns.setCooldown(roomId, suggestionType, 30000, now); // 30 second cooldown
 
-				expect(isOnCooldown(roomId, suggestionType, now + 10000)).toBe(true);
+				expect(spaceCooldowns.isOnCooldown(roomId, suggestionType, now + 10000)).toBe(true);
 			});
 
 			it('should return false when cooldown has expired', () => {
 				const now = Date.now();
-				setCooldown(roomId, suggestionType, 30000, now); // 30 second cooldown
+				spaceCooldowns.setCooldown(roomId, suggestionType, 30000, now); // 30 second cooldown
 
-				expect(isOnCooldown(roomId, suggestionType, now + 60000)).toBe(false);
+				expect(spaceCooldowns.isOnCooldown(roomId, suggestionType, now + 60000)).toBe(false);
 			});
 		});
 
 		describe('clearCooldown', () => {
 			it('should clear a specific cooldown', () => {
 				const now = Date.now();
-				setCooldown(roomId, suggestionType, 30000, now);
+				spaceCooldowns.setCooldown(roomId, suggestionType, 30000, now);
 
-				expect(isOnCooldown(roomId, suggestionType, now)).toBe(true);
+				expect(spaceCooldowns.isOnCooldown(roomId, suggestionType, now)).toBe(true);
 
-				clearCooldown(roomId, suggestionType);
+				spaceCooldowns.clearCooldown(roomId, suggestionType);
 
-				expect(isOnCooldown(roomId, suggestionType, now)).toBe(false);
+				expect(spaceCooldowns.isOnCooldown(roomId, suggestionType, now)).toBe(false);
 			});
 		});
 
@@ -96,13 +88,13 @@ describe('SpaceSuggestionService - Pure Functions', () => {
 				const roomId2 = uuid();
 				const now = Date.now();
 
-				setCooldown(roomId1, SuggestionType.LIGHTING_RELAX, 30000, now);
-				setCooldown(roomId2, SuggestionType.LIGHTING_NIGHT, 30000, now);
+				spaceCooldowns.setCooldown(roomId1, SuggestionType.LIGHTING_RELAX, 30000, now);
+				spaceCooldowns.setCooldown(roomId2, SuggestionType.LIGHTING_NIGHT, 30000, now);
 
-				clearAllCooldowns();
+				spaceCooldowns.clearAll();
 
-				expect(isOnCooldown(roomId1, SuggestionType.LIGHTING_RELAX, now)).toBe(false);
-				expect(isOnCooldown(roomId2, SuggestionType.LIGHTING_NIGHT, now)).toBe(false);
+				expect(spaceCooldowns.isOnCooldown(roomId1, SuggestionType.LIGHTING_RELAX, now)).toBe(false);
+				expect(spaceCooldowns.isOnCooldown(roomId2, SuggestionType.LIGHTING_NIGHT, now)).toBe(false);
 			});
 		});
 	});
