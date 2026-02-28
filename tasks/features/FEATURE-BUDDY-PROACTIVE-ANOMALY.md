@@ -5,7 +5,7 @@ Type: feature
 Scope: backend
 Size: medium
 Parent: EPIC-BUDDY-MODULE
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -39,13 +39,13 @@ I want the buddy to detect sensor anomalies (temperature drift, stuck sensors, u
 
 ## 4. Acceptance criteria
 
-- [ ] `AnomalyDetectorEvaluator` implements `HeartbeatEvaluator` interface
-- [ ] Detects temperature drift: temperature sensor > 5°C from thermostat setpoint in same space
-- [ ] Detects stuck sensor: property value unchanged for > 2 hours (configurable)
-- [ ] Detects unusual activity: intent count > threshold in time window for same device
-- [ ] Each anomaly generates a suggestion with descriptive title and reason
-- [ ] Anomaly thresholds are configurable via buddy config
-- [ ] Unit tests cover all three anomaly types + edge cases
+- [x] `AnomalyDetectorEvaluator` implements `HeartbeatEvaluator` interface
+- [x] Detects temperature drift: temperature sensor > 5°C from thermostat setpoint in same space
+- [x] Detects stuck sensor: property value unchanged for > 2 hours (configurable)
+- [x] Detects unusual activity: intent count > threshold in time window for same device
+- [x] Each anomaly generates a suggestion with descriptive title and reason
+- [x] Anomaly thresholds are configurable via buddy config
+- [x] Unit tests cover all three anomaly types + edge cases
 
 ## 5. Example scenarios
 
