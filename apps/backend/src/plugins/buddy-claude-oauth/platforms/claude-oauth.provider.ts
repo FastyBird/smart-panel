@@ -88,8 +88,8 @@ export class ClaudeOauthProvider implements ILlmProvider {
 			headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
 			body: new URLSearchParams({
 				grant_type: 'refresh_token',
-				refresh_token: config.refreshToken!,
-				client_id: config.clientId!,
+				refresh_token: config.refreshToken ?? '',
+				client_id: config.clientId ?? '',
 				...(config.clientSecret ? { client_secret: config.clientSecret } : {}),
 			}),
 		});
