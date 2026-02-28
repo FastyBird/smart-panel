@@ -14,12 +14,17 @@ function makeAction(overrides: Partial<ActionRecord> = {}): ActionRecord {
 }
 
 /**
- * Create a date at a specific time of day, N days ago.
+ * Create a date at a specific local time-of-day, N days ago.
+ *
+ * Subtracts days using exact millisecond arithmetic (`N * 86_400_000`)
+ * to stay consistent with the lookback cutoff in `detectPatterns`
+ * (`Date.now() - 7 * 24 * 60 * 60 * 1000`), then sets the local
+ * hour/minute so that `getHours()`/`getMinutes()` return the expected
+ * values for time-of-day clustering.
  */
 function daysAgoAt(daysAgo: number, hour: number, minute: number = 0): Date {
-	const d = new Date();
+	const d = new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000);
 
-	d.setDate(d.getDate() - daysAgo);
 	d.setHours(hour, minute, 0, 0);
 
 	return d;
