@@ -5,7 +5,7 @@ Type: feature
 Scope: backend
 Size: medium
 Parent: EPIC-BUDDY-MODULE
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -39,12 +39,12 @@ I want the buddy to suggest creating scenes when it detects I perform the same s
 
 ## 4. Acceptance criteria
 
-- [ ] Detects multi-action sequences: 2+ intents within 60 seconds targeting the same space, repeated 3+ times
-- [ ] Generates suggestion with proposed scene name (based on space + time, e.g., "Living Room Evening")
-- [ ] Suggestion metadata includes the list of proposed scene actions
-- [ ] When feedback is `applied`: creates scene via Scenes module with the proposed actions
-- [ ] Handles scene creation errors gracefully (suggest retry, don't lose the pattern)
-- [ ] Unit tests for multi-action sequence detection and scene suggestion generation
+- [x] Detects multi-action sequences: 2+ intents within 60 seconds targeting the same space, repeated 3+ times
+- [x] Generates suggestion with proposed scene name (based on space + time, e.g., "Living Room Evening")
+- [x] Suggestion metadata includes the list of proposed scene actions
+- [x] When feedback is `applied`: creates scene via Scenes module with the proposed actions
+- [x] Handles scene creation errors gracefully (suggest retry, don't lose the pattern)
+- [x] Unit tests for multi-action sequence detection and scene suggestion generation
 
 ## 5. Example scenarios
 
