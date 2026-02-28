@@ -24,6 +24,7 @@ import { BuddyMessageEntity } from './entities/buddy-message.entity';
 import { IntentEventListener } from './listeners/intent-event.listener';
 import { BuddyConfigModel } from './models/config.model';
 import { ActionObserverService } from './services/action-observer.service';
+import { AnomalyDetectorEvaluator } from './services/anomaly-detector.service';
 import { BuddyContextService } from './services/buddy-context.service';
 import { BuddyConversationService } from './services/buddy-conversation.service';
 import { HeartbeatService } from './services/heartbeat.service';
@@ -58,6 +59,7 @@ import { SuggestionEngineService } from './services/suggestion-engine.service';
 		PatternDetectorService,
 		SuggestionEngineService,
 		HeartbeatService,
+		AnomalyDetectorEvaluator,
 	],
 	exports: [
 		ActionObserverService,
@@ -67,6 +69,7 @@ import { SuggestionEngineService } from './services/suggestion-engine.service';
 		PatternDetectorService,
 		SuggestionEngineService,
 		HeartbeatService,
+		AnomalyDetectorEvaluator,
 	],
 })
 export class BuddyModule implements OnModuleInit {
@@ -76,10 +79,12 @@ export class BuddyModule implements OnModuleInit {
 		private readonly extensionsService: ExtensionsService,
 		@Inject(HeartbeatService) private readonly heartbeatService: HeartbeatService,
 		@Inject(PatternDetectorService) private readonly patternDetector: PatternDetectorService,
+		@Inject(AnomalyDetectorEvaluator) private readonly anomalyDetector: AnomalyDetectorEvaluator,
 	) {}
 
 	onModuleInit() {
 		this.heartbeatService.registerEvaluator(this.patternDetector);
+		this.heartbeatService.registerEvaluator(this.anomalyDetector);
 		this.modulesMapperService.registerMapping<BuddyConfigModel, UpdateBuddyConfigDto>({
 			type: BUDDY_MODULE_NAME,
 			class: BuddyConfigModel,
