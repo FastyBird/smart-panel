@@ -1,9 +1,17 @@
 import { Injectable, Logger } from '@nestjs/common';
 
 import { IntentType } from '../../intents/intents.constants';
-import { PATTERN_LOOKBACK_DAYS, PATTERN_MIN_OCCURRENCES, PATTERN_TIME_WINDOW_MINUTES } from '../buddy.constants';
+import {
+	PATTERN_LOOKBACK_DAYS,
+	PATTERN_MIN_OCCURRENCES,
+	PATTERN_TIME_WINDOW_MINUTES,
+	SuggestionType,
+} from '../buddy.constants';
+import { formatIntentLabel, formatTimeLabel } from '../buddy.utils';
 
 import { ActionObserverService, ActionRecord } from './action-observer.service';
+import { BuddyContext } from './buddy-context.service';
+import { EvaluatorResult, HeartbeatEvaluator } from './heartbeat.types';
 
 export interface DetectedPattern {
 	intentType: IntentType;
@@ -27,11 +35,58 @@ interface TimeCluster {
 	avgMinute: number;
 }
 
+/**
+ * Convert a detected pattern + resolved space name into a heartbeat evaluator result.
+ * Single source of truth for the pattern → suggestion mapping (type, title, reason, metadata).
+ */
+export function patternToEvaluatorResult(pattern: DetectedPattern, spaceName: string): EvaluatorResult {
+	const intentLabel = formatIntentLabel(pattern.intentType);
+	const timeLabel = formatTimeLabel(pattern.timeOfDay.hour, pattern.timeOfDay.minute);
+
+	return {
+		type: SuggestionType.PATTERN_SCENE_CREATE,
+		title: 'Create a scene for this?',
+		reason: `You ${intentLabel} in ${spaceName} around ${timeLabel} regularly`,
+		spaceId: pattern.spaceId,
+		metadata: {
+			intentType: pattern.intentType,
+			timeOfDay: pattern.timeOfDay,
+			occurrences: pattern.occurrences,
+			confidence: pattern.confidence,
+		},
+	};
+}
+
 @Injectable()
-export class PatternDetectorService {
+export class PatternDetectorService implements HeartbeatEvaluator {
+	readonly name = 'PatternDetector';
 	private readonly logger = new Logger(PatternDetectorService.name);
+	private static readonly CACHE_TTL_MS = 5000;
+	private patternCache: DetectedPattern[] | null = null;
+	private patternCacheTime = 0;
 
 	constructor(private readonly actionObserver: ActionObserverService) {}
+
+	/**
+	 * HeartbeatEvaluator implementation.
+	 * Detects patterns filtered to the space in the provided context.
+	 * Uses a short TTL cache so that a heartbeat cycle evaluating N spaces
+	 * only runs the full pattern scan once.
+	 */
+	evaluate(context: BuddyContext): Promise<EvaluatorResult[]> {
+		const patterns = this.getPatternsCached();
+		const spaceIds = new Set(context.spaces.map((s) => s.id));
+
+		const results = patterns
+			.filter((p) => spaceIds.has(p.spaceId))
+			.map((p) => {
+				const spaceName = context.spaces.find((s) => s.id === p.spaceId)?.name ?? 'unknown space';
+
+				return patternToEvaluatorResult(p, spaceName);
+			});
+
+		return Promise.resolve(results);
+	}
 
 	/**
 	 * Analyse the action history buffer and detect repeated patterns.
@@ -74,6 +129,25 @@ export class PatternDetectorService {
 		this.logger.debug(`Detected ${patterns.length} pattern(s) from ${recentActions.length} recent actions`);
 
 		return patterns;
+	}
+
+	/**
+	 * Return cached detectPatterns() results within the TTL window.
+	 * Avoids re-scanning the full action buffer when evaluate() is
+	 * called multiple times in rapid succession (e.g. once per space
+	 * during a heartbeat cycle).
+	 */
+	private getPatternsCached(): DetectedPattern[] {
+		const now = Date.now();
+
+		if (this.patternCache !== null && now - this.patternCacheTime < PatternDetectorService.CACHE_TTL_MS) {
+			return this.patternCache;
+		}
+
+		this.patternCache = this.detectPatterns();
+		this.patternCacheTime = now;
+
+		return this.patternCache;
 	}
 
 	/**
