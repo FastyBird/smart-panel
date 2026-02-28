@@ -36,12 +36,10 @@ const props = defineProps<ITilePreviewProps>();
 
 const { t } = useI18n();
 
-const sceneId = computed<string | null>((): string | null => {
-	return (props.tile as { scene?: string }).scene ?? null;
-});
+const sceneId = (props.tile as { scene?: string }).scene ?? null;
 
-const { scene, fetchScene } = useScene({ id: sceneId.value ?? '' });
-const { icon: categoryIcon } = useSceneIcon({ id: sceneId.value ?? '' });
+const { scene, fetchScene } = useScene({ id: sceneId ?? '' });
+const { icon: categoryIcon } = useSceneIcon({ id: sceneId ?? '' });
 
 const tileIcon = computed<string | null>((): string | null => {
 	return (props.tile as { icon?: string | null }).icon ?? null;
@@ -60,7 +58,7 @@ const iconSize = computed<number>((): number => {
 });
 
 onBeforeMount((): void => {
-	if (sceneId.value) {
+	if (sceneId) {
 		fetchScene().catch((): void => {
 			// Silently fail - preview will show fallback
 		});

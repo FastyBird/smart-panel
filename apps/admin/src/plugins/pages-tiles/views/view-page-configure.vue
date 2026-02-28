@@ -81,7 +81,7 @@
 		:displays="applicableDisplays"
 		:selected-display="selectedDisplay"
 		@select-display="onDisplaySelect"
-		@add-tile-of-type="onTileAddOfType"
+		@add-tile-of-type="onTileAdd"
 		@add-page-data-source="onPageDataSourceAdd"
 		@edit-tile="onTileEdit"
 		@tile-detail="onTileDetail"
@@ -254,45 +254,19 @@ const onSave = (): void => {
 	remotePageSubmit.value = true;
 };
 
-const onTileAdd = (): void => {
-	if (isLGDevice.value) {
-		router.replace({
-			name: RouteNames.PAGE_ADD_TILE,
-			params: {
-				id: props.page.id,
-			},
-		});
-	} else {
-		router.push({
-			name: RouteNames.PAGE_ADD_TILE,
-			params: {
-				id: props.page.id,
-			},
-		});
-	}
-};
+const onTileAdd = (tileType?: string): void => {
+	const location = {
+		name: RouteNames.PAGE_ADD_TILE,
+		params: {
+			id: props.page.id,
+		},
+		...(tileType ? { query: { tileType } } : {}),
+	};
 
-const onTileAddOfType = (tileType: string): void => {
 	if (isLGDevice.value) {
-		router.replace({
-			name: RouteNames.PAGE_ADD_TILE,
-			params: {
-				id: props.page.id,
-			},
-			query: {
-				tileType,
-			},
-		});
+		router.replace(location);
 	} else {
-		router.push({
-			name: RouteNames.PAGE_ADD_TILE,
-			params: {
-				id: props.page.id,
-			},
-			query: {
-				tileType,
-			},
-		});
+		router.push(location);
 	}
 };
 

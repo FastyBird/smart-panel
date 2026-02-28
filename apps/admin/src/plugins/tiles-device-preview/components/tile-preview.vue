@@ -53,12 +53,10 @@ const props = defineProps<ITilePreviewProps>();
 
 const { t } = useI18n();
 
-const deviceId = computed<string | null>((): string | null => {
-	return (props.tile as { device?: string }).device ?? null;
-});
+const deviceId = (props.tile as { device?: string }).device ?? null;
 
-const { device, fetchDevice } = useDevice({ id: deviceId.value ?? '' });
-const { icon: categoryIcon } = useDeviceIcon({ id: deviceId.value ?? '' });
+const { device, fetchDevice } = useDevice({ id: deviceId ?? '' });
+const { icon: categoryIcon } = useDeviceIcon({ id: deviceId ?? '' });
 
 const tileIcon = computed<string | null>((): string | null => {
 	return (props.tile as { icon?: string | null }).icon ?? null;
@@ -106,7 +104,7 @@ const iconSize = computed<number>((): number => {
 });
 
 onBeforeMount((): void => {
-	if (deviceId.value) {
+	if (deviceId) {
 		fetchDevice().catch((): void => {
 			// Silently fail - preview will show fallback
 		});
