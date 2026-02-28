@@ -447,7 +447,6 @@ const { firstLoad: tilesFirstLoad, semaphore: tilesSemaphore } = storeToRefs(til
 interface ITileStoreAccessor {
 	tiles: ReturnType<typeof computed<ITile[]>>;
 	areLoading: ReturnType<typeof computed<boolean>>;
-	loaded: ReturnType<typeof computed<boolean>>;
 	fetchTiles: () => Promise<void>;
 }
 
@@ -470,26 +469,14 @@ const ensureTileStore = (cardId: string): boolean => {
 	const tiles = computed<ITile[]>((): ITile[] => tilesStore.findForParent('card', cardId));
 
 	const areLoading = computed<boolean>((): boolean => {
-		if (tilesSemaphore.value.fetching.items.includes(cardId)) {
-			return true;
-		}
-
-		if (tilesFirstLoad.value.includes(cardId)) {
-			return false;
-		}
-
 		return tilesSemaphore.value.fetching.items.includes(cardId);
-	});
-
-	const loaded = computed<boolean>((): boolean => {
-		return tilesFirstLoad.value.includes(cardId);
 	});
 
 	const fetchTiles = async (): Promise<void> => {
 		await tilesStore.fetch({ parent: { type: 'card', id: cardId } });
 	};
 
-	tilesByCard.set(cardId, { tiles, areLoading, loaded, fetchTiles });
+	tilesByCard.set(cardId, { tiles, areLoading, fetchTiles });
 
 	tileActionsByCard.set(cardId, {
 		findById: (parent: string, id: ITile['id']): ITile | null => tilesStore.findById(parent, id),
@@ -733,6 +720,7 @@ const initializeGrids = (): void => {
 
 	suppressMarkChanged.value = true;
 	destroyGrids();
+	removedTiles.clear();
 
 	const cardsToInit = sortedCards.value.filter((card) => getCardTiles(card.id).length > 0);
 
@@ -768,7 +756,9 @@ const addTilesToCardGrids = (): void => {
 
 		if (!grid) {
 			// Card just got tiles but has no grid yet — initialize it
+			suppressMarkChanged.value = true;
 			initializeCardGrid(card);
+			suppressMarkChanged.value = false;
 
 			continue;
 		}
@@ -777,6 +767,8 @@ const addTilesToCardGrids = (): void => {
 		const tileSet = cardTileSets.get(card.id);
 
 		if (!tileSet) continue;
+
+		suppressMarkChanged.value = true;
 
 		for (const tile of tiles) {
 			if (removedTiles.has(tile.id) || tileSet.has(tile.id)) continue;
@@ -789,6 +781,8 @@ const addTilesToCardGrids = (): void => {
 				h: tile.rowSpan,
 			});
 		}
+
+		suppressMarkChanged.value = false;
 	}
 };
 
@@ -812,10 +806,31 @@ onBeforeMount((): void => {
 	});
 });
 
+const updateCellSizes = (): void => {
+	for (const [, grid] of cardGrids) {
+		const el = grid.el;
+
+		if (el) {
+			const width = el.clientWidth;
+			const cols = grid.getColumn();
+			const size = width / cols;
+			grid.cellHeight(size);
+		}
+	}
+};
+
+const onResize = (): void => {
+	nextTick(() => {
+		updateCellSizes();
+	});
+};
+
 onMounted((): void => {
 	nextTick(() => {
 		initializeGrids();
 	});
+
+	window.addEventListener('resize', onResize);
 
 	initTimeout = setTimeout(() => {
 		initialized.value = true;
@@ -823,6 +838,7 @@ onMounted((): void => {
 });
 
 onBeforeUnmount((): void => {
+	window.removeEventListener('resize', onResize);
 	clearTimeout(changeTimeout);
 	clearTimeout(initTimeout);
 	destroyGrids();
@@ -1015,17 +1031,7 @@ watch(
 	(): Record<string, string> => props.gridCardStyle,
 	(): void => {
 		nextTick(() => {
-			// Recalculate cell sizes for all grids
-			for (const [, grid] of cardGrids) {
-				const el = grid.el;
-
-				if (el) {
-					const width = el.clientWidth;
-					const cols = grid.getColumn();
-					const size = width / cols;
-					grid.cellHeight(size);
-				}
-			}
+			updateCellSizes();
 		});
 	}
 );

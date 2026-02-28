@@ -286,6 +286,10 @@ onBeforeMount(async (): Promise<void> => {
 			}
 		})
 		.catch((error: unknown): void => {
+			if (error instanceof DashboardException) {
+				throw error;
+			}
+
 			const err = error as Error;
 
 			if (err instanceof DashboardApiException && err.code === 404) {

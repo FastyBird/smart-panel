@@ -171,27 +171,29 @@
 			</app-bar>
 		</template>
 
-		<view-error>
-			<template #icon>
-				<icon icon="mdi:devices" />
-			</template>
-			<template #message>
-				{{ t('pagesCardsPlugin.messages.misc.requestError') }}
-			</template>
+		<template v-if="showDrawer">
+			<view-error>
+				<template #icon>
+					<icon icon="mdi:devices" />
+				</template>
+				<template #message>
+					{{ t('pagesCardsPlugin.messages.misc.requestError') }}
+				</template>
 
-			<suspense>
-				<router-view
-					:key="`${props.page.id}-${page?.id}`"
-					v-slot="{ Component }"
-				>
-					<component
-						:is="Component"
-						v-model:remote-form-changed="remoteFormChanged"
-						:page="page"
-					/>
-				</router-view>
-			</suspense>
-		</view-error>
+				<suspense>
+					<router-view
+						:key="`${props.page.id}-${page?.id}`"
+						v-slot="{ Component }"
+					>
+						<component
+							:is="Component"
+							v-model:remote-form-changed="remoteFormChanged"
+							:page="page"
+						/>
+					</router-view>
+				</suspense>
+			</view-error>
+		</template>
 	</el-dialog>
 </template>
 
