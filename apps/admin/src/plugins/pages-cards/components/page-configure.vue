@@ -21,7 +21,7 @@
 								class="flex-shrink-0"
 								color="var(--el-text-color-regular)"
 							>
-								<icon :icon="props.page.icon || 'mdi:view-dashboard-variant'" />
+								<icon :icon="formatIcon(props.page.icon, 'mdi:view-dashboard-variant')" />
 							</el-icon>
 							<el-text
 								size="small"
@@ -153,7 +153,7 @@
 									:size="14"
 									color="var(--el-text-color-regular)"
 								>
-									<icon :icon="card.icon" />
+									<icon :icon="formatIcon(card.icon, '')" />
 								</el-icon>
 								<el-text
 									size="small"
@@ -298,7 +298,7 @@
 										v-if="card.icon"
 										:size="14"
 									>
-										<icon :icon="card.icon" />
+										<icon :icon="formatIcon(card.icon, '')" />
 									</el-icon>
 									<el-text
 										size="small"
@@ -402,6 +402,12 @@ const getDataSourceIcon = (ds: IDataSource): string | null => {
 	const record = ds as Record<string, unknown>;
 
 	return typeof record.icon === 'string' && record.icon ? record.icon : null;
+};
+
+const formatIcon = (icon: string | null, fallback: string): string => {
+	if (!icon) return fallback;
+
+	return icon.includes(':') ? icon : `mdi:${icon}`;
 };
 
 const getDataSourceLabel = (ds: IDataSource): string => {
