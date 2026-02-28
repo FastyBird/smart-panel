@@ -129,7 +129,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { onBeforeMount, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { useRouter } from 'vue-router';
@@ -163,6 +163,15 @@ const remoteFormResult = ref<FormResultType>(FormResult.NONE);
 const remoteFormReset = ref<boolean>(false);
 const remoteFormChanged = ref<boolean>(false);
 const loadError = ref<boolean>(false);
+
+onBeforeMount((): void => {
+	fetchConfigModule().catch((error: unknown): void => {
+		const err = error as Error;
+
+		loadError.value = true;
+		console.error('Failed to fetch buddy config:', err);
+	});
+});
 
 const onSave = (): void => {
 	remoteFormSubmit.value = true;

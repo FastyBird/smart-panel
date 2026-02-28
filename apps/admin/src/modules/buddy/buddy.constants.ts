@@ -13,15 +13,6 @@ export enum RouteNames {
 	BUDDY_SETTINGS = 'buddy_module-settings',
 }
 
-export const FormResult = {
-	NONE: 'none',
-	WORKING: 'working',
-	OK: 'ok',
-	ERROR: 'error',
-} as const;
-
-export type FormResultType = (typeof FormResult)[keyof typeof FormResult];
-
 export enum LlmProvider {
 	CLAUDE = 'claude',
 	OPENAI = 'openai',
