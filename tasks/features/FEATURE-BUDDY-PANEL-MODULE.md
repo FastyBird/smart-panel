@@ -5,7 +5,7 @@ Type: feature
 Scope: panel
 Size: medium
 Parent: EPIC-BUDDY-MODULE
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -55,8 +55,8 @@ I want a chat drawer where I can type questions and see responses, plus dismissi
 
 ## 4. Acceptance criteria
 
-- [ ] `buddy` module registered in panel module initialisation (GetIt)
-- [ ] `BuddyRepository` makes API calls to all buddy backend endpoints:
+- [x] `buddy` module registered in panel module initialisation (GetIt)
+- [x] `BuddyRepository` makes API calls to all buddy backend endpoints:
   - List conversations
   - Create conversation
   - Get conversation with messages
@@ -64,24 +64,24 @@ I want a chat drawer where I can type questions and see responses, plus dismissi
   - Delete conversation
   - List suggestions
   - Submit suggestion feedback
-- [ ] `BuddyRepository` subscribes to WebSocket events:
+- [x] `BuddyRepository` subscribes to WebSocket events:
   - `BuddyModule.Suggestion.Created` → adds suggestion to active list
   - `BuddyModule.Conversation.MessageReceived` → adds message to active conversation
-- [ ] `BuddyChatDrawer` is a sliding panel (from right edge) with:
+- [x] `BuddyChatDrawer` is a sliding panel (from right edge) with:
   - Header with title ("Buddy") and close button
   - Scrollable message list (newest at bottom, auto-scroll on new message)
   - Text input field with send button
   - Loading indicator while waiting for AI response
   - Empty state when no messages ("Ask me anything about your home!")
-- [ ] `MessageBubble` renders user messages (right-aligned, primary color) and assistant messages (left-aligned, surface color) with timestamps
-- [ ] `BuddySuggestionCard` displays: title, reason, accept button, dismiss button
+- [x] `MessageBubble` renders user messages (right-aligned, primary color) and assistant messages (left-aligned, surface color) with timestamps
+- [x] `BuddySuggestionCard` displays: title, reason, accept button, dismiss button
   - Accept calls `POST /suggestions/:id/feedback` with `applied`
   - Dismiss calls `POST /suggestions/:id/feedback` with `dismissed`
   - Card animates out on feedback
-- [ ] `BuddySuggestionBadge` shows count of active suggestions (0 = hidden)
-- [ ] Buddy drawer is accessible from the deck UI (FAB button or navigation entry)
-- [ ] When AI provider is not configured, chat input shows disabled state with message "AI provider not configured"
-- [ ] Handles API errors gracefully (network errors, timeouts) with user-friendly messages
+- [x] `BuddySuggestionBadge` shows count of active suggestions (0 = hidden)
+- [x] Buddy drawer is accessible from the deck UI (FAB button or navigation entry)
+- [x] When AI provider is not configured, chat input shows disabled state with message "AI provider not configured"
+- [x] Handles API errors gracefully (network errors, timeouts) with user-friendly messages
 
 ## 5. Example scenarios
 
