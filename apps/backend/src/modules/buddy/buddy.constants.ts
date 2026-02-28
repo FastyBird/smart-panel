@@ -12,12 +12,7 @@ export enum EventType {
 	CONVERSATION_MESSAGE_RECEIVED = 'BuddyModule.Conversation.MessageReceived',
 }
 
-export enum LlmProvider {
-	CLAUDE = 'claude',
-	OPENAI = 'openai',
-	OLLAMA = 'ollama',
-	NONE = 'none',
-}
+export const LLM_PROVIDER_NONE = 'none';
 
 export enum MessageRole {
 	USER = 'user',

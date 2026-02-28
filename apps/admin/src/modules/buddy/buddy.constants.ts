@@ -13,9 +13,4 @@ export enum RouteNames {
 	BUDDY_SETTINGS = 'buddy_module-settings',
 }
 
-export enum LlmProvider {
-	CLAUDE = 'claude',
-	OPENAI = 'openai',
-	OLLAMA = 'ollama',
-	NONE = 'none',
-}
+export const LLM_PROVIDER_NONE = 'none';

@@ -24,67 +24,26 @@
 			</el-select>
 		</el-form-item>
 
-		<el-form-item
-			v-if="model.provider !== 'none' && model.provider !== 'ollama'"
-			:label="t('buddyModule.fields.config.apiKey.title')"
-			prop="apiKey"
-		>
-			<el-input
-				v-model="model.apiKey"
-				:placeholder="t('buddyModule.fields.config.apiKey.placeholder')"
-				:type="showApiKey ? 'text' : 'password'"
-				name="apiKey"
-				clearable
-			>
-				<template #suffix>
-					<el-icon
-						class="cursor-pointer"
-						@click="showApiKey = !showApiKey"
-					>
-						<icon :icon="showApiKey ? 'mdi:eye-off' : 'mdi:eye'" />
-					</el-icon>
-				</template>
-			</el-input>
-		</el-form-item>
-
-		<el-form-item
+		<el-alert
 			v-if="model.provider !== 'none'"
-			:label="t('buddyModule.fields.config.model.title')"
-			prop="model"
+			type="info"
+			show-icon
+			:closable="false"
+			style="margin-bottom: 18px"
 		>
-			<el-input
-				v-model="model.model"
-				:placeholder="modelPlaceholder"
-				name="model"
-				clearable
-			/>
-		</el-form-item>
-
-		<el-form-item
-			v-if="model.provider === 'ollama'"
-			:label="t('buddyModule.fields.config.ollamaUrl.title')"
-			prop="ollamaUrl"
-		>
-			<el-input
-				v-model="model.ollamaUrl"
-				:placeholder="t('buddyModule.fields.config.ollamaUrl.placeholder')"
-				name="ollamaUrl"
-				clearable
-			/>
-		</el-form-item>
+			{{ t('buddyModule.texts.pluginConfigHint') }}
+		</el-alert>
 	</el-form>
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue';
+import { computed, reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElForm, ElFormItem, ElIcon, ElInput, ElOption, ElSelect, type FormRules } from 'element-plus';
-
-import { Icon } from '@iconify/vue';
+import { ElAlert, ElForm, ElFormItem, ElOption, ElSelect, type FormRules } from 'element-plus';
 
 import { FormResult, type FormResultType, Layout, useConfigModuleEditForm } from '../../config';
-import { LlmProvider } from '../buddy.constants';
+import { LLM_PROVIDER_NONE } from '../buddy.constants';
 import type { IBuddyConfigEditForm } from '../schemas/config.types';
 
 import type { IBuddyConfigFormProps } from './buddy-config-form.types';
@@ -117,27 +76,12 @@ const { formEl, model, formChanged, submit, formResult } = useConfigModuleEditFo
 	},
 });
 
-const showApiKey = ref<boolean>(false);
-
 const providerOptions = computed(() => [
-	{ value: LlmProvider.NONE, label: t('buddyModule.fields.config.provider.options.none') },
-	{ value: LlmProvider.CLAUDE, label: t('buddyModule.fields.config.provider.options.claude') },
-	{ value: LlmProvider.OPENAI, label: t('buddyModule.fields.config.provider.options.openai') },
-	{ value: LlmProvider.OLLAMA, label: t('buddyModule.fields.config.provider.options.ollama') },
+	{ value: LLM_PROVIDER_NONE, label: t('buddyModule.fields.config.provider.options.none') },
+	{ value: 'buddy-openai-plugin', label: t('buddyModule.fields.config.provider.options.openai') },
+	{ value: 'buddy-claude-plugin', label: t('buddyModule.fields.config.provider.options.claude') },
+	{ value: 'buddy-ollama-plugin', label: t('buddyModule.fields.config.provider.options.ollama') },
 ]);
-
-const modelPlaceholder = computed<string>((): string => {
-	switch (model.provider) {
-		case LlmProvider.CLAUDE:
-			return 'claude-sonnet-4-5-20250514';
-		case LlmProvider.OPENAI:
-			return 'gpt-4o';
-		case LlmProvider.OLLAMA:
-			return 'llama3';
-		default:
-			return '';
-	}
-});
 
 const rules = reactive<FormRules<IBuddyConfigEditForm>>({});
 

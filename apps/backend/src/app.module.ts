@@ -48,6 +48,12 @@ import { UsersModule } from './modules/users/users.module';
 import { WEATHER_MODULE_PREFIX } from './modules/weather/weather.constants';
 import { WeatherModule } from './modules/weather/weather.module';
 import { WebsocketModule } from './modules/websocket/websocket.module';
+import { BUDDY_CLAUDE_PLUGIN_PREFIX } from './plugins/buddy-claude/buddy-claude.constants';
+import { BuddyClaudePlugin } from './plugins/buddy-claude/buddy-claude.plugin';
+import { BUDDY_OLLAMA_PLUGIN_PREFIX } from './plugins/buddy-ollama/buddy-ollama.constants';
+import { BuddyOllamaPlugin } from './plugins/buddy-ollama/buddy-ollama.plugin';
+import { BUDDY_OPENAI_PLUGIN_PREFIX } from './plugins/buddy-openai/buddy-openai.constants';
+import { BuddyOpenaiPlugin } from './plugins/buddy-openai/buddy-openai.plugin';
 import { DataSourcesDeviceChannelPlugin } from './plugins/data-sources-device-channel/data-sources-device-channel.plugin';
 import { DataSourcesWeatherPlugin } from './plugins/data-sources-weather/data-sources-weather.plugin';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX } from './plugins/devices-home-assistant/devices-home-assistant.constants';
@@ -255,6 +261,18 @@ export class AppModule {
 								path: WEATHER_OPENWEATHERMAP_ONECALL_PLUGIN_PREFIX,
 								module: WeatherOpenweathermapOnecallPlugin,
 							},
+							{
+								path: BUDDY_OPENAI_PLUGIN_PREFIX,
+								module: BuddyOpenaiPlugin,
+							},
+							{
+								path: BUDDY_CLAUDE_PLUGIN_PREFIX,
+								module: BuddyClaudePlugin,
+							},
+							{
+								path: BUDDY_OLLAMA_PLUGIN_PREFIX,
+								module: BuddyOllamaPlugin,
+							},
 							...pluginRoutes,
 						],
 					},
@@ -300,6 +318,9 @@ export class AppModule {
 				LoggerRotatingFilePlugin,
 				WeatherOpenweathermapPlugin,
 				WeatherOpenweathermapOnecallPlugin,
+				BuddyOpenaiPlugin,
+				BuddyClaudePlugin,
+				BuddyOllamaPlugin,
 				ScenesLocalPlugin,
 				ServeStaticModule.forRootAsync({
 					imports: [NestConfigModule], // Ensure ConfigModule is available
