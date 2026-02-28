@@ -1,4 +1,4 @@
-import { Module, OnModuleInit, forwardRef } from '@nestjs/common';
+import { Inject, Module, OnModuleInit, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { ConfigModule } from '../config/config.module';
@@ -26,6 +26,7 @@ import { BuddyConfigModel } from './models/config.model';
 import { ActionObserverService } from './services/action-observer.service';
 import { BuddyContextService } from './services/buddy-context.service';
 import { BuddyConversationService } from './services/buddy-conversation.service';
+import { HeartbeatService } from './services/heartbeat.service';
 import { LlmProviderService } from './services/llm-provider.service';
 import { PatternDetectorService } from './services/pattern-detector.service';
 import { SuggestionEngineService } from './services/suggestion-engine.service';
@@ -56,6 +57,7 @@ import { SuggestionEngineService } from './services/suggestion-engine.service';
 		BuddyConversationService,
 		PatternDetectorService,
 		SuggestionEngineService,
+		HeartbeatService,
 	],
 	exports: [
 		ActionObserverService,
@@ -64,6 +66,7 @@ import { SuggestionEngineService } from './services/suggestion-engine.service';
 		BuddyConversationService,
 		PatternDetectorService,
 		SuggestionEngineService,
+		HeartbeatService,
 	],
 })
 export class BuddyModule implements OnModuleInit {
@@ -71,9 +74,12 @@ export class BuddyModule implements OnModuleInit {
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly modulesMapperService: ModulesTypeMapperService,
 		private readonly extensionsService: ExtensionsService,
+		@Inject(HeartbeatService) private readonly heartbeatService: HeartbeatService,
+		@Inject(PatternDetectorService) private readonly patternDetector: PatternDetectorService,
 	) {}
 
 	onModuleInit() {
+		this.heartbeatService.registerEvaluator(this.patternDetector);
 		this.modulesMapperService.registerMapping<BuddyConfigModel, UpdateBuddyConfigDto>({
 			type: BUDDY_MODULE_NAME,
 			class: BuddyConfigModel,

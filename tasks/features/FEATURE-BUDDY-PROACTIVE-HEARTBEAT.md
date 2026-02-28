@@ -5,7 +5,7 @@ Type: feature
 Scope: backend
 Size: medium
 Parent: EPIC-BUDDY-MODULE
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -43,15 +43,15 @@ I want the buddy to periodically evaluate the home state and generate suggestion
 
 ## 4. Acceptance criteria
 
-- [ ] `HeartbeatService` runs periodically using `@nestjs/schedule` `@Interval` decorator
-- [ ] Interval is configurable via buddy config (default 300000ms = 5 min)
-- [ ] Heartbeat evaluates all spaces with `suggestionsEnabled = true`
-- [ ] `HeartbeatEvaluator` interface defined with `evaluate(context: BuddyContext): Promise<EvaluatorResult[]>`
-- [ ] Evaluators register with `HeartbeatService.registerEvaluator(evaluator: HeartbeatEvaluator)`
-- [ ] `PatternDetectorService` refactored to implement `HeartbeatEvaluator` (runs as part of heartbeat)
-- [ ] Heartbeat skips execution when buddy module is disabled
-- [ ] Heartbeat handles evaluator errors gracefully (log + skip, don't crash the cycle)
-- [ ] Unit tests for heartbeat cycle logic
+- [x] `HeartbeatService` runs periodically using `@nestjs/schedule` `SchedulerRegistry` with dynamic interval
+- [x] Interval is configurable via buddy config (default 300000ms = 5 min)
+- [x] Heartbeat evaluates all spaces with `suggestionsEnabled = true`
+- [x] `HeartbeatEvaluator` interface defined with `evaluate(context: BuddyContext): Promise<EvaluatorResult[]>`
+- [x] Evaluators register with `HeartbeatService.registerEvaluator(evaluator: HeartbeatEvaluator)`
+- [x] `PatternDetectorService` refactored to implement `HeartbeatEvaluator` (runs as part of heartbeat)
+- [x] Heartbeat skips execution when buddy module is disabled
+- [x] Heartbeat handles evaluator errors gracefully (log + skip, don't crash the cycle)
+- [x] Unit tests for heartbeat cycle logic
 
 ## 5. Example scenarios
 

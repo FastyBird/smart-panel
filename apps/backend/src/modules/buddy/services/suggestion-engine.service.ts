@@ -15,7 +15,8 @@ import {
 } from '../buddy.constants';
 import { BuddySuggestionNotFoundException } from '../buddy.exceptions';
 
-import { DetectedPattern, PatternDetectorService } from './pattern-detector.service';
+import { EvaluatorResult } from './heartbeat.types';
+import { DetectedPattern, PatternDetectorService, patternToEvaluatorResult } from './pattern-detector.service';
 
 export interface BuddySuggestion {
 	id: string;
@@ -85,26 +86,17 @@ export class SuggestionEngineService implements OnModuleDestroy {
 			}
 
 			const spaceName = await this.resolveSpaceName(pattern.spaceId);
-			const intentLabel = this.formatIntentType(pattern.intentType);
-			const timeLabel = this.formatTime(pattern.timeOfDay.hour, pattern.timeOfDay.minute);
 
 			// Re-check after async gap to prevent duplicates
 			if (this.hasSuggestionForPattern(pattern)) {
 				continue;
 			}
 
+			const result = patternToEvaluatorResult(pattern, spaceName);
+
 			const suggestion: BuddySuggestion = {
 				id: uuid(),
-				type: SuggestionType.PATTERN_SCENE_CREATE,
-				title: 'Create a scene for this?',
-				reason: `You ${intentLabel} in ${spaceName} around ${timeLabel} regularly`,
-				spaceId: pattern.spaceId,
-				metadata: {
-					intentType: pattern.intentType,
-					timeOfDay: pattern.timeOfDay,
-					occurrences: pattern.occurrences,
-					confidence: pattern.confidence,
-				},
+				...result,
 				createdAt: new Date(),
 				expiresAt: new Date(Date.now() + SUGGESTION_EXPIRY_MS),
 			};
@@ -177,6 +169,69 @@ export class SuggestionEngineService implements OnModuleDestroy {
 	}
 
 	/**
+	 * Create suggestions from heartbeat evaluator results.
+	 * Applies cooldown and duplicate checking before creating each suggestion.
+	 */
+	createFromEvaluatorResults(results: EvaluatorResult[]): BuddySuggestion[] {
+		const created: BuddySuggestion[] = [];
+
+		for (const result of results) {
+			if (buddyCooldowns.isOnCooldown(result.spaceId, result.type)) {
+				continue;
+			}
+
+			if (this.hasDuplicateSuggestion(result.spaceId, result.type, result.metadata)) {
+				continue;
+			}
+
+			const suggestion: BuddySuggestion = {
+				id: uuid(),
+				type: result.type,
+				title: result.title,
+				reason: result.reason,
+				spaceId: result.spaceId,
+				metadata: result.metadata,
+				createdAt: new Date(),
+				expiresAt: new Date(Date.now() + SUGGESTION_EXPIRY_MS),
+			};
+
+			this.suggestions.set(suggestion.id, suggestion);
+			created.push(suggestion);
+
+			this.eventEmitter.emit(EventType.SUGGESTION_CREATED, suggestion);
+
+			this.logger.debug(`Created suggestion from evaluator id=${suggestion.id}: "${suggestion.reason}"`);
+		}
+
+		return created;
+	}
+
+	/**
+	 * Check if a non-expired duplicate suggestion already exists (same type + space + metadata match).
+	 */
+	private hasDuplicateSuggestion(spaceId: string, type: SuggestionType, metadata: Record<string, unknown>): boolean {
+		const now = Date.now();
+
+		for (const suggestion of this.suggestions.values()) {
+			if (suggestion.expiresAt.getTime() <= now) {
+				continue;
+			}
+
+			if (suggestion.spaceId === spaceId && suggestion.type === type) {
+				if (type === SuggestionType.PATTERN_SCENE_CREATE && suggestion.metadata.intentType === metadata.intentType) {
+					return true;
+				}
+
+				if (type !== SuggestionType.PATTERN_SCENE_CREATE) {
+					return true;
+				}
+			}
+		}
+
+		return false;
+	}
+
+	/**
 	 * Check if a non-expired suggestion already exists for a given pattern (same intent type + space).
 	 */
 	private hasSuggestionForPattern(pattern: DetectedPattern): boolean {
@@ -225,43 +280,5 @@ export class SuggestionEngineService implements OnModuleDestroy {
 		} catch {
 			return 'unknown space';
 		}
-	}
-
-	/**
-	 * Convert an intent type enum value to a human-readable action label.
-	 */
-	private formatIntentType(intentType: string): string {
-		const labels: Record<string, string> = {
-			'light.toggle': 'toggle lights',
-			'light.setBrightness': 'adjust brightness',
-			'light.setColor': 'change light color',
-			'light.setColorTemp': 'change color temperature',
-			'light.setWhite': 'set white light',
-			'device.setProperty': 'adjust a device',
-			'scene.run': 'run a scene',
-			'space.lighting.on': 'turn on lights',
-			'space.lighting.off': 'turn off lights',
-			'space.lighting.setMode': 'change lighting mode',
-			'space.climate.setMode': 'change climate mode',
-			'space.climate.setpointSet': 'adjust thermostat',
-			'space.covers.open': 'open covers',
-			'space.covers.close': 'close covers',
-		};
-
-		return labels[intentType] ?? intentType;
-	}
-
-	/**
-	 * Format a time-of-day into a readable string like "11 PM" or "2:30 PM".
-	 */
-	private formatTime(hour: number, minute: number): string {
-		const period = hour >= 12 ? 'PM' : 'AM';
-		const displayHour = hour % 12 || 12;
-
-		if (minute === 0) {
-			return `${displayHour} ${period}`;
-		}
-
-		return `${displayHour}:${minute.toString().padStart(2, '0')} ${period}`;
 	}
 }
