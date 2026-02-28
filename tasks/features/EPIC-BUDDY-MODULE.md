@@ -126,7 +126,7 @@ Inspired by the [OpenClaw](https://github.com/openclaw/openclaw) project's proac
 - [x] Anomaly detection: sensor drift (temperature deviation > threshold), unusual device activity
 - [x] Energy suggestions: excess solar, high consumption alerts
 - [x] Conflict detection: heating + open window, AC + open door, lights on in empty room
-- [ ] Scene creation suggestions: repeated action patterns → "Create a scene for this?"
+- [x] Scene creation suggestions: repeated action patterns → "Create a scene for this?"
 - [ ] Panel: proactive suggestion notifications in buddy drawer
 
 ### Phase 3 (Voice)

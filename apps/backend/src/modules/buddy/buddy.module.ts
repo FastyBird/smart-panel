@@ -32,6 +32,7 @@ import { EnergyEvaluator } from './services/energy-evaluator.service';
 import { HeartbeatService } from './services/heartbeat.service';
 import { LlmProviderService } from './services/llm-provider.service';
 import { PatternDetectorService } from './services/pattern-detector.service';
+import { SceneSuggestionEvaluator } from './services/scene-suggestion-evaluator.service';
 import { SuggestionEngineService } from './services/suggestion-engine.service';
 
 @ApiTag({
@@ -64,6 +65,7 @@ import { SuggestionEngineService } from './services/suggestion-engine.service';
 		AnomalyDetectorEvaluator,
 		EnergyEvaluator,
 		ConflictDetectorEvaluator,
+		SceneSuggestionEvaluator,
 	],
 	exports: [
 		ActionObserverService,
@@ -76,6 +78,7 @@ import { SuggestionEngineService } from './services/suggestion-engine.service';
 		AnomalyDetectorEvaluator,
 		EnergyEvaluator,
 		ConflictDetectorEvaluator,
+		SceneSuggestionEvaluator,
 	],
 })
 export class BuddyModule implements OnModuleInit {
@@ -88,6 +91,7 @@ export class BuddyModule implements OnModuleInit {
 		@Inject(AnomalyDetectorEvaluator) private readonly anomalyDetector: AnomalyDetectorEvaluator,
 		@Inject(EnergyEvaluator) private readonly energyEvaluator: EnergyEvaluator,
 		@Inject(ConflictDetectorEvaluator) private readonly conflictDetector: ConflictDetectorEvaluator,
+		@Inject(SceneSuggestionEvaluator) private readonly sceneSuggestion: SceneSuggestionEvaluator,
 	) {}
 
 	onModuleInit() {
@@ -95,6 +99,7 @@ export class BuddyModule implements OnModuleInit {
 		this.heartbeatService.registerEvaluator(this.anomalyDetector);
 		this.heartbeatService.registerEvaluator(this.energyEvaluator);
 		this.heartbeatService.registerEvaluator(this.conflictDetector);
+		this.heartbeatService.registerEvaluator(this.sceneSuggestion);
 		this.modulesMapperService.registerMapping<BuddyConfigModel, UpdateBuddyConfigDto>({
 			type: BUDDY_MODULE_NAME,
 			class: BuddyConfigModel,
