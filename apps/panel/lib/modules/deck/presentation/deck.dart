@@ -7,6 +7,9 @@ import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/icon_container.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/export.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
+import 'package:fastybird_smart_panel/modules/buddy/presentation/buddy_chat_drawer.dart';
+import 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/suggestion_badge.dart';
+import 'package:fastybird_smart_panel/modules/buddy/service.dart';
 import 'package:fastybird_smart_panel/modules/security/services/security_overlay_controller.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/swipe_event.dart';
 import 'package:flutter/foundation.dart';
@@ -40,6 +43,7 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen>
   bool _initialized = false;
   bool _swipeBlocked = false;
   bool _isCrossfading = false;
+  bool _buddyDrawerOpen = false;
 
   /// Preserves the PageView element when it is re-parented between
   /// Column (portrait) and Row (landscape) on orientation change.
@@ -255,79 +259,134 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen>
         }
 
         return Scaffold(
-          body: OrientationBuilder(
-            builder: (context, orientation) {
-              final isPortrait = orientation == Orientation.portrait;
+          body: Stack(
+            children: [
+              OrientationBuilder(
+                builder: (context, orientation) {
+                  final isPortrait = orientation == Orientation.portrait;
 
-              // GlobalKey on the FadeTransition preserves the PageView element
-              // when it is re-parented between Column ↔ Row on orientation
-              // change, so the ScrollPosition (and current page) is kept.
-              final pageView = FadeTransition(
-                key: _pageViewKey,
-                opacity: _fadeController,
-                child: PageView.builder(
-                  controller: _pageController,
-                  physics: _swipeBlocked || _isCrossfading
-                      ? const NeverScrollableScrollPhysics()
-                      : null,
-                  onPageChanged: (index) {
+                  // GlobalKey on the FadeTransition preserves the PageView element
+                  // when it is re-parented between Column ↔ Row on orientation
+                  // change, so the ScrollPosition (and current page) is kept.
+                  final pageView = FadeTransition(
+                    key: _pageViewKey,
+                    opacity: _fadeController,
+                    child: PageView.builder(
+                      controller: _pageController,
+                      physics: _swipeBlocked || _isCrossfading
+                          ? const NeverScrollableScrollPhysics()
+                          : null,
+                      onPageChanged: (index) {
+                        setState(() {
+                          _currentIndex = index;
+                        });
+                        _updateTrackedItem(deckService, index);
+                        // Delay event firing to after the frame is rendered,
+                        // so domain view listeners are fully ready to receive it
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (mounted) {
+                            _fireDeckPageActivatedEvent(deckService, index);
+                          }
+                        });
+                      },
+                      itemCount: widgets.length,
+                      itemBuilder: (context, index) => widgets[index % widgets.length],
+                    ),
+                  );
+
+                  if (isPortrait) {
+                    // Portrait: Column with PageView + Bottom Nav Bar
+                    return Column(
+                      children: [
+                        Expanded(child: pageView),
+                        DeckBottomNavBar(
+                          currentIndex: _currentIndex,
+                          onNavigateToIndex: _navigateToIndex,
+                          onMoreTapped: () => showMoreSheet(
+                            context,
+                            currentIndex: _currentIndex,
+                            onNavigateToIndex: _navigateToIndex,
+                          ),
+                          onModeTapped: () {
+                            final notifier = context.read<BottomNavModeNotifier>();
+                            if (notifier.hasConfig) {
+                              showModePopup(context, notifier.config!);
+                            }
+                          },
+                        ),
+                      ],
+                    );
+                  } else {
+                    // Landscape: Side dock + PageView + mode chip overlay
+                    return Row(
+                      children: [
+                        DeckSideDock(
+                          currentIndex: _currentIndex,
+                          onNavigateToIndex: _navigateToIndex,
+                          onMoreTapped: () => showMoreSheet(
+                            context,
+                            currentIndex: _currentIndex,
+                            onNavigateToIndex: _navigateToIndex,
+                          ),
+                        ),
+                        Expanded(child: pageView),
+                      ],
+                    );
+                  }
+                },
+              ),
+
+              // Buddy FAB button
+              if (!_buddyDrawerOpen)
+                Positioned(
+                  right: AppSpacings.pLg,
+                  // Position above the bottom nav bar in portrait mode
+                  bottom: MediaQuery.of(context).orientation == Orientation.portrait
+                      ? AppSpacings.scale(52) + AppSpacings.pMd
+                      : AppSpacings.pLg,
+                  child: _BuddyFab(
+                    onTap: () {
+                      setState(() {
+                        _buddyDrawerOpen = true;
+                      });
+                    },
+                  ),
+                ),
+
+              // Buddy drawer overlay
+              if (_buddyDrawerOpen) ...[
+                // Semi-transparent background
+                GestureDetector(
+                  onTap: () {
                     setState(() {
-                      _currentIndex = index;
-                    });
-                    _updateTrackedItem(deckService, index);
-                    // Delay event firing to after the frame is rendered,
-                    // so domain view listeners are fully ready to receive it
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      if (mounted) {
-                        _fireDeckPageActivatedEvent(deckService, index);
-                      }
+                      _buddyDrawerOpen = false;
                     });
                   },
-                  itemCount: widgets.length,
-                  itemBuilder: (context, index) => widgets[index % widgets.length],
+                  child: Container(
+                    color: Colors.black.withValues(alpha: 0.3),
+                  ),
                 ),
-              );
-
-              if (isPortrait) {
-                // Portrait: Column with PageView + Bottom Nav Bar
-                return Column(
-                  children: [
-                    Expanded(child: pageView),
-                    DeckBottomNavBar(
-                      currentIndex: _currentIndex,
-                      onNavigateToIndex: _navigateToIndex,
-                      onMoreTapped: () => showMoreSheet(
-                        context,
-                        currentIndex: _currentIndex,
-                        onNavigateToIndex: _navigateToIndex,
-                      ),
-                      onModeTapped: () {
-                        final notifier = context.read<BottomNavModeNotifier>();
-                        if (notifier.hasConfig) {
-                          showModePopup(context, notifier.config!);
-                        }
+                // Drawer from the right
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: MediaQuery.of(context).size.width * 0.4 < 320
+                      ? 320.0
+                      : MediaQuery.of(context).size.width * 0.4,
+                  child: Material(
+                    elevation: 8,
+                    child: BuddyChatDrawer(
+                      onClose: () {
+                        setState(() {
+                          _buddyDrawerOpen = false;
+                        });
                       },
                     ),
-                  ],
-                );
-              } else {
-                // Landscape: Side dock + PageView + mode chip overlay
-                return Row(
-                  children: [
-                    DeckSideDock(
-                      currentIndex: _currentIndex,
-                      onNavigateToIndex: _navigateToIndex,
-                      onMoreTapped: () => showMoreSheet(
-                        context,
-                        currentIndex: _currentIndex,
-                        onNavigateToIndex: _navigateToIndex,
-                      ),
-                    ),
-                    Expanded(child: pageView),
-                  ],
-                );
-              }
-            },
+                  ),
+                ),
+              ],
+            ],
           ),
         );
       },
@@ -379,4 +438,64 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen>
     );
   }
 
+}
+
+/// Floating action button for opening the buddy chat drawer.
+///
+/// Shows a suggestion badge when there are active suggestions.
+class _BuddyFab extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _BuddyFab({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final accentColor = ThemeColorFamily.get(
+      isDark ? Brightness.dark : Brightness.light,
+      ThemeColors.primary,
+    ).base;
+
+    return Consumer<BuddyService>(
+      builder: (context, buddyService, _) {
+        return GestureDetector(
+          onTap: onTap,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                width: AppSpacings.scale(48),
+                height: AppSpacings.scale(48),
+                decoration: BoxDecoration(
+                  color: accentColor,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: accentColor.withValues(alpha: 0.3),
+                      blurRadius: AppSpacings.scale(12),
+                      offset: Offset(0, AppSpacings.scale(4)),
+                    ),
+                  ],
+                ),
+                child: Icon(
+                  Icons.smart_toy_outlined,
+                  color: Colors.white,
+                  size: AppSpacings.scale(24),
+                ),
+              ),
+              if (buddyService.suggestionCount > 0)
+                Positioned(
+                  right: -AppSpacings.scale(4),
+                  top: -AppSpacings.scale(4),
+                  child: BuddySuggestionBadge(
+                    count: buddyService.suggestionCount,
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 }
