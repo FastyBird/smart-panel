@@ -14,10 +14,11 @@
 					:class="[ns.b(), 'mx-auto overflow-hidden']"
 					:style="props.gridCardStyle"
 				>
-					<div :class="[ns.e('header'), 'flex items-center justify-between px-2 flex-shrink-0 h-9 min-h-9 b-b b-b-solid']">
-						<div class="flex items-center gap-1 min-w-0">
+					<div :class="[ns.e('header'), 'flex items-center px-2 flex-shrink-0 min-h-9 py-1 b-b b-b-solid gap-1.5']">
+						<div class="flex items-center gap-1 min-w-0 max-w-48">
 							<el-icon
 								:size="14"
+								class="flex-shrink-0"
 								color="var(--el-text-color-regular)"
 							>
 								<icon :icon="props.page.icon || 'mdi:view-dashboard-variant'" />
@@ -28,30 +29,101 @@
 							>
 								{{ props.page.title }}
 							</el-text>
+						</div>
+						<div class="flex items-center gap-1 flex-1 min-w-0 flex-wrap justify-end">
 							<el-tag
 								v-for="ds in visibleDataSources"
 								:key="ds.id"
 								size="small"
-								type="info"
 								closable
-								class="ml-1 cursor-pointer"
-								@click="emit('editPageDataSource', ds.id)"
-								@close="removeDataSource(ds.id)"
+								:class="ns.e('data-source-tag')"
+								@close="onRemoveDataSource(ds.id)"
 							>
-								{{ getDataSourceLabel(ds) }}
+								<span
+									class="inline-flex items-center gap-0.5"
+									@click="emit('editPageDataSource', ds.id)"
+								>
+									<el-icon :size="12">
+										<icon :icon="getDataSourceIcon(ds) || 'mdi:database'" />
+									</el-icon>
+									<span class="truncate">{{ getDataSourceLabel(ds) }}</span>
+								</span>
 							</el-tag>
-							<el-tag
-								v-if="hiddenDataSourcesCount > 0"
-								size="small"
-								type="info"
-								class="ml-1"
+							<el-popover
+								v-if="hiddenDataSources.length > 0"
+								:width="280"
+								trigger="click"
+								placement="bottom"
 							>
-								+{{ hiddenDataSourcesCount }}
-							</el-tag>
+								<template #reference>
+									<el-tag
+										size="small"
+										type="info"
+										class="cursor-pointer flex-shrink-0"
+									>
+										+{{ hiddenDataSources.length }}
+									</el-tag>
+								</template>
+								<div class="flex flex-col gap-1">
+									<div
+										v-for="ds in hiddenDataSources"
+										:key="ds.id"
+										:class="[ns.e('overflow-item'), 'flex items-center gap-1 py-1 px-1 rounded']"
+									>
+										<div
+											class="flex items-center gap-1 min-w-0 flex-1 cursor-pointer"
+											@click="emit('editPageDataSource', ds.id)"
+										>
+											<el-icon
+												:size="14"
+												color="var(--el-text-color-regular)"
+											>
+												<icon :icon="getDataSourceIcon(ds) || 'mdi:database'" />
+											</el-icon>
+											<el-text
+												size="small"
+												class="truncate"
+											>
+												{{ getDataSourceLabel(ds) }}
+											</el-text>
+										</div>
+										<div class="flex items-center flex-shrink-0 gap-0.5">
+											<el-button
+												size="small"
+												text
+												circle
+												@click="emit('editPageDataSource', ds.id)"
+											>
+												<template #icon>
+													<icon
+														icon="mdi:pencil"
+														:width="14"
+													/>
+												</template>
+											</el-button>
+											<el-button
+												size="small"
+												text
+												type="danger"
+												circle
+												@click="onRemoveDataSource(ds.id)"
+											>
+												<template #icon>
+													<icon
+														icon="mdi:trash-can-outline"
+														:width="14"
+													/>
+												</template>
+											</el-button>
+										</div>
+									</div>
+								</div>
+							</el-popover>
 						</div>
 						<el-button
 							size="small"
 							plain
+							class="flex-shrink-0"
 							@click="emit('addPageDataSource')"
 						>
 							<template #icon>
@@ -265,7 +337,7 @@
 import { computed, getCurrentInstance, h, hasInjectionContext, nextTick, onBeforeMount, onBeforeUnmount, onMounted, ref, render, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElButton, ElCard, ElCol, ElEmpty, ElIcon, ElOption, ElRow, ElSelect, ElTag, ElText, useNamespace } from 'element-plus';
+import { ElButton, ElCard, ElCol, ElEmpty, ElIcon, ElOption, ElPopover, ElRow, ElSelect, ElTag, ElText, useNamespace } from 'element-plus';
 import { GridStack } from 'gridstack';
 import 'gridstack/dist/gridstack.min.css';
 
@@ -316,23 +388,31 @@ const emit = defineEmits<{
 	(e: 'update:remote-page-changed', formChanged: boolean): void;
 }>();
 
-const { dataSources, areLoading: loadingDataSources, fetchDataSources } = useDataSources({ parent: 'page', parentId: props.page.id });
-const { remove: removeDataSource } = useDataSourcesActions();
+const { dataSources: pageDataSources, fetchDataSources: fetchPageDataSources } = useDataSources({ parent: 'page', parentId: props.page.id });
+const { remove: removeDataSource } = useDataSourcesActions({ parent: 'page', parentId: props.page.id });
 const { getElement: getDataSourceElement } = useDataSourcesPlugins();
 
-const maxVisibleDataSources = 2;
+const MAX_VISIBLE_DATA_SOURCES = 3;
 
-const getDataSourceLabel = (ds: IDataSource): string => {
-	return getDataSourceElement(ds.type)?.name ?? ds.type;
+const nonDraftDataSources = computed<IDataSource[]>(() => pageDataSources.value.filter((ds) => !ds.draft));
+const visibleDataSources = computed<IDataSource[]>(() => nonDraftDataSources.value.slice(0, MAX_VISIBLE_DATA_SOURCES));
+const hiddenDataSources = computed<IDataSource[]>(() => nonDraftDataSources.value.slice(MAX_VISIBLE_DATA_SOURCES));
+
+const getDataSourceIcon = (ds: IDataSource): string | null => {
+	const record = ds as Record<string, unknown>;
+
+	return typeof record.icon === 'string' && record.icon ? record.icon : null;
 };
 
-const visibleDataSources = computed<IDataSource[]>((): IDataSource[] => {
-	return dataSources.value.slice(0, maxVisibleDataSources);
-});
+const getDataSourceLabel = (ds: IDataSource): string => {
+	const element = getDataSourceElement(ds.type);
 
-const hiddenDataSourcesCount = computed<number>((): number => {
-	return Math.max(0, dataSources.value.length - maxVisibleDataSources);
-});
+	return element?.name?.trim() ? element.name : ds.type;
+};
+
+const onRemoveDataSource = (id: IDataSource['id']): void => {
+	removeDataSource(id);
+};
 
 const appContext = getCurrentInstance()?.appContext ?? null;
 
@@ -619,12 +699,10 @@ onBeforeMount((): void => {
 		}
 	}
 
-	if (!loadingDataSources.value) {
-		fetchDataSources().catch((error: unknown): void => {
-			const err = error as Error;
-			throw new DashboardException('Something went wrong', err);
-		});
-	}
+	fetchPageDataSources().catch((error: unknown): void => {
+		const err = error as Error;
+		throw new DashboardException('Something went wrong', err);
+	});
 });
 
 onMounted((): void => {

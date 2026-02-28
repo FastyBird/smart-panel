@@ -10,6 +10,26 @@
 		border-color: var(--el-border-color-lighter);
 		background-color: var(--el-fill-color-lighter);
 	}
+
+	@include e(data-source-tag) {
+		cursor: pointer;
+		flex-shrink: 0;
+		max-width: 160px;
+
+		.el-tag__content {
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+		}
+	}
+
+	@include e(overflow-item) {
+		transition: background-color 0.2s;
+
+		&:hover {
+			background-color: var(--el-fill-color-light);
+		}
+	}
 }
 
 .grid-stack .grid-stack-item-content {
