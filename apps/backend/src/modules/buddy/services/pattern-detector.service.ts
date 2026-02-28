@@ -7,6 +7,7 @@ import {
 	PATTERN_TIME_WINDOW_MINUTES,
 	SuggestionType,
 } from '../buddy.constants';
+import { formatIntentLabel, formatTimeLabel } from '../buddy.utils';
 
 import { ActionObserverService, ActionRecord } from './action-observer.service';
 import { BuddyContext } from './buddy-context.service';
@@ -53,8 +54,8 @@ export class PatternDetectorService implements HeartbeatEvaluator {
 			.filter((p) => spaceIds.has(p.spaceId))
 			.map((p) => {
 				const spaceName = context.spaces.find((s) => s.id === p.spaceId)?.name ?? 'unknown space';
-				const intentLabel = this.formatIntentLabel(p.intentType);
-				const timeLabel = this.formatTimeLabel(p.timeOfDay.hour, p.timeOfDay.minute);
+				const intentLabel = formatIntentLabel(p.intentType);
+				const timeLabel = formatTimeLabel(p.timeOfDay.hour, p.timeOfDay.minute);
 
 				return {
 					type: SuggestionType.PATTERN_SCENE_CREATE,
@@ -198,38 +199,6 @@ export class PatternDetectorService implements HeartbeatEvaluator {
 		}
 
 		return clusters;
-	}
-
-	private formatIntentLabel(intentType: string): string {
-		const labels: Record<string, string> = {
-			'light.toggle': 'toggle lights',
-			'light.setBrightness': 'adjust brightness',
-			'light.setColor': 'change light color',
-			'light.setColorTemp': 'change color temperature',
-			'light.setWhite': 'set white light',
-			'device.setProperty': 'adjust a device',
-			'scene.run': 'run a scene',
-			'space.lighting.on': 'turn on lights',
-			'space.lighting.off': 'turn off lights',
-			'space.lighting.setMode': 'change lighting mode',
-			'space.climate.setMode': 'change climate mode',
-			'space.climate.setpointSet': 'adjust thermostat',
-			'space.covers.open': 'open covers',
-			'space.covers.close': 'close covers',
-		};
-
-		return labels[intentType] ?? intentType;
-	}
-
-	private formatTimeLabel(hour: number, minute: number): string {
-		const period = hour >= 12 ? 'PM' : 'AM';
-		const displayHour = hour % 12 || 12;
-
-		if (minute === 0) {
-			return `${displayHour} ${period}`;
-		}
-
-		return `${displayHour}:${minute.toString().padStart(2, '0')} ${period}`;
 	}
 
 	/**

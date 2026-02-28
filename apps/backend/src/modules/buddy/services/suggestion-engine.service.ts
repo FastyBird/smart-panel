@@ -14,6 +14,7 @@ import {
 	SuggestionType,
 } from '../buddy.constants';
 import { BuddySuggestionNotFoundException } from '../buddy.exceptions';
+import { formatIntentLabel, formatTimeLabel } from '../buddy.utils';
 
 import { EvaluatorResult } from './heartbeat.types';
 import { DetectedPattern, PatternDetectorService } from './pattern-detector.service';
@@ -86,8 +87,8 @@ export class SuggestionEngineService implements OnModuleDestroy {
 			}
 
 			const spaceName = await this.resolveSpaceName(pattern.spaceId);
-			const intentLabel = this.formatIntentType(pattern.intentType);
-			const timeLabel = this.formatTime(pattern.timeOfDay.hour, pattern.timeOfDay.minute);
+			const intentLabel = formatIntentLabel(pattern.intentType);
+			const timeLabel = formatTimeLabel(pattern.timeOfDay.hour, pattern.timeOfDay.minute);
 
 			// Re-check after async gap to prevent duplicates
 			if (this.hasSuggestionForPattern(pattern)) {
@@ -289,43 +290,5 @@ export class SuggestionEngineService implements OnModuleDestroy {
 		} catch {
 			return 'unknown space';
 		}
-	}
-
-	/**
-	 * Convert an intent type enum value to a human-readable action label.
-	 */
-	private formatIntentType(intentType: string): string {
-		const labels: Record<string, string> = {
-			'light.toggle': 'toggle lights',
-			'light.setBrightness': 'adjust brightness',
-			'light.setColor': 'change light color',
-			'light.setColorTemp': 'change color temperature',
-			'light.setWhite': 'set white light',
-			'device.setProperty': 'adjust a device',
-			'scene.run': 'run a scene',
-			'space.lighting.on': 'turn on lights',
-			'space.lighting.off': 'turn off lights',
-			'space.lighting.setMode': 'change lighting mode',
-			'space.climate.setMode': 'change climate mode',
-			'space.climate.setpointSet': 'adjust thermostat',
-			'space.covers.open': 'open covers',
-			'space.covers.close': 'close covers',
-		};
-
-		return labels[intentType] ?? intentType;
-	}
-
-	/**
-	 * Format a time-of-day into a readable string like "11 PM" or "2:30 PM".
-	 */
-	private formatTime(hour: number, minute: number): string {
-		const period = hour >= 12 ? 'PM' : 'AM';
-		const displayHour = hour % 12 || 12;
-
-		if (minute === 0) {
-			return `${displayHour} ${period}`;
-		}
-
-		return `${displayHour}:${minute.toString().padStart(2, '0')} ${period}`;
 	}
 }
