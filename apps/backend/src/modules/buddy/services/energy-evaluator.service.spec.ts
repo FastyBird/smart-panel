@@ -135,7 +135,7 @@ describe('EnergyEvaluator', () => {
 			expect(solarResults).toHaveLength(0);
 		});
 
-		it('should round grid export to one decimal place', async () => {
+		it('should round all metadata values to one decimal place', async () => {
 			const context = makeContext({
 				energy: { solarProduction: 4.567, gridConsumption: 0, gridExport: 2.444, batteryLevel: 80 },
 			});
@@ -145,6 +145,7 @@ describe('EnergyEvaluator', () => {
 
 			expect(solarResults).toHaveLength(1);
 			expect(solarResults[0].metadata.gridExport).toBe(2.4);
+			expect(solarResults[0].metadata.solarProduction).toBe(4.6);
 		});
 	});
 

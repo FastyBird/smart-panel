@@ -53,17 +53,15 @@ export class EnergyEvaluator implements HeartbeatEvaluator {
 			return [];
 		}
 
-		const exportRounded = Math.round(energy.gridExport * 10) / 10;
-
 		return [
 			{
 				type: SuggestionType.ENERGY_EXCESS_SOLAR,
 				title: 'Excess solar energy available',
-				reason: `Excess solar energy (${exportRounded}kW being exported). Good time for high-load appliances.`,
+				reason: `Excess solar energy (${this.round1(energy.gridExport)}kW being exported). Good time for high-load appliances.`,
 				spaceId,
 				metadata: {
-					solarProduction: energy.solarProduction,
-					gridExport: exportRounded,
+					solarProduction: this.round1(energy.solarProduction),
+					gridExport: this.round1(energy.gridExport),
 				},
 			},
 		];
@@ -78,16 +76,14 @@ export class EnergyEvaluator implements HeartbeatEvaluator {
 			return [];
 		}
 
-		const consumptionRounded = Math.round(energy.gridConsumption * 10) / 10;
-
 		return [
 			{
 				type: SuggestionType.ENERGY_HIGH_CONSUMPTION,
 				title: 'High grid consumption',
-				reason: `Grid consumption is high (${consumptionRounded}kW). Consider reducing load or shifting activities.`,
+				reason: `Grid consumption is high (${this.round1(energy.gridConsumption)}kW). Consider reducing load or shifting activities.`,
 				spaceId,
 				metadata: {
-					gridConsumption: consumptionRounded,
+					gridConsumption: this.round1(energy.gridConsumption),
 					threshold: thresholds.highConsumptionKw,
 				},
 			},
@@ -111,15 +107,19 @@ export class EnergyEvaluator implements HeartbeatEvaluator {
 			{
 				type: SuggestionType.ENERGY_BATTERY_LOW,
 				title: 'Battery level low',
-				reason: `Battery level is low (${energy.batteryLevel}%) with no solar production. Consider conserving energy.`,
+				reason: `Battery level is low (${this.round1(energy.batteryLevel)}%) with no solar production. Consider conserving energy.`,
 				spaceId,
 				metadata: {
-					batteryLevel: energy.batteryLevel,
-					solarProduction: energy.solarProduction,
+					batteryLevel: this.round1(energy.batteryLevel),
+					solarProduction: this.round1(energy.solarProduction),
 					threshold: thresholds.batteryLowPercent,
 				},
 			},
 		];
+	}
+
+	private round1(value: number): number {
+		return Math.round(value * 10) / 10;
 	}
 
 	private getThresholds(): EnergyThresholds {
