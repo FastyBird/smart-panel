@@ -131,6 +131,26 @@
 							</template>
 						</el-button>
 					</div>
+
+					<div
+						v-if="dataSources.length > 0"
+						class="flex flex-wrap items-center gap-1 px-2 py-1 b-b b-b-solid flex-shrink-0"
+						style="border-color: var(--el-border-color-lighter)"
+					>
+						<el-tag
+							v-for="ds in dataSources"
+							:key="ds.id"
+							size="small"
+							:type="ds.draft ? 'warning' : 'info'"
+							closable
+							class="cursor-pointer"
+							@click="emit('editPageDataSource', ds.id)"
+							@close="removeDataSource(ds.id)"
+						>
+							{{ getDataSourceLabel(ds.type) }}
+						</el-tag>
+					</div>
+
 					<div
 						ref="pageGridContainer"
 						class="flex-1 min-h-0 p-1"
@@ -310,8 +330,15 @@ const emit = defineEmits<{
 }>();
 
 const { options: tileOptions } = useTilesPlugins();
+const { dataSources, areLoading: loadingDataSources, fetchDataSources } = useDataSources({ parent: 'page', parentId: props.page.id });
+const { remove: removeDataSource } = useDataSourcesActions({ parent: 'page', parentId: props.page.id });
+const { getElement: getDataSourceElement } = useDataSourcesPlugins();
 
 const enabledTileOptions = computed(() => tileOptions.value.filter((opt) => !opt.disabled));
+
+const getDataSourceLabel = (type: string): string => {
+	return getDataSourceElement(type)?.name ?? type;
+};
 const { tiles, fetchTiles, areLoading: loadingTiles } = useTiles({ parent: 'page', parentId: props.page.id });
 const {
 	findById: findTileById,
