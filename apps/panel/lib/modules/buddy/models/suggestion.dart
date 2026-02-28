@@ -1,7 +1,16 @@
 enum BuddySuggestionType {
 	patternSceneCreate,
 	lightingOptimise,
-	generalTip;
+	generalTip,
+	anomalySensorDrift,
+	anomalyStuckSensor,
+	anomalyUnusualActivity,
+	energyExcessSolar,
+	energyHighConsumption,
+	energyBatteryLow,
+	conflictHeatingWindow,
+	conflictAcWindow,
+	conflictLightsUnoccupied;
 
 	static BuddySuggestionType fromString(String value) {
 		switch (value) {
@@ -11,8 +20,42 @@ enum BuddySuggestionType {
 				return BuddySuggestionType.lightingOptimise;
 			case 'general_tip':
 				return BuddySuggestionType.generalTip;
+			case 'anomaly_sensor_drift':
+				return BuddySuggestionType.anomalySensorDrift;
+			case 'anomaly_stuck_sensor':
+				return BuddySuggestionType.anomalyStuckSensor;
+			case 'anomaly_unusual_activity':
+				return BuddySuggestionType.anomalyUnusualActivity;
+			case 'energy_excess_solar':
+				return BuddySuggestionType.energyExcessSolar;
+			case 'energy_high_consumption':
+				return BuddySuggestionType.energyHighConsumption;
+			case 'energy_battery_low':
+				return BuddySuggestionType.energyBatteryLow;
+			case 'conflict_heating_window':
+				return BuddySuggestionType.conflictHeatingWindow;
+			case 'conflict_ac_window':
+				return BuddySuggestionType.conflictAcWindow;
+			case 'conflict_lights_unoccupied':
+				return BuddySuggestionType.conflictLightsUnoccupied;
 			default:
 				return BuddySuggestionType.generalTip;
+		}
+	}
+
+	/// Whether this suggestion type represents a conflict or anomaly
+	/// that should be displayed with warning styling.
+	bool get isWarning {
+		switch (this) {
+			case BuddySuggestionType.anomalySensorDrift:
+			case BuddySuggestionType.anomalyStuckSensor:
+			case BuddySuggestionType.anomalyUnusualActivity:
+			case BuddySuggestionType.conflictHeatingWindow:
+			case BuddySuggestionType.conflictAcWindow:
+			case BuddySuggestionType.conflictLightsUnoccupied:
+				return true;
+			default:
+				return false;
 		}
 	}
 }
