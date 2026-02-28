@@ -592,7 +592,7 @@ onBeforeUnmount((): void => {
 	destroyGrids();
 });
 
-// Watch for tile changes per card
+// Watch for card list changes
 watch(
 	(): ICard[] => sortedCards.value,
 	(): void => {
@@ -605,6 +605,24 @@ watch(
 		});
 	}
 );
+
+// Watch for tile changes within cards
+const tileSignature = computed((): string => {
+	const parts: string[] = [];
+
+	for (const [cardId, store] of tilesByCard) {
+		const ids = store.tiles.value.map((t) => t.id).sort().join(',');
+		parts.push(`${cardId}:${ids}`);
+	}
+
+	return parts.sort().join('|');
+});
+
+watch(tileSignature, (): void => {
+	nextTick(() => {
+		initializeGrids();
+	});
+});
 
 watch(
 	(): boolean => props.remotePageSubmit,
