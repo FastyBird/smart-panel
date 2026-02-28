@@ -28,6 +28,26 @@
 							>
 								{{ props.page.title }}
 							</el-text>
+							<el-tag
+								v-for="ds in visibleDataSources"
+								:key="ds.id"
+								size="small"
+								type="info"
+								closable
+								class="ml-1 cursor-pointer"
+								@click="emit('editPageDataSource', ds.id)"
+								@close="removeDataSource(ds.id)"
+							>
+								{{ getDataSourceLabel(ds) }}
+							</el-tag>
+							<el-tag
+								v-if="hiddenDataSourcesCount > 0"
+								size="small"
+								type="info"
+								class="ml-1"
+							>
+								+{{ hiddenDataSourcesCount }}
+							</el-tag>
 						</div>
 						<el-button
 							size="small"
@@ -255,8 +275,11 @@ import {
 	DashboardException,
 	FormResult,
 	type FormResultType,
+	type IDataSource,
 	type ITile,
 	useDataSources,
+	useDataSourcesActions,
+	useDataSourcesPlugins,
 	useTiles,
 	useTilesActions,
 } from '../../../modules/dashboard';
@@ -281,6 +304,7 @@ const props = withDefaults(defineProps<IPageConfigureProps>(), {
 const emit = defineEmits<{
 	(e: 'selectDisplay', displayId: string): void;
 	(e: 'addPageDataSource'): void;
+	(e: 'editPageDataSource', id: IDataSource['id']): void;
 	(e: 'addCard'): void;
 	(e: 'editCard', id: ICard['id']): void;
 	(e: 'removeCard', id: ICard['id']): void;
@@ -292,7 +316,23 @@ const emit = defineEmits<{
 	(e: 'update:remote-page-changed', formChanged: boolean): void;
 }>();
 
-const { areLoading: loadingDataSources, fetchDataSources } = useDataSources({ parent: 'page', parentId: props.page.id });
+const { dataSources, areLoading: loadingDataSources, fetchDataSources } = useDataSources({ parent: 'page', parentId: props.page.id });
+const { remove: removeDataSource } = useDataSourcesActions();
+const { getElement: getDataSourceElement } = useDataSourcesPlugins();
+
+const maxVisibleDataSources = 2;
+
+const getDataSourceLabel = (ds: IDataSource): string => {
+	return getDataSourceElement(ds.type)?.name ?? ds.type;
+};
+
+const visibleDataSources = computed<IDataSource[]>((): IDataSource[] => {
+	return dataSources.value.slice(0, maxVisibleDataSources);
+});
+
+const hiddenDataSourcesCount = computed<number>((): number => {
+	return Math.max(0, dataSources.value.length - maxVisibleDataSources);
+});
 
 const appContext = getCurrentInstance()?.appContext ?? null;
 

@@ -91,6 +91,7 @@
 		@edit-tile="onTileEdit"
 		@tile-detail="onTileDetail"
 		@add-page-data-source="onPageDataSourceAdd"
+		@edit-page-data-source="onPageDataSourceEdit"
 	/>
 
 	<el-drawer
@@ -204,7 +205,7 @@ import { ElButton, ElDialog, ElDrawer, ElDropdown, ElDropdownItem, ElDropdownMen
 import { Icon } from '@iconify/vue';
 
 import { AppBar, AppBarButton, AppBarButtonAlign, ViewError, useBreakpoints } from '../../../common';
-import { FormResult, type FormResultType, RouteNames as DashboardRouteNames, type ITile } from '../../../modules/dashboard';
+import { FormResult, type FormResultType, type IDataSource, RouteNames as DashboardRouteNames, type ITile } from '../../../modules/dashboard';
 import { type IDisplay, useDisplays } from '../../../modules/displays';
 import PageConfigure from '../components/page-configure.vue';
 import { useCards } from '../composables/useCards';
@@ -398,6 +399,22 @@ const onPageDataSourceAdd = (): void => {
 		name: RouteNames.PAGE_ADD_DATA_SOURCE,
 		params: {
 			id: props.page.id,
+		},
+	};
+
+	if (isLGDevice.value) {
+		router.replace(location);
+	} else {
+		router.push(location);
+	}
+};
+
+const onPageDataSourceEdit = (dataSourceId: IDataSource['id']): void => {
+	const location = {
+		name: RouteNames.PAGE_EDIT_DATA_SOURCE,
+		params: {
+			id: props.page.id,
+			dataSourceId,
 		},
 	};
 

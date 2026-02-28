@@ -83,6 +83,7 @@
 		@select-display="onDisplaySelect"
 		@add-tile-of-type="onTileAdd"
 		@add-page-data-source="onPageDataSourceAdd"
+		@edit-page-data-source="onPageDataSourceEdit"
 		@edit-tile="onTileEdit"
 		@tile-detail="onTileDetail"
 	/>
@@ -149,7 +150,7 @@ import { ElButton, ElDrawer, ElDropdown, ElDropdownItem, ElDropdownMenu, ElIcon,
 import { Icon } from '@iconify/vue';
 
 import { AppBar, AppBarButton, AppBarButtonAlign, ViewError, useBreakpoints } from '../../../common';
-import { RouteNames as DashboardRouteNames, type ITile } from '../../../modules/dashboard';
+import { type IDataSource, RouteNames as DashboardRouteNames, type ITile } from '../../../modules/dashboard';
 import { type IDisplay, useDisplays } from '../../../modules/displays';
 import PageConfigure from '../components/page-configure.vue';
 import { RouteNames } from '../pages-tiles.constants';
@@ -314,6 +315,22 @@ const onPageDataSourceAdd = (): void => {
 				id: props.page.id,
 			},
 		});
+	}
+};
+
+const onPageDataSourceEdit = (dataSourceId: IDataSource['id']): void => {
+	const location = {
+		name: RouteNames.PAGE_EDIT_DATA_SOURCE,
+		params: {
+			id: props.page.id,
+			dataSourceId,
+		},
+	};
+
+	if (isLGDevice.value) {
+		router.replace(location);
+	} else {
+		router.push(location);
 	}
 };
 
