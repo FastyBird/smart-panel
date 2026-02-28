@@ -8,7 +8,6 @@ import {
 	BUDDY_OPENAI_CODEX_PLUGIN_API_TAG_DESCRIPTION,
 	BUDDY_OPENAI_CODEX_PLUGIN_API_TAG_NAME,
 	BUDDY_OPENAI_CODEX_PLUGIN_NAME,
-	BUDDY_OPENAI_CODEX_PLUGIN_TYPE,
 	BUDDY_OPENAI_CODEX_TOKEN_URL,
 } from '../buddy-openai-codex.constants';
 import { BuddyOpenaiCodexConfigModel } from '../models/config.model';
@@ -23,7 +22,7 @@ export class OpenAiCodexProvider implements ILlmProvider {
 	constructor(private readonly configService: ConfigService) {}
 
 	getType(): string {
-		return BUDDY_OPENAI_CODEX_PLUGIN_TYPE;
+		return BUDDY_OPENAI_CODEX_PLUGIN_NAME;
 	}
 
 	getName(): string {
@@ -47,6 +46,7 @@ export class OpenAiCodexProvider implements ILlmProvider {
 	): Promise<string> {
 		const config = this.getPluginConfig();
 		const accessToken = await this.resolveAccessToken(config);
+		const resolvedModel = config?.model ?? model;
 		const timeout = options?.timeout ?? 30_000;
 
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -56,7 +56,7 @@ export class OpenAiCodexProvider implements ILlmProvider {
 
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
 		const response = await client.chat.completions.create({
-			model,
+			model: resolvedModel,
 			messages: [
 				{ role: 'system' as const, content: systemPrompt },
 				...messages.map((m) => ({

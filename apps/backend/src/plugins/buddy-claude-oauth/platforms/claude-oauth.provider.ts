@@ -8,7 +8,6 @@ import {
 	BUDDY_CLAUDE_OAUTH_PLUGIN_API_TAG_DESCRIPTION,
 	BUDDY_CLAUDE_OAUTH_PLUGIN_API_TAG_NAME,
 	BUDDY_CLAUDE_OAUTH_PLUGIN_NAME,
-	BUDDY_CLAUDE_OAUTH_PLUGIN_TYPE,
 	BUDDY_CLAUDE_OAUTH_TOKEN_URL,
 } from '../buddy-claude-oauth.constants';
 import { BuddyClaudeOauthConfigModel } from '../models/config.model';
@@ -23,7 +22,7 @@ export class ClaudeOauthProvider implements ILlmProvider {
 	constructor(private readonly configService: ConfigService) {}
 
 	getType(): string {
-		return BUDDY_CLAUDE_OAUTH_PLUGIN_TYPE;
+		return BUDDY_CLAUDE_OAUTH_PLUGIN_NAME;
 	}
 
 	getName(): string {
@@ -47,6 +46,7 @@ export class ClaudeOauthProvider implements ILlmProvider {
 	): Promise<string> {
 		const config = this.getPluginConfig();
 		const accessToken = await this.resolveAccessToken(config);
+		const resolvedModel = config?.model ?? model;
 		const timeout = options?.timeout ?? 30_000;
 
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -56,7 +56,7 @@ export class ClaudeOauthProvider implements ILlmProvider {
 
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
 		const response = await client.messages.create({
-			model,
+			model: resolvedModel,
 			max_tokens: 1024,
 			system: systemPrompt,
 			messages: messages.map((m) => ({

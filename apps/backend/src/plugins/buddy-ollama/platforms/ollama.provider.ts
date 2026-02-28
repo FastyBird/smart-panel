@@ -9,7 +9,6 @@ import {
 	BUDDY_OLLAMA_PLUGIN_API_TAG_DESCRIPTION,
 	BUDDY_OLLAMA_PLUGIN_API_TAG_NAME,
 	BUDDY_OLLAMA_PLUGIN_NAME,
-	BUDDY_OLLAMA_PLUGIN_TYPE,
 } from '../buddy-ollama.constants';
 import { BuddyOllamaConfigModel } from '../models/config.model';
 
@@ -20,7 +19,7 @@ export class OllamaProvider implements ILlmProvider {
 	constructor(private readonly configService: ConfigService) {}
 
 	getType(): string {
-		return BUDDY_OLLAMA_PLUGIN_TYPE;
+		return BUDDY_OLLAMA_PLUGIN_NAME;
 	}
 
 	getName(): string {
@@ -44,6 +43,7 @@ export class OllamaProvider implements ILlmProvider {
 	): Promise<string> {
 		const config = this.getPluginConfig();
 		const baseUrl = config?.baseUrl ?? BUDDY_OLLAMA_DEFAULT_URL;
+		const resolvedModel = config?.model ?? model;
 		const timeout = options?.timeout ?? 30_000;
 
 		const controller = new AbortController();
@@ -54,7 +54,7 @@ export class OllamaProvider implements ILlmProvider {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
-					model,
+					model: resolvedModel,
 					stream: false,
 					messages: [
 						{ role: 'system', content: systemPrompt },

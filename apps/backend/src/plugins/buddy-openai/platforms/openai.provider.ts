@@ -8,7 +8,6 @@ import {
 	BUDDY_OPENAI_PLUGIN_API_TAG_DESCRIPTION,
 	BUDDY_OPENAI_PLUGIN_API_TAG_NAME,
 	BUDDY_OPENAI_PLUGIN_NAME,
-	BUDDY_OPENAI_PLUGIN_TYPE,
 } from '../buddy-openai.constants';
 import { BuddyOpenaiConfigModel } from '../models/config.model';
 
@@ -22,7 +21,7 @@ export class OpenAiProvider implements ILlmProvider {
 	constructor(private readonly configService: ConfigService) {}
 
 	getType(): string {
-		return BUDDY_OPENAI_PLUGIN_TYPE;
+		return BUDDY_OPENAI_PLUGIN_NAME;
 	}
 
 	getName(): string {
@@ -46,6 +45,7 @@ export class OpenAiProvider implements ILlmProvider {
 	): Promise<string> {
 		const config = this.getPluginConfig();
 		const apiKey = config?.apiKey ?? _apiKey;
+		const resolvedModel = config?.model ?? model;
 		const timeout = options?.timeout ?? 30_000;
 
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -55,7 +55,7 @@ export class OpenAiProvider implements ILlmProvider {
 
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
 		const response = await client.chat.completions.create({
-			model,
+			model: resolvedModel,
 			messages: [
 				{ role: 'system' as const, content: systemPrompt },
 				...messages.map((m) => ({

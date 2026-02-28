@@ -8,7 +8,6 @@ import {
 	BUDDY_CLAUDE_PLUGIN_API_TAG_DESCRIPTION,
 	BUDDY_CLAUDE_PLUGIN_API_TAG_NAME,
 	BUDDY_CLAUDE_PLUGIN_NAME,
-	BUDDY_CLAUDE_PLUGIN_TYPE,
 } from '../buddy-claude.constants';
 import { BuddyClaudeConfigModel } from '../models/config.model';
 
@@ -22,7 +21,7 @@ export class ClaudeProvider implements ILlmProvider {
 	constructor(private readonly configService: ConfigService) {}
 
 	getType(): string {
-		return BUDDY_CLAUDE_PLUGIN_TYPE;
+		return BUDDY_CLAUDE_PLUGIN_NAME;
 	}
 
 	getName(): string {
@@ -46,6 +45,7 @@ export class ClaudeProvider implements ILlmProvider {
 	): Promise<string> {
 		const config = this.getPluginConfig();
 		const apiKey = config?.apiKey ?? _apiKey;
+		const resolvedModel = config?.model ?? model;
 		const timeout = options?.timeout ?? 30_000;
 
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -55,7 +55,7 @@ export class ClaudeProvider implements ILlmProvider {
 
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
 		const response = await client.messages.create({
-			model,
+			model: resolvedModel,
 			max_tokens: 1024,
 			system: systemPrompt,
 			messages: messages.map((m) => ({
