@@ -682,13 +682,11 @@ const initializeGrids = (): void => {
 		return;
 	}
 
-	nextTick(() => {
-		for (const card of cardsToInit) {
-			initializeCardGrid(card);
-		}
+	for (const card of cardsToInit) {
+		initializeCardGrid(card);
+	}
 
-		suppressMarkChanged.value = false;
-	});
+	suppressMarkChanged.value = false;
 };
 
 onBeforeMount((): void => {
@@ -735,10 +733,9 @@ watch(
 			ensureTileStore(card.id);
 		}
 
-		nextTick(() => {
-			initializeGrids();
-		});
-	}
+		initializeGrids();
+	},
+	{ flush: 'post' }
 );
 
 // Watch for tile changes within cards
@@ -753,11 +750,13 @@ const tileSignature = computed((): string => {
 	return parts.sort().join('|');
 });
 
-watch(tileSignature, (): void => {
-	nextTick(() => {
+watch(
+	tileSignature,
+	(): void => {
 		initializeGrids();
-	});
-});
+	},
+	{ flush: 'post' }
+);
 
 watch(
 	(): boolean => props.remotePageSubmit,
