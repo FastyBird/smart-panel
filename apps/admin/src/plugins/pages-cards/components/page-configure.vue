@@ -14,7 +14,7 @@
 					:class="[ns.b(), 'mx-auto overflow-hidden']"
 					:style="props.gridCardStyle"
 				>
-					<div :class="[ns.e('header'), 'flex items-center justify-between px-2 flex-shrink-0 h-9 min-h-9 b-b b-b-solid']">
+					<div :class="[ns.e('header'), 'flex items-center justify-between px-2 flex-shrink-0 min-h-9 b-b b-b-solid']">
 						<div class="flex items-center gap-1 min-w-0">
 							<el-icon
 								:size="14"
@@ -28,6 +28,18 @@
 							>
 								{{ props.page.title }}
 							</el-text>
+							<el-tag
+								v-for="ds in dataSources"
+								:key="ds.id"
+								size="small"
+								:type="ds.draft ? 'warning' : 'info'"
+								closable
+								class="cursor-pointer"
+								@click="emit('editPageDataSource', ds.id)"
+								@close="removeDataSource(ds.id)"
+							>
+								{{ getDataSourceLabel(ds.type) }}
+							</el-tag>
 						</div>
 						<el-button
 							size="small"
@@ -40,24 +52,6 @@
 						</el-button>
 					</div>
 
-					<div
-						v-if="dataSources.length > 0"
-						class="flex flex-wrap items-center gap-1 px-2 py-1 b-b b-b-solid flex-shrink-0"
-						style="border-color: var(--el-border-color-lighter)"
-					>
-						<el-tag
-							v-for="ds in dataSources"
-							:key="ds.id"
-							size="small"
-							:type="ds.draft ? 'warning' : 'info'"
-							closable
-							class="cursor-pointer"
-							@click="emit('editPageDataSource', ds.id)"
-							@close="removeDataSource(ds.id)"
-						>
-							{{ getDataSourceLabel(ds.type) }}
-						</el-tag>
-					</div>
 
 					<div
 						v-if="sortedCards.length === 0"
