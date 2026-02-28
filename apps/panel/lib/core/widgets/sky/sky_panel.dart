@@ -40,50 +40,57 @@ class SkyPanel extends StatelessWidget {
 				),
 				borderRadius: borderRadius,
 			),
-			child: Stack(
-				children: [
-					// Celestial bodies
-					if (config.showSun)
-						Positioned(
-							top: 16,
-							right: 32,
-							child: SkyWidgetSun(size: 40, opacity: config.sunOpacity),
-						),
-					if (config.showMoon)
-						Positioned(
-							top: 12,
-							right: 32,
-							child: SkyWidgetMoon(size: 34),
-						),
+			child: LayoutBuilder(
+				builder: (context, constraints) {
+					final w = constraints.maxWidth;
+					final h = constraints.maxHeight;
 
-					// Stars
-					if (config.showStars) ..._buildStars(),
+					return Stack(
+						children: [
+							// Celestial bodies
+							if (config.showSun)
+								Positioned(
+									top: 16,
+									right: 32,
+									child: SkyWidgetSun(size: 40, opacity: config.sunOpacity),
+								),
+							if (config.showMoon)
+								Positioned(
+									top: 12,
+									right: 32,
+									child: SkyWidgetMoon(size: 34),
+								),
 
-					// Clouds
-					if (config.cloudCount > 0) ..._buildClouds(config),
+							// Stars
+							if (config.showStars) ..._buildStars(w, h),
 
-					// Weather effects
-					if (config.showRain)
-						Positioned.fill(
-							child: SkyEffectRain(intensity: config.rainIntensity, isNight: isNight),
-						),
-					if (config.showSnow)
-						Positioned.fill(
-							child: SkyEffectSnow(intensity: config.snowIntensity, isNight: isNight),
-						),
-					if (config.showWind)
-						Positioned.fill(
-							child: SkyEffectWind(isNight: isNight),
-						),
-					if (config.showLightning) const Positioned.fill(child: SkyEffectLightning()),
-					if (config.showFog)
-						Positioned.fill(
-							child: SkyEffectFog(isNight: isNight),
-						),
+							// Clouds
+							if (config.cloudCount > 0) ..._buildClouds(config, w, h),
 
-					// Content overlay
-					if (child != null) Positioned.fill(child: child!),
-				],
+							// Weather effects
+							if (config.showRain)
+								Positioned.fill(
+									child: SkyEffectRain(intensity: config.rainIntensity, isNight: isNight),
+								),
+							if (config.showSnow)
+								Positioned.fill(
+									child: SkyEffectSnow(intensity: config.snowIntensity, isNight: isNight),
+								),
+							if (config.showWind)
+								Positioned.fill(
+									child: SkyEffectWind(isNight: isNight),
+								),
+							if (config.showLightning) const Positioned.fill(child: SkyEffectLightning()),
+							if (config.showFog)
+								Positioned.fill(
+									child: SkyEffectFog(isNight: isNight),
+								),
+
+							// Content overlay
+							if (child != null) Positioned.fill(child: child!),
+						],
+					);
+				},
 			),
 		);
 
@@ -94,30 +101,28 @@ class SkyPanel extends StatelessWidget {
 		return panel;
 	}
 
-	List<Widget> _buildStars() {
+	List<Widget> _buildStars(double panelWidth, double panelHeight) {
 		final rng = math.Random(42);
 
 		return List.generate(
 			14,
 			(i) => Positioned(
-				top: rng.nextDouble() * 180,
-				left: rng.nextDouble() * 360,
+				top: rng.nextDouble() * (panelHeight * 0.6),
+				left: rng.nextDouble() * panelWidth,
 				child: SkyWidgetStar(delay: Duration(milliseconds: (i * 300) % 3000)),
 			),
 		);
 	}
 
-	List<Widget> _buildClouds(SkyConfig config) {
+	List<Widget> _buildClouds(SkyConfig config, double panelWidth, double panelHeight) {
 		final rng = math.Random(7);
-		const maxW = 320.0;
-		const maxH = 160.0;
 
 		return List.generate(config.cloudCount, (i) {
 			final w = 40.0 + rng.nextDouble() * 50;
 
 			return Positioned(
-				top: 8 + rng.nextDouble() * (maxH * 0.6),
-				left: rng.nextDouble() * (maxW - w),
+				top: 8 + rng.nextDouble() * (panelHeight * 0.6),
+				left: rng.nextDouble() * (panelWidth - w),
 				child: SkyWidgetCloud(
 					width: w,
 					opacity: config.cloudOpacity * (0.7 + rng.nextDouble() * 0.3),

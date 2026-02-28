@@ -22,8 +22,12 @@ class WeatherSkyMapper {
 				// Freezing rain
 				return SkyCondition.snowy;
 			}
-			if (code >= 502) {
-				// Heavy intensity rain and above
+			if (code >= 502 && code <= 504) {
+				// Heavy intensity rain (502), very heavy rain (503), extreme rain (504)
+				return SkyCondition.heavyRain;
+			}
+			if (code == 522) {
+				// Heavy intensity shower rain
 				return SkyCondition.heavyRain;
 			}
 

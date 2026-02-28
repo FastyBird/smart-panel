@@ -22,15 +22,28 @@ class SkyEffectRain extends StatefulWidget {
 
 class _SkyEffectRainState extends State<SkyEffectRain> with SingleTickerProviderStateMixin {
 	late final AnimationController _ctrl;
-	late final List<_RainDrop> _drops;
+	late List<_RainDrop> _drops;
 
 	@override
 	void initState() {
 		super.initState();
 		_ctrl = AnimationController(vsync: this, duration: const Duration(seconds: 1))..repeat();
+		_drops = _generateDrops(widget.intensity);
+	}
+
+	@override
+	void didUpdateWidget(SkyEffectRain oldWidget) {
+		super.didUpdateWidget(oldWidget);
+		if (oldWidget.intensity != widget.intensity) {
+			_drops = _generateDrops(widget.intensity);
+		}
+	}
+
+	List<_RainDrop> _generateDrops(int intensity) {
 		final rng = math.Random(11);
-		_drops = List.generate(
-			widget.intensity,
+
+		return List.generate(
+			intensity,
 			(_) => _RainDrop(
 				x: rng.nextDouble(),
 				y: rng.nextDouble(),
@@ -119,15 +132,28 @@ class SkyEffectSnow extends StatefulWidget {
 
 class _SkyEffectSnowState extends State<SkyEffectSnow> with SingleTickerProviderStateMixin {
 	late final AnimationController _ctrl;
-	late final List<_SnowFlake> _flakes;
+	late List<_SnowFlake> _flakes;
 
 	@override
 	void initState() {
 		super.initState();
 		_ctrl = AnimationController(vsync: this, duration: const Duration(seconds: 4))..repeat();
+		_flakes = _generateFlakes(widget.intensity);
+	}
+
+	@override
+	void didUpdateWidget(SkyEffectSnow oldWidget) {
+		super.didUpdateWidget(oldWidget);
+		if (oldWidget.intensity != widget.intensity) {
+			_flakes = _generateFlakes(widget.intensity);
+		}
+	}
+
+	List<_SnowFlake> _generateFlakes(int intensity) {
 		final rng = math.Random(22);
-		_flakes = List.generate(
-			widget.intensity,
+
+		return List.generate(
+			intensity,
 			(_) => _SnowFlake(
 				x: rng.nextDouble(),
 				y: rng.nextDouble(),
