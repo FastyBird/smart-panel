@@ -14,7 +14,7 @@
 					:class="[ns.b(), 'mx-auto overflow-hidden']"
 					:style="props.gridCardStyle"
 				>
-					<div :class="[ns.e('header'), 'flex items-center justify-between px-2 flex-shrink-0 min-h-9 b-b b-b-solid']">
+					<div :class="[ns.e('header'), 'flex items-center justify-between px-2 flex-shrink-0 h-9 min-h-9 b-b b-b-solid']">
 						<div class="flex items-center gap-1 min-w-0">
 							<el-icon
 								:size="14"
@@ -28,25 +28,6 @@
 							>
 								{{ props.page.title }}
 							</el-text>
-							<el-tag
-								v-for="ds in visibleDataSources"
-								:key="ds.id"
-								size="small"
-								:type="ds.draft ? 'warning' : 'info'"
-								closable
-								class="cursor-pointer"
-								@click="emit('editPageDataSource', ds.id)"
-								@close="removeDataSource(ds.id)"
-							>
-								{{ getDataSourceLabel(ds.type) }}
-							</el-tag>
-							<el-tag
-								v-if="hiddenDataSourcesCount > 0"
-								size="small"
-								type="info"
-							>
-								+{{ hiddenDataSourcesCount }}
-							</el-tag>
 						</div>
 						<el-button
 							size="small"
@@ -274,11 +255,8 @@ import {
 	DashboardException,
 	FormResult,
 	type FormResultType,
-	type IDataSource,
 	type ITile,
 	useDataSources,
-	useDataSourcesActions,
-	useDataSourcesPlugins,
 	useTiles,
 	useTilesActions,
 } from '../../../modules/dashboard';
@@ -303,7 +281,6 @@ const props = withDefaults(defineProps<IPageConfigureProps>(), {
 const emit = defineEmits<{
 	(e: 'selectDisplay', displayId: string): void;
 	(e: 'addPageDataSource'): void;
-	(e: 'editPageDataSource', id: IDataSource['id']): void;
 	(e: 'addCard'): void;
 	(e: 'editCard', id: ICard['id']): void;
 	(e: 'removeCard', id: ICard['id']): void;
@@ -315,18 +292,7 @@ const emit = defineEmits<{
 	(e: 'update:remote-page-changed', formChanged: boolean): void;
 }>();
 
-const { dataSources, areLoading: loadingDataSources, fetchDataSources } = useDataSources({ parent: 'page', parentId: props.page.id });
-const { remove: removeDataSource } = useDataSourcesActions({ parent: 'page', parentId: props.page.id });
-const { getElement: getDataSourceElement } = useDataSourcesPlugins();
-
-const getDataSourceLabel = (type: string): string => {
-	return getDataSourceElement(type)?.name ?? type;
-};
-
-const maxVisibleDataSources = 2;
-
-const visibleDataSources = computed(() => dataSources.value.slice(0, maxVisibleDataSources));
-const hiddenDataSourcesCount = computed(() => Math.max(0, dataSources.value.length - maxVisibleDataSources));
+const { areLoading: loadingDataSources, fetchDataSources } = useDataSources({ parent: 'page', parentId: props.page.id });
 
 const appContext = getCurrentInstance()?.appContext ?? null;
 
