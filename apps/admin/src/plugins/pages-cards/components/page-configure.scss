@@ -1,0 +1,18 @@
+@use 'element-plus/theme-chalk/src/mixins/mixins' as *;
+
+@include b(cards-page-configure) {
+	@include e(header) {
+		border-color: var(--el-border-color-lighter);
+		background-color: var(--el-fill-color-light);
+	}
+
+	@include e(card-header) {
+		border-color: var(--el-border-color-lighter);
+		background-color: var(--el-fill-color-lighter);
+	}
+}
+
+.grid-stack .grid-stack-item-content {
+	display: flex;
+	flex-direction: column;
+}

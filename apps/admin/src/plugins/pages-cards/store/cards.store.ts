@@ -233,7 +233,7 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 					firstLoad.value = [...new Set(firstLoad.value)];
 
 					const cards = Object.fromEntries(
-						responseData.data.map((card) => {
+						responseData.data.map((card: ICardRes) => {
 							const transformedCard = transformCardResponse(card);
 
 							insertDataSourceRelations(transformedCard, card.data_source);
@@ -560,7 +560,7 @@ export const useCards = defineStore<'pages_cards_plugin-cards', CardsStoreSetup>
 				data: transformTileResponse(tile, element?.schemas?.tileSchema || TileSchema),
 			});
 
-			tile.data_source.forEach((dataSource) => {
+			tile.data_source.forEach((dataSource: IDataSourceRes) => {
 				const element = getDataSourcePluginElement(dataSource.type);
 
 				dataSourcesStore.set({
