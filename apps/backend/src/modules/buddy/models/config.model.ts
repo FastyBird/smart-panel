@@ -1,10 +1,10 @@
 import { Expose } from 'class-transformer';
-import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { IsEnum, IsInt, IsOptional, IsString, Min } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { ModuleConfigModel } from '../../config/models/config.model';
-import { BUDDY_MODULE_NAME, LlmProvider } from '../buddy.constants';
+import { BUDDY_MODULE_NAME, HEARTBEAT_DEFAULT_INTERVAL_MS, LlmProvider } from '../buddy.constants';
 
 @ApiSchema({ name: 'ConfigModuleDataBuddy' })
 export class BuddyConfigModel extends ModuleConfigModel {
@@ -61,4 +61,16 @@ export class BuddyConfigModel extends ModuleConfigModel {
 	@IsOptional()
 	@IsString()
 	ollamaUrl: string | null = null;
+
+	@ApiPropertyOptional({
+		name: 'heartbeat_interval_ms',
+		description: 'Heartbeat evaluation interval in milliseconds (minimum 60000)',
+		type: 'integer',
+		example: 300000,
+	})
+	@Expose({ name: 'heartbeat_interval_ms' })
+	@IsOptional()
+	@IsInt()
+	@Min(60_000)
+	heartbeatIntervalMs: number = HEARTBEAT_DEFAULT_INTERVAL_MS;
 }

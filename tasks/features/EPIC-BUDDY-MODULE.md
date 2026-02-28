@@ -122,7 +122,7 @@ Inspired by the [OpenClaw](https://github.com/openclaw/openclaw) project's proac
 
 ### Phase 2 (Proactive)
 
-- [ ] `HeartbeatService` runs periodic evaluation (configurable interval, default 5 min) via `@nestjs/schedule`
+- [x] `HeartbeatService` runs periodic evaluation (configurable interval, default 5 min) via `@nestjs/schedule`
 - [ ] Anomaly detection: sensor drift (temperature deviation > threshold), unusual device activity
 - [ ] Energy suggestions: excess solar, high consumption alerts
 - [ ] Conflict detection: heating + open window, AC + open door, lights on in empty room

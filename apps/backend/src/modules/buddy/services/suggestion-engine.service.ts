@@ -15,6 +15,7 @@ import {
 } from '../buddy.constants';
 import { BuddySuggestionNotFoundException } from '../buddy.exceptions';
 
+import { EvaluatorResult } from './heartbeat.types';
 import { DetectedPattern, PatternDetectorService } from './pattern-detector.service';
 
 export interface BuddySuggestion {
@@ -174,6 +175,69 @@ export class SuggestionEngineService implements OnModuleDestroy {
 		this.logger.debug(`Feedback "${feedback}" recorded for suggestion id=${id}, cooldown set`);
 
 		return { success: true };
+	}
+
+	/**
+	 * Create suggestions from heartbeat evaluator results.
+	 * Applies cooldown and duplicate checking before creating each suggestion.
+	 */
+	createFromEvaluatorResults(results: EvaluatorResult[]): BuddySuggestion[] {
+		const created: BuddySuggestion[] = [];
+
+		for (const result of results) {
+			if (buddyCooldowns.isOnCooldown(result.spaceId, result.type)) {
+				continue;
+			}
+
+			if (this.hasDuplicateSuggestion(result.spaceId, result.type, result.metadata)) {
+				continue;
+			}
+
+			const suggestion: BuddySuggestion = {
+				id: uuid(),
+				type: result.type,
+				title: result.title,
+				reason: result.reason,
+				spaceId: result.spaceId,
+				metadata: result.metadata,
+				createdAt: new Date(),
+				expiresAt: new Date(Date.now() + SUGGESTION_EXPIRY_MS),
+			};
+
+			this.suggestions.set(suggestion.id, suggestion);
+			created.push(suggestion);
+
+			this.eventEmitter.emit(EventType.SUGGESTION_CREATED, suggestion);
+
+			this.logger.debug(`Created suggestion from evaluator id=${suggestion.id}: "${suggestion.reason}"`);
+		}
+
+		return created;
+	}
+
+	/**
+	 * Check if a non-expired duplicate suggestion already exists (same type + space + metadata match).
+	 */
+	private hasDuplicateSuggestion(spaceId: string, type: SuggestionType, metadata: Record<string, unknown>): boolean {
+		const now = Date.now();
+
+		for (const suggestion of this.suggestions.values()) {
+			if (suggestion.expiresAt.getTime() <= now) {
+				continue;
+			}
+
+			if (suggestion.spaceId === spaceId && suggestion.type === type) {
+				if (type === SuggestionType.PATTERN_SCENE_CREATE && suggestion.metadata.intentType === metadata.intentType) {
+					return true;
+				}
+
+				if (type !== SuggestionType.PATTERN_SCENE_CREATE) {
+					return true;
+				}
+			}
+		}
+
+		return false;
 	}
 
 	/**

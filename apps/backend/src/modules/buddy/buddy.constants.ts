@@ -44,3 +44,7 @@ export const PATTERN_MIN_OCCURRENCES = 3;
 export const PATTERN_TIME_WINDOW_MINUTES = 60;
 
 export const PATTERN_LOOKBACK_DAYS = 7;
+
+export const HEARTBEAT_DEFAULT_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+
+export const HEARTBEAT_MAX_CYCLE_MS = 30_000; // 30 seconds — log warning if exceeded

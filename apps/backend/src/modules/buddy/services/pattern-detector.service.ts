@@ -1,9 +1,16 @@
 import { Injectable, Logger } from '@nestjs/common';
 
 import { IntentType } from '../../intents/intents.constants';
-import { PATTERN_LOOKBACK_DAYS, PATTERN_MIN_OCCURRENCES, PATTERN_TIME_WINDOW_MINUTES } from '../buddy.constants';
+import {
+	PATTERN_LOOKBACK_DAYS,
+	PATTERN_MIN_OCCURRENCES,
+	PATTERN_TIME_WINDOW_MINUTES,
+	SuggestionType,
+} from '../buddy.constants';
 
 import { ActionObserverService, ActionRecord } from './action-observer.service';
+import { BuddyContext } from './buddy-context.service';
+import { EvaluatorResult, HeartbeatEvaluator } from './heartbeat.types';
 
 export interface DetectedPattern {
 	intentType: IntentType;
@@ -28,10 +35,43 @@ interface TimeCluster {
 }
 
 @Injectable()
-export class PatternDetectorService {
+export class PatternDetectorService implements HeartbeatEvaluator {
+	readonly name = 'PatternDetector';
 	private readonly logger = new Logger(PatternDetectorService.name);
 
 	constructor(private readonly actionObserver: ActionObserverService) {}
+
+	/**
+	 * HeartbeatEvaluator implementation.
+	 * Detects patterns filtered to the space in the provided context.
+	 */
+	evaluate(context: BuddyContext): Promise<EvaluatorResult[]> {
+		const patterns = this.detectPatterns();
+		const spaceIds = new Set(context.spaces.map((s) => s.id));
+
+		const results = patterns
+			.filter((p) => spaceIds.has(p.spaceId))
+			.map((p) => {
+				const spaceName = context.spaces.find((s) => s.id === p.spaceId)?.name ?? 'unknown space';
+				const intentLabel = this.formatIntentLabel(p.intentType);
+				const timeLabel = this.formatTimeLabel(p.timeOfDay.hour, p.timeOfDay.minute);
+
+				return {
+					type: SuggestionType.PATTERN_SCENE_CREATE,
+					title: 'Create a scene for this?',
+					reason: `You ${intentLabel} in ${spaceName} around ${timeLabel} regularly`,
+					spaceId: p.spaceId,
+					metadata: {
+						intentType: p.intentType,
+						timeOfDay: p.timeOfDay,
+						occurrences: p.occurrences,
+						confidence: p.confidence,
+					},
+				};
+			});
+
+		return Promise.resolve(results);
+	}
 
 	/**
 	 * Analyse the action history buffer and detect repeated patterns.
@@ -158,6 +198,38 @@ export class PatternDetectorService {
 		}
 
 		return clusters;
+	}
+
+	private formatIntentLabel(intentType: string): string {
+		const labels: Record<string, string> = {
+			'light.toggle': 'toggle lights',
+			'light.setBrightness': 'adjust brightness',
+			'light.setColor': 'change light color',
+			'light.setColorTemp': 'change color temperature',
+			'light.setWhite': 'set white light',
+			'device.setProperty': 'adjust a device',
+			'scene.run': 'run a scene',
+			'space.lighting.on': 'turn on lights',
+			'space.lighting.off': 'turn off lights',
+			'space.lighting.setMode': 'change lighting mode',
+			'space.climate.setMode': 'change climate mode',
+			'space.climate.setpointSet': 'adjust thermostat',
+			'space.covers.open': 'open covers',
+			'space.covers.close': 'close covers',
+		};
+
+		return labels[intentType] ?? intentType;
+	}
+
+	private formatTimeLabel(hour: number, minute: number): string {
+		const period = hour >= 12 ? 'PM' : 'AM';
+		const displayHour = hour % 12 || 12;
+
+		if (minute === 0) {
+			return `${displayHour} ${period}`;
+		}
+
+		return `${displayHour}:${minute.toString().padStart(2, '0')} ${period}`;
 	}
 
 	/**
