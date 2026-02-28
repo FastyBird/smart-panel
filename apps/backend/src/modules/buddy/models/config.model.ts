@@ -10,6 +10,9 @@ import {
 	ANOMALY_UNUSUAL_ACTIVITY_THRESHOLD,
 	ANOMALY_UNUSUAL_ACTIVITY_WINDOW_MINUTES,
 	BUDDY_MODULE_NAME,
+	ENERGY_BATTERY_LOW_THRESHOLD_PERCENT,
+	ENERGY_EXCESS_SOLAR_THRESHOLD_KW,
+	ENERGY_HIGH_CONSUMPTION_THRESHOLD_KW,
 	HEARTBEAT_DEFAULT_INTERVAL_MS,
 	LlmProvider,
 } from '../buddy.constants';
@@ -129,4 +132,40 @@ export class BuddyConfigModel extends ModuleConfigModel {
 	@IsInt()
 	@Min(5)
 	anomalyUnusualActivityWindowMinutes: number = ANOMALY_UNUSUAL_ACTIVITY_WINDOW_MINUTES;
+
+	@ApiPropertyOptional({
+		name: 'energy_excess_solar_threshold_kw',
+		description: 'Surplus solar production (kW) above consumption to trigger an excess solar suggestion',
+		type: 'number',
+		example: 1,
+	})
+	@Expose({ name: 'energy_excess_solar_threshold_kw' })
+	@IsOptional()
+	@IsNumber()
+	@Min(0.1)
+	energyExcessSolarThresholdKw: number = ENERGY_EXCESS_SOLAR_THRESHOLD_KW;
+
+	@ApiPropertyOptional({
+		name: 'energy_high_consumption_threshold_kw',
+		description: 'Grid draw (kW) to trigger a high consumption suggestion',
+		type: 'number',
+		example: 5,
+	})
+	@Expose({ name: 'energy_high_consumption_threshold_kw' })
+	@IsOptional()
+	@IsNumber()
+	@Min(0.5)
+	energyHighConsumptionThresholdKw: number = ENERGY_HIGH_CONSUMPTION_THRESHOLD_KW;
+
+	@ApiPropertyOptional({
+		name: 'energy_battery_low_threshold_percent',
+		description: 'Battery level (%) below which a low battery suggestion is triggered',
+		type: 'number',
+		example: 20,
+	})
+	@Expose({ name: 'energy_battery_low_threshold_percent' })
+	@IsOptional()
+	@IsNumber()
+	@Min(1)
+	energyBatteryLowThresholdPercent: number = ENERGY_BATTERY_LOW_THRESHOLD_PERCENT;
 }
