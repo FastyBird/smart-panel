@@ -5,7 +5,7 @@ Type: feature
 Scope: panel
 Size: small
 Parent: EPIC-BUDDY-MODULE
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -36,13 +36,13 @@ I want suggestion notifications to appear as toast/banner overlays on the panel 
 
 ## 4. Acceptance criteria
 
-- [ ] When `BuddyModule.Suggestion.Created` WebSocket event arrives, a toast notification appears on the panel
-- [ ] Toast shows suggestion title and a brief reason
-- [ ] Toast auto-dismisses after 15 seconds (configurable)
-- [ ] Tapping the toast opens the buddy drawer
-- [ ] Swiping the toast dismisses it and sends `dismissed` feedback
-- [ ] Only 1 toast visible at a time; additional suggestions queue
-- [ ] Conflict/anomaly suggestions have a warning-colored border; general tips have neutral styling
+- [x] When `BuddyModule.Suggestion.Created` WebSocket event arrives, a toast notification appears on the panel
+- [x] Toast shows suggestion title and a brief reason
+- [x] Toast auto-dismisses after 15 seconds (configurable)
+- [x] Tapping the toast opens the buddy drawer
+- [x] Swiping the toast dismisses it and sends `dismissed` feedback
+- [x] Only 1 toast visible at a time; additional suggestions queue
+- [x] Conflict/anomaly suggestions have a warning-colored border; general tips have neutral styling
 
 ## 5. Example scenarios
 

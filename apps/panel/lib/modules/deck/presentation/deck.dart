@@ -9,7 +9,9 @@ import 'package:fastybird_smart_panel/modules/dashboard/export.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
 import 'package:fastybird_smart_panel/modules/buddy/presentation/buddy_chat_drawer.dart';
 import 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/suggestion_badge.dart';
+import 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/suggestion_toast.dart';
 import 'package:fastybird_smart_panel/modules/buddy/service.dart';
+import 'package:fastybird_smart_panel/modules/buddy/services/suggestion_notification_service.dart';
 import 'package:fastybird_smart_panel/modules/security/services/security_overlay_controller.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/swipe_event.dart';
 import 'package:flutter/foundation.dart';
@@ -68,6 +70,22 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen>
     // Listen for swipe block events (from interactive widgets like dials)
     _swipeBlockSubscription =
         _eventBus.on<PageSwipeBlockEvent>().listen(_onSwipeBlockEvent);
+
+    // Wire up notification tap to open buddy drawer
+    try {
+      final notificationService = locator<SuggestionNotificationService>();
+      notificationService.onTapped = (_) {
+        if (mounted) {
+          setState(() {
+            _buddyDrawerOpen = true;
+          });
+        }
+      };
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[Deck] SuggestionNotificationService not registered: $e');
+      }
+    }
   }
 
   void _onSwipeBlockEvent(PageSwipeBlockEvent event) {
@@ -335,6 +353,10 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen>
                   }
                 },
               ),
+
+              // Suggestion toast notification
+              if (!_buddyDrawerOpen)
+                const BuddySuggestionToast(),
 
               // Buddy FAB button
               if (!_buddyDrawerOpen)

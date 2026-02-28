@@ -441,6 +441,9 @@ class _MyAppState extends State<MyApp> {
         ChangeNotifierProvider.value(
           value: locator<buddy_module.BuddyService>(),
         ),
+        ChangeNotifierProvider.value(
+          value: locator<buddy_module.SuggestionNotificationService>(),
+        ),
       ],
       child: AppBody(),
     );

@@ -13,6 +13,10 @@ import 'package:fastybird_smart_panel/modules/buddy/models/suggestion.dart';
 class BuddyRepository extends ChangeNotifier {
 	final Dio _dio;
 
+	/// Callback invoked when a new suggestion arrives via WebSocket.
+	/// Used by the notification service to show toast notifications.
+	void Function(BuddySuggestionModel suggestion)? onSuggestionCreated;
+
 	/// All conversations
 	List<BuddyConversationModel> _conversations = [];
 
@@ -439,6 +443,7 @@ class BuddyRepository extends ChangeNotifier {
 			// Avoid duplicates
 			if (!_suggestions.any((s) => s.id == suggestion.id)) {
 				_suggestions.add(suggestion);
+				onSuggestionCreated?.call(suggestion);
 				notifyListeners();
 			}
 
