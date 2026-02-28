@@ -1,6 +1,5 @@
-/* eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-assignment */
 import { BUDDY_MODULE_NAME, LlmProvider, MessageRole } from '../buddy.constants';
-import { BuddyProviderNotConfiguredException, BuddyProviderTimeoutException } from '../buddy.exceptions';
+import { BuddyProviderNotConfiguredException } from '../buddy.exceptions';
 import { BuddyConfigModel } from '../models/config.model';
 
 import { ChatMessage, LlmProviderService } from './llm-provider.service';
@@ -35,9 +34,7 @@ describe('LlmProviderService', () => {
 		it('should throw BuddyProviderNotConfiguredException when provider is NONE', async () => {
 			configService.getModuleConfig.mockReturnValue(makeConfig({ provider: LlmProvider.NONE }));
 
-			await expect(service.sendMessage(systemPrompt, messages)).rejects.toThrow(
-				BuddyProviderNotConfiguredException,
-			);
+			await expect(service.sendMessage(systemPrompt, messages)).rejects.toThrow(BuddyProviderNotConfiguredException);
 		});
 
 		it('should throw BuddyProviderNotConfiguredException when config service throws', async () => {
@@ -46,9 +43,7 @@ describe('LlmProviderService', () => {
 			});
 
 			// When config throws, it falls back to NONE provider
-			await expect(service.sendMessage(systemPrompt, messages)).rejects.toThrow(
-				BuddyProviderNotConfiguredException,
-			);
+			await expect(service.sendMessage(systemPrompt, messages)).rejects.toThrow(BuddyProviderNotConfiguredException);
 		});
 	});
 

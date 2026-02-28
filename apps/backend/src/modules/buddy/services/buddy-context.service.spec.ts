@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-assignment */
 import { IntentType } from '../../intents/intents.constants';
 
 import { ActionObserverService } from './action-observer.service';
@@ -48,12 +47,12 @@ describe('BuddyContextService', () => {
 		};
 
 		scenesService = {
-			findAll: jest.fn().mockResolvedValue([
-				{ id: 'scene-1', name: 'Movie Night', primarySpaceId: 'space-1', enabled: true },
-			]),
-			findBySpace: jest.fn().mockResolvedValue([
-				{ id: 'scene-1', name: 'Movie Night', primarySpaceId: 'space-1', enabled: true },
-			]),
+			findAll: jest
+				.fn()
+				.mockResolvedValue([{ id: 'scene-1', name: 'Movie Night', primarySpaceId: 'space-1', enabled: true }]),
+			findBySpace: jest
+				.fn()
+				.mockResolvedValue([{ id: 'scene-1', name: 'Movie Night', primarySpaceId: 'space-1', enabled: true }]),
 		};
 
 		weatherService = {
@@ -107,9 +106,7 @@ describe('BuddyContextService', () => {
 			const ctx = await service.buildContext();
 
 			expect(ctx.scenes).toHaveLength(1);
-			expect(ctx.scenes[0]).toEqual(
-				expect.objectContaining({ id: 'scene-1', name: 'Movie Night', enabled: true }),
-			);
+			expect(ctx.scenes[0]).toEqual(expect.objectContaining({ id: 'scene-1', name: 'Movie Night', enabled: true }));
 		});
 
 		it('should include weather in context', async () => {

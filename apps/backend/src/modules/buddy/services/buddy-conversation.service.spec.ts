@@ -42,9 +42,7 @@ describe('BuddyConversationService', () => {
 		dataSource = {
 			transaction: jest.fn(async (fn: (manager: Record<string, jest.Mock>) => Promise<unknown>) => {
 				const manager = {
-					create: jest.fn(
-						(_Entity: unknown, data: Partial<BuddyMessageEntity>) => ({ ...data }) as BuddyMessageEntity,
-					),
+					create: jest.fn((_Entity: unknown, data: Partial<BuddyMessageEntity>) => ({ ...data }) as BuddyMessageEntity),
 					save: jest.fn((entity: BuddyMessageEntity) => Promise.resolve(entity)),
 					update: jest.fn().mockResolvedValue(undefined),
 				};
@@ -181,17 +179,13 @@ describe('BuddyConversationService', () => {
 		it('should throw BuddyConversationNotFoundException for non-existent conversation', async () => {
 			conversationRepo.findOne.mockResolvedValue(null);
 
-			await expect(service.sendMessage('nonexistent', 'Hello')).rejects.toThrow(
-				BuddyConversationNotFoundException,
-			);
+			await expect(service.sendMessage('nonexistent', 'Hello')).rejects.toThrow(BuddyConversationNotFoundException);
 		});
 
 		it('should propagate BuddyProviderNotConfiguredException from LLM provider', async () => {
 			llmProvider.sendMessage.mockRejectedValue(new BuddyProviderNotConfiguredException());
 
-			await expect(service.sendMessage('conv-1', 'Hello')).rejects.toThrow(
-				BuddyProviderNotConfiguredException,
-			);
+			await expect(service.sendMessage('conv-1', 'Hello')).rejects.toThrow(BuddyProviderNotConfiguredException);
 		});
 
 		it('should load recent message history for LLM context', async () => {

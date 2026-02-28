@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/unbound-method */
 import { IntentType } from '../../intents/intents.constants';
 
 import { ActionObserverService, ActionRecord } from './action-observer.service';

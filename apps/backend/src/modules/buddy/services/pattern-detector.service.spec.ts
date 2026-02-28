@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/unbound-method */
 import { IntentType } from '../../intents/intents.constants';
 
 import { ActionObserverService, ActionRecord } from './action-observer.service';
@@ -8,7 +7,7 @@ function makeAction(overrides: Partial<ActionRecord> = {}): ActionRecord {
 	return {
 		intentId: overrides.intentId ?? `intent-${Math.random().toString(36).slice(2)}`,
 		type: overrides.type ?? IntentType.LIGHT_TOGGLE,
-		spaceId: 'spaceId' in overrides ? overrides.spaceId! : 'space-1',
+		spaceId: 'spaceId' in overrides ? overrides.spaceId : 'space-1',
 		deviceIds: overrides.deviceIds ?? ['dev-1'],
 		timestamp: overrides.timestamp ?? new Date(),
 	};
@@ -172,15 +171,9 @@ describe('PatternDetectorService', () => {
 	});
 
 	it('should exclude actions with null spaceId', () => {
-		observer.recordAction(
-			makeAction({ type: IntentType.LIGHT_TOGGLE, spaceId: null, timestamp: daysAgoAt(1, 23, 0) }),
-		);
-		observer.recordAction(
-			makeAction({ type: IntentType.LIGHT_TOGGLE, spaceId: null, timestamp: daysAgoAt(2, 23, 0) }),
-		);
-		observer.recordAction(
-			makeAction({ type: IntentType.LIGHT_TOGGLE, spaceId: null, timestamp: daysAgoAt(3, 23, 0) }),
-		);
+		observer.recordAction(makeAction({ type: IntentType.LIGHT_TOGGLE, spaceId: null, timestamp: daysAgoAt(1, 23, 0) }));
+		observer.recordAction(makeAction({ type: IntentType.LIGHT_TOGGLE, spaceId: null, timestamp: daysAgoAt(2, 23, 0) }));
+		observer.recordAction(makeAction({ type: IntentType.LIGHT_TOGGLE, spaceId: null, timestamp: daysAgoAt(3, 23, 0) }));
 
 		const patterns = service.detectPatterns();
 
@@ -263,9 +256,7 @@ describe('PatternDetectorService', () => {
 
 		// 3 scene.run
 		for (let i = 1; i <= 3; i++) {
-			observer.recordAction(
-				makeAction({ type: IntentType.SCENE_RUN, spaceId: 'room', timestamp: daysAgoAt(i, 8, 0) }),
-			);
+			observer.recordAction(makeAction({ type: IntentType.SCENE_RUN, spaceId: 'room', timestamp: daysAgoAt(i, 8, 0) }));
 		}
 
 		const patterns = service.detectPatterns();

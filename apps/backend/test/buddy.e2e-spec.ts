@@ -8,10 +8,10 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 
 import { AppModule } from '../src/app.module';
-import { IntentType } from '../src/modules/intents/intents.constants';
 import { ActionObserverService } from '../src/modules/buddy/services/action-observer.service';
 import { LlmProviderService } from '../src/modules/buddy/services/llm-provider.service';
 import { buddyCooldowns } from '../src/modules/buddy/services/suggestion-engine.service';
+import { IntentType } from '../src/modules/intents/intents.constants';
 
 describe('Buddy module (e2e)', () => {
 	let app: INestApplication;
@@ -53,20 +53,24 @@ describe('Buddy module (e2e)', () => {
 		actionObserver = moduleFixture.get<ActionObserverService>(ActionObserverService);
 
 		// Register and login to obtain an access token
-		await request(app.getHttpServer()).post('/modules/auth/auth/register').send({
-			data: {
-				username: 'buddytest',
-				password: 'securePassword123!',
-				email: 'buddytest@example.com',
-			},
-		});
+		await request(app.getHttpServer())
+			.post('/modules/auth/auth/register')
+			.send({
+				data: {
+					username: 'buddytest',
+					password: 'securePassword123!',
+					email: 'buddytest@example.com',
+				},
+			});
 
-		const loginResponse = await request(app.getHttpServer()).post('/modules/auth/auth/login').send({
-			data: {
-				username: 'buddytest',
-				password: 'securePassword123!',
-			},
-		});
+		const loginResponse = await request(app.getHttpServer())
+			.post('/modules/auth/auth/login')
+			.send({
+				data: {
+					username: 'buddytest',
+					password: 'securePassword123!',
+				},
+			});
 
 		accessToken = (loginResponse.body as { data: { access_token: string } }).data.access_token;
 	});

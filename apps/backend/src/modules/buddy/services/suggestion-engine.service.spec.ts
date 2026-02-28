@@ -7,7 +7,7 @@ import { EventType, SuggestionType } from '../buddy.constants';
 import { BuddySuggestionNotFoundException } from '../buddy.exceptions';
 
 import { DetectedPattern } from './pattern-detector.service';
-import { BuddySuggestion, buddyCooldowns, SuggestionEngineService } from './suggestion-engine.service';
+import { BuddySuggestion, SuggestionEngineService, buddyCooldowns } from './suggestion-engine.service';
 
 function makePattern(overrides: Partial<DetectedPattern> = {}): DetectedPattern {
 	return {
@@ -207,9 +207,7 @@ describe('SuggestionEngineService', () => {
 		it('should remove the suggestion after feedback', () => {
 			service.recordFeedback(createdSuggestion.id, SuggestionFeedback.APPLIED);
 
-			expect(() => service.getSuggestionOrThrow(createdSuggestion.id)).toThrow(
-				BuddySuggestionNotFoundException,
-			);
+			expect(() => service.getSuggestionOrThrow(createdSuggestion.id)).toThrow(BuddySuggestionNotFoundException);
 		});
 
 		it('should set cooldown after applied feedback', () => {
