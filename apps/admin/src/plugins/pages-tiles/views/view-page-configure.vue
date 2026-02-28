@@ -16,7 +16,7 @@
 
 			<template #dropdown>
 				<el-dropdown-menu>
-					<el-dropdown-item @click="onTileAdd">
+					<el-dropdown-item @click="() => onTileAdd()">
 						<template #icon>
 							<icon icon="mdi:plus" />
 						</template>
