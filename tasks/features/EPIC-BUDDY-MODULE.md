@@ -127,7 +127,7 @@ Inspired by the [OpenClaw](https://github.com/openclaw/openclaw) project's proac
 - [x] Energy suggestions: excess solar, high consumption alerts
 - [x] Conflict detection: heating + open window, AC + open door, lights on in empty room
 - [x] Scene creation suggestions: repeated action patterns → "Create a scene for this?"
-- [ ] Panel: proactive suggestion notifications in buddy drawer
+- [x] Panel: proactive suggestion notifications in buddy drawer
 
 ### Phase 3 (Voice)
 
