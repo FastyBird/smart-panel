@@ -29,7 +29,7 @@
 								{{ props.page.title }}
 							</el-text>
 							<el-tag
-								v-for="ds in dataSources"
+								v-for="ds in visibleDataSources"
 								:key="ds.id"
 								size="small"
 								:type="ds.draft ? 'warning' : 'info'"
@@ -39,6 +39,13 @@
 								@close="removeDataSource(ds.id)"
 							>
 								{{ getDataSourceLabel(ds.type) }}
+							</el-tag>
+							<el-tag
+								v-if="hiddenDataSourcesCount > 0"
+								size="small"
+								type="info"
+							>
+								+{{ hiddenDataSourcesCount }}
 							</el-tag>
 						</div>
 						<el-button
@@ -315,6 +322,11 @@ const { getElement: getDataSourceElement } = useDataSourcesPlugins();
 const getDataSourceLabel = (type: string): string => {
 	return getDataSourceElement(type)?.name ?? type;
 };
+
+const maxVisibleDataSources = 2;
+
+const visibleDataSources = computed(() => dataSources.value.slice(0, maxVisibleDataSources));
+const hiddenDataSourcesCount = computed(() => Math.max(0, dataSources.value.length - maxVisibleDataSources));
 
 const appContext = getCurrentInstance()?.appContext ?? null;
 
