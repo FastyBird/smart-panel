@@ -833,7 +833,9 @@ watch(
 
 			const store = tilesByCard.get(card.id);
 
-			if (store && !store.loaded.value && !store.areLoading.value) {
+			// Always fetch if not loading and tiles are empty — the cards store
+			// may have marked firstLoad without actually embedding tile data
+			if (store && !store.areLoading.value && store.tiles.value.length === 0) {
 				store.fetchTiles().catch((error: unknown): void => {
 					const err = error as Error;
 					throw new DashboardException('Something went wrong', err);
