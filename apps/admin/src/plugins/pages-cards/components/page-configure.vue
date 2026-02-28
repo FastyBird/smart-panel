@@ -245,7 +245,7 @@ import { computed, getCurrentInstance, h, nextTick, onBeforeMount, onBeforeUnmou
 import { useI18n } from 'vue-i18n';
 
 import { ElButton, ElCard, ElCol, ElEmpty, ElIcon, ElOption, ElRow, ElSelect, ElTag, ElText, useNamespace } from 'element-plus';
-import { GridStack, type GridStackWidget } from 'gridstack';
+import { GridStack } from 'gridstack';
 import 'gridstack/dist/gridstack.min.css';
 
 import { Icon } from '@iconify/vue';
@@ -459,16 +459,16 @@ const initializeCardGrid = (card: ICard): void => {
 
 		for (const item of items) {
 			const itemEl = item.el;
-			if (!itemEl) return;
+			if (!itemEl) continue;
 
 			const itemElContent = itemEl.querySelector('.grid-stack-item-content');
-			if (!itemElContent) return;
+			if (!itemElContent) continue;
 
 			const itemId = item.id;
 			const tiles = getCardTiles(card.id);
 			const tile = tiles.find((t) => t.id === itemId);
 
-			if (!tile) return;
+			if (!tile) continue;
 
 			renderTileContent(itemElContent, tile, card.id);
 
@@ -481,7 +481,7 @@ const initializeCardGrid = (card: ICard): void => {
 			const itemEl = item.el;
 			const itemElContent = itemEl?.querySelector('.grid-stack-item-content');
 
-			if (!itemElContent) return;
+			if (!itemElContent) continue;
 
 			render(null, itemElContent as HTMLElement);
 
@@ -533,15 +533,21 @@ const initializeGrids = (): void => {
 	suppressMarkChanged.value = true;
 	destroyGrids();
 
-	for (const card of sortedCards.value) {
-		if (getCardTiles(card.id).length > 0) {
-			nextTick(() => {
-				initializeCardGrid(card);
-			});
-		}
+	const cardsToInit = sortedCards.value.filter((card) => getCardTiles(card.id).length > 0);
+
+	if (cardsToInit.length === 0) {
+		suppressMarkChanged.value = false;
+
+		return;
 	}
 
-	suppressMarkChanged.value = false;
+	nextTick(() => {
+		for (const card of cardsToInit) {
+			initializeCardGrid(card);
+		}
+
+		suppressMarkChanged.value = false;
+	});
 };
 
 onBeforeMount((): void => {
@@ -595,14 +601,39 @@ watch(
 			emit('update:remote-page-result', FormResult.WORKING);
 
 			try {
+				// Collect all grid positions synchronously first
+				const tileUpdates: {
+					actions: ReturnType<typeof useTilesActions>;
+					gridItems: { id: string; x: number; y: number; w: number; h: number }[];
+				}[] = [];
+
 				for (const [cardId, grid] of cardGrids) {
 					const actions = tileActionsByCard.get(cardId);
 
 					if (!actions || !grid) continue;
 
-					grid.save(false, false, async (gridItem: GridStackWidget): Promise<void> => {
-						if (!gridItem.id) return;
+					const gridItems: { id: string; x: number; y: number; w: number; h: number }[] = [];
 
+					for (const el of grid.getGridItems()) {
+						const node = el.gridstackNode;
+
+						if (!node?.id) continue;
+
+						gridItems.push({
+							id: node.id,
+							x: node.x ?? 0,
+							y: node.y ?? 0,
+							w: node.w ?? 1,
+							h: node.h ?? 1,
+						});
+					}
+
+					tileUpdates.push({ actions, gridItems });
+				}
+
+				// Now await all API calls
+				for (const { actions, gridItems } of tileUpdates) {
+					for (const gridItem of gridItems) {
 						let tile = actions.findById('card', gridItem.id);
 
 						if (tile) {
@@ -611,10 +642,10 @@ watch(
 								parent: tile.parent,
 								data: {
 									type: tile.type,
-									row: gridItem.y! + 1,
-									col: gridItem.x! + 1,
-									rowSpan: gridItem.h || 1,
-									colSpan: gridItem.w || 1,
+									row: gridItem.y + 1,
+									col: gridItem.x + 1,
+									rowSpan: gridItem.h,
+									colSpan: gridItem.w,
 									hidden: false,
 								},
 							});
@@ -626,7 +657,7 @@ watch(
 								});
 							}
 						}
-					});
+					}
 				}
 
 				for (const tileId of removedTiles) {

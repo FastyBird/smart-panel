@@ -141,6 +141,55 @@
 			</template>
 		</div>
 	</el-drawer>
+
+	<el-dialog
+		v-if="!isLGDevice"
+		v-model="showDrawer"
+		:show-close="false"
+		:close-on-click-modal="false"
+		:close-on-press-escape="false"
+		fullscreen
+	>
+		<template #header>
+			<app-bar menu-button-hidden>
+				<template #button-right>
+					<app-bar-button
+						:align="AppBarButtonAlign.RIGHT"
+						class="mr-2"
+						@click="() => onCloseDrawer()"
+					>
+						<template #icon>
+							<el-icon>
+								<icon icon="mdi:close" />
+							</el-icon>
+						</template>
+					</app-bar-button>
+				</template>
+			</app-bar>
+		</template>
+
+		<view-error>
+			<template #icon>
+				<icon icon="mdi:devices" />
+			</template>
+			<template #message>
+				{{ t('pagesCardsPlugin.messages.misc.requestError') }}
+			</template>
+
+			<suspense>
+				<router-view
+					:key="`${props.page.id}-${page?.id}`"
+					v-slot="{ Component }"
+				>
+					<component
+						:is="Component"
+						v-model:remote-form-changed="remoteFormChanged"
+						:page="page"
+					/>
+				</router-view>
+			</suspense>
+		</view-error>
+	</el-dialog>
 </template>
 
 <script setup lang="ts">
@@ -148,7 +197,7 @@ import { computed, onBeforeMount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElDrawer, ElDropdown, ElDropdownItem, ElDropdownMenu, ElIcon, ElMessageBox } from 'element-plus';
+import { ElButton, ElDialog, ElDrawer, ElDropdown, ElDropdownItem, ElDropdownMenu, ElIcon, ElMessageBox } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
