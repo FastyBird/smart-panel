@@ -149,6 +149,14 @@
 			"order": {
 				"title": "Order",
 				"placeholder": "Display order"
+			},
+			"rows": {
+				"title": "Rows",
+				"placeholder": "Number of rows"
+			},
+			"cols": {
+				"title": "Columns",
+				"placeholder": "Number of columns"
 			}
 		}
 	}

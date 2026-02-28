@@ -41,6 +41,8 @@ describe('CardsController', () => {
 		id: uuid().toString(),
 		title: 'Card  title',
 		order: 0,
+		rows: null,
+		cols: null,
 		icon: null,
 		page: mockCardsPage.id,
 		tiles: [],

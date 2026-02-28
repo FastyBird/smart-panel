@@ -50,6 +50,56 @@
 				:min="0"
 			/>
 		</el-form-item>
+
+		<el-row :gutter="10">
+			<el-col :span="12">
+				<el-form-item
+					:label="t('pagesCardsPlugin.fields.cards.rows.title')"
+					prop="rows"
+				>
+					<el-input-number
+						v-model="model.rows"
+						:placeholder="t('pagesCardsPlugin.fields.cards.rows.placeholder')"
+						:min="1"
+						:max="12"
+						name="rows"
+					/>
+					<el-button
+						plain
+						class="ml-2 px-3!"
+						@click="model.rows = null"
+					>
+						<template #icon>
+							<icon icon="mdi:close" />
+						</template>
+					</el-button>
+				</el-form-item>
+			</el-col>
+
+			<el-col :span="12">
+				<el-form-item
+					:label="t('pagesCardsPlugin.fields.cards.cols.title')"
+					prop="cols"
+				>
+					<el-input-number
+						v-model="model.cols"
+						:placeholder="t('pagesCardsPlugin.fields.cards.cols.placeholder')"
+						:min="1"
+						:max="12"
+						name="cols"
+					/>
+					<el-button
+						plain
+						class="ml-2 px-3!"
+						@click="model.cols = null"
+					>
+						<template #icon>
+							<icon icon="mdi:close" />
+						</template>
+					</el-button>
+				</el-form-item>
+			</el-col>
+		</el-row>
 	</el-form>
 </template>
 
@@ -57,7 +107,9 @@
 import { reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElForm, ElFormItem, ElInput, ElInputNumber, type FormInstance, type FormRules } from 'element-plus';
+import { ElButton, ElCol, ElForm, ElFormItem, ElInput, ElInputNumber, ElRow, type FormInstance, type FormRules } from 'element-plus';
+
+import { Icon } from '@iconify/vue';
 
 import { IconPicker, injectStoresManager } from '../../../common';
 import { DashboardApiException, DashboardException, FormResult, type FormResultType } from '../../../modules/dashboard';
@@ -103,6 +155,8 @@ const model = reactive({
 	title: props.card.title,
 	icon: props.card.icon,
 	order: props.card.order,
+	rows: props.card.rows ?? null,
+	cols: props.card.cols ?? null,
 });
 
 const rules = reactive<FormRules>({
@@ -125,6 +179,8 @@ const submit = async (): Promise<void> => {
 					title: model.title,
 					icon: model.icon,
 					order: model.order,
+					rows: model.rows,
+					cols: model.cols,
 				},
 			});
 

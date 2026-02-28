@@ -599,10 +599,13 @@ const initializeCardGrid = (card: ICard): void => {
 
 	if (!container || !props.gridLayout) return;
 
+	const gridCols = card.cols ?? props.gridLayout.cols;
+	const gridRows = card.rows ?? props.gridLayout.rows;
+
 	const grid = GridStack.init(
 		{
-			column: props.gridLayout.cols,
-			row: props.gridLayout.rows,
+			column: gridCols,
+			row: gridRows,
 			cellHeight: 'auto',
 			margin: 4,
 			float: true,

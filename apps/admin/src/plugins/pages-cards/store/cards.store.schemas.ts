@@ -22,6 +22,8 @@ export const CardSchema = z.object({
 	title: z.string().trim().nonempty(),
 	icon: z.string().trim().nullable().default(null),
 	order: z.number().default(0),
+	rows: z.number().gte(1).nullable().default(null),
+	cols: z.number().gte(1).nullable().default(null),
 	createdAt: z.union([z.string().datetime({ offset: true }), z.date()]).transform((date) => (date instanceof Date ? date : new Date(date))),
 	updatedAt: z
 		.union([z.string().datetime({ offset: true }), z.date()])
@@ -62,6 +64,8 @@ export const CardsSetActionPayloadSchema = z.object({
 				.default(null)
 				.optional(),
 			order: z.number().default(0),
+			rows: z.number().gte(1).nullable().default(null).optional(),
+			cols: z.number().gte(1).nullable().default(null).optional(),
 		})
 		.passthrough(),
 });
@@ -94,6 +98,8 @@ export const CardsAddActionPayloadSchema = z.object({
 			.default(null)
 			.optional(),
 		order: z.number().default(0),
+		rows: z.number().gte(1).nullable().default(null).optional(),
+		cols: z.number().gte(1).nullable().default(null).optional(),
 	}),
 });
 
@@ -109,6 +115,8 @@ export const CardsEditActionPayloadSchema = z.object({
 			.nullable()
 			.optional(),
 		order: z.number().default(0),
+		rows: z.number().gte(1).nullable().optional(),
+		cols: z.number().gte(1).nullable().optional(),
 	}),
 });
 
@@ -135,6 +143,8 @@ export const CardCreateReqSchema: ZodType<ApiCreateCard> = z.object({
 		.nullable()
 		.optional(),
 	order: z.number(),
+	rows: z.number().gte(1).nullable().optional(),
+	cols: z.number().gte(1).nullable().optional(),
 	tiles: z.array(TileCreateReqSchema).optional(),
 	data_source: z.array(DataSourceCreateReqSchema).optional(),
 });
@@ -148,6 +158,8 @@ export const CardUpdateReqSchema: ZodType<ApiUpdateCard> = z.object({
 		.nullable()
 		.optional(),
 	order: z.number().optional(),
+	rows: z.number().gte(1).nullable().optional(),
+	cols: z.number().gte(1).nullable().optional(),
 });
 
 export const CardResSchema: ZodType<ApiCard> = z.object({
@@ -156,6 +168,8 @@ export const CardResSchema: ZodType<ApiCard> = z.object({
 	title: z.string().trim().nonempty(),
 	icon: z.string().trim().nullable(),
 	order: z.number(),
+	rows: z.number().gte(1).nullable(),
+	cols: z.number().gte(1).nullable(),
 	created_at: z.string().date(),
 	updated_at: z.string().date().nullable(),
 	tiles: z.array(TileResSchema),
