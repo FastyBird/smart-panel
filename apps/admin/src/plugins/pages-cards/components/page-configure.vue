@@ -305,6 +305,7 @@ const initialized = ref<boolean>(false);
 const suppressMarkChanged = ref<boolean>(false);
 const pageChanged = ref<boolean>(false);
 let changeTimeout: ReturnType<typeof setTimeout>;
+let initTimeout: ReturnType<typeof setTimeout>;
 
 // Load tiles for each card
 const tilesByCard = new Map<string, ReturnType<typeof useTiles>>();
@@ -570,12 +571,14 @@ onMounted((): void => {
 		initializeGrids();
 	});
 
-	setTimeout(() => {
+	initTimeout = setTimeout(() => {
 		initialized.value = true;
 	}, 500);
 });
 
 onBeforeUnmount((): void => {
+	clearTimeout(changeTimeout);
+	clearTimeout(initTimeout);
 	destroyGrids();
 });
 

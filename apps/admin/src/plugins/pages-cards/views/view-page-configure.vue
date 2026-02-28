@@ -60,7 +60,8 @@
 		<el-button
 			type="primary"
 			plain
-			:disabled="remotePageChanged === false"
+			:loading="remotePageResult === FormResult.WORKING"
+			:disabled="remotePageChanged === false || remotePageResult === FormResult.WORKING"
 			class="px-4! ml-2!"
 			@click="onSave"
 		>
@@ -74,6 +75,7 @@
 	<page-configure
 		v-if="page"
 		v-model:remote-page-submit="remotePageSubmit"
+		v-model:remote-page-result="remotePageResult"
 		v-model:remote-page-changed="remotePageChanged"
 		:page="page"
 		:cards="cards"
@@ -202,7 +204,7 @@ import { ElButton, ElDialog, ElDrawer, ElDropdown, ElDropdownItem, ElDropdownMen
 import { Icon } from '@iconify/vue';
 
 import { AppBar, AppBarButton, AppBarButtonAlign, ViewError, useBreakpoints } from '../../../common';
-import { RouteNames as DashboardRouteNames, type ITile } from '../../../modules/dashboard';
+import { FormResult, type FormResultType, RouteNames as DashboardRouteNames, type ITile } from '../../../modules/dashboard';
 import { type IDisplay, useDisplays } from '../../../modules/displays';
 import PageConfigure from '../components/page-configure.vue';
 import { useCards } from '../composables/useCards';
@@ -240,6 +242,7 @@ const showDrawer = ref<boolean>(false);
 
 const remoteFormChanged = ref<boolean>(false);
 const remotePageSubmit = ref<boolean>(false);
+const remotePageResult = ref<FormResultType>(FormResult.NONE);
 const remotePageChanged = ref<boolean>(false);
 
 const selectedDisplayId = ref<string | null>(null);
