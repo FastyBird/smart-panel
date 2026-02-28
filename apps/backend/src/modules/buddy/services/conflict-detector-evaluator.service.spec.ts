@@ -488,6 +488,119 @@ describe('ConflictDetectorEvaluator', () => {
 			expect(conflictResults).toHaveLength(0);
 		});
 
+		it('should reset tracker when room becomes occupied and not fire prematurely after re-vacancy', async () => {
+			const unoccupiedContext = makeContext({
+				devices: [
+					{
+						id: 'light-1',
+						name: 'Light',
+						space: 'space-1',
+						category: DeviceCategory.LIGHTING,
+						state: { 'light.on': true },
+					},
+					{
+						id: 'occupancy-1',
+						name: 'Sensor',
+						space: 'space-1',
+						category: DeviceCategory.SENSOR,
+						state: { 'occupancy.detected': false },
+					},
+				],
+			});
+
+			const occupiedContext = makeContext({
+				devices: [
+					{
+						id: 'light-1',
+						name: 'Light',
+						space: 'space-1',
+						category: DeviceCategory.LIGHTING,
+						state: { 'light.on': true },
+					},
+					{
+						id: 'occupancy-1',
+						name: 'Sensor',
+						space: 'space-1',
+						category: DeviceCategory.SENSOR,
+						state: { 'occupancy.detected': true },
+					},
+				],
+			});
+
+			// Step 1: Room unoccupied - seeds tracker
+			await service.evaluate(unoccupiedContext);
+
+			const tracker = (service as any).occupancyTracker as Map<string, number>;
+
+			expect(tracker.has('space-1::lights_unoccupied')).toBe(true);
+
+			// Step 2: Room becomes occupied - should clear tracker
+			await service.evaluate(occupiedContext);
+
+			expect(tracker.has('space-1::lights_unoccupied')).toBe(false);
+
+			// Step 3: Room becomes unoccupied again - should re-seed, not carry old timestamp
+			await service.evaluate(unoccupiedContext);
+
+			const newFirstSeen = tracker.get('space-1::lights_unoccupied') ?? 0;
+
+			expect(newFirstSeen).toBeGreaterThan(0);
+			// The new firstSeen should be recent (within last second), not the stale original
+			expect(Date.now() - newFirstSeen).toBeLessThan(1000);
+		});
+
+		it('should reset tracker when lights turn off', async () => {
+			const lightsOnContext = makeContext({
+				devices: [
+					{
+						id: 'light-1',
+						name: 'Light',
+						space: 'space-1',
+						category: DeviceCategory.LIGHTING,
+						state: { 'light.on': true },
+					},
+					{
+						id: 'occupancy-1',
+						name: 'Sensor',
+						space: 'space-1',
+						category: DeviceCategory.SENSOR,
+						state: { 'occupancy.detected': false },
+					},
+				],
+			});
+
+			const lightsOffContext = makeContext({
+				devices: [
+					{
+						id: 'light-1',
+						name: 'Light',
+						space: 'space-1',
+						category: DeviceCategory.LIGHTING,
+						state: { 'light.on': false },
+					},
+					{
+						id: 'occupancy-1',
+						name: 'Sensor',
+						space: 'space-1',
+						category: DeviceCategory.SENSOR,
+						state: { 'occupancy.detected': false },
+					},
+				],
+			});
+
+			// Seed tracker
+			await service.evaluate(lightsOnContext);
+
+			const tracker = (service as any).occupancyTracker as Map<string, number>;
+
+			expect(tracker.has('space-1::lights_unoccupied')).toBe(true);
+
+			// Lights turn off - should clear tracker
+			await service.evaluate(lightsOffContext);
+
+			expect(tracker.has('space-1::lights_unoccupied')).toBe(false);
+		});
+
 		it('should not detect when lights are off', async () => {
 			const context = makeContext({
 				devices: [

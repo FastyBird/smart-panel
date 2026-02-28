@@ -5,6 +5,7 @@ import {
 	BUDDY_MODULE_NAME,
 	ENERGY_BATTERY_LOW_THRESHOLD_PERCENT,
 	ENERGY_EXCESS_SOLAR_THRESHOLD_KW,
+	ENERGY_GLOBAL_SPACE_ID,
 	ENERGY_HIGH_CONSUMPTION_THRESHOLD_KW,
 	SuggestionType,
 } from '../buddy.constants';
@@ -34,7 +35,7 @@ export class EnergyEvaluator implements HeartbeatEvaluator {
 
 		const energy = context.energy;
 		const thresholds = this.getThresholds();
-		const spaceId = context.spaces[0]?.id ?? 'unknown';
+		const spaceId = ENERGY_GLOBAL_SPACE_ID;
 
 		results.push(...this.detectExcessSolar(energy, spaceId, thresholds));
 		results.push(...this.detectHighConsumption(energy, spaceId, thresholds));
@@ -101,7 +102,11 @@ export class EnergyEvaluator implements HeartbeatEvaluator {
 		spaceId: string,
 		thresholds: EnergyThresholds,
 	): EvaluatorResult[] {
-		if (energy.batteryLevel >= thresholds.batteryLowPercent || energy.solarProduction > 0) {
+		if (
+			energy.batteryLevel === null ||
+			energy.batteryLevel >= thresholds.batteryLowPercent ||
+			energy.solarProduction > 0
+		) {
 			return [];
 		}
 

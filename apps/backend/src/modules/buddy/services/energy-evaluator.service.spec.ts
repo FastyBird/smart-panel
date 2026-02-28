@@ -2,6 +2,7 @@ import { ConfigService } from '../../config/services/config.service';
 import {
 	ENERGY_BATTERY_LOW_THRESHOLD_PERCENT,
 	ENERGY_EXCESS_SOLAR_THRESHOLD_KW,
+	ENERGY_GLOBAL_SPACE_ID,
 	ENERGY_HIGH_CONSUMPTION_THRESHOLD_KW,
 	SuggestionType,
 } from '../buddy.constants';
@@ -267,16 +268,27 @@ describe('EnergyEvaluator', () => {
 			expect(batteryResults).toHaveLength(0);
 		});
 
-		it('should detect low battery at 0% with no solar', async () => {
+		it('should detect low battery at 1% with no solar', async () => {
 			const context = makeContext({
-				energy: { solarProduction: 0, gridConsumption: 2, batteryLevel: 0 },
+				energy: { solarProduction: 0, gridConsumption: 2, batteryLevel: 1 },
 			});
 
 			const results = await service.evaluate(context);
 			const batteryResults = results.filter((r) => r.type === SuggestionType.ENERGY_BATTERY_LOW);
 
 			expect(batteryResults).toHaveLength(1);
-			expect(batteryResults[0].metadata.batteryLevel).toBe(0);
+			expect(batteryResults[0].metadata.batteryLevel).toBe(1);
+		});
+
+		it('should not detect low battery when batteryLevel is null (no battery installed)', async () => {
+			const context = makeContext({
+				energy: { solarProduction: 0, gridConsumption: 2, batteryLevel: null },
+			});
+
+			const results = await service.evaluate(context);
+			const batteryResults = results.filter((r) => r.type === SuggestionType.ENERGY_BATTERY_LOW);
+
+			expect(batteryResults).toHaveLength(0);
 		});
 
 		it('should respect configurable battery low threshold', async () => {
@@ -340,7 +352,7 @@ describe('EnergyEvaluator', () => {
 			expect(types).not.toContain(SuggestionType.ENERGY_EXCESS_SOLAR);
 		});
 
-		it('should use first space ID when multiple spaces exist', async () => {
+		it('should use global spaceId for energy results regardless of context spaces', async () => {
 			const context = makeContext({
 				spaces: [
 					{ id: 'space-1', name: 'Living Room', category: 'living_room', deviceCount: 1 },
@@ -352,10 +364,10 @@ describe('EnergyEvaluator', () => {
 			const results = await service.evaluate(context);
 
 			expect(results).toHaveLength(1);
-			expect(results[0].spaceId).toBe('space-1');
+			expect(results[0].spaceId).toBe(ENERGY_GLOBAL_SPACE_ID);
 		});
 
-		it('should use "unknown" space ID when no spaces in context', async () => {
+		it('should use global spaceId even when no spaces in context', async () => {
 			const context = makeContext({
 				spaces: [],
 				energy: { solarProduction: 5, gridConsumption: 2, batteryLevel: 80 },
@@ -364,7 +376,7 @@ describe('EnergyEvaluator', () => {
 			const results = await service.evaluate(context);
 
 			expect(results).toHaveLength(1);
-			expect(results[0].spaceId).toBe('unknown');
+			expect(results[0].spaceId).toBe(ENERGY_GLOBAL_SPACE_ID);
 		});
 	});
 });

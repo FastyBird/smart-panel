@@ -94,13 +94,15 @@ export class ConflictDetectorEvaluator implements HeartbeatEvaluator {
 		const lightsOn = this.areLightsOn(devices);
 		const hasOccupancySensor = this.hasOccupancySensor(devices);
 		const isOccupied = this.isOccupied(devices);
+		const trackerKey = `${space.id}::lights_unoccupied`;
 
 		if (!lightsOn || !hasOccupancySensor || isOccupied) {
+			this.occupancyTracker.delete(trackerKey);
+
 			return [];
 		}
 
 		const now = Date.now();
-		const trackerKey = `${space.id}::lights_unoccupied`;
 		const firstSeen = this.occupancyTracker.get(trackerKey);
 
 		if (!firstSeen) {

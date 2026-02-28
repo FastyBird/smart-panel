@@ -66,6 +66,8 @@ export const ANOMALY_UNUSUAL_ACTIVITY_THRESHOLD = 10; // intent count threshold
 
 export const ANOMALY_UNUSUAL_ACTIVITY_WINDOW_MINUTES = 15; // time window in minutes
 
+export const ENERGY_GLOBAL_SPACE_ID = 'global'; // Fixed spaceId for house-level energy suggestions
+
 export const ENERGY_EXCESS_SOLAR_THRESHOLD_KW = 1; // kW surplus to trigger excess solar suggestion
 
 export const ENERGY_HIGH_CONSUMPTION_THRESHOLD_KW = 5; // kW grid draw to trigger high consumption suggestion

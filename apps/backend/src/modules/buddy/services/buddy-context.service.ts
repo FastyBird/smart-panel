@@ -16,7 +16,7 @@ export interface BuddyContext {
 	devices: { id: string; name: string; space: string | null; category: string; state: Record<string, unknown> }[];
 	scenes: { id: string; name: string; space: string | null; enabled: boolean }[];
 	weather: { temperature: number; conditions: string; humidity: number } | null;
-	energy: { solarProduction: number; gridConsumption: number; batteryLevel: number } | null;
+	energy: { solarProduction: number; gridConsumption: number; batteryLevel: number | null } | null;
 	recentIntents: { type: string; space: string | null; timestamp: string }[];
 }
 
@@ -200,7 +200,7 @@ export class BuddyContextService {
 	private async getEnergy(): Promise<{
 		solarProduction: number;
 		gridConsumption: number;
-		batteryLevel: number;
+		batteryLevel: number | null;
 	} | null> {
 		try {
 			const now = new Date();
@@ -210,7 +210,7 @@ export class BuddyContextService {
 			return {
 				solarProduction: summary.totalProductionKwh ?? 0,
 				gridConsumption: summary.totalGridImportKwh ?? 0,
-				batteryLevel: 0,
+				batteryLevel: null,
 			};
 		} catch (error) {
 			this.logger.debug(`Energy data unavailable: ${error}`);
