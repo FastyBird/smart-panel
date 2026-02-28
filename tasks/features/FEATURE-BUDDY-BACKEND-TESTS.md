@@ -5,7 +5,7 @@ Type: feature
 Scope: backend
 Size: small
 Parent: EPIC-BUDDY-MODULE
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -47,7 +47,7 @@ I want unit tests for business logic and E2E tests for API endpoints.
 
 ## 4. Acceptance criteria
 
-- [ ] `PatternDetectorService` unit tests cover:
+- [x] `PatternDetectorService` unit tests cover:
   - No actions → no patterns
   - Single action → no patterns
   - 3+ same actions (same space, similar time) → pattern detected
@@ -55,29 +55,29 @@ I want unit tests for business logic and E2E tests for API endpoints.
   - Actions spread over time (> ±60 min) → no cluster
   - Old actions (> 7 days) → excluded
   - Confidence calculation is correct
-- [ ] `SuggestionEngineService` unit tests cover:
+- [x] `SuggestionEngineService` unit tests cover:
   - Pattern → suggestion created
   - Cooldown prevents duplicate suggestions
   - Dismissed suggestion sets cooldown
   - Applied suggestion sets cooldown
   - Expired suggestions cleaned up
-- [ ] `ActionObserverService` unit tests cover:
+- [x] `ActionObserverService` unit tests cover:
   - Add action to buffer
   - Buffer overflow (oldest removed)
   - Get recent actions with limit
   - Get all actions
-- [ ] `BuddyContextService` unit tests cover:
+- [x] `BuddyContextService` unit tests cover:
   - Context includes spaces, devices, scenes
   - Context handles missing weather/energy gracefully
   - Space-filtered context returns only relevant data
-- [ ] `BuddyConversationService` unit tests cover:
+- [x] `BuddyConversationService` unit tests cover:
   - Create conversation
   - Send message persists both user and assistant messages
   - Provider not configured → throws `BuddyProviderNotConfiguredException`
   - LLM timeout → throws appropriate error
-- [ ] E2E tests for conversation endpoints work end-to-end with mocked LLM
-- [ ] E2E tests for suggestion endpoints work end-to-end
-- [ ] All tests pass: `pnpm run test:unit` and `pnpm run test:e2e`
+- [x] E2E tests for conversation endpoints work end-to-end with mocked LLM
+- [x] E2E tests for suggestion endpoints work end-to-end
+- [x] All tests pass: `pnpm run test:unit` and `pnpm run test:e2e`
 
 ## 5. Example scenarios
 
