@@ -7,11 +7,11 @@
 		>
 			<el-col
 				:span="16"
-				class="h-full overflow-auto p-2"
+				class="h-full overflow-hidden p-2"
 			>
 				<el-card
-					body-class="p-0! flex flex-col overflow-hidden"
-					:class="[ns.b(), 'mx-auto overflow-hidden']"
+					body-class="p-0! flex flex-col overflow-hidden h-full"
+					:class="[ns.b(), 'mx-auto overflow-hidden h-full']"
 					:style="props.gridCardStyle"
 				>
 					<div :class="[ns.e('header'), 'flex items-center px-2 flex-shrink-0 min-h-9 py-1 b-b b-b-solid gap-1.5']">
@@ -132,7 +132,7 @@
 						</el-button>
 					</div>
 
-
+					<div class="flex-1 overflow-auto min-h-0">
 					<div
 						v-if="sortedCards.length === 0"
 						class="p-4 text-center"
@@ -219,12 +219,13 @@
 							/>
 						</div>
 					</div>
+					</div>
 				</el-card>
 			</el-col>
 
 			<el-col
 				:span="8"
-				class="p-2"
+				class="h-full overflow-auto p-2"
 			>
 				<div class="flex flex-col gap-2">
 					<el-card
