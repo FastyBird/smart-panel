@@ -1,4 +1,4 @@
-import { Expose } from 'class-transformer';
+import { Expose, Transform } from 'class-transformer';
 import { IsInt, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
@@ -39,6 +39,26 @@ export class BuddyConfigModel extends ModuleConfigModel {
 	@IsOptional()
 	@IsString()
 	provider: string = LLM_PROVIDER_NONE;
+
+	// Legacy fields – kept so existing YAML configs pass forbidNonWhitelisted validation.
+	// Values are discarded on read; provider-specific settings now live in each plugin's config.
+	@Expose({ name: 'api_key' })
+	@Transform(() => undefined, { toClassOnly: true })
+	@IsOptional()
+	@IsString()
+	apiKey?: string;
+
+	@Expose()
+	@Transform(() => undefined, { toClassOnly: true })
+	@IsOptional()
+	@IsString()
+	model?: string;
+
+	@Expose({ name: 'ollama_url' })
+	@Transform(() => undefined, { toClassOnly: true })
+	@IsOptional()
+	@IsString()
+	ollamaUrl?: string;
 
 	@ApiPropertyOptional({
 		name: 'heartbeat_interval_ms',

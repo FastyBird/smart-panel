@@ -44,10 +44,5 @@ export interface ILlmProvider {
 	 * @param options Additional options (timeout, etc.)
 	 * @returns The assistant's response text
 	 */
-	sendMessage(
-		systemPrompt: string,
-		messages: ChatMessage[],
-		model: string,
-		options?: LlmOptions,
-	): Promise<string>;
+	sendMessage(systemPrompt: string, messages: ChatMessage[], model: string, options?: LlmOptions): Promise<string>;
 }

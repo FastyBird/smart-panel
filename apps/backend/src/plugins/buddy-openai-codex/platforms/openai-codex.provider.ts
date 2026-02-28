@@ -15,10 +15,15 @@ import { BuddyOpenaiCodexConfigModel } from '../models/config.model';
 // Module path as variable to prevent TypeScript from statically resolving optional peer dependency
 const OPENAI_SDK_MODULE = 'openai';
 
+/** Cached tokens are considered expired after this many milliseconds (50 minutes). */
+const TOKEN_TTL_MS = 50 * 60 * 1000;
+const TOKEN_REFRESH_TIMEOUT_MS = 10_000;
+
 @Injectable()
 export class OpenAiCodexProvider implements ILlmProvider {
 	private readonly logger = new Logger(OpenAiCodexProvider.name);
 	private cachedAccessToken: string | null = null;
+	private cachedAccessTokenExpiresAt = 0;
 
 	constructor(private readonly configService: ConfigService) {}
 
@@ -71,9 +76,12 @@ export class OpenAiCodexProvider implements ILlmProvider {
 	}
 
 	private async resolveAccessToken(config: BuddyOpenaiCodexConfigModel | null): Promise<string> {
-		if (this.cachedAccessToken) {
+		if (this.cachedAccessToken && Date.now() < this.cachedAccessTokenExpiresAt) {
 			return this.cachedAccessToken;
 		}
+
+		// Clear stale cache
+		this.cachedAccessToken = null;
 
 		if (config?.accessToken) {
 			return config.accessToken;
@@ -83,6 +91,7 @@ export class OpenAiCodexProvider implements ILlmProvider {
 			const token = await this.refreshAccessToken(config);
 
 			this.cachedAccessToken = token;
+			this.cachedAccessTokenExpiresAt = Date.now() + TOKEN_TTL_MS;
 
 			return token;
 		}
@@ -93,26 +102,34 @@ export class OpenAiCodexProvider implements ILlmProvider {
 	private async refreshAccessToken(config: BuddyOpenaiCodexConfigModel): Promise<string> {
 		this.logger.debug('Refreshing OpenAI Codex OAuth access token');
 
-		const response = await fetch(BUDDY_OPENAI_CODEX_TOKEN_URL, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-			body: new URLSearchParams({
-				grant_type: 'refresh_token',
-				refresh_token: config.refreshToken ?? '',
-				client_id: config.clientId ?? '',
-				...(config.clientSecret ? { client_secret: config.clientSecret } : {}),
-			}),
-		});
+		const controller = new AbortController();
+		const timeoutId = setTimeout(() => controller.abort(), TOKEN_REFRESH_TIMEOUT_MS);
 
-		if (!response.ok) {
-			this.logger.error(`OAuth token refresh failed with status ${response.status}`);
+		try {
+			const response = await fetch(BUDDY_OPENAI_CODEX_TOKEN_URL, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+				body: new URLSearchParams({
+					grant_type: 'refresh_token',
+					refresh_token: config.refreshToken ?? '',
+					client_id: config.clientId ?? '',
+					...(config.clientSecret ? { client_secret: config.clientSecret } : {}),
+				}),
+				signal: controller.signal,
+			});
 
-			throw new Error(`OAuth token refresh failed: ${response.status}`);
+			if (!response.ok) {
+				this.logger.error(`OAuth token refresh failed with status ${response.status}`);
+
+				throw new Error(`OAuth token refresh failed: ${response.status}`);
+			}
+
+			const data = (await response.json()) as { access_token?: string };
+
+			return data.access_token ?? '';
+		} finally {
+			clearTimeout(timeoutId);
 		}
-
-		const data = (await response.json()) as { access_token?: string };
-
-		return data.access_token ?? '';
 	}
 
 	private getPluginConfig(): BuddyOpenaiCodexConfigModel | null {
