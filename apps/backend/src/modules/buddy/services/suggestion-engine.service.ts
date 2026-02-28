@@ -14,10 +14,8 @@ import {
 	SuggestionType,
 } from '../buddy.constants';
 import { BuddySuggestionNotFoundException } from '../buddy.exceptions';
-import { formatIntentLabel, formatTimeLabel } from '../buddy.utils';
-
 import { EvaluatorResult } from './heartbeat.types';
-import { DetectedPattern, PatternDetectorService } from './pattern-detector.service';
+import { DetectedPattern, PatternDetectorService, patternToEvaluatorResult } from './pattern-detector.service';
 
 export interface BuddySuggestion {
 	id: string;
@@ -87,26 +85,17 @@ export class SuggestionEngineService implements OnModuleDestroy {
 			}
 
 			const spaceName = await this.resolveSpaceName(pattern.spaceId);
-			const intentLabel = formatIntentLabel(pattern.intentType);
-			const timeLabel = formatTimeLabel(pattern.timeOfDay.hour, pattern.timeOfDay.minute);
 
 			// Re-check after async gap to prevent duplicates
 			if (this.hasSuggestionForPattern(pattern)) {
 				continue;
 			}
 
+			const result = patternToEvaluatorResult(pattern, spaceName);
+
 			const suggestion: BuddySuggestion = {
 				id: uuid(),
-				type: SuggestionType.PATTERN_SCENE_CREATE,
-				title: 'Create a scene for this?',
-				reason: `You ${intentLabel} in ${spaceName} around ${timeLabel} regularly`,
-				spaceId: pattern.spaceId,
-				metadata: {
-					intentType: pattern.intentType,
-					timeOfDay: pattern.timeOfDay,
-					occurrences: pattern.occurrences,
-					confidence: pattern.confidence,
-				},
+				...result,
 				createdAt: new Date(),
 				expiresAt: new Date(Date.now() + SUGGESTION_EXPIRY_MS),
 			};
