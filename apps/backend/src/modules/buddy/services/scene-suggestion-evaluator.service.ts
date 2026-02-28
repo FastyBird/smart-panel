@@ -3,6 +3,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { IntentType } from '../../intents/intents.constants';
 import { ScenesService } from '../../scenes/services/scenes.service';
 import { PATTERN_LOOKBACK_DAYS, PATTERN_MIN_OCCURRENCES, SuggestionType } from '../buddy.constants';
+import { clusterByTimeOfDay, formatTimeLabel } from '../buddy.utils';
 
 import { ActionObserverService, ActionRecord } from './action-observer.service';
 import { BuddyContext } from './buddy-context.service';
@@ -73,7 +74,7 @@ export class SceneSuggestionEvaluator implements HeartbeatEvaluator {
 				continue;
 			}
 
-			const clusters = this.clusterByTimeOfDay(group.sessions);
+			const clusters = this.clusterSessions(group.sessions);
 
 			for (const cluster of clusters) {
 				if (cluster.sessions.length >= PATTERN_MIN_OCCURRENCES) {
@@ -187,79 +188,19 @@ export class SceneSuggestionEvaluator implements HeartbeatEvaluator {
 		};
 	}
 
-	private clusterByTimeOfDay(
+	private clusterSessions(
 		sessions: ActionSession[],
 	): { sessions: ActionSession[]; timeOfDay: { hour: number; minute: number } }[] {
-		if (sessions.length === 0) {
-			return [];
-		}
-
-		const minuteOfDay = (session: ActionSession): number => {
-			const ts = session.actions[0].timestamp;
+		const sessionMinuteOfDay = (s: ActionSession): number => {
+			const ts = s.actions[0].timestamp;
 
 			return ts.getHours() * 60 + ts.getMinutes();
 		};
 
-		const sorted = [...sessions].sort((a, b) => minuteOfDay(a) - minuteOfDay(b));
-		const clusters: { sessions: ActionSession[]; timeOfDay: { hour: number; minute: number } }[] = [];
-		const used = new Set<number>();
-
-		for (let i = 0; i < sorted.length; i++) {
-			if (used.has(i)) {
-				continue;
-			}
-
-			const cluster: ActionSession[] = [sorted[i]];
-			used.add(i);
-			const seedMinute = minuteOfDay(sorted[i]);
-
-			for (let j = i + 1; j < sorted.length; j++) {
-				if (used.has(j)) {
-					continue;
-				}
-
-				const targetMinute = minuteOfDay(sorted[j]);
-				const diff = Math.abs(targetMinute - seedMinute);
-				const wrappedDiff = Math.min(diff, 1440 - diff);
-
-				if (wrappedDiff <= SEQUENCE_TIME_CLUSTER_MINUTES) {
-					cluster.push(sorted[j]);
-					used.add(j);
-				}
-			}
-
-			const avgMinutes = this.circularMeanMinute(cluster);
-
-			clusters.push({
-				sessions: cluster,
-				timeOfDay: { hour: Math.floor(avgMinutes / 60), minute: avgMinutes % 60 },
-			});
-		}
-
-		return clusters;
-	}
-
-	private circularMeanMinute(sessions: ActionSession[]): number {
-		const TWO_PI = 2 * Math.PI;
-		const MINUTES_IN_DAY = 1440;
-		let sinSum = 0;
-		let cosSum = 0;
-
-		for (const session of sessions) {
-			const minutes = session.actions[0].timestamp.getHours() * 60 + session.actions[0].timestamp.getMinutes();
-			const angle = (minutes / MINUTES_IN_DAY) * TWO_PI;
-			sinSum += Math.sin(angle);
-			cosSum += Math.cos(angle);
-		}
-
-		const meanAngle = Math.atan2(sinSum / sessions.length, cosSum / sessions.length);
-		let meanMinutes = Math.round(((meanAngle < 0 ? meanAngle + TWO_PI : meanAngle) / TWO_PI) * MINUTES_IN_DAY);
-
-		if (meanMinutes >= MINUTES_IN_DAY) {
-			meanMinutes = 0;
-		}
-
-		return meanMinutes;
+		return clusterByTimeOfDay(sessions, sessionMinuteOfDay, SEQUENCE_TIME_CLUSTER_MINUTES).map((c) => ({
+			sessions: c.items,
+			timeOfDay: { hour: c.avgHour, minute: c.avgMinute },
+		}));
 	}
 
 	private patternToResult(pattern: DetectedSequencePattern, spaceName: string): EvaluatorResult {
@@ -272,7 +213,7 @@ export class SceneSuggestionEvaluator implements HeartbeatEvaluator {
 			title: 'Create a scene for this routine?',
 			reason:
 				`You perform ${actionCount} actions in ${spaceName} around ` +
-				`${this.formatTime(pattern.timeOfDay.hour, pattern.timeOfDay.minute)} regularly. ` +
+				`${formatTimeLabel(pattern.timeOfDay.hour, pattern.timeOfDay.minute)} regularly. ` +
 				`Create a "${sceneName}" scene?`,
 			spaceId: pattern.spaceId,
 			metadata: {
@@ -301,17 +242,6 @@ export class SceneSuggestionEvaluator implements HeartbeatEvaluator {
 		}
 
 		return 'Night';
-	}
-
-	private formatTime(hour: number, minute: number): string {
-		const period = hour >= 12 ? 'PM' : 'AM';
-		const displayHour = hour % 12 || 12;
-
-		if (minute === 0) {
-			return `${displayHour} ${period}`;
-		}
-
-		return `${displayHour}:${minute.toString().padStart(2, '0')} ${period}`;
 	}
 }
 

@@ -66,10 +66,16 @@ describe('BuddyContextService', () => {
 		};
 
 		energyDataService = {
-			getSummary: jest.fn().mockResolvedValue({
-				totalProductionKwh: 3.2,
-				totalGridImportKwh: 1.5,
-			}),
+			getDeltas: jest.fn().mockResolvedValue([
+				{
+					intervalStart: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+					intervalEnd: new Date().toISOString(),
+					productionDeltaKwh: 0.4,
+					gridImportDeltaKwh: 0.2,
+					gridExportDeltaKwh: 0.1,
+					consumptionDeltaKwh: 0.5,
+				},
+			]),
 		};
 
 		actionObserver = new ActionObserverService();
@@ -119,13 +125,15 @@ describe('BuddyContextService', () => {
 			});
 		});
 
-		it('should include energy in context', async () => {
+		it('should include energy in context with approximate kW rates from recent deltas', async () => {
 			const ctx = await service.buildContext();
 
+			// 5-min delta kWh × 12 = approximate kW
 			expect(ctx.energy).toEqual({
-				solarProduction: 3.2,
-				gridConsumption: 1.5,
-				batteryLevel: 0,
+				solarProduction: 0.4 * 12,
+				gridConsumption: 0.2 * 12,
+				gridExport: 0.1 * 12,
+				batteryLevel: null,
 			});
 		});
 
@@ -171,8 +179,16 @@ describe('BuddyContextService', () => {
 			expect(ctx.weather).toBeNull();
 		});
 
+		it('should return null energy when no recent deltas exist', async () => {
+			energyDataService.getDeltas.mockResolvedValue([]);
+
+			const ctx = await service.buildContext();
+
+			expect(ctx.energy).toBeNull();
+		});
+
 		it('should return null energy when energy service throws', async () => {
-			energyDataService.getSummary.mockRejectedValue(new Error('No energy data'));
+			energyDataService.getDeltas.mockRejectedValue(new Error('No energy data'));
 
 			const ctx = await service.buildContext();
 
@@ -181,7 +197,7 @@ describe('BuddyContextService', () => {
 
 		it('should still return spaces and devices when weather/energy fail', async () => {
 			weatherService.getPrimaryWeather.mockRejectedValue(new Error('fail'));
-			energyDataService.getSummary.mockRejectedValue(new Error('fail'));
+			energyDataService.getDeltas.mockRejectedValue(new Error('fail'));
 
 			const ctx = await service.buildContext();
 

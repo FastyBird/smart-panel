@@ -51,13 +51,13 @@ describe('EnergyEvaluator', () => {
 	});
 
 	// ──────────────────────────────────────────
-	// Excess solar detection
+	// Excess solar detection (based on gridExport)
 	// ──────────────────────────────────────────
 
 	describe('excess solar', () => {
-		it('should detect excess solar when surplus exceeds threshold', async () => {
+		it('should detect excess solar when grid export exceeds threshold', async () => {
 			const context = makeContext({
-				energy: { solarProduction: 4.5, gridConsumption: 2, batteryLevel: 80 },
+				energy: { solarProduction: 4.5, gridConsumption: 0, gridExport: 2.5, batteryLevel: 80 },
 			});
 
 			const results = await service.evaluate(context);
@@ -67,14 +67,13 @@ describe('EnergyEvaluator', () => {
 			expect(solarResults[0].title).toBe('Excess solar energy available');
 			expect(solarResults[0].reason).toContain('2.5kW');
 			expect(solarResults[0].reason).toContain('high-load appliances');
-			expect(solarResults[0].metadata.surplus).toBe(2.5);
+			expect(solarResults[0].metadata.gridExport).toBe(2.5);
 			expect(solarResults[0].metadata.solarProduction).toBe(4.5);
-			expect(solarResults[0].metadata.gridConsumption).toBe(2);
 		});
 
-		it('should not detect excess solar when surplus is below threshold', async () => {
+		it('should not detect excess solar when grid export is below threshold', async () => {
 			const context = makeContext({
-				energy: { solarProduction: 2.5, gridConsumption: 2, batteryLevel: 80 },
+				energy: { solarProduction: 2.5, gridConsumption: 2, gridExport: 0.5, batteryLevel: 80 },
 			});
 
 			const results = await service.evaluate(context);
@@ -83,21 +82,21 @@ describe('EnergyEvaluator', () => {
 			expect(solarResults).toHaveLength(0);
 		});
 
-		it('should not detect excess solar when surplus equals threshold', async () => {
+		it('should not detect excess solar when grid export equals threshold', async () => {
 			const context = makeContext({
-				energy: { solarProduction: 3, gridConsumption: 2, batteryLevel: 80 },
+				energy: { solarProduction: 3, gridConsumption: 0, gridExport: 1, batteryLevel: 80 },
 			});
 
 			const results = await service.evaluate(context);
 			const solarResults = results.filter((r) => r.type === SuggestionType.ENERGY_EXCESS_SOLAR);
 
-			// surplus = 1, threshold = 1, need > 1 to trigger
+			// gridExport = 1, threshold = 1, need > 1 to trigger
 			expect(solarResults).toHaveLength(0);
 		});
 
-		it('should not detect excess solar when consumption exceeds production', async () => {
+		it('should not detect excess solar when there is no grid export', async () => {
 			const context = makeContext({
-				energy: { solarProduction: 1, gridConsumption: 3, batteryLevel: 80 },
+				energy: { solarProduction: 1, gridConsumption: 3, gridExport: 0, batteryLevel: 80 },
 			});
 
 			const results = await service.evaluate(context);
@@ -108,7 +107,7 @@ describe('EnergyEvaluator', () => {
 
 		it('should not detect excess solar when there is no solar production', async () => {
 			const context = makeContext({
-				energy: { solarProduction: 0, gridConsumption: 3, batteryLevel: 80 },
+				energy: { solarProduction: 0, gridConsumption: 3, gridExport: 0, batteryLevel: 80 },
 			});
 
 			const results = await service.evaluate(context);
@@ -126,26 +125,26 @@ describe('EnergyEvaluator', () => {
 			});
 
 			const context = makeContext({
-				energy: { solarProduction: 5, gridConsumption: 2.5, batteryLevel: 80 },
+				energy: { solarProduction: 5, gridConsumption: 0, gridExport: 2.5, batteryLevel: 80 },
 			});
 
 			const results = await service.evaluate(context);
 			const solarResults = results.filter((r) => r.type === SuggestionType.ENERGY_EXCESS_SOLAR);
 
-			// surplus = 2.5, threshold = 3, should not trigger
+			// gridExport = 2.5, threshold = 3, should not trigger
 			expect(solarResults).toHaveLength(0);
 		});
 
-		it('should round surplus to one decimal place', async () => {
+		it('should round grid export to one decimal place', async () => {
 			const context = makeContext({
-				energy: { solarProduction: 4.567, gridConsumption: 2.123, batteryLevel: 80 },
+				energy: { solarProduction: 4.567, gridConsumption: 0, gridExport: 2.444, batteryLevel: 80 },
 			});
 
 			const results = await service.evaluate(context);
 			const solarResults = results.filter((r) => r.type === SuggestionType.ENERGY_EXCESS_SOLAR);
 
 			expect(solarResults).toHaveLength(1);
-			expect(solarResults[0].metadata.surplus).toBe(2.4);
+			expect(solarResults[0].metadata.gridExport).toBe(2.4);
 		});
 	});
 
@@ -156,7 +155,7 @@ describe('EnergyEvaluator', () => {
 	describe('high consumption', () => {
 		it('should detect high consumption when grid draw exceeds threshold', async () => {
 			const context = makeContext({
-				energy: { solarProduction: 0, gridConsumption: 6.5, batteryLevel: 80 },
+				energy: { solarProduction: 0, gridConsumption: 6.5, gridExport: 0, batteryLevel: 80 },
 			});
 
 			const results = await service.evaluate(context);
@@ -172,7 +171,7 @@ describe('EnergyEvaluator', () => {
 
 		it('should not detect high consumption when grid draw is below threshold', async () => {
 			const context = makeContext({
-				energy: { solarProduction: 0, gridConsumption: 3, batteryLevel: 80 },
+				energy: { solarProduction: 0, gridConsumption: 3, gridExport: 0, batteryLevel: 80 },
 			});
 
 			const results = await service.evaluate(context);
@@ -183,7 +182,7 @@ describe('EnergyEvaluator', () => {
 
 		it('should not detect high consumption when grid draw equals threshold', async () => {
 			const context = makeContext({
-				energy: { solarProduction: 0, gridConsumption: 5, batteryLevel: 80 },
+				energy: { solarProduction: 0, gridConsumption: 5, gridExport: 0, batteryLevel: 80 },
 			});
 
 			const results = await service.evaluate(context);
@@ -202,7 +201,7 @@ describe('EnergyEvaluator', () => {
 			});
 
 			const context = makeContext({
-				energy: { solarProduction: 0, gridConsumption: 8, batteryLevel: 80 },
+				energy: { solarProduction: 0, gridConsumption: 8, gridExport: 0, batteryLevel: 80 },
 			});
 
 			const results = await service.evaluate(context);
@@ -220,7 +219,7 @@ describe('EnergyEvaluator', () => {
 	describe('battery low', () => {
 		it('should detect low battery when below threshold with no solar', async () => {
 			const context = makeContext({
-				energy: { solarProduction: 0, gridConsumption: 2, batteryLevel: 15 },
+				energy: { solarProduction: 0, gridConsumption: 2, gridExport: 0, batteryLevel: 15 },
 			});
 
 			const results = await service.evaluate(context);
@@ -236,7 +235,7 @@ describe('EnergyEvaluator', () => {
 
 		it('should not detect low battery when battery is above threshold', async () => {
 			const context = makeContext({
-				energy: { solarProduction: 0, gridConsumption: 2, batteryLevel: 50 },
+				energy: { solarProduction: 0, gridConsumption: 2, gridExport: 0, batteryLevel: 50 },
 			});
 
 			const results = await service.evaluate(context);
@@ -247,7 +246,7 @@ describe('EnergyEvaluator', () => {
 
 		it('should not detect low battery when battery is at threshold', async () => {
 			const context = makeContext({
-				energy: { solarProduction: 0, gridConsumption: 2, batteryLevel: 20 },
+				energy: { solarProduction: 0, gridConsumption: 2, gridExport: 0, batteryLevel: 20 },
 			});
 
 			const results = await service.evaluate(context);
@@ -259,7 +258,7 @@ describe('EnergyEvaluator', () => {
 
 		it('should not detect low battery when there is solar production', async () => {
 			const context = makeContext({
-				energy: { solarProduction: 1.5, gridConsumption: 2, batteryLevel: 10 },
+				energy: { solarProduction: 1.5, gridConsumption: 2, gridExport: 0, batteryLevel: 10 },
 			});
 
 			const results = await service.evaluate(context);
@@ -270,7 +269,7 @@ describe('EnergyEvaluator', () => {
 
 		it('should detect low battery at 1% with no solar', async () => {
 			const context = makeContext({
-				energy: { solarProduction: 0, gridConsumption: 2, batteryLevel: 1 },
+				energy: { solarProduction: 0, gridConsumption: 2, gridExport: 0, batteryLevel: 1 },
 			});
 
 			const results = await service.evaluate(context);
@@ -282,7 +281,7 @@ describe('EnergyEvaluator', () => {
 
 		it('should not detect low battery when batteryLevel is null (no battery installed)', async () => {
 			const context = makeContext({
-				energy: { solarProduction: 0, gridConsumption: 2, batteryLevel: null },
+				energy: { solarProduction: 0, gridConsumption: 2, gridExport: 0, batteryLevel: null },
 			});
 
 			const results = await service.evaluate(context);
@@ -300,7 +299,7 @@ describe('EnergyEvaluator', () => {
 			});
 
 			const context = makeContext({
-				energy: { solarProduction: 0, gridConsumption: 2, batteryLevel: 15 },
+				energy: { solarProduction: 0, gridConsumption: 2, gridExport: 0, batteryLevel: 15 },
 			});
 
 			const results = await service.evaluate(context);
@@ -322,13 +321,13 @@ describe('EnergyEvaluator', () => {
 			});
 
 			const context = makeContext({
-				energy: { solarProduction: 5, gridConsumption: 2, batteryLevel: 80 },
+				energy: { solarProduction: 5, gridConsumption: 0, gridExport: 3, batteryLevel: 80 },
 			});
 
 			const results = await service.evaluate(context);
 			const solarResults = results.filter((r) => r.type === SuggestionType.ENERGY_EXCESS_SOLAR);
 
-			// surplus = 3, default threshold = 1, should trigger
+			// gridExport = 3, default threshold = 1, should trigger
 			expect(solarResults).toHaveLength(1);
 		});
 	});
@@ -340,7 +339,7 @@ describe('EnergyEvaluator', () => {
 	describe('combined detection', () => {
 		it('should detect multiple energy issues simultaneously', async () => {
 			const context = makeContext({
-				energy: { solarProduction: 0, gridConsumption: 7, batteryLevel: 5 },
+				energy: { solarProduction: 0, gridConsumption: 7, gridExport: 0, batteryLevel: 5 },
 			});
 
 			const results = await service.evaluate(context);
@@ -358,7 +357,7 @@ describe('EnergyEvaluator', () => {
 					{ id: 'space-1', name: 'Living Room', category: 'living_room', deviceCount: 1 },
 					{ id: 'space-2', name: 'Kitchen', category: 'kitchen', deviceCount: 1 },
 				],
-				energy: { solarProduction: 5, gridConsumption: 2, batteryLevel: 80 },
+				energy: { solarProduction: 5, gridConsumption: 0, gridExport: 3, batteryLevel: 80 },
 			});
 
 			const results = await service.evaluate(context);
@@ -370,7 +369,7 @@ describe('EnergyEvaluator', () => {
 		it('should use global spaceId even when no spaces in context', async () => {
 			const context = makeContext({
 				spaces: [],
-				energy: { solarProduction: 5, gridConsumption: 2, batteryLevel: 80 },
+				energy: { solarProduction: 5, gridConsumption: 0, gridExport: 3, batteryLevel: 80 },
 			});
 
 			const results = await service.evaluate(context);

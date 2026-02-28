@@ -49,24 +49,21 @@ export class EnergyEvaluator implements HeartbeatEvaluator {
 		spaceId: string,
 		thresholds: EnergyThresholds,
 	): EvaluatorResult[] {
-		const surplus = energy.solarProduction - energy.gridConsumption;
-
-		if (surplus <= thresholds.excessSolarKw) {
+		if (energy.gridExport <= thresholds.excessSolarKw) {
 			return [];
 		}
 
-		const surplusRounded = Math.round(surplus * 10) / 10;
+		const exportRounded = Math.round(energy.gridExport * 10) / 10;
 
 		return [
 			{
 				type: SuggestionType.ENERGY_EXCESS_SOLAR,
 				title: 'Excess solar energy available',
-				reason: `Excess solar energy (${surplusRounded}kW available). Good time for high-load appliances.`,
+				reason: `Excess solar energy (${exportRounded}kW being exported). Good time for high-load appliances.`,
 				spaceId,
 				metadata: {
 					solarProduction: energy.solarProduction,
-					gridConsumption: energy.gridConsumption,
-					surplus: surplusRounded,
+					gridExport: exportRounded,
 				},
 			},
 		];

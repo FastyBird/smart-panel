@@ -7,7 +7,7 @@ import {
 	PATTERN_TIME_WINDOW_MINUTES,
 	SuggestionType,
 } from '../buddy.constants';
-import { formatIntentLabel, formatTimeLabel } from '../buddy.utils';
+import { clusterByTimeOfDay, formatIntentLabel, formatTimeLabel } from '../buddy.utils';
 
 import { ActionObserverService, ActionRecord } from './action-observer.service';
 import { BuddyContext } from './buddy-context.service';
@@ -106,7 +106,7 @@ export class PatternDetectorService implements HeartbeatEvaluator {
 		const patterns: DetectedPattern[] = [];
 
 		for (const group of groups) {
-			const clusters = this.clusterByTimeOfDay(group.actions);
+			const clusters = this.clusterActions(group.actions);
 
 			for (const cluster of clusters) {
 				if (cluster.actions.length >= PATTERN_MIN_OCCURRENCES) {
@@ -186,83 +186,13 @@ export class PatternDetectorService implements HeartbeatEvaluator {
 	 * Actions within ±PATTERN_TIME_WINDOW_MINUTES of each other's time-of-day
 	 * are grouped into the same cluster.
 	 */
-	private clusterByTimeOfDay(actions: ActionRecord[]): TimeCluster[] {
-		if (actions.length === 0) {
-			return [];
-		}
+	private clusterActions(actions: ActionRecord[]): TimeCluster[] {
+		const actionMinuteOfDay = (a: ActionRecord): number => a.timestamp.getHours() * 60 + a.timestamp.getMinutes();
 
-		const minuteOfDay = (d: Date): number => d.getHours() * 60 + d.getMinutes();
-		const sorted = [...actions].sort((a, b) => minuteOfDay(a.timestamp) - minuteOfDay(b.timestamp));
-
-		const clusters: TimeCluster[] = [];
-		const used = new Set<number>();
-
-		for (let i = 0; i < sorted.length; i++) {
-			if (used.has(i)) {
-				continue;
-			}
-
-			const cluster: ActionRecord[] = [sorted[i]];
-			used.add(i);
-
-			const seedMinute = minuteOfDay(sorted[i].timestamp);
-
-			for (let j = i + 1; j < sorted.length; j++) {
-				if (used.has(j)) {
-					continue;
-				}
-
-				const targetMinute = minuteOfDay(sorted[j].timestamp);
-				const diff = Math.abs(targetMinute - seedMinute);
-				const wrappedDiff = Math.min(diff, 1440 - diff);
-
-				if (wrappedDiff <= PATTERN_TIME_WINDOW_MINUTES) {
-					cluster.push(sorted[j]);
-					used.add(j);
-				}
-			}
-
-			const { hour, minute } = this.circularMeanTime(cluster);
-
-			clusters.push({
-				actions: cluster,
-				avgHour: hour,
-				avgMinute: minute,
-			});
-		}
-
-		return clusters;
-	}
-
-	/**
-	 * Compute the circular mean of time-of-day values.
-	 * Uses circular statistics (atan2 of mean sin/cos) to correctly average
-	 * times that span midnight (e.g. 23:50 and 00:10 → ~00:00, not 12:00).
-	 */
-	private circularMeanTime(cluster: ActionRecord[]): { hour: number; minute: number } {
-		const TWO_PI = 2 * Math.PI;
-		const MINUTES_IN_DAY = 1440;
-
-		let sinSum = 0;
-		let cosSum = 0;
-
-		for (const action of cluster) {
-			const minutes = action.timestamp.getHours() * 60 + action.timestamp.getMinutes();
-			const angle = (minutes / MINUTES_IN_DAY) * TWO_PI;
-			sinSum += Math.sin(angle);
-			cosSum += Math.cos(angle);
-		}
-
-		const meanAngle = Math.atan2(sinSum / cluster.length, cosSum / cluster.length);
-		let meanMinutes = Math.round(((meanAngle < 0 ? meanAngle + TWO_PI : meanAngle) / TWO_PI) * MINUTES_IN_DAY);
-
-		if (meanMinutes >= MINUTES_IN_DAY) {
-			meanMinutes = 0;
-		}
-
-		return {
-			hour: Math.floor(meanMinutes / 60),
-			minute: meanMinutes % 60,
-		};
+		return clusterByTimeOfDay(actions, actionMinuteOfDay, PATTERN_TIME_WINDOW_MINUTES).map((c) => ({
+			actions: c.items,
+			avgHour: c.avgHour,
+			avgMinute: c.avgMinute,
+		}));
 	}
 }
