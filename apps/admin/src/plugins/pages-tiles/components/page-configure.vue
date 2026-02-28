@@ -37,10 +37,12 @@
 								size="small"
 								closable
 								:class="ns.e('data-source-tag')"
-								@click="emit('editPageDataSource', ds.id)"
 								@close="onRemoveDataSource(ds.id)"
 							>
-								<span class="inline-flex items-center gap-0.5">
+								<span
+									class="inline-flex items-center gap-0.5"
+									@click="emit('editPageDataSource', ds.id)"
+								>
 									<el-icon :size="12">
 										<icon :icon="getDataSourceIcon(ds) || 'mdi:database'" />
 									</el-icon>
