@@ -1,5 +1,5 @@
 import { Expose } from 'class-transformer';
-import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { IsEnum, IsInt, IsOptional, IsString, Min } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -62,4 +62,16 @@ export class UpdateBuddyConfigDto extends UpdateModuleConfigDto {
 	@IsOptional()
 	@IsString({ message: '[{"field":"ollama_url","reason":"Ollama URL must be a valid string."}]' })
 	ollama_url?: string | null;
+
+	@ApiPropertyOptional({
+		name: 'heartbeat_interval_ms',
+		description: 'Heartbeat evaluation interval in milliseconds (minimum 60000)',
+		type: 'integer',
+		example: 300000,
+	})
+	@Expose({ name: 'heartbeat_interval_ms' })
+	@IsOptional()
+	@IsInt({ message: '[{"field":"heartbeat_interval_ms","reason":"Heartbeat interval must be a valid integer."}]' })
+	@Min(60_000, { message: '[{"field":"heartbeat_interval_ms","reason":"Heartbeat interval must be at least 60s."}]' })
+	heartbeat_interval_ms?: number;
 }
