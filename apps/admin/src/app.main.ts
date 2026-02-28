@@ -44,6 +44,7 @@ import { InfluxDbModule } from './modules/influxdb';
 import { IntentsModule } from './modules/intents';
 import { MdnsModule } from './modules/mdns';
 import { ScenesModule } from './modules/scenes';
+import { BuddyModule } from './modules/buddy';
 import { EnergyModule } from './modules/energy';
 import { SecurityModule } from './modules/security';
 import { SpacesModule } from './modules/spaces';
@@ -150,6 +151,7 @@ app.use(InfluxDbModule, moduleOptions);
 app.use(IntentsModule, moduleOptions);
 app.use(SecurityModule, moduleOptions);
 app.use(EnergyModule, moduleOptions);
+app.use(BuddyModule, moduleOptions);
 
 // Plugins
 const pluginOptions: IModuleOptions = {

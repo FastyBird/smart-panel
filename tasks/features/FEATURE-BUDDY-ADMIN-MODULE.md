@@ -5,7 +5,7 @@ Type: feature
 Scope: admin
 Size: small
 Parent: EPIC-BUDDY-MODULE
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -48,16 +48,16 @@ I want a settings page in the admin UI where I can enable/disable the buddy, sel
 
 ## 4. Acceptance criteria
 
-- [ ] Buddy module registered in admin app router with a sidebar entry
-- [ ] Settings page loads current buddy configuration from backend config API
-- [ ] Enable/disable toggle updates `enabled` field in buddy config
-- [ ] Provider dropdown shows: Claude, OpenAI, Ollama, None — updates `provider` field
-- [ ] API key field is a password input (masked by default, with show/hide toggle) — updates `apiKey` field
-- [ ] Model field is a text input — updates `model` field
-- [ ] Ollama URL field appears only when provider is `ollama` — updates `ollamaUrl` field
-- [ ] Save button calls `PATCH /v1/modules/config/buddy-module` with the updated config
-- [ ] Success message shown on save; error message shown on failure
-- [ ] Page follows existing admin UI styling and layout patterns
+- [x] Buddy module registered in admin app router with a sidebar entry
+- [x] Settings page loads current buddy configuration from backend config API
+- [x] Enable/disable toggle updates `enabled` field in buddy config
+- [x] Provider dropdown shows: Claude, OpenAI, Ollama, None — updates `provider` field
+- [x] API key field is a password input (masked by default, with show/hide toggle) — updates `apiKey` field
+- [x] Model field is a text input — updates `model` field
+- [x] Ollama URL field appears only when provider is `ollama` — updates `ollamaUrl` field
+- [x] Save button calls `PATCH /v1/modules/config/buddy-module` with the updated config
+- [x] Success message shown on save; error message shown on failure
+- [x] Page follows existing admin UI styling and layout patterns
 
 ## 5. Example scenarios
 
