@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
 import { ConfigService } from '../../config/services/config.service';
 import { DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
@@ -31,7 +31,6 @@ interface AnomalyThresholds {
 @Injectable()
 export class AnomalyDetectorEvaluator implements HeartbeatEvaluator {
 	readonly name = 'AnomalyDetector';
-	private readonly logger = new Logger(AnomalyDetectorEvaluator.name);
 	private readonly stuckSensorTracker = new Map<string, StuckSensorEntry>();
 
 	constructor(
@@ -39,7 +38,7 @@ export class AnomalyDetectorEvaluator implements HeartbeatEvaluator {
 		private readonly actionObserver: ActionObserverService,
 	) {}
 
-	async evaluate(context: BuddyContext): Promise<EvaluatorResult[]> {
+	evaluate(context: BuddyContext): Promise<EvaluatorResult[]> {
 		const results: EvaluatorResult[] = [];
 		const thresholds = this.getThresholds();
 
@@ -47,7 +46,7 @@ export class AnomalyDetectorEvaluator implements HeartbeatEvaluator {
 		results.push(...this.detectStuckSensors(context, thresholds));
 		results.push(...this.detectUnusualActivity(context, thresholds));
 
-		return results;
+		return Promise.resolve(results);
 	}
 
 	/**
@@ -67,7 +66,7 @@ export class AnomalyDetectorEvaluator implements HeartbeatEvaluator {
 			const setpoints: { deviceName: string; value: number }[] = [];
 
 			for (const device of spaceDevices) {
-				const isThermostat = device.category === DeviceCategory.THERMOSTAT;
+				const isThermostat = device.category === (DeviceCategory.THERMOSTAT as string);
 
 				for (const [key, value] of Object.entries(device.state)) {
 					if (value == null || typeof value !== 'number') {
@@ -76,7 +75,7 @@ export class AnomalyDetectorEvaluator implements HeartbeatEvaluator {
 
 					const propertyCategory = key.split('.').pop();
 
-					if (propertyCategory !== PropertyCategory.TEMPERATURE) {
+					if (propertyCategory !== (PropertyCategory.TEMPERATURE as string)) {
 						continue;
 					}
 
@@ -162,8 +161,7 @@ export class AnomalyDetectorEvaluator implements HeartbeatEvaluator {
 
 					if (stuckDuration >= thresholdMs) {
 						const stuckHours = Math.round((stuckDuration / (60 * 60 * 1000)) * 10) / 10;
-						const spaceName =
-							context.spaces.find((s) => s.id === device.space)?.name ?? 'unknown space';
+						const spaceName = context.spaces.find((s) => s.id === device.space)?.name ?? 'unknown space';
 
 						results.push({
 							type: SuggestionType.ANOMALY_STUCK_SENSOR,
@@ -233,8 +231,7 @@ export class AnomalyDetectorEvaluator implements HeartbeatEvaluator {
 			if (count >= thresholds.unusualActivityThreshold) {
 				const device = context.devices.find((d) => d.id === deviceId);
 				const deviceName = device?.name ?? deviceId;
-				const spaceName =
-					context.spaces.find((s) => s.id === device?.space)?.name ?? 'unknown space';
+				const spaceName = context.spaces.find((s) => s.id === device?.space)?.name ?? 'unknown space';
 				const spaceId = device?.space ?? context.spaces[0]?.id ?? 'unknown';
 
 				results.push({
@@ -262,8 +259,7 @@ export class AnomalyDetectorEvaluator implements HeartbeatEvaluator {
 			return {
 				temperatureDrift: config.anomalyTemperatureDriftThreshold ?? ANOMALY_TEMPERATURE_DRIFT_THRESHOLD,
 				stuckSensorHours: config.anomalyStuckSensorHours ?? ANOMALY_STUCK_SENSOR_HOURS,
-				unusualActivityThreshold:
-					config.anomalyUnusualActivityThreshold ?? ANOMALY_UNUSUAL_ACTIVITY_THRESHOLD,
+				unusualActivityThreshold: config.anomalyUnusualActivityThreshold ?? ANOMALY_UNUSUAL_ACTIVITY_THRESHOLD,
 				unusualActivityWindowMinutes:
 					config.anomalyUnusualActivityWindowMinutes ?? ANOMALY_UNUSUAL_ACTIVITY_WINDOW_MINUTES,
 			};

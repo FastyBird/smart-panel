@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+import { ConfigService } from '../../config/services/config.service';
 import { DeviceCategory } from '../../devices/devices.constants';
 import { IntentType } from '../../intents/intents.constants';
 import {
@@ -51,7 +53,7 @@ describe('AnomalyDetectorEvaluator', () => {
 		};
 
 		actionObserver = new ActionObserverService();
-		service = new AnomalyDetectorEvaluator(configService as any, actionObserver);
+		service = new AnomalyDetectorEvaluator(configService as unknown as ConfigService, actionObserver);
 	});
 
 	it('should have the name "AnomalyDetector"', () => {
