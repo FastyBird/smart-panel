@@ -15,9 +15,10 @@
 					:style="props.gridCardStyle"
 				>
 					<div :class="[ns.e('header'), 'flex items-center px-2 flex-shrink-0 min-h-9 py-1 b-b b-b-solid gap-1.5']">
-						<div class="flex items-center gap-1 flex-shrink-0">
+						<div class="flex items-center gap-1 min-w-0 max-w-48">
 							<el-icon
 								:size="14"
+								class="flex-shrink-0"
 								color="var(--el-text-color-regular)"
 							>
 								<icon :icon="props.page.icon || 'mdi:view-dashboard'" />
@@ -336,7 +337,7 @@ const getDataSourceIcon = (ds: IDataSource): string | null => {
 const getDataSourceLabel = (ds: IDataSource): string => {
 	const element = getDataSourceElement(ds.type);
 
-	return element?.name ?? ds.type;
+	return element?.name?.trim() ? element.name : ds.type;
 };
 
 const onRemoveDataSource = (id: IDataSource['id']): void => {
@@ -897,6 +898,16 @@ watch(
 // Recalculate cell sizes when card style changes (e.g. different aspect ratio)
 watch(
 	(): Record<string, string> => props.gridCardStyle,
+	(): void => {
+		nextTick(() => {
+			updateSquareCells();
+		});
+	}
+);
+
+// Recalculate cell sizes when data sources change (header height may change)
+watch(
+	(): number => nonDraftDataSources.value.length,
 	(): void => {
 		nextTick(() => {
 			updateSquareCells();
