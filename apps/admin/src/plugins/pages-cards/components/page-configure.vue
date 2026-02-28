@@ -214,7 +214,6 @@
 								</el-text>
 							</div>
 							<div
-								v-else
 								:ref="(el) => setGridRef(card.id, el as HTMLElement | null)"
 								class="card-grid-container"
 							/>
@@ -436,7 +435,6 @@ const suppressMarkChanged = ref<boolean>(false);
 const pageChanged = ref<boolean>(false);
 let changeTimeout: ReturnType<typeof setTimeout>;
 let initTimeout: ReturnType<typeof setTimeout>;
-let initRafHandle: number;
 
 // Load tiles for each card
 const tilesByCard = new Map<string, ReturnType<typeof useTiles>>();
@@ -504,6 +502,18 @@ const destroyGrids = (): void => {
 
 	cardGrids.clear();
 	cardTileSets.clear();
+};
+
+const destroyCardGrid = (cardId: string): void => {
+	const grid = cardGrids.get(cardId);
+
+	if (!grid) return;
+
+	unmountGridComponents(grid);
+	grid.removeAll(true);
+	grid.destroy(false);
+	cardGrids.delete(cardId);
+	cardTileSets.delete(cardId);
 };
 
 const renderTileContent = (itemElContent: Element, tile: ITile, cardId: string): void => {
@@ -683,17 +693,54 @@ const initializeGrids = (): void => {
 		return;
 	}
 
-	// Use requestAnimationFrame to ensure browser has laid out newly appearing
-	// containers (e.g. after v-if flip) so clientWidth is non-zero
-	cancelAnimationFrame(initRafHandle);
+	for (const card of cardsToInit) {
+		initializeCardGrid(card);
+	}
 
-	initRafHandle = requestAnimationFrame(() => {
-		for (const card of cardsToInit) {
-			initializeCardGrid(card);
+	suppressMarkChanged.value = false;
+};
+
+const addTilesToCardGrids = (): void => {
+	for (const card of sortedCards.value) {
+		const tiles = getCardTiles(card.id);
+
+		if (tiles.length === 0) {
+			// Clean up grid if card has no tiles
+			if (cardGrids.has(card.id)) {
+				suppressMarkChanged.value = true;
+				destroyCardGrid(card.id);
+				suppressMarkChanged.value = false;
+			}
+
+			continue;
 		}
 
-		suppressMarkChanged.value = false;
-	});
+		const grid = cardGrids.get(card.id);
+
+		if (!grid) {
+			// Card just got tiles but has no grid yet — initialize it
+			initializeCardGrid(card);
+
+			continue;
+		}
+
+		// Add new tiles to existing grid incrementally
+		const tileSet = cardTileSets.get(card.id);
+
+		if (!tileSet) continue;
+
+		for (const tile of tiles) {
+			if (removedTiles.has(tile.id) || tileSet.has(tile.id)) continue;
+
+			grid.addWidget({
+				id: tile.id,
+				x: tile.col - 1,
+				y: tile.row - 1,
+				w: tile.colSpan,
+				h: tile.rowSpan,
+			});
+		}
+	}
 };
 
 onBeforeMount((): void => {
@@ -729,7 +776,6 @@ onMounted((): void => {
 onBeforeUnmount((): void => {
 	clearTimeout(changeTimeout);
 	clearTimeout(initTimeout);
-	cancelAnimationFrame(initRafHandle);
 	destroyGrids();
 });
 
@@ -750,7 +796,16 @@ watch(
 			}
 		}
 
-		initializeGrids();
+		// Clean up grids for removed cards
+		for (const [cardId] of cardGrids) {
+			if (!sortedCards.value.some((c) => c.id === cardId)) {
+				suppressMarkChanged.value = true;
+				destroyCardGrid(cardId);
+				suppressMarkChanged.value = false;
+			}
+		}
+
+		addTilesToCardGrids();
 	},
 	{ flush: 'post' }
 );
@@ -759,9 +814,13 @@ watch(
 const tileSignature = computed((): string => {
 	const parts: string[] = [];
 
-	for (const [cardId, store] of tilesByCard) {
-		const ids = store.tiles.value.map((t) => t.id).sort().join(',');
-		parts.push(`${cardId}:${ids}`);
+	for (const card of sortedCards.value) {
+		const store = tilesByCard.get(card.id);
+
+		if (store) {
+			const ids = store.tiles.value.map((t) => t.id).sort().join(',');
+			parts.push(`${card.id}:${ids}`);
+		}
 	}
 
 	return parts.sort().join('|');
@@ -770,7 +829,7 @@ const tileSignature = computed((): string => {
 watch(
 	tileSignature,
 	(): void => {
-		initializeGrids();
+		addTilesToCardGrids();
 	},
 	{ flush: 'post' }
 );
