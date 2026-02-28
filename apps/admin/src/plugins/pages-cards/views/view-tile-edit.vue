@@ -336,6 +336,19 @@ watch(
 );
 
 watch(
+	(): FormResultType => remoteFormResult.value,
+	(val: FormResultType): void => {
+		if (val === FormResult.OK) {
+			if (isLGDevice.value) {
+				router.replace({ name: RouteNames.PAGE, params: { id: props.page?.id } });
+			} else {
+				router.push({ name: RouteNames.PAGE, params: { id: props.page?.id } });
+			}
+		}
+	}
+);
+
+watch(
 	(): boolean => remoteFormChanged.value,
 	(val: boolean): void => {
 		emit('update:remote-form-changed', val);

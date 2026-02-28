@@ -336,10 +336,10 @@ const onTileRemove = (tileId: ITile['id'], cardId: string): void => {
 
 	if (!grid) return;
 
-	const el = document.querySelector(`.grid-stack-item[gs-id="${tileId}"]`);
+	const el = grid.getGridItems().find((item) => item.gridstackNode?.id === tileId);
 
-	if (grid.getGridItems().some((item) => item.gridstackNode?.id === tileId)) {
-		grid.removeWidget(el as HTMLElement);
+	if (el) {
+		grid.removeWidget(el);
 	}
 };
 
@@ -674,6 +674,8 @@ watch(
 						}
 					}
 				}
+
+				removedTiles.clear();
 
 				emit('update:remote-page-result', FormResult.OK);
 
