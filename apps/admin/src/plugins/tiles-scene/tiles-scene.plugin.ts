@@ -1,4 +1,5 @@
 import type { App } from 'vue';
+import { markRaw } from 'vue';
 
 import { defaultsDeep } from 'lodash';
 
@@ -6,11 +7,13 @@ import type { IPluginOptions } from '../../app.types';
 import { type IPlugin, type PluginInjectionKey, injectPluginsManager } from '../../common';
 import { DASHBOARD_MODULE_NAME, type ITilePluginsComponents, type ITilePluginsSchemas } from '../../modules/dashboard';
 
-import { SceneTileAddForm, SceneTileEditForm } from './components/components';
+import { SceneTileAddForm, SceneTileEditForm, SceneTilePreview } from './components/components';
 import enUS from './locales/en-US.json';
 import { SceneTileAddFormSchema, SceneTileEditFormSchema } from './schemas/tiles.schemas';
 import { SceneTileCreateReqSchema, SceneTileSchema, SceneTileUpdateReqSchema } from './store/tiles.store.schemas';
 import { TILES_SCENE_PLUGIN_NAME, TILES_SCENE_TYPE } from './tiles-scene.constants';
+
+const sceneTilePreviewComponent = markRaw(SceneTilePreview) as unknown as ITilePluginsComponents['tilePreview'];
 
 export const tilesScenePluginKey: PluginInjectionKey<IPlugin<ITilePluginsComponents, ITilePluginsSchemas>> = Symbol('FB-Plugin-TilesScene');
 
@@ -42,6 +45,7 @@ export default {
 					components: {
 						tileAddForm: SceneTileAddForm,
 						tileEditForm: SceneTileEditForm,
+						tilePreview: sceneTilePreviewComponent,
 					},
 					schemas: {
 						tileSchema: SceneTileSchema,

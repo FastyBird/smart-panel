@@ -10,6 +10,7 @@ import { type IPageAddFormProps, pageAddFormEmits } from './components/pages/pag
 import { type IPageEditFormProps, pageEditFormEmits } from './components/pages/page-edit-form.types';
 import { type ITileAddFormProps, tileAddFormEmits } from './components/tiles/tile-add-form.types';
 import { type ITileEditFormProps, tileEditFormEmits } from './components/tiles/tile-edit-form.types';
+import type { ITilePreviewProps } from './components/tiles/tile-preview.types';
 import { type DataSourceAddFormSchema, DataSourceEditFormSchema } from './schemas/dataSources.schemas';
 import { PageAddFormSchema, PageEditFormSchema } from './schemas/pages.schemas';
 import { type TileAddFormSchema, TileEditFormSchema } from './schemas/tiles.schemas';
@@ -43,6 +44,7 @@ export type IPagePluginRoutes = {
 export type ITilePluginsComponents = {
 	tileAddForm?: DefineComponent<ITileAddFormProps, {}, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin, typeof tileAddFormEmits>;
 	tileEditForm?: DefineComponent<ITileEditFormProps, {}, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin, typeof tileEditFormEmits>;
+	tilePreview?: DefineComponent<ITilePreviewProps, {}, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin, {}>;
 };
 
 export type ITilePluginsSchemas = {

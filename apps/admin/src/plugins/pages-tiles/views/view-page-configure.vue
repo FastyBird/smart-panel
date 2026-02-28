@@ -16,7 +16,7 @@
 
 			<template #dropdown>
 				<el-dropdown-menu>
-					<el-dropdown-item @click="onTileAdd">
+					<el-dropdown-item @click="() => onTileAdd()">
 						<template #icon>
 							<icon icon="mdi:plus" />
 						</template>
@@ -76,7 +76,13 @@
 		v-model:remote-page-submit="remotePageSubmit"
 		v-model:remote-page-changed="remotePageChanged"
 		:page="page"
-		@add-tile="onTileAdd"
+		:grid-layout="gridLayout"
+		:grid-card-style="gridCardStyle"
+		:displays="applicableDisplays"
+		:selected-display="selectedDisplay"
+		@select-display="onDisplaySelect"
+		@add-tile-of-type="onTileAdd"
+		@add-page-data-source="onPageDataSourceAdd"
 		@edit-tile="onTileEdit"
 		@tile-detail="onTileDetail"
 	/>
@@ -134,7 +140,7 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeMount, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeMount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 
@@ -144,6 +150,7 @@ import { Icon } from '@iconify/vue';
 
 import { AppBar, AppBarButton, AppBarButtonAlign, ViewError, useBreakpoints } from '../../../common';
 import { RouteNames as DashboardRouteNames, type ITile } from '../../../modules/dashboard';
+import { type IDisplay, useDisplays } from '../../../modules/displays';
 import PageConfigure from '../components/page-configure.vue';
 import { RouteNames } from '../pages-tiles.constants';
 
@@ -166,6 +173,8 @@ const { t } = useI18n();
 
 const { isLGDevice } = useBreakpoints();
 
+const { displays, fetchDisplays, isLoading: loadingDisplays } = useDisplays();
+
 const mounted = ref<boolean>(false);
 
 const showDrawer = ref<boolean>(false);
@@ -173,6 +182,51 @@ const showDrawer = ref<boolean>(false);
 const remoteFormChanged = ref<boolean>(false);
 const remotePageSubmit = ref<boolean>(false);
 const remotePageChanged = ref<boolean>(false);
+
+const selectedDisplayId = ref<string | null>(null);
+
+const applicableDisplays = computed<IDisplay[]>((): IDisplay[] => {
+	if (props.page.displays !== null && props.page.displays.length > 0) {
+		return displays.value.filter((d) => props.page.displays!.includes(d.id));
+	}
+
+	return displays.value;
+});
+
+const selectedDisplay = computed<IDisplay | null>((): IDisplay | null => {
+	if (selectedDisplayId.value) {
+		return applicableDisplays.value.find((d) => d.id === selectedDisplayId.value) ?? applicableDisplays.value[0] ?? null;
+	}
+
+	return applicableDisplays.value[0] ?? null;
+});
+
+const gridLayout = computed<{ rows: number; cols: number } | null>((): { rows: number; cols: number } | null => {
+	if (selectedDisplay.value === null) {
+		return null;
+	}
+
+	const rows = props.page.rows ?? selectedDisplay.value.rows ?? 12;
+	const cols = props.page.cols ?? selectedDisplay.value.cols ?? 24;
+
+	return { rows, cols };
+});
+
+const gridCardStyle = computed<Record<string, string>>((): Record<string, string> => {
+	const display = selectedDisplay.value;
+
+	if (!display || !display.screenWidth) {
+		return { maxWidth: '540px' };
+	}
+
+	return {
+		maxWidth: `${Math.min(display.screenWidth, 600)}px`,
+	};
+});
+
+const onDisplaySelect = (displayId: string): void => {
+	selectedDisplayId.value = displayId;
+};
 
 const onClose = (): void => {
 	router.push({
@@ -200,21 +254,19 @@ const onSave = (): void => {
 	remotePageSubmit.value = true;
 };
 
-const onTileAdd = (): void => {
+const onTileAdd = (tileType?: string): void => {
+	const location = {
+		name: RouteNames.PAGE_ADD_TILE,
+		params: {
+			id: props.page.id,
+		},
+		...(tileType ? { query: { tileType } } : {}),
+	};
+
 	if (isLGDevice.value) {
-		router.replace({
-			name: RouteNames.PAGE_ADD_TILE,
-			params: {
-				id: props.page.id,
-			},
-		});
+		router.replace(location);
 	} else {
-		router.push({
-			name: RouteNames.PAGE_ADD_TILE,
-			params: {
-				id: props.page.id,
-			},
-		});
+		router.push(location);
 	}
 };
 
@@ -324,6 +376,12 @@ onBeforeMount((): void => {
 				matched.name === RouteNames.PAGE_ADD_DATA_SOURCE ||
 				matched.name === RouteNames.PAGE_EDIT_DATA_SOURCE
 		) !== undefined;
+
+	if (!loadingDisplays.value) {
+		fetchDisplays().catch((): void => {
+			// Silently ignore display fetch errors
+		});
+	}
 });
 
 onMounted((): void => {
@@ -359,5 +417,23 @@ watch(
 	(val: boolean): void => {
 		emit('update:remote-page-changed', val);
 	}
+);
+
+watch(
+	(): IDisplay[] => applicableDisplays.value,
+	(val: IDisplay[]): void => {
+		const first = val[0];
+
+		if (!first) {
+			selectedDisplayId.value = null;
+
+			return;
+		}
+
+		if (!selectedDisplayId.value || !val.some((d) => d.id === selectedDisplayId.value)) {
+			selectedDisplayId.value = first.id;
+		}
+	},
+	{ immediate: true }
 );
 </script>

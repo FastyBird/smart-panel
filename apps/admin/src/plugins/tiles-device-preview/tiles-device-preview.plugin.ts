@@ -1,4 +1,5 @@
 import type { App } from 'vue';
+import { markRaw } from 'vue';
 
 import { defaultsDeep } from 'lodash';
 
@@ -6,11 +7,13 @@ import type { IPluginOptions } from '../../app.types';
 import { type IPlugin, type PluginInjectionKey, injectPluginsManager } from '../../common';
 import { DASHBOARD_MODULE_NAME, type ITilePluginsComponents, type ITilePluginsSchemas } from '../../modules/dashboard';
 
-import { DevicePreviewTileAddForm, DevicePreviewTileEditForm } from './components/components';
+import { DevicePreviewTileAddForm, DevicePreviewTileEditForm, DevicePreviewTilePreview } from './components/components';
 import enUS from './locales/en-US.json';
 import { DevicePreviewTileAddFormSchema, DevicePreviewTileEditFormSchema } from './schemas/tiles.schemas';
 import { DevicePreviewTileCreateReqSchema, DevicePreviewTileSchema, DevicePreviewTileUpdateReqSchema } from './store/tiles.store.schemas';
 import { TILES_DEVICE_PREVIEW_PLUGIN_NAME, TILES_DEVICE_PREVIEW_TYPE } from './tiles-device-preview.constants';
+
+const devicePreviewTilePreviewComponent = markRaw(DevicePreviewTilePreview) as unknown as ITilePluginsComponents['tilePreview'];
 
 export const tilesDevicePreviewPluginKey: PluginInjectionKey<IPlugin<ITilePluginsComponents, ITilePluginsSchemas>> =
 	Symbol('FB-Plugin-TilesDevicePreview');
@@ -44,6 +47,7 @@ export default {
 					components: {
 						tileAddForm: DevicePreviewTileAddForm,
 						tileEditForm: DevicePreviewTileEditForm,
+						tilePreview: devicePreviewTilePreviewComponent,
 					},
 					schemas: {
 						tileSchema: DevicePreviewTileSchema,

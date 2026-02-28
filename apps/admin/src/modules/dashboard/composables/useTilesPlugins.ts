@@ -14,7 +14,7 @@ export const useTilesPlugins = (): IUseTilesPlugins => {
 
 	const { enabled } = useConfigPlugins();
 
-	const pluginComponents: (keyof ITilePluginsComponents)[] = ['tileAddForm', 'tileEditForm'];
+	const pluginComponents: (keyof ITilePluginsComponents)[] = ['tileAddForm', 'tileEditForm', 'tilePreview'];
 
 	const pluginSchemas: (keyof ITilePluginsSchemas)[] = [
 		'tileSchema',
