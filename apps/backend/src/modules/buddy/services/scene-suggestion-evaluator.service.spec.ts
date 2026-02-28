@@ -357,6 +357,39 @@ describe('SceneSuggestionEvaluator', () => {
 	});
 
 	// ──────────────────────────────────────────
+	// Caching
+	// ──────────────────────────────────────────
+
+	describe('pattern caching', () => {
+		it('should cache patterns across rapid evaluate() calls', async () => {
+			const sessionActions = [
+				{ type: IntentType.SPACE_LIGHTING_OFF, deviceIds: ['light-1'] },
+				{ type: IntentType.SPACE_CLIMATE_SETPOINT_SET, deviceIds: ['thermo-1'] },
+			];
+
+			for (let day = 0; day < PATTERN_MIN_OCCURRENCES; day++) {
+				const baseTime = new Date();
+				baseTime.setDate(baseTime.getDate() - day);
+				baseTime.setHours(22, 0, 0, 0);
+				recordSession(actionObserver, 'space-1', sessionActions, baseTime);
+			}
+
+			const spy = jest.spyOn(service, 'detectSequencePatterns');
+			const context = makeContext();
+
+			// Call evaluate multiple times in rapid succession (simulates heartbeat per space)
+			await service.evaluate(context);
+			await service.evaluate(context);
+			await service.evaluate(context);
+
+			// detectSequencePatterns should only be called once (cached for subsequent calls)
+			expect(spy).toHaveBeenCalledTimes(1);
+
+			spy.mockRestore();
+		});
+	});
+
+	// ──────────────────────────────────────────
 	// Scene creation from suggestion
 	// ──────────────────────────────────────────
 

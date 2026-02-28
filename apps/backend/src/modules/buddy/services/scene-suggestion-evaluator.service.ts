@@ -29,6 +29,9 @@ export interface DetectedSequencePattern {
 export class SceneSuggestionEvaluator implements HeartbeatEvaluator {
 	readonly name = 'SceneSuggestion';
 	private readonly logger = new Logger(SceneSuggestionEvaluator.name);
+	private static readonly CACHE_TTL_MS = 5000;
+	private patternCache: DetectedSequencePattern[] | null = null;
+	private patternCacheTime = 0;
 
 	constructor(
 		private readonly actionObserver: ActionObserverService,
@@ -37,7 +40,7 @@ export class SceneSuggestionEvaluator implements HeartbeatEvaluator {
 
 	evaluate(context: BuddyContext): Promise<EvaluatorResult[]> {
 		const spaceIds = new Set(context.spaces.map((s) => s.id));
-		const patterns = this.detectSequencePatterns();
+		const patterns = this.getPatternsCached();
 
 		const results: EvaluatorResult[] = patterns
 			.filter((p) => spaceIds.has(p.spaceId))
@@ -48,6 +51,25 @@ export class SceneSuggestionEvaluator implements HeartbeatEvaluator {
 			});
 
 		return Promise.resolve(results);
+	}
+
+	/**
+	 * Return cached detectSequencePatterns() results within the TTL window.
+	 * Avoids re-scanning the full action buffer when evaluate() is
+	 * called multiple times in rapid succession (e.g. once per space
+	 * during a heartbeat cycle).
+	 */
+	private getPatternsCached(): DetectedSequencePattern[] {
+		const now = Date.now();
+
+		if (this.patternCache !== null && now - this.patternCacheTime < SceneSuggestionEvaluator.CACHE_TTL_MS) {
+			return this.patternCache;
+		}
+
+		this.patternCache = this.detectSequencePatterns();
+		this.patternCacheTime = now;
+
+		return this.patternCache;
 	}
 
 	detectSequencePatterns(): DetectedSequencePattern[] {
