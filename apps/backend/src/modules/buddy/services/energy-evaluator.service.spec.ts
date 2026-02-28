@@ -280,9 +280,9 @@ describe('EnergyEvaluator', () => {
 			expect(batteryResults[0].metadata.batteryLevel).toBe(1);
 		});
 
-		it('should not detect low battery when batteryLevel is null (no battery installed)', async () => {
+		it('should not detect low battery when batteryLevel is absent (no battery installed)', async () => {
 			const context = makeContext({
-				energy: { solarProduction: 0, gridConsumption: 2, gridExport: 0, batteryLevel: null },
+				energy: { solarProduction: 0, gridConsumption: 2, gridExport: 0 },
 			});
 
 			const results = await service.evaluate(context);

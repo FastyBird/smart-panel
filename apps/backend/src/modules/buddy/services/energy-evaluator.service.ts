@@ -96,7 +96,7 @@ export class EnergyEvaluator implements HeartbeatEvaluator {
 		thresholds: EnergyThresholds,
 	): EvaluatorResult[] {
 		if (
-			energy.batteryLevel === null ||
+			energy.batteryLevel == null ||
 			energy.batteryLevel >= thresholds.batteryLowPercent ||
 			energy.solarProduction > 0
 		) {

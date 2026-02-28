@@ -20,7 +20,7 @@ export interface BuddyContext {
 		solarProduction: number;
 		gridConsumption: number;
 		gridExport: number;
-		batteryLevel: number | null;
+		batteryLevel?: number;
 	} | null;
 	recentIntents: { type: string; space: string | null; timestamp: string }[];
 }
@@ -206,7 +206,6 @@ export class BuddyContextService {
 		solarProduction: number;
 		gridConsumption: number;
 		gridExport: number;
-		batteryLevel: number | null;
 	} | null> {
 		try {
 			const now = new Date();
@@ -227,7 +226,6 @@ export class BuddyContextService {
 				solarProduction: (latest.productionDeltaKwh ?? 0) * kwhToKw,
 				gridConsumption: (latest.gridImportDeltaKwh ?? 0) * kwhToKw,
 				gridExport: (latest.gridExportDeltaKwh ?? 0) * kwhToKw,
-				batteryLevel: null,
 			};
 		} catch (error) {
 			this.logger.debug(`Energy data unavailable: ${error}`);

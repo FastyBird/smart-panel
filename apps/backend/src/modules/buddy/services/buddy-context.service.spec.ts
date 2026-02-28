@@ -133,7 +133,6 @@ describe('BuddyContextService', () => {
 				solarProduction: 0.4 * 12,
 				gridConsumption: 0.2 * 12,
 				gridExport: 0.1 * 12,
-				batteryLevel: null,
 			});
 		});
 
