@@ -333,15 +333,17 @@
 </template>
 
 <script setup lang="ts">
-import { computed, getCurrentInstance, h, hasInjectionContext, nextTick, onBeforeMount, onBeforeUnmount, onMounted, ref, render, watch } from 'vue';
+import { computed, getCurrentInstance, h, nextTick, onBeforeMount, onBeforeUnmount, onMounted, ref, render, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElButton, ElCard, ElCol, ElEmpty, ElIcon, ElOption, ElPopover, ElRow, ElSelect, ElTag, ElText, useNamespace } from 'element-plus';
 import { GridStack } from 'gridstack';
 import 'gridstack/dist/gridstack.min.css';
+import { storeToRefs } from 'pinia';
 
 import { Icon } from '@iconify/vue';
 
+import { injectStoresManager } from '../../../common';
 import {
 	DashboardException,
 	FormResult,
@@ -351,9 +353,8 @@ import {
 	useDataSources,
 	useDataSourcesActions,
 	useDataSourcesPlugins,
-	useTiles,
-	useTilesActions,
 } from '../../../modules/dashboard';
+import { tilesStoreKey } from '../../../modules/dashboard/store/keys';
 import type { ICard } from '../store/cards.store.types';
 
 import type { IPageConfigureProps } from './page-configure.types';
@@ -436,21 +437,65 @@ const pageChanged = ref<boolean>(false);
 let changeTimeout: ReturnType<typeof setTimeout>;
 let initTimeout: ReturnType<typeof setTimeout>;
 
+// Capture storesManager during setup (injection context available)
+// so tile stores can be created later in watcher callbacks
+const storesManager = injectStoresManager();
+const tilesStore = storesManager.getStore(tilesStoreKey);
+const { firstLoad: tilesFirstLoad, semaphore: tilesSemaphore } = storeToRefs(tilesStore);
+
+interface ITileStoreAccessor {
+	tiles: ReturnType<typeof computed<ITile[]>>;
+	areLoading: ReturnType<typeof computed<boolean>>;
+	loaded: ReturnType<typeof computed<boolean>>;
+	fetchTiles: () => Promise<void>;
+}
+
+interface ITileActionsAccessor {
+	findById: (parent: string, id: ITile['id']) => ITile | null;
+	edit: (payload: { id: ITile['id']; parent: { type: string; id: string }; data: { type: string } & Record<string, unknown> }) => Promise<ITile>;
+	save: (payload: { id: ITile['id']; parent: { type: string; id: string } }) => Promise<ITile>;
+	removeDirectly: (payload: { id: ITile['id']; parent: { type: string; id: string } }) => Promise<boolean>;
+}
+
 // Load tiles for each card
-const tilesByCard = new Map<string, ReturnType<typeof useTiles>>();
-const tileActionsByCard = new Map<string, ReturnType<typeof useTilesActions>>();
+const tilesByCard = new Map<string, ITileStoreAccessor>();
+const tileActionsByCard = new Map<string, ITileActionsAccessor>();
 
 const ensureTileStore = (cardId: string): boolean => {
 	if (tilesByCard.has(cardId)) {
 		return true;
 	}
 
-	if (!hasInjectionContext()) {
-		return false;
-	}
+	const tiles = computed<ITile[]>((): ITile[] => tilesStore.findForParent('card', cardId));
 
-	tilesByCard.set(cardId, useTiles({ parent: 'card', parentId: cardId }));
-	tileActionsByCard.set(cardId, useTilesActions({ parent: 'card', parentId: cardId }));
+	const areLoading = computed<boolean>((): boolean => {
+		if (tilesSemaphore.value.fetching.items.includes(cardId)) {
+			return true;
+		}
+
+		if (tilesFirstLoad.value.includes(cardId)) {
+			return false;
+		}
+
+		return tilesSemaphore.value.fetching.items.includes(cardId);
+	});
+
+	const loaded = computed<boolean>((): boolean => {
+		return tilesFirstLoad.value.includes(cardId);
+	});
+
+	const fetchTiles = async (): Promise<void> => {
+		await tilesStore.fetch({ parent: { type: 'card', id: cardId } });
+	};
+
+	tilesByCard.set(cardId, { tiles, areLoading, loaded, fetchTiles });
+
+	tileActionsByCard.set(cardId, {
+		findById: (parent: string, id: ITile['id']): ITile | null => tilesStore.findById(parent, id),
+		edit: (payload): Promise<ITile> => tilesStore.edit(payload),
+		save: (payload): Promise<ITile> => tilesStore.save(payload),
+		removeDirectly: (payload): Promise<boolean> => tilesStore.remove(payload),
+	});
 
 	return true;
 };
@@ -844,7 +889,7 @@ watch(
 			try {
 				// Collect all grid positions synchronously first
 				const tileUpdates: {
-					actions: ReturnType<typeof useTilesActions>;
+					actions: ITileActionsAccessor;
 					gridItems: { id: string; x: number; y: number; w: number; h: number }[];
 				}[] = [];
 
