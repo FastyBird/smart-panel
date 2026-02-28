@@ -14,6 +14,7 @@ import {
 	SuggestionType,
 } from '../buddy.constants';
 import { BuddySuggestionNotFoundException } from '../buddy.exceptions';
+
 import { EvaluatorResult } from './heartbeat.types';
 import { DetectedPattern, PatternDetectorService, patternToEvaluatorResult } from './pattern-detector.service';
 
