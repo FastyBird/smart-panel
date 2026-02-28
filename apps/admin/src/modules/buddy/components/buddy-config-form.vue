@@ -25,7 +25,7 @@
 		</el-form-item>
 
 		<el-alert
-			v-if="model.provider !== 'none'"
+			v-if="model.provider !== LLM_PROVIDER_NONE"
 			type="info"
 			show-icon
 			:closable="false"
