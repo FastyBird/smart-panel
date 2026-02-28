@@ -860,6 +860,9 @@ const tileSignature = computed((): string => {
 	const parts: string[] = [];
 
 	for (const card of sortedCards.value) {
+		// Ensure the tile store exists so Vue subscribes to its tiles.value
+		ensureTileStore(card.id);
+
 		const store = tilesByCard.get(card.id);
 
 		if (store) {
@@ -873,6 +876,15 @@ const tileSignature = computed((): string => {
 
 watch(
 	tileSignature,
+	(): void => {
+		addTilesToCardGrids();
+	},
+	{ flush: 'post' }
+);
+
+// React when tile fetches complete (firstLoad updates)
+watch(
+	(): string[] => tilesFirstLoad.value,
 	(): void => {
 		addTilesToCardGrids();
 	},
