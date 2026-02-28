@@ -48,10 +48,14 @@ import { UsersModule } from './modules/users/users.module';
 import { WEATHER_MODULE_PREFIX } from './modules/weather/weather.constants';
 import { WeatherModule } from './modules/weather/weather.module';
 import { WebsocketModule } from './modules/websocket/websocket.module';
+import { BUDDY_CLAUDE_OAUTH_PLUGIN_PREFIX } from './plugins/buddy-claude-oauth/buddy-claude-oauth.constants';
+import { BuddyClaudeOauthPlugin } from './plugins/buddy-claude-oauth/buddy-claude-oauth.plugin';
 import { BUDDY_CLAUDE_PLUGIN_PREFIX } from './plugins/buddy-claude/buddy-claude.constants';
 import { BuddyClaudePlugin } from './plugins/buddy-claude/buddy-claude.plugin';
 import { BUDDY_OLLAMA_PLUGIN_PREFIX } from './plugins/buddy-ollama/buddy-ollama.constants';
 import { BuddyOllamaPlugin } from './plugins/buddy-ollama/buddy-ollama.plugin';
+import { BUDDY_OPENAI_CODEX_PLUGIN_PREFIX } from './plugins/buddy-openai-codex/buddy-openai-codex.constants';
+import { BuddyOpenaiCodexPlugin } from './plugins/buddy-openai-codex/buddy-openai-codex.plugin';
 import { BUDDY_OPENAI_PLUGIN_PREFIX } from './plugins/buddy-openai/buddy-openai.constants';
 import { BuddyOpenaiPlugin } from './plugins/buddy-openai/buddy-openai.plugin';
 import { DataSourcesDeviceChannelPlugin } from './plugins/data-sources-device-channel/data-sources-device-channel.plugin';
@@ -273,6 +277,14 @@ export class AppModule {
 								path: BUDDY_OLLAMA_PLUGIN_PREFIX,
 								module: BuddyOllamaPlugin,
 							},
+							{
+								path: BUDDY_OPENAI_CODEX_PLUGIN_PREFIX,
+								module: BuddyOpenaiCodexPlugin,
+							},
+							{
+								path: BUDDY_CLAUDE_OAUTH_PLUGIN_PREFIX,
+								module: BuddyClaudeOauthPlugin,
+							},
 							...pluginRoutes,
 						],
 					},
@@ -319,7 +331,9 @@ export class AppModule {
 				WeatherOpenweathermapPlugin,
 				WeatherOpenweathermapOnecallPlugin,
 				BuddyOpenaiPlugin,
+				BuddyOpenaiCodexPlugin,
 				BuddyClaudePlugin,
+				BuddyClaudeOauthPlugin,
 				BuddyOllamaPlugin,
 				ScenesLocalPlugin,
 				ServeStaticModule.forRootAsync({

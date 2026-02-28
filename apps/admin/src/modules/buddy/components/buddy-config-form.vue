@@ -79,7 +79,9 @@ const { formEl, model, formChanged, submit, formResult } = useConfigModuleEditFo
 const providerOptions = computed(() => [
 	{ value: LLM_PROVIDER_NONE, label: t('buddyModule.fields.config.provider.options.none') },
 	{ value: 'buddy-openai-plugin', label: t('buddyModule.fields.config.provider.options.openai') },
+	{ value: 'buddy-openai-codex-plugin', label: t('buddyModule.fields.config.provider.options.openaiCodex') },
 	{ value: 'buddy-claude-plugin', label: t('buddyModule.fields.config.provider.options.claude') },
+	{ value: 'buddy-claude-oauth-plugin', label: t('buddyModule.fields.config.provider.options.claudeOauth') },
 	{ value: 'buddy-ollama-plugin', label: t('buddyModule.fields.config.provider.options.ollama') },
 ]);
 

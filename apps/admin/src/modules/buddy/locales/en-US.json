@@ -33,6 +33,8 @@
 					"none": "None (rule-based only)",
 					"claude": "Buddy Claude (Anthropic)",
 					"openai": "Buddy OpenAI",
+					"openaiCodex": "Buddy OpenAI Codex (OAuth)",
+					"claudeOauth": "Buddy Claude OAuth (Anthropic)",
 					"ollama": "Buddy Ollama (local)"
 				}
 			}
