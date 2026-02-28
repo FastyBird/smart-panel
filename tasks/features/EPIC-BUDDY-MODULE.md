@@ -117,8 +117,8 @@ Inspired by the [OpenClaw](https://github.com/openclaw/openclaw) project's proac
 - [x] Panel: suggestion cards displayed as dismissible notifications
 - [x] Admin: buddy settings page (enable/disable, provider selection, API key configuration)
 - [x] Works without an AI provider configured (rule-based suggestions only, chat returns 503)
-- [ ] Unit tests for pattern detection, suggestion rules, context building
-- [ ] E2E tests for conversation and suggestion API endpoints
+- [x] Unit tests for pattern detection, suggestion rules, context building
+- [x] E2E tests for conversation and suggestion API endpoints
 
 ### Phase 2 (Proactive)
 
