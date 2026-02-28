@@ -131,15 +131,22 @@ export class AnomalyDetectorEvaluator implements HeartbeatEvaluator {
 	 * Detect stuck sensor: property value unchanged for > configured hours.
 	 *
 	 * Tracks previous values across heartbeat cycles using a simple Map.
-	 * Only considers numeric sensor values.
+	 * Only considers numeric values on SENSOR devices.
+	 *
+	 * Cleanup is scoped to the spaces present in the current context so that
+	 * per-space evaluation (the heartbeat calls evaluate() once per space)
+	 * does not wipe tracker entries belonging to other spaces.
 	 */
 	private detectStuckSensors(context: BuddyContext, thresholds: AnomalyThresholds): EvaluatorResult[] {
 		const results: EvaluatorResult[] = [];
 		const now = Date.now();
 		const thresholdMs = thresholds.stuckSensorHours * 60 * 60 * 1000;
+		const contextSpaceIds = new Set(context.spaces.map((s) => s.id));
 		const activePropertyKeys = new Set<string>();
 
-		for (const device of context.devices) {
+		const sensorDevices = context.devices.filter((d) => d.category === (DeviceCategory.SENSOR as string));
+
+		for (const device of sensorDevices) {
 			for (const [key, value] of Object.entries(device.state)) {
 				if (value == null || typeof value !== 'number') {
 					continue;
@@ -185,10 +192,21 @@ export class AnomalyDetectorEvaluator implements HeartbeatEvaluator {
 			}
 		}
 
-		// Clean up entries for properties no longer in context
-		for (const key of this.stuckSensorTracker.keys()) {
-			if (!activePropertyKeys.has(key)) {
-				this.stuckSensorTracker.delete(key);
+		// Only clean up entries whose device belongs to one of the current context's
+		// spaces.  This prevents per-space evaluation from wiping tracker entries
+		// that belong to other spaces (which would reset their `since` timestamps).
+		for (const trackerKey of this.stuckSensorTracker.keys()) {
+			if (activePropertyKeys.has(trackerKey)) {
+				continue;
+			}
+
+			// Extract device ID from the tracker key ("deviceId::propertyKey")
+			const deviceId = trackerKey.split('::')[0];
+			const trackedDevice = context.devices.find((d) => d.id === deviceId);
+
+			// Only delete if the device belongs to a space we evaluated
+			if (trackedDevice && trackedDevice.space && contextSpaceIds.has(trackedDevice.space)) {
+				this.stuckSensorTracker.delete(trackerKey);
 			}
 		}
 

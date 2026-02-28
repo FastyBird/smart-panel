@@ -556,8 +556,27 @@ describe('AnomalyDetectorEvaluator', () => {
 			expect(entry?.value).toBe(22.0);
 		});
 
-		it('should clean up tracker entries for removed devices', async () => {
+		it('should clean up tracker entries when a sensor property is removed but device still exists', async () => {
 			const context1 = makeContext({
+				devices: [
+					{
+						id: 'sensor-1',
+						name: 'Temp Sensor',
+						space: 'space-1',
+						category: DeviceCategory.SENSOR,
+						state: { 'temperature.temperature': 21.5, 'humidity.humidity': 45 },
+					},
+				],
+			});
+
+			await service.evaluate(context1);
+
+			const tracker = (service as any).stuckSensorTracker as Map<string, unknown>;
+
+			expect(tracker.size).toBe(2);
+
+			// Device still exists but lost the humidity property
+			const context2 = makeContext({
 				devices: [
 					{
 						id: 'sensor-1',
@@ -569,17 +588,104 @@ describe('AnomalyDetectorEvaluator', () => {
 				],
 			});
 
-			await service.evaluate(context1);
+			await service.evaluate(context2);
 
-			const tracker = (service as any).stuckSensorTracker as Map<string, unknown>;
+			// Humidity entry cleaned up because sensor-1 belongs to space-1 (in context)
+			expect(tracker.size).toBe(1);
+			expect(tracker.has('sensor-1::temperature.temperature')).toBe(true);
+		});
+
+		it('should not clean up tracker entries for devices in other spaces during per-space evaluation', async () => {
+			// Evaluate space-1 context — seeds tracker for sensor-1
+			const contextSpaceA = makeContext({
+				spaces: [{ id: 'space-1', name: 'Living Room', category: 'living_room', deviceCount: 1 }],
+				devices: [
+					{
+						id: 'sensor-1',
+						name: 'Sensor A',
+						space: 'space-1',
+						category: DeviceCategory.SENSOR,
+						state: { 'temperature.temperature': 21.5 },
+					},
+				],
+			});
+
+			await service.evaluate(contextSpaceA);
+
+			const tracker = (service as any).stuckSensorTracker as Map<string, { value: unknown; since: number }>;
 
 			expect(tracker.size).toBe(1);
 
-			// Device removed from context
-			const context2 = makeContext({ devices: [] });
+			// Backdate sensor-1's entry so it would trigger if preserved
+			tracker.set('sensor-1::temperature.temperature', {
+				value: 21.5,
+				since: Date.now() - (ANOMALY_STUCK_SENSOR_HOURS + 1) * 60 * 60 * 1000,
+			});
 
-			await service.evaluate(context2);
+			// Now evaluate space-2 context (different space, no sensor-1)
+			const contextSpaceB = makeContext({
+				spaces: [{ id: 'space-2', name: 'Bedroom', category: 'bedroom', deviceCount: 1 }],
+				devices: [
+					{
+						id: 'sensor-2',
+						name: 'Sensor B',
+						space: 'space-2',
+						category: DeviceCategory.SENSOR,
+						state: { 'temperature.temperature': 19.0 },
+					},
+				],
+			});
 
+			await service.evaluate(contextSpaceB);
+
+			// sensor-1's entry must NOT have been deleted by space-2 evaluation
+			expect(tracker.has('sensor-1::temperature.temperature')).toBe(true);
+			expect(tracker.get('sensor-1::temperature.temperature')?.value).toBe(21.5);
+
+			// sensor-2 should also be tracked now
+			expect(tracker.has('sensor-2::temperature.temperature')).toBe(true);
+			expect(tracker.size).toBe(2);
+
+			// Re-evaluate space-1 — sensor-1 should trigger stuck detection
+			const results = await service.evaluate(contextSpaceA);
+			const stuckResults = results.filter((r) => r.type === SuggestionType.ANOMALY_STUCK_SENSOR);
+
+			expect(stuckResults).toHaveLength(1);
+			expect(stuckResults[0].metadata.deviceId).toBe('sensor-1');
+		});
+
+		it('should not track non-sensor devices', async () => {
+			const context = makeContext({
+				devices: [
+					{
+						id: 'thermo-1',
+						name: 'Thermostat',
+						space: 'space-1',
+						category: DeviceCategory.THERMOSTAT,
+						state: { 'thermostat.temperature': 22 },
+					},
+					{
+						id: 'light-1',
+						name: 'Light',
+						space: 'space-1',
+						category: DeviceCategory.LIGHTING,
+						state: { 'light.brightness': 80 },
+					},
+					{
+						id: 'lock-1',
+						name: 'Door Lock',
+						space: 'space-1',
+						category: DeviceCategory.LOCK,
+						state: { 'lock.locked': 1 },
+					},
+				],
+			});
+
+			await service.evaluate(context);
+
+			const tracker = (service as any).stuckSensorTracker as Map<string, unknown>;
+
+			// None of these device categories should be tracked
 			expect(tracker.size).toBe(0);
 		});
 
