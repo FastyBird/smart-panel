@@ -30,7 +30,7 @@
 								{{ props.page.title }}
 							</el-text>
 						</div>
-						<div class="flex items-center gap-1 flex-1 min-w-0 flex-wrap">
+						<div class="flex items-center gap-1 flex-1 min-w-0 flex-wrap justify-end">
 							<el-tag
 								v-for="ds in visibleDataSources"
 								:key="ds.id"
