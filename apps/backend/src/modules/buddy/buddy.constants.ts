@@ -35,6 +35,9 @@ export enum SuggestionType {
 	ENERGY_EXCESS_SOLAR = 'energy_excess_solar',
 	ENERGY_HIGH_CONSUMPTION = 'energy_high_consumption',
 	ENERGY_BATTERY_LOW = 'energy_battery_low',
+	CONFLICT_HEATING_WINDOW = 'conflict_heating_window',
+	CONFLICT_AC_WINDOW = 'conflict_ac_window',
+	CONFLICT_LIGHTS_UNOCCUPIED = 'conflict_lights_unoccupied',
 }
 
 export const ACTION_OBSERVER_BUFFER_SIZE = 200;
@@ -68,3 +71,5 @@ export const ENERGY_EXCESS_SOLAR_THRESHOLD_KW = 1; // kW surplus to trigger exce
 export const ENERGY_HIGH_CONSUMPTION_THRESHOLD_KW = 5; // kW grid draw to trigger high consumption suggestion
 
 export const ENERGY_BATTERY_LOW_THRESHOLD_PERCENT = 20; // % battery level to trigger low battery suggestion
+
+export const CONFLICT_LIGHTS_UNOCCUPIED_MINUTES = 15; // minutes of no occupancy before suggesting lights off

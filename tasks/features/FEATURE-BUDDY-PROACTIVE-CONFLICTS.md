@@ -5,7 +5,7 @@ Type: feature
 Scope: backend
 Size: small
 Parent: EPIC-BUDDY-MODULE
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -36,12 +36,12 @@ I want the buddy to detect when devices are working against each other and sugge
 
 ## 4. Acceptance criteria
 
-- [ ] `ConflictDetectorEvaluator` implements `HeartbeatEvaluator` and registers with heartbeat
-- [ ] Detects heating + open window conflict
-- [ ] Detects AC + open window conflict
-- [ ] Detects lights on in unoccupied room (occupancy sensor inactive for > configurable duration)
-- [ ] Each conflict generates a suggestion with clear description of the issue and suggested resolution
-- [ ] Unit tests for each conflict type
+- [x] `ConflictDetectorEvaluator` implements `HeartbeatEvaluator` and registers with heartbeat
+- [x] Detects heating + open window conflict
+- [x] Detects AC + open window conflict
+- [x] Detects lights on in unoccupied room (occupancy sensor inactive for > configurable duration)
+- [x] Each conflict generates a suggestion with clear description of the issue and suggested resolution
+- [x] Unit tests for each conflict type
 
 ## 5. Example scenarios
 

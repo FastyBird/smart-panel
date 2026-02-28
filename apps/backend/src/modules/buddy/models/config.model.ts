@@ -10,6 +10,7 @@ import {
 	ANOMALY_UNUSUAL_ACTIVITY_THRESHOLD,
 	ANOMALY_UNUSUAL_ACTIVITY_WINDOW_MINUTES,
 	BUDDY_MODULE_NAME,
+	CONFLICT_LIGHTS_UNOCCUPIED_MINUTES,
 	ENERGY_BATTERY_LOW_THRESHOLD_PERCENT,
 	ENERGY_EXCESS_SOLAR_THRESHOLD_KW,
 	ENERGY_HIGH_CONSUMPTION_THRESHOLD_KW,
@@ -168,4 +169,16 @@ export class BuddyConfigModel extends ModuleConfigModel {
 	@IsNumber()
 	@Min(1)
 	energyBatteryLowThresholdPercent: number = ENERGY_BATTERY_LOW_THRESHOLD_PERCENT;
+
+	@ApiPropertyOptional({
+		name: 'conflict_lights_unoccupied_minutes',
+		description: 'Minutes of no occupancy before suggesting to turn off lights',
+		type: 'integer',
+		example: 15,
+	})
+	@Expose({ name: 'conflict_lights_unoccupied_minutes' })
+	@IsOptional()
+	@IsInt()
+	@Min(1)
+	conflictLightsUnoccupiedMinutes: number = CONFLICT_LIGHTS_UNOCCUPIED_MINUTES;
 }
