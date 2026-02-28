@@ -118,7 +118,16 @@ describe('useLocations', () => {
 		expect(areLoading.value).toBe(true);
 	});
 
-	it('should return areLoading false when first load is complete', () => {
+	it('should return areLoading false when not fetching regardless of firstLoad', () => {
+		mockStore.firstLoad.value = false;
+		mockStore.semaphore.value.fetching.items = false;
+
+		const { areLoading } = useLocations();
+
+		expect(areLoading.value).toBe(false);
+	});
+
+	it('should return areLoading false when first load is complete and not fetching', () => {
 		mockStore.firstLoad.value = true;
 		mockStore.semaphore.value.fetching.items = false;
 

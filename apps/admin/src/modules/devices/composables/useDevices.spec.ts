@@ -77,15 +77,23 @@ describe('useDevices', () => {
 		expect(fetch).toHaveBeenCalled();
 	});
 
-	it('should return areLoading = true if fetching.items is truthy', () => {
-		semaphore.value.fetching.items = ['all'];
+	it('should return areLoading = true if fetching.items is true', () => {
+		semaphore.value.fetching.items = true;
 
 		const { areLoading } = useDevices();
 
 		expect(areLoading.value).toBe(true);
 	});
 
-	it('should return areLoading = false if firstLoad is true', () => {
+	it('should return areLoading = false when not fetching regardless of firstLoad', () => {
+		firstLoad.value = false;
+
+		const { areLoading } = useDevices();
+
+		expect(areLoading.value).toBe(false);
+	});
+
+	it('should return areLoading = false when firstLoad is true and not fetching', () => {
 		firstLoad.value = true;
 
 		const { areLoading } = useDevices();
