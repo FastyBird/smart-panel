@@ -91,6 +91,13 @@ const formEl = ref<FormInstance>();
 const formChanged = ref<boolean>(false);
 const formResult = ref<FormResultType>(FormResult.NONE);
 
+let timer: number;
+
+const clear = (): void => {
+	window.clearTimeout(timer);
+	formResult.value = FormResult.NONE;
+};
+
 const model = reactive({
 	id: props.card.id,
 	title: props.card.title,
@@ -122,13 +129,14 @@ const submit = async (): Promise<void> => {
 			});
 
 			formResult.value = FormResult.OK;
+			timer = window.setTimeout(clear, 2000);
 		} catch (error: unknown) {
+			formResult.value = FormResult.ERROR;
+			timer = window.setTimeout(clear, 2000);
+
 			if (error instanceof DashboardApiException) {
-				formResult.value = FormResult.ERROR;
 				throw new DashboardException('Failed to update card.', error);
 			}
-
-			formResult.value = FormResult.ERROR;
 		}
 	});
 };

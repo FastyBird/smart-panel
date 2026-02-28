@@ -674,13 +674,13 @@ watch(
 				}
 
 				for (const tileId of removedTiles) {
-					for (const [cardId, actions] of tileActionsByCard) {
+					for (const [, actions] of tileActionsByCard) {
 						const tile = actions.findById('card', tileId);
 
 						if (tile) {
 							await actions.removeDirectly({
 								id: tileId,
-								parent: { type: 'card', id: cardId },
+								parent: { type: 'card', id: tile.parent.id },
 							});
 
 							break;
