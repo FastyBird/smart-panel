@@ -241,7 +241,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, getCurrentInstance, h, nextTick, onBeforeMount, onBeforeUnmount, onMounted, ref, render, watch } from 'vue';
+import { computed, getCurrentInstance, h, hasInjectionContext, nextTick, onBeforeMount, onBeforeUnmount, onMounted, ref, render, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElButton, ElCard, ElCol, ElEmpty, ElIcon, ElOption, ElRow, ElSelect, ElTag, ElText, useNamespace } from 'element-plus';
@@ -311,15 +311,25 @@ let initTimeout: ReturnType<typeof setTimeout>;
 const tilesByCard = new Map<string, ReturnType<typeof useTiles>>();
 const tileActionsByCard = new Map<string, ReturnType<typeof useTilesActions>>();
 
-const ensureTileStore = (cardId: string): void => {
-	if (!tilesByCard.has(cardId)) {
-		tilesByCard.set(cardId, useTiles({ parent: 'card', parentId: cardId }));
-		tileActionsByCard.set(cardId, useTilesActions({ parent: 'card', parentId: cardId }));
+const ensureTileStore = (cardId: string): boolean => {
+	if (tilesByCard.has(cardId)) {
+		return true;
 	}
+
+	if (!hasInjectionContext()) {
+		return false;
+	}
+
+	tilesByCard.set(cardId, useTiles({ parent: 'card', parentId: cardId }));
+	tileActionsByCard.set(cardId, useTilesActions({ parent: 'card', parentId: cardId }));
+
+	return true;
 };
 
 const getCardTiles = (cardId: string): ITile[] => {
-	ensureTileStore(cardId);
+	if (!ensureTileStore(cardId)) {
+		return [];
+	}
 
 	return tilesByCard.get(cardId)?.tiles.value ?? [];
 };

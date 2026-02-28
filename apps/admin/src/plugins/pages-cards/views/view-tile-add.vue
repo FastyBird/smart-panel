@@ -144,7 +144,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { type RouteLocationResolvedGeneric, useRoute, useRouter } from 'vue-router';
@@ -257,6 +257,10 @@ const breadcrumbs = computed<{ label: string; route: RouteLocationResolvedGeneri
 		return items;
 	}
 );
+
+onMounted((): void => {
+	emit('update:remote-form-changed', remoteFormChanged.value);
+});
 
 const onDiscard = (): void => {
 	ElMessageBox.confirm(t('pagesCardsPlugin.texts.misc.confirmDiscard'), t('pagesCardsPlugin.headings.misc.discard'), {
