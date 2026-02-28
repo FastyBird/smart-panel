@@ -115,7 +115,7 @@ Inspired by the [OpenClaw](https://github.com/openclaw/openclaw) project's proac
 - [x] Database entities: `BuddyConversationEntity`, `BuddyMessageEntity` with migration
 - [x] Panel: buddy module with chat drawer accessible from deck UI
 - [x] Panel: suggestion cards displayed as dismissible notifications
-- [ ] Admin: buddy settings page (enable/disable, provider selection, API key configuration)
+- [x] Admin: buddy settings page (enable/disable, provider selection, API key configuration)
 - [x] Works without an AI provider configured (rule-based suggestions only, chat returns 503)
 - [ ] Unit tests for pattern detection, suggestion rules, context building
 - [ ] E2E tests for conversation and suggestion API endpoints
