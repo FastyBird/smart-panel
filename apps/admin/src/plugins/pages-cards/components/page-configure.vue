@@ -41,6 +41,25 @@
 					</div>
 
 					<div
+						v-if="dataSources.length > 0"
+						class="flex flex-wrap items-center gap-1 px-2 py-1 b-b b-b-solid flex-shrink-0"
+						style="border-color: var(--el-border-color-lighter)"
+					>
+						<el-tag
+							v-for="ds in dataSources"
+							:key="ds.id"
+							size="small"
+							:type="ds.draft ? 'warning' : 'info'"
+							closable
+							class="cursor-pointer"
+							@click="emit('editPageDataSource', ds.id)"
+							@close="removeDataSource(ds.id)"
+						>
+							{{ getDataSourceLabel(ds.type) }}
+						</el-tag>
+					</div>
+
+					<div
 						v-if="sortedCards.length === 0"
 						class="p-4 text-center"
 					>
@@ -254,7 +273,11 @@ import {
 	DashboardException,
 	FormResult,
 	type FormResultType,
+	type IDataSource,
 	type ITile,
+	useDataSources,
+	useDataSourcesActions,
+	useDataSourcesPlugins,
 	useTiles,
 	useTilesActions,
 } from '../../../modules/dashboard';
@@ -279,6 +302,7 @@ const props = withDefaults(defineProps<IPageConfigureProps>(), {
 const emit = defineEmits<{
 	(e: 'selectDisplay', displayId: string): void;
 	(e: 'addPageDataSource'): void;
+	(e: 'editPageDataSource', id: IDataSource['id']): void;
 	(e: 'addCard'): void;
 	(e: 'editCard', id: ICard['id']): void;
 	(e: 'removeCard', id: ICard['id']): void;
@@ -289,6 +313,14 @@ const emit = defineEmits<{
 	(e: 'update:remote-page-result', remotePageResult: FormResultType): void;
 	(e: 'update:remote-page-changed', formChanged: boolean): void;
 }>();
+
+const { dataSources, areLoading: loadingDataSources, fetchDataSources } = useDataSources({ parent: 'page', parentId: props.page.id });
+const { remove: removeDataSource } = useDataSourcesActions({ parent: 'page', parentId: props.page.id });
+const { getElement: getDataSourceElement } = useDataSourcesPlugins();
+
+const getDataSourceLabel = (type: string): string => {
+	return getDataSourceElement(type)?.name ?? type;
+};
 
 const appContext = getCurrentInstance()?.appContext ?? null;
 
@@ -573,6 +605,13 @@ onBeforeMount((): void => {
 				throw new DashboardException('Something went wrong', err);
 			});
 		}
+	}
+
+	if (!loadingDataSources.value) {
+		fetchDataSources().catch((error: unknown): void => {
+			const err = error as Error;
+			throw new DashboardException('Something went wrong', err);
+		});
 	}
 });
 
