@@ -416,10 +416,7 @@ describe('ConflictDetectorEvaluator', () => {
 			// Simulate time passage by manipulating the tracker
 			const tracker = (service as any).occupancyTracker as Map<string, number>;
 
-			tracker.set(
-				'space-1::lights_unoccupied',
-				Date.now() - (CONFLICT_LIGHTS_UNOCCUPIED_MINUTES + 1) * 60 * 1000,
-			);
+			tracker.set('space-1::lights_unoccupied', Date.now() - (CONFLICT_LIGHTS_UNOCCUPIED_MINUTES + 1) * 60 * 1000);
 
 			const results = await service.evaluate(context);
 			const conflictResults = results.filter((r) => r.type === SuggestionType.CONFLICT_LIGHTS_UNOCCUPIED);
@@ -641,10 +638,7 @@ describe('ConflictDetectorEvaluator', () => {
 
 			const tracker = (service as any).occupancyTracker as Map<string, number>;
 
-			tracker.set(
-				'space-1::lights_unoccupied',
-				Date.now() - (CONFLICT_LIGHTS_UNOCCUPIED_MINUTES + 1) * 60 * 1000,
-			);
+			tracker.set('space-1::lights_unoccupied', Date.now() - (CONFLICT_LIGHTS_UNOCCUPIED_MINUTES + 1) * 60 * 1000);
 
 			const results = await service.evaluate(context);
 			const conflictResults = results.filter((r) => r.type === SuggestionType.CONFLICT_LIGHTS_UNOCCUPIED);
@@ -698,10 +692,7 @@ describe('ConflictDetectorEvaluator', () => {
 
 			const tracker = (service as any).occupancyTracker as Map<string, number>;
 
-			tracker.set(
-				'space-1::lights_unoccupied',
-				Date.now() - (CONFLICT_LIGHTS_UNOCCUPIED_MINUTES + 5) * 60 * 1000,
-			);
+			tracker.set('space-1::lights_unoccupied', Date.now() - (CONFLICT_LIGHTS_UNOCCUPIED_MINUTES + 5) * 60 * 1000);
 
 			const results = await service.evaluate(context);
 			const types = results.map((r) => r.type);

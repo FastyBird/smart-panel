@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { ConfigService } from '../../config/services/config.service';
 import {
 	ENERGY_BATTERY_LOW_THRESHOLD_PERCENT,

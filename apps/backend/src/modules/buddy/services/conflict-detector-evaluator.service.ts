@@ -2,11 +2,7 @@ import { Injectable } from '@nestjs/common';
 
 import { ConfigService } from '../../config/services/config.service';
 import { DeviceCategory } from '../../devices/devices.constants';
-import {
-	BUDDY_MODULE_NAME,
-	CONFLICT_LIGHTS_UNOCCUPIED_MINUTES,
-	SuggestionType,
-} from '../buddy.constants';
+import { BUDDY_MODULE_NAME, CONFLICT_LIGHTS_UNOCCUPIED_MINUTES, SuggestionType } from '../buddy.constants';
 import { BuddyConfigModel } from '../models/config.model';
 
 import { BuddyContext } from './buddy-context.service';
@@ -176,9 +172,7 @@ export class ConflictDetectorEvaluator implements HeartbeatEvaluator {
 	}
 
 	private areLightsOn(devices: BuddyContext['devices']): boolean {
-		return devices.some(
-			(d) => d.category === (DeviceCategory.LIGHTING as string) && d.state['light.on'] === true,
-		);
+		return devices.some((d) => d.category === (DeviceCategory.LIGHTING as string) && d.state['light.on'] === true);
 	}
 
 	private hasOccupancySensor(devices: BuddyContext['devices']): boolean {

@@ -32,17 +32,22 @@ export class EnergyEvaluator implements HeartbeatEvaluator {
 			return Promise.resolve(results);
 		}
 
+		const energy = context.energy;
 		const thresholds = this.getThresholds();
+		const spaceId = context.spaces[0]?.id ?? 'unknown';
 
-		results.push(...this.detectExcessSolar(context, thresholds));
-		results.push(...this.detectHighConsumption(context, thresholds));
-		results.push(...this.detectBatteryLow(context, thresholds));
+		results.push(...this.detectExcessSolar(energy, spaceId, thresholds));
+		results.push(...this.detectHighConsumption(energy, spaceId, thresholds));
+		results.push(...this.detectBatteryLow(energy, spaceId, thresholds));
 
 		return Promise.resolve(results);
 	}
 
-	private detectExcessSolar(context: BuddyContext, thresholds: EnergyThresholds): EvaluatorResult[] {
-		const energy = context.energy!;
+	private detectExcessSolar(
+		energy: NonNullable<BuddyContext['energy']>,
+		spaceId: string,
+		thresholds: EnergyThresholds,
+	): EvaluatorResult[] {
 		const surplus = energy.solarProduction - energy.gridConsumption;
 
 		if (surplus <= thresholds.excessSolarKw) {
@@ -50,7 +55,6 @@ export class EnergyEvaluator implements HeartbeatEvaluator {
 		}
 
 		const surplusRounded = Math.round(surplus * 10) / 10;
-		const spaceId = context.spaces[0]?.id ?? 'unknown';
 
 		return [
 			{
@@ -67,15 +71,16 @@ export class EnergyEvaluator implements HeartbeatEvaluator {
 		];
 	}
 
-	private detectHighConsumption(context: BuddyContext, thresholds: EnergyThresholds): EvaluatorResult[] {
-		const energy = context.energy!;
-
+	private detectHighConsumption(
+		energy: NonNullable<BuddyContext['energy']>,
+		spaceId: string,
+		thresholds: EnergyThresholds,
+	): EvaluatorResult[] {
 		if (energy.gridConsumption <= thresholds.highConsumptionKw) {
 			return [];
 		}
 
 		const consumptionRounded = Math.round(energy.gridConsumption * 10) / 10;
-		const spaceId = context.spaces[0]?.id ?? 'unknown';
 
 		return [
 			{
@@ -91,14 +96,14 @@ export class EnergyEvaluator implements HeartbeatEvaluator {
 		];
 	}
 
-	private detectBatteryLow(context: BuddyContext, thresholds: EnergyThresholds): EvaluatorResult[] {
-		const energy = context.energy!;
-
+	private detectBatteryLow(
+		energy: NonNullable<BuddyContext['energy']>,
+		spaceId: string,
+		thresholds: EnergyThresholds,
+	): EvaluatorResult[] {
 		if (energy.batteryLevel >= thresholds.batteryLowPercent || energy.solarProduction > 0) {
 			return [];
 		}
-
-		const spaceId = context.spaces[0]?.id ?? 'unknown';
 
 		return [
 			{
