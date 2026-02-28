@@ -238,6 +238,11 @@ class BuddyRepository extends ChangeNotifier {
 					// so it's visible even if the subsequent refresh fails.
 					_messages.add(assistantMessage);
 
+					// Remove the optimistic user message — the server data
+					// from reconciliation will contain the real version with
+					// a server-assigned ID.
+					_messages.removeWhere((m) => m.id == userMessage.id);
+
 					// Decrement before reconciliation so the UI hides the
 					// "Thinking…" indicator for this send while still showing
 					// it if another send is in-flight.
