@@ -6,12 +6,14 @@ import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/modules/buddy/constants.dart';
 import 'package:fastybird_smart_panel/modules/buddy/repositories/buddy.dart';
 import 'package:fastybird_smart_panel/modules/buddy/service.dart';
+import 'package:fastybird_smart_panel/modules/buddy/services/suggestion_notification_service.dart';
 
 class BuddyModuleService {
 	final SocketService _socketService;
 
 	late BuddyRepository _buddyRepository;
 	late BuddyService _buddyService;
+	late SuggestionNotificationService _notificationService;
 
 	bool _isLoading = true;
 
@@ -27,8 +29,20 @@ class BuddyModuleService {
 			buddyRepository: _buddyRepository,
 		);
 
+		_notificationService = SuggestionNotificationService(
+			onDismissed: (suggestionId) {
+				_buddyService.dismissSuggestion(suggestionId);
+			},
+		);
+
+		// Wire up WebSocket suggestion events to the notification service
+		_buddyRepository.onSuggestionCreated = (suggestion) {
+			_notificationService.enqueue(suggestion);
+		};
+
 		locator.registerSingleton(_buddyRepository);
 		locator.registerSingleton(_buddyService);
+		locator.registerSingleton(_notificationService);
 	}
 
 	Future<void> initialize() async {
@@ -63,12 +77,16 @@ class BuddyModuleService {
 
 	BuddyRepository get buddyRepository => _buddyRepository;
 	BuddyService get buddyService => _buddyService;
+	SuggestionNotificationService get notificationService => _notificationService;
 
 	void dispose() {
 		_socketService.unregisterEventHandler(
 			BuddyModuleConstants.moduleWildcardEvent,
 			_socketEventHandler,
 		);
+
+		_buddyRepository.onSuggestionCreated = null;
+		_notificationService.dispose();
 	}
 
 	void _socketEventHandler(String event, Map<String, dynamic> payload) {

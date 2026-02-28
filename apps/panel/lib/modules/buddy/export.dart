@@ -11,6 +11,7 @@ export 'package:fastybird_smart_panel/modules/buddy/repositories/buddy.dart';
 
 // Services
 export 'package:fastybird_smart_panel/modules/buddy/service.dart';
+export 'package:fastybird_smart_panel/modules/buddy/services/suggestion_notification_service.dart';
 
 // Module
 export 'package:fastybird_smart_panel/modules/buddy/module.dart';
@@ -20,3 +21,4 @@ export 'package:fastybird_smart_panel/modules/buddy/presentation/buddy_chat_draw
 export 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/message_bubble.dart';
 export 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/suggestion_card.dart';
 export 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/suggestion_badge.dart';
+export 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/suggestion_toast.dart';
