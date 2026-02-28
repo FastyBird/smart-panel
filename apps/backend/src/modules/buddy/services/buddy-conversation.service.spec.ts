@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { EventType, MessageRole } from '../buddy.constants';
@@ -161,6 +161,46 @@ describe('BuddyConversationService', () => {
 					expect.objectContaining({ role: MessageRole.USER, content: 'What is the temperature?' }),
 				]),
 			);
+		});
+
+		it('should format energy values with kW units and omit battery when absent', async () => {
+			contextService.buildContext.mockResolvedValue({
+				timestamp: new Date().toISOString(),
+				spaces: [],
+				devices: [],
+				scenes: [],
+				weather: null,
+				energy: { solarProduction: 3.5, gridConsumption: 1.2, gridExport: 2.3 },
+				recentIntents: [],
+			});
+
+			await service.sendMessage('conv-1', 'Tell me about energy');
+
+			const systemPrompt = llmProvider.sendMessage.mock.calls[0][0] as string;
+
+			expect(systemPrompt).toContain('Solar production: 3.5 kW');
+			expect(systemPrompt).toContain('Grid consumption: 1.2 kW');
+			expect(systemPrompt).toContain('Grid export: 2.3 kW');
+			expect(systemPrompt).not.toContain('Battery');
+			expect(systemPrompt).not.toContain('null');
+		});
+
+		it('should include battery level in energy section when present', async () => {
+			contextService.buildContext.mockResolvedValue({
+				timestamp: new Date().toISOString(),
+				spaces: [],
+				devices: [],
+				scenes: [],
+				weather: null,
+				energy: { solarProduction: 3.5, gridConsumption: 1.2, gridExport: 2.3, batteryLevel: 85 },
+				recentIntents: [],
+			});
+
+			await service.sendMessage('conv-1', 'Tell me about energy');
+
+			const systemPrompt = llmProvider.sendMessage.mock.calls[0][0] as string;
+
+			expect(systemPrompt).toContain('Battery level: 85%');
 		});
 
 		it('should emit CONVERSATION_MESSAGE_RECEIVED event', async () => {

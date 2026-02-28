@@ -16,7 +16,12 @@ export interface BuddyContext {
 	devices: { id: string; name: string; space: string | null; category: string; state: Record<string, unknown> }[];
 	scenes: { id: string; name: string; space: string | null; enabled: boolean }[];
 	weather: { temperature: number; conditions: string; humidity: number } | null;
-	energy: { solarProduction: number; gridConsumption: number; batteryLevel: number } | null;
+	energy: {
+		solarProduction: number;
+		gridConsumption: number;
+		gridExport: number;
+		batteryLevel?: number;
+	} | null;
 	recentIntents: { type: string; space: string | null; timestamp: string }[];
 }
 
@@ -200,17 +205,27 @@ export class BuddyContextService {
 	private async getEnergy(): Promise<{
 		solarProduction: number;
 		gridConsumption: number;
-		batteryLevel: number;
+		gridExport: number;
 	} | null> {
 		try {
 			const now = new Date();
-			const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-			const summary = await this.energyDataService.getSummary(dayStart, now);
+			const lookback = new Date(now.getTime() - 15 * 60 * 1000); // last 15 minutes
+			const deltas = await this.energyDataService.getDeltas(lookback, now);
+
+			if (deltas.length === 0) {
+				return null;
+			}
+
+			// Use the most recent delta interval and convert kWh to approximate kW rate
+			const latest = deltas[deltas.length - 1];
+			const intervalMs = new Date(latest.intervalEnd).getTime() - new Date(latest.intervalStart).getTime();
+			const intervalHours = intervalMs / (3600 * 1000);
+			const kwhToKw = intervalHours > 0 ? 1 / intervalHours : 12; // fallback: 5-min → ×12
 
 			return {
-				solarProduction: summary.totalProductionKwh ?? 0,
-				gridConsumption: summary.totalGridImportKwh ?? 0,
-				batteryLevel: 0,
+				solarProduction: (latest.productionDeltaKwh ?? 0) * kwhToKw,
+				gridConsumption: (latest.gridImportDeltaKwh ?? 0) * kwhToKw,
+				gridExport: (latest.gridExportDeltaKwh ?? 0) * kwhToKw,
 			};
 		} catch (error) {
 			this.logger.debug(`Energy data unavailable: ${error}`);
