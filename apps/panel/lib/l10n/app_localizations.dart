@@ -1691,6 +1691,72 @@ abstract class AppLocalizations {
   /// **'Humidity:'**
   String get weather_forecast_humidity;
 
+  /// Label for wind section in weather detail
+  ///
+  /// In en, this message translates to:
+  /// **'Wind'**
+  String get weather_detail_wind;
+
+  /// Label for wind gust value
+  ///
+  /// In en, this message translates to:
+  /// **'Gust'**
+  String get weather_detail_gust;
+
+  /// Label for pressure section in weather detail
+  ///
+  /// In en, this message translates to:
+  /// **'Pressure'**
+  String get weather_detail_pressure;
+
+  /// Label for cloud coverage section
+  ///
+  /// In en, this message translates to:
+  /// **'Clouds'**
+  String get weather_detail_clouds;
+
+  /// Label for rain section
+  ///
+  /// In en, this message translates to:
+  /// **'Rain'**
+  String get weather_detail_rain;
+
+  /// Label for snow section
+  ///
+  /// In en, this message translates to:
+  /// **'Snow'**
+  String get weather_detail_snow;
+
+  /// Label for sunrise time
+  ///
+  /// In en, this message translates to:
+  /// **'Sunrise'**
+  String get weather_detail_sunrise;
+
+  /// Label for sunset time
+  ///
+  /// In en, this message translates to:
+  /// **'Sunset'**
+  String get weather_detail_sunset;
+
+  /// Section heading for weather forecast
+  ///
+  /// In en, this message translates to:
+  /// **'Forecast'**
+  String get weather_detail_forecast;
+
+  /// Label for current day in weather detail
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get weather_detail_today;
+
+  /// Message shown when weather is not configured
+  ///
+  /// In en, this message translates to:
+  /// **'Weather not configured'**
+  String get weather_detail_not_configured;
+
   /// A thunderstorm accompanied by light rain.
   ///
   /// In en, this message translates to:
