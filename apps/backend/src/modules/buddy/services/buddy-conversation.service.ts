@@ -210,9 +210,13 @@ export class BuddyConversationService {
 
 		if (context.energy) {
 			lines.push('', '## Energy');
-			lines.push(`- Solar production: ${context.energy.solarProduction} kWh`);
-			lines.push(`- Grid consumption: ${context.energy.gridConsumption} kWh`);
-			lines.push(`- Battery level: ${context.energy.batteryLevel}%`);
+			lines.push(`- Solar production: ${context.energy.solarProduction} kW`);
+			lines.push(`- Grid consumption: ${context.energy.gridConsumption} kW`);
+			lines.push(`- Grid export: ${context.energy.gridExport} kW`);
+
+			if (context.energy.batteryLevel != null) {
+				lines.push(`- Battery level: ${context.energy.batteryLevel}%`);
+			}
 		}
 
 		if (context.recentIntents.length > 0) {

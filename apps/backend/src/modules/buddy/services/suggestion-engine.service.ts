@@ -218,13 +218,24 @@ export class SuggestionEngineService implements OnModuleDestroy {
 			}
 
 			if (suggestion.spaceId === spaceId && suggestion.type === type) {
-				if (type === SuggestionType.PATTERN_SCENE_CREATE && suggestion.metadata.intentType === metadata.intentType) {
-					return true;
+				if (type === SuggestionType.PATTERN_SCENE_CREATE) {
+					// Single-action patterns (from PatternDetector) match by intentType
+					if (suggestion.metadata.intentType !== undefined && suggestion.metadata.intentType === metadata.intentType) {
+						return true;
+					}
+
+					// Multi-action patterns (from SceneSuggestion) match by sequenceHash
+					if (
+						suggestion.metadata.sequenceHash !== undefined &&
+						suggestion.metadata.sequenceHash === metadata.sequenceHash
+					) {
+						return true;
+					}
+
+					continue;
 				}
 
-				if (type !== SuggestionType.PATTERN_SCENE_CREATE) {
-					return true;
-				}
+				return true;
 			}
 		}
 

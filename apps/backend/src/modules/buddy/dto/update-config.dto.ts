@@ -150,4 +150,79 @@ export class UpdateBuddyConfigDto extends UpdateModuleConfigDto {
 			'[{"field":"anomaly_unusual_activity_window_minutes","reason":"Unusual activity window must be at least 5 minutes."}]',
 	})
 	anomaly_unusual_activity_window_minutes?: number;
+
+	@ApiPropertyOptional({
+		name: 'energy_excess_solar_threshold_kw',
+		description: 'Grid export (kW) to trigger an excess solar suggestion',
+		type: 'number',
+		example: 1,
+	})
+	@Expose({ name: 'energy_excess_solar_threshold_kw' })
+	@IsOptional()
+	@IsNumber(
+		{},
+		{ message: '[{"field":"energy_excess_solar_threshold_kw","reason":"Excess solar threshold must be a number."}]' },
+	)
+	@Min(0.1, {
+		message: '[{"field":"energy_excess_solar_threshold_kw","reason":"Excess solar threshold must be at least 0.1."}]',
+	})
+	energy_excess_solar_threshold_kw?: number;
+
+	@ApiPropertyOptional({
+		name: 'energy_high_consumption_threshold_kw',
+		description: 'Grid draw (kW) to trigger a high consumption suggestion',
+		type: 'number',
+		example: 5,
+	})
+	@Expose({ name: 'energy_high_consumption_threshold_kw' })
+	@IsOptional()
+	@IsNumber(
+		{},
+		{
+			message:
+				'[{"field":"energy_high_consumption_threshold_kw","reason":"High consumption threshold must be a number."}]',
+		},
+	)
+	@Min(0.5, {
+		message:
+			'[{"field":"energy_high_consumption_threshold_kw","reason":"High consumption threshold must be at least 0.5."}]',
+	})
+	energy_high_consumption_threshold_kw?: number;
+
+	@ApiPropertyOptional({
+		name: 'energy_battery_low_threshold_percent',
+		description: 'Battery level (%) below which a low battery suggestion is triggered',
+		type: 'number',
+		example: 20,
+	})
+	@Expose({ name: 'energy_battery_low_threshold_percent' })
+	@IsOptional()
+	@IsNumber(
+		{},
+		{
+			message: '[{"field":"energy_battery_low_threshold_percent","reason":"Battery low threshold must be a number."}]',
+		},
+	)
+	@Min(1, {
+		message: '[{"field":"energy_battery_low_threshold_percent","reason":"Battery low threshold must be at least 1."}]',
+	})
+	energy_battery_low_threshold_percent?: number;
+
+	@ApiPropertyOptional({
+		name: 'conflict_lights_unoccupied_minutes',
+		description: 'Minutes of no occupancy before suggesting to turn off lights',
+		type: 'integer',
+		example: 15,
+	})
+	@Expose({ name: 'conflict_lights_unoccupied_minutes' })
+	@IsOptional()
+	@IsInt({
+		message:
+			'[{"field":"conflict_lights_unoccupied_minutes","reason":"Lights unoccupied minutes must be an integer."}]',
+	})
+	@Min(1, {
+		message:
+			'[{"field":"conflict_lights_unoccupied_minutes","reason":"Lights unoccupied minutes must be at least 1."}]',
+	})
+	conflict_lights_unoccupied_minutes?: number;
 }

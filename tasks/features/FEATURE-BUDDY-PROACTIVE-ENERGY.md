@@ -5,7 +5,7 @@ Type: feature
 Scope: backend
 Size: small
 Parent: EPIC-BUDDY-MODULE
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -38,13 +38,13 @@ I want the buddy to suggest actions when there's excess solar production, high c
 
 ## 4. Acceptance criteria
 
-- [ ] `EnergyEvaluator` implements `HeartbeatEvaluator` and registers with heartbeat service
-- [ ] Detects excess solar (production - consumption > 1kW threshold)
-- [ ] Detects high consumption (grid draw > threshold, default 5kW)
-- [ ] Detects low battery (< 20% with no solar production)
-- [ ] Gracefully returns empty results when energy module has no data
-- [ ] Thresholds configurable via buddy config
-- [ ] Unit tests cover all three energy rules
+- [x] `EnergyEvaluator` implements `HeartbeatEvaluator` and registers with heartbeat service
+- [x] Detects excess solar (production - consumption > 1kW threshold)
+- [x] Detects high consumption (grid draw > threshold, default 5kW)
+- [x] Detects low battery (< 20% with no solar production)
+- [x] Gracefully returns empty results when energy module has no data
+- [x] Thresholds configurable via buddy config
+- [x] Unit tests cover all three energy rules
 
 ## 5. Example scenarios
 
