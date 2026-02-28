@@ -436,6 +436,7 @@ const suppressMarkChanged = ref<boolean>(false);
 const pageChanged = ref<boolean>(false);
 let changeTimeout: ReturnType<typeof setTimeout>;
 let initTimeout: ReturnType<typeof setTimeout>;
+let initRafHandle: number;
 
 // Load tiles for each card
 const tilesByCard = new Map<string, ReturnType<typeof useTiles>>();
@@ -682,11 +683,17 @@ const initializeGrids = (): void => {
 		return;
 	}
 
-	for (const card of cardsToInit) {
-		initializeCardGrid(card);
-	}
+	// Use requestAnimationFrame to ensure browser has laid out newly appearing
+	// containers (e.g. after v-if flip) so clientWidth is non-zero
+	cancelAnimationFrame(initRafHandle);
 
-	suppressMarkChanged.value = false;
+	initRafHandle = requestAnimationFrame(() => {
+		for (const card of cardsToInit) {
+			initializeCardGrid(card);
+		}
+
+		suppressMarkChanged.value = false;
+	});
 };
 
 onBeforeMount((): void => {
@@ -722,6 +729,7 @@ onMounted((): void => {
 onBeforeUnmount((): void => {
 	clearTimeout(changeTimeout);
 	clearTimeout(initTimeout);
+	cancelAnimationFrame(initRafHandle);
 	destroyGrids();
 });
 
@@ -731,6 +739,15 @@ watch(
 	(): void => {
 		for (const card of sortedCards.value) {
 			ensureTileStore(card.id);
+
+			const store = tilesByCard.get(card.id);
+
+			if (store && !store.loaded.value && !store.areLoading.value) {
+				store.fetchTiles().catch((error: unknown): void => {
+					const err = error as Error;
+					throw new DashboardException('Something went wrong', err);
+				});
+			}
 		}
 
 		initializeGrids();
