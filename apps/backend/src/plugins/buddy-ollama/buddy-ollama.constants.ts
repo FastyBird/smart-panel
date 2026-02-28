@@ -2,8 +2,6 @@ export const BUDDY_OLLAMA_PLUGIN_PREFIX = 'buddy-ollama';
 
 export const BUDDY_OLLAMA_PLUGIN_NAME = 'buddy-ollama-plugin';
 
-export const BUDDY_OLLAMA_PLUGIN_TYPE = 'buddy-ollama';
-
 export const BUDDY_OLLAMA_PLUGIN_API_TAG_NAME = 'Buddy Ollama';
 
 export const BUDDY_OLLAMA_PLUGIN_API_TAG_DESCRIPTION =

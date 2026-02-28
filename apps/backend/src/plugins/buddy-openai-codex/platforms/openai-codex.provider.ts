@@ -18,6 +18,7 @@ const OPENAI_SDK_MODULE = 'openai';
 @Injectable()
 export class OpenAiCodexProvider implements ILlmProvider {
 	private readonly logger = new Logger(OpenAiCodexProvider.name);
+	private cachedAccessToken: string | null = null;
 
 	constructor(private readonly configService: ConfigService) {}
 
@@ -40,7 +41,6 @@ export class OpenAiCodexProvider implements ILlmProvider {
 	async sendMessage(
 		systemPrompt: string,
 		messages: ChatMessage[],
-		_apiKey: string,
 		model: string,
 		options?: LlmOptions,
 	): Promise<string> {
@@ -71,11 +71,23 @@ export class OpenAiCodexProvider implements ILlmProvider {
 	}
 
 	private async resolveAccessToken(config: BuddyOpenaiCodexConfigModel | null): Promise<string> {
-		if (!config?.accessToken && config?.refreshToken && config?.clientId) {
-			return this.refreshAccessToken(config);
+		if (this.cachedAccessToken) {
+			return this.cachedAccessToken;
 		}
 
-		return config?.accessToken ?? '';
+		if (config?.accessToken) {
+			return config.accessToken;
+		}
+
+		if (config?.refreshToken && config?.clientId) {
+			const token = await this.refreshAccessToken(config);
+
+			this.cachedAccessToken = token;
+
+			return token;
+		}
+
+		return '';
 	}
 
 	private async refreshAccessToken(config: BuddyOpenaiCodexConfigModel): Promise<string> {

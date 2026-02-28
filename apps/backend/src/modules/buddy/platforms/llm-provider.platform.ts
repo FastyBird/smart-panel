@@ -36,10 +36,10 @@ export interface ILlmProvider {
 	getDefaultModel(): string;
 
 	/**
-	 * Sends a message to the LLM provider and returns the response
+	 * Sends a message to the LLM provider and returns the response.
+	 * Each provider reads its own credentials from plugin config.
 	 * @param systemPrompt The system prompt for the conversation
 	 * @param messages The conversation history
-	 * @param apiKey The API key (from plugin config)
 	 * @param model The model to use
 	 * @param options Additional options (timeout, etc.)
 	 * @returns The assistant's response text
@@ -47,7 +47,6 @@ export interface ILlmProvider {
 	sendMessage(
 		systemPrompt: string,
 		messages: ChatMessage[],
-		apiKey: string,
 		model: string,
 		options?: LlmOptions,
 	): Promise<string>;

@@ -2,8 +2,6 @@ export const BUDDY_CLAUDE_PLUGIN_PREFIX = 'buddy-claude';
 
 export const BUDDY_CLAUDE_PLUGIN_NAME = 'buddy-claude-plugin';
 
-export const BUDDY_CLAUDE_PLUGIN_TYPE = 'buddy-claude';
-
 export const BUDDY_CLAUDE_PLUGIN_API_TAG_NAME = 'Buddy Claude';
 
 export const BUDDY_CLAUDE_PLUGIN_API_TAG_DESCRIPTION =

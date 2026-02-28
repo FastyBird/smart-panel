@@ -12,6 +12,16 @@ export { ChatMessage, LlmOptions } from '../platforms/llm-provider.platform';
 
 const DEFAULT_TIMEOUT = 30_000;
 
+/**
+ * Maps legacy enum-based provider values (from pre-plugin configs)
+ * to the new plugin-based provider names.
+ */
+const LEGACY_PROVIDER_MAP: Record<string, string> = {
+	claude: 'buddy-claude-plugin',
+	openai: 'buddy-openai-plugin',
+	ollama: 'buddy-ollama-plugin',
+};
+
 @Injectable()
 export class LlmProviderService {
 	private readonly logger = new Logger(LlmProviderService.name);
@@ -23,16 +33,17 @@ export class LlmProviderService {
 
 	async sendMessage(systemPrompt: string, messages: ChatMessage[], options?: LlmOptions): Promise<string> {
 		const config = this.getConfig();
+		const providerName = LEGACY_PROVIDER_MAP[config.provider] ?? config.provider;
 
-		if (!config.provider || config.provider === 'none') {
+		if (!providerName || providerName === 'none') {
 			throw new BuddyProviderNotConfiguredException();
 		}
 
-		const provider = this.providerRegistry.get(config.provider);
+		const provider = this.providerRegistry.get(providerName);
 
 		if (!provider) {
 			this.logger.error(
-				`LLM provider '${config.provider}' is not registered. Available: ${this.providerRegistry.list().join(', ')}`,
+				`LLM provider '${providerName}' is not registered. Available: ${this.providerRegistry.list().join(', ')}`,
 			);
 
 			throw new BuddyProviderNotConfiguredException();
@@ -42,7 +53,7 @@ export class LlmProviderService {
 		const model = options?.model ?? provider.getDefaultModel();
 
 		try {
-			return await provider.sendMessage(systemPrompt, messages, '', model, { ...options, timeout });
+			return await provider.sendMessage(systemPrompt, messages, model, { ...options, timeout });
 		} catch (error) {
 			return this.handleProviderError(provider.getName(), error, timeout);
 		}

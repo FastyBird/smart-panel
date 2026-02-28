@@ -110,10 +110,41 @@ describe('LlmProviderService', () => {
 			expect(claudeSendMessage).toHaveBeenCalledWith(
 				systemPrompt,
 				messages,
-				'',
 				'mock-model',
 				expect.objectContaining({ timeout: 30_000 }),
 			);
+		});
+	});
+
+	describe('legacy provider name migration', () => {
+		it('should resolve legacy "claude" to "buddy-claude-plugin"', async () => {
+			configService.getModuleConfig.mockReturnValue(makeConfig({ provider: 'claude' }));
+
+			const result = await service.sendMessage(systemPrompt, messages);
+
+			expect(result).toBe('Hello from mock');
+			expect(claudeSendMessage).toHaveBeenCalled();
+		});
+
+		it('should resolve legacy "openai" to "buddy-openai-plugin"', async () => {
+			configService.getModuleConfig.mockReturnValue(makeConfig({ provider: 'openai' }));
+
+			const result = await service.sendMessage(systemPrompt, messages);
+
+			expect(result).toBe('Hello from mock');
+			expect(openaiSendMessage).toHaveBeenCalled();
+		});
+
+		it('should resolve legacy "ollama" to "buddy-ollama-plugin"', async () => {
+			const ollamaSendMessage = jest.fn().mockResolvedValue('Hello from ollama');
+
+			registry.register(makeMockProvider('buddy-ollama-plugin', ollamaSendMessage));
+			configService.getModuleConfig.mockReturnValue(makeConfig({ provider: 'ollama' }));
+
+			const result = await service.sendMessage(systemPrompt, messages);
+
+			expect(result).toBe('Hello from ollama');
+			expect(ollamaSendMessage).toHaveBeenCalled();
 		});
 	});
 });

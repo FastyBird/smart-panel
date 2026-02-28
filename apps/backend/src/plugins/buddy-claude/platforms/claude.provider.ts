@@ -39,12 +39,11 @@ export class ClaudeProvider implements ILlmProvider {
 	async sendMessage(
 		systemPrompt: string,
 		messages: ChatMessage[],
-		_apiKey: string,
 		model: string,
 		options?: LlmOptions,
 	): Promise<string> {
 		const config = this.getPluginConfig();
-		const apiKey = config?.apiKey ?? _apiKey;
+		const apiKey = config?.apiKey ?? '';
 		const resolvedModel = config?.model ?? model;
 		const timeout = options?.timeout ?? 30_000;
 

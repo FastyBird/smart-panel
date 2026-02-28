@@ -37,7 +37,6 @@ export class OllamaProvider implements ILlmProvider {
 	async sendMessage(
 		systemPrompt: string,
 		messages: ChatMessage[],
-		_apiKey: string,
 		model: string,
 		options?: LlmOptions,
 	): Promise<string> {
