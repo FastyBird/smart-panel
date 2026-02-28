@@ -1,0 +1,62 @@
+{
+	"headings": {
+		"settings": "Buddy",
+		"aboutBuddy": "AI Buddy Configuration"
+	},
+	"subHeadings": {
+		"settings": "Configure AI buddy assistant settings"
+	},
+	"messages": {
+		"loadError": "Failed to load buddy configuration",
+		"config": {
+			"edited": "Buddy configuration has been successfully updated",
+			"notEdited": "Failed to update buddy configuration"
+		}
+	},
+	"buttons": {
+		"save": {
+			"title": "Save"
+		},
+		"back": {
+			"title": "Back"
+		},
+		"retry": {
+			"title": "Retry"
+		}
+	},
+	"fields": {
+		"config": {
+			"provider": {
+				"title": "AI Provider",
+				"placeholder": "Select an AI provider",
+				"options": {
+					"none": "None (rule-based only)",
+					"claude": "Claude (Anthropic)",
+					"openai": "OpenAI",
+					"ollama": "Ollama (local)"
+				}
+			},
+			"apiKey": {
+				"title": "API Key",
+				"placeholder": "Enter your API key"
+			},
+			"model": {
+				"title": "Model",
+				"placeholder": "Enter model name"
+			},
+			"ollamaUrl": {
+				"title": "Ollama URL",
+				"placeholder": "http://localhost:11434"
+			}
+		}
+	},
+	"texts": {
+		"loadingConfig": "Loading buddy configuration...",
+		"aboutBuddy": "Configure the AI buddy assistant that observes your actions, learns your patterns, and suggests automations. Select an AI provider and enter your API credentials to enable chat functionality. Without a provider, rule-based suggestions will still work."
+	},
+	"meta": {
+		"settings": {
+			"title": "Buddy Settings"
+		}
+	}
+}
