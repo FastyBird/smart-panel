@@ -1,18 +1,31 @@
 import type { App } from 'vue';
+import type { RouteLocationResolvedGeneric, RouteRecordRaw } from 'vue-router';
 
 import { defaultsDeep } from 'lodash';
 
+import { RouteNames as AppRouteNames } from '../../app.constants';
 import type { IPluginOptions } from '../../app.types';
 import { type IPlugin, type PluginInjectionKey, injectLogger, injectPluginsManager, injectSockets, injectStoresManager } from '../../common';
-import { DASHBOARD_MODULE_NAME, type IPagePluginsComponents, type IPagePluginsSchemas } from '../../modules/dashboard';
+import {
+	DASHBOARD_MODULE_NAME,
+	RouteNames as DashboardRouteNames,
+	type IPage,
+	type IPagePluginRoutes,
+	type IPagePluginsComponents,
+	type IPagePluginsSchemas,
+} from '../../modules/dashboard';
 
+import { CardsPageAddForm, CardsPageEditForm } from './components/components';
 import enUS from './locales/en-US.json';
-import { EventType, PAGES_CARDS_PLUGIN_EVENT_PREFIX, PAGES_CARDS_PLUGIN_NAME, PAGES_CARDS_TYPE } from './pages-cards.contants';
+import { EventType, PAGES_CARDS_PLUGIN_EVENT_PREFIX, PAGES_CARDS_PLUGIN_NAME, PAGES_CARDS_TYPE, RouteNames } from './pages-cards.contants';
+import { PluginRoutes } from './router';
+import { CardsPageAddFormSchema, CardsPageEditFormSchema } from './schemas/pages.schemas';
 import { registerCardsStore } from './store/cards.store';
 import { cardsStoreKey } from './store/keys';
 import { CardsPageCreateReqSchema, CardsPageSchema, CardsPageUpdateReqSchema } from './store/pages.store.schemas';
 
-export const pagesCardsPluginKey: PluginInjectionKey<IPlugin<IPagePluginsComponents, IPagePluginsSchemas>> = Symbol('FB-Plugin-PagesCards');
+export const pagesCardsPluginKey: PluginInjectionKey<IPlugin<IPagePluginsComponents, IPagePluginsSchemas, IPagePluginRoutes>> =
+	Symbol('FB-Plugin-PagesCards');
 
 export default {
 	install: (app: App, options: IPluginOptions): void => {
@@ -26,6 +39,14 @@ export default {
 			const mergedMessages = defaultsDeep(currentMessages, { pagesCardsPlugin: translations });
 
 			options.i18n.global.setLocaleMessage(locale, mergedMessages);
+		}
+
+		const rootRoute = options.router.getRoutes().find((route) => route.name === AppRouteNames.ROOT);
+
+		if (rootRoute) {
+			PluginRoutes.forEach((route: RouteRecordRaw): void => {
+				options.router.addRoute(DashboardRouteNames.PAGE_PLUGIN, route);
+			});
 		}
 
 		const cardsStore = registerCardsStore(options.store);
@@ -47,13 +68,29 @@ export default {
 				{
 					type: PAGES_CARDS_TYPE,
 					name: 'Cards',
+					components: {
+						pageAddForm: CardsPageAddForm,
+						pageEditForm: CardsPageEditForm,
+					},
 					schemas: {
 						pageSchema: CardsPageSchema,
+						pageAddFormSchema: CardsPageAddFormSchema,
+						pageEditFormSchema: CardsPageEditFormSchema,
 						pageCreateReqSchema: CardsPageCreateReqSchema,
 						pageUpdateReqSchema: CardsPageUpdateReqSchema,
 					},
 				},
 			],
+			routes: {
+				configure: (id: IPage['id']): string | RouteLocationResolvedGeneric => {
+					return options.router.resolve({
+						name: RouteNames.PAGE,
+						params: {
+							id,
+						},
+					});
+				},
+			},
 			modules: [DASHBOARD_MODULE_NAME],
 			isCore: true,
 		});

@@ -21,7 +21,7 @@
 								class="flex-shrink-0"
 								color="var(--el-text-color-regular)"
 							>
-								<icon :icon="props.page.icon || 'mdi:view-dashboard'" />
+								<icon :icon="formatIcon(props.page.icon, 'mdi:view-dashboard')" />
 							</el-icon>
 							<el-text
 								size="small"
@@ -131,6 +131,7 @@
 							</template>
 						</el-button>
 					</div>
+
 					<div
 						ref="pageGridContainer"
 						class="flex-1 min-h-0 p-1"
@@ -334,6 +335,12 @@ const getDataSourceIcon = (ds: IDataSource): string | null => {
 	const record = ds as Record<string, unknown>;
 
 	return typeof record.icon === 'string' && record.icon ? record.icon : null;
+};
+
+const formatIcon = (icon: string | null, fallback: string): string => {
+	if (!icon) return fallback;
+
+	return icon.includes(':') ? icon : `mdi:${icon}`;
 };
 
 const getDataSourceLabel = (ds: IDataSource): string => {

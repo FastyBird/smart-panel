@@ -11,23 +11,23 @@
 				<template #icon>
 					<icon icon="mdi:package-variant-closed" />
 				</template>
-				{{ t('pagesTilesPlugin.buttons.manageElements.title') }}
+				{{ t('pagesCardsPlugin.buttons.manageElements.title') }}
 			</el-button>
 
 			<template #dropdown>
 				<el-dropdown-menu>
-					<el-dropdown-item @click="() => onTileAdd()">
+					<el-dropdown-item @click="onCardAdd">
 						<template #icon>
 							<icon icon="mdi:plus" />
 						</template>
-						{{ t('pagesTilesPlugin.buttons.addPageTile.title') }}
+						{{ t('pagesCardsPlugin.buttons.addCard.title') }}
 					</el-dropdown-item>
 
 					<el-dropdown-item @click="onPageDataSourceAdd">
 						<template #icon>
 							<icon icon="mdi:plus" />
 						</template>
-						{{ t('pagesTilesPlugin.buttons.addPageDataSource.title') }}
+						{{ t('pagesCardsPlugin.buttons.addPageDataSource.title') }}
 					</el-dropdown-item>
 				</el-dropdown-menu>
 			</template>
@@ -42,7 +42,7 @@
 			<template #icon>
 				<icon icon="mdi:close" />
 			</template>
-			{{ t('pagesTilesPlugin.buttons.discard.title') }}
+			{{ t('pagesCardsPlugin.buttons.discard.title') }}
 		</el-button>
 
 		<el-button
@@ -54,38 +54,44 @@
 			<template #icon>
 				<icon icon="mdi:close" />
 			</template>
-			{{ t('pagesTilesPlugin.buttons.close.title') }}
+			{{ t('pagesCardsPlugin.buttons.close.title') }}
 		</el-button>
 
 		<el-button
 			type="primary"
 			plain
-			:disabled="remotePageChanged === false"
+			:loading="remotePageResult === FormResult.WORKING"
+			:disabled="remotePageChanged === false || remotePageResult === FormResult.WORKING"
 			class="px-4! ml-2!"
 			@click="onSave"
 		>
 			<template #icon>
 				<icon icon="mdi:content-save" />
 			</template>
-			{{ t('pagesTilesPlugin.buttons.save.title') }}
+			{{ t('pagesCardsPlugin.buttons.save.title') }}
 		</el-button>
 	</teleport>
 
 	<page-configure
 		v-if="page"
 		v-model:remote-page-submit="remotePageSubmit"
+		v-model:remote-page-result="remotePageResult"
 		v-model:remote-page-changed="remotePageChanged"
 		:page="page"
+		:cards="cards"
 		:grid-layout="gridLayout"
 		:grid-card-style="gridCardStyle"
 		:displays="applicableDisplays"
 		:selected-display="selectedDisplay"
 		@select-display="onDisplaySelect"
-		@add-tile-of-type="onTileAdd"
-		@add-page-data-source="onPageDataSourceAdd"
-		@edit-page-data-source="onPageDataSourceEdit"
+		@add-card="onCardAdd"
+		@edit-card="onCardEdit"
+		@remove-card="onCardRemove"
+		@add-tile="onTileAdd"
 		@edit-tile="onTileEdit"
 		@tile-detail="onTileDetail"
+		@add-page-data-source="onPageDataSourceAdd"
+		@edit-page-data-source="onPageDataSourceEdit"
 	/>
 
 	<el-drawer
@@ -119,12 +125,12 @@
 						<icon icon="mdi:devices" />
 					</template>
 					<template #message>
-						{{ t('pagesTilesPlugin.messages.misc.requestError') }}
+						{{ t('pagesCardsPlugin.messages.misc.requestError') }}
 					</template>
 
 					<suspense>
 						<router-view
-							:key="`${props.page.id}-${page?.id}`"
+							:key="route.path"
 							v-slot="{ Component }"
 						>
 							<component
@@ -138,6 +144,57 @@
 			</template>
 		</div>
 	</el-drawer>
+
+	<el-dialog
+		v-if="!isLGDevice"
+		v-model="showDrawer"
+		:show-close="false"
+		:close-on-click-modal="false"
+		:close-on-press-escape="false"
+		fullscreen
+	>
+		<template #header>
+			<app-bar menu-button-hidden>
+				<template #button-right>
+					<app-bar-button
+						:align="AppBarButtonAlign.RIGHT"
+						class="mr-2"
+						@click="() => onCloseDrawer()"
+					>
+						<template #icon>
+							<el-icon>
+								<icon icon="mdi:close" />
+							</el-icon>
+						</template>
+					</app-bar-button>
+				</template>
+			</app-bar>
+		</template>
+
+		<template v-if="showDrawer">
+			<view-error>
+				<template #icon>
+					<icon icon="mdi:devices" />
+				</template>
+				<template #message>
+					{{ t('pagesCardsPlugin.messages.misc.requestError') }}
+				</template>
+
+				<suspense>
+					<router-view
+						:key="route.path"
+						v-slot="{ Component }"
+					>
+						<component
+							:is="Component"
+							v-model:remote-form-changed="remoteFormChanged"
+							:page="page"
+						/>
+					</router-view>
+				</suspense>
+			</view-error>
+		</template>
+	</el-dialog>
 </template>
 
 <script setup lang="ts">
@@ -145,20 +202,23 @@ import { computed, onBeforeMount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 
-import { ElButton, ElDrawer, ElDropdown, ElDropdownItem, ElDropdownMenu, ElIcon, ElMessageBox } from 'element-plus';
+import { ElButton, ElDialog, ElDrawer, ElDropdown, ElDropdownItem, ElDropdownMenu, ElIcon, ElMessageBox } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
 import { AppBar, AppBarButton, AppBarButtonAlign, ViewError, useBreakpoints } from '../../../common';
-import { type IDataSource, RouteNames as DashboardRouteNames, type ITile } from '../../../modules/dashboard';
+import { FormResult, type FormResultType, type IDataSource, RouteNames as DashboardRouteNames, type ITile } from '../../../modules/dashboard';
 import { type IDisplay, useDisplays } from '../../../modules/displays';
 import PageConfigure from '../components/page-configure.vue';
-import { RouteNames } from '../pages-tiles.constants';
+import { useCards } from '../composables/useCards';
+import { useCardsActions } from '../composables/useCardsActions';
+import { RouteNames } from '../pages-cards.contants';
+import type { ICard } from '../store/cards.store.types';
 
 import type { IViewPageConfigureProps } from './view-page-configure.types';
 
 defineOptions({
-	name: 'ViewPageConfigure',
+	name: 'ViewCardsPageConfigure',
 });
 
 const props = defineProps<IViewPageConfigureProps>();
@@ -176,12 +236,16 @@ const { isLGDevice } = useBreakpoints();
 
 const { displays, fetchDisplays, isLoading: loadingDisplays } = useDisplays();
 
+const { cards, fetchCards, areLoading: loadingCards } = useCards({ pageId: props.page.id });
+const { remove: removeCard } = useCardsActions();
+
 const mounted = ref<boolean>(false);
 
 const showDrawer = ref<boolean>(false);
 
 const remoteFormChanged = ref<boolean>(false);
 const remotePageSubmit = ref<boolean>(false);
+const remotePageResult = ref<FormResultType>(FormResult.NONE);
 const remotePageChanged = ref<boolean>(false);
 
 const selectedDisplayId = ref<string | null>(null);
@@ -207,8 +271,8 @@ const gridLayout = computed<{ rows: number; cols: number } | null>((): { rows: n
 		return null;
 	}
 
-	const rows = props.page.rows ?? selectedDisplay.value.rows ?? 12;
-	const cols = props.page.cols ?? selectedDisplay.value.cols ?? 24;
+	const rows = selectedDisplay.value.rows ?? 12;
+	const cols = selectedDisplay.value.cols ?? 24;
 
 	return { rows, cols };
 });
@@ -236,9 +300,9 @@ const onClose = (): void => {
 };
 
 const onDiscard = (): void => {
-	ElMessageBox.confirm(t('pagesTilesPlugin.texts.misc.confirmDiscard'), t('pagesTilesPlugin.headings.misc.discard'), {
-		confirmButtonText: t('pagesTilesPlugin.buttons.yes.title'),
-		cancelButtonText: t('pagesTilesPlugin.buttons.no.title'),
+	ElMessageBox.confirm(t('pagesCardsPlugin.texts.misc.confirmDiscard'), t('pagesCardsPlugin.headings.misc.discard'), {
+		confirmButtonText: t('pagesCardsPlugin.buttons.yes.title'),
+		cancelButtonText: t('pagesCardsPlugin.buttons.no.title'),
 		type: 'warning',
 	})
 		.then((): void => {
@@ -255,13 +319,12 @@ const onSave = (): void => {
 	remotePageSubmit.value = true;
 };
 
-const onTileAdd = (tileType?: string): void => {
+const onCardAdd = (): void => {
 	const location = {
-		name: RouteNames.PAGE_ADD_TILE,
+		name: RouteNames.PAGE_ADD_CARD,
 		params: {
 			id: props.page.id,
 		},
-		...(tileType ? { query: { tileType } } : {}),
 	};
 
 	if (isLGDevice.value) {
@@ -271,23 +334,56 @@ const onTileAdd = (tileType?: string): void => {
 	}
 };
 
-const onTileEdit = (id: ITile['id']): void => {
+const onCardEdit = (id: ICard['id']): void => {
+	const location = {
+		name: RouteNames.PAGE_EDIT_CARD,
+		params: {
+			id: props.page.id,
+			cardId: id,
+		},
+	};
+
 	if (isLGDevice.value) {
-		router.replace({
-			name: RouteNames.PAGE_EDIT_TILE,
-			params: {
-				id: props.page.id,
-				tileId: id,
-			},
-		});
+		router.replace(location);
 	} else {
-		router.push({
-			name: RouteNames.PAGE_EDIT_TILE,
-			params: {
-				id: props.page.id,
-				tileId: id,
-			},
-		});
+		router.push(location);
+	}
+};
+
+const onCardRemove = (id: ICard['id']): void => {
+	removeCard(id);
+};
+
+const onTileAdd = (cardId: ICard['id']): void => {
+	const location = {
+		name: RouteNames.PAGE_CARD_ADD_TILE,
+		params: {
+			id: props.page.id,
+			cardId,
+		},
+	};
+
+	if (isLGDevice.value) {
+		router.replace(location);
+	} else {
+		router.push(location);
+	}
+};
+
+const onTileEdit = (tileId: ITile['id'], cardId: ICard['id']): void => {
+	const location = {
+		name: RouteNames.PAGE_CARD_EDIT_TILE,
+		params: {
+			id: props.page.id,
+			cardId,
+			tileId,
+		},
+	};
+
+	if (isLGDevice.value) {
+		router.replace(location);
+	} else {
+		router.push(location);
 	}
 };
 
@@ -301,20 +397,17 @@ const onTileDetail = (id: ITile['id']): void => {
 };
 
 const onPageDataSourceAdd = (): void => {
+	const location = {
+		name: RouteNames.PAGE_ADD_DATA_SOURCE,
+		params: {
+			id: props.page.id,
+		},
+	};
+
 	if (isLGDevice.value) {
-		router.replace({
-			name: RouteNames.PAGE_ADD_DATA_SOURCE,
-			params: {
-				id: props.page.id,
-			},
-		});
+		router.replace(location);
 	} else {
-		router.push({
-			name: RouteNames.PAGE_ADD_DATA_SOURCE,
-			params: {
-				id: props.page.id,
-			},
-		});
+		router.push(location);
 	}
 };
 
@@ -336,9 +429,9 @@ const onPageDataSourceEdit = (dataSourceId: IDataSource['id']): void => {
 
 const onCloseDrawer = (done?: () => void): void => {
 	if (remoteFormChanged.value) {
-		ElMessageBox.confirm(t('pagesTilesPlugin.texts.misc.confirmDiscard'), t('pagesTilesPlugin.headings.misc.discard'), {
-			confirmButtonText: t('pagesTilesPlugin.buttons.yes.title'),
-			cancelButtonText: t('pagesTilesPlugin.buttons.no.title'),
+		ElMessageBox.confirm(t('pagesCardsPlugin.texts.misc.confirmDiscard'), t('pagesCardsPlugin.headings.misc.discard'), {
+			confirmButtonText: t('pagesCardsPlugin.buttons.yes.title'),
+			cancelButtonText: t('pagesCardsPlugin.buttons.no.title'),
 			type: 'warning',
 		})
 			.then((): void => {
@@ -388,8 +481,10 @@ onBeforeMount((): void => {
 	showDrawer.value =
 		route.matched.find(
 			(matched) =>
-				matched.name === RouteNames.PAGE_ADD_TILE ||
-				matched.name === RouteNames.PAGE_EDIT_TILE ||
+				matched.name === RouteNames.PAGE_ADD_CARD ||
+				matched.name === RouteNames.PAGE_EDIT_CARD ||
+				matched.name === RouteNames.PAGE_CARD_ADD_TILE ||
+				matched.name === RouteNames.PAGE_CARD_EDIT_TILE ||
 				matched.name === RouteNames.PAGE_ADD_DATA_SOURCE ||
 				matched.name === RouteNames.PAGE_EDIT_DATA_SOURCE
 		) !== undefined;
@@ -397,6 +492,12 @@ onBeforeMount((): void => {
 	if (!loadingDisplays.value) {
 		fetchDisplays().catch((): void => {
 			// Silently ignore display fetch errors
+		});
+	}
+
+	if (!loadingCards.value) {
+		fetchCards().catch((): void => {
+			// Silently ignore card fetch errors
 		});
 	}
 });
@@ -414,8 +515,10 @@ watch(
 		showDrawer.value =
 			route.matched.find(
 				(matched) =>
-					matched.name === RouteNames.PAGE_ADD_TILE ||
-					matched.name === RouteNames.PAGE_EDIT_TILE ||
+					matched.name === RouteNames.PAGE_ADD_CARD ||
+					matched.name === RouteNames.PAGE_EDIT_CARD ||
+					matched.name === RouteNames.PAGE_CARD_ADD_TILE ||
+					matched.name === RouteNames.PAGE_CARD_EDIT_TILE ||
 					matched.name === RouteNames.PAGE_ADD_DATA_SOURCE ||
 					matched.name === RouteNames.PAGE_EDIT_DATA_SOURCE
 			) !== undefined;

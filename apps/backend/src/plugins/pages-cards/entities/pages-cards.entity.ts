@@ -2,6 +2,7 @@ import { Expose, Transform, Type } from 'class-transformer';
 import {
 	IsArray,
 	IsInstance,
+	IsInt,
 	IsNumber,
 	IsOptional,
 	IsString,
@@ -11,7 +12,7 @@ import {
 } from 'class-validator';
 import { ChildEntity, Column, Entity, ManyToOne, OneToMany } from 'typeorm';
 
-import { ApiProperty, ApiSchema, getSchemaPath } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, ApiSchema, getSchemaPath } from '@nestjs/swagger';
 
 import { BaseEntity } from '../../../common/entities/base.entity';
 import { DataSourceEntity, PageEntity, TileEntity } from '../../../modules/dashboard/entities/dashboard.entity';
@@ -78,6 +79,30 @@ export class CardEntity extends BaseEntity {
 	@IsNumber({ allowNaN: false, allowInfinity: false }, { each: false })
 	@Column({ type: 'int', default: 0 })
 	order: number;
+
+	@ApiPropertyOptional({
+		description: 'Number of rows',
+		type: 'integer',
+		nullable: true,
+		example: 4,
+	})
+	@Expose()
+	@IsOptional()
+	@IsInt()
+	@Column({ type: 'int', nullable: true, default: null })
+	rows: number | null;
+
+	@ApiPropertyOptional({
+		description: 'Number of columns',
+		type: 'integer',
+		nullable: true,
+		example: 6,
+	})
+	@Expose()
+	@IsOptional()
+	@IsInt()
+	@Column({ type: 'int', nullable: true, default: null })
+	cols: number | null;
 
 	@ApiProperty({
 		description: 'Page identifier',

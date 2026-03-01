@@ -1,5 +1,5 @@
 import { Expose, Transform, Type } from 'class-transformer';
-import { IsNotEmpty, IsNumber, IsOptional, IsString, ValidateIf, ValidateNested } from 'class-validator';
+import { IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Min, ValidateIf, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -43,6 +43,32 @@ export class UpdateCardDto {
 		{ each: false, message: '[{"field":"order","reason":"Order must be a positive number."}]' },
 	)
 	order?: number;
+
+	@ApiPropertyOptional({
+		description: 'Number of rows',
+		type: 'integer',
+		nullable: true,
+		example: 4,
+	})
+	@Expose()
+	@IsOptional()
+	@IsInt({ message: '[{"field":"rows","reason":"Rows must be an integer."}]' })
+	@Min(1, { message: '[{"field":"rows","reason":"Rows must be at least 1."}]' })
+	@ValidateIf((_, value) => value !== null)
+	rows?: number | null;
+
+	@ApiPropertyOptional({
+		description: 'Number of columns',
+		type: 'integer',
+		nullable: true,
+		example: 6,
+	})
+	@Expose()
+	@IsOptional()
+	@IsInt({ message: '[{"field":"cols","reason":"Cols must be an integer."}]' })
+	@Min(1, { message: '[{"field":"cols","reason":"Cols must be at least 1."}]' })
+	@ValidateIf((_, value) => value !== null)
+	cols?: number | null;
 }
 
 @ApiSchema({ name: 'PagesCardsPluginReqUpdateCard' })
