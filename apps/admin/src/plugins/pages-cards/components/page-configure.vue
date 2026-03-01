@@ -214,6 +214,7 @@
 								</el-text>
 							</div>
 							<div
+								v-else
 								:ref="(el) => setGridRef(card.id, el as HTMLElement | null)"
 								class="card-grid-container"
 							/>
