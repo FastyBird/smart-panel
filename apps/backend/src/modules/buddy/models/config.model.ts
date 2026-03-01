@@ -1,5 +1,5 @@
 import { Expose, Transform } from 'class-transformer';
-import { IsInt, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { IsEnum, IsInt, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -16,6 +16,7 @@ import {
 	ENERGY_HIGH_CONSUMPTION_THRESHOLD_KW,
 	HEARTBEAT_DEFAULT_INTERVAL_MS,
 	LLM_PROVIDER_NONE,
+	SttProvider,
 } from '../buddy.constants';
 
 @ApiSchema({ name: 'ConfigModuleDataBuddy' })
@@ -167,4 +168,51 @@ export class BuddyConfigModel extends ModuleConfigModel {
 	@IsInt()
 	@Min(1)
 	conflictLightsUnoccupiedMinutes: number = CONFLICT_LIGHTS_UNOCCUPIED_MINUTES;
+
+	@ApiPropertyOptional({
+		name: 'stt_provider',
+		description: 'Speech-to-text provider for voice input',
+		enum: SttProvider,
+		example: SttProvider.NONE,
+	})
+	@Expose({ name: 'stt_provider' })
+	@IsOptional()
+	@IsEnum(SttProvider)
+	sttProvider: SttProvider = SttProvider.NONE;
+
+	@ApiPropertyOptional({
+		name: 'stt_api_key',
+		description: 'API key for the STT provider (Whisper API uses OpenAI API key)',
+		type: 'string',
+		nullable: true,
+		example: null,
+	})
+	@Expose({ name: 'stt_api_key' })
+	@IsOptional()
+	@IsString()
+	sttApiKey: string | null = null;
+
+	@ApiPropertyOptional({
+		name: 'stt_model',
+		description: 'STT model name (e.g., "whisper-1" for Whisper API, "base" for local Whisper)',
+		type: 'string',
+		nullable: true,
+		example: 'whisper-1',
+	})
+	@Expose({ name: 'stt_model' })
+	@IsOptional()
+	@IsString()
+	sttModel: string | null = null;
+
+	@ApiPropertyOptional({
+		name: 'stt_language',
+		description: 'Language hint for STT transcription (ISO 639-1 code, e.g., "en")',
+		type: 'string',
+		nullable: true,
+		example: null,
+	})
+	@Expose({ name: 'stt_language' })
+	@IsOptional()
+	@IsString()
+	sttLanguage: string | null = null;
 }

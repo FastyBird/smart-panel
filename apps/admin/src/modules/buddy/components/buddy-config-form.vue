@@ -33,17 +33,88 @@
 		>
 			{{ t('buddyModule.texts.pluginConfigHint') }}
 		</el-alert>
+
+		<el-divider />
+
+		<el-form-item
+			:label="t('buddyModule.fields.config.sttProvider.title')"
+			prop="sttProvider"
+		>
+			<el-select
+				v-model="model.sttProvider"
+				:placeholder="t('buddyModule.fields.config.sttProvider.placeholder')"
+				name="sttProvider"
+			>
+				<el-option
+					v-for="option in sttProviderOptions"
+					:key="option.value"
+					:label="option.label"
+					:value="option.value"
+				/>
+			</el-select>
+		</el-form-item>
+
+		<el-form-item
+			v-if="model.sttProvider === SttProvider.WHISPER_API"
+			:label="t('buddyModule.fields.config.sttApiKey.title')"
+			prop="sttApiKey"
+		>
+			<el-input
+				v-model="model.sttApiKey"
+				:placeholder="t('buddyModule.fields.config.sttApiKey.placeholder')"
+				:type="showSttApiKey ? 'text' : 'password'"
+				name="sttApiKey"
+				clearable
+			>
+				<template #suffix>
+					<el-icon
+						class="cursor-pointer"
+						@click="showSttApiKey = !showSttApiKey"
+					>
+						<icon :icon="showSttApiKey ? 'mdi:eye-off' : 'mdi:eye'" />
+					</el-icon>
+				</template>
+			</el-input>
+		</el-form-item>
+
+		<el-form-item
+			v-if="model.sttProvider !== SttProvider.NONE"
+			:label="t('buddyModule.fields.config.sttModel.title')"
+			prop="sttModel"
+		>
+			<el-input
+				v-model="model.sttModel"
+				:placeholder="sttModelPlaceholder"
+				name="sttModel"
+				clearable
+			/>
+		</el-form-item>
+
+		<el-form-item
+			v-if="model.sttProvider !== SttProvider.NONE"
+			:label="t('buddyModule.fields.config.sttLanguage.title')"
+			prop="sttLanguage"
+		>
+			<el-input
+				v-model="model.sttLanguage"
+				:placeholder="t('buddyModule.fields.config.sttLanguage.placeholder')"
+				name="sttLanguage"
+				clearable
+			/>
+		</el-form-item>
 	</el-form>
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, watch } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElForm, ElFormItem, ElOption, ElSelect, type FormRules } from 'element-plus';
+import { ElAlert, ElDivider, ElForm, ElFormItem, ElIcon, ElInput, ElOption, ElSelect, type FormRules } from 'element-plus';
+
+import { Icon } from '@iconify/vue';
 
 import { FormResult, type FormResultType, Layout, useConfigModuleEditForm } from '../../config';
-import { LEGACY_PROVIDER_MAP, LLM_PROVIDER_NONE } from '../buddy.constants';
+import { LEGACY_PROVIDER_MAP, LLM_PROVIDER_NONE, SttProvider } from '../buddy.constants';
 import type { IBuddyConfigEditForm } from '../schemas/config.types';
 
 import type { IBuddyConfigFormProps } from './buddy-config-form.types';
@@ -85,6 +156,8 @@ const { formEl, model, formChanged, submit, formResult } = useConfigModuleEditFo
 	},
 });
 
+const showSttApiKey = ref<boolean>(false);
+
 const providerOptions = computed(() => [
 	{ value: LLM_PROVIDER_NONE, label: t('buddyModule.fields.config.provider.options.none') },
 	{ value: 'buddy-openai-plugin', label: t('buddyModule.fields.config.provider.options.openai') },
@@ -93,6 +166,23 @@ const providerOptions = computed(() => [
 	{ value: 'buddy-claude-oauth-plugin', label: t('buddyModule.fields.config.provider.options.claudeOauth') },
 	{ value: 'buddy-ollama-plugin', label: t('buddyModule.fields.config.provider.options.ollama') },
 ]);
+
+const sttProviderOptions = computed(() => [
+	{ value: SttProvider.NONE, label: t('buddyModule.fields.config.sttProvider.options.none') },
+	{ value: SttProvider.WHISPER_API, label: t('buddyModule.fields.config.sttProvider.options.whisperApi') },
+	{ value: SttProvider.WHISPER_LOCAL, label: t('buddyModule.fields.config.sttProvider.options.whisperLocal') },
+]);
+
+const sttModelPlaceholder = computed<string>((): string => {
+	switch (model.sttProvider) {
+		case SttProvider.WHISPER_API:
+			return 'whisper-1';
+		case SttProvider.WHISPER_LOCAL:
+			return 'base';
+		default:
+			return '';
+	}
+});
 
 const rules = reactive<FormRules<IBuddyConfigEditForm>>({});
 

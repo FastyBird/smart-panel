@@ -204,12 +204,23 @@ describe('PatternDetectorService', () => {
 	});
 
 	it('should cap confidence at 1.0 when occurrences exceed lookback days', () => {
-		// 7 occurrences in 7 days → min(1, 7/7) = 1
-		for (let i = 1; i <= 7; i++) {
+		// 10 occurrences in 7 days → min(1, 10/7) = 1
+		for (let i = 0; i < 7; i++) {
 			observer.recordAction(
 				makeAction({ type: IntentType.LIGHT_TOGGLE, spaceId: 'room', timestamp: daysAgoAt(i, 23, 0) }),
 			);
 		}
+
+		// Add 3 extra actions on recent days (twice on the same day)
+		observer.recordAction(
+			makeAction({ type: IntentType.LIGHT_TOGGLE, spaceId: 'room', timestamp: daysAgoAt(0, 23, 5) }),
+		);
+		observer.recordAction(
+			makeAction({ type: IntentType.LIGHT_TOGGLE, spaceId: 'room', timestamp: daysAgoAt(1, 23, 5) }),
+		);
+		observer.recordAction(
+			makeAction({ type: IntentType.LIGHT_TOGGLE, spaceId: 'room', timestamp: daysAgoAt(2, 23, 5) }),
+		);
 
 		const patterns = service.detectPatterns();
 

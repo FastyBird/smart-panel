@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
@@ -43,6 +45,9 @@ class BuddyRepository extends ChangeNotifier {
 	/// Whether the last error was a 503 indicating no AI provider is configured.
 	bool _isProviderNotConfigured = false;
 
+	/// Whether the last audio error was a 503 indicating STT is not configured.
+	bool _isSttNotConfigured = false;
+
 	BuddyRepository({
 		required Dio dio,
 	}) : _dio = dio;
@@ -63,6 +68,7 @@ class BuddyRepository extends ChangeNotifier {
 	bool get isLoadingSuggestions => _isLoadingSuggestions;
 	String? get error => _error;
 	bool get isProviderNotConfigured => _isProviderNotConfigured;
+	bool get isSttNotConfigured => _isSttNotConfigured;
 
 	// ============================================
 	// CONVERSATIONS API
@@ -73,6 +79,7 @@ class BuddyRepository extends ChangeNotifier {
 		_isLoadingConversations = true;
 		_error = null;
 		_isProviderNotConfigured = false;
+		_isSttNotConfigured = false;
 		notifyListeners();
 
 		try {
@@ -80,7 +87,7 @@ class BuddyRepository extends ChangeNotifier {
 				BuddyModuleConstants.conversationsPath,
 			);
 
-			if (response.statusCode == 200 && response.data != null) {
+			if (response.statusCode != null && response.statusCode! >= 200 && response.statusCode! < 300 && response.data != null) {
 				final data = response.data['data'];
 
 				if (data is List) {
@@ -118,6 +125,7 @@ class BuddyRepository extends ChangeNotifier {
 	}) async {
 		_error = null;
 		_isProviderNotConfigured = false;
+		_isSttNotConfigured = false;
 
 		try {
 			final body = <String, dynamic>{};
@@ -168,6 +176,7 @@ class BuddyRepository extends ChangeNotifier {
 		_activeConversationId = conversationId;
 		_error = null;
 		_isProviderNotConfigured = false;
+		_isSttNotConfigured = false;
 		notifyListeners();
 
 		try {
@@ -175,7 +184,7 @@ class BuddyRepository extends ChangeNotifier {
 				'${BuddyModuleConstants.conversationsPath}/$conversationId/messages',
 			);
 
-			if (response.statusCode == 200 && response.data != null) {
+			if (response.statusCode != null && response.statusCode! >= 200 && response.statusCode! < 300 && response.data != null) {
 				final data = response.data['data'];
 
 				if (data is List) {
@@ -214,6 +223,7 @@ class BuddyRepository extends ChangeNotifier {
 		_activeSendCount++;
 		_error = null;
 		_isProviderNotConfigured = false;
+		_isSttNotConfigured = false;
 
 		// Add user message immediately for optimistic UI
 		final userMessage = BuddyMessageModel(
@@ -232,7 +242,7 @@ class BuddyRepository extends ChangeNotifier {
 				data: {'content': content},
 			);
 
-			if (response.statusCode == 200 && response.data != null) {
+			if (response.statusCode != null && response.statusCode! >= 200 && response.statusCode! < 300 && response.data != null) {
 				final data = response.data['data'];
 
 				if (data is Map<String, dynamic>) {
@@ -302,6 +312,94 @@ class BuddyRepository extends ChangeNotifier {
 		return null;
 	}
 
+	/// Send an audio message — uploads audio, backend transcribes and responds.
+	Future<BuddyMessageModel?> sendAudioMessage(
+		String conversationId,
+		Uint8List audioBytes,
+		String mimeType,
+	) async {
+		_activeSendCount++;
+		_error = null;
+		_isProviderNotConfigured = false;
+		_isSttNotConfigured = false;
+
+		// Add optimistic "transcribing…" placeholder
+		final userMessage = BuddyMessageModel(
+			id: 'pending_audio_${DateTime.now().millisecondsSinceEpoch}',
+			conversationId: conversationId,
+			role: BuddyMessageRole.user,
+			content: 'Transcribing audio...',
+			createdAt: DateTime.now(),
+		);
+		_messages.add(userMessage);
+		notifyListeners();
+
+		try {
+			final extension = _mimeToExtension(mimeType);
+
+			final formData = FormData.fromMap({
+				'audio': MultipartFile.fromBytes(
+					audioBytes,
+					filename: 'audio.$extension',
+					contentType: DioMediaType.parse(mimeType),
+				),
+			});
+
+			final response = await _dio.post(
+				'${BuddyModuleConstants.conversationsPath}/$conversationId/audio',
+				data: formData,
+			);
+
+			if (response.statusCode != null && response.statusCode! >= 200 && response.statusCode! < 300 && response.data != null) {
+				final data = response.data['data'];
+
+				if (data is Map<String, dynamic>) {
+					final assistantMessage = BuddyMessageModel.fromJson(data);
+
+					_messages.add(assistantMessage);
+					_messages.removeWhere((m) => m.id == userMessage.id);
+
+					_activeSendCount--;
+					notifyListeners();
+
+					await _reconcileMessages(conversationId);
+
+					return assistantMessage;
+				}
+			}
+
+			_activeSendCount--;
+			notifyListeners();
+
+			await _reconcileMessages(conversationId);
+		} on DioException catch (e) {
+			_error = _parseAudioError(e);
+
+			_messages.removeWhere((m) => m.id == userMessage.id);
+
+			if (kDebugMode) {
+				debugPrint(
+					'[BUDDY MODULE] Error sending audio: ${e.response?.statusCode}',
+				);
+			}
+		} catch (e) {
+			_error = 'Failed to send audio message';
+
+			_messages.removeWhere((m) => m.id == userMessage.id);
+
+			if (kDebugMode) {
+				debugPrint('[BUDDY MODULE] Error sending audio: $e');
+			}
+		} finally {
+			if (_activeSendCount > 0 && _error != null) {
+				_activeSendCount--;
+			}
+			notifyListeners();
+		}
+
+		return null;
+	}
+
 	/// Delete a conversation
 	Future<bool> deleteConversation(String conversationId) async {
 		try {
@@ -355,7 +453,7 @@ class BuddyRepository extends ChangeNotifier {
 				queryParameters: queryParams.isNotEmpty ? queryParams : null,
 			);
 
-			if (response.statusCode == 200 && response.data != null) {
+			if (response.statusCode != null && response.statusCode! >= 200 && response.statusCode! < 300 && response.data != null) {
 				final data = response.data['data'];
 
 				if (data is List) {
@@ -526,7 +624,7 @@ class BuddyRepository extends ChangeNotifier {
 				'${BuddyModuleConstants.conversationsPath}/$conversationId/messages',
 			);
 
-			if (response.statusCode == 200 && response.data != null) {
+			if (response.statusCode != null && response.statusCode! >= 200 && response.statusCode! < 300 && response.data != null) {
 				final data = response.data['data'];
 
 				if (data is List) {
@@ -562,6 +660,7 @@ class BuddyRepository extends ChangeNotifier {
 	void clearError() {
 		_error = null;
 		_isProviderNotConfigured = false;
+		_isSttNotConfigured = false;
 		notifyListeners();
 	}
 
@@ -589,5 +688,53 @@ class BuddyRepository extends ChangeNotifier {
 		}
 
 		return 'Something went wrong. Please try again.';
+	}
+
+	String _parseAudioError(DioException e) {
+		if (e.response?.statusCode == 503) {
+			// The audio endpoint can return 503 from either the STT provider
+			// (transcription step) or the LLM provider (chat step). Inspect
+			// the response message to distinguish between the two.
+			final data = e.response?.data;
+			final message = data is Map<String, dynamic> ? data['message'] as String? : null;
+			final isLlmError = message != null && message.contains('AI provider');
+
+			if (isLlmError) {
+				_isProviderNotConfigured = true;
+
+				return 'AI provider not configured';
+			}
+
+			_isSttNotConfigured = true;
+
+			return 'Voice input not configured';
+		}
+
+		if (e.response?.statusCode == 413) {
+			return 'Audio file is too large (max 25 MB)';
+		}
+
+		if (e.response?.statusCode == 415) {
+			return 'Unsupported audio format';
+		}
+
+		return _parseError(e);
+	}
+
+	String _mimeToExtension(String mimeType) {
+		switch (mimeType) {
+			case 'audio/wav':
+			case 'audio/wave':
+			case 'audio/x-wav':
+				return 'wav';
+			case 'audio/webm':
+				return 'webm';
+			case 'audio/ogg':
+				return 'ogg';
+			case 'audio/mpeg':
+				return 'mp3';
+			default:
+				return 'wav';
+		}
 	}
 }

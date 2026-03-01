@@ -1,10 +1,10 @@
 import { Expose } from 'class-transformer';
-import { IsInt, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { IsEnum, IsInt, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
 import { UpdateModuleConfigDto } from '../../config/dto/config.dto';
-import { BUDDY_MODULE_NAME, LLM_PROVIDER_NONE } from '../buddy.constants';
+import { BUDDY_MODULE_NAME, LLM_PROVIDER_NONE, SttProvider } from '../buddy.constants';
 
 @ApiSchema({ name: 'ConfigModuleUpdateBuddy' })
 export class UpdateBuddyConfigDto extends UpdateModuleConfigDto {
@@ -192,4 +192,51 @@ export class UpdateBuddyConfigDto extends UpdateModuleConfigDto {
 			'[{"field":"conflict_lights_unoccupied_minutes","reason":"Lights unoccupied minutes must be at least 1."}]',
 	})
 	conflict_lights_unoccupied_minutes?: number;
+
+	@ApiPropertyOptional({
+		name: 'stt_provider',
+		description: 'Speech-to-text provider for voice input',
+		enum: SttProvider,
+		example: SttProvider.NONE,
+	})
+	@Expose({ name: 'stt_provider' })
+	@IsOptional()
+	@IsEnum(SttProvider, {
+		message: '[{"field":"stt_provider","reason":"STT provider must be a valid provider."}]',
+	})
+	stt_provider?: SttProvider;
+
+	@ApiPropertyOptional({
+		name: 'stt_api_key',
+		description: 'API key for the STT provider (Whisper API uses OpenAI API key)',
+		type: 'string',
+		nullable: true,
+	})
+	@Expose({ name: 'stt_api_key' })
+	@IsOptional()
+	@IsString({ message: '[{"field":"stt_api_key","reason":"STT API key must be a valid string."}]' })
+	stt_api_key?: string | null;
+
+	@ApiPropertyOptional({
+		name: 'stt_model',
+		description: 'STT model name (e.g., "whisper-1" for Whisper API, "base" for local Whisper)',
+		type: 'string',
+		nullable: true,
+		example: 'whisper-1',
+	})
+	@Expose({ name: 'stt_model' })
+	@IsOptional()
+	@IsString({ message: '[{"field":"stt_model","reason":"STT model must be a valid string."}]' })
+	stt_model?: string | null;
+
+	@ApiPropertyOptional({
+		name: 'stt_language',
+		description: 'Language hint for STT transcription (ISO 639-1 code, e.g., "en")',
+		type: 'string',
+		nullable: true,
+	})
+	@Expose({ name: 'stt_language' })
+	@IsOptional()
+	@IsString({ message: '[{"field":"stt_language","reason":"STT language must be a valid string."}]' })
+	stt_language?: string | null;
 }

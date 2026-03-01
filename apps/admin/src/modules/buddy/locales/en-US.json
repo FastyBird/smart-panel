@@ -37,6 +37,27 @@
 					"claudeOauth": "Buddy Claude OAuth (Anthropic)",
 					"ollama": "Buddy Ollama (local)"
 				}
+			},
+			"sttProvider": {
+				"title": "Speech-to-Text Provider",
+				"placeholder": "Select an STT provider",
+				"options": {
+					"none": "None (voice input disabled)",
+					"whisperApi": "Whisper API (OpenAI)",
+					"whisperLocal": "Whisper (local)"
+				}
+			},
+			"sttApiKey": {
+				"title": "STT API Key",
+				"placeholder": "Enter your OpenAI API key for Whisper"
+			},
+			"sttModel": {
+				"title": "STT Model",
+				"placeholder": "Model name"
+			},
+			"sttLanguage": {
+				"title": "Language Hint",
+				"placeholder": "e.g. en, de, cs (optional)"
 			}
 		}
 	},

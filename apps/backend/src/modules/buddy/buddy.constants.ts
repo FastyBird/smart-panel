@@ -26,6 +26,23 @@ export const LEGACY_PROVIDER_MAP = new Map<string, string>([
 	['ollama', 'buddy-ollama-plugin'],
 ]);
 
+export enum SttProvider {
+	WHISPER_API = 'whisper-api',
+	WHISPER_LOCAL = 'whisper-local',
+	NONE = 'none',
+}
+
+export const STT_MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024; // 25 MB
+
+export const STT_ALLOWED_MIME_TYPES = [
+	'audio/wav',
+	'audio/wave',
+	'audio/x-wav',
+	'audio/webm',
+	'audio/ogg',
+	'audio/mpeg',
+];
+
 export enum MessageRole {
 	USER = 'user',
 	ASSISTANT = 'assistant',

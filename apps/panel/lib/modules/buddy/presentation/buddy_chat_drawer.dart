@@ -5,6 +5,7 @@ import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/message_bubble.dart';
 import 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/suggestion_card.dart';
 import 'package:fastybird_smart_panel/modules/buddy/service.dart';
+import 'package:fastybird_smart_panel/modules/buddy/services/audio_recording_service.dart';
 
 /// Sliding chat drawer for the buddy module.
 ///
@@ -13,6 +14,7 @@ import 'package:fastybird_smart_panel/modules/buddy/service.dart';
 /// - Scrollable message list (newest at bottom)
 /// - Suggestion cards section
 /// - Text input with send button
+/// - Microphone button for voice input (press-and-hold)
 /// - Loading indicator while waiting for AI response
 /// - Empty state when no messages
 /// - Disabled state when AI provider is not configured
@@ -34,6 +36,7 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 	final FocusNode _inputFocusNode = FocusNode();
 
 	late final BuddyService _buddyService;
+	late final AudioRecordingService _audioRecordingService;
 
 	bool _initialized = false;
 	bool _initFailed = false;
@@ -47,6 +50,9 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 		super.initState();
 		_buddyService = context.read<BuddyService>();
 		_buddyService.addListener(_onBuddyServiceChanged);
+		_audioRecordingService = AudioRecordingService();
+		_audioRecordingService.addListener(_onRecordingChanged);
+		_audioRecordingService.checkPermission();
 		_initializeConversation();
 	}
 
@@ -108,6 +114,38 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 		}
 	}
 
+	Future<void> _startRecording() async {
+		final started = await _audioRecordingService.startRecording();
+
+		if (!started && mounted) {
+			ScaffoldMessenger.of(context).showSnackBar(
+				const SnackBar(
+					content: Text('Could not start recording. Check microphone permissions.'),
+					duration: Duration(seconds: 2),
+				),
+			);
+		}
+	}
+
+	Future<void> _stopRecordingAndSend() async {
+		// Capture the service reference before any async gap — the widget
+		// may be disposed during stopRecording (e.g. user closes the drawer
+		// right after auto-stop fires), making context.read unsafe.
+		final buddyService = context.read<BuddyService>();
+
+		final recorded = await _audioRecordingService.stopRecording();
+
+		if (recorded == null) return;
+
+		if (!buddyService.hasActiveConversation) return;
+
+		await buddyService.sendAudioMessage(recorded.bytes, recorded.mimeType);
+
+		if (mounted) {
+			_scrollToBottom();
+		}
+	}
+
 	Future<bool> _handleSuggestionFeedback(
 		String suggestionId,
 		String feedback,
@@ -131,9 +169,24 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 		_lastMessageCount = messageCount;
 	}
 
+	void _onRecordingChanged() {
+		if (!mounted) return;
+
+		// When auto-stop fires, immediately submit the recorded audio.
+		// _stopRecordingAndSend is async but this listener is synchronous,
+		// so catch any errors to avoid uncaught future exceptions.
+		if (_audioRecordingService.wasAutoStopped) {
+			_stopRecordingAndSend().catchError((_) {});
+		}
+
+		setState(() {});
+	}
+
 	@override
 	void dispose() {
 		_buddyService.removeListener(_onBuddyServiceChanged);
+		_audioRecordingService.removeListener(_onRecordingChanged);
+		_audioRecordingService.dispose();
 		_inputController.dispose();
 		_scrollController.dispose();
 		_inputFocusNode.dispose();
@@ -165,6 +218,8 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 									),
 								),
 						),
+						if (_audioRecordingService.isRecording)
+							_buildRecordingIndicator(context, isDark),
 						_buildInput(context, isDark),
 					],
 				),
@@ -521,6 +576,56 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 		);
 	}
 
+	Widget _buildRecordingIndicator(BuildContext context, bool isDark) {
+		final dangerColor = isDark ? AppColorsDark.danger : AppColorsLight.danger;
+		final borderColor = isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
+		final seconds = _audioRecordingService.recordingDuration.inSeconds;
+		final maxSeconds = AudioRecordingService.maxDuration.inSeconds;
+
+		return Container(
+			padding: EdgeInsets.symmetric(
+				horizontal: AppSpacings.pLg,
+				vertical: AppSpacings.pSm,
+			),
+			decoration: BoxDecoration(
+				border: Border(
+					top: BorderSide(color: borderColor),
+				),
+			),
+			child: Row(
+				children: [
+					Icon(
+						Icons.fiber_manual_record,
+						color: dangerColor,
+						size: AppSpacings.scale(12),
+					),
+					SizedBox(width: AppSpacings.pSm),
+					Text(
+						'Recording... ${seconds}s / ${maxSeconds}s',
+						style: TextStyle(
+							fontSize: AppFontSize.small,
+							color: dangerColor,
+							fontWeight: FontWeight.w500,
+						),
+					),
+					const Spacer(),
+					GestureDetector(
+						onTap: () => _audioRecordingService.cancelRecording(),
+						child: Text(
+							'Cancel',
+							style: TextStyle(
+								fontSize: AppFontSize.small,
+								color: isDark
+									? AppTextColorDark.secondary
+									: AppTextColorLight.secondary,
+							),
+						),
+					),
+				],
+			),
+		);
+	}
+
 	Widget _buildInput(BuildContext context, bool isDark) {
 		final borderColor = isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
 		final inputBg = isDark ? AppBgColorDark.overlay : AppBgColorLight.overlay;
@@ -532,7 +637,9 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 		return Consumer<BuddyService>(
 			builder: (context, buddyService, _) {
 				final isDisabled = !_initialized || buddyService.isProviderNotConfigured || _initFailed;
+				final isMicDisabled = isDisabled || buddyService.isSttNotConfigured;
 				final isSending = buddyService.isSendingMessage;
+				final isRecording = _audioRecordingService.isRecording;
 
 				return Container(
 					padding: EdgeInsets.symmetric(
@@ -556,21 +663,23 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 									child: TextField(
 										controller: _inputController,
 										focusNode: _inputFocusNode,
-										enabled: !isDisabled && !isSending,
+										enabled: !isDisabled && !isSending && !isRecording,
 										style: TextStyle(
 											fontSize: AppFontSize.base,
 											color: textColor,
 										),
 										decoration: InputDecoration(
-											hintText: _initProviderMissing
-												? 'AI provider not configured'
-												: _initFailed
-													? 'Failed to start conversation'
-													: !_initialized
-														? 'Starting conversation...'
-														: buddyService.isProviderNotConfigured
-															? 'AI provider not configured'
-															: 'Ask about your home...',
+											hintText: isRecording
+												? 'Recording audio...'
+												: _initProviderMissing
+													? 'AI provider not configured'
+													: _initFailed
+														? 'Failed to start conversation'
+														: !_initialized
+															? 'Starting conversation...'
+															: buddyService.isProviderNotConfigured
+																? 'AI provider not configured'
+																: 'Ask about your home...',
 											hintStyle: TextStyle(
 												fontSize: AppFontSize.base,
 												color: hintColor,
@@ -586,12 +695,58 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 									),
 								),
 							),
-							SizedBox(width: AppSpacings.pMd),
-							_buildSendButton(context, isDark, isSending || isDisabled),
+							SizedBox(width: AppSpacings.pSm),
+							_buildMicButton(context, isDark, isSending || isMicDisabled),
+							SizedBox(width: AppSpacings.pSm),
+							_buildSendButton(context, isDark, isSending || isDisabled || isRecording),
 						],
 					),
 				);
 			},
+		);
+	}
+
+	Widget _buildMicButton(BuildContext context, bool isDark, bool disabled) {
+		final accentColor = ThemeColorFamily.get(
+			isDark ? Brightness.dark : Brightness.light,
+			ThemeColors.primary,
+		).base;
+		final dangerColor = isDark ? AppColorsDark.danger : AppColorsLight.danger;
+		final isRecording = _audioRecordingService.isRecording;
+		final buttonColor = isRecording ? dangerColor : accentColor;
+
+		return GestureDetector(
+			// Disable starting a new long-press recording while one is
+			// already active. onLongPressEnd must stay wired so that the
+			// in-flight gesture completes normally when the user lifts
+			// their finger; _stopRecordingInternal's synchronous guard
+			// prevents any double-stop race.
+			onLongPressStart: disabled || isRecording ? null : (_) => _startRecording(),
+			onLongPressEnd: disabled ? null : (_) => _stopRecordingAndSend(),
+			onTap: disabled
+				? null
+				: () {
+					if (isRecording) {
+						_stopRecordingAndSend();
+					} else {
+						_startRecording();
+					}
+				},
+			child: Container(
+				width: AppSpacings.scale(36),
+				height: AppSpacings.scale(36),
+				decoration: BoxDecoration(
+					color: disabled
+						? buttonColor.withValues(alpha: 0.3)
+						: buttonColor,
+					shape: BoxShape.circle,
+				),
+				child: Icon(
+					isRecording ? Icons.stop : Icons.mic,
+					size: AppSpacings.scale(18),
+					color: Colors.white,
+				),
+			),
 		);
 	}
 
