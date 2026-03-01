@@ -14,3 +14,13 @@ export enum RouteNames {
 }
 
 export const LLM_PROVIDER_NONE = 'none';
+
+/**
+ * Maps legacy enum-based provider values (from pre-plugin configs)
+ * to the new plugin-based provider names.
+ */
+export const LEGACY_PROVIDER_MAP: Record<string, string> = {
+	claude: 'buddy-claude-plugin',
+	openai: 'buddy-openai-plugin',
+	ollama: 'buddy-ollama-plugin',
+};

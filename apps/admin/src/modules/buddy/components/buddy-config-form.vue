@@ -43,7 +43,7 @@ import { useI18n } from 'vue-i18n';
 import { ElAlert, ElForm, ElFormItem, ElOption, ElSelect, type FormRules } from 'element-plus';
 
 import { FormResult, type FormResultType, Layout, useConfigModuleEditForm } from '../../config';
-import { LLM_PROVIDER_NONE } from '../buddy.constants';
+import { LEGACY_PROVIDER_MAP, LLM_PROVIDER_NONE } from '../buddy.constants';
 import type { IBuddyConfigEditForm } from '../schemas/config.types';
 
 import type { IBuddyConfigFormProps } from './buddy-config-form.types';
@@ -75,6 +75,11 @@ const { formEl, model, formChanged, submit, formResult } = useConfigModuleEditFo
 		error: t('buddyModule.messages.config.notEdited'),
 	},
 });
+
+// Normalize legacy provider values (e.g. 'claude' → 'buddy-claude-plugin')
+if (model.provider && model.provider in LEGACY_PROVIDER_MAP) {
+	model.provider = LEGACY_PROVIDER_MAP[model.provider];
+}
 
 const providerOptions = computed(() => [
 	{ value: LLM_PROVIDER_NONE, label: t('buddyModule.fields.config.provider.options.none') },
