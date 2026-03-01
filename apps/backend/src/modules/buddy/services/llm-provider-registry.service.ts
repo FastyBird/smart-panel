@@ -2,13 +2,6 @@ import { Injectable, Logger } from '@nestjs/common';
 
 import { ILlmProvider } from '../platforms/llm-provider.platform';
 
-export interface ILlmProviderInfo {
-	type: string;
-	name: string;
-	description: string;
-	defaultModel: string;
-}
-
 @Injectable()
 export class LlmProviderRegistryService {
 	private readonly logger = new Logger(LlmProviderRegistryService.name);
@@ -53,25 +46,4 @@ export class LlmProviderRegistryService {
 		return Object.keys(this.providers);
 	}
 
-	/**
-	 * Check if a provider type is registered
-	 * @param type The provider type identifier
-	 * @returns true if provider is registered
-	 */
-	has(type: string): boolean {
-		return type in this.providers;
-	}
-
-	/**
-	 * Get all registered providers with their metadata
-	 * @returns Array of provider info objects
-	 */
-	getAll(): ILlmProviderInfo[] {
-		return Object.values(this.providers).map((provider) => ({
-			type: provider.getType(),
-			name: provider.getName(),
-			description: provider.getDescription(),
-			defaultModel: provider.getDefaultModel(),
-		}));
-	}
 }
