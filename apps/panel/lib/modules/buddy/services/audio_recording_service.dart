@@ -243,6 +243,20 @@ class AudioRecordingService extends ChangeNotifier {
 	@override
 	void dispose() {
 		_durationTimer?.cancel();
+
+		// Clean up temp recording file if still on disk
+		if (_currentRecordingPath != null) {
+			try {
+				final file = File(_currentRecordingPath!);
+
+				if (file.existsSync()) {
+					file.deleteSync();
+				}
+			} catch (_) {
+				// Ignore cleanup errors during disposal
+			}
+		}
+
 		_recorder.dispose();
 		super.dispose();
 	}

@@ -76,7 +76,7 @@ export class SttProviderService {
 		}
 
 		const model = config.sttModel ?? DEFAULT_WHISPER_API_MODEL;
-		const extension = this.getExtensionFromMime(mimeType);
+		const extension = SttProviderService.getExtensionFromMime(mimeType);
 
 		try {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -116,7 +116,7 @@ export class SttProviderService {
 		config: BuddyConfigModel,
 	): Promise<string> {
 		const model = config.sttModel ?? DEFAULT_WHISPER_LOCAL_MODEL;
-		const extension = this.getExtensionFromMime(mimeType);
+		const extension = SttProviderService.getExtensionFromMime(mimeType);
 
 		// Write audio to a temp file
 		const tempDir = join(tmpdir(), 'buddy-stt');
@@ -180,7 +180,7 @@ export class SttProviderService {
 		}
 	}
 
-	private getExtensionFromMime(mimeType: string): string {
+	static getExtensionFromMime(mimeType: string): string {
 		switch (mimeType) {
 			case 'audio/wav':
 			case 'audio/wave':

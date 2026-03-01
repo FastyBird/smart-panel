@@ -5,7 +5,7 @@ import { ConfigService as NestConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 
-import { API_PREFIX } from './app.constants';
+import { API_PREFIX, MULTIPART_MAX_FILE_SIZE_BYTES } from './app.constants';
 import { AppModule } from './app.module';
 import { BadRequestExceptionFilter } from './common/filters/bad-request-exception.filter';
 import { GlobalErrorFilter } from './common/filters/global-error.filter';
@@ -15,7 +15,6 @@ import { QueryFailedExceptionFilter } from './common/filters/query-failed-except
 import { UnprocessableEntityExceptionFilter } from './common/filters/unprocessable-entity-exception.filter';
 import { getEnvValue } from './common/utils/config.utils';
 import { ValidationExceptionFactory } from './common/validation/validation-exception-factory';
-import { STT_MAX_FILE_SIZE_BYTES } from './modules/buddy/buddy.constants';
 import { getDiscoveredExtensions } from './modules/extensions/services/extensions-discovery-cache';
 import { MdnsService } from './modules/mdns/services/mdns.service';
 import { SwaggerDocumentService } from './modules/swagger/services/swagger-document.service';
@@ -46,8 +45,8 @@ async function bootstrap() {
 
 	const app = await NestFactory.create<NestFastifyApplication>(appModule, new FastifyAdapter(), { bufferLogs: true });
 
-	// Register multipart support for file uploads (e.g. audio for buddy voice)
-	await app.register((await import('@fastify/multipart')).default, { limits: { fileSize: STT_MAX_FILE_SIZE_BYTES } });
+	// Register multipart support for file uploads
+	await app.register((await import('@fastify/multipart')).default, { limits: { fileSize: MULTIPART_MAX_FILE_SIZE_BYTES } });
 
 	const sysLogger = app.get(SystemLoggerService);
 

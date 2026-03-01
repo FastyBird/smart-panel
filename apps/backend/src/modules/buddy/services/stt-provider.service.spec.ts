@@ -132,14 +132,8 @@ describe('SttProviderService', () => {
 			['audio/ogg', 'ogg'],
 			['audio/mpeg', 'mp3'],
 			['audio/unknown', 'wav'],
-		])('should map %s to extension %s', (mime) => {
-			configService.getModuleConfig.mockReturnValue(makeConfig({ sttProvider: SttProvider.NONE }));
-
-			// We test indirectly — the service is consistent as long as it
-			// doesn't crash for any known MIME type
-			service.transcribe(audioBuffer, mime).catch(() => {
-				// Expected to throw because provider is NONE
-			});
+		])('should map %s to extension %s', (mime, expectedExt) => {
+			expect(SttProviderService.getExtensionFromMime(mime)).toBe(expectedExt);
 		});
 	});
 });
