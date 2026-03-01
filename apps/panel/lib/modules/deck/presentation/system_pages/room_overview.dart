@@ -850,7 +850,9 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 		final localizations = AppLocalizations.of(context);
 		final model = _model;
 
-		return LayoutBuilder(
+		return ListenableBuilder(
+			listenable: locator<ScreenService>(),
+			builder: (context, _) => LayoutBuilder(
 			builder: (context, constraints) {
 				final isPortrait = constraints.maxHeight > constraints.maxWidth;
 				final screenService = locator<ScreenService>();
@@ -920,7 +922,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 					],
 				);
 			},
-		);
+		));
 	}
 
 
