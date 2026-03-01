@@ -99,7 +99,15 @@ class WeatherDetailPage extends StatelessWidget {
 			final timeOfDay = resolveSkyTimeOfDay(DateTime.now(), currentDay.sunrise, currentDay.sunset);
 			config = SkyVisualConfig.fromCondition(condition, timeOfDay);
 		} else {
-			config = SkyVisualConfig.defaultSky();
+			final hour = DateTime.now().hour;
+			final timeOfDay = (hour >= 6 && hour < 11)
+					? SkyTimeOfDay.morning
+					: (hour >= 11 && hour < 17)
+							? SkyTimeOfDay.noon
+							: (hour >= 17 && hour < 21)
+									? SkyTimeOfDay.evening
+									: SkyTimeOfDay.night;
+			config = SkyVisualConfig.fromCondition(SkyCondition.clear, timeOfDay);
 		}
 
 		return SizedBox(
