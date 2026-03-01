@@ -393,13 +393,30 @@ class WeatherDetailPage extends StatelessWidget {
 		final localizations = AppLocalizations.of(context)!;
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 
+		// Pre-compute week min/max once for all forecast rows
+		final units = DisplayUnits.fromLocator();
+		double weekMin = double.infinity;
+		double weekMax = double.negativeInfinity;
+		for (final day in forecast) {
+			final min = day.temperatureMin;
+			final max = day.temperatureMax;
+			if (min != null) {
+				final converted = UnitConverter.convertTemperature(day.toCelsius(min), units.temperature);
+				if (converted < weekMin) weekMin = converted;
+			}
+			if (max != null) {
+				final converted = UnitConverter.convertTemperature(day.toCelsius(max), units.temperature);
+				if (converted > weekMax) weekMax = converted;
+			}
+		}
+
 		final contentItems = <Widget>[
 			// Forecast section
 			if (forecast.isNotEmpty) ...[
 				_buildSectionTitle(localizations.weather_detail_forecast, isDark),
 				...forecast.map((day) => Padding(
 					padding: EdgeInsets.only(bottom: AppSpacings.pSm),
-					child: _buildForecastDay(context, day, forecast),
+					child: _buildForecastDay(context, day, units, weekMin, weekMax),
 				)),
 			],
 			// Sunrise/sunset
@@ -447,28 +464,13 @@ class WeatherDetailPage extends StatelessWidget {
 	Widget _buildForecastDay(
 		BuildContext context,
 		ForecastDayView forecast,
-		List<ForecastDayView> allForecast,
+		DisplayUnits units,
+		double weekMin,
+		double weekMax,
 	) {
-		final units = DisplayUnits.fromLocator();
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 		final localizations = AppLocalizations.of(context)!;
 		final tempSymbol = UnitConverter.temperatureSymbol(units.temperature);
-
-		// Compute week min/max across all forecast items
-		double weekMin = double.infinity;
-		double weekMax = double.negativeInfinity;
-		for (final day in allForecast) {
-			final min = day.temperatureMin;
-			final max = day.temperatureMax;
-			if (min != null) {
-				final converted = UnitConverter.convertTemperature(day.toCelsius(min), units.temperature);
-				if (converted < weekMin) weekMin = converted;
-			}
-			if (max != null) {
-				final converted = UnitConverter.convertTemperature(day.toCelsius(max), units.temperature);
-				if (converted > weekMax) weekMax = converted;
-			}
-		}
 
 		final dayMin = forecast.temperatureMin != null
 			? UnitConverter.convertTemperature(forecast.toCelsius(forecast.temperatureMin!), units.temperature)
@@ -853,6 +855,12 @@ class _GlassTilesRowState extends State<_GlassTilesRow> {
 	void initState() {
 		super.initState();
 		_scrollController.addListener(_updateGradients);
+		WidgetsBinding.instance.addPostFrameCallback((_) => _updateGradients());
+	}
+
+	@override
+	void didUpdateWidget(_GlassTilesRow oldWidget) {
+		super.didUpdateWidget(oldWidget);
 		WidgetsBinding.instance.addPostFrameCallback((_) => _updateGradients());
 	}
 
