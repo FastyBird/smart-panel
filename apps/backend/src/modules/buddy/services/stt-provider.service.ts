@@ -52,11 +52,9 @@ export class SttProviderService {
 			return false;
 		}
 
-		// Whisper API requires an API key to be usable
+		// Whisper API requires a dedicated STT API key to be usable
 		if (config.sttProvider === SttProvider.WHISPER_API) {
-			const apiKey = config.sttApiKey ?? config.apiKey ?? '';
-
-			return !!apiKey;
+			return !!config.sttApiKey;
 		}
 
 		return true;
@@ -71,7 +69,7 @@ export class SttProviderService {
 	}
 
 	private async transcribeWhisperApi(audioBuffer: Buffer, mimeType: string, config: BuddyConfigModel): Promise<string> {
-		const apiKey = config.sttApiKey ?? config.apiKey ?? '';
+		const apiKey = config.sttApiKey ?? '';
 
 		if (!apiKey) {
 			throw new BuddySttNotConfiguredException();

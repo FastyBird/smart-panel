@@ -18,7 +18,6 @@ describe('SttProviderService', () => {
 		config.sttApiKey = 'sttApiKey' in overrides ? overrides.sttApiKey : 'test-stt-key';
 		config.sttModel = 'sttModel' in overrides ? overrides.sttModel : null;
 		config.sttLanguage = 'sttLanguage' in overrides ? overrides.sttLanguage : null;
-		config.apiKey = 'apiKey' in overrides ? overrides.apiKey : 'test-llm-key';
 
 		return config;
 	}
@@ -38,17 +37,9 @@ describe('SttProviderService', () => {
 			expect(service.isConfigured()).toBe(true);
 		});
 
-		it('should return true when Whisper API provider falls back to LLM API key', () => {
+		it('should return false when Whisper API provider has no STT API key', () => {
 			configService.getModuleConfig.mockReturnValue(
-				makeConfig({ sttProvider: SttProvider.WHISPER_API, sttApiKey: null, apiKey: 'llm-key' }),
-			);
-
-			expect(service.isConfigured()).toBe(true);
-		});
-
-		it('should return false when Whisper API provider has no API key', () => {
-			configService.getModuleConfig.mockReturnValue(
-				makeConfig({ sttProvider: SttProvider.WHISPER_API, sttApiKey: null, apiKey: null }),
+				makeConfig({ sttProvider: SttProvider.WHISPER_API, sttApiKey: null }),
 			);
 
 			expect(service.isConfigured()).toBe(false);
@@ -104,30 +95,15 @@ describe('SttProviderService', () => {
 	});
 
 	describe('Whisper API provider', () => {
-		it('should throw when Whisper API key is not set', async () => {
+		it('should throw when STT API key is not set', async () => {
 			configService.getModuleConfig.mockReturnValue(
 				makeConfig({
 					sttProvider: SttProvider.WHISPER_API,
 					sttApiKey: null,
-					apiKey: null,
 				}),
 			);
 
 			await expect(service.transcribe(audioBuffer, mimeType)).rejects.toThrow(BuddySttNotConfiguredException);
-		});
-
-		it('should fall back to LLM API key when STT API key is not set', async () => {
-			configService.getModuleConfig.mockReturnValue(
-				makeConfig({
-					sttProvider: SttProvider.WHISPER_API,
-					sttApiKey: null,
-					apiKey: 'llm-key',
-				}),
-			);
-
-			// The dynamic import of openai will fail in test environment
-			// but we verify it doesn't throw the "not configured" error
-			await expect(service.transcribe(audioBuffer, mimeType)).rejects.not.toThrow(BuddySttNotConfiguredException);
 		});
 
 		it('should throw on import failure when OpenAI SDK not available', async () => {
