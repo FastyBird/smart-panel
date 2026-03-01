@@ -30,6 +30,7 @@ import { BuddyConversationService } from './services/buddy-conversation.service'
 import { ConflictDetectorEvaluator } from './services/conflict-detector-evaluator.service';
 import { EnergyEvaluator } from './services/energy-evaluator.service';
 import { HeartbeatService } from './services/heartbeat.service';
+import { LlmProviderRegistryService } from './services/llm-provider-registry.service';
 import { LlmProviderService } from './services/llm-provider.service';
 import { PatternDetectorService } from './services/pattern-detector.service';
 import { SceneSuggestionEvaluator } from './services/scene-suggestion-evaluator.service';
@@ -57,6 +58,7 @@ import { SuggestionEngineService } from './services/suggestion-engine.service';
 		ActionObserverService,
 		BuddyContextService,
 		IntentEventListener,
+		LlmProviderRegistryService,
 		LlmProviderService,
 		BuddyConversationService,
 		PatternDetectorService,
@@ -70,6 +72,7 @@ import { SuggestionEngineService } from './services/suggestion-engine.service';
 	exports: [
 		ActionObserverService,
 		BuddyContextService,
+		LlmProviderRegistryService,
 		LlmProviderService,
 		BuddyConversationService,
 		PatternDetectorService,
@@ -123,18 +126,19 @@ The Buddy module provides an AI assistant for the Smart Panel that observes user
 
 - **Action Observer** - Tracks completed intents to build a history of user actions
 - **Context Aggregation** - Builds structured snapshots of home state (spaces, devices, scenes, weather, energy)
-- **Text Chat** - Conversational interface with swappable LLM providers (Claude, OpenAI, Ollama)
+- **Text Chat** - Conversational interface powered by pluggable LLM providers
 - **Suggestions** - Context-aware suggestions based on detected patterns and rules
 - **Offline-First** - Rule-based suggestions work without any AI provider configured
 
-## LLM Providers
+## LLM Provider Plugins
 
-Chat functionality supports multiple providers:
+Chat functionality is powered by separate provider plugins:
 
-- **Claude** - Anthropic's Claude API
-- **OpenAI** - OpenAI API (GPT models)
-- **Ollama** - Local LLM inference
-- **None** - Disabled (rule-based suggestions only)`,
+- **buddy-openai-plugin** - OpenAI API (GPT models)
+- **buddy-claude-plugin** - Anthropic Claude API
+- **buddy-ollama-plugin** - Local LLM inference via Ollama
+
+Install and enable the desired provider plugin, then set the buddy module \`provider\` config to the plugin type.`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

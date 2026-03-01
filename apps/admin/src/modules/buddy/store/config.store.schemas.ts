@@ -15,10 +15,7 @@ type ApiConfigUpdateModule = ConfigModuleUpdateModuleSchema;
 
 export const BuddyConfigSchema = ConfigModuleSchema.extend({
 	type: z.literal(BUDDY_MODULE_NAME),
-	provider: z.enum(['claude', 'openai', 'ollama', 'none']).optional().default('none'),
-	apiKey: z.string().nullable().optional(),
-	model: z.string().nullable().optional(),
-	ollamaUrl: z.string().nullable().optional(),
+	provider: z.string().optional().default('none'),
 });
 
 // BACKEND API
@@ -27,19 +24,13 @@ export const BuddyConfigSchema = ConfigModuleSchema.extend({
 export const BuddyConfigUpdateReqSchema: ZodType<ApiConfigUpdateModule> = ConfigModuleUpdateReqSchema.and(
 	z.object({
 		type: z.literal(BUDDY_MODULE_NAME),
-		provider: z.enum(['claude', 'openai', 'ollama', 'none']).optional(),
-		api_key: z.string().nullable().optional(),
-		model: z.string().nullable().optional(),
-		ollama_url: z.string().nullable().optional(),
+		provider: z.string().optional(),
 	})
 );
 
 export const BuddyConfigResSchema: ZodType<ApiConfigModule> = ConfigModuleResSchema.and(
 	z.object({
 		type: z.literal(BUDDY_MODULE_NAME),
-		provider: z.enum(['claude', 'openai', 'ollama', 'none']).optional(),
-		api_key: z.string().nullable().optional(),
-		model: z.string().nullable().optional(),
-		ollama_url: z.string().nullable().optional(),
+		provider: z.string().optional(),
 	})
 );

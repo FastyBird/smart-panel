@@ -18,11 +18,7 @@ export class AddMediaBindingInputColumns1765700000000 implements MigrationInterf
 	}
 
 	public async down(queryRunner: QueryRunner): Promise<void> {
-		await queryRunner.query(
-			`ALTER TABLE "spaces_module_media_activity_bindings" DROP COLUMN "sourceInputId"`,
-		);
-		await queryRunner.query(
-			`ALTER TABLE "spaces_module_media_activity_bindings" DROP COLUMN "audioInputId"`,
-		);
+		await queryRunner.query(`ALTER TABLE "spaces_module_media_activity_bindings" DROP COLUMN "sourceInputId"`);
+		await queryRunner.query(`ALTER TABLE "spaces_module_media_activity_bindings" DROP COLUMN "audioInputId"`);
 	}
 }

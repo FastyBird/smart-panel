@@ -13,9 +13,16 @@ export enum RouteNames {
 	BUDDY_SETTINGS = 'buddy_module-settings',
 }
 
-export enum LlmProvider {
-	CLAUDE = 'claude',
-	OPENAI = 'openai',
-	OLLAMA = 'ollama',
-	NONE = 'none',
-}
+export const LLM_PROVIDER_NONE = 'none';
+
+/**
+ * Maps legacy enum-based provider values (from pre-plugin configs)
+ * to the new plugin-based provider names.
+ *
+ * IMPORTANT: Keep in sync with apps/backend/src/modules/buddy/buddy.constants.ts
+ */
+export const LEGACY_PROVIDER_MAP = new Map<string, string>([
+	['claude', 'buddy-claude-plugin'],
+	['openai', 'buddy-openai-plugin'],
+	['ollama', 'buddy-ollama-plugin'],
+]);
