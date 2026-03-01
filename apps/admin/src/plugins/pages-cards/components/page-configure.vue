@@ -461,9 +461,9 @@ interface ITileActionsAccessor {
 const tilesByCard = new Map<string, ITileStoreAccessor>();
 const tileActionsByCard = new Map<string, ITileActionsAccessor>();
 
-const ensureTileStore = (cardId: string): boolean => {
+const ensureTileStore = (cardId: string): void => {
 	if (tilesByCard.has(cardId)) {
-		return true;
+		return;
 	}
 
 	const tiles = computed<ITile[]>((): ITile[] => tilesStore.findForParent('card', cardId));
@@ -484,14 +484,10 @@ const ensureTileStore = (cardId: string): boolean => {
 		save: (payload): Promise<ITile> => tilesStore.save(payload),
 		removeDirectly: (payload): Promise<boolean> => tilesStore.remove(payload),
 	});
-
-	return true;
 };
 
 const getCardTiles = (cardId: string): ITile[] => {
-	if (!ensureTileStore(cardId)) {
-		return [];
-	}
+	ensureTileStore(cardId);
 
 	return tilesByCard.get(cardId)?.tiles.value ?? [];
 };
