@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 
-import { MessageRole } from '../../../modules/buddy/buddy.constants';
+import { sendAnthropicMessage } from '../../../modules/buddy/platforms/anthropic-sdk.utils';
 import { ChatMessage, ILlmProvider, LlmOptions } from '../../../modules/buddy/platforms/llm-provider.platform';
 import { OAuthTokenManager } from '../../../modules/buddy/platforms/oauth-token-manager';
 import { ConfigService } from '../../../modules/config/services/config.service';
@@ -12,9 +12,6 @@ import {
 	BUDDY_CLAUDE_OAUTH_TOKEN_URL,
 } from '../buddy-claude-oauth.constants';
 import { BuddyClaudeOauthConfigModel } from '../models/config.model';
-
-// Module path as variable to prevent TypeScript from statically resolving optional peer dependency
-const ANTHROPIC_SDK_MODULE = '@anthropic-ai/sdk';
 
 @Injectable()
 export class ClaudeOauthProvider implements ILlmProvider {
@@ -53,27 +50,7 @@ export class ClaudeOauthProvider implements ILlmProvider {
 		const resolvedModel = config?.model ?? model;
 		const timeout = options?.timeout ?? 30_000;
 
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-		const { default: Anthropic } = await import(ANTHROPIC_SDK_MODULE);
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
-		const client = new Anthropic({ apiKey: accessToken, timeout });
-
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-		const response = await client.messages.create({
-			model: resolvedModel,
-			max_tokens: 1024,
-			system: systemPrompt,
-			messages: messages.map((m) => ({
-				role: m.role === MessageRole.USER ? ('user' as const) : ('assistant' as const),
-				content: m.content,
-			})),
-		});
-
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
-		const textBlock = response.content.find((block: { type: string }) => block.type === 'text');
-
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-		return textBlock && 'text' in textBlock ? (textBlock.text as string) : '';
+		return sendAnthropicMessage(accessToken, resolvedModel, systemPrompt, messages, timeout);
 	}
 
 	private getPluginConfig(): BuddyClaudeOauthConfigModel | null {
