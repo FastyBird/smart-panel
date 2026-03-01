@@ -61,18 +61,30 @@ class AudioRecordingService extends ChangeNotifier {
 	Future<bool> startRecording() async {
 		if (_isRecording) return false;
 
+		// Set _isRecording to true synchronously before any async work
+		// (including the permission check) so that a concurrent stop
+		// from the gesture ending early sees recording as in-progress
+		// instead of being a no-op that leaves recording orphaned.
+		_isRecording = true;
+
+		_autoStopResult = null;
+
 		if (!_permissionChecked) {
 			await checkPermission();
 		}
 
-		if (!_hasPermission) return false;
+		if (!_hasPermission) {
+			_isRecording = false;
+			notifyListeners();
 
-		// Set _isRecording to true synchronously before any async work
-		// so that a concurrent caller (e.g. rapid double-tap) is
-		// immediately blocked by the guard above.
-		_isRecording = true;
+			return false;
+		}
 
-		_autoStopResult = null;
+		// A concurrent stop may have reset _isRecording during the
+		// async permission check. Bail out if that happened.
+		if (!_isRecording) {
+			return false;
+		}
 
 		try {
 			final dir = await getTemporaryDirectory();

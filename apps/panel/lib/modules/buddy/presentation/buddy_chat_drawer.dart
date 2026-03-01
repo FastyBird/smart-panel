@@ -133,6 +133,24 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 		// right after auto-stop fires), making context.read unsafe.
 		final buddyService = context.read<BuddyService>();
 
+		// Check minimum duration before stopping — if too short, cancel
+		// and give the user visible feedback instead of silently discarding.
+		if (_audioRecordingService.isRecording &&
+				_audioRecordingService.recordingDuration < const Duration(milliseconds: 500)) {
+			await _audioRecordingService.cancelRecording();
+
+			if (mounted) {
+				ScaffoldMessenger.of(context).showSnackBar(
+					const SnackBar(
+						content: Text('Recording too short. Hold longer to record.'),
+						duration: Duration(seconds: 2),
+					),
+				);
+			}
+
+			return;
+		}
+
 		final recorded = await _audioRecordingService.stopRecording();
 
 		if (recorded == null) return;
