@@ -78,7 +78,7 @@ const { formEl, model, formChanged, submit, formResult } = useConfigModuleEditFo
 
 // Normalize legacy provider values (e.g. 'claude' → 'buddy-claude-plugin')
 if (model.provider && model.provider in LEGACY_PROVIDER_MAP) {
-	model.provider = LEGACY_PROVIDER_MAP[model.provider];
+	model.provider = LEGACY_PROVIDER_MAP[model.provider] ?? model.provider;
 }
 
 const providerOptions = computed(() => [
