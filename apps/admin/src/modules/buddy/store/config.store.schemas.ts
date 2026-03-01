@@ -16,6 +16,10 @@ type ApiConfigUpdateModule = ConfigModuleUpdateModuleSchema;
 export const BuddyConfigSchema = ConfigModuleSchema.extend({
 	type: z.literal(BUDDY_MODULE_NAME),
 	provider: z.string().optional().default('none'),
+	sttProvider: z.string().optional().default('none'),
+	sttApiKey: z.string().nullable().optional().default(null),
+	sttModel: z.string().nullable().optional().default(null),
+	sttLanguage: z.string().nullable().optional().default(null),
 });
 
 // BACKEND API
@@ -25,6 +29,10 @@ export const BuddyConfigUpdateReqSchema: ZodType<ApiConfigUpdateModule> = Config
 	z.object({
 		type: z.literal(BUDDY_MODULE_NAME),
 		provider: z.string().optional(),
+		stt_provider: z.string().optional(),
+		stt_api_key: z.string().nullable().optional(),
+		stt_model: z.string().nullable().optional(),
+		stt_language: z.string().nullable().optional(),
 	})
 );
 
@@ -32,5 +40,9 @@ export const BuddyConfigResSchema: ZodType<ApiConfigModule> = ConfigModuleResSch
 	z.object({
 		type: z.literal(BUDDY_MODULE_NAME),
 		provider: z.string().optional(),
+		stt_provider: z.string().optional(),
+		stt_api_key: z.string().nullable().optional(),
+		stt_model: z.string().nullable().optional(),
+		stt_language: z.string().nullable().optional(),
 	})
 );
