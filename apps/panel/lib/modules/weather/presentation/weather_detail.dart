@@ -1,20 +1,23 @@
-import 'dart:ui';
-
+import 'package:fastybird_smart_panel/app/locator.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/number.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/utils/unit_converter.dart';
-import 'package:fastybird_smart_panel/core/widgets/sky/sky_panel.dart';
-import 'package:fastybird_smart_panel/core/widgets/sky/sky_condition.dart';
-import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
+import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
+import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/sky/sky_celestial_elements.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/sky/sky_clouds_layer.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/sky/sky_glass_card.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/sky/sky_gradient_background.dart';
+import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/sky/sky_weather_overlays.dart';
+import 'package:fastybird_smart_panel/modules/deck/types/sky_condition.dart';
 import 'package:fastybird_smart_panel/modules/weather/export.dart';
 import 'package:fastybird_smart_panel/modules/weather/utils/openweather.dart';
-import 'package:fastybird_smart_panel/modules/weather/utils/sky_mapper.dart';
 import 'package:fastybird_smart_panel/modules/weather/views/current_day.dart';
 import 'package:fastybird_smart_panel/modules/weather/views/forecast_day.dart';
 import 'package:flutter/material.dart';
-import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:weather_icons/weather_icons.dart';
 
@@ -32,56 +35,45 @@ class WeatherDetailPage extends StatelessWidget {
 		) {
 			final currentDay = weatherService.currentDay;
 			final forecast = weatherService.forecast;
-			final locations = weatherService.locations;
-			final selectedLocation = weatherService.selectedLocation;
-			final hasMultipleLocations = weatherService.hasMultipleLocations;
+
+			final bottomItems = <Widget>[
+				// Weather detail cards (rain/snow)
+				if (currentDay != null && _buildDetailCards(context, currentDay) != null)
+					_buildDetailCards(context, currentDay)!,
+				// Sunrise/sunset section
+				if (currentDay != null)
+					_buildSunTimesRow(context, currentDay),
+				// Forecast section
+				if (forecast.isNotEmpty)
+					_buildForecastSection(context, forecast),
+			];
 
 			return Scaffold(
-				appBar: AppTopBar(
-					title: localizations.weather_forecast_title,
-				),
-				body: SingleChildScrollView(
-					child: Column(
-						crossAxisAlignment: CrossAxisAlignment.start,
-						children: [
-							// Sky header with current weather overlay
-							_buildSkyHeader(
-								context,
-								currentDay,
-								hasMultipleLocations,
-								locations,
-								selectedLocation,
-								weatherService,
+				body: Column(
+					children: [
+						PageHeader(
+							title: localizations.weather_forecast_title,
+							leading: HeaderIconButton(
+								icon: Icons.arrow_back,
+								onTap: () => Navigator.of(context).pop(),
 							),
-
-							// Detail sections
-							Padding(
-								padding: AppSpacings.paddingMd,
-								child: Column(
-									crossAxisAlignment: CrossAxisAlignment.start,
-									children: [
-										// Weather detail cards
-										if (currentDay != null) ...[
-											SizedBox(height: AppSpacings.pSm),
-											_buildDetailCards(context, currentDay),
-										],
-
-										// Sunrise/sunset section
-										if (currentDay != null) ...[
-											SizedBox(height: AppSpacings.pMd),
-											_buildSunTimesRow(context, currentDay),
-										],
-
-										// Forecast section
-										if (forecast.isNotEmpty) ...[
-											SizedBox(height: AppSpacings.pLg),
-											_buildForecastSection(context, forecast),
-										],
-									],
+						),
+						// Sky header (fixed)
+						_buildSkyHeader(
+							context,
+							currentDay,
+						),
+						// Scrollable bottom content
+						if (bottomItems.isNotEmpty)
+							Expanded(
+								child: VerticalScrollWithGradient(
+									itemCount: bottomItems.length,
+									separatorHeight: AppSpacings.pMd,
+									padding: AppSpacings.paddingMd,
+									itemBuilder: (context, index) => bottomItems[index],
 								),
 							),
-						],
-					),
+					],
 				),
 			);
 		});
@@ -94,149 +86,85 @@ class WeatherDetailPage extends StatelessWidget {
 	Widget _buildSkyHeader(
 		BuildContext context,
 		CurrentDayView? currentDay,
-		bool hasMultipleLocations,
-		List<WeatherLocationModel> locations,
-		WeatherLocationModel? selectedLocation,
-		WeatherService weatherService,
 	) {
 		final localizations = AppLocalizations.of(context)!;
 		final units = DisplayUnits.fromLocator();
-		final isNight = currentDay != null
-			? _isNightTime(currentDay.sunrise, currentDay.sunset)
-			: false;
-		final skyCondition = currentDay != null
-			? WeatherSkyMapper.fromWeatherCode(currentDay.weatherCode)
-			: SkyCondition.clear;
+		final screenService = locator<ScreenService>();
+		final skyHeight = (screenService.logicalHeight * 0.4).clamp(0.0, AppSpacings.scale(500));
+
+		final SkyVisualConfig config;
+		if (currentDay != null) {
+			final condition = mapWeatherCodeToSkyCondition(currentDay.weatherCode);
+			final timeOfDay = resolveSkyTimeOfDay(DateTime.now(), currentDay.sunrise, currentDay.sunset);
+			config = SkyVisualConfig.fromCondition(condition, timeOfDay);
+		} else {
+			config = SkyVisualConfig.defaultSky();
+		}
 
 		return SizedBox(
-			height: AppSpacings.scale(160),
-			child: SkyPanel(
-				condition: skyCondition,
-				isNight: isNight,
-				child: Padding(
-					padding: EdgeInsets.symmetric(
-						horizontal: AppSpacings.pLg,
-						vertical: AppSpacings.pMd,
-					),
-					child: Column(
-						crossAxisAlignment: CrossAxisAlignment.start,
-						mainAxisAlignment: MainAxisAlignment.spaceBetween,
-						children: [
-							// Location selector or name
-							if (hasMultipleLocations)
-								_buildSkyLocationSelector(
-									context,
-									locations,
-									selectedLocation,
-									weatherService,
-								)
-							else if (selectedLocation != null)
-								_buildSkyLocationLabel(selectedLocation.name),
-
-							const Spacer(),
-
-							// Temperature and condition
-							if (currentDay != null)
-								_buildSkyWeatherInfo(context, currentDay, units)
-							else
-								_buildSkyNoData(localizations),
-						],
-					),
-				),
-			),
-		);
-	}
-
-	Widget _buildSkyLocationSelector(
-		BuildContext context,
-		List<WeatherLocationModel> locations,
-		WeatherLocationModel? selectedLocation,
-		WeatherService weatherService,
-	) {
-		return ClipRRect(
-			borderRadius: BorderRadius.circular(AppBorderRadius.base),
-			child: BackdropFilter(
-				filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-				child: Container(
-					padding: EdgeInsets.symmetric(
-						horizontal: AppSpacings.pMd,
-					),
-					decoration: BoxDecoration(
-						color: Colors.white.withValues(alpha: 0.15),
-						borderRadius: BorderRadius.circular(AppBorderRadius.base),
-						border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
-					),
-					child: DropdownButtonHideUnderline(
-						child: DropdownButton<String>(
-							value: selectedLocation?.id,
-							isExpanded: true,
-							isDense: true,
-							icon: Icon(
-								MdiIcons.mapMarker,
-								size: AppFontSize.extraSmall,
-								color: Colors.white.withValues(alpha: 0.8),
-							),
-							style: TextStyle(
-								fontSize: AppFontSize.extraSmall,
-								fontWeight: FontWeight.w600,
-								color: Colors.white,
-							),
-							dropdownColor: Colors.black.withValues(alpha: 0.8),
-							items: locations.map((location) {
-								return DropdownMenuItem<String>(
-									value: location.id,
-									child: Text(location.name),
-								);
-							}).toList(),
-							onChanged: (String? locationId) {
-								if (locationId != null) {
-									weatherService.selectLocation(locationId);
-								}
-							},
+			height: skyHeight,
+			child: ClipRect(
+				child: Stack(
+					fit: StackFit.expand,
+					children: [
+						SkyGradientBackground(
+							gradientColors: config.gradientColors,
+							isPortrait: true,
 						),
-					),
+						SkyCelestialElements(
+							config: config,
+							isPortrait: true,
+						),
+						SkyCloudsLayer(
+							config: config,
+							isPortrait: true,
+						),
+						SkyWeatherOverlays(config: config),
+						Positioned.fill(
+							child: Padding(
+								padding: EdgeInsets.symmetric(
+									horizontal: AppSpacings.pLg,
+									vertical: AppSpacings.pMd,
+								),
+								child: Column(
+									crossAxisAlignment: CrossAxisAlignment.center,
+									mainAxisAlignment: MainAxisAlignment.center,
+									children: [
+										// Temperature, condition, feels like
+										if (currentDay != null)
+											_buildSkyCenterContent(context, currentDay, units, config)
+										else
+											_buildSkyNoData(localizations, config),
+
+										SizedBox(height: AppSpacings.pMd),
+
+										// Glass tiles row
+										if (currentDay != null)
+											_buildSkyGlassTiles(context, currentDay, units, config),
+									],
+								),
+							),
+						),
+					],
 				),
 			),
 		);
 	}
 
-	Widget _buildSkyLocationLabel(String name) {
-		return Row(
-			children: [
-				Icon(
-					MdiIcons.mapMarker,
-					size: AppFontSize.extraSmall,
-					color: Colors.white.withValues(alpha: 0.7),
-				),
-				SizedBox(width: AppSpacings.pXs),
-				Text(
-					name,
-					style: TextStyle(
-						fontSize: AppFontSize.extraSmall,
-						fontWeight: FontWeight.w600,
-						color: Colors.white.withValues(alpha: 0.85),
-						letterSpacing: 0.5,
-					),
-				),
-			],
-		);
-	}
-
-	Widget _buildSkyWeatherInfo(
+	Widget _buildSkyCenterContent(
 		BuildContext context,
 		CurrentDayView currentDay,
 		DisplayUnits units,
+		SkyVisualConfig config,
 	) {
-		final localizations = AppLocalizations.of(context)!;
 		final tempSymbol = UnitConverter.temperatureSymbol(units.temperature);
-		final isNight = _isNightTime(currentDay.sunrise, currentDay.sunset);
 
 		final currentTemperature = NumberUtils.formatNumber(
 			UnitConverter.convertTemperature(
 				currentDay.toCelsius(currentDay.temperature),
 				units.temperature,
 			),
-			1,
+			0,
 		);
 
 		final feelsLikeTemperature = NumberUtils.formatNumber(
@@ -244,7 +172,7 @@ class WeatherDetailPage extends StatelessWidget {
 				currentDay.toCelsius(currentDay.feelsLike),
 				units.temperature,
 			),
-			1,
+			0,
 		);
 
 		final description = WeatherConditionMapper.getDescription(
@@ -252,156 +180,203 @@ class WeatherDetailPage extends StatelessWidget {
 			context,
 		);
 
-		final weatherIcon = WeatherConditionMapper.getIcon(
-			currentDay.weatherCode,
-			isNight,
-		);
-
-		return Row(
-			crossAxisAlignment: CrossAxisAlignment.end,
+		return Column(
+			mainAxisSize: MainAxisSize.min,
 			children: [
-				// Temperature and description
-				Expanded(
-					child: Column(
-						crossAxisAlignment: CrossAxisAlignment.start,
-						mainAxisSize: MainAxisSize.min,
-						children: [
-							Row(
-								crossAxisAlignment: CrossAxisAlignment.baseline,
-								textBaseline: TextBaseline.alphabetic,
-								children: [
-									Text(
-										currentTemperature,
-										style: TextStyle(
-											fontFamily: 'DIN1451',
-											fontSize: AppSpacings.scale(42),
-											fontWeight: FontWeight.w300,
-											color: Colors.white,
-											height: 1.0,
-										),
-									),
-									SizedBox(width: AppSpacings.pXs),
-									Text(
-										tempSymbol,
-										style: TextStyle(
-											fontFamily: 'DIN1451',
-											fontSize: AppFontSize.large,
-											color: Colors.white.withValues(alpha: 0.8),
-										),
-									),
-								],
-							),
-							SizedBox(height: AppSpacings.pXs),
-							Row(
-								children: [
-									BoxedIcon(
-										weatherIcon,
-										size: AppSpacings.scale(14),
-										color: Colors.white.withValues(alpha: 0.9),
-									),
-									SizedBox(width: AppSpacings.pSm),
-									Flexible(
-										child: Text(
-											description,
-											style: TextStyle(
-												fontSize: AppFontSize.extraSmall,
-												color: Colors.white.withValues(alpha: 0.85),
-											),
-											overflow: TextOverflow.ellipsis,
-										),
-									),
-								],
-							),
-						],
-					),
-				),
-				// Feels like
-				ClipRRect(
-					borderRadius: BorderRadius.circular(AppBorderRadius.base),
-					child: BackdropFilter(
-						filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-						child: Container(
-							padding: EdgeInsets.symmetric(
-								horizontal: AppSpacings.pMd,
-								vertical: AppSpacings.pSm,
-							),
-							decoration: BoxDecoration(
-								color: Colors.white.withValues(alpha: 0.12),
-								borderRadius: BorderRadius.circular(AppBorderRadius.base),
-								border: Border.all(
-									color: Colors.white.withValues(alpha: 0.2),
-								),
-							),
-							child: Column(
-								mainAxisSize: MainAxisSize.min,
-								children: [
-									Text(
-										localizations.weather_forecast_feels_like,
-										style: TextStyle(
-											fontSize: AppSpacings.scale(8),
-											color: Colors.white.withValues(alpha: 0.65),
-										),
-									),
-									SizedBox(height: AppSpacings.pXxs),
-									Row(
-										mainAxisSize: MainAxisSize.min,
-										crossAxisAlignment: CrossAxisAlignment.baseline,
-										textBaseline: TextBaseline.alphabetic,
-										children: [
-											Text(
-												feelsLikeTemperature,
-												style: TextStyle(
-													fontSize: AppFontSize.base,
-													fontWeight: FontWeight.w600,
-													color: Colors.white,
-												),
-											),
-											SizedBox(width: AppSpacings.pXxs),
-											Text(
-												tempSymbol,
-												style: TextStyle(
-													fontSize: AppSpacings.scale(8),
-													color: Colors.white.withValues(alpha: 0.7),
-												),
-											),
-										],
-									),
-								],
+				// Temperature — large, thin
+				Row(
+					mainAxisAlignment: MainAxisAlignment.center,
+					crossAxisAlignment: CrossAxisAlignment.start,
+					children: [
+						Text(
+							currentTemperature,
+							style: TextStyle(
+								fontSize: AppSpacings.scale(56),
+								fontWeight: FontWeight.w100,
+								color: config.primaryTextColor,
+								height: 1.0,
+								letterSpacing: -1.5,
 							),
 						),
+						Padding(
+							padding: EdgeInsets.only(top: AppSpacings.pSm),
+							child: Text(
+								tempSymbol,
+								style: TextStyle(
+									fontSize: AppFontSize.large,
+									fontWeight: FontWeight.w100,
+									color: config.secondaryTextColor,
+								),
+							),
+						),
+					],
+				),
+				SizedBox(height: AppSpacings.pXs),
+				// Condition text
+				Text(
+					description,
+					style: TextStyle(
+						fontSize: AppFontSize.base,
+						color: config.secondaryTextColor,
+					),
+					textAlign: TextAlign.center,
+				),
+				SizedBox(height: AppSpacings.pXxs),
+				// Feels like
+				Text(
+					'${AppLocalizations.of(context)!.weather_forecast_feels_like} $feelsLikeTemperature$tempSymbol',
+					style: TextStyle(
+						fontSize: AppFontSize.extraSmall,
+						color: config.secondaryTextColor,
 					),
 				),
 			],
 		);
 	}
 
-	Widget _buildSkyNoData(AppLocalizations localizations) {
+	Widget _buildSkyGlassTiles(
+		BuildContext context,
+		CurrentDayView currentDay,
+		DisplayUnits units,
+		SkyVisualConfig config,
+	) {
+		final windSymbol = UnitConverter.windSpeedSymbol(units.windSpeed);
+		final pressSymbol = UnitConverter.pressureSymbol(units.pressure);
+		final pressDecimals = UnitConverter.pressureDecimals(units.pressure);
+
+		final windSpeed = NumberUtils.formatNumber(
+			UnitConverter.convertWindSpeed(
+				currentDay.toMetersPerSecond(currentDay.windSpeed),
+				units.windSpeed,
+			),
+			1,
+		);
+
+		final pressureText = NumberUtils.formatNumber(
+			UnitConverter.convertPressure(
+				currentDay.pressure.toDouble(),
+				units.pressure,
+			),
+			pressDecimals,
+		);
+
+		return Row(
+			mainAxisAlignment: MainAxisAlignment.center,
+			children: [
+				SkyGlassCard(
+					isDark: config.isDark,
+					child: Row(
+						mainAxisSize: MainAxisSize.min,
+						children: [
+							BoxedIcon(
+								WeatherIcons.strong_wind,
+								size: AppSpacings.scale(12),
+								color: config.secondaryTextColor,
+							),
+							SizedBox(width: AppSpacings.pXs),
+							Text(
+								'$windSpeed $windSymbol',
+								style: TextStyle(
+									fontSize: AppFontSize.extraSmall,
+									fontWeight: FontWeight.w600,
+									color: config.primaryTextColor,
+								),
+							),
+						],
+					),
+				),
+				SizedBox(width: AppSpacings.pSm),
+				SkyGlassCard(
+					isDark: config.isDark,
+					child: Row(
+						mainAxisSize: MainAxisSize.min,
+						children: [
+							BoxedIcon(
+								WeatherIcons.humidity,
+								size: AppSpacings.scale(12),
+								color: config.secondaryTextColor,
+							),
+							SizedBox(width: AppSpacings.pXs),
+							Text(
+								'${currentDay.humidity}%',
+								style: TextStyle(
+									fontSize: AppFontSize.extraSmall,
+									fontWeight: FontWeight.w600,
+									color: config.primaryTextColor,
+								),
+							),
+						],
+					),
+				),
+				SizedBox(width: AppSpacings.pSm),
+				SkyGlassCard(
+					isDark: config.isDark,
+					child: Row(
+						mainAxisSize: MainAxisSize.min,
+						children: [
+							BoxedIcon(
+								WeatherIcons.barometer,
+								size: AppSpacings.scale(12),
+								color: config.secondaryTextColor,
+							),
+							SizedBox(width: AppSpacings.pXs),
+							Text(
+								'$pressureText $pressSymbol',
+								style: TextStyle(
+									fontSize: AppFontSize.extraSmall,
+									fontWeight: FontWeight.w600,
+									color: config.primaryTextColor,
+								),
+							),
+						],
+					),
+				),
+				SizedBox(width: AppSpacings.pSm),
+				SkyGlassCard(
+					isDark: config.isDark,
+					child: Row(
+						mainAxisSize: MainAxisSize.min,
+						children: [
+							BoxedIcon(
+								WeatherIcons.cloud,
+								size: AppSpacings.scale(12),
+								color: config.secondaryTextColor,
+							),
+							SizedBox(width: AppSpacings.pXs),
+							Text(
+								'${currentDay.clouds.round()}%',
+								style: TextStyle(
+									fontSize: AppFontSize.extraSmall,
+									fontWeight: FontWeight.w600,
+									color: config.primaryTextColor,
+								),
+							),
+						],
+					),
+				),
+			],
+		);
+	}
+
+	Widget _buildSkyNoData(AppLocalizations localizations, SkyVisualConfig config) {
 		return Text(
 			localizations.weather_detail_not_configured,
 			style: TextStyle(
 				fontSize: AppFontSize.base,
-				color: Colors.white.withValues(alpha: 0.7),
+				color: config.secondaryTextColor,
 			),
 		);
 	}
 
 	// ===========================================================================
-	// DETAIL CARDS — adaptive based on provider capabilities
+	// DETAIL CARDS — remaining cards (clouds, rain, snow)
 	// ===========================================================================
 
-	Widget _buildDetailCards(BuildContext context, CurrentDayView currentDay) {
+	Widget? _buildDetailCards(BuildContext context, CurrentDayView currentDay) {
 		final units = DisplayUnits.fromLocator();
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 
 		final cards = <Widget>[
-			// Wind — always available
-			_buildWindCard(context, currentDay, units, isDark),
-			// Humidity — always available
-			_buildHumidityCard(context, currentDay, isDark),
-			// Pressure — always available
-			_buildPressureCard(context, currentDay, units, isDark),
-			// Clouds — always available
-			_buildCloudsCard(context, currentDay, isDark),
 			// Rain — only if provider reports rain data
 			if (currentDay.rain != null)
 				_buildPrecipitationCard(
@@ -423,6 +398,12 @@ class WeatherDetailPage extends StatelessWidget {
 					isDark,
 				),
 		];
+
+		if (cards.isEmpty) return null;
+
+		if (cards.length == 1) {
+			return cards.first;
+		}
 
 		return GridView.count(
 			crossAxisCount: 2,
@@ -525,108 +506,6 @@ class WeatherDetailPage extends StatelessWidget {
 					),
 				],
 			),
-		);
-	}
-
-	Widget _buildWindCard(
-		BuildContext context,
-		CurrentDayView currentDay,
-		DisplayUnits units,
-		bool isDark,
-	) {
-		final localizations = AppLocalizations.of(context)!;
-		final windSymbol = UnitConverter.windSpeedSymbol(units.windSpeed);
-
-		final windSpeed = NumberUtils.formatNumber(
-			UnitConverter.convertWindSpeed(
-				currentDay.toMetersPerSecond(currentDay.windSpeed),
-				units.windSpeed,
-			),
-			1,
-		);
-
-		String? gustValue;
-		if (currentDay.windGust != null) {
-			gustValue = NumberUtils.formatNumber(
-				UnitConverter.convertWindSpeed(
-					currentDay.toMetersPerSecond(currentDay.windGust!),
-					units.windSpeed,
-				),
-				1,
-			);
-		}
-
-		return _buildDetailCard(
-			context: context,
-			isDark: isDark,
-			icon: WeatherIcons.strong_wind,
-			label: localizations.weather_detail_wind,
-			value: windSpeed,
-			unit: windSymbol,
-			secondaryValue: gustValue != null ? '$gustValue $windSymbol' : null,
-			secondaryLabel: gustValue != null ? localizations.weather_detail_gust : null,
-		);
-	}
-
-	Widget _buildHumidityCard(
-		BuildContext context,
-		CurrentDayView currentDay,
-		bool isDark,
-	) {
-		final localizations = AppLocalizations.of(context)!;
-
-		return _buildDetailCard(
-			context: context,
-			isDark: isDark,
-			icon: WeatherIcons.humidity,
-			label: localizations.weather_forecast_humidity.replaceAll(':', ''),
-			value: currentDay.humidity.toString(),
-			unit: '%',
-		);
-	}
-
-	Widget _buildPressureCard(
-		BuildContext context,
-		CurrentDayView currentDay,
-		DisplayUnits units,
-		bool isDark,
-	) {
-		final localizations = AppLocalizations.of(context)!;
-		final pressSymbol = UnitConverter.pressureSymbol(units.pressure);
-		final pressDecimals = UnitConverter.pressureDecimals(units.pressure);
-
-		final pressureText = NumberUtils.formatNumber(
-			UnitConverter.convertPressure(
-				currentDay.pressure.toDouble(),
-				units.pressure,
-			),
-			pressDecimals,
-		);
-
-		return _buildDetailCard(
-			context: context,
-			isDark: isDark,
-			icon: WeatherIcons.barometer,
-			label: localizations.weather_detail_pressure,
-			value: pressureText,
-			unit: pressSymbol,
-		);
-	}
-
-	Widget _buildCloudsCard(
-		BuildContext context,
-		CurrentDayView currentDay,
-		bool isDark,
-	) {
-		final localizations = AppLocalizations.of(context)!;
-
-		return _buildDetailCard(
-			context: context,
-			isDark: isDark,
-			icon: WeatherIcons.cloud,
-			label: localizations.weather_detail_clouds,
-			value: currentDay.clouds.round().toString(),
-			unit: '%',
 		);
 	}
 
@@ -965,15 +844,5 @@ class WeatherDetailPage extends StatelessWidget {
 				],
 			),
 		);
-	}
-
-	// ===========================================================================
-	// HELPERS
-	// ===========================================================================
-
-	bool _isNightTime(DateTime sunrise, DateTime sunset) {
-		final now = DateTime.now();
-
-		return now.isBefore(sunrise) || now.isAfter(sunset);
 	}
 }
