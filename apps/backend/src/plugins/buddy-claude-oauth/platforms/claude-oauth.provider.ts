@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 
 import { MessageRole } from '../../../modules/buddy/buddy.constants';
 import { ChatMessage, ILlmProvider, LlmOptions } from '../../../modules/buddy/platforms/llm-provider.platform';
+import { OAuthTokenManager } from '../../../modules/buddy/platforms/oauth-token-manager';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import {
 	BUDDY_CLAUDE_OAUTH_DEFAULT_MODEL,
@@ -15,15 +16,13 @@ import { BuddyClaudeOauthConfigModel } from '../models/config.model';
 // Module path as variable to prevent TypeScript from statically resolving optional peer dependency
 const ANTHROPIC_SDK_MODULE = '@anthropic-ai/sdk';
 
-/** Cached tokens are considered expired after this many milliseconds (50 minutes). */
-const TOKEN_TTL_MS = 50 * 60 * 1000;
-const TOKEN_REFRESH_TIMEOUT_MS = 10_000;
-
 @Injectable()
 export class ClaudeOauthProvider implements ILlmProvider {
 	private readonly logger = new Logger(ClaudeOauthProvider.name);
-	private cachedAccessToken: string | null = null;
-	private cachedAccessTokenExpiresAt = 0;
+	private readonly tokenManager = new OAuthTokenManager({
+		tokenUrl: BUDDY_CLAUDE_OAUTH_TOKEN_URL,
+		providerLabel: 'ClaudeOAuth',
+	});
 
 	constructor(private readonly configService: ConfigService) {}
 
@@ -50,7 +49,7 @@ export class ClaudeOauthProvider implements ILlmProvider {
 		options?: LlmOptions,
 	): Promise<string> {
 		const config = this.getPluginConfig();
-		const accessToken = await this.resolveAccessToken(config);
+		const accessToken = await this.tokenManager.resolveAccessToken(config);
 		const resolvedModel = config?.model ?? model;
 		const timeout = options?.timeout ?? 30_000;
 
@@ -75,63 +74,6 @@ export class ClaudeOauthProvider implements ILlmProvider {
 
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 		return textBlock && 'text' in textBlock ? (textBlock.text as string) : '';
-	}
-
-	private async resolveAccessToken(config: BuddyClaudeOauthConfigModel | null): Promise<string> {
-		if (this.cachedAccessToken && Date.now() < this.cachedAccessTokenExpiresAt) {
-			return this.cachedAccessToken;
-		}
-
-		// Clear stale cache
-		this.cachedAccessToken = null;
-
-		if (config?.accessToken) {
-			return config.accessToken;
-		}
-
-		if (config?.refreshToken && config?.clientId) {
-			const token = await this.refreshAccessToken(config);
-
-			this.cachedAccessToken = token;
-			this.cachedAccessTokenExpiresAt = Date.now() + TOKEN_TTL_MS;
-
-			return token;
-		}
-
-		return '';
-	}
-
-	private async refreshAccessToken(config: BuddyClaudeOauthConfigModel): Promise<string> {
-		this.logger.debug('Refreshing Claude OAuth access token');
-
-		const controller = new AbortController();
-		const timeoutId = setTimeout(() => controller.abort(), TOKEN_REFRESH_TIMEOUT_MS);
-
-		try {
-			const response = await fetch(BUDDY_CLAUDE_OAUTH_TOKEN_URL, {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-				body: new URLSearchParams({
-					grant_type: 'refresh_token',
-					refresh_token: config.refreshToken ?? '',
-					client_id: config.clientId ?? '',
-					...(config.clientSecret ? { client_secret: config.clientSecret } : {}),
-				}),
-				signal: controller.signal,
-			});
-
-			if (!response.ok) {
-				this.logger.error(`OAuth token refresh failed with status ${response.status}`);
-
-				throw new Error(`OAuth token refresh failed: ${response.status}`);
-			}
-
-			const data = (await response.json()) as { access_token?: string };
-
-			return data.access_token ?? '';
-		} finally {
-			clearTimeout(timeoutId);
-		}
 	}
 
 	private getPluginConfig(): BuddyClaudeOauthConfigModel | null {

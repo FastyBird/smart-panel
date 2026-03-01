@@ -45,5 +45,4 @@ export class LlmProviderRegistryService {
 	list(): string[] {
 		return Object.keys(this.providers);
 	}
-
 }
