@@ -68,18 +68,22 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
+// Normalize legacy provider values before initializing the form so the
+// initial snapshot already contains the mapped value (avoids false dirty state).
+const normalizedConfig = { ...props.config } as Record<string, unknown>;
+const rawProvider = normalizedConfig.provider as string | undefined;
+
+if (rawProvider && rawProvider in LEGACY_PROVIDER_MAP) {
+	normalizedConfig.provider = LEGACY_PROVIDER_MAP[rawProvider] ?? rawProvider;
+}
+
 const { formEl, model, formChanged, submit, formResult } = useConfigModuleEditForm<IBuddyConfigEditForm>({
-	config: props.config,
+	config: normalizedConfig as typeof props.config,
 	messages: {
 		success: t('buddyModule.messages.config.edited'),
 		error: t('buddyModule.messages.config.notEdited'),
 	},
 });
-
-// Normalize legacy provider values (e.g. 'claude' → 'buddy-claude-plugin')
-if (model.provider && model.provider in LEGACY_PROVIDER_MAP) {
-	model.provider = LEGACY_PROVIDER_MAP[model.provider] ?? model.provider;
-}
 
 const providerOptions = computed(() => [
 	{ value: LLM_PROVIDER_NONE, label: t('buddyModule.fields.config.provider.options.none') },
