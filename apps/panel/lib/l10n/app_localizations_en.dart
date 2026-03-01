@@ -907,18 +907,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get weather_forecast_humidity => 'Humidity:';
 
   @override
-  String get weather_detail_wind => 'Wind';
-
-  @override
-  String get weather_detail_gust => 'Gust';
-
-  @override
-  String get weather_detail_pressure => 'Pressure';
-
-  @override
-  String get weather_detail_clouds => 'Clouds';
-
-  @override
   String get weather_detail_rain => 'Rain';
 
   @override
@@ -932,9 +920,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get weather_detail_forecast => 'Forecast';
-
-  @override
-  String get weather_detail_today => 'Today';
 
   @override
   String get weather_detail_not_configured => 'Weather not configured';

@@ -1160,22 +1160,6 @@
   "@weather_forecast_humidity": {
     "description": ""
   },
-  "weather_detail_wind": "Wind",
-  "@weather_detail_wind": {
-    "description": "Label for wind section in weather detail"
-  },
-  "weather_detail_gust": "Gust",
-  "@weather_detail_gust": {
-    "description": "Label for wind gust value"
-  },
-  "weather_detail_pressure": "Pressure",
-  "@weather_detail_pressure": {
-    "description": "Label for pressure section in weather detail"
-  },
-  "weather_detail_clouds": "Clouds",
-  "@weather_detail_clouds": {
-    "description": "Label for cloud coverage section"
-  },
   "weather_detail_rain": "Rain",
   "@weather_detail_rain": {
     "description": "Label for rain section"
@@ -1195,10 +1179,6 @@
   "weather_detail_forecast": "Forecast",
   "@weather_detail_forecast": {
     "description": "Section heading for weather forecast"
-  },
-  "weather_detail_today": "Today",
-  "@weather_detail_today": {
-    "description": "Label for current day in weather detail"
   },
   "weather_detail_not_configured": "Weather not configured",
   "@weather_detail_not_configured": {

@@ -918,18 +918,6 @@ class AppLocalizationsCs extends AppLocalizations {
   String get weather_forecast_humidity => 'Vlhkost:';
 
   @override
-  String get weather_detail_wind => 'Vítr';
-
-  @override
-  String get weather_detail_gust => 'Nárazy';
-
-  @override
-  String get weather_detail_pressure => 'Tlak';
-
-  @override
-  String get weather_detail_clouds => 'Oblačnost';
-
-  @override
   String get weather_detail_rain => 'Déšť';
 
   @override
@@ -943,9 +931,6 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get weather_detail_forecast => 'Předpověď';
-
-  @override
-  String get weather_detail_today => 'Dnes';
 
   @override
   String get weather_detail_not_configured => 'Počasí není nakonfigurováno';
