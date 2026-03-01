@@ -36,10 +36,11 @@ class WeatherDetailPage extends StatelessWidget {
 			final currentDay = weatherService.currentDay;
 			final forecast = weatherService.forecast;
 
+			final detailCards = currentDay != null ? _buildDetailCards(context, currentDay) : null;
+
 			final bottomItems = <Widget>[
 				// Weather detail cards (rain/snow)
-				if (currentDay != null && _buildDetailCards(context, currentDay) != null)
-					_buildDetailCards(context, currentDay)!,
+				if (detailCards != null) detailCards,
 				// Sunrise/sunset section
 				if (currentDay != null)
 					_buildSunTimesRow(context, currentDay),
