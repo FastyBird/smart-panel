@@ -75,7 +75,7 @@ export class SttProviderService {
 			throw new BuddySttNotConfiguredException();
 		}
 
-		const model = config.sttModel ?? DEFAULT_WHISPER_API_MODEL;
+		const model = config.sttModel || DEFAULT_WHISPER_API_MODEL;
 		const extension = SttProviderService.getExtensionFromMime(mimeType);
 
 		try {
@@ -115,7 +115,7 @@ export class SttProviderService {
 		mimeType: string,
 		config: BuddyConfigModel,
 	): Promise<string> {
-		const model = config.sttModel ?? DEFAULT_WHISPER_LOCAL_MODEL;
+		const model = config.sttModel || DEFAULT_WHISPER_LOCAL_MODEL;
 		const extension = SttProviderService.getExtensionFromMime(mimeType);
 
 		// Write audio to a temp file
