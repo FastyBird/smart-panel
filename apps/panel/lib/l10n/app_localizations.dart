@@ -1727,6 +1727,12 @@ abstract class AppLocalizations {
   /// **'Weather not configured'**
   String get weather_detail_not_configured;
 
+  /// Label for today in forecast
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get weather_detail_today;
+
   /// A thunderstorm accompanied by light rain.
   ///
   /// In en, this message translates to:

@@ -32,38 +32,57 @@ class WeatherDetailPage extends StatelessWidget {
 		) {
 			final currentDay = weatherService.currentDay;
 			final forecast = weatherService.forecast;
+			final isLandscape = MediaQuery.of(context).size.width > MediaQuery.of(context).size.height;
 
-			final detailCards = currentDay != null ? _buildDetailCards(context, currentDay) : null;
+			final SkyVisualConfig config;
+			if (currentDay != null) {
+				final condition = mapWeatherCodeToSkyCondition(currentDay.weatherCode);
+				final timeOfDay = resolveSkyTimeOfDay(DateTime.now(), currentDay.sunrise, currentDay.sunset);
+				config = SkyVisualConfig.fromCondition(condition, timeOfDay);
+			} else {
+				final hour = DateTime.now().hour;
+				final timeOfDay = (hour >= 6 && hour < 11)
+						? SkyTimeOfDay.morning
+						: (hour >= 11 && hour < 17)
+								? SkyTimeOfDay.noon
+								: (hour >= 17 && hour < 21)
+										? SkyTimeOfDay.evening
+										: SkyTimeOfDay.night;
+				config = SkyVisualConfig.fromCondition(SkyCondition.clear, timeOfDay);
+			}
 
-			final bottomItems = <Widget>[
-				// Weather detail cards (rain/snow)
-				if (detailCards != null) detailCards,
-				// Sunrise/sunset section
-				if (currentDay != null)
-					_buildSunTimesRow(context, currentDay),
-				// Forecast section
-				if (forecast.isNotEmpty)
-					_buildForecastSection(context, forecast),
-			];
+			if (isLandscape) {
+				return Scaffold(
+					body: Row(
+						children: [
+							// Sky left panel (44%)
+							SizedBox(
+								width: MediaQuery.of(context).size.width * 0.44,
+								child: _buildSkyPanel(context, currentDay, config, isPortrait: false),
+							),
+							// Content right panel (56%)
+							Expanded(
+								child: _buildContentArea(context, currentDay, forecast),
+							),
+						],
+					),
+				);
+			}
+
+			// Portrait layout
+			final screenService = locator<ScreenService>();
+			final skyHeight = (screenService.logicalHeight * 0.4).clamp(0.0, AppSpacings.scale(500));
 
 			return Scaffold(
 				body: Column(
 					children: [
-						// Sky header (fixed) with overlaid back button
-						_buildSkyHeader(
-							context,
-							currentDay,
+						SizedBox(
+							height: skyHeight,
+							child: _buildSkyPanel(context, currentDay, config, isPortrait: true),
 						),
-						// Scrollable bottom content
-						if (bottomItems.isNotEmpty)
-							Expanded(
-								child: VerticalScrollWithGradient(
-									itemCount: bottomItems.length,
-									separatorHeight: AppSpacings.pMd,
-									padding: AppSpacings.paddingMd,
-									itemBuilder: (context, index) => bottomItems[index],
-								),
-							),
+						Expanded(
+							child: _buildContentArea(context, currentDay, forecast),
+						),
 					],
 				),
 			);
@@ -71,102 +90,78 @@ class WeatherDetailPage extends StatelessWidget {
 	}
 
 	// ===========================================================================
-	// SKY HEADER
+	// SKY PANEL
 	// ===========================================================================
 
-	Widget _buildSkyHeader(
+	Widget _buildSkyPanel(
 		BuildContext context,
 		CurrentDayView? currentDay,
-	) {
+		SkyVisualConfig config, {
+		required bool isPortrait,
+	}) {
 		final localizations = AppLocalizations.of(context)!;
 		final units = DisplayUnits.fromLocator();
-		final screenService = locator<ScreenService>();
-		final skyHeight = (screenService.logicalHeight * 0.4).clamp(0.0, AppSpacings.scale(500));
 
-		final SkyVisualConfig config;
-		if (currentDay != null) {
-			final condition = mapWeatherCodeToSkyCondition(currentDay.weatherCode);
-			final timeOfDay = resolveSkyTimeOfDay(DateTime.now(), currentDay.sunrise, currentDay.sunset);
-			config = SkyVisualConfig.fromCondition(condition, timeOfDay);
-		} else {
-			final hour = DateTime.now().hour;
-			final timeOfDay = (hour >= 6 && hour < 11)
-					? SkyTimeOfDay.morning
-					: (hour >= 11 && hour < 17)
-							? SkyTimeOfDay.noon
-							: (hour >= 17 && hour < 21)
-									? SkyTimeOfDay.evening
-									: SkyTimeOfDay.night;
-			config = SkyVisualConfig.fromCondition(SkyCondition.clear, timeOfDay);
-		}
-
-		return SizedBox(
-			height: skyHeight,
-			child: ClipRect(
-				child: Stack(
-					fit: StackFit.expand,
-					children: [
-						SkyGradientBackground(
-							gradientColors: config.gradientColors,
-							isPortrait: true,
-						),
-						SkyCelestialElements(
-							config: config,
-							isPortrait: true,
-						),
-						SkyCloudsLayer(
-							config: config,
-							isPortrait: true,
-						),
-						SkyWeatherOverlays(config: config),
-						// Glass back button
-						Positioned(
-							top: MediaQuery.of(context).padding.top + AppSpacings.pMd,
-							left: AppSpacings.pMd,
-							child: GestureDetector(
-								onTap: () => Navigator.of(context).pop(),
-								child: SkyGlassCard(
-									isDark: config.isDark,
-									padding: EdgeInsets.zero,
-									child: SizedBox(
-										width: AppSpacings.scale(36),
-										height: AppSpacings.scale(36),
-										child: Icon(
-											Icons.arrow_back,
-											size: AppSpacings.scale(18),
-											color: config.primaryTextColor,
-										),
+		return ClipRect(
+			child: Stack(
+				fit: StackFit.expand,
+				children: [
+					SkyGradientBackground(
+						gradientColors: config.gradientColors,
+						isPortrait: isPortrait,
+					),
+					SkyCelestialElements(
+						config: config,
+						isPortrait: isPortrait,
+					),
+					SkyCloudsLayer(
+						config: config,
+						isPortrait: isPortrait,
+					),
+					SkyWeatherOverlays(config: config),
+					// Glass back button
+					Positioned(
+						top: MediaQuery.of(context).padding.top + AppSpacings.pMd,
+						left: AppSpacings.pMd,
+						child: GestureDetector(
+							onTap: () => Navigator.of(context).pop(),
+							child: SkyGlassCard(
+								isDark: config.isDark,
+								padding: EdgeInsets.zero,
+								child: SizedBox(
+									width: AppSpacings.scale(36),
+									height: AppSpacings.scale(36),
+									child: Icon(
+										Icons.arrow_back,
+										size: AppSpacings.scale(18),
+										color: config.primaryTextColor,
 									),
 								),
 							),
 						),
-						Positioned.fill(
-							child: Padding(
-								padding: EdgeInsets.symmetric(
-									horizontal: AppSpacings.pLg,
-									vertical: AppSpacings.pMd,
-								),
-								child: Column(
-									crossAxisAlignment: CrossAxisAlignment.center,
-									mainAxisAlignment: MainAxisAlignment.center,
-									children: [
-										// Temperature, condition, feels like
-										if (currentDay != null)
-											_buildSkyCenterContent(context, currentDay, units, config)
-										else
-											_buildSkyNoData(localizations, config),
-
-										SizedBox(height: AppSpacings.pMd),
-
-										// Glass tiles row
-										if (currentDay != null)
-											_buildSkyGlassTiles(context, currentDay, units, config),
-									],
-								),
+					),
+					Positioned.fill(
+						child: Padding(
+							padding: EdgeInsets.symmetric(
+								horizontal: AppSpacings.pLg,
+								vertical: AppSpacings.pMd,
+							),
+							child: Column(
+								crossAxisAlignment: CrossAxisAlignment.center,
+								mainAxisAlignment: MainAxisAlignment.center,
+								children: [
+									if (currentDay != null)
+										_buildSkyCenterContent(context, currentDay, units, config)
+									else
+										_buildSkyNoData(localizations, config),
+									SizedBox(height: AppSpacings.pMd),
+									if (currentDay != null)
+										_buildSkyGlassTiles(context, currentDay, units, config),
+								],
 							),
 						),
-					],
-				),
+					),
+				],
 			),
 		);
 	}
@@ -203,7 +198,6 @@ class WeatherDetailPage extends StatelessWidget {
 		return Column(
 			mainAxisSize: MainAxisSize.min,
 			children: [
-				// Temperature — large, thin
 				Row(
 					mainAxisAlignment: MainAxisAlignment.center,
 					crossAxisAlignment: CrossAxisAlignment.start,
@@ -232,7 +226,6 @@ class WeatherDetailPage extends StatelessWidget {
 					],
 				),
 				SizedBox(height: AppSpacings.pXs),
-				// Condition text
 				Text(
 					description,
 					style: TextStyle(
@@ -242,7 +235,6 @@ class WeatherDetailPage extends StatelessWidget {
 					textAlign: TextAlign.center,
 				),
 				SizedBox(height: AppSpacings.pXxs),
-				// Feels like
 				Text(
 					'${AppLocalizations.of(context)!.weather_forecast_feels_like} $feelsLikeTemperature$tempSymbol',
 					style: TextStyle(
@@ -390,168 +382,326 @@ class WeatherDetailPage extends StatelessWidget {
 	}
 
 	// ===========================================================================
-	// DETAIL CARDS — remaining cards (clouds, rain, snow)
+	// CONTENT AREA — shared between portrait and landscape
 	// ===========================================================================
 
-	Widget? _buildDetailCards(BuildContext context, CurrentDayView currentDay) {
-		final units = DisplayUnits.fromLocator();
+	Widget _buildContentArea(
+		BuildContext context,
+		CurrentDayView? currentDay,
+		List<ForecastDayView> forecast,
+	) {
+		final localizations = AppLocalizations.of(context)!;
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 
-		final cards = <Widget>[
-			// Rain — only if provider reports rain data
-			if (currentDay.rain != null)
-				_buildPrecipitationCard(
-					context,
-					currentDay.rain!,
-					AppLocalizations.of(context)!.weather_detail_rain,
-					WeatherIcons.rain,
-					units,
-					isDark,
-				),
-			// Snow — only if provider reports snow data
-			if (currentDay.snow != null)
-				_buildPrecipitationCard(
-					context,
-					currentDay.snow!,
-					AppLocalizations.of(context)!.weather_detail_snow,
-					WeatherIcons.snow,
-					units,
-					isDark,
-				),
+		final contentItems = <Widget>[
+			// Forecast section
+			if (forecast.isNotEmpty) ...[
+				_buildSectionTitle(localizations.weather_detail_forecast, isDark),
+				...forecast.map((day) => Padding(
+					padding: EdgeInsets.only(bottom: AppSpacings.pSm),
+					child: _buildForecastDay(context, day, forecast),
+				)),
+			],
+			// Sunrise/sunset
+			if (currentDay != null) ...[
+				SizedBox(height: AppSpacings.pMd),
+				_buildSunTimesRow(context, currentDay),
+			],
 		];
 
-		if (cards.isEmpty) return null;
+		if (contentItems.isEmpty) return const SizedBox.shrink();
 
-		if (cards.length == 1) {
-			return cards.first;
-		}
-
-		return GridView.count(
-			crossAxisCount: 2,
-			childAspectRatio: 2.2,
-			mainAxisSpacing: AppSpacings.pSm,
-			crossAxisSpacing: AppSpacings.pSm,
-			shrinkWrap: true,
-			physics: const NeverScrollableScrollPhysics(),
-			children: cards,
+		return VerticalScrollWithGradient(
+			itemCount: contentItems.length,
+			separatorHeight: 0,
+			padding: AppSpacings.paddingMd,
+			itemBuilder: (context, index) => contentItems[index],
 		);
 	}
 
-	Widget _buildDetailCard({
-		required BuildContext context,
-		required bool isDark,
-		required IconData icon,
-		required String label,
-		required String value,
-		required String unit,
-		String? secondaryValue,
-		String? secondaryLabel,
-	}) {
-		final colorFamily = ThemeColorFamily.get(
-			Theme.of(context).brightness,
-			ThemeColors.info,
-		);
+	// ===========================================================================
+	// SECTION TITLE
+	// ===========================================================================
 
-		return Container(
-			padding: EdgeInsets.all(AppSpacings.pMd),
-			decoration: BoxDecoration(
-				color: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
-				borderRadius: BorderRadius.circular(AppBorderRadius.medium),
-				border: Border.all(
+	Widget _buildSectionTitle(String title, bool isDark) {
+		return Padding(
+			padding: EdgeInsets.only(bottom: AppSpacings.pSm),
+			child: Text(
+				title.toUpperCase(),
+				style: TextStyle(
+					fontSize: AppFontSize.extraSmall,
+					fontWeight: FontWeight.w700,
+					letterSpacing: 1.2,
 					color: isDark
-						? AppBorderColorDark.extraLight
-						: AppBorderColorLight.lighter,
+						? AppTextColorDark.placeholder
+						: AppTextColorLight.placeholder,
 				),
 			),
-			child: Column(
-				crossAxisAlignment: CrossAxisAlignment.start,
-				mainAxisAlignment: MainAxisAlignment.spaceBetween,
+		);
+	}
+
+	// ===========================================================================
+	// DAILY FORECAST WITH TEMP BAR
+	// ===========================================================================
+
+	Widget _buildForecastDay(
+		BuildContext context,
+		ForecastDayView forecast,
+		List<ForecastDayView> allForecast,
+	) {
+		final units = DisplayUnits.fromLocator();
+		final isDark = Theme.of(context).brightness == Brightness.dark;
+		final localizations = AppLocalizations.of(context)!;
+		final tempSymbol = UnitConverter.temperatureSymbol(units.temperature);
+
+		// Compute week min/max across all forecast items
+		double weekMin = double.infinity;
+		double weekMax = double.negativeInfinity;
+		for (final day in allForecast) {
+			final min = day.temperatureMin;
+			final max = day.temperatureMax;
+			if (min != null) {
+				final converted = UnitConverter.convertTemperature(day.toCelsius(min), units.temperature);
+				if (converted < weekMin) weekMin = converted;
+			}
+			if (max != null) {
+				final converted = UnitConverter.convertTemperature(day.toCelsius(max), units.temperature);
+				if (converted > weekMax) weekMax = converted;
+			}
+		}
+
+		final dayMin = forecast.temperatureMin != null
+			? UnitConverter.convertTemperature(forecast.toCelsius(forecast.temperatureMin!), units.temperature)
+			: null;
+		final dayMax = forecast.temperatureMax != null
+			? UnitConverter.convertTemperature(forecast.toCelsius(forecast.temperatureMax!), units.temperature)
+			: null;
+
+		final lowText = dayMin != null ? NumberUtils.formatNumber(dayMin, 0) : '--';
+		final highText = dayMax != null ? NumberUtils.formatNumber(dayMax, 0) : '--';
+
+		// Check if today
+		final now = DateTime.now();
+		final isToday = forecast.dayTime.year == now.year &&
+			forecast.dayTime.month == now.month &&
+			forecast.dayTime.day == now.day;
+
+		final accentColor = ThemeColorFamily.get(
+			Theme.of(context).brightness,
+			ThemeColors.danger,
+		).base;
+
+		final infoColor = ThemeColorFamily.get(
+			Theme.of(context).brightness,
+			ThemeColors.info,
+		).base;
+
+		final borderRadius = BorderRadius.circular(AppBorderRadius.base);
+		final borderColor = isDark ? AppFillColorDark.light : AppBorderColorLight.darker;
+
+		return ClipRRect(
+			borderRadius: borderRadius,
+			child: Container(
+				padding: EdgeInsets.symmetric(
+					horizontal: AppSpacings.pMd,
+					vertical: AppSpacings.pSm,
+				),
+				decoration: BoxDecoration(
+					color: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
+					borderRadius: borderRadius,
+					border: Border.all(color: borderColor),
+				),
+				foregroundDecoration: isToday
+					? BoxDecoration(
+						borderRadius: borderRadius,
+						border: Border(
+							left: BorderSide(
+								color: accentColor,
+								width: AppSpacings.scale(3),
+							),
+						),
+					)
+					: null,
+				child: Row(
 				children: [
+					// Day name
+					SizedBox(
+						width: AppSpacings.scale(50),
+						child: Text(
+							isToday
+								? localizations.weather_detail_today
+								: DatetimeUtils.getShortDayName(forecast.dayTime),
+							style: TextStyle(
+								fontSize: AppFontSize.extraSmall,
+								fontWeight: isToday ? FontWeight.w700 : FontWeight.w600,
+								color: isToday
+									? accentColor
+									: (isDark ? AppTextColorDark.primary : AppTextColorLight.primary),
+							),
+						),
+					),
+
+					// Date (small)
+					SizedBox(
+						width: AppSpacings.scale(32),
+						child: Text(
+							'${forecast.dayTime.day}.${forecast.dayTime.month}.',
+							style: TextStyle(
+								fontSize: AppSpacings.scale(8),
+								color: isDark
+									? AppTextColorDark.placeholder
+									: AppTextColorLight.placeholder,
+							),
+						),
+					),
+
+					// Weather icon
+					BoxedIcon(
+						WeatherConditionMapper.getIcon(forecast.weatherCode),
+						size: AppSpacings.scale(16),
+						color: isDark
+							? AppTextColorDark.regular
+							: AppTextColorLight.regular,
+					),
+
+					SizedBox(width: AppSpacings.pSm),
+
+					// Condition text
+					Expanded(
+						child: Text(
+							WeatherConditionMapper.getDescription(forecast.weatherCode, context),
+							style: TextStyle(
+								fontSize: AppSpacings.scale(9),
+								color: isDark
+									? AppTextColorDark.secondary
+									: AppTextColorLight.secondary,
+							),
+							overflow: TextOverflow.ellipsis,
+						),
+					),
+
+					SizedBox(width: AppSpacings.pSm),
+
+					// Low temp
+					Text(
+						'$lowText$tempSymbol',
+						style: TextStyle(
+							fontSize: AppSpacings.scale(9),
+							color: isDark
+								? AppTextColorDark.secondary
+								: AppTextColorLight.secondary,
+						),
+					),
+
+					SizedBox(width: AppSpacings.pSm),
+
+					// Gradient temp bar
+					SizedBox(
+						width: AppSpacings.scale(56),
+						height: AppSpacings.scale(4),
+						child: _buildTempBar(dayMin, dayMax, weekMin, weekMax, infoColor, accentColor, isDark),
+					),
+
+					SizedBox(width: AppSpacings.pSm),
+
+					// High temp
+					Text(
+						'$highText$tempSymbol',
+						style: TextStyle(
+							fontSize: AppSpacings.scale(9),
+							fontWeight: FontWeight.w600,
+							color: isDark
+								? AppTextColorDark.primary
+								: AppTextColorLight.primary,
+						),
+					),
+
+					SizedBox(width: AppSpacings.pMd),
+
+					// Humidity
 					Row(
+						mainAxisSize: MainAxisSize.min,
 						children: [
 							Icon(
-								icon,
-								size: AppSpacings.scale(14),
-								color: colorFamily.base,
+								WeatherIcons.humidity,
+								size: AppSpacings.scale(10),
+								color: isDark
+									? AppTextColorDark.placeholder
+									: AppTextColorLight.placeholder,
 							),
-							SizedBox(width: AppSpacings.pSm),
+							SizedBox(width: AppSpacings.pXxs),
 							Text(
-								label,
-								style: TextStyle(
-									fontSize: AppFontSize.extraSmall,
-									fontWeight: FontWeight.w500,
-									color: isDark
-										? AppTextColorDark.secondary
-										: AppTextColorLight.secondary,
-								),
-							),
-						],
-					),
-					Row(
-						crossAxisAlignment: CrossAxisAlignment.baseline,
-						textBaseline: TextBaseline.alphabetic,
-						children: [
-							Text(
-								value,
-								style: TextStyle(
-									fontSize: AppFontSize.base,
-									fontWeight: FontWeight.w700,
-									color: isDark
-										? AppTextColorDark.primary
-										: AppTextColorLight.primary,
-								),
-							),
-							SizedBox(width: AppSpacings.pXs),
-							Text(
-								unit,
+								'${forecast.humidity}%',
 								style: TextStyle(
 									fontSize: AppSpacings.scale(8),
 									color: isDark
-										? AppTextColorDark.secondary
-										: AppTextColorLight.secondary,
+										? AppTextColorDark.placeholder
+										: AppTextColorLight.placeholder,
 								),
 							),
-							if (secondaryValue != null && secondaryLabel != null) ...[
-								const Spacer(),
-								Text(
-									'$secondaryLabel $secondaryValue',
-									style: TextStyle(
-										fontSize: AppSpacings.scale(8),
-										color: isDark
-											? AppTextColorDark.placeholder
-											: AppTextColorLight.placeholder,
-									),
-								),
-							],
 						],
 					),
 				],
 			),
-		);
+		));
 	}
 
-	Widget _buildPrecipitationCard(
-		BuildContext context,
-		double amount,
-		String label,
-		IconData icon,
-		DisplayUnits units,
+	Widget _buildTempBar(
+		double? dayMin,
+		double? dayMax,
+		double weekMin,
+		double weekMax,
+		Color coolColor,
+		Color warmColor,
 		bool isDark,
 	) {
-		final precipSymbol = UnitConverter.precipitationSymbol(units.precipitation);
+		if (dayMin == null || dayMax == null || weekMax <= weekMin) {
+			return Container(
+				decoration: BoxDecoration(
+					color: isDark ? AppFillColorDark.lighter : AppFillColorLight.light,
+					borderRadius: BorderRadius.circular(AppSpacings.scale(2)),
+				),
+			);
+		}
 
-		final precipValue = NumberUtils.formatNumber(
-			UnitConverter.convertPrecipitation(amount, units.precipitation),
-			1,
-		);
+		final range = weekMax - weekMin;
+		final startFraction = ((dayMin - weekMin) / range).clamp(0.0, 1.0);
+		final endFraction = ((dayMax - weekMin) / range).clamp(0.0, 1.0);
 
-		return _buildDetailCard(
-			context: context,
-			isDark: isDark,
-			icon: icon,
-			label: label,
-			value: precipValue,
-			unit: precipSymbol,
+		return LayoutBuilder(
+			builder: (context, constraints) {
+				final totalWidth = constraints.maxWidth;
+				final barLeft = startFraction * totalWidth;
+				final barRight = endFraction * totalWidth;
+				final barWidth = (barRight - barLeft).clamp(2.0, totalWidth);
+
+				return Stack(
+					children: [
+						// Background track
+						Container(
+							decoration: BoxDecoration(
+								color: isDark ? AppFillColorDark.lighter : AppFillColorLight.light,
+								borderRadius: BorderRadius.circular(AppSpacings.scale(2)),
+							),
+						),
+						// Gradient bar
+						Positioned(
+							left: barLeft,
+							width: barWidth,
+							top: 0,
+							bottom: 0,
+							child: Container(
+								decoration: BoxDecoration(
+									gradient: LinearGradient(
+										colors: [coolColor, warmColor],
+									),
+									borderRadius: BorderRadius.circular(AppSpacings.scale(2)),
+								),
+							),
+						),
+					],
+				);
+			},
 		);
 	}
 
@@ -574,11 +724,11 @@ class WeatherDetailPage extends StatelessWidget {
 			),
 			decoration: BoxDecoration(
 				color: isDark ? AppFillColorDark.light : AppFillColorLight.blank,
-				borderRadius: BorderRadius.circular(AppBorderRadius.medium),
+				borderRadius: BorderRadius.circular(AppBorderRadius.base),
 				border: Border.all(
 					color: isDark
-						? AppBorderColorDark.extraLight
-						: AppBorderColorLight.lighter,
+						? AppFillColorDark.light
+						: AppBorderColorLight.darker,
 				),
 			),
 			child: Row(
@@ -626,8 +776,8 @@ class WeatherDetailPage extends StatelessWidget {
 						width: 1,
 						height: AppSpacings.scale(28),
 						color: isDark
-							? AppBorderColorDark.extraLight
-							: AppBorderColorLight.lighter,
+							? AppFillColorDark.light
+							: AppBorderColorLight.darker,
 					),
 					// Sunset
 					Expanded(
@@ -673,199 +823,6 @@ class WeatherDetailPage extends StatelessWidget {
 		);
 	}
 
-	// ===========================================================================
-	// FORECAST SECTION
-	// ===========================================================================
-
-	Widget _buildForecastSection(
-		BuildContext context,
-		List<ForecastDayView> forecast,
-	) {
-		final localizations = AppLocalizations.of(context)!;
-		final isDark = Theme.of(context).brightness == Brightness.dark;
-
-		return Column(
-			crossAxisAlignment: CrossAxisAlignment.start,
-			children: [
-				Text(
-					localizations.weather_detail_forecast,
-					style: TextStyle(
-						fontSize: AppFontSize.small,
-						fontWeight: FontWeight.w600,
-						color: isDark
-							? AppTextColorDark.regular
-							: AppTextColorLight.regular,
-					),
-				),
-				SizedBox(height: AppSpacings.pSm),
-				...forecast.map((day) => _buildForecastDay(context, day)),
-			],
-		);
-	}
-
-	Widget _buildForecastDay(BuildContext context, ForecastDayView forecast) {
-		final units = DisplayUnits.fromLocator();
-		final isDark = Theme.of(context).brightness == Brightness.dark;
-		final tempSymbol = UnitConverter.temperatureSymbol(units.temperature);
-
-		final dayTemp = forecast.temperatureDay ?? forecast.temperatureMorn;
-		final nightTemp = forecast.temperatureNight ?? forecast.temperatureEve;
-
-		final wholeDayTemp = dayTemp != null
-			? NumberUtils.formatNumber(
-				UnitConverter.convertTemperature(
-					forecast.toCelsius(dayTemp),
-					units.temperature,
-				),
-				0,
-			)
-			: NumberUtils.formatUnavailableNumber(0);
-
-		final wholeNightTemp = nightTemp != null
-			? NumberUtils.formatNumber(
-				UnitConverter.convertTemperature(
-					forecast.toCelsius(nightTemp),
-					units.temperature,
-				),
-				0,
-			)
-			: NumberUtils.formatUnavailableNumber(0);
-
-		return Container(
-			padding: EdgeInsets.symmetric(
-				horizontal: AppSpacings.pMd,
-				vertical: AppSpacings.pSm,
-			),
-			decoration: BoxDecoration(
-				border: Border(
-					bottom: BorderSide(
-						color: isDark
-							? AppBorderColorDark.extraLight
-							: AppBorderColorLight.lighter,
-						width: 0.5,
-					),
-				),
-			),
-			child: Row(
-				children: [
-					// Day name
-					SizedBox(
-						width: AppSpacings.scale(72),
-						child: Text(
-							DatetimeUtils.getShortDayName(forecast.dayTime),
-							style: TextStyle(
-								fontSize: AppFontSize.extraSmall,
-								fontWeight: FontWeight.w600,
-								color: isDark
-									? AppTextColorDark.primary
-									: AppTextColorLight.primary,
-							),
-						),
-					),
-
-					// Weather icon
-					BoxedIcon(
-						WeatherConditionMapper.getIcon(forecast.weatherCode),
-						size: AppSpacings.scale(16),
-						color: isDark
-							? AppTextColorDark.regular
-							: AppTextColorLight.regular,
-					),
-
-					SizedBox(width: AppSpacings.pMd),
-
-					// Condition text
-					Expanded(
-						child: Text(
-							WeatherConditionMapper.getDescription(forecast.weatherCode, context),
-							style: TextStyle(
-								fontSize: AppSpacings.scale(9),
-								color: isDark
-									? AppTextColorDark.secondary
-									: AppTextColorLight.secondary,
-							),
-							overflow: TextOverflow.ellipsis,
-						),
-					),
-
-					// Humidity
-					Row(
-						mainAxisSize: MainAxisSize.min,
-						children: [
-							Icon(
-								WeatherIcons.humidity,
-								size: AppSpacings.scale(10),
-								color: isDark
-									? AppTextColorDark.placeholder
-									: AppTextColorLight.placeholder,
-							),
-							SizedBox(width: AppSpacings.pXxs),
-							Text(
-								'${forecast.humidity}%',
-								style: TextStyle(
-									fontSize: AppSpacings.scale(8),
-									color: isDark
-										? AppTextColorDark.placeholder
-										: AppTextColorLight.placeholder,
-								),
-							),
-						],
-					),
-
-					SizedBox(width: AppSpacings.pMd),
-
-					// Temperature range
-					SizedBox(
-						width: AppSpacings.scale(68),
-						child: Row(
-							mainAxisAlignment: MainAxisAlignment.end,
-							crossAxisAlignment: CrossAxisAlignment.baseline,
-							textBaseline: TextBaseline.alphabetic,
-							children: [
-								Text(
-									wholeNightTemp,
-									style: TextStyle(
-										fontSize: AppSpacings.scale(9),
-										color: isDark
-											? AppTextColorDark.secondary
-											: AppTextColorLight.secondary,
-									),
-								),
-								Text(
-									' / ',
-									style: TextStyle(
-										fontSize: AppSpacings.scale(8),
-										color: isDark
-											? AppTextColorDark.placeholder
-											: AppTextColorLight.placeholder,
-									),
-								),
-								Text(
-									wholeDayTemp,
-									style: TextStyle(
-										fontSize: AppSpacings.scale(10),
-										fontWeight: FontWeight.w600,
-										color: isDark
-											? AppTextColorDark.primary
-											: AppTextColorLight.primary,
-									),
-								),
-								Text(
-									tempSymbol,
-									style: TextStyle(
-										fontSize: AppSpacings.scale(8),
-										color: isDark
-											? AppTextColorDark.secondary
-											: AppTextColorLight.secondary,
-									),
-								),
-							],
-						),
-					),
-				],
-			),
-		);
-	}
 }
 
 /// Displays glass tiles centered when they fit, or in a horizontal scroll

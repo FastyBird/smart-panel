@@ -925,6 +925,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get weather_detail_not_configured => 'Weather not configured';
 
   @override
+  String get weather_detail_today => 'Today';
+
+  @override
   String get weather_condition_thunderstorm_with_light_rain => 'Thunderstorm with light rain';
 
   @override

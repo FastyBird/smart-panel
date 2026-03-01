@@ -1184,6 +1184,10 @@
   "@weather_detail_not_configured": {
     "description": "Message shown when weather is not configured"
   },
+  "weather_detail_today": "Today",
+  "@weather_detail_today": {
+    "description": "Label for today in forecast"
+  },
   "weather_condition_thunderstorm_with_light_rain": "Thunderstorm with light rain",
   "@weather_condition_thunderstorm_with_light_rain": {
     "description": "A thunderstorm accompanied by light rain."
