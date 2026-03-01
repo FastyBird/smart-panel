@@ -42,7 +42,7 @@ export class ClaudeProvider implements ILlmProvider {
 		const resolvedModel = config?.model ?? model;
 		const timeout = options?.timeout ?? 30_000;
 
-		return sendAnthropicMessage(apiKey, resolvedModel, systemPrompt, messages, timeout);
+		return sendAnthropicMessage({ apiKey }, resolvedModel, systemPrompt, messages, timeout);
 	}
 
 	private getPluginConfig(): BuddyClaudeConfigModel | null {

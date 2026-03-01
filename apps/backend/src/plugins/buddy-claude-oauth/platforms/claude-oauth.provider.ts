@@ -49,7 +49,7 @@ export class ClaudeOauthProvider implements ILlmProvider {
 		const resolvedModel = config?.model ?? model;
 		const timeout = options?.timeout ?? 30_000;
 
-		return sendAnthropicMessage(accessToken, resolvedModel, systemPrompt, messages, timeout);
+		return sendAnthropicMessage({ authToken: accessToken }, resolvedModel, systemPrompt, messages, timeout);
 	}
 
 	private getPluginConfig(): BuddyClaudeOauthConfigModel | null {

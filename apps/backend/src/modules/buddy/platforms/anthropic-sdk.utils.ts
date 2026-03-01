@@ -6,11 +6,18 @@ import type { ChatMessage } from './llm-provider.platform';
 const ANTHROPIC_SDK_MODULE = '@anthropic-ai/sdk';
 
 /**
+ * Anthropic SDK authentication credentials.
+ * - `apiKey`: sent via `x-api-key` header (for API key auth)
+ * - `authToken`: sent via `Authorization: Bearer` header (for OAuth auth)
+ */
+export type AnthropicCredentials = { apiKey: string } | { authToken: string };
+
+/**
  * Shared Anthropic SDK interaction logic used by all Claude-based providers.
  * Handles SDK import, client creation, API call, and response parsing.
  */
 export async function sendAnthropicMessage(
-	apiKey: string,
+	credentials: AnthropicCredentials,
 	model: string,
 	systemPrompt: string,
 	messages: ChatMessage[],
@@ -19,7 +26,7 @@ export async function sendAnthropicMessage(
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 	const { default: Anthropic } = await import(ANTHROPIC_SDK_MODULE);
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
-	const client = new Anthropic({ apiKey, timeout });
+	const client = new Anthropic({ ...credentials, timeout });
 
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
 	const response = await client.messages.create({
