@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 
 import { ConfigService } from '../../config/services/config.service';
-import { BUDDY_MODULE_NAME } from '../buddy.constants';
+import { BUDDY_MODULE_NAME, LEGACY_PROVIDER_MAP } from '../buddy.constants';
 import { BuddyProviderNotConfiguredException, BuddyProviderTimeoutException } from '../buddy.exceptions';
 import { BuddyConfigModel } from '../models/config.model';
 import { ChatMessage, LlmOptions } from '../platforms/llm-provider.platform';
@@ -11,16 +11,6 @@ import { LlmProviderRegistryService } from './llm-provider-registry.service';
 export { ChatMessage, LlmOptions } from '../platforms/llm-provider.platform';
 
 const DEFAULT_TIMEOUT = 30_000;
-
-/**
- * Maps legacy enum-based provider values (from pre-plugin configs)
- * to the new plugin-based provider names.
- */
-const LEGACY_PROVIDER_MAP = new Map<string, string>([
-	['claude', 'buddy-claude-plugin'],
-	['openai', 'buddy-openai-plugin'],
-	['ollama', 'buddy-ollama-plugin'],
-]);
 
 @Injectable()
 export class LlmProviderService {
