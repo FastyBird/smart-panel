@@ -130,7 +130,7 @@
 
 					<suspense>
 						<router-view
-							:key="`${props.page.id}-${page?.id}`"
+							:key="route.path"
 							v-slot="{ Component }"
 						>
 							<component
@@ -182,7 +182,7 @@
 
 				<suspense>
 					<router-view
-						:key="`${props.page.id}-${page?.id}`"
+						:key="route.path"
 						v-slot="{ Component }"
 					>
 						<component
