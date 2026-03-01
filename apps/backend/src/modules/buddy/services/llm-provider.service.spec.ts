@@ -1,12 +1,15 @@
-import { BUDDY_MODULE_NAME, LlmProvider, MessageRole } from '../buddy.constants';
+import { BUDDY_MODULE_NAME, LLM_PROVIDER_NONE, MessageRole } from '../buddy.constants';
 import { BuddyProviderNotConfiguredException } from '../buddy.exceptions';
 import { BuddyConfigModel } from '../models/config.model';
+import { ChatMessage, ILlmProvider } from '../platforms/llm-provider.platform';
 
-import { ChatMessage, LlmProviderService } from './llm-provider.service';
+import { LlmProviderRegistryService } from './llm-provider-registry.service';
+import { LlmProviderService } from './llm-provider.service';
 
 describe('LlmProviderService', () => {
 	let service: LlmProviderService;
 	let configService: { getModuleConfig: jest.Mock };
+	let registry: LlmProviderRegistryService;
 
 	const systemPrompt = 'You are a helpful assistant';
 	const messages: ChatMessage[] = [{ role: MessageRole.USER, content: 'Hello' }];
@@ -14,12 +17,22 @@ describe('LlmProviderService', () => {
 	function makeConfig(overrides: Partial<BuddyConfigModel> = {}): BuddyConfigModel {
 		const config = new BuddyConfigModel();
 
-		config.provider = overrides.provider ?? LlmProvider.CLAUDE;
-		config.apiKey = overrides.apiKey ?? 'test-key';
-		config.model = overrides.model ?? null;
-		config.ollamaUrl = overrides.ollamaUrl ?? null;
+		config.provider = overrides.provider ?? 'buddy-claude-plugin';
 
 		return config;
+	}
+
+	let claudeSendMessage: jest.Mock;
+	let openaiSendMessage: jest.Mock;
+
+	function makeMockProvider(type: string, sendMessageMock: jest.Mock): ILlmProvider {
+		return {
+			getType: () => type,
+			getName: () => type,
+			getDescription: () => `Mock ${type}`,
+			getDefaultModel: () => 'mock-model',
+			sendMessage: sendMessageMock,
+		};
 	}
 
 	beforeEach(() => {
@@ -27,12 +40,19 @@ describe('LlmProviderService', () => {
 			getModuleConfig: jest.fn().mockReturnValue(makeConfig()),
 		};
 
-		service = new LlmProviderService(configService as any);
+		claudeSendMessage = jest.fn().mockResolvedValue('Hello from mock');
+		openaiSendMessage = jest.fn().mockResolvedValue('Hello from mock');
+
+		registry = new LlmProviderRegistryService();
+		registry.register(makeMockProvider('buddy-claude-plugin', claudeSendMessage));
+		registry.register(makeMockProvider('buddy-openai-plugin', openaiSendMessage));
+
+		service = new LlmProviderService(configService as any, registry);
 	});
 
 	describe('provider not configured', () => {
-		it('should throw BuddyProviderNotConfiguredException when provider is NONE', async () => {
-			configService.getModuleConfig.mockReturnValue(makeConfig({ provider: LlmProvider.NONE }));
+		it('should throw BuddyProviderNotConfiguredException when provider is none', async () => {
+			configService.getModuleConfig.mockReturnValue(makeConfig({ provider: LLM_PROVIDER_NONE }));
 
 			await expect(service.sendMessage(systemPrompt, messages)).rejects.toThrow(BuddyProviderNotConfiguredException);
 		});
@@ -42,14 +62,20 @@ describe('LlmProviderService', () => {
 				throw new Error('No config');
 			});
 
-			// When config throws, it falls back to NONE provider
+			// When config throws, it falls back to 'none' provider
+			await expect(service.sendMessage(systemPrompt, messages)).rejects.toThrow(BuddyProviderNotConfiguredException);
+		});
+
+		it('should throw BuddyProviderNotConfiguredException when provider not registered', async () => {
+			configService.getModuleConfig.mockReturnValue(makeConfig({ provider: 'unknown-plugin' }));
+
 			await expect(service.sendMessage(systemPrompt, messages)).rejects.toThrow(BuddyProviderNotConfiguredException);
 		});
 	});
 
 	describe('provider selection', () => {
 		it('should call the correct config key', () => {
-			configService.getModuleConfig.mockReturnValue(makeConfig({ provider: LlmProvider.NONE }));
+			configService.getModuleConfig.mockReturnValue(makeConfig({ provider: LLM_PROVIDER_NONE }));
 
 			service.sendMessage(systemPrompt, messages).catch(() => {
 				// Expected to throw
@@ -59,52 +85,66 @@ describe('LlmProviderService', () => {
 		});
 	});
 
-	describe('Claude provider', () => {
-		it('should throw on import failure when Claude SDK not available', async () => {
-			configService.getModuleConfig.mockReturnValue(makeConfig({ provider: LlmProvider.CLAUDE }));
+	describe('registered provider delegation', () => {
+		it('should delegate to registered Claude provider', async () => {
+			configService.getModuleConfig.mockReturnValue(makeConfig({ provider: 'buddy-claude-plugin' }));
 
-			// The dynamic import of @anthropic-ai/sdk will fail in test environment
-			await expect(service.sendMessage(systemPrompt, messages)).rejects.toThrow();
+			const result = await service.sendMessage(systemPrompt, messages);
+
+			expect(result).toBe('Hello from mock');
 		});
-	});
 
-	describe('OpenAI provider', () => {
-		it('should throw on import failure when OpenAI SDK not available', async () => {
-			configService.getModuleConfig.mockReturnValue(makeConfig({ provider: LlmProvider.OPENAI }));
+		it('should delegate to registered OpenAI provider', async () => {
+			configService.getModuleConfig.mockReturnValue(makeConfig({ provider: 'buddy-openai-plugin' }));
 
-			// The dynamic import of openai will fail in test environment
-			await expect(service.sendMessage(systemPrompt, messages)).rejects.toThrow();
+			const result = await service.sendMessage(systemPrompt, messages);
+
+			expect(result).toBe('Hello from mock');
 		});
-	});
 
-	describe('Ollama provider', () => {
-		it('should throw when Ollama server is not reachable', async () => {
-			configService.getModuleConfig.mockReturnValue(
-				makeConfig({
-					provider: LlmProvider.OLLAMA,
-					ollamaUrl: 'http://localhost:99999',
-				}),
+		it('should pass the default model from the provider when no model in config', async () => {
+			configService.getModuleConfig.mockReturnValue(makeConfig({ provider: 'buddy-claude-plugin' }));
+
+			await service.sendMessage(systemPrompt, messages);
+
+			expect(claudeSendMessage).toHaveBeenCalledWith(
+				systemPrompt,
+				messages,
+				'mock-model',
+				expect.objectContaining({ timeout: 30_000 }),
 			);
-
-			await expect(service.sendMessage(systemPrompt, messages, { timeout: 1000 })).rejects.toThrow();
 		});
 	});
 
-	describe('timeout handling', () => {
-		it('should throw BuddyProviderTimeoutException for timeout errors via Ollama', async () => {
-			// We can test the timeout path by using a very short timeout
-			// with the Ollama provider (since it uses fetch which we can predict behavior for)
-			configService.getModuleConfig.mockReturnValue(
-				makeConfig({
-					provider: LlmProvider.OLLAMA,
-					ollamaUrl: 'http://10.255.255.1', // Non-routable IP for timeout
-				}),
-			);
+	describe('legacy provider name migration', () => {
+		it('should resolve legacy "claude" to "buddy-claude-plugin"', async () => {
+			configService.getModuleConfig.mockReturnValue(makeConfig({ provider: 'claude' }));
 
-			const promise = service.sendMessage(systemPrompt, messages, { timeout: 100 });
+			const result = await service.sendMessage(systemPrompt, messages);
 
-			// Should eventually throw — either timeout or connection error
-			await expect(promise).rejects.toThrow();
+			expect(result).toBe('Hello from mock');
+			expect(claudeSendMessage).toHaveBeenCalled();
+		});
+
+		it('should resolve legacy "openai" to "buddy-openai-plugin"', async () => {
+			configService.getModuleConfig.mockReturnValue(makeConfig({ provider: 'openai' }));
+
+			const result = await service.sendMessage(systemPrompt, messages);
+
+			expect(result).toBe('Hello from mock');
+			expect(openaiSendMessage).toHaveBeenCalled();
+		});
+
+		it('should resolve legacy "ollama" to "buddy-ollama-plugin"', async () => {
+			const ollamaSendMessage = jest.fn().mockResolvedValue('Hello from ollama');
+
+			registry.register(makeMockProvider('buddy-ollama-plugin', ollamaSendMessage));
+			configService.getModuleConfig.mockReturnValue(makeConfig({ provider: 'ollama' }));
+
+			const result = await service.sendMessage(systemPrompt, messages);
+
+			expect(result).toBe('Hello from ollama');
+			expect(ollamaSendMessage).toHaveBeenCalled();
 		});
 	});
 });

@@ -1,5 +1,5 @@
-import { Expose } from 'class-transformer';
-import { IsEnum, IsInt, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { Expose, Transform } from 'class-transformer';
+import { IsInt, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -15,7 +15,7 @@ import {
 	ENERGY_EXCESS_SOLAR_THRESHOLD_KW,
 	ENERGY_HIGH_CONSUMPTION_THRESHOLD_KW,
 	HEARTBEAT_DEFAULT_INTERVAL_MS,
-	LlmProvider,
+	LLM_PROVIDER_NONE,
 } from '../buddy.constants';
 
 @ApiSchema({ name: 'ConfigModuleDataBuddy' })
@@ -30,49 +30,35 @@ export class BuddyConfigModel extends ModuleConfigModel {
 	type: string = BUDDY_MODULE_NAME;
 
 	@ApiPropertyOptional({
-		description: 'LLM provider to use for chat conversations',
-		enum: LlmProvider,
-		example: LlmProvider.NONE,
+		description:
+			'LLM provider plugin type to use for chat conversations (e.g. buddy-openai-plugin, buddy-claude-plugin, buddy-ollama-plugin, or none)',
+		type: 'string',
+		example: LLM_PROVIDER_NONE,
 	})
 	@Expose()
 	@IsOptional()
-	@IsEnum(LlmProvider)
-	provider: LlmProvider = LlmProvider.NONE;
+	@IsString()
+	provider: string = LLM_PROVIDER_NONE;
 
-	@ApiPropertyOptional({
-		name: 'api_key',
-		description: 'API key for the selected LLM provider',
-		type: 'string',
-		nullable: true,
-		example: null,
-	})
+	// Legacy fields – kept so existing YAML configs pass forbidNonWhitelisted validation.
+	// Values are discarded on read; provider-specific settings now live in each plugin's config.
 	@Expose({ name: 'api_key' })
+	@Transform(() => undefined, { toClassOnly: true })
 	@IsOptional()
 	@IsString()
-	apiKey: string | null = null;
+	apiKey?: string;
 
-	@ApiPropertyOptional({
-		description: 'Model name to use with the selected LLM provider',
-		type: 'string',
-		nullable: true,
-		example: null,
-	})
 	@Expose()
+	@Transform(() => undefined, { toClassOnly: true })
 	@IsOptional()
 	@IsString()
-	model: string | null = null;
+	model?: string;
 
-	@ApiPropertyOptional({
-		name: 'ollama_url',
-		description: 'Base URL for the Ollama API endpoint',
-		type: 'string',
-		nullable: true,
-		example: 'http://localhost:11434',
-	})
 	@Expose({ name: 'ollama_url' })
+	@Transform(() => undefined, { toClassOnly: true })
 	@IsOptional()
 	@IsString()
-	ollamaUrl: string | null = null;
+	ollamaUrl?: string;
 
 	@ApiPropertyOptional({
 		name: 'heartbeat_interval_ms',

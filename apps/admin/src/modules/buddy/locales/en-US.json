@@ -27,32 +27,23 @@
 	"fields": {
 		"config": {
 			"provider": {
-				"title": "AI Provider",
-				"placeholder": "Select an AI provider",
+				"title": "AI Provider Plugin",
+				"placeholder": "Select an AI provider plugin",
 				"options": {
 					"none": "None (rule-based only)",
-					"claude": "Claude (Anthropic)",
-					"openai": "OpenAI",
-					"ollama": "Ollama (local)"
+					"claude": "Buddy Claude (Anthropic)",
+					"openai": "Buddy OpenAI",
+					"openaiCodex": "Buddy OpenAI Codex (OAuth)",
+					"claudeOauth": "Buddy Claude OAuth (Anthropic)",
+					"ollama": "Buddy Ollama (local)"
 				}
-			},
-			"apiKey": {
-				"title": "API Key",
-				"placeholder": "Enter your API key"
-			},
-			"model": {
-				"title": "Model",
-				"placeholder": "Enter model name"
-			},
-			"ollamaUrl": {
-				"title": "Ollama URL",
-				"placeholder": "http://localhost:11434"
 			}
 		}
 	},
 	"texts": {
 		"loadingConfig": "Loading buddy configuration...",
-		"aboutBuddy": "Configure the AI buddy assistant that observes your actions, learns your patterns, and suggests automations. Select an AI provider and enter your API credentials to enable chat functionality. Without a provider, rule-based suggestions will still work."
+		"aboutBuddy": "Configure the AI buddy assistant that observes your actions, learns your patterns, and suggests automations. Select an AI provider plugin to enable chat functionality. Provider-specific settings (API key, model) are configured in the plugin's own settings page. Without a provider, rule-based suggestions will still work.",
+		"pluginConfigHint": "API keys, model names, and other provider-specific settings are configured in the selected plugin's settings page."
 	},
 	"meta": {
 		"settings": {
