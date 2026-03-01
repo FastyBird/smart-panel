@@ -15,6 +15,7 @@ class AudioRecordingService extends ChangeNotifier {
 	bool _isRecording = false;
 	bool _hasPermission = false;
 	bool _permissionChecked = false;
+	bool _disposed = false;
 	String? _currentRecordingPath;
 	Duration _recordingDuration = Duration.zero;
 	Timer? _durationTimer;
@@ -32,6 +33,13 @@ class AudioRecordingService extends ChangeNotifier {
 
 	/// Whether the recording was automatically stopped at the max duration.
 	bool get wasAutoStopped => _autoStopResult != null;
+
+	@override
+	void notifyListeners() {
+		if (!_disposed) {
+			super.notifyListeners();
+		}
+	}
 
 	/// Check and request microphone permission.
 	Future<bool> checkPermission() async {
@@ -251,6 +259,7 @@ class AudioRecordingService extends ChangeNotifier {
 
 	@override
 	void dispose() {
+		_disposed = true;
 		_durationTimer?.cancel();
 
 		// Clean up temp recording file if still on disk

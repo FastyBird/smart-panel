@@ -718,6 +718,15 @@ class BuddyRepository extends ChangeNotifier {
 			return 'Unsupported audio format';
 		}
 
+		if (e.response?.statusCode == 400) {
+			final data = e.response?.data;
+			final message = data is Map<String, dynamic> ? data['message'] as String? : null;
+
+			if (message != null && message.isNotEmpty) {
+				return message;
+			}
+		}
+
 		return _parseError(e);
 	}
 
