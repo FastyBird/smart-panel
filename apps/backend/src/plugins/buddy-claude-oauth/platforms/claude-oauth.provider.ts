@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
 import { sendAnthropicMessage } from '../../../modules/buddy/platforms/anthropic-sdk.utils';
 import { ChatMessage, ILlmProvider, LlmOptions } from '../../../modules/buddy/platforms/llm-provider.platform';
@@ -15,7 +15,6 @@ import { BuddyClaudeOauthConfigModel } from '../models/config.model';
 
 @Injectable()
 export class ClaudeOauthProvider implements ILlmProvider {
-	private readonly logger = new Logger(ClaudeOauthProvider.name);
 	private readonly tokenManager = new OAuthTokenManager({
 		tokenUrl: BUDDY_CLAUDE_OAUTH_TOKEN_URL,
 		providerLabel: 'ClaudeOAuth',

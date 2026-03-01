@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
 import { ChatMessage, ILlmProvider, LlmOptions } from '../../../modules/buddy/platforms/llm-provider.platform';
 import { OAuthTokenManager } from '../../../modules/buddy/platforms/oauth-token-manager';
@@ -15,7 +15,6 @@ import { BuddyOpenaiCodexConfigModel } from '../models/config.model';
 
 @Injectable()
 export class OpenAiCodexProvider implements ILlmProvider {
-	private readonly logger = new Logger(OpenAiCodexProvider.name);
 	private readonly tokenManager = new OAuthTokenManager({
 		tokenUrl: BUDDY_OPENAI_CODEX_TOKEN_URL,
 		providerLabel: 'OpenAiCodex',

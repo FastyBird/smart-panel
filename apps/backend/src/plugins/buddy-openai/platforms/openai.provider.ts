@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
 import { ChatMessage, ILlmProvider, LlmOptions } from '../../../modules/buddy/platforms/llm-provider.platform';
 import { sendOpenAiMessage } from '../../../modules/buddy/platforms/openai-sdk.utils';
@@ -13,8 +13,6 @@ import { BuddyOpenaiConfigModel } from '../models/config.model';
 
 @Injectable()
 export class OpenAiProvider implements ILlmProvider {
-	private readonly logger = new Logger(OpenAiProvider.name);
-
 	constructor(private readonly configService: ConfigService) {}
 
 	getType(): string {

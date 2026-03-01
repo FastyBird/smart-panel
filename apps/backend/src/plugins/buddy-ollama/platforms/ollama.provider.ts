@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
 import { MessageRole } from '../../../modules/buddy/buddy.constants';
 import { ChatMessage, ILlmProvider, LlmOptions } from '../../../modules/buddy/platforms/llm-provider.platform';
@@ -14,8 +14,6 @@ import { BuddyOllamaConfigModel } from '../models/config.model';
 
 @Injectable()
 export class OllamaProvider implements ILlmProvider {
-	private readonly logger = new Logger(OllamaProvider.name);
-
 	constructor(private readonly configService: ConfigService) {}
 
 	getType(): string {

@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
 import { sendAnthropicMessage } from '../../../modules/buddy/platforms/anthropic-sdk.utils';
 import { ChatMessage, ILlmProvider, LlmOptions } from '../../../modules/buddy/platforms/llm-provider.platform';
@@ -13,8 +13,6 @@ import { BuddyClaudeConfigModel } from '../models/config.model';
 
 @Injectable()
 export class ClaudeProvider implements ILlmProvider {
-	private readonly logger = new Logger(ClaudeProvider.name);
-
 	constructor(private readonly configService: ConfigService) {}
 
 	getType(): string {
