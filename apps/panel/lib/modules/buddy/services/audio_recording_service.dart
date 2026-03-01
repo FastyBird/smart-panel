@@ -198,11 +198,6 @@ class AudioRecordingService extends ChangeNotifier {
 				// Ignore cleanup errors
 			}
 
-			// Require at least 0.5 seconds of audio
-			if (_recordingDuration < const Duration(milliseconds: 500)) {
-				return null;
-			}
-
 			return RecordedAudio(
 				bytes: bytes,
 				mimeType: 'audio/wav',

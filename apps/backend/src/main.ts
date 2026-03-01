@@ -43,16 +43,25 @@ async function bootstrap() {
 		pluginExtensions,
 	});
 
-	const app = await NestFactory.create<NestFastifyApplication>(
-		appModule,
-		new FastifyAdapter({ bodyLimit: MULTIPART_MAX_FILE_SIZE_BYTES }),
-		{ bufferLogs: true },
-	);
+	const app = await NestFactory.create<NestFastifyApplication>(appModule, new FastifyAdapter(), { bufferLogs: true });
 
 	// Register multipart support for file uploads
 	await app.register((await import('@fastify/multipart')).default, {
 		limits: { fileSize: MULTIPART_MAX_FILE_SIZE_BYTES },
 	});
+
+	// Scope the raised body limit to multipart/form-data only, keeping
+	// Fastify's default 1 MiB for JSON endpoints to limit memory pressure.
+	const fastifyInstance = app.getHttpAdapter().getInstance();
+
+	fastifyInstance.removeContentTypeParser('multipart/form-data');
+	fastifyInstance.addContentTypeParser(
+		'multipart/form-data',
+		{ bodyLimit: MULTIPART_MAX_FILE_SIZE_BYTES },
+		(_request: unknown, _payload: unknown, done: (err: null) => void) => {
+			done(null);
+		},
+	);
 
 	const sysLogger = app.get(SystemLoggerService);
 
