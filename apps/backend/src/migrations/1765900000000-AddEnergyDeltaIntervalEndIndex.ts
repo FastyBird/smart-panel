@@ -15,9 +15,7 @@ export class AddEnergyDeltaIntervalEndIndex1765900000000 implements MigrationInt
 		}
 
 		// Check if index already exists (e.g. from synchronize:true environments)
-		const indices: { name: string }[] = await queryRunner.query(
-			`PRAGMA index_list("energy_module_deltas")`,
-		);
+		const indices: { name: string }[] = await queryRunner.query(`PRAGMA index_list("energy_module_deltas")`);
 		const hasIndex = indices.some((idx) => idx.name === 'IDX_energy_deltas_interval_end');
 
 		if (!hasIndex) {
