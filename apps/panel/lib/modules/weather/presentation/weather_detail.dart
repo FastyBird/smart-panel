@@ -756,7 +756,7 @@ class WeatherDetailPage extends StatelessWidget {
 					// Condition text
 					Expanded(
 						child: Text(
-							forecast.weatherMain,
+							WeatherConditionMapper.getDescription(forecast.weatherCode, context),
 							style: TextStyle(
 								fontSize: AppSpacings.scale(9),
 								color: isDark
