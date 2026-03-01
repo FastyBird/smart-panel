@@ -334,7 +334,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, getCurrentInstance, h, nextTick, onBeforeMount, onBeforeUnmount, onMounted, ref, render, watch } from 'vue';
+import { type ComputedRef, computed, getCurrentInstance, h, nextTick, onBeforeMount, onBeforeUnmount, onMounted, ref, render, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElButton, ElCard, ElCol, ElEmpty, ElIcon, ElOption, ElPopover, ElRow, ElSelect, ElTag, ElText, useNamespace } from 'element-plus';
@@ -445,8 +445,8 @@ const tilesStore = storesManager.getStore(tilesStoreKey);
 const { firstLoad: tilesFirstLoad, semaphore: tilesSemaphore } = storeToRefs(tilesStore);
 
 interface ITileStoreAccessor {
-	tiles: ReturnType<typeof computed<ITile[]>>;
-	areLoading: ReturnType<typeof computed<boolean>>;
+	tiles: ComputedRef<ITile[]>;
+	areLoading: ComputedRef<boolean>;
 	fetchTiles: () => Promise<void>;
 }
 
