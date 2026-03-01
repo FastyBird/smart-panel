@@ -76,6 +76,7 @@ class AudioRecordingService extends ChangeNotifier {
 		_isRecording = true;
 
 		_autoStopResult = null;
+		_recordingDuration = Duration.zero;
 
 		if (!_permissionChecked) {
 			await checkPermission();
@@ -109,7 +110,6 @@ class AudioRecordingService extends ChangeNotifier {
 				path: _currentRecordingPath!,
 			);
 
-			_recordingDuration = Duration.zero;
 			notifyListeners();
 
 			// Start duration timer
