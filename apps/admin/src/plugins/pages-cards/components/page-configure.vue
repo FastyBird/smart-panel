@@ -720,7 +720,6 @@ const initializeGrids = (): void => {
 
 	suppressMarkChanged.value = true;
 	destroyGrids();
-	removedTiles.clear();
 
 	const cardsToInit = sortedCards.value.filter((card) => getCardTiles(card.id).length > 0);
 
