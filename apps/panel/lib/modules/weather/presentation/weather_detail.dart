@@ -367,7 +367,7 @@ class WeatherDetailPage extends StatelessWidget {
 			tiles: tiles,
 			separator: AppSpacings.pSm,
 			height: AppSpacings.scale(36),
-			gradientColor: config.gradientColors.last,
+			gradientColor: config.gradientColors[config.gradientColors.length ~/ 2],
 		);
 	}
 
