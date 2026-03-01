@@ -150,13 +150,17 @@ const clear = (): void => {
 	formResult.value = FormResult.NONE;
 };
 
-const model = reactive({
-	id: props.card.id,
+const initialValues = {
 	title: props.card.title,
 	icon: props.card.icon,
 	order: props.card.order,
 	rows: props.card.rows ?? null,
 	cols: props.card.cols ?? null,
+};
+
+const model = reactive({
+	id: props.card.id,
+	...initialValues,
 });
 
 const rules = reactive<FormRules>({
@@ -233,7 +237,12 @@ watch(
 watch(
 	model,
 	(): void => {
-		formChanged.value = true;
+		formChanged.value =
+			model.title !== initialValues.title ||
+			model.icon !== initialValues.icon ||
+			model.order !== initialValues.order ||
+			model.rows !== initialValues.rows ||
+			model.cols !== initialValues.cols;
 	},
 	{ deep: true }
 );

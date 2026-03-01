@@ -139,13 +139,15 @@ const clear = (): void => {
 	formResult.value = FormResult.NONE;
 };
 
-const model = reactive({
+const initialValues = {
 	title: '',
 	icon: null as string | null,
 	order: 0,
 	rows: null as number | null,
 	cols: null as number | null,
-});
+};
+
+const model = reactive({ ...initialValues });
 
 const rules = reactive<FormRules>({
 	title: [{ required: true, message: t('pagesCardsPlugin.fields.cards.title.validation.required'), trigger: 'change' }],
@@ -222,7 +224,12 @@ watch(
 watch(
 	model,
 	(): void => {
-		formChanged.value = true;
+		formChanged.value =
+			model.title !== initialValues.title ||
+			model.icon !== initialValues.icon ||
+			model.order !== initialValues.order ||
+			model.rows !== initialValues.rows ||
+			model.cols !== initialValues.cols;
 	},
 	{ deep: true }
 );
