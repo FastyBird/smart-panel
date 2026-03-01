@@ -46,7 +46,9 @@ async function bootstrap() {
 	const app = await NestFactory.create<NestFastifyApplication>(appModule, new FastifyAdapter(), { bufferLogs: true });
 
 	// Register multipart support for file uploads
-	await app.register((await import('@fastify/multipart')).default, { limits: { fileSize: MULTIPART_MAX_FILE_SIZE_BYTES } });
+	await app.register((await import('@fastify/multipart')).default, {
+		limits: { fileSize: MULTIPART_MAX_FILE_SIZE_BYTES },
+	});
 
 	const sysLogger = app.get(SystemLoggerService);
 

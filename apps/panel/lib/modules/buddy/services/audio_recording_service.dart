@@ -95,12 +95,14 @@ class AudioRecordingService extends ChangeNotifier {
 			// Start duration timer
 			_durationTimer = Timer.periodic(
 				const Duration(milliseconds: 100),
-				(_) {
+				(timer) {
 					_recordingDuration += const Duration(milliseconds: 100);
 					notifyListeners();
 
-					// Auto-stop at max duration — store result for retrieval
+					// Auto-stop at max duration — cancel timer immediately to
+					// prevent a second tick from re-entering _performAutoStop.
 					if (_recordingDuration >= maxDuration) {
+						timer.cancel();
 						unawaited(_performAutoStop());
 					}
 				},
