@@ -907,6 +907,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get weather_forecast_humidity => 'Humidity:';
 
   @override
+  String get weather_detail_rain => 'Rain';
+
+  @override
+  String get weather_detail_snow => 'Snow';
+
+  @override
+  String get weather_detail_sunrise => 'Sunrise';
+
+  @override
+  String get weather_detail_sunset => 'Sunset';
+
+  @override
+  String get weather_detail_forecast => 'Forecast';
+
+  @override
+  String get weather_detail_not_configured => 'Weather not configured';
+
+  @override
+  String get weather_detail_today => 'Today';
+
+  @override
   String get weather_condition_thunderstorm_with_light_rain => 'Thunderstorm with light rain';
 
   @override

@@ -22,4 +22,30 @@ class ForecastDayView extends WeatherView<ForecastDayModel> {
   int get weatherCode => weatherModel.weather.code;
 
   int get humidity => weatherModel.humidity;
+
+  int get pressure => weatherModel.pressure;
+
+  double get windSpeed => weatherModel.wind.speed;
+
+  int get windDeg => weatherModel.wind.deg;
+
+  double? get windGust => weatherModel.wind.gust;
+
+  double get clouds => weatherModel.clouds;
+
+  double? get rain => weatherModel.rain;
+
+  double? get snow => weatherModel.snow;
+
+  double? get temperatureMin => weatherModel.temperature.min;
+
+  double? get temperatureMax => weatherModel.temperature.max;
+
+  DateTime? get sunrise => weatherModel.sunrise;
+
+  DateTime? get sunset => weatherModel.sunset;
+
+  DateTime? get moonrise => weatherModel.moonrise;
+
+  DateTime? get moonset => weatherModel.moonset;
 }

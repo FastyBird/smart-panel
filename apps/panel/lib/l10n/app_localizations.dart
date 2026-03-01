@@ -1691,6 +1691,48 @@ abstract class AppLocalizations {
   /// **'Humidity:'**
   String get weather_forecast_humidity;
 
+  /// Label for rain section
+  ///
+  /// In en, this message translates to:
+  /// **'Rain'**
+  String get weather_detail_rain;
+
+  /// Label for snow section
+  ///
+  /// In en, this message translates to:
+  /// **'Snow'**
+  String get weather_detail_snow;
+
+  /// Label for sunrise time
+  ///
+  /// In en, this message translates to:
+  /// **'Sunrise'**
+  String get weather_detail_sunrise;
+
+  /// Label for sunset time
+  ///
+  /// In en, this message translates to:
+  /// **'Sunset'**
+  String get weather_detail_sunset;
+
+  /// Section heading for weather forecast
+  ///
+  /// In en, this message translates to:
+  /// **'Forecast'**
+  String get weather_detail_forecast;
+
+  /// Message shown when weather is not configured
+  ///
+  /// In en, this message translates to:
+  /// **'Weather not configured'**
+  String get weather_detail_not_configured;
+
+  /// Label for today in forecast
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get weather_detail_today;
+
   /// A thunderstorm accompanied by light rain.
   ///
   /// In en, this message translates to:

@@ -24,4 +24,18 @@ class CurrentDayView extends WeatherView<CurrentDayModel> {
   int get windDeg => weatherModel.wind.deg;
 
   double get windSpeed => weatherModel.wind.speed;
+
+  double? get windGust => weatherModel.wind.gust;
+
+  double? get temperatureMin => weatherModel.temperatureMin;
+
+  double? get temperatureMax => weatherModel.temperatureMax;
+
+  double get clouds => weatherModel.clouds;
+
+  double? get rain => weatherModel.rain;
+
+  double? get snow => weatherModel.snow;
+
+  DateTime get dayTime => weatherModel.dayTime;
 }

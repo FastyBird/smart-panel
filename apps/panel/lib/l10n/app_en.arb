@@ -1160,6 +1160,34 @@
   "@weather_forecast_humidity": {
     "description": ""
   },
+  "weather_detail_rain": "Rain",
+  "@weather_detail_rain": {
+    "description": "Label for rain section"
+  },
+  "weather_detail_snow": "Snow",
+  "@weather_detail_snow": {
+    "description": "Label for snow section"
+  },
+  "weather_detail_sunrise": "Sunrise",
+  "@weather_detail_sunrise": {
+    "description": "Label for sunrise time"
+  },
+  "weather_detail_sunset": "Sunset",
+  "@weather_detail_sunset": {
+    "description": "Label for sunset time"
+  },
+  "weather_detail_forecast": "Forecast",
+  "@weather_detail_forecast": {
+    "description": "Section heading for weather forecast"
+  },
+  "weather_detail_not_configured": "Weather not configured",
+  "@weather_detail_not_configured": {
+    "description": "Message shown when weather is not configured"
+  },
+  "weather_detail_today": "Today",
+  "@weather_detail_today": {
+    "description": "Label for today in forecast"
+  },
   "weather_condition_thunderstorm_with_light_rain": "Thunderstorm with light rain",
   "@weather_condition_thunderstorm_with_light_rain": {
     "description": "A thunderstorm accompanied by light rain."
