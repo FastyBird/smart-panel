@@ -3,6 +3,7 @@ import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
 import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Post, Req, Res } from '@nestjs/common';
 import { ApiBody, ApiConsumes, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 
+import { MULTIPART_MAX_FILE_SIZE_BYTES } from '../../../app.constants';
 import { createExtensionLogger } from '../../../common/logger';
 import { setLocationHeader } from '../../api/utils/location-header.utils';
 import {
@@ -18,7 +19,6 @@ import {
 	BUDDY_MODULE_NAME,
 	BUDDY_MODULE_PREFIX,
 	STT_ALLOWED_MIME_TYPES,
-	STT_MAX_FILE_SIZE_BYTES,
 } from '../buddy.constants';
 import {
 	BuddyAudioMissingException,
@@ -261,7 +261,7 @@ export class BuddyConversationsController {
 		const buffer = await file.toBuffer();
 
 		if (file.file.truncated) {
-			throw new BuddyAudioTooLargeException(Math.round(STT_MAX_FILE_SIZE_BYTES / (1024 * 1024)));
+			throw new BuddyAudioTooLargeException(Math.round(MULTIPART_MAX_FILE_SIZE_BYTES / (1024 * 1024)));
 		}
 
 		// Transcribe the audio

@@ -43,7 +43,11 @@ async function bootstrap() {
 		pluginExtensions,
 	});
 
-	const app = await NestFactory.create<NestFastifyApplication>(appModule, new FastifyAdapter(), { bufferLogs: true });
+	const app = await NestFactory.create<NestFastifyApplication>(
+		appModule,
+		new FastifyAdapter({ bodyLimit: MULTIPART_MAX_FILE_SIZE_BYTES }),
+		{ bufferLogs: true },
+	);
 
 	// Register multipart support for file uploads
 	await app.register((await import('@fastify/multipart')).default, {

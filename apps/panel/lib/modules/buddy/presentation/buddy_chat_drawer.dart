@@ -45,6 +45,11 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 	/// Track message count so _scrollToBottom fires only on new messages.
 	int _lastMessageCount = 0;
 
+	/// Track the last recording state + displayed second so we skip
+	/// sub-second rebuilds that produce no visible change.
+	bool _lastIsRecording = false;
+	int _lastRecordingSecond = -1;
+
 	@override
 	void initState() {
 		super.initState();
@@ -196,6 +201,19 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 		if (_audioRecordingService.wasAutoStopped) {
 			_stopRecordingAndSend().catchError((_) {});
 		}
+
+		// The recording timer fires every 100ms but the indicator only
+		// shows whole seconds. Skip rebuilds that produce no visible change
+		// to avoid unnecessary widget tree rebuilds on low-end hardware.
+		final isRecording = _audioRecordingService.isRecording;
+		final currentSecond = _audioRecordingService.recordingDuration.inSeconds;
+
+		if (isRecording == _lastIsRecording && currentSecond == _lastRecordingSecond) {
+			return;
+		}
+
+		_lastIsRecording = isRecording;
+		_lastRecordingSecond = currentSecond;
 
 		setState(() {});
 	}

@@ -32,8 +32,6 @@ export enum SttProvider {
 	NONE = 'none',
 }
 
-export const STT_MAX_FILE_SIZE_BYTES = 25 * 1024 * 1024; // 25 MB
-
 export const STT_ALLOWED_MIME_TYPES = [
 	'audio/wav',
 	'audio/wave',
