@@ -6,7 +6,7 @@ import { ILlmProvider } from '../platforms/llm-provider.platform';
 export class LlmProviderRegistryService {
 	private readonly logger = new Logger(LlmProviderRegistryService.name);
 
-	private readonly providers: Record<string, ILlmProvider> = {};
+	private readonly providers = new Map<string, ILlmProvider>();
 
 	/**
 	 * Register an LLM provider implementation
@@ -16,15 +16,15 @@ export class LlmProviderRegistryService {
 	register(provider: ILlmProvider): boolean {
 		const type = provider.getType();
 
-		if (type in this.providers) {
+		if (this.providers.has(type)) {
 			this.logger.warn(`LLM provider '${type}' is already registered, skipping`);
 
 			return false;
 		}
 
-		this.providers[type] = provider;
+		this.providers.set(type, provider);
 
-		this.logger.log(`LLM provider '${type}' added. Total providers: ${Object.keys(this.providers).length}`);
+		this.logger.log(`LLM provider '${type}' added. Total providers: ${this.providers.size}`);
 
 		return true;
 	}
@@ -35,7 +35,7 @@ export class LlmProviderRegistryService {
 	 * @returns The LLM provider or null if not found
 	 */
 	get(type: string): ILlmProvider | null {
-		return this.providers[type] ?? null;
+		return this.providers.get(type) ?? null;
 	}
 
 	/**
@@ -43,6 +43,6 @@ export class LlmProviderRegistryService {
 	 * @returns Array of provider type identifiers
 	 */
 	list(): string[] {
-		return Object.keys(this.providers);
+		return [...this.providers.keys()];
 	}
 }

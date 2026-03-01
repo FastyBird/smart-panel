@@ -16,11 +16,11 @@ const DEFAULT_TIMEOUT = 30_000;
  * Maps legacy enum-based provider values (from pre-plugin configs)
  * to the new plugin-based provider names.
  */
-const LEGACY_PROVIDER_MAP: Record<string, string> = {
-	claude: 'buddy-claude-plugin',
-	openai: 'buddy-openai-plugin',
-	ollama: 'buddy-ollama-plugin',
-};
+const LEGACY_PROVIDER_MAP = new Map<string, string>([
+	['claude', 'buddy-claude-plugin'],
+	['openai', 'buddy-openai-plugin'],
+	['ollama', 'buddy-ollama-plugin'],
+]);
 
 @Injectable()
 export class LlmProviderService {
@@ -33,7 +33,7 @@ export class LlmProviderService {
 
 	async sendMessage(systemPrompt: string, messages: ChatMessage[], options?: LlmOptions): Promise<string> {
 		const config = this.getConfig();
-		const providerName = LEGACY_PROVIDER_MAP[config.provider] ?? config.provider;
+		const providerName = LEGACY_PROVIDER_MAP.get(config.provider) ?? config.provider;
 
 		if (!providerName || providerName === 'none') {
 			throw new BuddyProviderNotConfiguredException();

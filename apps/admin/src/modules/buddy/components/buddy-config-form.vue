@@ -73,8 +73,8 @@ const { t } = useI18n();
 const normalizedConfig = { ...props.config } as Record<string, unknown>;
 const rawProvider = normalizedConfig.provider as string | undefined;
 
-if (rawProvider && rawProvider in LEGACY_PROVIDER_MAP) {
-	normalizedConfig.provider = LEGACY_PROVIDER_MAP[rawProvider] ?? rawProvider;
+if (rawProvider && LEGACY_PROVIDER_MAP.has(rawProvider)) {
+	normalizedConfig.provider = LEGACY_PROVIDER_MAP.get(rawProvider) ?? rawProvider;
 }
 
 const { formEl, model, formChanged, submit, formResult } = useConfigModuleEditForm<IBuddyConfigEditForm>({
