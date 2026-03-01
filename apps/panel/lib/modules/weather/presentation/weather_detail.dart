@@ -4,7 +4,6 @@ import 'package:fastybird_smart_panel/core/utils/datetime.dart';
 import 'package:fastybird_smart_panel/core/utils/number.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/utils/unit_converter.dart';
-import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/presentation/widgets/sky/sky_celestial_elements.dart';
@@ -26,8 +25,6 @@ class WeatherDetailPage extends StatelessWidget {
 
 	@override
 	Widget build(BuildContext context) {
-		final localizations = AppLocalizations.of(context)!;
-
 		return Consumer<WeatherService>(builder: (
 			context,
 			weatherService,
@@ -52,14 +49,7 @@ class WeatherDetailPage extends StatelessWidget {
 			return Scaffold(
 				body: Column(
 					children: [
-						PageHeader(
-							title: localizations.weather_forecast_title,
-							leading: HeaderIconButton(
-								icon: Icons.arrow_back,
-								onTap: () => Navigator.of(context).pop(),
-							),
-						),
-						// Sky header (fixed)
+						// Sky header (fixed) with overlaid back button
 						_buildSkyHeader(
 							context,
 							currentDay,
@@ -129,6 +119,27 @@ class WeatherDetailPage extends StatelessWidget {
 							isPortrait: true,
 						),
 						SkyWeatherOverlays(config: config),
+						// Glass back button
+						Positioned(
+							top: MediaQuery.of(context).padding.top + AppSpacings.pMd,
+							left: AppSpacings.pMd,
+							child: GestureDetector(
+								onTap: () => Navigator.of(context).pop(),
+								child: SkyGlassCard(
+									isDark: config.isDark,
+									padding: EdgeInsets.zero,
+									child: SizedBox(
+										width: AppSpacings.scale(36),
+										height: AppSpacings.scale(36),
+										child: Icon(
+											Icons.arrow_back,
+											size: AppSpacings.scale(18),
+											color: config.primaryTextColor,
+										),
+									),
+								),
+							),
+						),
 						Positioned.fill(
 							child: Padding(
 								padding: EdgeInsets.symmetric(
@@ -269,101 +280,102 @@ class WeatherDetailPage extends StatelessWidget {
 			pressDecimals,
 		);
 
-		return Row(
-			mainAxisAlignment: MainAxisAlignment.center,
-			children: [
-				SkyGlassCard(
-					isDark: config.isDark,
-					child: Row(
-						mainAxisSize: MainAxisSize.min,
-						children: [
-							BoxedIcon(
-								WeatherIcons.strong_wind,
-								size: AppSpacings.scale(12),
-								color: config.secondaryTextColor,
+		final tiles = [
+			SkyGlassCard(
+				isDark: config.isDark,
+				child: Row(
+					mainAxisSize: MainAxisSize.min,
+					children: [
+						BoxedIcon(
+							WeatherIcons.strong_wind,
+							size: AppSpacings.scale(12),
+							color: config.secondaryTextColor,
+						),
+						SizedBox(width: AppSpacings.pXs),
+						Text(
+							'$windSpeed $windSymbol',
+							style: TextStyle(
+								fontSize: AppFontSize.extraSmall,
+								fontWeight: FontWeight.w600,
+								color: config.primaryTextColor,
 							),
-							SizedBox(width: AppSpacings.pXs),
-							Text(
-								'$windSpeed $windSymbol',
-								style: TextStyle(
-									fontSize: AppFontSize.extraSmall,
-									fontWeight: FontWeight.w600,
-									color: config.primaryTextColor,
-								),
-							),
-						],
-					),
+						),
+					],
 				),
-				SizedBox(width: AppSpacings.pSm),
-				SkyGlassCard(
-					isDark: config.isDark,
-					child: Row(
-						mainAxisSize: MainAxisSize.min,
-						children: [
-							BoxedIcon(
-								WeatherIcons.humidity,
-								size: AppSpacings.scale(12),
-								color: config.secondaryTextColor,
+			),
+			SkyGlassCard(
+				isDark: config.isDark,
+				child: Row(
+					mainAxisSize: MainAxisSize.min,
+					children: [
+						BoxedIcon(
+							WeatherIcons.humidity,
+							size: AppSpacings.scale(12),
+							color: config.secondaryTextColor,
+						),
+						SizedBox(width: AppSpacings.pXs),
+						Text(
+							'${currentDay.humidity}%',
+							style: TextStyle(
+								fontSize: AppFontSize.extraSmall,
+								fontWeight: FontWeight.w600,
+								color: config.primaryTextColor,
 							),
-							SizedBox(width: AppSpacings.pXs),
-							Text(
-								'${currentDay.humidity}%',
-								style: TextStyle(
-									fontSize: AppFontSize.extraSmall,
-									fontWeight: FontWeight.w600,
-									color: config.primaryTextColor,
-								),
-							),
-						],
-					),
+						),
+					],
 				),
-				SizedBox(width: AppSpacings.pSm),
-				SkyGlassCard(
-					isDark: config.isDark,
-					child: Row(
-						mainAxisSize: MainAxisSize.min,
-						children: [
-							BoxedIcon(
-								WeatherIcons.barometer,
-								size: AppSpacings.scale(12),
-								color: config.secondaryTextColor,
+			),
+			SkyGlassCard(
+				isDark: config.isDark,
+				child: Row(
+					mainAxisSize: MainAxisSize.min,
+					children: [
+						BoxedIcon(
+							WeatherIcons.barometer,
+							size: AppSpacings.scale(12),
+							color: config.secondaryTextColor,
+						),
+						SizedBox(width: AppSpacings.pXs),
+						Text(
+							'$pressureText $pressSymbol',
+							style: TextStyle(
+								fontSize: AppFontSize.extraSmall,
+								fontWeight: FontWeight.w600,
+								color: config.primaryTextColor,
 							),
-							SizedBox(width: AppSpacings.pXs),
-							Text(
-								'$pressureText $pressSymbol',
-								style: TextStyle(
-									fontSize: AppFontSize.extraSmall,
-									fontWeight: FontWeight.w600,
-									color: config.primaryTextColor,
-								),
-							),
-						],
-					),
+						),
+					],
 				),
-				SizedBox(width: AppSpacings.pSm),
-				SkyGlassCard(
-					isDark: config.isDark,
-					child: Row(
-						mainAxisSize: MainAxisSize.min,
-						children: [
-							BoxedIcon(
-								WeatherIcons.cloud,
-								size: AppSpacings.scale(12),
-								color: config.secondaryTextColor,
+			),
+			SkyGlassCard(
+				isDark: config.isDark,
+				child: Row(
+					mainAxisSize: MainAxisSize.min,
+					children: [
+						BoxedIcon(
+							WeatherIcons.cloud,
+							size: AppSpacings.scale(12),
+							color: config.secondaryTextColor,
+						),
+						SizedBox(width: AppSpacings.pXs),
+						Text(
+							'${currentDay.clouds.round()}%',
+							style: TextStyle(
+								fontSize: AppFontSize.extraSmall,
+								fontWeight: FontWeight.w600,
+								color: config.primaryTextColor,
 							),
-							SizedBox(width: AppSpacings.pXs),
-							Text(
-								'${currentDay.clouds.round()}%',
-								style: TextStyle(
-									fontSize: AppFontSize.extraSmall,
-									fontWeight: FontWeight.w600,
-									color: config.primaryTextColor,
-								),
-							),
-						],
-					),
+						),
+					],
 				),
-			],
+			),
+		];
+
+		return _GlassTilesRow(
+			tiles: tiles,
+			separator: AppSpacings.pSm,
+			height: AppSpacings.scale(36),
+			gradientColor: config.gradientColors.last,
 		);
 	}
 
@@ -851,6 +863,143 @@ class WeatherDetailPage extends StatelessWidget {
 						),
 					),
 				],
+			),
+		);
+	}
+}
+
+/// Displays glass tiles centered when they fit, or in a horizontal scroll
+/// with gradient edge overlays when they overflow.
+class _GlassTilesRow extends StatefulWidget {
+	final List<Widget> tiles;
+	final double separator;
+	final double height;
+	final Color gradientColor;
+
+	const _GlassTilesRow({
+		required this.tiles,
+		required this.separator,
+		required this.height,
+		required this.gradientColor,
+	});
+
+	@override
+	State<_GlassTilesRow> createState() => _GlassTilesRowState();
+}
+
+class _GlassTilesRowState extends State<_GlassTilesRow> {
+	final _scrollController = ScrollController();
+	bool _showLeft = false;
+	bool _showRight = false;
+
+	@override
+	void initState() {
+		super.initState();
+		_scrollController.addListener(_updateGradients);
+		WidgetsBinding.instance.addPostFrameCallback((_) => _updateGradients());
+	}
+
+	@override
+	void dispose() {
+		_scrollController.removeListener(_updateGradients);
+		_scrollController.dispose();
+		super.dispose();
+	}
+
+	void _updateGradients() {
+		if (!mounted || !_scrollController.hasClients) return;
+		final pos = _scrollController.position;
+		final showLeft = pos.pixels > 0;
+		final showRight = pos.pixels < pos.maxScrollExtent;
+
+		if (showLeft != _showLeft || showRight != _showRight) {
+			setState(() {
+				_showLeft = showLeft;
+				_showRight = showRight;
+			});
+		}
+	}
+
+	@override
+	Widget build(BuildContext context) {
+		final gradientWidth = AppSpacings.pLg;
+
+		return SizedBox(
+			height: widget.height,
+			child: LayoutBuilder(
+				builder: (context, constraints) {
+					return Stack(
+						children: [
+							SingleChildScrollView(
+								controller: _scrollController,
+								scrollDirection: Axis.horizontal,
+								child: ConstrainedBox(
+									constraints: BoxConstraints(minWidth: constraints.maxWidth),
+									child: Row(
+										mainAxisSize: MainAxisSize.min,
+										mainAxisAlignment: MainAxisAlignment.center,
+										children: [
+											for (var i = 0; i < widget.tiles.length; i++) ...[
+												if (i > 0) SizedBox(width: widget.separator),
+												widget.tiles[i],
+											],
+										],
+									),
+								),
+							),
+							// Left gradient
+							Positioned(
+								left: 0,
+								top: 0,
+								bottom: 0,
+								width: gradientWidth,
+								child: IgnorePointer(
+									child: AnimatedOpacity(
+										opacity: _showLeft ? 1.0 : 0.0,
+										duration: const Duration(milliseconds: 200),
+										child: Container(
+											decoration: BoxDecoration(
+												gradient: LinearGradient(
+													begin: Alignment.centerLeft,
+													end: Alignment.centerRight,
+													colors: [
+														widget.gradientColor,
+														widget.gradientColor.withValues(alpha: 0),
+													],
+												),
+											),
+										),
+									),
+								),
+							),
+							// Right gradient
+							Positioned(
+								right: 0,
+								top: 0,
+								bottom: 0,
+								width: gradientWidth,
+								child: IgnorePointer(
+									child: AnimatedOpacity(
+										opacity: _showRight ? 1.0 : 0.0,
+										duration: const Duration(milliseconds: 200),
+										child: Container(
+											decoration: BoxDecoration(
+												gradient: LinearGradient(
+													begin: Alignment.centerRight,
+													end: Alignment.centerLeft,
+													colors: [
+														widget.gradientColor,
+														widget.gradientColor.withValues(alpha: 0),
+													],
+												),
+											),
+										),
+									),
+								),
+							),
+						],
+					);
+				},
 			),
 		);
 	}
