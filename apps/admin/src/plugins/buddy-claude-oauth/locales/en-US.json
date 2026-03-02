@@ -1,0 +1,43 @@
+{
+	"headings": {
+		"aboutApiSettings": "Claude OAuth settings"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Enabled"
+			},
+			"clientId": {
+				"title": "Client ID",
+				"placeholder": "Enter your OAuth client ID",
+				"description": "The OAuth client ID for Anthropic Claude API"
+			},
+			"clientSecret": {
+				"title": "Client secret",
+				"placeholder": "Enter your OAuth client secret"
+			},
+			"accessToken": {
+				"title": "Access token",
+				"placeholder": "Enter your access token"
+			},
+			"refreshToken": {
+				"title": "Refresh token",
+				"placeholder": "Enter your refresh token"
+			},
+			"model": {
+				"title": "Model",
+				"placeholder": "e.g., claude-sonnet-4-20250514",
+				"description": "The Claude model to use for generating responses"
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Claude OAuth settings have been updated",
+			"notEdited": "Failed to update Claude OAuth settings"
+		}
+	},
+	"texts": {
+		"aboutApiSettings": "Configure your Anthropic Claude OAuth settings. This plugin uses OAuth authentication instead of a direct API key. Enter your OAuth credentials to authenticate with the Claude API."
+	}
+}

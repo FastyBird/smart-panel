@@ -1,0 +1,31 @@
+{
+	"headings": {
+		"aboutApiSettings": "OpenAI API settings"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Enabled"
+			},
+			"apiKey": {
+				"title": "API key",
+				"placeholder": "Enter your OpenAI API key",
+				"description": "Get your API key from platform.openai.com"
+			},
+			"model": {
+				"title": "Model",
+				"placeholder": "e.g., gpt-4o, gpt-4o-mini",
+				"description": "The OpenAI model to use for generating responses"
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "OpenAI settings have been updated",
+			"notEdited": "Failed to update OpenAI settings"
+		}
+	},
+	"texts": {
+		"aboutApiSettings": "Configure your OpenAI API settings. You need a valid API key to use OpenAI models as the buddy LLM provider."
+	}
+}

@@ -53,6 +53,11 @@ import { SystemModule } from './modules/system';
 import { UsersModule } from './modules/users';
 import { WeatherModule } from './modules/weather';
 import type { OpenApiPaths } from './openapi.constants';
+import { BuddyClaudePlugin } from './plugins/buddy-claude';
+import { BuddyClaudeOauthPlugin } from './plugins/buddy-claude-oauth';
+import { BuddyOllamaPlugin } from './plugins/buddy-ollama';
+import { BuddyOpenaiPlugin } from './plugins/buddy-openai';
+import { BuddyOpenaiCodexPlugin } from './plugins/buddy-openai-codex';
 import { DeviceChannelDataSourcesPlugin } from './plugins/data-sources-device-channel';
 import { DataSourcesWeatherPlugin } from './plugins/data-sources-weather';
 import { DevicesHomeAssistantPlugin } from './plugins/devices-home-assistant';
@@ -180,6 +185,11 @@ app.use(LoggerRotatingFilePlugin, pluginOptions);
 app.use(WeatherOpenweathermapPlugin, pluginOptions);
 app.use(WeatherOpenweathermapOnecallPlugin, pluginOptions);
 app.use(ScenesLocalPlugin, pluginOptions);
+app.use(BuddyOpenaiPlugin, pluginOptions);
+app.use(BuddyClaudePlugin, pluginOptions);
+app.use(BuddyOllamaPlugin, pluginOptions);
+app.use(BuddyClaudeOauthPlugin, pluginOptions);
+app.use(BuddyOpenaiCodexPlugin, pluginOptions);
 
 const installedNames = new Set<string>();
 
