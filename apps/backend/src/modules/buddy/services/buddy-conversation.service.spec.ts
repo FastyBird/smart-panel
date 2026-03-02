@@ -52,7 +52,19 @@ describe('BuddyConversationService', () => {
 		};
 
 		llmProvider = {
-			sendMessage: jest.fn().mockResolvedValue('Mocked response'),
+			sendMessage: jest.fn().mockResolvedValue({
+				content: 'Mocked response',
+				meta: {
+					provider: 'buddy-claude-plugin',
+					model: 'claude-sonnet-4-20250514',
+					inputTokens: 100,
+					outputTokens: 50,
+					finishReason: 'end_turn',
+					durationMs: 1200,
+					cacheReadTokens: null,
+					cacheWriteTokens: null,
+				},
+			}),
 		};
 
 		contextService = {
@@ -144,6 +156,14 @@ describe('BuddyConversationService', () => {
 
 			expect(result.role).toBe(MessageRole.ASSISTANT);
 			expect(result.content).toBe('Mocked response');
+			expect(result.metadata).toEqual(
+				expect.objectContaining({
+					provider: 'buddy-claude-plugin',
+					model: 'claude-sonnet-4-20250514',
+					inputTokens: 100,
+					outputTokens: 50,
+				}),
+			);
 		});
 
 		it('should build context from context service', async () => {

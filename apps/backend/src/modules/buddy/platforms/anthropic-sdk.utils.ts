@@ -16,6 +16,19 @@ const ANTHROPIC_OAUTH_BETA = 'oauth-2025-04-20';
 export type AnthropicCredentials = { apiKey: string } | { authToken: string };
 
 /**
+ * Metadata extracted from an Anthropic API response.
+ */
+export interface AnthropicSdkResult {
+	content: string;
+	model: string | null;
+	inputTokens: number | null;
+	outputTokens: number | null;
+	finishReason: string | null;
+	cacheReadTokens: number | null;
+	cacheWriteTokens: number | null;
+}
+
+/**
  * Shared Anthropic SDK interaction logic used by all Claude-based providers.
  * Handles SDK import, client creation, API call, and response parsing.
  */
@@ -25,7 +38,7 @@ export async function sendAnthropicMessage(
 	systemPrompt: string,
 	messages: ChatMessage[],
 	timeout: number,
-): Promise<string> {
+): Promise<AnthropicSdkResult> {
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 	const { default: Anthropic } = await import(ANTHROPIC_SDK_MODULE);
 
@@ -50,5 +63,27 @@ export async function sendAnthropicMessage(
 	const textBlock = response.content.find((block: { type: string }) => block.type === 'text');
 
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-	return textBlock && 'text' in textBlock ? (textBlock.text as string) : '';
+	const content = textBlock && 'text' in textBlock ? (textBlock.text as string) : '';
+
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+	const usage = response.usage as
+		| {
+				input_tokens?: number;
+				output_tokens?: number;
+				cache_read_input_tokens?: number;
+				cache_creation_input_tokens?: number;
+		  }
+		| undefined;
+
+	return {
+		content,
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		model: (response.model as string) ?? null,
+		inputTokens: usage?.input_tokens ?? null,
+		outputTokens: usage?.output_tokens ?? null,
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		finishReason: (response.stop_reason as string) ?? null,
+		cacheReadTokens: usage?.cache_read_input_tokens ?? null,
+		cacheWriteTokens: usage?.cache_creation_input_tokens ?? null,
+	};
 }

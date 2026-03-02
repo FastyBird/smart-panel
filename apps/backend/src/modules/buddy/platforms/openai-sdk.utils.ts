@@ -6,6 +6,17 @@ import type { ChatMessage } from './llm-provider.platform';
 const OPENAI_SDK_MODULE = 'openai';
 
 /**
+ * Metadata extracted from an OpenAI API response.
+ */
+export interface OpenAiSdkResult {
+	content: string;
+	model: string | null;
+	inputTokens: number | null;
+	outputTokens: number | null;
+	finishReason: string | null;
+}
+
+/**
  * Shared OpenAI SDK interaction logic used by all OpenAI-based providers.
  * Handles SDK import, client creation, API call, and response parsing.
  */
@@ -15,7 +26,7 @@ export async function sendOpenAiMessage(
 	systemPrompt: string,
 	messages: ChatMessage[],
 	timeout: number,
-): Promise<string> {
+): Promise<OpenAiSdkResult> {
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 	const { default: OpenAI } = await import(OPENAI_SDK_MODULE);
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call
@@ -34,5 +45,16 @@ export async function sendOpenAiMessage(
 	});
 
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-	return (response.choices[0]?.message?.content as string) ?? '';
+	const usage = response.usage as { prompt_tokens?: number; completion_tokens?: number } | undefined;
+
+	return {
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		content: (response.choices[0]?.message?.content as string) ?? '',
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		model: (response.model as string) ?? null,
+		inputTokens: usage?.prompt_tokens ?? null,
+		outputTokens: usage?.completion_tokens ?? null,
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+		finishReason: (response.choices[0]?.finish_reason as string) ?? null,
+	};
 }

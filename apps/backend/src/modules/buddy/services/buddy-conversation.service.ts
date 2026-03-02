@@ -97,7 +97,7 @@ export class BuddyConversationService {
 		chatMessages.push({ role: MessageRole.USER, content });
 
 		// 3. Call LLM provider (before persisting, so no orphaned messages on failure)
-		const response = await this.llmProvider.sendMessage(systemPrompt, chatMessages);
+		const llmResponse = await this.llmProvider.sendMessage(systemPrompt, chatMessages);
 
 		// 4. Persist both user message and assistant response in a single transaction
 		const savedAssistant = await this.dataSource.transaction(async (manager) => {
@@ -114,7 +114,8 @@ export class BuddyConversationService {
 				id: uuid(),
 				conversationId: conversation.id,
 				role: MessageRole.ASSISTANT,
-				content: response,
+				content: llmResponse.content,
+				metadata: llmResponse.meta,
 			});
 
 			const saved = await manager.save(assistantMsg);
@@ -134,7 +135,7 @@ export class BuddyConversationService {
 			conversation_id: conversation.id,
 			message_id: savedAssistant.id,
 			role: MessageRole.ASSISTANT,
-			content: response,
+			content: llmResponse.content,
 		});
 
 		this.logger.debug(`Message sent in conversation id=${conversation.id}, response id=${savedAssistant.id}`);

@@ -1,7 +1,12 @@
 import { Injectable } from '@nestjs/common';
 
 import { MessageRole } from '../../../modules/buddy/buddy.constants';
-import { ChatMessage, ILlmProvider, LlmOptions } from '../../../modules/buddy/platforms/llm-provider.platform';
+import {
+	ChatMessage,
+	ILlmProvider,
+	LlmOptions,
+	LlmResponse,
+} from '../../../modules/buddy/platforms/llm-provider.platform';
 import { OAuthTokenManager } from '../../../modules/buddy/platforms/oauth-token-manager';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import {
@@ -44,7 +49,7 @@ export class OpenAiCodexProvider implements ILlmProvider {
 		messages: ChatMessage[],
 		model: string,
 		options?: LlmOptions,
-	): Promise<string> {
+	): Promise<LlmResponse> {
 		const config = this.getPluginConfig();
 		const accessToken = await this.tokenManager.resolveAccessToken(config);
 		const resolvedModel = config?.model ?? model;
@@ -60,6 +65,8 @@ export class OpenAiCodexProvider implements ILlmProvider {
 		// ChatGPT backend requires streaming. We collect SSE chunks and assemble the response.
 		const controller = new AbortController();
 		const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+		const start = Date.now();
 
 		try {
 			const response = await fetch(`${BUDDY_OPENAI_CODEX_BASE_URL}/responses`, {
@@ -86,7 +93,22 @@ export class OpenAiCodexProvider implements ILlmProvider {
 				throw new Error(`${response.status} ${errorBody || response.statusText}`);
 			}
 
-			return await this.collectStreamResponse(response);
+			const content = await this.collectStreamResponse(response);
+			const durationMs = Date.now() - start;
+
+			return {
+				content,
+				meta: {
+					provider: BUDDY_OPENAI_CODEX_PLUGIN_NAME,
+					model: resolvedModel,
+					inputTokens: null,
+					outputTokens: null,
+					finishReason: null,
+					durationMs,
+					cacheReadTokens: null,
+					cacheWriteTokens: null,
+				},
+			};
 		} finally {
 			clearTimeout(timeoutId);
 		}
