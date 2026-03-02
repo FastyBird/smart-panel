@@ -53,12 +53,7 @@
 					"ruleBasedOnly": "rule-based only"
 				},
 				"options": {
-					"none": "None",
-					"claude": "Buddy Claude",
-					"openai": "Buddy OpenAI",
-					"openaiCodex": "Buddy OpenAI Codex",
-					"claudeOauth": "Buddy Claude OAuth",
-					"ollama": "Buddy Ollama"
+					"none": "None"
 				}
 			}
 		},

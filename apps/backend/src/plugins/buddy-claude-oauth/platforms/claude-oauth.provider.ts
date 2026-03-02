@@ -38,7 +38,7 @@ export class ClaudeOauthProvider implements ILlmProvider {
 		options?: LlmOptions,
 	): Promise<string> {
 		const config = this.getPluginConfig();
-		const accessToken = config?.accessToken;
+		const accessToken = config?.accessToken?.replace(/\s+/g, '');
 
 		if (!accessToken) {
 			throw new Error('Claude setup-token is not configured');

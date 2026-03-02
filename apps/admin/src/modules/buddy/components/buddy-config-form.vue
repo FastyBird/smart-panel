@@ -69,14 +69,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeMount, reactive, watch } from 'vue';
+import { computed, onBeforeMount, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElForm, ElFormItem, ElInput, ElOption, ElSelect, ElTag, ElText, type FormRules } from 'element-plus';
 
-import { injectStoresManager } from '../../../common';
-import { FormResult, type FormResultType, Layout, configPluginsStoreKey, useConfigModuleEditForm } from '../../config';
-import { LEGACY_PROVIDER_MAP, LLM_PROVIDER_NONE } from '../buddy.constants';
+import { useBackend } from '../../../common';
+import { MODULES_PREFIX } from '../../../app.constants';
+import { FormResult, type FormResultType, Layout, useConfigModuleEditForm } from '../../config';
+import { BUDDY_MODULE_PREFIX, LEGACY_PROVIDER_MAP, LLM_PROVIDER_NONE } from '../buddy.constants';
+import type { IProviderStatus } from '../composables/useBuddyChat';
 import type { IBuddyConfigEditForm } from '../schemas/config.types';
 
 import type { IBuddyConfigFormProps } from './buddy-config-form.types';
@@ -110,13 +112,20 @@ if (rawProvider && LEGACY_PROVIDER_MAP.has(rawProvider)) {
 	normalizedConfig.provider = LEGACY_PROVIDER_MAP.get(rawProvider) ?? rawProvider;
 }
 
-const storesManager = injectStoresManager();
-const configPluginsStore = storesManager.getStore(configPluginsStoreKey);
+const backend = useBackend();
+const providerStatuses = ref<IProviderStatus[]>([]);
 
-onBeforeMount((): void => {
-	configPluginsStore.fetch().catch(() => {
-		// Plugin configs may not be available yet
-	});
+onBeforeMount(async (): Promise<void> => {
+	try {
+		const response = await backend.client.GET(`/${MODULES_PREFIX}/${BUDDY_MODULE_PREFIX}/providers` as never);
+		const responseData = (response as { data?: { data: IProviderStatus[] } }).data;
+
+		if (typeof responseData !== 'undefined') {
+			providerStatuses.value = responseData.data;
+		}
+	} catch {
+		// Provider statuses may not be available yet
+	}
 });
 
 const { formEl, model, formChanged, submit, formResult } = useConfigModuleEditForm<IBuddyConfigEditForm>({
@@ -126,35 +135,6 @@ const { formEl, model, formChanged, submit, formResult } = useConfigModuleEditFo
 		error: t('buddyModule.messages.config.notEdited'),
 	},
 });
-
-const pluginDefinitions: { value: string; labelKey: string; tag?: string; tagType?: string }[] = [
-	{ value: 'buddy-openai-plugin', labelKey: 'buddyModule.fields.config.provider.options.openai' },
-	{ value: 'buddy-openai-codex-plugin', labelKey: 'buddyModule.fields.config.provider.options.openaiCodex' },
-	{ value: 'buddy-claude-plugin', labelKey: 'buddyModule.fields.config.provider.options.claude' },
-	{ value: 'buddy-claude-oauth-plugin', labelKey: 'buddyModule.fields.config.provider.options.claudeOauth' },
-	{ value: 'buddy-ollama-plugin', labelKey: 'buddyModule.fields.config.provider.options.ollama', tag: 'local', tagType: 'info' },
-];
-
-const isPluginConfigured = (type: string): boolean => {
-	const plugin = configPluginsStore.findByType(type) as Record<string, unknown> | null;
-
-	if (!plugin) {
-		return false;
-	}
-
-	switch (type) {
-		case 'buddy-claude-plugin':
-		case 'buddy-openai-plugin':
-			return !!plugin.apiKey;
-		case 'buddy-claude-oauth-plugin':
-		case 'buddy-openai-codex-plugin':
-			return !!plugin.accessToken || !!plugin.refreshToken;
-		case 'buddy-ollama-plugin':
-			return true;
-		default:
-			return false;
-	}
-};
 
 const providerOptions = computed(() => {
 	const options: { value: string; label: string; disabled: boolean; tag?: string; tagType?: string }[] = [
@@ -167,22 +147,19 @@ const providerOptions = computed(() => {
 		},
 	];
 
-	for (const def of pluginDefinitions) {
-		const plugin = configPluginsStore.findByType(def.value);
-		const enabled = plugin?.enabled ?? false;
+	for (const provider of providerStatuses.value) {
+		let tag: string | undefined;
+		let tagType: string | undefined;
 
-		let tag = def.tag;
-		let tagType = def.tagType;
-
-		if (enabled && !isPluginConfigured(def.value)) {
+		if (provider.enabled && !provider.configured) {
 			tag = t('buddyModule.fields.config.provider.notConfigured');
 			tagType = 'warning';
 		}
 
 		options.push({
-			value: def.value,
-			label: t(def.labelKey),
-			disabled: !enabled,
+			value: provider.type,
+			label: provider.name,
+			disabled: !provider.enabled,
 			tag,
 			tagType,
 		});
