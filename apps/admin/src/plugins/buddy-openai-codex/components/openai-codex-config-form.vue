@@ -59,11 +59,21 @@
 			</div>
 
 			<template v-if="!isConnected && authorizeUrl">
-				<div class="mt-3">
-					<div class="text-xs text-gray-500 mb-2">
-						{{ t('buddyOpenaiCodexPlugin.texts.oauthSteps') }}
-					</div>
+				<el-alert
+					type="info"
+					:closable="false"
+					show-icon
+					class="mt-2!"
+				>
+					<ol class="list-decimal list-inside m-0 p-0 text-xs leading-relaxed">
+						<li>{{ t('buddyOpenaiCodexPlugin.texts.oauthStep1') }}</li>
+						<li>{{ t('buddyOpenaiCodexPlugin.texts.oauthStep2') }}</li>
+						<li>{{ t('buddyOpenaiCodexPlugin.texts.oauthStep3') }}</li>
+						<li>{{ t('buddyOpenaiCodexPlugin.texts.oauthStep4') }}</li>
+					</ol>
+				</el-alert>
 
+				<div class="mt-3">
 					<el-input
 						:model-value="authorizeUrl"
 						readonly

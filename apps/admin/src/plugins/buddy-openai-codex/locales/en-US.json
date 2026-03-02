@@ -60,6 +60,9 @@
 	},
 	"texts": {
 		"aboutApiSettings": "Configure your OpenAI Codex OAuth settings. Click \"Get Authorization URL\" to start the OAuth flow, or expand Advanced Settings to enter tokens manually.",
-		"oauthSteps": "1. Click \"Get Authorization URL\" 2. Open the URL and authorize 3. Copy the URL from your browser after redirect 4. Paste it below and click \"Exchange Token\""
+		"oauthStep1": "Click \"Get Authorization URL\" above",
+		"oauthStep2": "Open the URL in your browser and authorize",
+		"oauthStep3": "Copy the redirect URL from your browser after authorization",
+		"oauthStep4": "Paste it below and click \"Exchange Token\""
 	}
 }
