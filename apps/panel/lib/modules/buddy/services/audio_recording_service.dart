@@ -117,6 +117,21 @@ class AudioRecordingService extends ChangeNotifier {
 				path: _currentRecordingPath!,
 			);
 
+			// A concurrent stop/cancel may have reset _isRecording while
+			// _recorder.start() was in-flight. If so, stop the recorder we
+			// just started and bail out — otherwise the timer created below
+			// would be orphaned (cancelRecording already tried to cancel a
+			// null _durationTimer) and run for 30 seconds unchecked.
+			if (!_isRecording) {
+				try {
+					await _recorder.stop();
+				} catch (_) {
+					// Ignore stop errors
+				}
+
+				return false;
+			}
+
 			notifyListeners();
 
 			// Start duration timer
