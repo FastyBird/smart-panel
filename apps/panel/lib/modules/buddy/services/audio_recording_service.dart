@@ -286,13 +286,10 @@ class AudioRecordingService extends ChangeNotifier {
 
 		// Always attempt to stop the recorder regardless of _isRecording,
 		// in case a race left the recorder active while the flag is false.
+		// Use catchError to suppress async rejections from the returned Future
+		// (try/catch only catches synchronous exceptions from the call).
 		_isRecording = false;
-
-		try {
-			_recorder.stop();
-		} catch (_) {
-			// Ignore stop errors during disposal
-		}
+		_recorder.stop().catchError((_) {});
 
 		// Clean up temp recording file if still on disk
 		if (_currentRecordingPath != null) {
