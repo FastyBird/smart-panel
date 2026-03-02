@@ -7,7 +7,7 @@ import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/icon_container.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/export.dart';
 import 'package:fastybird_smart_panel/modules/deck/export.dart';
-import 'package:fastybird_smart_panel/modules/buddy/presentation/buddy_chat_drawer.dart';
+import 'package:fastybird_smart_panel/modules/buddy/presentation/buddy_chat_page.dart';
 import 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/suggestion_badge.dart';
 import 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/suggestion_toast.dart';
 import 'package:fastybird_smart_panel/modules/buddy/service.dart';
@@ -45,8 +45,6 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen>
   bool _initialized = false;
   bool _swipeBlocked = false;
   bool _isCrossfading = false;
-  bool _buddyDrawerOpen = false;
-
   /// Preserves the PageView element when it is re-parented between
   /// Column (portrait) and Row (landscape) on orientation change.
   final _pageViewKey = GlobalKey();
@@ -76,9 +74,9 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen>
       final notificationService = locator<SuggestionNotificationService>();
       notificationService.onTapped = (_) {
         if (mounted) {
-          setState(() {
-            _buddyDrawerOpen = true;
-          });
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const BuddyChatPage()),
+          );
         }
       };
     } catch (e) {
@@ -355,59 +353,23 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen>
               ),
 
               // Suggestion toast notification
-              if (!_buddyDrawerOpen)
-                const BuddySuggestionToast(),
+              const BuddySuggestionToast(),
 
               // Buddy FAB button
-              if (!_buddyDrawerOpen)
-                Positioned(
-                  right: AppSpacings.pLg,
-                  // Position above the bottom nav bar in portrait mode
-                  bottom: MediaQuery.of(context).orientation == Orientation.portrait
-                      ? AppSpacings.scale(52) + AppSpacings.pMd
-                      : AppSpacings.pLg,
-                  child: _BuddyFab(
-                    onTap: () {
-                      setState(() {
-                        _buddyDrawerOpen = true;
-                      });
-                    },
-                  ),
-                ),
-
-              // Buddy drawer overlay
-              if (_buddyDrawerOpen) ...[
-                // Semi-transparent background
-                GestureDetector(
+              Positioned(
+                right: AppSpacings.pLg,
+                // Position above the bottom nav bar in portrait mode
+                bottom: MediaQuery.of(context).orientation == Orientation.portrait
+                    ? AppSpacings.scale(52) + AppSpacings.pMd
+                    : AppSpacings.pLg,
+                child: _BuddyFab(
                   onTap: () {
-                    setState(() {
-                      _buddyDrawerOpen = false;
-                    });
+                    Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const BuddyChatPage()),
+                    );
                   },
-                  child: Container(
-                    color: Colors.black.withValues(alpha: 0.3),
-                  ),
                 ),
-                // Drawer from the right
-                Positioned(
-                  right: 0,
-                  top: 0,
-                  bottom: 0,
-                  width: MediaQuery.of(context).size.width * 0.4 < 320
-                      ? 320.0
-                      : MediaQuery.of(context).size.width * 0.4,
-                  child: Material(
-                    elevation: 8,
-                    child: BuddyChatDrawer(
-                      onClose: () {
-                        setState(() {
-                          _buddyDrawerOpen = false;
-                        });
-                      },
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ],
           ),
         );

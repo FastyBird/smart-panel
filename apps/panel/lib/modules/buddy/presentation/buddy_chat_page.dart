@@ -10,29 +10,24 @@ import 'package:fastybird_smart_panel/modules/buddy/service.dart';
 import 'package:fastybird_smart_panel/modules/config/module.dart';
 import 'package:fastybird_smart_panel/modules/config/repositories/module_config_repository.dart';
 
-/// Sliding chat drawer for the buddy module.
+/// Full-screen chat page for the buddy module.
 ///
-/// Opens from the right edge and provides:
-/// - Header with title and close button
+/// Provides:
+/// - Header with title and back button
 /// - Scrollable message list (newest at bottom)
 /// - Suggestion cards section
 /// - Text input with send button
 /// - Loading indicator while waiting for AI response
 /// - Empty state when no messages
 /// - Disabled state when AI provider is not configured
-class BuddyChatDrawer extends StatefulWidget {
-	final VoidCallback onClose;
-
-	const BuddyChatDrawer({
-		super.key,
-		required this.onClose,
-	});
+class BuddyChatPage extends StatefulWidget {
+	const BuddyChatPage({super.key});
 
 	@override
-	State<BuddyChatDrawer> createState() => _BuddyChatDrawerState();
+	State<BuddyChatPage> createState() => _BuddyChatPageState();
 }
 
-class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
+class _BuddyChatPageState extends State<BuddyChatPage> {
 	final TextEditingController _inputController = TextEditingController();
 	final ScrollController _scrollController = ScrollController();
 	final FocusNode _inputFocusNode = FocusNode();
@@ -168,9 +163,9 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 
 		final bgColor = isDark ? AppBgColorDark.base : AppBgColorLight.base;
 
-		return Container(
-			color: bgColor,
-			child: SafeArea(
+		return Scaffold(
+			backgroundColor: bgColor,
+			body: SafeArea(
 				child: Column(
 					children: [
 						_buildHeader(context, isDark),
@@ -215,6 +210,22 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 			),
 			child: Row(
 				children: [
+					IconButton(
+						icon: Icon(
+							Icons.arrow_back,
+							size: AppSpacings.scale(20),
+							color: isDark
+								? AppTextColorDark.secondary
+								: AppTextColorLight.secondary,
+						),
+						onPressed: () => Navigator.of(context).pop(),
+						padding: EdgeInsets.zero,
+						constraints: BoxConstraints(
+							minWidth: AppSpacings.scale(32),
+							minHeight: AppSpacings.scale(32),
+						),
+					),
+					SizedBox(width: AppSpacings.pSm),
 					Icon(
 						Icons.smart_toy_outlined,
 						color: accentColor,
@@ -229,21 +240,6 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 								fontWeight: FontWeight.w600,
 								color: titleColor,
 							),
-						),
-					),
-					IconButton(
-						icon: Icon(
-							Icons.close,
-							size: AppSpacings.scale(20),
-							color: isDark
-								? AppTextColorDark.secondary
-								: AppTextColorLight.secondary,
-						),
-						onPressed: widget.onClose,
-						padding: EdgeInsets.zero,
-						constraints: BoxConstraints(
-							minWidth: AppSpacings.scale(32),
-							minHeight: AppSpacings.scale(32),
 						),
 					),
 				],

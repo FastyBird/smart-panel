@@ -120,14 +120,14 @@ class BuddyRepository extends ChangeNotifier {
 		_isProviderNotConfigured = false;
 
 		try {
-			final body = <String, dynamic>{};
+			final inner = <String, dynamic>{};
 
-			if (title != null) body['title'] = title;
-			if (spaceId != null) body['space_id'] = spaceId;
+			if (title != null) inner['title'] = title;
+			if (spaceId != null) inner['space_id'] = spaceId;
 
 			final response = await _dio.post(
 				BuddyModuleConstants.conversationsPath,
-				data: body,
+				data: {'data': inner},
 			);
 
 			if (response.statusCode == 201 && response.data != null) {
@@ -229,7 +229,9 @@ class BuddyRepository extends ChangeNotifier {
 		try {
 			final response = await _dio.post(
 				'${BuddyModuleConstants.conversationsPath}/$conversationId/messages',
-				data: {'content': content},
+				data: {
+					'data': {'content': content},
+				},
 			);
 
 			if (response.statusCode == 200 && response.data != null) {
@@ -395,7 +397,9 @@ class BuddyRepository extends ChangeNotifier {
 		try {
 			final response = await _dio.post(
 				'${BuddyModuleConstants.suggestionsPath}/$suggestionId/feedback',
-				data: {'feedback': feedback},
+				data: {
+					'data': {'feedback': feedback},
+				},
 			);
 
 			if (response.statusCode == 200) {
