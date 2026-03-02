@@ -19,17 +19,6 @@
 			</div>
 		</template>
 
-		<template v-else-if="error">
-			<div class="flex flex-col items-center justify-center h-full p-4">
-				<el-alert
-					type="error"
-					:title="error"
-					show-icon
-					:closable="false"
-				/>
-			</div>
-		</template>
-
 		<template v-else-if="!hasActiveConversation && !isLoadingMessages">
 			<div class="flex items-center justify-center h-full">
 				<el-empty :description="t('buddyModule.texts.emptyChat')" />
@@ -43,7 +32,7 @@
 			>
 				<div ref="messagesContainerRef">
 					<el-empty
-						v-if="messages.length === 0 && !isLoadingMessages"
+						v-if="messages.length === 0 && !isLoadingMessages && !error"
 						:description="t('buddyModule.texts.startConversation')"
 					/>
 
@@ -66,6 +55,16 @@
 							</div>
 						</div>
 					</div>
+
+					<el-alert
+						v-if="error"
+						type="error"
+						:title="error"
+						show-icon
+						closable
+						class="mt-2"
+						@close="emit('dismiss-error')"
+					/>
 				</div>
 			</el-scrollbar>
 
@@ -124,6 +123,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	(e: 'send', content: string): void;
+	(e: 'dismiss-error'): void;
 }>();
 
 const { t } = useI18n();
@@ -162,6 +162,15 @@ watch(
 watch(
 	() => props.isSending,
 	(val: boolean) => {
+		if (val) {
+			scrollToBottom();
+		}
+	}
+);
+
+watch(
+	() => props.error,
+	(val: string | null) => {
 		if (val) {
 			scrollToBottom();
 		}

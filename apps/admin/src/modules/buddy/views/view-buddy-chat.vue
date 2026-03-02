@@ -65,6 +65,7 @@
 				:is-provider-not-configured="isProviderNotConfigured"
 				:error="error"
 				@send="sendMessage"
+				@dismiss-error="error = null"
 			/>
 		</div>
 	</div>

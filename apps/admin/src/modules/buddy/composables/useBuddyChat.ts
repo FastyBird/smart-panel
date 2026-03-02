@@ -59,10 +59,20 @@ export const useBuddyChat = (): IUseBuddyChat => {
 		return activeConversationId.value !== null;
 	});
 
-	const isServiceUnavailable = (err: unknown): boolean => {
-		const apiError = err as { response?: { status?: number }; status?: number };
+	const extractApiError = (response: unknown): { status: number; message: string } | null => {
+		const res = response as {
+			response?: { status?: number };
+			error?: { error?: { message?: string }; status?: number };
+		};
 
-		return apiError.response?.status === 503 || apiError.status === 503;
+		const status = res.response?.status ?? res.error?.status;
+		const message = res.error?.error?.message;
+
+		if (typeof status === 'number' && status >= 400) {
+			return { status, message: message ?? 'An unexpected error occurred' };
+		}
+
+		return null;
 	};
 
 	const fetchConversations = async (): Promise<void> => {
@@ -72,17 +82,25 @@ export const useBuddyChat = (): IUseBuddyChat => {
 		try {
 			const response = await backend.client.GET(`/${MODULES_PREFIX}/${BUDDY_MODULE_PREFIX}/conversations` as never);
 
+			const apiError = extractApiError(response);
+
+			if (apiError) {
+				if (apiError.status === 503) {
+					isProviderNotConfigured.value = true;
+				} else {
+					error.value = apiError.message;
+				}
+
+				return;
+			}
+
 			const responseData = (response as { data?: { data: IConversation[] } }).data;
 
 			if (typeof responseData !== 'undefined') {
 				conversations.value = responseData.data;
 			}
 		} catch (err: unknown) {
-			if (isServiceUnavailable(err)) {
-				isProviderNotConfigured.value = true;
-			} else {
-				error.value = err instanceof Error ? err.message : 'Failed to load conversations';
-			}
+			error.value = err instanceof Error ? err.message : 'Failed to load conversations';
 		} finally {
 			isLoadingConversations.value = false;
 		}
@@ -96,6 +114,18 @@ export const useBuddyChat = (): IUseBuddyChat => {
 				body: { data: { title: title ?? null } },
 			} as never);
 
+			const apiError = extractApiError(response);
+
+			if (apiError) {
+				if (apiError.status === 503) {
+					isProviderNotConfigured.value = true;
+				} else {
+					error.value = apiError.message;
+				}
+
+				return undefined;
+			}
+
 			const responseData = (response as { data?: { data: IConversation } }).data;
 
 			if (typeof responseData !== 'undefined') {
@@ -106,11 +136,7 @@ export const useBuddyChat = (): IUseBuddyChat => {
 				return responseData.data;
 			}
 		} catch (err: unknown) {
-			if (isServiceUnavailable(err)) {
-				isProviderNotConfigured.value = true;
-			} else {
-				error.value = err instanceof Error ? err.message : 'Failed to create conversation';
-			}
+			error.value = err instanceof Error ? err.message : 'Failed to create conversation';
 		}
 
 		return undefined;
@@ -129,17 +155,25 @@ export const useBuddyChat = (): IUseBuddyChat => {
 				} as never
 			);
 
+			const apiError = extractApiError(response);
+
+			if (apiError) {
+				if (apiError.status === 503) {
+					isProviderNotConfigured.value = true;
+				} else {
+					error.value = apiError.message;
+				}
+
+				return;
+			}
+
 			const responseData = (response as { data?: { data: IMessage[] } }).data;
 
 			if (typeof responseData !== 'undefined') {
 				messages.value = responseData.data;
 			}
 		} catch (err: unknown) {
-			if (isServiceUnavailable(err)) {
-				isProviderNotConfigured.value = true;
-			} else {
-				error.value = err instanceof Error ? err.message : 'Failed to load messages';
-			}
+			error.value = err instanceof Error ? err.message : 'Failed to load messages';
 		} finally {
 			isLoadingMessages.value = false;
 		}
@@ -176,7 +210,7 @@ export const useBuddyChat = (): IUseBuddyChat => {
 		await nextTick();
 
 		try {
-			await backend.client.POST(
+			const response = await backend.client.POST(
 				`/${MODULES_PREFIX}/${BUDDY_MODULE_PREFIX}/conversations/{id}/messages` as never,
 				{
 					params: {
@@ -186,17 +220,22 @@ export const useBuddyChat = (): IUseBuddyChat => {
 				} as never
 			);
 
+			const apiError = extractApiError(response);
+
+			if (apiError) {
+				if (apiError.status === 503) {
+					isProviderNotConfigured.value = true;
+				} else {
+					error.value = apiError.message;
+				}
+
+				return;
+			}
+
 			// Re-fetch messages to get the real IDs and assistant response
 			await fetchMessages(conversationId);
 		} catch (err: unknown) {
-			// Remove optimistic message on failure
-			messages.value = messages.value.filter((m) => m.id !== pendingId);
-
-			if (isServiceUnavailable(err)) {
-				isProviderNotConfigured.value = true;
-			} else {
-				error.value = err instanceof Error ? err.message : 'Failed to send message';
-			}
+			error.value = err instanceof Error ? err.message : 'Failed to send message';
 		} finally {
 			isSending.value = false;
 		}
