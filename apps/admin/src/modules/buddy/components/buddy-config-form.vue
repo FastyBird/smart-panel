@@ -44,13 +44,13 @@
 				>
 					<span>{{ option.label }}</span>
 					<el-tag
-						v-if="!option.configured && !option.disabled"
+						v-if="option.tag"
 						size="small"
-						type="warning"
+						:type="option.tagType"
 						effect="light"
 						style="margin-left: 8px"
 					>
-						{{ t('buddyModule.fields.config.provider.notConfigured') }}
+						{{ option.tag }}
 					</el-tag>
 				</el-option>
 			</el-select>
@@ -127,12 +127,12 @@ const { formEl, model, formChanged, submit, formResult } = useConfigModuleEditFo
 	},
 });
 
-const pluginDefinitions: { value: string; labelKey: string }[] = [
+const pluginDefinitions: { value: string; labelKey: string; tag?: string; tagType?: string }[] = [
 	{ value: 'buddy-openai-plugin', labelKey: 'buddyModule.fields.config.provider.options.openai' },
 	{ value: 'buddy-openai-codex-plugin', labelKey: 'buddyModule.fields.config.provider.options.openaiCodex' },
 	{ value: 'buddy-claude-plugin', labelKey: 'buddyModule.fields.config.provider.options.claude' },
 	{ value: 'buddy-claude-oauth-plugin', labelKey: 'buddyModule.fields.config.provider.options.claudeOauth' },
-	{ value: 'buddy-ollama-plugin', labelKey: 'buddyModule.fields.config.provider.options.ollama' },
+	{ value: 'buddy-ollama-plugin', labelKey: 'buddyModule.fields.config.provider.options.ollama', tag: 'local', tagType: 'info' },
 ];
 
 const isPluginConfigured = (type: string): boolean => {
@@ -145,10 +145,10 @@ const isPluginConfigured = (type: string): boolean => {
 	switch (type) {
 		case 'buddy-claude-plugin':
 		case 'buddy-openai-plugin':
-			return !!plugin.api_key;
+			return !!plugin.apiKey;
 		case 'buddy-claude-oauth-plugin':
 		case 'buddy-openai-codex-plugin':
-			return !!plugin.access_token || !!plugin.refresh_token;
+			return !!plugin.accessToken || !!plugin.refreshToken;
 		case 'buddy-ollama-plugin':
 			return true;
 		default:
@@ -157,19 +157,34 @@ const isPluginConfigured = (type: string): boolean => {
 };
 
 const providerOptions = computed(() => {
-	const options: { value: string; label: string; disabled: boolean; configured: boolean }[] = [
-		{ value: LLM_PROVIDER_NONE, label: t('buddyModule.fields.config.provider.options.none'), disabled: false, configured: true },
+	const options: { value: string; label: string; disabled: boolean; tag?: string; tagType?: string }[] = [
+		{
+			value: LLM_PROVIDER_NONE,
+			label: t('buddyModule.fields.config.provider.options.none'),
+			disabled: false,
+			tag: t('buddyModule.fields.config.provider.tags.ruleBasedOnly'),
+			tagType: 'info',
+		},
 	];
 
 	for (const def of pluginDefinitions) {
 		const plugin = configPluginsStore.findByType(def.value);
 		const enabled = plugin?.enabled ?? false;
 
+		let tag = def.tag;
+		let tagType = def.tagType;
+
+		if (enabled && !isPluginConfigured(def.value)) {
+			tag = t('buddyModule.fields.config.provider.notConfigured');
+			tagType = 'warning';
+		}
+
 		options.push({
 			value: def.value,
 			label: t(def.labelKey),
 			disabled: !enabled,
-			configured: enabled ? isPluginConfigured(def.value) : true,
+			tag,
+			tagType,
 		});
 	}
 

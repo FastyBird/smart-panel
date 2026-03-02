@@ -35,13 +35,16 @@
 				"title": "AI Provider Plugin",
 				"placeholder": "Select an AI provider plugin",
 				"notConfigured": "not configured",
+				"tags": {
+					"ruleBasedOnly": "rule-based only"
+				},
 				"options": {
-					"none": "None (rule-based only)",
-					"claude": "Buddy Claude (Anthropic)",
+					"none": "None",
+					"claude": "Buddy Claude",
 					"openai": "Buddy OpenAI",
-					"openaiCodex": "Buddy OpenAI Codex (OAuth)",
-					"claudeOauth": "Buddy Claude OAuth (Anthropic)",
-					"ollama": "Buddy Ollama (local)"
+					"openaiCodex": "Buddy OpenAI Codex",
+					"claudeOauth": "Buddy Claude OAuth",
+					"ollama": "Buddy Ollama"
 				}
 			}
 		}
