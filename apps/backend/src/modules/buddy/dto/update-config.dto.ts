@@ -20,6 +20,16 @@ export class UpdateBuddyConfigDto extends UpdateModuleConfigDto {
 	type: string = BUDDY_MODULE_NAME;
 
 	@ApiPropertyOptional({
+		description: 'Display name for the buddy assistant',
+		type: 'string',
+		example: 'Buddy',
+	})
+	@Expose()
+	@IsOptional()
+	@IsString({ message: '[{"field":"name","reason":"Name must be a valid string."}]' })
+	name?: string;
+
+	@ApiPropertyOptional({
 		description:
 			'LLM provider plugin type (e.g. buddy-openai-plugin, buddy-claude-plugin, buddy-ollama-plugin, or none)',
 		type: 'string',

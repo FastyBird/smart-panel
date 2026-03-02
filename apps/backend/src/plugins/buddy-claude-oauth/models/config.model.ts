@@ -25,38 +25,7 @@ export class BuddyClaudeOauthConfigModel extends PluginConfigModel {
 	enabled: boolean = false;
 
 	@ApiPropertyOptional({
-		description: 'OAuth client ID',
-		name: 'client_id',
-		type: 'string',
-		nullable: true,
-	})
-	@Expose({ name: 'client_id' })
-	@Transform(
-		({ obj }: { obj: { client_id?: string | null; clientId?: string | null } }) => obj.client_id ?? obj.clientId,
-		{ toClassOnly: true },
-	)
-	@IsOptional()
-	@IsString()
-	clientId: string | null = null;
-
-	@ApiPropertyOptional({
-		description: 'OAuth client secret',
-		name: 'client_secret',
-		type: 'string',
-		nullable: true,
-	})
-	@Expose({ name: 'client_secret' })
-	@Transform(
-		({ obj }: { obj: { client_secret?: string | null; clientSecret?: string | null } }) =>
-			obj.client_secret ?? obj.clientSecret,
-		{ toClassOnly: true },
-	)
-	@IsOptional()
-	@IsString()
-	clientSecret: string | null = null;
-
-	@ApiPropertyOptional({
-		description: 'OAuth access token',
+		description: 'Setup token obtained from claude setup-token command',
 		name: 'access_token',
 		type: 'string',
 		nullable: true,
@@ -70,22 +39,6 @@ export class BuddyClaudeOauthConfigModel extends PluginConfigModel {
 	@IsOptional()
 	@IsString()
 	accessToken: string | null = null;
-
-	@ApiPropertyOptional({
-		description: 'OAuth refresh token',
-		name: 'refresh_token',
-		type: 'string',
-		nullable: true,
-	})
-	@Expose({ name: 'refresh_token' })
-	@Transform(
-		({ obj }: { obj: { refresh_token?: string | null; refreshToken?: string | null } }) =>
-			obj.refresh_token ?? obj.refreshToken,
-		{ toClassOnly: true },
-	)
-	@IsOptional()
-	@IsString()
-	refreshToken: string | null = null;
 
 	@ApiPropertyOptional({
 		description: 'Model name to use (e.g. claude-sonnet-4-20250514)',

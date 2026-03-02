@@ -86,7 +86,6 @@ export class BuddyProviderStatusService {
 				return config.baseUrl !== null && config.baseUrl !== undefined;
 
 			case 'buddy-openai-codex-plugin':
-			case 'buddy-claude-oauth-plugin':
 				return (
 					(config.accessToken !== null && config.accessToken !== undefined) ||
 					(config.clientId !== null &&
@@ -94,6 +93,9 @@ export class BuddyProviderStatusService {
 						config.refreshToken !== null &&
 						config.refreshToken !== undefined)
 				);
+
+			case 'buddy-claude-oauth-plugin':
+				return config.accessToken !== null && config.accessToken !== undefined;
 
 			default:
 				return false;

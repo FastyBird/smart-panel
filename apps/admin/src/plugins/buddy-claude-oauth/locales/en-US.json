@@ -1,29 +1,16 @@
 {
 	"headings": {
-		"aboutApiSettings": "Claude OAuth settings",
-		"advancedSettings": "Advanced settings"
+		"aboutApiSettings": "Claude setup token settings"
 	},
 	"fields": {
 		"config": {
 			"enabled": {
 				"title": "Enabled"
 			},
-			"clientId": {
-				"title": "Client ID",
-				"placeholder": "Enter your OAuth client ID",
-				"description": "The OAuth client ID for Anthropic Claude API. A default is provided from Claude Code."
-			},
-			"clientSecret": {
-				"title": "Client secret",
-				"placeholder": "Enter your OAuth client secret"
-			},
 			"accessToken": {
-				"title": "Access token",
-				"placeholder": "Enter your access token"
-			},
-			"refreshToken": {
-				"title": "Refresh token",
-				"placeholder": "Enter your refresh token"
+				"title": "Setup token",
+				"placeholder": "Paste your setup token here",
+				"description": "Run `claude setup-token` in your terminal and paste the generated token here."
 			},
 			"model": {
 				"title": "Model",
@@ -32,26 +19,13 @@
 			}
 		}
 	},
-	"buttons": {
-		"authorize": "Connect with Claude",
-		"authorizing": "Authorizing...",
-		"disconnect": "Disconnect"
-	},
-	"statuses": {
-		"connected": "Connected",
-		"notConnected": "Not connected"
-	},
 	"messages": {
 		"config": {
-			"edited": "Claude OAuth settings have been updated",
-			"notEdited": "Failed to update Claude OAuth settings"
-		},
-		"oauth": {
-			"success": "Successfully connected to Claude",
-			"error": "Failed to authorize with Claude"
+			"edited": "Claude setup token settings have been updated",
+			"notEdited": "Failed to update Claude setup token settings"
 		}
 	},
 	"texts": {
-		"aboutApiSettings": "Configure your Anthropic Claude OAuth settings. Click \"Connect with Claude\" to authorize via OAuth, or expand Advanced Settings to enter tokens manually."
+		"aboutApiSettings": "Configure your Anthropic Claude connection using a setup token. Run `claude setup-token` in your terminal to get a token from your Claude subscription."
 	}
 }

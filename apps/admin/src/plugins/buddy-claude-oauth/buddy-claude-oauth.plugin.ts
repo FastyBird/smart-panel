@@ -28,8 +28,8 @@ export default {
 		pluginsManager.addPlugin(buddyClaudeOauthPluginKey, {
 			type: BUDDY_CLAUDE_OAUTH_PLUGIN_NAME,
 			source: 'com.fastybird.smart-panel.plugin.buddy-claude-oauth',
-			name: 'Buddy Claude OAuth',
-			description: 'LLM provider plugin for Buddy module using Anthropic Claude with OAuth authentication',
+			name: 'Buddy Claude Setup Token',
+			description: 'LLM provider plugin for Buddy module using Anthropic Claude with setup-token authentication',
 			links: {
 				documentation: 'https://docs.anthropic.com',
 				devDocumentation: 'https://docs.anthropic.com',
