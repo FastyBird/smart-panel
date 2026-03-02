@@ -1,10 +1,12 @@
 {
 	"headings": {
 		"settings": "Buddy",
+		"chat": "Buddy Chat",
 		"aboutBuddy": "AI Buddy Configuration"
 	},
 	"subHeadings": {
-		"settings": "Configure AI buddy assistant settings"
+		"settings": "Configure AI buddy assistant settings",
+		"chat": "Chat with your AI buddy assistant"
 	},
 	"messages": {
 		"loadError": "Failed to load buddy configuration",
@@ -22,6 +24,18 @@
 		},
 		"retry": {
 			"title": "Retry"
+		},
+		"newChat": {
+			"title": "New Chat"
+		},
+		"delete": {
+			"title": "Delete"
+		},
+		"cancel": {
+			"title": "Cancel"
+		},
+		"configure": {
+			"title": "Configure Provider"
 		}
 	},
 	"fields": {
@@ -47,16 +61,34 @@
 					"ollama": "Buddy Ollama"
 				}
 			}
+		},
+		"message": {
+			"placeholder": "Type a message..."
 		}
 	},
 	"texts": {
 		"loadingConfig": "Loading buddy configuration...",
+		"loadingConversations": "Loading conversations...",
 		"aboutBuddy": "Configure the AI buddy assistant that observes your actions, learns your patterns, and suggests automations. Select an AI provider plugin to enable chat functionality. Provider-specific settings (API key, model) are configured in the plugin's own settings page. Without a provider, rule-based suggestions will still work.",
-		"pluginConfigHint": "API keys, model names, and other provider-specific settings are configured in the selected plugin's settings page."
+		"pluginConfigHint": "API keys, model names, and other provider-specific settings are configured in the selected plugin's settings page.",
+		"emptyChat": "Select or create a conversation to start chatting",
+		"startConversation": "Ask me anything about your home!",
+		"thinking": "Thinking...",
+		"newConversation": "New conversation",
+		"confirmDelete": "Delete this conversation?",
+		"providerNotConfigured": "AI provider not configured",
+		"providerNotConfiguredHint": "Configure an AI provider plugin to start chatting with your buddy.",
+		"justNow": "just now",
+		"minutesAgo": "{n}m ago",
+		"hoursAgo": "{n}h ago",
+		"daysAgo": "{n}d ago"
 	},
 	"meta": {
 		"settings": {
 			"title": "Buddy Settings"
+		},
+		"chat": {
+			"title": "Buddy Chat"
 		}
 	}
 }

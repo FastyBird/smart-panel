@@ -1,0 +1,131 @@
+<template>
+	<app-bar-heading
+		v-if="!isMDDevice"
+		teleport
+	>
+		<template #icon>
+			<icon
+				icon="mdi:robot-happy"
+				class="w[20px] h[20px]"
+			/>
+		</template>
+
+		<template #title>
+			{{ t('buddyModule.headings.chat') }}
+		</template>
+
+		<template #subtitle>
+			{{ t('buddyModule.subHeadings.chat') }}
+		</template>
+	</app-bar-heading>
+
+	<app-bar-button
+		v-if="!isMDDevice"
+		:align="AppBarButtonAlign.LEFT"
+		teleport
+		small
+		@click="router.push('/')"
+	>
+		<template #icon>
+			<el-icon :size="24">
+				<icon icon="mdi:chevron-left" />
+			</el-icon>
+		</template>
+
+		<span class="uppercase">{{ t('buddyModule.buttons.back.title') }}</span>
+	</app-bar-button>
+
+	<view-header
+		:heading="t('buddyModule.headings.chat')"
+		:sub-heading="t('buddyModule.subHeadings.chat')"
+		:icon="'mdi:robot-happy'"
+	/>
+
+	<div
+		v-loading="isLoadingConversations"
+		:element-loading-text="t('buddyModule.texts.loadingConversations')"
+		class="flex overflow-hidden h-full"
+	>
+		<div class="w-[250px] shrink-0">
+			<buddy-conversation-list
+				:conversations="conversations"
+				:active-id="activeConversationId"
+				@select="selectConversation"
+				@create="onCreateConversation"
+				@delete="deleteConversation"
+			/>
+		</div>
+
+		<div class="grow-1 min-w-0">
+			<buddy-chat-area
+				:messages="messages"
+				:is-sending="isSending"
+				:is-loading-messages="isLoadingMessages"
+				:has-active-conversation="hasActiveConversation"
+				:is-provider-not-configured="isProviderNotConfigured"
+				:error="error"
+				@send="sendMessage"
+			/>
+		</div>
+	</div>
+</template>
+
+<script setup lang="ts">
+import { onBeforeMount } from 'vue';
+import { useI18n } from 'vue-i18n';
+import { useMeta } from 'vue-meta';
+import { useRouter } from 'vue-router';
+
+import { ElIcon, vLoading } from 'element-plus';
+
+import { Icon } from '@iconify/vue';
+
+import { AppBarButton, AppBarButtonAlign, AppBarHeading, ViewHeader, useBreakpoints } from '../../../common';
+import BuddyConversationList from '../components/buddy-conversation-list.vue';
+import BuddyChatArea from '../components/buddy-chat-area.vue';
+import { useBuddyChat } from '../composables/useBuddyChat';
+
+defineOptions({
+	name: 'ViewBuddyChat',
+});
+
+const router = useRouter();
+const { t } = useI18n();
+
+useMeta({
+	title: t('buddyModule.meta.chat.title'),
+});
+
+const { isMDDevice } = useBreakpoints();
+
+const {
+	conversations,
+	activeConversationId,
+	messages,
+	hasActiveConversation,
+	isLoadingConversations,
+	isLoadingMessages,
+	isSending,
+	error,
+	isProviderNotConfigured,
+	fetchConversations,
+	createConversation,
+	selectConversation,
+	sendMessage,
+	deleteConversation,
+} = useBuddyChat();
+
+const onCreateConversation = async (): Promise<void> => {
+	await createConversation();
+};
+
+onBeforeMount(async (): Promise<void> => {
+	await fetchConversations();
+
+	if (conversations.value.length > 0) {
+		await selectConversation(conversations.value[0].id);
+	} else {
+		await createConversation();
+	}
+});
+</script>

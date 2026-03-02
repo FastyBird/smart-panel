@@ -5,9 +5,9 @@ import { RouteNames } from '../buddy.constants';
 
 export const ModuleRoutes: RouteRecordRaw[] = [
 	{
-		path: 'buddy/settings',
-		name: RouteNames.BUDDY_SETTINGS,
-		component: () => import('../views/view-buddy-settings.vue'),
+		path: 'buddy',
+		name: RouteNames.BUDDY,
+		component: () => import('../views/view-buddy-chat.vue'),
 		meta: {
 			guards: {
 				authenticated: true,
