@@ -27,21 +27,37 @@
 
 		<div class="mt-3 mb-4">
 			<div class="flex items-center gap-3">
-				<el-button
-					type="primary"
-					:loading="isAuthorizing"
-					@click="handleAuthorize"
-				>
-					{{ isAuthorizing ? t('buddyClaudeOauthPlugin.buttons.authorizing') : t('buddyClaudeOauthPlugin.buttons.authorize') }}
-				</el-button>
-				<el-tag
-					:type="isConnected ? 'success' : 'info'"
-					effect="light"
-				>
-					{{ isConnected ? t('buddyClaudeOauthPlugin.statuses.connected') : t('buddyClaudeOauthPlugin.statuses.notConnected') }}
-				</el-tag>
+				<template v-if="!isConnected">
+					<el-button
+						type="primary"
+						:loading="isAuthorizing"
+						@click="handleAuthorize"
+					>
+						{{ isAuthorizing ? t('buddyClaudeOauthPlugin.buttons.authorizing') : t('buddyClaudeOauthPlugin.buttons.authorize') }}
+					</el-button>
+					<el-tag
+						type="info"
+						effect="light"
+					>
+						{{ t('buddyClaudeOauthPlugin.statuses.notConnected') }}
+					</el-tag>
+				</template>
+				<template v-else>
+					<el-button
+						type="danger"
+						@click="handleDisconnect"
+					>
+						{{ t('buddyClaudeOauthPlugin.buttons.disconnect') }}
+					</el-button>
+					<el-tag
+						type="success"
+						effect="light"
+					>
+						{{ t('buddyClaudeOauthPlugin.statuses.connected') }}
+					</el-tag>
+				</template>
 			</div>
-			</div>
+		</div>
 
 		<el-form-item
 			:label="t('buddyClaudeOauthPlugin.fields.config.clientId.title')"
@@ -198,6 +214,13 @@ const { isAuthorizing, authError, startOAuth } = useOAuthPopup(BUDDY_CLAUDE_OAUT
 const isConnected = computed<boolean>(() => {
 	return !!(model.accessToken || model.refreshToken);
 });
+
+const handleDisconnect = (): void => {
+	model.accessToken = '';
+	model.refreshToken = '';
+
+	submit();
+};
 
 const handleAuthorize = async (): Promise<void> => {
 	const clientId = model.clientId || '9d1c250a-e61b-44d9-88ed-5944d1962f5e';

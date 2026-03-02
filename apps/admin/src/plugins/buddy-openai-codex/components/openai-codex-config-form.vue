@@ -27,22 +27,38 @@
 
 		<div class="mt-3 mb-4">
 			<div class="flex items-center gap-3">
-				<el-button
-					type="primary"
-					:loading="isLoadingUrl"
-					@click="handleGetUrl"
-				>
-					{{ t('buddyOpenaiCodexPlugin.buttons.getUrl') }}
-				</el-button>
-				<el-tag
-					:type="isConnected ? 'success' : 'info'"
-					effect="light"
-				>
-					{{ isConnected ? t('buddyOpenaiCodexPlugin.statuses.connected') : t('buddyOpenaiCodexPlugin.statuses.notConnected') }}
-				</el-tag>
+				<template v-if="!isConnected">
+					<el-button
+						type="primary"
+						:loading="isLoadingUrl"
+						@click="handleGetUrl"
+					>
+						{{ t('buddyOpenaiCodexPlugin.buttons.getUrl') }}
+					</el-button>
+					<el-tag
+						type="info"
+						effect="light"
+					>
+						{{ t('buddyOpenaiCodexPlugin.statuses.notConnected') }}
+					</el-tag>
+				</template>
+				<template v-else>
+					<el-button
+						type="danger"
+						@click="handleDisconnect"
+					>
+						{{ t('buddyOpenaiCodexPlugin.buttons.disconnect') }}
+					</el-button>
+					<el-tag
+						type="success"
+						effect="light"
+					>
+						{{ t('buddyOpenaiCodexPlugin.statuses.connected') }}
+					</el-tag>
+				</template>
 			</div>
 
-			<template v-if="authorizeUrl">
+			<template v-if="!isConnected && authorizeUrl">
 				<div class="mt-3">
 					<div class="text-xs text-gray-500 mb-2">
 						{{ t('buddyOpenaiCodexPlugin.texts.oauthSteps') }}
@@ -241,6 +257,15 @@ const isExchanging = ref<boolean>(false);
 const isConnected = computed<boolean>(() => {
 	return !!(model.accessToken || model.refreshToken);
 });
+
+const handleDisconnect = (): void => {
+	model.accessToken = '';
+	model.refreshToken = '';
+	authorizeUrl.value = null;
+	callbackUrl.value = '';
+
+	submit();
+};
 
 const handleGetUrl = async (): Promise<void> => {
 	isLoadingUrl.value = true;

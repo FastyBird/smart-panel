@@ -34,7 +34,8 @@
 	},
 	"buttons": {
 		"authorize": "Connect with Claude",
-		"authorizing": "Authorizing..."
+		"authorizing": "Authorizing...",
+		"disconnect": "Disconnect"
 	},
 	"statuses": {
 		"connected": "Connected",

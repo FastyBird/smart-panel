@@ -40,7 +40,8 @@
 		"copyUrl": "Copy",
 		"openUrl": "Open in Browser",
 		"exchange": "Exchange Token",
-		"exchanging": "Exchanging..."
+		"exchanging": "Exchanging...",
+		"disconnect": "Disconnect"
 	},
 	"statuses": {
 		"connected": "Connected",
