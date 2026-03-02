@@ -32,8 +32,11 @@ export class BuddyClaudeOauthConfigModel extends PluginConfigModel {
 	})
 	@Expose({ name: 'access_token' })
 	@Transform(
-		({ obj }: { obj: { access_token?: string | null; accessToken?: string | null } }) =>
-			obj.access_token ?? obj.accessToken,
+		({ obj }: { obj: { access_token?: string | null; accessToken?: string | null } }) => {
+			const raw = obj.access_token ?? obj.accessToken;
+
+			return typeof raw === 'string' ? raw.replace(/\s+/g, '') || null : raw;
+		},
 		{ toClassOnly: true },
 	)
 	@IsOptional()
