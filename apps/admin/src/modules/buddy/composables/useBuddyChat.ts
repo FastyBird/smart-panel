@@ -20,6 +20,16 @@ interface IMessage {
 	created_at: string;
 }
 
+export interface IProviderStatus {
+	type: string;
+	name: string;
+	description: string;
+	default_model: string;
+	enabled: boolean;
+	configured: boolean;
+	selected: boolean;
+}
+
 interface IUseBuddyChat {
 	conversations: ReturnType<typeof ref<IConversation[]>>;
 	activeConversationId: ReturnType<typeof ref<string | null>>;
@@ -30,8 +40,11 @@ interface IUseBuddyChat {
 	isLoadingMessages: ReturnType<typeof ref<boolean>>;
 	isSending: ReturnType<typeof ref<boolean>>;
 	error: ReturnType<typeof ref<string | null>>;
-	isProviderNotConfigured: ReturnType<typeof ref<boolean>>;
+	isProviderNotConfigured: ReturnType<typeof computed<boolean>>;
+	providerStatuses: ReturnType<typeof ref<IProviderStatus[]>>;
+	selectedProviderStatus: ReturnType<typeof computed<IProviderStatus | undefined>>;
 	fetchConversations: () => Promise<void>;
+	fetchProviderStatuses: () => Promise<void>;
 	createConversation: (title?: string) => Promise<IConversation | undefined>;
 	selectConversation: (id: string) => Promise<void>;
 	sendMessage: (content: string) => Promise<void>;
@@ -44,12 +57,30 @@ export const useBuddyChat = (): IUseBuddyChat => {
 	const conversations = ref<IConversation[]>([]);
 	const activeConversationId = ref<string | null>(null);
 	const messages = ref<IMessage[]>([]);
+	const providerStatuses = ref<IProviderStatus[]>([]);
 
 	const isLoadingConversations = ref<boolean>(false);
 	const isLoadingMessages = ref<boolean>(false);
 	const isSending = ref<boolean>(false);
 	const error = ref<string | null>(null);
-	const isProviderNotConfigured = ref<boolean>(false);
+
+	const selectedProviderStatus = computed<IProviderStatus | undefined>(() => {
+		return providerStatuses.value.find((p) => p.selected);
+	});
+
+	const isProviderNotConfigured = computed<boolean>(() => {
+		if (providerStatuses.value.length === 0) {
+			return false;
+		}
+
+		const selected = selectedProviderStatus.value;
+
+		if (!selected) {
+			return true;
+		}
+
+		return !selected.enabled || !selected.configured;
+	});
 
 	const activeConversation = computed<IConversation | undefined>(() => {
 		return conversations.value.find((c) => c.id === activeConversationId.value);
@@ -75,6 +106,20 @@ export const useBuddyChat = (): IUseBuddyChat => {
 		return null;
 	};
 
+	const fetchProviderStatuses = async (): Promise<void> => {
+		try {
+			const response = await backend.client.GET(`/${MODULES_PREFIX}/${BUDDY_MODULE_PREFIX}/providers` as never);
+
+			const responseData = (response as { data?: { data: IProviderStatus[] } }).data;
+
+			if (typeof responseData !== 'undefined') {
+				providerStatuses.value = responseData.data;
+			}
+		} catch {
+			// Silently fail — provider statuses are non-critical
+		}
+	};
+
 	const fetchConversations = async (): Promise<void> => {
 		isLoadingConversations.value = true;
 		error.value = null;
@@ -85,9 +130,7 @@ export const useBuddyChat = (): IUseBuddyChat => {
 			const apiError = extractApiError(response);
 
 			if (apiError) {
-				if (apiError.status === 503) {
-					isProviderNotConfigured.value = true;
-				} else {
+				if (apiError.status !== 503) {
 					error.value = apiError.message;
 				}
 
@@ -117,9 +160,7 @@ export const useBuddyChat = (): IUseBuddyChat => {
 			const apiError = extractApiError(response);
 
 			if (apiError) {
-				if (apiError.status === 503) {
-					isProviderNotConfigured.value = true;
-				} else {
+				if (apiError.status !== 503) {
 					error.value = apiError.message;
 				}
 
@@ -158,9 +199,7 @@ export const useBuddyChat = (): IUseBuddyChat => {
 			const apiError = extractApiError(response);
 
 			if (apiError) {
-				if (apiError.status === 503) {
-					isProviderNotConfigured.value = true;
-				} else {
+				if (apiError.status !== 503) {
 					error.value = apiError.message;
 				}
 
@@ -223,9 +262,7 @@ export const useBuddyChat = (): IUseBuddyChat => {
 			const apiError = extractApiError(response);
 
 			if (apiError) {
-				if (apiError.status === 503) {
-					isProviderNotConfigured.value = true;
-				} else {
+				if (apiError.status !== 503) {
 					error.value = apiError.message;
 				}
 
@@ -278,7 +315,10 @@ export const useBuddyChat = (): IUseBuddyChat => {
 		isSending,
 		error,
 		isProviderNotConfigured,
+		providerStatuses,
+		selectedProviderStatus,
 		fetchConversations,
+		fetchProviderStatuses,
 		createConversation,
 		selectConversation,
 		sendMessage,

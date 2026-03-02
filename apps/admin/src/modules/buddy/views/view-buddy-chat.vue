@@ -64,6 +64,8 @@
 				:has-active-conversation="hasActiveConversation"
 				:is-provider-not-configured="isProviderNotConfigured"
 				:error="error"
+				:selected-provider="selectedProviderStatus"
+				:provider-statuses="providerStatuses"
 				@send="sendMessage"
 				@dismiss-error="error = null"
 			/>
@@ -109,7 +111,10 @@ const {
 	isSending,
 	error,
 	isProviderNotConfigured,
+	providerStatuses,
+	selectedProviderStatus,
 	fetchConversations,
+	fetchProviderStatuses,
 	createConversation,
 	selectConversation,
 	sendMessage,
@@ -121,6 +126,7 @@ const onCreateConversation = async (): Promise<void> => {
 };
 
 onBeforeMount(async (): Promise<void> => {
+	await fetchProviderStatuses();
 	await fetchConversations();
 
 	if (conversations.value.length > 0) {
