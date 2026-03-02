@@ -30,8 +30,9 @@ export class BuddyConversationService {
 		private readonly eventEmitter: EventEmitter2,
 	) {}
 
-	async findAll(): Promise<BuddyConversationEntity[]> {
+	async findAll(spaceId?: string): Promise<BuddyConversationEntity[]> {
 		return this.conversationRepository.find({
+			where: spaceId ? { spaceId } : undefined,
 			order: { createdAt: 'DESC' },
 		});
 	}

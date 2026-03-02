@@ -94,11 +94,20 @@ describe('BuddyConversationService', () => {
 	});
 
 	describe('findAll', () => {
-		it('should return all conversations', async () => {
+		it('should return all conversations when no spaceId filter', async () => {
 			const result = await service.findAll();
 
 			expect(result).toHaveLength(1);
-			expect(conversationRepo.find).toHaveBeenCalledWith({ order: { createdAt: 'DESC' } });
+			expect(conversationRepo.find).toHaveBeenCalledWith({ where: undefined, order: { createdAt: 'DESC' } });
+		});
+
+		it('should filter conversations by spaceId when provided', async () => {
+			await service.findAll('space-1');
+
+			expect(conversationRepo.find).toHaveBeenCalledWith({
+				where: { spaceId: 'space-1' },
+				order: { createdAt: 'DESC' },
+			});
 		});
 	});
 
