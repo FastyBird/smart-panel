@@ -40,7 +40,19 @@
 					:key="option.value"
 					:label="option.label"
 					:value="option.value"
-				/>
+					:disabled="option.disabled"
+				>
+					<span>{{ option.label }}</span>
+					<el-tag
+						v-if="!option.configured && !option.disabled"
+						size="small"
+						type="warning"
+						effect="light"
+						style="margin-left: 8px"
+					>
+						{{ t('buddyModule.fields.config.provider.notConfigured') }}
+					</el-tag>
+				</el-option>
 			</el-select>
 		</el-form-item>
 
@@ -60,7 +72,7 @@
 import { computed, onBeforeMount, reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElForm, ElFormItem, ElInput, ElOption, ElSelect, ElText, type FormRules } from 'element-plus';
+import { ElAlert, ElForm, ElFormItem, ElInput, ElOption, ElSelect, ElTag, ElText, type FormRules } from 'element-plus';
 
 import { injectStoresManager } from '../../../common';
 import { FormResult, type FormResultType, Layout, configPluginsStoreKey, useConfigModuleEditForm } from '../../config';
@@ -145,24 +157,20 @@ const isPluginConfigured = (type: string): boolean => {
 };
 
 const providerOptions = computed(() => {
-	const options: { value: string; label: string }[] = [
-		{ value: LLM_PROVIDER_NONE, label: t('buddyModule.fields.config.provider.options.none') },
+	const options: { value: string; label: string; disabled: boolean; configured: boolean }[] = [
+		{ value: LLM_PROVIDER_NONE, label: t('buddyModule.fields.config.provider.options.none'), disabled: false, configured: true },
 	];
 
 	for (const def of pluginDefinitions) {
 		const plugin = configPluginsStore.findByType(def.value);
+		const enabled = plugin?.enabled ?? false;
 
-		if (!plugin?.enabled) {
-			continue;
-		}
-
-		let label = t(def.labelKey);
-
-		if (!isPluginConfigured(def.value)) {
-			label += t('buddyModule.fields.config.provider.notConfigured');
-		}
-
-		options.push({ value: def.value, label });
+		options.push({
+			value: def.value,
+			label: t(def.labelKey),
+			disabled: !enabled,
+			configured: enabled ? isPluginConfigured(def.value) : true,
+		});
 	}
 
 	return options;

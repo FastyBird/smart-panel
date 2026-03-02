@@ -34,7 +34,7 @@
 			"provider": {
 				"title": "AI Provider Plugin",
 				"placeholder": "Select an AI provider plugin",
-				"notConfigured": " [not configured]",
+				"notConfigured": "not configured",
 				"options": {
 					"none": "None (rule-based only)",
 					"claude": "Buddy Claude (Anthropic)",
