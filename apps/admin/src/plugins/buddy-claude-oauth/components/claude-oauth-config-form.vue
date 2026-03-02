@@ -9,9 +9,10 @@
 		<el-alert
 			type="info"
 			:title="t('buddyClaudeOauthPlugin.headings.aboutApiSettings')"
-			:description="t('buddyClaudeOauthPlugin.texts.aboutApiSettings')"
 			:closable="false"
-		/>
+		>
+			{{ t('buddyClaudeOauthPlugin.texts.aboutApiSettings') }}
+		</el-alert>
 
 		<el-form-item
 			:label="t('buddyClaudeOauthPlugin.fields.config.enabled.title')"
@@ -36,10 +37,20 @@
 				type="password"
 				show-password
 			/>
-			<div class="text-xs text-gray-500 mt-1">
-				{{ t('buddyClaudeOauthPlugin.fields.config.accessToken.description') }}
-			</div>
 		</el-form-item>
+
+		<el-alert
+			type="info"
+			:closable="false"
+			show-icon
+			class="mb-2!"
+		>
+			{{ t('buddyClaudeOauthPlugin.fields.config.accessToken.howTo') }}
+			<code class="font-bold">claude setup-token</code>
+			{{ t('buddyClaudeOauthPlugin.fields.config.accessToken.howToSuffix') }}
+			<br />
+			{{ t('buddyClaudeOauthPlugin.fields.config.accessToken.machineNote') }}
+		</el-alert>
 
 		<el-form-item
 			:label="t('buddyClaudeOauthPlugin.fields.config.model.title')"
