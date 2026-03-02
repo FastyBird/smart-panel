@@ -69,15 +69,20 @@ class BuddyRepository extends ChangeNotifier {
 	// ============================================
 
 	/// Fetch all conversations
-	Future<void> fetchConversations() async {
+	Future<void> fetchConversations({String? spaceId}) async {
 		_isLoadingConversations = true;
 		_error = null;
 		_isProviderNotConfigured = false;
 		notifyListeners();
 
 		try {
+			final queryParams = <String, dynamic>{};
+
+			if (spaceId != null) queryParams['space_id'] = spaceId;
+
 			final response = await _dio.get(
 				BuddyModuleConstants.conversationsPath,
+				queryParameters: queryParams.isNotEmpty ? queryParams : null,
 			);
 
 			if (response.statusCode == 200 && response.data != null) {
@@ -234,7 +239,8 @@ class BuddyRepository extends ChangeNotifier {
 				},
 			);
 
-			if (response.statusCode == 200 && response.data != null) {
+			if ((response.statusCode == 200 || response.statusCode == 201) &&
+				response.data != null) {
 				final data = response.data['data'];
 
 				if (data is Map<String, dynamic>) {
@@ -485,10 +491,15 @@ class BuddyRepository extends ChangeNotifier {
 					createdAt: DateTime.now(),
 				);
 
-				// Only deduplicate when the server provided a real ID;
-				// messages without an ID get a unique synthetic one above.
-				final isDuplicate = hasServerId &&
-					_messages.any((m) => m.id == message.id);
+				// Deduplicate: skip if we already have a message with the
+				// same server ID, or if we have a pending optimistic message
+				// with the same content (from the sending panel).
+				final isDuplicate = (hasServerId &&
+					_messages.any((m) => m.id == message.id)) ||
+					(message.role == BuddyMessageRole.user &&
+					_messages.any((m) =>
+						m.id.startsWith('pending_') &&
+						m.content == message.content));
 
 				if (!isDuplicate) {
 					_messages.add(message);

@@ -9,6 +9,7 @@ import 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/suggest
 import 'package:fastybird_smart_panel/modules/buddy/service.dart';
 import 'package:fastybird_smart_panel/modules/config/module.dart';
 import 'package:fastybird_smart_panel/modules/config/repositories/module_config_repository.dart';
+import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
 
 /// Full-screen chat page for the buddy module.
 ///
@@ -62,7 +63,10 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 		final buddyService = context.read<BuddyService>();
 
 		if (!buddyService.hasActiveConversation) {
-			final conversation = await buddyService.startNewConversation();
+			final spaceId = locator<DisplayRepository>().display?.roomId;
+			final conversation = await buddyService.startNewConversation(
+				spaceId: spaceId,
+			);
 
 			if (conversation == null && mounted) {
 				setState(() {

@@ -101,15 +101,15 @@ export class BuddyConversationService {
 		const llmResponse = await this.llmProvider.sendMessage(systemPrompt, chatMessages);
 
 		// 4. Persist both user message and assistant response in a single transaction
-		const savedAssistant = await this.dataSource.transaction(async (manager) => {
-			const userMessage = manager.create(BuddyMessageEntity, {
+		const { savedUser, savedAssistant } = await this.dataSource.transaction(async (manager) => {
+			const userMsg = manager.create(BuddyMessageEntity, {
 				id: uuid(),
 				conversationId: conversation.id,
 				role: MessageRole.USER,
 				content,
 			});
 
-			await manager.save(userMessage);
+			const persistedUser = await manager.save(userMsg);
 
 			const assistantMsg = manager.create(BuddyMessageEntity, {
 				id: uuid(),
@@ -119,7 +119,7 @@ export class BuddyConversationService {
 				metadata: llmResponse.meta,
 			});
 
-			const saved = await manager.save(assistantMsg);
+			const persistedAssistant = await manager.save(assistantMsg);
 
 			// Update conversation title from first message if no title set
 			if (!conversation.title) {
@@ -128,10 +128,17 @@ export class BuddyConversationService {
 				await manager.update(BuddyConversationEntity, conversation.id, { title: autoTitle });
 			}
 
-			return saved;
+			return { savedUser: persistedUser, savedAssistant: persistedAssistant };
 		});
 
-		// 7. Emit WebSocket event
+		// 5. Emit WebSocket events for both messages
+		this.eventEmitter.emit(EventType.CONVERSATION_MESSAGE_RECEIVED, {
+			conversation_id: conversation.id,
+			message_id: savedUser.id,
+			role: MessageRole.USER,
+			content,
+		});
+
 		this.eventEmitter.emit(EventType.CONVERSATION_MESSAGE_RECEIVED, {
 			conversation_id: conversation.id,
 			message_id: savedAssistant.id,
