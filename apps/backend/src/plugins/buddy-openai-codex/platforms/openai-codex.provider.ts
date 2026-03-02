@@ -1,10 +1,11 @@
 import { Injectable } from '@nestjs/common';
 
+import { MessageRole } from '../../../modules/buddy/buddy.constants';
 import { ChatMessage, ILlmProvider, LlmOptions } from '../../../modules/buddy/platforms/llm-provider.platform';
 import { OAuthTokenManager } from '../../../modules/buddy/platforms/oauth-token-manager';
-import { sendOpenAiMessage } from '../../../modules/buddy/platforms/openai-sdk.utils';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import {
+	BUDDY_OPENAI_CODEX_BASE_URL,
 	BUDDY_OPENAI_CODEX_DEFAULT_MODEL,
 	BUDDY_OPENAI_CODEX_PLUGIN_API_TAG_DESCRIPTION,
 	BUDDY_OPENAI_CODEX_PLUGIN_API_TAG_NAME,
@@ -49,7 +50,96 @@ export class OpenAiCodexProvider implements ILlmProvider {
 		const resolvedModel = config?.model ?? model;
 		const timeout = options?.timeout ?? 30_000;
 
-		return sendOpenAiMessage(accessToken, resolvedModel, systemPrompt, messages, timeout);
+		// Build input array matching the Codex Responses API format
+		const input = messages.map((m) => ({
+			role: m.role === MessageRole.USER ? 'user' : 'assistant',
+			content: m.content,
+			type: 'message',
+		}));
+
+		// ChatGPT backend requires streaming. We collect SSE chunks and assemble the response.
+		const controller = new AbortController();
+		const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+		try {
+			const response = await fetch(`${BUDDY_OPENAI_CODEX_BASE_URL}/responses`, {
+				method: 'POST',
+				headers: {
+					Authorization: `Bearer ${accessToken}`,
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({
+					model: resolvedModel,
+					instructions: systemPrompt,
+					input,
+					stream: true,
+					store: false,
+					tools: [],
+					tool_choice: 'auto',
+				}),
+				signal: controller.signal,
+			});
+
+			if (!response.ok) {
+				const errorBody = await response.text().catch(() => '');
+
+				throw new Error(`${response.status} ${errorBody || response.statusText}`);
+			}
+
+			return await this.collectStreamResponse(response);
+		} finally {
+			clearTimeout(timeoutId);
+		}
+	}
+
+	private async collectStreamResponse(response: Response): Promise<string> {
+		const body = response.body;
+
+		if (!body) {
+			return '';
+		}
+
+		const reader = body.getReader();
+		const decoder = new TextDecoder();
+		let buffer = '';
+		let result = '';
+
+		// eslint-disable-next-line no-constant-condition
+		while (true) {
+			const { done, value } = await reader.read();
+
+			if (done) {
+				break;
+			}
+
+			buffer += decoder.decode(value, { stream: true });
+
+			const lines = buffer.split('\n');
+
+			// Keep the last incomplete line in the buffer
+			buffer = lines.pop() ?? '';
+
+			for (const line of lines) {
+				if (!line.startsWith('data: ') || line === 'data: [DONE]') {
+					continue;
+				}
+
+				try {
+					const event = JSON.parse(line.slice(6)) as {
+						type?: string;
+						delta?: string;
+					};
+
+					if (event.type === 'response.output_text.delta' && event.delta) {
+						result += event.delta;
+					}
+				} catch {
+					// Skip malformed JSON lines
+				}
+			}
+		}
+
+		return result;
 	}
 
 	private getPluginConfig(): BuddyOpenaiCodexConfigModel | null {
