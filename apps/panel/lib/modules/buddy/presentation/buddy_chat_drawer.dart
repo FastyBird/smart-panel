@@ -757,9 +757,14 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 			// in-flight gesture completes normally when the user lifts
 			// their finger; _stopRecordingInternal's synchronous guard
 			// prevents any double-stop race.
+			//
+			// When a recording is active, keep onLongPressEnd and onTap
+			// wired even if `disabled` is true (e.g., isSending flipped
+			// mid-recording) so the user can always stop the recording
+			// via the mic button.
 			onLongPressStart: disabled || isRecording ? null : (_) => _startRecording(),
-			onLongPressEnd: disabled ? null : (_) => _stopRecordingAndSend(),
-			onTap: disabled
+			onLongPressEnd: disabled && !isRecording ? null : (_) => _stopRecordingAndSend(),
+			onTap: disabled && !isRecording
 				? null
 				: () {
 					if (isRecording) {
