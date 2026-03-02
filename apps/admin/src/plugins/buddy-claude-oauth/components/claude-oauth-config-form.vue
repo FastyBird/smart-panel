@@ -61,11 +61,21 @@
 			:label="t('buddyClaudeOauthPlugin.fields.config.model.title')"
 			prop="model"
 		>
-			<el-input
+			<el-select
 				v-model="model.model"
 				:placeholder="t('buddyClaudeOauthPlugin.fields.config.model.placeholder')"
-				name="model"
-			/>
+				filterable
+				allow-create
+				default-first-option
+				class="w-full"
+			>
+				<el-option
+					v-for="option in modelOptions"
+					:key="option"
+					:label="option"
+					:value="option"
+				/>
+			</el-select>
 			<div class="text-xs text-gray-500 mt-1">
 				{{ t('buddyClaudeOauthPlugin.fields.config.model.description') }}
 			</div>
@@ -120,13 +130,27 @@
 import { computed, reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElButton, ElCollapse, ElCollapseItem, ElForm, ElFormItem, ElInput, ElSwitch, ElTag, type FormRules } from 'element-plus';
+import {
+	ElAlert,
+	ElButton,
+	ElCollapse,
+	ElCollapseItem,
+	ElForm,
+	ElFormItem,
+	ElInput,
+	ElOption,
+	ElSelect,
+	ElSwitch,
+	ElTag,
+	type FormRules,
+} from 'element-plus';
 
 import { useFlashMessage } from '../../../common/composables/useFlashMessage';
 import { useOAuthPopup } from '../../../common/composables/useOAuthPopup';
 import { injectStoresManager } from '../../../common/services/store';
 import { FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
 import { configPluginsStoreKey } from '../../../modules/config/store/keys';
+import { BUDDY_CLAUDE_OAUTH_MODELS } from '../buddy-claude-oauth.models';
 import { BUDDY_CLAUDE_OAUTH_PLUGIN_NAME, BUDDY_CLAUDE_OAUTH_PLUGIN_PREFIX } from '../buddy-claude-oauth.constants';
 import type { IClaudeOauthConfigEditForm } from '../schemas/config.types';
 
@@ -164,6 +188,8 @@ const { formEl, model, formChanged, submit, formResult, markSaved } = useConfigP
 		error: t('buddyClaudeOauthPlugin.messages.config.notEdited'),
 	},
 });
+
+const modelOptions = BUDDY_CLAUDE_OAUTH_MODELS;
 
 const rules = reactive<FormRules<IClaudeOauthConfigEditForm>>({});
 

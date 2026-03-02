@@ -102,11 +102,21 @@
 			:label="t('buddyOpenaiCodexPlugin.fields.config.model.title')"
 			prop="model"
 		>
-			<el-input
+			<el-select
 				v-model="model.model"
 				:placeholder="t('buddyOpenaiCodexPlugin.fields.config.model.placeholder')"
-				name="model"
-			/>
+				filterable
+				allow-create
+				default-first-option
+				class="w-full"
+			>
+				<el-option
+					v-for="option in modelOptions"
+					:key="option"
+					:label="option"
+					:value="option"
+				/>
+			</el-select>
 			<div class="text-xs text-gray-500 mt-1">
 				{{ t('buddyOpenaiCodexPlugin.fields.config.model.description') }}
 			</div>
@@ -161,12 +171,26 @@
 import { computed, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElButton, ElCollapse, ElCollapseItem, ElForm, ElFormItem, ElInput, ElSwitch, ElTag, type FormRules } from 'element-plus';
+import {
+	ElAlert,
+	ElButton,
+	ElCollapse,
+	ElCollapseItem,
+	ElForm,
+	ElFormItem,
+	ElInput,
+	ElOption,
+	ElSelect,
+	ElSwitch,
+	ElTag,
+	type FormRules,
+} from 'element-plus';
 
 import { useFlashMessage } from '../../../common/composables/useFlashMessage';
 import { injectStoresManager } from '../../../common/services/store';
 import { FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
 import { configPluginsStoreKey } from '../../../modules/config/store/keys';
+import { BUDDY_OPENAI_CODEX_MODELS } from '../buddy-openai-codex.models';
 import { BUDDY_OPENAI_CODEX_PLUGIN_NAME, BUDDY_OPENAI_CODEX_PLUGIN_PREFIX } from '../buddy-openai-codex.constants';
 import type { IOpenAiCodexConfigEditForm } from '../schemas/config.types';
 
@@ -204,6 +228,8 @@ const { formEl, model, formChanged, submit, formResult, markSaved } = useConfigP
 		error: t('buddyOpenaiCodexPlugin.messages.config.notEdited'),
 	},
 });
+
+const modelOptions = BUDDY_OPENAI_CODEX_MODELS;
 
 const rules = reactive<FormRules<IOpenAiCodexConfigEditForm>>({});
 

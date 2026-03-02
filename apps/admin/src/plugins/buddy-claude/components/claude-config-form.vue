@@ -45,11 +45,21 @@
 			:label="t('buddyClaudePlugin.fields.config.model.title')"
 			prop="model"
 		>
-			<el-input
+			<el-select
 				v-model="model.model"
 				:placeholder="t('buddyClaudePlugin.fields.config.model.placeholder')"
-				name="model"
-			/>
+				filterable
+				allow-create
+				default-first-option
+				class="w-full"
+			>
+				<el-option
+					v-for="option in modelOptions"
+					:key="option"
+					:label="option"
+					:value="option"
+				/>
+			</el-select>
 			<div class="text-xs text-gray-500 mt-1">
 				{{ t('buddyClaudePlugin.fields.config.model.description') }}
 			</div>
@@ -61,9 +71,10 @@
 import { reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElForm, ElFormItem, ElInput, ElSwitch, type FormRules } from 'element-plus';
+import { ElAlert, ElForm, ElFormItem, ElInput, ElOption, ElSelect, ElSwitch, type FormRules } from 'element-plus';
 
 import { FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
+import { BUDDY_CLAUDE_MODELS } from '../buddy-claude.models';
 import type { IClaudeConfigEditForm } from '../schemas/config.types';
 
 import type { IClaudeConfigFormProps } from './claude-config-form.types';
@@ -95,6 +106,8 @@ const { formEl, model, formChanged, submit, formResult } = useConfigPluginEditFo
 		error: t('buddyClaudePlugin.messages.config.notEdited'),
 	},
 });
+
+const modelOptions = BUDDY_CLAUDE_MODELS;
 
 const rules = reactive<FormRules<IClaudeConfigEditForm>>({});
 
