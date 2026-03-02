@@ -82,14 +82,6 @@
 				</div>
 			</template>
 
-			<el-alert
-				v-if="authError"
-				type="error"
-				:title="authError"
-				:closable="true"
-				class="mt-2"
-				@close="authError = null"
-			/>
 		</div>
 
 		<el-form-item
@@ -171,6 +163,7 @@ import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElButton, ElCollapse, ElCollapseItem, ElForm, ElFormItem, ElInput, ElSwitch, ElTag, type FormRules } from 'element-plus';
 
+import { useFlashMessage } from '../../../common/composables/useFlashMessage';
 import { injectStoresManager } from '../../../common/services/store';
 import { FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
 import { configPluginsStoreKey } from '../../../modules/config/store/keys';
@@ -199,6 +192,8 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
+const flashMessage = useFlashMessage();
+
 const storesManager = injectStoresManager();
 const configPluginsStore = storesManager.getStore(configPluginsStoreKey);
 
@@ -216,7 +211,6 @@ const authorizeUrl = ref<string | null>(null);
 const callbackUrl = ref<string>('');
 const isLoadingUrl = ref<boolean>(false);
 const isExchanging = ref<boolean>(false);
-const authError = ref<string | null>(null);
 
 const isConnected = computed<boolean>(() => {
 	return !!(model.accessToken || model.refreshToken);
@@ -224,7 +218,6 @@ const isConnected = computed<boolean>(() => {
 
 const handleGetUrl = async (): Promise<void> => {
 	isLoadingUrl.value = true;
-	authError.value = null;
 	authorizeUrl.value = null;
 	callbackUrl.value = '';
 
@@ -242,7 +235,7 @@ const handleGetUrl = async (): Promise<void> => {
 
 		authorizeUrl.value = result.data.authorize_url;
 	} catch (error) {
-		authError.value = error instanceof Error ? error.message : 'Failed to get authorization URL';
+		flashMessage.error(error instanceof Error ? error.message : t('buddyOpenaiCodexPlugin.messages.oauth.exchangeError'));
 	} finally {
 		isLoadingUrl.value = false;
 	}
@@ -268,7 +261,6 @@ const handleExchange = async (): Promise<void> => {
 	if (!callbackUrl.value) return;
 
 	isExchanging.value = true;
-	authError.value = null;
 
 	try {
 		const endpoint = `/api/v1/plugins/${BUDDY_OPENAI_CODEX_PLUGIN_PREFIX}/oauth/exchange`;
@@ -308,7 +300,7 @@ const handleExchange = async (): Promise<void> => {
 		authorizeUrl.value = null;
 		callbackUrl.value = '';
 	} catch (error) {
-		authError.value = error instanceof Error ? error.message : t('buddyOpenaiCodexPlugin.messages.oauth.exchangeError');
+		flashMessage.error(error instanceof Error ? error.message : t('buddyOpenaiCodexPlugin.messages.oauth.exchangeError'));
 	} finally {
 		isExchanging.value = false;
 	}

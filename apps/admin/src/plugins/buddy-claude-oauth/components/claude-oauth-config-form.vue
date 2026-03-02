@@ -41,15 +41,7 @@
 					{{ isConnected ? t('buddyClaudeOauthPlugin.statuses.connected') : t('buddyClaudeOauthPlugin.statuses.notConnected') }}
 				</el-tag>
 			</div>
-			<el-alert
-				v-if="authError"
-				type="error"
-				:title="authError"
-				:closable="true"
-				class="mt-2"
-				@close="authError = null"
-			/>
-		</div>
+			</div>
 
 		<el-form-item
 			:label="t('buddyClaudeOauthPlugin.fields.config.clientId.title')"
@@ -130,6 +122,7 @@ import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElButton, ElCollapse, ElCollapseItem, ElForm, ElFormItem, ElInput, ElSwitch, ElTag, type FormRules } from 'element-plus';
 
+import { useFlashMessage } from '../../../common/composables/useFlashMessage';
 import { useOAuthPopup } from '../../../common/composables/useOAuthPopup';
 import { injectStoresManager } from '../../../common/services/store';
 import { FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
@@ -158,6 +151,8 @@ const emit = defineEmits<{
 }>();
 
 const { t } = useI18n();
+
+const flashMessage = useFlashMessage();
 
 const storesManager = injectStoresManager();
 const configPluginsStore = storesManager.getStore(configPluginsStoreKey);
@@ -206,6 +201,16 @@ const handleAuthorize = async (): Promise<void> => {
 		}
 	}
 };
+
+watch(
+	(): string | null => authError.value,
+	(val: string | null): void => {
+		if (val) {
+			flashMessage.error(val);
+			authError.value = null;
+		}
+	}
+);
 
 watch(
 	(): FormResultType => formResult.value,
