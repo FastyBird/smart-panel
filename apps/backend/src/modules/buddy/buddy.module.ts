@@ -23,6 +23,7 @@ import { UpdateBuddyConfigDto } from './dto/update-config.dto';
 import { BuddyConversationEntity } from './entities/buddy-conversation.entity';
 import { BuddyMessageEntity } from './entities/buddy-message.entity';
 import { IntentEventListener } from './listeners/intent-event.listener';
+import { MediaActivityEventListener } from './listeners/media-activity-event.listener';
 import { BuddyConfigModel } from './models/config.model';
 import { ActionObserverService } from './services/action-observer.service';
 import { AnomalyDetectorEvaluator } from './services/anomaly-detector.service';
@@ -63,6 +64,7 @@ import { SuggestionEngineService } from './services/suggestion-engine.service';
 		BuddyContextService,
 		BuddyProviderStatusService,
 		IntentEventListener,
+		MediaActivityEventListener,
 		LlmProviderRegistryService,
 		LlmProviderService,
 		BuddyConversationService,

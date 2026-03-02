@@ -77,6 +77,10 @@ export enum IntentType {
 	SPACE_COVERS_POSITION_DELTA = 'space.covers.positionDelta',
 	SPACE_COVERS_ROLE_POSITION = 'space.covers.rolePosition',
 	SPACE_COVERS_SET_MODE = 'space.covers.setMode',
+
+	// Space media operations
+	SPACE_MEDIA_ACTIVATE = 'space.media.activate',
+	SPACE_MEDIA_DEACTIVATE = 'space.media.deactivate',
 }
 
 /**
