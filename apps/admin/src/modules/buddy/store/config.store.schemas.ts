@@ -1,13 +1,9 @@
 import { type ZodType, z } from 'zod';
 
-import type {
-	ConfigModuleModuleSchema,
-	ConfigModuleUpdateModuleSchema,
-} from '../../../openapi.constants';
-import { ConfigModuleResSchema, ConfigModuleSchema, ConfigModuleUpdateReqSchema } from '../../config/store/config-modules.store.schemas';
+import type { ConfigModuleUpdateModuleSchema } from '../../../openapi.constants';
+import { ConfigModuleSchema, ConfigModuleUpdateReqSchema } from '../../config/store/config-modules.store.schemas';
 import { BUDDY_MODULE_NAME } from '../buddy.constants';
 
-type ApiConfigModule = ConfigModuleModuleSchema;
 type ApiConfigUpdateModule = ConfigModuleUpdateModuleSchema;
 
 // STORE STATE
@@ -36,13 +32,3 @@ export const BuddyConfigUpdateReqSchema: ZodType<ApiConfigUpdateModule> = Config
 	})
 );
 
-export const BuddyConfigResSchema: ZodType<ApiConfigModule> = ConfigModuleResSchema.and(
-	z.object({
-		type: z.literal(BUDDY_MODULE_NAME),
-		provider: z.string().optional(),
-		stt_provider: z.string().optional(),
-		stt_api_key: z.string().nullable().optional(),
-		stt_model: z.string().nullable().optional(),
-		stt_language: z.string().nullable().optional(),
-	})
-);

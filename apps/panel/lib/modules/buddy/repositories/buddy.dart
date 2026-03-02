@@ -727,7 +727,16 @@ class BuddyRepository extends ChangeNotifier {
 			}
 		}
 
-		return _parseError(e);
+		if (e.type == DioExceptionType.connectionTimeout ||
+			e.type == DioExceptionType.receiveTimeout) {
+			return 'Request timed out. Please try again.';
+		}
+
+		if (e.type == DioExceptionType.connectionError) {
+			return 'Connection error. Please check your network.';
+		}
+
+		return 'Something went wrong. Please try again.';
 	}
 
 	String _mimeToExtension(String mimeType) {
