@@ -100,6 +100,13 @@ class AudioRecordingService extends ChangeNotifier {
 			_currentRecordingPath =
 				'${dir.path}/buddy_audio_${DateTime.now().millisecondsSinceEpoch}.wav';
 
+			// A concurrent stop/cancel may have reset _isRecording during
+			// getTemporaryDirectory(). Bail out before starting the recorder
+			// to avoid leaving it active while _isRecording is false.
+			if (!_isRecording) {
+				return false;
+			}
+
 			await _recorder.start(
 				const RecordConfig(
 					encoder: AudioEncoder.wav,
@@ -262,16 +269,14 @@ class AudioRecordingService extends ChangeNotifier {
 		_disposed = true;
 		_durationTimer?.cancel();
 
-		// Stop the recorder if a recording is in progress so the
-		// microphone is released cleanly on all platforms.
-		if (_isRecording) {
-			_isRecording = false;
+		// Always attempt to stop the recorder regardless of _isRecording,
+		// in case a race left the recorder active while the flag is false.
+		_isRecording = false;
 
-			try {
-				_recorder.stop();
-			} catch (_) {
-				// Ignore stop errors during disposal
-			}
+		try {
+			_recorder.stop();
+		} catch (_) {
+			// Ignore stop errors during disposal
 		}
 
 		// Clean up temp recording file if still on disk
