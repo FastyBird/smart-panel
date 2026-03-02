@@ -132,9 +132,12 @@
 				</div>
 			</el-scrollbar>
 
-			<div class="flex gap-2 p-3 b-t b-t-solid b-t-[var(--el-border-color-light)]">
+			<div class="flex items-end gap-2 p-3 b-t b-t-solid b-t-[var(--el-border-color-light)]">
 				<el-input
 					v-model="inputMessage"
+					type="textarea"
+					:autosize="{ minRows: 1, maxRows: 6 }"
+					resize="none"
 					:placeholder="t('buddyModule.fields.message.placeholder')"
 					:disabled="isSending"
 					@keydown.enter.exact.prevent="onSend"
