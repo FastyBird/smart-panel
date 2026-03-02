@@ -262,6 +262,18 @@ class AudioRecordingService extends ChangeNotifier {
 		_disposed = true;
 		_durationTimer?.cancel();
 
+		// Stop the recorder if a recording is in progress so the
+		// microphone is released cleanly on all platforms.
+		if (_isRecording) {
+			_isRecording = false;
+
+			try {
+				_recorder.stop();
+			} catch (_) {
+				// Ignore stop errors during disposal
+			}
+		}
+
 		// Clean up temp recording file if still on disk
 		if (_currentRecordingPath != null) {
 			try {
