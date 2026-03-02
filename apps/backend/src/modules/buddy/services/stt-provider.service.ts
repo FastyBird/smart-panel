@@ -145,7 +145,7 @@ export class SttProviderService {
 			});
 
 			if (stderr) {
-				this.logger.warn(`Whisper local stderr: ${stderr}`);
+				this.logger.debug(`Whisper local stderr: ${stderr}`);
 			}
 
 			// Whisper writes clean transcription to the output .txt file (stdout contains timestamp-prefixed segments)
