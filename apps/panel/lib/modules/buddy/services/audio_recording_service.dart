@@ -289,7 +289,7 @@ class AudioRecordingService extends ChangeNotifier {
 		// Use catchError to suppress async rejections from the returned Future
 		// (try/catch only catches synchronous exceptions from the call).
 		_isRecording = false;
-		_recorder.stop().catchError((_) {});
+		_recorder.stop().catchError((_) => null);
 
 		// Clean up temp recording file if still on disk
 		if (_currentRecordingPath != null) {

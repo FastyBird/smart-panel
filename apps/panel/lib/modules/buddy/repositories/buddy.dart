@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 
@@ -678,16 +676,7 @@ class BuddyRepository extends ChangeNotifier {
 			return 'AI provider not configured';
 		}
 
-		if (e.type == DioExceptionType.connectionTimeout ||
-			e.type == DioExceptionType.receiveTimeout) {
-			return 'Request timed out. Please try again.';
-		}
-
-		if (e.type == DioExceptionType.connectionError) {
-			return 'Connection error. Please check your network.';
-		}
-
-		return 'Something went wrong. Please try again.';
+		return _parseGenericError(e);
 	}
 
 	String _parseAudioError(DioException e) {
@@ -727,6 +716,10 @@ class BuddyRepository extends ChangeNotifier {
 			}
 		}
 
+		return _parseGenericError(e);
+	}
+
+	String _parseGenericError(DioException e) {
 		if (e.type == DioExceptionType.connectionTimeout ||
 			e.type == DioExceptionType.receiveTimeout) {
 			return 'Request timed out. Please try again.';
