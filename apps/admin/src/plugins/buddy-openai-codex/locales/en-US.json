@@ -29,12 +29,18 @@
 				"title": "Model",
 				"placeholder": "e.g., codex-mini",
 				"description": "The OpenAI Codex model to use for generating responses"
+			},
+			"callbackUrl": {
+				"placeholder": "Paste the redirect URL here..."
 			}
 		}
 	},
 	"buttons": {
-		"authorize": "Connect with OpenAI",
-		"authorizing": "Authorizing..."
+		"getUrl": "Get Authorization URL",
+		"copyUrl": "Copy",
+		"openUrl": "Open in Browser",
+		"exchange": "Exchange Token",
+		"exchanging": "Exchanging..."
 	},
 	"statuses": {
 		"connected": "Connected",
@@ -46,11 +52,13 @@
 			"notEdited": "Failed to update OpenAI Codex settings"
 		},
 		"oauth": {
-			"success": "Successfully connected to OpenAI",
-			"error": "Failed to authorize with OpenAI"
+			"urlCopied": "URL copied to clipboard",
+			"exchangeSuccess": "Token exchange successful",
+			"exchangeError": "Token exchange failed"
 		}
 	},
 	"texts": {
-		"aboutApiSettings": "Configure your OpenAI Codex OAuth settings. Click \"Connect with OpenAI\" to authorize via OAuth, or expand Advanced Settings to enter tokens manually."
+		"aboutApiSettings": "Configure your OpenAI Codex OAuth settings. Click \"Get Authorization URL\" to start the OAuth flow, or expand Advanced Settings to enter tokens manually.",
+		"oauthSteps": "1. Click \"Get Authorization URL\" 2. Open the URL and authorize 3. Copy the URL from your browser after redirect 4. Paste it below and click \"Exchange Token\""
 	}
 }

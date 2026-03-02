@@ -1,15 +1,15 @@
-import { FastifyRequest } from 'fastify';
-
-import { Controller, Get, Query, Req } from '@nestjs/common';
-import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Get, Post, Query } from '@nestjs/common';
+import { ApiBody, ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import { Public } from '../../../modules/auth/guards/auth.guard';
+import { OAuthCallbackService } from '../../../modules/buddy/services/oauth-callback.service';
 import { OAuthFlowService } from '../../../modules/buddy/services/oauth-flow.service';
 import {
 	BUDDY_OPENAI_CODEX_AUTHORIZE_URL,
 	BUDDY_OPENAI_CODEX_DEFAULT_CLIENT_ID,
 	BUDDY_OPENAI_CODEX_PLUGIN_API_TAG_NAME,
 	BUDDY_OPENAI_CODEX_PLUGIN_NAME,
+	BUDDY_OPENAI_CODEX_REDIRECT_URI,
 	BUDDY_OPENAI_CODEX_SCOPES,
 	BUDDY_OPENAI_CODEX_TOKEN_URL,
 } from '../buddy-openai-codex.constants';
@@ -17,7 +17,10 @@ import {
 @ApiTags(BUDDY_OPENAI_CODEX_PLUGIN_API_TAG_NAME)
 @Controller('oauth')
 export class BuddyOpenaiCodexOauthController {
-	constructor(private readonly oauthFlowService: OAuthFlowService) {}
+	constructor(
+		private readonly oauthFlowService: OAuthFlowService,
+		private readonly oauthCallbackService: OAuthCallbackService,
+	) {}
 
 	@Public()
 	@ApiOperation({
@@ -32,27 +35,15 @@ export class BuddyOpenaiCodexOauthController {
 		required: false,
 		type: 'string',
 	})
-	@ApiQuery({
-		name: 'origin',
-		description: 'Browser origin for OAuth redirect URI (e.g. http://localhost:3003)',
-		required: false,
-		type: 'string',
-	})
 	@Get('authorize')
-	authorize(
-		@Req() req: FastifyRequest,
-		@Query('client_id') clientId?: string,
-		@Query('origin') origin?: string,
-	): { data: { authorize_url: string } } {
+	authorize(@Query('client_id') clientId?: string): { data: { authorize_url: string } } {
 		const resolvedClientId = clientId || BUDDY_OPENAI_CODEX_DEFAULT_CLIENT_ID;
-
-		const redirectUri = origin ? `${origin}/auth/callback` : `${req.protocol}://${req.headers.host}/auth/callback`;
 
 		const { authorizeUrl } = this.oauthFlowService.createFlow({
 			authorizeUrl: BUDDY_OPENAI_CODEX_AUTHORIZE_URL,
 			tokenUrl: BUDDY_OPENAI_CODEX_TOKEN_URL,
 			clientId: resolvedClientId,
-			redirectUri,
+			redirectUri: BUDDY_OPENAI_CODEX_REDIRECT_URI,
 			scopes: BUDDY_OPENAI_CODEX_SCOPES,
 			pluginType: BUDDY_OPENAI_CODEX_PLUGIN_NAME,
 			extraParams: {
@@ -63,5 +54,36 @@ export class BuddyOpenaiCodexOauthController {
 		});
 
 		return { data: { authorize_url: authorizeUrl } };
+	}
+
+	@Public()
+	@ApiOperation({
+		tags: [BUDDY_OPENAI_CODEX_PLUGIN_API_TAG_NAME],
+		summary: 'Exchange OAuth callback URL for tokens',
+		description: 'Parses code and state from the callback URL, exchanges for tokens, and saves to config',
+		operationId: 'post-buddy-openai-codex-oauth-exchange',
+	})
+	@ApiBody({
+		schema: {
+			type: 'object',
+			properties: {
+				callback_url: { type: 'string', description: 'The full callback URL containing code and state params' },
+			},
+			required: ['callback_url'],
+		},
+	})
+	@Post('exchange')
+	async exchange(@Body() body: { callback_url: string }): Promise<{ data: { success: boolean; error?: string } }> {
+		const parsed = new URL(body.callback_url);
+		const code = parsed.searchParams.get('code');
+		const state = parsed.searchParams.get('state');
+
+		if (!code || !state) {
+			return { data: { success: false, error: 'Missing code or state in callback URL' } };
+		}
+
+		const result = await this.oauthCallbackService.handleCallback(code, state);
+
+		return { data: { success: result.success, error: result.error } };
 	}
 }

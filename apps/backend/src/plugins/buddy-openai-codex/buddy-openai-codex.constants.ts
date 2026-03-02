@@ -16,3 +16,5 @@ export const BUDDY_OPENAI_CODEX_AUTHORIZE_URL = 'https://auth.openai.com/oauth/a
 export const BUDDY_OPENAI_CODEX_DEFAULT_CLIENT_ID = 'app_EMoamEEZ73f0CkXaXp7hrann';
 
 export const BUDDY_OPENAI_CODEX_SCOPES = 'openid profile email offline_access';
+
+export const BUDDY_OPENAI_CODEX_REDIRECT_URI = 'http://localhost:1455/auth/callback';

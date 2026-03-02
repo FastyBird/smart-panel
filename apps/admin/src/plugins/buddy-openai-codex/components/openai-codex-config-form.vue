@@ -29,10 +29,10 @@
 			<div class="flex items-center gap-3">
 				<el-button
 					type="primary"
-					:loading="isAuthorizing"
-					@click="handleAuthorize"
+					:loading="isLoadingUrl"
+					@click="handleGetUrl"
 				>
-					{{ isAuthorizing ? t('buddyOpenaiCodexPlugin.buttons.authorizing') : t('buddyOpenaiCodexPlugin.buttons.authorize') }}
+					{{ t('buddyOpenaiCodexPlugin.buttons.getUrl') }}
 				</el-button>
 				<el-tag
 					:type="isConnected ? 'success' : 'info'"
@@ -41,6 +41,47 @@
 					{{ isConnected ? t('buddyOpenaiCodexPlugin.statuses.connected') : t('buddyOpenaiCodexPlugin.statuses.notConnected') }}
 				</el-tag>
 			</div>
+
+			<template v-if="authorizeUrl">
+				<div class="mt-3">
+					<div class="text-xs text-gray-500 mb-2">
+						{{ t('buddyOpenaiCodexPlugin.texts.oauthSteps') }}
+					</div>
+
+					<el-input
+						:model-value="authorizeUrl"
+						readonly
+					>
+						<template #append>
+							<el-button @click="handleCopyUrl">
+								{{ t('buddyOpenaiCodexPlugin.buttons.copyUrl') }}
+							</el-button>
+							<el-button @click="handleOpenUrl">
+								{{ t('buddyOpenaiCodexPlugin.buttons.openUrl') }}
+							</el-button>
+						</template>
+					</el-input>
+				</div>
+
+				<div class="mt-3">
+					<el-input
+						v-model="callbackUrl"
+						:placeholder="t('buddyOpenaiCodexPlugin.fields.config.callbackUrl.placeholder')"
+					/>
+				</div>
+
+				<div class="mt-2">
+					<el-button
+						type="success"
+						:loading="isExchanging"
+						:disabled="!callbackUrl"
+						@click="handleExchange"
+					>
+						{{ isExchanging ? t('buddyOpenaiCodexPlugin.buttons.exchanging') : t('buddyOpenaiCodexPlugin.buttons.exchange') }}
+					</el-button>
+				</div>
+			</template>
+
 			<el-alert
 				v-if="authError"
 				type="error"
@@ -125,12 +166,11 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, watch } from 'vue';
+import { computed, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElButton, ElCollapse, ElCollapseItem, ElForm, ElFormItem, ElInput, ElSwitch, ElTag, type FormRules } from 'element-plus';
 
-import { useOAuthPopup } from '../../../common/composables/useOAuthPopup';
 import { injectStoresManager } from '../../../common/services/store';
 import { FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
 import { configPluginsStoreKey } from '../../../modules/config/store/keys';
@@ -172,38 +212,105 @@ const { formEl, model, formChanged, submit, formResult, markSaved } = useConfigP
 
 const rules = reactive<FormRules<IOpenAiCodexConfigEditForm>>({});
 
-const { isAuthorizing, authError, startOAuth } = useOAuthPopup(BUDDY_OPENAI_CODEX_PLUGIN_NAME);
+const authorizeUrl = ref<string | null>(null);
+const callbackUrl = ref<string>('');
+const isLoadingUrl = ref<boolean>(false);
+const isExchanging = ref<boolean>(false);
+const authError = ref<string | null>(null);
 
 const isConnected = computed<boolean>(() => {
 	return !!(model.accessToken || model.refreshToken);
 });
 
-const handleAuthorize = async (): Promise<void> => {
-	const clientId = model.clientId || 'app_EMoamEEZ73f0CkXaXp7hrann';
-	const authorizeEndpoint = `/api/v1/plugins/${BUDDY_OPENAI_CODEX_PLUGIN_PREFIX}/oauth/authorize`;
+const handleGetUrl = async (): Promise<void> => {
+	isLoadingUrl.value = true;
+	authError.value = null;
+	authorizeUrl.value = null;
+	callbackUrl.value = '';
 
-	const success = await startOAuth(authorizeEndpoint, clientId);
+	try {
+		const clientId = model.clientId || 'app_EMoamEEZ73f0CkXaXp7hrann';
+		const endpoint = `/api/v1/plugins/${BUDDY_OPENAI_CODEX_PLUGIN_PREFIX}/oauth/authorize?client_id=${encodeURIComponent(clientId)}`;
 
-	if (success) {
-		try {
-			const updatedConfig = await configPluginsStore.get({ type: BUDDY_OPENAI_CODEX_PLUGIN_NAME });
+		const response = await fetch(endpoint);
 
-			if (updatedConfig.clientId) {
-				model.clientId = updatedConfig.clientId as string;
-			}
-
-			if (updatedConfig.accessToken) {
-				model.accessToken = updatedConfig.accessToken as string;
-			}
-
-			if (updatedConfig.refreshToken) {
-				model.refreshToken = updatedConfig.refreshToken as string;
-			}
-
-			markSaved();
-		} catch {
-			// Config refresh failed, but tokens are saved on the backend
+		if (!response.ok) {
+			throw new Error(`Failed to get authorization URL: ${response.status}`);
 		}
+
+		const result = (await response.json()) as { data: { authorize_url: string } };
+
+		authorizeUrl.value = result.data.authorize_url;
+	} catch (error) {
+		authError.value = error instanceof Error ? error.message : 'Failed to get authorization URL';
+	} finally {
+		isLoadingUrl.value = false;
+	}
+};
+
+const handleCopyUrl = async (): Promise<void> => {
+	if (!authorizeUrl.value) return;
+
+	try {
+		await navigator.clipboard.writeText(authorizeUrl.value);
+	} catch {
+		// Clipboard API not available
+	}
+};
+
+const handleOpenUrl = (): void => {
+	if (!authorizeUrl.value) return;
+
+	window.open(authorizeUrl.value, '_blank');
+};
+
+const handleExchange = async (): Promise<void> => {
+	if (!callbackUrl.value) return;
+
+	isExchanging.value = true;
+	authError.value = null;
+
+	try {
+		const endpoint = `/api/v1/plugins/${BUDDY_OPENAI_CODEX_PLUGIN_PREFIX}/oauth/exchange`;
+
+		const response = await fetch(endpoint, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ callback_url: callbackUrl.value }),
+		});
+
+		if (!response.ok) {
+			throw new Error(`Exchange failed: ${response.status}`);
+		}
+
+		const result = (await response.json()) as { data: { success: boolean; error?: string } };
+
+		if (!result.data.success) {
+			throw new Error(result.data.error || t('buddyOpenaiCodexPlugin.messages.oauth.exchangeError'));
+		}
+
+		const updatedConfig = await configPluginsStore.get({ type: BUDDY_OPENAI_CODEX_PLUGIN_NAME });
+
+		if (updatedConfig.clientId) {
+			model.clientId = updatedConfig.clientId as string;
+		}
+
+		if (updatedConfig.accessToken) {
+			model.accessToken = updatedConfig.accessToken as string;
+		}
+
+		if (updatedConfig.refreshToken) {
+			model.refreshToken = updatedConfig.refreshToken as string;
+		}
+
+		markSaved();
+
+		authorizeUrl.value = null;
+		callbackUrl.value = '';
+	} catch (error) {
+		authError.value = error instanceof Error ? error.message : t('buddyOpenaiCodexPlugin.messages.oauth.exchangeError');
+	} finally {
+		isExchanging.value = false;
 	}
 };
 

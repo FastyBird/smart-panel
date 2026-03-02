@@ -108,7 +108,6 @@ export class OAuthFlowService {
 			const tokenParams = {
 				grant_type: 'authorization_code',
 				code,
-				state,
 				redirect_uri: flow.redirectUri,
 				client_id: flow.clientId,
 				code_verifier: flow.codeVerifier,
