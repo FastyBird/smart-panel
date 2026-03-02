@@ -9,4 +9,10 @@ export const BUDDY_OPENAI_CODEX_PLUGIN_API_TAG_DESCRIPTION =
 
 export const BUDDY_OPENAI_CODEX_DEFAULT_MODEL = 'codex-mini';
 
-export const BUDDY_OPENAI_CODEX_TOKEN_URL = 'https://oauth.openai.com/v1/token';
+export const BUDDY_OPENAI_CODEX_TOKEN_URL = 'https://auth.openai.com/oauth/token';
+
+export const BUDDY_OPENAI_CODEX_AUTHORIZE_URL = 'https://auth.openai.com/oauth/authorize';
+
+export const BUDDY_OPENAI_CODEX_DEFAULT_CLIENT_ID = 'app_EMoamEEZ73f0CkXaXp7hrann';
+
+export const BUDDY_OPENAI_CODEX_SCOPES = 'openid profile email offline_access';

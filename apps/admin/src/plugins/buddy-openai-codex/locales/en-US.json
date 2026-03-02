@@ -1,6 +1,7 @@
 {
 	"headings": {
-		"aboutApiSettings": "OpenAI Codex settings"
+		"aboutApiSettings": "OpenAI Codex settings",
+		"advancedSettings": "Advanced settings"
 	},
 	"fields": {
 		"config": {
@@ -10,7 +11,7 @@
 			"clientId": {
 				"title": "Client ID",
 				"placeholder": "Enter your OAuth client ID",
-				"description": "The OAuth client ID for OpenAI Codex API"
+				"description": "The OAuth client ID for OpenAI Codex API. A default is provided from Codex CLI."
 			},
 			"clientSecret": {
 				"title": "Client secret",
@@ -31,13 +32,25 @@
 			}
 		}
 	},
+	"buttons": {
+		"authorize": "Connect with OpenAI",
+		"authorizing": "Authorizing..."
+	},
+	"statuses": {
+		"connected": "Connected",
+		"notConnected": "Not connected"
+	},
 	"messages": {
 		"config": {
 			"edited": "OpenAI Codex settings have been updated",
 			"notEdited": "Failed to update OpenAI Codex settings"
+		},
+		"oauth": {
+			"success": "Successfully connected to OpenAI",
+			"error": "Failed to authorize with OpenAI"
 		}
 	},
 	"texts": {
-		"aboutApiSettings": "Configure your OpenAI Codex OAuth settings. This plugin uses OAuth authentication to connect to the OpenAI Codex API. Enter your OAuth credentials to authenticate."
+		"aboutApiSettings": "Configure your OpenAI Codex OAuth settings. Click \"Connect with OpenAI\" to authorize via OAuth, or expand Advanced Settings to enter tokens manually."
 	}
 }

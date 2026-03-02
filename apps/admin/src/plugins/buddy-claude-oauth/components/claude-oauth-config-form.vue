@@ -25,6 +25,32 @@
 			/>
 		</el-form-item>
 
+		<div class="mt-3 mb-4">
+			<div class="flex items-center gap-3">
+				<el-button
+					type="primary"
+					:loading="isAuthorizing"
+					@click="handleAuthorize"
+				>
+					{{ isAuthorizing ? t('buddyClaudeOauthPlugin.buttons.authorizing') : t('buddyClaudeOauthPlugin.buttons.authorize') }}
+				</el-button>
+				<el-tag
+					:type="isConnected ? 'success' : 'info'"
+					effect="light"
+				>
+					{{ isConnected ? t('buddyClaudeOauthPlugin.statuses.connected') : t('buddyClaudeOauthPlugin.statuses.notConnected') }}
+				</el-tag>
+			</div>
+			<el-alert
+				v-if="authError"
+				type="error"
+				:title="authError"
+				:closable="true"
+				class="mt-2"
+				@close="authError = null"
+			/>
+		</div>
+
 		<el-form-item
 			:label="t('buddyClaudeOauthPlugin.fields.config.clientId.title')"
 			prop="clientId"
@@ -40,45 +66,6 @@
 		</el-form-item>
 
 		<el-form-item
-			:label="t('buddyClaudeOauthPlugin.fields.config.clientSecret.title')"
-			prop="clientSecret"
-		>
-			<el-input
-				v-model="model.clientSecret"
-				:placeholder="t('buddyClaudeOauthPlugin.fields.config.clientSecret.placeholder')"
-				name="clientSecret"
-				type="password"
-				show-password
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('buddyClaudeOauthPlugin.fields.config.accessToken.title')"
-			prop="accessToken"
-		>
-			<el-input
-				v-model="model.accessToken"
-				:placeholder="t('buddyClaudeOauthPlugin.fields.config.accessToken.placeholder')"
-				name="accessToken"
-				type="password"
-				show-password
-			/>
-		</el-form-item>
-
-		<el-form-item
-			:label="t('buddyClaudeOauthPlugin.fields.config.refreshToken.title')"
-			prop="refreshToken"
-		>
-			<el-input
-				v-model="model.refreshToken"
-				:placeholder="t('buddyClaudeOauthPlugin.fields.config.refreshToken.placeholder')"
-				name="refreshToken"
-				type="password"
-				show-password
-			/>
-		</el-form-item>
-
-		<el-form-item
 			:label="t('buddyClaudeOauthPlugin.fields.config.model.title')"
 			prop="model"
 		>
@@ -91,16 +78,63 @@
 				{{ t('buddyClaudeOauthPlugin.fields.config.model.description') }}
 			</div>
 		</el-form-item>
+
+		<el-collapse class="mt-3">
+			<el-collapse-item :title="t('buddyClaudeOauthPlugin.headings.advancedSettings')">
+				<el-form-item
+					:label="t('buddyClaudeOauthPlugin.fields.config.clientSecret.title')"
+					prop="clientSecret"
+				>
+					<el-input
+						v-model="model.clientSecret"
+						:placeholder="t('buddyClaudeOauthPlugin.fields.config.clientSecret.placeholder')"
+						name="clientSecret"
+						type="password"
+						show-password
+					/>
+				</el-form-item>
+
+				<el-form-item
+					:label="t('buddyClaudeOauthPlugin.fields.config.accessToken.title')"
+					prop="accessToken"
+				>
+					<el-input
+						v-model="model.accessToken"
+						:placeholder="t('buddyClaudeOauthPlugin.fields.config.accessToken.placeholder')"
+						name="accessToken"
+						type="password"
+						show-password
+					/>
+				</el-form-item>
+
+				<el-form-item
+					:label="t('buddyClaudeOauthPlugin.fields.config.refreshToken.title')"
+					prop="refreshToken"
+				>
+					<el-input
+						v-model="model.refreshToken"
+						:placeholder="t('buddyClaudeOauthPlugin.fields.config.refreshToken.placeholder')"
+						name="refreshToken"
+						type="password"
+						show-password
+					/>
+				</el-form-item>
+			</el-collapse-item>
+		</el-collapse>
 	</el-form>
 </template>
 
 <script setup lang="ts">
-import { reactive, watch } from 'vue';
+import { computed, reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElForm, ElFormItem, ElInput, ElSwitch, type FormRules } from 'element-plus';
+import { ElAlert, ElButton, ElCollapse, ElCollapseItem, ElForm, ElFormItem, ElInput, ElSwitch, ElTag, type FormRules } from 'element-plus';
 
+import { useOAuthPopup } from '../../../common/composables/useOAuthPopup';
+import { injectStoresManager } from '../../../common/services/store';
 import { FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
+import { configPluginsStoreKey } from '../../../modules/config/store/keys';
+import { BUDDY_CLAUDE_OAUTH_PLUGIN_NAME, BUDDY_CLAUDE_OAUTH_PLUGIN_PREFIX } from '../buddy-claude-oauth.constants';
 import type { IClaudeOauthConfigEditForm } from '../schemas/config.types';
 
 import type { IClaudeOauthConfigFormProps } from './claude-oauth-config-form.types';
@@ -125,7 +159,10 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
-const { formEl, model, formChanged, submit, formResult } = useConfigPluginEditForm<IClaudeOauthConfigEditForm>({
+const storesManager = injectStoresManager();
+const configPluginsStore = storesManager.getStore(configPluginsStoreKey);
+
+const { formEl, model, formChanged, submit, formResult, markSaved } = useConfigPluginEditForm<IClaudeOauthConfigEditForm>({
 	config: props.config,
 	messages: {
 		success: t('buddyClaudeOauthPlugin.messages.config.edited'),
@@ -134,6 +171,41 @@ const { formEl, model, formChanged, submit, formResult } = useConfigPluginEditFo
 });
 
 const rules = reactive<FormRules<IClaudeOauthConfigEditForm>>({});
+
+const { isAuthorizing, authError, startOAuth } = useOAuthPopup(BUDDY_CLAUDE_OAUTH_PLUGIN_NAME);
+
+const isConnected = computed<boolean>(() => {
+	return !!(model.accessToken || model.refreshToken);
+});
+
+const handleAuthorize = async (): Promise<void> => {
+	const clientId = model.clientId || '9d1c250a-e61b-44d9-88ed-5944d1962f5e';
+	const authorizeEndpoint = `/api/v1/plugins/${BUDDY_CLAUDE_OAUTH_PLUGIN_PREFIX}/oauth/authorize`;
+
+	const success = await startOAuth(authorizeEndpoint, clientId);
+
+	if (success) {
+		try {
+			const updatedConfig = await configPluginsStore.get({ type: BUDDY_CLAUDE_OAUTH_PLUGIN_NAME });
+
+			if (updatedConfig.clientId) {
+				model.clientId = updatedConfig.clientId as string;
+			}
+
+			if (updatedConfig.accessToken) {
+				model.accessToken = updatedConfig.accessToken as string;
+			}
+
+			if (updatedConfig.refreshToken) {
+				model.refreshToken = updatedConfig.refreshToken as string;
+			}
+
+			markSaved();
+		} catch {
+			// Config refresh failed, but tokens are saved on the backend
+		}
+	}
+};
 
 watch(
 	(): FormResultType => formResult.value,

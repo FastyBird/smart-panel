@@ -1,6 +1,7 @@
 {
 	"headings": {
-		"aboutApiSettings": "Claude OAuth settings"
+		"aboutApiSettings": "Claude OAuth settings",
+		"advancedSettings": "Advanced settings"
 	},
 	"fields": {
 		"config": {
@@ -10,7 +11,7 @@
 			"clientId": {
 				"title": "Client ID",
 				"placeholder": "Enter your OAuth client ID",
-				"description": "The OAuth client ID for Anthropic Claude API"
+				"description": "The OAuth client ID for Anthropic Claude API. A default is provided from Claude Code."
 			},
 			"clientSecret": {
 				"title": "Client secret",
@@ -31,13 +32,25 @@
 			}
 		}
 	},
+	"buttons": {
+		"authorize": "Connect with Claude",
+		"authorizing": "Authorizing..."
+	},
+	"statuses": {
+		"connected": "Connected",
+		"notConnected": "Not connected"
+	},
 	"messages": {
 		"config": {
 			"edited": "Claude OAuth settings have been updated",
 			"notEdited": "Failed to update Claude OAuth settings"
+		},
+		"oauth": {
+			"success": "Successfully connected to Claude",
+			"error": "Failed to authorize with Claude"
 		}
 	},
 	"texts": {
-		"aboutApiSettings": "Configure your Anthropic Claude OAuth settings. This plugin uses OAuth authentication instead of a direct API key. Enter your OAuth credentials to authenticate with the Claude API."
+		"aboutApiSettings": "Configure your Anthropic Claude OAuth settings. Click \"Connect with Claude\" to authorize via OAuth, or expand Advanced Settings to enter tokens manually."
 	}
 }

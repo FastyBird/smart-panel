@@ -16,6 +16,7 @@ import {
 	BUDDY_CLAUDE_OAUTH_PLUGIN_NAME,
 } from './buddy-claude-oauth.constants';
 import { BUDDY_CLAUDE_OAUTH_PLUGIN_SWAGGER_EXTRA_MODELS } from './buddy-claude-oauth.openapi';
+import { BuddyClaudeOauthController } from './controllers/oauth.controller';
 import { UpdateBuddyClaudeOauthConfigDto } from './dto/update-config.dto';
 import { BuddyClaudeOauthConfigModel } from './models/config.model';
 import { ClaudeOauthProvider } from './platforms/claude-oauth.provider';
@@ -27,6 +28,7 @@ import { ClaudeOauthProvider } from './platforms/claude-oauth.provider';
 })
 @Module({
 	imports: [BuddyModule, ConfigModule, SwaggerModule, ExtensionsModule],
+	controllers: [BuddyClaudeOauthController],
 	providers: [ClaudeOauthProvider],
 	exports: [ClaudeOauthProvider],
 })

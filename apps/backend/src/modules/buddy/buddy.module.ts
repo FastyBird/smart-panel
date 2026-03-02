@@ -32,6 +32,8 @@ import { EnergyEvaluator } from './services/energy-evaluator.service';
 import { HeartbeatService } from './services/heartbeat.service';
 import { LlmProviderRegistryService } from './services/llm-provider-registry.service';
 import { LlmProviderService } from './services/llm-provider.service';
+import { OAuthCallbackService } from './services/oauth-callback.service';
+import { OAuthFlowService } from './services/oauth-flow.service';
 import { PatternDetectorService } from './services/pattern-detector.service';
 import { SceneSuggestionEvaluator } from './services/scene-suggestion-evaluator.service';
 import { SuggestionEngineService } from './services/suggestion-engine.service';
@@ -68,6 +70,8 @@ import { SuggestionEngineService } from './services/suggestion-engine.service';
 		EnergyEvaluator,
 		ConflictDetectorEvaluator,
 		SceneSuggestionEvaluator,
+		OAuthCallbackService,
+		OAuthFlowService,
 	],
 	exports: [
 		ActionObserverService,
@@ -82,6 +86,8 @@ import { SuggestionEngineService } from './services/suggestion-engine.service';
 		EnergyEvaluator,
 		ConflictDetectorEvaluator,
 		SceneSuggestionEvaluator,
+		OAuthCallbackService,
+		OAuthFlowService,
 	],
 })
 export class BuddyModule implements OnModuleInit {

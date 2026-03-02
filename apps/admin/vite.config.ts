@@ -8,7 +8,8 @@ import svgLoader from 'vite-svg-loader';
 
 import vueI18n from '@intlify/unplugin-vue-i18n/vite';
 import vue from '@vitejs/plugin-vue';
-import pkg from './package.json' assert { type: 'json' }
+
+import pkg from './package.json' with { type: 'json' };
 
 // https://vite.dev/config/
 export default defineConfig((config: UserConfig): UserConfig => {
@@ -48,10 +49,10 @@ export default defineConfig((config: UserConfig): UserConfig => {
 		resolve: {
 			alias: {
 				'@root-config/extensions': includeStatic
-					// real generated file (CI/dev)
-					? path.resolve(__dirname, '../..', 'var', 'data', 'extensions.ts')
-					// stub (device / local dev without generation)
-					: path.resolve(__dirname, 'src', 'common', 'extensions', 'empty-extensions.ts'),
+					? // real generated file (CI/dev)
+						path.resolve(__dirname, '../..', 'var', 'data', 'extensions.ts')
+					: // stub (device / local dev without generation)
+						path.resolve(__dirname, 'src', 'common', 'extensions', 'empty-extensions.ts'),
 				'@root-config/extensions-manifest': includeStatic
 					? path.resolve(__dirname, '../..', 'var', 'data', 'extensions.manifest.json')
 					: path.resolve(__dirname, 'src', 'common', 'extensions', 'empty-manifest.json'),
@@ -69,6 +70,16 @@ export default defineConfig((config: UserConfig): UserConfig => {
 			},
 			proxy: {
 				'/api': {
+					target: `${env['FB_APP_HOST']}:${env['FB_BACKEND_PORT']}`,
+					changeOrigin: true,
+					secure: false,
+				},
+				'/auth/callback': {
+					target: `${env['FB_APP_HOST']}:${env['FB_BACKEND_PORT']}`,
+					changeOrigin: true,
+					secure: false,
+				},
+				'/callback': {
 					target: `${env['FB_APP_HOST']}:${env['FB_BACKEND_PORT']}`,
 					changeOrigin: true,
 					secure: false,

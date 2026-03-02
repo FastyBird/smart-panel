@@ -48,7 +48,7 @@ export const useConfigPluginEditForm = <TForm extends IConfigPluginEditForm = IC
 
 	const model = reactive<TForm>(config as unknown as TForm);
 
-	const initialModel: Reactive<TForm> = deepClone<Reactive<TForm>>(toRaw(model));
+	let initialModel: Reactive<TForm> = deepClone<Reactive<TForm>>(toRaw(model));
 
 	const formEl = ref<FormInstance | undefined>(undefined);
 
@@ -111,6 +111,11 @@ export const useConfigPluginEditForm = <TForm extends IConfigPluginEditForm = IC
 		formResult.value = FormResult.NONE;
 	};
 
+	const markSaved = (): void => {
+		initialModel = deepClone<Reactive<TForm>>(toRaw(model));
+		formChanged.value = false;
+	};
+
 	watch(model, (): void => {
 		formChanged.value = !isEqual(toRaw(model), initialModel);
 	});
@@ -122,5 +127,6 @@ export const useConfigPluginEditForm = <TForm extends IConfigPluginEditForm = IC
 		submit,
 		clear,
 		formResult,
+		markSaved,
 	};
 };
