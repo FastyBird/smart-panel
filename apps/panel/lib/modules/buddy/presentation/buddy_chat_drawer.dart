@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/modules/buddy/models/buddy_config.dart';
 import 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/message_bubble.dart';
 import 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/suggestion_card.dart';
 import 'package:fastybird_smart_panel/modules/buddy/service.dart';
+import 'package:fastybird_smart_panel/modules/config/module.dart';
+import 'package:fastybird_smart_panel/modules/config/repositories/module_config_repository.dart';
 
 /// Sliding chat drawer for the buddy module.
 ///
@@ -34,6 +38,9 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 	final FocusNode _inputFocusNode = FocusNode();
 
 	late final BuddyService _buddyService;
+	late final ModuleConfigRepository<BuddyConfigModel> _buddyConfigRepo;
+
+	String _buddyName = 'Buddy';
 
 	bool _initialized = false;
 	bool _initFailed = false;
@@ -47,6 +54,12 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 		super.initState();
 		_buddyService = context.read<BuddyService>();
 		_buddyService.addListener(_onBuddyServiceChanged);
+
+		_buddyConfigRepo = locator<ConfigModuleService>()
+				.getModuleRepository<BuddyConfigModel>('buddy-module');
+		_buddyName = _buddyConfigRepo.data?.name ?? 'Buddy';
+		_buddyConfigRepo.addListener(_onBuddyConfigChanged);
+
 		_initializeConversation();
 	}
 
@@ -131,9 +144,18 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 		_lastMessageCount = messageCount;
 	}
 
+	void _onBuddyConfigChanged() {
+		if (!mounted) return;
+
+		setState(() {
+			_buddyName = _buddyConfigRepo.data?.name ?? 'Buddy';
+		});
+	}
+
 	@override
 	void dispose() {
 		_buddyService.removeListener(_onBuddyServiceChanged);
+		_buddyConfigRepo.removeListener(_onBuddyConfigChanged);
 		_inputController.dispose();
 		_scrollController.dispose();
 		_inputFocusNode.dispose();
@@ -201,7 +223,7 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 					SizedBox(width: AppSpacings.pMd),
 					Expanded(
 						child: Text(
-							'Buddy',
+							_buddyName,
 							style: TextStyle(
 								fontSize: AppFontSize.large,
 								fontWeight: FontWeight.w600,

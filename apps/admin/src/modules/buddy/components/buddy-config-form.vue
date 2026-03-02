@@ -7,6 +7,26 @@
 		status-icon
 	>
 		<el-form-item
+			:label="t('buddyModule.fields.config.name.title')"
+			prop="name"
+		>
+			<template #label>
+				{{ t('buddyModule.fields.config.name.title') }}
+				<el-text
+					size="small"
+					type="info"
+				>
+					{{ t('buddyModule.fields.config.name.description') }}
+				</el-text>
+			</template>
+			<el-input
+				v-model="model.name"
+				:placeholder="t('buddyModule.fields.config.name.placeholder')"
+				name="name"
+			/>
+		</el-form-item>
+
+		<el-form-item
 			:label="t('buddyModule.fields.config.provider.title')"
 			prop="provider"
 		>
@@ -37,12 +57,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, watch } from 'vue';
+import { computed, onBeforeMount, reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElForm, ElFormItem, ElOption, ElSelect, type FormRules } from 'element-plus';
+import { ElAlert, ElForm, ElFormItem, ElInput, ElOption, ElSelect, ElText, type FormRules } from 'element-plus';
 
-import { FormResult, type FormResultType, Layout, useConfigModuleEditForm } from '../../config';
+import { injectStoresManager } from '../../../common';
+import { FormResult, type FormResultType, Layout, configPluginsStoreKey, useConfigModuleEditForm } from '../../config';
 import { LEGACY_PROVIDER_MAP, LLM_PROVIDER_NONE } from '../buddy.constants';
 import type { IBuddyConfigEditForm } from '../schemas/config.types';
 
@@ -77,6 +98,15 @@ if (rawProvider && LEGACY_PROVIDER_MAP.has(rawProvider)) {
 	normalizedConfig.provider = LEGACY_PROVIDER_MAP.get(rawProvider) ?? rawProvider;
 }
 
+const storesManager = injectStoresManager();
+const configPluginsStore = storesManager.getStore(configPluginsStoreKey);
+
+onBeforeMount((): void => {
+	configPluginsStore.fetch().catch(() => {
+		// Plugin configs may not be available yet
+	});
+});
+
 const { formEl, model, formChanged, submit, formResult } = useConfigModuleEditForm<IBuddyConfigEditForm>({
 	config: normalizedConfig as typeof props.config,
 	messages: {
@@ -85,14 +115,58 @@ const { formEl, model, formChanged, submit, formResult } = useConfigModuleEditFo
 	},
 });
 
-const providerOptions = computed(() => [
-	{ value: LLM_PROVIDER_NONE, label: t('buddyModule.fields.config.provider.options.none') },
-	{ value: 'buddy-openai-plugin', label: t('buddyModule.fields.config.provider.options.openai') },
-	{ value: 'buddy-openai-codex-plugin', label: t('buddyModule.fields.config.provider.options.openaiCodex') },
-	{ value: 'buddy-claude-plugin', label: t('buddyModule.fields.config.provider.options.claude') },
-	{ value: 'buddy-claude-oauth-plugin', label: t('buddyModule.fields.config.provider.options.claudeOauth') },
-	{ value: 'buddy-ollama-plugin', label: t('buddyModule.fields.config.provider.options.ollama') },
-]);
+const pluginDefinitions: { value: string; labelKey: string }[] = [
+	{ value: 'buddy-openai-plugin', labelKey: 'buddyModule.fields.config.provider.options.openai' },
+	{ value: 'buddy-openai-codex-plugin', labelKey: 'buddyModule.fields.config.provider.options.openaiCodex' },
+	{ value: 'buddy-claude-plugin', labelKey: 'buddyModule.fields.config.provider.options.claude' },
+	{ value: 'buddy-claude-oauth-plugin', labelKey: 'buddyModule.fields.config.provider.options.claudeOauth' },
+	{ value: 'buddy-ollama-plugin', labelKey: 'buddyModule.fields.config.provider.options.ollama' },
+];
+
+const isPluginConfigured = (type: string): boolean => {
+	const plugin = configPluginsStore.findByType(type) as Record<string, unknown> | null;
+
+	if (!plugin) {
+		return false;
+	}
+
+	switch (type) {
+		case 'buddy-claude-plugin':
+		case 'buddy-openai-plugin':
+			return !!plugin.api_key;
+		case 'buddy-claude-oauth-plugin':
+		case 'buddy-openai-codex-plugin':
+			return !!plugin.access_token || !!plugin.refresh_token;
+		case 'buddy-ollama-plugin':
+			return true;
+		default:
+			return false;
+	}
+};
+
+const providerOptions = computed(() => {
+	const options: { value: string; label: string }[] = [
+		{ value: LLM_PROVIDER_NONE, label: t('buddyModule.fields.config.provider.options.none') },
+	];
+
+	for (const def of pluginDefinitions) {
+		const plugin = configPluginsStore.findByType(def.value);
+
+		if (!plugin?.enabled) {
+			continue;
+		}
+
+		let label = t(def.labelKey);
+
+		if (!isPluginConfigured(def.value)) {
+			label += t('buddyModule.fields.config.provider.notConfigured');
+		}
+
+		options.push({ value: def.value, label });
+	}
+
+	return options;
+});
 
 const rules = reactive<FormRules<IBuddyConfigEditForm>>({});
 

@@ -14,6 +14,8 @@ export enum EventType {
 
 export const LLM_PROVIDER_NONE = 'none';
 
+export const BUDDY_DEFAULT_NAME = 'Buddy';
+
 /**
  * Maps legacy enum-based provider values (from pre-plugin configs)
  * to the new plugin-based provider names.

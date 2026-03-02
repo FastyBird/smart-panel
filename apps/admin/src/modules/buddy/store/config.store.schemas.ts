@@ -15,6 +15,7 @@ type ApiConfigUpdateModule = ConfigModuleUpdateModuleSchema;
 
 export const BuddyConfigSchema = ConfigModuleSchema.extend({
 	type: z.literal(BUDDY_MODULE_NAME),
+	name: z.string().optional().default('Buddy'),
 	provider: z.string().optional().default('none'),
 });
 
@@ -24,6 +25,7 @@ export const BuddyConfigSchema = ConfigModuleSchema.extend({
 export const BuddyConfigUpdateReqSchema: ZodType<ApiConfigUpdateModule> = ConfigModuleUpdateReqSchema.and(
 	z.object({
 		type: z.literal(BUDDY_MODULE_NAME),
+		name: z.string().optional(),
 		provider: z.string().optional(),
 	})
 );
@@ -31,6 +33,7 @@ export const BuddyConfigUpdateReqSchema: ZodType<ApiConfigUpdateModule> = Config
 export const BuddyConfigResSchema: ZodType<ApiConfigModule> = ConfigModuleResSchema.and(
 	z.object({
 		type: z.literal(BUDDY_MODULE_NAME),
+		name: z.string().optional(),
 		provider: z.string().optional(),
 	})
 );
