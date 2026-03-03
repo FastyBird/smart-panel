@@ -44,20 +44,55 @@
 	<div
 		v-loading="isLoadingConversations"
 		:element-loading-text="t('buddyModule.texts.loadingConversations')"
-		class="flex overflow-hidden h-full"
+		class="flex overflow-hidden grow-1 min-h-0 lt-sm:mx-1 sm:mx-2 lt-sm:my-1 sm:my-2 gap-4"
 	>
-		<div class="w-[250px] shrink-0">
+		<el-card
+			shadow="never"
+			class="w-[250px] shrink-0 flex flex-col"
+			body-class="p-0! flex-1 min-h-0 overflow-hidden"
+		>
+			<template #header>
+				<div class="flex items-center justify-between">
+					<span class="font-bold">{{ t('buddyModule.headings.chats') }}</span>
+					<el-button
+						type="primary"
+						size="small"
+						@click="onCreateConversation"
+					>
+						<el-icon class="mr-1">
+							<icon icon="mdi:plus" />
+						</el-icon>
+						{{ t('buddyModule.buttons.newChat.title') }}
+					</el-button>
+				</div>
+			</template>
+
 			<buddy-conversation-list
 				:conversations="conversations"
 				:active-id="activeConversationId"
 				:spaces="spacesForList"
 				@select="selectConversation"
-				@create="onCreateConversation"
 				@delete="deleteConversation"
 			/>
-		</div>
+		</el-card>
 
-		<div class="grow-1 min-w-0">
+		<el-card
+			shadow="never"
+			class="flex-1 min-h-0 flex flex-col"
+			body-class="p-0! flex-1 min-h-0 flex flex-col"
+		>
+			<template #header>
+				<div class="flex items-center gap-2">
+					<span class="font-bold">{{ activeConversationTitle }}</span>
+					<span
+						v-if="activeConversationSpace"
+						class="text-sm text-[var(--el-text-color-secondary)]"
+					>
+						&middot; {{ activeConversationSpace }}
+					</span>
+				</div>
+			</template>
+
 			<buddy-chat-area
 				:messages="messages"
 				:is-sending="isSending"
@@ -70,7 +105,7 @@
 				@send="sendMessage"
 				@dismiss-error="error = null"
 			/>
-		</div>
+		</el-card>
 	</div>
 </template>
 
@@ -80,7 +115,7 @@ import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { useRouter } from 'vue-router';
 
-import { ElIcon, vLoading } from 'element-plus';
+import { ElButton, ElCard, ElIcon, vLoading } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
@@ -110,6 +145,7 @@ const spacesForList = computed(() => spaces.value.map((s) => ({ id: s.id, name: 
 const {
 	conversations,
 	activeConversationId,
+	activeConversation,
 	messages,
 	hasActiveConversation,
 	isLoadingConversations,
@@ -126,6 +162,26 @@ const {
 	sendMessage,
 	deleteConversation,
 } = useBuddyChat();
+
+const activeConversationTitle = computed(() => {
+	if (!activeConversation.value) {
+		return t('buddyModule.texts.noActiveConversation');
+	}
+
+	return activeConversation.value.title || t('buddyModule.texts.newConversation');
+});
+
+const activeConversationSpace = computed<string | null>(() => {
+	const spaceId = activeConversation.value?.space_id;
+
+	if (!spaceId) {
+		return null;
+	}
+
+	const space = spacesForList.value.find((s) => s.id === spaceId);
+
+	return space?.name ?? null;
+});
 
 const onCreateConversation = async (): Promise<void> => {
 	await createConversation();

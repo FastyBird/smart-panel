@@ -1,63 +1,48 @@
 <template>
-	<div class="flex flex-col h-full b-r b-r-solid b-r-[var(--el-border-color-light)]">
-		<div class="p-2">
-			<el-button
-				type="primary"
-				class="w-full"
-				@click="emit('create')"
-			>
-				<el-icon class="mr-1">
-					<icon icon="mdi:plus" />
-				</el-icon>
-				{{ t('buddyModule.buttons.newChat.title') }}
-			</el-button>
-		</div>
-
-		<el-scrollbar class="grow-1">
-			<div
-				v-for="conversation in conversations"
-				:key="conversation.id"
-				class="group flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-[var(--el-fill-color-light)]"
-				:class="{ 'bg-[var(--el-fill-color)]': conversation.id === activeId }"
-				@click="emit('select', conversation.id)"
-			>
-				<div class="grow-1 min-w-0">
-					<div class="text-sm truncate">
-						{{ conversation.title || t('buddyModule.texts.newConversation') }}
-					</div>
-					<div class="text-xs text-[var(--el-text-color-secondary)] mt-0.5">
-						{{ formatRelativeTime(conversation.created_at) }}
-					</div>
-					<div
-						v-if="conversation.space_id"
-						class="text-xs text-[var(--el-text-color-placeholder)] mt-0.5 truncate"
-					>
-						{{ getSpaceName(conversation.space_id) || t('buddyModule.texts.noSpace') }}
-					</div>
+	<el-scrollbar class="h-full">
+		<div
+			v-for="conversation in conversations"
+			:key="conversation.id"
+			class="group flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-[var(--el-fill-color-light)]"
+			:class="{ 'bg-[var(--el-fill-color)]': conversation.id === activeId }"
+			@click="emit('select', conversation.id)"
+		>
+			<div class="grow-1 min-w-0">
+				<div class="text-sm truncate">
+					{{ conversation.title || t('buddyModule.texts.newConversation') }}
 				</div>
-
-				<el-popconfirm
-					:title="t('buddyModule.texts.confirmDelete')"
-					:confirm-button-text="t('buddyModule.buttons.delete.title')"
-					:cancel-button-text="t('buddyModule.buttons.cancel.title')"
-					@confirm="emit('delete', conversation.id)"
+				<div class="text-xs text-[var(--el-text-color-secondary)] mt-0.5">
+					{{ formatRelativeTime(conversation.created_at) }}
+				</div>
+				<div
+					v-if="conversation.space_id"
+					class="text-xs text-[var(--el-text-color-placeholder)] mt-0.5 truncate"
 				>
-					<template #reference>
-						<el-button
-							class="opacity-0 group-hover:opacity-100"
-							size="small"
-							text
-							@click.stop
-						>
-							<el-icon>
-								<icon icon="mdi:delete-outline" />
-							</el-icon>
-						</el-button>
-					</template>
-				</el-popconfirm>
+					{{ getSpaceName(conversation.space_id) || t('buddyModule.texts.noSpace') }}
+				</div>
 			</div>
-		</el-scrollbar>
-	</div>
+
+			<el-popconfirm
+				:title="t('buddyModule.texts.confirmDelete')"
+				:confirm-button-text="t('buddyModule.buttons.delete.title')"
+				:cancel-button-text="t('buddyModule.buttons.cancel.title')"
+				@confirm="emit('delete', conversation.id)"
+			>
+				<template #reference>
+					<el-button
+						class="opacity-0 group-hover:opacity-100"
+						size="small"
+						text
+						@click.stop
+					>
+						<el-icon>
+							<icon icon="mdi:delete-outline" />
+						</el-icon>
+					</el-button>
+				</template>
+			</el-popconfirm>
+		</div>
+	</el-scrollbar>
 </template>
 
 <script setup lang="ts">
@@ -99,7 +84,6 @@ const getSpaceName = (spaceId: string | null): string | null => {
 
 const emit = defineEmits<{
 	(e: 'select', id: string): void;
-	(e: 'create'): void;
 	(e: 'delete', id: string): void;
 }>();
 

@@ -2,6 +2,7 @@
 	"headings": {
 		"settings": "Buddy",
 		"chat": "Buddy Chat",
+		"chats": "Chats",
 		"aboutBuddy": "AI Buddy Configuration"
 	},
 	"subHeadings": {
@@ -86,7 +87,8 @@
 		"minutesAgo": "{n}m ago",
 		"hoursAgo": "{n}h ago",
 		"daysAgo": "{n}d ago",
-		"noSpace": "No space"
+		"noSpace": "No space",
+		"noActiveConversation": "No conversation selected"
 	},
 	"meta": {
 		"settings": {
