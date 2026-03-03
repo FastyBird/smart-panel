@@ -235,6 +235,10 @@ const onCreateConversation = async (): Promise<void> => {
 };
 
 onBeforeMount(async (): Promise<void> => {
+	if (!isModuleEnabled.value) {
+		return;
+	}
+
 	await Promise.all([fetchSpaces(), fetchProviderStatuses(), fetchConversations()]);
 
 	const first = conversations.value[0];
