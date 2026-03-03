@@ -28,6 +28,12 @@
 					<div class="text-xs text-[var(--el-text-color-secondary)] mt-0.5">
 						{{ formatRelativeTime(conversation.created_at) }}
 					</div>
+					<div
+						v-if="conversation.space_id"
+						class="text-xs text-[var(--el-text-color-placeholder)] mt-0.5 truncate"
+					>
+						{{ getSpaceName(conversation.space_id) || t('buddyModule.texts.noSpace') }}
+					</div>
 				</div>
 
 				<el-popconfirm
@@ -64,17 +70,32 @@ import { Icon } from '@iconify/vue';
 interface IConversation {
 	id: string;
 	title: string | null;
+	space_id: string | null;
 	created_at: string;
+}
+
+interface ISpace {
+	id: string;
+	name: string;
 }
 
 defineOptions({
 	name: 'BuddyConversationList',
 });
 
-defineProps<{
+const props = defineProps<{
 	conversations: IConversation[];
 	activeId: string | null;
+	spaces: ISpace[];
 }>();
+
+const getSpaceName = (spaceId: string | null): string | null => {
+	if (!spaceId) return null;
+
+	const space = props.spaces.find((s) => s.id === spaceId);
+
+	return space?.name ?? null;
+};
 
 const emit = defineEmits<{
 	(e: 'select', id: string): void;

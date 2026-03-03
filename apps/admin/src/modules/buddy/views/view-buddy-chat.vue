@@ -50,6 +50,7 @@
 			<buddy-conversation-list
 				:conversations="conversations"
 				:active-id="activeConversationId"
+				:spaces="spacesForList"
 				@select="selectConversation"
 				@create="onCreateConversation"
 				@delete="deleteConversation"
@@ -74,7 +75,7 @@
 </template>
 
 <script setup lang="ts">
-import { onBeforeMount } from 'vue';
+import { computed, onBeforeMount } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { useRouter } from 'vue-router';
@@ -84,6 +85,7 @@ import { ElIcon, vLoading } from 'element-plus';
 import { Icon } from '@iconify/vue';
 
 import { AppBarButton, AppBarButtonAlign, AppBarHeading, ViewHeader, useBreakpoints } from '../../../common';
+import { useSpaces } from '../../spaces/composables/useSpaces';
 import BuddyConversationList from '../components/buddy-conversation-list.vue';
 import BuddyChatArea from '../components/buddy-chat-area.vue';
 import { useBuddyChat } from '../composables/useBuddyChat';
@@ -100,6 +102,10 @@ useMeta({
 });
 
 const { isMDDevice } = useBreakpoints();
+
+const { spaces, fetchSpaces } = useSpaces();
+
+const spacesForList = computed(() => spaces.value.map((s) => ({ id: s.id, name: s.name })));
 
 const {
 	conversations,
@@ -126,6 +132,7 @@ const onCreateConversation = async (): Promise<void> => {
 };
 
 onBeforeMount(async (): Promise<void> => {
+	await fetchSpaces();
 	await fetchProviderStatuses();
 	await fetchConversations();
 

@@ -65,35 +65,20 @@ class BuddyService extends ChangeNotifier {
 
 	/// Start or resume a chat conversation.
 	///
-	/// When [spaceId] is provided, first looks for an existing conversation
-	/// for that space and resumes it. Falls back to the most recent
-	/// conversation regardless of space. Only creates a new conversation
-	/// when none is found.
+	/// When [spaceId] is provided, looks for an existing conversation
+	/// for that space and resumes it. Only creates a new conversation
+	/// when none is found for the given space.
 	Future<BuddyConversationModel?> startNewConversation({
 		String? title,
 		String? spaceId,
 	}) async {
 		// Try to reuse an existing conversation for the given space
-		if (spaceId != null) {
-			await _buddyRepository.fetchConversations(spaceId: spaceId);
+		await _buddyRepository.fetchConversations(spaceId: spaceId);
 
-			final spaceConversations = _buddyRepository.conversations;
+		final existingConversations = _buddyRepository.conversations;
 
-			if (spaceConversations.isNotEmpty) {
-				final conversation = spaceConversations.first;
-				await _buddyRepository.fetchConversationMessages(conversation.id);
-
-				return conversation;
-			}
-		}
-
-		// Fall back to the most recent conversation (any space)
-		await _buddyRepository.fetchConversations();
-
-		final allConversations = _buddyRepository.conversations;
-
-		if (allConversations.isNotEmpty) {
-			final conversation = allConversations.first;
+		if (existingConversations.isNotEmpty) {
+			final conversation = existingConversations.first;
 			await _buddyRepository.fetchConversationMessages(conversation.id);
 
 			return conversation;
