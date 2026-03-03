@@ -7,6 +7,18 @@
 		status-icon
 	>
 		<el-form-item
+			:label="t('buddyModule.fields.config.enabled.title')"
+			prop="enabled"
+			label-position="left"
+			class="mt-3"
+		>
+			<el-switch
+				v-model="model.enabled"
+				name="enabled"
+			/>
+		</el-form-item>
+
+		<el-form-item
 			:label="t('buddyModule.fields.config.name.title')"
 			prop="name"
 		>
@@ -72,7 +84,7 @@
 import { computed, onBeforeMount, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElForm, ElFormItem, ElInput, ElOption, ElSelect, ElTag, ElText, type FormRules } from 'element-plus';
+import { ElAlert, ElForm, ElFormItem, ElInput, ElOption, ElSelect, ElSwitch, ElTag, ElText, type FormRules } from 'element-plus';
 
 import { useBackend } from '../../../common';
 import { MODULES_PREFIX } from '../../../app.constants';

@@ -44,6 +44,9 @@
 	},
 	"fields": {
 		"config": {
+			"enabled": {
+				"title": "Enable module"
+			},
 			"name": {
 				"title": "Buddy name",
 				"placeholder": "Enter buddy name",
