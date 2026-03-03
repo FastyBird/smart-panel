@@ -28,7 +28,6 @@ describe('SuggestionEngineService', () => {
 	let eventEmitter: jest.Mocked<EventEmitter2>;
 
 	beforeEach(() => {
-
 		patternDetector = {
 			detectPatterns: jest.fn().mockReturnValue([]),
 		};

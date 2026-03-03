@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/unbound-method */
 import { OAuthFlowParams, OAuthFlowService } from './oauth-flow.service';
 
 // Mock global fetch
@@ -115,7 +114,7 @@ describe('OAuthFlowService', () => {
 			expect(result1.state).not.toBe(result2.state);
 		});
 
-		it('should clean up expired flows when creating a new flow', () => {
+		it('should clean up expired flows when creating a new flow', async () => {
 			// Create first flow
 			const result1 = service.createFlow(makeFlowParams());
 
@@ -128,7 +127,7 @@ describe('OAuthFlowService', () => {
 			// First flow should be expired and cleaned up
 			mockFetch.mockResolvedValue(makeTokenResponse());
 
-			expect(service.exchangeCode(result1.state, 'code')).rejects.toThrow('Invalid or expired OAuth state');
+			await expect(service.exchangeCode(result1.state, 'code')).rejects.toThrow('Invalid or expired OAuth state');
 		});
 	});
 
@@ -168,9 +167,7 @@ describe('OAuthFlowService', () => {
 			await service.exchangeCode(flow.state, 'code');
 
 			// Second exchange with same state should fail
-			await expect(service.exchangeCode(flow.state, 'code')).rejects.toThrow(
-				'Invalid or expired OAuth state',
-			);
+			await expect(service.exchangeCode(flow.state, 'code')).rejects.toThrow('Invalid or expired OAuth state');
 		});
 
 		it('should delete expired flow after expiry check', async () => {
@@ -181,9 +178,7 @@ describe('OAuthFlowService', () => {
 			await expect(service.exchangeCode(flow.state, 'code')).rejects.toThrow('OAuth flow has expired');
 
 			// Flow should be deleted after expiry error
-			await expect(service.exchangeCode(flow.state, 'code')).rejects.toThrow(
-				'Invalid or expired OAuth state',
-			);
+			await expect(service.exchangeCode(flow.state, 'code')).rejects.toThrow('Invalid or expired OAuth state');
 		});
 
 		it('should send form-urlencoded token request by default', async () => {
@@ -201,14 +196,15 @@ describe('OAuthFlowService', () => {
 				}),
 			);
 
-			const fetchCall = mockFetch.mock.calls[0][1];
+			const fetchCall = mockFetch.mock.calls[0] as [string, { body: URLSearchParams; signal: AbortSignal }];
+			const body = fetchCall[1].body;
 
-			expect(fetchCall.body).toBeInstanceOf(URLSearchParams);
-			expect(fetchCall.body.get('grant_type')).toBe('authorization_code');
-			expect(fetchCall.body.get('code')).toBe('auth-code');
-			expect(fetchCall.body.get('client_id')).toBe('client-id-123');
-			expect(fetchCall.body.get('redirect_uri')).toBe('https://panel.local/oauth/callback');
-			expect(fetchCall.body.get('code_verifier')).toBeDefined();
+			expect(body).toBeInstanceOf(URLSearchParams);
+			expect(body.get('grant_type')).toBe('authorization_code');
+			expect(body.get('code')).toBe('auth-code');
+			expect(body.get('client_id')).toBe('client-id-123');
+			expect(body.get('redirect_uri')).toBe('https://panel.local/oauth/callback');
+			expect(body.get('code_verifier')).toBeDefined();
 		});
 
 		it('should send JSON token request when useJsonTokenExchange is true', async () => {
@@ -226,8 +222,8 @@ describe('OAuthFlowService', () => {
 				}),
 			);
 
-			const fetchCall = mockFetch.mock.calls[0][1];
-			const body = JSON.parse(fetchCall.body as string);
+			const fetchCall = mockFetch.mock.calls[0] as [string, { body: string; signal: AbortSignal }];
+			const body = JSON.parse(fetchCall[1].body) as Record<string, string>;
 
 			expect(body.grant_type).toBe('authorization_code');
 			expect(body.code).toBe('auth-code');
@@ -278,9 +274,9 @@ describe('OAuthFlowService', () => {
 
 			await service.exchangeCode(flow.state, 'code');
 
-			const fetchCall = mockFetch.mock.calls[0][1];
+			const fetchCall = mockFetch.mock.calls[0] as [string, { signal: AbortSignal }];
 
-			expect(fetchCall.signal).toBeInstanceOf(AbortSignal);
+			expect(fetchCall[1].signal).toBeInstanceOf(AbortSignal);
 		});
 
 		it('should handle text() failure when reading error response body', async () => {

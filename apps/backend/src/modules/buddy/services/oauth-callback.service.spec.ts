@@ -1,10 +1,11 @@
-/* eslint-disable @typescript-eslint/unbound-method */
+import { ConfigService } from '../../config/services/config.service';
+
+import { OAuthCallbackService } from './oauth-callback.service';
+import { OAuthFlowService, OAuthTokens } from './oauth-flow.service';
+
 jest.mock('../../config/services/config.service', () => ({
 	ConfigService: jest.fn(),
 }));
-
-import { OAuthTokens } from './oauth-flow.service';
-import { OAuthCallbackService } from './oauth-callback.service';
 
 describe('OAuthCallbackService', () => {
 	let service: OAuthCallbackService;
@@ -27,7 +28,10 @@ describe('OAuthCallbackService', () => {
 			setPluginConfig: jest.fn(),
 		};
 
-		service = new OAuthCallbackService(oauthFlowService as any, configService as any);
+		service = new OAuthCallbackService(
+			oauthFlowService as unknown as OAuthFlowService,
+			configService as unknown as ConfigService,
+		);
 	});
 
 	describe('handleCallback', () => {
@@ -122,7 +126,7 @@ describe('OAuthCallbackService', () => {
 
 			await service.handleCallback('code', 'state');
 
-			const savedConfig = configService.setPluginConfig.mock.calls[0][1];
+			const savedConfig = (configService.setPluginConfig.mock.calls[0] as [string, Record<string, unknown>])[1];
 
 			expect(savedConfig).not.toHaveProperty('accessToken');
 			expect(savedConfig.refreshToken).toBe('rt-456');
@@ -140,7 +144,7 @@ describe('OAuthCallbackService', () => {
 
 			await service.handleCallback('code', 'state');
 
-			const savedConfig = configService.setPluginConfig.mock.calls[0][1];
+			const savedConfig = (configService.setPluginConfig.mock.calls[0] as [string, Record<string, unknown>])[1];
 
 			expect(savedConfig.accessToken).toBe('at-123');
 			expect(savedConfig).not.toHaveProperty('refreshToken');

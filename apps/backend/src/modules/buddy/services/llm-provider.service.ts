@@ -2,7 +2,11 @@ import { Injectable, Logger } from '@nestjs/common';
 
 import { ConfigService } from '../../config/services/config.service';
 import { BUDDY_MODULE_NAME, LEGACY_PROVIDER_MAP } from '../buddy.constants';
-import { BuddyProviderErrorException, BuddyProviderNotConfiguredException, BuddyProviderTimeoutException } from '../buddy.exceptions';
+import {
+	BuddyProviderErrorException,
+	BuddyProviderNotConfiguredException,
+	BuddyProviderTimeoutException,
+} from '../buddy.exceptions';
 import { BuddyConfigModel } from '../models/config.model';
 import { ChatMessage, LlmOptions, LlmResponse } from '../platforms/llm-provider.platform';
 

@@ -43,8 +43,12 @@ class BuddyRepository extends ChangeNotifier {
 	String? _messagesError;
 	String? _sendError;
 
-	/// Whether the last error was a 503 indicating no AI provider is configured.
-	bool _isProviderNotConfigured = false;
+	/// Per-operation flags tracking whether the last error for each operation
+	/// was a 503 indicating no AI provider is configured. Using per-operation
+	/// flags prevents one operation from clearing the flag set by another.
+	bool _isProviderNotConfiguredConversations = false;
+	bool _isProviderNotConfiguredMessages = false;
+	bool _isProviderNotConfiguredSend = false;
 
 	BuddyRepository({
 		required Dio dio,
@@ -65,7 +69,10 @@ class BuddyRepository extends ChangeNotifier {
 	bool get isSendingMessage => _activeSendCount > 0;
 	bool get isLoadingSuggestions => _isLoadingSuggestions;
 	String? get error => _sendError ?? _conversationsError ?? _messagesError;
-	bool get isProviderNotConfigured => _isProviderNotConfigured;
+	bool get isProviderNotConfigured =>
+		_isProviderNotConfiguredSend ||
+		_isProviderNotConfiguredConversations ||
+		_isProviderNotConfiguredMessages;
 
 	// ============================================
 	// CONVERSATIONS API
@@ -75,7 +82,7 @@ class BuddyRepository extends ChangeNotifier {
 	Future<void> fetchConversations({String? spaceId}) async {
 		_isLoadingConversations = true;
 		_conversationsError = null;
-		_isProviderNotConfigured = false;
+		_isProviderNotConfiguredConversations = false;
 		notifyListeners();
 
 		try {
@@ -101,6 +108,7 @@ class BuddyRepository extends ChangeNotifier {
 			}
 		} on DioException catch (e) {
 			_conversationsError = _parseError(e);
+			_isProviderNotConfiguredConversations = e.response?.statusCode == 503;
 
 			if (kDebugMode) {
 				debugPrint(
@@ -125,7 +133,7 @@ class BuddyRepository extends ChangeNotifier {
 		String? spaceId,
 	}) async {
 		_conversationsError = null;
-		_isProviderNotConfigured = false;
+		_isProviderNotConfiguredConversations = false;
 
 		try {
 			final inner = <String, dynamic>{};
@@ -151,6 +159,7 @@ class BuddyRepository extends ChangeNotifier {
 			}
 		} on DioException catch (e) {
 			_conversationsError = _parseError(e);
+			_isProviderNotConfiguredConversations = e.response?.statusCode == 503;
 
 			if (kDebugMode) {
 				debugPrint(
@@ -175,7 +184,7 @@ class BuddyRepository extends ChangeNotifier {
 		_isLoadingMessages = true;
 		_activeConversationId = conversationId;
 		_messagesError = null;
-		_isProviderNotConfigured = false;
+		_isProviderNotConfiguredMessages = false;
 		notifyListeners();
 
 		try {
@@ -196,6 +205,7 @@ class BuddyRepository extends ChangeNotifier {
 			}
 		} on DioException catch (e) {
 			_messagesError = _parseError(e);
+			_isProviderNotConfiguredMessages = e.response?.statusCode == 503;
 
 			if (kDebugMode) {
 				debugPrint(
@@ -221,7 +231,7 @@ class BuddyRepository extends ChangeNotifier {
 	) async {
 		_activeSendCount++;
 		_sendError = null;
-		_isProviderNotConfigured = false;
+		_isProviderNotConfiguredSend = false;
 
 		// Track whether the success path already decremented the counter
 		// so the finally block doesn't double-decrement.
@@ -289,6 +299,7 @@ class BuddyRepository extends ChangeNotifier {
 			await _reconcileMessages(conversationId);
 		} on DioException catch (e) {
 			_sendError = _parseError(e);
+			_isProviderNotConfiguredSend = e.response?.statusCode == 503;
 
 			// Remove the optimistic user message on error
 			_messages.removeWhere((m) => m.id == userMessage.id);
@@ -533,7 +544,7 @@ class BuddyRepository extends ChangeNotifier {
 	// ============================================
 
 	/// Silently refresh the message list from the server without touching
-	/// [_error], [_isProviderNotConfigured], or [_isLoadingMessages].
+	/// error fields, provider-not-configured flags, or [_isLoadingMessages].
 	///
 	/// Used after a successful [sendMessage] to reconcile the optimistic
 	/// pending user message with the real server data. Failures are logged
@@ -585,7 +596,9 @@ class BuddyRepository extends ChangeNotifier {
 		_conversationsError = null;
 		_messagesError = null;
 		_sendError = null;
-		_isProviderNotConfigured = false;
+		_isProviderNotConfiguredConversations = false;
+		_isProviderNotConfiguredMessages = false;
+		_isProviderNotConfiguredSend = false;
 		notifyListeners();
 	}
 
@@ -605,9 +618,7 @@ class BuddyRepository extends ChangeNotifier {
 	}
 
 	String _parseError(DioException e) {
-		_isProviderNotConfigured = e.response?.statusCode == 503;
-
-		if (_isProviderNotConfigured) {
+		if (e.response?.statusCode == 503) {
 			return 'AI provider not configured';
 		}
 

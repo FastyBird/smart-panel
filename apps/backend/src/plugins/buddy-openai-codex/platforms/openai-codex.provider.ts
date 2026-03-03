@@ -51,8 +51,10 @@ export class OpenAiCodexProvider implements ILlmProvider {
 
 		const hasAccessToken = typeof accessToken === 'string' && accessToken.length > 0;
 		const hasOAuthCredentials =
-			typeof clientId === 'string' && clientId.length > 0 &&
-			typeof refreshToken === 'string' && refreshToken.length > 0;
+			typeof clientId === 'string' &&
+			clientId.length > 0 &&
+			typeof refreshToken === 'string' &&
+			refreshToken.length > 0;
 
 		return hasAccessToken || hasOAuthCredentials;
 	}

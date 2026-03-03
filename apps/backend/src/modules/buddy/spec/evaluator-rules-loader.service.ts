@@ -1,4 +1,4 @@
-import { access, readFile } from 'fs/promises';
+import { readFile } from 'fs/promises';
 import { join } from 'path';
 import { parse as parseYaml } from 'yaml';
 
@@ -78,7 +78,9 @@ export class EvaluatorRulesLoaderService implements OnModuleInit {
 	// ──────────────────────────────────────────
 
 	private async loadAnomalyRules(): Promise<void> {
-		const builtinConfig = await this.loadYamlFile<YamlAnomalyRulesConfig>(join(this.builtinSpecPath, 'anomaly-rules.yaml'));
+		const builtinConfig = await this.loadYamlFile<YamlAnomalyRulesConfig>(
+			join(this.builtinSpecPath, 'anomaly-rules.yaml'),
+		);
 
 		if (builtinConfig?.anomaly_rules) {
 			this.mergeAnomalyRules(builtinConfig.anomaly_rules);
@@ -131,7 +133,9 @@ export class EvaluatorRulesLoaderService implements OnModuleInit {
 	// ──────────────────────────────────────────
 
 	private async loadEnergyRules(): Promise<void> {
-		const builtinConfig = await this.loadYamlFile<YamlEnergyRulesConfig>(join(this.builtinSpecPath, 'energy-rules.yaml'));
+		const builtinConfig = await this.loadYamlFile<YamlEnergyRulesConfig>(
+			join(this.builtinSpecPath, 'energy-rules.yaml'),
+		);
 
 		if (builtinConfig?.energy_rules) {
 			this.mergeEnergyRules(builtinConfig.energy_rules);
@@ -180,7 +184,9 @@ export class EvaluatorRulesLoaderService implements OnModuleInit {
 	// ──────────────────────────────────────────
 
 	private async loadConflictRules(): Promise<void> {
-		const builtinConfig = await this.loadYamlFile<YamlConflictRulesConfig>(join(this.builtinSpecPath, 'conflict-rules.yaml'));
+		const builtinConfig = await this.loadYamlFile<YamlConflictRulesConfig>(
+			join(this.builtinSpecPath, 'conflict-rules.yaml'),
+		);
 
 		if (builtinConfig?.conflict_rules) {
 			this.mergeConflictRules(builtinConfig.conflict_rules);
@@ -236,7 +242,9 @@ export class EvaluatorRulesLoaderService implements OnModuleInit {
 	// ──────────────────────────────────────────
 
 	private async loadPatternRules(): Promise<void> {
-		const builtinConfig = await this.loadYamlFile<YamlPatternRulesConfig>(join(this.builtinSpecPath, 'pattern-rules.yaml'));
+		const builtinConfig = await this.loadYamlFile<YamlPatternRulesConfig>(
+			join(this.builtinSpecPath, 'pattern-rules.yaml'),
+		);
 
 		if (builtinConfig?.pattern_rules) {
 			this.mergePatternRules(builtinConfig.pattern_rules);
@@ -300,8 +308,6 @@ export class EvaluatorRulesLoaderService implements OnModuleInit {
 
 	private async loadYamlFile<T>(filePath: string): Promise<T | null> {
 		try {
-			await access(filePath);
-
 			const content = await readFile(filePath, 'utf-8');
 			const parsed = parseYaml(content) as T;
 

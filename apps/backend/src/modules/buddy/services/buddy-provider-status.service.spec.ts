@@ -207,12 +207,12 @@ describe('BuddyProviderStatusService', () => {
 		const claudeStatus = result.find((s) => s.type === 'buddy-claude-plugin');
 
 		expect(openaiStatus).toBeDefined();
-		expect(openaiStatus!.selected).toBe(false);
-		expect(openaiStatus!.name).toBe('OpenAI');
+		expect(openaiStatus?.selected).toBe(false);
+		expect(openaiStatus?.name).toBe('OpenAI');
 
 		expect(claudeStatus).toBeDefined();
-		expect(claudeStatus!.selected).toBe(true);
-		expect(claudeStatus!.name).toBe('Claude');
+		expect(claudeStatus?.selected).toBe(true);
+		expect(claudeStatus?.name).toBe('Claude');
 	});
 
 	it('should show enabled=false and configured=false when provider has no config', () => {
