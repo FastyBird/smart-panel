@@ -177,6 +177,19 @@ const providerOptions = computed(() => {
 		});
 	}
 
+	// If the fetch failed and the current provider isn't in the list, add a fallback entry
+	if (providerFetchFailed.value && model.provider && model.provider !== LLM_PROVIDER_NONE) {
+		const exists = options.some((o) => o.value === model.provider);
+
+		if (!exists) {
+			options.push({
+				value: model.provider,
+				label: model.provider,
+				disabled: false,
+			});
+		}
+	}
+
 	return options;
 });
 

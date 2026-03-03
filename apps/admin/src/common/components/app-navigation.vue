@@ -156,8 +156,8 @@ const accountManager = injectAccountManager();
 
 const visibleMenuItems = computed(() => {
 	return Object.fromEntries(
-		Object.entries(mainMenuItems).filter(([, route]) => {
-			const moduleType = route.meta?.module as string | undefined;
+		Object.entries(mainMenuItems).filter(([, menuRoute]) => {
+			const moduleType = menuRoute.meta?.module as string | undefined;
 
 			return !moduleType || isModuleEnabled(moduleType);
 		})
