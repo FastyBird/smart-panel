@@ -5,6 +5,7 @@ import { BuddyContextService } from './buddy-context.service';
 
 describe('BuddyContextService', () => {
 	let service: BuddyContextService;
+	let configService: Record<string, jest.Mock>;
 	let spacesService: Record<string, jest.Mock>;
 	let devicesService: Record<string, jest.Mock>;
 	let scenesService: Record<string, jest.Mock>;
@@ -12,7 +13,14 @@ describe('BuddyContextService', () => {
 	let energyDataService: Record<string, jest.Mock>;
 	let actionObserver: ActionObserverService;
 
+	const mockSunrise = new Date('2025-01-16T07:15:00Z');
+	const mockSunset = new Date('2025-01-16T16:30:00Z');
+
 	beforeEach(() => {
+		configService = {
+			getModuleConfig: jest.fn().mockReturnValue({ timezone: 'Europe/Prague' }),
+		};
+
 		spacesService = {
 			findAll: jest.fn().mockResolvedValue([
 				{ id: 'space-1', name: 'Living Room', category: 'living_room' },
@@ -59,10 +67,59 @@ describe('BuddyContextService', () => {
 			getPrimaryWeather: jest.fn().mockResolvedValue({
 				current: {
 					temperature: 22.5,
+					feelsLike: 21.0,
 					humidity: 55,
+					pressure: 1013,
 					weather: { description: 'Partly cloudy' },
+					wind: { speed: 3.5, deg: 250, gust: 5.2 },
+					clouds: 40,
+					rain: null,
+					snow: null,
+					sunrise: mockSunrise,
+					sunset: mockSunset,
 				},
+				forecast: [
+					{
+						dayTime: new Date('2025-01-17T12:00:00Z'),
+						temperature: { day: 12, min: 8, max: 15 },
+						weather: { description: 'partly cloudy' },
+						humidity: 60,
+						wind: { speed: 4.2, deg: 180, gust: null },
+						rain: null,
+						snow: null,
+					},
+					{
+						dayTime: new Date('2025-01-18T12:00:00Z'),
+						temperature: { day: 10, min: 6, max: 12 },
+						weather: { description: 'rain' },
+						humidity: 75,
+						wind: { speed: 5.1, deg: 200, gust: 7.0 },
+						rain: 4.5,
+						snow: null,
+					},
+					{
+						dayTime: new Date('2025-01-19T12:00:00Z'),
+						temperature: { day: 9, min: 5, max: 11 },
+						weather: { description: 'cloudy' },
+						humidity: 70,
+						wind: { speed: 3.0, deg: 220, gust: null },
+						rain: null,
+						snow: null,
+					},
+					{
+						dayTime: new Date('2025-01-20T12:00:00Z'),
+						temperature: { day: 14, min: 8, max: 16 },
+						weather: { description: 'clear' },
+						humidity: 50,
+						wind: { speed: 2.0, deg: 90, gust: null },
+						rain: null,
+						snow: null,
+					},
+				],
 			}),
+			getPrimaryLocationId: jest.fn().mockReturnValue('loc-1'),
+			checkAlertsSupported: jest.fn().mockResolvedValue(false),
+			getAlerts: jest.fn().mockResolvedValue([]),
 		};
 
 		energyDataService = {
@@ -81,6 +138,7 @@ describe('BuddyContextService', () => {
 		actionObserver = new ActionObserverService();
 
 		service = new BuddyContextService(
+			configService as any,
 			spacesService as any,
 			devicesService as any,
 			scenesService as any,
@@ -115,14 +173,23 @@ describe('BuddyContextService', () => {
 			expect(ctx.scenes[0]).toEqual(expect.objectContaining({ id: 'scene-1', name: 'Movie Night', enabled: true }));
 		});
 
-		it('should include weather in context', async () => {
+		it('should include weather with enriched current data', async () => {
 			const ctx = await service.buildContext();
 
-			expect(ctx.weather).toEqual({
-				temperature: 22.5,
-				conditions: 'Partly cloudy',
-				humidity: 55,
-			});
+			expect(ctx.weather).not.toBeNull();
+			expect(ctx.weather.current).toEqual(
+				expect.objectContaining({
+					temperature: 22.5,
+					feelsLike: 21.0,
+					conditions: 'Partly cloudy',
+					humidity: 55,
+					pressure: 1013,
+					clouds: 40,
+				}),
+			);
+			expect(ctx.weather.current.wind).toEqual({ speed: 3.5, deg: 250, gust: 5.2 });
+			expect(ctx.weather.current.sunrise).toBe(mockSunrise.toISOString());
+			expect(ctx.weather.current.sunset).toBe(mockSunset.toISOString());
 		});
 
 		it('should include energy in context with approximate kW rates from recent deltas', async () => {
@@ -152,12 +219,112 @@ describe('BuddyContextService', () => {
 			expect(ctx.recentIntents[0].space).toBe('space-1');
 		});
 
-		it('should include a timestamp', async () => {
+		it('should include a localized timestamp with timezone', async () => {
 			const ctx = await service.buildContext();
 
 			expect(ctx.timestamp).toBeDefined();
-			// Should be a valid ISO string
-			expect(new Date(ctx.timestamp).toISOString()).toBe(ctx.timestamp);
+			expect(ctx.timestamp).toContain('(Europe/Prague)');
+			expect(ctx.timezone).toBe('Europe/Prague');
+		});
+	});
+
+	describe('weather forecast', () => {
+		it('should limit forecast to 3 days', async () => {
+			const ctx = await service.buildContext();
+
+			expect(ctx.weather.forecast).toHaveLength(3);
+		});
+
+		it('should map forecast fields correctly', async () => {
+			const ctx = await service.buildContext();
+
+			expect(ctx.weather.forecast[0]).toEqual(
+				expect.objectContaining({
+					tempDay: 12,
+					tempMin: 8,
+					tempMax: 15,
+					conditions: 'partly cloudy',
+					humidity: 60,
+					wind: 4.2,
+					rain: null,
+				}),
+			);
+		});
+
+		it('should include rain values in forecast when present', async () => {
+			const ctx = await service.buildContext();
+
+			expect(ctx.weather.forecast[1].rain).toBe(4.5);
+		});
+	});
+
+	describe('weather alerts', () => {
+		it('should include alerts when supported', async () => {
+			weatherService.checkAlertsSupported.mockResolvedValue(true);
+			weatherService.getAlerts.mockResolvedValue([
+				{
+					event: 'Heat Advisory',
+					start: new Date('2025-01-16T12:00:00Z'),
+					end: new Date('2025-01-17T00:00:00Z'),
+					description: 'High temperatures expected',
+				},
+			]);
+
+			const ctx = await service.buildContext();
+
+			expect(ctx.weather.alerts).toHaveLength(1);
+			expect(ctx.weather.alerts[0]).toEqual(
+				expect.objectContaining({
+					event: 'Heat Advisory',
+					description: 'High temperatures expected',
+				}),
+			);
+		});
+
+		it('should return empty alerts when not supported', async () => {
+			weatherService.checkAlertsSupported.mockResolvedValue(false);
+
+			const ctx = await service.buildContext();
+
+			expect(ctx.weather.alerts).toEqual([]);
+			expect(weatherService.getAlerts).not.toHaveBeenCalled();
+		});
+
+		it('should truncate alert descriptions over 200 characters', async () => {
+			weatherService.checkAlertsSupported.mockResolvedValue(true);
+
+			const longDesc = 'A'.repeat(250);
+
+			weatherService.getAlerts.mockResolvedValue([
+				{
+					event: 'Warning',
+					start: new Date('2025-01-16T12:00:00Z'),
+					end: new Date('2025-01-17T00:00:00Z'),
+					description: longDesc,
+				},
+			]);
+
+			const ctx = await service.buildContext();
+
+			expect(ctx.weather.alerts[0].description).toHaveLength(200);
+			expect(ctx.weather.alerts[0].description).toMatch(/\.\.\.$/);
+		});
+
+		it('should return empty alerts when getPrimaryLocationId returns null', async () => {
+			weatherService.getPrimaryLocationId.mockReturnValue(null);
+
+			const ctx = await service.buildContext();
+
+			expect(ctx.weather.alerts).toEqual([]);
+		});
+
+		it('should return empty alerts when getAlerts throws', async () => {
+			weatherService.checkAlertsSupported.mockResolvedValue(true);
+			weatherService.getAlerts.mockRejectedValue(new Error('Alerts failed'));
+
+			const ctx = await service.buildContext();
+
+			expect(ctx.weather.alerts).toEqual([]);
 		});
 	});
 
@@ -256,6 +423,46 @@ describe('BuddyContextService', () => {
 			const ctx = await service.buildContext('nonexistent');
 
 			expect(ctx.spaces).toHaveLength(0);
+		});
+	});
+
+	describe('context caching', () => {
+		it('should return cached context on second call', async () => {
+			const ctx1 = await service.buildContext();
+			const ctx2 = await service.buildContext();
+
+			expect(ctx1).toBe(ctx2);
+			expect(spacesService.findAll).toHaveBeenCalledTimes(1);
+		});
+
+		it('should return fresh context after invalidateCache', async () => {
+			const ctx1 = await service.buildContext();
+
+			service.invalidateCache();
+
+			const ctx2 = await service.buildContext();
+
+			expect(ctx1).not.toBe(ctx2);
+			expect(spacesService.findAll).toHaveBeenCalledTimes(2);
+		});
+
+		it('should cache separately per spaceId', async () => {
+			spacesService.findDevicesBySpace.mockResolvedValue([]);
+
+			await service.buildContext('space-1');
+			await service.buildContext('space-2');
+
+			expect(spacesService.findOne).toHaveBeenCalledTimes(2);
+		});
+
+		it('should not share cache between global and space-scoped calls', async () => {
+			spacesService.findDevicesBySpace.mockResolvedValue([]);
+
+			await service.buildContext();
+			await service.buildContext('space-1');
+
+			expect(spacesService.findAll).toHaveBeenCalledTimes(1);
+			expect(spacesService.findOne).toHaveBeenCalledTimes(1);
 		});
 	});
 

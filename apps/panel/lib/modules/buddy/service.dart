@@ -2,10 +2,12 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import 'package:fastybird_smart_panel/modules/buddy/models/buddy_config.dart';
 import 'package:fastybird_smart_panel/modules/buddy/models/conversation.dart';
 import 'package:fastybird_smart_panel/modules/buddy/models/message.dart';
 import 'package:fastybird_smart_panel/modules/buddy/models/suggestion.dart';
 import 'package:fastybird_smart_panel/modules/buddy/repositories/buddy.dart';
+import 'package:fastybird_smart_panel/modules/config/repositories/module_config_repository.dart';
 
 /// Service that provides a single source of truth for buddy state.
 ///
@@ -14,11 +16,19 @@ import 'package:fastybird_smart_panel/modules/buddy/repositories/buddy.dart';
 class BuddyService extends ChangeNotifier {
 	final BuddyRepository _buddyRepository;
 
+	ModuleConfigRepository<BuddyConfigModel>? _configRepo;
 	Timer? _updateDebounce;
 
 	BuddyService({
 		required BuddyRepository buddyRepository,
 	}) : _buddyRepository = buddyRepository;
+
+	void setConfigRepository(ModuleConfigRepository<BuddyConfigModel> repo) {
+		_configRepo = repo;
+		repo.addListener(_scheduleUpdate);
+	}
+
+	bool get isModuleEnabled => _configRepo?.data?.enabled ?? true;
 
 	Future<void> initialize() async {
 		_buddyRepository.addListener(_scheduleUpdate);
@@ -63,13 +73,50 @@ class BuddyService extends ChangeNotifier {
 	// CONVERSATION ACTIONS
 	// ============================================
 
-	/// Start a new chat conversation
+	/// Start or resume a chat conversation.
+	///
+	/// When [spaceId] is provided, looks for an existing conversation
+	/// for that space and resumes it. Only creates a new conversation
+	/// when none is found for the given space.
 	Future<BuddyConversationModel?> startNewConversation({
 		String? title,
 		String? spaceId,
 	}) async {
+		// Try to reuse an existing conversation for the given space
+		await _buddyRepository.fetchConversations(spaceId: spaceId);
+
+		final existingConversations = _buddyRepository.conversations;
+
+		if (existingConversations.isNotEmpty) {
+			final conversation = existingConversations.first;
+			await _buddyRepository.fetchConversationMessages(conversation.id);
+
+			return conversation;
+		}
+
+		// No existing conversation found — create a new one
 		final conversation = await _buddyRepository.createConversation(
 			title: title,
+			spaceId: spaceId,
+		);
+
+		if (conversation != null) {
+			await _buddyRepository.fetchConversationMessages(conversation.id);
+		}
+
+		return conversation;
+	}
+
+	/// Create a brand-new conversation, clearing the current one.
+	///
+	/// Unlike [startNewConversation], this always creates a fresh
+	/// conversation regardless of whether one already exists for the space.
+	Future<BuddyConversationModel?> createNewConversation({
+		String? spaceId,
+	}) async {
+		_buddyRepository.clearActiveConversation();
+
+		final conversation = await _buddyRepository.createConversation(
 			spaceId: spaceId,
 		);
 
@@ -163,6 +210,7 @@ class BuddyService extends ChangeNotifier {
 	@override
 	void dispose() {
 		_updateDebounce?.cancel();
+		_configRepo?.removeListener(_scheduleUpdate);
 		_buddyRepository.removeListener(_scheduleUpdate);
 		super.dispose();
 	}

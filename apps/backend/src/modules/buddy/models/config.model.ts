@@ -9,6 +9,7 @@ import {
 	ANOMALY_TEMPERATURE_DRIFT_THRESHOLD,
 	ANOMALY_UNUSUAL_ACTIVITY_THRESHOLD,
 	ANOMALY_UNUSUAL_ACTIVITY_WINDOW_MINUTES,
+	BUDDY_DEFAULT_NAME,
 	BUDDY_MODULE_NAME,
 	CONFLICT_LIGHTS_UNOCCUPIED_MINUTES,
 	ENERGY_BATTERY_LOW_THRESHOLD_PERCENT,
@@ -28,6 +29,16 @@ export class BuddyConfigModel extends ModuleConfigModel {
 	@Expose()
 	@IsString()
 	type: string = BUDDY_MODULE_NAME;
+
+	@ApiPropertyOptional({
+		description: 'Custom display name for the buddy assistant',
+		type: 'string',
+		example: BUDDY_DEFAULT_NAME,
+	})
+	@Expose()
+	@IsOptional()
+	@IsString()
+	name: string = BUDDY_DEFAULT_NAME;
 
 	@ApiPropertyOptional({
 		description:

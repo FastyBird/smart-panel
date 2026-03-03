@@ -1,7 +1,7 @@
 import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
 
-import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Post, Req, Res } from '@nestjs/common';
-import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Post, Query, Req, Res } from '@nestjs/common';
+import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import { createExtensionLogger } from '../../../common/logger';
 import { setLocationHeader } from '../../api/utils/location-header.utils';
@@ -35,13 +35,19 @@ export class BuddyConversationsController {
 		operationId: 'get-buddy-module-conversations',
 	})
 	@ApiSuccessResponse(ConversationsResponseModel, 'A list of conversations successfully retrieved.')
+	@ApiQuery({
+		name: 'space_id',
+		required: false,
+		type: 'string',
+		description: 'Filter conversations by space ID',
+	})
 	@ApiBadRequestResponse('Invalid request parameters')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get()
-	async findAll(): Promise<ConversationsResponseModel> {
+	async findAll(@Query('space_id') spaceId?: string): Promise<ConversationsResponseModel> {
 		this.logger.debug('Fetching all conversations');
 
-		const conversations = await this.conversationService.findAll();
+		const conversations = await this.conversationService.findAll(spaceId);
 
 		this.logger.debug(`Retrieved ${conversations.length} conversations`);
 

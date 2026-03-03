@@ -1,0 +1,32 @@
+pattern_rules:
+  single_pattern:
+    enabled: true
+    suggestion_type: pattern_scene_create
+    thresholds:
+      min_occurrences: 3
+      time_window_minutes: 60
+      lookback_days: 7
+    messages:
+      title: "Create a scene for this?"
+      reason: "You ${intentLabel} in ${spaceName} around ${timeLabel} regularly"
+
+  multi_action_sequence:
+    enabled: true
+    suggestion_type: pattern_scene_create
+    thresholds:
+      min_occurrences: 3
+      sequence_window_ms: 60000
+      time_cluster_minutes: 60
+      lookback_days: 7
+      min_actions_per_session: 2
+    messages:
+      title: "Create a scene for this routine?"
+      reason: "You perform ${actionCount} actions in ${spaceName} around ${timeLabel} regularly. Create a \"${sceneName}\" scene?"
+    time_period_labels:
+      - range: [5, 12]
+        label: "Morning"
+      - range: [12, 17]
+        label: "Afternoon"
+      - range: [17, 21]
+        label: "Evening"
+      - default: "Night"

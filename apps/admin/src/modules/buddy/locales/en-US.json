@@ -1,10 +1,13 @@
 {
 	"headings": {
 		"settings": "Buddy",
+		"chat": "Buddy Chat",
+		"chats": "Chats",
 		"aboutBuddy": "AI Buddy Configuration"
 	},
 	"subHeadings": {
-		"settings": "Configure AI buddy assistant settings"
+		"settings": "Configure AI buddy assistant settings",
+		"chat": "Chat with your AI buddy assistant"
 	},
 	"messages": {
 		"loadError": "Failed to load buddy configuration",
@@ -22,32 +25,86 @@
 		},
 		"retry": {
 			"title": "Retry"
+		},
+		"newChat": {
+			"title": "New Chat"
+		},
+		"delete": {
+			"title": "Delete"
+		},
+		"cancel": {
+			"title": "Cancel"
+		},
+		"configure": {
+			"title": "Configure Provider"
+		},
+		"goToSettings": {
+			"title": "Go to Settings"
 		}
 	},
 	"fields": {
 		"config": {
+			"enabled": {
+				"title": "Enable module"
+			},
+			"name": {
+				"title": "Buddy name",
+				"placeholder": "Enter buddy name",
+				"description": "The name displayed in the panel chat header"
+			},
 			"provider": {
 				"title": "AI Provider Plugin",
 				"placeholder": "Select an AI provider plugin",
+				"notConfigured": "not configured",
+				"tags": {
+					"ruleBasedOnly": "rule-based only"
+				},
 				"options": {
-					"none": "None (rule-based only)",
-					"claude": "Buddy Claude (Anthropic)",
-					"openai": "Buddy OpenAI",
-					"openaiCodex": "Buddy OpenAI Codex (OAuth)",
-					"claudeOauth": "Buddy Claude OAuth (Anthropic)",
-					"ollama": "Buddy Ollama (local)"
+					"none": "None"
 				}
 			}
+		},
+		"message": {
+			"placeholder": "Type a message..."
 		}
 	},
 	"texts": {
 		"loadingConfig": "Loading buddy configuration...",
+		"loadingConversations": "Loading conversations...",
 		"aboutBuddy": "Configure the AI buddy assistant that observes your actions, learns your patterns, and suggests automations. Select an AI provider plugin to enable chat functionality. Provider-specific settings (API key, model) are configured in the plugin's own settings page. Without a provider, rule-based suggestions will still work.",
-		"pluginConfigHint": "API keys, model names, and other provider-specific settings are configured in the selected plugin's settings page."
+		"pluginConfigHint": "API keys, model names, and other provider-specific settings are configured in the selected plugin's settings page.",
+		"emptyChat": "Select or create a conversation to start chatting",
+		"startConversation": "Ask me anything about your home!",
+		"thinking": "Thinking...",
+		"newConversation": "New conversation",
+		"confirmDelete": "Delete this conversation?",
+		"providerNotConfigured": "AI provider not configured",
+		"providerNotConfiguredHint": "Configure an AI provider plugin to start chatting with your buddy.",
+		"noProviderSelected": "No AI provider is selected",
+		"noProviderSelectedHint": "Go to settings to select and configure an AI provider.",
+		"providerNotEnabled": "The provider {name} is not enabled",
+		"providerNotEnabledHint": "Enable it in the plugin configuration.",
+		"providerMissingConfig": "The provider {name} needs configuration",
+		"providerMissingConfigHint": "Set up the required API key or OAuth connection.",
+		"availableProviders": "Available providers",
+		"configured": "Configured",
+		"notConfigured": "Not configured",
+		"justNow": "just now",
+		"minutesAgo": "{n}m ago",
+		"hoursAgo": "{n}h ago",
+		"daysAgo": "{n}d ago",
+		"noSpace": "No space",
+		"noActiveConversation": "No conversation selected",
+		"providersFetchFailed": "Failed to load available providers. The provider list may be incomplete.",
+		"moduleDisabled": "Buddy module is disabled",
+		"moduleDisabledHint": "The AI buddy module is currently disabled. Enable it in the system configuration to use chat and suggestions."
 	},
 	"meta": {
 		"settings": {
 			"title": "Buddy Settings"
+		},
+		"chat": {
+			"title": "Buddy Chat"
 		}
 	}
 }

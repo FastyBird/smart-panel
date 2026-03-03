@@ -30,8 +30,9 @@ export class BuddyConversationService {
 		private readonly eventEmitter: EventEmitter2,
 	) {}
 
-	async findAll(): Promise<BuddyConversationEntity[]> {
+	async findAll(spaceId?: string): Promise<BuddyConversationEntity[]> {
 		return this.conversationRepository.find({
+			where: spaceId ? { spaceId } : undefined,
 			order: { createdAt: 'DESC' },
 		});
 	}
@@ -97,27 +98,28 @@ export class BuddyConversationService {
 		chatMessages.push({ role: MessageRole.USER, content });
 
 		// 3. Call LLM provider (before persisting, so no orphaned messages on failure)
-		const response = await this.llmProvider.sendMessage(systemPrompt, chatMessages);
+		const llmResponse = await this.llmProvider.sendMessage(systemPrompt, chatMessages);
 
 		// 4. Persist both user message and assistant response in a single transaction
-		const savedAssistant = await this.dataSource.transaction(async (manager) => {
-			const userMessage = manager.create(BuddyMessageEntity, {
+		const { savedUser, savedAssistant } = await this.dataSource.transaction(async (manager) => {
+			const userMsg = manager.create(BuddyMessageEntity, {
 				id: uuid(),
 				conversationId: conversation.id,
 				role: MessageRole.USER,
 				content,
 			});
 
-			await manager.save(userMessage);
+			const persistedUser = await manager.save(userMsg);
 
 			const assistantMsg = manager.create(BuddyMessageEntity, {
 				id: uuid(),
 				conversationId: conversation.id,
 				role: MessageRole.ASSISTANT,
-				content: response,
+				content: llmResponse.content,
+				metadata: llmResponse.meta,
 			});
 
-			const saved = await manager.save(assistantMsg);
+			const persistedAssistant = await manager.save(assistantMsg);
 
 			// Update conversation title from first message if no title set
 			if (!conversation.title) {
@@ -126,15 +128,22 @@ export class BuddyConversationService {
 				await manager.update(BuddyConversationEntity, conversation.id, { title: autoTitle });
 			}
 
-			return saved;
+			return { savedUser: persistedUser, savedAssistant: persistedAssistant };
 		});
 
-		// 7. Emit WebSocket event
+		// 5. Emit WebSocket events for both messages
+		this.eventEmitter.emit(EventType.CONVERSATION_MESSAGE_RECEIVED, {
+			conversation_id: conversation.id,
+			message_id: savedUser.id,
+			role: MessageRole.USER,
+			content,
+		});
+
 		this.eventEmitter.emit(EventType.CONVERSATION_MESSAGE_RECEIVED, {
 			conversation_id: conversation.id,
 			message_id: savedAssistant.id,
 			role: MessageRole.ASSISTANT,
-			content: response,
+			content: llmResponse.content,
 		});
 
 		this.logger.debug(`Message sent in conversation id=${conversation.id}, response id=${savedAssistant.id}`);
@@ -202,10 +211,67 @@ export class BuddyConversationService {
 		}
 
 		if (context.weather) {
-			lines.push('', '## Weather');
-			lines.push(
-				`- Temperature: ${context.weather.temperature}°C, Conditions: ${context.weather.conditions}, Humidity: ${context.weather.humidity}%`,
-			);
+			const w = context.weather.current;
+
+			lines.push('', '## Current Weather');
+			lines.push(`- Temperature: ${w.temperature}°C (feels like ${w.feelsLike}°C)`);
+			lines.push(`- Conditions: ${w.conditions}, Clouds: ${w.clouds}%`);
+			lines.push(`- Humidity: ${w.humidity}%, Pressure: ${w.pressure} hPa`);
+
+			const gustStr = w.wind.gust != null ? ` (gusts ${w.wind.gust} m/s)` : '';
+
+			lines.push(`- Wind: ${w.wind.speed} m/s${gustStr}`);
+
+			if (w.rain != null && w.rain > 0) {
+				lines.push(`- Rain: ${w.rain} mm`);
+			}
+
+			if (w.snow != null && w.snow > 0) {
+				lines.push(`- Snow: ${w.snow} mm`);
+			}
+
+			const tz = context.timezone;
+
+			const formatTime = (iso: string): string => {
+				const d = new Date(iso);
+
+				return d.toLocaleTimeString('en-US', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false });
+			};
+
+			lines.push(`- Sunrise: ${formatTime(w.sunrise)}, Sunset: ${formatTime(w.sunset)}`);
+
+			if (context.weather.forecast.length > 0) {
+				lines.push('', '## Weather Forecast');
+
+				for (const f of context.weather.forecast) {
+					const date = new Date(f.date);
+					const dateStr = date.toLocaleDateString('en-US', { timeZone: tz, month: 'short', day: 'numeric' });
+					let line = `- ${dateStr}: ${f.conditions}, ${f.tempMin}–${f.tempMax}°C, wind ${f.wind} m/s, humidity ${f.humidity}%`;
+
+					if (f.rain != null && f.rain > 0) {
+						line += `, rain ${f.rain} mm`;
+					}
+
+					if (f.snow != null && f.snow > 0) {
+						line += `, snow ${f.snow} mm`;
+					}
+
+					lines.push(line);
+				}
+			}
+
+			if (context.weather.alerts.length > 0) {
+				lines.push('', '## Weather Alerts');
+
+				for (const a of context.weather.alerts) {
+					const startDate = new Date(a.start);
+					const endDate = new Date(a.end);
+					const fmt = (d: Date) =>
+						`${d.toLocaleDateString('en-US', { timeZone: tz, month: 'short', day: 'numeric' })} ${d.toLocaleTimeString('en-US', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false })}`;
+
+					lines.push(`- ${a.event} (${fmt(startDate)} – ${fmt(endDate)}): ${a.description}`);
+				}
+			}
 		}
 
 		if (context.energy) {

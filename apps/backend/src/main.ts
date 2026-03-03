@@ -1,4 +1,5 @@
 import { useContainer } from 'class-validator';
+import { FastifyReply, FastifyRequest } from 'fastify';
 
 import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
@@ -15,6 +16,7 @@ import { QueryFailedExceptionFilter } from './common/filters/query-failed-except
 import { UnprocessableEntityExceptionFilter } from './common/filters/unprocessable-entity-exception.filter';
 import { getEnvValue } from './common/utils/config.utils';
 import { ValidationExceptionFactory } from './common/validation/validation-exception-factory';
+import { OAuthCallbackService } from './modules/buddy/services/oauth-callback.service';
 import { getDiscoveredExtensions } from './modules/extensions/services/extensions-discovery-cache';
 import { MdnsService } from './modules/mdns/services/mdns.service';
 import { SwaggerDocumentService } from './modules/swagger/services/swagger-document.service';
@@ -97,6 +99,28 @@ async function bootstrap() {
 	// Setup Swagger UI using SwaggerDocumentService
 	const swaggerService = app.get(SwaggerDocumentService);
 	swaggerService.setup(app);
+
+	// Register OAuth callback route outside the API prefix (OAuth providers redirect here directly)
+	const fastifyInstance = app.getHttpAdapter().getInstance();
+	const oauthCallbackService = app.get(OAuthCallbackService);
+
+	const oauthCallbackHandler = async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
+		try {
+			const query = request.query as Record<string, string>;
+			const { code, state } = query;
+			const result = await oauthCallbackService.handleCallback(code || '', state || '');
+			const html = oauthCallbackService.renderCallbackHtml(result.success, result.pluginType, result.error);
+
+			void reply.type('text/html').send(html);
+		} catch (error) {
+			const message = error instanceof Error ? error.message : 'An unexpected error occurred';
+			const html = oauthCallbackService.renderCallbackHtml(false, '', message);
+
+			void reply.type('text/html').send(html);
+		}
+	};
+
+	fastifyInstance.get('/auth/callback', oauthCallbackHandler);
 
 	sysLogger.log(`Swagger documentation available at http://0.0.0.0:${port}/${API_PREFIX}/docs`, ['Bootstrap']);
 

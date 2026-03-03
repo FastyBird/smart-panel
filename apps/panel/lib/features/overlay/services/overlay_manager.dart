@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 
 import 'package:fastybird_smart_panel/features/overlay/types/overlay.dart';
+import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 
 /// Sentinel value used by [OverlayManager.show] to distinguish "parameter not
 /// passed" (keep current value) from "explicitly passed null" (clear the field).
@@ -9,6 +10,16 @@ class _Unset {
 }
 
 const _unset = _Unset();
+
+/// Typed sentinels for function-typed parameters in [OverlayManager.show].
+///
+/// Using [Object?] with [_Unset] for function-typed fields erases type
+/// information, causing Dart to infer lambdas as `(dynamic) => dynamic`
+/// instead of the expected signature. These typed sentinel functions preserve
+/// proper type inference at call sites while still distinguishing "not passed"
+/// from "explicitly passed null" via [identical].
+String _unsetLocalizedString(AppLocalizations _) => '';
+Widget _unsetWidgetBuilder(BuildContext _) => const SizedBox.shrink();
 
 /// Central manager for all application overlays.
 ///
@@ -101,11 +112,11 @@ class OverlayManager extends ChangeNotifier {
 		Object? icon = _unset,
 		OverlayColorScheme? colorScheme,
 		bool? showProgress,
-		Object? title = _unset,
-		Object? message = _unset,
+		LocalizedString? title = _unsetLocalizedString,
+		LocalizedString? message = _unsetLocalizedString,
 		Object? content = _unset,
 		List<OverlayAction>? actions,
-		Object? customBuilder = _unset,
+		WidgetBuilder? customBuilder = _unsetWidgetBuilder,
 	}) {
 		final entry = _entries[id];
 		if (entry == null) return;
@@ -133,12 +144,12 @@ class OverlayManager extends ChangeNotifier {
 			entry.showProgress = showProgress;
 			changed = true;
 		}
-		if (title is! _Unset) {
-			entry.title = title as LocalizedString?;
+		if (!identical(title, _unsetLocalizedString)) {
+			entry.title = title;
 			changed = true;
 		}
-		if (message is! _Unset) {
-			entry.message = message as LocalizedString?;
+		if (!identical(message, _unsetLocalizedString)) {
+			entry.message = message;
 			changed = true;
 		}
 		if (content is! _Unset) {
@@ -149,8 +160,8 @@ class OverlayManager extends ChangeNotifier {
 			entry.actions = actions;
 			changed = true;
 		}
-		if (customBuilder is! _Unset) {
-			entry.customBuilder = customBuilder as WidgetBuilder?;
+		if (!identical(customBuilder, _unsetWidgetBuilder)) {
+			entry.customBuilder = customBuilder;
 			changed = true;
 		}
 

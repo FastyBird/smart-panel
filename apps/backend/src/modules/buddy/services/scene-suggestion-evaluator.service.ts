@@ -3,7 +3,9 @@ import { Injectable, Logger } from '@nestjs/common';
 import { IntentType } from '../../intents/intents.constants';
 import { ScenesService } from '../../scenes/services/scenes.service';
 import { PATTERN_LOOKBACK_DAYS, PATTERN_MIN_OCCURRENCES, SuggestionType } from '../buddy.constants';
-import { clusterByTimeOfDay, formatTimeLabel } from '../buddy.utils';
+import { clusterByTimeOfDay, formatTimeLabel, interpolateTemplate } from '../buddy.utils';
+import { EvaluatorRulesLoaderService } from '../spec/evaluator-rules-loader.service';
+import { ResolvedPatternRule } from '../spec/evaluator-rules.types';
 
 import { ActionObserverService, ActionRecord } from './action-observer.service';
 import { BuddyContext } from './buddy-context.service';
@@ -36,9 +38,16 @@ export class SceneSuggestionEvaluator implements HeartbeatEvaluator {
 	constructor(
 		private readonly actionObserver: ActionObserverService,
 		private readonly scenesService: ScenesService,
+		private readonly rulesLoader: EvaluatorRulesLoaderService,
 	) {}
 
 	evaluate(context: BuddyContext): Promise<EvaluatorResult[]> {
+		const rule = this.rulesLoader.getPatternRule('multi_action_sequence');
+
+		if (rule && !rule.enabled) {
+			return Promise.resolve<EvaluatorResult[]>([]);
+		}
+
 		const spaceIds = new Set(context.spaces.map((s) => s.id));
 		const patterns = this.getPatternsCached();
 
@@ -47,7 +56,7 @@ export class SceneSuggestionEvaluator implements HeartbeatEvaluator {
 			.map((p) => {
 				const spaceName = context.spaces.find((s) => s.id === p.spaceId)?.name ?? 'unknown space';
 
-				return this.patternToResult(p, spaceName);
+				return this.patternToResult(p, spaceName, rule);
 			});
 
 		return Promise.resolve(results);
@@ -73,16 +82,24 @@ export class SceneSuggestionEvaluator implements HeartbeatEvaluator {
 	}
 
 	detectSequencePatterns(): DetectedSequencePattern[] {
+		const rule = this.rulesLoader.getPatternRule('multi_action_sequence');
+
+		const lookbackDays = rule?.thresholds.lookback_days ?? PATTERN_LOOKBACK_DAYS;
+		const minOccurrences = rule?.thresholds.min_occurrences ?? PATTERN_MIN_OCCURRENCES;
+		const sequenceWindowMs = rule?.thresholds.sequence_window_ms ?? SEQUENCE_WINDOW_MS;
+		const minActionsPerSession = rule?.thresholds.min_actions_per_session ?? 2;
+		const timeClusterMinutes = rule?.thresholds.time_cluster_minutes ?? SEQUENCE_TIME_CLUSTER_MINUTES;
+
 		const actions = this.actionObserver.getRecentActions();
-		const cutoff = new Date(Date.now() - PATTERN_LOOKBACK_DAYS * 24 * 60 * 60 * 1000);
+		const cutoff = new Date(Date.now() - lookbackDays * 24 * 60 * 60 * 1000);
 		const recentActions = actions.filter((a) => a.timestamp >= cutoff && a.spaceId !== null);
 
 		if (recentActions.length === 0) {
 			return [];
 		}
 
-		const sessions = this.groupIntoSessions(recentActions);
-		const multiActionSessions = sessions.filter((s) => s.actions.length >= 2);
+		const sessions = this.groupIntoSessions(recentActions, sequenceWindowMs);
+		const multiActionSessions = sessions.filter((s) => s.actions.length >= minActionsPerSession);
 
 		if (multiActionSessions.length === 0) {
 			return [];
@@ -92,14 +109,14 @@ export class SceneSuggestionEvaluator implements HeartbeatEvaluator {
 		const patterns: DetectedSequencePattern[] = [];
 
 		for (const group of bySpaceAndHash.values()) {
-			if (group.sessions.length < PATTERN_MIN_OCCURRENCES) {
+			if (group.sessions.length < minOccurrences) {
 				continue;
 			}
 
-			const clusters = this.clusterSessions(group.sessions);
+			const clusters = this.clusterSessions(group.sessions, timeClusterMinutes);
 
 			for (const cluster of clusters) {
-				if (cluster.sessions.length >= PATTERN_MIN_OCCURRENCES) {
+				if (cluster.sessions.length >= minOccurrences) {
 					patterns.push({
 						sequence: group.sequence,
 						spaceId: group.spaceId,
@@ -141,7 +158,7 @@ export class SceneSuggestionEvaluator implements HeartbeatEvaluator {
 		}
 	}
 
-	private groupIntoSessions(actions: ActionRecord[]): ActionSession[] {
+	private groupIntoSessions(actions: ActionRecord[], sequenceWindowMs: number): ActionSession[] {
 		const bySpace = new Map<string, ActionRecord[]>();
 
 		for (const action of actions) {
@@ -164,7 +181,7 @@ export class SceneSuggestionEvaluator implements HeartbeatEvaluator {
 			for (let i = 1; i < sorted.length; i++) {
 				const gap = sorted[i].timestamp.getTime() - sorted[i - 1].timestamp.getTime();
 
-				if (gap <= SEQUENCE_WINDOW_MS) {
+				if (gap <= sequenceWindowMs) {
 					currentSession.push(sorted[i]);
 				} else {
 					sessions.push({ spaceId, actions: currentSession });
@@ -212,6 +229,7 @@ export class SceneSuggestionEvaluator implements HeartbeatEvaluator {
 
 	private clusterSessions(
 		sessions: ActionSession[],
+		timeClusterMinutes: number,
 	): { sessions: ActionSession[]; timeOfDay: { hour: number; minute: number } }[] {
 		const sessionMinuteOfDay = (s: ActionSession): number => {
 			const ts = s.actions[0].timestamp;
@@ -219,24 +237,34 @@ export class SceneSuggestionEvaluator implements HeartbeatEvaluator {
 			return ts.getHours() * 60 + ts.getMinutes();
 		};
 
-		return clusterByTimeOfDay(sessions, sessionMinuteOfDay, SEQUENCE_TIME_CLUSTER_MINUTES).map((c) => ({
+		return clusterByTimeOfDay(sessions, sessionMinuteOfDay, timeClusterMinutes).map((c) => ({
 			sessions: c.items,
 			timeOfDay: { hour: c.avgHour, minute: c.avgMinute },
 		}));
 	}
 
-	private patternToResult(pattern: DetectedSequencePattern, spaceName: string): EvaluatorResult {
-		const timeLabel = this.getTimePeriodLabel(pattern.timeOfDay.hour);
+	private patternToResult(
+		pattern: DetectedSequencePattern,
+		spaceName: string,
+		rule: ResolvedPatternRule | undefined,
+	): EvaluatorResult {
+		const timeLabel = this.getTimePeriodLabel(pattern.timeOfDay.hour, rule);
 		const sceneName = `${spaceName} ${timeLabel}`;
 		const actionCount = pattern.sequence.intentTypes.length;
 
 		return {
-			type: SuggestionType.PATTERN_SCENE_CREATE,
-			title: 'Create a scene for this routine?',
-			reason:
-				`You perform ${actionCount} actions in ${spaceName} around ` +
-				`${formatTimeLabel(pattern.timeOfDay.hour, pattern.timeOfDay.minute)} regularly. ` +
-				`Create a "${sceneName}" scene?`,
+			type: rule?.suggestionType ?? SuggestionType.PATTERN_SCENE_CREATE,
+			title: rule?.messages.title ?? 'Create a scene for this routine?',
+			reason: rule
+				? interpolateTemplate(rule.messages.reason, {
+						actionCount,
+						spaceName,
+						timeLabel: formatTimeLabel(pattern.timeOfDay.hour, pattern.timeOfDay.minute),
+						sceneName,
+					})
+				: `You perform ${actionCount} actions in ${spaceName} around ` +
+					`${formatTimeLabel(pattern.timeOfDay.hour, pattern.timeOfDay.minute)} regularly. ` +
+					`Create a "${sceneName}" scene?`,
 			spaceId: pattern.spaceId,
 			metadata: {
 				sequence: 'multi-action',
@@ -250,7 +278,29 @@ export class SceneSuggestionEvaluator implements HeartbeatEvaluator {
 		};
 	}
 
-	private getTimePeriodLabel(hour: number): string {
+	private getTimePeriodLabel(hour: number, rule: ResolvedPatternRule | undefined): string {
+		const labels = rule?.timePeriodLabels;
+
+		if (labels && labels.length > 0) {
+			for (const entry of labels) {
+				if (entry.range && hour >= entry.range[0] && hour < entry.range[1] && entry.label) {
+					return entry.label;
+				}
+
+				if (entry.default && !entry.range) {
+					// default entry is used as fallback — continue checking ranges first
+				}
+			}
+
+			// Return default label if defined
+			const defaultEntry = labels.find((l) => l.default && !l.range);
+
+			if (defaultEntry?.default) {
+				return defaultEntry.default;
+			}
+		}
+
+		// Hardcoded fallback
 		if (hour >= 5 && hour < 12) {
 			return 'Morning';
 		}

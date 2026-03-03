@@ -10,7 +10,7 @@ export enum EventType {
 }
 
 export enum RouteNames {
-	BUDDY_SETTINGS = 'buddy_module-settings',
+	BUDDY = 'buddy_module-chat',
 }
 
 export const LLM_PROVIDER_NONE = 'none';

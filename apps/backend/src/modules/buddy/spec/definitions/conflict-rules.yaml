@@ -1,0 +1,42 @@
+conflict_rules:
+  heating_window:
+    enabled: true
+    suggestion_type: conflict_heating_window
+    detection:
+      heating_state_keys:
+        - heater.on
+        - heater.status
+      heating_device_categories:
+        - thermostat
+        - heating_unit
+      contact_state_key: contact.detected
+    messages:
+      title: "Heating with open window"
+      reason: "${spaceName} window is open but heating is active${setpointText}. Close the window or lower the setpoint?"
+
+  ac_window:
+    enabled: true
+    suggestion_type: conflict_ac_window
+    detection:
+      cooling_state_keys:
+        - cooler.on
+        - cooler.status
+      cooling_device_categories:
+        - air_conditioner
+      contact_state_key: contact.detected
+    messages:
+      title: "AC with open window"
+      reason: "${spaceName} window is open but AC is active. Close the window or turn off the AC?"
+
+  lights_unoccupied:
+    enabled: true
+    suggestion_type: conflict_lights_unoccupied
+    thresholds:
+      minutes: 15
+    detection:
+      light_device_category: lighting
+      light_state_key: light.on
+      occupancy_state_key: occupancy.detected
+    messages:
+      title: "Lights on in unoccupied room"
+      reason: "${spaceName} lights are on but the room appears unoccupied for over ${minutes} minutes. Turn off the lights?"

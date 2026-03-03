@@ -29,7 +29,16 @@ describe('Buddy module (e2e)', () => {
 		})
 			.overrideProvider(LlmProviderService)
 			.useValue({
-				sendMessage: jest.fn().mockResolvedValue('Mocked buddy response'),
+				sendMessage: jest.fn().mockResolvedValue({
+					content: 'Mocked buddy response',
+					meta: {
+						provider: 'mock',
+						model: null,
+						inputTokens: null,
+						outputTokens: null,
+						finishReason: null,
+					},
+				}),
 			})
 			.compile();
 

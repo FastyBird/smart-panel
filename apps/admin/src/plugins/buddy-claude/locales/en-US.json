@@ -1,0 +1,31 @@
+{
+	"headings": {
+		"aboutApiSettings": "Claude API settings"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Enabled"
+			},
+			"apiKey": {
+				"title": "API key",
+				"placeholder": "Enter your Anthropic API key",
+				"description": "Get your API key from console.anthropic.com"
+			},
+			"model": {
+				"title": "Model",
+				"placeholder": "e.g., claude-sonnet-4-20250514",
+				"description": "The Claude model to use for generating responses"
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Claude settings have been updated",
+			"notEdited": "Failed to update Claude settings"
+		}
+	},
+	"texts": {
+		"aboutApiSettings": "Configure your Anthropic Claude API settings. You need a valid API key to use Claude models as the buddy LLM provider."
+	}
+}

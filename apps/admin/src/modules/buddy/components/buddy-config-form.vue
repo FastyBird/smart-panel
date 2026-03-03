@@ -7,6 +7,48 @@
 		status-icon
 	>
 		<el-form-item
+			:label="t('buddyModule.fields.config.enabled.title')"
+			prop="enabled"
+			label-position="left"
+			class="mt-3"
+		>
+			<el-switch
+				v-model="model.enabled"
+				name="enabled"
+			/>
+		</el-form-item>
+
+		<el-form-item
+			:label="t('buddyModule.fields.config.name.title')"
+			prop="name"
+		>
+			<template #label>
+				{{ t('buddyModule.fields.config.name.title') }}
+				<el-text
+					size="small"
+					type="info"
+				>
+					{{ t('buddyModule.fields.config.name.description') }}
+				</el-text>
+			</template>
+			<el-input
+				v-model="model.name"
+				:placeholder="t('buddyModule.fields.config.name.placeholder')"
+				name="name"
+			/>
+		</el-form-item>
+
+		<el-alert
+			v-if="providerFetchFailed"
+			type="warning"
+			show-icon
+			:closable="false"
+			style="margin-bottom: 18px"
+		>
+			{{ t('buddyModule.texts.providersFetchFailed') }}
+		</el-alert>
+
+		<el-form-item
 			:label="t('buddyModule.fields.config.provider.title')"
 			prop="provider"
 		>
@@ -20,7 +62,19 @@
 					:key="option.value"
 					:label="option.label"
 					:value="option.value"
-				/>
+					:disabled="option.disabled"
+				>
+					<span>{{ option.label }}</span>
+					<el-tag
+						v-if="option.tag"
+						size="small"
+						:type="option.tagType"
+						effect="light"
+						style="margin-left: 8px"
+					>
+						{{ option.tag }}
+					</el-tag>
+				</el-option>
 			</el-select>
 		</el-form-item>
 
@@ -37,13 +91,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, reactive, watch } from 'vue';
+import { computed, onBeforeMount, reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElForm, ElFormItem, ElOption, ElSelect, type FormRules } from 'element-plus';
+import { ElAlert, ElForm, ElFormItem, ElInput, ElOption, ElSelect, ElSwitch, ElTag, ElText, type FormRules } from 'element-plus';
 
 import { FormResult, type FormResultType, Layout, useConfigModuleEditForm } from '../../config';
 import { LEGACY_PROVIDER_MAP, LLM_PROVIDER_NONE } from '../buddy.constants';
+import { useBuddyProviders } from '../composables/useBuddyProviders';
 import type { IBuddyConfigEditForm } from '../schemas/config.types';
 
 import type { IBuddyConfigFormProps } from './buddy-config-form.types';
@@ -77,6 +132,12 @@ if (rawProvider && LEGACY_PROVIDER_MAP.has(rawProvider)) {
 	normalizedConfig.provider = LEGACY_PROVIDER_MAP.get(rawProvider) ?? rawProvider;
 }
 
+const { providerStatuses, providerFetchFailed, fetchProviderStatuses } = useBuddyProviders();
+
+onBeforeMount(async (): Promise<void> => {
+	await fetchProviderStatuses();
+});
+
 const { formEl, model, formChanged, submit, formResult } = useConfigModuleEditForm<IBuddyConfigEditForm>({
 	config: normalizedConfig as typeof props.config,
 	messages: {
@@ -85,14 +146,52 @@ const { formEl, model, formChanged, submit, formResult } = useConfigModuleEditFo
 	},
 });
 
-const providerOptions = computed(() => [
-	{ value: LLM_PROVIDER_NONE, label: t('buddyModule.fields.config.provider.options.none') },
-	{ value: 'buddy-openai-plugin', label: t('buddyModule.fields.config.provider.options.openai') },
-	{ value: 'buddy-openai-codex-plugin', label: t('buddyModule.fields.config.provider.options.openaiCodex') },
-	{ value: 'buddy-claude-plugin', label: t('buddyModule.fields.config.provider.options.claude') },
-	{ value: 'buddy-claude-oauth-plugin', label: t('buddyModule.fields.config.provider.options.claudeOauth') },
-	{ value: 'buddy-ollama-plugin', label: t('buddyModule.fields.config.provider.options.ollama') },
-]);
+type TagType = 'primary' | 'success' | 'warning' | 'info' | 'danger';
+
+const providerOptions = computed(() => {
+	const options: { value: string; label: string; disabled: boolean; tag?: string; tagType?: TagType }[] = [
+		{
+			value: LLM_PROVIDER_NONE,
+			label: t('buddyModule.fields.config.provider.options.none'),
+			disabled: false,
+			tag: t('buddyModule.fields.config.provider.tags.ruleBasedOnly'),
+			tagType: 'info',
+		},
+	];
+
+	for (const provider of providerStatuses.value) {
+		let tag: string | undefined;
+		let tagType: TagType | undefined;
+
+		if (provider.enabled && !provider.configured) {
+			tag = t('buddyModule.fields.config.provider.notConfigured');
+			tagType = 'warning';
+		}
+
+		options.push({
+			value: provider.type,
+			label: provider.name,
+			disabled: !provider.enabled,
+			tag,
+			tagType,
+		});
+	}
+
+	// If the fetch failed and the current provider isn't in the list, add a fallback entry
+	if (providerFetchFailed.value && model.provider && model.provider !== LLM_PROVIDER_NONE) {
+		const exists = options.some((o) => o.value === model.provider);
+
+		if (!exists) {
+			options.push({
+				value: model.provider,
+				label: model.provider,
+				disabled: false,
+			});
+		}
+	}
+
+	return options;
+});
 
 const rules = reactive<FormRules<IBuddyConfigEditForm>>({});
 

@@ -4,9 +4,12 @@ import 'package:flutter/foundation.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/socket.dart';
 import 'package:fastybird_smart_panel/modules/buddy/constants.dart';
+import 'package:fastybird_smart_panel/modules/buddy/models/buddy_config.dart';
 import 'package:fastybird_smart_panel/modules/buddy/repositories/buddy.dart';
 import 'package:fastybird_smart_panel/modules/buddy/service.dart';
 import 'package:fastybird_smart_panel/modules/buddy/services/suggestion_notification_service.dart';
+import 'package:fastybird_smart_panel/modules/config/module.dart';
+import 'package:fastybird_smart_panel/modules/config/repositories/module_config_repository.dart';
 
 class BuddyModuleService {
 	final SocketService _socketService;
@@ -14,6 +17,7 @@ class BuddyModuleService {
 	late BuddyRepository _buddyRepository;
 	late BuddyService _buddyService;
 	late SuggestionNotificationService _notificationService;
+	late ModuleConfigRepository<BuddyConfigModel> _buddyConfigRepo;
 
 	bool _isLoading = true;
 
@@ -48,6 +52,27 @@ class BuddyModuleService {
 	Future<void> initialize() async {
 		_isLoading = true;
 
+		// Register buddy config model with config module
+		final configModule = locator<ConfigModuleService>();
+		configModule.registerModule<BuddyConfigModel>(
+			'buddy-module',
+			BuddyConfigModel.fromJson,
+		);
+
+		_buddyConfigRepo = configModule.getModuleRepository<BuddyConfigModel>('buddy-module');
+
+		_buddyService.setConfigRepository(_buddyConfigRepo);
+
+		try {
+			await _buddyConfigRepo.fetchConfiguration();
+		} catch (e) {
+			if (kDebugMode) {
+				debugPrint(
+					'[BUDDY MODULE] Error fetching buddy config: $e',
+				);
+			}
+		}
+
 		try {
 			await _buddyService.initialize();
 		} catch (e) {
@@ -78,6 +103,7 @@ class BuddyModuleService {
 	BuddyRepository get buddyRepository => _buddyRepository;
 	BuddyService get buddyService => _buddyService;
 	SuggestionNotificationService get notificationService => _notificationService;
+	ModuleConfigRepository<BuddyConfigModel> get buddyConfigRepo => _buddyConfigRepo;
 
 	void dispose() {
 		_socketService.unregisterEventHandler(

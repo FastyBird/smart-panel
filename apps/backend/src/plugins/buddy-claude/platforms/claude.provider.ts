@@ -1,7 +1,12 @@
 import { Injectable } from '@nestjs/common';
 
 import { sendAnthropicMessage } from '../../../modules/buddy/platforms/anthropic-sdk.utils';
-import { ChatMessage, ILlmProvider, LlmOptions } from '../../../modules/buddy/platforms/llm-provider.platform';
+import {
+	ChatMessage,
+	ILlmProvider,
+	LlmOptions,
+	LlmResponse,
+} from '../../../modules/buddy/platforms/llm-provider.platform';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import {
 	BUDDY_CLAUDE_DEFAULT_MODEL,
@@ -36,13 +41,29 @@ export class ClaudeProvider implements ILlmProvider {
 		messages: ChatMessage[],
 		model: string,
 		options?: LlmOptions,
-	): Promise<string> {
+	): Promise<LlmResponse> {
 		const config = this.getPluginConfig();
 		const apiKey = config?.apiKey ?? '';
 		const resolvedModel = config?.model ?? model;
 		const timeout = options?.timeout ?? 30_000;
 
-		return sendAnthropicMessage({ apiKey }, resolvedModel, systemPrompt, messages, timeout);
+		const start = Date.now();
+		const result = await sendAnthropicMessage({ apiKey }, resolvedModel, systemPrompt, messages, timeout);
+		const durationMs = Date.now() - start;
+
+		return {
+			content: result.content,
+			meta: {
+				provider: BUDDY_CLAUDE_PLUGIN_NAME,
+				model: result.model,
+				inputTokens: result.inputTokens,
+				outputTokens: result.outputTokens,
+				finishReason: result.finishReason,
+				durationMs,
+				cacheReadTokens: result.cacheReadTokens,
+				cacheWriteTokens: result.cacheWriteTokens,
+			},
+		};
 	}
 
 	private getPluginConfig(): BuddyClaudeConfigModel | null {

@@ -1,6 +1,8 @@
 import { IntentType } from '../../intents/intents.constants';
 import { ScenesService } from '../../scenes/services/scenes.service';
 import { PATTERN_MIN_OCCURRENCES, SuggestionType } from '../buddy.constants';
+import { EvaluatorRulesLoaderService } from '../spec/evaluator-rules-loader.service';
+import { ResolvedPatternRule } from '../spec/evaluator-rules.types';
 
 import { ActionObserverService, ActionRecord } from './action-observer.service';
 import { BuddyContext } from './buddy-context.service';
@@ -9,6 +11,7 @@ import { SceneSuggestionEvaluator } from './scene-suggestion-evaluator.service';
 function makeContext(overrides: Partial<BuddyContext> = {}): BuddyContext {
 	return {
 		timestamp: new Date().toISOString(),
+		timezone: 'UTC',
 		spaces: overrides.spaces ?? [{ id: 'space-1', name: 'Living Room', category: 'living_room', deviceCount: 3 }],
 		devices: overrides.devices ?? [],
 		scenes: overrides.scenes ?? [],
@@ -49,6 +52,54 @@ function recordSession(
 	});
 }
 
+const defaultPatternRules: Record<string, ResolvedPatternRule> = {
+	single_pattern: {
+		enabled: true,
+		suggestionType: SuggestionType.PATTERN_SCENE_CREATE,
+		thresholds: { min_occurrences: 3, time_window_minutes: 60, lookback_days: 7 },
+		messages: {
+			title: 'Create a scene for this?',
+			reason: 'You ${intentLabel} in ${spaceName} around ${timeLabel} regularly',
+		},
+		timePeriodLabels: [],
+	},
+	multi_action_sequence: {
+		enabled: true,
+		suggestionType: SuggestionType.PATTERN_SCENE_CREATE,
+		thresholds: {
+			min_occurrences: 3,
+			sequence_window_ms: 60000,
+			time_cluster_minutes: 60,
+			lookback_days: 7,
+			min_actions_per_session: 2,
+		},
+		messages: {
+			title: 'Create a scene for this routine?',
+			reason:
+				'You perform ${actionCount} actions in ${spaceName} around ${timeLabel} regularly. Create a "${sceneName}" scene?',
+		},
+		timePeriodLabels: [
+			{ range: [5, 12], label: 'Morning' },
+			{ range: [12, 17], label: 'Afternoon' },
+			{ range: [17, 21], label: 'Evening' },
+			{ default: 'Night' },
+		],
+	},
+};
+
+function makeRulesLoader(overrides: Partial<Record<string, ResolvedPatternRule>> = {}): EvaluatorRulesLoaderService {
+	const rules = { ...defaultPatternRules, ...overrides };
+
+	return {
+		getAnomalyRule: jest.fn(),
+		getEnergyRule: jest.fn(),
+		getConflictRule: jest.fn(),
+		getPatternRule: jest.fn((key: string) => rules[key]),
+		onModuleInit: jest.fn(),
+		loadAllRules: jest.fn(),
+	} as unknown as EvaluatorRulesLoaderService;
+}
+
 describe('SceneSuggestionEvaluator', () => {
 	let service: SceneSuggestionEvaluator;
 	let actionObserver: ActionObserverService;
@@ -60,7 +111,11 @@ describe('SceneSuggestionEvaluator', () => {
 			create: jest.fn().mockResolvedValue({ id: 'scene-123', name: 'Test Scene' }),
 		};
 
-		service = new SceneSuggestionEvaluator(actionObserver, scenesService as unknown as ScenesService);
+		service = new SceneSuggestionEvaluator(
+			actionObserver,
+			scenesService as unknown as ScenesService,
+			makeRulesLoader(),
+		);
 	});
 
 	it('should have the name "SceneSuggestion"', () => {

@@ -1,6 +1,11 @@
 import { Injectable } from '@nestjs/common';
 
-import { ChatMessage, ILlmProvider, LlmOptions } from '../../../modules/buddy/platforms/llm-provider.platform';
+import {
+	ChatMessage,
+	ILlmProvider,
+	LlmOptions,
+	LlmResponse,
+} from '../../../modules/buddy/platforms/llm-provider.platform';
 import { sendOpenAiMessage } from '../../../modules/buddy/platforms/openai-sdk.utils';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import {
@@ -36,13 +41,29 @@ export class OpenAiProvider implements ILlmProvider {
 		messages: ChatMessage[],
 		model: string,
 		options?: LlmOptions,
-	): Promise<string> {
+	): Promise<LlmResponse> {
 		const config = this.getPluginConfig();
 		const apiKey = config?.apiKey ?? '';
 		const resolvedModel = config?.model ?? model;
 		const timeout = options?.timeout ?? 30_000;
 
-		return sendOpenAiMessage(apiKey, resolvedModel, systemPrompt, messages, timeout);
+		const start = Date.now();
+		const result = await sendOpenAiMessage(apiKey, resolvedModel, systemPrompt, messages, timeout);
+		const durationMs = Date.now() - start;
+
+		return {
+			content: result.content,
+			meta: {
+				provider: BUDDY_OPENAI_PLUGIN_NAME,
+				model: result.model,
+				inputTokens: result.inputTokens,
+				outputTokens: result.outputTokens,
+				finishReason: result.finishReason,
+				durationMs,
+				cacheReadTokens: null,
+				cacheWriteTokens: null,
+			},
+		};
 	}
 
 	private getPluginConfig(): BuddyOpenaiConfigModel | null {

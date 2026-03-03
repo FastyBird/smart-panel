@@ -40,6 +40,16 @@ vi.mock('../composables/useMenu', () => ({
 	})),
 }));
 
+vi.mock('../../modules/config/composables/useConfigModules', () => ({
+	useConfigModules: vi.fn(() => ({
+		configModules: { value: [] },
+		areLoading: { value: false },
+		loaded: { value: true },
+		enabled: () => true,
+		fetchConfigModules: vi.fn(),
+	})),
+}));
+
 vi.mock('../services/account-manager', () => ({
 	injectAccountManager: vi.fn().mockReturnValue({
 		signOut: vi.fn(),
