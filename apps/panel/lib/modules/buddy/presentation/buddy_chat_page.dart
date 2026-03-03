@@ -171,7 +171,7 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 	Widget build(BuildContext context) {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
 
-		final bgColor = isDark ? AppBgColorDark.base : AppBgColorLight.base;
+		final bgColor = isDark ? AppBgColorDark.page : AppBgColorLight.page;
 
 		return Scaffold(
 			backgroundColor: bgColor,
