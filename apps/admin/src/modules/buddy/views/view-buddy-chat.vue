@@ -235,13 +235,11 @@ const onCreateConversation = async (): Promise<void> => {
 };
 
 onBeforeMount(async (): Promise<void> => {
-	await fetchSpaces();
-	await fetchProviderStatuses();
-	await fetchConversations();
+	await Promise.all([fetchSpaces(), fetchProviderStatuses(), fetchConversations()]);
 
 	if (conversations.value.length > 0) {
 		await selectConversation(conversations.value[0].id);
-	} else {
+	} else if (!isProviderNotConfigured.value) {
 		await createConversation();
 	}
 });
