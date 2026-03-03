@@ -256,7 +256,9 @@ describe('PatternDetectorService', () => {
 
 	it('should cap confidence at 1.0 when occurrences exceed lookback days', () => {
 		// 7 occurrences in 7 days → min(1, 7/7) = 1
-		for (let i = 1; i <= 7; i++) {
+		// Use days 0–6 to avoid boundary issues where daysAgoAt(7, …) can
+		// fall outside the lookback cutoff depending on current wall-clock time.
+		for (let i = 0; i < 7; i++) {
 			observer.recordAction(
 				makeAction({ type: IntentType.LIGHT_TOGGLE, spaceId: 'room', timestamp: daysAgoAt(i, 23, 0) }),
 			);
