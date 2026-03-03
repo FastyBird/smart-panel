@@ -272,8 +272,8 @@ const isConnected = computed<boolean>(() => {
 });
 
 const handleDisconnect = (): void => {
-	model.accessToken = '';
-	model.refreshToken = '';
+	model.accessToken = null;
+	model.refreshToken = null;
 	authorizeUrl.value = null;
 	callbackUrl.value = '';
 
