@@ -149,7 +149,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeMount } from 'vue';
+import { computed, onBeforeMount, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMeta } from 'vue-meta';
 import { useRouter } from 'vue-router';
@@ -234,11 +234,7 @@ const onCreateConversation = async (): Promise<void> => {
 	await createConversation();
 };
 
-onBeforeMount(async (): Promise<void> => {
-	if (!isModuleEnabled.value) {
-		return;
-	}
-
+const loadChatData = async (): Promise<void> => {
 	await Promise.all([fetchSpaces(), fetchProviderStatuses(), fetchConversations()]);
 
 	const first = conversations.value[0];
@@ -247,6 +243,20 @@ onBeforeMount(async (): Promise<void> => {
 		await selectConversation(first.id);
 	} else if (!isProviderNotConfigured.value) {
 		await createConversation();
+	}
+};
+
+onBeforeMount(async (): Promise<void> => {
+	if (!isModuleEnabled.value) {
+		return;
+	}
+
+	await loadChatData();
+});
+
+watch(isModuleEnabled, async (enabled): Promise<void> => {
+	if (enabled) {
+		await loadChatData();
 	}
 });
 </script>
