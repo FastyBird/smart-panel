@@ -136,7 +136,7 @@
 
 				<el-button
 					type="primary"
-					@click="router.push({ name: configRouteName })"
+					@click="router.push(moduleEditRoute)"
 				>
 					<el-icon class="mr-1">
 						<icon icon="mdi:cog" />
@@ -161,6 +161,7 @@ import { Icon } from '@iconify/vue';
 import { AppBarButton, AppBarButtonAlign, AppBarHeading, ViewHeader, useBreakpoints } from '../../../common';
 import { RouteNames as ConfigRouteNames } from '../../config/config.constants';
 import { useConfigModules } from '../../config/composables/useConfigModules';
+
 import { useSpaces } from '../../spaces/composables/useSpaces';
 import BuddyConversationList from '../components/buddy-conversation-list.vue';
 import BuddyChatArea from '../components/buddy-chat-area.vue';
@@ -182,7 +183,7 @@ const { isMDDevice } = useBreakpoints();
 
 const { enabled } = useConfigModules();
 const isModuleEnabled = computed(() => enabled(BUDDY_MODULE_NAME));
-const configRouteName = ConfigRouteNames.CONFIG;
+const moduleEditRoute = { name: ConfigRouteNames.CONFIG_MODULE_EDIT, params: { module: BUDDY_MODULE_NAME } };
 
 const { spaces, fetchSpaces } = useSpaces();
 
