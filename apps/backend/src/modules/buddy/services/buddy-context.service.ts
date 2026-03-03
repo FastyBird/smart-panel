@@ -1,11 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
 
+import { ConfigService } from '../../config/services/config.service';
 import { DeviceEntity } from '../../devices/entities/devices.entity';
 import { DevicesService } from '../../devices/services/devices.service';
 import { EnergyDataService } from '../../energy/services/energy-data.service';
 import { SceneEntity } from '../../scenes/entities/scenes.entity';
 import { ScenesService } from '../../scenes/services/scenes.service';
 import { SpacesService } from '../../spaces/services/spaces.service';
+import { SystemConfigModel } from '../../system/models/config.model';
+import { SYSTEM_MODULE_NAME } from '../../system/system.constants';
 import { WeatherService } from '../../weather/services/weather.service';
 
 import { ActionObserverService } from './action-observer.service';
@@ -51,6 +54,7 @@ export interface BuddyWeather {
 
 export interface BuddyContext {
 	timestamp: string;
+	timezone: string;
 	spaces: { id: string; name: string; category: string | null; deviceCount: number }[];
 	devices: { id: string; name: string; space: string | null; category: string; state: Record<string, unknown> }[];
 	scenes: { id: string; name: string; space: string | null; enabled: boolean }[];
@@ -73,6 +77,7 @@ export class BuddyContextService {
 	private contextCache = new Map<string, { context: BuddyContext; expiresAt: number }>();
 
 	constructor(
+		private readonly configService: ConfigService,
 		private readonly spacesService: SpacesService,
 		private readonly devicesService: DevicesService,
 		private readonly scenesService: ScenesService,
@@ -120,8 +125,22 @@ export class BuddyContextService {
 			timestamp: a.timestamp.toISOString(),
 		}));
 
+		const timezone = this.getTimezone();
+		const now = new Date();
+		const timestamp = now.toLocaleString('en-US', {
+			timeZone: timezone,
+			year: 'numeric',
+			month: '2-digit',
+			day: '2-digit',
+			hour: '2-digit',
+			minute: '2-digit',
+			second: '2-digit',
+			hour12: false,
+		});
+
 		return {
-			timestamp: new Date().toISOString(),
+			timestamp: `${timestamp} (${timezone})`,
+			timezone,
 			spaces,
 			devices,
 			scenes,
@@ -129,6 +148,16 @@ export class BuddyContextService {
 			energy,
 			recentIntents,
 		};
+	}
+
+	private getTimezone(): string {
+		try {
+			const config = this.configService.getModuleConfig<SystemConfigModel>(SYSTEM_MODULE_NAME);
+
+			return config.timezone ?? 'UTC';
+		} catch {
+			return 'UTC';
+		}
 	}
 
 	private async getSpaces(

@@ -230,10 +230,12 @@ export class BuddyConversationService {
 				lines.push(`- Snow: ${w.snow} mm`);
 			}
 
+			const tz = context.timezone;
+
 			const formatTime = (iso: string): string => {
 				const d = new Date(iso);
 
-				return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+				return d.toLocaleTimeString('en-US', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false });
 			};
 
 			lines.push(`- Sunrise: ${formatTime(w.sunrise)}, Sunset: ${formatTime(w.sunset)}`);
@@ -243,7 +245,7 @@ export class BuddyConversationService {
 
 				for (const f of context.weather.forecast) {
 					const date = new Date(f.date);
-					const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+					const dateStr = date.toLocaleDateString('en-US', { timeZone: tz, month: 'short', day: 'numeric' });
 					let line = `- ${dateStr}: ${f.conditions}, ${f.tempMin}–${f.tempMax}°C, wind ${f.wind} m/s, humidity ${f.humidity}%`;
 
 					if (f.rain != null && f.rain > 0) {
@@ -265,7 +267,7 @@ export class BuddyConversationService {
 					const startDate = new Date(a.start);
 					const endDate = new Date(a.end);
 					const fmt = (d: Date) =>
-						`${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+						`${d.toLocaleDateString('en-US', { timeZone: tz, month: 'short', day: 'numeric' })} ${d.toLocaleTimeString('en-US', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false })}`;
 
 					lines.push(`- ${a.event} (${fmt(startDate)} – ${fmt(endDate)}): ${a.description}`);
 				}

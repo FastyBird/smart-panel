@@ -70,6 +70,7 @@ describe('BuddyConversationService', () => {
 		contextService = {
 			buildContext: jest.fn().mockResolvedValue({
 				timestamp: new Date().toISOString(),
+				timezone: 'Europe/Prague',
 				spaces: [],
 				devices: [],
 				scenes: [],
@@ -195,6 +196,7 @@ describe('BuddyConversationService', () => {
 		it('should format energy values with kW units and omit battery when absent', async () => {
 			contextService.buildContext.mockResolvedValue({
 				timestamp: new Date().toISOString(),
+				timezone: 'Europe/Prague',
 				spaces: [],
 				devices: [],
 				scenes: [],
@@ -217,6 +219,7 @@ describe('BuddyConversationService', () => {
 		it('should include battery level in energy section when present', async () => {
 			contextService.buildContext.mockResolvedValue({
 				timestamp: new Date().toISOString(),
+				timezone: 'Europe/Prague',
 				spaces: [],
 				devices: [],
 				scenes: [],
@@ -235,6 +238,7 @@ describe('BuddyConversationService', () => {
 		it('should render enriched weather in system prompt', async () => {
 			contextService.buildContext.mockResolvedValue({
 				timestamp: new Date().toISOString(),
+				timezone: 'Europe/Prague',
 				spaces: [],
 				devices: [],
 				scenes: [],
@@ -275,6 +279,7 @@ describe('BuddyConversationService', () => {
 		it('should render weather forecast in system prompt', async () => {
 			contextService.buildContext.mockResolvedValue({
 				timestamp: new Date().toISOString(),
+				timezone: 'Europe/Prague',
 				spaces: [],
 				devices: [],
 				scenes: [],
@@ -324,6 +329,7 @@ describe('BuddyConversationService', () => {
 		it('should render weather alerts in system prompt', async () => {
 			contextService.buildContext.mockResolvedValue({
 				timestamp: new Date().toISOString(),
+				timezone: 'Europe/Prague',
 				spaces: [],
 				devices: [],
 				scenes: [],

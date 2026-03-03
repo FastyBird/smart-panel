@@ -5,6 +5,7 @@ import { BuddyContextService } from './buddy-context.service';
 
 describe('BuddyContextService', () => {
 	let service: BuddyContextService;
+	let configService: Record<string, jest.Mock>;
 	let spacesService: Record<string, jest.Mock>;
 	let devicesService: Record<string, jest.Mock>;
 	let scenesService: Record<string, jest.Mock>;
@@ -16,6 +17,10 @@ describe('BuddyContextService', () => {
 	const mockSunset = new Date('2025-01-16T16:30:00Z');
 
 	beforeEach(() => {
+		configService = {
+			getModuleConfig: jest.fn().mockReturnValue({ timezone: 'Europe/Prague' }),
+		};
+
 		spacesService = {
 			findAll: jest.fn().mockResolvedValue([
 				{ id: 'space-1', name: 'Living Room', category: 'living_room' },
@@ -133,6 +138,7 @@ describe('BuddyContextService', () => {
 		actionObserver = new ActionObserverService();
 
 		service = new BuddyContextService(
+			configService as any,
 			spacesService as any,
 			devicesService as any,
 			scenesService as any,
@@ -213,12 +219,12 @@ describe('BuddyContextService', () => {
 			expect(ctx.recentIntents[0].space).toBe('space-1');
 		});
 
-		it('should include a timestamp', async () => {
+		it('should include a localized timestamp with timezone', async () => {
 			const ctx = await service.buildContext();
 
 			expect(ctx.timestamp).toBeDefined();
-			// Should be a valid ISO string
-			expect(new Date(ctx.timestamp).toISOString()).toBe(ctx.timestamp);
+			expect(ctx.timestamp).toContain('(Europe/Prague)');
+			expect(ctx.timezone).toBe('Europe/Prague');
 		});
 	});
 
