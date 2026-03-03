@@ -288,11 +288,19 @@ export const useBuddyChat = (): IUseBuddyChat => {
 		error.value = null;
 
 		try {
-			await backend.client.DELETE(`/${MODULES_PREFIX}/${BUDDY_MODULE_PREFIX}/conversations/{id}` as never, {
+			const response = await backend.client.DELETE(`/${MODULES_PREFIX}/${BUDDY_MODULE_PREFIX}/conversations/{id}` as never, {
 				params: {
 					path: { id },
 				},
 			} as never);
+
+			const apiError = extractApiError(response);
+
+			if (apiError) {
+				error.value = apiError.message;
+
+				return;
+			}
 
 			conversations.value = conversations.value.filter((c) => c.id !== id);
 
