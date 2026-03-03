@@ -12,7 +12,6 @@ import {
 import { interpolateTemplate } from '../buddy.utils';
 import { BuddyConfigModel } from '../models/config.model';
 import { EvaluatorRulesLoaderService } from '../spec/evaluator-rules-loader.service';
-import { ResolvedEnergyRule } from '../spec/evaluator-rules.types';
 
 import { BuddyContext } from './buddy-context.service';
 import { EvaluatorResult, HeartbeatEvaluator } from './heartbeat.types';

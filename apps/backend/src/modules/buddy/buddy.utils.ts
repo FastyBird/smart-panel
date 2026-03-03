@@ -8,7 +8,9 @@
 export function interpolateTemplate(template: string, vars: Record<string, unknown>): string {
 	return template.replace(/\$\{(\w+)\}/g, (match, key: string) => {
 		if (key in vars) {
-			return String(vars[key] ?? '');
+			const val = vars[key];
+
+			return val != null ? String(val as string | number | boolean) : '';
 		}
 
 		return match;

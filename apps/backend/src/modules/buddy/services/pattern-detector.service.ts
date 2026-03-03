@@ -87,7 +87,7 @@ export class PatternDetectorService implements HeartbeatEvaluator {
 		const rule = this.rulesLoader.getPatternRule('single_pattern');
 
 		if (rule && !rule.enabled) {
-			return Promise.resolve([]);
+			return Promise.resolve<EvaluatorResult[]>([]);
 		}
 
 		const patterns = this.getPatternsCached();

@@ -47,10 +47,17 @@ const defaultPatternRules: Record<string, ResolvedPatternRule> = {
 	multi_action_sequence: {
 		enabled: true,
 		suggestionType: SuggestionType.PATTERN_SCENE_CREATE,
-		thresholds: { min_occurrences: 3, sequence_window_ms: 60000, time_cluster_minutes: 60, lookback_days: 7, min_actions_per_session: 2 },
+		thresholds: {
+			min_occurrences: 3,
+			sequence_window_ms: 60000,
+			time_cluster_minutes: 60,
+			lookback_days: 7,
+			min_actions_per_session: 2,
+		},
 		messages: {
 			title: 'Create a scene for this routine?',
-			reason: 'You perform ${actionCount} actions in ${spaceName} around ${timeLabel} regularly. Create a "${sceneName}" scene?',
+			reason:
+				'You perform ${actionCount} actions in ${spaceName} around ${timeLabel} regularly. Create a "${sceneName}" scene?',
 		},
 		timePeriodLabels: [
 			{ range: [5, 12], label: 'Morning' },
@@ -61,9 +68,7 @@ const defaultPatternRules: Record<string, ResolvedPatternRule> = {
 	},
 };
 
-function makeRulesLoader(
-	overrides: Partial<Record<string, ResolvedPatternRule>> = {},
-): EvaluatorRulesLoaderService {
+function makeRulesLoader(overrides: Partial<Record<string, ResolvedPatternRule>> = {}): EvaluatorRulesLoaderService {
 	const rules = { ...defaultPatternRules, ...overrides };
 
 	return {

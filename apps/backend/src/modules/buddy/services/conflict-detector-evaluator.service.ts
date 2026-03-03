@@ -218,11 +218,7 @@ export class ConflictDetectorEvaluator implements HeartbeatEvaluator {
 		return device?.name ?? null;
 	}
 
-	private areLightsOn(
-		devices: BuddyContext['devices'],
-		lightDeviceCategory: string,
-		lightStateKey: string,
-	): boolean {
+	private areLightsOn(devices: BuddyContext['devices'], lightDeviceCategory: string, lightStateKey: string): boolean {
 		return devices.some((d) => d.category === lightDeviceCategory && d.state[lightStateKey] === true);
 	}
 

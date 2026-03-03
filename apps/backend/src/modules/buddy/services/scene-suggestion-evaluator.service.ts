@@ -45,7 +45,7 @@ export class SceneSuggestionEvaluator implements HeartbeatEvaluator {
 		const rule = this.rulesLoader.getPatternRule('multi_action_sequence');
 
 		if (rule && !rule.enabled) {
-			return Promise.resolve([]);
+			return Promise.resolve<EvaluatorResult[]>([]);
 		}
 
 		const spaceIds = new Set(context.spaces.map((s) => s.id));

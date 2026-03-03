@@ -78,9 +78,7 @@ export class EvaluatorRulesLoaderService implements OnModuleInit {
 	// ──────────────────────────────────────────
 
 	private loadAnomalyRules(): void {
-		const builtinConfig = this.loadYamlFile<YamlAnomalyRulesConfig>(
-			join(this.builtinSpecPath, 'anomaly-rules.yaml'),
-		);
+		const builtinConfig = this.loadYamlFile<YamlAnomalyRulesConfig>(join(this.builtinSpecPath, 'anomaly-rules.yaml'));
 
 		if (builtinConfig?.anomaly_rules) {
 			this.mergeAnomalyRules(builtinConfig.anomaly_rules);
@@ -182,9 +180,7 @@ export class EvaluatorRulesLoaderService implements OnModuleInit {
 	// ──────────────────────────────────────────
 
 	private loadConflictRules(): void {
-		const builtinConfig = this.loadYamlFile<YamlConflictRulesConfig>(
-			join(this.builtinSpecPath, 'conflict-rules.yaml'),
-		);
+		const builtinConfig = this.loadYamlFile<YamlConflictRulesConfig>(join(this.builtinSpecPath, 'conflict-rules.yaml'));
 
 		if (builtinConfig?.conflict_rules) {
 			this.mergeConflictRules(builtinConfig.conflict_rules);
@@ -240,9 +236,7 @@ export class EvaluatorRulesLoaderService implements OnModuleInit {
 	// ──────────────────────────────────────────
 
 	private loadPatternRules(): void {
-		const builtinConfig = this.loadYamlFile<YamlPatternRulesConfig>(
-			join(this.builtinSpecPath, 'pattern-rules.yaml'),
-		);
+		const builtinConfig = this.loadYamlFile<YamlPatternRulesConfig>(join(this.builtinSpecPath, 'pattern-rules.yaml'));
 
 		if (builtinConfig?.pattern_rules) {
 			this.mergePatternRules(builtinConfig.pattern_rules);

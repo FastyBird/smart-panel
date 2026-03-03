@@ -16,7 +16,6 @@ import { WeatherModule } from '../weather/weather.module';
 
 import { BUDDY_MODULE_API_TAG_DESCRIPTION, BUDDY_MODULE_API_TAG_NAME, BUDDY_MODULE_NAME } from './buddy.constants';
 import { BUDDY_SWAGGER_EXTRA_MODELS } from './buddy.openapi';
-import { EvaluatorRulesLoaderService } from './spec/evaluator-rules-loader.service';
 import { BuddyConversationsController } from './controllers/buddy-conversations.controller';
 import { BuddyProvidersController } from './controllers/buddy-providers.controller';
 import { BuddySuggestionsController } from './controllers/buddy-suggestions.controller';
@@ -42,6 +41,7 @@ import { OAuthFlowService } from './services/oauth-flow.service';
 import { PatternDetectorService } from './services/pattern-detector.service';
 import { SceneSuggestionEvaluator } from './services/scene-suggestion-evaluator.service';
 import { SuggestionEngineService } from './services/suggestion-engine.service';
+import { EvaluatorRulesLoaderService } from './spec/evaluator-rules-loader.service';
 
 @ApiTag({
 	tagName: BUDDY_MODULE_NAME,

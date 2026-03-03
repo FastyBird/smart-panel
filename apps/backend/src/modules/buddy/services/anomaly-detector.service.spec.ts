@@ -19,6 +19,7 @@ import { BuddyContext } from './buddy-context.service';
 function makeContext(overrides: Partial<BuddyContext> = {}): BuddyContext {
 	return {
 		timestamp: new Date().toISOString(),
+		timezone: 'UTC',
 		spaces: overrides.spaces ?? [{ id: 'space-1', name: 'Living Room', category: 'living_room', deviceCount: 3 }],
 		devices: overrides.devices ?? [],
 		scenes: overrides.scenes ?? [],
@@ -52,7 +53,8 @@ const defaultAnomalyRules: Record<string, ResolvedAnomalyRule> = {
 		},
 		messages: {
 			title: 'Temperature significantly off setpoint',
-			reason: '${spaceName} temperature (${sensorValue}°C) is significantly ${direction} setpoint (${setpointValue}°C). Check the thermostat or window.',
+			reason:
+				'${spaceName} temperature (${sensorValue}°C) is significantly ${direction} setpoint (${setpointValue}°C). Check the thermostat or window.',
 		},
 	},
 	stuck_sensor: {
@@ -68,7 +70,8 @@ const defaultAnomalyRules: Record<string, ResolvedAnomalyRule> = {
 		},
 		messages: {
 			title: 'Sensor value appears stuck',
-			reason: '${deviceName} in ${spaceName}: "${propertyKey}" has been ${value} for ${stuckHours} hours. The sensor may need attention.',
+			reason:
+				'${deviceName} in ${spaceName}: "${propertyKey}" has been ${value} for ${stuckHours} hours. The sensor may need attention.',
 		},
 	},
 	unusual_activity: {
@@ -84,7 +87,8 @@ const defaultAnomalyRules: Record<string, ResolvedAnomalyRule> = {
 		},
 		messages: {
 			title: 'Unusual device activity detected',
-			reason: '${deviceName} in ${spaceName} has been triggered ${actionCount} times in the last ${windowMinutes} minutes. This might indicate an issue.',
+			reason:
+				'${deviceName} in ${spaceName} has been triggered ${actionCount} times in the last ${windowMinutes} minutes. This might indicate an issue.',
 		},
 	},
 };

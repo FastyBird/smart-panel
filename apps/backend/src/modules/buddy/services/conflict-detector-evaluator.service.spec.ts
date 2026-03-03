@@ -11,6 +11,7 @@ import { ConflictDetectorEvaluator } from './conflict-detector-evaluator.service
 function makeContext(overrides: Partial<BuddyContext> = {}): BuddyContext {
 	return {
 		timestamp: new Date().toISOString(),
+		timezone: 'UTC',
 		spaces: overrides.spaces ?? [{ id: 'space-1', name: 'Living Room', category: 'living_room', deviceCount: 3 }],
 		devices: overrides.devices ?? [],
 		scenes: overrides.scenes ?? [],
@@ -37,7 +38,8 @@ const defaultConflictRules: Record<string, ResolvedConflictRule> = {
 		},
 		messages: {
 			title: 'Heating with open window',
-			reason: '${spaceName} window is open but heating is active${setpointText}. Close the window or lower the setpoint?',
+			reason:
+				'${spaceName} window is open but heating is active${setpointText}. Close the window or lower the setpoint?',
 		},
 	},
 	ac_window: {
@@ -75,14 +77,13 @@ const defaultConflictRules: Record<string, ResolvedConflictRule> = {
 		},
 		messages: {
 			title: 'Lights on in unoccupied room',
-			reason: '${spaceName} lights are on but the room appears unoccupied for over ${minutes} minutes. Turn off the lights?',
+			reason:
+				'${spaceName} lights are on but the room appears unoccupied for over ${minutes} minutes. Turn off the lights?',
 		},
 	},
 };
 
-function makeRulesLoader(
-	overrides: Partial<Record<string, ResolvedConflictRule>> = {},
-): EvaluatorRulesLoaderService {
+function makeRulesLoader(overrides: Partial<Record<string, ResolvedConflictRule>> = {}): EvaluatorRulesLoaderService {
 	const rules = { ...defaultConflictRules, ...overrides };
 
 	return {
@@ -568,15 +569,39 @@ describe('ConflictDetectorEvaluator', () => {
 		it('should reset tracker when room becomes occupied and not fire prematurely after re-vacancy', async () => {
 			const unoccupiedContext = makeContext({
 				devices: [
-					{ id: 'light-1', name: 'Light', space: 'space-1', category: DeviceCategory.LIGHTING, state: { 'light.on': true } },
-					{ id: 'occupancy-1', name: 'Sensor', space: 'space-1', category: DeviceCategory.SENSOR, state: { 'occupancy.detected': false } },
+					{
+						id: 'light-1',
+						name: 'Light',
+						space: 'space-1',
+						category: DeviceCategory.LIGHTING,
+						state: { 'light.on': true },
+					},
+					{
+						id: 'occupancy-1',
+						name: 'Sensor',
+						space: 'space-1',
+						category: DeviceCategory.SENSOR,
+						state: { 'occupancy.detected': false },
+					},
 				],
 			});
 
 			const occupiedContext = makeContext({
 				devices: [
-					{ id: 'light-1', name: 'Light', space: 'space-1', category: DeviceCategory.LIGHTING, state: { 'light.on': true } },
-					{ id: 'occupancy-1', name: 'Sensor', space: 'space-1', category: DeviceCategory.SENSOR, state: { 'occupancy.detected': true } },
+					{
+						id: 'light-1',
+						name: 'Light',
+						space: 'space-1',
+						category: DeviceCategory.LIGHTING,
+						state: { 'light.on': true },
+					},
+					{
+						id: 'occupancy-1',
+						name: 'Sensor',
+						space: 'space-1',
+						category: DeviceCategory.SENSOR,
+						state: { 'occupancy.detected': true },
+					},
 				],
 			});
 
@@ -596,15 +621,39 @@ describe('ConflictDetectorEvaluator', () => {
 		it('should reset tracker when lights turn off', async () => {
 			const lightsOnContext = makeContext({
 				devices: [
-					{ id: 'light-1', name: 'Light', space: 'space-1', category: DeviceCategory.LIGHTING, state: { 'light.on': true } },
-					{ id: 'occupancy-1', name: 'Sensor', space: 'space-1', category: DeviceCategory.SENSOR, state: { 'occupancy.detected': false } },
+					{
+						id: 'light-1',
+						name: 'Light',
+						space: 'space-1',
+						category: DeviceCategory.LIGHTING,
+						state: { 'light.on': true },
+					},
+					{
+						id: 'occupancy-1',
+						name: 'Sensor',
+						space: 'space-1',
+						category: DeviceCategory.SENSOR,
+						state: { 'occupancy.detected': false },
+					},
 				],
 			});
 
 			const lightsOffContext = makeContext({
 				devices: [
-					{ id: 'light-1', name: 'Light', space: 'space-1', category: DeviceCategory.LIGHTING, state: { 'light.on': false } },
-					{ id: 'occupancy-1', name: 'Sensor', space: 'space-1', category: DeviceCategory.SENSOR, state: { 'occupancy.detected': false } },
+					{
+						id: 'light-1',
+						name: 'Light',
+						space: 'space-1',
+						category: DeviceCategory.LIGHTING,
+						state: { 'light.on': false },
+					},
+					{
+						id: 'occupancy-1',
+						name: 'Sensor',
+						space: 'space-1',
+						category: DeviceCategory.SENSOR,
+						state: { 'occupancy.detected': false },
+					},
 				],
 			});
 
@@ -619,8 +668,20 @@ describe('ConflictDetectorEvaluator', () => {
 		it('should not detect when lights are off', async () => {
 			const context = makeContext({
 				devices: [
-					{ id: 'light-1', name: 'Light', space: 'space-1', category: DeviceCategory.LIGHTING, state: { 'light.on': false } },
-					{ id: 'occupancy-1', name: 'Sensor', space: 'space-1', category: DeviceCategory.SENSOR, state: { 'occupancy.detected': false } },
+					{
+						id: 'light-1',
+						name: 'Light',
+						space: 'space-1',
+						category: DeviceCategory.LIGHTING,
+						state: { 'light.on': false },
+					},
+					{
+						id: 'occupancy-1',
+						name: 'Sensor',
+						space: 'space-1',
+						category: DeviceCategory.SENSOR,
+						state: { 'occupancy.detected': false },
+					},
 				],
 			});
 
@@ -631,7 +692,13 @@ describe('ConflictDetectorEvaluator', () => {
 		it('should not detect when there is no occupancy sensor', async () => {
 			const context = makeContext({
 				devices: [
-					{ id: 'light-1', name: 'Light', space: 'space-1', category: DeviceCategory.LIGHTING, state: { 'light.on': true } },
+					{
+						id: 'light-1',
+						name: 'Light',
+						space: 'space-1',
+						category: DeviceCategory.LIGHTING,
+						state: { 'light.on': true },
+					},
 				],
 			});
 
@@ -644,8 +711,20 @@ describe('ConflictDetectorEvaluator', () => {
 
 			const context = makeContext({
 				devices: [
-					{ id: 'light-1', name: 'Light', space: 'space-1', category: DeviceCategory.LIGHTING, state: { 'light.on': true } },
-					{ id: 'occupancy-1', name: 'Sensor', space: 'space-1', category: DeviceCategory.SENSOR, state: { 'occupancy.detected': false } },
+					{
+						id: 'light-1',
+						name: 'Light',
+						space: 'space-1',
+						category: DeviceCategory.LIGHTING,
+						state: { 'light.on': true },
+					},
+					{
+						id: 'occupancy-1',
+						name: 'Sensor',
+						space: 'space-1',
+						category: DeviceCategory.SENSOR,
+						state: { 'occupancy.detected': false },
+					},
 				],
 			});
 
@@ -660,8 +739,20 @@ describe('ConflictDetectorEvaluator', () => {
 		it('should reset occupancy tracker via public method', async () => {
 			const context = makeContext({
 				devices: [
-					{ id: 'light-1', name: 'Light', space: 'space-1', category: DeviceCategory.LIGHTING, state: { 'light.on': true } },
-					{ id: 'occupancy-1', name: 'Sensor', space: 'space-1', category: DeviceCategory.SENSOR, state: { 'occupancy.detected': false } },
+					{
+						id: 'light-1',
+						name: 'Light',
+						space: 'space-1',
+						category: DeviceCategory.LIGHTING,
+						state: { 'light.on': true },
+					},
+					{
+						id: 'occupancy-1',
+						name: 'Sensor',
+						space: 'space-1',
+						category: DeviceCategory.SENSOR,
+						state: { 'occupancy.detected': false },
+					},
 				],
 			});
 
@@ -686,8 +777,20 @@ describe('ConflictDetectorEvaluator', () => {
 
 			const context = makeContext({
 				devices: [
-					{ id: 'light-1', name: 'Light', space: 'space-1', category: DeviceCategory.LIGHTING, state: { 'light.on': true } },
-					{ id: 'occupancy-1', name: 'Sensor', space: 'space-1', category: DeviceCategory.SENSOR, state: { 'occupancy.detected': false } },
+					{
+						id: 'light-1',
+						name: 'Light',
+						space: 'space-1',
+						category: DeviceCategory.LIGHTING,
+						state: { 'light.on': true },
+					},
+					{
+						id: 'occupancy-1',
+						name: 'Sensor',
+						space: 'space-1',
+						category: DeviceCategory.SENSOR,
+						state: { 'occupancy.detected': false },
+					},
 				],
 			});
 
@@ -708,10 +811,34 @@ describe('ConflictDetectorEvaluator', () => {
 		it('should detect multiple conflict types per space', async () => {
 			const context = makeContext({
 				devices: [
-					{ id: 'heater-1', name: 'Heater', space: 'space-1', category: DeviceCategory.THERMOSTAT, state: { 'heater.on': true, 'heater.status': true, 'thermostat.temperature': 24 } },
-					{ id: 'contact-1', name: 'Window Sensor', space: 'space-1', category: DeviceCategory.SENSOR, state: { 'contact.detected': true } },
-					{ id: 'light-1', name: 'Light', space: 'space-1', category: DeviceCategory.LIGHTING, state: { 'light.on': true } },
-					{ id: 'occupancy-1', name: 'Motion Sensor', space: 'space-1', category: DeviceCategory.SENSOR, state: { 'occupancy.detected': false } },
+					{
+						id: 'heater-1',
+						name: 'Heater',
+						space: 'space-1',
+						category: DeviceCategory.THERMOSTAT,
+						state: { 'heater.on': true, 'heater.status': true, 'thermostat.temperature': 24 },
+					},
+					{
+						id: 'contact-1',
+						name: 'Window Sensor',
+						space: 'space-1',
+						category: DeviceCategory.SENSOR,
+						state: { 'contact.detected': true },
+					},
+					{
+						id: 'light-1',
+						name: 'Light',
+						space: 'space-1',
+						category: DeviceCategory.LIGHTING,
+						state: { 'light.on': true },
+					},
+					{
+						id: 'occupancy-1',
+						name: 'Motion Sensor',
+						space: 'space-1',
+						category: DeviceCategory.SENSOR,
+						state: { 'occupancy.detected': false },
+					},
 				],
 			});
 
@@ -733,10 +860,34 @@ describe('ConflictDetectorEvaluator', () => {
 					{ id: 'space-2', name: 'Bedroom', category: 'bedroom', deviceCount: 2 },
 				],
 				devices: [
-					{ id: 'heater-1', name: 'Heater', space: 'space-1', category: DeviceCategory.THERMOSTAT, state: { 'heater.on': true, 'heater.status': true } },
-					{ id: 'contact-1', name: 'Window', space: 'space-1', category: DeviceCategory.SENSOR, state: { 'contact.detected': true } },
-					{ id: 'ac-1', name: 'AC', space: 'space-2', category: DeviceCategory.AIR_CONDITIONER, state: { 'cooler.on': true, 'cooler.status': true } },
-					{ id: 'contact-2', name: 'Bedroom Window', space: 'space-2', category: DeviceCategory.SENSOR, state: { 'contact.detected': true } },
+					{
+						id: 'heater-1',
+						name: 'Heater',
+						space: 'space-1',
+						category: DeviceCategory.THERMOSTAT,
+						state: { 'heater.on': true, 'heater.status': true },
+					},
+					{
+						id: 'contact-1',
+						name: 'Window',
+						space: 'space-1',
+						category: DeviceCategory.SENSOR,
+						state: { 'contact.detected': true },
+					},
+					{
+						id: 'ac-1',
+						name: 'AC',
+						space: 'space-2',
+						category: DeviceCategory.AIR_CONDITIONER,
+						state: { 'cooler.on': true, 'cooler.status': true },
+					},
+					{
+						id: 'contact-2',
+						name: 'Bedroom Window',
+						space: 'space-2',
+						category: DeviceCategory.SENSOR,
+						state: { 'contact.detected': true },
+					},
 				],
 			});
 

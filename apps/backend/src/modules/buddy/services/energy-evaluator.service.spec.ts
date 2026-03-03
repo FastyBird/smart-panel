@@ -15,6 +15,7 @@ import { EnergyEvaluator } from './energy-evaluator.service';
 function makeContext(overrides: Partial<BuddyContext> = {}): BuddyContext {
 	return {
 		timestamp: new Date().toISOString(),
+		timezone: 'UTC',
 		spaces: overrides.spaces ?? [{ id: 'space-1', name: 'Living Room', category: 'living_room', deviceCount: 3 }],
 		devices: overrides.devices ?? [],
 		scenes: overrides.scenes ?? [],

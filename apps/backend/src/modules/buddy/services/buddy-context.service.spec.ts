@@ -177,7 +177,7 @@ describe('BuddyContextService', () => {
 			const ctx = await service.buildContext();
 
 			expect(ctx.weather).not.toBeNull();
-			expect(ctx.weather!.current).toEqual(
+			expect(ctx.weather.current).toEqual(
 				expect.objectContaining({
 					temperature: 22.5,
 					feelsLike: 21.0,
@@ -187,9 +187,9 @@ describe('BuddyContextService', () => {
 					clouds: 40,
 				}),
 			);
-			expect(ctx.weather!.current.wind).toEqual({ speed: 3.5, deg: 250, gust: 5.2 });
-			expect(ctx.weather!.current.sunrise).toBe(mockSunrise.toISOString());
-			expect(ctx.weather!.current.sunset).toBe(mockSunset.toISOString());
+			expect(ctx.weather.current.wind).toEqual({ speed: 3.5, deg: 250, gust: 5.2 });
+			expect(ctx.weather.current.sunrise).toBe(mockSunrise.toISOString());
+			expect(ctx.weather.current.sunset).toBe(mockSunset.toISOString());
 		});
 
 		it('should include energy in context with approximate kW rates from recent deltas', async () => {
@@ -232,13 +232,13 @@ describe('BuddyContextService', () => {
 		it('should limit forecast to 3 days', async () => {
 			const ctx = await service.buildContext();
 
-			expect(ctx.weather!.forecast).toHaveLength(3);
+			expect(ctx.weather.forecast).toHaveLength(3);
 		});
 
 		it('should map forecast fields correctly', async () => {
 			const ctx = await service.buildContext();
 
-			expect(ctx.weather!.forecast[0]).toEqual(
+			expect(ctx.weather.forecast[0]).toEqual(
 				expect.objectContaining({
 					tempDay: 12,
 					tempMin: 8,
@@ -254,7 +254,7 @@ describe('BuddyContextService', () => {
 		it('should include rain values in forecast when present', async () => {
 			const ctx = await service.buildContext();
 
-			expect(ctx.weather!.forecast[1].rain).toBe(4.5);
+			expect(ctx.weather.forecast[1].rain).toBe(4.5);
 		});
 	});
 
@@ -272,8 +272,8 @@ describe('BuddyContextService', () => {
 
 			const ctx = await service.buildContext();
 
-			expect(ctx.weather!.alerts).toHaveLength(1);
-			expect(ctx.weather!.alerts[0]).toEqual(
+			expect(ctx.weather.alerts).toHaveLength(1);
+			expect(ctx.weather.alerts[0]).toEqual(
 				expect.objectContaining({
 					event: 'Heat Advisory',
 					description: 'High temperatures expected',
@@ -286,7 +286,7 @@ describe('BuddyContextService', () => {
 
 			const ctx = await service.buildContext();
 
-			expect(ctx.weather!.alerts).toEqual([]);
+			expect(ctx.weather.alerts).toEqual([]);
 			expect(weatherService.getAlerts).not.toHaveBeenCalled();
 		});
 
@@ -306,8 +306,8 @@ describe('BuddyContextService', () => {
 
 			const ctx = await service.buildContext();
 
-			expect(ctx.weather!.alerts[0].description).toHaveLength(200);
-			expect(ctx.weather!.alerts[0].description).toMatch(/\.\.\.$/);
+			expect(ctx.weather.alerts[0].description).toHaveLength(200);
+			expect(ctx.weather.alerts[0].description).toMatch(/\.\.\.$/);
 		});
 
 		it('should return empty alerts when getPrimaryLocationId returns null', async () => {
@@ -315,7 +315,7 @@ describe('BuddyContextService', () => {
 
 			const ctx = await service.buildContext();
 
-			expect(ctx.weather!.alerts).toEqual([]);
+			expect(ctx.weather.alerts).toEqual([]);
 		});
 
 		it('should return empty alerts when getAlerts throws', async () => {
@@ -324,7 +324,7 @@ describe('BuddyContextService', () => {
 
 			const ctx = await service.buildContext();
 
-			expect(ctx.weather!.alerts).toEqual([]);
+			expect(ctx.weather.alerts).toEqual([]);
 		});
 	});
 

@@ -67,8 +67,7 @@ export class AnomalyDetectorEvaluator implements HeartbeatEvaluator {
 		}
 
 		const setpointCategories = rule?.filters.setpointDeviceCategories ?? [DeviceCategory.THERMOSTAT as string];
-		const readingPropertyCategory =
-			rule?.filters.readingPropertyCategory ?? (PropertyCategory.TEMPERATURE as string);
+		const readingPropertyCategory = rule?.filters.readingPropertyCategory ?? (PropertyCategory.TEMPERATURE as string);
 
 		const results: EvaluatorResult[] = [];
 
@@ -340,8 +339,7 @@ export class AnomalyDetectorEvaluator implements HeartbeatEvaluator {
 			temperatureDrift: driftRule?.thresholds.degrees ?? ANOMALY_TEMPERATURE_DRIFT_THRESHOLD,
 			stuckSensorHours: stuckRule?.thresholds.hours ?? ANOMALY_STUCK_SENSOR_HOURS,
 			unusualActivityThreshold: activityRule?.thresholds.count ?? ANOMALY_UNUSUAL_ACTIVITY_THRESHOLD,
-			unusualActivityWindowMinutes:
-				activityRule?.thresholds.window_minutes ?? ANOMALY_UNUSUAL_ACTIVITY_WINDOW_MINUTES,
+			unusualActivityWindowMinutes: activityRule?.thresholds.window_minutes ?? ANOMALY_UNUSUAL_ACTIVITY_WINDOW_MINUTES,
 		};
 
 		try {
@@ -350,8 +348,7 @@ export class AnomalyDetectorEvaluator implements HeartbeatEvaluator {
 			return {
 				temperatureDrift: config.anomalyTemperatureDriftThreshold ?? yamlDefaults.temperatureDrift,
 				stuckSensorHours: config.anomalyStuckSensorHours ?? yamlDefaults.stuckSensorHours,
-				unusualActivityThreshold:
-					config.anomalyUnusualActivityThreshold ?? yamlDefaults.unusualActivityThreshold,
+				unusualActivityThreshold: config.anomalyUnusualActivityThreshold ?? yamlDefaults.unusualActivityThreshold,
 				unusualActivityWindowMinutes:
 					config.anomalyUnusualActivityWindowMinutes ?? yamlDefaults.unusualActivityWindowMinutes,
 			};
