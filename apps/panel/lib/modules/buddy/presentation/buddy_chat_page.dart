@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 import 'package:provider/provider.dart';
 
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/modules/buddy/models/buddy_config.dart';
 import 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/message_bubble.dart';
 import 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/suggestion_card.dart';
@@ -172,7 +174,15 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 			body: SafeArea(
 				child: Column(
 					children: [
-						_buildHeader(context, isDark),
+						PageHeader(
+							title: _buddyName,
+							onBack: () => Navigator.of(context).pop(),
+							icon: Icons.smart_toy_outlined,
+							trailing: HeaderIconButton(
+								icon: MdiIcons.chatPlusOutline,
+								onTap: _startNewConversation,
+							),
+						),
 						Expanded(
 							child: _initialized
 								? _initFailed
@@ -193,62 +203,15 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 		);
 	}
 
-	Widget _buildHeader(BuildContext context, bool isDark) {
-		final accentColor = ThemeColorFamily.get(
-			isDark ? Brightness.dark : Brightness.light,
-			ThemeColors.primary,
-		).base;
+	Future<void> _startNewConversation() async {
+		final buddyService = context.read<BuddyService>();
+		final spaceId = locator<DisplayRepository>().display?.roomId;
 
-		final titleColor = isDark ? AppTextColorDark.primary : AppTextColorLight.primary;
-		final borderColor = isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
+		await buddyService.startNewConversation(spaceId: spaceId);
 
-		return Container(
-			padding: EdgeInsets.symmetric(
-				horizontal: AppSpacings.pMd,
-				vertical: AppSpacings.pMd,
-			),
-			decoration: BoxDecoration(
-				border: Border(
-					bottom: BorderSide(color: borderColor),
-				),
-			),
-			child: Row(
-				children: [
-					IconButton(
-						icon: Icon(
-							Icons.arrow_back,
-							size: AppSpacings.scale(20),
-							color: isDark
-								? AppTextColorDark.secondary
-								: AppTextColorLight.secondary,
-						),
-						onPressed: () => Navigator.of(context).pop(),
-						padding: EdgeInsets.zero,
-						constraints: BoxConstraints(
-							minWidth: AppSpacings.scale(32),
-							minHeight: AppSpacings.scale(32),
-						),
-					),
-					SizedBox(width: AppSpacings.pSm),
-					Icon(
-						Icons.smart_toy_outlined,
-						color: accentColor,
-						size: AppSpacings.scale(22),
-					),
-					SizedBox(width: AppSpacings.pMd),
-					Expanded(
-						child: Text(
-							_buddyName,
-							style: TextStyle(
-								fontSize: AppFontSize.large,
-								fontWeight: FontWeight.w600,
-								color: titleColor,
-							),
-						),
-					),
-				],
-			),
-		);
+		if (mounted) {
+			_scrollToBottom();
+		}
 	}
 
 	Widget _buildBody(BuildContext context, bool isDark) {
