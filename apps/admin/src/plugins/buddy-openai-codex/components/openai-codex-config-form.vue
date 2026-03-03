@@ -282,6 +282,8 @@ const handleDisconnect = async (): Promise<void> => {
 
 	try {
 		await submit();
+
+		markSaved();
 	} catch {
 		// Restore tokens so the UI stays consistent with the server
 		model.accessToken = prevAccessToken;
