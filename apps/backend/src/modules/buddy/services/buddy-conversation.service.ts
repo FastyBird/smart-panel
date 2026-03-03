@@ -211,10 +211,65 @@ export class BuddyConversationService {
 		}
 
 		if (context.weather) {
-			lines.push('', '## Weather');
-			lines.push(
-				`- Temperature: ${context.weather.temperature}°C, Conditions: ${context.weather.conditions}, Humidity: ${context.weather.humidity}%`,
-			);
+			const w = context.weather.current;
+
+			lines.push('', '## Current Weather');
+			lines.push(`- Temperature: ${w.temperature}°C (feels like ${w.feelsLike}°C)`);
+			lines.push(`- Conditions: ${w.conditions}, Clouds: ${w.clouds}%`);
+			lines.push(`- Humidity: ${w.humidity}%, Pressure: ${w.pressure} hPa`);
+
+			const gustStr = w.wind.gust != null ? ` (gusts ${w.wind.gust} m/s)` : '';
+
+			lines.push(`- Wind: ${w.wind.speed} m/s${gustStr}`);
+
+			if (w.rain != null && w.rain > 0) {
+				lines.push(`- Rain: ${w.rain} mm`);
+			}
+
+			if (w.snow != null && w.snow > 0) {
+				lines.push(`- Snow: ${w.snow} mm`);
+			}
+
+			const formatTime = (iso: string): string => {
+				const d = new Date(iso);
+
+				return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+			};
+
+			lines.push(`- Sunrise: ${formatTime(w.sunrise)}, Sunset: ${formatTime(w.sunset)}`);
+
+			if (context.weather.forecast.length > 0) {
+				lines.push('', '## Weather Forecast');
+
+				for (const f of context.weather.forecast) {
+					const date = new Date(f.date);
+					const dateStr = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+					let line = `- ${dateStr}: ${f.conditions}, ${f.tempMin}–${f.tempMax}°C, wind ${f.wind} m/s, humidity ${f.humidity}%`;
+
+					if (f.rain != null && f.rain > 0) {
+						line += `, rain ${f.rain} mm`;
+					}
+
+					if (f.snow != null && f.snow > 0) {
+						line += `, snow ${f.snow} mm`;
+					}
+
+					lines.push(line);
+				}
+			}
+
+			if (context.weather.alerts.length > 0) {
+				lines.push('', '## Weather Alerts');
+
+				for (const a of context.weather.alerts) {
+					const startDate = new Date(a.start);
+					const endDate = new Date(a.end);
+					const fmt = (d: Date) =>
+						`${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+
+					lines.push(`- ${a.event} (${fmt(startDate)} – ${fmt(endDate)}): ${a.description}`);
+				}
+			}
 		}
 
 		if (context.energy) {

@@ -23,6 +23,7 @@ import { BuddySuggestionsController } from './controllers/buddy-suggestions.cont
 import { UpdateBuddyConfigDto } from './dto/update-config.dto';
 import { BuddyConversationEntity } from './entities/buddy-conversation.entity';
 import { BuddyMessageEntity } from './entities/buddy-message.entity';
+import { BuddyContextCacheListener } from './listeners/buddy-context-cache.listener';
 import { IntentEventListener } from './listeners/intent-event.listener';
 import { MediaActivityEventListener } from './listeners/media-activity-event.listener';
 import { BuddyConfigModel } from './models/config.model';
@@ -65,6 +66,7 @@ import { SuggestionEngineService } from './services/suggestion-engine.service';
 		ActionObserverService,
 		BuddyContextService,
 		BuddyProviderStatusService,
+		BuddyContextCacheListener,
 		IntentEventListener,
 		MediaActivityEventListener,
 		LlmProviderRegistryService,

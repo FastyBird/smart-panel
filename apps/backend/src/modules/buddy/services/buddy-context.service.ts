@@ -10,12 +10,51 @@ import { WeatherService } from '../../weather/services/weather.service';
 
 import { ActionObserverService } from './action-observer.service';
 
+export interface BuddyWeatherCurrent {
+	temperature: number;
+	feelsLike: number;
+	conditions: string;
+	humidity: number;
+	pressure: number;
+	wind: { speed: number; deg: number; gust?: number | null };
+	clouds: number;
+	rain?: number | null;
+	snow?: number | null;
+	sunrise: string;
+	sunset: string;
+}
+
+export interface BuddyWeatherForecast {
+	date: string;
+	tempDay: number;
+	tempMin: number;
+	tempMax: number;
+	conditions: string;
+	humidity: number;
+	wind: number;
+	rain?: number | null;
+	snow?: number | null;
+}
+
+export interface BuddyWeatherAlert {
+	event: string;
+	start: string;
+	end: string;
+	description: string;
+}
+
+export interface BuddyWeather {
+	current: BuddyWeatherCurrent;
+	forecast: BuddyWeatherForecast[];
+	alerts: BuddyWeatherAlert[];
+}
+
 export interface BuddyContext {
 	timestamp: string;
 	spaces: { id: string; name: string; category: string | null; deviceCount: number }[];
 	devices: { id: string; name: string; space: string | null; category: string; state: Record<string, unknown> }[];
 	scenes: { id: string; name: string; space: string | null; enabled: boolean }[];
-	weather: { temperature: number; conditions: string; humidity: number } | null;
+	weather: BuddyWeather | null;
 	energy: {
 		solarProduction: number;
 		gridConsumption: number;
@@ -25,9 +64,13 @@ export interface BuddyContext {
 	recentIntents: { type: string; space: string | null; timestamp: string }[];
 }
 
+const CONTEXT_CACHE_TTL_MS = 60_000;
+
 @Injectable()
 export class BuddyContextService {
 	private readonly logger = new Logger(BuddyContextService.name);
+
+	private contextCache = new Map<string, { context: BuddyContext; expiresAt: number }>();
 
 	constructor(
 		private readonly spacesService: SpacesService,
@@ -39,6 +82,26 @@ export class BuddyContextService {
 	) {}
 
 	async buildContext(spaceId?: string): Promise<BuddyContext> {
+		const cacheKey = spaceId ?? '__global__';
+		const now = Date.now();
+		const cached = this.contextCache.get(cacheKey);
+
+		if (cached && cached.expiresAt > now) {
+			return cached.context;
+		}
+
+		const context = await this.buildContextInternal(spaceId);
+
+		this.contextCache.set(cacheKey, { context, expiresAt: now + CONTEXT_CACHE_TTL_MS });
+
+		return context;
+	}
+
+	invalidateCache(): void {
+		this.contextCache.clear();
+	}
+
+	private async buildContextInternal(spaceId?: string): Promise<BuddyContext> {
 		const [spaces, devices, scenes, weather, energy] = await Promise.all([
 			this.getSpaces(spaceId),
 			this.getDevices(spaceId),
@@ -182,7 +245,7 @@ export class BuddyContextService {
 		}
 	}
 
-	private async getWeather(): Promise<{ temperature: number; conditions: string; humidity: number } | null> {
+	private async getWeather(): Promise<BuddyWeather | null> {
 		try {
 			const weather = await this.weatherService.getPrimaryWeather();
 
@@ -190,11 +253,60 @@ export class BuddyContextService {
 				return null;
 			}
 
-			return {
+			const current: BuddyWeatherCurrent = {
 				temperature: weather.current.temperature ?? 0,
+				feelsLike: weather.current.feelsLike ?? weather.current.temperature ?? 0,
 				conditions: weather.current.weather?.description ?? 'unknown',
 				humidity: weather.current.humidity ?? 0,
+				pressure: weather.current.pressure ?? 0,
+				wind: {
+					speed: weather.current.wind?.speed ?? 0,
+					deg: weather.current.wind?.deg ?? 0,
+					gust: weather.current.wind?.gust ?? null,
+				},
+				clouds: weather.current.clouds ?? 0,
+				rain: weather.current.rain ?? null,
+				snow: weather.current.snow ?? null,
+				sunrise: weather.current.sunrise ? weather.current.sunrise.toISOString() : new Date().toISOString(),
+				sunset: weather.current.sunset ? weather.current.sunset.toISOString() : new Date().toISOString(),
 			};
+
+			const forecast: BuddyWeatherForecast[] = (weather.forecast ?? []).slice(0, 3).map((day) => ({
+				date: day.dayTime ? day.dayTime.toISOString() : new Date().toISOString(),
+				tempDay: day.temperature?.day ?? 0,
+				tempMin: day.temperature?.min ?? 0,
+				tempMax: day.temperature?.max ?? 0,
+				conditions: day.weather?.description ?? 'unknown',
+				humidity: day.humidity ?? 0,
+				wind: day.wind?.speed ?? 0,
+				rain: day.rain ?? null,
+				snow: day.snow ?? null,
+			}));
+
+			let alerts: BuddyWeatherAlert[] = [];
+
+			try {
+				const locationId = this.weatherService.getPrimaryLocationId();
+
+				if (locationId) {
+					const supported = await this.weatherService.checkAlertsSupported(locationId);
+
+					if (supported) {
+						const rawAlerts = await this.weatherService.getAlerts(locationId);
+
+						alerts = rawAlerts.map((a) => ({
+							event: a.event,
+							start: a.start.toISOString(),
+							end: a.end.toISOString(),
+							description: a.description.length > 200 ? a.description.substring(0, 197) + '...' : a.description,
+						}));
+					}
+				}
+			} catch (error) {
+				this.logger.debug(`Weather alerts unavailable: ${error}`);
+			}
+
+			return { current, forecast, alerts };
 		} catch (error) {
 			this.logger.debug(`Weather data unavailable: ${error}`);
 
