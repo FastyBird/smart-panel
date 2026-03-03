@@ -89,7 +89,7 @@ try {
 	localStorage.setItem('oauth-callback', JSON.stringify(${safeMessage}));
 } catch (e) {}
 if (window.opener) {
-	try { window.opener.postMessage(${safeMessage}, '*'); } catch (e) {}
+	try { window.opener.postMessage(${safeMessage}, window.location.origin); } catch (e) {}
 }
 setTimeout(function() { window.close(); }, 1500);
 </script>
