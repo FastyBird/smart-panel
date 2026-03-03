@@ -186,7 +186,7 @@ export const useBuddyChat = (): IUseBuddyChat => {
 
 			const responseData = (response as { data?: { data: IMessage[] } }).data;
 
-			if (typeof responseData !== 'undefined') {
+			if (typeof responseData !== 'undefined' && activeConversationId.value === conversationId) {
 				messages.value = responseData.data;
 			}
 		} catch (err: unknown) {
@@ -251,7 +251,9 @@ export const useBuddyChat = (): IUseBuddyChat => {
 			}
 
 			// Re-fetch messages to get the real IDs and assistant response
-			await fetchMessages(conversationId);
+			if (activeConversationId.value === conversationId) {
+				await fetchMessages(conversationId);
+			}
 		} catch (err: unknown) {
 			// Remove optimistic message on error
 			messages.value = messages.value.filter((m) => m.id !== pendingId);
