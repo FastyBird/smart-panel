@@ -166,10 +166,12 @@ export const useOAuthPopup = (provider: string): IUseOAuthPopup => {
 	};
 
 	onUnmounted(() => {
+		const popup = popupWindow;
+
 		cleanup();
 
-		if (popupWindow && !popupWindow.closed) {
-			popupWindow.close();
+		if (popup && !popup.closed) {
+			popup.close();
 		}
 	});
 

@@ -274,7 +274,9 @@ const handleDisconnect = (): void => {
 	authorizeUrl.value = null;
 	callbackUrl.value = '';
 
-	submit();
+	submit().catch(() => {
+		// The form is not valid
+	});
 };
 
 const handleGetUrl = async (): Promise<void> => {

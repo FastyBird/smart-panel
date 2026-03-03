@@ -68,17 +68,28 @@ export class OAuthCallbackService {
 			error: error ?? null,
 		});
 
+		// Escape for safe embedding in HTML text content
+		const escapeHtml = (str: string): string =>
+			str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+		// Escape </script> sequences for safe embedding inside <script> tags
+		const safeMessage = message.replace(/<\//g, '<\\/');
+
+		const statusText = success
+			? 'Authorization successful! This window will close automatically.'
+			: `Authorization failed: ${escapeHtml(error ?? 'Unknown error')}`;
+
 		return `<!DOCTYPE html>
 <html>
 <head><title>OAuth Callback</title></head>
 <body>
-<p>${success ? 'Authorization successful! This window will close automatically.' : `Authorization failed: ${error ?? 'Unknown error'}`}</p>
+<p>${statusText}</p>
 <script>
 try {
-	localStorage.setItem('oauth-callback', JSON.stringify(${message}));
+	localStorage.setItem('oauth-callback', JSON.stringify(${safeMessage}));
 } catch (e) {}
 if (window.opener) {
-	try { window.opener.postMessage(${message}, '*'); } catch (e) {}
+	try { window.opener.postMessage(${safeMessage}, '*'); } catch (e) {}
 }
 setTimeout(function() { window.close(); }, 1500);
 </script>
