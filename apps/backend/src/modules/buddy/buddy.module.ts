@@ -17,24 +17,31 @@ import { WeatherModule } from '../weather/weather.module';
 import { BUDDY_MODULE_API_TAG_DESCRIPTION, BUDDY_MODULE_API_TAG_NAME, BUDDY_MODULE_NAME } from './buddy.constants';
 import { BUDDY_SWAGGER_EXTRA_MODELS } from './buddy.openapi';
 import { BuddyConversationsController } from './controllers/buddy-conversations.controller';
+import { BuddyProvidersController } from './controllers/buddy-providers.controller';
 import { BuddySuggestionsController } from './controllers/buddy-suggestions.controller';
 import { UpdateBuddyConfigDto } from './dto/update-config.dto';
 import { BuddyConversationEntity } from './entities/buddy-conversation.entity';
 import { BuddyMessageEntity } from './entities/buddy-message.entity';
+import { BuddyContextCacheListener } from './listeners/buddy-context-cache.listener';
 import { IntentEventListener } from './listeners/intent-event.listener';
+import { MediaActivityEventListener } from './listeners/media-activity-event.listener';
 import { BuddyConfigModel } from './models/config.model';
 import { ActionObserverService } from './services/action-observer.service';
 import { AnomalyDetectorEvaluator } from './services/anomaly-detector.service';
 import { BuddyContextService } from './services/buddy-context.service';
 import { BuddyConversationService } from './services/buddy-conversation.service';
+import { BuddyProviderStatusService } from './services/buddy-provider-status.service';
 import { ConflictDetectorEvaluator } from './services/conflict-detector-evaluator.service';
 import { EnergyEvaluator } from './services/energy-evaluator.service';
 import { HeartbeatService } from './services/heartbeat.service';
 import { LlmProviderRegistryService } from './services/llm-provider-registry.service';
 import { LlmProviderService } from './services/llm-provider.service';
+import { OAuthCallbackService } from './services/oauth-callback.service';
+import { OAuthFlowService } from './services/oauth-flow.service';
 import { PatternDetectorService } from './services/pattern-detector.service';
 import { SceneSuggestionEvaluator } from './services/scene-suggestion-evaluator.service';
 import { SuggestionEngineService } from './services/suggestion-engine.service';
+import { EvaluatorRulesLoaderService } from './spec/evaluator-rules-loader.service';
 
 @ApiTag({
 	tagName: BUDDY_MODULE_NAME,
@@ -53,11 +60,15 @@ import { SuggestionEngineService } from './services/suggestion-engine.service';
 		WeatherModule,
 		EnergyModule,
 	],
-	controllers: [BuddyConversationsController, BuddySuggestionsController],
+	controllers: [BuddyConversationsController, BuddyProvidersController, BuddySuggestionsController],
 	providers: [
+		EvaluatorRulesLoaderService,
 		ActionObserverService,
 		BuddyContextService,
+		BuddyProviderStatusService,
+		BuddyContextCacheListener,
 		IntentEventListener,
+		MediaActivityEventListener,
 		LlmProviderRegistryService,
 		LlmProviderService,
 		BuddyConversationService,
@@ -68,6 +79,8 @@ import { SuggestionEngineService } from './services/suggestion-engine.service';
 		EnergyEvaluator,
 		ConflictDetectorEvaluator,
 		SceneSuggestionEvaluator,
+		OAuthCallbackService,
+		OAuthFlowService,
 	],
 	exports: [
 		ActionObserverService,
@@ -82,6 +95,8 @@ import { SuggestionEngineService } from './services/suggestion-engine.service';
 		EnergyEvaluator,
 		ConflictDetectorEvaluator,
 		SceneSuggestionEvaluator,
+		OAuthCallbackService,
+		OAuthFlowService,
 	],
 })
 export class BuddyModule implements OnModuleInit {

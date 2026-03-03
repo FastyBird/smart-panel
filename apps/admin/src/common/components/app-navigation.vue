@@ -7,7 +7,7 @@
 			class="md:pt-5 xs:pt-4"
 			router
 		>
-			<template v-for="(item, index) in mainMenuItems">
+			<template v-for="(item, index) in visibleMenuItems">
 				<el-sub-menu
 					v-if="Object.entries(item.children).length"
 					:key="`${index}-children`"
@@ -123,6 +123,7 @@ import { ElIcon, ElMenu, ElMenuItem, ElMenuItemGroup, ElScrollbar, ElSubMenu, us
 
 import { Icon } from '@iconify/vue';
 
+import { useConfigModules } from '../../modules/config/composables/useConfigModules';
 import { useBreakpoints } from '../composables/useBreakpoints';
 import { useMenu } from '../composables/useMenu';
 import { injectAccountManager } from '../services/account-manager';
@@ -149,12 +150,23 @@ const ns = useNamespace('app-navigation');
 
 const { isMDDevice } = useBreakpoints();
 const { mainMenuItems } = useMenu();
+const { enabled: isModuleEnabled } = useConfigModules();
 
 const accountManager = injectAccountManager();
 
+const visibleMenuItems = computed(() => {
+	return Object.fromEntries(
+		Object.entries(mainMenuItems).filter(([, menuRoute]) => {
+			const moduleType = menuRoute.meta?.module as string | undefined;
+
+			return !moduleType || isModuleEnabled(moduleType);
+		})
+	);
+});
+
 const activeIndex = computed<string | undefined>((): string | undefined => {
-	for (const name of Object.keys(mainMenuItems)) {
-		const menuItem = mainMenuItems[name];
+	for (const name of Object.keys(visibleMenuItems.value)) {
+		const menuItem = visibleMenuItems.value[name];
 		if (menuItem && route.matched.find((matched) => matched.name === name) !== undefined) {
 			if (menuItem.children) {
 				for (const subName of Object.keys(menuItem.children)) {

@@ -11,6 +11,16 @@ class _Unset {
 
 const _unset = _Unset();
 
+/// Typed sentinels for function-typed parameters in [OverlayManager.show].
+///
+/// Using [Object?] with [_Unset] for function-typed fields erases type
+/// information, causing Dart to infer lambdas as `(dynamic) => dynamic`
+/// instead of the expected signature. These typed sentinel functions preserve
+/// proper type inference at call sites while still distinguishing "not passed"
+/// from "explicitly passed null" via [identical].
+String _unsetLocalizedString(AppLocalizations _) => '';
+Widget _unsetWidgetBuilder(BuildContext _) => const SizedBox.shrink();
+
 /// Central manager for all application overlays.
 ///
 /// Modules, plugins, and core services register their overlays here.
@@ -102,11 +112,11 @@ class OverlayManager extends ChangeNotifier {
 		Object? icon = _unset,
 		OverlayColorScheme? colorScheme,
 		bool? showProgress,
-		Object? title = _unset,
-		Object? message = _unset,
+		LocalizedString? title = _unsetLocalizedString,
+		LocalizedString? message = _unsetLocalizedString,
 		Object? content = _unset,
 		List<OverlayAction>? actions,
-		Object? customBuilder = _unset,
+		WidgetBuilder? customBuilder = _unsetWidgetBuilder,
 	}) {
 		final entry = _entries[id];
 		if (entry == null) return;
@@ -134,22 +144,12 @@ class OverlayManager extends ChangeNotifier {
 			entry.showProgress = showProgress;
 			changed = true;
 		}
-		if (title is! _Unset) {
-			if (title == null) {
-				entry.title = null;
-			} else {
-				final fn = title as Function;
-				entry.title = (AppLocalizations l) => fn(l) as String;
-			}
+		if (!identical(title, _unsetLocalizedString)) {
+			entry.title = title;
 			changed = true;
 		}
-		if (message is! _Unset) {
-			if (message == null) {
-				entry.message = null;
-			} else {
-				final fn = message as Function;
-				entry.message = (AppLocalizations l) => fn(l) as String;
-			}
+		if (!identical(message, _unsetLocalizedString)) {
+			entry.message = message;
 			changed = true;
 		}
 		if (content is! _Unset) {
@@ -160,13 +160,8 @@ class OverlayManager extends ChangeNotifier {
 			entry.actions = actions;
 			changed = true;
 		}
-		if (customBuilder is! _Unset) {
-			if (customBuilder == null) {
-				entry.customBuilder = null;
-			} else {
-				final fn = customBuilder as Function;
-				entry.customBuilder = (BuildContext context) => fn(context) as Widget;
-			}
+		if (!identical(customBuilder, _unsetWidgetBuilder)) {
+			entry.customBuilder = customBuilder;
 			changed = true;
 		}
 

@@ -11,6 +11,29 @@ export interface LlmOptions {
 }
 
 /**
+ * Metadata collected from an LLM API response.
+ * Stored on assistant messages for cost monitoring and performance debugging.
+ */
+export interface LlmResponseMeta {
+	provider: string;
+	model: string | null;
+	inputTokens: number | null;
+	outputTokens: number | null;
+	finishReason: string | null;
+	durationMs: number | null;
+	cacheReadTokens: number | null;
+	cacheWriteTokens: number | null;
+}
+
+/**
+ * Structured response from an LLM provider, containing the message content and metadata.
+ */
+export interface LlmResponse {
+	content: string;
+	meta: LlmResponseMeta;
+}
+
+/**
  * Interface for LLM provider implementations.
  * Each LLM provider plugin must implement this interface.
  */
@@ -36,13 +59,13 @@ export interface ILlmProvider {
 	getDefaultModel(): string;
 
 	/**
-	 * Sends a message to the LLM provider and returns the response.
+	 * Sends a message to the LLM provider and returns the response with metadata.
 	 * Each provider reads its own credentials from plugin config.
 	 * @param systemPrompt The system prompt for the conversation
 	 * @param messages The conversation history
 	 * @param model The model to use
 	 * @param options Additional options (timeout, etc.)
-	 * @returns The assistant's response text
+	 * @returns The assistant's response content and metadata
 	 */
-	sendMessage(systemPrompt: string, messages: ChatMessage[], model: string, options?: LlmOptions): Promise<string>;
+	sendMessage(systemPrompt: string, messages: ChatMessage[], model: string, options?: LlmOptions): Promise<LlmResponse>;
 }

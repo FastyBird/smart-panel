@@ -16,6 +16,7 @@ import {
 	BUDDY_OPENAI_CODEX_PLUGIN_NAME,
 } from './buddy-openai-codex.constants';
 import { BUDDY_OPENAI_CODEX_PLUGIN_SWAGGER_EXTRA_MODELS } from './buddy-openai-codex.openapi';
+import { BuddyOpenaiCodexOauthController } from './controllers/oauth.controller';
 import { UpdateBuddyOpenaiCodexConfigDto } from './dto/update-config.dto';
 import { BuddyOpenaiCodexConfigModel } from './models/config.model';
 import { OpenAiCodexProvider } from './platforms/openai-codex.provider';
@@ -27,6 +28,7 @@ import { OpenAiCodexProvider } from './platforms/openai-codex.provider';
 })
 @Module({
 	imports: [BuddyModule, ConfigModule, SwaggerModule, ExtensionsModule],
+	controllers: [BuddyOpenaiCodexOauthController],
 	providers: [OpenAiCodexProvider],
 	exports: [OpenAiCodexProvider],
 })

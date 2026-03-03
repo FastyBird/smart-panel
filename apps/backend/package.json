@@ -80,6 +80,7 @@
 		"cli:prod": "node dist/cli"
 	},
 	"dependencies": {
+		"@anthropic-ai/sdk": "^0.78.0",
 		"@fastify/static": "^8.3.0",
 		"@fastybird/smart-panel-extension-sdk": "workspace:*",
 		"@nestjs/cache-manager": "^3.1.0",
@@ -114,6 +115,8 @@
 		"mqtt": "^5.14.1",
 		"nest-commander": "^3.20.1",
 		"nestjs-cls": "^6.1.0",
+		"openai": "^6.25.0",
+		"openweathermap-ts": "^1.2.10",
 		"reflect-metadata": "^0.2.2",
 		"rxjs": "^7.8.2",
 		"shellies": "^1.7.0",

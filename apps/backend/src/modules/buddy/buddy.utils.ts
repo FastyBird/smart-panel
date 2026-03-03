@@ -1,4 +1,23 @@
 /**
+ * Interpolate a template string with variable values.
+ * Replaces `${key}` placeholders with corresponding values from the vars map.
+ * Unknown placeholders are left as-is.
+ *
+ * @example interpolateTemplate("Hello ${name}!", { name: "World" }) → "Hello World!"
+ */
+export function interpolateTemplate(template: string, vars: Record<string, unknown>): string {
+	return template.replace(/\$\{(\w+)\}/g, (match, key: string) => {
+		if (key in vars) {
+			const val = vars[key];
+
+			return val != null ? String(val as string | number | boolean) : '';
+		}
+
+		return match;
+	});
+}
+
+/**
  * Convert an intent type enum value to a human-readable action label.
  */
 export function formatIntentLabel(intentType: string): string {

@@ -2,6 +2,8 @@
 import { ConfigService } from '../../config/services/config.service';
 import { DeviceCategory } from '../../devices/devices.constants';
 import { CONFLICT_LIGHTS_UNOCCUPIED_MINUTES, SuggestionType } from '../buddy.constants';
+import { EvaluatorRulesLoaderService } from '../spec/evaluator-rules-loader.service';
+import { ResolvedConflictRule } from '../spec/evaluator-rules.types';
 
 import { BuddyContext } from './buddy-context.service';
 import { ConflictDetectorEvaluator } from './conflict-detector-evaluator.service';
@@ -9,6 +11,7 @@ import { ConflictDetectorEvaluator } from './conflict-detector-evaluator.service
 function makeContext(overrides: Partial<BuddyContext> = {}): BuddyContext {
 	return {
 		timestamp: new Date().toISOString(),
+		timezone: 'UTC',
 		spaces: overrides.spaces ?? [{ id: 'space-1', name: 'Living Room', category: 'living_room', deviceCount: 3 }],
 		devices: overrides.devices ?? [],
 		scenes: overrides.scenes ?? [],
@@ -16,6 +19,81 @@ function makeContext(overrides: Partial<BuddyContext> = {}): BuddyContext {
 		energy: overrides.energy ?? null,
 		recentIntents: overrides.recentIntents ?? [],
 	};
+}
+
+const defaultConflictRules: Record<string, ResolvedConflictRule> = {
+	heating_window: {
+		enabled: true,
+		suggestionType: SuggestionType.CONFLICT_HEATING_WINDOW,
+		thresholds: {},
+		detection: {
+			heatingStateKeys: ['heater.on', 'heater.status'],
+			heatingDeviceCategories: ['thermostat', 'heating_unit'],
+			coolingStateKeys: [],
+			coolingDeviceCategories: [],
+			contactStateKey: 'contact.detected',
+			lightDeviceCategory: null,
+			lightStateKey: null,
+			occupancyStateKey: null,
+		},
+		messages: {
+			title: 'Heating with open window',
+			reason:
+				'${spaceName} window is open but heating is active${setpointText}. Close the window or lower the setpoint?',
+		},
+	},
+	ac_window: {
+		enabled: true,
+		suggestionType: SuggestionType.CONFLICT_AC_WINDOW,
+		thresholds: {},
+		detection: {
+			heatingStateKeys: [],
+			heatingDeviceCategories: [],
+			coolingStateKeys: ['cooler.on', 'cooler.status'],
+			coolingDeviceCategories: ['air_conditioner'],
+			contactStateKey: 'contact.detected',
+			lightDeviceCategory: null,
+			lightStateKey: null,
+			occupancyStateKey: null,
+		},
+		messages: {
+			title: 'AC with open window',
+			reason: '${spaceName} window is open but AC is active. Close the window or turn off the AC?',
+		},
+	},
+	lights_unoccupied: {
+		enabled: true,
+		suggestionType: SuggestionType.CONFLICT_LIGHTS_UNOCCUPIED,
+		thresholds: { minutes: CONFLICT_LIGHTS_UNOCCUPIED_MINUTES },
+		detection: {
+			heatingStateKeys: [],
+			heatingDeviceCategories: [],
+			coolingStateKeys: [],
+			coolingDeviceCategories: [],
+			contactStateKey: null,
+			lightDeviceCategory: 'lighting',
+			lightStateKey: 'light.on',
+			occupancyStateKey: 'occupancy.detected',
+		},
+		messages: {
+			title: 'Lights on in unoccupied room',
+			reason:
+				'${spaceName} lights are on but the room appears unoccupied for over ${minutes} minutes. Turn off the lights?',
+		},
+	},
+};
+
+function makeRulesLoader(overrides: Partial<Record<string, ResolvedConflictRule>> = {}): EvaluatorRulesLoaderService {
+	const rules = { ...defaultConflictRules, ...overrides };
+
+	return {
+		getAnomalyRule: jest.fn(),
+		getEnergyRule: jest.fn(),
+		getConflictRule: jest.fn((key: string) => rules[key]),
+		getPatternRule: jest.fn(),
+		onModuleInit: jest.fn(),
+		loadAllRules: jest.fn(),
+	} as unknown as EvaluatorRulesLoaderService;
 }
 
 describe('ConflictDetectorEvaluator', () => {
@@ -30,7 +108,7 @@ describe('ConflictDetectorEvaluator', () => {
 			}),
 		};
 
-		service = new ConflictDetectorEvaluator(configService as unknown as ConfigService);
+		service = new ConflictDetectorEvaluator(configService as unknown as ConfigService, makeRulesLoader());
 	});
 
 	it('should have the name "ConflictDetector"', () => {
@@ -527,25 +605,16 @@ describe('ConflictDetectorEvaluator', () => {
 				],
 			});
 
-			// Step 1: Room unoccupied - seeds tracker
 			await service.evaluate(unoccupiedContext);
-
 			const tracker = (service as any).occupancyTracker as Map<string, number>;
-
 			expect(tracker.has('space-1::lights_unoccupied')).toBe(true);
 
-			// Step 2: Room becomes occupied - should clear tracker
 			await service.evaluate(occupiedContext);
-
 			expect(tracker.has('space-1::lights_unoccupied')).toBe(false);
 
-			// Step 3: Room becomes unoccupied again - should re-seed, not carry old timestamp
 			await service.evaluate(unoccupiedContext);
-
 			const newFirstSeen = tracker.get('space-1::lights_unoccupied') ?? 0;
-
 			expect(newFirstSeen).toBeGreaterThan(0);
-			// The new firstSeen should be recent (within last second), not the stale original
 			expect(Date.now() - newFirstSeen).toBeLessThan(1000);
 		});
 
@@ -588,16 +657,11 @@ describe('ConflictDetectorEvaluator', () => {
 				],
 			});
 
-			// Seed tracker
 			await service.evaluate(lightsOnContext);
-
 			const tracker = (service as any).occupancyTracker as Map<string, number>;
-
 			expect(tracker.has('space-1::lights_unoccupied')).toBe(true);
 
-			// Lights turn off - should clear tracker
 			await service.evaluate(lightsOffContext);
-
 			expect(tracker.has('space-1::lights_unoccupied')).toBe(false);
 		});
 
@@ -622,9 +686,7 @@ describe('ConflictDetectorEvaluator', () => {
 			});
 
 			const results = await service.evaluate(context);
-			const conflictResults = results.filter((r) => r.type === SuggestionType.CONFLICT_LIGHTS_UNOCCUPIED);
-
-			expect(conflictResults).toHaveLength(0);
+			expect(results.filter((r) => r.type === SuggestionType.CONFLICT_LIGHTS_UNOCCUPIED)).toHaveLength(0);
 		});
 
 		it('should not detect when there is no occupancy sensor', async () => {
@@ -641,16 +703,11 @@ describe('ConflictDetectorEvaluator', () => {
 			});
 
 			const results = await service.evaluate(context);
-			const conflictResults = results.filter((r) => r.type === SuggestionType.CONFLICT_LIGHTS_UNOCCUPIED);
-
-			expect(conflictResults).toHaveLength(0);
+			expect(results.filter((r) => r.type === SuggestionType.CONFLICT_LIGHTS_UNOCCUPIED)).toHaveLength(0);
 		});
 
 		it('should respect configurable unoccupied duration', async () => {
-			configService.getModuleConfig.mockReturnValue({
-				enabled: true,
-				conflictLightsUnoccupiedMinutes: 30,
-			});
+			configService.getModuleConfig.mockReturnValue({ enabled: true, conflictLightsUnoccupiedMinutes: 30 });
 
 			const context = makeContext({
 				devices: [
@@ -672,16 +729,11 @@ describe('ConflictDetectorEvaluator', () => {
 			});
 
 			await service.evaluate(context);
-
-			// Set to 20 minutes ago (below 30 min threshold)
 			const tracker = (service as any).occupancyTracker as Map<string, number>;
-
 			tracker.set('space-1::lights_unoccupied', Date.now() - 20 * 60 * 1000);
 
 			const results = await service.evaluate(context);
-			const conflictResults = results.filter((r) => r.type === SuggestionType.CONFLICT_LIGHTS_UNOCCUPIED);
-
-			expect(conflictResults).toHaveLength(0);
+			expect(results.filter((r) => r.type === SuggestionType.CONFLICT_LIGHTS_UNOCCUPIED)).toHaveLength(0);
 		});
 
 		it('should reset occupancy tracker via public method', async () => {
@@ -704,16 +756,11 @@ describe('ConflictDetectorEvaluator', () => {
 				],
 			});
 
-			// Seed the tracker
 			await service.evaluate(context);
-
 			const tracker = (service as any).occupancyTracker as Map<string, number>;
-
 			expect(tracker.has('space-1::lights_unoccupied')).toBe(true);
 
-			// Reset
 			service.resetOccupancyTracker('space-1');
-
 			expect(tracker.has('space-1::lights_unoccupied')).toBe(false);
 		});
 	});
@@ -748,16 +795,11 @@ describe('ConflictDetectorEvaluator', () => {
 			});
 
 			await service.evaluate(context);
-
 			const tracker = (service as any).occupancyTracker as Map<string, number>;
-
 			tracker.set('space-1::lights_unoccupied', Date.now() - (CONFLICT_LIGHTS_UNOCCUPIED_MINUTES + 1) * 60 * 1000);
 
 			const results = await service.evaluate(context);
-			const conflictResults = results.filter((r) => r.type === SuggestionType.CONFLICT_LIGHTS_UNOCCUPIED);
-
-			// Should trigger with default threshold (15 min)
-			expect(conflictResults).toHaveLength(1);
+			expect(results.filter((r) => r.type === SuggestionType.CONFLICT_LIGHTS_UNOCCUPIED)).toHaveLength(1);
 		});
 	});
 
@@ -800,11 +842,8 @@ describe('ConflictDetectorEvaluator', () => {
 				],
 			});
 
-			// Seed occupancy tracker
 			await service.evaluate(context);
-
 			const tracker = (service as any).occupancyTracker as Map<string, number>;
-
 			tracker.set('space-1::lights_unoccupied', Date.now() - (CONFLICT_LIGHTS_UNOCCUPIED_MINUTES + 5) * 60 * 1000);
 
 			const results = await service.evaluate(context);

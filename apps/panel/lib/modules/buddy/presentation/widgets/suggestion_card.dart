@@ -104,6 +104,10 @@ class _BuddySuggestionCardState extends State<BuddySuggestionCard>
 		}
 	}
 
+	bool get _isActionable =>
+		!widget.suggestion.type.isWarning &&
+		widget.suggestion.type != BuddySuggestionType.generalTip;
+
 	@override
 	Widget build(BuildContext context) {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -138,6 +142,14 @@ class _BuddySuggestionCardState extends State<BuddySuggestionCard>
 						color: cardBg,
 						borderRadius: BorderRadius.circular(AppBorderRadius.medium),
 						border: Border.all(color: borderColor),
+						boxShadow: [
+							BoxShadow(
+								color: (isDark ? Colors.black : Colors.black).withValues(alpha: isDark ? 0.4 : 0.12),
+								blurRadius: 12,
+								spreadRadius: 1,
+								offset: const Offset(0, 4),
+							),
+						],
 					),
 					child: Column(
 						crossAxisAlignment: CrossAxisAlignment.start,
@@ -175,51 +187,81 @@ class _BuddySuggestionCardState extends State<BuddySuggestionCard>
 							Row(
 								mainAxisAlignment: MainAxisAlignment.end,
 								children: [
-									TextButton(
-										onPressed: _isProcessing
-											? null
-											: () => _submitFeedback('dismissed'),
-										child: Text(
-											'Dismiss',
-											style: TextStyle(
-												fontSize: AppFontSize.small,
-												color: bodyColor,
+									Theme(
+										data: ThemeData(
+											outlinedButtonTheme: isDark
+												? AppOutlinedButtonsDarkThemes.base
+												: AppOutlinedButtonsLightThemes.base,
+										),
+										child: OutlinedButton(
+											onPressed: _isProcessing
+												? null
+												: () => _submitFeedback('dismissed'),
+											style: OutlinedButton.styleFrom(
+												textStyle: TextStyle(fontSize: AppFontSize.small),
+												padding: EdgeInsets.symmetric(
+													horizontal: AppSpacings.pLg,
+													vertical: AppSpacings.pSm,
+												),
 											),
+											child: const Text('Dismiss'),
 										),
 									),
 									SizedBox(width: AppSpacings.pMd),
-									FilledButton.icon(
-										onPressed: _isProcessing
-											? null
-											: () => _submitFeedback('applied'),
-										icon: _isProcessing
-											? SizedBox(
-												width: AppSpacings.scale(14),
-												height: AppSpacings.scale(14),
-												child: CircularProgressIndicator(
-													strokeWidth: 2,
-													color: Colors.white,
+									Theme(
+										data: ThemeData(
+											filledButtonTheme: isDark
+												? AppFilledButtonsDarkThemes.primary
+												: AppFilledButtonsLightThemes.primary,
+										),
+										child: _isActionable
+											? FilledButton.icon(
+												onPressed: _isProcessing
+													? null
+													: () => _submitFeedback('applied'),
+												icon: _isProcessing
+													? SizedBox(
+														width: AppSpacings.scale(14),
+														height: AppSpacings.scale(14),
+														child: CircularProgressIndicator(
+															strokeWidth: 2,
+															color: Colors.white,
+														),
+													)
+													: Icon(
+														Icons.check,
+														size: AppSpacings.scale(16),
+													),
+												label: Text(
+													'Apply',
+													style: TextStyle(
+														fontSize: AppFontSize.small,
+													),
+												),
+												style: FilledButton.styleFrom(
+													padding: EdgeInsets.symmetric(
+														horizontal: AppSpacings.pLg,
+														vertical: AppSpacings.pSm,
+													),
 												),
 											)
-											: Icon(
-												Icons.check,
-												size: AppSpacings.scale(16),
+											: FilledButton(
+												onPressed: _isProcessing
+													? null
+													: () => _submitFeedback('applied'),
+												style: FilledButton.styleFrom(
+													padding: EdgeInsets.symmetric(
+														horizontal: AppSpacings.pLg,
+														vertical: AppSpacings.pSm,
+													),
+												),
+												child: Text(
+													'Got it',
+													style: TextStyle(
+														fontSize: AppFontSize.small,
+													),
+												),
 											),
-										label: Text(
-											'Accept',
-											style: TextStyle(
-												fontSize: AppFontSize.small,
-											),
-										),
-										style: FilledButton.styleFrom(
-											backgroundColor: accentColor,
-											padding: EdgeInsets.symmetric(
-												horizontal: AppSpacings.pLg,
-												vertical: AppSpacings.pSm,
-											),
-											minimumSize: Size.zero,
-											tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-										),
 									),
 								],
 							),

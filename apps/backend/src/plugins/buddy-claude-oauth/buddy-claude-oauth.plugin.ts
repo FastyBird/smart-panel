@@ -54,33 +54,28 @@ export class BuddyClaudeOauthPlugin implements OnModuleInit {
 
 		this.extensionsService.registerPluginMetadata({
 			type: BUDDY_CLAUDE_OAUTH_PLUGIN_NAME,
-			name: 'Buddy Claude OAuth',
-			description: 'LLM provider for Buddy module using Anthropic Claude with OAuth authentication',
+			name: 'Buddy Claude Setup Token',
+			description: 'LLM provider for Buddy module using Anthropic Claude with setup-token authentication',
 			author: 'FastyBird',
-			readme: `# Buddy Claude OAuth Provider
+			readme: `# Buddy Claude Setup Token Provider
 
-LLM provider plugin for the Buddy module using the Anthropic Claude API with OAuth authentication.
+LLM provider plugin for the Buddy module using the Anthropic Claude API with setup-token authentication.
 
 ## Features
 
 - **Claude Models** - Access to Claude Sonnet, Opus, and Haiku models
-- **OAuth Authentication** - Uses OAuth2 client credentials for secure API access
-- **Token Refresh** - Automatic access token refresh using refresh tokens
+- **Setup Token** - Uses a setup-token from your Claude subscription for API access
 
 ## Setup
 
-1. Register an OAuth application at [Anthropic](https://console.anthropic.com)
-2. Obtain client ID and client secret
-3. Complete the OAuth flow to get access and refresh tokens
-4. Enter the credentials in plugin configuration
-5. Set the buddy module \`provider\` to \`${BUDDY_CLAUDE_OAUTH_PLUGIN_NAME}\`
+1. Run \`claude setup-token\` in your terminal (requires Claude Code CLI)
+2. Copy the generated token
+3. Paste the token in plugin configuration
+4. Set the buddy module \`provider\` to \`${BUDDY_CLAUDE_OAUTH_PLUGIN_NAME}\`
 
 ## Configuration
 
-- **Client ID** - OAuth client ID (required)
-- **Client Secret** - OAuth client secret (optional)
-- **Access Token** - OAuth access token
-- **Refresh Token** - OAuth refresh token for automatic renewal
+- **Setup Token** - The token obtained from \`claude setup-token\` (required)
 - **Model** - Model name to use (default: claude-sonnet-4-20250514)`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',

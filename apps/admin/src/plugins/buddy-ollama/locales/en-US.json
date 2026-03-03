@@ -1,0 +1,31 @@
+{
+	"headings": {
+		"aboutApiSettings": "Ollama settings"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Enabled"
+			},
+			"model": {
+				"title": "Model",
+				"placeholder": "e.g., llama3, mistral, codellama",
+				"description": "The Ollama model to use for generating responses"
+			},
+			"baseUrl": {
+				"title": "Base URL",
+				"placeholder": "e.g., http://localhost:11434",
+				"description": "The URL of your local Ollama instance"
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Ollama settings have been updated",
+			"notEdited": "Failed to update Ollama settings"
+		}
+	},
+	"texts": {
+		"aboutApiSettings": "Configure your local Ollama instance settings. Ollama runs locally and does not require an API key. Make sure Ollama is running and accessible at the configured URL."
+	}
+}

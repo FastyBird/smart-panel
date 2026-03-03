@@ -4,11 +4,11 @@ import { ConfigService } from '../../config/services/config.service';
 import { BUDDY_MODULE_NAME, LEGACY_PROVIDER_MAP } from '../buddy.constants';
 import { BuddyProviderNotConfiguredException, BuddyProviderTimeoutException } from '../buddy.exceptions';
 import { BuddyConfigModel } from '../models/config.model';
-import { ChatMessage, LlmOptions } from '../platforms/llm-provider.platform';
+import { ChatMessage, LlmOptions, LlmResponse } from '../platforms/llm-provider.platform';
 
 import { LlmProviderRegistryService } from './llm-provider-registry.service';
 
-export { ChatMessage, LlmOptions } from '../platforms/llm-provider.platform';
+export { ChatMessage, LlmOptions, LlmResponse } from '../platforms/llm-provider.platform';
 
 const DEFAULT_TIMEOUT = 30_000;
 
@@ -21,7 +21,7 @@ export class LlmProviderService {
 		private readonly providerRegistry: LlmProviderRegistryService,
 	) {}
 
-	async sendMessage(systemPrompt: string, messages: ChatMessage[], options?: LlmOptions): Promise<string> {
+	async sendMessage(systemPrompt: string, messages: ChatMessage[], options?: LlmOptions): Promise<LlmResponse> {
 		const config = this.getConfig();
 		const providerName = LEGACY_PROVIDER_MAP.get(config.provider) ?? config.provider;
 

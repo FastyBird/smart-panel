@@ -1,0 +1,33 @@
+{
+	"headings": {
+		"aboutApiSettings": "Claude setup token settings"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Enabled"
+			},
+			"accessToken": {
+				"title": "Setup token",
+				"placeholder": "Paste your setup token here",
+				"howTo": "Run",
+				"howToSuffix": "in your terminal and paste the generated token here.",
+				"machineNote": "The command can be run on any machine with the Claude CLI installed — it does not need to be the same machine running the Smart Panel backend."
+			},
+			"model": {
+				"title": "Model",
+				"placeholder": "e.g., claude-sonnet-4-20250514",
+				"description": "The Claude model to use for generating responses"
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Claude setup token settings have been updated",
+			"notEdited": "Failed to update Claude setup token settings"
+		}
+	},
+	"texts": {
+		"aboutApiSettings": "Configure your Anthropic Claude connection using a setup token. The setup token authenticates the Smart Panel with your Claude subscription — no API key required."
+	}
+}

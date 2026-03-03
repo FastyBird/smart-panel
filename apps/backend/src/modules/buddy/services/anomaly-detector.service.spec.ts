@@ -9,6 +9,8 @@ import {
 	ANOMALY_UNUSUAL_ACTIVITY_WINDOW_MINUTES,
 	SuggestionType,
 } from '../buddy.constants';
+import { EvaluatorRulesLoaderService } from '../spec/evaluator-rules-loader.service';
+import { ResolvedAnomalyRule } from '../spec/evaluator-rules.types';
 
 import { ActionObserverService, ActionRecord } from './action-observer.service';
 import { AnomalyDetectorEvaluator } from './anomaly-detector.service';
@@ -17,6 +19,7 @@ import { BuddyContext } from './buddy-context.service';
 function makeContext(overrides: Partial<BuddyContext> = {}): BuddyContext {
 	return {
 		timestamp: new Date().toISOString(),
+		timezone: 'UTC',
 		spaces: overrides.spaces ?? [{ id: 'space-1', name: 'Living Room', category: 'living_room', deviceCount: 3 }],
 		devices: overrides.devices ?? [],
 		scenes: overrides.scenes ?? [],
@@ -36,6 +39,73 @@ function makeAction(overrides: Partial<ActionRecord> = {}): ActionRecord {
 	};
 }
 
+const defaultAnomalyRules: Record<string, ResolvedAnomalyRule> = {
+	temperature_drift: {
+		enabled: true,
+		suggestionType: SuggestionType.ANOMALY_SENSOR_DRIFT,
+		thresholds: { degrees: ANOMALY_TEMPERATURE_DRIFT_THRESHOLD },
+		filters: {
+			setpointDeviceCategories: ['thermostat'],
+			readingPropertyCategory: 'temperature',
+			deviceCategories: [],
+			valueTypes: ['number'],
+			excludeProperties: [],
+		},
+		messages: {
+			title: 'Temperature significantly off setpoint',
+			reason:
+				'${spaceName} temperature (${sensorValue}°C) is significantly ${direction} setpoint (${setpointValue}°C). Check the thermostat or window.',
+		},
+	},
+	stuck_sensor: {
+		enabled: true,
+		suggestionType: SuggestionType.ANOMALY_STUCK_SENSOR,
+		thresholds: { hours: ANOMALY_STUCK_SENSOR_HOURS },
+		filters: {
+			setpointDeviceCategories: [],
+			readingPropertyCategory: null,
+			deviceCategories: ['sensor'],
+			valueTypes: ['number'],
+			excludeProperties: ['battery_level', 'link_quality', 'signal_strength'],
+		},
+		messages: {
+			title: 'Sensor value appears stuck',
+			reason:
+				'${deviceName} in ${spaceName}: "${propertyKey}" has been ${value} for ${stuckHours} hours. The sensor may need attention.',
+		},
+	},
+	unusual_activity: {
+		enabled: true,
+		suggestionType: SuggestionType.ANOMALY_UNUSUAL_ACTIVITY,
+		thresholds: { count: ANOMALY_UNUSUAL_ACTIVITY_THRESHOLD, window_minutes: ANOMALY_UNUSUAL_ACTIVITY_WINDOW_MINUTES },
+		filters: {
+			setpointDeviceCategories: [],
+			readingPropertyCategory: null,
+			deviceCategories: [],
+			valueTypes: [],
+			excludeProperties: [],
+		},
+		messages: {
+			title: 'Unusual device activity detected',
+			reason:
+				'${deviceName} in ${spaceName} has been triggered ${actionCount} times in the last ${windowMinutes} minutes. This might indicate an issue.',
+		},
+	},
+};
+
+function makeRulesLoader(overrides: Partial<Record<string, ResolvedAnomalyRule>> = {}): EvaluatorRulesLoaderService {
+	const rules = { ...defaultAnomalyRules, ...overrides };
+
+	return {
+		getAnomalyRule: jest.fn((key: string) => rules[key]),
+		getEnergyRule: jest.fn(),
+		getConflictRule: jest.fn(),
+		getPatternRule: jest.fn(),
+		onModuleInit: jest.fn(),
+		loadAllRules: jest.fn(),
+	} as unknown as EvaluatorRulesLoaderService;
+}
+
 describe('AnomalyDetectorEvaluator', () => {
 	let service: AnomalyDetectorEvaluator;
 	let actionObserver: ActionObserverService;
@@ -53,7 +123,11 @@ describe('AnomalyDetectorEvaluator', () => {
 		};
 
 		actionObserver = new ActionObserverService();
-		service = new AnomalyDetectorEvaluator(configService as unknown as ConfigService, actionObserver);
+		service = new AnomalyDetectorEvaluator(
+			configService as unknown as ConfigService,
+			actionObserver,
+			makeRulesLoader(),
+		);
 	});
 
 	it('should have the name "AnomalyDetector"', () => {
@@ -363,6 +437,41 @@ describe('AnomalyDetectorEvaluator', () => {
 			// diff = 6, threshold = 10, should not trigger
 			expect(results).toHaveLength(0);
 		});
+
+		it('should return empty results when temperature_drift rule is disabled', async () => {
+			service = new AnomalyDetectorEvaluator(
+				configService as unknown as ConfigService,
+				actionObserver,
+				makeRulesLoader({
+					temperature_drift: { ...defaultAnomalyRules.temperature_drift, enabled: false },
+				}),
+			);
+
+			const context = makeContext({
+				spaces: [{ id: 'space-1', name: 'Bedroom', category: 'bedroom', deviceCount: 2 }],
+				devices: [
+					{
+						id: 'sensor-1',
+						name: 'Temp Sensor',
+						space: 'space-1',
+						category: DeviceCategory.SENSOR,
+						state: { 'temperature.temperature': 30 },
+					},
+					{
+						id: 'thermo-1',
+						name: 'Thermostat',
+						space: 'space-1',
+						category: DeviceCategory.THERMOSTAT,
+						state: { 'thermostat.temperature': 22 },
+					},
+				],
+			});
+
+			const results = await service.evaluate(context);
+			const driftResults = results.filter((r) => r.type === SuggestionType.ANOMALY_SENSOR_DRIFT);
+
+			expect(driftResults).toHaveLength(0);
+		});
 	});
 
 	// ──────────────────────────────────────────
@@ -528,10 +637,7 @@ describe('AnomalyDetectorEvaluator', () => {
 			const tracker = (service as any).stuckSensorTracker as Map<string, { value: unknown; since: number }>;
 			const key = 'sensor-1::temperature.temperature';
 
-			tracker.set(key, {
-				value: 21.5,
-				since: Date.now() - 10 * 60 * 60 * 1000, // 10 hours ago
-			});
+			tracker.set(key, { value: 21.5, since: Date.now() - 10 * 60 * 60 * 1000 });
 
 			// Now value changes
 			const context2 = makeContext({
@@ -717,6 +823,67 @@ describe('AnomalyDetectorEvaluator', () => {
 			const key = 'sensor-1::temperature.temperature';
 
 			tracker.set(key, { value: 21.5, since: Date.now() - 3 * 60 * 60 * 1000 });
+
+			const results = await service.evaluate(context);
+
+			expect(results.filter((r) => r.type === SuggestionType.ANOMALY_STUCK_SENSOR)).toHaveLength(0);
+		});
+
+		it('should exclude properties listed in exclude_properties filter', async () => {
+			const context = makeContext({
+				devices: [
+					{
+						id: 'sensor-1',
+						name: 'Multi Sensor',
+						space: 'space-1',
+						category: DeviceCategory.SENSOR,
+						state: {
+							'temperature.temperature': 21.5,
+							'battery.battery_level': 95,
+							'signal.link_quality': 100,
+						},
+					},
+				],
+			});
+
+			await service.evaluate(context);
+
+			const tracker = (service as any).stuckSensorTracker as Map<string, unknown>;
+
+			// Only temperature should be tracked, battery_level and link_quality should be excluded
+			expect(tracker.size).toBe(1);
+			expect(tracker.has('sensor-1::temperature.temperature')).toBe(true);
+			expect(tracker.has('sensor-1::battery.battery_level')).toBe(false);
+			expect(tracker.has('sensor-1::signal.link_quality')).toBe(false);
+		});
+
+		it('should return empty results when stuck_sensor rule is disabled', async () => {
+			service = new AnomalyDetectorEvaluator(
+				configService as unknown as ConfigService,
+				actionObserver,
+				makeRulesLoader({
+					stuck_sensor: { ...defaultAnomalyRules.stuck_sensor, enabled: false },
+				}),
+			);
+
+			const context = makeContext({
+				devices: [
+					{
+						id: 'sensor-1',
+						name: 'Temp Sensor',
+						space: 'space-1',
+						category: DeviceCategory.SENSOR,
+						state: { 'temperature.temperature': 21.5 },
+					},
+				],
+			});
+
+			await service.evaluate(context);
+
+			const tracker = (service as any).stuckSensorTracker as Map<string, unknown>;
+
+			// Tracker should remain empty when rule is disabled
+			expect(tracker.size).toBe(0);
 
 			const results = await service.evaluate(context);
 

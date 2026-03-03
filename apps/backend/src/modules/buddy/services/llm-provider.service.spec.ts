@@ -1,7 +1,7 @@
 import { BUDDY_MODULE_NAME, LLM_PROVIDER_NONE, MessageRole } from '../buddy.constants';
 import { BuddyProviderNotConfiguredException } from '../buddy.exceptions';
 import { BuddyConfigModel } from '../models/config.model';
-import { ChatMessage, ILlmProvider } from '../platforms/llm-provider.platform';
+import { ChatMessage, ILlmProvider, LlmResponse } from '../platforms/llm-provider.platform';
 
 import { LlmProviderRegistryService } from './llm-provider-registry.service';
 import { LlmProviderService } from './llm-provider.service';
@@ -25,6 +25,22 @@ describe('LlmProviderService', () => {
 	let claudeSendMessage: jest.Mock;
 	let openaiSendMessage: jest.Mock;
 
+	function mockLlmResponse(content: string, provider: string = 'mock-provider'): LlmResponse {
+		return {
+			content,
+			meta: {
+				provider,
+				model: 'mock-model',
+				inputTokens: 10,
+				outputTokens: 5,
+				finishReason: 'end_turn',
+				durationMs: 100,
+				cacheReadTokens: null,
+				cacheWriteTokens: null,
+			},
+		};
+	}
+
 	function makeMockProvider(type: string, sendMessageMock: jest.Mock): ILlmProvider {
 		return {
 			getType: () => type,
@@ -40,8 +56,8 @@ describe('LlmProviderService', () => {
 			getModuleConfig: jest.fn().mockReturnValue(makeConfig()),
 		};
 
-		claudeSendMessage = jest.fn().mockResolvedValue('Hello from mock');
-		openaiSendMessage = jest.fn().mockResolvedValue('Hello from mock');
+		claudeSendMessage = jest.fn().mockResolvedValue(mockLlmResponse('Hello from mock', 'buddy-claude-plugin'));
+		openaiSendMessage = jest.fn().mockResolvedValue(mockLlmResponse('Hello from mock', 'buddy-openai-plugin'));
 
 		registry = new LlmProviderRegistryService();
 		registry.register(makeMockProvider('buddy-claude-plugin', claudeSendMessage));
@@ -91,7 +107,8 @@ describe('LlmProviderService', () => {
 
 			const result = await service.sendMessage(systemPrompt, messages);
 
-			expect(result).toBe('Hello from mock');
+			expect(result.content).toBe('Hello from mock');
+			expect(result.meta.provider).toBe('buddy-claude-plugin');
 		});
 
 		it('should delegate to registered OpenAI provider', async () => {
@@ -99,7 +116,8 @@ describe('LlmProviderService', () => {
 
 			const result = await service.sendMessage(systemPrompt, messages);
 
-			expect(result).toBe('Hello from mock');
+			expect(result.content).toBe('Hello from mock');
+			expect(result.meta.provider).toBe('buddy-openai-plugin');
 		});
 
 		it('should pass the default model from the provider when no model in config', async () => {
@@ -122,7 +140,7 @@ describe('LlmProviderService', () => {
 
 			const result = await service.sendMessage(systemPrompt, messages);
 
-			expect(result).toBe('Hello from mock');
+			expect(result.content).toBe('Hello from mock');
 			expect(claudeSendMessage).toHaveBeenCalled();
 		});
 
@@ -131,19 +149,21 @@ describe('LlmProviderService', () => {
 
 			const result = await service.sendMessage(systemPrompt, messages);
 
-			expect(result).toBe('Hello from mock');
+			expect(result.content).toBe('Hello from mock');
 			expect(openaiSendMessage).toHaveBeenCalled();
 		});
 
 		it('should resolve legacy "ollama" to "buddy-ollama-plugin"', async () => {
-			const ollamaSendMessage = jest.fn().mockResolvedValue('Hello from ollama');
+			const ollamaSendMessage = jest
+				.fn()
+				.mockResolvedValue(mockLlmResponse('Hello from ollama', 'buddy-ollama-plugin'));
 
 			registry.register(makeMockProvider('buddy-ollama-plugin', ollamaSendMessage));
 			configService.getModuleConfig.mockReturnValue(makeConfig({ provider: 'ollama' }));
 
 			const result = await service.sendMessage(systemPrompt, messages);
 
-			expect(result).toBe('Hello from ollama');
+			expect(result.content).toBe('Hello from ollama');
 			expect(ollamaSendMessage).toHaveBeenCalled();
 		});
 	});

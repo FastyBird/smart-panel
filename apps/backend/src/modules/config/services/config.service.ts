@@ -245,12 +245,30 @@ export class ConfigService {
 			{} as Record<string, any>,
 		);
 
+		this.normalizeEmptyStrings(plainAppConfig);
+
 		const yamlContent = yaml.stringify(plainAppConfig);
 		fs.writeFileSync(path.resolve(this.configPath, this.filename), yamlContent, 'utf8');
 
 		this.config = null;
 
 		this.logger.log('[SAVE] Configuration saved successfully');
+	}
+
+	/**
+	 * Recursively converts empty strings to null in a plain object.
+	 * Prevents empty form fields from being persisted as "" instead of null.
+	 */
+	private normalizeEmptyStrings(obj: Record<string, unknown>): void {
+		for (const key of Object.keys(obj)) {
+			const value = obj[key];
+
+			if (typeof value === 'string' && value.trim() === '') {
+				obj[key] = null;
+			} else if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+				this.normalizeEmptyStrings(value as Record<string, unknown>);
+			}
+		}
 	}
 
 	private loadPlugins(parsedConfig: { [keys: string]: unknown }): PluginConfigModel[] {

@@ -52,12 +52,25 @@ describe('BuddyConversationService', () => {
 		};
 
 		llmProvider = {
-			sendMessage: jest.fn().mockResolvedValue('Mocked response'),
+			sendMessage: jest.fn().mockResolvedValue({
+				content: 'Mocked response',
+				meta: {
+					provider: 'buddy-claude-plugin',
+					model: 'claude-sonnet-4-20250514',
+					inputTokens: 100,
+					outputTokens: 50,
+					finishReason: 'end_turn',
+					durationMs: 1200,
+					cacheReadTokens: null,
+					cacheWriteTokens: null,
+				},
+			}),
 		};
 
 		contextService = {
 			buildContext: jest.fn().mockResolvedValue({
 				timestamp: new Date().toISOString(),
+				timezone: 'Europe/Prague',
 				spaces: [],
 				devices: [],
 				scenes: [],
@@ -82,11 +95,20 @@ describe('BuddyConversationService', () => {
 	});
 
 	describe('findAll', () => {
-		it('should return all conversations', async () => {
+		it('should return all conversations when no spaceId filter', async () => {
 			const result = await service.findAll();
 
 			expect(result).toHaveLength(1);
-			expect(conversationRepo.find).toHaveBeenCalledWith({ order: { createdAt: 'DESC' } });
+			expect(conversationRepo.find).toHaveBeenCalledWith({ where: undefined, order: { createdAt: 'DESC' } });
+		});
+
+		it('should filter conversations by spaceId when provided', async () => {
+			await service.findAll('space-1');
+
+			expect(conversationRepo.find).toHaveBeenCalledWith({
+				where: { spaceId: 'space-1' },
+				order: { createdAt: 'DESC' },
+			});
 		});
 	});
 
@@ -144,6 +166,14 @@ describe('BuddyConversationService', () => {
 
 			expect(result.role).toBe(MessageRole.ASSISTANT);
 			expect(result.content).toBe('Mocked response');
+			expect(result.metadata).toEqual(
+				expect.objectContaining({
+					provider: 'buddy-claude-plugin',
+					model: 'claude-sonnet-4-20250514',
+					inputTokens: 100,
+					outputTokens: 50,
+				}),
+			);
 		});
 
 		it('should build context from context service', async () => {
@@ -166,6 +196,7 @@ describe('BuddyConversationService', () => {
 		it('should format energy values with kW units and omit battery when absent', async () => {
 			contextService.buildContext.mockResolvedValue({
 				timestamp: new Date().toISOString(),
+				timezone: 'Europe/Prague',
 				spaces: [],
 				devices: [],
 				scenes: [],
@@ -188,6 +219,7 @@ describe('BuddyConversationService', () => {
 		it('should include battery level in energy section when present', async () => {
 			contextService.buildContext.mockResolvedValue({
 				timestamp: new Date().toISOString(),
+				timezone: 'Europe/Prague',
 				spaces: [],
 				devices: [],
 				scenes: [],
@@ -201,6 +233,141 @@ describe('BuddyConversationService', () => {
 			const systemPrompt = llmProvider.sendMessage.mock.calls[0][0] as string;
 
 			expect(systemPrompt).toContain('Battery level: 85%');
+		});
+
+		it('should render enriched weather in system prompt', async () => {
+			contextService.buildContext.mockResolvedValue({
+				timestamp: new Date().toISOString(),
+				timezone: 'Europe/Prague',
+				spaces: [],
+				devices: [],
+				scenes: [],
+				weather: {
+					current: {
+						temperature: 22.5,
+						feelsLike: 21.0,
+						conditions: 'partly cloudy',
+						humidity: 55,
+						pressure: 1013,
+						wind: { speed: 3.5, deg: 250, gust: 5.2 },
+						clouds: 40,
+						rain: null,
+						snow: null,
+						sunrise: '2025-01-16T07:15:00.000Z',
+						sunset: '2025-01-16T16:30:00.000Z',
+					},
+					forecast: [],
+					alerts: [],
+				},
+				energy: null,
+				recentIntents: [],
+			});
+
+			await service.sendMessage('conv-1', 'Weather?');
+
+			const systemPrompt = llmProvider.sendMessage.mock.calls[0][0] as string;
+
+			expect(systemPrompt).toContain('Temperature: 22.5°C (feels like 21°C)');
+			expect(systemPrompt).toContain('Conditions: partly cloudy, Clouds: 40%');
+			expect(systemPrompt).toContain('Humidity: 55%, Pressure: 1013 hPa');
+			expect(systemPrompt).toContain('Wind: 3.5 m/s (gusts 5.2 m/s)');
+			expect(systemPrompt).not.toContain('Rain:');
+			expect(systemPrompt).toContain('Sunrise:');
+			expect(systemPrompt).toContain('Sunset:');
+		});
+
+		it('should render weather forecast in system prompt', async () => {
+			contextService.buildContext.mockResolvedValue({
+				timestamp: new Date().toISOString(),
+				timezone: 'Europe/Prague',
+				spaces: [],
+				devices: [],
+				scenes: [],
+				weather: {
+					current: {
+						temperature: 22.5,
+						feelsLike: 21.0,
+						conditions: 'partly cloudy',
+						humidity: 55,
+						pressure: 1013,
+						wind: { speed: 3.5, deg: 250, gust: null },
+						clouds: 40,
+						rain: null,
+						snow: null,
+						sunrise: '2025-01-16T07:15:00.000Z',
+						sunset: '2025-01-16T16:30:00.000Z',
+					},
+					forecast: [
+						{
+							date: '2025-01-17T12:00:00.000Z',
+							tempDay: 12,
+							tempMin: 8,
+							tempMax: 15,
+							conditions: 'partly cloudy',
+							humidity: 60,
+							wind: 4.2,
+							rain: null,
+							snow: null,
+						},
+					],
+					alerts: [],
+				},
+				energy: null,
+				recentIntents: [],
+			});
+
+			await service.sendMessage('conv-1', 'Forecast?');
+
+			const systemPrompt = llmProvider.sendMessage.mock.calls[0][0] as string;
+
+			expect(systemPrompt).toContain('## Weather Forecast');
+			expect(systemPrompt).toContain('8–15°C');
+			expect(systemPrompt).toContain('wind 4.2 m/s');
+			expect(systemPrompt).toContain('humidity 60%');
+		});
+
+		it('should render weather alerts in system prompt', async () => {
+			contextService.buildContext.mockResolvedValue({
+				timestamp: new Date().toISOString(),
+				timezone: 'Europe/Prague',
+				spaces: [],
+				devices: [],
+				scenes: [],
+				weather: {
+					current: {
+						temperature: 22.5,
+						feelsLike: 21.0,
+						conditions: 'clear',
+						humidity: 55,
+						pressure: 1013,
+						wind: { speed: 3.5, deg: 250, gust: null },
+						clouds: 0,
+						rain: null,
+						snow: null,
+						sunrise: '2025-01-16T07:15:00.000Z',
+						sunset: '2025-01-16T16:30:00.000Z',
+					},
+					forecast: [],
+					alerts: [
+						{
+							event: 'Heat Advisory',
+							start: '2025-01-16T12:00:00.000Z',
+							end: '2025-01-17T00:00:00.000Z',
+							description: 'High temperatures expected',
+						},
+					],
+				},
+				energy: null,
+				recentIntents: [],
+			});
+
+			await service.sendMessage('conv-1', 'Any alerts?');
+
+			const systemPrompt = llmProvider.sendMessage.mock.calls[0][0] as string;
+
+			expect(systemPrompt).toContain('## Weather Alerts');
+			expect(systemPrompt).toContain('Heat Advisory');
+			expect(systemPrompt).toContain('High temperatures expected');
 		});
 
 		it('should emit CONVERSATION_MESSAGE_RECEIVED event', async () => {

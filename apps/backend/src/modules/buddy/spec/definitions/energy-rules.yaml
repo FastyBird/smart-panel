@@ -1,0 +1,29 @@
+energy_rules:
+  excess_solar:
+    enabled: true
+    suggestion_type: energy_excess_solar
+    thresholds:
+      kw: 1
+    messages:
+      title: "Excess solar energy available"
+      reason: "Excess solar energy (${gridExport}kW being exported). Good time for high-load appliances."
+
+  high_consumption:
+    enabled: true
+    suggestion_type: energy_high_consumption
+    thresholds:
+      kw: 5
+    messages:
+      title: "High grid consumption"
+      reason: "Grid consumption is high (${gridConsumption}kW). Consider reducing load or shifting activities."
+
+  battery_low:
+    enabled: true
+    suggestion_type: energy_battery_low
+    thresholds:
+      percent: 20
+    conditions:
+      solar_must_be_zero: true
+    messages:
+      title: "Battery level low"
+      reason: "Battery level is low (${batteryLevel}%) with no solar production. Consider conserving energy."

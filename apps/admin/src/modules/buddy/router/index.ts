@@ -1,13 +1,13 @@
 import type { RouteRecordRaw } from 'vue-router';
 
 import { UsersModuleUserRole } from '../../../openapi.constants';
-import { RouteNames } from '../buddy.constants';
+import { BUDDY_MODULE_NAME, RouteNames } from '../buddy.constants';
 
 export const ModuleRoutes: RouteRecordRaw[] = [
 	{
-		path: 'buddy/settings',
-		name: RouteNames.BUDDY_SETTINGS,
-		component: () => import('../views/view-buddy-settings.vue'),
+		path: 'buddy',
+		name: RouteNames.BUDDY,
+		component: () => import('../views/view-buddy-chat.vue'),
 		meta: {
 			guards: {
 				authenticated: true,
@@ -15,7 +15,8 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 			},
 			title: 'Buddy',
 			icon: 'mdi:robot-happy',
-			menu: 3000,
+			menu: 12000,
+			module: BUDDY_MODULE_NAME,
 		},
 	},
 ];
