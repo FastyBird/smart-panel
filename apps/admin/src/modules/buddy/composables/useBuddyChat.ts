@@ -4,6 +4,8 @@ import { useBackend } from '../../../common';
 import { MODULES_PREFIX } from '../../../app.constants';
 import { BUDDY_MODULE_PREFIX } from '../buddy.constants';
 
+import { type IProviderStatus, useBuddyProviders } from './useBuddyProviders';
+
 interface IConversation {
 	id: string;
 	title: string | null;
@@ -18,16 +20,6 @@ interface IMessage {
 	role: 'user' | 'assistant';
 	content: string;
 	created_at: string;
-}
-
-export interface IProviderStatus {
-	type: string;
-	name: string;
-	description: string;
-	default_model: string;
-	enabled: boolean;
-	configured: boolean;
-	selected: boolean;
 }
 
 interface IUseBuddyChat {
@@ -53,11 +45,11 @@ interface IUseBuddyChat {
 
 export const useBuddyChat = (): IUseBuddyChat => {
 	const backend = useBackend();
+	const { providerStatuses, fetchProviderStatuses } = useBuddyProviders();
 
 	const conversations = ref<IConversation[]>([]);
 	const activeConversationId = ref<string | null>(null);
 	const messages = ref<IMessage[]>([]);
-	const providerStatuses = ref<IProviderStatus[]>([]);
 
 	const isLoadingConversations = ref<boolean>(false);
 	const isLoadingMessages = ref<boolean>(false);
@@ -104,20 +96,6 @@ export const useBuddyChat = (): IUseBuddyChat => {
 		}
 
 		return null;
-	};
-
-	const fetchProviderStatuses = async (): Promise<void> => {
-		try {
-			const response = await backend.client.GET(`/${MODULES_PREFIX}/${BUDDY_MODULE_PREFIX}/providers` as never);
-
-			const responseData = (response as { data?: { data: IProviderStatus[] } }).data;
-
-			if (typeof responseData !== 'undefined') {
-				providerStatuses.value = responseData.data;
-			}
-		} catch {
-			// Silently fail — provider statuses are non-critical
-		}
 	};
 
 	const fetchConversations = async (): Promise<void> => {

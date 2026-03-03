@@ -81,16 +81,14 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeMount, reactive, ref, watch } from 'vue';
+import { computed, onBeforeMount, reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElAlert, ElForm, ElFormItem, ElInput, ElOption, ElSelect, ElSwitch, ElTag, ElText, type FormRules } from 'element-plus';
 
-import { useBackend } from '../../../common';
-import { MODULES_PREFIX } from '../../../app.constants';
 import { FormResult, type FormResultType, Layout, useConfigModuleEditForm } from '../../config';
-import { BUDDY_MODULE_PREFIX, LEGACY_PROVIDER_MAP, LLM_PROVIDER_NONE } from '../buddy.constants';
-import type { IProviderStatus } from '../composables/useBuddyChat';
+import { LEGACY_PROVIDER_MAP, LLM_PROVIDER_NONE } from '../buddy.constants';
+import { useBuddyProviders } from '../composables/useBuddyProviders';
 import type { IBuddyConfigEditForm } from '../schemas/config.types';
 
 import type { IBuddyConfigFormProps } from './buddy-config-form.types';
@@ -124,20 +122,10 @@ if (rawProvider && LEGACY_PROVIDER_MAP.has(rawProvider)) {
 	normalizedConfig.provider = LEGACY_PROVIDER_MAP.get(rawProvider) ?? rawProvider;
 }
 
-const backend = useBackend();
-const providerStatuses = ref<IProviderStatus[]>([]);
+const { providerStatuses, fetchProviderStatuses } = useBuddyProviders();
 
 onBeforeMount(async (): Promise<void> => {
-	try {
-		const response = await backend.client.GET(`/${MODULES_PREFIX}/${BUDDY_MODULE_PREFIX}/providers` as never);
-		const responseData = (response as { data?: { data: IProviderStatus[] } }).data;
-
-		if (typeof responseData !== 'undefined') {
-			providerStatuses.value = responseData.data;
-		}
-	} catch {
-		// Provider statuses may not be available yet
-	}
+	await fetchProviderStatuses();
 });
 
 const { formEl, model, formChanged, submit, formResult } = useConfigModuleEditForm<IBuddyConfigEditForm>({

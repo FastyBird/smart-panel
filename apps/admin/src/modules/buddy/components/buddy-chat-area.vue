@@ -165,7 +165,7 @@ import { ElAlert, ElButton, ElEmpty, ElIcon, ElInput, ElResult, ElScrollbar, ElT
 
 import { Icon } from '@iconify/vue';
 
-import type { IProviderStatus } from '../composables/useBuddyChat';
+import type { IProviderStatus } from '../composables/useBuddyProviders';
 import BuddyMessageBubble from './buddy-message-bubble.vue';
 
 interface IMessage {
