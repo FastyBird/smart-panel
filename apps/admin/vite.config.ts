@@ -79,11 +79,6 @@ export default defineConfig((config: UserConfig): UserConfig => {
 					changeOrigin: true,
 					secure: false,
 				},
-				'/callback': {
-					target: `${env['FB_APP_HOST']}:${env['FB_BACKEND_PORT']}`,
-					changeOrigin: true,
-					secure: false,
-				},
 			},
 			watch: {
 				usePolling: true,
