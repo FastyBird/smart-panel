@@ -303,7 +303,7 @@ const handleGetUrl = async (): Promise<void> => {
 
 		authorizeUrl.value = responseData.data.authorize_url;
 	} catch (error) {
-		flashMessage.error(error instanceof Error ? error.message : t('buddyOpenaiCodexPlugin.messages.oauth.exchangeError'));
+		flashMessage.error(error instanceof Error ? error.message : t('buddyOpenaiCodexPlugin.messages.oauth.authorizeError'));
 	} finally {
 		isLoadingUrl.value = false;
 	}

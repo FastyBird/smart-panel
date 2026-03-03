@@ -54,6 +54,7 @@
 		},
 		"oauth": {
 			"urlCopied": "URL copied to clipboard",
+			"authorizeError": "Failed to get authorization URL",
 			"exchangeSuccess": "Token exchange successful",
 			"exchangeError": "Token exchange failed"
 		}

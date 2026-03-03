@@ -76,26 +76,26 @@ export class BuddyProviderStatusService {
 		return statuses;
 	}
 
+	private hasValue(value: string | null | undefined): boolean {
+		return value !== null && value !== undefined && value !== '';
+	}
+
 	private isConfigured(type: string, config: PluginConfigWithEnabled): boolean {
 		switch (type) {
 			case 'buddy-openai-plugin':
 			case 'buddy-claude-plugin':
-				return config.apiKey !== null && config.apiKey !== undefined;
+				return this.hasValue(config.apiKey);
 
 			case 'buddy-ollama-plugin':
-				return config.baseUrl !== null && config.baseUrl !== undefined;
+				return this.hasValue(config.baseUrl);
 
 			case 'buddy-openai-codex-plugin':
 				return (
-					(config.accessToken !== null && config.accessToken !== undefined) ||
-					(config.clientId !== null &&
-						config.clientId !== undefined &&
-						config.refreshToken !== null &&
-						config.refreshToken !== undefined)
+					this.hasValue(config.accessToken) || (this.hasValue(config.clientId) && this.hasValue(config.refreshToken))
 				);
 
 			case 'buddy-claude-oauth-plugin':
-				return config.accessToken !== null && config.accessToken !== undefined;
+				return this.hasValue(config.accessToken);
 
 			default:
 				return false;
