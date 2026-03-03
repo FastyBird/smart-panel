@@ -353,18 +353,20 @@ const handleExchange = async (): Promise<void> => {
 			throw new Error(responseData?.data?.error || t('buddyOpenaiCodexPlugin.messages.oauth.exchangeError'));
 		}
 
-		const updatedConfig = (await configPluginsStore.get({ type: BUDDY_OPENAI_CODEX_PLUGIN_NAME })) as Record<string, unknown>;
+		const updatedConfig = (await configPluginsStore.get({ type: BUDDY_OPENAI_CODEX_PLUGIN_NAME })) as Record<string, unknown> | undefined;
 
-		if (updatedConfig.clientId) {
-			model.clientId = updatedConfig.clientId as string;
-		}
+		if (updatedConfig) {
+			if (updatedConfig.clientId) {
+				model.clientId = updatedConfig.clientId as string;
+			}
 
-		if (updatedConfig.accessToken) {
-			model.accessToken = updatedConfig.accessToken as string;
-		}
+			if (updatedConfig.accessToken) {
+				model.accessToken = updatedConfig.accessToken as string;
+			}
 
-		if (updatedConfig.refreshToken) {
-			model.refreshToken = updatedConfig.refreshToken as string;
+			if (updatedConfig.refreshToken) {
+				model.refreshToken = updatedConfig.refreshToken as string;
+			}
 		}
 
 		markSaved();

@@ -38,6 +38,16 @@
 			/>
 		</el-form-item>
 
+		<el-alert
+			v-if="providerFetchFailed"
+			type="warning"
+			show-icon
+			:closable="false"
+			style="margin-bottom: 18px"
+		>
+			{{ t('buddyModule.texts.providersFetchFailed') }}
+		</el-alert>
+
 		<el-form-item
 			:label="t('buddyModule.fields.config.provider.title')"
 			prop="provider"
@@ -122,7 +132,7 @@ if (rawProvider && LEGACY_PROVIDER_MAP.has(rawProvider)) {
 	normalizedConfig.provider = LEGACY_PROVIDER_MAP.get(rawProvider) ?? rawProvider;
 }
 
-const { providerStatuses, fetchProviderStatuses } = useBuddyProviders();
+const { providerStatuses, providerFetchFailed, fetchProviderStatuses } = useBuddyProviders();
 
 onBeforeMount(async (): Promise<void> => {
 	await fetchProviderStatuses();

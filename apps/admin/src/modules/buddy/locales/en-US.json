@@ -95,6 +95,7 @@
 		"daysAgo": "{n}d ago",
 		"noSpace": "No space",
 		"noActiveConversation": "No conversation selected",
+		"providersFetchFailed": "Failed to load available providers. The provider list may be incomplete.",
 		"moduleDisabled": "Buddy module is disabled",
 		"moduleDisabledHint": "The AI buddy module is currently disabled. Enable it in the system configuration to use chat and suggestions."
 	},
