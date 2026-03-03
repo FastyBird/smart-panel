@@ -353,7 +353,15 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen>
               ),
 
               // Suggestion toast notification
-              const BuddySuggestionToast(),
+              Consumer<BuddyService>(
+                builder: (context, buddyService, _) {
+                  if (!buddyService.isModuleEnabled) {
+                    return const SizedBox.shrink();
+                  }
+
+                  return const BuddySuggestionToast();
+                },
+              ),
 
               // Buddy FAB button
               Positioned(
@@ -443,6 +451,10 @@ class _BuddyFab extends StatelessWidget {
 
     return Consumer<BuddyService>(
       builder: (context, buddyService, _) {
+        if (!buddyService.isModuleEnabled) {
+          return const SizedBox.shrink();
+        }
+
         return GestureDetector(
           onTap: onTap,
           child: Stack(

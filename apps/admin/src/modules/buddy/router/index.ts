@@ -1,7 +1,7 @@
 import type { RouteRecordRaw } from 'vue-router';
 
 import { UsersModuleUserRole } from '../../../openapi.constants';
-import { RouteNames } from '../buddy.constants';
+import { BUDDY_MODULE_NAME, RouteNames } from '../buddy.constants';
 
 export const ModuleRoutes: RouteRecordRaw[] = [
 	{
@@ -15,7 +15,8 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 			},
 			title: 'Buddy',
 			icon: 'mdi:robot-happy',
-			menu: 3000,
+			menu: 12000,
+			module: BUDDY_MODULE_NAME,
 		},
 	},
 ];

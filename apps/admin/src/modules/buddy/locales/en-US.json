@@ -37,6 +37,9 @@
 		},
 		"configure": {
 			"title": "Configure Provider"
+		},
+		"goToSettings": {
+			"title": "Go to Settings"
 		}
 	},
 	"fields": {
@@ -88,7 +91,9 @@
 		"hoursAgo": "{n}h ago",
 		"daysAgo": "{n}d ago",
 		"noSpace": "No space",
-		"noActiveConversation": "No conversation selected"
+		"noActiveConversation": "No conversation selected",
+		"moduleDisabled": "Buddy module is disabled",
+		"moduleDisabledHint": "The AI buddy module is currently disabled. Enable it in the system configuration to use chat and suggestions."
 	},
 	"meta": {
 		"settings": {

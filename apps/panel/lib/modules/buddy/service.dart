@@ -2,10 +2,12 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import 'package:fastybird_smart_panel/modules/buddy/models/buddy_config.dart';
 import 'package:fastybird_smart_panel/modules/buddy/models/conversation.dart';
 import 'package:fastybird_smart_panel/modules/buddy/models/message.dart';
 import 'package:fastybird_smart_panel/modules/buddy/models/suggestion.dart';
 import 'package:fastybird_smart_panel/modules/buddy/repositories/buddy.dart';
+import 'package:fastybird_smart_panel/modules/config/repositories/module_config_repository.dart';
 
 /// Service that provides a single source of truth for buddy state.
 ///
@@ -14,11 +16,19 @@ import 'package:fastybird_smart_panel/modules/buddy/repositories/buddy.dart';
 class BuddyService extends ChangeNotifier {
 	final BuddyRepository _buddyRepository;
 
+	ModuleConfigRepository<BuddyConfigModel>? _configRepo;
 	Timer? _updateDebounce;
 
 	BuddyService({
 		required BuddyRepository buddyRepository,
 	}) : _buddyRepository = buddyRepository;
+
+	void setConfigRepository(ModuleConfigRepository<BuddyConfigModel> repo) {
+		_configRepo = repo;
+		repo.addListener(_scheduleUpdate);
+	}
+
+	bool get isModuleEnabled => _configRepo?.data?.enabled ?? true;
 
 	Future<void> initialize() async {
 		_buddyRepository.addListener(_scheduleUpdate);
@@ -200,6 +210,7 @@ class BuddyService extends ChangeNotifier {
 	@override
 	void dispose() {
 		_updateDebounce?.cancel();
+		_configRepo?.removeListener(_scheduleUpdate);
 		_buddyRepository.removeListener(_scheduleUpdate);
 		super.dispose();
 	}

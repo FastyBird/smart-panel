@@ -61,6 +61,8 @@ class BuddyModuleService {
 
 		_buddyConfigRepo = configModule.getModuleRepository<BuddyConfigModel>('buddy-module');
 
+		_buddyService.setConfigRepository(_buddyConfigRepo);
+
 		try {
 			await _buddyConfigRepo.fetchConfiguration();
 		} catch (e) {
