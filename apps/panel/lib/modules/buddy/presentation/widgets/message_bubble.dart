@@ -58,7 +58,7 @@ class MessageBubble extends StatelessWidget {
 					isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
 				crossAxisAlignment: CrossAxisAlignment.end,
 				children: [
-					if (!isUser) SizedBox(width: AppSpacings.pXl),
+					if (isUser) SizedBox(width: AppSpacings.pXl),
 					Flexible(
 						child: Container(
 							padding: EdgeInsets.symmetric(
@@ -104,7 +104,7 @@ class MessageBubble extends StatelessWidget {
 							),
 						),
 					),
-					if (isUser) SizedBox(width: AppSpacings.pXl),
+					if (!isUser) SizedBox(width: AppSpacings.pXl),
 				],
 			),
 		);
