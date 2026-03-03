@@ -148,8 +148,10 @@ const { formEl, model, formChanged, submit, formResult } = useConfigModuleEditFo
 	},
 });
 
+type TagType = 'primary' | 'success' | 'warning' | 'info' | 'danger';
+
 const providerOptions = computed(() => {
-	const options: { value: string; label: string; disabled: boolean; tag?: string; tagType?: string }[] = [
+	const options: { value: string; label: string; disabled: boolean; tag?: string; tagType?: TagType }[] = [
 		{
 			value: LLM_PROVIDER_NONE,
 			label: t('buddyModule.fields.config.provider.options.none'),
@@ -161,7 +163,7 @@ const providerOptions = computed(() => {
 
 	for (const provider of providerStatuses.value) {
 		let tag: string | undefined;
-		let tagType: string | undefined;
+		let tagType: TagType | undefined;
 
 		if (provider.enabled && !provider.configured) {
 			tag = t('buddyModule.fields.config.provider.notConfigured');

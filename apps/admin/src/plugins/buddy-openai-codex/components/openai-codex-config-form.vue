@@ -212,8 +212,10 @@ import {
 	type FormRules,
 } from 'element-plus';
 
+import { useBackend } from '../../../common';
 import { useFlashMessage } from '../../../common/composables/useFlashMessage';
 import { injectStoresManager } from '../../../common/services/store';
+import { PLUGINS_PREFIX } from '../../../app.constants';
 import { FormResult, type FormResultType, Layout, useConfigPluginEditForm } from '../../../modules/config';
 import { configPluginsStoreKey } from '../../../modules/config/store/keys';
 import { BUDDY_OPENAI_CODEX_MODELS } from '../buddy-openai-codex.models';
@@ -243,6 +245,7 @@ const emit = defineEmits<{
 const { t } = useI18n();
 
 const flashMessage = useFlashMessage();
+const backend = useBackend();
 
 const storesManager = injectStoresManager();
 const configPluginsStore = storesManager.getStore(configPluginsStoreKey);
@@ -286,17 +289,19 @@ const handleGetUrl = async (): Promise<void> => {
 
 	try {
 		const clientId = model.clientId || 'app_EMoamEEZ73f0CkXaXp7hrann';
-		const endpoint = `/api/v1/plugins/${BUDDY_OPENAI_CODEX_PLUGIN_PREFIX}/oauth/authorize?client_id=${encodeURIComponent(clientId)}`;
 
-		const response = await fetch(endpoint);
+		const response = await backend.client.GET(
+			`/${PLUGINS_PREFIX}/${BUDDY_OPENAI_CODEX_PLUGIN_PREFIX}/oauth/authorize` as never,
+			{ params: { query: { client_id: clientId } } } as never
+		);
 
-		if (!response.ok) {
-			throw new Error(`Failed to get authorization URL: ${response.status}`);
+		const responseData = (response as { data?: { data: { authorize_url: string } } }).data;
+
+		if (!responseData) {
+			throw new Error('Failed to get authorization URL');
 		}
 
-		const result = (await response.json()) as { data: { authorize_url: string } };
-
-		authorizeUrl.value = result.data.authorize_url;
+		authorizeUrl.value = responseData.data.authorize_url;
 	} catch (error) {
 		flashMessage.error(error instanceof Error ? error.message : t('buddyOpenaiCodexPlugin.messages.oauth.exchangeError'));
 	} finally {
@@ -326,25 +331,18 @@ const handleExchange = async (): Promise<void> => {
 	isExchanging.value = true;
 
 	try {
-		const endpoint = `/api/v1/plugins/${BUDDY_OPENAI_CODEX_PLUGIN_PREFIX}/oauth/exchange`;
+		const response = await backend.client.POST(
+			`/${PLUGINS_PREFIX}/${BUDDY_OPENAI_CODEX_PLUGIN_PREFIX}/oauth/exchange` as never,
+			{ body: { callback_url: callbackUrl.value } } as never
+		);
 
-		const response = await fetch(endpoint, {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ callback_url: callbackUrl.value }),
-		});
+		const responseData = (response as { data?: { data: { success: boolean; error?: string } } }).data;
 
-		if (!response.ok) {
-			throw new Error(`Exchange failed: ${response.status}`);
+		if (!responseData || !responseData.data.success) {
+			throw new Error(responseData?.data?.error || t('buddyOpenaiCodexPlugin.messages.oauth.exchangeError'));
 		}
 
-		const result = (await response.json()) as { data: { success: boolean; error?: string } };
-
-		if (!result.data.success) {
-			throw new Error(result.data.error || t('buddyOpenaiCodexPlugin.messages.oauth.exchangeError'));
-		}
-
-		const updatedConfig = await configPluginsStore.get({ type: BUDDY_OPENAI_CODEX_PLUGIN_NAME });
+		const updatedConfig = (await configPluginsStore.get({ type: BUDDY_OPENAI_CODEX_PLUGIN_NAME })) as Record<string, unknown>;
 
 		if (updatedConfig.clientId) {
 			model.clientId = updatedConfig.clientId as string;

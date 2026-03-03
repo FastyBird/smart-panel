@@ -1,4 +1,4 @@
-import { computed, nextTick, ref } from 'vue';
+import { type ComputedRef, type Ref, computed, nextTick, ref } from 'vue';
 
 import { useBackend } from '../../../common';
 import { MODULES_PREFIX } from '../../../app.constants';
@@ -31,18 +31,18 @@ export interface IProviderStatus {
 }
 
 interface IUseBuddyChat {
-	conversations: ReturnType<typeof ref<IConversation[]>>;
-	activeConversationId: ReturnType<typeof ref<string | null>>;
-	messages: ReturnType<typeof ref<IMessage[]>>;
-	activeConversation: ReturnType<typeof computed<IConversation | undefined>>;
-	hasActiveConversation: ReturnType<typeof computed<boolean>>;
-	isLoadingConversations: ReturnType<typeof ref<boolean>>;
-	isLoadingMessages: ReturnType<typeof ref<boolean>>;
-	isSending: ReturnType<typeof ref<boolean>>;
-	error: ReturnType<typeof ref<string | null>>;
-	isProviderNotConfigured: ReturnType<typeof computed<boolean>>;
-	providerStatuses: ReturnType<typeof ref<IProviderStatus[]>>;
-	selectedProviderStatus: ReturnType<typeof computed<IProviderStatus | undefined>>;
+	conversations: Ref<IConversation[]>;
+	activeConversationId: Ref<string | null>;
+	messages: Ref<IMessage[]>;
+	activeConversation: ComputedRef<IConversation | undefined>;
+	hasActiveConversation: ComputedRef<boolean>;
+	isLoadingConversations: Ref<boolean>;
+	isLoadingMessages: Ref<boolean>;
+	isSending: Ref<boolean>;
+	error: Ref<string | null>;
+	isProviderNotConfigured: ComputedRef<boolean>;
+	providerStatuses: Ref<IProviderStatus[]>;
+	selectedProviderStatus: ComputedRef<IProviderStatus | undefined>;
 	fetchConversations: () => Promise<void>;
 	fetchProviderStatuses: () => Promise<void>;
 	createConversation: (title?: string) => Promise<IConversation | undefined>;
@@ -70,7 +70,7 @@ export const useBuddyChat = (): IUseBuddyChat => {
 
 	const isProviderNotConfigured = computed<boolean>(() => {
 		if (providerStatuses.value.length === 0) {
-			return false;
+			return true;
 		}
 
 		const selected = selectedProviderStatus.value;
@@ -295,8 +295,10 @@ export const useBuddyChat = (): IUseBuddyChat => {
 				messages.value = [];
 
 				// Select the next available conversation
-				if (conversations.value.length > 0) {
-					await selectConversation(conversations.value[0].id);
+				const next = conversations.value[0];
+
+				if (next) {
+					await selectConversation(next.id);
 				}
 			}
 		} catch (err: unknown) {
