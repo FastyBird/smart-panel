@@ -271,15 +271,24 @@ const isConnected = computed<boolean>(() => {
 	return !!(model.accessToken || model.refreshToken);
 });
 
-const handleDisconnect = (): void => {
+const handleDisconnect = async (): Promise<void> => {
+	const prevAccessToken = model.accessToken;
+	const prevRefreshToken = model.refreshToken;
+
 	model.accessToken = null;
 	model.refreshToken = null;
 	authorizeUrl.value = null;
 	callbackUrl.value = '';
 
-	submit().catch(() => {
-		// The form is not valid
-	});
+	try {
+		await submit();
+	} catch {
+		// Restore tokens so the UI stays consistent with the server
+		model.accessToken = prevAccessToken;
+		model.refreshToken = prevRefreshToken;
+
+		flashMessage.error(t('buddyOpenaiCodexPlugin.messages.config.notEdited'));
+	}
 };
 
 const handleGetUrl = async (): Promise<void> => {
