@@ -38,6 +38,7 @@ export async function sendAnthropicMessage(
 	systemPrompt: string,
 	messages: ChatMessage[],
 	timeout: number,
+	maxTokens: number = 1024,
 ): Promise<AnthropicSdkResult> {
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 	const { default: Anthropic } = await import(ANTHROPIC_SDK_MODULE);
@@ -51,7 +52,7 @@ export async function sendAnthropicMessage(
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
 	const response = await client.messages.create({
 		model,
-		max_tokens: 1024,
+		max_tokens: maxTokens,
 		system: systemPrompt,
 		messages: messages.map((m) => ({
 			role: m.role === MessageRole.USER ? ('user' as const) : ('assistant' as const),

@@ -8,6 +8,7 @@ export interface ChatMessage {
 export interface LlmOptions {
 	timeout?: number;
 	model?: string;
+	maxTokens?: number;
 }
 
 /**
@@ -57,6 +58,13 @@ export interface ILlmProvider {
 	 * Returns the default model name for this provider
 	 */
 	getDefaultModel(): string;
+
+	/**
+	 * Checks whether the provider has the required credentials configured.
+	 * @param pluginConfig The plugin configuration record
+	 * @returns True if the provider has enough configuration to function
+	 */
+	isConfigured(pluginConfig: Record<string, unknown>): boolean;
 
 	/**
 	 * Sends a message to the LLM provider and returns the response with metadata.

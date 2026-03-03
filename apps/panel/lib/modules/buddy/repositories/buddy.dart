@@ -37,8 +37,11 @@ class BuddyRepository extends ChangeNotifier {
 	/// Number of in-flight sendMessage calls. The UI treats > 0 as "sending".
 	int _activeSendCount = 0;
 
-	/// Error state
-	String? _error;
+	/// Per-operation error fields to prevent concurrent operations from
+	/// masking each other's errors.
+	String? _conversationsError;
+	String? _messagesError;
+	String? _sendError;
 
 	/// Whether the last error was a 503 indicating no AI provider is configured.
 	bool _isProviderNotConfigured = false;
@@ -51,17 +54,17 @@ class BuddyRepository extends ChangeNotifier {
 	// GETTERS
 	// ============================================
 
-	List<BuddyConversationModel> get conversations => _conversations;
-	List<BuddyMessageModel> get messages => _messages;
+	List<BuddyConversationModel> get conversations => List.unmodifiable(_conversations);
+	List<BuddyMessageModel> get messages => List.unmodifiable(_messages);
 	String? get activeConversationId => _activeConversationId;
-	List<BuddySuggestionModel> get suggestions => _suggestions;
+	List<BuddySuggestionModel> get suggestions => List.unmodifiable(_suggestions);
 	int get suggestionCount => _suggestions.length;
 
 	bool get isLoadingConversations => _isLoadingConversations;
 	bool get isLoadingMessages => _isLoadingMessages;
 	bool get isSendingMessage => _activeSendCount > 0;
 	bool get isLoadingSuggestions => _isLoadingSuggestions;
-	String? get error => _error;
+	String? get error => _sendError ?? _conversationsError ?? _messagesError;
 	bool get isProviderNotConfigured => _isProviderNotConfigured;
 
 	// ============================================
@@ -71,7 +74,7 @@ class BuddyRepository extends ChangeNotifier {
 	/// Fetch all conversations
 	Future<void> fetchConversations({String? spaceId}) async {
 		_isLoadingConversations = true;
-		_error = null;
+		_conversationsError = null;
 		_isProviderNotConfigured = false;
 		notifyListeners();
 
@@ -97,7 +100,7 @@ class BuddyRepository extends ChangeNotifier {
 				}
 			}
 		} on DioException catch (e) {
-			_error = _parseError(e);
+			_conversationsError = _parseError(e);
 
 			if (kDebugMode) {
 				debugPrint(
@@ -105,7 +108,7 @@ class BuddyRepository extends ChangeNotifier {
 				);
 			}
 		} catch (e) {
-			_error = 'Failed to load conversations';
+			_conversationsError = 'Failed to load conversations';
 
 			if (kDebugMode) {
 				debugPrint('[BUDDY MODULE] Error fetching conversations: $e');
@@ -121,7 +124,7 @@ class BuddyRepository extends ChangeNotifier {
 		String? title,
 		String? spaceId,
 	}) async {
-		_error = null;
+		_conversationsError = null;
 		_isProviderNotConfigured = false;
 
 		try {
@@ -147,7 +150,7 @@ class BuddyRepository extends ChangeNotifier {
 				}
 			}
 		} on DioException catch (e) {
-			_error = _parseError(e);
+			_conversationsError = _parseError(e);
 
 			if (kDebugMode) {
 				debugPrint(
@@ -155,7 +158,7 @@ class BuddyRepository extends ChangeNotifier {
 				);
 			}
 		} catch (e) {
-			_error = 'Failed to create conversation';
+			_conversationsError = 'Failed to create conversation';
 
 			if (kDebugMode) {
 				debugPrint('[BUDDY MODULE] Error creating conversation: $e');
@@ -171,7 +174,7 @@ class BuddyRepository extends ChangeNotifier {
 	Future<void> fetchConversationMessages(String conversationId) async {
 		_isLoadingMessages = true;
 		_activeConversationId = conversationId;
-		_error = null;
+		_messagesError = null;
 		_isProviderNotConfigured = false;
 		notifyListeners();
 
@@ -192,7 +195,7 @@ class BuddyRepository extends ChangeNotifier {
 				}
 			}
 		} on DioException catch (e) {
-			_error = _parseError(e);
+			_messagesError = _parseError(e);
 
 			if (kDebugMode) {
 				debugPrint(
@@ -200,7 +203,7 @@ class BuddyRepository extends ChangeNotifier {
 				);
 			}
 		} catch (e) {
-			_error = 'Failed to load messages';
+			_messagesError = 'Failed to load messages';
 
 			if (kDebugMode) {
 				debugPrint('[BUDDY MODULE] Error fetching messages: $e');
@@ -217,8 +220,12 @@ class BuddyRepository extends ChangeNotifier {
 		String content,
 	) async {
 		_activeSendCount++;
-		_error = null;
+		_sendError = null;
 		_isProviderNotConfigured = false;
+
+		// Track whether the success path already decremented the counter
+		// so the finally block doesn't double-decrement.
+		bool decremented = false;
 
 		// Add user message immediately for optimistic UI
 		final userMessage = BuddyMessageModel(
@@ -259,6 +266,7 @@ class BuddyRepository extends ChangeNotifier {
 					// "Thinking…" indicator for this send while still showing
 					// it if another send is in-flight.
 					_activeSendCount--;
+					decremented = true;
 					notifyListeners();
 
 					// Silently reconcile optimistic user message with server
@@ -275,11 +283,12 @@ class BuddyRepository extends ChangeNotifier {
 			// reconcile from the server so the optimistic pending_*
 			// message is replaced.
 			_activeSendCount--;
+			decremented = true;
 			notifyListeners();
 
 			await _reconcileMessages(conversationId);
 		} on DioException catch (e) {
-			_error = _parseError(e);
+			_sendError = _parseError(e);
 
 			// Remove the optimistic user message on error
 			_messages.removeWhere((m) => m.id == userMessage.id);
@@ -290,7 +299,7 @@ class BuddyRepository extends ChangeNotifier {
 				);
 			}
 		} catch (e) {
-			_error = 'Failed to send message';
+			_sendError = 'Failed to send message';
 
 			// Remove the optimistic user message on error
 			_messages.removeWhere((m) => m.id == userMessage.id);
@@ -299,9 +308,7 @@ class BuddyRepository extends ChangeNotifier {
 				debugPrint('[BUDDY MODULE] Error sending message: $e');
 			}
 		} finally {
-			// Only decrement if we haven't already (error paths).
-			// Success paths decrement before reconciliation above.
-			if (_activeSendCount > 0 && _error != null) {
+			if (!decremented) {
 				_activeSendCount--;
 			}
 			notifyListeners();
@@ -575,7 +582,9 @@ class BuddyRepository extends ChangeNotifier {
 
 	/// Clear error state
 	void clearError() {
-		_error = null;
+		_conversationsError = null;
+		_messagesError = null;
+		_sendError = null;
 		_isProviderNotConfigured = false;
 		notifyListeners();
 	}
@@ -585,6 +594,14 @@ class BuddyRepository extends ChangeNotifier {
 		_activeConversationId = null;
 		_messages = [];
 		notifyListeners();
+	}
+
+	@override
+	void dispose() {
+		_conversations = [];
+		_messages = [];
+		_suggestions = [];
+		super.dispose();
 	}
 
 	String _parseError(DioException e) {

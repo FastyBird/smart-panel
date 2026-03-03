@@ -44,6 +44,19 @@ export class OpenAiCodexProvider implements ILlmProvider {
 		return BUDDY_OPENAI_CODEX_DEFAULT_MODEL;
 	}
 
+	isConfigured(pluginConfig: Record<string, unknown>): boolean {
+		const accessToken = pluginConfig.accessToken;
+		const clientId = pluginConfig.clientId;
+		const refreshToken = pluginConfig.refreshToken;
+
+		const hasAccessToken = typeof accessToken === 'string' && accessToken.length > 0;
+		const hasOAuthCredentials =
+			typeof clientId === 'string' && clientId.length > 0 &&
+			typeof refreshToken === 'string' && refreshToken.length > 0;
+
+		return hasAccessToken || hasOAuthCredentials;
+	}
+
 	async sendMessage(
 		systemPrompt: string,
 		messages: ChatMessage[],

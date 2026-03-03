@@ -47,6 +47,7 @@ describe('LlmProviderService', () => {
 			getName: () => type,
 			getDescription: () => `Mock ${type}`,
 			getDefaultModel: () => 'mock-model',
+			isConfigured: () => true,
 			sendMessage: sendMessageMock,
 		};
 	}

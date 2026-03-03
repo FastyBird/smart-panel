@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
+import 'package:fastybird_smart_panel/modules/buddy/buddy_strings.dart';
 import 'package:fastybird_smart_panel/modules/buddy/models/buddy_config.dart';
 import 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/message_bubble.dart';
 import 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/suggestion_card.dart';
@@ -306,7 +307,7 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 						),
 						SizedBox(height: AppSpacings.pLg),
 						Text(
-							'Ask me anything about your home!',
+							BuddyStrings.emptyStateMessage,
 							style: TextStyle(
 								fontSize: AppFontSize.base,
 								color: secondaryColor,
@@ -338,7 +339,7 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 						),
 						SizedBox(height: AppSpacings.pLg),
 						Text(
-							'Could not start a conversation',
+							BuddyStrings.initFailedMessage,
 							style: TextStyle(
 								fontSize: AppFontSize.base,
 								color: secondaryColor,
@@ -353,7 +354,7 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 								size: AppSpacings.scale(16),
 							),
 							label: Text(
-								'Retry',
+								BuddyStrings.retry,
 								style: TextStyle(
 									fontSize: AppFontSize.base,
 								),
@@ -386,7 +387,7 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 						),
 						SizedBox(height: AppSpacings.pLg),
 						Text(
-							'AI provider not configured',
+							BuddyStrings.providerNotConfiguredTitle,
 							style: TextStyle(
 								fontSize: AppFontSize.base,
 								fontWeight: FontWeight.w600,
@@ -396,7 +397,7 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 						),
 						SizedBox(height: AppSpacings.pSm),
 						Text(
-							'Configure an AI provider in admin settings to enable chat.',
+							BuddyStrings.providerNotConfiguredDescription,
 							style: TextStyle(
 								fontSize: AppFontSize.small,
 								color: placeholderColor,
@@ -454,7 +455,7 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 								),
 								SizedBox(width: AppSpacings.pMd),
 								Text(
-									'Thinking...',
+									BuddyStrings.thinking,
 									style: TextStyle(
 										fontSize: AppFontSize.small,
 										color: isDark
@@ -550,14 +551,14 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 										),
 										decoration: InputDecoration(
 											hintText: _initProviderMissing
-												? 'AI provider not configured'
+												? BuddyStrings.hintProviderNotConfigured
 												: _initFailed
-													? 'Failed to start conversation'
+													? BuddyStrings.hintInitFailed
 													: !_initialized
-														? 'Starting conversation...'
+														? BuddyStrings.hintStartingConversation
 														: buddyService.isProviderNotConfigured
-															? 'AI provider not configured'
-															: 'Ask about your home...',
+															? BuddyStrings.hintProviderNotConfigured
+															: BuddyStrings.hintDefault,
 											hintStyle: TextStyle(
 												fontSize: AppFontSize.base,
 												color: hintColor,

@@ -45,6 +45,12 @@ export class OllamaProvider implements ILlmProvider {
 		return BUDDY_OLLAMA_DEFAULT_MODEL;
 	}
 
+	isConfigured(pluginConfig: Record<string, unknown>): boolean {
+		const baseUrl = pluginConfig.baseUrl;
+
+		return typeof baseUrl === 'string' && baseUrl.length > 0;
+	}
+
 	async sendMessage(
 		systemPrompt: string,
 		messages: ChatMessage[],

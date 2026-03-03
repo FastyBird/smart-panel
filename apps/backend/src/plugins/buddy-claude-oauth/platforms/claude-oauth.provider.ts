@@ -36,6 +36,12 @@ export class ClaudeOauthProvider implements ILlmProvider {
 		return BUDDY_CLAUDE_OAUTH_DEFAULT_MODEL;
 	}
 
+	isConfigured(pluginConfig: Record<string, unknown>): boolean {
+		const accessToken = pluginConfig.accessToken;
+
+		return typeof accessToken === 'string' && accessToken.length > 0;
+	}
+
 	async sendMessage(
 		systemPrompt: string,
 		messages: ChatMessage[],
@@ -51,6 +57,7 @@ export class ClaudeOauthProvider implements ILlmProvider {
 
 		const resolvedModel = config?.model ?? model;
 		const timeout = options?.timeout ?? 30_000;
+		const maxTokens = options?.maxTokens ?? 1024;
 
 		const start = Date.now();
 		const result = await sendAnthropicMessage(
@@ -59,6 +66,7 @@ export class ClaudeOauthProvider implements ILlmProvider {
 			systemPrompt,
 			messages,
 			timeout,
+			maxTokens,
 		);
 		const durationMs = Date.now() - start;
 

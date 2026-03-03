@@ -7,7 +7,7 @@ import { EventType, SuggestionType } from '../buddy.constants';
 import { BuddySuggestionNotFoundException } from '../buddy.exceptions';
 
 import { DetectedPattern } from './pattern-detector.service';
-import { BuddySuggestion, SuggestionEngineService, buddyCooldowns } from './suggestion-engine.service';
+import { BuddySuggestion, SuggestionEngineService } from './suggestion-engine.service';
 
 function makePattern(overrides: Partial<DetectedPattern> = {}): DetectedPattern {
 	return {
@@ -28,8 +28,6 @@ describe('SuggestionEngineService', () => {
 	let eventEmitter: jest.Mocked<EventEmitter2>;
 
 	beforeEach(() => {
-		// Clear global cooldowns before each test
-		buddyCooldowns.clearAll();
 
 		patternDetector = {
 			detectPatterns: jest.fn().mockReturnValue([]),
@@ -82,7 +80,11 @@ describe('SuggestionEngineService', () => {
 		});
 
 		it('should skip patterns that are on cooldown', async () => {
-			buddyCooldowns.setCooldown('space-1', SuggestionType.PATTERN_SCENE_CREATE, 60_000);
+			// Generate a suggestion first, then record feedback to trigger cooldown
+			patternDetector.detectPatterns.mockReturnValue([makePattern()]);
+			const initial = await service.generateSuggestions();
+			service.recordFeedback(initial[0].id, SuggestionFeedback.APPLIED);
+
 			patternDetector.detectPatterns.mockReturnValue([makePattern()]);
 
 			const suggestions = await service.generateSuggestions();
@@ -213,13 +215,13 @@ describe('SuggestionEngineService', () => {
 		it('should set cooldown after applied feedback', () => {
 			service.recordFeedback(createdSuggestion.id, SuggestionFeedback.APPLIED);
 
-			expect(buddyCooldowns.isOnCooldown('space-1', SuggestionType.PATTERN_SCENE_CREATE)).toBe(true);
+			expect(service.isOnCooldown('space-1', SuggestionType.PATTERN_SCENE_CREATE)).toBe(true);
 		});
 
 		it('should set cooldown after dismissed feedback', () => {
 			service.recordFeedback(createdSuggestion.id, SuggestionFeedback.DISMISSED);
 
-			expect(buddyCooldowns.isOnCooldown('space-1', SuggestionType.PATTERN_SCENE_CREATE)).toBe(true);
+			expect(service.isOnCooldown('space-1', SuggestionType.PATTERN_SCENE_CREATE)).toBe(true);
 		});
 
 		it('should throw for non-existent suggestion ID', () => {

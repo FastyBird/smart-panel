@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/modules/buddy/buddy_strings.dart';
 import 'package:fastybird_smart_panel/modules/buddy/models/suggestion.dart';
 
 /// Dismissible card widget for buddy suggestions.
@@ -78,32 +79,6 @@ class _BuddySuggestionCardState extends State<BuddySuggestionCard>
 		}
 	}
 
-	IconData _iconForType(BuddySuggestionType type) {
-		switch (type) {
-			case BuddySuggestionType.patternSceneCreate:
-				return Icons.auto_fix_high;
-			case BuddySuggestionType.lightingOptimise:
-				return Icons.lightbulb_outline;
-			case BuddySuggestionType.anomalySensorDrift:
-			case BuddySuggestionType.anomalyStuckSensor:
-			case BuddySuggestionType.anomalyUnusualActivity:
-				return Icons.sensors_off_outlined;
-			case BuddySuggestionType.energyExcessSolar:
-				return Icons.solar_power_outlined;
-			case BuddySuggestionType.energyHighConsumption:
-				return Icons.bolt_outlined;
-			case BuddySuggestionType.energyBatteryLow:
-				return Icons.battery_alert_outlined;
-			case BuddySuggestionType.conflictHeatingWindow:
-			case BuddySuggestionType.conflictAcWindow:
-				return Icons.warning_amber_rounded;
-			case BuddySuggestionType.conflictLightsUnoccupied:
-				return Icons.light_outlined;
-			case BuddySuggestionType.generalTip:
-				return Icons.tips_and_updates_outlined;
-		}
-	}
-
 	bool get _isActionable =>
 		!widget.suggestion.type.isWarning &&
 		widget.suggestion.type != BuddySuggestionType.generalTip;
@@ -157,7 +132,7 @@ class _BuddySuggestionCardState extends State<BuddySuggestionCard>
 							Row(
 								children: [
 									Icon(
-										_iconForType(widget.suggestion.type),
+										widget.suggestion.type.icon,
 										size: AppSpacings.scale(18),
 										color: accentColor,
 									),
@@ -204,7 +179,7 @@ class _BuddySuggestionCardState extends State<BuddySuggestionCard>
 													vertical: AppSpacings.pSm,
 												),
 											),
-											child: const Text('Dismiss'),
+											child: const Text(BuddyStrings.dismiss),
 										),
 									),
 									SizedBox(width: AppSpacings.pMd),
@@ -233,7 +208,7 @@ class _BuddySuggestionCardState extends State<BuddySuggestionCard>
 														size: AppSpacings.scale(16),
 													),
 												label: Text(
-													'Apply',
+													BuddyStrings.apply,
 													style: TextStyle(
 														fontSize: AppFontSize.small,
 													),
@@ -256,7 +231,7 @@ class _BuddySuggestionCardState extends State<BuddySuggestionCard>
 													),
 												),
 												child: Text(
-													'Got it',
+													BuddyStrings.gotIt,
 													style: TextStyle(
 														fontSize: AppFontSize.small,
 													),

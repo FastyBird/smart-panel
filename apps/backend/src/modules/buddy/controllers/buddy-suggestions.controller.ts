@@ -43,11 +43,8 @@ export class BuddySuggestionsController {
 	@ApiBadRequestResponse('Invalid request parameters')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get()
-	async findAll(@Query('space_id') spaceId?: string): Promise<SuggestionsResponseModel> {
+	findAll(@Query('space_id') spaceId?: string): SuggestionsResponseModel {
 		this.logger.debug(`Fetching active suggestions${spaceId ? ` for space=${spaceId}` : ''}`);
-
-		// Trigger suggestion generation before returning
-		await this.suggestionEngine.generateSuggestions();
 
 		const suggestions = this.suggestionEngine.getActiveSuggestions(spaceId);
 

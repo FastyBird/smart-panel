@@ -36,6 +36,12 @@ export class ClaudeProvider implements ILlmProvider {
 		return BUDDY_CLAUDE_DEFAULT_MODEL;
 	}
 
+	isConfigured(pluginConfig: Record<string, unknown>): boolean {
+		const apiKey = pluginConfig.apiKey;
+
+		return typeof apiKey === 'string' && apiKey.length > 0;
+	}
+
 	async sendMessage(
 		systemPrompt: string,
 		messages: ChatMessage[],
@@ -48,7 +54,8 @@ export class ClaudeProvider implements ILlmProvider {
 		const timeout = options?.timeout ?? 30_000;
 
 		const start = Date.now();
-		const result = await sendAnthropicMessage({ apiKey }, resolvedModel, systemPrompt, messages, timeout);
+		const maxTokens = options?.maxTokens ?? 1024;
+		const result = await sendAnthropicMessage({ apiKey }, resolvedModel, systemPrompt, messages, timeout, maxTokens);
 		const durationMs = Date.now() - start;
 
 		return {

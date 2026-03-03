@@ -176,7 +176,7 @@ class _SuggestionToastCard extends StatelessWidget {
 						child: Row(
 							children: [
 								Icon(
-									_iconForType(suggestion.type),
+									suggestion.type.icon,
 									size: AppSpacings.scale(22),
 									color: iconColor,
 								),
@@ -226,29 +226,4 @@ class _SuggestionToastCard extends StatelessWidget {
 		);
 	}
 
-	IconData _iconForType(BuddySuggestionType type) {
-		switch (type) {
-			case BuddySuggestionType.patternSceneCreate:
-				return Icons.auto_fix_high;
-			case BuddySuggestionType.lightingOptimise:
-				return Icons.lightbulb_outline;
-			case BuddySuggestionType.anomalySensorDrift:
-			case BuddySuggestionType.anomalyStuckSensor:
-			case BuddySuggestionType.anomalyUnusualActivity:
-				return Icons.sensors_off_outlined;
-			case BuddySuggestionType.energyExcessSolar:
-				return Icons.solar_power_outlined;
-			case BuddySuggestionType.energyHighConsumption:
-				return Icons.bolt_outlined;
-			case BuddySuggestionType.energyBatteryLow:
-				return Icons.battery_alert_outlined;
-			case BuddySuggestionType.conflictHeatingWindow:
-			case BuddySuggestionType.conflictAcWindow:
-				return Icons.warning_amber_rounded;
-			case BuddySuggestionType.conflictLightsUnoccupied:
-				return Icons.light_outlined;
-			case BuddySuggestionType.generalTip:
-				return Icons.tips_and_updates_outlined;
-		}
-	}
 }
