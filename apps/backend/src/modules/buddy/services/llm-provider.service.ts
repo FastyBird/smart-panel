@@ -82,6 +82,6 @@ export class LlmProviderService {
 
 		this.logger.error(`${providerName} provider error: ${message}`);
 
-		throw new BuddyProviderErrorException();
+		throw new BuddyProviderErrorException(message);
 	}
 }

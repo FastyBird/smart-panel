@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { OAuthConfig, OAuthTokenManager, OAuthTokenManagerOptions } from './oauth-token-manager';
 
 const TOKEN_URL = 'https://oauth.example.com/token';
@@ -30,7 +29,7 @@ describe('OAuthTokenManager', () => {
 
 		fetchSpy = jest.spyOn(globalThis, 'fetch').mockResolvedValue({
 			ok: true,
-			json: async () => ({ access_token: 'refreshed-token' }),
+			json: () => Promise.resolve({ access_token: 'refreshed-token' }),
 		} as Response);
 	});
 
@@ -87,7 +86,7 @@ describe('OAuthTokenManager', () => {
 
 				fetchSpy.mockResolvedValueOnce({
 					ok: true,
-					json: async () => ({ access_token: 'token-1' }),
+					json: () => Promise.resolve({ access_token: 'token-1' }),
 				} as Response);
 
 				const config = makeConfig({ accessToken: null });
@@ -102,7 +101,7 @@ describe('OAuthTokenManager', () => {
 
 				fetchSpy.mockResolvedValueOnce({
 					ok: true,
-					json: async () => ({ access_token: 'token-2' }),
+					json: () => Promise.resolve({ access_token: 'token-2' }),
 				} as Response);
 
 				const secondToken = await shortTtlManager.resolveAccessToken(config);
@@ -131,7 +130,7 @@ describe('OAuthTokenManager', () => {
 
 			resolveRefresh({
 				ok: true,
-				json: async () => ({ access_token: 'deduped-token' }),
+				json: () => Promise.resolve({ access_token: 'deduped-token' }),
 			} as Response);
 
 			const [token1, token2, token3] = await Promise.all([promise1, promise2, promise3]);
@@ -146,7 +145,7 @@ describe('OAuthTokenManager', () => {
 			fetchSpy.mockResolvedValueOnce({
 				ok: false,
 				status: 401,
-				json: async () => ({ error: 'invalid_grant' }),
+				json: () => Promise.resolve({ error: 'invalid_grant' }),
 			} as Response);
 
 			const config = makeConfig({ accessToken: null });
@@ -183,7 +182,7 @@ describe('OAuthTokenManager', () => {
 
 			await manager.resolveAccessToken(config);
 
-			const body = fetchSpy.mock.calls[0][1].body as URLSearchParams;
+			const body = (fetchSpy.mock.calls[0] as [string, { body: URLSearchParams }])[1].body;
 
 			expect(body.get('client_secret')).toBe('my-secret');
 		});
@@ -193,7 +192,7 @@ describe('OAuthTokenManager', () => {
 
 			await manager.resolveAccessToken(config);
 
-			const body = fetchSpy.mock.calls[0][1].body as URLSearchParams;
+			const body = (fetchSpy.mock.calls[0] as [string, { body: URLSearchParams }])[1].body;
 
 			expect(body.has('client_secret')).toBe(false);
 		});
@@ -211,7 +210,7 @@ describe('OAuthTokenManager', () => {
 			// The inflight promise should be cleared, so a second call should trigger a new fetch
 			fetchSpy.mockResolvedValueOnce({
 				ok: true,
-				json: async () => ({ access_token: 'recovered-token' }),
+				json: () => Promise.resolve({ access_token: 'recovered-token' }),
 			} as Response);
 
 			const token = await manager.resolveAccessToken(config);

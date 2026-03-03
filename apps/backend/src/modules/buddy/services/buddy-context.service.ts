@@ -206,10 +206,7 @@ export class BuddyContextService {
 				];
 			}
 
-			const [allSpaces, allDevices] = await Promise.all([
-				this.spacesService.findAll(),
-				this.devicesService.findAll(),
-			]);
+			const [allSpaces, allDevices] = await Promise.all([this.spacesService.findAll(), this.devicesService.findAll()]);
 
 			const deviceCountBySpace = new Map<string, number>();
 

@@ -43,10 +43,12 @@ export class EvaluatorRulesLoaderService implements OnModuleInit {
 		this.conflictRules.clear();
 		this.patternRules.clear();
 
-		await this.loadAnomalyRules();
-		await this.loadEnergyRules();
-		await this.loadConflictRules();
-		await this.loadPatternRules();
+		await Promise.all([
+			this.loadAnomalyRules(),
+			this.loadEnergyRules(),
+			this.loadConflictRules(),
+			this.loadPatternRules(),
+		]);
 
 		this.logger.log(
 			`Loaded evaluator rules: ` +

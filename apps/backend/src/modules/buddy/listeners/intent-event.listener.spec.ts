@@ -1,11 +1,11 @@
-jest.mock('@nestjs/event-emitter', () => ({
-	OnEvent: () => () => undefined,
-}));
-
 import { IntentType } from '../../intents/intents.constants';
 import { ActionObserverService } from '../services/action-observer.service';
 
 import { IntentEventListener } from './intent-event.listener';
+
+jest.mock('@nestjs/event-emitter', () => ({
+	OnEvent: () => () => undefined,
+}));
 
 describe('IntentEventListener', () => {
 	let listener: IntentEventListener;
@@ -108,7 +108,7 @@ describe('IntentEventListener', () => {
 				}),
 			};
 
-			const errorListener = new IntentEventListener(mockObserver as any);
+			const errorListener = new IntentEventListener(mockObserver as unknown as ActionObserverService);
 
 			// Should not throw thanks to the try/catch in the listener
 			expect(() => {

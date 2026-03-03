@@ -1,4 +1,9 @@
-import { GatewayTimeoutException, InternalServerErrorException, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import {
+	GatewayTimeoutException,
+	InternalServerErrorException,
+	NotFoundException,
+	ServiceUnavailableException,
+} from '@nestjs/common';
 
 export class BuddyProviderNotConfiguredException extends ServiceUnavailableException {
 	constructor() {
@@ -25,7 +30,7 @@ export class BuddySuggestionNotFoundException extends NotFoundException {
 }
 
 export class BuddyProviderErrorException extends InternalServerErrorException {
-	constructor() {
-		super('AI provider encountered an error. Please try again later.');
+	constructor(detail?: string) {
+		super(detail ? `AI provider error: ${detail}` : 'AI provider encountered an error. Please try again later.');
 	}
 }
