@@ -142,6 +142,14 @@ class _BuddySuggestionCardState extends State<BuddySuggestionCard>
 						color: cardBg,
 						borderRadius: BorderRadius.circular(AppBorderRadius.medium),
 						border: Border.all(color: borderColor),
+						boxShadow: [
+							BoxShadow(
+								color: (isDark ? Colors.black : Colors.black).withValues(alpha: isDark ? 0.4 : 0.12),
+								blurRadius: 12,
+								spreadRadius: 1,
+								offset: const Offset(0, 4),
+							),
+						],
 					),
 					child: Column(
 						crossAxisAlignment: CrossAxisAlignment.start,

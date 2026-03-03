@@ -204,7 +204,32 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 									? _initProviderMissing
 										? _buildProviderNotConfiguredState(context, isDark)
 										: _buildInitFailedState(context, isDark)
-									: _buildBody(context, isDark)
+									: Consumer<BuddyService>(
+										builder: (context, buddyService, _) {
+											final suggestions = buddyService.suggestions;
+
+											return Stack(
+												children: [
+													_buildBody(context, isDark, buddyService),
+													if (suggestions.isNotEmpty)
+														Positioned(
+															top: 0,
+															left: 0,
+															right: 0,
+															child: BuddySuggestionCard(
+																key: ValueKey(suggestions.first.id),
+																suggestion: suggestions.first,
+																onFeedback: (id, feedback) =>
+																	_handleSuggestionFeedback(id, feedback),
+																onAnimationComplete: (id) {
+																	context.read<BuddyService>().removeSuggestion(id);
+																},
+															),
+														),
+												],
+											);
+										},
+									)
 								: Center(
 									child: CircularProgressIndicator(
 										color: Theme.of(context).colorScheme.primary,
@@ -229,72 +254,34 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 		}
 	}
 
-	Widget _buildBody(BuildContext context, bool isDark) {
-		return Consumer<BuddyService>(
-			builder: (context, buddyService, _) {
-				final messages = buddyService.messages;
-				final suggestions = buddyService.suggestions;
-				final hasMessages = messages.isNotEmpty;
-				final hasSuggestions = suggestions.isNotEmpty;
+	Widget _buildBody(BuildContext context, bool isDark, BuddyService buddyService) {
+		final messages = buddyService.messages;
+		final hasMessages = messages.isNotEmpty;
 
-				return ListView(
-					controller: _scrollController,
-					padding: EdgeInsets.symmetric(vertical: AppSpacings.pMd),
-					children: [
-						// Suggestions section
-						if (hasSuggestions) ...[
-							Padding(
-								padding: EdgeInsets.symmetric(
-									horizontal: AppSpacings.pLg,
-									vertical: AppSpacings.pSm,
-								),
-								child: Text(
-									'Suggestions',
-									style: TextStyle(
-										fontSize: AppFontSize.small,
-										fontWeight: FontWeight.w600,
-										color: isDark
-											? AppTextColorDark.secondary
-											: AppTextColorLight.secondary,
-									),
-								),
-							),
-							...suggestions.map(
-								(suggestion) => BuddySuggestionCard(
-									key: ValueKey(suggestion.id),
-									suggestion: suggestion,
-									onFeedback: (id, feedback) =>
-										_handleSuggestionFeedback(id, feedback),
-									onAnimationComplete: (id) {
-										context.read<BuddyService>().removeSuggestion(id);
-									},
-								),
-							),
-							SizedBox(height: AppSpacings.pMd),
-						],
+		return ListView(
+			controller: _scrollController,
+			padding: EdgeInsets.symmetric(vertical: AppSpacings.pMd),
+			children: [
+				// Empty state
+				if (!hasMessages && !buddyService.isLoadingMessages)
+					_buildEmptyState(context, isDark),
 
-						// Empty state
-						if (!hasMessages && !buddyService.isLoadingMessages)
-							_buildEmptyState(context, isDark),
+				// Messages
+				...messages.map(
+					(message) => MessageBubble(
+						key: ValueKey(message.id),
+						message: message,
+					),
+				),
 
-						// Messages
-						...messages.map(
-							(message) => MessageBubble(
-								key: ValueKey(message.id),
-								message: message,
-							),
-						),
+				// Loading indicator while waiting for AI response
+				if (buddyService.isSendingMessage)
+					_buildTypingIndicator(context, isDark),
 
-						// Loading indicator while waiting for AI response
-						if (buddyService.isSendingMessage)
-							_buildTypingIndicator(context, isDark),
-
-						// Error state
-						if (buddyService.hasError)
-							_buildErrorMessage(context, isDark, buddyService.error!),
-					],
-				);
-			},
+				// Error state
+				if (buddyService.hasError)
+					_buildErrorMessage(context, isDark, buddyService.error!),
+			],
 		);
 	}
 
