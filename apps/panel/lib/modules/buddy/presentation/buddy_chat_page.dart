@@ -95,14 +95,16 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 	void _scrollToBottom() {
 		if (!mounted) return;
 
+		// Wait two frames: the first lets the ListView lay out its children,
+		// the second ensures maxScrollExtent is up-to-date.
 		WidgetsBinding.instance.addPostFrameCallback((_) {
-			if (mounted && _scrollController.hasClients) {
-				_scrollController.animateTo(
-					_scrollController.position.maxScrollExtent,
-					duration: const Duration(milliseconds: 200),
-					curve: Curves.easeOut,
-				);
-			}
+			WidgetsBinding.instance.addPostFrameCallback((_) {
+				if (mounted && _scrollController.hasClients) {
+					_scrollController.jumpTo(
+						_scrollController.position.maxScrollExtent,
+					);
+				}
+			});
 		});
 	}
 
