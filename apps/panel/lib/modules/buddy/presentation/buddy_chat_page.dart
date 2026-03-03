@@ -247,7 +247,7 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 		final buddyService = context.read<BuddyService>();
 		final spaceId = locator<DisplayRepository>().display?.roomId;
 
-		await buddyService.startNewConversation(spaceId: spaceId);
+		await buddyService.createNewConversation(spaceId: spaceId);
 
 		if (mounted) {
 			_scrollToBottom();

@@ -97,6 +97,26 @@ class BuddyService extends ChangeNotifier {
 		return conversation;
 	}
 
+	/// Create a brand-new conversation, clearing the current one.
+	///
+	/// Unlike [startNewConversation], this always creates a fresh
+	/// conversation regardless of whether one already exists for the space.
+	Future<BuddyConversationModel?> createNewConversation({
+		String? spaceId,
+	}) async {
+		_buddyRepository.clearActiveConversation();
+
+		final conversation = await _buddyRepository.createConversation(
+			spaceId: spaceId,
+		);
+
+		if (conversation != null) {
+			await _buddyRepository.fetchConversationMessages(conversation.id);
+		}
+
+		return conversation;
+	}
+
 	/// Open an existing conversation
 	Future<void> openConversation(String conversationId) async {
 		await _buddyRepository.fetchConversationMessages(conversationId);
