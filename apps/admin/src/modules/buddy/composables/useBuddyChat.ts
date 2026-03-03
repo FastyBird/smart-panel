@@ -262,6 +262,9 @@ export const useBuddyChat = (): IUseBuddyChat => {
 			const apiError = extractApiError(response);
 
 			if (apiError) {
+				// Remove optimistic message on error
+				messages.value = messages.value.filter((m) => m.id !== pendingId);
+
 				if (apiError.status !== 503) {
 					error.value = apiError.message;
 				}
@@ -272,6 +275,9 @@ export const useBuddyChat = (): IUseBuddyChat => {
 			// Re-fetch messages to get the real IDs and assistant response
 			await fetchMessages(conversationId);
 		} catch (err: unknown) {
+			// Remove optimistic message on error
+			messages.value = messages.value.filter((m) => m.id !== pendingId);
+
 			error.value = err instanceof Error ? err.message : 'Failed to send message';
 		} finally {
 			isSending.value = false;

@@ -8,8 +8,8 @@ export interface IUseOAuthPopup {
 
 const POPUP_WIDTH = 600;
 const POPUP_HEIGHT = 700;
-const POLL_INTERVAL_MS = 3000;
-const POLL_INITIAL_DELAY_MS = 30000;
+const POLL_INTERVAL_MS = 2000;
+const POLL_INITIAL_DELAY_MS = 5000;
 const STORAGE_KEY = 'oauth-callback';
 
 export const useOAuthPopup = (provider: string): IUseOAuthPopup => {
