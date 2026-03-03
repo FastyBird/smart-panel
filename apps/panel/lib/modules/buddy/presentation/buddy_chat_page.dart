@@ -58,7 +58,9 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 		_buddyName = _buddyConfigRepo.data?.name ?? 'Buddy';
 		_buddyConfigRepo.addListener(_onBuddyConfigChanged);
 
-		_initializeConversation();
+		WidgetsBinding.instance.addPostFrameCallback((_) {
+			_initializeConversation();
+		});
 	}
 
 	Future<void> _initializeConversation() async {
@@ -176,8 +178,19 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 					children: [
 						PageHeader(
 							title: _buddyName,
-							onBack: () => Navigator.of(context).pop(),
-							icon: Icons.smart_toy_outlined,
+							leading: Row(
+								mainAxisSize: MainAxisSize.min,
+								spacing: AppSpacings.pMd,
+								children: [
+									HeaderIconButton(
+										icon: MdiIcons.arrowLeft,
+										onTap: () => Navigator.of(context).pop(),
+									),
+									HeaderMainIcon(
+										icon: Icons.smart_toy_outlined,
+									),
+								],
+							),
 							trailing: HeaderIconButton(
 								icon: MdiIcons.chatPlusOutline,
 								onTap: _startNewConversation,
