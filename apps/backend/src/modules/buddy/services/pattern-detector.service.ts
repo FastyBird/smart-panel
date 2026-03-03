@@ -7,7 +7,8 @@ import {
 	PATTERN_TIME_WINDOW_MINUTES,
 	SuggestionType,
 } from '../buddy.constants';
-import { clusterByTimeOfDay, formatIntentLabel, formatTimeLabel } from '../buddy.utils';
+import { clusterByTimeOfDay, formatIntentLabel, formatTimeLabel, interpolateTemplate } from '../buddy.utils';
+import { EvaluatorRulesLoaderService } from '../spec/evaluator-rules-loader.service';
 
 import { ActionObserverService, ActionRecord } from './action-observer.service';
 import { BuddyContext } from './buddy-context.service';
@@ -39,14 +40,20 @@ interface TimeCluster {
  * Convert a detected pattern + resolved space name into a heartbeat evaluator result.
  * Single source of truth for the pattern → suggestion mapping (type, title, reason, metadata).
  */
-export function patternToEvaluatorResult(pattern: DetectedPattern, spaceName: string): EvaluatorResult {
+export function patternToEvaluatorResult(
+	pattern: DetectedPattern,
+	spaceName: string,
+	rule?: { suggestionType: SuggestionType; messages: { title: string; reason: string } },
+): EvaluatorResult {
 	const intentLabel = formatIntentLabel(pattern.intentType);
 	const timeLabel = formatTimeLabel(pattern.timeOfDay.hour, pattern.timeOfDay.minute);
 
 	return {
-		type: SuggestionType.PATTERN_SCENE_CREATE,
-		title: 'Create a scene for this?',
-		reason: `You ${intentLabel} in ${spaceName} around ${timeLabel} regularly`,
+		type: rule?.suggestionType ?? SuggestionType.PATTERN_SCENE_CREATE,
+		title: rule?.messages.title ?? 'Create a scene for this?',
+		reason: rule
+			? interpolateTemplate(rule.messages.reason, { intentLabel, spaceName, timeLabel })
+			: `You ${intentLabel} in ${spaceName} around ${timeLabel} regularly`,
 		spaceId: pattern.spaceId,
 		metadata: {
 			intentType: pattern.intentType,
@@ -65,7 +72,10 @@ export class PatternDetectorService implements HeartbeatEvaluator {
 	private patternCache: DetectedPattern[] | null = null;
 	private patternCacheTime = 0;
 
-	constructor(private readonly actionObserver: ActionObserverService) {}
+	constructor(
+		private readonly actionObserver: ActionObserverService,
+		private readonly rulesLoader: EvaluatorRulesLoaderService,
+	) {}
 
 	/**
 	 * HeartbeatEvaluator implementation.
@@ -74,6 +84,12 @@ export class PatternDetectorService implements HeartbeatEvaluator {
 	 * only runs the full pattern scan once.
 	 */
 	evaluate(context: BuddyContext): Promise<EvaluatorResult[]> {
+		const rule = this.rulesLoader.getPatternRule('single_pattern');
+
+		if (rule && !rule.enabled) {
+			return Promise.resolve([]);
+		}
+
 		const patterns = this.getPatternsCached();
 		const spaceIds = new Set(context.spaces.map((s) => s.id));
 
@@ -82,7 +98,7 @@ export class PatternDetectorService implements HeartbeatEvaluator {
 			.map((p) => {
 				const spaceName = context.spaces.find((s) => s.id === p.spaceId)?.name ?? 'unknown space';
 
-				return patternToEvaluatorResult(p, spaceName);
+				return patternToEvaluatorResult(p, spaceName, rule);
 			});
 
 		return Promise.resolve(results);
@@ -94,8 +110,14 @@ export class PatternDetectorService implements HeartbeatEvaluator {
 	 * within a configurable window. Returns patterns with confidence scores.
 	 */
 	detectPatterns(): DetectedPattern[] {
+		const rule = this.rulesLoader.getPatternRule('single_pattern');
+
+		const lookbackDays = rule?.thresholds.lookback_days ?? PATTERN_LOOKBACK_DAYS;
+		const minOccurrences = rule?.thresholds.min_occurrences ?? PATTERN_MIN_OCCURRENCES;
+		const timeWindowMinutes = rule?.thresholds.time_window_minutes ?? PATTERN_TIME_WINDOW_MINUTES;
+
 		const actions = this.actionObserver.getRecentActions();
-		const cutoff = new Date(Date.now() - PATTERN_LOOKBACK_DAYS * 24 * 60 * 60 * 1000);
+		const cutoff = new Date(Date.now() - lookbackDays * 24 * 60 * 60 * 1000);
 		const recentActions = actions.filter((a) => a.timestamp >= cutoff && a.spaceId !== null);
 
 		if (recentActions.length === 0) {
@@ -106,11 +128,11 @@ export class PatternDetectorService implements HeartbeatEvaluator {
 		const patterns: DetectedPattern[] = [];
 
 		for (const group of groups) {
-			const clusters = this.clusterActions(group.actions);
+			const clusters = this.clusterActions(group.actions, timeWindowMinutes);
 
 			for (const cluster of clusters) {
-				if (cluster.actions.length >= PATTERN_MIN_OCCURRENCES) {
-					const confidence = Math.min(1, cluster.actions.length / PATTERN_LOOKBACK_DAYS);
+				if (cluster.actions.length >= minOccurrences) {
+					const confidence = Math.min(1, cluster.actions.length / lookbackDays);
 					const timestamps = cluster.actions.map((a) => a.timestamp.getTime());
 
 					patterns.push({
@@ -183,13 +205,13 @@ export class PatternDetectorService implements HeartbeatEvaluator {
 
 	/**
 	 * Cluster actions within a group by time-of-day using a sliding window.
-	 * Actions within ±PATTERN_TIME_WINDOW_MINUTES of each other's time-of-day
+	 * Actions within ±windowMinutes of each other's time-of-day
 	 * are grouped into the same cluster.
 	 */
-	private clusterActions(actions: ActionRecord[]): TimeCluster[] {
+	private clusterActions(actions: ActionRecord[], windowMinutes: number): TimeCluster[] {
 		const actionMinuteOfDay = (a: ActionRecord): number => a.timestamp.getHours() * 60 + a.timestamp.getMinutes();
 
-		return clusterByTimeOfDay(actions, actionMinuteOfDay, PATTERN_TIME_WINDOW_MINUTES).map((c) => ({
+		return clusterByTimeOfDay(actions, actionMinuteOfDay, windowMinutes).map((c) => ({
 			actions: c.items,
 			avgHour: c.avgHour,
 			avgMinute: c.avgMinute,

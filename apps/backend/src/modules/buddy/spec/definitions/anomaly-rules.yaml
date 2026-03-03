@@ -1,0 +1,43 @@
+anomaly_rules:
+  temperature_drift:
+    enabled: true
+    suggestion_type: anomaly_sensor_drift
+    thresholds:
+      degrees: 5
+    filters:
+      setpoint_device_categories:
+        - thermostat
+      reading_property_category: temperature
+      value_types:
+        - number
+    messages:
+      title: "Temperature significantly off setpoint"
+      reason: "${spaceName} temperature (${sensorValue}\xB0C) is significantly ${direction} setpoint (${setpointValue}\xB0C). Check the thermostat or window."
+
+  stuck_sensor:
+    enabled: true
+    suggestion_type: anomaly_stuck_sensor
+    thresholds:
+      hours: 2
+    filters:
+      device_categories:
+        - sensor
+      value_types:
+        - number
+      exclude_properties:
+        - battery_level
+        - link_quality
+        - signal_strength
+    messages:
+      title: "Sensor value appears stuck"
+      reason: "${deviceName} in ${spaceName}: \"${propertyKey}\" has been ${value} for ${stuckHours} hours. The sensor may need attention."
+
+  unusual_activity:
+    enabled: true
+    suggestion_type: anomaly_unusual_activity
+    thresholds:
+      count: 10
+      window_minutes: 15
+    messages:
+      title: "Unusual device activity detected"
+      reason: "${deviceName} in ${spaceName} has been triggered ${actionCount} times in the last ${windowMinutes} minutes. This might indicate an issue."

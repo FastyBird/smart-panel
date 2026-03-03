@@ -6,6 +6,8 @@ import {
 	ENERGY_HIGH_CONSUMPTION_THRESHOLD_KW,
 	SuggestionType,
 } from '../buddy.constants';
+import { EvaluatorRulesLoaderService } from '../spec/evaluator-rules-loader.service';
+import { ResolvedEnergyRule } from '../spec/evaluator-rules.types';
 
 import { BuddyContext } from './buddy-context.service';
 import { EnergyEvaluator } from './energy-evaluator.service';
@@ -22,6 +24,52 @@ function makeContext(overrides: Partial<BuddyContext> = {}): BuddyContext {
 	};
 }
 
+const defaultEnergyRules: Record<string, ResolvedEnergyRule> = {
+	excess_solar: {
+		enabled: true,
+		suggestionType: SuggestionType.ENERGY_EXCESS_SOLAR,
+		thresholds: { kw: ENERGY_EXCESS_SOLAR_THRESHOLD_KW },
+		conditions: { solarMustBeZero: false },
+		messages: {
+			title: 'Excess solar energy available',
+			reason: 'Excess solar energy (${gridExport}kW being exported). Good time for high-load appliances.',
+		},
+	},
+	high_consumption: {
+		enabled: true,
+		suggestionType: SuggestionType.ENERGY_HIGH_CONSUMPTION,
+		thresholds: { kw: ENERGY_HIGH_CONSUMPTION_THRESHOLD_KW },
+		conditions: { solarMustBeZero: false },
+		messages: {
+			title: 'High grid consumption',
+			reason: 'Grid consumption is high (${gridConsumption}kW). Consider reducing load or shifting activities.',
+		},
+	},
+	battery_low: {
+		enabled: true,
+		suggestionType: SuggestionType.ENERGY_BATTERY_LOW,
+		thresholds: { percent: ENERGY_BATTERY_LOW_THRESHOLD_PERCENT },
+		conditions: { solarMustBeZero: true },
+		messages: {
+			title: 'Battery level low',
+			reason: 'Battery level is low (${batteryLevel}%) with no solar production. Consider conserving energy.',
+		},
+	},
+};
+
+function makeRulesLoader(overrides: Partial<Record<string, ResolvedEnergyRule>> = {}): EvaluatorRulesLoaderService {
+	const rules = { ...defaultEnergyRules, ...overrides };
+
+	return {
+		getAnomalyRule: jest.fn(),
+		getEnergyRule: jest.fn((key: string) => rules[key]),
+		getConflictRule: jest.fn(),
+		getPatternRule: jest.fn(),
+		onModuleInit: jest.fn(),
+		loadAllRules: jest.fn(),
+	} as unknown as EvaluatorRulesLoaderService;
+}
+
 describe('EnergyEvaluator', () => {
 	let service: EnergyEvaluator;
 	let configService: { getModuleConfig: jest.Mock };
@@ -36,7 +84,7 @@ describe('EnergyEvaluator', () => {
 			}),
 		};
 
-		service = new EnergyEvaluator(configService as unknown as ConfigService);
+		service = new EnergyEvaluator(configService as unknown as ConfigService, makeRulesLoader());
 	});
 
 	it('should have the name "EnergyEvaluator"', () => {
@@ -377,6 +425,28 @@ describe('EnergyEvaluator', () => {
 
 			expect(results).toHaveLength(1);
 			expect(results[0].spaceId).toBe(ENERGY_GLOBAL_SPACE_ID);
+		});
+	});
+
+	// ──────────────────────────────────────────
+	// Rule enabled/disabled
+	// ──────────────────────────────────────────
+
+	describe('rule enabled/disabled', () => {
+		it('should return empty results when excess_solar rule is disabled', async () => {
+			service = new EnergyEvaluator(
+				configService as unknown as ConfigService,
+				makeRulesLoader({ excess_solar: { ...defaultEnergyRules.excess_solar, enabled: false } }),
+			);
+
+			const context = makeContext({
+				energy: { solarProduction: 5, gridConsumption: 0, gridExport: 3, batteryLevel: 80 },
+			});
+
+			const results = await service.evaluate(context);
+			const solarResults = results.filter((r) => r.type === SuggestionType.ENERGY_EXCESS_SOLAR);
+
+			expect(solarResults).toHaveLength(0);
 		});
 	});
 });

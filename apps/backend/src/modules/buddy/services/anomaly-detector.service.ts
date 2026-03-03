@@ -10,7 +10,9 @@ import {
 	BUDDY_MODULE_NAME,
 	SuggestionType,
 } from '../buddy.constants';
+import { interpolateTemplate } from '../buddy.utils';
 import { BuddyConfigModel } from '../models/config.model';
+import { EvaluatorRulesLoaderService } from '../spec/evaluator-rules-loader.service';
 
 import { ActionObserverService } from './action-observer.service';
 import { BuddyContext } from './buddy-context.service';
@@ -36,6 +38,7 @@ export class AnomalyDetectorEvaluator implements HeartbeatEvaluator {
 	constructor(
 		private readonly configService: ConfigService,
 		private readonly actionObserver: ActionObserverService,
+		private readonly rulesLoader: EvaluatorRulesLoaderService,
 	) {}
 
 	evaluate(context: BuddyContext): Promise<EvaluatorResult[]> {
@@ -57,6 +60,16 @@ export class AnomalyDetectorEvaluator implements HeartbeatEvaluator {
 	 * - All other devices with temperature values: sensor readings
 	 */
 	private detectTemperatureDrift(context: BuddyContext, thresholds: AnomalyThresholds): EvaluatorResult[] {
+		const rule = this.rulesLoader.getAnomalyRule('temperature_drift');
+
+		if (rule && !rule.enabled) {
+			return [];
+		}
+
+		const setpointCategories = rule?.filters.setpointDeviceCategories ?? [DeviceCategory.THERMOSTAT as string];
+		const readingPropertyCategory =
+			rule?.filters.readingPropertyCategory ?? (PropertyCategory.TEMPERATURE as string);
+
 		const results: EvaluatorResult[] = [];
 
 		for (const space of context.spaces) {
@@ -66,7 +79,7 @@ export class AnomalyDetectorEvaluator implements HeartbeatEvaluator {
 			const setpoints: { deviceName: string; value: number }[] = [];
 
 			for (const device of spaceDevices) {
-				const isThermostat = device.category === (DeviceCategory.THERMOSTAT as string);
+				const isSetpointDevice = setpointCategories.includes(device.category);
 
 				for (const [key, value] of Object.entries(device.state)) {
 					if (value == null || typeof value !== 'number') {
@@ -75,11 +88,11 @@ export class AnomalyDetectorEvaluator implements HeartbeatEvaluator {
 
 					const propertyCategory = key.split('.').pop();
 
-					if (propertyCategory !== (PropertyCategory.TEMPERATURE as string)) {
+					if (propertyCategory !== readingPropertyCategory) {
 						continue;
 					}
 
-					if (isThermostat) {
+					if (isSetpointDevice) {
 						setpoints.push({ deviceName: device.name, value });
 					} else {
 						temperatures.push({ deviceName: device.name, value });
@@ -102,10 +115,19 @@ export class AnomalyDetectorEvaluator implements HeartbeatEvaluator {
 					const diff = Math.abs(sensor.value - setpoint.value);
 
 					if (diff > thresholds.temperatureDrift) {
+						const direction = sensor.value > setpoint.value ? 'above' : 'below';
+
 						results.push({
-							type: SuggestionType.ANOMALY_SENSOR_DRIFT,
-							title: 'Temperature significantly off setpoint',
-							reason: `${space.name} temperature (${sensor.value}°C) is significantly ${sensor.value > setpoint.value ? 'above' : 'below'} setpoint (${setpoint.value}°C). Check the thermostat or window.`,
+							type: rule?.suggestionType ?? SuggestionType.ANOMALY_SENSOR_DRIFT,
+							title: rule?.messages.title ?? 'Temperature significantly off setpoint',
+							reason: rule
+								? interpolateTemplate(rule.messages.reason, {
+										spaceName: space.name,
+										sensorValue: sensor.value,
+										direction,
+										setpointValue: setpoint.value,
+									})
+								: `${space.name} temperature (${sensor.value}°C) is significantly ${direction} setpoint (${setpoint.value}°C). Check the thermostat or window.`,
 							spaceId: space.id,
 							metadata: {
 								sensorDevice: sensor.deviceName,
@@ -132,23 +154,41 @@ export class AnomalyDetectorEvaluator implements HeartbeatEvaluator {
 	 *
 	 * Tracks previous values across heartbeat cycles using a simple Map.
 	 * Only considers numeric values on SENSOR devices.
+	 * Excludes properties listed in the YAML exclude_properties filter
+	 * (e.g. battery_level, link_quality, signal_strength).
 	 *
 	 * Cleanup is scoped to the spaces present in the current context so that
 	 * per-space evaluation (the heartbeat calls evaluate() once per space)
 	 * does not wipe tracker entries belonging to other spaces.
 	 */
 	private detectStuckSensors(context: BuddyContext, thresholds: AnomalyThresholds): EvaluatorResult[] {
+		const rule = this.rulesLoader.getAnomalyRule('stuck_sensor');
+
+		if (rule && !rule.enabled) {
+			return [];
+		}
+
+		const deviceCategories = rule?.filters.deviceCategories ?? [DeviceCategory.SENSOR as string];
+		const excludeProperties = rule?.filters.excludeProperties ?? [];
+
 		const results: EvaluatorResult[] = [];
 		const now = Date.now();
 		const thresholdMs = thresholds.stuckSensorHours * 60 * 60 * 1000;
 		const contextSpaceIds = new Set(context.spaces.map((s) => s.id));
 		const activePropertyKeys = new Set<string>();
 
-		const sensorDevices = context.devices.filter((d) => d.category === (DeviceCategory.SENSOR as string));
+		const sensorDevices = context.devices.filter((d) => deviceCategories.includes(d.category));
 
 		for (const device of sensorDevices) {
 			for (const [key, value] of Object.entries(device.state)) {
 				if (value == null || typeof value !== 'number') {
+					continue;
+				}
+
+				// Check if this property should be excluded
+				const propertyCategory = key.split('.').pop() ?? '';
+
+				if (excludeProperties.includes(propertyCategory)) {
 					continue;
 				}
 
@@ -171,9 +211,17 @@ export class AnomalyDetectorEvaluator implements HeartbeatEvaluator {
 						const spaceName = context.spaces.find((s) => s.id === device.space)?.name ?? 'unknown space';
 
 						results.push({
-							type: SuggestionType.ANOMALY_STUCK_SENSOR,
-							title: 'Sensor value appears stuck',
-							reason: `${device.name} in ${spaceName}: "${key}" has been ${value} for ${stuckHours} hours. The sensor may need attention.`,
+							type: rule?.suggestionType ?? SuggestionType.ANOMALY_STUCK_SENSOR,
+							title: rule?.messages.title ?? 'Sensor value appears stuck',
+							reason: rule
+								? interpolateTemplate(rule.messages.reason, {
+										deviceName: device.name,
+										spaceName,
+										propertyKey: key,
+										value,
+										stuckHours,
+									})
+								: `${device.name} in ${spaceName}: "${key}" has been ${value} for ${stuckHours} hours. The sensor may need attention.`,
 							spaceId: device.space ?? context.spaces[0]?.id ?? 'unknown',
 							metadata: {
 								deviceId: device.id,
@@ -220,6 +268,12 @@ export class AnomalyDetectorEvaluator implements HeartbeatEvaluator {
 	 * target each device within the configured time window.
 	 */
 	private detectUnusualActivity(context: BuddyContext, thresholds: AnomalyThresholds): EvaluatorResult[] {
+		const rule = this.rulesLoader.getAnomalyRule('unusual_activity');
+
+		if (rule && !rule.enabled) {
+			return [];
+		}
+
 		const results: EvaluatorResult[] = [];
 		const now = Date.now();
 		const windowMs = thresholds.unusualActivityWindowMinutes * 60 * 1000;
@@ -253,9 +307,16 @@ export class AnomalyDetectorEvaluator implements HeartbeatEvaluator {
 				const spaceId = device?.space ?? context.spaces[0]?.id ?? 'unknown';
 
 				results.push({
-					type: SuggestionType.ANOMALY_UNUSUAL_ACTIVITY,
-					title: 'Unusual device activity detected',
-					reason: `${deviceName} in ${spaceName} has been triggered ${count} times in the last ${thresholds.unusualActivityWindowMinutes} minutes. This might indicate an issue.`,
+					type: rule?.suggestionType ?? SuggestionType.ANOMALY_UNUSUAL_ACTIVITY,
+					title: rule?.messages.title ?? 'Unusual device activity detected',
+					reason: rule
+						? interpolateTemplate(rule.messages.reason, {
+								deviceName,
+								spaceName,
+								actionCount: count,
+								windowMinutes: thresholds.unusualActivityWindowMinutes,
+							})
+						: `${deviceName} in ${spaceName} has been triggered ${count} times in the last ${thresholds.unusualActivityWindowMinutes} minutes. This might indicate an issue.`,
 					spaceId,
 					metadata: {
 						deviceId,
@@ -271,23 +332,31 @@ export class AnomalyDetectorEvaluator implements HeartbeatEvaluator {
 	}
 
 	private getThresholds(): AnomalyThresholds {
+		const driftRule = this.rulesLoader.getAnomalyRule('temperature_drift');
+		const stuckRule = this.rulesLoader.getAnomalyRule('stuck_sensor');
+		const activityRule = this.rulesLoader.getAnomalyRule('unusual_activity');
+
+		const yamlDefaults = {
+			temperatureDrift: driftRule?.thresholds.degrees ?? ANOMALY_TEMPERATURE_DRIFT_THRESHOLD,
+			stuckSensorHours: stuckRule?.thresholds.hours ?? ANOMALY_STUCK_SENSOR_HOURS,
+			unusualActivityThreshold: activityRule?.thresholds.count ?? ANOMALY_UNUSUAL_ACTIVITY_THRESHOLD,
+			unusualActivityWindowMinutes:
+				activityRule?.thresholds.window_minutes ?? ANOMALY_UNUSUAL_ACTIVITY_WINDOW_MINUTES,
+		};
+
 		try {
 			const config = this.configService.getModuleConfig<BuddyConfigModel>(BUDDY_MODULE_NAME);
 
 			return {
-				temperatureDrift: config.anomalyTemperatureDriftThreshold ?? ANOMALY_TEMPERATURE_DRIFT_THRESHOLD,
-				stuckSensorHours: config.anomalyStuckSensorHours ?? ANOMALY_STUCK_SENSOR_HOURS,
-				unusualActivityThreshold: config.anomalyUnusualActivityThreshold ?? ANOMALY_UNUSUAL_ACTIVITY_THRESHOLD,
+				temperatureDrift: config.anomalyTemperatureDriftThreshold ?? yamlDefaults.temperatureDrift,
+				stuckSensorHours: config.anomalyStuckSensorHours ?? yamlDefaults.stuckSensorHours,
+				unusualActivityThreshold:
+					config.anomalyUnusualActivityThreshold ?? yamlDefaults.unusualActivityThreshold,
 				unusualActivityWindowMinutes:
-					config.anomalyUnusualActivityWindowMinutes ?? ANOMALY_UNUSUAL_ACTIVITY_WINDOW_MINUTES,
+					config.anomalyUnusualActivityWindowMinutes ?? yamlDefaults.unusualActivityWindowMinutes,
 			};
 		} catch {
-			return {
-				temperatureDrift: ANOMALY_TEMPERATURE_DRIFT_THRESHOLD,
-				stuckSensorHours: ANOMALY_STUCK_SENSOR_HOURS,
-				unusualActivityThreshold: ANOMALY_UNUSUAL_ACTIVITY_THRESHOLD,
-				unusualActivityWindowMinutes: ANOMALY_UNUSUAL_ACTIVITY_WINDOW_MINUTES,
-			};
+			return yamlDefaults;
 		}
 	}
 }

@@ -16,6 +16,7 @@ import { WeatherModule } from '../weather/weather.module';
 
 import { BUDDY_MODULE_API_TAG_DESCRIPTION, BUDDY_MODULE_API_TAG_NAME, BUDDY_MODULE_NAME } from './buddy.constants';
 import { BUDDY_SWAGGER_EXTRA_MODELS } from './buddy.openapi';
+import { EvaluatorRulesLoaderService } from './spec/evaluator-rules-loader.service';
 import { BuddyConversationsController } from './controllers/buddy-conversations.controller';
 import { BuddyProvidersController } from './controllers/buddy-providers.controller';
 import { BuddySuggestionsController } from './controllers/buddy-suggestions.controller';
@@ -60,6 +61,7 @@ import { SuggestionEngineService } from './services/suggestion-engine.service';
 	],
 	controllers: [BuddyConversationsController, BuddyProvidersController, BuddySuggestionsController],
 	providers: [
+		EvaluatorRulesLoaderService,
 		ActionObserverService,
 		BuddyContextService,
 		BuddyProviderStatusService,
