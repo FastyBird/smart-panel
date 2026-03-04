@@ -41,14 +41,14 @@ I want the buddy to speak its answers aloud through the panel's speaker.
 
 ## 4. Acceptance criteria
 
-- [ ] Backend `TtsProviderService` supports: `openai-tts`, `elevenlabs`, `system` (espeak/piper), `none`
-- [ ] `GET .../messages/:messageId/audio` returns audio data (MP3 or WAV)
-- [ ] Audio is generated on-demand and cached for the session
-- [ ] Panel: auto-plays audio when voice input mode is active
-- [ ] Panel: speaker icon on assistant messages for manual playback
-- [ ] TTS provider configurable in admin settings
-- [ ] Handles TTS errors gracefully (text response still shown even if audio fails)
-- [ ] Unit tests for TTS service (mock audio generation)
+- [x] Backend `TtsProviderService` supports: `openai-tts`, `elevenlabs`, `system` (espeak/piper), `none`
+- [x] `GET .../messages/:messageId/audio` returns audio data (MP3 or WAV)
+- [x] Audio is generated on-demand and cached for the session
+- [x] Panel: auto-plays audio when voice input mode is active
+- [x] Panel: speaker icon on assistant messages for manual playback
+- [x] TTS provider configurable in admin settings
+- [x] Handles TTS errors gracefully (text response still shown even if audio fails)
+- [x] Unit tests for TTS service (mock audio generation)
 
 ## 5. Example scenarios
 
