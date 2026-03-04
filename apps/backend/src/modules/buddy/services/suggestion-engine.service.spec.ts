@@ -2,11 +2,12 @@
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { IntentType } from '../../intents/intents.constants';
+import { SpacesService } from '../../spaces/services/spaces.service';
 import { SuggestionFeedback } from '../../spaces/spaces.constants';
 import { EventType, SuggestionType } from '../buddy.constants';
 import { BuddySuggestionNotFoundException } from '../buddy.exceptions';
 
-import { DetectedPattern } from './pattern-detector.service';
+import { DetectedPattern, PatternDetectorService } from './pattern-detector.service';
 import { BuddySuggestion, SuggestionEngineService } from './suggestion-engine.service';
 
 function makePattern(overrides: Partial<DetectedPattern> = {}): DetectedPattern {
@@ -40,7 +41,11 @@ describe('SuggestionEngineService', () => {
 			emit: jest.fn(),
 		} as any;
 
-		service = new SuggestionEngineService(patternDetector as any, spacesService as any, eventEmitter);
+		service = new SuggestionEngineService(
+			patternDetector as unknown as PatternDetectorService,
+			spacesService as unknown as SpacesService,
+			eventEmitter,
+		);
 	});
 
 	afterEach(() => {

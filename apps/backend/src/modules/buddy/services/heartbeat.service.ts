@@ -11,6 +11,7 @@ import { EvaluatorResult, HeartbeatEvaluator } from './heartbeat.types';
 import { SuggestionEngineService } from './suggestion-engine.service';
 
 const HEARTBEAT_INTERVAL_NAME = 'buddyHeartbeat';
+const EVALUATOR_TIMEOUT_MS = 10_000;
 
 @Injectable()
 export class HeartbeatService implements OnApplicationBootstrap, OnModuleDestroy {
@@ -29,6 +30,12 @@ export class HeartbeatService implements OnApplicationBootstrap, OnModuleDestroy
 	onApplicationBootstrap(): void {
 		const intervalMs = this.getIntervalMs();
 		const intervalId = setInterval(() => void this.runCycle(), intervalMs);
+
+		// Allow the Node.js process to exit even if the interval is still active
+		// (prevents "worker process has failed to exit gracefully" warnings in tests)
+		if (typeof intervalId === 'object' && 'unref' in intervalId) {
+			intervalId.unref();
+		}
 
 		this.schedulerRegistry.addInterval(HEARTBEAT_INTERVAL_NAME, intervalId);
 
@@ -118,7 +125,7 @@ export class HeartbeatService implements OnApplicationBootstrap, OnModuleDestroy
 	}
 
 	/**
-	 * Run all evaluators for a single space.
+	 * Run all evaluators for a single space with per-evaluator timeout.
 	 */
 	private async evaluateSpace(spaceId: string): Promise<EvaluatorResult[]> {
 		const context = await this.contextService.buildContext(spaceId);
@@ -126,7 +133,11 @@ export class HeartbeatService implements OnApplicationBootstrap, OnModuleDestroy
 
 		for (const evaluator of this.evaluators) {
 			try {
-				const evaluatorResults = await evaluator.evaluate(context);
+				const evaluatorResults = await this.withTimeout(
+					evaluator.evaluate(context),
+					EVALUATOR_TIMEOUT_MS,
+					evaluator.name,
+				);
 
 				results.push(...evaluatorResults);
 			} catch (error) {
@@ -137,6 +148,19 @@ export class HeartbeatService implements OnApplicationBootstrap, OnModuleDestroy
 		}
 
 		return results;
+	}
+
+	private withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+		return Promise.race([
+			promise,
+			new Promise<never>((_resolve, reject) => {
+				const timer = setTimeout(() => reject(new Error(`Evaluator "${label}" timed out after ${ms}ms`)), ms);
+
+				if (typeof timer === 'object' && 'unref' in timer) {
+					timer.unref();
+				}
+			}),
+		]);
 	}
 
 	private isBuddyEnabled(): boolean {

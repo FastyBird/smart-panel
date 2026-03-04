@@ -83,7 +83,15 @@ describe('Buddy module (e2e)', () => {
 				},
 			});
 
-		accessToken = (loginResponse.body as { data: { access_token: string } }).data.access_token;
+		const loginBody = loginResponse.body as { data?: { access_token?: string } };
+
+		if (!loginBody.data?.access_token) {
+			throw new Error(
+				`E2E setup failed: login returned status ${loginResponse.status} — ${JSON.stringify(loginResponse.body)}`,
+			);
+		}
+
+		accessToken = loginBody.data.access_token;
 	});
 
 	afterAll(async () => {

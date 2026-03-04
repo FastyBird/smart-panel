@@ -47,10 +47,12 @@ class SuggestionNotificationService extends ChangeNotifier {
 
 	/// Enqueue a new suggestion notification.
 	///
-	/// If no notification is currently showing, it is displayed immediately.
-	/// Otherwise it is added to the queue and shown after the current one
-	/// is dismissed.
+	/// Expired suggestions are silently dropped. If no notification is currently
+	/// showing, it is displayed immediately. Otherwise it is added to the queue
+	/// and shown after the current one is dismissed.
 	void enqueue(BuddySuggestionModel suggestion) {
+		if (suggestion.isExpired) return;
+
 		if (_current == null) {
 			_showNext(suggestion);
 		} else {
@@ -109,6 +111,11 @@ class SuggestionNotificationService extends ChangeNotifier {
 	}
 
 	void _advanceQueue() {
+		// Skip any queued suggestions that have expired while waiting
+		while (_queue.isNotEmpty && _queue.first.isExpired) {
+			_queue.removeFirst();
+		}
+
 		if (_queue.isNotEmpty) {
 			_showNext(_queue.removeFirst());
 		}

@@ -1,3 +1,5 @@
+import { BuddyContextService } from '../services/buddy-context.service';
+
 import { BuddyContextCacheListener } from './buddy-context-cache.listener';
 
 describe('BuddyContextCacheListener', () => {
@@ -9,7 +11,7 @@ describe('BuddyContextCacheListener', () => {
 			invalidateCache: jest.fn(),
 		};
 
-		listener = new BuddyContextCacheListener(contextService as any);
+		listener = new BuddyContextCacheListener(contextService as unknown as BuddyContextService);
 	});
 
 	it('should invalidate cache on device property value set', () => {

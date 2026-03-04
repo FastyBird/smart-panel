@@ -10,6 +10,7 @@ import { SpacesService } from '../../spaces/services/spaces.service';
 import { SystemConfigModel } from '../../system/models/config.model';
 import { SYSTEM_MODULE_NAME } from '../../system/system.constants';
 import { WeatherService } from '../../weather/services/weather.service';
+import { CONTEXT_CACHE_GLOBAL_KEY } from '../buddy.constants';
 
 import { ActionObserverService } from './action-observer.service';
 
@@ -88,7 +89,7 @@ export class BuddyContextService {
 	) {}
 
 	async buildContext(spaceId?: string): Promise<BuddyContext> {
-		const cacheKey = spaceId ?? '__global__';
+		const cacheKey = spaceId ?? CONTEXT_CACHE_GLOBAL_KEY;
 		const now = Date.now();
 		const cached = this.contextCache.get(cacheKey);
 
