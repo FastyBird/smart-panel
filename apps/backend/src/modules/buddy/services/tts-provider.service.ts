@@ -173,7 +173,7 @@ export class TtsProviderService {
 			const response = await fetch(url, {
 				method: 'POST',
 				headers: {
-					'Accept': 'audio/mpeg',
+					Accept: 'audio/mpeg',
 					'Content-Type': 'application/json',
 					'xi-api-key': apiKey,
 				},
@@ -195,9 +195,7 @@ export class TtsProviderService {
 			const arrayBuffer = await response.arrayBuffer();
 			const buffer = Buffer.from(arrayBuffer);
 
-			this.logger.debug(
-				`ElevenLabs TTS generated ${buffer.length} bytes for text: "${text.substring(0, 50)}..."`,
-			);
+			this.logger.debug(`ElevenLabs TTS generated ${buffer.length} bytes for text: "${text.substring(0, 50)}..."`);
 
 			return { buffer, contentType: 'audio/mpeg' };
 		} catch (error) {
@@ -246,7 +244,8 @@ export class TtsProviderService {
 					args.push('-v', voice);
 				}
 
-				args.push(text);
+				// Use '--' to prevent text starting with '-' from being interpreted as flags
+				args.push('--', text);
 
 				await execFileAsync('espeak', args, {
 					timeout: TTS_DEFAULT_TIMEOUT,
@@ -255,9 +254,7 @@ export class TtsProviderService {
 
 			const buffer = await readFile(outputFile);
 
-			this.logger.debug(
-				`System TTS (${usePiper ? 'piper' : 'espeak'}) generated ${buffer.length} bytes`,
-			);
+			this.logger.debug(`System TTS (${usePiper ? 'piper' : 'espeak'}) generated ${buffer.length} bytes`);
 
 			return { buffer, contentType: 'audio/wav' };
 		} catch (error) {

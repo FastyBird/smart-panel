@@ -1,6 +1,19 @@
 import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
 
-import { Body, Controller, Delete, Get, Header, HttpCode, Param, ParseUUIDPipe, Post, Query, Req, Res } from '@nestjs/common';
+import {
+	Body,
+	Controller,
+	Delete,
+	Get,
+	Header,
+	HttpCode,
+	Param,
+	ParseUUIDPipe,
+	Post,
+	Query,
+	Req,
+	Res,
+} from '@nestjs/common';
 import {
 	ApiBody,
 	ApiConsumes,
@@ -35,8 +48,8 @@ import {
 	BuddyAudioUnsupportedFormatException,
 	BuddyMessageNotFoundException,
 	BuddySttNotConfiguredException,
-	BuddyTtsNotConfiguredException,
 	BuddyTranscriptionEmptyException,
+	BuddyTtsNotConfiguredException,
 } from '../buddy.exceptions';
 import { CreateConversationDto, ReqCreateConversationDto } from '../dto/create-conversation.dto';
 import { ReqSendMessageDto } from '../dto/send-message.dto';

@@ -215,7 +215,7 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 					final audioUrl = _buddyService.getMessageAudioUrl(lastMessage.id);
 
 					if (audioUrl != null) {
-						_audioPlaybackService.playMessageAudio(lastMessage.id, audioUrl);
+						_audioPlaybackService.playMessageAudio(lastMessage.id, audioUrl).catchError((_) {});
 					}
 				}
 			}

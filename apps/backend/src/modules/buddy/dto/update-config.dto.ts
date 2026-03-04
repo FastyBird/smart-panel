@@ -123,10 +123,7 @@ export class UpdateBuddyConfigDto extends UpdateModuleConfigDto {
 	})
 	@Expose({ name: 'tts_speed' })
 	@IsOptional()
-	@IsNumber(
-		{},
-		{ message: '[{"field":"tts_speed","reason":"TTS speed must be a number."}]' },
-	)
+	@IsNumber({}, { message: '[{"field":"tts_speed","reason":"TTS speed must be a number."}]' })
 	@Min(0.25, {
 		message: '[{"field":"tts_speed","reason":"TTS speed must be at least 0.25."}]',
 	})

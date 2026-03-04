@@ -83,9 +83,7 @@ describe('TtsProviderService', () => {
 		it('should throw BuddyTtsNotConfiguredException when provider is NONE', async () => {
 			configService.getModuleConfig.mockReturnValue(makeConfig({ ttsProvider: TtsProvider.NONE }));
 
-			await expect(service.synthesize('Hello world', 'msg-1')).rejects.toThrow(
-				BuddyTtsNotConfiguredException,
-			);
+			await expect(service.synthesize('Hello world', 'msg-1')).rejects.toThrow(BuddyTtsNotConfiguredException);
 		});
 
 		it('should throw BuddyTtsNotConfiguredException when config service throws', async () => {
@@ -93,9 +91,7 @@ describe('TtsProviderService', () => {
 				throw new Error('No config');
 			});
 
-			await expect(service.synthesize('Hello world', 'msg-1')).rejects.toThrow(
-				BuddyTtsNotConfiguredException,
-			);
+			await expect(service.synthesize('Hello world', 'msg-1')).rejects.toThrow(BuddyTtsNotConfiguredException);
 		});
 	});
 
@@ -154,7 +150,7 @@ describe('TtsProviderService', () => {
 	});
 
 	describe('caching', () => {
-		it('should return cached audio for the same message ID', async () => {
+		it('should return cached audio for the same message ID', () => {
 			// We can't test full synthesis without real providers, but we can
 			// verify the cache by setting it up via the cache mechanism.
 			// Since OpenAI isn't available in test env, this will be tested

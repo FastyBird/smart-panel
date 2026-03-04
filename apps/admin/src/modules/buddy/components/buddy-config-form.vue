@@ -214,7 +214,7 @@
 		</el-form-item>
 
 		<el-form-item
-			v-if="model.ttsProvider !== TtsProvider.NONE"
+			v-if="model.ttsProvider !== TtsProvider.NONE && model.ttsProvider !== TtsProvider.ELEVENLABS"
 			:label="t('buddyModule.fields.config.ttsSpeed.title')"
 			prop="ttsSpeed"
 		>
