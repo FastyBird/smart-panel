@@ -7,9 +7,9 @@ import { OAuthFlowService } from '../../../modules/buddy/services/oauth-flow.ser
 import {
 	BUDDY_OPENAI_CODEX_AUTHORIZE_URL,
 	BUDDY_OPENAI_CODEX_DEFAULT_CLIENT_ID,
+	BUDDY_OPENAI_CODEX_DEFAULT_REDIRECT_URI,
 	BUDDY_OPENAI_CODEX_PLUGIN_API_TAG_NAME,
 	BUDDY_OPENAI_CODEX_PLUGIN_NAME,
-	BUDDY_OPENAI_CODEX_REDIRECT_URI,
 	BUDDY_OPENAI_CODEX_SCOPES,
 	BUDDY_OPENAI_CODEX_TOKEN_URL,
 } from '../buddy-openai-codex.constants';
@@ -43,7 +43,7 @@ export class BuddyOpenaiCodexOauthController {
 			authorizeUrl: BUDDY_OPENAI_CODEX_AUTHORIZE_URL,
 			tokenUrl: BUDDY_OPENAI_CODEX_TOKEN_URL,
 			clientId: resolvedClientId,
-			redirectUri: BUDDY_OPENAI_CODEX_REDIRECT_URI,
+			redirectUri: BUDDY_OPENAI_CODEX_DEFAULT_REDIRECT_URI,
 			scopes: BUDDY_OPENAI_CODEX_SCOPES,
 			pluginType: BUDDY_OPENAI_CODEX_PLUGIN_NAME,
 			extraParams: {

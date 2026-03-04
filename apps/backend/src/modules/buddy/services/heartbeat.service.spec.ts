@@ -1,10 +1,14 @@
 /* eslint-disable @typescript-eslint/unbound-method */
+import { SchedulerRegistry } from '@nestjs/schedule';
+
+import { ConfigService } from '../../config/services/config.service';
+import { SpacesService } from '../../spaces/services/spaces.service';
 import { HEARTBEAT_DEFAULT_INTERVAL_MS, SuggestionType } from '../buddy.constants';
 
-import { BuddyContext } from './buddy-context.service';
+import { BuddyContext, BuddyContextService } from './buddy-context.service';
 import { HeartbeatService } from './heartbeat.service';
 import { EvaluatorResult, HeartbeatEvaluator } from './heartbeat.types';
-import { BuddySuggestion } from './suggestion-engine.service';
+import { BuddySuggestion, SuggestionEngineService } from './suggestion-engine.service';
 
 function makeContext(overrides: Partial<BuddyContext> = {}): BuddyContext {
 	return {
@@ -85,11 +89,11 @@ describe('HeartbeatService', () => {
 		};
 
 		service = new HeartbeatService(
-			schedulerRegistry as any,
-			configService as any,
-			spacesService as any,
-			contextService as any,
-			suggestionEngine as any,
+			schedulerRegistry as unknown as SchedulerRegistry,
+			configService as unknown as ConfigService,
+			spacesService as unknown as SpacesService,
+			contextService as unknown as BuddyContextService,
+			suggestionEngine as unknown as SuggestionEngineService,
 		);
 	});
 
@@ -113,11 +117,11 @@ describe('HeartbeatService', () => {
 			});
 
 			service = new HeartbeatService(
-				schedulerRegistry as any,
-				configService as any,
-				spacesService as any,
-				contextService as any,
-				suggestionEngine as any,
+				schedulerRegistry as unknown as SchedulerRegistry,
+				configService as unknown as ConfigService,
+				spacesService as unknown as SpacesService,
+				contextService as unknown as BuddyContextService,
+				suggestionEngine as unknown as SuggestionEngineService,
 			);
 
 			service.onApplicationBootstrap();

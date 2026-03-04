@@ -26,6 +26,7 @@ const DEFAULT_REFRESH_TIMEOUT_MS = 10_000;
  */
 export class OAuthTokenManager {
 	private readonly logger: Logger;
+	private readonly providerLabel: string;
 	private readonly tokenUrl: string;
 	private readonly ttlMs: number;
 	private readonly refreshTimeoutMs: number;
@@ -36,6 +37,7 @@ export class OAuthTokenManager {
 
 	constructor(options: OAuthTokenManagerOptions) {
 		this.logger = new Logger(`OAuthTokenManager:${options.providerLabel}`);
+		this.providerLabel = options.providerLabel;
 		this.tokenUrl = options.tokenUrl;
 		this.ttlMs = options.ttlMs ?? DEFAULT_TOKEN_TTL_MS;
 		this.refreshTimeoutMs = options.refreshTimeoutMs ?? DEFAULT_REFRESH_TIMEOUT_MS;
@@ -75,7 +77,9 @@ export class OAuthTokenManager {
 			return token;
 		}
 
-		return '';
+		throw new Error(
+			`${this.providerLabel}: No access token available — provide an access_token or a refresh_token + client_id`,
+		);
 	}
 
 	private async refreshAccessToken(config: OAuthConfig): Promise<string> {

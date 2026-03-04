@@ -161,19 +161,15 @@ describe('OAuthTokenManager', () => {
 			await expect(manager.resolveAccessToken(config)).rejects.toThrow('The operation was aborted.');
 		});
 
-		it('should return empty string when config is null', async () => {
-			const token = await manager.resolveAccessToken(null);
-
-			expect(token).toBe('');
+		it('should throw when config is null', async () => {
+			await expect(manager.resolveAccessToken(null)).rejects.toThrow('No access token available');
 			expect(fetchSpy).not.toHaveBeenCalled();
 		});
 
-		it('should return empty string when no refresh token or client ID', async () => {
+		it('should throw when no refresh token or client ID', async () => {
 			const config = makeConfig({ accessToken: null, refreshToken: null, clientId: null });
 
-			const token = await manager.resolveAccessToken(config);
-
-			expect(token).toBe('');
+			await expect(manager.resolveAccessToken(config)).rejects.toThrow('No access token available');
 			expect(fetchSpy).not.toHaveBeenCalled();
 		});
 

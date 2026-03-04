@@ -1,3 +1,4 @@
+import { ConfigService } from '../../config/services/config.service';
 import { BUDDY_MODULE_NAME, LLM_PROVIDER_NONE, MessageRole } from '../buddy.constants';
 import { BuddyProviderNotConfiguredException } from '../buddy.exceptions';
 import { BuddyConfigModel } from '../models/config.model';
@@ -64,7 +65,7 @@ describe('LlmProviderService', () => {
 		registry.register(makeMockProvider('buddy-claude-plugin', claudeSendMessage));
 		registry.register(makeMockProvider('buddy-openai-plugin', openaiSendMessage));
 
-		service = new LlmProviderService(configService as any, registry);
+		service = new LlmProviderService(configService as unknown as ConfigService, registry);
 	});
 
 	describe('provider not configured', () => {

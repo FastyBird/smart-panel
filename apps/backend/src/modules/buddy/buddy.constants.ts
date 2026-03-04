@@ -84,3 +84,5 @@ export const ENERGY_HIGH_CONSUMPTION_THRESHOLD_KW = 5; // kW grid draw to trigge
 export const ENERGY_BATTERY_LOW_THRESHOLD_PERCENT = 20; // % battery level to trigger low battery suggestion
 
 export const CONFLICT_LIGHTS_UNOCCUPIED_MINUTES = 15; // minutes of no occupancy before suggesting lights off
+
+export const CONTEXT_CACHE_GLOBAL_KEY = '__global__';

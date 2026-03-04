@@ -1,4 +1,6 @@
 /* eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
+import { DataSource as OrmDataSource, Repository } from 'typeorm';
+
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { EventType, MessageRole } from '../buddy.constants';
@@ -6,7 +8,9 @@ import { BuddyConversationNotFoundException, BuddyProviderNotConfiguredException
 import { BuddyConversationEntity } from '../entities/buddy-conversation.entity';
 import { BuddyMessageEntity } from '../entities/buddy-message.entity';
 
+import { BuddyContextService } from './buddy-context.service';
 import { BuddyConversationService } from './buddy-conversation.service';
+import { LlmProviderService } from './llm-provider.service';
 
 describe('BuddyConversationService', () => {
 	let service: BuddyConversationService;
@@ -85,11 +89,11 @@ describe('BuddyConversationService', () => {
 		} as any;
 
 		service = new BuddyConversationService(
-			conversationRepo as any,
-			messageRepo as any,
-			dataSource as any,
-			llmProvider as any,
-			contextService as any,
+			conversationRepo as unknown as Repository<BuddyConversationEntity>,
+			messageRepo as unknown as Repository<BuddyMessageEntity>,
+			dataSource as unknown as OrmDataSource,
+			llmProvider as unknown as LlmProviderService,
+			contextService as unknown as BuddyContextService,
 			eventEmitter,
 		);
 	});

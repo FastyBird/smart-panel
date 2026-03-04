@@ -3,9 +3,21 @@ import { FastifyRequest } from 'fastify';
 export type RetryOpts = { retries?: number; baseMs?: number; factor?: number; jitter?: boolean };
 
 export const withTimeout = async <T>(p: Promise<T>, ms: number, label = 'op'): Promise<T> => {
-	const to = new Promise<never>((_, rej) => setTimeout(() => rej(new Error(`${label} timeout after ${ms}ms`)), ms));
+	let timer: ReturnType<typeof setTimeout>;
 
-	return Promise.race([p, to]);
+	const to = new Promise<never>((_, rej) => {
+		timer = setTimeout(() => rej(new Error(`${label} timeout after ${ms}ms`)), ms);
+
+		if (typeof timer === 'object' && 'unref' in timer) {
+			timer.unref();
+		}
+	});
+
+	try {
+		return await Promise.race([p, to]);
+	} finally {
+		clearTimeout(timer);
+	}
 };
 
 export const retry = async <T>(fn: () => Promise<T>, opts: RetryOpts = {}): Promise<T> => {

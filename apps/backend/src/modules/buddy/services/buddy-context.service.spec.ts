@@ -1,4 +1,10 @@
+import { ConfigService } from '../../config/services/config.service';
+import { DevicesService } from '../../devices/services/devices.service';
+import { EnergyDataService } from '../../energy/services/energy-data.service';
 import { IntentType } from '../../intents/intents.constants';
+import { ScenesService } from '../../scenes/services/scenes.service';
+import { SpacesService } from '../../spaces/services/spaces.service';
+import { WeatherService } from '../../weather/services/weather.service';
 
 import { ActionObserverService } from './action-observer.service';
 import { BuddyContextService } from './buddy-context.service';
@@ -138,12 +144,12 @@ describe('BuddyContextService', () => {
 		actionObserver = new ActionObserverService();
 
 		service = new BuddyContextService(
-			configService as any,
-			spacesService as any,
-			devicesService as any,
-			scenesService as any,
-			weatherService as any,
-			energyDataService as any,
+			configService as unknown as ConfigService,
+			spacesService as unknown as SpacesService,
+			devicesService as unknown as DevicesService,
+			scenesService as unknown as ScenesService,
+			weatherService as unknown as WeatherService,
+			energyDataService as unknown as EnergyDataService,
 			actionObserver,
 		);
 	});
