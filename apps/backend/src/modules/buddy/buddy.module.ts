@@ -1,4 +1,4 @@
-import { Inject, Module, OnModuleInit, forwardRef } from '@nestjs/common';
+import { Module, OnModuleInit, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { ConfigModule } from '../config/config.module';
@@ -104,12 +104,12 @@ export class BuddyModule implements OnModuleInit {
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly modulesMapperService: ModulesTypeMapperService,
 		private readonly extensionsService: ExtensionsService,
-		@Inject(HeartbeatService) private readonly heartbeatService: HeartbeatService,
-		@Inject(PatternDetectorService) private readonly patternDetector: PatternDetectorService,
-		@Inject(AnomalyDetectorEvaluator) private readonly anomalyDetector: AnomalyDetectorEvaluator,
-		@Inject(EnergyEvaluator) private readonly energyEvaluator: EnergyEvaluator,
-		@Inject(ConflictDetectorEvaluator) private readonly conflictDetector: ConflictDetectorEvaluator,
-		@Inject(SceneSuggestionEvaluator) private readonly sceneSuggestion: SceneSuggestionEvaluator,
+		private readonly heartbeatService: HeartbeatService,
+		private readonly patternDetector: PatternDetectorService,
+		private readonly anomalyDetector: AnomalyDetectorEvaluator,
+		private readonly energyEvaluator: EnergyEvaluator,
+		private readonly conflictDetector: ConflictDetectorEvaluator,
+		private readonly sceneSuggestion: SceneSuggestionEvaluator,
 	) {}
 
 	onModuleInit() {

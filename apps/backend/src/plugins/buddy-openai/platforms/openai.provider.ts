@@ -36,6 +36,12 @@ export class OpenAiProvider implements ILlmProvider {
 		return BUDDY_OPENAI_DEFAULT_MODEL;
 	}
 
+	isConfigured(pluginConfig: Record<string, unknown>): boolean {
+		const apiKey = pluginConfig.apiKey;
+
+		return typeof apiKey === 'string' && apiKey.length > 0;
+	}
+
 	async sendMessage(
 		systemPrompt: string,
 		messages: ChatMessage[],
@@ -47,8 +53,10 @@ export class OpenAiProvider implements ILlmProvider {
 		const resolvedModel = config?.model ?? model;
 		const timeout = options?.timeout ?? 30_000;
 
+		const maxTokens = options?.maxTokens ?? 1024;
+
 		const start = Date.now();
-		const result = await sendOpenAiMessage(apiKey, resolvedModel, systemPrompt, messages, timeout);
+		const result = await sendOpenAiMessage(apiKey, resolvedModel, systemPrompt, messages, timeout, maxTokens);
 		const durationMs = Date.now() - start;
 
 		return {

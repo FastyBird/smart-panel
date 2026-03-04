@@ -3,24 +3,9 @@ import { type ComputedRef, type Ref, computed, nextTick, ref } from 'vue';
 import { useBackend } from '../../../common';
 import { MODULES_PREFIX } from '../../../app.constants';
 import { BUDDY_MODULE_PREFIX } from '../buddy.constants';
+import type { IConversation, IMessage } from '../buddy.types';
 
 import { type IProviderStatus, useBuddyProviders } from './useBuddyProviders';
-
-interface IConversation {
-	id: string;
-	title: string | null;
-	space_id: string | null;
-	created_at: string;
-	updated_at: string;
-}
-
-interface IMessage {
-	id: string;
-	conversation_id: string;
-	role: 'user' | 'assistant';
-	content: string;
-	created_at: string;
-}
 
 interface IUseBuddyChat {
 	conversations: Ref<IConversation[]>;
