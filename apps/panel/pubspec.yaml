@@ -61,6 +61,8 @@ dependencies:
   fl_chart: ^0.69.0
   bonsoir: ^5.1.4
   flutter_markdown: ^0.7.7+1
+  record: ^5.2.1
+  path_provider: ^2.1.4
 
 dev_dependencies:
   flutter_test:

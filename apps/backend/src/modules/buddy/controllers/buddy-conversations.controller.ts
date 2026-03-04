@@ -1,8 +1,9 @@
 import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
 
 import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Post, Query, Req, Res } from '@nestjs/common';
-import { ApiBody, ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiConsumes, ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 
+import { MULTIPART_MAX_FILE_SIZE_BYTES } from '../../../app.constants';
 import { createExtensionLogger } from '../../../common/logger';
 import { setLocationHeader } from '../../api/utils/location-header.utils';
 import {
@@ -13,19 +14,35 @@ import {
 	ApiServiceUnavailableResponse,
 	ApiSuccessResponse,
 } from '../../swagger/decorators/api-documentation.decorator';
-import { BUDDY_MODULE_API_TAG_NAME, BUDDY_MODULE_NAME, BUDDY_MODULE_PREFIX } from '../buddy.constants';
+import {
+	BUDDY_MODULE_API_TAG_NAME,
+	BUDDY_MODULE_NAME,
+	BUDDY_MODULE_PREFIX,
+	STT_ALLOWED_MIME_TYPES,
+} from '../buddy.constants';
+import {
+	BuddyAudioMissingException,
+	BuddyAudioTooLargeException,
+	BuddyAudioUnsupportedFormatException,
+	BuddySttNotConfiguredException,
+	BuddyTranscriptionEmptyException,
+} from '../buddy.exceptions';
 import { CreateConversationDto, ReqCreateConversationDto } from '../dto/create-conversation.dto';
 import { ReqSendMessageDto } from '../dto/send-message.dto';
 import { ConversationResponseModel, ConversationsResponseModel } from '../models/conversation-response.model';
 import { MessageResponseModel, MessagesResponseModel } from '../models/message-response.model';
 import { BuddyConversationService } from '../services/buddy-conversation.service';
+import { SttProviderService } from '../services/stt-provider.service';
 
 @ApiTags(BUDDY_MODULE_API_TAG_NAME)
 @Controller('conversations')
 export class BuddyConversationsController {
 	private readonly logger = createExtensionLogger(BUDDY_MODULE_NAME, 'BuddyConversationsController');
 
-	constructor(private readonly conversationService: BuddyConversationService) {}
+	constructor(
+		private readonly conversationService: BuddyConversationService,
+		private readonly sttProviderService: SttProviderService,
+	) {}
 
 	@ApiOperation({
 		tags: [BUDDY_MODULE_API_TAG_NAME],
@@ -175,6 +192,97 @@ export class BuddyConversationsController {
 		const assistantMessage = await this.conversationService.sendMessage(id, body.data.content);
 
 		this.logger.debug(`Buddy responded in conversation id=${id}, message id=${assistantMessage.id}`);
+
+		const response = new MessageResponseModel();
+
+		response.data = assistantMessage;
+
+		return response;
+	}
+
+	@ApiOperation({
+		tags: [BUDDY_MODULE_API_TAG_NAME],
+		summary: 'Send an audio message to the buddy',
+		description:
+			'Uploads an audio file, transcribes it using the configured STT provider, and sends the transcribed text as a user message. Returns the assistant response. Accepts WAV, WebM, OGG, and MP3 audio formats (max 25 MB).',
+		operationId: 'send-buddy-module-conversation-audio-message',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Conversation ID' })
+	@ApiConsumes('multipart/form-data')
+	@ApiBody({
+		description: 'Audio file to transcribe and send as a message',
+		schema: {
+			type: 'object',
+			properties: {
+				audio: {
+					type: 'string',
+					format: 'binary',
+					description: 'Audio file (WAV, WebM, OGG, or MP3, max 25 MB)',
+				},
+			},
+			required: ['audio'],
+		},
+	})
+	@ApiCreatedSuccessResponse(MessageResponseModel, 'The audio was transcribed and the buddy responded successfully.')
+	@ApiBadRequestResponse('No audio file provided or invalid format')
+	@ApiNotFoundResponse('Conversation not found')
+	@ApiServiceUnavailableResponse('STT or AI provider not configured')
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Post(':id/audio')
+	async sendAudioMessage(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Req() req: Request,
+	): Promise<MessageResponseModel> {
+		this.logger.debug(`Incoming audio message for conversation id=${id}`);
+
+		// Validate conversation exists before expensive STT transcription
+		await this.conversationService.findOneOrThrow(id);
+
+		// Fail fast if no STT provider is configured — avoids consuming the
+		// multipart upload body only to reject it afterwards.
+		if (!this.sttProviderService.isConfigured()) {
+			throw new BuddySttNotConfiguredException();
+		}
+
+		// Parse multipart file from the request (@fastify/multipart augments FastifyRequest at runtime)
+		const file = await (
+			req as Request & {
+				file: () => Promise<
+					{ mimetype: string; file: { truncated: boolean }; toBuffer: () => Promise<Buffer> } | undefined
+				>;
+			}
+		).file();
+
+		if (!file) {
+			throw new BuddyAudioMissingException();
+		}
+
+		const mimeType = file.mimetype;
+
+		if (!STT_ALLOWED_MIME_TYPES.includes(mimeType)) {
+			throw new BuddyAudioUnsupportedFormatException();
+		}
+
+		// Read the file buffer (must call toBuffer before checking truncated)
+		const buffer = await file.toBuffer();
+
+		if (file.file.truncated) {
+			throw new BuddyAudioTooLargeException(Math.round(MULTIPART_MAX_FILE_SIZE_BYTES / (1024 * 1024)));
+		}
+
+		// Transcribe the audio
+		const transcription = await this.sttProviderService.transcribe(buffer, mimeType);
+
+		this.logger.debug(`Audio transcribed for conversation id=${id}: "${transcription.substring(0, 100)}..."`);
+
+		if (!transcription.trim()) {
+			throw new BuddyTranscriptionEmptyException();
+		}
+
+		// Send the transcribed text as a regular message
+		const assistantMessage = await this.conversationService.sendMessage(id, transcription);
+
+		this.logger.debug(`Buddy responded to audio in conversation id=${id}, message id=${assistantMessage.id}`);
 
 		const response = new MessageResponseModel();
 

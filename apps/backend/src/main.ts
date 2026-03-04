@@ -1,12 +1,13 @@
 import { useContainer } from 'class-validator';
 import { FastifyReply, FastifyRequest } from 'fastify';
 
+import fastifyMultipart from '@fastify/multipart';
 import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { ConfigService as NestConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 
-import { API_PREFIX } from './app.constants';
+import { API_PREFIX, MULTIPART_MAX_FILE_SIZE_BYTES } from './app.constants';
 import { AppModule } from './app.module';
 import { BadRequestExceptionFilter } from './common/filters/bad-request-exception.filter';
 import { GlobalErrorFilter } from './common/filters/global-error.filter';
@@ -46,6 +47,25 @@ async function bootstrap() {
 	});
 
 	const app = await NestFactory.create<NestFastifyApplication>(appModule, new FastifyAdapter(), { bufferLogs: true });
+
+	// Register multipart support for file uploads
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+	await app.register(fastifyMultipart, {
+		limits: { fileSize: MULTIPART_MAX_FILE_SIZE_BYTES },
+	});
+
+	// Scope the raised body limit to multipart/form-data only, keeping
+	// Fastify's default 1 MiB for JSON endpoints to limit memory pressure.
+	const fastifyInstance = app.getHttpAdapter().getInstance();
+
+	fastifyInstance.removeContentTypeParser('multipart/form-data');
+	fastifyInstance.addContentTypeParser(
+		'multipart/form-data',
+		{ bodyLimit: MULTIPART_MAX_FILE_SIZE_BYTES },
+		(_request: unknown, _payload: unknown, done: (err: null) => void) => {
+			done(null);
+		},
+	);
 
 	const sysLogger = app.get(SystemLoggerService);
 
@@ -101,7 +121,6 @@ async function bootstrap() {
 	swaggerService.setup(app);
 
 	// Register OAuth callback route outside the API prefix (OAuth providers redirect here directly)
-	const fastifyInstance = app.getHttpAdapter().getInstance();
 	const oauthCallbackService = app.get(OAuthCallbackService);
 
 	const oauthCallbackHandler = async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {

@@ -17,6 +17,7 @@ import {
 	ENERGY_HIGH_CONSUMPTION_THRESHOLD_KW,
 	HEARTBEAT_DEFAULT_INTERVAL_MS,
 	LLM_PROVIDER_NONE,
+	SttProvider,
 } from '../buddy.constants';
 
 @ApiSchema({ name: 'ConfigModuleDataBuddy' })
@@ -70,6 +71,50 @@ export class BuddyConfigModel extends ModuleConfigModel {
 	@IsOptional()
 	@IsString()
 	ollamaUrl?: string;
+
+	@ApiPropertyOptional({
+		name: 'stt_provider',
+		description: 'Speech-to-text provider (none, whisper_api, whisper_local)',
+		type: 'string',
+		enum: Object.values(SttProvider),
+		example: SttProvider.NONE,
+	})
+	@Expose({ name: 'stt_provider' })
+	@IsOptional()
+	@IsString()
+	sttProvider: string = SttProvider.NONE;
+
+	@ApiPropertyOptional({
+		name: 'stt_api_key',
+		description: 'API key for the STT provider (required for whisper_api)',
+		type: 'string',
+	})
+	@Expose({ name: 'stt_api_key' })
+	@IsOptional()
+	@IsString()
+	sttApiKey?: string;
+
+	@ApiPropertyOptional({
+		name: 'stt_model',
+		description: 'Model identifier for the STT provider',
+		type: 'string',
+		example: 'whisper-1',
+	})
+	@Expose({ name: 'stt_model' })
+	@IsOptional()
+	@IsString()
+	sttModel?: string;
+
+	@ApiPropertyOptional({
+		name: 'stt_language',
+		description: 'ISO 639-1 language code for transcription (e.g. en, cs)',
+		type: 'string',
+		example: 'en',
+	})
+	@Expose({ name: 'stt_language' })
+	@IsOptional()
+	@IsString()
+	sttLanguage?: string;
 
 	@ApiPropertyOptional({
 		name: 'heartbeat_interval_ms',

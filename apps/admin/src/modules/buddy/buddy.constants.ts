@@ -26,3 +26,9 @@ export const LEGACY_PROVIDER_MAP = new Map<string, string>([
 	['openai', 'buddy-openai-plugin'],
 	['ollama', 'buddy-ollama-plugin'],
 ]);
+
+export enum SttProvider {
+	NONE = 'none',
+	WHISPER_API = 'whisper_api',
+	WHISPER_LOCAL = 'whisper_local',
+}
