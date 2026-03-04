@@ -182,7 +182,10 @@ useMeta({
 const { isMDDevice } = useBreakpoints();
 
 const { enabled, loaded: modulesLoaded } = useConfigModules();
+// Optimistic for template — prevents flashing the "disabled" card before config loads
 const isModuleEnabled = computed(() => !modulesLoaded.value || enabled(BUDDY_MODULE_NAME));
+// Strict for data loading — only load data when we know the module is enabled
+const isModuleConfirmedEnabled = computed(() => modulesLoaded.value && enabled(BUDDY_MODULE_NAME));
 const moduleEditRoute = { name: ConfigRouteNames.CONFIG_MODULE_EDIT, params: { module: BUDDY_MODULE_NAME } };
 
 const { spaces, fetchSpaces } = useSpaces();
@@ -247,15 +250,15 @@ const loadChatData = async (): Promise<void> => {
 };
 
 onBeforeMount(async (): Promise<void> => {
-	if (!isModuleEnabled.value) {
+	if (!isModuleConfirmedEnabled.value) {
 		return;
 	}
 
 	await loadChatData();
 });
 
-watch(isModuleEnabled, async (enabled): Promise<void> => {
-	if (enabled) {
+watch(isModuleConfirmedEnabled, async (confirmed): Promise<void> => {
+	if (confirmed) {
 		await loadChatData();
 	}
 });

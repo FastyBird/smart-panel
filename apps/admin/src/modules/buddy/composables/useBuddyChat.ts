@@ -242,6 +242,11 @@ export const useBuddyChat = (): IUseBuddyChat => {
 				await fetchMessages(conversationId);
 			}
 
+			// If fetchMessages failed (it swallows its own errors), the optimistic
+			// message with the fake pendingId may still be present. Remove it since
+			// the POST succeeded — the real message is on the server.
+			messages.value = messages.value.filter((m) => m.id !== pendingId);
+
 			// Update conversation's updated_at locally so the sidebar reflects latest activity
 			const conv = conversations.value.find((c) => c.id === conversationId);
 
