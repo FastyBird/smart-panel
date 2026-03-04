@@ -34,6 +34,7 @@ import 'package:fastybird_smart_panel/modules/devices/services/device_control_st
 import 'package:fastybird_smart_panel/modules/devices/utils/fan_utils.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/channel.dart' show buildChannelIcon;
 import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
+import 'package:fastybird_smart_panel/modules/devices/models/device_detail_config.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/air_conditioner.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/properties/view.dart';
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
@@ -87,11 +88,13 @@ class _SensorInfo {
 class AirConditionerDeviceDetail extends StatefulWidget {
   final AirConditionerDeviceView _device;
   final VoidCallback? onBack;
+  final DeviceDetailConfig? config;
 
   const AirConditionerDeviceDetail({
     super.key,
     required AirConditionerDeviceView device,
     this.onBack,
+    this.config,
   }) : _device = device;
 
   @override
@@ -813,30 +816,32 @@ class _AirConditionerDeviceDetailState
         ? DatetimeUtils.formatTimeAgo(widget._device.lastStateChange!, localizations)
         : null;
 
+    final body = Stack(
+      children: [
+        OrientationBuilder(
+          builder: (context, orientation) {
+            return orientation == Orientation.landscape
+                ? _buildLandscapeLayout(context, isDark)
+                : _buildPortraitLayout(context, isDark);
+          },
+        ),
+        if (!widget._device.isOnline)
+          DeviceOfflineState(
+            isDark: isDark,
+            lastSeenText: lastSeenText,
+          ),
+      ],
+    );
+
+    if (!(widget.config?.showHeader ?? true)) return body;
+
     return Scaffold(
       backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
       body: SafeArea(
         child: Column(
           children: [
             _buildHeader(context, isDark),
-            Expanded(
-              child: Stack(
-                children: [
-                  OrientationBuilder(
-                    builder: (context, orientation) {
-                      return orientation == Orientation.landscape
-                          ? _buildLandscapeLayout(context, isDark)
-                          : _buildPortraitLayout(context, isDark);
-                    },
-                  ),
-                  if (!widget._device.isOnline)
-                    DeviceOfflineState(
-                      isDark: isDark,
-                      lastSeenText: lastSeenText,
-                    ),
-                ],
-              ),
-            ),
+            Expanded(child: body),
           ],
         ),
       ),
@@ -848,22 +853,27 @@ class _AirConditionerDeviceDetailState
     final modeColorFamily = _getModeColorFamily(context);
     final secondaryColor =
         isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
+    final showBack = widget.config?.showBackButton ?? true;
+    final iconData = widget.config?.iconOverride ?? buildDeviceIcon(_device.category, _device.icon);
 
     return PageHeader(
-      title: _device.name,
+      title: widget.config?.titleOverride ?? _device.name,
       subtitle: _getStatusLabel(localizations),
       subtitleColor: _isActive ? modeColorFamily.base : secondaryColor,
-      leading: Row(
-        mainAxisSize: MainAxisSize.min,
-        spacing: AppSpacings.pMd,
-        children: [
-          HeaderIconButton(
-            icon: MdiIcons.arrowLeft,
-            onTap: widget.onBack ?? () => Navigator.of(context).pop(),
-          ),
-          HeaderMainIcon(icon: buildDeviceIcon(_device.category, _device.icon), color: _getModeColor()),
-        ],
-      ),
+      leading: showBack
+          ? Row(
+              mainAxisSize: MainAxisSize.min,
+              spacing: AppSpacings.pMd,
+              children: [
+                HeaderIconButton(
+                  icon: MdiIcons.arrowLeft,
+                  onTap: widget.onBack ?? () => Navigator.of(context).pop(),
+                ),
+                HeaderMainIcon(icon: iconData, color: _getModeColor()),
+              ],
+            )
+          : HeaderMainIcon(icon: iconData, color: _getModeColor()),
+      trailing: widget.config?.trailing,
     );
   }
 

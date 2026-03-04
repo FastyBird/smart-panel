@@ -1,7 +1,8 @@
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/mappers/data_source.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
+import 'package:fastybird_smart_panel/modules/devices/models/device_detail_config.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/view.dart';
 import 'package:fastybird_smart_panel/plugins/pages-device-detail/views/view.dart';
@@ -21,12 +22,14 @@ class DeviceDetailPage extends StatelessWidget {
       devicesService,
       _,
     ) {
+      final isDark = Theme.of(context).brightness == Brightness.dark;
       final DeviceView? device = devicesService.getDevice(page.device);
 
       if (device == null) {
         final localizations = AppLocalizations.of(context)!;
 
         return Scaffold(
+          backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
           body: Center(
             child: Padding(
               padding: AppSpacings.paddingMd,
@@ -54,18 +57,27 @@ class DeviceDetailPage extends StatelessWidget {
         );
       }
 
+      final dataSourceTrailing = page.showTopBar && page.dataSources.isNotEmpty
+          ? Row(
+              mainAxisSize: MainAxisSize.min,
+              spacing: AppSpacings.pSm,
+              children: page.dataSources.map((ds) => buildDataSourceWidget(ds)).toList(),
+            )
+          : null;
+
+      final config = DeviceDetailConfig(
+        showHeader: page.showTopBar,
+        showBackButton: false,
+        titleOverride: page.showTopBar ? page.title : null,
+        iconOverride: page.showTopBar ? page.icon : null,
+        trailing: dataSourceTrailing,
+      );
+
       return Scaffold(
-        appBar: page.showTopBar
-            ? AppTopBar(
-                title: device.name,
-                icon: page.icon ??
-                    buildDeviceIcon(
-                      device.category,
-                      device.icon,
-                    ),
-              )
-            : null,
-        body: buildDeviceWidget(device),
+        backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
+        body: SafeArea(
+          child: buildDeviceWidget(device, config: config),
+        ),
       );
     });
   }

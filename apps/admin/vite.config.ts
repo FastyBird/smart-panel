@@ -8,7 +8,7 @@ import svgLoader from 'vite-svg-loader';
 
 import vueI18n from '@intlify/unplugin-vue-i18n/vite';
 import vue from '@vitejs/plugin-vue';
-import pkg from './package.json' assert { type: 'json' }
+import pkg from './package.json' with { type: 'json' }
 
 // https://vite.dev/config/
 export default defineConfig((config: UserConfig): UserConfig => {

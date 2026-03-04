@@ -2,8 +2,6 @@
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
-import fetch from 'node-fetch';
-
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { ConfigService } from '../../../modules/config/services/config.service';
@@ -12,9 +10,7 @@ import { WEATHER_OPENWEATHERMAP_ONECALL_PLUGIN_NAME } from '../weather-openweath
 
 import { OpenWeatherMapOneCallGeolocationService } from './openweathermap-onecall-geolocation.service';
 
-jest.mock('node-fetch');
-
-const mockFetch = fetch as jest.MockedFunction<typeof fetch>;
+const mockFetch = jest.spyOn(global, 'fetch').mockImplementation();
 
 describe('OpenWeatherMapOneCallGeolocationService', () => {
 	let service: OpenWeatherMapOneCallGeolocationService;

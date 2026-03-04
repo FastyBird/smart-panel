@@ -1,7 +1,5 @@
 import 'dart:async';
 
-import 'package:fastybird_smart_panel/plugins/pages-cards/models/model.dart';
-import 'package:fastybird_smart_panel/plugins/pages-tiles/models/model.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/export.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/mappers/data_source.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/mappers/page.dart';
@@ -199,7 +197,9 @@ class DashboardService extends ChangeNotifier {
       try {
         // Get tiles for this card
         final cardTiles = newTilesViews.entries
-            .where((entry) => card.tiles.contains(entry.key))
+            .where((entry) =>
+                entry.value.parentId == card.id &&
+                entry.value.parentType == 'card')
             .map((entry) => entry.value)
             .toList();
 
@@ -236,25 +236,17 @@ class DashboardService extends ChangeNotifier {
 
     for (var page in pages) {
       try {
-        // Get tiles for this page (from page model's tiles list)
-        List<String> pageTileIds = [];
-        if (page is TilesPageModel) {
-          pageTileIds = page.tiles;
-        }
-
+        // Get tiles for this page (by parent reference)
         final pageTiles = newTilesViews.entries
-            .where((entry) => pageTileIds.contains(entry.key))
+            .where((entry) =>
+                entry.value.parentId == page.id &&
+                entry.value.parentType == 'page')
             .map((entry) => entry.value)
             .toList();
 
-        // Get cards for this page (from page model's cards list)
-        List<String> pageCardIds = [];
-        if (page is CardsPageModel) {
-          pageCardIds = page.cards;
-        }
-
+        // Get cards for this page (by page reference)
         final pageCards = newCardsViews.entries
-            .where((entry) => pageCardIds.contains(entry.key))
+            .where((entry) => entry.value.page == page.id)
             .map((entry) => entry.value)
             .toList();
 

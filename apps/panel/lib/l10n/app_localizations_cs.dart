@@ -34,11 +34,11 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String domain_data_load_failed(String domain) {
-    return 'Failed to load $domain';
+    return 'Nepodařilo se načíst $domain';
   }
 
   @override
-  String get domain_data_load_failed_description => 'Unable to retrieve data. Please check your connection and try again.';
+  String get domain_data_load_failed_description => 'Nepodařilo se načíst data. Zkontrolujte připojení a zkuste to znovu.';
 
   @override
   String get domain_not_configured_subtitle => 'Nekonfigurováno';

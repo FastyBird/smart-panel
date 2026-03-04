@@ -1,7 +1,7 @@
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/fixed_grid_size_grid.dart';
 import 'package:fastybird_smart_panel/core/widgets/fixed_tile_size_grid.dart';
-import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
+import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/mappers/data_source.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/mappers/tile.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
@@ -31,8 +31,11 @@ class TilesPage extends StatelessWidget {
         page.id,
       );
 
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+
       if (freshPage == null || freshPage is! TilesPageView) {
         return Scaffold(
+          backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
           body: Center(
             child: Padding(
               padding: AppSpacings.paddingMd,
@@ -62,6 +65,7 @@ class TilesPage extends StatelessWidget {
 
       if (freshPage.tiles.isEmpty) {
         return Scaffold(
+          backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
           body: Center(
             child: Padding(
               padding: AppSpacings.paddingMd,
@@ -91,54 +95,53 @@ class TilesPage extends StatelessWidget {
       }
 
       return Scaffold(
-        appBar: freshPage.showTopBar
-            ? AppTopBar(
-                icon: freshPage.icon,
-                title: freshPage.title,
-                actions: [
-                  LayoutBuilder(builder: (context, constraints) {
-                    List<Widget> values = freshPage.dataSources
-                        .map(
-                          (dataSource) => buildDataSourceWidget(dataSource),
-                        )
-                        .toList();
-
-                    return Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: values
-                          .expand((widget) => [
-                                widget,
-                                if (widget != values.last)
-                                  AppSpacings.spacingSmHorizontal,
-                              ])
-                          .toList(),
-                    );
-                  }),
-                ],
-              )
-            : null,
+        backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
         body: SafeArea(
-          child: Padding(
-            padding: AppSpacings.paddingSm,
-            child: freshPage.tileSize != null
-                ? FixedTileSizeGrid(
-                    unitSize: freshPage.tileSize,
-                    children: freshPage.tiles
-                        .map(
-                          (tile) => _buildFixedGridTile(context, tile),
-                        )
-                        .toList(),
-                  )
-                : FixedGridSizeGrid(
-                    mainAxisSize: freshPage.rows,
-                    crossAxisSize: freshPage.cols,
-                    children: freshPage.tiles
-                        .map(
-                          (tile) => _buildDynamicGridTile(context, tile),
-                        )
-                        .toList(),
+          child: Column(
+            children: [
+              if (freshPage.showTopBar)
+                PageHeader(
+                  title: freshPage.title,
+                  leading: HeaderMainIcon(
+                    icon: freshPage.icon ?? MdiIcons.viewDashboardVariant,
                   ),
+                  trailing: freshPage.dataSources.isNotEmpty
+                      ? Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          spacing: AppSpacings.pSm,
+                          children: freshPage.dataSources
+                              .map(
+                                (dataSource) =>
+                                    buildDataSourceWidget(dataSource),
+                              )
+                              .toList(),
+                        )
+                      : null,
+                ),
+              Expanded(
+                child: Padding(
+                  padding: AppSpacings.paddingSm,
+                  child: freshPage.tileSize != null
+                      ? FixedTileSizeGrid(
+                          unitSize: freshPage.tileSize,
+                          children: freshPage.tiles
+                              .map(
+                                (tile) => _buildFixedGridTile(context, tile),
+                              )
+                              .toList(),
+                        )
+                      : FixedGridSizeGrid(
+                          mainAxisSize: freshPage.rows,
+                          crossAxisSize: freshPage.cols,
+                          children: freshPage.tiles
+                              .map(
+                                (tile) => _buildDynamicGridTile(context, tile),
+                              )
+                              .toList(),
+                        ),
+                ),
+              ),
+            ],
           ),
         ),
       );

@@ -30,6 +30,7 @@ import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/channel.dart' show buildChannelIcon;
 import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
+import 'package:fastybird_smart_panel/modules/devices/models/device_detail_config.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/heating_unit.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -79,11 +80,13 @@ class _SensorInfo {
 class HeatingUnitDeviceDetail extends StatefulWidget {
   final HeatingUnitDeviceView _device;
   final VoidCallback? onBack;
+  final DeviceDetailConfig? config;
 
   const HeatingUnitDeviceDetail({
     super.key,
     required HeatingUnitDeviceView device,
     this.onBack,
+    this.config,
   }) : _device = device;
 
   @override
@@ -384,6 +387,25 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
             widget._device.lastStateChange!, localizations)
         : null;
 
+    final body = Stack(
+      children: [
+        OrientationBuilder(
+          builder: (context, orientation) {
+            return orientation == Orientation.landscape
+                ? _buildLandscapeLayout(context, isDark)
+                : _buildPortraitLayout(context, isDark);
+          },
+        ),
+        if (!widget._device.isOnline)
+          DeviceOfflineState(
+            isDark: isDark,
+            lastSeenText: lastSeenText,
+          ),
+      ],
+    );
+
+    if (!(widget.config?.showHeader ?? true)) return body;
+
     return Scaffold(
       backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
       body: SafeArea(
@@ -391,22 +413,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
           children: [
             _buildHeader(context, isDark),
             Expanded(
-              child: Stack(
-                children: [
-                  OrientationBuilder(
-                    builder: (context, orientation) {
-                      return orientation == Orientation.landscape
-                          ? _buildLandscapeLayout(context, isDark)
-                          : _buildPortraitLayout(context, isDark);
-                    },
-                  ),
-                  if (!widget._device.isOnline)
-                    DeviceOfflineState(
-                      isDark: isDark,
-                      lastSeenText: lastSeenText,
-                    ),
-                ],
-              ),
+              child: body,
             ),
           ],
         ),
@@ -419,22 +426,27 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
     final modeColorFamily = _getModeColorFamily(context);
     final secondaryColor =
         isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
+    final showBack = widget.config?.showBackButton ?? true;
+    final iconData = widget.config?.iconOverride ?? buildDeviceIcon(_device.category, _device.icon);
 
     return PageHeader(
-      title: _device.name,
+      title: widget.config?.titleOverride ?? _device.name,
       subtitle: _getStatusLabel(localizations),
       subtitleColor: _isActive ? modeColorFamily.base : secondaryColor,
-      leading: Row(
-        mainAxisSize: MainAxisSize.min,
-        spacing: AppSpacings.pMd,
-        children: [
-          HeaderIconButton(
-            icon: MdiIcons.arrowLeft,
-            onTap: widget.onBack ?? () => Navigator.of(context).pop(),
-          ),
-          HeaderMainIcon(icon: buildDeviceIcon(_device.category, _device.icon), color: _getModeColor()),
-        ],
-      ),
+      leading: showBack
+          ? Row(
+              mainAxisSize: MainAxisSize.min,
+              spacing: AppSpacings.pMd,
+              children: [
+                HeaderIconButton(
+                  icon: MdiIcons.arrowLeft,
+                  onTap: widget.onBack ?? () => Navigator.of(context).pop(),
+                ),
+                HeaderMainIcon(icon: iconData, color: _getModeColor()),
+              ],
+            )
+          : HeaderMainIcon(icon: iconData, color: _getModeColor()),
+      trailing: widget.config?.trailing,
     );
   }
 

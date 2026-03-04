@@ -18,10 +18,6 @@ import { ThirdPartyDeviceEntity } from '../entities/devices-third-party.entity';
 
 import { ThirdPartyDevicePlatform } from './third-party-device.platform';
 
-jest.mock('node-fetch');
-
-const { Response } = jest.requireActual('node-fetch');
-
 describe('ThirdPartyDevicePlatform', () => {
 	let platform: ThirdPartyDevicePlatform;
 	let mockDevice: ThirdPartyDeviceEntity;

@@ -24,6 +24,7 @@ import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/window_covering.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
+import 'package:fastybird_smart_panel/modules/devices/models/device_detail_config.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/window_covering.dart';
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 import 'package:flutter/foundation.dart';
@@ -39,12 +40,14 @@ class WindowCoveringDeviceDetail extends StatefulWidget {
   final WindowCoveringDeviceView _device;
   final String? initialChannelId;
   final VoidCallback? onBack;
+  final DeviceDetailConfig? config;
 
   const WindowCoveringDeviceDetail({
     super.key,
     required WindowCoveringDeviceView device,
     this.initialChannelId,
     this.onBack,
+    this.config,
   }) : _device = device;
 
   @override
@@ -318,31 +321,33 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
         ? DatetimeUtils.formatTimeAgo(widget._device.lastStateChange!, localizations)
         : null;
 
+    final body = Stack(
+      children: [
+        OrientationBuilder(
+          builder: (context, orientation) {
+            final isLandscape = orientation == Orientation.landscape;
+            return isLandscape
+                ? _buildLandscapeLayout(context)
+                : _buildPortraitLayout(context);
+          },
+        ),
+        if (!widget._device.isOnline)
+          DeviceOfflineState(
+            isDark: isDark,
+            lastSeenText: lastSeenText,
+          ),
+      ],
+    );
+
+    if (!(widget.config?.showHeader ?? true)) return body;
+
     return Scaffold(
       backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
       body: SafeArea(
         child: Column(
           children: [
             _buildHeader(context, isDark),
-            Expanded(
-              child: Stack(
-                children: [
-                  OrientationBuilder(
-                    builder: (context, orientation) {
-                      final isLandscape = orientation == Orientation.landscape;
-                      return isLandscape
-                          ? _buildLandscapeLayout(context)
-                          : _buildPortraitLayout(context);
-                    },
-                  ),
-                  if (!widget._device.isOnline)
-                    DeviceOfflineState(
-                      isDark: isDark,
-                      lastSeenText: lastSeenText,
-                    ),
-                ],
-              ),
-            ),
+            Expanded(child: body),
           ],
         ),
       ),
@@ -357,23 +362,27 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
     final brightness = Theme.of(context).brightness;
     final statusColor = _getStatusColor();
     final statusColorFamily = ThemeColorFamily.get(brightness, statusColor);
+    final showBack = widget.config?.showBackButton ?? true;
+    final iconData = widget.config?.iconOverride ?? buildDeviceIcon(_device.category, _device.icon);
 
     return PageHeader(
-      title: widget._device.name,
+      title: widget.config?.titleOverride ?? widget._device.name,
       subtitle: '${_getStatusLabel(context)} • $_position%',
       subtitleColor: statusColorFamily.base,
-      leading: Row(
-        mainAxisSize: MainAxisSize.min,
-        spacing: AppSpacings.pMd,
-        children: [
-          HeaderIconButton(
-            icon: MdiIcons.arrowLeft,
-            onTap: widget.onBack ?? () => Navigator.of(context).pop(),
-          ),
-          HeaderMainIcon(icon: buildDeviceIcon(_device.category, _device.icon), color: statusColor),
-        ],
-      ),
-      trailing: _buildHeaderTrailing(context, isDark),
+      leading: showBack
+          ? Row(
+              mainAxisSize: MainAxisSize.min,
+              spacing: AppSpacings.pMd,
+              children: [
+                HeaderIconButton(
+                  icon: MdiIcons.arrowLeft,
+                  onTap: widget.onBack ?? () => Navigator.of(context).pop(),
+                ),
+                HeaderMainIcon(icon: iconData, color: statusColor),
+              ],
+            )
+          : HeaderMainIcon(icon: iconData, color: statusColor),
+      trailing: buildCombinedTrailing(config: widget.config, deviceTrailing: _buildHeaderTrailing(context, isDark)),
     );
   }
 

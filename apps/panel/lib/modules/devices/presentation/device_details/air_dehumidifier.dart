@@ -34,6 +34,7 @@ import 'package:fastybird_smart_panel/modules/devices/utils/fan_utils.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/dehumidifier.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/channel.dart' show buildChannelIcon;
 import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
+import 'package:fastybird_smart_panel/modules/devices/models/device_detail_config.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/air_dehumidifier.dart';
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
 import 'package:flutter/foundation.dart';
@@ -76,11 +77,13 @@ class _SensorInfo {
 class AirDehumidifierDeviceDetail extends StatefulWidget {
   final AirDehumidifierDeviceView _device;
   final VoidCallback? onBack;
+  final DeviceDetailConfig? config;
 
   const AirDehumidifierDeviceDetail({
     super.key,
     required AirDehumidifierDeviceView device,
     this.onBack,
+    this.config,
   }) : _device = device;
 
   @override
@@ -432,30 +435,32 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
         ? DatetimeUtils.formatTimeAgo(widget._device.lastStateChange!, localizations)
         : null;
 
+    final body = Stack(
+      children: [
+        OrientationBuilder(
+          builder: (context, orientation) {
+            return orientation == Orientation.landscape
+                ? _buildLandscapeLayout(context, isDark)
+                : _buildPortraitLayout(context, isDark);
+          },
+        ),
+        if (!widget._device.isOnline)
+          DeviceOfflineState(
+            isDark: isDark,
+            lastSeenText: lastSeenText,
+          ),
+      ],
+    );
+
+    if (!(widget.config?.showHeader ?? true)) return body;
+
     return Scaffold(
       backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
       body: SafeArea(
         child: Column(
           children: [
             _buildHeader(context, isDark),
-            Expanded(
-              child: Stack(
-                children: [
-                  OrientationBuilder(
-                    builder: (context, orientation) {
-                      return orientation == Orientation.landscape
-                          ? _buildLandscapeLayout(context, isDark)
-                          : _buildPortraitLayout(context, isDark);
-                    },
-                  ),
-                  if (!widget._device.isOnline)
-                    DeviceOfflineState(
-                      isDark: isDark,
-                      lastSeenText: lastSeenText,
-                    ),
-                ],
-              ),
-            ),
+            Expanded(child: body),
           ],
         ),
       ),
@@ -467,6 +472,8 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
     final statusColorFamily = _getStatusColorFamily(context);
     final secondaryColor =
         isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
+    final showBack = widget.config?.showBackButton ?? true;
+    final iconData = widget.config?.iconOverride ?? buildDeviceIcon(_device.category, _device.icon);
 
     final channel = _dehumidifierChannel;
     final isOn = _device.isOn;
@@ -488,24 +495,29 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
     }
 
     return PageHeader(
-      title: _device.name,
+      title: widget.config?.titleOverride ?? _device.name,
       subtitle: subtitle,
       subtitleColor: isOn ? statusColorFamily.base : secondaryColor,
-      leading: Row(
-        mainAxisSize: MainAxisSize.min,
-        spacing: AppSpacings.pMd,
-        children: [
-          HeaderIconButton(
-            icon: MdiIcons.arrowLeft,
-            onTap: widget.onBack ?? () => Navigator.of(context).pop(),
-          ),
-          HeaderMainIcon(icon: buildDeviceIcon(_device.category, _device.icon), color: _getStatusColor()),
-        ],
-      ),
-      trailing: HeaderIconButton(
-        icon: MdiIcons.power,
-        onTap: () => _togglePower(!_device.isOn),
-        color: _getStatusColor(),
+      leading: showBack
+          ? Row(
+              mainAxisSize: MainAxisSize.min,
+              spacing: AppSpacings.pMd,
+              children: [
+                HeaderIconButton(
+                  icon: MdiIcons.arrowLeft,
+                  onTap: widget.onBack ?? () => Navigator.of(context).pop(),
+                ),
+                HeaderMainIcon(icon: iconData, color: _getStatusColor()),
+              ],
+            )
+          : HeaderMainIcon(icon: iconData, color: _getStatusColor()),
+      trailing: buildCombinedTrailing(
+        config: widget.config,
+        deviceTrailing: HeaderIconButton(
+          icon: MdiIcons.power,
+          onTap: () => _togglePower(!_device.isOn),
+          color: _getStatusColor(),
+        ),
       ),
     );
   }
