@@ -15,7 +15,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 			},
 			title: 'Buddy',
 			icon: 'mdi:robot-happy',
-			menu: 5000,
+			menu: 12000,
 			module: BUDDY_MODULE_NAME,
 		},
 	},
