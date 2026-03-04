@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
@@ -62,9 +64,10 @@ class _BuddySuggestionCardState extends State<BuddySuggestionCard>
 			_isProcessing = true;
 		});
 
-		final success = await widget.onFeedback(widget.suggestion.id, feedback);
+		// Fire-and-forget: send feedback to backend but always dismiss the card.
+		unawaited(widget.onFeedback(widget.suggestion.id, feedback));
 
-		if (success && mounted) {
+		if (mounted) {
 			await _animController.forward();
 
 			// Notify parent to remove the suggestion from the data layer
@@ -72,10 +75,6 @@ class _BuddySuggestionCardState extends State<BuddySuggestionCard>
 			if (mounted) {
 				widget.onAnimationComplete?.call(widget.suggestion.id);
 			}
-		} else if (mounted) {
-			setState(() {
-				_isProcessing = false;
-			});
 		}
 	}
 
