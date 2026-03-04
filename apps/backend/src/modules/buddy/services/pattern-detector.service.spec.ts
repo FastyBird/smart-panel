@@ -264,6 +264,17 @@ describe('PatternDetectorService', () => {
 			);
 		}
 
+		// Add 3 extra actions on recent days (twice on the same day)
+		observer.recordAction(
+			makeAction({ type: IntentType.LIGHT_TOGGLE, spaceId: 'room', timestamp: daysAgoAt(0, 23, 5) }),
+		);
+		observer.recordAction(
+			makeAction({ type: IntentType.LIGHT_TOGGLE, spaceId: 'room', timestamp: daysAgoAt(1, 23, 5) }),
+		);
+		observer.recordAction(
+			makeAction({ type: IntentType.LIGHT_TOGGLE, spaceId: 'room', timestamp: daysAgoAt(2, 23, 5) }),
+		);
+
 		const patterns = service.detectPatterns();
 
 		expect(patterns).toHaveLength(1);

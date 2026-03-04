@@ -40,6 +40,7 @@ import { OAuthCallbackService } from './services/oauth-callback.service';
 import { OAuthFlowService } from './services/oauth-flow.service';
 import { PatternDetectorService } from './services/pattern-detector.service';
 import { SceneSuggestionEvaluator } from './services/scene-suggestion-evaluator.service';
+import { SttProviderService } from './services/stt-provider.service';
 import { SuggestionEngineService } from './services/suggestion-engine.service';
 import { EvaluatorRulesLoaderService } from './spec/evaluator-rules-loader.service';
 
@@ -81,6 +82,7 @@ import { EvaluatorRulesLoaderService } from './spec/evaluator-rules-loader.servi
 		SceneSuggestionEvaluator,
 		OAuthCallbackService,
 		OAuthFlowService,
+		SttProviderService,
 	],
 	exports: [
 		ActionObserverService,
@@ -97,6 +99,7 @@ import { EvaluatorRulesLoaderService } from './spec/evaluator-rules-loader.servi
 		SceneSuggestionEvaluator,
 		OAuthCallbackService,
 		OAuthFlowService,
+		SttProviderService,
 	],
 })
 export class BuddyModule implements OnModuleInit {
@@ -143,6 +146,7 @@ The Buddy module provides an AI assistant for the Smart Panel that observes user
 - **Context Aggregation** - Builds structured snapshots of home state (spaces, devices, scenes, weather, energy)
 - **Text Chat** - Conversational interface powered by pluggable LLM providers
 - **Suggestions** - Context-aware suggestions based on detected patterns and rules
+- **Voice Input** - Speech-to-text via Whisper API or local Whisper for voice messages
 - **Offline-First** - Rule-based suggestions work without any AI provider configured
 
 ## LLM Provider Plugins
