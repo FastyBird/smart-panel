@@ -6,6 +6,8 @@
   "warning": "Varování",
   "error": "Chyba",
   "action_failed": "Akci se nepodařilo zpracovat",
+  "domain_data_load_failed": "Nepodařilo se načíst {domain}",
+  "domain_data_load_failed_description": "Nepodařilo se načíst data. Zkontrolujte připojení a zkuste to znovu.",
   "domain_not_configured_subtitle": "Nekonfigurováno",
   "services_not_available": "Služby nejsou k dispozici",
   "button_ok": "OK",

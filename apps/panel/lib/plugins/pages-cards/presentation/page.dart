@@ -1,5 +1,5 @@
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/top_bar.dart';
+import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/mappers/data_source.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/service.dart';
@@ -28,8 +28,11 @@ class CardsPage extends StatelessWidget {
         page.id,
       );
 
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+
       if (freshPage == null || freshPage is! CardsPageView) {
         return Scaffold(
+          backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
           body: Center(
             child: Padding(
               padding: AppSpacings.paddingMd,
@@ -59,6 +62,7 @@ class CardsPage extends StatelessWidget {
 
       if (freshPage.cards.isEmpty) {
         return Scaffold(
+          backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
           body: Center(
             child: Padding(
               padding: AppSpacings.paddingMd,
@@ -88,43 +92,42 @@ class CardsPage extends StatelessWidget {
       }
 
       return Scaffold(
-        appBar: freshPage.showTopBar
-            ? AppTopBar(
-                icon: freshPage.icon,
-                title: freshPage.title,
-                actions: [
-                  LayoutBuilder(builder: (context, constraints) {
-                    List<Widget> values = freshPage.dataSources
-                        .map(
-                          (dataSource) => buildDataSourceWidget(dataSource),
-                        )
-                        .toList();
-
-                    return Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: values
-                          .expand((widget) => [
-                                widget,
-                                if (widget != values.last)
-                                  AppSpacings.spacingSmHorizontal,
-                              ])
-                          .toList(),
-                    );
-                  }),
-                ],
-              )
-            : null,
+        backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
         body: SafeArea(
-          child: Padding(
-            padding: AppSpacings.paddingSm,
-            child: Column(
-              children: freshPage.cards
-                  .map(
-                    (tile) => _buildCard(context, tile),
-                  )
-                  .toList(),
-            ),
+          child: Column(
+            children: [
+              if (freshPage.showTopBar)
+                PageHeader(
+                  title: freshPage.title,
+                  leading: HeaderMainIcon(
+                    icon: freshPage.icon ?? MdiIcons.cardText,
+                  ),
+                  trailing: freshPage.dataSources.isNotEmpty
+                      ? Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          spacing: AppSpacings.pSm,
+                          children: freshPage.dataSources
+                              .map(
+                                (dataSource) =>
+                                    buildDataSourceWidget(dataSource),
+                              )
+                              .toList(),
+                        )
+                      : null,
+                ),
+              Expanded(
+                child: Padding(
+                  padding: AppSpacings.paddingSm,
+                  child: Column(
+                    children: freshPage.cards
+                        .map(
+                          (tile) => _buildCard(context, tile),
+                        )
+                        .toList(),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       );
