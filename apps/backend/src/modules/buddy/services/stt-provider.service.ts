@@ -30,15 +30,16 @@ export class SttProviderService {
 
 	async transcribe(audioBuffer: Buffer, mimeType: string): Promise<string> {
 		const config = this.getConfig();
+		const provider = config.sttProvider;
 
-		if (config.sttProvider === SttProvider.NONE || !config.sttProvider) {
+		if (provider === (SttProvider.NONE as string) || !provider) {
 			throw new BuddySttNotConfiguredException();
 		}
 
-		switch (config.sttProvider) {
-			case SttProvider.WHISPER_API:
+		switch (provider) {
+			case SttProvider.WHISPER_API as string:
 				return this.transcribeWhisperApi(audioBuffer, mimeType, config);
-			case SttProvider.WHISPER_LOCAL:
+			case SttProvider.WHISPER_LOCAL as string:
 				return this.transcribeWhisperLocal(audioBuffer, mimeType, config);
 			default:
 				throw new BuddySttNotConfiguredException();
@@ -47,13 +48,14 @@ export class SttProviderService {
 
 	isConfigured(): boolean {
 		const config = this.getConfig();
+		const provider = config.sttProvider;
 
-		if (config.sttProvider === SttProvider.NONE || !config.sttProvider) {
+		if (provider === (SttProvider.NONE as string) || !provider) {
 			return false;
 		}
 
 		// Whisper API requires a dedicated STT API key to be usable
-		if (config.sttProvider === SttProvider.WHISPER_API) {
+		if (provider === (SttProvider.WHISPER_API as string)) {
 			return !!config.sttApiKey;
 		}
 

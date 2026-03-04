@@ -14,6 +14,21 @@ export enum EventType {
 
 export const LLM_PROVIDER_NONE = 'none';
 
+export enum SttProvider {
+	NONE = 'none',
+	WHISPER_API = 'whisper_api',
+	WHISPER_LOCAL = 'whisper_local',
+}
+
+export const STT_ALLOWED_MIME_TYPES = [
+	'audio/wav',
+	'audio/wave',
+	'audio/x-wav',
+	'audio/webm',
+	'audio/ogg',
+	'audio/mpeg',
+];
+
 export const BUDDY_DEFAULT_NAME = 'Buddy';
 
 /**
@@ -27,21 +42,6 @@ export const LEGACY_PROVIDER_MAP = new Map<string, string>([
 	['openai', 'buddy-openai-plugin'],
 	['ollama', 'buddy-ollama-plugin'],
 ]);
-
-export enum SttProvider {
-	WHISPER_API = 'whisper-api',
-	WHISPER_LOCAL = 'whisper-local',
-	NONE = 'none',
-}
-
-export const STT_ALLOWED_MIME_TYPES = [
-	'audio/wav',
-	'audio/wave',
-	'audio/x-wav',
-	'audio/webm',
-	'audio/ogg',
-	'audio/mpeg',
-];
 
 export enum MessageRole {
 	USER = 'user',

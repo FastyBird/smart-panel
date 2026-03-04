@@ -80,9 +80,9 @@ import { EvaluatorRulesLoaderService } from './spec/evaluator-rules-loader.servi
 		EnergyEvaluator,
 		ConflictDetectorEvaluator,
 		SceneSuggestionEvaluator,
+		SttProviderService,
 		OAuthCallbackService,
 		OAuthFlowService,
-		SttProviderService,
 	],
 	exports: [
 		ActionObserverService,
@@ -99,7 +99,6 @@ import { EvaluatorRulesLoaderService } from './spec/evaluator-rules-loader.servi
 		SceneSuggestionEvaluator,
 		OAuthCallbackService,
 		OAuthFlowService,
-		SttProviderService,
 	],
 })
 export class BuddyModule implements OnModuleInit {
@@ -146,7 +145,6 @@ The Buddy module provides an AI assistant for the Smart Panel that observes user
 - **Context Aggregation** - Builds structured snapshots of home state (spaces, devices, scenes, weather, energy)
 - **Text Chat** - Conversational interface powered by pluggable LLM providers
 - **Suggestions** - Context-aware suggestions based on detected patterns and rules
-- **Voice Input** - Speech-to-text via Whisper API or local Whisper for voice messages
 - **Offline-First** - Rule-based suggestions work without any AI provider configured
 
 ## LLM Provider Plugins

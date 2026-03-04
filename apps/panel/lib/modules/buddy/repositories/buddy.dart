@@ -347,6 +347,10 @@ class BuddyRepository extends ChangeNotifier {
 		_isProviderNotConfiguredSend = false;
 		_isSttNotConfigured = false;
 
+		// Track whether the success path already decremented the counter
+		// so the finally block doesn't double-decrement.
+		bool decremented = false;
+
 		// Add optimistic "transcribing…" placeholder
 		final userMessage = BuddyMessageModel(
 			id: 'pending_audio_${DateTime.now().millisecondsSinceEpoch}',
@@ -384,6 +388,7 @@ class BuddyRepository extends ChangeNotifier {
 					_messages.removeWhere((m) => m.id == userMessage.id);
 
 					_activeSendCount--;
+					decremented = true;
 					notifyListeners();
 
 					await _reconcileMessages(conversationId);
@@ -393,6 +398,7 @@ class BuddyRepository extends ChangeNotifier {
 			}
 
 			_activeSendCount--;
+			decremented = true;
 			notifyListeners();
 
 			await _reconcileMessages(conversationId);
@@ -415,7 +421,7 @@ class BuddyRepository extends ChangeNotifier {
 				debugPrint('[BUDDY MODULE] Error sending audio: $e');
 			}
 		} finally {
-			if (_activeSendCount > 0 && _sendError != null) {
+			if (!decremented) {
 				_activeSendCount--;
 			}
 			notifyListeners();
