@@ -73,10 +73,6 @@ class DeviceDetailPage extends StatelessWidget {
         trailing: dataSourceTrailing,
       );
 
-      if (page.showTopBar) {
-        return buildDeviceWidget(device, config: config);
-      }
-
       return Scaffold(
         backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
         body: SafeArea(
