@@ -38,17 +38,25 @@ export class EvaluatorRulesLoaderService implements OnModuleInit {
 	}
 
 	async loadAllRules(): Promise<void> {
-		this.anomalyRules.clear();
-		this.energyRules.clear();
-		this.conflictRules.clear();
-		this.patternRules.clear();
+		// Build into temporary maps so concurrent calls to loadAllRules
+		// cannot race with in-progress loads. The instance maps are only
+		// replaced atomically after all files have been loaded.
+		const anomaly = new Map<string, ResolvedAnomalyRule>();
+		const energy = new Map<string, ResolvedEnergyRule>();
+		const conflict = new Map<string, ResolvedConflictRule>();
+		const pattern = new Map<string, ResolvedPatternRule>();
 
 		await Promise.all([
-			this.loadAnomalyRules(),
-			this.loadEnergyRules(),
-			this.loadConflictRules(),
-			this.loadPatternRules(),
+			this.loadAnomalyRules(anomaly),
+			this.loadEnergyRules(energy),
+			this.loadConflictRules(conflict),
+			this.loadPatternRules(pattern),
 		]);
+
+		this.anomalyRules = anomaly;
+		this.energyRules = energy;
+		this.conflictRules = conflict;
+		this.patternRules = pattern;
 
 		this.logger.log(
 			`Loaded evaluator rules: ` +
@@ -79,28 +87,28 @@ export class EvaluatorRulesLoaderService implements OnModuleInit {
 	// Anomaly rules
 	// ──────────────────────────────────────────
 
-	private async loadAnomalyRules(): Promise<void> {
+	private async loadAnomalyRules(target: Map<string, ResolvedAnomalyRule>): Promise<void> {
 		const builtinConfig = await this.loadYamlFile<YamlAnomalyRulesConfig>(
 			join(this.builtinSpecPath, 'anomaly-rules.yaml'),
 		);
 
 		if (builtinConfig?.anomaly_rules) {
-			this.mergeAnomalyRules(builtinConfig.anomaly_rules);
+			this.mergeAnomalyRules(target, builtinConfig.anomaly_rules);
 		}
 
 		const userConfig = await this.loadYamlFile<YamlAnomalyRulesConfig>(join(this.userSpecPath, 'anomaly-rules.yaml'));
 
 		if (userConfig?.anomaly_rules) {
-			this.mergeAnomalyRules(userConfig.anomaly_rules);
+			this.mergeAnomalyRules(target, userConfig.anomaly_rules);
 		}
 	}
 
-	private mergeAnomalyRules(rules: Record<string, YamlAnomalyRule>): void {
+	private mergeAnomalyRules(target: Map<string, ResolvedAnomalyRule>, rules: Record<string, YamlAnomalyRule>): void {
 		for (const [key, rule] of Object.entries(rules)) {
 			const resolved = this.resolveAnomalyRule(key, rule);
 
 			if (resolved) {
-				this.anomalyRules.set(key, resolved);
+				target.set(key, resolved);
 			}
 		}
 	}
@@ -134,28 +142,28 @@ export class EvaluatorRulesLoaderService implements OnModuleInit {
 	// Energy rules
 	// ──────────────────────────────────────────
 
-	private async loadEnergyRules(): Promise<void> {
+	private async loadEnergyRules(target: Map<string, ResolvedEnergyRule>): Promise<void> {
 		const builtinConfig = await this.loadYamlFile<YamlEnergyRulesConfig>(
 			join(this.builtinSpecPath, 'energy-rules.yaml'),
 		);
 
 		if (builtinConfig?.energy_rules) {
-			this.mergeEnergyRules(builtinConfig.energy_rules);
+			this.mergeEnergyRules(target, builtinConfig.energy_rules);
 		}
 
 		const userConfig = await this.loadYamlFile<YamlEnergyRulesConfig>(join(this.userSpecPath, 'energy-rules.yaml'));
 
 		if (userConfig?.energy_rules) {
-			this.mergeEnergyRules(userConfig.energy_rules);
+			this.mergeEnergyRules(target, userConfig.energy_rules);
 		}
 	}
 
-	private mergeEnergyRules(rules: Record<string, YamlEnergyRule>): void {
+	private mergeEnergyRules(target: Map<string, ResolvedEnergyRule>, rules: Record<string, YamlEnergyRule>): void {
 		for (const [key, rule] of Object.entries(rules)) {
 			const resolved = this.resolveEnergyRule(key, rule);
 
 			if (resolved) {
-				this.energyRules.set(key, resolved);
+				target.set(key, resolved);
 			}
 		}
 	}
@@ -185,28 +193,28 @@ export class EvaluatorRulesLoaderService implements OnModuleInit {
 	// Conflict rules
 	// ──────────────────────────────────────────
 
-	private async loadConflictRules(): Promise<void> {
+	private async loadConflictRules(target: Map<string, ResolvedConflictRule>): Promise<void> {
 		const builtinConfig = await this.loadYamlFile<YamlConflictRulesConfig>(
 			join(this.builtinSpecPath, 'conflict-rules.yaml'),
 		);
 
 		if (builtinConfig?.conflict_rules) {
-			this.mergeConflictRules(builtinConfig.conflict_rules);
+			this.mergeConflictRules(target, builtinConfig.conflict_rules);
 		}
 
 		const userConfig = await this.loadYamlFile<YamlConflictRulesConfig>(join(this.userSpecPath, 'conflict-rules.yaml'));
 
 		if (userConfig?.conflict_rules) {
-			this.mergeConflictRules(userConfig.conflict_rules);
+			this.mergeConflictRules(target, userConfig.conflict_rules);
 		}
 	}
 
-	private mergeConflictRules(rules: Record<string, YamlConflictRule>): void {
+	private mergeConflictRules(target: Map<string, ResolvedConflictRule>, rules: Record<string, YamlConflictRule>): void {
 		for (const [key, rule] of Object.entries(rules)) {
 			const resolved = this.resolveConflictRule(key, rule);
 
 			if (resolved) {
-				this.conflictRules.set(key, resolved);
+				target.set(key, resolved);
 			}
 		}
 	}
@@ -243,28 +251,28 @@ export class EvaluatorRulesLoaderService implements OnModuleInit {
 	// Pattern rules
 	// ──────────────────────────────────────────
 
-	private async loadPatternRules(): Promise<void> {
+	private async loadPatternRules(target: Map<string, ResolvedPatternRule>): Promise<void> {
 		const builtinConfig = await this.loadYamlFile<YamlPatternRulesConfig>(
 			join(this.builtinSpecPath, 'pattern-rules.yaml'),
 		);
 
 		if (builtinConfig?.pattern_rules) {
-			this.mergePatternRules(builtinConfig.pattern_rules);
+			this.mergePatternRules(target, builtinConfig.pattern_rules);
 		}
 
 		const userConfig = await this.loadYamlFile<YamlPatternRulesConfig>(join(this.userSpecPath, 'pattern-rules.yaml'));
 
 		if (userConfig?.pattern_rules) {
-			this.mergePatternRules(userConfig.pattern_rules);
+			this.mergePatternRules(target, userConfig.pattern_rules);
 		}
 	}
 
-	private mergePatternRules(rules: Record<string, YamlPatternRule>): void {
+	private mergePatternRules(target: Map<string, ResolvedPatternRule>, rules: Record<string, YamlPatternRule>): void {
 		for (const [key, rule] of Object.entries(rules)) {
 			const resolved = this.resolvePatternRule(key, rule);
 
 			if (resolved) {
-				this.patternRules.set(key, resolved);
+				target.set(key, resolved);
 			}
 		}
 	}
