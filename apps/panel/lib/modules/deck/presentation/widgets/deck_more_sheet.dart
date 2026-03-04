@@ -53,6 +53,8 @@ class _DeckMoreContent extends StatelessWidget {
     final deckService = context.read<DeckService>();
     final items = deckService.items;
 
+    if (items.isEmpty) return const SizedBox.shrink();
+
     return VerticalScrollWithGradient(
       itemCount: 1,
       shrinkWrap: true,

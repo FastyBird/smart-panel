@@ -57,7 +57,7 @@ class DeviceDetailPage extends StatelessWidget {
         );
       }
 
-      final dataSourceTrailing = page.dataSources.isNotEmpty
+      final dataSourceTrailing = page.showTopBar && page.dataSources.isNotEmpty
           ? Row(
               mainAxisSize: MainAxisSize.min,
               spacing: AppSpacings.pSm,
