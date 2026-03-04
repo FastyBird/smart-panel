@@ -5,9 +5,18 @@ import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/deck_service.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/domain_type.dart';
+import 'package:fastybird_smart_panel/plugins/pages-cards/views/view.dart';
+import 'package:fastybird_smart_panel/plugins/pages-tiles/views/view.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 import 'package:provider/provider.dart';
+
+IconData _defaultPageIcon(DashboardPageItem item) {
+  final pageView = item.pageView;
+  if (pageView is TilesPageView) return MdiIcons.viewDashboardVariant;
+  if (pageView is CardsPageView) return MdiIcons.cardText;
+  return MdiIcons.viewDashboard;
+}
 
 /// Shows a bottom sheet listing all navigable pages (domains + dashboard pages).
 ///
@@ -101,7 +110,7 @@ class _DeckMoreContent extends StatelessWidget {
       icon = MdiIcons.flashOutline;
     } else if (item is DashboardPageItem) {
       label = item.title;
-      icon = MdiIcons.viewDashboard;
+      icon = item.pageView.icon ?? _defaultPageIcon(item);
     } else {
       return const SizedBox.shrink();
     }
