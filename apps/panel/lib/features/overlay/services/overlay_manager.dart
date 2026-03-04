@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 
 import 'package:fastybird_smart_panel/features/overlay/types/overlay.dart';
+import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 
 /// Sentinel value used by [OverlayManager.show] to distinguish "parameter not
 /// passed" (keep current value) from "explicitly passed null" (clear the field).
@@ -134,11 +135,21 @@ class OverlayManager extends ChangeNotifier {
 			changed = true;
 		}
 		if (title is! _Unset) {
-			entry.title = title as LocalizedString?;
+			if (title == null) {
+				entry.title = null;
+			} else {
+				final fn = title as Function;
+				entry.title = (AppLocalizations l) => fn(l) as String;
+			}
 			changed = true;
 		}
 		if (message is! _Unset) {
-			entry.message = message as LocalizedString?;
+			if (message == null) {
+				entry.message = null;
+			} else {
+				final fn = message as Function;
+				entry.message = (AppLocalizations l) => fn(l) as String;
+			}
 			changed = true;
 		}
 		if (content is! _Unset) {
@@ -150,7 +161,12 @@ class OverlayManager extends ChangeNotifier {
 			changed = true;
 		}
 		if (customBuilder is! _Unset) {
-			entry.customBuilder = customBuilder as WidgetBuilder?;
+			if (customBuilder == null) {
+				entry.customBuilder = null;
+			} else {
+				final fn = customBuilder as Function;
+				entry.customBuilder = (BuildContext context) => fn(context) as Widget;
+			}
 			changed = true;
 		}
 
