@@ -2336,7 +2336,10 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                     itemCount: lights.length,
                     separatorHeight: AppSpacings.pSm,
                     backgroundColor: drawerBgColor,
-                    padding: EdgeInsets.symmetric(horizontal: AppSpacings.pLg),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: AppSpacings.pMd,
+                      vertical: AppSpacings.pMd,
+                    ),
                     itemBuilder: (context, index) =>
                         _buildOtherLightTileForSheet(context, lights[index]),
                   ),
@@ -2374,7 +2377,10 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
                     separatorHeight: AppSpacings.pSm,
                     backgroundColor: bgColor,
                     shrinkWrap: true,
-                    padding: EdgeInsets.symmetric(horizontal: AppSpacings.pLg),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: AppSpacings.pMd,
+                      vertical: AppSpacings.pMd,
+                    ),
                     itemBuilder: (c, i) =>
                         _buildOtherLightTileForSheet(c, lights[i]),
                   ),
@@ -2460,7 +2466,10 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         ),
       ),
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: AppSpacings.pLg),
+        padding: EdgeInsets.symmetric(
+          horizontal: AppSpacings.pMd,
+          vertical: AppSpacings.pMd,
+        ),
         child: Theme(
           data: Theme.of(context).copyWith(filledButtonTheme: filledTheme),
           child: SizedBox(
