@@ -33,7 +33,7 @@ export class BuddyConversationService {
 	async findAll(spaceId?: string): Promise<BuddyConversationEntity[]> {
 		return this.conversationRepository.find({
 			where: spaceId ? { spaceId } : undefined,
-			order: { createdAt: 'DESC' },
+			order: { updatedAt: 'DESC' },
 		});
 	}
 
