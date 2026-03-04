@@ -206,24 +206,31 @@ export class BuddyContextService {
 				];
 			}
 
-			const [allSpaces, allDevices] = await Promise.all([this.spacesService.findAll(), this.devicesService.findAll()]);
+			const allSpaces = await this.spacesService.findAll();
 
-			const deviceCountBySpace = new Map<string, number>();
+			// Use findDevicesBySpace for each space so rooms (roomId) and zones
+			// (junction table) are counted consistently with the single-space path.
+			const results = await Promise.all(
+				allSpaces.map(async (space) => {
+					let deviceCount = 0;
 
-			for (const device of allDevices) {
-				const sid = device.roomId ?? '';
+					try {
+						const devices = await this.spacesService.findDevicesBySpace(space.id);
+						deviceCount = devices.length;
+					} catch {
+						// Space may have been deleted between findAll and findDevicesBySpace
+					}
 
-				if (sid) {
-					deviceCountBySpace.set(sid, (deviceCountBySpace.get(sid) ?? 0) + 1);
-				}
-			}
+					return {
+						id: space.id,
+						name: space.name,
+						category: space.category,
+						deviceCount,
+					};
+				}),
+			);
 
-			return allSpaces.map((space) => ({
-				id: space.id,
-				name: space.name,
-				category: space.category,
-				deviceCount: deviceCountBySpace.get(space.id) ?? 0,
-			}));
+			return results;
 		} catch (error) {
 			this.logger.warn(`Failed to get spaces: ${error}`);
 
