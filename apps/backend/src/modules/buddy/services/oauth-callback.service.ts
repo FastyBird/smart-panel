@@ -20,11 +20,11 @@ export class OAuthCallbackService {
 			let resolvedCode = code;
 			let resolvedState = state;
 
-			if (code && code.includes('#')) {
-				const parts = code.split('#');
+			if (code && code.includes('#') && !state) {
+				const hashIndex = code.indexOf('#');
 
-				resolvedCode = parts[0];
-				resolvedState = parts[1];
+				resolvedCode = code.substring(0, hashIndex);
+				resolvedState = code.substring(hashIndex + 1);
 			}
 
 			if (!resolvedState) {
