@@ -11,7 +11,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 			guards: { authenticated: true },
 			title: 'Spaces',
 			icon: 'mdi:home-group',
-			menu: 10000,
+			menu: 9000,
 		},
 		children: [
 			{

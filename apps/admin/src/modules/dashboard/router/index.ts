@@ -16,7 +16,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 			},
 			title: 'Pages',
 			icon: 'mdi:view-dashboard',
-			menu: 9000,
+			menu: 8000,
 		},
 		children: [
 			{

@@ -5,7 +5,7 @@ Type: feature
 Scope: backend
 Size: medium
 Parent: EPIC-BUDDY-MODULE
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -51,7 +51,7 @@ I want the buddy to detect patterns in my actions and generate useful suggestion
 
 ## 4. Acceptance criteria
 
-- [ ] `PatternDetectorService.detectPatterns()` analyses the action history and returns patterns:
+- [x] `PatternDetectorService.detectPatterns()` analyses the action history and returns patterns:
   ```typescript
   interface DetectedPattern {
     intentType: IntentType;
@@ -64,19 +64,19 @@ I want the buddy to detect patterns in my actions and generate useful suggestion
     lastSeen: Date;
   }
   ```
-- [ ] Pattern detection rule: same `intent.type` + same `intent.context.spaceId` + time within ±60 min window, with 3+ occurrences in last 7 days, produces a pattern with confidence ≥ 0.6
-- [ ] `SuggestionEngineService.generateSuggestions()` creates suggestions from detected patterns:
+- [x] Pattern detection rule: same `intent.type` + same `intent.context.spaceId` + time within ±60 min window, with 3+ occurrences in last 7 days, produces a pattern with confidence ≥ 0.6
+- [x] `SuggestionEngineService.generateSuggestions()` creates suggestions from detected patterns:
   - For `PATTERN_SCENE_CREATE`: "You [action] in [space] around [time] regularly. Create a scene?"
   - For `LIGHTING_OPTIMISE`: time-of-day lighting suggestions (complementary to existing space suggestions)
-- [ ] Each suggestion has: `id` (UUID), `type`, `title`, `reason`, `spaceId`, `metadata` (pattern details), `createdAt`, `expiresAt`
-- [ ] Suggestions have configurable cooldown (default 4 hours per suggestion type + space)
-- [ ] Dismissed suggestions set cooldown; accepted suggestions set cooldown and optionally execute an action
-- [ ] `GET /v1/modules/buddy/suggestions` returns active (non-expired, non-cooldown) suggestions
-- [ ] `GET /v1/modules/buddy/suggestions?space_id=X` filters by space
-- [ ] `POST /v1/modules/buddy/suggestions/:id/feedback` accepts body `{ feedback: 'applied' | 'dismissed' }`
-- [ ] `BuddyModule.Suggestion.Created` event is emitted when a new suggestion is generated, with payload containing the suggestion data
-- [ ] All controller methods have proper Swagger decorators
-- [ ] Cooldown key format: `{spaceId}:{suggestionType}` (same pattern as `SpaceSuggestionService`)
+- [x] Each suggestion has: `id` (UUID), `type`, `title`, `reason`, `spaceId`, `metadata` (pattern details), `createdAt`, `expiresAt`
+- [x] Suggestions have configurable cooldown (default 4 hours per suggestion type + space)
+- [x] Dismissed suggestions set cooldown; accepted suggestions set cooldown and optionally execute an action
+- [x] `GET /v1/modules/buddy/suggestions` returns active (non-expired, non-cooldown) suggestions
+- [x] `GET /v1/modules/buddy/suggestions?space_id=X` filters by space
+- [x] `POST /v1/modules/buddy/suggestions/:id/feedback` accepts body `{ feedback: 'applied' | 'dismissed' }`
+- [x] `BuddyModule.Suggestion.Created` event is emitted when a new suggestion is generated, with payload containing the suggestion data
+- [x] All controller methods have proper Swagger decorators
+- [x] Cooldown key format: `{spaceId}:{suggestionType}` (same pattern as `SpaceSuggestionService`)
 
 ## 5. Example scenarios
 

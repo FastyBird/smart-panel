@@ -5,7 +5,7 @@ Type: feature
 Scope: backend, admin, panel
 Size: large
 Parent: (none)
-Status: planned
+Status: in-progress
 
 ## 1. Business goal
 
@@ -91,17 +91,17 @@ Inspired by the [OpenClaw](https://github.com/openclaw/openclaw) project's proac
 
 ### Phase 1 (MVP)
 
-- [ ] Backend `BuddyModule` registered in `app.module.ts` with route prefix `buddy` under `MODULES_PREFIX`
-- [ ] Module constants follow naming: `BUDDY_MODULE_PREFIX`, `BUDDY_MODULE_NAME = 'buddy-module'`, `BUDDY_MODULE_API_TAG_NAME = 'Buddy module'`
-- [ ] Module registers with `ExtensionsService.registerModuleMetadata()` and `ModulesTypeMapperService.registerMapping()`
-- [ ] Swagger models registered via `buddy.openapi.ts` pattern
-- [ ] `ActionObserverListener` subscribes to `IntentEventType.COMPLETED` events and records action history in-memory (ring buffer)
-- [ ] `BuddyContextService` aggregates: spaces, devices (state), scenes, weather, energy, recent intents — into a structured context object
-- [ ] `LlmProviderService` abstracts LLM calls with swappable provider: `claude` | `openai` | `ollama` | `none`
-- [ ] `BuddyConversationService` handles text chat with conversation history persistence (TypeORM entities)
-- [ ] `SuggestionEngineService` generates context-aware suggestions with cooldown management
-- [ ] `PatternDetectorService` identifies repeated action sequences from the action history buffer (rule-based MVP)
-- [ ] REST API endpoints following API conventions (controllers return `*ResponseModel`, DTOs are input only):
+- [x] Backend `BuddyModule` registered in `app.module.ts` with route prefix `buddy` under `MODULES_PREFIX`
+- [x] Module constants follow naming: `BUDDY_MODULE_PREFIX`, `BUDDY_MODULE_NAME = 'buddy-module'`, `BUDDY_MODULE_API_TAG_NAME = 'Buddy module'`
+- [x] Module registers with `ExtensionsService.registerModuleMetadata()` and `ModulesTypeMapperService.registerMapping()`
+- [x] Swagger models registered via `buddy.openapi.ts` pattern
+- [x] `ActionObserverListener` subscribes to `IntentEventType.COMPLETED` events and records action history in-memory (ring buffer)
+- [x] `BuddyContextService` aggregates: spaces, devices (state), scenes, weather, energy, recent intents — into a structured context object
+- [x] `LlmProviderService` abstracts LLM calls with swappable provider: `claude` | `openai` | `ollama` | `none`
+- [x] `BuddyConversationService` handles text chat with conversation history persistence (TypeORM entities)
+- [x] `SuggestionEngineService` generates context-aware suggestions with cooldown management
+- [x] `PatternDetectorService` identifies repeated action sequences from the action history buffer (rule-based MVP)
+- [x] REST API endpoints following API conventions (controllers return `*ResponseModel`, DTOs are input only):
   - `GET /v1/modules/buddy/conversations` — list conversations
   - `POST /v1/modules/buddy/conversations` — start new conversation
   - `GET /v1/modules/buddy/conversations/:id` — get conversation with messages
@@ -109,25 +109,25 @@ Inspired by the [OpenClaw](https://github.com/openclaw/openclaw) project's proac
   - `DELETE /v1/modules/buddy/conversations/:id` — delete conversation
   - `GET /v1/modules/buddy/suggestions` — get active suggestions (optional `?space_id=`)
   - `POST /v1/modules/buddy/suggestions/:id/feedback` — accept/dismiss suggestion
-- [ ] WebSocket events emitted via `EventEmitter2`:
-  - `BuddyModule.Suggestion.Created` — new suggestion available
-  - `BuddyModule.Conversation.MessageReceived` — buddy response ready
-- [ ] Database entities: `BuddyConversationEntity`, `BuddyMessageEntity` with migration
-- [ ] Panel: buddy module with chat drawer accessible from deck UI
-- [ ] Panel: suggestion cards displayed as dismissible notifications
-- [ ] Admin: buddy settings page (enable/disable, provider selection, API key configuration)
-- [ ] Works without an AI provider configured (rule-based suggestions only, chat returns 503)
-- [ ] Unit tests for pattern detection, suggestion rules, context building
-- [ ] E2E tests for conversation and suggestion API endpoints
+- [x] WebSocket events emitted via `EventEmitter2`:
+  - [x] `BuddyModule.Suggestion.Created` — new suggestion available
+  - [x] `BuddyModule.Conversation.MessageReceived` — buddy response ready
+- [x] Database entities: `BuddyConversationEntity`, `BuddyMessageEntity` with migration
+- [x] Panel: buddy module with chat drawer accessible from deck UI
+- [x] Panel: suggestion cards displayed as dismissible notifications
+- [x] Admin: buddy settings page (enable/disable, provider selection, API key configuration)
+- [x] Works without an AI provider configured (rule-based suggestions only, chat returns 503)
+- [x] Unit tests for pattern detection, suggestion rules, context building
+- [x] E2E tests for conversation and suggestion API endpoints
 
 ### Phase 2 (Proactive)
 
-- [ ] `HeartbeatService` runs periodic evaluation (configurable interval, default 5 min) via `@nestjs/schedule`
-- [ ] Anomaly detection: sensor drift (temperature deviation > threshold), unusual device activity
-- [ ] Energy suggestions: excess solar, high consumption alerts
-- [ ] Conflict detection: heating + open window, AC + open door, lights on in empty room
-- [ ] Scene creation suggestions: repeated action patterns → "Create a scene for this?"
-- [ ] Panel: proactive suggestion notifications in buddy drawer
+- [x] `HeartbeatService` runs periodic evaluation (configurable interval, default 5 min) via `@nestjs/schedule`
+- [x] Anomaly detection: sensor drift (temperature deviation > threshold), unusual device activity
+- [x] Energy suggestions: excess solar, high consumption alerts
+- [x] Conflict detection: heating + open window, AC + open door, lights on in empty room
+- [x] Scene creation suggestions: repeated action patterns → "Create a scene for this?"
+- [x] Panel: proactive suggestion notifications in buddy drawer
 
 ### Phase 3 (Voice)
 

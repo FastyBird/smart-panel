@@ -44,6 +44,7 @@ import { InfluxDbModule } from './modules/influxdb';
 import { IntentsModule } from './modules/intents';
 import { MdnsModule } from './modules/mdns';
 import { ScenesModule } from './modules/scenes';
+import { BuddyModule } from './modules/buddy';
 import { EnergyModule } from './modules/energy';
 import { SecurityModule } from './modules/security';
 import { SpacesModule } from './modules/spaces';
@@ -52,6 +53,11 @@ import { SystemModule } from './modules/system';
 import { UsersModule } from './modules/users';
 import { WeatherModule } from './modules/weather';
 import type { OpenApiPaths } from './openapi.constants';
+import { BuddyClaudePlugin } from './plugins/buddy-claude';
+import { BuddyClaudeOauthPlugin } from './plugins/buddy-claude-oauth';
+import { BuddyOllamaPlugin } from './plugins/buddy-ollama';
+import { BuddyOpenaiPlugin } from './plugins/buddy-openai';
+import { BuddyOpenaiCodexPlugin } from './plugins/buddy-openai-codex';
 import { DeviceChannelDataSourcesPlugin } from './plugins/data-sources-device-channel';
 import { DataSourcesWeatherPlugin } from './plugins/data-sources-weather';
 import { DevicesHomeAssistantPlugin } from './plugins/devices-home-assistant';
@@ -150,6 +156,7 @@ app.use(InfluxDbModule, moduleOptions);
 app.use(IntentsModule, moduleOptions);
 app.use(SecurityModule, moduleOptions);
 app.use(EnergyModule, moduleOptions);
+app.use(BuddyModule, moduleOptions);
 
 // Plugins
 const pluginOptions: IModuleOptions = {
@@ -178,6 +185,11 @@ app.use(LoggerRotatingFilePlugin, pluginOptions);
 app.use(WeatherOpenweathermapPlugin, pluginOptions);
 app.use(WeatherOpenweathermapOnecallPlugin, pluginOptions);
 app.use(ScenesLocalPlugin, pluginOptions);
+app.use(BuddyOpenaiPlugin, pluginOptions);
+app.use(BuddyClaudePlugin, pluginOptions);
+app.use(BuddyOllamaPlugin, pluginOptions);
+app.use(BuddyClaudeOauthPlugin, pluginOptions);
+app.use(BuddyOpenaiCodexPlugin, pluginOptions);
 
 const installedNames = new Set<string>();
 
