@@ -1,15 +1,18 @@
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/devices/models/device_detail_config.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/sprinkler.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
 class SprinklerDeviceDetail extends StatelessWidget {
   final SprinklerDeviceView device;
+  final DeviceDetailConfig? config;
 
   const SprinklerDeviceDetail({
     super.key,
     required this.device,
+    this.config,
   });
 
   @override

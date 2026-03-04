@@ -407,7 +407,7 @@ Map<DevicesModuleDeviceCategory, Widget Function(DeviceView, {DeviceDetailConfig
         'Device view is not valid for Alarm device detail',
       );
     }
-    return AlarmDeviceDetail(device: device);
+    return AlarmDeviceDetail(device: device, config: config);
   },
   DevicesModuleDeviceCategory.camera: (device, {DeviceDetailConfig? config}) {
     if (device is! CameraDeviceView) {
@@ -415,7 +415,7 @@ Map<DevicesModuleDeviceCategory, Widget Function(DeviceView, {DeviceDetailConfig
         'Device view is not valid for Camera device detail',
       );
     }
-    return CameraDeviceDetail(device: device);
+    return CameraDeviceDetail(device: device, config: config);
   },
   DevicesModuleDeviceCategory.door: (device, {DeviceDetailConfig? config}) {
     if (device is! DoorDeviceView) {
@@ -423,7 +423,7 @@ Map<DevicesModuleDeviceCategory, Widget Function(DeviceView, {DeviceDetailConfig
         'Device view is not valid for Door device detail',
       );
     }
-    return DoorDeviceDetail(device: device);
+    return DoorDeviceDetail(device: device, config: config);
   },
   DevicesModuleDeviceCategory.doorbell: (device, {DeviceDetailConfig? config}) {
     if (device is! DoorbellDeviceView) {
@@ -431,7 +431,7 @@ Map<DevicesModuleDeviceCategory, Widget Function(DeviceView, {DeviceDetailConfig
         'Device view is not valid for Doorbell device detail',
       );
     }
-    return DoorbellDeviceDetail(device: device);
+    return DoorbellDeviceDetail(device: device, config: config);
   },
   DevicesModuleDeviceCategory.fan: (device, {DeviceDetailConfig? config}) {
     if (device is! FanDeviceView) {
@@ -479,7 +479,7 @@ Map<DevicesModuleDeviceCategory, Widget Function(DeviceView, {DeviceDetailConfig
         'Device view is not valid for Lock device detail',
       );
     }
-    return LockDeviceDetail(device: device);
+    return LockDeviceDetail(device: device, config: config);
   },
   DevicesModuleDeviceCategory.media: (device, {DeviceDetailConfig? config}) {
     if (device is! MediaDeviceView) {
@@ -495,7 +495,7 @@ Map<DevicesModuleDeviceCategory, Widget Function(DeviceView, {DeviceDetailConfig
         'Device view is not valid for Outlet device detail',
       );
     }
-    return OutletDeviceDetail(device: device);
+    return OutletDeviceDetail(device: device, config: config);
   },
   DevicesModuleDeviceCategory.pump: (device, {DeviceDetailConfig? config}) {
     if (device is! PumpDeviceView) {
@@ -503,7 +503,7 @@ Map<DevicesModuleDeviceCategory, Widget Function(DeviceView, {DeviceDetailConfig
         'Device view is not valid for Pump device detail',
       );
     }
-    return PumpDeviceDetail(device: device);
+    return PumpDeviceDetail(device: device, config: config);
   },
   DevicesModuleDeviceCategory.robotVacuum: (device, {DeviceDetailConfig? config}) {
     if (device is! RobotVacuumDeviceView) {
@@ -511,7 +511,7 @@ Map<DevicesModuleDeviceCategory, Widget Function(DeviceView, {DeviceDetailConfig
         'Device view is not valid for Robot vacuum device detail',
       );
     }
-    return RobotVacuumDeviceDetail(device: device);
+    return RobotVacuumDeviceDetail(device: device, config: config);
   },
   DevicesModuleDeviceCategory.sensor: (device, {DeviceDetailConfig? config}) {
     if (device is! SensorDeviceView) {
@@ -551,7 +551,7 @@ Map<DevicesModuleDeviceCategory, Widget Function(DeviceView, {DeviceDetailConfig
         'Device view is not valid for Sprinkler device detail',
       );
     }
-    return SprinklerDeviceDetail(device: device);
+    return SprinklerDeviceDetail(device: device, config: config);
   },
   DevicesModuleDeviceCategory.switcher: (device, {DeviceDetailConfig? config}) {
     if (device is! SwitcherDeviceView) {
@@ -559,7 +559,7 @@ Map<DevicesModuleDeviceCategory, Widget Function(DeviceView, {DeviceDetailConfig
         'Device view is not valid for Switcher device detail',
       );
     }
-    return SwitcherDeviceDetail(device: device);
+    return SwitcherDeviceDetail(device: device, config: config);
   },
   DevicesModuleDeviceCategory.television: (device, {DeviceDetailConfig? config}) {
     if (device is! TelevisionDeviceView) {
@@ -591,7 +591,7 @@ Map<DevicesModuleDeviceCategory, Widget Function(DeviceView, {DeviceDetailConfig
         'Device view is not valid for Valve device detail',
       );
     }
-    return ValveDeviceDetail(device: device);
+    return ValveDeviceDetail(device: device, config: config);
   },
   DevicesModuleDeviceCategory.windowCovering: (device, {DeviceDetailConfig? config}) {
     if (device is! WindowCoveringDeviceView) {
@@ -608,7 +608,7 @@ Widget buildDeviceWidget(DeviceView device, {DeviceDetailConfig? config}) {
   final builder = deviceWidgetMappers[device.category];
 
   if (builder == null) {
-    return GenericDeviceDetail(device: device);
+    return GenericDeviceDetail(device: device, config: config);
   }
 
   return builder(device, config: config);
