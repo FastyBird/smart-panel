@@ -127,11 +127,7 @@ class PageHeader extends StatelessWidget {
           // Trailing widget
           if (trailing != null) ...[
             AppSpacings.spacingMdHorizontal,
-            Flexible(
-              child: ClipRect(
-                child: trailing!,
-              ),
-            ),
+            trailing!,
           ],
 
           // Landscape action (e.g. mode chip) — always rightmost in landscape.

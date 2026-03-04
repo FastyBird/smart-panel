@@ -1,4 +1,6 @@
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/bottom_sheet_dialog.dart';
+import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/deck/models/deck_item.dart';
 import 'package:fastybird_smart_panel/modules/deck/services/deck_service.dart';
@@ -15,26 +17,22 @@ void showMoreSheet(
   required int currentIndex,
   required ValueChanged<int> onNavigateToIndex,
 }) {
-  showModalBottomSheet(
-    context: context,
-    backgroundColor: Colors.transparent,
-    builder: (sheetContext) {
-      return _DeckMoreSheet(
-        currentIndex: currentIndex,
-        onNavigateToIndex: (index) {
-          Navigator.of(sheetContext).pop();
-          onNavigateToIndex(index);
-        },
-      );
-    },
+  showBottomSheetDialog(
+    context,
+    title: AppLocalizations.of(context)!.deck_all_pages,
+    scrollable: false,
+    content: _DeckMoreContent(
+      currentIndex: currentIndex,
+      onNavigateToIndex: onNavigateToIndex,
+    ),
   );
 }
 
-class _DeckMoreSheet extends StatelessWidget {
+class _DeckMoreContent extends StatelessWidget {
   final int currentIndex;
   final ValueChanged<int> onNavigateToIndex;
 
-  const _DeckMoreSheet({
+  const _DeckMoreContent({
     required this.currentIndex,
     required this.onNavigateToIndex,
   });
@@ -42,61 +40,41 @@ class _DeckMoreSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final localizations = AppLocalizations.of(context)!;
+    final bgColor = isDark ? AppFillColorDark.base : AppFillColorLight.blank;
     final deckService = context.read<DeckService>();
     final items = deckService.items;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: isDark ? AppBgColorDark.overlay : AppBgColorLight.overlay,
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(AppBorderRadius.medium),
-        ),
+    return VerticalScrollWithGradient(
+      itemCount: 1,
+      shrinkWrap: true,
+      backgroundColor: bgColor,
+      padding: EdgeInsets.symmetric(
+        horizontal: AppSpacings.pMd,
+        vertical: AppSpacings.pMd,
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Handle bar
-          Padding(
-            padding: EdgeInsets.only(top: AppSpacings.pMd),
-            child: Container(
-              width: AppSpacings.scale(40),
-              height: AppSpacings.scale(4),
-              decoration: BoxDecoration(
-                color: isDark ? AppBorderColorDark.base : AppBorderColorLight.base,
-                borderRadius: BorderRadius.circular(AppSpacings.scale(2)),
-              ),
-            ),
-          ),
-          // Title
-          Padding(
-            padding: EdgeInsets.all(AppSpacings.pLg),
-            child: Text(
-              localizations.deck_all_pages,
-              style: TextStyle(
-                fontSize: AppFontSize.large,
-                fontWeight: FontWeight.w600,
-                color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
-              ),
-            ),
-          ),
-          // Grid of items
-          Padding(
-            padding: EdgeInsets.only(
-              left: AppSpacings.pLg,
-              right: AppSpacings.pLg,
-              bottom: AppSpacings.pXl,
-            ),
-            child: Wrap(
-              spacing: AppSpacings.pMd,
-              runSpacing: AppSpacings.pMd,
-              children: [
-                for (int i = 0; i < items.length; i++)
-                  _buildItem(context, items[i], i),
-              ],
-            ),
-          ),
-        ],
+      itemBuilder: (context, index) => LayoutBuilder(
+        builder: (context, constraints) {
+          final spacing = AppSpacings.pMd;
+          final minItemWidth = AppSpacings.scale(80);
+          final cols =
+              ((constraints.maxWidth + spacing) / (minItemWidth + spacing))
+                  .floor()
+                  .clamp(1, items.length);
+          final itemWidth =
+              (constraints.maxWidth - (cols - 1) * spacing) / cols;
+
+          return Wrap(
+            spacing: spacing,
+            runSpacing: spacing,
+            children: [
+              for (int i = 0; i < items.length; i++)
+                SizedBox(
+                  width: itemWidth,
+                  child: _buildItem(context, items[i], i),
+                ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -129,9 +107,11 @@ class _DeckMoreSheet extends StatelessWidget {
     }
 
     return GestureDetector(
-      onTap: () => onNavigateToIndex(index),
+      onTap: () {
+        Navigator.of(context).pop();
+        onNavigateToIndex(index);
+      },
       child: Container(
-        width: AppSpacings.scale(90),
         padding: EdgeInsets.symmetric(
           vertical: AppSpacings.pMd,
           horizontal: AppSpacings.pSm,

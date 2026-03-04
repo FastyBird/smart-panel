@@ -154,7 +154,7 @@ class _DeckBottomNavBarState extends State<DeckBottomNavBar> {
                     icon: tab.icon,
                     label: tab.label,
                     isActive: isActive,
-                    isExpanded: isActive && showLabels,
+                    isExpanded: isActive && showLabels && !tab.isMore,
                     badgeCount: tab.badgeCount,
                     onTap: tab.isMore
                         ? widget.onMoreTapped
