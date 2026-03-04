@@ -5,7 +5,7 @@ Type: feature
 Scope: backend, panel
 Size: medium
 Parent: EPIC-BUDDY-MODULE
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -44,15 +44,15 @@ I want to speak to the panel and have my voice transcribed to text for the buddy
 
 ## 4. Acceptance criteria
 
-- [ ] Backend `SttProviderService` supports: `whisper-api` (OpenAI Whisper API), `whisper-local` (local binary), `none`
-- [ ] `POST /v1/modules/buddy/conversations/:id/audio` accepts WAV/WebM audio, transcribes, and returns the full conversation response (same as text message endpoint)
-- [ ] Audio endpoint validates file size (max 25MB) and format
-- [ ] Panel: microphone button in chat drawer input area
-- [ ] Panel: press-and-hold recording with visual indicator
-- [ ] Panel: recorded audio uploaded to backend, transcribed text shown as user message
-- [ ] Panel: handles recording permissions gracefully (prompt for mic access)
-- [ ] STT provider configurable in admin settings (extends buddy config)
-- [ ] Unit tests for STT service (mock audio transcription)
+- [x] Backend `SttProviderService` supports: `whisper-api` (OpenAI Whisper API), `whisper-local` (local binary), `none`
+- [x] `POST /v1/modules/buddy/conversations/:id/audio` accepts WAV/WebM audio, transcribes, and returns the full conversation response (same as text message endpoint)
+- [x] Audio endpoint validates file size (max 25MB) and format
+- [x] Panel: microphone button in chat drawer input area
+- [x] Panel: press-and-hold recording with visual indicator
+- [x] Panel: recorded audio uploaded to backend, transcribed text shown as user message
+- [x] Panel: handles recording permissions gracefully (prompt for mic access)
+- [x] STT provider configurable in admin settings (extends buddy config)
+- [x] Unit tests for STT service (mock audio transcription)
 
 ## 5. Example scenarios
 

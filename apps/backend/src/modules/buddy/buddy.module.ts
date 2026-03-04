@@ -40,6 +40,7 @@ import { OAuthCallbackService } from './services/oauth-callback.service';
 import { OAuthFlowService } from './services/oauth-flow.service';
 import { PatternDetectorService } from './services/pattern-detector.service';
 import { SceneSuggestionEvaluator } from './services/scene-suggestion-evaluator.service';
+import { SttProviderService } from './services/stt-provider.service';
 import { SuggestionEngineService } from './services/suggestion-engine.service';
 import { EvaluatorRulesLoaderService } from './spec/evaluator-rules-loader.service';
 
@@ -79,6 +80,7 @@ import { EvaluatorRulesLoaderService } from './spec/evaluator-rules-loader.servi
 		EnergyEvaluator,
 		ConflictDetectorEvaluator,
 		SceneSuggestionEvaluator,
+		SttProviderService,
 		OAuthCallbackService,
 		OAuthFlowService,
 	],

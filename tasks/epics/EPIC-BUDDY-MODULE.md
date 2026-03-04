@@ -131,7 +131,7 @@ Inspired by the [OpenClaw](https://github.com/openclaw/openclaw) project's proac
 
 ### Phase 3 (Voice)
 
-- [ ] Speech-to-text integration (Whisper local or cloud provider)
+- [x] Speech-to-text integration (Whisper local or cloud provider)
 - [ ] Text-to-speech integration (system TTS, ElevenLabs, or similar)
 - [ ] Wake word detection on panel hardware
 - [ ] Voice commands routed through buddy conversation → intent system

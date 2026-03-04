@@ -68,6 +68,7 @@ class BuddyService extends ChangeNotifier {
 	bool get hasError => _buddyRepository.hasError;
 
 	bool get isProviderNotConfigured => _buddyRepository.isProviderNotConfigured;
+	bool get isSttNotConfigured => _buddyRepository.isSttNotConfigured;
 
 	// ============================================
 	// CONVERSATION ACTIONS
@@ -139,6 +140,22 @@ class BuddyService extends ChangeNotifier {
 		if (conversationId == null) return null;
 
 		return _buddyRepository.sendMessage(conversationId, content);
+	}
+
+	/// Send an audio message in the active conversation
+	Future<BuddyMessageModel?> sendAudioMessage(
+		Uint8List audioBytes,
+		String mimeType,
+	) async {
+		final conversationId = _buddyRepository.activeConversationId;
+
+		if (conversationId == null) return null;
+
+		return _buddyRepository.sendAudioMessage(
+			conversationId,
+			audioBytes,
+			mimeType,
+		);
 	}
 
 	/// Delete a conversation

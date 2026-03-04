@@ -41,6 +41,49 @@ export class UpdateBuddyConfigDto extends UpdateModuleConfigDto {
 	provider?: string;
 
 	@ApiPropertyOptional({
+		name: 'stt_provider',
+		description: 'Speech-to-text provider (none, whisper_api, whisper_local)',
+		type: 'string',
+		example: 'none',
+	})
+	@Expose({ name: 'stt_provider' })
+	@IsOptional()
+	@IsString({ message: '[{"field":"stt_provider","reason":"STT provider must be a valid string."}]' })
+	stt_provider?: string;
+
+	@ApiPropertyOptional({
+		name: 'stt_api_key',
+		description: 'API key for the STT provider (required for whisper_api)',
+		type: 'string',
+	})
+	@Expose({ name: 'stt_api_key' })
+	@IsOptional()
+	@IsString({ message: '[{"field":"stt_api_key","reason":"STT API key must be a valid string."}]' })
+	stt_api_key?: string;
+
+	@ApiPropertyOptional({
+		name: 'stt_model',
+		description: 'Model identifier for the STT provider',
+		type: 'string',
+		example: 'whisper-1',
+	})
+	@Expose({ name: 'stt_model' })
+	@IsOptional()
+	@IsString({ message: '[{"field":"stt_model","reason":"STT model must be a valid string."}]' })
+	stt_model?: string;
+
+	@ApiPropertyOptional({
+		name: 'stt_language',
+		description: 'ISO 639-1 language code for transcription (e.g. en, cs)',
+		type: 'string',
+		example: 'en',
+	})
+	@Expose({ name: 'stt_language' })
+	@IsOptional()
+	@IsString({ message: '[{"field":"stt_language","reason":"STT language must be a valid string."}]' })
+	stt_language?: string;
+
+	@ApiPropertyOptional({
 		name: 'heartbeat_interval_ms',
 		description: 'Heartbeat evaluation interval in milliseconds (minimum 60000)',
 		type: 'integer',
