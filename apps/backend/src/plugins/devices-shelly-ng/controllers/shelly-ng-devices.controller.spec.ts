@@ -114,10 +114,10 @@ describe('ShellyNgDevicesController', () => {
 			await expect(controller.getInfo({ data: { hostname: 'x', password: 'y' } })).rejects.toThrow(NotFoundException);
 		});
 
-		it('throws NotFoundException when native fetch TypeError is thrown', async () => {
-			deviceManager.getDeviceInfo.mockRejectedValue(new TypeError('network error'));
+		it('re-throws unexpected errors (e.g. TypeError) without catching them', async () => {
+			deviceManager.getDeviceInfo.mockRejectedValue(new TypeError('Cannot read properties of undefined'));
 
-			await expect(controller.getInfo({ data: { hostname: 'x', password: 'y' } })).rejects.toThrow(NotFoundException);
+			await expect(controller.getInfo({ data: { hostname: 'x', password: 'y' } })).rejects.toThrow(TypeError);
 		});
 
 		it('throws UnprocessableEntityException on validation failure (bad components ids)', async () => {

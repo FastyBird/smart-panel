@@ -67,7 +67,7 @@ export class ShellyNgDevicesController {
 		try {
 			deviceInfo = await this.deviceManagerService.getDeviceInfo(createDto.data.hostname, createDto.data.password);
 		} catch (error) {
-			if (error instanceof DevicesShellyNgException || error instanceof TypeError) {
+			if (error instanceof DevicesShellyNgException) {
 				throw new NotFoundException('Device info could not be fetched. Please try again later');
 			}
 
