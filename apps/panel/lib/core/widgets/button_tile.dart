@@ -37,8 +37,8 @@ class ButtonTileBox extends StatelessWidget {
                     ? AppColorsLight.primary
                     : AppColorsDark.primaryLight9)
                 : (Theme.of(context).brightness == Brightness.light
-                    ? AppColorsLight.infoLight9
-                    : AppColorsDark.infoLight9)),
+                    ? AppFillColorLight.blank
+                    : AppFillColorDark.light)),
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
         border: Border.all(
           color: isDisabled
@@ -50,8 +50,8 @@ class ButtonTileBox extends StatelessWidget {
                       ? AppColorsLight.primary
                       : AppColorsDark.primaryLight5)
                   : (Theme.of(context).brightness == Brightness.light
-                      ? AppColorsLight.infoLight5
-                      : AppColorsDark.infoLight5)),
+                      ? AppBorderColorLight.light
+                      : AppFillColorDark.light)),
           width: AppSpacings.scale(1),
         ),
         boxShadow: isOn
@@ -113,8 +113,8 @@ class ButtonTileTitle extends StatelessWidget {
                     ? AppColors.white
                     : AppColorsDark.primary)
                 : (Theme.of(context).brightness == Brightness.light
-                    ? AppColorsLight.info
-                    : AppColorsDark.info)),
+                    ? AppTextColorLight.primary
+                    : AppTextColorDark.primary)),
         fontFamily: 'DIN1451',
         fontSize: small ? AppFontSize.extraSmall : AppFontSize.small,
         fontWeight: FontWeight.bold,
@@ -154,8 +154,8 @@ class ButtonTileSubTitle extends StatelessWidget {
                     ? AppColorsLight.primaryLight9
                     : AppColorsLight.primaryLight5)
                 : (Theme.of(context).brightness == Brightness.light
-                    ? AppColorsLight.infoLight3
-                    : AppColorsDark.infoLight3)),
+                    ? AppTextColorLight.secondary
+                    : AppTextColorDark.secondary)),
         overflow: TextOverflow.ellipsis,
         fontSize: AppFontSize.extraSmall,
       ),
@@ -172,8 +172,8 @@ class ButtonTileSubTitle extends StatelessWidget {
                         ? AppColorsLight.primaryLight9
                         : AppColorsLight.primaryLight5)
                     : (Theme.of(context).brightness == Brightness.light
-                        ? AppColorsLight.infoLight3
-                        : AppColorsDark.infoLight3)),
+                        ? AppTextColorLight.secondary
+                        : AppTextColorDark.secondary)),
           ),
         ),
         child: subTitle ?? Text(localizations.value_not_available),
@@ -366,10 +366,10 @@ class ButtonTileIcon extends StatelessWidget {
               : (isOn
                   ? (Theme.of(context).brightness == Brightness.light
                       ? AppColorsLight.primaryLight5
-                      : AppColorsLight.primaryLight5)
+                      : AppColorsDark.primaryLight5)
                   : (Theme.of(context).brightness == Brightness.light
-                      ? AppColorsLight.infoLight5
-                      : AppColorsDark.infoLight5)),
+                      ? AppFillColorLight.light
+                      : AppFillColorDark.darker)),
           border: Border.all(
             color: isDisabled
                 ? (Theme.of(context).brightness == Brightness.light
@@ -378,10 +378,10 @@ class ButtonTileIcon extends StatelessWidget {
                 : (isOn
                     ? (Theme.of(context).brightness == Brightness.light
                         ? AppColorsLight.primaryLight5
-                        : AppColorsLight.primaryLight5)
+                        : AppColorsDark.primaryLight5)
                     : (Theme.of(context).brightness == Brightness.light
-                        ? AppColorsLight.infoLight5
-                        : AppColorsDark.infoLight5)),
+                        ? AppFillColorLight.light
+                        : AppFillColorDark.darker)),
             width: AppSpacings.scale(4),
           ),
         ),
@@ -394,10 +394,10 @@ class ButtonTileIcon extends StatelessWidget {
                 : (isOn
                     ? (Theme.of(context).brightness == Brightness.light
                         ? AppColorsLight.primaryLight5
-                        : AppColorsLight.primaryLight5)
+                        : AppColorsDark.primaryLight5)
                     : (Theme.of(context).brightness == Brightness.light
-                        ? AppColorsLight.infoLight5
-                        : AppColorsDark.infoLight5)),
+                        ? AppFillColorLight.light
+                        : AppFillColorDark.darker)),
             shape: BoxShape.circle,
           ),
           child: Center(
@@ -420,8 +420,8 @@ class ButtonTileIcon extends StatelessWidget {
                                       : AppColorsDark.primary)
                                   : (Theme.of(context).brightness ==
                                           Brightness.light
-                                      ? AppColorsLight.info
-                                      : AppColorsDark.info)),
+                                      ? AppTextColorLight.secondary
+                                      : AppTextColorDark.secondary)),
                           linearTrackColor: AppColors.blank,
                         ),
                       ),
@@ -447,8 +447,8 @@ class ButtonTileIcon extends StatelessWidget {
                                         : AppColorsDark.primary)
                                     : (Theme.of(context).brightness ==
                                             Brightness.light
-                                        ? AppColorsLight.info
-                                        : AppColorsDark.info))),
+                                        ? AppTextColorLight.secondary
+                                        : AppTextColorDark.secondary))),
                       ),
                     ),
             ),
