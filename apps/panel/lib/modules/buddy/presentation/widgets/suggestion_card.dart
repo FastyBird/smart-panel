@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
@@ -63,7 +65,7 @@ class _BuddySuggestionCardState extends State<BuddySuggestionCard>
 		});
 
 		// Fire-and-forget: send feedback to backend but always dismiss the card.
-		await widget.onFeedback(widget.suggestion.id, feedback);
+		unawaited(widget.onFeedback(widget.suggestion.id, feedback));
 
 		if (mounted) {
 			await _animController.forward();
