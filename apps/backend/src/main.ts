@@ -101,7 +101,6 @@ async function bootstrap() {
 	swaggerService.setup(app);
 
 	// Register OAuth callback route outside the API prefix (OAuth providers redirect here directly)
-	const fastifyInstance = app.getHttpAdapter().getInstance();
 	const oauthCallbackService = app.get(OAuthCallbackService);
 
 	const oauthCallbackHandler = async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
