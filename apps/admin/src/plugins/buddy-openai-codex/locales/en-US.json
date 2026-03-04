@@ -11,7 +11,7 @@
 			"clientId": {
 				"title": "Client ID",
 				"placeholder": "Enter your OAuth client ID",
-				"description": "The OAuth client ID for OpenAI Codex API. A default is provided from Codex CLI."
+				"description": "The OAuth client ID for OpenAI Codex API"
 			},
 			"clientSecret": {
 				"title": "Client secret",
@@ -54,6 +54,7 @@
 		},
 		"oauth": {
 			"urlCopied": "URL copied to clipboard",
+			"missingClientId": "Please enter a Client ID before starting the OAuth flow",
 			"authorizeError": "Failed to get authorization URL",
 			"exchangeSuccess": "Token exchange successful",
 			"exchangeError": "Token exchange failed"

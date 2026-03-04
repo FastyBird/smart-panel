@@ -299,7 +299,12 @@ const handleGetUrl = async (): Promise<void> => {
 	callbackUrl.value = '';
 
 	try {
-		const clientId = model.clientId || 'app_EMoamEEZ73f0CkXaXp7hrann';
+		if (!model.clientId) {
+			flashMessage.error(t('buddyOpenaiCodexPlugin.messages.oauth.missingClientId'));
+			return;
+		}
+
+		const clientId = model.clientId;
 
 		const response = await backend.client.GET(
 			`/${PLUGINS_PREFIX}/${BUDDY_OPENAI_CODEX_PLUGIN_PREFIX}/oauth/authorize` as never,
