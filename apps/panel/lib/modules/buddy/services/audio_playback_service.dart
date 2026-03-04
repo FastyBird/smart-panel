@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 
@@ -7,6 +9,7 @@ import 'package:just_audio/just_audio.dart';
 /// and exposes state via [ChangeNotifier] for reactive UI updates.
 class AudioPlaybackService extends ChangeNotifier {
 	final AudioPlayer _player = AudioPlayer();
+	late final StreamSubscription<PlayerState> _playerStateSubscription;
 
 	/// The message ID currently being played (or last played).
 	String? _currentMessageId;
@@ -20,8 +23,10 @@ class AudioPlaybackService extends ChangeNotifier {
 	/// Error message if playback failed.
 	String? _error;
 
+	bool _disposed = false;
+
 	AudioPlaybackService() {
-		_player.playerStateStream.listen(_onPlayerStateChanged);
+		_playerStateSubscription = _player.playerStateStream.listen(_onPlayerStateChanged);
 	}
 
 	// ============================================
@@ -98,6 +103,8 @@ class AudioPlaybackService extends ChangeNotifier {
 	// ============================================
 
 	void _onPlayerStateChanged(PlayerState state) {
+		if (_disposed) return;
+
 		final wasPlaying = _isPlaying;
 		final wasLoading = _isLoading;
 
@@ -128,6 +135,8 @@ class AudioPlaybackService extends ChangeNotifier {
 
 	@override
 	void dispose() {
+		_disposed = true;
+		_playerStateSubscription.cancel();
 		_player.dispose();
 		super.dispose();
 	}

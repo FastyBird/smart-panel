@@ -18,8 +18,8 @@ import {
 	ApiBody,
 	ApiConsumes,
 	ApiNoContentResponse,
-	ApiOkResponse,
 	ApiOperation,
+	ApiResponse,
 	ApiParam,
 	ApiQuery,
 	ApiTags,
@@ -326,7 +326,8 @@ export class BuddyConversationsController {
 	})
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Conversation ID' })
 	@ApiParam({ name: 'messageId', type: 'string', description: 'Message ID' })
-	@ApiOkResponse({
+	@ApiResponse({
+		status: 200,
 		description: 'Audio data for the message',
 		content: {
 			'audio/mpeg': { schema: { type: 'string', format: 'binary' } },

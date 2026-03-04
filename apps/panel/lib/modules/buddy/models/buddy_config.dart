@@ -4,25 +4,36 @@ class BuddyConfigModel extends Model {
   final String _name;
   final bool _enabled;
   final String _ttsProvider;
+  final String? _ttsApiKey;
 
   BuddyConfigModel({
     String name = 'Buddy',
     bool enabled = true,
     String ttsProvider = 'none',
+    String? ttsApiKey,
   })  : _name = name,
         _enabled = enabled,
-        _ttsProvider = ttsProvider;
+        _ttsProvider = ttsProvider,
+        _ttsApiKey = ttsApiKey;
 
   String get name => _name;
   bool get enabled => _enabled;
   String get ttsProvider => _ttsProvider;
-  bool get isTtsConfigured => _ttsProvider != 'none' && _ttsProvider.isNotEmpty;
+  bool get isTtsConfigured {
+    if (_ttsProvider == 'none' || _ttsProvider.isEmpty) return false;
+    // OpenAI TTS and ElevenLabs require an API key
+    if (_ttsProvider == 'openai_tts' || _ttsProvider == 'elevenlabs') {
+      return _ttsApiKey != null && _ttsApiKey.isNotEmpty;
+    }
+    return true;
+  }
 
   factory BuddyConfigModel.fromJson(Map<String, dynamic> json) {
     return BuddyConfigModel(
       name: json['name'] as String? ?? 'Buddy',
       enabled: json['enabled'] as bool? ?? true,
       ttsProvider: json['tts_provider'] as String? ?? 'none',
+      ttsApiKey: json['tts_api_key'] as String?,
     );
   }
 
@@ -30,11 +41,13 @@ class BuddyConfigModel extends Model {
     String? name,
     bool? enabled,
     String? ttsProvider,
+    String? ttsApiKey,
   }) {
     return BuddyConfigModel(
       name: name ?? _name,
       enabled: enabled ?? _enabled,
       ttsProvider: ttsProvider ?? _ttsProvider,
+      ttsApiKey: ttsApiKey ?? _ttsApiKey,
     );
   }
 
@@ -44,8 +57,9 @@ class BuddyConfigModel extends Model {
       (other is BuddyConfigModel &&
           other._name == _name &&
           other._enabled == _enabled &&
-          other._ttsProvider == _ttsProvider);
+          other._ttsProvider == _ttsProvider &&
+          other._ttsApiKey == _ttsApiKey);
 
   @override
-  int get hashCode => Object.hash(_name, _enabled, _ttsProvider);
+  int get hashCode => Object.hash(_name, _enabled, _ttsProvider, _ttsApiKey);
 }
