@@ -4,18 +4,28 @@ import 'package:intl/intl.dart';
 
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/modules/buddy/models/message.dart';
+import 'package:fastybird_smart_panel/modules/buddy/services/audio_playback_service.dart';
 
 /// Chat bubble widget for user and assistant messages.
 ///
 /// User messages are right-aligned with primary color background.
 /// Assistant messages are left-aligned with surface color background
 /// and render markdown formatting (bold, italic, lists, code, etc.).
+///
+/// When [showSpeakerIcon] is true and the message is from the assistant,
+/// a speaker icon is shown that plays the TTS audio for the message.
 class MessageBubble extends StatelessWidget {
 	final BuddyMessageModel message;
+	final bool showSpeakerIcon;
+	final AudioPlaybackService? audioPlaybackService;
+	final String? audioUrl;
 
 	const MessageBubble({
 		super.key,
 		required this.message,
+		this.showSpeakerIcon = false,
+		this.audioPlaybackService,
+		this.audioUrl,
 	});
 
 	@override
@@ -93,12 +103,19 @@ class MessageBubble extends StatelessWidget {
 									else
 										_buildMarkdownBody(context, isDark, textColor),
 									SizedBox(height: AppSpacings.pXs),
-									Text(
-										timeFormat.format(message.createdAt),
-										style: TextStyle(
-											fontSize: AppFontSize.extraExtraSmall,
-											color: timestampColor,
-										),
+									Row(
+										mainAxisSize: MainAxisSize.min,
+										children: [
+											Text(
+												timeFormat.format(message.createdAt),
+												style: TextStyle(
+													fontSize: AppFontSize.extraExtraSmall,
+													color: timestampColor,
+												),
+											),
+											if (!isUser && showSpeakerIcon && audioPlaybackService != null && audioUrl != null)
+												_buildSpeakerButton(isDark, timestampColor),
+										],
 									),
 								],
 							),
@@ -106,6 +123,43 @@ class MessageBubble extends StatelessWidget {
 					),
 					if (!isUser) SizedBox(width: AppSpacings.pXl),
 				],
+			),
+		);
+	}
+
+	Widget _buildSpeakerButton(bool isDark, Color iconColor) {
+		final service = audioPlaybackService!;
+		final isPlaying = service.isPlayingMessage(message.id);
+		final isLoading = service.isLoadingMessage(message.id);
+
+		return Padding(
+			padding: EdgeInsets.only(left: AppSpacings.pSm),
+			child: GestureDetector(
+				onTap: () {
+					if (isPlaying) {
+						service.stop();
+					} else {
+						service.playMessageAudio(message.id, audioUrl!);
+					}
+				},
+				child: SizedBox(
+					width: AppSpacings.scale(18),
+					height: AppSpacings.scale(18),
+					child: isLoading
+						? SizedBox(
+								width: AppSpacings.scale(12),
+								height: AppSpacings.scale(12),
+								child: CircularProgressIndicator(
+									strokeWidth: 1.5,
+									color: iconColor,
+								),
+							)
+						: Icon(
+								isPlaying ? Icons.stop_circle_outlined : Icons.volume_up_outlined,
+								size: AppSpacings.scale(14),
+								color: iconColor,
+							),
+				),
 			),
 		);
 	}

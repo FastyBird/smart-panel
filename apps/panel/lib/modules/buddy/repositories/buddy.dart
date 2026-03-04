@@ -430,6 +430,16 @@ class BuddyRepository extends ChangeNotifier {
 		return null;
 	}
 
+	/// Build the full URL for a message's TTS audio endpoint.
+	///
+	/// The URL is constructed from the Dio base URL so it can be
+	/// passed directly to an audio player (e.g. just_audio).
+	String getMessageAudioUrl(String conversationId, String messageId) {
+		final base = _dio.options.baseUrl.replaceAll(RegExp(r'/+$'), '');
+
+		return '$base${BuddyModuleConstants.conversationsPath}/$conversationId/messages/$messageId/audio';
+	}
+
 	/// Delete a conversation
 	Future<bool> deleteConversation(String conversationId) async {
 		try {

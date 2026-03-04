@@ -9,4 +9,8 @@ export const BuddyConfigEditFormSchema = ConfigModuleEditFormSchema.extend({
 	sttApiKey: z.string().nullable().optional().default(null),
 	sttModel: z.string().nullable().optional().default(null),
 	sttLanguage: z.string().nullable().optional().default(null),
+	ttsProvider: z.string().optional().default('none'),
+	ttsApiKey: z.string().nullable().optional().default(null),
+	ttsVoice: z.string().nullable().optional().default(null),
+	ttsSpeed: z.number().optional().default(1.0),
 });

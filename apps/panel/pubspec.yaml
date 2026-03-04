@@ -62,6 +62,7 @@ dependencies:
   bonsoir: ^5.1.4
   flutter_markdown: ^0.7.7+1
   record: ^5.2.1
+  just_audio: ^0.9.42
   path_provider: ^2.1.4
 
 dev_dependencies:

@@ -58,6 +58,12 @@ export class BuddyConversationService {
 		});
 	}
 
+	async findMessage(conversationId: string, messageId: string): Promise<BuddyMessageEntity | null> {
+		return this.messageRepository.findOne({
+			where: { id: messageId, conversationId },
+		});
+	}
+
 	async create(title?: string | null, spaceId?: string | null): Promise<BuddyConversationEntity> {
 		const conversation = this.conversationRepository.create({
 			id: uuid(),

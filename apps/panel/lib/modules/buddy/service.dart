@@ -158,6 +158,18 @@ class BuddyService extends ChangeNotifier {
 		);
 	}
 
+	/// Get the TTS audio URL for a message in the active conversation.
+	String? getMessageAudioUrl(String messageId) {
+		final conversationId = _buddyRepository.activeConversationId;
+
+		if (conversationId == null) return null;
+
+		return _buddyRepository.getMessageAudioUrl(conversationId, messageId);
+	}
+
+	/// Whether TTS is configured based on the buddy config.
+	bool get isTtsConfigured => _configRepo?.data?.isTtsConfigured ?? false;
+
 	/// Delete a conversation
 	Future<bool> deleteConversation(String conversationId) async {
 		return _buddyRepository.deleteConversation(conversationId);

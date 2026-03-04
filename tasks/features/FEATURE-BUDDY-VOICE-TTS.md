@@ -5,7 +5,7 @@ Type: feature
 Scope: backend, panel
 Size: medium
 Parent: EPIC-BUDDY-MODULE
-Status: planned
+Status: done
 
 ## 1. Business goal
 

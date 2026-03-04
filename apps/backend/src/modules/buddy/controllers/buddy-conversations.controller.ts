@@ -1,7 +1,16 @@
 import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
 
-import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Post, Query, Req, Res } from '@nestjs/common';
-import { ApiBody, ApiConsumes, ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Delete, Get, Header, HttpCode, Param, ParseUUIDPipe, Post, Query, Req, Res } from '@nestjs/common';
+import {
+	ApiBody,
+	ApiConsumes,
+	ApiNoContentResponse,
+	ApiOkResponse,
+	ApiOperation,
+	ApiParam,
+	ApiQuery,
+	ApiTags,
+} from '@nestjs/swagger';
 
 import { MULTIPART_MAX_FILE_SIZE_BYTES } from '../../../app.constants';
 import { createExtensionLogger } from '../../../common/logger';
@@ -24,7 +33,9 @@ import {
 	BuddyAudioMissingException,
 	BuddyAudioTooLargeException,
 	BuddyAudioUnsupportedFormatException,
+	BuddyMessageNotFoundException,
 	BuddySttNotConfiguredException,
+	BuddyTtsNotConfiguredException,
 	BuddyTranscriptionEmptyException,
 } from '../buddy.exceptions';
 import { CreateConversationDto, ReqCreateConversationDto } from '../dto/create-conversation.dto';
@@ -33,6 +44,7 @@ import { ConversationResponseModel, ConversationsResponseModel } from '../models
 import { MessageResponseModel, MessagesResponseModel } from '../models/message-response.model';
 import { BuddyConversationService } from '../services/buddy-conversation.service';
 import { SttProviderService } from '../services/stt-provider.service';
+import { TtsProviderService } from '../services/tts-provider.service';
 
 @ApiTags(BUDDY_MODULE_API_TAG_NAME)
 @Controller('conversations')
@@ -42,6 +54,7 @@ export class BuddyConversationsController {
 	constructor(
 		private readonly conversationService: BuddyConversationService,
 		private readonly sttProviderService: SttProviderService,
+		private readonly ttsProviderService: TtsProviderService,
 	) {}
 
 	@ApiOperation({
@@ -289,6 +302,60 @@ export class BuddyConversationsController {
 		response.data = assistantMessage;
 
 		return response;
+	}
+
+	@ApiOperation({
+		tags: [BUDDY_MODULE_API_TAG_NAME],
+		summary: 'Get audio for a message',
+		description:
+			'Generates and returns audio (MP3 or WAV) for a specific assistant message using the configured TTS provider. Audio is cached for the session to avoid redundant synthesis.',
+		operationId: 'get-buddy-module-conversation-message-audio',
+	})
+	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Conversation ID' })
+	@ApiParam({ name: 'messageId', type: 'string', description: 'Message ID' })
+	@ApiOkResponse({
+		description: 'Audio data for the message',
+		content: {
+			'audio/mpeg': { schema: { type: 'string', format: 'binary' } },
+			'audio/wav': { schema: { type: 'string', format: 'binary' } },
+		},
+	})
+	@ApiNotFoundResponse('Conversation or message not found')
+	@ApiServiceUnavailableResponse('TTS provider not configured')
+	@ApiInternalServerErrorResponse('Internal server error')
+	@Get(':id/messages/:messageId/audio')
+	@Header('Cache-Control', 'private, max-age=300')
+	async getMessageAudio(
+		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+		@Param('messageId') messageId: string,
+		@Res({ passthrough: true }) res: Response,
+	): Promise<void> {
+		this.logger.debug(`Fetching audio for message id=${messageId} in conversation id=${id}`);
+
+		// Validate conversation exists
+		await this.conversationService.findOneOrThrow(id);
+
+		// Find the message
+		const message = await this.conversationService.findMessage(id, messageId);
+
+		if (!message) {
+			throw new BuddyMessageNotFoundException(messageId);
+		}
+
+		// Only generate audio for assistant messages
+		if (message.role !== 'assistant') {
+			throw new BuddyMessageNotFoundException(messageId);
+		}
+
+		if (!this.ttsProviderService.isConfigured()) {
+			throw new BuddyTtsNotConfiguredException();
+		}
+
+		const { buffer, contentType } = await this.ttsProviderService.synthesize(message.content, messageId);
+
+		void res.header('Content-Type', contentType);
+		void res.header('Content-Length', String(buffer.length));
+		void res.send(buffer);
 	}
 
 	@ApiOperation({

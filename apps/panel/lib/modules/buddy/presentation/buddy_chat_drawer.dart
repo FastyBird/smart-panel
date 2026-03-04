@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/modules/buddy/models/message.dart';
 import 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/message_bubble.dart';
 import 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/suggestion_card.dart';
 import 'package:fastybird_smart_panel/modules/buddy/service.dart';
+import 'package:fastybird_smart_panel/modules/buddy/services/audio_playback_service.dart';
 import 'package:fastybird_smart_panel/modules/buddy/services/audio_recording_service.dart';
 
 /// Sliding chat drawer for the buddy module.
@@ -37,6 +39,7 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 
 	late final BuddyService _buddyService;
 	late final AudioRecordingService _audioRecordingService;
+	late final AudioPlaybackService _audioPlaybackService;
 
 	bool _initialized = false;
 	bool _initFailed = false;
@@ -50,6 +53,13 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 	bool _lastIsRecording = false;
 	int _lastRecordingSecond = -1;
 
+	/// Whether voice mode is active (last input was via microphone).
+	/// When true, TTS auto-play is enabled for new assistant messages.
+	bool _voiceModeActive = false;
+
+	/// The last assistant message ID we auto-played, to avoid replaying.
+	String? _lastAutoPlayedMessageId;
+
 	@override
 	void initState() {
 		super.initState();
@@ -58,6 +68,8 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 		_audioRecordingService = AudioRecordingService();
 		_audioRecordingService.addListener(_onRecordingChanged);
 		_audioRecordingService.checkPermission();
+		_audioPlaybackService = AudioPlaybackService();
+		_audioPlaybackService.addListener(_onPlaybackChanged);
 		_initializeConversation();
 	}
 
@@ -111,6 +123,7 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 		if (!buddyService.hasActiveConversation) return;
 
 		_inputController.clear();
+		_voiceModeActive = false;
 
 		await buddyService.sendMessage(text);
 
@@ -162,6 +175,8 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 
 		if (!buddyService.hasActiveConversation) return;
 
+		_voiceModeActive = true;
+
 		await buddyService.sendAudioMessage(recorded.bytes, recorded.mimeType);
 
 		if (mounted) {
@@ -183,13 +198,36 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 	}
 
 	void _onBuddyServiceChanged() {
-		final messageCount = _buddyService.messages.length;
+		final messages = _buddyService.messages;
+		final messageCount = messages.length;
 
 		if (messageCount > _lastMessageCount) {
 			_scrollToBottom();
+
+			// Auto-play TTS for new assistant messages when voice mode is active
+			if (_voiceModeActive && _buddyService.isTtsConfigured && messageCount > 0) {
+				final lastMessage = messages.last;
+
+				if (lastMessage.role == BuddyMessageRole.assistant &&
+						lastMessage.id != _lastAutoPlayedMessageId) {
+					_lastAutoPlayedMessageId = lastMessage.id;
+
+					final audioUrl = _buddyService.getMessageAudioUrl(lastMessage.id);
+
+					if (audioUrl != null) {
+						_audioPlaybackService.playMessageAudio(lastMessage.id, audioUrl);
+					}
+				}
+			}
 		}
 
 		_lastMessageCount = messageCount;
+	}
+
+	void _onPlaybackChanged() {
+		if (!mounted) return;
+
+		setState(() {});
 	}
 
 	void _onRecordingChanged() {
@@ -222,7 +260,9 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 	void dispose() {
 		_buddyService.removeListener(_onBuddyServiceChanged);
 		_audioRecordingService.removeListener(_onRecordingChanged);
+		_audioPlaybackService.removeListener(_onPlaybackChanged);
 		_audioRecordingService.dispose();
+		_audioPlaybackService.dispose();
 		_inputController.dispose();
 		_scrollController.dispose();
 		_inputFocusNode.dispose();
@@ -373,6 +413,11 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 							(message) => MessageBubble(
 								key: ValueKey(message.id),
 								message: message,
+								showSpeakerIcon: buddyService.isTtsConfigured,
+								audioPlaybackService: _audioPlaybackService,
+								audioUrl: message.role == BuddyMessageRole.assistant
+									? buddyService.getMessageAudioUrl(message.id)
+									: null,
 							),
 						),
 

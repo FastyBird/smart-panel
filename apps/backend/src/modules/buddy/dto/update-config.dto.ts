@@ -84,6 +84,55 @@ export class UpdateBuddyConfigDto extends UpdateModuleConfigDto {
 	stt_language?: string;
 
 	@ApiPropertyOptional({
+		name: 'tts_provider',
+		description: 'Text-to-speech provider (none, openai_tts, elevenlabs, system)',
+		type: 'string',
+		example: 'none',
+	})
+	@Expose({ name: 'tts_provider' })
+	@IsOptional()
+	@IsString({ message: '[{"field":"tts_provider","reason":"TTS provider must be a valid string."}]' })
+	tts_provider?: string;
+
+	@ApiPropertyOptional({
+		name: 'tts_api_key',
+		description: 'API key for the TTS provider (required for openai_tts and elevenlabs)',
+		type: 'string',
+	})
+	@Expose({ name: 'tts_api_key' })
+	@IsOptional()
+	@IsString({ message: '[{"field":"tts_api_key","reason":"TTS API key must be a valid string."}]' })
+	tts_api_key?: string;
+
+	@ApiPropertyOptional({
+		name: 'tts_voice',
+		description: 'Voice identifier for TTS (e.g. alloy for OpenAI, Rachel for ElevenLabs)',
+		type: 'string',
+		example: 'alloy',
+	})
+	@Expose({ name: 'tts_voice' })
+	@IsOptional()
+	@IsString({ message: '[{"field":"tts_voice","reason":"TTS voice must be a valid string."}]' })
+	tts_voice?: string;
+
+	@ApiPropertyOptional({
+		name: 'tts_speed',
+		description: 'Speech speed multiplier (0.25 to 4.0)',
+		type: 'number',
+		example: 1.0,
+	})
+	@Expose({ name: 'tts_speed' })
+	@IsOptional()
+	@IsNumber(
+		{},
+		{ message: '[{"field":"tts_speed","reason":"TTS speed must be a number."}]' },
+	)
+	@Min(0.25, {
+		message: '[{"field":"tts_speed","reason":"TTS speed must be at least 0.25."}]',
+	})
+	tts_speed?: number;
+
+	@ApiPropertyOptional({
 		name: 'heartbeat_interval_ms',
 		description: 'Heartbeat evaluation interval in milliseconds (minimum 60000)',
 		type: 'integer',
