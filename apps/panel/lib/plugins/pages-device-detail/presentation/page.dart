@@ -1,7 +1,7 @@
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
+import 'package:fastybird_smart_panel/modules/devices/models/device_detail_config.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/view.dart';
 import 'package:fastybird_smart_panel/plugins/pages-device-detail/views/view.dart';
@@ -56,24 +56,21 @@ class DeviceDetailPage extends StatelessWidget {
         );
       }
 
+      final config = DeviceDetailConfig(
+        showHeader: page.showTopBar,
+        showBackButton: false,
+        titleOverride: page.showTopBar ? page.title : null,
+        iconOverride: page.showTopBar ? page.icon : null,
+      );
+
+      if (page.showTopBar) {
+        return buildDeviceWidget(device, config: config);
+      }
+
       return Scaffold(
         backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
         body: SafeArea(
-          child: Column(
-            children: [
-              if (page.showTopBar)
-                PageHeader(
-                  title: device.name,
-                  leading: HeaderMainIcon(
-                    icon: page.icon ?? buildDeviceIcon(
-                      device.category,
-                      device.icon,
-                    ),
-                  ),
-                ),
-              Expanded(child: buildDeviceWidget(device)),
-            ],
-          ),
+          child: buildDeviceWidget(device, config: config),
         ),
       );
     });

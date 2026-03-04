@@ -18,6 +18,7 @@ import 'package:fastybird_smart_panel/modules/devices/presentation/utils/sensor_
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/channels/battery.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
+import 'package:fastybird_smart_panel/modules/devices/models/device_detail_config.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/sensor.dart';
 import 'package:flutter/material.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
@@ -36,11 +37,13 @@ export 'package:fastybird_smart_panel/modules/devices/presentation/widgets/senso
 class SensorDeviceDetail extends StatefulWidget {
   final SensorDeviceView _device;
   final String? initialChannelId;
+  final DeviceDetailConfig? config;
 
   const SensorDeviceDetail({
     super.key,
     required SensorDeviceView device,
     this.initialChannelId,
+    this.config,
   }) : _device = device;
 
   @override
@@ -191,29 +194,31 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
         ? DatetimeUtils.formatTimeAgo(widget._device.lastStateChange!, localizations)
         : null;
 
+    final body = Stack(
+      children: [
+        SensorDetailPage(
+          sensor: selectedSensor,
+          deviceName: widget._device.name,
+          isDeviceOnline: widget._device.isOnline,
+          contentOnly: true,
+        ),
+        if (!widget._device.isOnline)
+          DeviceOfflineState(
+            isDark: isDark,
+            lastSeenText: lastSeenText,
+          ),
+      ],
+    );
+
+    if (!(widget.config?.showHeader ?? true)) return body;
+
     return Scaffold(
       backgroundColor: bgColor,
       body: SafeArea(
         child: Column(
           children: [
             _buildHeader(context, isDark),
-            Expanded(
-              child: Stack(
-                children: [
-                  SensorDetailPage(
-                    sensor: selectedSensor,
-                    deviceName: widget._device.name,
-                    isDeviceOnline: widget._device.isOnline,
-                    contentOnly: true,
-                  ),
-                  if (!widget._device.isOnline)
-                    DeviceOfflineState(
-                      isDark: isDark,
-                      lastSeenText: lastSeenText,
-                    ),
-                ],
-              ),
-            ),
+            Expanded(child: body),
           ],
         ),
       ),
@@ -230,25 +235,32 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
     final subtitle = widget._device.name;
     final secondaryColor =
         isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
+    final showBack = widget.config?.showBackButton ?? true;
+    final iconData = widget.config?.iconOverride ?? buildDeviceIcon(widget._device.category, widget._device.icon);
 
     return PageHeader(
-      title: title,
+      title: widget.config?.titleOverride ?? title,
       subtitle: subtitle,
       subtitleColor: secondaryColor,
-      leading: Row(
-        mainAxisSize: MainAxisSize.min,
-        spacing: AppSpacings.pMd,
-        children: [
-          HeaderIconButton(
-            icon: MdiIcons.arrowLeft,
-            onTap: () => Navigator.of(context).pop(),
-          ),
-          HeaderMainIcon(
-            icon: buildDeviceIcon(widget._device.category, widget._device.icon),
-            color: ThemeColors.primary,
-          ),
-        ],
-      ),
+      leading: showBack
+          ? Row(
+              mainAxisSize: MainAxisSize.min,
+              spacing: AppSpacings.pMd,
+              children: [
+                HeaderIconButton(
+                  icon: MdiIcons.arrowLeft,
+                  onTap: () => Navigator.of(context).pop(),
+                ),
+                HeaderMainIcon(
+                  icon: iconData,
+                  color: ThemeColors.primary,
+                ),
+              ],
+            )
+          : HeaderMainIcon(
+              icon: iconData,
+              color: ThemeColors.primary,
+            ),
       trailing: _buildHeaderTrailing(context),
     );
   }

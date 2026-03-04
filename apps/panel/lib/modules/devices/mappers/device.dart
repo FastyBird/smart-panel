@@ -1,3 +1,4 @@
+import 'package:fastybird_smart_panel/modules/devices/models/device_detail_config.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/devices/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/devices/generic_device.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/device_details/air_conditioner.dart';
@@ -359,48 +360,48 @@ IconData buildDeviceIcon(DevicesModuleDeviceCategory category, [IconData? icon])
 }
 
 /// Registry of device widget builders by category
-Map<DevicesModuleDeviceCategory, Widget Function(DeviceView)> deviceWidgetMappers = {
-  DevicesModuleDeviceCategory.airConditioner: (device) {
+Map<DevicesModuleDeviceCategory, Widget Function(DeviceView, {DeviceDetailConfig? config})> deviceWidgetMappers = {
+  DevicesModuleDeviceCategory.airConditioner: (device, {DeviceDetailConfig? config}) {
     if (device is! AirConditionerDeviceView) {
       throw ArgumentError(
         'Device view is not valid for Air conditioner device detail',
       );
     }
-    return AirConditionerDeviceDetail(device: device);
+    return AirConditionerDeviceDetail(device: device, config: config);
   },
-  DevicesModuleDeviceCategory.avReceiver: (device) {
+  DevicesModuleDeviceCategory.avReceiver: (device, {DeviceDetailConfig? config}) {
     if (device is! AvReceiverDeviceView) {
       throw ArgumentError(
         'Device view is not valid for AV Receiver device detail',
       );
     }
-    return AvReceiverDeviceDetail(device: device);
+    return AvReceiverDeviceDetail(device: device, config: config);
   },
-  DevicesModuleDeviceCategory.airDehumidifier: (device) {
+  DevicesModuleDeviceCategory.airDehumidifier: (device, {DeviceDetailConfig? config}) {
     if (device is! AirDehumidifierDeviceView) {
       throw ArgumentError(
         'Device view is not valid for Air dehumidifier device detail',
       );
     }
-    return AirDehumidifierDeviceDetail(device: device);
+    return AirDehumidifierDeviceDetail(device: device, config: config);
   },
-  DevicesModuleDeviceCategory.airHumidifier: (device) {
+  DevicesModuleDeviceCategory.airHumidifier: (device, {DeviceDetailConfig? config}) {
     if (device is! AirHumidifierDeviceView) {
       throw ArgumentError(
         'Device view is not valid for Air humidifier device detail',
       );
     }
-    return AirHumidifierDeviceDetail(device: device);
+    return AirHumidifierDeviceDetail(device: device, config: config);
   },
-  DevicesModuleDeviceCategory.airPurifier: (device) {
+  DevicesModuleDeviceCategory.airPurifier: (device, {DeviceDetailConfig? config}) {
     if (device is! AirPurifierDeviceView) {
       throw ArgumentError(
         'Device view is not valid for Air purifier device detail',
       );
     }
-    return AirPurifierDeviceDetail(device: device);
+    return AirPurifierDeviceDetail(device: device, config: config);
   },
-  DevicesModuleDeviceCategory.alarm: (device) {
+  DevicesModuleDeviceCategory.alarm: (device, {DeviceDetailConfig? config}) {
     if (device is! AlarmDeviceView) {
       throw ArgumentError(
         'Device view is not valid for Alarm device detail',
@@ -408,7 +409,7 @@ Map<DevicesModuleDeviceCategory, Widget Function(DeviceView)> deviceWidgetMapper
     }
     return AlarmDeviceDetail(device: device);
   },
-  DevicesModuleDeviceCategory.camera: (device) {
+  DevicesModuleDeviceCategory.camera: (device, {DeviceDetailConfig? config}) {
     if (device is! CameraDeviceView) {
       throw ArgumentError(
         'Device view is not valid for Camera device detail',
@@ -416,7 +417,7 @@ Map<DevicesModuleDeviceCategory, Widget Function(DeviceView)> deviceWidgetMapper
     }
     return CameraDeviceDetail(device: device);
   },
-  DevicesModuleDeviceCategory.door: (device) {
+  DevicesModuleDeviceCategory.door: (device, {DeviceDetailConfig? config}) {
     if (device is! DoorDeviceView) {
       throw ArgumentError(
         'Device view is not valid for Door device detail',
@@ -424,7 +425,7 @@ Map<DevicesModuleDeviceCategory, Widget Function(DeviceView)> deviceWidgetMapper
     }
     return DoorDeviceDetail(device: device);
   },
-  DevicesModuleDeviceCategory.doorbell: (device) {
+  DevicesModuleDeviceCategory.doorbell: (device, {DeviceDetailConfig? config}) {
     if (device is! DoorbellDeviceView) {
       throw ArgumentError(
         'Device view is not valid for Doorbell device detail',
@@ -432,47 +433,47 @@ Map<DevicesModuleDeviceCategory, Widget Function(DeviceView)> deviceWidgetMapper
     }
     return DoorbellDeviceDetail(device: device);
   },
-  DevicesModuleDeviceCategory.fan: (device) {
+  DevicesModuleDeviceCategory.fan: (device, {DeviceDetailConfig? config}) {
     if (device is! FanDeviceView) {
       throw ArgumentError(
         'Device view is not valid for Fan device detail',
       );
     }
-    return FanDeviceDetail(device: device);
+    return FanDeviceDetail(device: device, config: config);
   },
-  DevicesModuleDeviceCategory.gameConsole: (device) {
+  DevicesModuleDeviceCategory.gameConsole: (device, {DeviceDetailConfig? config}) {
     if (device is! GameConsoleDeviceView) {
       throw ArgumentError(
         'Device view is not valid for Game Console device detail',
       );
     }
-    return GameConsoleDeviceDetail(device: device);
+    return GameConsoleDeviceDetail(device: device, config: config);
   },
-  DevicesModuleDeviceCategory.heatingUnit: (device) {
+  DevicesModuleDeviceCategory.heatingUnit: (device, {DeviceDetailConfig? config}) {
     if (device is! HeatingUnitDeviceView) {
       throw ArgumentError(
         'Device view is not valid for Heating Unit device detail',
       );
     }
-    return HeatingUnitDeviceDetail(device: device);
+    return HeatingUnitDeviceDetail(device: device, config: config);
   },
-  DevicesModuleDeviceCategory.waterHeater: (device) {
+  DevicesModuleDeviceCategory.waterHeater: (device, {DeviceDetailConfig? config}) {
     if (device is! WaterHeaterDeviceView) {
       throw ArgumentError(
         'Device view is not valid for Water Heater device detail',
       );
     }
-    return WaterHeaterDeviceDetail(device: device);
+    return WaterHeaterDeviceDetail(device: device, config: config);
   },
-  DevicesModuleDeviceCategory.lighting: (device) {
+  DevicesModuleDeviceCategory.lighting: (device, {DeviceDetailConfig? config}) {
     if (device is! LightingDeviceView) {
       throw ArgumentError(
         'Device view is not valid for Lighting device detail',
       );
     }
-    return LightingDeviceDetail(device: device);
+    return LightingDeviceDetail(device: device, config: config);
   },
-  DevicesModuleDeviceCategory.lock: (device) {
+  DevicesModuleDeviceCategory.lock: (device, {DeviceDetailConfig? config}) {
     if (device is! LockDeviceView) {
       throw ArgumentError(
         'Device view is not valid for Lock device detail',
@@ -480,15 +481,15 @@ Map<DevicesModuleDeviceCategory, Widget Function(DeviceView)> deviceWidgetMapper
     }
     return LockDeviceDetail(device: device);
   },
-  DevicesModuleDeviceCategory.media: (device) {
+  DevicesModuleDeviceCategory.media: (device, {DeviceDetailConfig? config}) {
     if (device is! MediaDeviceView) {
       throw ArgumentError(
         'Device view is not valid for Media device detail',
       );
     }
-    return MediaDeviceDetail(device: device);
+    return MediaDeviceDetail(device: device, config: config);
   },
-  DevicesModuleDeviceCategory.outlet: (device) {
+  DevicesModuleDeviceCategory.outlet: (device, {DeviceDetailConfig? config}) {
     if (device is! OutletDeviceView) {
       throw ArgumentError(
         'Device view is not valid for Outlet device detail',
@@ -496,7 +497,7 @@ Map<DevicesModuleDeviceCategory, Widget Function(DeviceView)> deviceWidgetMapper
     }
     return OutletDeviceDetail(device: device);
   },
-  DevicesModuleDeviceCategory.pump: (device) {
+  DevicesModuleDeviceCategory.pump: (device, {DeviceDetailConfig? config}) {
     if (device is! PumpDeviceView) {
       throw ArgumentError(
         'Device view is not valid for Pump device detail',
@@ -504,7 +505,7 @@ Map<DevicesModuleDeviceCategory, Widget Function(DeviceView)> deviceWidgetMapper
     }
     return PumpDeviceDetail(device: device);
   },
-  DevicesModuleDeviceCategory.robotVacuum: (device) {
+  DevicesModuleDeviceCategory.robotVacuum: (device, {DeviceDetailConfig? config}) {
     if (device is! RobotVacuumDeviceView) {
       throw ArgumentError(
         'Device view is not valid for Robot vacuum device detail',
@@ -512,39 +513,39 @@ Map<DevicesModuleDeviceCategory, Widget Function(DeviceView)> deviceWidgetMapper
     }
     return RobotVacuumDeviceDetail(device: device);
   },
-  DevicesModuleDeviceCategory.sensor: (device) {
+  DevicesModuleDeviceCategory.sensor: (device, {DeviceDetailConfig? config}) {
     if (device is! SensorDeviceView) {
       throw ArgumentError(
         'Device view is not valid for Sensor device detail',
       );
     }
-    return SensorDeviceDetail(device: device);
+    return SensorDeviceDetail(device: device, config: config);
   },
-  DevicesModuleDeviceCategory.setTopBox: (device) {
+  DevicesModuleDeviceCategory.setTopBox: (device, {DeviceDetailConfig? config}) {
     if (device is! SetTopBoxDeviceView) {
       throw ArgumentError(
         'Device view is not valid for Set-top Box device detail',
       );
     }
-    return SetTopBoxDeviceDetail(device: device);
+    return SetTopBoxDeviceDetail(device: device, config: config);
   },
-  DevicesModuleDeviceCategory.speaker: (device) {
+  DevicesModuleDeviceCategory.speaker: (device, {DeviceDetailConfig? config}) {
     if (device is! SpeakerDeviceView) {
       throw ArgumentError(
         'Device view is not valid for Speaker device detail',
       );
     }
-    return SpeakerDeviceDetail(device: device);
+    return SpeakerDeviceDetail(device: device, config: config);
   },
-  DevicesModuleDeviceCategory.streamingService: (device) {
+  DevicesModuleDeviceCategory.streamingService: (device, {DeviceDetailConfig? config}) {
     if (device is! StreamingServiceDeviceView) {
       throw ArgumentError(
         'Device view is not valid for Streaming Service device detail',
       );
     }
-    return StreamingServiceDeviceDetail(device: device);
+    return StreamingServiceDeviceDetail(device: device, config: config);
   },
-  DevicesModuleDeviceCategory.sprinkler: (device) {
+  DevicesModuleDeviceCategory.sprinkler: (device, {DeviceDetailConfig? config}) {
     if (device is! SprinklerDeviceView) {
       throw ArgumentError(
         'Device view is not valid for Sprinkler device detail',
@@ -552,7 +553,7 @@ Map<DevicesModuleDeviceCategory, Widget Function(DeviceView)> deviceWidgetMapper
     }
     return SprinklerDeviceDetail(device: device);
   },
-  DevicesModuleDeviceCategory.switcher: (device) {
+  DevicesModuleDeviceCategory.switcher: (device, {DeviceDetailConfig? config}) {
     if (device is! SwitcherDeviceView) {
       throw ArgumentError(
         'Device view is not valid for Switcher device detail',
@@ -560,31 +561,31 @@ Map<DevicesModuleDeviceCategory, Widget Function(DeviceView)> deviceWidgetMapper
     }
     return SwitcherDeviceDetail(device: device);
   },
-  DevicesModuleDeviceCategory.television: (device) {
+  DevicesModuleDeviceCategory.television: (device, {DeviceDetailConfig? config}) {
     if (device is! TelevisionDeviceView) {
       throw ArgumentError(
         'Device view is not valid for Television device detail',
       );
     }
-    return TelevisionDeviceDetail(device: device);
+    return TelevisionDeviceDetail(device: device, config: config);
   },
-  DevicesModuleDeviceCategory.projector: (device) {
+  DevicesModuleDeviceCategory.projector: (device, {DeviceDetailConfig? config}) {
     if (device is! ProjectorDeviceView) {
       throw ArgumentError(
         'Device view is not valid for Projector device detail',
       );
     }
-    return ProjectorDeviceDetail(device: device);
+    return ProjectorDeviceDetail(device: device, config: config);
   },
-  DevicesModuleDeviceCategory.thermostat: (device) {
+  DevicesModuleDeviceCategory.thermostat: (device, {DeviceDetailConfig? config}) {
     if (device is! ThermostatDeviceView) {
       throw ArgumentError(
         'Device view is not valid for Thermostat device detail',
       );
     }
-    return ThermostatDeviceDetail(device: device);
+    return ThermostatDeviceDetail(device: device, config: config);
   },
-  DevicesModuleDeviceCategory.valve: (device) {
+  DevicesModuleDeviceCategory.valve: (device, {DeviceDetailConfig? config}) {
     if (device is! ValveDeviceView) {
       throw ArgumentError(
         'Device view is not valid for Valve device detail',
@@ -592,23 +593,23 @@ Map<DevicesModuleDeviceCategory, Widget Function(DeviceView)> deviceWidgetMapper
     }
     return ValveDeviceDetail(device: device);
   },
-  DevicesModuleDeviceCategory.windowCovering: (device) {
+  DevicesModuleDeviceCategory.windowCovering: (device, {DeviceDetailConfig? config}) {
     if (device is! WindowCoveringDeviceView) {
       throw ArgumentError(
         'Device view is not valid for Window covering device detail',
       );
     }
-    return WindowCoveringDeviceDetail(device: device);
+    return WindowCoveringDeviceDetail(device: device, config: config);
   },
 };
 
 /// Build a device detail widget for the given device view
-Widget buildDeviceWidget(DeviceView device) {
+Widget buildDeviceWidget(DeviceView device, {DeviceDetailConfig? config}) {
   final builder = deviceWidgetMappers[device.category];
 
   if (builder == null) {
     return GenericDeviceDetail(device: device);
   }
 
-  return builder(device);
+  return builder(device, config: config);
 }

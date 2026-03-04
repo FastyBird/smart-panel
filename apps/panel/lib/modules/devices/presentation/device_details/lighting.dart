@@ -22,6 +22,7 @@ import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/devic
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
+import 'package:fastybird_smart_panel/modules/devices/models/device_detail_config.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/lighting.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -31,11 +32,13 @@ import 'package:material_design_icons_flutter/material_design_icons_flutter.dart
 class LightingDeviceDetail extends StatefulWidget {
   final LightingDeviceView _device;
   final String? initialChannelId;
+  final DeviceDetailConfig? config;
 
   const LightingDeviceDetail({
     super.key,
     required LightingDeviceView device,
     this.initialChannelId,
+    this.config,
   }) : _device = device;
 
   @override
@@ -504,33 +507,35 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
             widget._device.lastStateChange!, localizations)
         : null;
 
+    final body = Stack(
+      children: [
+        // Main content with orientation-aware layout
+        OrientationBuilder(
+          builder: (context, orientation) {
+            final isLandscape = orientation == Orientation.landscape;
+            return isLandscape
+                ? _buildLandscapeLayout(context, isDark)
+                : _buildPortraitLayout(context, isDark);
+          },
+        ),
+        // Offline overlay
+        if (!widget._device.isOnline)
+          DeviceOfflineState(
+            isDark: isDark,
+            lastSeenText: lastSeenText,
+          ),
+      ],
+    );
+
+    if (!(widget.config?.showHeader ?? true)) return body;
+
     return Scaffold(
       backgroundColor: bgColor,
       body: SafeArea(
         child: Column(
           children: [
             _buildHeader(context, isDark),
-            Expanded(
-              child: Stack(
-                children: [
-                  // Main content with orientation-aware layout
-                  OrientationBuilder(
-                    builder: (context, orientation) {
-                      final isLandscape = orientation == Orientation.landscape;
-                      return isLandscape
-                          ? _buildLandscapeLayout(context, isDark)
-                          : _buildPortraitLayout(context, isDark);
-                    },
-                  ),
-                  // Offline overlay
-                  if (!widget._device.isOnline)
-                    DeviceOfflineState(
-                      isDark: isDark,
-                      lastSeenText: lastSeenText,
-                    ),
-                ],
-              ),
-            ),
+            Expanded(child: body),
           ],
         ),
       ),
@@ -744,25 +749,32 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
     }
     final subtitle =
         isOn ? localizations.on_state_on : localizations.on_state_off;
+    final showBack = widget.config?.showBackButton ?? true;
+    final iconData = widget.config?.iconOverride ?? buildDeviceIcon(widget._device.category, widget._device.icon);
 
     return PageHeader(
-      title: title,
+      title: widget.config?.titleOverride ?? title,
       subtitle: subtitle,
       subtitleColor: isOn ? statusColorFamily.base : secondaryColor,
-      leading: Row(
-        mainAxisSize: MainAxisSize.min,
-        spacing: AppSpacings.pMd,
-        children: [
-          HeaderIconButton(
-            icon: MdiIcons.arrowLeft,
-            onTap: () => Navigator.of(context).pop(),
-          ),
-          HeaderMainIcon(
-            icon: buildDeviceIcon(widget._device.category, widget._device.icon),
-            color: _getStatusColor(),
-          ),
-        ],
-      ),
+      leading: showBack
+          ? Row(
+              mainAxisSize: MainAxisSize.min,
+              spacing: AppSpacings.pMd,
+              children: [
+                HeaderIconButton(
+                  icon: MdiIcons.arrowLeft,
+                  onTap: () => Navigator.of(context).pop(),
+                ),
+                HeaderMainIcon(
+                  icon: iconData,
+                  color: _getStatusColor(),
+                ),
+              ],
+            )
+          : HeaderMainIcon(
+              icon: iconData,
+              color: _getStatusColor(),
+            ),
       trailing: _buildHeaderTrailing(context, isDark),
     );
   }

@@ -20,6 +20,7 @@ import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
 import 'package:fastybird_smart_panel/modules/devices/services/device_control_state.service.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
+import 'package:fastybird_smart_panel/modules/devices/models/device_detail_config.dart';
 import 'package:fastybird_smart_panel/modules/devices/views/devices/projector.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_landscape_controls.dart';
 import 'package:fastybird_smart_panel/spec/channels_properties_payloads_spec.g.dart';
@@ -30,11 +31,13 @@ import 'package:material_design_icons_flutter/material_design_icons_flutter.dart
 class ProjectorDeviceDetail extends StatefulWidget {
 	final ProjectorDeviceView _device;
 	final VoidCallback? onBack;
+	final DeviceDetailConfig? config;
 
 	const ProjectorDeviceDetail({
 		super.key,
 		required ProjectorDeviceView device,
 		this.onBack,
+		this.config,
 	}) : _device = device;
 
 	@override
@@ -460,30 +463,32 @@ class _ProjectorDeviceDetailState extends State<ProjectorDeviceDetail> {
 			? DatetimeUtils.formatTimeAgo(widget._device.lastStateChange!, localizations)
 			: null;
 
+		final body = Stack(
+			children: [
+				OrientationBuilder(
+					builder: (context, orientation) {
+						return orientation == Orientation.landscape
+							? _buildLandscapeLayout(context, isDark)
+							: _buildPortraitLayout(context, isDark);
+					},
+				),
+				if (!widget._device.isOnline)
+					DeviceOfflineState(
+						isDark: isDark,
+						lastSeenText: lastSeenText,
+					),
+			],
+		);
+
+		if (!(widget.config?.showHeader ?? true)) return body;
+
 		return Scaffold(
 			backgroundColor: isDark ? AppBgColorDark.page : AppBgColorLight.page,
 			body: SafeArea(
 				child: Column(
 					children: [
 						_buildHeader(context, isDark),
-						Expanded(
-							child: Stack(
-								children: [
-									OrientationBuilder(
-										builder: (context, orientation) {
-											return orientation == Orientation.landscape
-												? _buildLandscapeLayout(context, isDark)
-												: _buildPortraitLayout(context, isDark);
-										},
-									),
-									if (!widget._device.isOnline)
-										DeviceOfflineState(
-											isDark: isDark,
-											lastSeenText: lastSeenText,
-										),
-								],
-							),
-						),
+						Expanded(child: body),
 					],
 				),
 			),
@@ -501,25 +506,32 @@ class _ProjectorDeviceDetailState extends State<ProjectorDeviceDetail> {
 		final accentColor = isOn
 			? ThemeColorFamily.get(isDark ? Brightness.dark : Brightness.light, _getThemeColor()).base
 			: secondaryColor;
+		final showBack = widget.config?.showBackButton ?? true;
+		final iconData = widget.config?.iconOverride ?? buildDeviceIcon(_device.category, _device.icon);
 
 		return PageHeader(
-			title: _device.name,
+			title: widget.config?.titleOverride ?? _device.name,
 			subtitle: _getStatusLabel(localizations),
 			subtitleColor: accentColor,
-			leading: Row(
-				mainAxisSize: MainAxisSize.min,
-				spacing: AppSpacings.pMd,
-				children: [
-					HeaderIconButton(
-						icon: MdiIcons.arrowLeft,
-						onTap: widget.onBack ?? () => Navigator.of(context).pop(),
-					),
-					HeaderMainIcon(
-						icon: buildDeviceIcon(_device.category, _device.icon),
-						color: isOn ? ThemeColors.primary : ThemeColors.neutral,
-					),
-				],
-			),
+			leading: showBack
+				? Row(
+					mainAxisSize: MainAxisSize.min,
+					spacing: AppSpacings.pMd,
+					children: [
+						HeaderIconButton(
+							icon: MdiIcons.arrowLeft,
+							onTap: widget.onBack ?? () => Navigator.of(context).pop(),
+						),
+						HeaderMainIcon(
+							icon: iconData,
+							color: isOn ? ThemeColors.primary : ThemeColors.neutral,
+						),
+					],
+				)
+				: HeaderMainIcon(
+					icon: iconData,
+					color: isOn ? ThemeColors.primary : ThemeColors.neutral,
+				),
 			trailing: Row(
 				mainAxisSize: MainAxisSize.min,
 				spacing: AppSpacings.pMd,
