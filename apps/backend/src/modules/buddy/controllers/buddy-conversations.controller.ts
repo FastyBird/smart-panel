@@ -21,7 +21,6 @@ import {
 	ApiOperation,
 	ApiParam,
 	ApiQuery,
-	ApiResponse,
 	ApiTags,
 } from '@nestjs/swagger';
 
@@ -30,6 +29,7 @@ import { createExtensionLogger } from '../../../common/logger';
 import { setLocationHeader } from '../../api/utils/location-header.utils';
 import {
 	ApiBadRequestResponse,
+	ApiBinarySuccessResponse,
 	ApiCreatedSuccessResponse,
 	ApiInternalServerErrorResponse,
 	ApiNotFoundResponse,
@@ -326,14 +326,13 @@ export class BuddyConversationsController {
 	})
 	@ApiParam({ name: 'id', type: 'string', format: 'uuid', description: 'Conversation ID' })
 	@ApiParam({ name: 'messageId', type: 'string', description: 'Message ID' })
-	@ApiResponse({
-		status: 200,
-		description: 'Audio data for the message',
-		content: {
-			'audio/mpeg': { schema: { type: 'string', format: 'binary' } },
-			'audio/wav': { schema: { type: 'string', format: 'binary' } },
+	@ApiBinarySuccessResponse(
+		{
+			'audio/mpeg': { type: 'string', format: 'binary' },
+			'audio/wav': { type: 'string', format: 'binary' },
 		},
-	})
+		'Audio data for the message',
+	)
 	@ApiNotFoundResponse('Conversation or message not found')
 	@ApiServiceUnavailableResponse('TTS provider not configured')
 	@ApiInternalServerErrorResponse('Internal server error')
