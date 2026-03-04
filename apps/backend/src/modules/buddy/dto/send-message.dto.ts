@@ -1,5 +1,5 @@
 import { Expose, Type } from 'class-transformer';
-import { IsDefined, IsNotEmpty, IsObject, IsString, ValidateNested } from 'class-validator';
+import { IsDefined, IsNotEmpty, IsObject, IsString, MaxLength, ValidateNested } from 'class-validator';
 
 import { ApiProperty, ApiSchema } from '@nestjs/swagger';
 
@@ -13,6 +13,7 @@ export class SendMessageDto {
 	@Expose()
 	@IsNotEmpty({ message: '[{"field":"content","reason":"Message content must not be empty."}]' })
 	@IsString({ message: '[{"field":"content","reason":"Message content must be a valid string."}]' })
+	@MaxLength(10000, { message: '[{"field":"content","reason":"Message content must not exceed 10000 characters."}]' })
 	content: string;
 }
 

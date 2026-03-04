@@ -32,13 +32,7 @@
 import { computed } from 'vue';
 
 import { MarkdownRenderer } from '../../../common';
-
-interface IMessage {
-	id: string;
-	role: 'user' | 'assistant';
-	content: string;
-	created_at: string;
-}
+import type { IMessage } from '../buddy.types';
 
 defineOptions({
 	name: 'BuddyMessageBubble',

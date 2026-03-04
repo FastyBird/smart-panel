@@ -29,12 +29,11 @@ export interface BuddySuggestion {
 	expiresAt: Date;
 }
 
-export const buddyCooldowns = new CooldownManager<SuggestionType>();
-
 @Injectable()
 export class SuggestionEngineService implements OnModuleDestroy {
 	private readonly logger = new Logger(SuggestionEngineService.name);
 	private readonly suggestions = new Map<string, BuddySuggestion>();
+	private readonly cooldowns = new CooldownManager<SuggestionType>();
 	private cleanupTimer: ReturnType<typeof setInterval> | null = null;
 	private generating = false;
 
@@ -44,6 +43,21 @@ export class SuggestionEngineService implements OnModuleDestroy {
 		private readonly eventEmitter: EventEmitter2,
 	) {
 		this.cleanupTimer = setInterval(() => this.cleanupExpired(), SUGGESTION_CLEANUP_INTERVAL_MS);
+		this.cleanupTimer.unref();
+	}
+
+	/**
+	 * Check whether a suggestion type is on cooldown for a given space.
+	 */
+	isOnCooldown(spaceId: string, type: SuggestionType, now?: number): boolean {
+		return this.cooldowns.isOnCooldown(spaceId, type, now);
+	}
+
+	/**
+	 * Clear all cooldowns. Intended for use in tests.
+	 */
+	clearAllCooldowns(): void {
+		this.cooldowns.clearAll();
 	}
 
 	onModuleDestroy(): void {
@@ -77,7 +91,7 @@ export class SuggestionEngineService implements OnModuleDestroy {
 		const newSuggestions: BuddySuggestion[] = [];
 
 		for (const pattern of patterns) {
-			if (buddyCooldowns.isOnCooldown(pattern.spaceId, SuggestionType.PATTERN_SCENE_CREATE)) {
+			if (this.cooldowns.isOnCooldown(pattern.spaceId, SuggestionType.PATTERN_SCENE_CREATE)) {
 				continue;
 			}
 
@@ -126,7 +140,7 @@ export class SuggestionEngineService implements OnModuleDestroy {
 				continue;
 			}
 
-			if (buddyCooldowns.isOnCooldown(suggestion.spaceId, suggestion.type, now)) {
+			if (this.cooldowns.isOnCooldown(suggestion.spaceId, suggestion.type, now)) {
 				continue;
 			}
 
@@ -160,7 +174,7 @@ export class SuggestionEngineService implements OnModuleDestroy {
 	recordFeedback(id: string, feedback: SuggestionFeedback): { success: boolean } {
 		const suggestion = this.getSuggestionOrThrow(id);
 
-		buddyCooldowns.setCooldown(suggestion.spaceId, suggestion.type, SUGGESTION_COOLDOWN_MS);
+		this.cooldowns.setCooldown(suggestion.spaceId, suggestion.type, SUGGESTION_COOLDOWN_MS);
 		this.suggestions.delete(id);
 
 		this.logger.debug(`Feedback "${feedback}" recorded for suggestion id=${id}, cooldown set`);
@@ -176,7 +190,7 @@ export class SuggestionEngineService implements OnModuleDestroy {
 		const created: BuddySuggestion[] = [];
 
 		for (const result of results) {
-			if (buddyCooldowns.isOnCooldown(result.spaceId, result.type)) {
+			if (this.cooldowns.isOnCooldown(result.spaceId, result.type)) {
 				continue;
 			}
 

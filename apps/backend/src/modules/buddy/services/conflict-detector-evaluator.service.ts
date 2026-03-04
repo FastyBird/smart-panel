@@ -28,6 +28,7 @@ export class ConflictDetectorEvaluator implements HeartbeatEvaluator {
 	evaluate(context: BuddyContext): Promise<EvaluatorResult[]> {
 		const results: EvaluatorResult[] = [];
 		const thresholds = this.getThresholds();
+		const contextSpaceIds = new Set(context.spaces.map((s) => s.id));
 
 		for (const space of context.spaces) {
 			const spaceDevices = context.devices.filter((d) => d.space === space.id);
@@ -35,6 +36,15 @@ export class ConflictDetectorEvaluator implements HeartbeatEvaluator {
 			results.push(...this.detectHeatingWindowConflict(space, spaceDevices));
 			results.push(...this.detectAcWindowConflict(space, spaceDevices));
 			results.push(...this.detectLightsUnoccupied(space, spaceDevices, thresholds));
+		}
+
+		// Prune tracker entries for spaces no longer in context
+		for (const trackerKey of this.occupancyTracker.keys()) {
+			const spaceId = trackerKey.split('::')[0];
+
+			if (!contextSpaceIds.has(spaceId)) {
+				this.occupancyTracker.delete(trackerKey);
+			}
 		}
 
 		return Promise.resolve(results);

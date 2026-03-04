@@ -26,6 +26,7 @@ export async function sendOpenAiMessage(
 	systemPrompt: string,
 	messages: ChatMessage[],
 	timeout: number,
+	maxTokens: number = 1024,
 ): Promise<OpenAiSdkResult> {
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 	const { default: OpenAI } = await import(OPENAI_SDK_MODULE);
@@ -35,6 +36,7 @@ export async function sendOpenAiMessage(
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
 	const response = await client.chat.completions.create({
 		model,
+		max_tokens: maxTokens,
 		messages: [
 			{ role: 'system' as const, content: systemPrompt },
 			...messages.map((m) => ({

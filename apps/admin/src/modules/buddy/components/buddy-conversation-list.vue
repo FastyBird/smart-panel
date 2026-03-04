@@ -52,12 +52,7 @@ import { ElButton, ElIcon, ElPopconfirm, ElScrollbar } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
-interface IConversation {
-	id: string;
-	title: string | null;
-	space_id: string | null;
-	created_at: string;
-}
+import type { IConversation } from '../buddy.types';
 
 interface ISpace {
 	id: string;

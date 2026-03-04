@@ -113,6 +113,8 @@ class BuddyModuleService {
 
 		_buddyRepository.onSuggestionCreated = null;
 		_notificationService.dispose();
+		_buddyService.dispose();
+		_buddyRepository.dispose();
 	}
 
 	void _socketEventHandler(String event, Map<String, dynamic> payload) {

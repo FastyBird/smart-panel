@@ -69,6 +69,7 @@ export interface BuddyContext {
 }
 
 const CONTEXT_CACHE_TTL_MS = 60_000;
+const CONTEXT_CACHE_MAX_SIZE = 50;
 
 @Injectable()
 export class BuddyContextService {
@@ -98,6 +99,28 @@ export class BuddyContextService {
 		const context = await this.buildContextInternal(spaceId);
 
 		this.contextCache.set(cacheKey, { context, expiresAt: now + CONTEXT_CACHE_TTL_MS });
+
+		// Evict expired entries when cache grows beyond limit
+		if (this.contextCache.size > CONTEXT_CACHE_MAX_SIZE) {
+			for (const [key, entry] of this.contextCache) {
+				if (entry.expiresAt <= now) {
+					this.contextCache.delete(key);
+				}
+			}
+
+			// If still over limit, evict oldest entries
+			if (this.contextCache.size > CONTEXT_CACHE_MAX_SIZE) {
+				const entries = [...this.contextCache.entries()].sort((a, b) => a[1].expiresAt - b[1].expiresAt);
+
+				while (this.contextCache.size > CONTEXT_CACHE_MAX_SIZE && entries.length > 0) {
+					const oldest = entries.shift();
+
+					if (oldest) {
+						this.contextCache.delete(oldest[0]);
+					}
+				}
+			}
+		}
 
 		return context;
 	}
@@ -185,20 +208,29 @@ export class BuddyContextService {
 
 			const allSpaces = await this.spacesService.findAll();
 
-			const result: { id: string; name: string; category: string | null; deviceCount: number }[] = [];
+			// Use findDevicesBySpace for each space so rooms (roomId) and zones
+			// (junction table) are counted consistently with the single-space path.
+			const results = await Promise.all(
+				allSpaces.map(async (space) => {
+					let deviceCount = 0;
 
-			for (const space of allSpaces) {
-				const spaceDevices = await this.spacesService.findDevicesBySpace(space.id);
+					try {
+						const devices = await this.spacesService.findDevicesBySpace(space.id);
+						deviceCount = devices.length;
+					} catch {
+						// Space may have been deleted between findAll and findDevicesBySpace
+					}
 
-				result.push({
-					id: space.id,
-					name: space.name,
-					category: space.category,
-					deviceCount: spaceDevices.length,
-				});
-			}
+					return {
+						id: space.id,
+						name: space.name,
+						category: space.category,
+						deviceCount,
+					};
+				}),
+			);
 
-			return result;
+			return results;
 		} catch (error) {
 			this.logger.warn(`Failed to get spaces: ${error}`);
 

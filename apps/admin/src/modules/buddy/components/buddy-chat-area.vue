@@ -166,15 +166,8 @@ import { ElAlert, ElButton, ElEmpty, ElIcon, ElInput, ElResult, ElScrollbar, ElT
 import { Icon } from '@iconify/vue';
 
 import type { IProviderStatus } from '../composables/useBuddyProviders';
+import type { IMessage } from '../buddy.types';
 import BuddyMessageBubble from './buddy-message-bubble.vue';
-
-interface IMessage {
-	id: string;
-	conversation_id: string;
-	role: 'user' | 'assistant';
-	content: string;
-	created_at: string;
-}
 
 defineOptions({
 	name: 'BuddyChatArea',

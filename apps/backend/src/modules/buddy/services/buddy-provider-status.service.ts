@@ -7,15 +7,6 @@ import { ProviderStatusDataModel } from '../models/provider-status.model';
 
 import { LlmProviderRegistryService } from './llm-provider-registry.service';
 
-interface PluginConfigWithEnabled {
-	enabled: boolean;
-	apiKey?: string | null;
-	baseUrl?: string | null;
-	accessToken?: string | null;
-	clientId?: string | null;
-	refreshToken?: string | null;
-}
-
 @Injectable()
 export class BuddyProviderStatusService {
 	private readonly logger = new Logger(BuddyProviderStatusService.name);
@@ -54,17 +45,17 @@ export class BuddyProviderStatusService {
 			status.defaultModel = provider.getDefaultModel();
 			status.selected = selectedProvider === type;
 
-			let pluginConfig: PluginConfigWithEnabled | null = null;
+			let pluginConfig: Record<string, unknown> | null = null;
 
 			try {
-				pluginConfig = this.configService.getPluginConfig(type) as PluginConfigWithEnabled;
+				pluginConfig = this.configService.getPluginConfig(type) as unknown as Record<string, unknown>;
 			} catch {
 				this.logger.debug(`Plugin config for '${type}' not found`);
 			}
 
 			if (pluginConfig) {
-				status.enabled = pluginConfig.enabled ?? false;
-				status.configured = this.isConfigured(type, pluginConfig);
+				status.enabled = (pluginConfig.enabled as boolean) ?? false;
+				status.configured = provider.isConfigured(pluginConfig);
 			} else {
 				status.enabled = false;
 				status.configured = false;
@@ -74,31 +65,5 @@ export class BuddyProviderStatusService {
 		}
 
 		return statuses;
-	}
-
-	private hasValue(value: string | null | undefined): boolean {
-		return value !== null && value !== undefined && value !== '';
-	}
-
-	private isConfigured(type: string, config: PluginConfigWithEnabled): boolean {
-		switch (type) {
-			case 'buddy-openai-plugin':
-			case 'buddy-claude-plugin':
-				return this.hasValue(config.apiKey);
-
-			case 'buddy-ollama-plugin':
-				return this.hasValue(config.baseUrl);
-
-			case 'buddy-openai-codex-plugin':
-				return (
-					this.hasValue(config.accessToken) || (this.hasValue(config.clientId) && this.hasValue(config.refreshToken))
-				);
-
-			case 'buddy-claude-oauth-plugin':
-				return this.hasValue(config.accessToken);
-
-			default:
-				return false;
-		}
 	}
 }
