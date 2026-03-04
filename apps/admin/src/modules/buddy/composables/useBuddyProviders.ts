@@ -16,6 +16,7 @@ export interface IProviderStatus {
 
 interface IUseBuddyProviders {
 	providerStatuses: Ref<IProviderStatus[]>;
+	providerStatusesFetched: Ref<boolean>;
 	providerFetchFailed: Ref<boolean>;
 	fetchProviderStatuses: () => Promise<void>;
 }
@@ -24,6 +25,7 @@ export const useBuddyProviders = (): IUseBuddyProviders => {
 	const backend = useBackend();
 
 	const providerStatuses = ref<IProviderStatus[]>([]);
+	const providerStatusesFetched = ref<boolean>(false);
 	const providerFetchFailed = ref<boolean>(false);
 
 	const fetchProviderStatuses = async (): Promise<void> => {
@@ -39,11 +41,14 @@ export const useBuddyProviders = (): IUseBuddyProviders => {
 			}
 		} catch {
 			providerFetchFailed.value = true;
+		} finally {
+			providerStatusesFetched.value = true;
 		}
 	};
 
 	return {
 		providerStatuses,
+		providerStatusesFetched,
 		providerFetchFailed,
 		fetchProviderStatuses,
 	};

@@ -30,7 +30,7 @@ interface IUseBuddyChat {
 
 export const useBuddyChat = (): IUseBuddyChat => {
 	const backend = useBackend();
-	const { providerStatuses, fetchProviderStatuses } = useBuddyProviders();
+	const { providerStatuses, providerStatusesFetched, fetchProviderStatuses } = useBuddyProviders();
 
 	const conversations = ref<IConversation[]>([]);
 	const activeConversationId = ref<string | null>(null);
@@ -46,6 +46,10 @@ export const useBuddyChat = (): IUseBuddyChat => {
 	});
 
 	const isProviderNotConfigured = computed<boolean>(() => {
+		if (!providerStatusesFetched.value) {
+			return false;
+		}
+
 		if (providerStatuses.value.length === 0) {
 			return true;
 		}

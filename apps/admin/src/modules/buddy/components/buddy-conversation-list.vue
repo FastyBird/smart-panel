@@ -12,7 +12,7 @@
 					{{ conversation.title || t('buddyModule.texts.newConversation') }}
 				</div>
 				<div class="text-xs text-[var(--el-text-color-secondary)] mt-0.5">
-					{{ formatRelativeTime(conversation.created_at) }}
+					{{ formatRelativeTime(conversation.updated_at) }}
 				</div>
 				<div
 					v-if="conversation.space_id"
