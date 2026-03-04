@@ -7,8 +7,6 @@ eslint-disable @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unnece
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
-import { FetchError } from 'node-fetch';
-
 import { NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 
@@ -116,8 +114,8 @@ describe('ShellyNgDevicesController', () => {
 			await expect(controller.getInfo({ data: { hostname: 'x', password: 'y' } })).rejects.toThrow(NotFoundException);
 		});
 
-		it('throws NotFoundException when node-fetch FetchError is thrown', async () => {
-			deviceManager.getDeviceInfo.mockRejectedValue(new FetchError('network', 'system'));
+		it('throws NotFoundException when native fetch TypeError is thrown', async () => {
+			deviceManager.getDeviceInfo.mockRejectedValue(new TypeError('network error'));
 
 			await expect(controller.getInfo({ data: { hostname: 'x', password: 'y' } })).rejects.toThrow(NotFoundException);
 		});

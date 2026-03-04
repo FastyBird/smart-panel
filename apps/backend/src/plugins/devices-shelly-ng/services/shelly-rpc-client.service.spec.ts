@@ -6,16 +6,11 @@ eslint-disable @typescript-eslint/require-await, @typescript-eslint/no-unsafe-re
 Reason: The mocking and test setup requires dynamic assignment and
 handling of Jest mocks, which ESLint rules flag unnecessarily.
 */
-import type { Response } from 'node-fetch';
-import fetch from 'node-fetch';
-
 import { DevicesShellyNgException } from '../devices-shelly-ng.exceptions';
 
 import { ShellyRpcClientService } from './shelly-rpc-client.service';
 
-jest.mock('node-fetch', () => ({ __esModule: true, default: jest.fn() }));
-
-const mockFetch = fetch as unknown as jest.MockedFunction<typeof fetch>;
+const mockFetch = jest.spyOn(global, 'fetch').mockImplementation();
 
 /**
  * Minimal Response stubs the service actually touches
@@ -28,7 +23,7 @@ const okJson = (obj: object): Response =>
 		json: async () => obj,
 		text: async () => JSON.stringify(obj),
 
-		headers: new Map() as any,
+		headers: new Headers(),
 		redirected: false,
 		type: 'basic',
 		url: 'http://test',
@@ -52,7 +47,7 @@ const notOkText = (status: number, statusText: string, body: string): Response =
 		},
 		text: async () => body,
 
-		headers: new Map() as any,
+		headers: new Headers(),
 		redirected: false,
 		type: 'basic',
 		url: 'http://test',

@@ -388,12 +388,6 @@ importers:
       nestjs-cls:
         specifier: ^6.1.0
         version: 6.1.0(@nestjs/common@11.1.11(class-transformer@0.5.1)(class-validator@0.14.3)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.11)(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      node-fetch:
-        specifier: ^2.7.0
-        version: 2.7.0(encoding@0.1.13)
-      openweathermap-ts:
-        specifier: ^1.2.10
-        version: 1.2.10(encoding@0.1.13)
       reflect-metadata:
         specifier: ^0.2.2
         version: 0.2.2
@@ -482,9 +476,6 @@ importers:
       '@types/node':
         specifier: ^20.17.0
         version: 20.19.0
-      '@types/node-fetch':
-        specifier: ^2.6.12
-        version: 2.6.12
       '@types/supertest':
         specifier: ^6.0.3
         version: 6.0.3
@@ -3540,9 +3531,6 @@ packages:
 
   '@types/nlcst@2.0.3':
     resolution: {integrity: sha512-vSYNSDe6Ix3q+6Z7ri9lyWqgGhJTmzRjZRqyq15N0Z/1/UnVsno9G/N40NBijoYx2seFDIl0+B2mgAb9mezUCA==}
-
-  '@types/node-fetch@2.6.12':
-    resolution: {integrity: sha512-8nneRWKCg3rMtF69nLQJnOYUcbafYeFSjqkw3jCRLsqkWFlHaoQrr5mXmofFGOx3DKn7UfmBMyov8ySvLRVldA==}
 
   '@types/node@20.19.0':
     resolution: {integrity: sha512-hfrc+1tud1xcdVTABC2JiomZJEklMcXYNTVtZLAeqTVWD+qL5jkHKT+1lOtqDdGxt+mB53DTtiz673vfjU8D1Q==}
@@ -8234,9 +8222,6 @@ packages:
     hasBin: true
     peerDependencies:
       typescript: ^5.x
-
-  openweathermap-ts@1.2.10:
-    resolution: {integrity: sha512-Zckv2aXN8ENSeAeroces2jJciLWb6aLNXEmvG6pmF+BcIMw2kwRo6++/AKUNoU5suOp47UWA6lllDV0TNm//OA==}
 
   optionator@0.9.4:
     resolution: {integrity: sha512-6IpQ7mKUxRcZNLIObR0hz7lxsapSSIYNZJwXPGeF0mTVqGKFIXj1DQcMoT22S3ROcLyY/rz0PWaWZ9ayWmad9g==}
@@ -13774,11 +13759,6 @@ snapshots:
   '@types/nlcst@2.0.3':
     dependencies:
       '@types/unist': 3.0.3
-
-  '@types/node-fetch@2.6.12':
-    dependencies:
-      '@types/node': 20.19.0
-      form-data: 4.0.5
 
   '@types/node@20.19.0':
     dependencies:
@@ -19957,12 +19937,6 @@ snapshots:
       supports-color: 10.2.2
       typescript: 5.9.3
       yargs-parser: 21.1.1
-
-  openweathermap-ts@1.2.10(encoding@0.1.13):
-    dependencies:
-      node-fetch: 2.7.0(encoding@0.1.13)
-    transitivePeerDependencies:
-      - encoding
 
   optionator@0.9.4:
     dependencies:

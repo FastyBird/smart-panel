@@ -1,5 +1,4 @@
 import { validate } from 'class-validator';
-import fetch from 'node-fetch';
 
 import { Injectable } from '@nestjs/common';
 

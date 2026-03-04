@@ -1,12 +1,8 @@
-import fetch, { Response } from 'node-fetch';
-
 import { Logger } from '@nestjs/common';
 
 import { HttpDevicePlatform } from './http-device.platform';
 
-jest.mock('node-fetch', () => jest.fn());
-
-const mockedFetch = fetch as jest.MockedFunction<typeof fetch>;
+const mockedFetch = jest.spyOn(global, 'fetch').mockImplementation();
 
 class TestHttpDevicePlatform extends HttpDevicePlatform {
 	getType(): string {

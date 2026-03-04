@@ -1,5 +1,3 @@
-import fetch, { RequestInit } from 'node-fetch';
-
 import { Injectable } from '@nestjs/common';
 
 import { DevicesShellyNgException } from '../devices-shelly-ng.exceptions';
@@ -695,7 +693,6 @@ export class ShellyRpcClientService {
 				method: httpMethod,
 				signal: controller.signal,
 				headers: {},
-				timeout: timeoutSec * 1000,
 			};
 
 			if (options?.password) {

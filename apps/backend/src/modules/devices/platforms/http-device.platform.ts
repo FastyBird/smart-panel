@@ -1,5 +1,3 @@
-import fetch, { RequestInit, Response } from 'node-fetch';
-
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
 import { DEVICES_MODULE_NAME } from '../devices.constants';
 
