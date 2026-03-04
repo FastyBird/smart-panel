@@ -16,7 +16,7 @@ export const ModuleRoutes: RouteRecordRaw[] = [
 			},
 			title: 'Displays',
 			icon: 'mdi:monitor',
-			menu: 7000,
+			menu: 6000,
 		},
 		children: [
 			{
