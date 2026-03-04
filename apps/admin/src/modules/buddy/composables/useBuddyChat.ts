@@ -241,6 +241,13 @@ export const useBuddyChat = (): IUseBuddyChat => {
 			if (activeConversationId.value === conversationId) {
 				await fetchMessages(conversationId);
 			}
+
+			// Update conversation's updated_at locally so the sidebar reflects latest activity
+			const conv = conversations.value.find((c) => c.id === conversationId);
+
+			if (conv) {
+				conv.updated_at = new Date().toISOString();
+			}
 		} catch (err: unknown) {
 			// Remove optimistic message on error
 			messages.value = messages.value.filter((m) => m.id !== pendingId);
@@ -275,11 +282,16 @@ export const useBuddyChat = (): IUseBuddyChat => {
 				activeConversationId.value = null;
 				messages.value = [];
 
-				// Select the next available conversation
+				// Select the next available conversation — errors here are
+				// unrelated to the (already successful) deletion.
 				const next = conversations.value[0];
 
 				if (next) {
-					await selectConversation(next.id);
+					try {
+						await selectConversation(next.id);
+					} catch {
+						// selectConversation failure doesn't affect the delete outcome
+					}
 				}
 			}
 		} catch (err: unknown) {

@@ -150,7 +150,7 @@ const ns = useNamespace('app-navigation');
 
 const { isMDDevice } = useBreakpoints();
 const { mainMenuItems } = useMenu();
-const { enabled: isModuleEnabled } = useConfigModules();
+const { enabled: isModuleEnabled, loaded: modulesLoaded } = useConfigModules();
 
 const accountManager = injectAccountManager();
 
@@ -159,7 +159,12 @@ const visibleMenuItems = computed(() => {
 		Object.entries(mainMenuItems).filter(([, menuRoute]) => {
 			const moduleType = menuRoute.meta?.module as string | undefined;
 
-			return !moduleType || isModuleEnabled(moduleType);
+			if (!moduleType) return true;
+
+			// Show all module routes until config is loaded to avoid hiding valid items
+			if (!modulesLoaded.value) return true;
+
+			return isModuleEnabled(moduleType);
 		})
 	);
 });
