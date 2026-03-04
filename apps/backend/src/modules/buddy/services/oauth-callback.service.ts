@@ -74,6 +74,8 @@ export class OAuthCallbackService {
 
 		// Escape </script> sequences for safe embedding inside <script> tags
 		const safeMessage = message.replace(/<\//g, '<\\/');
+		// Additionally escape single quotes for safe embedding inside a JS single-quoted string
+		const safeMessageStr = safeMessage.replace(/'/g, '\\u0027');
 
 		const statusText = success
 			? 'Authorization successful! This window will close automatically.'
@@ -86,7 +88,7 @@ export class OAuthCallbackService {
 <p>${statusText}</p>
 <script>
 try {
-	localStorage.setItem('oauth-callback', '${safeMessage}');
+	localStorage.setItem('oauth-callback', '${safeMessageStr}');
 } catch (e) {}
 if (window.opener) {
 	try { window.opener.postMessage(${safeMessage}, window.location.origin); } catch (e) {}
