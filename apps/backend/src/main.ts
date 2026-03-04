@@ -6,6 +6,8 @@ import { ConfigService as NestConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
 
+import fastifyMultipart from '@fastify/multipart';
+
 import { API_PREFIX, MULTIPART_MAX_FILE_SIZE_BYTES } from './app.constants';
 import { AppModule } from './app.module';
 import { BadRequestExceptionFilter } from './common/filters/bad-request-exception.filter';
@@ -48,7 +50,7 @@ async function bootstrap() {
 	const app = await NestFactory.create<NestFastifyApplication>(appModule, new FastifyAdapter(), { bufferLogs: true });
 
 	// Register multipart support for file uploads
-	await app.register((await import('@fastify/multipart')).default, {
+	await app.register(fastifyMultipart, {
 		limits: { fileSize: MULTIPART_MAX_FILE_SIZE_BYTES },
 	});
 
