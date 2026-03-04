@@ -289,7 +289,7 @@ const handleDisconnect = async (): Promise<void> => {
 		model.accessToken = prevAccessToken;
 		model.refreshToken = prevRefreshToken;
 
-		flashMessage.error(t('buddyOpenaiCodexPlugin.messages.config.notEdited'));
+		// submit() already shows its own error flash — don't duplicate it
 	}
 };
 
@@ -373,6 +373,10 @@ const handleExchange = async (): Promise<void> => {
 				model.refreshToken = updatedConfig.refreshToken as string;
 			}
 		}
+
+		// Persist all current form fields (including any unsaved changes) before
+		// snapshotting, so markSaved() doesn't silently discard pending edits.
+		await submit();
 
 		markSaved();
 

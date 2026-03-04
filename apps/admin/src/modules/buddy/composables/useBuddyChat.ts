@@ -232,9 +232,7 @@ export const useBuddyChat = (): IUseBuddyChat => {
 				// Remove optimistic message on error
 				messages.value = messages.value.filter((m) => m.id !== pendingId);
 
-				if (apiError.status !== 503) {
-					error.value = apiError.message;
-				}
+				error.value = apiError.status === 503 ? 'The AI provider is temporarily unavailable. Please try again later.' : apiError.message;
 
 				return;
 			}
