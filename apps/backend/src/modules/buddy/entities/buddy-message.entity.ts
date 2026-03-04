@@ -40,6 +40,6 @@ export class BuddyMessageEntity {
 	createdAt: Date;
 
 	@ManyToOne(() => BuddyConversationEntity, (conversation) => conversation.messages)
-	@JoinColumn({ name: 'conversation_id' })
+	@JoinColumn({ name: 'conversationId' })
 	conversation?: BuddyConversationEntity;
 }
