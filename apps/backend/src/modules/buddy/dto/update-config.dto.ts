@@ -1,5 +1,5 @@
 import { Expose } from 'class-transformer';
-import { IsInt, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { IsInt, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -129,6 +129,9 @@ export class UpdateBuddyConfigDto extends UpdateModuleConfigDto {
 	)
 	@Min(0.25, {
 		message: '[{"field":"tts_speed","reason":"TTS speed must be at least 0.25."}]',
+	})
+	@Max(4.0, {
+		message: '[{"field":"tts_speed","reason":"TTS speed must be at most 4.0."}]',
 	})
 	tts_speed?: number;
 

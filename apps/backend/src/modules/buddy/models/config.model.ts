@@ -1,5 +1,5 @@
 import { Expose, Transform } from 'class-transformer';
-import { IsInt, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { IsInt, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -161,6 +161,7 @@ export class BuddyConfigModel extends ModuleConfigModel {
 	@IsOptional()
 	@IsNumber()
 	@Min(0.25)
+	@Max(4.0)
 	ttsSpeed: number = TTS_DEFAULT_SPEED;
 
 	@ApiPropertyOptional({
