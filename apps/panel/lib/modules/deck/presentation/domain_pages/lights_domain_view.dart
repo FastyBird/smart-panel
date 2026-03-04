@@ -3008,7 +3008,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
               AppSpacings.scale(AppTileHeight.horizontal * 0.85);
           childAspectRatio = cellWidth / tileHeight;
         } else {
-          childAspectRatio = 1.2;
+          childAspectRatio = 1.3;
         }
 
         final cellHeight = cellWidth / childAspectRatio;
