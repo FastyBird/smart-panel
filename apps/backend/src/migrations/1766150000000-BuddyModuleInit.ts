@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class BuddyModuleInit1766100000000 implements MigrationInterface {
-	name = 'BuddyModuleInit1766100000000';
+export class BuddyModuleInit1766150000000 implements MigrationInterface {
+	name = 'BuddyModuleInit1766150000000';
 
 	public async up(queryRunner: QueryRunner): Promise<void> {
 		// Create conversations table
