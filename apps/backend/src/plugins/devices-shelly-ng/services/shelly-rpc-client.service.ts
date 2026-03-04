@@ -751,7 +751,7 @@ export class ShellyRpcClientService {
 				throw new DevicesShellyNgException(`Shelly RPC timeout after ${timeoutSec}s`);
 			}
 
-			if (error instanceof TypeError && error.message?.includes('fetch')) {
+			if (error instanceof TypeError) {
 				throw new DevicesShellyNgException(`Network error: ${error.message}`);
 			}
 
