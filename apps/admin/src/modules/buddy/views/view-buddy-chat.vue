@@ -181,8 +181,8 @@ useMeta({
 
 const { isMDDevice } = useBreakpoints();
 
-const { enabled } = useConfigModules();
-const isModuleEnabled = computed(() => enabled(BUDDY_MODULE_NAME));
+const { enabled, loaded: modulesLoaded } = useConfigModules();
+const isModuleEnabled = computed(() => !modulesLoaded.value || enabled(BUDDY_MODULE_NAME));
 const moduleEditRoute = { name: ConfigRouteNames.CONFIG_MODULE_EDIT, params: { module: BUDDY_MODULE_NAME } };
 
 const { spaces, fetchSpaces } = useSpaces();

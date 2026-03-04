@@ -21,12 +21,13 @@ interface IUseBuddyProviders {
 	fetchProviderStatuses: () => Promise<void>;
 }
 
+// Module-level singletons so all callers share the same state
+const providerStatuses = ref<IProviderStatus[]>([]);
+const providerStatusesFetched = ref<boolean>(false);
+const providerFetchFailed = ref<boolean>(false);
+
 export const useBuddyProviders = (): IUseBuddyProviders => {
 	const backend = useBackend();
-
-	const providerStatuses = ref<IProviderStatus[]>([]);
-	const providerStatusesFetched = ref<boolean>(false);
-	const providerFetchFailed = ref<boolean>(false);
 
 	const fetchProviderStatuses = async (): Promise<void> => {
 		providerFetchFailed.value = false;
