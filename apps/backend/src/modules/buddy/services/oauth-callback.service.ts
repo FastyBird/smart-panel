@@ -86,7 +86,7 @@ export class OAuthCallbackService {
 <p>${statusText}</p>
 <script>
 try {
-	localStorage.setItem('oauth-callback', ${safeMessage});
+	localStorage.setItem('oauth-callback', '${safeMessage}');
 } catch (e) {}
 if (window.opener) {
 	try { window.opener.postMessage(${safeMessage}, window.location.origin); } catch (e) {}
