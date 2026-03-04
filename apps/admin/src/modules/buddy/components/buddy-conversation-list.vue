@@ -46,6 +46,7 @@
 </template>
 
 <script setup lang="ts">
+import { onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
 import { ElButton, ElIcon, ElPopconfirm, ElScrollbar } from 'element-plus';
@@ -84,10 +85,15 @@ const emit = defineEmits<{
 
 const { t } = useI18n();
 
+const now = ref(Date.now());
+const timer = setInterval(() => {
+	now.value = Date.now();
+}, 60_000);
+onUnmounted(() => clearInterval(timer));
+
 const formatRelativeTime = (dateStr: string): string => {
 	const date = new Date(dateStr);
-	const now = new Date();
-	const diffMs = now.getTime() - date.getTime();
+	const diffMs = now.value - date.getTime();
 	const diffMins = Math.floor(diffMs / 60000);
 	const diffHours = Math.floor(diffMs / 3600000);
 	const diffDays = Math.floor(diffMs / 86400000);
