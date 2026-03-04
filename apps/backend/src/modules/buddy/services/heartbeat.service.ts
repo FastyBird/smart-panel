@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnApplicationBootstrap, OnModuleDestroy } from '@nestjs/common';
 import { SchedulerRegistry } from '@nestjs/schedule';
 
+import { withTimeout } from '../../../common/utils/http.utils';
 import { ConfigService } from '../../config/services/config.service';
 import { SpacesService } from '../../spaces/services/spaces.service';
 import { BUDDY_MODULE_NAME, HEARTBEAT_DEFAULT_INTERVAL_MS, HEARTBEAT_MAX_CYCLE_MS } from '../buddy.constants';
@@ -133,11 +134,7 @@ export class HeartbeatService implements OnApplicationBootstrap, OnModuleDestroy
 
 		for (const evaluator of this.evaluators) {
 			try {
-				const evaluatorResults = await this.withTimeout(
-					evaluator.evaluate(context),
-					EVALUATOR_TIMEOUT_MS,
-					evaluator.name,
-				);
+				const evaluatorResults = await withTimeout(evaluator.evaluate(context), EVALUATOR_TIMEOUT_MS, evaluator.name);
 
 				results.push(...evaluatorResults);
 			} catch (error) {
@@ -148,19 +145,6 @@ export class HeartbeatService implements OnApplicationBootstrap, OnModuleDestroy
 		}
 
 		return results;
-	}
-
-	private withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
-		return Promise.race([
-			promise,
-			new Promise<never>((_resolve, reject) => {
-				const timer = setTimeout(() => reject(new Error(`Evaluator "${label}" timed out after ${ms}ms`)), ms);
-
-				if (typeof timer === 'object' && 'unref' in timer) {
-					timer.unref();
-				}
-			}),
-		]);
 	}
 
 	private isBuddyEnabled(): boolean {

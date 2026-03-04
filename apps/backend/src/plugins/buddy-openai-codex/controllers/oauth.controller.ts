@@ -35,25 +35,15 @@ export class BuddyOpenaiCodexOauthController {
 		required: false,
 		type: 'string',
 	})
-	@ApiQuery({
-		name: 'redirect_uri',
-		description: 'OAuth redirect URI (optional, uses default if omitted)',
-		required: false,
-		type: 'string',
-	})
 	@Get('authorize')
-	authorize(
-		@Query('client_id') clientId?: string,
-		@Query('redirect_uri') redirectUri?: string,
-	): { data: { authorize_url: string } } {
+	authorize(@Query('client_id') clientId?: string): { data: { authorize_url: string } } {
 		const resolvedClientId = clientId || BUDDY_OPENAI_CODEX_DEFAULT_CLIENT_ID;
-		const resolvedRedirectUri = redirectUri || BUDDY_OPENAI_CODEX_DEFAULT_REDIRECT_URI;
 
 		const { authorizeUrl } = this.oauthFlowService.createFlow({
 			authorizeUrl: BUDDY_OPENAI_CODEX_AUTHORIZE_URL,
 			tokenUrl: BUDDY_OPENAI_CODEX_TOKEN_URL,
 			clientId: resolvedClientId,
-			redirectUri: resolvedRedirectUri,
+			redirectUri: BUDDY_OPENAI_CODEX_DEFAULT_REDIRECT_URI,
 			scopes: BUDDY_OPENAI_CODEX_SCOPES,
 			pluginType: BUDDY_OPENAI_CODEX_PLUGIN_NAME,
 			extraParams: {
