@@ -1,7 +1,7 @@
-import { execFile } from 'child_process';
+import { execFile, spawn } from 'child_process';
 import { randomUUID } from 'crypto';
 import { existsSync, mkdirSync } from 'fs';
-import { readFile, unlink, writeFile } from 'fs/promises';
+import { readFile, unlink } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { promisify } from 'util';
@@ -227,28 +227,14 @@ export class TtsProviderService {
 			const usePiper = await this.isPiperAvailable();
 
 			if (usePiper) {
-				const textFile = join(tempDir, `${baseName}.txt`);
-				await writeFile(textFile, text, 'utf-8');
+				const piperArgs = ['--output_file', outputFile];
+				const voice = config.ttsVoice;
 
-				try {
-					const piperArgs = ['--output_file', outputFile];
-					const voice = config.ttsVoice;
-
-					if (voice) {
-						piperArgs.push('--model', voice);
-					}
-
-					await execFileAsync('piper', piperArgs, {
-						timeout: TTS_DEFAULT_TIMEOUT,
-						input: text,
-					});
-				} finally {
-					try {
-						await unlink(join(tempDir, `${baseName}.txt`));
-					} catch {
-						// Ignore cleanup
-					}
+				if (voice) {
+					piperArgs.push('--model', voice);
 				}
+
+				await this.spawnWithStdin('piper', piperArgs, text);
 			} else {
 				const speed = config.ttsSpeed || TTS_DEFAULT_SPEED;
 				// espeak speed is in words per minute, default ~175
@@ -297,6 +283,30 @@ export class TtsProviderService {
 		} catch {
 			return false;
 		}
+	}
+
+	private spawnWithStdin(command: string, args: string[], stdinData: string): Promise<void> {
+		return new Promise<void>((resolve, reject) => {
+			const child = spawn(command, args, { timeout: TTS_DEFAULT_TIMEOUT });
+			let stderr = '';
+
+			child.stderr.on('data', (chunk: Buffer) => {
+				stderr += chunk.toString();
+			});
+
+			child.on('error', reject);
+
+			child.on('close', (code) => {
+				if (code === 0) {
+					resolve();
+				} else {
+					reject(new Error(`${command} exited with code ${code}: ${stderr}`));
+				}
+			});
+
+			child.stdin.write(stdinData);
+			child.stdin.end();
+		});
 	}
 
 	private cleanExpiredCache(): void {
