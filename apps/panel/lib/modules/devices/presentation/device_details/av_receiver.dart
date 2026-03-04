@@ -460,13 +460,16 @@ class _AvReceiverDeviceDetailState extends State<AvReceiverDeviceDetail> {
 					icon: iconData,
 					color: isOn ? ThemeColors.primary : ThemeColors.neutral,
 				),
-			trailing: _device.hasSwitcher
-				? HeaderIconButton(
-					icon: MdiIcons.power,
-					onTap: _togglePower,
-					color: isOn ? ThemeColors.primary : ThemeColors.neutral,
-				)
-				: null,
+			trailing: buildCombinedTrailing(
+				config: widget.config,
+				deviceTrailing: _device.hasSwitcher
+					? HeaderIconButton(
+						icon: MdiIcons.power,
+						onTap: _togglePower,
+						color: isOn ? ThemeColors.primary : ThemeColors.neutral,
+					)
+					: null,
+			),
 		);
 	}
 

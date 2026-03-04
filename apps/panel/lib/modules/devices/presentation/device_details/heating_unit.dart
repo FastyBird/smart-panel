@@ -446,6 +446,7 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
               ],
             )
           : HeaderMainIcon(icon: iconData, color: _getModeColor()),
+      trailing: widget.config?.trailing,
     );
   }
 

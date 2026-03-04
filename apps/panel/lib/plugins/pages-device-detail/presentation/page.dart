@@ -1,5 +1,6 @@
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/mappers/data_source.dart';
 import 'package:fastybird_smart_panel/modules/devices/mappers/device.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/device_detail_config.dart';
 import 'package:fastybird_smart_panel/modules/devices/service.dart';
@@ -56,11 +57,20 @@ class DeviceDetailPage extends StatelessWidget {
         );
       }
 
+      final dataSourceTrailing = page.dataSources.isNotEmpty
+          ? Row(
+              mainAxisSize: MainAxisSize.min,
+              spacing: AppSpacings.pSm,
+              children: page.dataSources.map((ds) => buildDataSourceWidget(ds)).toList(),
+            )
+          : null;
+
       final config = DeviceDetailConfig(
         showHeader: page.showTopBar,
         showBackButton: false,
         titleOverride: page.showTopBar ? page.title : null,
         iconOverride: page.showTopBar ? page.icon : null,
+        trailing: dataSourceTrailing,
       );
 
       if (page.showTopBar) {

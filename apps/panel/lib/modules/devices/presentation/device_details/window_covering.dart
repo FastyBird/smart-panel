@@ -382,7 +382,7 @@ class _WindowCoveringDeviceDetailState extends State<WindowCoveringDeviceDetail>
               ],
             )
           : HeaderMainIcon(icon: iconData, color: statusColor),
-      trailing: _buildHeaderTrailing(context, isDark),
+      trailing: buildCombinedTrailing(config: widget.config, deviceTrailing: _buildHeaderTrailing(context, isDark)),
     );
   }
 

@@ -438,6 +438,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
               ],
             )
           : HeaderMainIcon(icon: iconData, color: _getStatusColor()),
+      trailing: widget.config?.trailing,
     );
   }
 

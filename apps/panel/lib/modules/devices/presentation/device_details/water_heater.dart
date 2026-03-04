@@ -116,6 +116,7 @@ class _WaterHeaterDeviceDetailState extends State<WaterHeaterDeviceDetail> {
               icon: iconData,
               color: _device.isOn ? ThemeColors.warning : ThemeColors.neutral,
             ),
+      trailing: widget.config?.trailing,
     );
   }
 

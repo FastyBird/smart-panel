@@ -261,7 +261,7 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
               icon: iconData,
               color: ThemeColors.primary,
             ),
-      trailing: _buildHeaderTrailing(context),
+      trailing: buildCombinedTrailing(config: widget.config, deviceTrailing: _buildHeaderTrailing(context)),
     );
   }
 

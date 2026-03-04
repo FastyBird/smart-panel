@@ -215,6 +215,7 @@ class _StreamingServiceDeviceDetailState extends State<StreamingServiceDeviceDet
 					icon: iconData,
 					color: ThemeColors.primary,
 				),
+			trailing: widget.config?.trailing,
 		);
 	}
 

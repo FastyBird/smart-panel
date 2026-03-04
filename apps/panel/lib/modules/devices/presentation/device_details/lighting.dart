@@ -775,7 +775,7 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
               icon: iconData,
               color: _getStatusColor(),
             ),
-      trailing: _buildHeaderTrailing(context, isDark),
+      trailing: buildCombinedTrailing(config: widget.config, deviceTrailing: _buildHeaderTrailing(context, isDark)),
     );
   }
 

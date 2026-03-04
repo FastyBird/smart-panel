@@ -873,6 +873,7 @@ class _AirConditionerDeviceDetailState
               ],
             )
           : HeaderMainIcon(icon: iconData, color: _getModeColor()),
+      trailing: widget.config?.trailing,
     );
   }
 

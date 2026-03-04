@@ -532,22 +532,25 @@ class _ProjectorDeviceDetailState extends State<ProjectorDeviceDetail> {
 					icon: iconData,
 					color: isOn ? ThemeColors.primary : ThemeColors.neutral,
 				),
-			trailing: Row(
-				mainAxisSize: MainAxisSize.min,
-				spacing: AppSpacings.pMd,
-				children: [
-					if (hasSettings)
+			trailing: buildCombinedTrailing(
+				config: widget.config,
+				deviceTrailing: Row(
+					mainAxisSize: MainAxisSize.min,
+					spacing: AppSpacings.pMd,
+					children: [
+						if (hasSettings)
+							HeaderIconButton(
+								icon: settingsIcon,
+								onTap: _showSettingsSheet,
+								color: ThemeColors.neutral,
+							),
 						HeaderIconButton(
-							icon: settingsIcon,
-							onTap: _showSettingsSheet,
-							color: ThemeColors.neutral,
+							icon: MdiIcons.power,
+							onTap: _togglePower,
+							color: isOn ? ThemeColors.primary : ThemeColors.neutral,
 						),
-					HeaderIconButton(
-						icon: MdiIcons.power,
-						onTap: _togglePower,
-						color: isOn ? ThemeColors.primary : ThemeColors.neutral,
-					),
-				],
+					],
+				),
 			),
 		);
 	}

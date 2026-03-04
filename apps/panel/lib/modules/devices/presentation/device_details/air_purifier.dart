@@ -696,6 +696,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
               ],
             )
           : HeaderMainIcon(icon: iconData, color: _getStatusColor()),
+      trailing: widget.config?.trailing,
     );
   }
 

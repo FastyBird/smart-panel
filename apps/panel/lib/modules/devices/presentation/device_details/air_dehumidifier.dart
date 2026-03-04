@@ -511,10 +511,13 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
               ],
             )
           : HeaderMainIcon(icon: iconData, color: _getStatusColor()),
-      trailing: HeaderIconButton(
-        icon: MdiIcons.power,
-        onTap: () => _togglePower(!_device.isOn),
-        color: _getStatusColor(),
+      trailing: buildCombinedTrailing(
+        config: widget.config,
+        deviceTrailing: HeaderIconButton(
+          icon: MdiIcons.power,
+          onTap: () => _togglePower(!_device.isOn),
+          color: _getStatusColor(),
+        ),
       ),
     );
   }

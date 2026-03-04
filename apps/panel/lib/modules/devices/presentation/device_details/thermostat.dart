@@ -720,6 +720,7 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
               ],
             )
           : HeaderMainIcon(icon: iconData, color: _getModeColor()),
+      trailing: widget.config?.trailing,
     );
   }
 
