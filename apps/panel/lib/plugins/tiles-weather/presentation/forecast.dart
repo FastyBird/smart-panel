@@ -40,7 +40,7 @@ class ForecastTileWidget extends TileWidget<ForecastWeatherTileView> {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => WeatherDetailPage(),
+                builder: (context) => WeatherDetailPage(locationId: tile.locationId),
               ),
             );
           },
