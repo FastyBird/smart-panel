@@ -153,6 +153,11 @@ export class TtsProviderService implements OnModuleInit, OnModuleDestroy {
 			}
 		}
 
+		// Skip caching if the single entry exceeds the max cache size
+		if (entrySize > CACHE_MAX_BYTES) {
+			return result;
+		}
+
 		// Cache the result
 		this.audioCache.set(cacheKey, {
 			buffer: result.buffer,
@@ -310,6 +315,13 @@ export class TtsProviderService implements OnModuleInit, OnModuleDestroy {
 
 				if (voice) {
 					piperArgs.push('--model', voice);
+				}
+
+				const speed = config.ttsSpeed ?? TTS_DEFAULT_SPEED;
+
+				if (speed !== TTS_DEFAULT_SPEED) {
+					// Piper's --length_scale is inverse: lower = faster speech
+					piperArgs.push('--length_scale', String(1.0 / speed));
 				}
 
 				await this.spawnWithStdin('piper', piperArgs, text);
