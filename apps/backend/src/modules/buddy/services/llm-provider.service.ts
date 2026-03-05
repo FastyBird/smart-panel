@@ -8,11 +8,11 @@ import {
 	BuddyProviderTimeoutException,
 } from '../buddy.exceptions';
 import { BuddyConfigModel } from '../models/config.model';
-import { ChatMessage, LlmOptions, LlmResponse, LlmToolCall, LlmToolResult } from '../platforms/llm-provider.platform';
+import { ChatMessage, LlmOptions, LlmResponse } from '../platforms/llm-provider.platform';
 
 import { LlmProviderRegistryService } from './llm-provider-registry.service';
 
-export { ChatMessage, LlmOptions, LlmResponse, LlmToolCall, LlmToolResult } from '../platforms/llm-provider.platform';
+export { ChatMessage, LlmOptions, LlmResponse } from '../platforms/llm-provider.platform';
 
 const DEFAULT_TIMEOUT = 30_000;
 

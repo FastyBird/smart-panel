@@ -9,7 +9,6 @@ import { EventType, MessageRole } from '../buddy.constants';
 import { BuddyConversationNotFoundException } from '../buddy.exceptions';
 import { BuddyConversationEntity } from '../entities/buddy-conversation.entity';
 import { BuddyMessageEntity } from '../entities/buddy-message.entity';
-
 import { LlmResponse, ToolDefinition } from '../platforms/llm-provider.platform';
 
 import { BuddyContext, BuddyContextService } from './buddy-context.service';
@@ -196,9 +195,7 @@ export class BuddyConversationService {
 				break;
 			}
 
-			this.logger.debug(
-				`Tool iteration ${iteration + 1}: executing ${response.toolCalls.length} tool call(s)`,
-			);
+			this.logger.debug(`Tool iteration ${iteration + 1}: executing ${response.toolCalls.length} tool call(s)`);
 
 			// Execute all tool calls
 			const toolResults: string[] = [];
@@ -233,8 +230,8 @@ export class BuddyConversationService {
 				content: `[Tool execution results]\n${toolResultsSummary}\n\nPlease provide a natural language response based on these results.`,
 			});
 
-			// Call LLM again with the updated conversation (without tools to get a final text response)
-			response = await this.llmProvider.sendMessage(systemPrompt, messages);
+			// Call LLM again with tools so multi-step tool use works
+			response = await this.llmProvider.sendMessage(systemPrompt, messages, { tools });
 		}
 
 		return response;

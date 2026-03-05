@@ -81,7 +81,7 @@ describe('ToolExecutionService', () => {
 			const controlDevice = tools.find((t) => t.name === 'control_device');
 
 			expect(controlDevice).toBeDefined();
-			expect(controlDevice!.parameters).toEqual(
+			expect(controlDevice?.parameters).toEqual(
 				expect.objectContaining({
 					type: 'object',
 					required: ['device_id', 'channel_id', 'property_id', 'value'],
@@ -94,7 +94,7 @@ describe('ToolExecutionService', () => {
 			const runScene = tools.find((t) => t.name === 'run_scene');
 
 			expect(runScene).toBeDefined();
-			expect(runScene!.parameters).toEqual(
+			expect(runScene?.parameters).toEqual(
 				expect.objectContaining({
 					type: 'object',
 					required: ['scene_id'],
@@ -107,14 +107,14 @@ describe('ToolExecutionService', () => {
 			const setLighting = tools.find((t) => t.name === 'set_space_lighting');
 
 			expect(setLighting).toBeDefined();
-			expect(setLighting!.parameters).toEqual(
+			expect(setLighting?.parameters).toEqual(
 				expect.objectContaining({
 					type: 'object',
 					required: ['space_id', 'mode'],
 				}),
 			);
 
-			const modeParam = (setLighting!.parameters as any).properties.mode;
+			const modeParam = (setLighting?.parameters as any).properties.mode;
 
 			expect(modeParam.enum).toEqual(['off', 'on', 'work', 'relax', 'night']);
 		});
@@ -312,9 +312,7 @@ describe('ToolExecutionService', () => {
 			expect(intentsService.createIntent).toHaveBeenCalled();
 			expect(intentsService.completeIntent).toHaveBeenCalledWith(
 				'intent-1',
-				expect.arrayContaining([
-					expect.objectContaining({ status: IntentTargetStatus.SUCCESS }),
-				]),
+				expect.arrayContaining([expect.objectContaining({ status: IntentTargetStatus.SUCCESS })]),
 			);
 		});
 
@@ -360,9 +358,7 @@ describe('ToolExecutionService', () => {
 			expect(result.success).toBe(false);
 			expect(intentsService.completeIntent).toHaveBeenCalledWith(
 				'intent-1',
-				expect.arrayContaining([
-					expect.objectContaining({ status: IntentTargetStatus.FAILED }),
-				]),
+				expect.arrayContaining([expect.objectContaining({ status: IntentTargetStatus.FAILED })]),
 			);
 		});
 

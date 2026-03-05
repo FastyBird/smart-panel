@@ -5,12 +5,13 @@ import { DevicesService } from '../../devices/services/devices.service';
 import { PlatformRegistryService } from '../../devices/services/platform.registry.service';
 import { IntentTargetStatus, IntentType } from '../../intents/intents.constants';
 import { IntentsService } from '../../intents/services/intents.service';
+import { SceneExecutionStatus } from '../../scenes/scenes.constants';
 import { SceneExecutorService } from '../../scenes/services/scene-executor.service';
 import { ScenesService } from '../../scenes/services/scenes.service';
 import { LightingIntentDto } from '../../spaces/dto/lighting-intent.dto';
-import { LightingIntentType, LightingMode } from '../../spaces/spaces.constants';
 import { SpaceIntentService } from '../../spaces/services/space-intent.service';
 import { SpacesService } from '../../spaces/services/spaces.service';
+import { LightingIntentType, LightingMode } from '../../spaces/spaces.constants';
 import { ToolDefinition } from '../platforms/llm-provider.platform';
 
 export { ToolDefinition } from '../platforms/llm-provider.platform';
@@ -157,13 +158,17 @@ export class ToolExecutionService {
 	}
 
 	private async executeWithTimeout(toolCall: ToolCall): Promise<ToolExecutionResult> {
+		let timer: ReturnType<typeof setTimeout> | undefined;
+
 		const timeoutPromise = new Promise<never>((_, reject) => {
-			setTimeout(() => reject(new Error('Tool execution timed out')), TOOL_EXECUTION_TIMEOUT_MS);
+			timer = setTimeout(() => reject(new Error('Tool execution timed out')), TOOL_EXECUTION_TIMEOUT_MS);
 		});
 
-		const executionPromise = this.routeToolCall(toolCall);
-
-		return Promise.race([executionPromise, timeoutPromise]);
+		try {
+			return await Promise.race([this.routeToolCall(toolCall), timeoutPromise]);
+		} finally {
+			clearTimeout(timer);
+		}
 	}
 
 	private async routeToolCall(toolCall: ToolCall): Promise<ToolExecutionResult> {
@@ -202,8 +207,7 @@ export class ToolExecutionService {
 		// Find the property (findOne joins channel and device relations)
 		const property = await this.channelsPropertiesService.findOne(propertyId);
 		const propertyChannel = property?.channel;
-		const channelEntity =
-			propertyChannel && typeof propertyChannel !== 'string' ? propertyChannel : null;
+		const channelEntity = propertyChannel && typeof propertyChannel !== 'string' ? propertyChannel : null;
 
 		if (!property || !channelEntity || channelEntity.id !== channelId) {
 			return { success: false, message: `Property with ID "${propertyId}" not found on channel "${channelId}"` };
@@ -216,20 +220,27 @@ export class ToolExecutionService {
 			return { success: false, message: `No platform registered for device "${device.name}"` };
 		}
 
+		// Coerce value to a type the platform accepts
+		let coercedValue: string | number | boolean;
+
+		if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+			coercedValue = value;
+		} else {
+			coercedValue = JSON.stringify(value) ?? 'null';
+		}
+
 		// Create an intent for tracking
 		const intent = this.intentsService.createIntent({
 			type: IntentType.DEVICE_SET_PROPERTY,
 			context: {
 				origin: 'api',
+				extra: { source: 'buddy' },
 			},
 			targets: [{ deviceId, channelId, propertyId }],
-			value,
+			value: coercedValue,
 		});
 
 		// Execute the property write through the platform
-		const coercedValue =
-			typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' ? value : String(value);
-
 		const success = await platform.process({
 			device,
 			channel: channelEntity,
@@ -249,7 +260,7 @@ export class ToolExecutionService {
 		]);
 
 		if (success) {
-			return { success: true, message: `Set ${device.name} property to ${String(value)}` };
+			return { success: true, message: `Set ${device.name} property to ${coercedValue}` };
 		}
 
 		return { success: false, message: `Failed to set property on device "${device.name}"` };
@@ -271,11 +282,11 @@ export class ToolExecutionService {
 
 		const result = await this.sceneExecutor.triggerScene(sceneId, 'buddy');
 
-		if (result.status === 'completed') {
+		if (result.status === SceneExecutionStatus.COMPLETED) {
 			return { success: true, message: `Scene "${scene.name}" executed successfully` };
 		}
 
-		if (result.status === 'partially_completed') {
+		if (result.status === SceneExecutionStatus.PARTIALLY_COMPLETED) {
 			return {
 				success: true,
 				message: `Scene "${scene.name}" partially completed (${result.successfulActions}/${result.totalActions} actions succeeded)`,
