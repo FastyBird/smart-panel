@@ -757,6 +757,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
             icon: MdiIcons.speedometer,
             sheetTitle: localizations.device_fan_speed,
             activeColor: activeColor,
+            buttonThemeColor: _getStatusColor(),
             options: options,
             displayFormatter: (level) => level != null
                 ? FanUtils.getSpeedLevelLabel(localizations, level)
@@ -820,6 +821,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
             icon: MdiIcons.speedometer,
             sheetTitle: localizations.device_fan_speed,
             activeColor: activeColor,
+            buttonThemeColor: _getStatusColor(),
             options: _getSpeedOptions(localizations),
             displayFormatter: (v) => _formatSpeed(localizations, v),
             columns: 4,
@@ -989,6 +991,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
           icon: MdiIcons.timerOutline,
           sheetTitle: localizations.device_auto_off_timer,
           activeColor: activeColor,
+          buttonThemeColor: _getStatusColor(),
           options: options,
           displayFormatter: (p) => _formatTimerPreset(localizations, p),
           columns: options.length > 4 ? 4 : options.length,
@@ -1015,6 +1018,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
           icon: MdiIcons.timerOutline,
           sheetTitle: localizations.device_auto_off_timer,
           activeColor: activeColor,
+          buttonThemeColor: _getStatusColor(),
           options: options,
           displayFormatter: (m) => _formatNumericTimer(localizations, m),
           columns: options.length > 4 ? 4 : options.length,

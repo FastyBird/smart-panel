@@ -1508,6 +1508,7 @@ class _AirConditionerDeviceDetailState
         icon: MdiIcons.airFilter,
         sheetTitle: localizations.device_fan_mode,
         activeColor: modeColorFamily.base,
+        buttonThemeColor: _getModeColor(),
         options: options,
         displayFormatter: (mode) => mode != null
             ? FanUtils.getModeLabel(localizations, mode)
@@ -1585,6 +1586,7 @@ class _AirConditionerDeviceDetailState
             icon: MdiIcons.speedometer,
             sheetTitle: localizations.device_fan_speed,
             activeColor: modeColorFamily.base,
+            buttonThemeColor: _getModeColor(),
             options: options,
             displayFormatter: (level) => level != null
                 ? FanUtils.getSpeedLevelLabel(localizations, level)
@@ -1662,6 +1664,7 @@ class _AirConditionerDeviceDetailState
             icon: MdiIcons.speedometer,
             sheetTitle: localizations.device_fan_speed,
             activeColor: modeColorFamily.base,
+            buttonThemeColor: _getModeColor(),
             options: _getFanSpeedOptions(localizations),
             displayFormatter: (v) => _formatFanSpeed(localizations, v),
             columns: 4,
@@ -1811,6 +1814,7 @@ class _AirConditionerDeviceDetailState
           icon: MdiIcons.timerOutline,
           sheetTitle: localizations.device_auto_off_timer,
           activeColor: modeColor,
+          buttonThemeColor: _getModeColor(),
           options: options,
           displayFormatter: (p) => _formatTimerPreset(localizations, p),
           columns: options.length > 4 ? 4 : options.length,
@@ -1833,6 +1837,7 @@ class _AirConditionerDeviceDetailState
           icon: MdiIcons.timerOutline,
           sheetTitle: localizations.device_auto_off_timer,
           activeColor: modeColor,
+          buttonThemeColor: _getModeColor(),
           options: options,
           displayFormatter: (m) => _formatNumericTimer(localizations, m),
           columns: options.length > 4 ? 4 : options.length,

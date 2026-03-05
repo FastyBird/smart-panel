@@ -1453,6 +1453,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
       icon: MdiIcons.water,
       sheetTitle: localizations.humidifier_mist_level,
       activeColor: humidityColor,
+      buttonThemeColor: _getStatusColor(),
       options: options,
       displayFormatter: (l) => l != null
           ? HumidifierUtils.getMistLevelLabel(localizations, l)
@@ -1497,6 +1498,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
       icon: MdiIcons.water,
       sheetTitle: localizations.humidifier_mist_level,
       activeColor: humidityColor,
+      buttonThemeColor: _getStatusColor(),
       options: [
         ValueOption(value: 0.0, label: localizations.humidifier_mist_level_low),
         ValueOption(value: 0.5, label: localizations.humidifier_mist_level_medium),
@@ -1635,6 +1637,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
         icon: MdiIcons.speedometer,
         sheetTitle: localizations.device_fan_speed,
         activeColor: humidityColor,
+        buttonThemeColor: _getStatusColor(),
         options: options,
         displayFormatter: (level) => level != null
             ? FanUtils.getSpeedLevelLabel(localizations, level)
@@ -1671,6 +1674,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
         icon: MdiIcons.speedometer,
         sheetTitle: localizations.device_fan_speed,
         activeColor: humidityColor,
+        buttonThemeColor: _getStatusColor(),
         options: _getFanSpeedOptions(localizations),
         displayFormatter: (v) => _formatFanSpeed(localizations, v),
         columns: 4,
@@ -1719,6 +1723,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
         icon: MdiIcons.tune,
         sheetTitle: localizations.device_fan_mode,
         activeColor: humidityColor,
+        buttonThemeColor: _getStatusColor(),
         options: options,
         displayFormatter: (mode) => mode != null
             ? FanUtils.getModeLabel(localizations, mode)
@@ -1890,6 +1895,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
         icon: MdiIcons.timerOutline,
         sheetTitle: localizations.device_timer,
         activeColor: humidityColor,
+        buttonThemeColor: _getStatusColor(),
         options: options,
         displayFormatter: (p) => p != null
             ? HumidifierUtils.getTimerPresetLabel(localizations, p)
@@ -1917,6 +1923,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
         icon: MdiIcons.timerOutline,
         sheetTitle: localizations.device_timer,
         activeColor: humidityColor,
+        buttonThemeColor: _getStatusColor(),
         options: options,
         displayFormatter: (s) =>
             HumidifierUtils.formatSeconds(localizations, s ?? 0),

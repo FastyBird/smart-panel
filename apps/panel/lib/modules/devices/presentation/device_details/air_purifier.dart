@@ -507,6 +507,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
             icon: MdiIcons.speedometer,
             sheetTitle: localizations.device_fan_speed,
             activeColor: airColor,
+            buttonThemeColor: _getStatusColor(),
             options: options,
             displayFormatter: (level) => level != null
                 ? FanUtils.getSpeedLevelLabel(localizations, level)
@@ -565,6 +566,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
             icon: MdiIcons.speedometer,
             sheetTitle: localizations.device_fan_speed,
             activeColor: airColor,
+            buttonThemeColor: _getStatusColor(),
             options: _getSpeedOptions(localizations),
             displayFormatter: (v) => _formatSpeed(localizations, v),
             columns: 4,
@@ -1100,6 +1102,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           icon: MdiIcons.timerOutline,
           sheetTitle: localizations.device_auto_off_timer,
           activeColor: airColor,
+          buttonThemeColor: _getStatusColor(),
           options: options,
           displayFormatter: (p) => _formatTimerPreset(localizations, p),
           columns: options.length > 4 ? 4 : options.length,
@@ -1127,6 +1130,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           icon: MdiIcons.timerOutline,
           sheetTitle: localizations.device_auto_off_timer,
           activeColor: airColor,
+          buttonThemeColor: _getStatusColor(),
           options: options,
           displayFormatter: (m) => _formatNumericTimer(localizations, m),
           columns: options.length > 4 ? 4 : options.length,

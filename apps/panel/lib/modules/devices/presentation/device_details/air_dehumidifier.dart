@@ -1420,6 +1420,7 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
         icon: MdiIcons.speedometer,
         sheetTitle: localizations.device_fan_speed,
         activeColor: activeColor,
+        buttonThemeColor: _getStatusColor(),
         options: options,
         displayFormatter: (level) => level != null
             ? FanUtils.getSpeedLevelLabel(localizations, level)
@@ -1456,6 +1457,7 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
         icon: MdiIcons.speedometer,
         sheetTitle: localizations.device_fan_speed,
         activeColor: activeColor,
+        buttonThemeColor: _getStatusColor(),
         options: _getFanSpeedOptions(localizations),
         displayFormatter: (v) => _formatFanSpeed(localizations, v),
         columns: 4,
@@ -1504,6 +1506,7 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
         icon: MdiIcons.tune,
         sheetTitle: localizations.device_fan_mode,
         activeColor: activeColor,
+        buttonThemeColor: _getStatusColor(),
         options: options,
         displayFormatter: (mode) => mode != null
             ? FanUtils.getModeLabel(localizations, mode)
@@ -1668,6 +1671,7 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
         icon: MdiIcons.timerOutline,
         sheetTitle: localizations.device_timer,
 activeColor: activeColor,
+        buttonThemeColor: _getStatusColor(),
             options: options,
         displayFormatter: (p) => p != null
             ? DehumidifierUtils.getTimerPresetLabel(localizations, p)
@@ -1695,6 +1699,7 @@ activeColor: activeColor,
         icon: MdiIcons.timerOutline,
         sheetTitle: localizations.device_timer,
 activeColor: activeColor,
+        buttonThemeColor: _getStatusColor(),
             options: options,
         displayFormatter: (s) =>
             DehumidifierUtils.formatSeconds(localizations, s ?? 0),

@@ -92,6 +92,11 @@ class ValueSelectorRow<T> extends StatelessWidget {
   /// Theme color for the slider track and thumb. Defaults to [ThemeColors.primary].
   final ThemeColors sliderThemeColor;
 
+  /// Theme color for the done/submit button and slider. When set, uses the
+  /// corresponding [AppFilledButtonsLightThemes] / [AppFilledButtonsDarkThemes]
+  /// variant instead of primary.
+  final ThemeColors? buttonThemeColor;
+
   const ValueSelectorRow({
     super.key,
     required this.currentValue,
@@ -110,6 +115,7 @@ class ValueSelectorRow<T> extends StatelessWidget {
     this.sliderSteps,
     this.sliderValueFormatter,
     this.sliderThemeColor = ThemeColors.primary,
+    this.buttonThemeColor,
   });
 
   String _getDisplayValue(AppLocalizations localizations) {
@@ -426,6 +432,7 @@ class ValueSelectorRow<T> extends StatelessWidget {
                   _ValueSelectorSliderContent(
                     sliderValueNotifier: sliderValueNotifier,
                     themeColor: sliderThemeColor,
+                    activeColor: activeColor,
                     steps: sliderSteps,
                   ),
                   Divider(
@@ -566,6 +573,7 @@ class ValueSelectorRow<T> extends StatelessWidget {
     ValueNotifier<int> selectedIndexNotifier,
   ) {
     final localizations = AppLocalizations.of(context)!;
+    final effectiveThemeColor = buttonThemeColor ?? ThemeColors.primary;
     return ValueListenableBuilder<int>(
       valueListenable: selectedIndexNotifier,
       builder: (context, index, _) {
@@ -575,10 +583,10 @@ class ValueSelectorRow<T> extends StatelessWidget {
             data: isDark
                 ? ThemeData(
                     brightness: Brightness.dark,
-                    filledButtonTheme: AppFilledButtonsDarkThemes.primary,
+                    filledButtonTheme: AppFilledButtonsDarkThemes.forThemeColor(effectiveThemeColor),
                   )
                 : ThemeData(
-                    filledButtonTheme: AppFilledButtonsLightThemes.primary,
+                    filledButtonTheme: AppFilledButtonsLightThemes.forThemeColor(effectiveThemeColor),
                   ),
             child: FilledButton(
               onPressed: options.isEmpty || index < 0
@@ -614,16 +622,17 @@ class ValueSelectorRow<T> extends StatelessWidget {
     ValueNotifier<double> sliderValueNotifier,
   ) {
     final localizations = AppLocalizations.of(context)!;
+    final effectiveThemeColor = buttonThemeColor ?? ThemeColors.primary;
     return SizedBox(
       width: double.infinity,
       child: Theme(
         data: isDark
             ? ThemeData(
                 brightness: Brightness.dark,
-                filledButtonTheme: AppFilledButtonsDarkThemes.primary,
+                filledButtonTheme: AppFilledButtonsDarkThemes.forThemeColor(effectiveThemeColor),
               )
             : ThemeData(
-                filledButtonTheme: AppFilledButtonsLightThemes.primary,
+                filledButtonTheme: AppFilledButtonsLightThemes.forThemeColor(effectiveThemeColor),
               ),
         child: FilledButton(
           onPressed: () {
@@ -935,11 +944,13 @@ class _ValueSelectorSheetState<T> extends State<ValueSelectorSheet<T>> {
 class _ValueSelectorSliderContent extends StatefulWidget {
   final ValueNotifier<double> sliderValueNotifier;
   final ThemeColors themeColor;
+  final Color? activeColor;
   final List<String>? steps;
 
   const _ValueSelectorSliderContent({
     required this.sliderValueNotifier,
     this.themeColor = ThemeColors.primary,
+    this.activeColor,
     this.steps,
   });
 
@@ -968,6 +979,7 @@ class _ValueSelectorSliderContentState
       child: SliderWithSteps(
         value: _value.clamp(0.0, 1.0),
         themeColor: widget.themeColor,
+        activeColor: widget.activeColor,
         steps: widget.steps ?? const ['0%', '25%', '50%', '75%', '100%'],
         onChanged: (value) {
           setState(() => _value = value);
