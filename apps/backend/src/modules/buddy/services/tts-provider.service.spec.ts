@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
-import { BUDDY_MODULE_NAME, LLM_PROVIDER_NONE, TTS_AUDIO_CACHE_TTL_MS } from '../buddy.constants';
+import { BUDDY_MODULE_NAME, TTS_AUDIO_CACHE_TTL_MS, TTS_PLUGIN_NONE } from '../buddy.constants';
 import { BuddyTtsNotConfiguredException } from '../buddy.exceptions';
 import { BuddyConfigModel } from '../models/config.model';
 
@@ -61,7 +61,7 @@ describe('TtsProviderService', () => {
 		});
 
 		it('should return false when ttsPlugin is none', () => {
-			configService.getModuleConfig.mockReturnValue(makeConfig({ ttsPlugin: LLM_PROVIDER_NONE }));
+			configService.getModuleConfig.mockReturnValue(makeConfig({ ttsPlugin: TTS_PLUGIN_NONE }));
 
 			expect(service.isConfigured()).toBe(false);
 		});
@@ -104,7 +104,7 @@ describe('TtsProviderService', () => {
 		});
 
 		it('should throw BuddyTtsNotConfiguredException when ttsPlugin is none', async () => {
-			configService.getModuleConfig.mockReturnValue(makeConfig({ ttsPlugin: LLM_PROVIDER_NONE }));
+			configService.getModuleConfig.mockReturnValue(makeConfig({ ttsPlugin: TTS_PLUGIN_NONE }));
 
 			await expect(service.synthesize('Hello', 'msg-1')).rejects.toThrow(BuddyTtsNotConfiguredException);
 		});

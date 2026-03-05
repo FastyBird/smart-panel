@@ -17,9 +17,9 @@ import {
 	ENERGY_HIGH_CONSUMPTION_THRESHOLD_KW,
 	HEARTBEAT_DEFAULT_INTERVAL_MS,
 	LLM_PROVIDER_NONE,
-	TTS_PLUGIN_NONE,
 	SttProvider,
 	TTS_DEFAULT_SPEED,
+	TTS_PLUGIN_NONE,
 } from '../buddy.constants';
 
 @ApiSchema({ name: 'ConfigModuleDataBuddy' })
@@ -78,12 +78,12 @@ export class BuddyConfigModel extends ModuleConfigModel {
 		name: 'voice_enabled',
 		description: 'Master toggle for the voice interface (STT + TTS). When false, audio endpoints are disabled.',
 		type: 'boolean',
-		example: false,
+		example: true,
 	})
 	@Expose({ name: 'voice_enabled' })
 	@IsOptional()
 	@IsBoolean()
-	voiceEnabled: boolean = false;
+	voiceEnabled: boolean = true;
 
 	@ApiPropertyOptional({
 		name: 'stt_provider',
