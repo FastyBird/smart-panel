@@ -492,7 +492,7 @@ const formatIpAddress = (ipAddress: string | null | undefined): string => {
 
 const formatScreenLockDuration = (seconds: number): string => {
 	const match = SCREEN_LOCK_DURATION_OPTIONS.find((o) => o.value === seconds);
-	return match?.shortLabel ?? `${seconds}s`;
+	return match ? t(`displaysModule.fields.displays.screenLockDuration.options.${match.labelKey}`) : `${seconds}s`;
 };
 
 const { meta } = useMeta({});
