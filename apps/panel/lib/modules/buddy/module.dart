@@ -8,6 +8,7 @@ import 'package:fastybird_smart_panel/modules/buddy/models/buddy_config.dart';
 import 'package:fastybird_smart_panel/modules/buddy/repositories/buddy.dart';
 import 'package:fastybird_smart_panel/modules/buddy/service.dart';
 import 'package:fastybird_smart_panel/modules/buddy/services/suggestion_notification_service.dart';
+import 'package:fastybird_smart_panel/modules/buddy/services/wake_word_service.dart';
 import 'package:fastybird_smart_panel/modules/config/module.dart';
 import 'package:fastybird_smart_panel/modules/config/repositories/module_config_repository.dart';
 
@@ -17,6 +18,7 @@ class BuddyModuleService {
 	late BuddyRepository _buddyRepository;
 	late BuddyService _buddyService;
 	late SuggestionNotificationService _notificationService;
+	late WakeWordService _wakeWordService;
 	late ModuleConfigRepository<BuddyConfigModel> _buddyConfigRepo;
 
 	bool _isLoading = true;
@@ -39,6 +41,23 @@ class BuddyModuleService {
 			},
 		);
 
+		_wakeWordService = WakeWordService();
+
+		// Wire up wake word capture → send audio through buddy pipeline
+		_wakeWordService.onCapture = (result) async {
+			// Ensure we have an active conversation
+			if (!_buddyService.hasActiveConversation) {
+				await _buddyService.startNewConversation();
+			}
+
+			if (_buddyService.hasActiveConversation) {
+				await _buddyService.sendAudioMessage(
+					result.audioBytes,
+					result.mimeType,
+				);
+			}
+		};
+
 		// Wire up WebSocket suggestion events to the notification service
 		_buddyRepository.onSuggestionCreated = (suggestion) {
 			_notificationService.enqueue(suggestion);
@@ -47,6 +66,7 @@ class BuddyModuleService {
 		locator.registerSingleton(_buddyRepository);
 		locator.registerSingleton(_buddyService);
 		locator.registerSingleton(_notificationService);
+		locator.registerSingleton(_wakeWordService);
 	}
 
 	Future<void> initialize() async {
@@ -103,6 +123,7 @@ class BuddyModuleService {
 	BuddyRepository get buddyRepository => _buddyRepository;
 	BuddyService get buddyService => _buddyService;
 	SuggestionNotificationService get notificationService => _notificationService;
+	WakeWordService get wakeWordService => _wakeWordService;
 	ModuleConfigRepository<BuddyConfigModel> get buddyConfigRepo => _buddyConfigRepo;
 
 	void dispose() {
@@ -111,6 +132,8 @@ class BuddyModuleService {
 			_socketEventHandler,
 		);
 
+		_wakeWordService.onCapture = null;
+		_wakeWordService.dispose();
 		_buddyRepository.onSuggestionCreated = null;
 		_notificationService.dispose();
 		_buddyService.dispose();

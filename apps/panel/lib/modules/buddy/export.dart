@@ -14,6 +14,7 @@ export 'package:fastybird_smart_panel/modules/buddy/service.dart';
 export 'package:fastybird_smart_panel/modules/buddy/services/audio_playback_service.dart';
 export 'package:fastybird_smart_panel/modules/buddy/services/audio_recording_service.dart';
 export 'package:fastybird_smart_panel/modules/buddy/services/suggestion_notification_service.dart';
+export 'package:fastybird_smart_panel/modules/buddy/services/wake_word_service.dart';
 
 // Module
 export 'package:fastybird_smart_panel/modules/buddy/module.dart';
@@ -24,3 +25,4 @@ export 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/message
 export 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/suggestion_card.dart';
 export 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/suggestion_badge.dart';
 export 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/suggestion_toast.dart';
+export 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/wake_word_indicator.dart';

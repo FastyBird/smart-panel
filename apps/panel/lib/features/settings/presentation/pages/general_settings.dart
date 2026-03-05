@@ -58,6 +58,15 @@ class GeneralSettingsPage extends StatelessWidget {
 					iconBgColor: warningBg,
 					route: 'audio-settings',
 				),
+			if (hasAudioSupport)
+				_TileData(
+					label: 'Wake Word',
+					sublabel: 'Voice activation settings',
+					icon: Icons.record_voice_over_outlined,
+					iconColor: primaryColor,
+					iconBgColor: primaryBg,
+					route: 'wake-word-settings',
+				),
 			_TileData(
 				label: localizations.settings_general_settings_button_weather_settings,
 				sublabel: localizations.settings_weather_settings_title,

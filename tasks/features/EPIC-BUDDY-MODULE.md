@@ -133,7 +133,7 @@ Inspired by the [OpenClaw](https://github.com/openclaw/openclaw) project's proac
 
 - [x] Speech-to-text integration (Whisper local or cloud provider)
 - [x] Text-to-speech integration (system TTS, ElevenLabs, or similar)
-- [ ] Wake word detection on panel hardware
+- [x] Wake word detection on panel hardware
 - [x] Voice commands routed through buddy conversation → intent system
 - [x] Panel: microphone button in buddy drawer, audio playback for responses
 
