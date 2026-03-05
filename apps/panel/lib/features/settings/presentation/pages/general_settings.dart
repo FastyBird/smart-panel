@@ -60,8 +60,8 @@ class GeneralSettingsPage extends StatelessWidget {
 				),
 			if (hasAudioSupport)
 				_TileData(
-					label: 'Wake Word',
-					sublabel: 'Voice activation settings',
+					label: localizations.settings_general_settings_button_wake_word,
+					sublabel: localizations.settings_wake_word_settings_title,
 					icon: Icons.record_voice_over_outlined,
 					iconColor: primaryColor,
 					iconBgColor: primaryBg,

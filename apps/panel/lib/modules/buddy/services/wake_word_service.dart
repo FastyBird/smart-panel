@@ -281,7 +281,7 @@ class WakeWordService extends ChangeNotifier {
 	/// detected (for screen wake / visual indicator), and starts
 	/// capturing audio.
 	Future<void> _transitionToRecording() async {
-		if (_disposed) return;
+		if (_disposed || _state != WakeWordState.listening) return;
 
 		await _stopMonitoring();
 
