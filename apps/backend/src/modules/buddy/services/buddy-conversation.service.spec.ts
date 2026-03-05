@@ -8,10 +8,11 @@ import { BuddyConversationNotFoundException, BuddyProviderNotConfiguredException
 import { BuddyConversationEntity } from '../entities/buddy-conversation.entity';
 import { BuddyMessageEntity } from '../entities/buddy-message.entity';
 
+import { ToolProviderRegistryService } from '../../tools/services/tool-provider-registry.service';
+
 import { BuddyContextService } from './buddy-context.service';
 import { BuddyConversationService } from './buddy-conversation.service';
 import { LlmProviderService } from './llm-provider.service';
-import { ToolProviderRegistryService } from './tool-provider-registry.service';
 
 describe('BuddyConversationService', () => {
 	let service: BuddyConversationService;

@@ -1,7 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 
-import { LlmToolCall, ToolDefinition } from '../platforms/llm-provider.platform';
-import { IToolProvider, ToolExecutionResult } from '../platforms/tool-provider.platform';
+import { IToolProvider, LlmToolCall, ToolDefinition, ToolExecutionResult } from '../platforms/tool-provider.platform';
 
 @Injectable()
 export class ToolProviderRegistryService {
