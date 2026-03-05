@@ -1374,6 +1374,7 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: AppSpacings.pMd,
       children: children,
     );
   }

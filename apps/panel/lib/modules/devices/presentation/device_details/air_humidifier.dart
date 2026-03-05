@@ -1335,6 +1335,7 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: AppSpacings.pMd,
       children: children,
     );
   }
