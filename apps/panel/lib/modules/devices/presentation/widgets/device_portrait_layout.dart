@@ -34,11 +34,11 @@ class DevicePortraitLayout extends StatelessWidget {
   final Widget? stickyBottom;
 
   /// Padding for the content area
-  /// Default: AppSpacings.paddingLg on all sides (same as domain view)
+  /// Default: horizontal pMd, bottom pMd
   final EdgeInsetsGeometry? contentPadding;
 
   /// Padding for the sticky bottom area
-  /// Default: horizontal pLg, top pMd, bottom pLg
+  /// Default: horizontal pMd, top pMd, bottom pMd
   /// Only used when [useStickyBottomPadding] is true
   final EdgeInsetsGeometry? stickyBottomPadding;
 
@@ -73,7 +73,11 @@ class DevicePortraitLayout extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final defaultPadding = EdgeInsets.symmetric(horizontal: AppSpacings.pLg);
+    final defaultPadding = EdgeInsets.only(
+      left: AppSpacings.pMd,
+      right: AppSpacings.pMd,
+      bottom: AppSpacings.pMd,
+    );
 
     // Build the scrollable content widget
     Widget contentWidget;
@@ -127,10 +131,10 @@ class DevicePortraitLayout extends StatelessWidget {
           padding: useStickyBottomPadding
               ? (stickyBottomPadding ??
                   EdgeInsets.only(
-                    left: AppSpacings.pLg,
-                    right: AppSpacings.pLg,
+                    left: AppSpacings.pMd,
+                    right: AppSpacings.pMd,
                     top: AppSpacings.pMd,
-                    bottom: AppSpacings.pLg,
+                    bottom: AppSpacings.pMd,
                   ))
               : EdgeInsets.zero,
           child: stickyBottom,
