@@ -501,10 +501,12 @@ class _ProjectorDeviceDetailState extends State<ProjectorDeviceDetail> {
 		final localizations = AppLocalizations.of(context)!;
 		final secondaryColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
 		final isOn = _device.isProjectorOn;
+		final isLandscape = locator<ScreenService>().isLandscape;
 		final hasBrightness = _device.projectorChannel.brightnessProp != null;
 		final hasRemote = _device.hasProjectorRemoteKey;
-		final hasSettings = hasBrightness || hasRemote;
-		final settingsIcon = hasBrightness ? MdiIcons.cogOutline : MdiIcons.remote;
+		final showBrightness = hasBrightness && !isLandscape;
+		final hasSettings = showBrightness || hasRemote;
+		final settingsIcon = showBrightness ? MdiIcons.cogOutline : MdiIcons.remote;
 		final accentColor = isOn
 			? ThemeColorFamily.get(isDark ? Brightness.dark : Brightness.light, _getThemeColor()).base
 			: secondaryColor;

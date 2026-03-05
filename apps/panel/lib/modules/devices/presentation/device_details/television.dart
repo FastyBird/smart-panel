@@ -498,10 +498,12 @@ class _TelevisionDeviceDetailState extends State<TelevisionDeviceDetail> {
 		final localizations = AppLocalizations.of(context)!;
 		final secondaryColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
 		final isOn = _device.isTelevisionOn;
+		final isLandscape = locator<ScreenService>().isLandscape;
 		final hasBrightness = _device.televisionChannel.brightnessProp != null;
 		final hasRemote = _device.hasTelevisionRemoteKey;
-		final hasSettings = hasBrightness || hasRemote;
-		final settingsIcon = hasBrightness ? MdiIcons.cogOutline : MdiIcons.remote;
+		final showBrightness = hasBrightness && !isLandscape;
+		final hasSettings = showBrightness || hasRemote;
+		final settingsIcon = showBrightness ? MdiIcons.cogOutline : MdiIcons.remote;
 		final accentColor = isOn
 			? ThemeColorFamily.get(isDark ? Brightness.dark : Brightness.light, _getThemeColor()).base
 			: secondaryColor;
