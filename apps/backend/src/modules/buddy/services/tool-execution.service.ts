@@ -79,7 +79,9 @@ export class ToolExecutionService {
 							description: 'UUID of the property to set',
 						},
 						value: {
-							description: 'The value to set (string, number, or boolean depending on the property)',
+							type: 'string',
+							description:
+								'The value to set. Pass strings, numbers, or booleans as their string representation.',
 						},
 					},
 					required: ['device_id', 'channel_id', 'property_id', 'value'],
@@ -207,6 +209,14 @@ export class ToolExecutionService {
 
 		if (!property || !channelEntity || channelEntity.id !== channelId) {
 			return { success: false, message: `Property with ID "${propertyId}" not found on channel "${channelId}"` };
+		}
+
+		// Verify the channel belongs to the specified device
+		const channelDevice = channelEntity.device;
+		const channelDeviceId = typeof channelDevice === 'string' ? channelDevice : channelDevice?.id;
+
+		if (channelDeviceId !== deviceId) {
+			return { success: false, message: `Channel "${channelId}" does not belong to device "${deviceId}"` };
 		}
 
 		// Get the platform for this device

@@ -288,7 +288,7 @@ describe('ToolExecutionService', () => {
 	describe('executeTool - control_device', () => {
 		it('should control a device property successfully', async () => {
 			const mockDevice = { id: 'dev-1', name: 'Kitchen Light', type: 'local' };
-			const mockChannel = { id: 'chan-1' };
+			const mockChannel = { id: 'chan-1', device: 'dev-1' };
 			const mockProperty = { id: 'prop-1', channel: mockChannel };
 			const mockPlatform = { process: jest.fn().mockResolvedValue(true) };
 
@@ -336,7 +336,7 @@ describe('ToolExecutionService', () => {
 
 		it('should return failure when platform rejects write', async () => {
 			const mockDevice = { id: 'dev-1', name: 'Light', type: 'local' };
-			const mockChannel = { id: 'chan-1' };
+			const mockChannel = { id: 'chan-1', device: 'dev-1' };
 			const mockProperty = { id: 'prop-1', channel: mockChannel };
 			const mockPlatform = { process: jest.fn().mockResolvedValue(false) };
 
@@ -364,7 +364,7 @@ describe('ToolExecutionService', () => {
 
 		it('should return failure when no platform registered', async () => {
 			const mockDevice = { id: 'dev-1', name: 'Light', type: 'local' };
-			const mockChannel = { id: 'chan-1' };
+			const mockChannel = { id: 'chan-1', device: 'dev-1' };
 			const mockProperty = { id: 'prop-1', channel: mockChannel };
 
 			devicesService.findOne.mockResolvedValue(mockDevice);
