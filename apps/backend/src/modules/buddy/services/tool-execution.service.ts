@@ -241,12 +241,31 @@ export class ToolExecutionService {
 		});
 
 		// Execute the property write through the platform
-		const success = await platform.process({
-			device,
-			channel: channelEntity,
-			property,
-			value: coercedValue,
-		});
+		let success: boolean;
+
+		try {
+			success = await platform.process({
+				device,
+				channel: channelEntity,
+				property,
+				value: coercedValue,
+			});
+		} catch (error) {
+			const err = error as Error;
+
+			// Ensure the intent is always resolved, even on unexpected errors
+			this.intentsService.completeIntent(intent.id, [
+				{
+					deviceId,
+					channelId,
+					propertyId,
+					status: IntentTargetStatus.FAILED,
+					error: err.message,
+				},
+			]);
+
+			return { success: false, message: `Failed to set property on device "${device.name}": ${err.message}` };
+		}
 
 		// Complete the intent
 		this.intentsService.completeIntent(intent.id, [
