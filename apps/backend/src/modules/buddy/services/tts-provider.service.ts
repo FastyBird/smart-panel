@@ -113,6 +113,21 @@ export class TtsProviderService implements OnModuleInit, OnModuleDestroy {
 			throw new BuddyTtsNotConfiguredException();
 		}
 
+		// Verify the provider has valid credentials before attempting synthesis
+		try {
+			const pluginConfig = this.configService.getPluginConfig(pluginType);
+
+			if (!provider.isConfigured(pluginConfig as unknown as Record<string, unknown>)) {
+				throw new BuddyTtsNotConfiguredException();
+			}
+		} catch (error) {
+			if (error instanceof BuddyTtsNotConfiguredException) {
+				throw error;
+			}
+
+			throw new BuddyTtsNotConfiguredException();
+		}
+
 		const result = await provider.synthesize(text, {
 			voice: config.ttsVoice,
 			speed: config.ttsSpeed,

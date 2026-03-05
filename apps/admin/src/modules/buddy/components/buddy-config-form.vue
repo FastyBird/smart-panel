@@ -201,7 +201,7 @@
 		</el-form-item>
 
 		<el-alert
-			v-if="model.ttsPlugin !== 'none'"
+			v-if="model.ttsPlugin !== LLM_PROVIDER_NONE"
 			type="info"
 			show-icon
 			:closable="false"
@@ -211,7 +211,7 @@
 		</el-alert>
 
 		<el-form-item
-			v-if="model.ttsPlugin !== 'none'"
+			v-if="model.ttsPlugin !== LLM_PROVIDER_NONE"
 			:label="t('buddyModule.fields.config.ttsVoice.title')"
 			prop="ttsVoice"
 		>
@@ -224,7 +224,7 @@
 		</el-form-item>
 
 		<el-form-item
-			v-if="model.ttsPlugin !== 'none'"
+			v-if="model.ttsPlugin !== LLM_PROVIDER_NONE"
 			:label="t('buddyModule.fields.config.ttsSpeed.title')"
 			prop="ttsSpeed"
 		>
