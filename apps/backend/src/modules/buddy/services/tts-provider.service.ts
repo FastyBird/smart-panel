@@ -85,7 +85,7 @@ export class TtsProviderService implements OnModuleInit, OnModuleDestroy {
 		// Deduplicate concurrent requests for the same cache key
 		const inflight = this.inflightRequests.get(cacheKey);
 
-		if (inflight) {
+		if (inflight !== undefined) {
 			this.logger.debug(`TTS dedup hit for message id=${messageId}`);
 
 			return inflight;

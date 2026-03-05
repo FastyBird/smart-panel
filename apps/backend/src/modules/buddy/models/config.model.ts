@@ -92,6 +92,7 @@ export class BuddyConfigModel extends ModuleConfigModel {
 		type: 'string',
 	})
 	@Expose({ name: 'stt_api_key' })
+	@Transform(({ value }) => (typeof value === 'string' && value.length > 0 ? '***' : value), { toPlainOnly: true })
 	@IsOptional()
 	@IsString()
 	sttApiKey?: string;
@@ -136,6 +137,7 @@ export class BuddyConfigModel extends ModuleConfigModel {
 		type: 'string',
 	})
 	@Expose({ name: 'tts_api_key' })
+	@Transform(({ value }) => (typeof value === 'string' && value.length > 0 ? '***' : value), { toPlainOnly: true })
 	@IsOptional()
 	@IsString()
 	ttsApiKey?: string;

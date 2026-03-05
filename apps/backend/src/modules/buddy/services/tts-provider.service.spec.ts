@@ -159,6 +159,7 @@ describe('TtsProviderService', () => {
 		function mockSynthesizeOpenAi(svc: TtsProviderService, impl?: () => Promise<typeof fakeAudio>): jest.Mock {
 			const mock = jest.fn().mockImplementation(impl ?? (() => Promise.resolve({ ...fakeAudio })));
 
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			(svc as any).synthesizeOpenAi = mock;
 
 			return mock;
@@ -217,10 +218,7 @@ describe('TtsProviderService', () => {
 		it('should deduplicate concurrent requests for the same message', async () => {
 			let resolveCall!: (value: typeof fakeAudio) => void;
 
-			const mock = mockSynthesizeOpenAi(
-				service,
-				() => new Promise((resolve) => (resolveCall = resolve)),
-			);
+			const mock = mockSynthesizeOpenAi(service, () => new Promise((resolve) => (resolveCall = resolve)));
 
 			const promise1 = service.synthesize('Hello', 'msg-1');
 			const promise2 = service.synthesize('Hello', 'msg-1');
