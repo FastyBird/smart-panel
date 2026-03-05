@@ -13,9 +13,11 @@ import 'package:fastybird_smart_panel/core/widgets/circular_control_dial.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_landscape_layout.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_portrait_layout.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_offline_overlay.dart';
+import 'package:fastybird_smart_panel/core/widgets/bottom_sheet_dialog.dart';
 import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
+import 'package:fastybird_smart_panel/core/widgets/right_drawer.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
 import 'package:fastybird_smart_panel/core/widgets/tile_wrappers.dart';
 import 'package:fastybird_smart_panel/core/widgets/universal_tile.dart';
@@ -703,6 +705,25 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     final showBack = widget.config?.showBackButton ?? true;
     final iconData = widget.config?.iconOverride ?? buildDeviceIcon(_device.category, _device.icon);
 
+    final configTrailing = widget.config?.trailing;
+    final showSettings = _device.hasThermostatLock;
+
+    Widget? trailing;
+    if (showSettings || configTrailing != null) {
+      trailing = Row(
+        mainAxisSize: MainAxisSize.min,
+        spacing: AppSpacings.pMd,
+        children: [
+          if (showSettings)
+            HeaderIconButton(
+              icon: MdiIcons.cog,
+              onTap: () => _showSettings(context),
+            ),
+          if (configTrailing != null) configTrailing,
+        ],
+      );
+    }
+
     return PageHeader(
       title: widget.config?.titleOverride ?? _device.name,
       subtitle: _getStatusLabel(localizations),
@@ -720,7 +741,77 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
               ],
             )
           : HeaderMainIcon(icon: iconData, color: _getModeColor()),
-      trailing: widget.config?.trailing,
+      trailing: trailing,
+    );
+  }
+
+  // --------------------------------------------------------------------------
+  // SETTINGS
+  // --------------------------------------------------------------------------
+
+  void _showSettings(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
+    final isLandscape = _screenService.isLandscape;
+
+    var locked = _device.isThermostatLocked;
+
+    Widget content = StatefulBuilder(
+      builder: (sheetContext, sheetSetState) {
+        return Padding(
+          padding: AppSpacings.paddingMd,
+          child: _buildSettingsContent(
+            sheetContext,
+            locked: locked,
+            onLockedChanged: (newLocked) {
+              _setThermostatLocked(newLocked);
+              sheetSetState(() => locked = newLocked);
+            },
+          ),
+        );
+      },
+    );
+
+    if (isLandscape) {
+      showRightDrawer(
+        context,
+        title: localizations.device_settings,
+        titleIcon: MdiIcons.cog,
+        content: content,
+      );
+    } else {
+      showBottomSheetDialog(
+        context,
+        title: localizations.device_settings,
+        titleIcon: MdiIcons.cog,
+        content: content,
+      );
+    }
+  }
+
+  Widget _buildSettingsContent(
+    BuildContext context, {
+    required bool locked,
+    required ValueChanged<bool> onLockedChanged,
+  }) {
+    final localizations = AppLocalizations.of(context)!;
+    final tileHeight = AppSpacings.scale(AppTileHeight.horizontal);
+
+    return SizedBox(
+      height: tileHeight,
+      width: double.infinity,
+      child: UniversalTile(
+        layout: TileLayout.horizontal,
+        icon: MdiIcons.lock,
+        name: localizations.device_child_lock,
+        status: locked
+            ? localizations.thermostat_lock_locked
+            : localizations.thermostat_lock_unlocked,
+        isActive: locked,
+        activeColor: _getModeColor(),
+        onTileTap: () => onLockedChanged(!locked),
+        showGlow: false,
+        showDoubleBorder: false,
+      ),
     );
   }
 
@@ -732,7 +823,6 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     final localizations = AppLocalizations.of(context)!;
     final modeColorFamily = _getModeColorFamily(context);
     final statusSection = _buildStatusSection(localizations, isDark, modeColorFamily.base);
-    final controlsSection = _buildControlsSection(localizations, isDark, _getModeColor());
 
     return DevicePortraitLayout(
       content: Column(
@@ -746,13 +836,6 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
               icon: MdiIcons.eyeSettings,
             ),
             statusSection,
-          ],
-          if (controlsSection is! SizedBox) ...[
-            SectionTitle(
-              title: localizations.device_controls,
-              icon: MdiIcons.tuneVertical,
-            ),
-            controlsSection,
           ],
         ],
       ),
@@ -768,7 +851,6 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     final isLargeScreen = _screenService.isLargeScreen;
     final modeColorFamily = _getModeColorFamily(context);
     final statusSection = _buildStatusSection(localizations, isDark, modeColorFamily.base);
-    final controlsSection = _buildControlsSection(localizations, isDark, _getModeColor());
 
     return DeviceLandscapeLayout(
       mainContent: isLargeScreen
@@ -784,13 +866,6 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
               icon: MdiIcons.eyeSettings,
             ),
             statusSection,
-          ],
-          if (controlsSection is! SizedBox) ...[
-            SectionTitle(
-              title: localizations.device_controls,
-              icon: MdiIcons.tuneVertical,
-            ),
-            controlsSection,
           ],
         ],
       ),
@@ -893,41 +968,6 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     }
 
     return _buildSensorsSection(isDark, sensors);
-  }
-
-  Widget _buildControlsSection(
-    AppLocalizations localizations,
-    bool isDark,
-    ThemeColors? modeThemeColor,
-  ) {
-    if (!_device.hasThermostatLock) {
-      return const SizedBox.shrink();
-    }
-
-    final tileHeight = AppSpacings.scale(AppTileHeight.horizontal);
-
-    return Column(
-      children: [
-        SizedBox(
-          height: tileHeight,
-          width: double.infinity,
-          child: UniversalTile(
-            layout: TileLayout.horizontal,
-            icon: MdiIcons.lock,
-            name: localizations.device_child_lock,
-            status: _device.isThermostatLocked
-                ? localizations.thermostat_lock_locked
-                : localizations.thermostat_lock_unlocked,
-            isActive: _device.isThermostatLocked,
-            activeColor: modeThemeColor,
-            onTileTap: () => _setThermostatLocked(!_device.isThermostatLocked),
-            showGlow: false,
-            showDoubleBorder: false,
-            showInactiveBorder: _screenService.isLandscape,
-          ),
-        ),
-      ],
-    );
   }
 
   /// Builds sensors section using tile wrappers:
