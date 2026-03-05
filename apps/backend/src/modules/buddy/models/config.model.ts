@@ -78,12 +78,31 @@ export class BuddyConfigModel extends ModuleConfigModel {
 		name: 'voice_enabled',
 		description: 'Master toggle for the voice interface (STT + TTS). When false, audio endpoints are disabled.',
 		type: 'boolean',
-		example: true,
+		example: false,
 	})
 	@Expose({ name: 'voice_enabled' })
+	@Transform(
+		({ value, obj }): boolean => {
+			// If explicitly set, honour the value
+			if (typeof value === 'boolean') {
+				return value;
+			}
+
+			// Backward compatibility: infer true when STT or TTS was already configured
+			// but the config predates the voice_enabled field.
+			const raw = obj as Record<string, unknown>;
+			const stt = raw['stt_provider'] ?? raw['sttProvider'];
+			const tts = raw['tts_plugin'] ?? raw['ttsPlugin'];
+			const hasStt = typeof stt === 'string' && stt !== '' && stt !== (SttProvider.NONE as string);
+			const hasTts = typeof tts === 'string' && tts !== '' && tts !== TTS_PLUGIN_NONE;
+
+			return hasStt || hasTts;
+		},
+		{ toClassOnly: true },
+	)
 	@IsOptional()
 	@IsBoolean()
-	voiceEnabled: boolean = true;
+	voiceEnabled: boolean = false;
 
 	@ApiPropertyOptional({
 		name: 'stt_provider',
