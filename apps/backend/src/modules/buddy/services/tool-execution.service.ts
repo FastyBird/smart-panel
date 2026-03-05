@@ -397,7 +397,7 @@ export class ToolExecutionService {
 			// Parse string representations of numbers
 			const num = Number(value);
 
-			if (value.trim() !== '' && !Number.isNaN(num)) {
+			if (value.trim() !== '' && !Number.isNaN(num) && Number.isFinite(num)) {
 				return num;
 			}
 

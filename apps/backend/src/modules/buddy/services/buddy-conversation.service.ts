@@ -256,13 +256,7 @@ export class BuddyConversationService {
 	}
 
 	private buildSystemPrompt(context: BuddyContext): string {
-		let hasTools = false;
-
-		try {
-			hasTools = this.llmProvider.supportsTools();
-		} catch {
-			// Provider may not implement supportsTools
-		}
+		const hasTools = this.llmProvider.supportsTools();
 
 		const lines: string[] = [
 			'You are a smart home assistant for the FastyBird Smart Panel.',
