@@ -353,10 +353,17 @@ export class ToolExecutionService {
 		const space = await this.spacesService.findOne(spaceId);
 		const spaceName = space?.name ?? spaceId;
 
-		if (result.failedDevices === 0) {
+		if (result.failedDevices === 0 && result.affectedDevices > 0) {
 			return {
 				success: true,
 				message: `Set ${spaceName} lighting to "${mode}" (${result.affectedDevices} devices updated)`,
+			};
+		}
+
+		if (result.failedDevices === 0 && result.affectedDevices === 0) {
+			return {
+				success: false,
+				message: `No lighting devices found in ${spaceName}`,
 			};
 		}
 
