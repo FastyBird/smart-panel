@@ -1,6 +1,7 @@
 import 'package:fastybird_smart_panel/api/models/devices_module_channel_category.dart';
 import 'package:fastybird_smart_panel/api/models/devices_module_device_category.dart';
 import 'package:fastybird_smart_panel/api/models/scenes_module_data_scene_category.dart';
+import 'package:fastybird_smart_panel/core/utils/icon.dart';
 import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/utils/unit_converter.dart';
@@ -323,7 +324,7 @@ RoomOverviewModel buildRoomOverviewModel(RoomOverviewBuildInput input) {
   final sensorReadings = _buildSensorReadings(input);
 
   return RoomOverviewModel(
-    icon: _mapSpaceIcon(room?.icon),
+    icon: resolveSpaceIcon(room?.icon, room?.category),
     title: room?.name ?? 'Room',
     domainCards: domainCards,
     quickScenes: quickScenes,
@@ -849,51 +850,3 @@ List<SensorReading> _buildSensorReadings(RoomOverviewBuildInput input) {
   return readings;
 }
 
-/// Maps a space icon string identifier to IconData.
-IconData _mapSpaceIcon(String? iconId) {
-  if (iconId == null || iconId.isEmpty) {
-    return MdiIcons.homeOutline;
-  }
-
-  // Common room type icons
-  switch (iconId) {
-    case 'living-room':
-    case 'living_room':
-      return MdiIcons.sofa;
-    case 'bedroom':
-      return MdiIcons.bedEmpty;
-    case 'kitchen':
-      return MdiIcons.stove;
-    case 'bathroom':
-      return MdiIcons.shower;
-    case 'office':
-      return MdiIcons.desktopClassic;
-    case 'garage':
-      return MdiIcons.garage;
-    case 'garden':
-      return MdiIcons.flower;
-    case 'basement':
-      return MdiIcons.homeFloor0;
-    case 'attic':
-      return MdiIcons.homeRoof;
-    case 'dining-room':
-    case 'dining_room':
-      return MdiIcons.tableChair;
-    case 'hallway':
-      return MdiIcons.doorOpen;
-    case 'laundry':
-      return MdiIcons.washingMachine;
-    case 'nursery':
-      return MdiIcons.babyFaceOutline;
-    case 'gym':
-      return MdiIcons.dumbbell;
-    case 'pool':
-      return MdiIcons.pool;
-    case 'balcony':
-      return MdiIcons.balcony;
-    case 'terrace':
-      return MdiIcons.umbrella;
-    default:
-      return MdiIcons.homeOutline;
-  }
-}

@@ -139,7 +139,7 @@ void main() {
     test('should map room icon correctly', () {
       final input = RoomOverviewBuildInput(
         display: createDisplay(),
-        room: createRoom(icon: 'bedroom'),
+        room: createRoom(icon: 'mdi:bed-king-outline'),
         deviceCategories: [],
         scenes: [],
         now: DateTime(2024, 6, 15, 12, 0),
@@ -148,10 +148,10 @@ void main() {
 
       final model = buildRoomOverviewModel(input);
 
-      expect(model.icon, MdiIcons.bedEmpty);
+      expect(model.icon, MdiIcons.bedKingOutline);
     });
 
-    test('should use default icon when room icon is null', () {
+    test('should use category icon when room icon is null', () {
       final input = RoomOverviewBuildInput(
         display: createDisplay(),
         room: createRoom(icon: null),
@@ -163,10 +163,10 @@ void main() {
 
       final model = buildRoomOverviewModel(input);
 
-      expect(model.icon, MdiIcons.homeOutline);
+      expect(model.icon, MdiIcons.sofa);
     });
 
-    test('should use default icon for unknown icon id', () {
+    test('should use category icon for unknown icon id', () {
       final input = RoomOverviewBuildInput(
         display: createDisplay(),
         room: createRoom(icon: 'unknown-icon'),
@@ -178,7 +178,7 @@ void main() {
 
       final model = buildRoomOverviewModel(input);
 
-      expect(model.icon, MdiIcons.homeOutline);
+      expect(model.icon, MdiIcons.sofa);
     });
 
     group('domain cards', () {

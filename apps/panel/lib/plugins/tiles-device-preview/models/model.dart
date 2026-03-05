@@ -2,7 +2,7 @@ import 'package:fastybird_smart_panel/core/utils/uuid.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/tiles/tile.dart';
 import 'package:fastybird_smart_panel/plugins/tiles-device-preview/mapper.dart';
 import 'package:flutter/material.dart';
-import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
+import 'package:fastybird_smart_panel/core/utils/icon.dart';
 
 class DevicePreviewTileModel extends TileModel {
   final String _device;
@@ -56,9 +56,7 @@ class DevicePreviewTileModel extends TileModel {
       rowSpan: json['row_span'],
       colSpan: json['col_span'],
       device: UuidUtils.validateUuid(json['device']),
-      icon: json['icon'] != null && json['icon'] is String
-          ? MdiIcons.fromString(json['icon'])
-          : null,
+      icon: resolveIconNullable(json['icon'] is String ? json['icon'] : null),
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'])
           : null,

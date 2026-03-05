@@ -1,7 +1,7 @@
 import 'package:fastybird_smart_panel/api/models/devices_module_device_category.dart';
 import 'package:fastybird_smart_panel/core/utils/uuid.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/devices/device.dart';
-import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
+import 'package:fastybird_smart_panel/core/utils/icon.dart';
 
 /// Generic device model for unknown or unregistered device types.
 /// Falls back to this when no plugin has registered a mapper for the device type.
@@ -90,9 +90,7 @@ class GenericDeviceModel extends DeviceModel {
       category: category,
       name: json['name'] ?? 'Unknown Device',
       description: json['description'],
-      icon: json['icon'] != null && json['icon'] is String
-          ? MdiIcons.fromString(json['icon'])
-          : null,
+      icon: resolveIconNullable(json['icon'] is String ? json['icon'] : null),
       roomId: json['room_id'],
       zoneIds: UuidUtils.validateUuidList(zoneIds),
       controls: UuidUtils.validateUuidList(controls),

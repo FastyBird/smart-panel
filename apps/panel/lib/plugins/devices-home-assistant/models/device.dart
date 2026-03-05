@@ -2,7 +2,7 @@ import 'package:fastybird_smart_panel/api/models/devices_module_device_category.
 import 'package:fastybird_smart_panel/core/utils/uuid.dart';
 import 'package:fastybird_smart_panel/modules/devices/models/devices/device.dart';
 import 'package:fastybird_smart_panel/plugins/devices-home-assistant/constants.dart';
-import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
+import 'package:fastybird_smart_panel/core/utils/icon.dart';
 
 class HomeAssistantDeviceModel extends DeviceModel {
   final String _haDeviceId;
@@ -89,9 +89,7 @@ class HomeAssistantDeviceModel extends DeviceModel {
       category: category,
       name: json['name'],
       description: json['description'],
-      icon: json['icon'] != null && json['icon'] is String
-          ? MdiIcons.fromString(json['icon'])
-          : null,
+      icon: resolveIconNullable(json['icon'] is String ? json['icon'] : null),
       roomId: json['room_id'],
       zoneIds: UuidUtils.validateUuidList(zoneIds),
       controls: UuidUtils.validateUuidList(controls),
