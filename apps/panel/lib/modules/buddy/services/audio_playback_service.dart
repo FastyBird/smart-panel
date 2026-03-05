@@ -29,6 +29,10 @@ class AudioPlaybackService extends ChangeNotifier {
 	/// Error message if playback failed.
 	String? _error;
 
+	/// Monotonic counter incremented on every stop() or new playMessageAudio()
+	/// call. Used to cancel in-flight async operations.
+	int _requestGeneration = 0;
+
 	bool _disposed = false;
 
 	AudioPlaybackService({TokenGetter? getToken}) : _getToken = getToken {
@@ -68,6 +72,9 @@ class AudioPlaybackService extends ChangeNotifier {
 			return;
 		}
 
+		// Bump generation so any in-flight playMessageAudio call will bail out.
+		final int generation = ++_requestGeneration;
+
 		_currentMessageId = messageId;
 		_isLoading = true;
 		_isPlaying = false;
@@ -84,8 +91,15 @@ class AudioPlaybackService extends ChangeNotifier {
 			}
 
 			await _player.setUrl(audioUrl, headers: headers);
+
+			// A stop() or another playMessageAudio() occurred while loading.
+			if (_requestGeneration != generation) return;
+
 			await _player.play();
 		} catch (e) {
+			// Ignore errors from cancelled operations.
+			if (_requestGeneration != generation) return;
+
 			_error = 'Failed to play audio';
 			_isLoading = false;
 			_isPlaying = false;
@@ -100,6 +114,9 @@ class AudioPlaybackService extends ChangeNotifier {
 
 	/// Stop current playback.
 	Future<void> stop() async {
+		// Invalidate any in-flight playMessageAudio() operations.
+		_requestGeneration++;
+
 		try {
 			await _player.stop();
 		} catch (e) {
