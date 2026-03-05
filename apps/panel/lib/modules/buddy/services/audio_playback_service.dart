@@ -75,6 +75,18 @@ class AudioPlaybackService extends ChangeNotifier {
 		// Bump generation so any in-flight playMessageAudio call will bail out.
 		final int generation = ++_requestGeneration;
 
+		// Stop the previous audio before setting loading state, so that
+		// stale player state events (e.g. idle) are processed while
+		// _isLoading is still false and cannot interfere.
+		try {
+			await _player.stop();
+		} catch (_) {
+			// Ignore errors from stopping — we are about to load new audio.
+		}
+
+		// Bail out if another request was started while we were stopping.
+		if (_requestGeneration != generation) return;
+
 		_currentMessageId = messageId;
 		_isLoading = true;
 		_isPlaying = false;
@@ -143,6 +155,11 @@ class AudioPlaybackService extends ChangeNotifier {
 
 		switch (state.processingState) {
 			case ProcessingState.idle:
+			case ProcessingState.completed:
+				// While we are actively loading new audio, ignore idle/completed
+				// events — they originate from the previous audio being stopped
+				// and would incorrectly reset the loading indicator.
+				if (_isLoading) break;
 				_isPlaying = false;
 				_isLoading = false;
 				break;
@@ -154,10 +171,6 @@ class AudioPlaybackService extends ChangeNotifier {
 			case ProcessingState.ready:
 				_isLoading = false;
 				_isPlaying = state.playing;
-				break;
-			case ProcessingState.completed:
-				_isPlaying = false;
-				_isLoading = false;
 				break;
 		}
 
