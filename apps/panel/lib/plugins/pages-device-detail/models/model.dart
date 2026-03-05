@@ -1,7 +1,7 @@
 import 'package:fastybird_smart_panel/core/utils/uuid.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/pages/page.dart';
 import 'package:fastybird_smart_panel/plugins/pages-device-detail/mapper.dart';
-import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
+import 'package:fastybird_smart_panel/core/utils/icon.dart';
 
 class DeviceDetailPageModel extends PageModel {
   final String _device;
@@ -28,9 +28,7 @@ class DeviceDetailPageModel extends PageModel {
       device: UuidUtils.validateUuid(json['device']),
       id: UuidUtils.validateUuid(json['id']),
       title: json['title'],
-      icon: json['icon'] != null && json['icon'] is String
-          ? MdiIcons.fromString(json['icon'])
-          : null,
+      icon: resolveIconNullable(json['icon'] is String ? json['icon'] : null),
       order: json['order'],
       showTopBar: json['show_top_bar'],
       displays: json['displays'] != null && json['displays'] is List

@@ -1,7 +1,7 @@
 import 'package:fastybird_smart_panel/core/utils/uuid.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/pages/page.dart';
 import 'package:fastybird_smart_panel/plugins/pages-cards/mapper.dart';
-import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
+import 'package:fastybird_smart_panel/core/utils/icon.dart';
 
 class CardsPageModel extends PageModel {
   final List<String> _cards;
@@ -58,9 +58,7 @@ class CardsPageModel extends PageModel {
     return CardsPageModel(
       id: UuidUtils.validateUuid(json['id']),
       title: json['title'],
-      icon: json['icon'] != null && json['icon'] is String
-          ? MdiIcons.fromString(json['icon'])
-          : null,
+      icon: resolveIconNullable(json['icon'] is String ? json['icon'] : null),
       cards: UuidUtils.validateUuidList(cards),
       dataSource: UuidUtils.validateUuidList(dataSources),
       order: json['order'],

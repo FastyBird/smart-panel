@@ -2,7 +2,7 @@ import 'package:fastybird_smart_panel/core/utils/uuid.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/tiles/tile.dart';
 import 'package:fastybird_smart_panel/plugins/tiles-scene/mapper.dart';
 import 'package:flutter/material.dart';
-import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
+import 'package:fastybird_smart_panel/core/utils/icon.dart';
 
 class SceneTileModel extends TileModel {
   final String _scene;
@@ -70,9 +70,7 @@ class SceneTileModel extends TileModel {
       rowSpan: json['row_span'],
       scene: UuidUtils.validateUuid(json['scene']),
       label: json['label'],
-      icon: json['icon'] != null && json['icon'] is String
-          ? MdiIcons.fromString(json['icon'])
-          : null,
+      icon: resolveIconNullable(json['icon'] is String ? json['icon'] : null),
       status: json['status'],
       isOn: json['is_on'],
       colSpan: json['col_span'],

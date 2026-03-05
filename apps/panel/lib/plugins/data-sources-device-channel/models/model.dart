@@ -2,7 +2,7 @@ import 'package:fastybird_smart_panel/core/utils/uuid.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/data_sources/data_source.dart';
 import 'package:fastybird_smart_panel/plugins/data-sources-device-channel/mapper.dart';
 import 'package:flutter/material.dart';
-import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
+import 'package:fastybird_smart_panel/core/utils/icon.dart';
 
 class DeviceChannelDataSourceModel extends DataSourceModel {
   final String _device;
@@ -45,9 +45,7 @@ class DeviceChannelDataSourceModel extends DataSourceModel {
       device: UuidUtils.validateUuid(json['device']),
       channel: UuidUtils.validateUuid(json['channel']),
       property: UuidUtils.validateUuid(json['property']),
-      icon: json['icon'] != null && json['icon'] is String
-          ? MdiIcons.fromString(json['icon'])
-          : null,
+      icon: resolveIconNullable(json['icon'] is String ? json['icon'] : null),
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'])
           : null,

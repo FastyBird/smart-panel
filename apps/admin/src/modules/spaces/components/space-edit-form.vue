@@ -86,7 +86,6 @@
 						<icon-picker
 							v-model="iconPickerValue"
 							:placeholder="t('spacesModule.fields.spaces.icon.placeholder')"
-							icon-set="mdi"
 						/>
 					</el-form-item>
 

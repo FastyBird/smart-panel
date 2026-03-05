@@ -3,7 +3,7 @@ import 'package:fastybird_smart_panel/modules/dashboard/models/data_sources/data
 import 'package:fastybird_smart_panel/plugins/data-sources-weather/types/weather_data_field.dart';
 import 'package:fastybird_smart_panel/plugins/data-sources-weather/mapper.dart';
 import 'package:flutter/material.dart';
-import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
+import 'package:fastybird_smart_panel/core/utils/icon.dart';
 
 class WeatherForecastDayDataSourceModel extends DataSourceModel {
   final String? _locationId;
@@ -52,9 +52,7 @@ class WeatherForecastDayDataSourceModel extends DataSourceModel {
       dayOffset: json['day_offset'] ?? 1,
       field: WeatherDataField.fromValue(json['field']) ??
           WeatherDataField.temperatureMax,
-      icon: json['icon'] != null && json['icon'] is String
-          ? MdiIcons.fromString(json['icon'])
-          : null,
+      icon: resolveIconNullable(json['icon'] is String ? json['icon'] : null),
       unit: json['unit'],
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'])

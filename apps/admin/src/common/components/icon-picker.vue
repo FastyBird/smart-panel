@@ -11,7 +11,7 @@
 		<template #label="{ label, value }">
 			<div class="flex flex-row items-center gap-2">
 				<icon
-					:icon="`${props.iconSet}:${value}`"
+					:icon="`mdi:${value}`"
 					class="w[20px] h[20px]"
 				/>
 
@@ -22,7 +22,7 @@
 		<template #default="{ item }">
 			<div class="flex flex-row items-center gap-2">
 				<icon
-					:icon="`${props.iconSet}:${item.value}`"
+					:icon="`mdi:${item.value}`"
 					class="w[20px] h[20px]"
 				/>
 
@@ -37,7 +37,6 @@ import { computed, ref, watch } from 'vue';
 
 import { ElSelectV2 } from 'element-plus';
 
-import icIcons from '@iconify/json/json/ic.json';
 import mdiIcons from '@iconify/json/json/mdi.json';
 import { Icon } from '@iconify/vue';
 
@@ -48,7 +47,6 @@ defineOptions({
 });
 
 const props = withDefaults(defineProps<IIconPickerProps>(), {
-	iconSet: 'mdi',
 	clearable: true,
 });
 
@@ -57,10 +55,6 @@ const emit = defineEmits<{
 }>();
 
 const iconNames = computed<string[]>((): string[] => {
-	if (props.iconSet === 'ic') {
-		return Object.keys(icIcons.icons);
-	}
-
 	return Object.keys(mdiIcons.icons);
 });
 
