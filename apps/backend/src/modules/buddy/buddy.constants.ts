@@ -14,6 +14,17 @@ export enum EventType {
 
 export const LLM_PROVIDER_NONE = 'none';
 
+/**
+ * Capability identifiers for buddy-related plugins.
+ * Plugins declare these when registering metadata to indicate what they support.
+ */
+export enum BuddyCapability {
+	LLM = 'llm',
+	TTS = 'tts',
+	STT = 'stt',
+	TOOLS = 'tools',
+}
+
 export enum SttProvider {
 	NONE = 'none',
 	WHISPER_API = 'whisper_api',
@@ -116,5 +127,7 @@ export const ENERGY_HIGH_CONSUMPTION_THRESHOLD_KW = 5; // kW grid draw to trigge
 export const ENERGY_BATTERY_LOW_THRESHOLD_PERCENT = 20; // % battery level to trigger low battery suggestion
 
 export const CONFLICT_LIGHTS_UNOCCUPIED_MINUTES = 15; // minutes of no occupancy before suggesting lights off
+
+export const BUDDY_CORE_TOOLS_PROVIDER = 'buddy-core-tools';
 
 export const CONTEXT_CACHE_GLOBAL_KEY = '__global__';

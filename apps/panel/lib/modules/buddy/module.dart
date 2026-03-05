@@ -8,7 +8,7 @@ import 'package:fastybird_smart_panel/modules/buddy/models/buddy_config.dart';
 import 'package:fastybird_smart_panel/modules/buddy/repositories/buddy.dart';
 import 'package:fastybird_smart_panel/modules/buddy/service.dart';
 import 'package:fastybird_smart_panel/modules/buddy/services/suggestion_notification_service.dart';
-import 'package:fastybird_smart_panel/modules/buddy/services/wake_word_service.dart';
+import 'package:fastybird_smart_panel/modules/buddy/services/voice_activation_service.dart';
 import 'package:fastybird_smart_panel/modules/config/module.dart';
 import 'package:fastybird_smart_panel/modules/config/repositories/module_config_repository.dart';
 import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
@@ -19,7 +19,7 @@ class BuddyModuleService {
 	late BuddyRepository _buddyRepository;
 	late BuddyService _buddyService;
 	late SuggestionNotificationService _notificationService;
-	late WakeWordService _wakeWordService;
+	late VoiceActivationService _voiceActivationService;
 	late ModuleConfigRepository<BuddyConfigModel> _buddyConfigRepo;
 
 	bool _isLoading = true;
@@ -42,10 +42,10 @@ class BuddyModuleService {
 			},
 		);
 
-		_wakeWordService = WakeWordService();
+		_voiceActivationService = VoiceActivationService();
 
-		// Wire up wake word speech detection → screen wake
-		_wakeWordService.onSpeechDetected = () {
+		// Wire up voice activation speech detection → screen wake
+		_voiceActivationService.onSpeechDetected = () {
 			try {
 				final displayRepo = locator<DisplayRepository>();
 
@@ -59,8 +59,8 @@ class BuddyModuleService {
 			}
 		};
 
-		// Wire up wake word capture → send audio through buddy pipeline
-		_wakeWordService.onCapture = (result) async {
+		// Wire up voice activation capture → send audio through buddy pipeline
+		_voiceActivationService.onCapture = (result) async {
 			// Ensure we have an active conversation
 			if (!_buddyService.hasActiveConversation) {
 				await _buddyService.startNewConversation();
@@ -82,7 +82,7 @@ class BuddyModuleService {
 		locator.registerSingleton(_buddyRepository);
 		locator.registerSingleton(_buddyService);
 		locator.registerSingleton(_notificationService);
-		locator.registerSingleton(_wakeWordService);
+		locator.registerSingleton(_voiceActivationService);
 	}
 
 	Future<void> initialize() async {
@@ -139,7 +139,7 @@ class BuddyModuleService {
 	BuddyRepository get buddyRepository => _buddyRepository;
 	BuddyService get buddyService => _buddyService;
 	SuggestionNotificationService get notificationService => _notificationService;
-	WakeWordService get wakeWordService => _wakeWordService;
+	VoiceActivationService get voiceActivationService => _voiceActivationService;
 	ModuleConfigRepository<BuddyConfigModel> get buddyConfigRepo => _buddyConfigRepo;
 
 	void dispose() {
@@ -148,9 +148,9 @@ class BuddyModuleService {
 			_socketEventHandler,
 		);
 
-		_wakeWordService.onSpeechDetected = null;
-		_wakeWordService.onCapture = null;
-		_wakeWordService.dispose();
+		_voiceActivationService.onSpeechDetected = null;
+		_voiceActivationService.onCapture = null;
+		_voiceActivationService.dispose();
 		_buddyRepository.onSuggestionCreated = null;
 		_notificationService.dispose();
 		_buddyService.dispose();

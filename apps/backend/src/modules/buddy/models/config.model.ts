@@ -1,5 +1,5 @@
 import { Expose, Transform } from 'class-transformer';
-import { IsInt, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsBoolean, IsInt, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -19,7 +19,6 @@ import {
 	LLM_PROVIDER_NONE,
 	SttProvider,
 	TTS_DEFAULT_SPEED,
-	TtsProvider,
 } from '../buddy.constants';
 
 @ApiSchema({ name: 'ConfigModuleDataBuddy' })
@@ -75,6 +74,17 @@ export class BuddyConfigModel extends ModuleConfigModel {
 	ollamaUrl?: string;
 
 	@ApiPropertyOptional({
+		name: 'voice_enabled',
+		description: 'Master toggle for the voice interface (STT + TTS). When false, audio endpoints are disabled.',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'voice_enabled' })
+	@IsOptional()
+	@IsBoolean()
+	voiceEnabled: boolean = false;
+
+	@ApiPropertyOptional({
 		name: 'stt_provider',
 		description: 'Speech-to-text provider (none, whisper_api, whisper_local)',
 		type: 'string',
@@ -124,35 +134,35 @@ export class BuddyConfigModel extends ModuleConfigModel {
 	sttLanguage?: string;
 
 	@ApiPropertyOptional({
-		name: 'tts_provider',
-		description: 'Text-to-speech provider (none, openai_tts, elevenlabs, system)',
+		name: 'tts_plugin',
+		description:
+			'TTS provider plugin type (e.g. buddy-openai-plugin, buddy-elevenlabs-plugin, buddy-system-tts-plugin, or none)',
 		type: 'string',
-		enum: Object.values(TtsProvider),
-		example: TtsProvider.NONE,
+		example: LLM_PROVIDER_NONE,
 	})
-	@Expose({ name: 'tts_provider' })
+	@Expose({ name: 'tts_plugin' })
 	@IsOptional()
 	@IsString()
-	ttsProvider: string = TtsProvider.NONE;
+	ttsPlugin: string = LLM_PROVIDER_NONE;
 
-	@ApiPropertyOptional({
-		name: 'tts_api_key',
-		description: 'API key for the TTS provider (required for openai_tts and elevenlabs)',
-		type: 'string',
-	})
+	// Legacy field – kept so existing YAML configs pass forbidNonWhitelisted validation.
+	// Value is discarded on read; TTS API keys now live in each plugin's config.
 	@Expose({ name: 'tts_api_key' })
-	@Transform(
-		({ value }): string | undefined =>
-			typeof value === 'string' && value.length > 0 ? '***' : (value as string | undefined),
-		{ toPlainOnly: true, groups: ['api'] },
-	)
+	@Transform(() => undefined, { toClassOnly: true })
 	@IsOptional()
 	@IsString()
 	ttsApiKey?: string;
 
+	// Legacy field – kept for backwards compatibility
+	@Expose({ name: 'tts_provider' })
+	@Transform(() => undefined, { toClassOnly: true })
+	@IsOptional()
+	@IsString()
+	ttsProvider?: string;
+
 	@ApiPropertyOptional({
 		name: 'tts_voice',
-		description: 'Voice identifier for TTS (e.g. alloy, echo, fable for OpenAI; voice ID for ElevenLabs)',
+		description: 'Voice identifier for TTS (provider-specific, e.g. alloy for OpenAI; voice ID for ElevenLabs)',
 		type: 'string',
 		example: 'alloy',
 	})

@@ -22,6 +22,12 @@ export interface ExtensionMetadata {
 	author?: string;
 	readme?: string;
 	docs?: string;
+	/**
+	 * Generic capability identifiers declared by the extension.
+	 * Each module defines its own valid capability values.
+	 * For example, the buddy module uses: 'llm', 'tts', 'stt', 'tools'
+	 */
+	capabilities?: string[];
 	links?: {
 		documentation?: string;
 		devDocumentation?: string;
@@ -212,6 +218,7 @@ export class ExtensionsService {
 		extension.enabled = enabled;
 		extension.isCore = isCore;
 		extension.canToggleEnabled = canToggleEnabled;
+		extension.capabilities = metadata?.capabilities;
 
 		if (metadata?.links) {
 			const links = new ExtensionLinksModel();
@@ -265,6 +272,7 @@ export class ExtensionsService {
 		extension.enabled = enabled;
 		extension.isCore = isCore;
 		extension.canToggleEnabled = canToggleEnabled;
+		extension.capabilities = metadata?.capabilities;
 
 		if (metadata?.links) {
 			const links = new ExtensionLinksModel();

@@ -1,5 +1,5 @@
 import { Expose, Transform } from 'class-transformer';
-import { IsInt, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsBoolean, IsInt, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -85,26 +85,28 @@ export class UpdateBuddyConfigDto extends UpdateModuleConfigDto {
 	stt_language?: string;
 
 	@ApiPropertyOptional({
-		name: 'tts_provider',
-		description: 'Text-to-speech provider (none, openai_tts, elevenlabs, system)',
+		name: 'voice_enabled',
+		description: 'Master toggle for the voice interface (STT + TTS)',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'voice_enabled' })
+	@Transform(({ value }: { value: unknown }) => (value === null ? undefined : value))
+	@IsOptional()
+	@IsBoolean({ message: '[{"field":"voice_enabled","reason":"Voice enabled must be a boolean."}]' })
+	voice_enabled?: boolean;
+
+	@ApiPropertyOptional({
+		name: 'tts_plugin',
+		description:
+			'TTS provider plugin type (e.g. buddy-openai-plugin, buddy-elevenlabs-plugin, buddy-system-tts-plugin, or none)',
 		type: 'string',
 		example: 'none',
 	})
-	@Expose({ name: 'tts_provider' })
+	@Expose({ name: 'tts_plugin' })
 	@IsOptional()
-	@IsString({ message: '[{"field":"tts_provider","reason":"TTS provider must be a valid string."}]' })
-	tts_provider?: string;
-
-	@ApiPropertyOptional({
-		name: 'tts_api_key',
-		description: 'API key for the TTS provider (required for openai_tts and elevenlabs)',
-		type: 'string',
-	})
-	@Expose({ name: 'tts_api_key' })
-	@Transform(({ value }): string | undefined => (value === '***' ? undefined : (value as string | undefined)))
-	@IsOptional()
-	@IsString({ message: '[{"field":"tts_api_key","reason":"TTS API key must be a valid string."}]' })
-	tts_api_key?: string;
+	@IsString({ message: '[{"field":"tts_plugin","reason":"TTS plugin must be a valid string."}]' })
+	tts_plugin?: string;
 
 	@ApiPropertyOptional({
 		name: 'tts_voice',

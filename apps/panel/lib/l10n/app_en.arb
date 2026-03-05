@@ -836,13 +836,13 @@
   "@settings_general_settings_button_maintenance": {
     "description": "Button label for navigating to Maintenance section."
   },
-  "settings_general_settings_button_wake_word": "Wake Word",
-  "@settings_general_settings_button_wake_word": {
-    "description": "Button label for navigating to Wake Word settings section."
+  "settings_general_settings_button_voice_activation": "Voice Activation",
+  "@settings_general_settings_button_voice_activation": {
+    "description": "Button label for navigating to Voice Activation settings section."
   },
-  "settings_wake_word_settings_title": "Voice activation settings",
-  "@settings_wake_word_settings_title": {
-    "description": "Subtitle for the Wake Word settings tile."
+  "settings_voice_activation_settings_title": "Voice activation settings",
+  "@settings_voice_activation_settings_title": {
+    "description": "Subtitle for the Voice Activation settings tile."
   },
   "settings_weather_settings_title": "Weather Settings",
   "@settings_weather_settings_title": {

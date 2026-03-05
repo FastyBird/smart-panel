@@ -1208,14 +1208,14 @@ abstract class AppLocalizations {
   /// Button label for navigating to Wake Word settings section.
   ///
   /// In en, this message translates to:
-  /// **'Wake Word'**
-  String get settings_general_settings_button_wake_word;
+  /// **'Voice Activation'**
+  String get settings_general_settings_button_voice_activation;
 
-  /// Subtitle for the Wake Word settings tile.
+  /// Subtitle for the Voice Activation settings tile.
   ///
   /// In en, this message translates to:
   /// **'Voice activation settings'**
-  String get settings_wake_word_settings_title;
+  String get settings_voice_activation_settings_title;
 
   /// Title for the Weather Settings section.
   ///

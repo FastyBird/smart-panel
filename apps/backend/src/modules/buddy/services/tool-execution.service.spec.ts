@@ -399,15 +399,14 @@ describe('ToolExecutionService', () => {
 	});
 
 	describe('executeTool - unknown tool', () => {
-		it('should return failure for unknown tool name', async () => {
+		it('should return null for unknown tool name', async () => {
 			const result = await service.executeTool({
 				id: 'call-1',
 				name: 'unknown_tool',
 				arguments: {},
 			});
 
-			expect(result.success).toBe(false);
-			expect(result.message).toContain('Unknown tool');
+			expect(result).toBeNull();
 		});
 	});
 

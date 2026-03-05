@@ -32,10 +32,3 @@ export enum SttProvider {
 	WHISPER_API = 'whisper_api',
 	WHISPER_LOCAL = 'whisper_local',
 }
-
-export enum TtsProvider {
-	NONE = 'none',
-	OPENAI_TTS = 'openai_tts',
-	ELEVENLABS = 'elevenlabs',
-	SYSTEM = 'system',
-}

@@ -12,24 +12,19 @@ import { LightingIntentDto } from '../../spaces/dto/lighting-intent.dto';
 import { SpaceIntentService } from '../../spaces/services/space-intent.service';
 import { SpacesService } from '../../spaces/services/spaces.service';
 import { LightingIntentType, LightingMode } from '../../spaces/spaces.constants';
+import { BUDDY_CORE_TOOLS_PROVIDER } from '../buddy.constants';
 import { LlmToolCall, ToolDefinition } from '../platforms/llm-provider.platform';
+import { IToolProvider, ToolExecutionResult } from '../platforms/tool-provider.platform';
 
 const TOOL_EXECUTION_TIMEOUT_MS = 5_000;
 
 /**
- * Result of a tool execution, containing success status and a human-readable description.
- */
-export interface ToolExecutionResult {
-	success: boolean;
-	message: string;
-}
-
-/**
- * Service responsible for executing LLM tool calls by mapping them
- * to the appropriate home automation actions (intents, scenes, lighting modes).
+ * Core tool provider for built-in home automation tools.
+ * Implements IToolProvider so it can be registered in the ToolProviderRegistryService.
+ * Additional tool providers can be registered by other modules and plugins.
  */
 @Injectable()
-export class ToolExecutionService {
+export class ToolExecutionService implements IToolProvider {
 	private readonly logger = new Logger(ToolExecutionService.name);
 
 	constructor(
@@ -42,6 +37,10 @@ export class ToolExecutionService {
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
 		private readonly platformRegistry: PlatformRegistryService,
 	) {}
+
+	getType(): string {
+		return BUDDY_CORE_TOOLS_PROVIDER;
+	}
 
 	/**
 	 * Returns the list of tool definitions for the LLM system prompt.
@@ -123,9 +122,14 @@ export class ToolExecutionService {
 
 	/**
 	 * Execute a tool call and return the result.
-	 * Maps the LLM tool call to the appropriate home automation action.
+	 * Returns null if this provider doesn't handle the tool.
 	 */
-	async executeTool(toolCall: LlmToolCall): Promise<ToolExecutionResult> {
+	async executeTool(toolCall: LlmToolCall): Promise<ToolExecutionResult | null> {
+		// Check if we handle this tool
+		if (!['control_device', 'run_scene', 'set_space_lighting'].includes(toolCall.name)) {
+			return null;
+		}
+
 		this.logger.debug(`Executing tool: ${toolCall.name} (id=${toolCall.id})`);
 
 		try {

@@ -91,6 +91,26 @@
 		<el-divider />
 
 		<el-form-item
+			:label="t('buddyModule.fields.config.voiceEnabled.title')"
+			prop="voiceEnabled"
+			label-position="left"
+		>
+			<template #label>
+				{{ t('buddyModule.fields.config.voiceEnabled.title') }}
+				<el-text
+					size="small"
+					type="info"
+				>
+					{{ t('buddyModule.fields.config.voiceEnabled.description') }}
+				</el-text>
+			</template>
+			<el-switch
+				v-model="model.voiceEnabled"
+				name="voiceEnabled"
+			/>
+		</el-form-item>
+
+		<el-form-item
 			:label="t('buddyModule.fields.config.sttProvider.title')"
 			prop="sttProvider"
 		>
@@ -160,61 +180,51 @@
 		<el-divider />
 
 		<el-form-item
-			:label="t('buddyModule.fields.config.ttsProvider.title')"
-			prop="ttsProvider"
+			:label="t('buddyModule.fields.config.ttsPlugin.title')"
+			prop="ttsPlugin"
 		>
-			<el-select
-				v-model="model.ttsProvider"
-				:placeholder="t('buddyModule.fields.config.ttsProvider.placeholder')"
-				name="ttsProvider"
-			>
-				<el-option
-					v-for="option in ttsProviderOptions"
-					:key="option.value"
-					:label="option.label"
-					:value="option.value"
-				/>
-			</el-select>
-		</el-form-item>
-
-		<el-form-item
-			v-if="model.ttsProvider === TtsProvider.OPENAI_TTS || model.ttsProvider === TtsProvider.ELEVENLABS"
-			:label="t('buddyModule.fields.config.ttsApiKey.title')"
-			prop="ttsApiKey"
-		>
+			<template #label>
+				{{ t('buddyModule.fields.config.ttsPlugin.title') }}
+				<el-text
+					size="small"
+					type="info"
+				>
+					{{ t('buddyModule.fields.config.ttsPlugin.description') }}
+				</el-text>
+			</template>
 			<el-input
-				v-model="model.ttsApiKey"
-				:placeholder="t('buddyModule.fields.config.ttsApiKey.placeholder')"
-				:type="showTtsApiKey ? 'text' : 'password'"
-				name="ttsApiKey"
+				v-model="model.ttsPlugin"
+				:placeholder="t('buddyModule.fields.config.ttsPlugin.placeholder')"
+				name="ttsPlugin"
 				clearable
-			>
-				<template #suffix>
-					<el-icon
-						class="cursor-pointer"
-						@click="showTtsApiKey = !showTtsApiKey"
-					>
-						<icon :icon="showTtsApiKey ? 'mdi:eye-off' : 'mdi:eye'" />
-					</el-icon>
-				</template>
-			</el-input>
+			/>
 		</el-form-item>
 
+		<el-alert
+			v-if="model.ttsPlugin !== 'none'"
+			type="info"
+			show-icon
+			:closable="false"
+			style="margin-bottom: 18px"
+		>
+			{{ t('buddyModule.texts.pluginConfigHint') }}
+		</el-alert>
+
 		<el-form-item
-			v-if="model.ttsProvider !== TtsProvider.NONE"
+			v-if="model.ttsPlugin !== 'none'"
 			:label="t('buddyModule.fields.config.ttsVoice.title')"
 			prop="ttsVoice"
 		>
 			<el-input
 				v-model="model.ttsVoice"
-				:placeholder="ttsVoicePlaceholder"
+				:placeholder="t('buddyModule.fields.config.ttsVoice.placeholder')"
 				name="ttsVoice"
 				clearable
 			/>
 		</el-form-item>
 
 		<el-form-item
-			v-if="model.ttsProvider !== TtsProvider.NONE && model.ttsProvider !== TtsProvider.ELEVENLABS"
+			v-if="model.ttsPlugin !== 'none'"
 			:label="t('buddyModule.fields.config.ttsSpeed.title')"
 			prop="ttsSpeed"
 		>
@@ -239,7 +249,7 @@ import { ElAlert, ElDivider, ElForm, ElFormItem, ElIcon, ElInput, ElInputNumber,
 import { Icon } from '@iconify/vue';
 
 import { FormResult, type FormResultType, Layout, useConfigModuleEditForm } from '../../config';
-import { LEGACY_PROVIDER_MAP, LLM_PROVIDER_NONE, SttProvider, TtsProvider } from '../buddy.constants';
+import { LEGACY_PROVIDER_MAP, LLM_PROVIDER_NONE, SttProvider } from '../buddy.constants';
 import { useBuddyProviders } from '../composables/useBuddyProviders';
 import type { IBuddyConfigEditForm } from '../schemas/config.types';
 
@@ -289,7 +299,6 @@ const { formEl, model, formChanged, submit, formResult } = useConfigModuleEditFo
 });
 
 const showSttApiKey = ref<boolean>(false);
-const showTtsApiKey = ref<boolean>(false);
 
 type TagType = 'primary' | 'success' | 'warning' | 'info' | 'danger';
 
@@ -343,26 +352,6 @@ const sttProviderOptions = computed(() => [
 	{ value: SttProvider.WHISPER_API, label: t('buddyModule.fields.config.sttProvider.options.whisperApi') },
 	{ value: SttProvider.WHISPER_LOCAL, label: t('buddyModule.fields.config.sttProvider.options.whisperLocal') },
 ]);
-
-const ttsProviderOptions = computed(() => [
-	{ value: TtsProvider.NONE, label: t('buddyModule.fields.config.ttsProvider.options.none') },
-	{ value: TtsProvider.OPENAI_TTS, label: t('buddyModule.fields.config.ttsProvider.options.openaiTts') },
-	{ value: TtsProvider.ELEVENLABS, label: t('buddyModule.fields.config.ttsProvider.options.elevenlabs') },
-	{ value: TtsProvider.SYSTEM, label: t('buddyModule.fields.config.ttsProvider.options.system') },
-]);
-
-const ttsVoicePlaceholder = computed<string>((): string => {
-	switch (model.ttsProvider) {
-		case TtsProvider.OPENAI_TTS:
-			return 'alloy';
-		case TtsProvider.ELEVENLABS:
-			return '21m00Tcm4TlvDq8ikWAM';
-		case TtsProvider.SYSTEM:
-			return 'en';
-		default:
-			return '';
-	}
-});
 
 const sttModelPlaceholder = computed<string>((): string => {
 	switch (model.sttProvider) {

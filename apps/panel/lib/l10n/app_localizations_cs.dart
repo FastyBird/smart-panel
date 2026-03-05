@@ -675,10 +675,10 @@ class AppLocalizationsCs extends AppLocalizations {
   String get settings_general_settings_button_maintenance => 'Údržba';
 
   @override
-  String get settings_general_settings_button_wake_word => 'Aktivační slovo';
+  String get settings_general_settings_button_voice_activation => 'Hlasová aktivace';
 
   @override
-  String get settings_wake_word_settings_title => 'Nastavení hlasové aktivace';
+  String get settings_voice_activation_settings_title => 'Nastavení hlasové aktivace';
 
   @override
   String get settings_weather_settings_title => 'Nastavení počasí';

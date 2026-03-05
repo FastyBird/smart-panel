@@ -664,10 +664,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settings_general_settings_button_maintenance => 'Maintenance';
 
   @override
-  String get settings_general_settings_button_wake_word => 'Wake Word';
+  String get settings_general_settings_button_voice_activation => 'Voice Activation';
 
   @override
-  String get settings_wake_word_settings_title => 'Voice activation settings';
+  String get settings_voice_activation_settings_title => 'Voice activation settings';
 
   @override
   String get settings_weather_settings_title => 'Weather Settings';
