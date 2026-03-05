@@ -30,6 +30,11 @@ export class SttProviderService {
 
 	async transcribe(audioBuffer: Buffer, mimeType: string): Promise<string> {
 		const config = this.getConfig();
+
+		if (!config.voiceEnabled) {
+			throw new BuddySttNotConfiguredException();
+		}
+
 		const provider = config.sttProvider;
 
 		if (provider === (SttProvider.NONE as string) || !provider) {
