@@ -57,6 +57,20 @@ class BuddyRepository extends ChangeNotifier {
 		required Dio dio,
 	}) : _dio = dio;
 
+	/// Get the current Bearer token from Dio's default headers.
+	///
+	/// Used by [AudioPlaybackService] to authenticate audio requests
+	/// made outside of Dio (e.g., via just_audio).
+	String? getCurrentToken() {
+		final auth = _dio.options.headers['Authorization'];
+
+		if (auth is String && auth.startsWith('Bearer ')) {
+			return auth.substring(7);
+		}
+
+		return null;
+	}
+
 	// ============================================
 	// GETTERS
 	// ============================================

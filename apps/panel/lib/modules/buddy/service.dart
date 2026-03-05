@@ -71,6 +71,14 @@ class BuddyService extends ChangeNotifier {
 	bool get isSttNotConfigured => _buddyRepository.isSttNotConfigured;
 
 	// ============================================
+	// AUTH ACCESSORS
+	// ============================================
+
+	/// Get the current auth token for use by services that bypass Dio
+	/// (e.g., just_audio player).
+	String? getCurrentToken() => _buddyRepository.getCurrentToken();
+
+	// ============================================
 	// CONVERSATION ACTIONS
 	// ============================================
 

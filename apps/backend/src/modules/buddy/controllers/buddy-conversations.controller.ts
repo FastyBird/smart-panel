@@ -14,15 +14,7 @@ import {
 	Req,
 	Res,
 } from '@nestjs/common';
-import {
-	ApiBody,
-	ApiConsumes,
-	ApiNoContentResponse,
-	ApiOperation,
-	ApiParam,
-	ApiQuery,
-	ApiTags,
-} from '@nestjs/swagger';
+import { ApiBody, ApiConsumes, ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import { MULTIPART_MAX_FILE_SIZE_BYTES } from '../../../app.constants';
 import { createExtensionLogger } from '../../../common/logger';

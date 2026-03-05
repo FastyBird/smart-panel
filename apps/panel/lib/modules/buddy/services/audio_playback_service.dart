@@ -3,6 +3,9 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 
+/// Callback type for retrieving the current authentication token.
+typedef TokenGetter = String? Function();
+
 /// Service for playing TTS audio responses from the buddy backend.
 ///
 /// Manages an [AudioPlayer] instance, handles playback lifecycle,
@@ -10,6 +13,9 @@ import 'package:just_audio/just_audio.dart';
 class AudioPlaybackService extends ChangeNotifier {
 	final AudioPlayer _player = AudioPlayer();
 	late final StreamSubscription<PlayerState> _playerStateSubscription;
+
+	/// Optional callback to retrieve the current auth token for HTTP requests.
+	final TokenGetter? _getToken;
 
 	/// The message ID currently being played (or last played).
 	String? _currentMessageId;
@@ -25,7 +31,7 @@ class AudioPlaybackService extends ChangeNotifier {
 
 	bool _disposed = false;
 
-	AudioPlaybackService() {
+	AudioPlaybackService({TokenGetter? getToken}) : _getToken = getToken {
 		_playerStateSubscription = _player.playerStateStream.listen(_onPlayerStateChanged);
 	}
 
@@ -69,7 +75,14 @@ class AudioPlaybackService extends ChangeNotifier {
 		notifyListeners();
 
 		try {
-			await _player.setUrl(audioUrl);
+			final Map<String, String> headers = {};
+			final token = _getToken?.call();
+
+			if (token != null) {
+				headers['Authorization'] = 'Bearer $token';
+			}
+
+			await _player.setUrl(audioUrl, headers: headers);
 			await _player.play();
 		} catch (e) {
 			_error = 'Failed to play audio';

@@ -136,7 +136,7 @@ class MessageBubble extends StatelessWidget {
 			padding: EdgeInsets.only(left: AppSpacings.pSm),
 			child: GestureDetector(
 				onTap: () {
-					if (isPlaying) {
+					if (isPlaying || isLoading) {
 						service.stop();
 					} else {
 						service.playMessageAudio(message.id, audioUrl!);

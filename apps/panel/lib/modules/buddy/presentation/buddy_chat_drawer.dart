@@ -68,7 +68,9 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 		_audioRecordingService = AudioRecordingService();
 		_audioRecordingService.addListener(_onRecordingChanged);
 		_audioRecordingService.checkPermission();
-		_audioPlaybackService = AudioPlaybackService();
+		_audioPlaybackService = AudioPlaybackService(
+			getToken: () => _buddyService.getCurrentToken(),
+		);
 		_audioPlaybackService.addListener(_onPlaybackChanged);
 		_initializeConversation();
 	}
