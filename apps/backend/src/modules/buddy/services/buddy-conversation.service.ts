@@ -9,7 +9,7 @@ import { EventType, MessageRole } from '../buddy.constants';
 import { BuddyConversationNotFoundException } from '../buddy.exceptions';
 import { BuddyConversationEntity } from '../entities/buddy-conversation.entity';
 import { BuddyMessageEntity } from '../entities/buddy-message.entity';
-import { LlmResponse, ToolDefinition } from '../platforms/llm-provider.platform';
+import { LlmResponse, LlmResponseMeta, ToolDefinition } from '../platforms/llm-provider.platform';
 
 import { BuddyContext, BuddyContextService } from './buddy-context.service';
 import { ChatMessage, LlmProviderService } from './llm-provider.service';
@@ -192,6 +192,9 @@ export class BuddyConversationService {
 			return response;
 		}
 
+		// Accumulate token usage and duration across all LLM calls
+		const accumulatedMeta = { ...response.meta };
+
 		// Tool execution loop
 		for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
 			if (!response.toolCalls || response.toolCalls.length === 0) {
@@ -218,7 +221,7 @@ export class BuddyConversationService {
 			// If the LLM already provided a final answer alongside the tool calls,
 			// return it directly — no need to re-query the LLM for a summary.
 			if (hasContentWithTools) {
-				return { ...response, toolCalls: undefined };
+				return { ...response, meta: accumulatedMeta, toolCalls: undefined };
 			}
 
 			// Append the assistant's tool call response and tool results as a follow-up user message
@@ -239,12 +242,14 @@ export class BuddyConversationService {
 
 			// Call LLM again with tools so multi-step tool use works
 			response = await this.llmProvider.sendMessage(systemPrompt, workingMessages, { tools });
+			this.accumulateMeta(accumulatedMeta, response.meta);
 		}
 
 		// If loop exhausted and final response has no text content, provide a fallback
 		if (!response.content && response.toolCalls && response.toolCalls.length > 0) {
 			return {
 				...response,
+				meta: accumulatedMeta,
 				content:
 					'I attempted to perform the requested actions but reached the maximum number of steps. ' +
 					'Please try again or simplify your request.',
@@ -252,7 +257,25 @@ export class BuddyConversationService {
 			};
 		}
 
-		return response;
+		return { ...response, meta: accumulatedMeta };
+	}
+
+	/**
+	 * Accumulate token counts and duration from a new LLM response into the running totals.
+	 */
+	private accumulateMeta(accumulated: LlmResponseMeta, next: LlmResponseMeta): void {
+		accumulated.inputTokens = this.addNullable(accumulated.inputTokens, next.inputTokens);
+		accumulated.outputTokens = this.addNullable(accumulated.outputTokens, next.outputTokens);
+		accumulated.durationMs = this.addNullable(accumulated.durationMs, next.durationMs);
+		accumulated.cacheReadTokens = this.addNullable(accumulated.cacheReadTokens, next.cacheReadTokens);
+		accumulated.cacheWriteTokens = this.addNullable(accumulated.cacheWriteTokens, next.cacheWriteTokens);
+		accumulated.finishReason = next.finishReason;
+	}
+
+	private addNullable(a: number | null, b: number | null): number | null {
+		if (a === null && b === null) return null;
+
+		return (a ?? 0) + (b ?? 0);
 	}
 
 	private buildSystemPrompt(context: BuddyContext): string {
