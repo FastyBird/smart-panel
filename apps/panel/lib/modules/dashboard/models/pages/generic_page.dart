@@ -1,3 +1,4 @@
+import 'package:fastybird_smart_panel/core/utils/icon.dart';
 import 'package:fastybird_smart_panel/core/utils/uuid.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/models/pages/page.dart';
 
@@ -26,7 +27,7 @@ class GenericPageModel extends PageModel {
       id: UuidUtils.validateUuid(json['id']),
       type: json['type'] ?? 'unknown',
       title: json['title'] ?? 'Unknown',
-      icon: null,
+      icon: resolveIconNullable(json['icon'] is String ? json['icon'] : null),
       order: json['order'] ?? 0,
       showTopBar: json['show_top_bar'] ?? true,
       displays: json['displays'] != null
