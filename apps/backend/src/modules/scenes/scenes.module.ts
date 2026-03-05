@@ -18,6 +18,8 @@ import { ToolProviderRegistryService } from '../tools/services/tool-provider-reg
 import { ToolsModule } from '../tools/tools.module';
 import { WebsocketModule } from '../websocket/websocket.module';
 
+import { SceneToolService } from './services/scene-tool.service';
+
 import { SceneActionsController } from './controllers/scene-actions.controller';
 import { ScenesController } from './controllers/scenes.controller';
 import { UpdateScenesConfigDto } from './dto/update-config.dto';

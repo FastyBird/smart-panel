@@ -24,6 +24,8 @@ import { ToolProviderRegistryService } from '../tools/services/tool-provider-reg
 import { ToolsModule } from '../tools/tools.module';
 import { WebsocketModule } from '../websocket/websocket.module';
 
+import { DeviceControlToolService } from './services/device-control-tool.service';
+
 import { ChannelsController } from './controllers/channels.controller';
 import { ChannelsControlsController } from './controllers/channels.controls.controller';
 import { ChannelsPropertiesController } from './controllers/channels.properties.controller';

@@ -3,6 +3,7 @@ import { ModuleRef } from '@nestjs/core';
 
 import { LlmToolCall, ToolDefinition, ToolExecutionResult } from '../../tools/platforms/tool-provider.platform';
 import { BaseToolProviderService } from '../../tools/services/base-tool-provider.service';
+
 import { LightingIntentDto } from '../dto/lighting-intent.dto';
 import { LightingIntentType, LightingMode } from '../spaces.constants';
 
