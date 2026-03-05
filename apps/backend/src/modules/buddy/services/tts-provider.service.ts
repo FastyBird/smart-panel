@@ -49,6 +49,7 @@ export class TtsProviderService implements OnModuleInit, OnModuleDestroy {
 
 	onModuleInit(): void {
 		this.cleanupTimer = setInterval(() => this.cleanExpiredCache(), CACHE_CLEANUP_INTERVAL_MS);
+		this.cleanupTimer.unref();
 	}
 
 	onModuleDestroy(): void {

@@ -1,19 +1,6 @@
 import { FastifyRequest as Request, FastifyReply as Response } from 'fastify';
 
-import {
-	Body,
-	Controller,
-	Delete,
-	Get,
-	Header,
-	HttpCode,
-	Param,
-	ParseUUIDPipe,
-	Post,
-	Query,
-	Req,
-	Res,
-} from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, ParseUUIDPipe, Post, Query, Req, Res } from '@nestjs/common';
 import { ApiBody, ApiConsumes, ApiNoContentResponse, ApiOperation, ApiParam, ApiQuery, ApiTags } from '@nestjs/swagger';
 
 import { MULTIPART_MAX_FILE_SIZE_BYTES } from '../../../app.constants';
@@ -329,7 +316,6 @@ export class BuddyConversationsController {
 	@ApiServiceUnavailableResponse('TTS provider not configured')
 	@ApiInternalServerErrorResponse('Internal server error')
 	@Get(':id/messages/:messageId/audio')
-	@Header('Cache-Control', 'private, max-age=300')
 	async getMessageAudio(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Param('messageId', new ParseUUIDPipe({ version: '4' })) messageId: string,
@@ -360,6 +346,7 @@ export class BuddyConversationsController {
 
 		void res.header('Content-Type', contentType);
 		void res.header('Content-Length', String(buffer.length));
+		void res.header('Cache-Control', 'private, max-age=300');
 		void res.send(buffer);
 	}
 
