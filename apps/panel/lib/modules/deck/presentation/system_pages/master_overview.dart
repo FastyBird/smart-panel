@@ -1,5 +1,4 @@
 import 'package:event_bus/event_bus.dart';
-import 'package:fastybird_smart_panel/api/models/spaces_module_data_space_category.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/utils/icon.dart';
 import 'package:fastybird_smart_panel/core/utils/number_format.dart';
@@ -137,7 +136,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
         roomSummaries.add(RoomSummary(
           id: room.id,
           name: room.name,
-          icon: _getIconForRoom(room),
+          icon: resolveSpaceIcon(room.icon, room.category),
           onlineDevices: onlineCount,
           totalDevices: deviceCount,
           temperature: temperature,
@@ -183,63 +182,6 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
       }
     }
     return null;
-  }
-
-  /// Get an appropriate icon for a room.
-  ///
-  /// Prefers the custom icon set via admin, then falls back to
-  /// category-based defaults.
-  IconData _getIconForRoom(SpaceView room) {
-    // Use custom icon if set by admin
-    final customIcon = resolveIconNullable(room.icon);
-    if (customIcon != null) {
-      return customIcon;
-    }
-
-    // Fall back to category-based defaults
-    switch (room.category) {
-      case SpacesModuleDataSpaceCategory.livingRoom:
-        return MdiIcons.sofa;
-      case SpacesModuleDataSpaceCategory.bedroom:
-        return MdiIcons.bedKingOutline;
-      case SpacesModuleDataSpaceCategory.bathroom:
-        return MdiIcons.showerHead;
-      case SpacesModuleDataSpaceCategory.kitchen:
-        return MdiIcons.stove;
-      case SpacesModuleDataSpaceCategory.office:
-        return MdiIcons.deskLamp;
-      case SpacesModuleDataSpaceCategory.garage:
-        return MdiIcons.garage;
-      case SpacesModuleDataSpaceCategory.outdoorGarden:
-        return MdiIcons.flower;
-      case SpacesModuleDataSpaceCategory.hallway:
-      case SpacesModuleDataSpaceCategory.entryway:
-        return MdiIcons.doorOpen;
-      case SpacesModuleDataSpaceCategory.laundry:
-        return MdiIcons.washingMachine;
-      case SpacesModuleDataSpaceCategory.floorBasement:
-        return MdiIcons.stairs;
-      case SpacesModuleDataSpaceCategory.floorAttic:
-        return MdiIcons.homeRoof;
-      case SpacesModuleDataSpaceCategory.nursery:
-        return MdiIcons.toyBrickOutline;
-      case SpacesModuleDataSpaceCategory.diningRoom:
-        return MdiIcons.tableFurniture;
-      case SpacesModuleDataSpaceCategory.outdoorBalcony:
-        return MdiIcons.balcony;
-      case SpacesModuleDataSpaceCategory.outdoorTerrace:
-        return MdiIcons.tableChair;
-      case SpacesModuleDataSpaceCategory.guestRoom:
-        return MdiIcons.bedOutline;
-      case SpacesModuleDataSpaceCategory.gym:
-        return MdiIcons.dumbbell;
-      case SpacesModuleDataSpaceCategory.mediaRoom:
-        return MdiIcons.television;
-      case SpacesModuleDataSpaceCategory.workshop:
-        return MdiIcons.hammerWrench;
-      default:
-        return MdiIcons.homeOutline;
-    }
   }
 
   void _loadGlobalScenes() {
