@@ -10,6 +10,7 @@ import 'package:fastybird_smart_panel/modules/spaces/export.dart';
 import 'package:fastybird_smart_panel/modules/spaces/views/covers_targets/view.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 /// Service that manages the navigation deck.
 ///
@@ -42,9 +43,6 @@ class DeckService extends ChangeNotifier {
   int? _climateTargetsCount;
   int? _coversTargetsCount;
   int? _mediaBindingsCount;
-
-  /// Cached localizations for deck rebuilds from listener callbacks.
-  AppLocalizations? _localizations;
 
   /// Configuration validation error.
   String? _configError;
@@ -102,7 +100,7 @@ class DeckService extends ChangeNotifier {
   /// Initializes the deck with display settings.
   ///
   /// Call this during app hydration after display settings are loaded.
-  void initialize(DisplayModel display, {BuildContext? context}) {
+  void initialize(DisplayModel display) {
     _display = display;
 
     if (kDebugMode) {
@@ -120,14 +118,8 @@ class DeckService extends ChangeNotifier {
       return;
     }
 
-    // Extract localizations before any async gaps and cache for listener rebuilds
-    if (context != null) {
-      _localizations = AppLocalizations.of(context)!;
-    }
-
     // Build initial deck (may not have device categories yet for ROOM role)
-    if (_localizations != null) {
-      _buildDeck(_localizations!);
+    if (_buildDeck()) {
       _isInitialized = true;
     }
     notifyListeners();
@@ -161,9 +153,7 @@ class DeckService extends ChangeNotifier {
           '[DECK SERVICE] Will fetch devices for roomId: ${display.roomId}',
         );
       }
-      if (_localizations != null) {
-        _fetchDeviceCategoriesAsync(display.roomId!, _localizations!);
-      }
+      _fetchDeviceCategoriesAsync(display.roomId!);
       _prefetchDomainData(display.roomId!);
     } else if (kDebugMode) {
       debugPrint(
@@ -174,10 +164,7 @@ class DeckService extends ChangeNotifier {
   }
 
   /// Fetches device categories for a room and rebuilds the deck.
-  Future<void> _fetchDeviceCategoriesAsync(
-    String roomId,
-    AppLocalizations localizations,
-  ) async {
+  Future<void> _fetchDeviceCategoriesAsync(String roomId) async {
     if (_devicesService == null) {
       if (kDebugMode) {
         debugPrint(
@@ -247,7 +234,7 @@ class DeckService extends ChangeNotifier {
       }
 
       // Rebuild deck with device categories
-      _buildDeck(localizations);
+      _buildDeck();
     } catch (e) {
       if (kDebugMode) {
         debugPrint(
@@ -267,8 +254,8 @@ class DeckService extends ChangeNotifier {
   }
 
   void _onDashboardChanged() {
-    if (_display != null && _configError == null && _localizations != null) {
-      _buildDeck(_localizations!);
+    if (_display != null && _configError == null) {
+      _buildDeck();
       notifyListeners();
     }
   }
@@ -301,10 +288,8 @@ class DeckService extends ChangeNotifier {
         );
       }
 
-      if (_localizations != null) {
-        _buildDeck(_localizations!);
-        notifyListeners();
-      }
+      _buildDeck();
+      notifyListeners();
     }
   }
 
@@ -342,10 +327,8 @@ class DeckService extends ChangeNotifier {
         );
       }
 
-      if (_localizations != null) {
-        _buildDeck(_localizations!);
-        notifyListeners();
-      }
+      _buildDeck();
+      notifyListeners();
     }
   }
 
@@ -368,15 +351,35 @@ class DeckService extends ChangeNotifier {
         );
       }
 
-      if (_localizations != null) {
-        _buildDeck(_localizations!);
-        notifyListeners();
-      }
+      _buildDeck();
+      notifyListeners();
     }
   }
 
-  void _buildDeck(AppLocalizations localizations) {
-    if (_display == null) return;
+  /// Resolves the current [AppLocalizations] from the active app locale.
+  ///
+  /// Uses [Intl.defaultLocale] which is synced by [MaterialApp]'s
+  /// [localeResolutionCallback]. Falls back to English if not set.
+  AppLocalizations _resolveLocalizations() {
+    final tag = Intl.defaultLocale;
+    if (tag != null) {
+      try {
+        final parts = tag.split('-');
+        return lookupAppLocalizations(
+          Locale(parts[0], parts.length > 1 ? parts[1] : null),
+        );
+      } catch (_) {}
+    }
+    return lookupAppLocalizations(const Locale('en'));
+  }
+
+  /// Builds the deck from current state.
+  ///
+  /// Returns `true` if the deck was successfully built.
+  bool _buildDeck() {
+    if (_display == null) return false;
+
+    final localizations = _resolveLocalizations();
 
     // Get pages from dashboard service
     final pages = _dashboardService.pages.values.toList();
@@ -429,20 +432,17 @@ class DeckService extends ChangeNotifier {
         debugPrint('[DECK SERVICE] Warning: ${_deck!.warningMessage}');
       }
     }
+
+    return true;
   }
 
   /// Updates the display settings and rebuilds the deck.
-  void updateDisplay(DisplayModel display, {BuildContext? context}) {
+  void updateDisplay(DisplayModel display) {
     final oldRoomId = _display?.roomId;
     _display = display;
     _configError = validateDisplayConfig(display);
 
     if (_configError == null) {
-      // Update cached localizations if context is available
-      if (context != null) {
-        _localizations = AppLocalizations.of(context)!;
-      }
-
       // If room changed, reset device categories and config counts, then refetch
       if (display.role == DisplayRole.room &&
           display.roomId != null &&
@@ -454,13 +454,11 @@ class DeckService extends ChangeNotifier {
         _climateTargetsCount = null;
         _coversTargetsCount = null;
         _mediaBindingsCount = null;
-        if (_localizations != null) {
-          _buildDeck(_localizations!);
-          _fetchDeviceCategoriesAsync(display.roomId!, _localizations!);
-        }
+        _buildDeck();
+        _fetchDeviceCategoriesAsync(display.roomId!);
         _prefetchDomainData(display.roomId!);
-      } else if (_localizations != null) {
-        _buildDeck(_localizations!);
+      } else {
+        _buildDeck();
       }
     }
 
@@ -676,10 +674,8 @@ class DeckService extends ChangeNotifier {
             );
           }
 
-          if (_localizations != null) {
-            _buildDeck(_localizations!);
-            notifyListeners();
-          }
+          _buildDeck();
+          notifyListeners();
         }
       });
     } catch (e) {
