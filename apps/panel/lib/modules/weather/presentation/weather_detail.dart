@@ -21,7 +21,10 @@ import 'package:provider/provider.dart';
 import 'package:weather_icons/weather_icons.dart';
 
 class WeatherDetailPage extends StatelessWidget {
-	const WeatherDetailPage({super.key});
+	/// Optional weather location ID. When null, uses the primary location.
+	final String? locationId;
+
+	const WeatherDetailPage({super.key, this.locationId});
 
 	@override
 	Widget build(BuildContext context) {
@@ -30,8 +33,8 @@ class WeatherDetailPage extends StatelessWidget {
 			weatherService,
 			_,
 		) {
-			final currentDay = weatherService.currentDay;
-			final forecast = weatherService.forecast;
+			final currentDay = weatherService.getCurrentDayByLocation(locationId);
+			final forecast = weatherService.getForecastByLocation(locationId);
 			final isLandscape = MediaQuery.of(context).size.width > MediaQuery.of(context).size.height;
 
 			final SkyVisualConfig config;

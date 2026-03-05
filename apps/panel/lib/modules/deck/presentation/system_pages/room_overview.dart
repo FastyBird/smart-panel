@@ -868,9 +868,10 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 					triggeringSceneId: _triggeringSceneId,
 					onSceneTap: _triggerScene,
 					onWeatherTap: () {
+						final weatherLocationId = locator<DisplayRepository>().weatherLocationId;
 						Navigator.of(context).push(
 							MaterialPageRoute(
-								builder: (_) => const WeatherDetailPage(),
+								builder: (_) => WeatherDetailPage(locationId: weatherLocationId),
 							),
 						);
 					},
