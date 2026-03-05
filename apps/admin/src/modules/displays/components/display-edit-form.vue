@@ -673,10 +673,12 @@ const { pages, fetchPages } = usePages();
 const { roomSpaces, fetchSpaces, firstLoadFinished } = useSpaces();
 const { locations: weatherLocations, fetchLocations: fetchWeatherLocations } = useWeatherLocations();
 
-const screenLockDurationOptions = SCREEN_LOCK_DURATION_OPTIONS.map((opt) => ({
-	value: opt.value,
-	label: t(`displaysModule.fields.displays.screenLockDuration.options.${opt.labelKey}`),
-}));
+const screenLockDurationOptions = computed(() =>
+	SCREEN_LOCK_DURATION_OPTIONS.map((opt) => ({
+		value: opt.value,
+		label: t(`displaysModule.fields.displays.screenLockDuration.options.${opt.labelKey}`),
+	}))
+);
 
 // Filter pages to only show those visible to the current display
 // Pages with null/undefined/empty displays array are visible to all displays
