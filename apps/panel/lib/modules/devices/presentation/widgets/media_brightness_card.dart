@@ -10,12 +10,16 @@ class MediaBrightnessCard extends StatelessWidget {
 	final ThemeColors themeColor;
 	final ValueChanged<int> onBrightnessChanged;
 
+	/// When false, removes the card border (useful when embedded in a sheet/drawer).
+	final bool showBorder;
+
 	const MediaBrightnessCard({
 		super.key,
 		required this.brightness,
 		required this.isEnabled,
 		this.themeColor = ThemeColors.primary,
 		required this.onBrightnessChanged,
+		this.showBorder = true,
 	});
 
 	@override
@@ -31,6 +35,7 @@ class MediaBrightnessCard extends StatelessWidget {
 			showSteps: false,
 			enabled: isEnabled,
 			themeColor: themeColor,
+			showBorder: showBorder,
 			steps: const ['0%', '25%', '50%', '75%', '100%'],
 		);
 	}

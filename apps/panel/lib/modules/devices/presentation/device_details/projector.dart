@@ -584,6 +584,7 @@ class _ProjectorDeviceDetailState extends State<ProjectorDeviceDetail> {
 							isEnabled: _device.isProjectorOn,
 							themeColor: _getThemeColor(),
 							onBrightnessChanged: _setBrightness,
+							showBorder: false,
 						),
 					if (hasRemote)
 						MediaRemoteCard<ProjectorRemoteKeyValue>(
@@ -592,6 +593,7 @@ class _ProjectorDeviceDetailState extends State<ProjectorDeviceDetail> {
 							onKeyPress: _sendRemoteKey,
 							themeColor: _getThemeColor(),
 							showLabel: showBrightness,
+							showBorder: false,
 						),
 				],
 			),

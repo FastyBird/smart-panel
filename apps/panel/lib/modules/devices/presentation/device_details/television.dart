@@ -581,6 +581,7 @@ class _TelevisionDeviceDetailState extends State<TelevisionDeviceDetail> {
 							isEnabled: _device.isTelevisionOn,
 							themeColor: _getThemeColor(),
 							onBrightnessChanged: _setBrightness,
+							showBorder: false,
 						),
 					if (hasRemote)
 						MediaRemoteCard<TelevisionRemoteKeyValue>(
@@ -589,6 +590,7 @@ class _TelevisionDeviceDetailState extends State<TelevisionDeviceDetail> {
 							onKeyPress: _sendRemoteKey,
 							themeColor: _getThemeColor(),
 							showLabel: showBrightness,
+							showBorder: false,
 						),
 				],
 			),

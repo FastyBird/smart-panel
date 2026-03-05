@@ -85,7 +85,7 @@ class BaseCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: resolvedColor,
           borderRadius: BorderRadius.circular(AppBorderRadius.base),
-          border: finalBorderWidth != null ? Border.all(color: resolvedBorderColor, width: finalBorderWidth) : null,
+          border: finalBorderWidth != null && finalBorderWidth > 0 ? Border.all(color: resolvedBorderColor, width: finalBorderWidth) : null,
         ),
         child: child,
       );
@@ -99,7 +99,7 @@ class BaseCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: resolvedColor,
         borderRadius: BorderRadius.circular(AppBorderRadius.base),
-        border: finalBorderWidth != null ? Border.all(color: resolvedBorderColor, width: finalBorderWidth) : null,
+        border: finalBorderWidth != null && finalBorderWidth > 0 ? Border.all(color: resolvedBorderColor, width: finalBorderWidth) : null,
       ),
       child: Column(
         mainAxisSize: expanded ? MainAxisSize.max : MainAxisSize.min,

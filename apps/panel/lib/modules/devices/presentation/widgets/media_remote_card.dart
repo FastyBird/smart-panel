@@ -13,6 +13,9 @@ class MediaRemoteCard<T extends Enum> extends StatelessWidget {
 	/// When false, hides the card header label (icon + "Remote" text).
 	final bool showLabel;
 
+	/// When false, removes the card border (useful when embedded in a sheet/drawer).
+	final bool showBorder;
+
 	const MediaRemoteCard({
 		super.key,
 		required this.availableKeys,
@@ -20,6 +23,7 @@ class MediaRemoteCard<T extends Enum> extends StatelessWidget {
 		required this.onKeyPress,
 		this.themeColor = ThemeColors.primary,
 		this.showLabel = true,
+		this.showBorder = true,
 	});
 
 	static (FilledButtonThemeData theme, Color foreground) _filledButtonFor(
@@ -146,6 +150,7 @@ class MediaRemoteCard<T extends Enum> extends StatelessWidget {
 			: ThemeData(filledButtonTheme: AppFilledButtonsDarkThemes.neutral);
 
 		return BaseCard(
+			borderWidth: showBorder ? null : 0,
 			child: Theme(
 				data: themeData,
 				child: Column(
