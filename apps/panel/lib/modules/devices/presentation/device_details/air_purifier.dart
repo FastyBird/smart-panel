@@ -359,11 +359,6 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
     return 1.0;
   }
 
-  bool get _childLock {
-    final fanChannel = _device.fanChannel;
-    return fanChannel.hasLocked ? fanChannel.locked : false;
-  }
-
   // --------------------------------------------------------------------------
   // CONTROL HANDLERS
   // --------------------------------------------------------------------------
@@ -728,12 +723,29 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
   void _showSettings(BuildContext context) {
     final localizations = AppLocalizations.of(context)!;
     final isLandscape = _screenService.isLandscape;
+    final fanChannel = _device.fanChannel;
+
+    // Local optimistic state — initialized from device, updated on tap
+    var direction = fanChannel.direction;
+    var locked = fanChannel.hasLocked ? fanChannel.locked : false;
 
     Widget content = StatefulBuilder(
       builder: (sheetContext, sheetSetState) {
         return Padding(
           padding: AppSpacings.paddingMd,
-          child: _buildSettingsContent(sheetContext, sheetSetState),
+          child: _buildSettingsContent(
+            sheetContext,
+            direction: direction,
+            locked: locked,
+            onDirectionChanged: (newDirection) {
+              _setFanDirection(newDirection);
+              sheetSetState(() => direction = newDirection);
+            },
+            onLockedChanged: (newLocked) {
+              _setFanLocked(newLocked);
+              sheetSetState(() => locked = newLocked);
+            },
+          ),
         );
       },
     );
@@ -755,7 +767,13 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
     }
   }
 
-  Widget _buildSettingsContent(BuildContext context, StateSetter sheetSetState) {
+  Widget _buildSettingsContent(
+    BuildContext context, {
+    required FanDirectionValue? direction,
+    required bool locked,
+    required ValueChanged<FanDirectionValue> onDirectionChanged,
+    required ValueChanged<bool> onLockedChanged,
+  }) {
     final localizations = AppLocalizations.of(context)!;
     final fanChannel = _device.fanChannel;
     final statusColor = _getStatusColor();
@@ -765,8 +783,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
 
     // Direction (reverse)
     if (fanChannel.hasDirection) {
-      final isReversed =
-          fanChannel.direction == FanDirectionValue.counterClockwise;
+      final isReversed = direction == FanDirectionValue.counterClockwise;
       options.add(SizedBox(
         height: tileHeight,
         width: double.infinity,
@@ -774,8 +791,8 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           layout: TileLayout.horizontal,
           icon: MdiIcons.swapVertical,
           name: localizations.device_direction,
-          status: fanChannel.direction != null
-              ? FanUtils.getDirectionLabel(localizations, fanChannel.direction!)
+          status: direction != null
+              ? FanUtils.getDirectionLabel(localizations, direction)
               : localizations.fan_direction_clockwise,
           isActive: isReversed,
           activeColor: statusColor,
@@ -783,8 +800,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
             final newDirection = isReversed
                 ? FanDirectionValue.clockwise
                 : FanDirectionValue.counterClockwise;
-            _setFanDirection(newDirection);
-            sheetSetState(() {});
+            onDirectionChanged(newDirection);
           },
           showGlow: false,
           showDoubleBorder: false,
@@ -801,15 +817,12 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           layout: TileLayout.horizontal,
           icon: MdiIcons.lock,
           name: localizations.device_child_lock,
-          status: _childLock
+          status: locked
               ? localizations.thermostat_lock_locked
               : localizations.thermostat_lock_unlocked,
-          isActive: _childLock,
+          isActive: locked,
           activeColor: statusColor,
-          onTileTap: () {
-            _setFanLocked(!_childLock);
-            sheetSetState(() {});
-          },
+          onTileTap: () => onLockedChanged(!locked),
           showGlow: false,
           showDoubleBorder: false,
         ),
