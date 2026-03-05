@@ -15,6 +15,7 @@ import 'package:fastybird_smart_panel/core/widgets/icon_container.dart';
 import 'package:fastybird_smart_panel/features/discovery/presentation/widgets/gateway_list_item.dart';
 import 'package:fastybird_smart_panel/features/discovery/presentation/widgets/loading_spinner.dart';
 import 'package:fastybird_smart_panel/features/discovery/presentation/widgets/pulse_rings.dart';
+import 'package:fastybird_smart_panel/app/app.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 
 /// Discovery state enum
@@ -35,8 +36,8 @@ class DiscoveryScreen extends StatefulWidget {
   /// Callback when manual URL is entered
   final void Function(String url) onManualUrlEntered;
 
-  /// Optional error message to display (e.g., when connection failed)
-  final String? errorMessage;
+  /// Optional error info to display (e.g., when connection failed)
+  final AppErrorInfo? errorInfo;
 
   /// Whether this is a retry after connection failure
   final bool isRetry;
@@ -44,7 +45,7 @@ class DiscoveryScreen extends StatefulWidget {
   const DiscoveryScreen({
     required this.onBackendSelected,
     required this.onManualUrlEntered,
-    this.errorMessage,
+    this.errorInfo,
     this.isRetry = false,
     super.key,
   });
@@ -83,12 +84,16 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
     _startDiscovery();
     _manualUrlController.addListener(_onManualUrlChanged);
 
-    // Show error toast if there's an error message
-    if (widget.errorMessage != null) {
+    // Show error toast if there's error info
+    if (widget.errorInfo != null) {
       // Use post-frame callback to show toast after build
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && widget.errorMessage != null) {
-          Toast.showError(context, message: widget.errorMessage!);
+        if (mounted && widget.errorInfo != null) {
+          final localizations = AppLocalizations.of(context)!;
+          Toast.showError(
+            context,
+            message: widget.errorInfo!.toLocalizedMessage(localizations),
+          );
         }
       });
     }

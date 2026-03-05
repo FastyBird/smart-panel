@@ -39,6 +39,53 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 
+/// Structured error information for app initialization failures.
+///
+/// Stores error type and context data so the UI can localize messages
+/// at display time using [AppLocalizations] from a widget context.
+sealed class AppErrorInfo {
+  const AppErrorInfo();
+
+  /// Resolves this error to a localized message for display.
+  String toLocalizedMessage(AppLocalizations l) {
+    return switch (this) {
+      AppErrorConnectionFailedStored() =>
+        l.app_error_connection_failed_stored,
+      AppErrorConnectionFailedBackend(:final name, :final address) =>
+        l.app_error_connection_failed_backend(name, address),
+      AppErrorConnectionFailedUrl(:final url) =>
+        l.app_error_connection_failed_url(url),
+      AppErrorInitializationFailed() =>
+        l.app_error_initialization_failed,
+      AppErrorException(:final message) => message,
+    };
+  }
+}
+
+class AppErrorConnectionFailedStored extends AppErrorInfo {
+  const AppErrorConnectionFailedStored();
+}
+
+class AppErrorConnectionFailedBackend extends AppErrorInfo {
+  final String name;
+  final String address;
+  const AppErrorConnectionFailedBackend(this.name, this.address);
+}
+
+class AppErrorConnectionFailedUrl extends AppErrorInfo {
+  final String url;
+  const AppErrorConnectionFailedUrl(this.url);
+}
+
+class AppErrorInitializationFailed extends AppErrorInfo {
+  const AppErrorInitializationFailed();
+}
+
+class AppErrorException extends AppErrorInfo {
+  final String message;
+  const AppErrorException(this.message);
+}
+
 /// Application state during startup
 enum AppState {
   /// Initial loading state
@@ -67,15 +114,7 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   late StartupManagerService _startupManager;
   late ValueNotifier<AppState> _appState;
-  String? _errorMessage;
-
-  /// Localizations instance for use outside of build context.
-  AppLocalizations get _l10n => lookupAppLocalizations(
-        Locale(
-          Language.english.value.split('_')[0],
-          Language.english.value.split('_')[1],
-        ),
-      );
+  AppErrorInfo? _errorInfo;
 
   StreamSubscription<ResetToDiscoveryEvent>? _resetEventSubscription;
 
@@ -116,7 +155,7 @@ class _MyAppState extends State<MyApp> {
 
   Future<void> _initializeApp() async {
     _appState.value = AppState.loading;
-    _errorMessage = null;
+    _errorInfo = null;
 
     try {
       final result = await _startupManager.tryInitialize();
@@ -134,7 +173,7 @@ class _MyAppState extends State<MyApp> {
           break;
 
         case InitializationResult.connectionFailed:
-          _errorMessage = _l10n.app_error_connection_failed_stored;
+          _errorInfo = const AppErrorConnectionFailedStored();
           _appState.value = AppState.connectionFailed;
           break;
 
@@ -148,7 +187,7 @@ class _MyAppState extends State<MyApp> {
       /// Ensure loader is shown even in case of an error
       await Future.delayed(const Duration(milliseconds: 500));
 
-      _errorMessage = error.toString();
+      _errorInfo = AppErrorException(error.toString());
       _appState.value = AppState.error;
     }
   }
@@ -167,20 +206,21 @@ class _MyAppState extends State<MyApp> {
           break;
 
         case InitializationResult.connectionFailed:
-          _errorMessage =
-              _l10n.app_error_connection_failed_backend(backend.name, backend.displayAddress);
+          _errorInfo = AppErrorConnectionFailedBackend(
+            backend.name, backend.displayAddress,
+          );
           _appState.value = AppState.connectionFailed;
           break;
 
         case InitializationResult.needsDiscovery:
         case InitializationResult.error:
-          _errorMessage = _l10n.app_error_initialization_failed;
+          _errorInfo = const AppErrorInitializationFailed();
           _appState.value = AppState.error;
           break;
       }
     } catch (error) {
       debugPrint(error.toString());
-      _errorMessage = error.toString();
+      _errorInfo = AppErrorException(error.toString());
       _appState.value = AppState.error;
     }
   }
@@ -229,19 +269,19 @@ class _MyAppState extends State<MyApp> {
           break;
 
         case InitializationResult.connectionFailed:
-          _errorMessage = _l10n.app_error_connection_failed_url(url);
+          _errorInfo = AppErrorConnectionFailedUrl(url);
           _appState.value = AppState.connectionFailed;
           break;
 
         case InitializationResult.needsDiscovery:
         case InitializationResult.error:
-          _errorMessage = _l10n.app_error_initialization_failed;
+          _errorInfo = const AppErrorInitializationFailed();
           _appState.value = AppState.error;
           break;
       }
     } catch (error) {
       debugPrint(error.toString());
-      _errorMessage = error.toString();
+      _errorInfo = AppErrorException(error.toString());
       _appState.value = AppState.error;
     }
   }
@@ -275,7 +315,7 @@ class _MyAppState extends State<MyApp> {
           case AppState.error:
             return AppError(
               onRestart: _restartApp,
-              errorMessage: _errorMessage,
+              errorInfo: _errorInfo,
             );
 
           case AppState.ready:
@@ -344,7 +384,7 @@ class _MyAppState extends State<MyApp> {
       home: DiscoveryScreen(
         onBackendSelected: _onBackendSelected,
         onManualUrlEntered: _onManualUrlEntered,
-        errorMessage: _errorMessage,
+        errorInfo: _errorInfo,
         isRetry: isRetry,
       ),
     );

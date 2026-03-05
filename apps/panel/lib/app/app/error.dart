@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
+import 'package:fastybird_smart_panel/app/app.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
@@ -11,19 +12,17 @@ import 'package:fastybird_smart_panel/modules/system/types/configuration.dart';
 
 class AppError extends StatelessWidget {
   final Function() _onRestart;
-  final String? _errorMessage;
+  final AppErrorInfo? _errorInfo;
 
   const AppError({
     required Function() onRestart,
-    String? errorMessage,
+    AppErrorInfo? errorInfo,
     super.key,
   })  : _onRestart = onRestart,
-        _errorMessage = errorMessage;
+        _errorInfo = errorInfo;
 
   @override
   Widget build(BuildContext context) {
-    final errorMsg = _errorMessage ?? '';
-    final hasPermitJoinError = errorMsg.toLowerCase().contains('permit join');
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return MaterialApp(
@@ -42,6 +41,9 @@ class AppError extends StatelessWidget {
       home: Builder(
         builder: (innerContext) {
           final localizations = AppLocalizations.of(innerContext)!;
+          final errorMsg = _errorInfo?.toLocalizedMessage(localizations);
+          final hasPermitJoinError =
+              errorMsg != null && errorMsg.toLowerCase().contains('permit join');
 
           return Scaffold(
             backgroundColor: isDark ? AppBgColorDark.base : AppBgColorLight.base,
@@ -91,11 +93,11 @@ class AppError extends StatelessWidget {
                           // Subtitle/error message
                           // For long errors, show generic message here; details go in error code box
                           Text(
-                            _errorMessage == null
+                            errorMsg == null
                                 ? localizations.app_error_unexpected
-                                : (_errorMessage.length > 100 && !hasPermitJoinError)
+                                : (errorMsg.length > 100 && !hasPermitJoinError)
                                     ? localizations.app_error_see_details
-                                    : _errorMessage,
+                                    : errorMsg,
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
@@ -109,11 +111,11 @@ class AppError extends StatelessWidget {
                             _buildPermitJoinHint(innerContext, isDark, localizations),
                           ],
                           // Error details box for long error messages
-                          if (_errorMessage != null &&
+                          if (errorMsg != null &&
                               !hasPermitJoinError &&
-                              _errorMessage.length > 100) ...[
+                              errorMsg.length > 100) ...[
                             AppSpacings.spacingLgVertical,
-                            _buildErrorCodeBox(context, isDark),
+                            _buildErrorCodeBox(context, isDark, errorMsg),
                           ],
                           AppSpacings.spacingXlVertical,
                           // Restart button
@@ -197,11 +199,11 @@ class AppError extends StatelessWidget {
     );
   }
 
-  Widget _buildErrorCodeBox(BuildContext context, bool isDark) {
+  Widget _buildErrorCodeBox(BuildContext context, bool isDark, String errorMsg) {
     // Truncate long error messages for display in the error code box
-    final errorCode = _errorMessage != null && _errorMessage.length > 200
-        ? '${_errorMessage.substring(0, 200)}...'
-        : _errorMessage ?? '';
+    final errorCode = errorMsg.length > 200
+        ? '${errorMsg.substring(0, 200)}...'
+        : errorMsg;
 
     return Container(
       padding: EdgeInsets.symmetric(
