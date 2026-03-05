@@ -11,7 +11,7 @@ import { BuddyMessageEntity } from '../entities/buddy-message.entity';
 import { BuddyContextService } from './buddy-context.service';
 import { BuddyConversationService } from './buddy-conversation.service';
 import { LlmProviderService } from './llm-provider.service';
-import { ToolExecutionService } from './tool-execution.service';
+import { ToolProviderRegistryService } from './tool-provider-registry.service';
 
 describe('BuddyConversationService', () => {
 	let service: BuddyConversationService;
@@ -20,7 +20,7 @@ describe('BuddyConversationService', () => {
 	let dataSource: Record<string, jest.Mock>;
 	let llmProvider: Record<string, jest.Mock>;
 	let contextService: Record<string, jest.Mock>;
-	let toolExecution: Record<string, jest.Mock>;
+	let toolProviderRegistry: Record<string, jest.Mock>;
 	let eventEmitter: jest.Mocked<EventEmitter2>;
 
 	const mockConversation: BuddyConversationEntity = {
@@ -87,8 +87,8 @@ describe('BuddyConversationService', () => {
 			}),
 		};
 
-		toolExecution = {
-			getToolDefinitions: jest.fn().mockReturnValue([]),
+		toolProviderRegistry = {
+			getAllToolDefinitions: jest.fn().mockReturnValue([]),
 			executeTool: jest.fn().mockResolvedValue({ success: true, message: 'done' }),
 		};
 
@@ -102,7 +102,7 @@ describe('BuddyConversationService', () => {
 			dataSource as unknown as OrmDataSource,
 			llmProvider as unknown as LlmProviderService,
 			contextService as unknown as BuddyContextService,
-			toolExecution as unknown as ToolExecutionService,
+			toolProviderRegistry as unknown as ToolProviderRegistryService,
 			eventEmitter,
 		);
 	});

@@ -1,5 +1,5 @@
 import { Expose } from 'class-transformer';
-import { IsBoolean, IsEnum, IsOptional, IsString } from 'class-validator';
+import { IsArray, IsBoolean, IsEnum, IsOptional, IsString } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -143,6 +143,17 @@ export class ExtensionModel {
 	@Expose({ name: 'can_toggle_enabled' })
 	@IsBoolean()
 	canToggleEnabled: boolean;
+
+	@ApiPropertyOptional({
+		description: 'Capability identifiers declared by the extension (e.g., llm, tts, stt, tools)',
+		type: [String],
+		example: ['llm', 'tts'],
+	})
+	@Expose()
+	@IsArray()
+	@IsString({ each: true })
+	@IsOptional()
+	capabilities?: string[];
 
 	@ApiPropertyOptional({
 		description: 'Extension links',

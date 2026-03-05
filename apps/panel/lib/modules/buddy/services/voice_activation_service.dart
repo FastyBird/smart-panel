@@ -6,9 +6,9 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
 
-/// Configuration for wake word detection.
-class WakeWordConfig {
-	/// Whether wake word detection is enabled.
+/// Configuration for voice activation detection.
+class VoiceActivationConfig {
+	/// Whether voice activation detection is enabled.
 	final bool enabled;
 
 	/// The wake word phrase (e.g., "Hey panel").
@@ -30,7 +30,7 @@ class WakeWordConfig {
 	/// Maximum recording duration after speech detection (seconds).
 	final int maxRecordingDurationSec;
 
-	const WakeWordConfig({
+	const VoiceActivationConfig({
 		this.enabled = false,
 		this.wakeWord = 'Hey panel',
 		this.sensitivityThreshold = -30.0,
@@ -38,14 +38,14 @@ class WakeWordConfig {
 		this.maxRecordingDurationSec = 10,
 	});
 
-	WakeWordConfig copyWith({
+	VoiceActivationConfig copyWith({
 		bool? enabled,
 		String? wakeWord,
 		double? sensitivityThreshold,
 		int? silenceTimeoutMs,
 		int? maxRecordingDurationSec,
 	}) {
-		return WakeWordConfig(
+		return VoiceActivationConfig(
 			enabled: enabled ?? this.enabled,
 			wakeWord: wakeWord ?? this.wakeWord,
 			sensitivityThreshold: sensitivityThreshold ?? this.sensitivityThreshold,
@@ -55,8 +55,8 @@ class WakeWordConfig {
 	}
 }
 
-/// State of the wake word detection engine.
-enum WakeWordState {
+/// State of the voice activation detection engine.
+enum VoiceActivationState {
 	/// Engine is stopped / not running.
 	stopped,
 
@@ -66,27 +66,27 @@ enum WakeWordState {
 	/// Speech detected, recording audio for STT processing.
 	recording,
 
-	/// Sending recorded audio through STT → conversation pipeline.
+	/// Sending recorded audio through STT -> conversation pipeline.
 	processing,
 }
 
-/// Result of a wake word capture cycle.
-class WakeWordCaptureResult {
+/// Result of a voice activation capture cycle.
+class VoiceActivationCaptureResult {
 	final Uint8List audioBytes;
 	final String mimeType;
 	final Duration duration;
 
-	const WakeWordCaptureResult({
+	const VoiceActivationCaptureResult({
 		required this.audioBytes,
 		required this.mimeType,
 		required this.duration,
 	});
 }
 
-/// Callback fired when audio has been captured after wake word detection.
-typedef WakeWordCaptureCallback = Future<void> Function(WakeWordCaptureResult result);
+/// Callback fired when audio has been captured after voice activation detection.
+typedef VoiceActivationCaptureCallback = Future<void> Function(VoiceActivationCaptureResult result);
 
-/// Service for continuous wake word detection on the panel device.
+/// Service for continuous voice activation detection on the panel device.
 ///
 /// Uses the `record` package's amplitude monitoring to detect speech
 /// activity. When speech is detected above the configured threshold:
@@ -94,16 +94,16 @@ typedef WakeWordCaptureCallback = Future<void> Function(WakeWordCaptureResult re
 /// 1. Screen wake and visual indicator are triggered
 /// 2. Audio is recorded until silence is detected (VAD) or timeout
 /// 3. The captured audio is passed to [onCapture] for processing
-///    through the existing STT → buddy conversation pipeline
+///    through the existing STT -> buddy conversation pipeline
 ///
 /// This approach is lightweight (energy-based detection) and works
 /// without introducing external dependencies like Porcupine.
-class WakeWordService extends ChangeNotifier {
+class VoiceActivationService extends ChangeNotifier {
 	AudioRecorder? _monitorRecorder;
 	AudioRecorder? _captureRecorder;
 
-	WakeWordConfig _config = const WakeWordConfig();
-	WakeWordState _state = WakeWordState.stopped;
+	VoiceActivationConfig _config = const VoiceActivationConfig();
+	VoiceActivationState _state = VoiceActivationState.stopped;
 
 	Timer? _amplitudeTimer;
 	Timer? _silenceTimer;
@@ -116,26 +116,26 @@ class WakeWordService extends ChangeNotifier {
 	bool _disposed = false;
 
 	/// Callback fired when audio has been captured and is ready to be
-	/// sent through the STT → conversation pipeline.
-	WakeWordCaptureCallback? onCapture;
+	/// sent through the STT -> conversation pipeline.
+	VoiceActivationCaptureCallback? onCapture;
 
 	/// Callback fired when speech is first detected (for screen wake).
 	VoidCallback? onSpeechDetected;
 
-	WakeWordConfig get config => _config;
-	WakeWordState get state => _state;
-	bool get isListening => _state == WakeWordState.listening;
-	bool get isRecording => _state == WakeWordState.recording;
-	bool get isProcessing => _state == WakeWordState.processing;
-	bool get isRunning => _state != WakeWordState.stopped;
+	VoiceActivationConfig get config => _config;
+	VoiceActivationState get state => _state;
+	bool get isListening => _state == VoiceActivationState.listening;
+	bool get isRecording => _state == VoiceActivationState.recording;
+	bool get isProcessing => _state == VoiceActivationState.processing;
+	bool get isRunning => _state != VoiceActivationState.stopped;
 	Duration get recordingDuration => _recordingDuration;
 
-	/// Update the wake word configuration.
+	/// Update the voice activation configuration.
 	///
 	/// Automatically starts/stops the engine based on the enabled flag.
 	/// If [start] fails (e.g., microphone permission denied), [enabled]
 	/// is reverted to `false` so the UI reflects the actual engine state.
-	Future<void> updateConfig(WakeWordConfig newConfig) async {
+	Future<void> updateConfig(VoiceActivationConfig newConfig) async {
 		final wasEnabled = _config.enabled;
 		_config = newConfig;
 
@@ -153,10 +153,10 @@ class WakeWordService extends ChangeNotifier {
 		notifyListeners();
 	}
 
-	/// Start the wake word detection engine.
+	/// Start the voice activation detection engine.
 	Future<bool> start() async {
 		if (_disposed || !_config.enabled) return false;
-		if (_state != WakeWordState.stopped) return false;
+		if (_state != VoiceActivationState.stopped) return false;
 
 		_monitorRecorder = AudioRecorder();
 
@@ -165,7 +165,7 @@ class WakeWordService extends ChangeNotifier {
 
 			if (!hasPermission) {
 				if (kDebugMode) {
-					debugPrint('[WAKE WORD] Microphone permission denied');
+					debugPrint('[VOICE ACTIVATION] Microphone permission denied');
 				}
 
 				_monitorRecorder?.dispose();
@@ -175,7 +175,7 @@ class WakeWordService extends ChangeNotifier {
 			}
 		} catch (e) {
 			if (kDebugMode) {
-				debugPrint('[WAKE WORD] Permission check failed: $e');
+				debugPrint('[VOICE ACTIVATION] Permission check failed: $e');
 			}
 
 			_monitorRecorder?.dispose();
@@ -187,7 +187,7 @@ class WakeWordService extends ChangeNotifier {
 		return _startListening();
 	}
 
-	/// Stop the wake word detection engine entirely.
+	/// Stop the voice activation detection engine entirely.
 	Future<void> stop() async {
 		_cancelAllTimers();
 		await _stopMonitoring();
@@ -197,7 +197,7 @@ class WakeWordService extends ChangeNotifier {
 		_monitorRecorder = null;
 
 		_recordingDuration = Duration.zero;
-		_setState(WakeWordState.stopped);
+		_setState(VoiceActivationState.stopped);
 	}
 
 	/// Start the amplitude monitoring phase.
@@ -222,9 +222,9 @@ class WakeWordService extends ChangeNotifier {
 				path: _monitorPath!,
 			);
 
-			_setState(WakeWordState.listening);
+			_setState(VoiceActivationState.listening);
 
-			// Poll amplitude every 200ms — balances responsiveness vs CPU
+			// Poll amplitude every 200ms -- balances responsiveness vs CPU
 			_amplitudeTimer = Timer.periodic(
 				const Duration(milliseconds: 200),
 				(_) => _checkAmplitude(),
@@ -233,7 +233,7 @@ class WakeWordService extends ChangeNotifier {
 			return true;
 		} catch (e) {
 			if (kDebugMode) {
-				debugPrint('[WAKE WORD] Failed to start monitoring: $e');
+				debugPrint('[VOICE ACTIVATION] Failed to start monitoring: $e');
 			}
 
 			return false;
@@ -255,7 +255,7 @@ class WakeWordService extends ChangeNotifier {
 
 	/// Check current audio amplitude. If above threshold, transition to recording.
 	Future<void> _checkAmplitude() async {
-		if (_disposed || _state != WakeWordState.listening) return;
+		if (_disposed || _state != VoiceActivationState.listening) return;
 
 		try {
 			final amplitude = await _monitorRecorder?.getAmplitude();
@@ -266,7 +266,7 @@ class WakeWordService extends ChangeNotifier {
 			if (amplitude.current > _config.sensitivityThreshold) {
 				if (kDebugMode) {
 					debugPrint(
-						'[WAKE WORD] Speech detected: ${amplitude.current.toStringAsFixed(1)} dBFS',
+						'[VOICE ACTIVATION] Speech detected: ${amplitude.current.toStringAsFixed(1)} dBFS',
 					);
 				}
 
@@ -274,7 +274,7 @@ class WakeWordService extends ChangeNotifier {
 			}
 		} catch (e) {
 			if (kDebugMode) {
-				debugPrint('[WAKE WORD] Amplitude check error: $e');
+				debugPrint('[VOICE ACTIVATION] Amplitude check error: $e');
 			}
 		}
 	}
@@ -285,11 +285,11 @@ class WakeWordService extends ChangeNotifier {
 	/// detected (for screen wake / visual indicator), and starts
 	/// capturing audio.
 	Future<void> _transitionToRecording() async {
-		if (_disposed || _state != WakeWordState.listening) return;
+		if (_disposed || _state != VoiceActivationState.listening) return;
 
 		await _stopMonitoring();
 
-		_setState(WakeWordState.recording);
+		_setState(VoiceActivationState.recording);
 		_recordingDuration = Duration.zero;
 
 		// Notify screen wake / visual indicator
@@ -334,7 +334,7 @@ class WakeWordService extends ChangeNotifier {
 			);
 		} catch (e) {
 			if (kDebugMode) {
-				debugPrint('[WAKE WORD] Failed to start capture: $e');
+				debugPrint('[VOICE ACTIVATION] Failed to start capture: $e');
 			}
 
 			await _resumeListening();
@@ -344,7 +344,7 @@ class WakeWordService extends ChangeNotifier {
 	/// Check amplitude during recording to reset the silence timer when
 	/// speech continues.
 	Future<void> _checkRecordingAmplitude() async {
-		if (_disposed || _state != WakeWordState.recording) return;
+		if (_disposed || _state != VoiceActivationState.recording) return;
 
 		try {
 			final amplitude = await _captureRecorder?.getAmplitude();
@@ -368,10 +368,10 @@ class WakeWordService extends ChangeNotifier {
 
 	/// Called when recording is complete (silence detected or max duration).
 	Future<void> _onRecordingComplete() async {
-		if (_disposed || _state != WakeWordState.recording) return;
+		if (_disposed || _state != VoiceActivationState.recording) return;
 
 		_cancelRecordingTimers();
-		_setState(WakeWordState.processing);
+		_setState(VoiceActivationState.processing);
 
 		try {
 			final path = await _captureRecorder?.stop();
@@ -403,10 +403,10 @@ class WakeWordService extends ChangeNotifier {
 
 			_capturePath = null;
 
-			// Too short (< 300ms) — likely noise, not speech
+			// Too short (< 300ms) -- likely noise, not speech
 			if (duration < const Duration(milliseconds: 300) || bytes.length < 1000) {
 				if (kDebugMode) {
-					debugPrint('[WAKE WORD] Recording too short, discarding');
+					debugPrint('[VOICE ACTIVATION] Recording too short, discarding');
 				}
 
 				await _resumeListening();
@@ -416,7 +416,7 @@ class WakeWordService extends ChangeNotifier {
 
 			// Pass the captured audio to the callback for processing
 			if (onCapture != null) {
-				await onCapture!(WakeWordCaptureResult(
+				await onCapture!(VoiceActivationCaptureResult(
 					audioBytes: Uint8List.fromList(bytes),
 					mimeType: 'audio/wav',
 					duration: duration,
@@ -427,13 +427,13 @@ class WakeWordService extends ChangeNotifier {
 			_cooldownTimer = Timer(const Duration(seconds: 2), () {
 				_resumeListening().catchError((e) {
 					if (kDebugMode) {
-						debugPrint('[WAKE WORD] Resume after cooldown failed: $e');
+						debugPrint('[VOICE ACTIVATION] Resume after cooldown failed: $e');
 					}
 				});
 			});
 		} catch (e) {
 			if (kDebugMode) {
-				debugPrint('[WAKE WORD] Recording complete error: $e');
+				debugPrint('[VOICE ACTIVATION] Recording complete error: $e');
 			}
 
 			await _resumeListening();
@@ -443,7 +443,7 @@ class WakeWordService extends ChangeNotifier {
 	/// Resume listening after processing is complete.
 	Future<void> _resumeListening() async {
 		if (_disposed || !_config.enabled) {
-			_setState(WakeWordState.stopped);
+			_setState(VoiceActivationState.stopped);
 
 			return;
 		}
@@ -458,9 +458,9 @@ class WakeWordService extends ChangeNotifier {
 		final started = await _startListening();
 
 		if (!started) {
-			// _startListening failed — fall back to stopped so the UI
+			// _startListening failed -- fall back to stopped so the UI
 			// doesn't show a stale processing/recording state forever.
-			_setState(WakeWordState.stopped);
+			_setState(VoiceActivationState.stopped);
 		}
 	}
 
@@ -496,7 +496,7 @@ class WakeWordService extends ChangeNotifier {
 		_cooldownTimer = null;
 	}
 
-	void _setState(WakeWordState newState) {
+	void _setState(VoiceActivationState newState) {
 		if (_state == newState) return;
 
 		_state = newState;

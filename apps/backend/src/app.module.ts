@@ -52,12 +52,16 @@ import { BUDDY_CLAUDE_OAUTH_PLUGIN_PREFIX } from './plugins/buddy-claude-oauth/b
 import { BuddyClaudeOauthPlugin } from './plugins/buddy-claude-oauth/buddy-claude-oauth.plugin';
 import { BUDDY_CLAUDE_PLUGIN_PREFIX } from './plugins/buddy-claude/buddy-claude.constants';
 import { BuddyClaudePlugin } from './plugins/buddy-claude/buddy-claude.plugin';
+import { BUDDY_ELEVENLABS_PLUGIN_PREFIX } from './plugins/buddy-elevenlabs/buddy-elevenlabs.constants';
+import { BuddyElevenlabsPlugin } from './plugins/buddy-elevenlabs/buddy-elevenlabs.plugin';
 import { BUDDY_OLLAMA_PLUGIN_PREFIX } from './plugins/buddy-ollama/buddy-ollama.constants';
 import { BuddyOllamaPlugin } from './plugins/buddy-ollama/buddy-ollama.plugin';
 import { BUDDY_OPENAI_CODEX_PLUGIN_PREFIX } from './plugins/buddy-openai-codex/buddy-openai-codex.constants';
 import { BuddyOpenaiCodexPlugin } from './plugins/buddy-openai-codex/buddy-openai-codex.plugin';
 import { BUDDY_OPENAI_PLUGIN_PREFIX } from './plugins/buddy-openai/buddy-openai.constants';
 import { BuddyOpenaiPlugin } from './plugins/buddy-openai/buddy-openai.plugin';
+import { BUDDY_SYSTEM_TTS_PLUGIN_PREFIX } from './plugins/buddy-system-tts/buddy-system-tts.constants';
+import { BuddySystemTtsPlugin } from './plugins/buddy-system-tts/buddy-system-tts.plugin';
 import { DataSourcesDeviceChannelPlugin } from './plugins/data-sources-device-channel/data-sources-device-channel.plugin';
 import { DataSourcesWeatherPlugin } from './plugins/data-sources-weather/data-sources-weather.plugin';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX } from './plugins/devices-home-assistant/devices-home-assistant.constants';
@@ -285,6 +289,14 @@ export class AppModule {
 								path: BUDDY_CLAUDE_OAUTH_PLUGIN_PREFIX,
 								module: BuddyClaudeOauthPlugin,
 							},
+							{
+								path: BUDDY_ELEVENLABS_PLUGIN_PREFIX,
+								module: BuddyElevenlabsPlugin,
+							},
+							{
+								path: BUDDY_SYSTEM_TTS_PLUGIN_PREFIX,
+								module: BuddySystemTtsPlugin,
+							},
 							...pluginRoutes,
 						],
 					},
@@ -334,7 +346,9 @@ export class AppModule {
 				BuddyOpenaiCodexPlugin,
 				BuddyClaudePlugin,
 				BuddyClaudeOauthPlugin,
+				BuddyElevenlabsPlugin,
 				BuddyOllamaPlugin,
+				BuddySystemTtsPlugin,
 				ScenesLocalPlugin,
 				ServeStaticModule.forRootAsync({
 					imports: [NestConfigModule], // Ensure ConfigModule is available

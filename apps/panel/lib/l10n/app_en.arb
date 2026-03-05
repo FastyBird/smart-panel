@@ -836,13 +836,67 @@
   "@settings_general_settings_button_maintenance": {
     "description": "Button label for navigating to Maintenance section."
   },
-  "settings_general_settings_button_wake_word": "Wake Word",
-  "@settings_general_settings_button_wake_word": {
-    "description": "Button label for navigating to Wake Word settings section."
+  "settings_general_settings_button_voice_activation": "Voice Activation",
+  "@settings_general_settings_button_voice_activation": {
+    "description": "Button label for navigating to Voice Activation settings section."
   },
-  "settings_wake_word_settings_title": "Voice activation settings",
-  "@settings_wake_word_settings_title": {
-    "description": "Subtitle for the Wake Word settings tile."
+  "settings_voice_activation_settings_title": "Voice activation settings",
+  "@settings_voice_activation_settings_title": {
+    "description": "Subtitle for the Voice Activation settings tile."
+  },
+  "settings_voice_activation_section_detection": "Voice Activation Detection",
+  "@settings_voice_activation_section_detection": {
+    "description": "Section title for voice activation detection toggle."
+  },
+  "settings_voice_activation_enable_label": "Enable Voice Activation",
+  "@settings_voice_activation_enable_label": {
+    "description": "Label for the voice activation enable toggle."
+  },
+  "settings_voice_activation_enable_description": "Say \"{wakeWord}\" to activate voice commands without touching the panel.",
+  "@settings_voice_activation_enable_description": {
+    "description": "Description for the voice activation enable toggle.",
+    "placeholders": {
+      "wakeWord": {
+        "type": "String",
+        "example": "Hey Buddy"
+      }
+    }
+  },
+  "settings_voice_activation_section_sensitivity": "Sensitivity",
+  "@settings_voice_activation_section_sensitivity": {
+    "description": "Section title for voice activation sensitivity settings."
+  },
+  "settings_voice_activation_sensitivity_label": "Detection Sensitivity",
+  "@settings_voice_activation_sensitivity_label": {
+    "description": "Label for the detection sensitivity slider."
+  },
+  "settings_voice_activation_sensitivity_description": "Higher sensitivity detects quieter speech but may trigger on background noise.",
+  "@settings_voice_activation_sensitivity_description": {
+    "description": "Description for the detection sensitivity slider."
+  },
+  "settings_voice_activation_section_status": "Status",
+  "@settings_voice_activation_section_status": {
+    "description": "Section title for voice activation engine status."
+  },
+  "settings_voice_activation_status_label": "Engine Status",
+  "@settings_voice_activation_status_label": {
+    "description": "Label for the engine status indicator."
+  },
+  "settings_voice_activation_status_stopped": "Stopped",
+  "@settings_voice_activation_status_stopped": {
+    "description": "Status text when voice activation is stopped."
+  },
+  "settings_voice_activation_status_listening": "Listening for voice activation...",
+  "@settings_voice_activation_status_listening": {
+    "description": "Status text when listening for voice activation wake word."
+  },
+  "settings_voice_activation_status_recording": "Recording speech...",
+  "@settings_voice_activation_status_recording": {
+    "description": "Status text when recording speech after wake word detected."
+  },
+  "settings_voice_activation_status_processing": "Processing audio...",
+  "@settings_voice_activation_status_processing": {
+    "description": "Status text when processing recorded audio."
   },
   "settings_weather_settings_title": "Weather Settings",
   "@settings_weather_settings_title": {

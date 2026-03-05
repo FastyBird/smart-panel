@@ -10,23 +10,24 @@ import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_card.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_slider.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/widgets/settings_toggle.dart';
-import 'package:fastybird_smart_panel/modules/buddy/services/wake_word_service.dart';
+import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
+import 'package:fastybird_smart_panel/modules/buddy/services/voice_activation_service.dart';
 
-/// Settings page for wake word detection configuration.
+/// Settings page for voice activation detection configuration.
 ///
 /// Allows the user to:
-/// - Enable/disable wake word detection
+/// - Enable/disable voice activation detection
 /// - Adjust sensitivity (amplitude threshold)
-/// - View wake word engine status
-class WakeWordSettingsPage extends StatefulWidget {
-	const WakeWordSettingsPage({super.key});
+/// - View voice activation engine status
+class VoiceActivationSettingsPage extends StatefulWidget {
+	const VoiceActivationSettingsPage({super.key});
 
 	@override
-	State<WakeWordSettingsPage> createState() => _WakeWordSettingsPageState();
+	State<VoiceActivationSettingsPage> createState() => _VoiceActivationSettingsPageState();
 }
 
-class _WakeWordSettingsPageState extends State<WakeWordSettingsPage> {
-	late final WakeWordService _wakeWordService;
+class _VoiceActivationSettingsPageState extends State<VoiceActivationSettingsPage> {
+	late final VoiceActivationService _voiceActivationService;
 
 	late bool _enabled;
 	late double _sensitivity;
@@ -35,23 +36,23 @@ class _WakeWordSettingsPageState extends State<WakeWordSettingsPage> {
 	void initState() {
 		super.initState();
 
-		_wakeWordService = locator<WakeWordService>();
+		_voiceActivationService = locator<VoiceActivationService>();
 		_syncState();
-		_wakeWordService.addListener(_syncState);
+		_voiceActivationService.addListener(_syncState);
 	}
 
 	@override
 	void dispose() {
-		_wakeWordService.removeListener(_syncState);
+		_voiceActivationService.removeListener(_syncState);
 		super.dispose();
 	}
 
 	void _syncState() {
 		setState(() {
-			_enabled = _wakeWordService.config.enabled;
+			_enabled = _voiceActivationService.config.enabled;
 			// Convert threshold (-50 to -10 range) to 0.0-1.0 slider value.
 			// -50 = most sensitive (slider = 1.0), -10 = least sensitive (slider = 0.0)
-			_sensitivity = ((_wakeWordService.config.sensitivityThreshold - (-10)) / (-50 - (-10)))
+			_sensitivity = ((_voiceActivationService.config.sensitivityThreshold - (-10)) / (-50 - (-10)))
 				.clamp(0.0, 1.0);
 		});
 	}
@@ -59,8 +60,8 @@ class _WakeWordSettingsPageState extends State<WakeWordSettingsPage> {
 	Future<void> _handleEnabledChanged(bool value) async {
 		HapticFeedback.lightImpact();
 
-		await _wakeWordService.updateConfig(
-			_wakeWordService.config.copyWith(enabled: value),
+		await _voiceActivationService.updateConfig(
+			_voiceActivationService.config.copyWith(enabled: value),
 		);
 	}
 
@@ -72,14 +73,15 @@ class _WakeWordSettingsPageState extends State<WakeWordSettingsPage> {
 			_sensitivity = value;
 		});
 
-		_wakeWordService.updateConfig(
-			_wakeWordService.config.copyWith(sensitivityThreshold: threshold),
+		_voiceActivationService.updateConfig(
+			_voiceActivationService.config.copyWith(sensitivityThreshold: threshold),
 		);
 	}
 
 	@override
 	Widget build(BuildContext context) {
 		final isDark = Theme.of(context).brightness == Brightness.dark;
+		final localizations = AppLocalizations.of(context)!;
 
 		return ListenableBuilder(
 			listenable: locator<ScreenService>(),
@@ -89,7 +91,7 @@ class _WakeWordSettingsPageState extends State<WakeWordSettingsPage> {
 					body: Column(
 						children: [
 							PageHeader(
-								title: 'Wake Word',
+								title: localizations.settings_voice_activation_settings_title,
 								leading: HeaderIconButton(
 									icon: Icons.arrow_back,
 									onTap: () => Navigator.of(context).pop(),
@@ -102,11 +104,11 @@ class _WakeWordSettingsPageState extends State<WakeWordSettingsPage> {
 									itemBuilder: (context, index) => Column(
 										crossAxisAlignment: CrossAxisAlignment.start,
 										children: [
-											..._buildEnableSection(isDark),
+											..._buildEnableSection(isDark, localizations),
 											SizedBox(height: AppSpacings.pLg),
-											..._buildSensitivitySection(isDark),
+											..._buildSensitivitySection(isDark, localizations),
 											SizedBox(height: AppSpacings.pLg),
-											..._buildStatusSection(isDark),
+											..._buildStatusSection(isDark, localizations),
 										],
 									),
 								),
@@ -118,13 +120,13 @@ class _WakeWordSettingsPageState extends State<WakeWordSettingsPage> {
 		);
 	}
 
-	List<Widget> _buildEnableSection(bool isDark) {
+	List<Widget> _buildEnableSection(bool isDark, AppLocalizations localizations) {
 		final infoColor = isDark ? AppColorsDark.info : AppColorsLight.info;
 		final infoBg = isDark ? AppColorsDark.infoLight5 : AppColorsLight.infoLight9;
 
 		return [
 			SectionTitle(
-				title: 'Wake Word Detection',
+				title: localizations.settings_voice_activation_section_detection,
 				icon: Icons.record_voice_over_outlined,
 			),
 			AppSpacings.spacingSmVertical,
@@ -132,8 +134,8 @@ class _WakeWordSettingsPageState extends State<WakeWordSettingsPage> {
 				icon: Icons.record_voice_over_outlined,
 				iconColor: infoColor,
 				iconBgColor: infoBg,
-				label: 'Enable Wake Word',
-				description: 'Say "${_wakeWordService.config.wakeWord}" to activate voice commands without touching the panel.',
+				label: localizations.settings_voice_activation_enable_label,
+				description: localizations.settings_voice_activation_enable_description(_voiceActivationService.config.wakeWord),
 				trailing: SettingsToggle(
 					value: _enabled,
 					onChanged: _handleEnabledChanged,
@@ -142,13 +144,13 @@ class _WakeWordSettingsPageState extends State<WakeWordSettingsPage> {
 		];
 	}
 
-	List<Widget> _buildSensitivitySection(bool isDark) {
+	List<Widget> _buildSensitivitySection(bool isDark, AppLocalizations localizations) {
 		final warningColor = isDark ? AppColorsDark.warning : AppColorsLight.warning;
 		final warningBg = isDark ? AppColorsDark.warningLight5 : AppColorsLight.warningLight9;
 
 		return [
 			SectionTitle(
-				title: 'Sensitivity',
+				title: localizations.settings_voice_activation_section_sensitivity,
 				icon: Icons.tune,
 			),
 			AppSpacings.spacingSmVertical,
@@ -156,8 +158,8 @@ class _WakeWordSettingsPageState extends State<WakeWordSettingsPage> {
 				icon: Icons.tune,
 				iconColor: warningColor,
 				iconBgColor: warningBg,
-				label: 'Detection Sensitivity',
-				description: 'Higher sensitivity detects quieter speech but may trigger on background noise.',
+				label: localizations.settings_voice_activation_sensitivity_label,
+				description: localizations.settings_voice_activation_sensitivity_description,
 				opacity: _enabled ? 1.0 : 0.4,
 				bottom: SettingsSlider(
 					value: _sensitivity,
@@ -169,35 +171,35 @@ class _WakeWordSettingsPageState extends State<WakeWordSettingsPage> {
 		];
 	}
 
-	List<Widget> _buildStatusSection(bool isDark) {
+	List<Widget> _buildStatusSection(bool isDark, AppLocalizations localizations) {
 		final successColor = isDark ? AppColorsDark.success : AppColorsLight.success;
 		final successBg = isDark ? AppColorsDark.successLight5 : AppColorsLight.successLight9;
 		final placeholderColor = isDark
 			? AppTextColorDark.placeholder
 			: AppTextColorLight.placeholder;
 
-		final state = _wakeWordService.state;
+		final state = _voiceActivationService.state;
 		final String statusText;
 		final Color statusColor;
 
 		switch (state) {
-			case WakeWordState.stopped:
-				statusText = 'Stopped';
+			case VoiceActivationState.stopped:
+				statusText = localizations.settings_voice_activation_status_stopped;
 				statusColor = placeholderColor;
-			case WakeWordState.listening:
-				statusText = 'Listening for wake word...';
+			case VoiceActivationState.listening:
+				statusText = localizations.settings_voice_activation_status_listening;
 				statusColor = successColor;
-			case WakeWordState.recording:
-				statusText = 'Recording speech...';
+			case VoiceActivationState.recording:
+				statusText = localizations.settings_voice_activation_status_recording;
 				statusColor = isDark ? AppColorsDark.danger : AppColorsLight.danger;
-			case WakeWordState.processing:
-				statusText = 'Processing audio...';
+			case VoiceActivationState.processing:
+				statusText = localizations.settings_voice_activation_status_processing;
 				statusColor = isDark ? AppColorsDark.warning : AppColorsLight.warning;
 		}
 
 		return [
 			SectionTitle(
-				title: 'Status',
+				title: localizations.settings_voice_activation_section_status,
 				icon: Icons.info_outline,
 			),
 			AppSpacings.spacingSmVertical,
@@ -205,7 +207,7 @@ class _WakeWordSettingsPageState extends State<WakeWordSettingsPage> {
 				icon: Icons.radio_button_checked,
 				iconColor: successColor,
 				iconBgColor: successBg,
-				label: 'Engine Status',
+				label: localizations.settings_voice_activation_status_label,
 				description: statusText,
 				trailing: Container(
 					width: AppSpacings.scale(10),

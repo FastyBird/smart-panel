@@ -44,6 +44,8 @@ import { SceneSuggestionEvaluator } from './services/scene-suggestion-evaluator.
 import { SttProviderService } from './services/stt-provider.service';
 import { SuggestionEngineService } from './services/suggestion-engine.service';
 import { ToolExecutionService } from './services/tool-execution.service';
+import { ToolProviderRegistryService } from './services/tool-provider-registry.service';
+import { TtsProviderRegistryService } from './services/tts-provider-registry.service';
 import { TtsProviderService } from './services/tts-provider.service';
 import { EvaluatorRulesLoaderService } from './spec/evaluator-rules-loader.service';
 
@@ -85,7 +87,9 @@ import { EvaluatorRulesLoaderService } from './spec/evaluator-rules-loader.servi
 		ConflictDetectorEvaluator,
 		SceneSuggestionEvaluator,
 		ToolExecutionService,
+		ToolProviderRegistryService,
 		SttProviderService,
+		TtsProviderRegistryService,
 		TtsProviderService,
 		OAuthCallbackService,
 		OAuthFlowService,
@@ -103,6 +107,8 @@ import { EvaluatorRulesLoaderService } from './spec/evaluator-rules-loader.servi
 		EnergyEvaluator,
 		ConflictDetectorEvaluator,
 		SceneSuggestionEvaluator,
+		ToolProviderRegistryService,
+		TtsProviderRegistryService,
 		OAuthCallbackService,
 		OAuthFlowService,
 	],
@@ -118,6 +124,8 @@ export class BuddyModule implements OnModuleInit {
 		private readonly energyEvaluator: EnergyEvaluator,
 		private readonly conflictDetector: ConflictDetectorEvaluator,
 		private readonly sceneSuggestion: SceneSuggestionEvaluator,
+		private readonly toolProviderRegistry: ToolProviderRegistryService,
+		private readonly toolExecution: ToolExecutionService,
 	) {}
 
 	onModuleInit() {
@@ -131,6 +139,9 @@ export class BuddyModule implements OnModuleInit {
 			class: BuddyConfigModel,
 			configDto: UpdateBuddyConfigDto,
 		});
+
+		// Register the core tool provider with the tool registry
+		this.toolProviderRegistry.register(this.toolExecution);
 
 		for (const model of BUDDY_SWAGGER_EXTRA_MODELS) {
 			this.swaggerRegistry.register(model);
@@ -150,6 +161,8 @@ The Buddy module provides an AI assistant for the Smart Panel that observes user
 - **Action Observer** - Tracks completed intents to build a history of user actions
 - **Context Aggregation** - Builds structured snapshots of home state (spaces, devices, scenes, weather, energy)
 - **Text Chat** - Conversational interface powered by pluggable LLM providers
+- **Voice Interface** - Optional STT/TTS for hands-free interaction via pluggable providers
+- **Tool Execution** - LLM can control devices, run scenes, and set lighting modes via extensible tool providers
 - **Suggestions** - Context-aware suggestions based on detected patterns and rules
 - **Offline-First** - Rule-based suggestions work without any AI provider configured
 
@@ -157,11 +170,19 @@ The Buddy module provides an AI assistant for the Smart Panel that observes user
 
 Chat functionality is powered by separate provider plugins:
 
-- **buddy-openai-plugin** - OpenAI API (GPT models)
+- **buddy-openai-plugin** - OpenAI API (GPT models + TTS)
 - **buddy-claude-plugin** - Anthropic Claude API
 - **buddy-ollama-plugin** - Local LLM inference via Ollama
 
-Install and enable the desired provider plugin, then set the buddy module \`provider\` config to the plugin type.`,
+## TTS Provider Plugins
+
+Voice output is powered by separate TTS plugins:
+
+- **buddy-openai-plugin** - OpenAI TTS API
+- **buddy-elevenlabs-plugin** - ElevenLabs API
+- **buddy-system-tts-plugin** - Local piper/espeak
+
+Install and enable the desired plugins, then set the buddy module \`provider\` and \`tts_plugin\` configs.`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

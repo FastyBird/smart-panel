@@ -675,10 +675,48 @@ class AppLocalizationsCs extends AppLocalizations {
   String get settings_general_settings_button_maintenance => 'Údržba';
 
   @override
-  String get settings_general_settings_button_wake_word => 'Aktivační slovo';
+  String get settings_general_settings_button_voice_activation => 'Hlasová aktivace';
 
   @override
-  String get settings_wake_word_settings_title => 'Nastavení hlasové aktivace';
+  String get settings_voice_activation_settings_title => 'Nastavení hlasové aktivace';
+
+  @override
+  String get settings_voice_activation_section_detection => 'Detekce hlasové aktivace';
+
+  @override
+  String get settings_voice_activation_enable_label => 'Povolit hlasovou aktivaci';
+
+  @override
+  String settings_voice_activation_enable_description(String wakeWord) {
+    return 'Řekněte "$wakeWord" pro aktivaci hlasových příkazů bez dotyku panelu.';
+  }
+
+  @override
+  String get settings_voice_activation_section_sensitivity => 'Citlivost';
+
+  @override
+  String get settings_voice_activation_sensitivity_label => 'Citlivost detekce';
+
+  @override
+  String get settings_voice_activation_sensitivity_description => 'Vyšší citlivost detekuje tišší řeč, ale může reagovat na okolní hluk.';
+
+  @override
+  String get settings_voice_activation_section_status => 'Stav';
+
+  @override
+  String get settings_voice_activation_status_label => 'Stav enginu';
+
+  @override
+  String get settings_voice_activation_status_stopped => 'Zastaveno';
+
+  @override
+  String get settings_voice_activation_status_listening => 'Naslouchání hlasové aktivaci...';
+
+  @override
+  String get settings_voice_activation_status_recording => 'Nahrávání řeči...';
+
+  @override
+  String get settings_voice_activation_status_processing => 'Zpracování zvuku...';
 
   @override
   String get settings_weather_settings_title => 'Nastavení počasí';
