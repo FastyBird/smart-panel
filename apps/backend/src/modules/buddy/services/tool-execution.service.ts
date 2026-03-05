@@ -189,7 +189,7 @@ export class ToolExecutionService {
 		const propertyId = args.property_id as string;
 		const value = args.value;
 
-		if (!deviceId || !channelId || !propertyId || value === undefined) {
+		if (!deviceId || !channelId || !propertyId || value === undefined || value === null) {
 			return { success: false, message: 'Missing required parameters: device_id, channel_id, property_id, value' };
 		}
 

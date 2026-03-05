@@ -198,6 +198,10 @@ export class BuddyConversationService {
 				break;
 			}
 
+			// If the LLM returned both content and tool calls, the content is its final answer.
+			// Execute the tools for their side effects but return the response as-is afterwards.
+			const hasContentWithTools = !!response.content;
+
 			this.logger.debug(`Tool iteration ${iteration + 1}: executing ${response.toolCalls.length} tool call(s)`);
 
 			// Execute all tool calls
@@ -211,22 +215,22 @@ export class BuddyConversationService {
 				);
 			}
 
+			// If the LLM already provided a final answer alongside the tool calls,
+			// return it directly — no need to re-query the LLM for a summary.
+			if (hasContentWithTools) {
+				return { ...response, toolCalls: undefined };
+			}
+
 			// Append the assistant's tool call response and tool results as a follow-up user message
 			// This is a simplified approach that works across providers without requiring
 			// provider-specific tool result message formats
 			const toolResultsSummary = toolResults.join('\n');
+			const toolNames = response.toolCalls.map((tc) => tc.name).join(', ');
 
-			if (response.content) {
-				workingMessages.push({ role: MessageRole.ASSISTANT, content: response.content });
-			} else {
-				// Indicate the assistant made tool calls (for context in the conversation)
-				const toolNames = response.toolCalls.map((tc) => tc.name).join(', ');
-
-				workingMessages.push({
-					role: MessageRole.ASSISTANT,
-					content: `[Executing tools: ${toolNames}]`,
-				});
-			}
+			workingMessages.push({
+				role: MessageRole.ASSISTANT,
+				content: `[Executing tools: ${toolNames}]`,
+			});
 
 			workingMessages.push({
 				role: MessageRole.USER,
