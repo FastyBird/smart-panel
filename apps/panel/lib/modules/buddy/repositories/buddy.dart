@@ -71,6 +71,20 @@ class BuddyRepository extends ChangeNotifier {
 		required Dio dio,
 	}) : _dio = dio;
 
+	/// Get the current Bearer token from Dio's default headers.
+	///
+	/// Used by [AudioPlaybackService] to authenticate audio requests
+	/// made outside of Dio (e.g., via just_audio).
+	String? getCurrentToken() {
+		final auth = _dio.options.headers['Authorization'];
+
+		if (auth is String && auth.startsWith('Bearer ')) {
+			return auth.substring(7);
+		}
+
+		return null;
+	}
+
 	// ============================================
 	// GETTERS
 	// ============================================
@@ -443,6 +457,16 @@ class BuddyRepository extends ChangeNotifier {
 		}
 
 		return null;
+	}
+
+	/// Build the full URL for a message's TTS audio endpoint.
+	///
+	/// The URL is constructed from the Dio base URL so it can be
+	/// passed directly to an audio player (e.g. just_audio).
+	String getMessageAudioUrl(String conversationId, String messageId) {
+		final base = _dio.options.baseUrl.replaceAll(RegExp(r'/+$'), '');
+
+		return '$base${BuddyModuleConstants.conversationsPath}/$conversationId/messages/$messageId/audio';
 	}
 
 	/// Delete a conversation

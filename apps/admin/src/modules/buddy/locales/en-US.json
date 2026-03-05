@@ -92,6 +92,28 @@
 			"sttLanguage": {
 				"title": "Language Hint",
 				"placeholder": "e.g. en, de, cs (optional)"
+			},
+			"ttsProvider": {
+				"title": "Text-to-Speech Provider",
+				"placeholder": "Select a TTS provider",
+				"options": {
+					"none": "None (voice output disabled)",
+					"openaiTts": "OpenAI TTS",
+					"elevenlabs": "ElevenLabs",
+					"system": "System (espeak/piper)"
+				}
+			},
+			"ttsApiKey": {
+				"title": "TTS API Key",
+				"placeholder": "Enter your API key for the TTS provider"
+			},
+			"ttsVoice": {
+				"title": "Voice",
+				"placeholder": "Voice identifier"
+			},
+			"ttsSpeed": {
+				"title": "Speech Speed",
+				"placeholder": "1.0"
 			}
 		},
 		"message": {

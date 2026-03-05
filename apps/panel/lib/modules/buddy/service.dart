@@ -71,6 +71,14 @@ class BuddyService extends ChangeNotifier {
 	bool get isSttNotConfigured => _buddyRepository.isSttNotConfigured;
 
 	// ============================================
+	// AUTH ACCESSORS
+	// ============================================
+
+	/// Get the current auth token for use by services that bypass Dio
+	/// (e.g., just_audio player).
+	String? getCurrentToken() => _buddyRepository.getCurrentToken();
+
+	// ============================================
 	// CONVERSATION ACTIONS
 	// ============================================
 
@@ -157,6 +165,18 @@ class BuddyService extends ChangeNotifier {
 			mimeType,
 		);
 	}
+
+	/// Get the TTS audio URL for a message in the active conversation.
+	String? getMessageAudioUrl(String messageId) {
+		final conversationId = _buddyRepository.activeConversationId;
+
+		if (conversationId == null) return null;
+
+		return _buddyRepository.getMessageAudioUrl(conversationId, messageId);
+	}
+
+	/// Whether TTS is configured based on the buddy config.
+	bool get isTtsConfigured => _configRepo?.data?.isTtsConfigured ?? false;
 
 	/// Delete a conversation
 	Future<bool> deleteConversation(String conversationId) async {

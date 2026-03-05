@@ -132,10 +132,10 @@ Inspired by the [OpenClaw](https://github.com/openclaw/openclaw) project's proac
 ### Phase 3 (Voice)
 
 - [x] Speech-to-text integration (Whisper local or cloud provider)
-- [ ] Text-to-speech integration (system TTS, ElevenLabs, or similar)
+- [x] Text-to-speech integration (system TTS, ElevenLabs, or similar)
 - [ ] Wake word detection on panel hardware
 - [ ] Voice commands routed through buddy conversation → intent system
-- [ ] Panel: microphone button in buddy drawer, audio playback for responses
+- [x] Panel: microphone button in buddy drawer, audio playback for responses
 
 ### Phase 4 (Multi-Channel)
 
