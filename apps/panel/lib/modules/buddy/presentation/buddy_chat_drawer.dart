@@ -200,6 +200,8 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 	}
 
 	void _onBuddyServiceChanged() {
+		if (!mounted) return;
+
 		final messages = _buddyService.messages;
 		final messageCount = messages.length;
 
