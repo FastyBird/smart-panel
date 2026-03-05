@@ -80,6 +80,12 @@ export class TtsProviderService implements OnModuleInit, OnModuleDestroy {
 			return { buffer: cached.buffer, contentType: cached.contentType };
 		}
 
+		// Remove stale entry before re-synthesizing to keep cacheBytes accurate
+		if (cached) {
+			this.audioCache.delete(cacheKey);
+			this.cacheBytes -= cached.size;
+		}
+
 		let result: { buffer: Buffer; contentType: string };
 
 		switch (provider) {
