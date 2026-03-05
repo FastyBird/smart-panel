@@ -14,6 +14,8 @@ export enum EventType {
 
 export const LLM_PROVIDER_NONE = 'none';
 
+export const TTS_PLUGIN_NONE = 'none';
+
 /**
  * Capability identifiers for buddy-related plugins.
  * Plugins declare these when registering metadata to indicate what they support.

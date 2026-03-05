@@ -17,6 +17,7 @@ import {
 	ENERGY_HIGH_CONSUMPTION_THRESHOLD_KW,
 	HEARTBEAT_DEFAULT_INTERVAL_MS,
 	LLM_PROVIDER_NONE,
+	TTS_PLUGIN_NONE,
 	SttProvider,
 	TTS_DEFAULT_SPEED,
 } from '../buddy.constants';
@@ -138,12 +139,12 @@ export class BuddyConfigModel extends ModuleConfigModel {
 		description:
 			'TTS provider plugin type (e.g. buddy-openai-plugin, buddy-elevenlabs-plugin, buddy-system-tts-plugin, or none)',
 		type: 'string',
-		example: LLM_PROVIDER_NONE,
+		example: TTS_PLUGIN_NONE,
 	})
 	@Expose({ name: 'tts_plugin' })
 	@IsOptional()
 	@IsString()
-	ttsPlugin: string = LLM_PROVIDER_NONE;
+	ttsPlugin: string = TTS_PLUGIN_NONE;
 
 	// Legacy field – kept so existing YAML configs pass forbidNonWhitelisted validation.
 	// Value is discarded on read; TTS API keys now live in each plugin's config.

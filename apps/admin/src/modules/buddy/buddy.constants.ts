@@ -15,6 +15,8 @@ export enum RouteNames {
 
 export const LLM_PROVIDER_NONE = 'none';
 
+export const TTS_PLUGIN_NONE = 'none';
+
 export const TTS_PLUGIN_ELEVENLABS = 'buddy-elevenlabs-plugin';
 
 /**

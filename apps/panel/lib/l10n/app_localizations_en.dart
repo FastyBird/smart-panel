@@ -670,6 +670,44 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settings_voice_activation_settings_title => 'Voice activation settings';
 
   @override
+  String get settings_voice_activation_section_detection => 'Voice Activation Detection';
+
+  @override
+  String get settings_voice_activation_enable_label => 'Enable Voice Activation';
+
+  @override
+  String settings_voice_activation_enable_description(String wakeWord) {
+    return 'Say "$wakeWord" to activate voice commands without touching the panel.';
+  }
+
+  @override
+  String get settings_voice_activation_section_sensitivity => 'Sensitivity';
+
+  @override
+  String get settings_voice_activation_sensitivity_label => 'Detection Sensitivity';
+
+  @override
+  String get settings_voice_activation_sensitivity_description => 'Higher sensitivity detects quieter speech but may trigger on background noise.';
+
+  @override
+  String get settings_voice_activation_section_status => 'Status';
+
+  @override
+  String get settings_voice_activation_status_label => 'Engine Status';
+
+  @override
+  String get settings_voice_activation_status_stopped => 'Stopped';
+
+  @override
+  String get settings_voice_activation_status_listening => 'Listening for voice activation...';
+
+  @override
+  String get settings_voice_activation_status_recording => 'Recording speech...';
+
+  @override
+  String get settings_voice_activation_status_processing => 'Processing audio...';
+
+  @override
   String get settings_weather_settings_title => 'Weather Settings';
 
   @override

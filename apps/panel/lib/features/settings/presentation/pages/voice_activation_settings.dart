@@ -104,11 +104,11 @@ class _VoiceActivationSettingsPageState extends State<VoiceActivationSettingsPag
 									itemBuilder: (context, index) => Column(
 										crossAxisAlignment: CrossAxisAlignment.start,
 										children: [
-											..._buildEnableSection(isDark),
+											..._buildEnableSection(isDark, localizations),
 											SizedBox(height: AppSpacings.pLg),
-											..._buildSensitivitySection(isDark),
+											..._buildSensitivitySection(isDark, localizations),
 											SizedBox(height: AppSpacings.pLg),
-											..._buildStatusSection(isDark),
+											..._buildStatusSection(isDark, localizations),
 										],
 									),
 								),
@@ -120,13 +120,13 @@ class _VoiceActivationSettingsPageState extends State<VoiceActivationSettingsPag
 		);
 	}
 
-	List<Widget> _buildEnableSection(bool isDark) {
+	List<Widget> _buildEnableSection(bool isDark, AppLocalizations localizations) {
 		final infoColor = isDark ? AppColorsDark.info : AppColorsLight.info;
 		final infoBg = isDark ? AppColorsDark.infoLight5 : AppColorsLight.infoLight9;
 
 		return [
 			SectionTitle(
-				title: 'Voice Activation Detection',
+				title: localizations.settings_voice_activation_section_detection,
 				icon: Icons.record_voice_over_outlined,
 			),
 			AppSpacings.spacingSmVertical,
@@ -134,8 +134,8 @@ class _VoiceActivationSettingsPageState extends State<VoiceActivationSettingsPag
 				icon: Icons.record_voice_over_outlined,
 				iconColor: infoColor,
 				iconBgColor: infoBg,
-				label: 'Enable Voice Activation',
-				description: 'Say "${_voiceActivationService.config.wakeWord}" to activate voice commands without touching the panel.',
+				label: localizations.settings_voice_activation_enable_label,
+				description: localizations.settings_voice_activation_enable_description(_voiceActivationService.config.wakeWord),
 				trailing: SettingsToggle(
 					value: _enabled,
 					onChanged: _handleEnabledChanged,
@@ -144,13 +144,13 @@ class _VoiceActivationSettingsPageState extends State<VoiceActivationSettingsPag
 		];
 	}
 
-	List<Widget> _buildSensitivitySection(bool isDark) {
+	List<Widget> _buildSensitivitySection(bool isDark, AppLocalizations localizations) {
 		final warningColor = isDark ? AppColorsDark.warning : AppColorsLight.warning;
 		final warningBg = isDark ? AppColorsDark.warningLight5 : AppColorsLight.warningLight9;
 
 		return [
 			SectionTitle(
-				title: 'Sensitivity',
+				title: localizations.settings_voice_activation_section_sensitivity,
 				icon: Icons.tune,
 			),
 			AppSpacings.spacingSmVertical,
@@ -158,8 +158,8 @@ class _VoiceActivationSettingsPageState extends State<VoiceActivationSettingsPag
 				icon: Icons.tune,
 				iconColor: warningColor,
 				iconBgColor: warningBg,
-				label: 'Detection Sensitivity',
-				description: 'Higher sensitivity detects quieter speech but may trigger on background noise.',
+				label: localizations.settings_voice_activation_sensitivity_label,
+				description: localizations.settings_voice_activation_sensitivity_description,
 				opacity: _enabled ? 1.0 : 0.4,
 				bottom: SettingsSlider(
 					value: _sensitivity,
@@ -171,7 +171,7 @@ class _VoiceActivationSettingsPageState extends State<VoiceActivationSettingsPag
 		];
 	}
 
-	List<Widget> _buildStatusSection(bool isDark) {
+	List<Widget> _buildStatusSection(bool isDark, AppLocalizations localizations) {
 		final successColor = isDark ? AppColorsDark.success : AppColorsLight.success;
 		final successBg = isDark ? AppColorsDark.successLight5 : AppColorsLight.successLight9;
 		final placeholderColor = isDark
@@ -184,22 +184,22 @@ class _VoiceActivationSettingsPageState extends State<VoiceActivationSettingsPag
 
 		switch (state) {
 			case VoiceActivationState.stopped:
-				statusText = 'Stopped';
+				statusText = localizations.settings_voice_activation_status_stopped;
 				statusColor = placeholderColor;
 			case VoiceActivationState.listening:
-				statusText = 'Listening for voice activation...';
+				statusText = localizations.settings_voice_activation_status_listening;
 				statusColor = successColor;
 			case VoiceActivationState.recording:
-				statusText = 'Recording speech...';
+				statusText = localizations.settings_voice_activation_status_recording;
 				statusColor = isDark ? AppColorsDark.danger : AppColorsLight.danger;
 			case VoiceActivationState.processing:
-				statusText = 'Processing audio...';
+				statusText = localizations.settings_voice_activation_status_processing;
 				statusColor = isDark ? AppColorsDark.warning : AppColorsLight.warning;
 		}
 
 		return [
 			SectionTitle(
-				title: 'Status',
+				title: localizations.settings_voice_activation_section_status,
 				icon: Icons.info_outline,
 			),
 			AppSpacings.spacingSmVertical,
@@ -207,7 +207,7 @@ class _VoiceActivationSettingsPageState extends State<VoiceActivationSettingsPag
 				icon: Icons.radio_button_checked,
 				iconColor: successColor,
 				iconBgColor: successBg,
-				label: 'Engine Status',
+				label: localizations.settings_voice_activation_status_label,
 				description: statusText,
 				trailing: Container(
 					width: AppSpacings.scale(10),

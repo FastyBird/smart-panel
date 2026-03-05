@@ -1,7 +1,7 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 
 import { ConfigService } from '../../config/services/config.service';
-import { BUDDY_MODULE_NAME, LLM_PROVIDER_NONE, TTS_AUDIO_CACHE_TTL_MS, TTS_DEFAULT_SPEED } from '../buddy.constants';
+import { BUDDY_MODULE_NAME, TTS_AUDIO_CACHE_TTL_MS, TTS_DEFAULT_SPEED, TTS_PLUGIN_NONE } from '../buddy.constants';
 import { BuddyTtsNotConfiguredException } from '../buddy.exceptions';
 import { BuddyConfigModel } from '../models/config.model';
 
@@ -56,7 +56,7 @@ export class TtsProviderService implements OnModuleInit, OnModuleDestroy {
 
 		const pluginType = config.ttsPlugin;
 
-		if (pluginType === LLM_PROVIDER_NONE || !pluginType) {
+		if (pluginType === TTS_PLUGIN_NONE || !pluginType) {
 			throw new BuddyTtsNotConfiguredException();
 		}
 
@@ -180,7 +180,7 @@ export class TtsProviderService implements OnModuleInit, OnModuleDestroy {
 
 		const pluginType = config.ttsPlugin;
 
-		if (pluginType === LLM_PROVIDER_NONE || !pluginType) {
+		if (pluginType === TTS_PLUGIN_NONE || !pluginType) {
 			return false;
 		}
 
@@ -204,7 +204,7 @@ export class TtsProviderService implements OnModuleInit, OnModuleDestroy {
 		try {
 			return this.configService.getModuleConfig<BuddyConfigModel>(BUDDY_MODULE_NAME);
 		} catch {
-			return Object.assign(new BuddyConfigModel(), { ttsPlugin: LLM_PROVIDER_NONE });
+			return Object.assign(new BuddyConfigModel(), { ttsPlugin: TTS_PLUGIN_NONE });
 		}
 	}
 
