@@ -159,7 +159,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
 
       setState(() {
         _isLoading = false;
-        _errorMessage = 'Failed to load house data';
+        _errorMessage = 'master_error_load_house_data';
       });
     }
   }
@@ -220,7 +220,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
     });
 
     try {
-      final result = await _intentsService.activateScene(scene.id);
+      final result = await _intentsService.activateScene(scene.id, localizations: AppLocalizations.of(context)!);
 
       if (!mounted) return;
 
@@ -230,24 +230,23 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
       });
 
       if (result.isSuccess) {
-        final localizations = AppLocalizations.of(context);
+        final localizations = AppLocalizations.of(context)!;
         Toast.showSuccess(
           context,
-          message: localizations?.space_scene_triggered ?? 'Scene activated',
+          message: localizations.space_scene_triggered,
         );
       } else if (result.isPartialSuccess) {
-        final localizations = AppLocalizations.of(context);
+        final localizations = AppLocalizations.of(context)!;
         Toast.showInfo(
           context,
           message: result.message ??
-              localizations?.space_scene_partial_success ??
-              'Scene partially activated',
+              localizations.space_scene_partial_success,
         );
       } else {
-        final localizations = AppLocalizations.of(context);
+        final localizations = AppLocalizations.of(context)!;
         Toast.showError(
           context,
-          message: result.message ?? localizations?.action_failed ?? 'Failed',
+          message: result.message ?? localizations.action_failed,
         );
       }
     } catch (e) {
@@ -258,10 +257,10 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
         _triggeringSceneId = null;
       });
 
-      final localizations = AppLocalizations.of(context);
+      final localizations = AppLocalizations.of(context)!;
       Toast.showError(
         context,
-        message: localizations?.action_failed ?? 'Failed to activate scene',
+        message: localizations.action_failed,
       );
     }
   }
@@ -299,7 +298,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
 
   @override
   Widget build(BuildContext context) {
-    final localizations = AppLocalizations.of(context);
+    final localizations = AppLocalizations.of(context)!;
 
     return Scaffold(
       appBar: AppTopBar(
@@ -448,7 +447,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
                 : AppColorsDark.danger,
           ),
           Text(
-            _errorMessage!,
+            AppLocalizations.of(context)!.master_error_load_house_data,
             style: TextStyle(
               fontSize: AppFontSize.base,
               color: Theme.of(context).brightness == Brightness.light
@@ -472,7 +471,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
                     ? AppFilledButtonsDarkThemes.primaryForegroundColor
                     : AppFilledButtonsLightThemes.primaryForegroundColor,
               ),
-              label: const Text('Retry'),
+              label: Text(AppLocalizations.of(context)!.action_retry),
             ),
           ),
         ],
@@ -480,7 +479,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
     );
   }
 
-  Widget _buildContent(BuildContext context, AppLocalizations? localizations) {
+  Widget _buildContent(BuildContext context, AppLocalizations localizations) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       spacing: AppSpacings.pMd,
@@ -502,7 +501,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
 
   Widget _buildSummarySection(
     BuildContext context,
-    AppLocalizations? localizations,
+    AppLocalizations localizations,
   ) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -511,19 +510,19 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
           context,
           icon: MdiIcons.homeGroup,
           value: '$_roomsCount',
-          label: localizations?.master_rooms ?? 'Rooms',
+          label: localizations.master_rooms,
         ),
         _buildSummaryCard(
           context,
           icon: MdiIcons.devices,
           value: '$_totalDevices',
-          label: localizations?.master_devices ?? 'Devices',
+          label: localizations.master_devices,
         ),
         _buildSummaryCard(
           context,
           icon: MdiIcons.movieOpenPlay,
           value: '${_globalScenes.length}',
-          label: localizations?.master_scenes ?? 'Scenes',
+          label: localizations.master_scenes,
         ),
       ],
     );
@@ -576,7 +575,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
 
   Widget _buildScenesSection(
     BuildContext context,
-    AppLocalizations? localizations,
+    AppLocalizations localizations,
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -590,7 +589,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
               size: AppSpacings.scale(20),
             ),
             Text(
-              localizations?.master_quick_actions ?? 'Quick Actions',
+              localizations.master_quick_actions,
               style: TextStyle(
                 fontSize: AppFontSize.base,
                 fontWeight: FontWeight.w600,
@@ -645,7 +644,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
 
   Widget _buildRoomsSection(
     BuildContext context,
-    AppLocalizations? localizations,
+    AppLocalizations localizations,
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -659,7 +658,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
               size: AppSpacings.scale(20),
             ),
             Text(
-              localizations?.master_rooms ?? 'Rooms',
+              localizations.master_rooms,
               style: TextStyle(
                 fontSize: AppFontSize.base,
                 fontWeight: FontWeight.w600,
@@ -713,7 +712,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
                     ),
                   ),
                   Text(
-                    '${room.onlineDevices}/${room.totalDevices} devices',
+                    AppLocalizations.of(context)!.master_room_device_count(room.onlineDevices, room.totalDevices),
                     style: TextStyle(
                       fontSize: AppFontSize.extraSmall,
                       color: allOnline

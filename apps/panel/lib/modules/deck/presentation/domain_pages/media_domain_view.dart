@@ -422,7 +422,7 @@ class _MediaDomainViewPageState extends State<MediaDomainViewPage>
 			if (key == MediaActivityKey.off) {
 				await _mediaService!.deactivateActivity(_roomId);
 			} else {
-				await _mediaService!.activateActivity(_roomId, key);
+				await _mediaService!.activateActivity(_roomId, key, localizations: AppLocalizations.of(context)!);
 			}
 		} finally {
 			if (mounted) {

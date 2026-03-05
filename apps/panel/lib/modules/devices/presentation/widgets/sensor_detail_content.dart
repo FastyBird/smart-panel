@@ -142,6 +142,7 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
     setState(() {
       _currentSensorData = SensorUtils.buildSensorData(
         freshChannel,
+        localizations: AppLocalizations.of(context)!,
         label: widget.sensor.label,
         icon: widget.sensor.icon,
         valueFormatter: widget.sensor.valueFormatter,
@@ -837,17 +838,18 @@ class _SensorDetailContentState extends State<SensorDetailContent> {
   }
 
   List<String> _getTimeLabels() {
+    final now = AppLocalizations.of(context)!.sensor_chart_label_now;
     switch (_selectedPeriod) {
       case 0:
-        return ['-60m', '-45m', '-30m', '-15m', 'Now'];
+        return ['-60m', '-45m', '-30m', '-15m', now];
       case 1:
-        return ['00:00', '06:00', '12:00', '18:00', 'Now'];
+        return ['00:00', '06:00', '12:00', '18:00', now];
       case 2:
-        return ['-7d', '-5d', '-3d', '-1d', 'Now'];
+        return ['-7d', '-5d', '-3d', '-1d', now];
       case 3:
-        return ['-30d', '-22d', '-15d', '-7d', 'Now'];
+        return ['-30d', '-22d', '-15d', '-7d', now];
       default:
-        return ['00:00', '06:00', '12:00', '18:00', 'Now'];
+        return ['00:00', '06:00', '12:00', '18:00', now];
     }
   }
 

@@ -282,7 +282,7 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
 						_hasSpeakerEnabled = !_hasSpeakerEnabled;
 					});
 
-					Toast.showError(context, message: 'Save settings failed.');
+					Toast.showError(context, message: AppLocalizations.of(context)!.settings_save_failed);
 				}
 			},
 		);
@@ -326,7 +326,7 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
 
 						Toast.showError(
 							context,
-							message: 'Save settings failed.',
+							message: AppLocalizations.of(context)!.settings_save_failed,
 						);
 					} else {
 						setState(() {
@@ -364,7 +364,7 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
 						_hasMicrophoneEnabled = !_hasMicrophoneEnabled;
 					});
 
-					Toast.showError(context, message: 'Save settings failed.');
+					Toast.showError(context, message: AppLocalizations.of(context)!.settings_save_failed);
 				}
 			},
 		);
@@ -408,7 +408,7 @@ class _AudioSettingsPageState extends State<AudioSettingsPage> {
 
 						Toast.showError(
 							context,
-							message: 'Save settings failed.',
+							message: AppLocalizations.of(context)!.settings_save_failed,
 						);
 					} else {
 						setState(() {

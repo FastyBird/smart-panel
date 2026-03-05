@@ -1202,7 +1202,9 @@ class _EventsFeed extends StatelessWidget {
 					spacing: AppSpacings.pMd,
 					children: [
 						Text(
-							eventsRepo.errorMessage ?? localizations.security_events_load_failed,
+							eventsRepo.errorType == SecurityEventsErrorType.unexpectedResponse
+								? localizations.security_events_error_unexpected_response
+								: localizations.security_events_load_failed,
 							style: TextStyle(
 								fontSize: AppFontSize.base,
 								color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,

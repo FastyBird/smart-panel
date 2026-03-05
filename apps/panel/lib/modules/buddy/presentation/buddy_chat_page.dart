@@ -5,8 +5,9 @@ import 'package:provider/provider.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
-import 'package:fastybird_smart_panel/modules/buddy/buddy_strings.dart';
+import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/buddy/models/buddy_config.dart';
+import 'package:fastybird_smart_panel/modules/buddy/repositories/buddy.dart';
 import 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/message_bubble.dart';
 import 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/suggestion_card.dart';
 import 'package:fastybird_smart_panel/modules/buddy/service.dart';
@@ -281,12 +282,13 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 
 				// Error state
 				if (buddyService.hasError)
-					_buildErrorMessage(context, isDark, buddyService.error!),
+					_buildErrorMessage(context, isDark, buddyService.errorType),
 			],
 		);
 	}
 
 	Widget _buildEmptyState(BuildContext context, bool isDark) {
+		final localizations = AppLocalizations.of(context)!;
 		final secondaryColor = isDark
 			? AppTextColorDark.secondary
 			: AppTextColorLight.secondary;
@@ -307,7 +309,7 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 						),
 						SizedBox(height: AppSpacings.pLg),
 						Text(
-							BuddyStrings.emptyStateMessage,
+							localizations.buddy_empty_state_message,
 							style: TextStyle(
 								fontSize: AppFontSize.base,
 								color: secondaryColor,
@@ -321,6 +323,7 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 	}
 
 	Widget _buildInitFailedState(BuildContext context, bool isDark) {
+		final localizations = AppLocalizations.of(context)!;
 		final warningColor = isDark ? AppColorsDark.warning : AppColorsLight.warning;
 		final secondaryColor = isDark
 			? AppTextColorDark.secondary
@@ -339,7 +342,7 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 						),
 						SizedBox(height: AppSpacings.pLg),
 						Text(
-							BuddyStrings.initFailedMessage,
+							localizations.buddy_init_failed_message,
 							style: TextStyle(
 								fontSize: AppFontSize.base,
 								color: secondaryColor,
@@ -354,7 +357,7 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 								size: AppSpacings.scale(16),
 							),
 							label: Text(
-								BuddyStrings.retry,
+								localizations.action_retry,
 								style: TextStyle(
 									fontSize: AppFontSize.base,
 								),
@@ -367,6 +370,7 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 	}
 
 	Widget _buildProviderNotConfiguredState(BuildContext context, bool isDark) {
+		final localizations = AppLocalizations.of(context)!;
 		final secondaryColor = isDark
 			? AppTextColorDark.secondary
 			: AppTextColorLight.secondary;
@@ -387,7 +391,7 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 						),
 						SizedBox(height: AppSpacings.pLg),
 						Text(
-							BuddyStrings.providerNotConfiguredTitle,
+							localizations.buddy_provider_not_configured_title,
 							style: TextStyle(
 								fontSize: AppFontSize.base,
 								fontWeight: FontWeight.w600,
@@ -397,7 +401,7 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 						),
 						SizedBox(height: AppSpacings.pSm),
 						Text(
-							BuddyStrings.providerNotConfiguredDescription,
+							localizations.buddy_provider_not_configured_description,
 							style: TextStyle(
 								fontSize: AppFontSize.small,
 								color: placeholderColor,
@@ -420,6 +424,7 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 	}
 
 	Widget _buildTypingIndicator(BuildContext context, bool isDark) {
+		final localizations = AppLocalizations.of(context)!;
 		final overlayColor = isDark ? AppBgColorDark.overlay : AppBgColorLight.overlay;
 
 		return Padding(
@@ -455,7 +460,7 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 								),
 								SizedBox(width: AppSpacings.pMd),
 								Text(
-									BuddyStrings.thinking,
+									localizations.buddy_thinking,
 									style: TextStyle(
 										fontSize: AppFontSize.small,
 										color: isDark
@@ -472,7 +477,32 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 		);
 	}
 
-	Widget _buildErrorMessage(BuildContext context, bool isDark, String error) {
+	String _localizedBuddyError(AppLocalizations localizations, BuddyErrorType? errorType) {
+		if (errorType == null) {
+			return localizations.buddy_error_generic;
+		}
+		switch (errorType) {
+			case BuddyErrorType.loadConversations:
+				return localizations.buddy_error_load_conversations;
+			case BuddyErrorType.createConversation:
+				return localizations.buddy_error_create_conversation;
+			case BuddyErrorType.loadMessages:
+				return localizations.buddy_error_load_messages;
+			case BuddyErrorType.sendMessage:
+				return localizations.buddy_error_send_message;
+			case BuddyErrorType.providerNotConfigured:
+				return localizations.buddy_error_provider_not_configured;
+			case BuddyErrorType.requestTimeout:
+				return localizations.buddy_error_request_timeout;
+			case BuddyErrorType.connectionError:
+				return localizations.buddy_error_connection_error;
+			case BuddyErrorType.generic:
+				return localizations.buddy_error_generic;
+		}
+	}
+
+	Widget _buildErrorMessage(BuildContext context, bool isDark, BuddyErrorType? errorType) {
+		final localizations = AppLocalizations.of(context)!;
 		final warningColor = isDark ? AppColorsDark.warning : AppColorsLight.warning;
 
 		return Padding(
@@ -496,7 +526,7 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 						SizedBox(width: AppSpacings.pMd),
 						Expanded(
 							child: Text(
-								error,
+								_localizedBuddyError(localizations, errorType),
 								style: TextStyle(
 									fontSize: AppFontSize.small,
 									color: warningColor,
@@ -510,6 +540,7 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 	}
 
 	Widget _buildInput(BuildContext context, bool isDark) {
+		final localizations = AppLocalizations.of(context)!;
 		final borderColor = isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
 		final inputBg = isDark ? AppBgColorDark.overlay : AppBgColorLight.overlay;
 		final textColor = isDark ? AppTextColorDark.primary : AppTextColorLight.primary;
@@ -551,14 +582,14 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 										),
 										decoration: InputDecoration(
 											hintText: _initProviderMissing
-												? BuddyStrings.hintProviderNotConfigured
+												? (localizations.buddy_provider_not_configured_title)
 												: _initFailed
-													? BuddyStrings.hintInitFailed
+													? (localizations.buddy_hint_init_failed)
 													: !_initialized
-														? BuddyStrings.hintStartingConversation
+														? (localizations.buddy_hint_starting_conversation)
 														: buddyService.isProviderNotConfigured
-															? BuddyStrings.hintProviderNotConfigured
-															: BuddyStrings.hintDefault,
+															? (localizations.buddy_provider_not_configured_title)
+															: (localizations.buddy_hint_default),
 											hintStyle: TextStyle(
 												fontSize: AppFontSize.base,
 												color: hintColor,

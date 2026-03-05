@@ -189,7 +189,7 @@ class _AppBodyState extends State<AppBody> {
   void _initializeDeck() {
     final display = _displayRepository.display;
     if (display != null && !_deckService.isInitialized) {
-      _deckService.initialize(display);
+      _deckService.initialize(display, context: context);
     }
   }
 
@@ -198,9 +198,9 @@ class _AppBodyState extends State<AppBody> {
     final display = _displayRepository.display;
     if (display != null) {
       if (_deckService.isInitialized) {
-        _deckService.updateDisplay(display);
+        _deckService.updateDisplay(display, context: context);
       } else {
-        _deckService.initialize(display);
+        _deckService.initialize(display, context: context);
       }
     }
   }

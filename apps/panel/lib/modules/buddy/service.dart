@@ -65,6 +65,7 @@ class BuddyService extends ChangeNotifier {
 	// ============================================
 
 	String? get error => _buddyRepository.error;
+	BuddyErrorType? get errorType => _buddyRepository.errorType;
 	bool get hasError => _buddyRepository.error != null;
 
 	bool get isProviderNotConfigured => _buddyRepository.isProviderNotConfigured;

@@ -1200,5 +1200,78 @@
   "suggested_action_night_mode": "Noční režim",
   "shading_fully_closed": "Zcela zavřeno",
   "shading_fully_open": "Zcela otevřeno",
-  "sensor_label_light": "Světlo"
+  "sensor_label_light": "Světlo",
+
+  "settings_save_failed": "Uložení nastavení selhalo.",
+  "settings_about_version_loading": "Načítání...",
+
+  "app_error_failed_to_start": "Aplikaci se nepodařilo spustit",
+  "app_error_failed_to_start_short": "Spuštění selhalo",
+  "app_error_unexpected": "Při spouštění aplikace došlo k neočekávané chybě.",
+  "app_error_see_details": "Došlo k chybě. Podrobnosti níže.",
+  "app_error_restart_button": "Restartovat aplikaci",
+  "app_error_permit_join_hint": "Požádejte administrátora o aktivaci \"Permit Join\" v admin panelu a poté restartujte aplikaci.",
+  "app_error_connection_failed_stored": "Nepodařilo se připojit k uloženému serveru.",
+  "app_error_connection_failed_backend": "Nepodařilo se připojit k {name} na {address}",
+  "app_error_initialization_failed": "Inicializace připojení k serveru selhala.",
+  "app_error_connection_failed_url": "Nepodařilo se připojit k {url}",
+
+  "deck_empty_title": "Žádné stránky nejsou nakonfigurovány",
+  "deck_empty_description": "Nakonfigurujte si dashboard v administraci.",
+
+  "alert_banner_view_button": "Zobrazit",
+
+  "sensor_chart_label_now": "Teď",
+
+  "room_name_fallback": "Místnost",
+
+  "weather_tile_not_configured": "Není nakonfigurováno",
+
+  "entry_error_load_security_data": "Nepodařilo se načíst bezpečnostní data",
+  "entry_locks_all_locked": "Vše zamčeno",
+  "entry_locks_status_partial": "{locked}/{total} zamčeno",
+  "entry_alarm_armed": "Aktivní",
+  "entry_alarm_disarmed": "Neaktivní",
+  "entry_cameras_status_active": "{count} aktivních",
+
+  "master_error_load_house_data": "Nepodařilo se načíst data domu",
+  "master_room_device_count": "{online}/{total} zařízení",
+
+  "buddy_dismiss": "Zavřít",
+  "buddy_apply": "Použít",
+  "buddy_got_it": "Rozumím",
+  "buddy_empty_state_message": "Zeptejte se mě na cokoli o vašem domě!",
+  "buddy_init_failed_message": "Nepodařilo se zahájit konverzaci",
+  "buddy_provider_not_configured_title": "AI poskytovatel není nakonfigurován",
+  "buddy_provider_not_configured_description": "Nakonfigurujte AI poskytovatele v nastavení administrace pro aktivaci chatu.",
+  "buddy_thinking": "Přemýšlím...",
+  "buddy_hint_init_failed": "Nepodařilo se zahájit konverzaci",
+  "buddy_hint_starting_conversation": "Zahajuji konverzaci...",
+  "buddy_hint_default": "Zeptejte se na svůj domov...",
+  "buddy_error_load_conversations": "Nepodařilo se načíst konverzace",
+  "buddy_error_create_conversation": "Nepodařilo se vytvořit konverzaci",
+  "buddy_error_load_messages": "Nepodařilo se načíst zprávy",
+  "buddy_error_send_message": "Nepodařilo se odeslat zprávu",
+  "buddy_error_provider_not_configured": "AI poskytovatel není nakonfigurován",
+  "buddy_error_request_timeout": "Požadavek vypršel. Zkuste to prosím znovu.",
+  "buddy_error_connection_error": "Chyba připojení. Zkontrolujte prosím síť.",
+  "buddy_error_generic": "Něco se pokazilo. Zkuste to prosím znovu.",
+
+  "security_events_error_unexpected_response": "Neočekávaná odpověď",
+
+  "media_activation_step_fallback": "Krok {index}",
+
+  "intent_error_deck_not_initialized": "Deck není inicializován",
+  "intent_error_deck_item_not_found": "Položka decku nenalezena",
+  "intent_error_no_home_item": "Domovská položka není dostupná",
+  "intent_error_scenes_not_available": "Služba scén není dostupná",
+  "intent_error_scene_activation_failed": "Nepodařilo se aktivovat scénu",
+  "intent_error_scene_activation_error": "Chyba při aktivaci scény",
+  "intent_error_device_repo_not_available": "Repozitář vlastností zařízení není dostupný",
+  "intent_error_set_property_failed": "Nepodařilo se nastavit hodnotu vlastnosti",
+  "intent_error_set_property_error": "Chyba při nastavení hodnoty vlastnosti",
+  "intent_error_toggle_device_failed": "Nepodařilo se přepnout zařízení",
+  "intent_error_toggle_device_error": "Chyba při přepínání zařízení",
+
+  "settings_display_screen_lock_never": "Nikdy"
 }

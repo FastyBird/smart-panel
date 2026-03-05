@@ -263,7 +263,7 @@ class SensorUtils {
   /// identifier is used as a fallback.
   static SensorData buildSensorData(
     ChannelView channel, {
-    AppLocalizations? localizations,
+    required AppLocalizations localizations,
     String? label,
     IconData? icon,
     ChannelPropertyView? property,
@@ -283,12 +283,7 @@ class SensorUtils {
         isDetection ?? _resolveIsDetection(channel, resolvedProperty);
 
     // Resolve label: caller override → localized → channel name → category json
-    final resolvedLabel = label ??
-        (localizations != null
-            ? translateSensorLabel(localizations, category)
-            : (channel.name.isNotEmpty
-                ? channel.name
-                : category.json ?? category.toString()));
+    final resolvedLabel = label ?? translateSensorLabel(localizations, category);
 
     // Resolve unit: binary/enum/string properties have no unit;
     // otherwise use property from backend → hardcoded fallback by category

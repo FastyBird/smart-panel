@@ -567,7 +567,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 		});
 
 		try {
-			final result = await _intentsService.activateScene(sceneId);
+			final result = await _intentsService.activateScene(sceneId, localizations: AppLocalizations.of(context)!);
 
 			if (!mounted) return;
 
@@ -576,24 +576,23 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 				_triggeringSceneId = null;
 			});
 
-			final localizations = AppLocalizations.of(context);
+			final localizations = AppLocalizations.of(context)!;
 
 			if (result.isSuccess) {
 				Toast.showSuccess(
 					context,
-					message: localizations?.space_scene_triggered ?? 'Scene activated',
+					message: localizations.space_scene_triggered,
 				);
 			} else if (result.isPartialSuccess) {
 				Toast.showInfo(
 					context,
 					message: result.message ??
-						localizations?.space_scene_partial_success ??
-						'Scene partially activated',
+						localizations.space_scene_partial_success,
 				);
 			} else {
 				Toast.showError(
 					context,
-					message: result.message ?? localizations?.action_failed ?? 'Failed',
+					message: result.message ?? localizations.action_failed,
 				);
 			}
 		} catch (e) {
@@ -604,10 +603,10 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 				_triggeringSceneId = null;
 			});
 
-			final localizations = AppLocalizations.of(context);
+			final localizations = AppLocalizations.of(context)!;
 			Toast.showError(
 				context,
-				message: localizations?.action_failed ?? 'Failed to activate scene',
+				message: localizations.action_failed,
 			);
 		}
 	}
@@ -847,7 +846,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 
 	@override
 	Widget build(BuildContext context) {
-		final localizations = AppLocalizations.of(context);
+		final localizations = AppLocalizations.of(context)!;
 		final model = _model;
 
 		return ListenableBuilder(
@@ -991,7 +990,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 
 	Widget _buildEmptyState(
 		BuildContext context,
-		AppLocalizations? localizations,
+		AppLocalizations localizations,
 	) {
 		return Center(
 			child: Padding(
@@ -1010,7 +1009,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
               useContainer: false,
             ),
             Text(
-              localizations?.space_empty_state_title ?? 'No Devices',
+              localizations.space_empty_state_title,
               style: TextStyle(
                 fontSize: AppFontSize.large,
                 fontWeight: FontWeight.w600,
@@ -1021,8 +1020,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
               textAlign: TextAlign.center,
             ),
             Text(
-              localizations?.space_empty_state_description ??
-                'Assign devices to this room in Admin',
+              localizations.space_empty_state_description,
               style: TextStyle(
                 fontSize: AppFontSize.small,
                 color: Theme.of(context).brightness == Brightness.light
@@ -1043,7 +1041,7 @@ class _RoomOverviewPageState extends State<RoomOverviewPage> {
 
 	Widget _buildContent(
 		BuildContext context,
-		AppLocalizations? localizations,
+		AppLocalizations localizations,
 		RoomOverviewModel model,
 		bool isPortrait,
 	) {

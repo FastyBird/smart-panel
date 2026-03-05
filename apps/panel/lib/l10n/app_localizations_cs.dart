@@ -3627,4 +3627,193 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String get sensor_label_light => 'Světlo';
+
+  @override
+  String get settings_save_failed => 'Uložení nastavení selhalo.';
+
+  @override
+  String get settings_about_version_loading => 'Načítání...';
+
+  @override
+  String get app_error_failed_to_start => 'Aplikaci se nepodařilo spustit';
+
+  @override
+  String get app_error_failed_to_start_short => 'Spuštění selhalo';
+
+  @override
+  String get app_error_unexpected => 'Při spouštění aplikace došlo k neočekávané chybě.';
+
+  @override
+  String get app_error_see_details => 'Došlo k chybě. Podrobnosti níže.';
+
+  @override
+  String get app_error_restart_button => 'Restartovat aplikaci';
+
+  @override
+  String get app_error_permit_join_hint => 'Požádejte administrátora o aktivaci \"Permit Join\" v admin panelu a poté restartujte aplikaci.';
+
+  @override
+  String get app_error_connection_failed_stored => 'Nepodařilo se připojit k uloženému serveru.';
+
+  @override
+  String app_error_connection_failed_backend(String name, String address) {
+    return 'Nepodařilo se připojit k $name na $address';
+  }
+
+  @override
+  String get app_error_initialization_failed => 'Inicializace připojení k serveru selhala.';
+
+  @override
+  String app_error_connection_failed_url(String url) {
+    return 'Nepodařilo se připojit k $url';
+  }
+
+  @override
+  String get deck_empty_title => 'Žádné stránky nejsou nakonfigurovány';
+
+  @override
+  String get deck_empty_description => 'Nakonfigurujte si dashboard v administraci.';
+
+  @override
+  String get alert_banner_view_button => 'Zobrazit';
+
+  @override
+  String get sensor_chart_label_now => 'Teď';
+
+  @override
+  String get room_name_fallback => 'Místnost';
+
+  @override
+  String get weather_tile_not_configured => 'Není nakonfigurováno';
+
+  @override
+  String get entry_error_load_security_data => 'Nepodařilo se načíst bezpečnostní data';
+
+  @override
+  String get entry_locks_all_locked => 'Vše zamčeno';
+
+  @override
+  String entry_locks_status_partial(int locked, int total) {
+    return '$locked/$total zamčeno';
+  }
+
+  @override
+  String get entry_alarm_armed => 'Aktivní';
+
+  @override
+  String get entry_alarm_disarmed => 'Neaktivní';
+
+  @override
+  String entry_cameras_status_active(int count) {
+    return '$count aktivních';
+  }
+
+  @override
+  String get master_error_load_house_data => 'Nepodařilo se načíst data domu';
+
+  @override
+  String master_room_device_count(int online, int total) {
+    return '$online/$total zařízení';
+  }
+
+  @override
+  String get buddy_dismiss => 'Zavřít';
+
+  @override
+  String get buddy_apply => 'Použít';
+
+  @override
+  String get buddy_got_it => 'Rozumím';
+
+  @override
+  String get buddy_empty_state_message => 'Zeptejte se mě na cokoli o vašem domě!';
+
+  @override
+  String get buddy_init_failed_message => 'Nepodařilo se zahájit konverzaci';
+
+  @override
+  String get buddy_provider_not_configured_title => 'AI poskytovatel není nakonfigurován';
+
+  @override
+  String get buddy_provider_not_configured_description => 'Nakonfigurujte AI poskytovatele v nastavení administrace pro aktivaci chatu.';
+
+  @override
+  String get buddy_thinking => 'Přemýšlím...';
+
+  @override
+  String get buddy_hint_init_failed => 'Nepodařilo se zahájit konverzaci';
+
+  @override
+  String get buddy_hint_starting_conversation => 'Zahajuji konverzaci...';
+
+  @override
+  String get buddy_hint_default => 'Zeptejte se na svůj domov...';
+
+  @override
+  String get buddy_error_load_conversations => 'Nepodařilo se načíst konverzace';
+
+  @override
+  String get buddy_error_create_conversation => 'Nepodařilo se vytvořit konverzaci';
+
+  @override
+  String get buddy_error_load_messages => 'Nepodařilo se načíst zprávy';
+
+  @override
+  String get buddy_error_send_message => 'Nepodařilo se odeslat zprávu';
+
+  @override
+  String get buddy_error_provider_not_configured => 'AI poskytovatel není nakonfigurován';
+
+  @override
+  String get buddy_error_request_timeout => 'Požadavek vypršel. Zkuste to prosím znovu.';
+
+  @override
+  String get buddy_error_connection_error => 'Chyba připojení. Zkontrolujte prosím síť.';
+
+  @override
+  String get buddy_error_generic => 'Něco se pokazilo. Zkuste to prosím znovu.';
+
+  @override
+  String get security_events_error_unexpected_response => 'Neočekávaná odpověď';
+
+  @override
+  String media_activation_step_fallback(int index) {
+    return 'Krok $index';
+  }
+
+  @override
+  String get intent_error_deck_not_initialized => 'Deck není inicializován';
+
+  @override
+  String get intent_error_deck_item_not_found => 'Položka decku nenalezena';
+
+  @override
+  String get intent_error_no_home_item => 'Domovská položka není dostupná';
+
+  @override
+  String get intent_error_scenes_not_available => 'Služba scén není dostupná';
+
+  @override
+  String get intent_error_scene_activation_failed => 'Nepodařilo se aktivovat scénu';
+
+  @override
+  String get intent_error_scene_activation_error => 'Chyba při aktivaci scény';
+
+  @override
+  String get intent_error_device_repo_not_available => 'Repozitář vlastností zařízení není dostupný';
+
+  @override
+  String get intent_error_set_property_failed => 'Nepodařilo se nastavit hodnotu vlastnosti';
+
+  @override
+  String get intent_error_set_property_error => 'Chyba při nastavení hodnoty vlastnosti';
+
+  @override
+  String get intent_error_toggle_device_failed => 'Nepodařilo se přepnout zařízení';
+
+  @override
+  String get intent_error_toggle_device_error => 'Chyba při přepínání zařízení';
+
+  @override
+  String get settings_display_screen_lock_never => 'Nikdy';
 }

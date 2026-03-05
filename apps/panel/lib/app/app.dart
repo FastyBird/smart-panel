@@ -69,6 +69,14 @@ class _MyAppState extends State<MyApp> {
   late ValueNotifier<AppState> _appState;
   String? _errorMessage;
 
+  /// Localizations instance for use outside of build context.
+  AppLocalizations get _l10n => lookupAppLocalizations(
+        Locale(
+          Language.english.value.split('_')[0],
+          Language.english.value.split('_')[1],
+        ),
+      );
+
   StreamSubscription<ResetToDiscoveryEvent>? _resetEventSubscription;
 
   @override
@@ -126,7 +134,7 @@ class _MyAppState extends State<MyApp> {
           break;
 
         case InitializationResult.connectionFailed:
-          _errorMessage = 'Could not connect to the stored backend server.';
+          _errorMessage = _l10n.app_error_connection_failed_stored;
           _appState.value = AppState.connectionFailed;
           break;
 
@@ -160,13 +168,13 @@ class _MyAppState extends State<MyApp> {
 
         case InitializationResult.connectionFailed:
           _errorMessage =
-              'Could not connect to ${backend.name} at ${backend.displayAddress}';
+              _l10n.app_error_connection_failed_backend(backend.name, backend.displayAddress);
           _appState.value = AppState.connectionFailed;
           break;
 
         case InitializationResult.needsDiscovery:
         case InitializationResult.error:
-          _errorMessage = 'Failed to initialize connection to backend.';
+          _errorMessage = _l10n.app_error_initialization_failed;
           _appState.value = AppState.error;
           break;
       }
@@ -221,13 +229,13 @@ class _MyAppState extends State<MyApp> {
           break;
 
         case InitializationResult.connectionFailed:
-          _errorMessage = 'Could not connect to $url';
+          _errorMessage = _l10n.app_error_connection_failed_url(url);
           _appState.value = AppState.connectionFailed;
           break;
 
         case InitializationResult.needsDiscovery:
         case InitializationResult.error:
-          _errorMessage = 'Failed to initialize connection to backend.';
+          _errorMessage = _l10n.app_error_initialization_failed;
           _appState.value = AppState.error;
           break;
       }

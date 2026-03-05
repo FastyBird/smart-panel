@@ -6,6 +6,21 @@ import 'package:fastybird_smart_panel/modules/buddy/models/conversation.dart';
 import 'package:fastybird_smart_panel/modules/buddy/models/message.dart';
 import 'package:fastybird_smart_panel/modules/buddy/models/suggestion.dart';
 
+/// Error types for the buddy module.
+///
+/// Used to store structured error information so the UI can localize
+/// error messages using [AppLocalizations] from a widget context.
+enum BuddyErrorType {
+	loadConversations,
+	createConversation,
+	loadMessages,
+	sendMessage,
+	providerNotConfigured,
+	requestTimeout,
+	connectionError,
+	generic,
+}
+
 /// Repository for managing buddy module data.
 ///
 /// Handles API calls to backend buddy endpoints and processes
@@ -43,6 +58,11 @@ class BuddyRepository extends ChangeNotifier {
 	String? _messagesError;
 	String? _sendError;
 
+	/// Per-operation error type fields for localization.
+	BuddyErrorType? _conversationsErrorType;
+	BuddyErrorType? _messagesErrorType;
+	BuddyErrorType? _sendErrorType;
+
 	/// Per-operation flags tracking whether the last error for each operation
 	/// was a 503 indicating no AI provider is configured. Using per-operation
 	/// flags prevents one operation from clearing the flag set by another.
@@ -69,6 +89,7 @@ class BuddyRepository extends ChangeNotifier {
 	bool get isSendingMessage => _activeSendCount > 0;
 	bool get isLoadingSuggestions => _isLoadingSuggestions;
 	String? get error => _sendError ?? _conversationsError ?? _messagesError;
+	BuddyErrorType? get errorType => _sendErrorType ?? _conversationsErrorType ?? _messagesErrorType;
 	bool get isProviderNotConfigured =>
 		_isProviderNotConfiguredSend ||
 		_isProviderNotConfiguredConversations ||
@@ -82,6 +103,7 @@ class BuddyRepository extends ChangeNotifier {
 	Future<void> fetchConversations({String? spaceId}) async {
 		_isLoadingConversations = true;
 		_conversationsError = null;
+		_conversationsErrorType = null;
 		_isProviderNotConfiguredConversations = false;
 		notifyListeners();
 
@@ -107,6 +129,7 @@ class BuddyRepository extends ChangeNotifier {
 				}
 			}
 		} on DioException catch (e) {
+			_conversationsErrorType = _parseErrorType(e);
 			_conversationsError = _parseError(e);
 			_isProviderNotConfiguredConversations = e.response?.statusCode == 503;
 
@@ -116,6 +139,7 @@ class BuddyRepository extends ChangeNotifier {
 				);
 			}
 		} catch (e) {
+			_conversationsErrorType = BuddyErrorType.loadConversations;
 			_conversationsError = 'Failed to load conversations';
 
 			if (kDebugMode) {
@@ -133,6 +157,7 @@ class BuddyRepository extends ChangeNotifier {
 		String? spaceId,
 	}) async {
 		_conversationsError = null;
+		_conversationsErrorType = null;
 		_isProviderNotConfiguredConversations = false;
 
 		try {
@@ -158,6 +183,7 @@ class BuddyRepository extends ChangeNotifier {
 				}
 			}
 		} on DioException catch (e) {
+			_conversationsErrorType = _parseErrorType(e);
 			_conversationsError = _parseError(e);
 			_isProviderNotConfiguredConversations = e.response?.statusCode == 503;
 
@@ -167,6 +193,7 @@ class BuddyRepository extends ChangeNotifier {
 				);
 			}
 		} catch (e) {
+			_conversationsErrorType = BuddyErrorType.createConversation;
 			_conversationsError = 'Failed to create conversation';
 
 			if (kDebugMode) {
@@ -184,6 +211,7 @@ class BuddyRepository extends ChangeNotifier {
 		_isLoadingMessages = true;
 		_activeConversationId = conversationId;
 		_messagesError = null;
+		_messagesErrorType = null;
 		_isProviderNotConfiguredMessages = false;
 		notifyListeners();
 
@@ -204,6 +232,7 @@ class BuddyRepository extends ChangeNotifier {
 				}
 			}
 		} on DioException catch (e) {
+			_messagesErrorType = _parseErrorType(e);
 			_messagesError = _parseError(e);
 			_isProviderNotConfiguredMessages = e.response?.statusCode == 503;
 
@@ -213,6 +242,7 @@ class BuddyRepository extends ChangeNotifier {
 				);
 			}
 		} catch (e) {
+			_messagesErrorType = BuddyErrorType.loadMessages;
 			_messagesError = 'Failed to load messages';
 
 			if (kDebugMode) {
@@ -231,6 +261,7 @@ class BuddyRepository extends ChangeNotifier {
 	) async {
 		_activeSendCount++;
 		_sendError = null;
+		_sendErrorType = null;
 		_isProviderNotConfiguredSend = false;
 
 		// Track whether the success path already decremented the counter
@@ -298,6 +329,7 @@ class BuddyRepository extends ChangeNotifier {
 
 			await _reconcileMessages(conversationId);
 		} on DioException catch (e) {
+			_sendErrorType = _parseErrorType(e);
 			_sendError = _parseError(e);
 			_isProviderNotConfiguredSend = e.response?.statusCode == 503;
 
@@ -310,6 +342,7 @@ class BuddyRepository extends ChangeNotifier {
 				);
 			}
 		} catch (e) {
+			_sendErrorType = BuddyErrorType.sendMessage;
 			_sendError = 'Failed to send message';
 
 			// Remove the optimistic user message on error
@@ -596,6 +629,9 @@ class BuddyRepository extends ChangeNotifier {
 		_conversationsError = null;
 		_messagesError = null;
 		_sendError = null;
+		_conversationsErrorType = null;
+		_messagesErrorType = null;
+		_sendErrorType = null;
 		_isProviderNotConfiguredConversations = false;
 		_isProviderNotConfiguredMessages = false;
 		_isProviderNotConfiguredSend = false;
@@ -615,6 +651,23 @@ class BuddyRepository extends ChangeNotifier {
 		_messages = [];
 		_suggestions = [];
 		super.dispose();
+	}
+
+	BuddyErrorType _parseErrorType(DioException e) {
+		if (e.response?.statusCode == 503) {
+			return BuddyErrorType.providerNotConfigured;
+		}
+
+		if (e.type == DioExceptionType.connectionTimeout ||
+			e.type == DioExceptionType.receiveTimeout) {
+			return BuddyErrorType.requestTimeout;
+		}
+
+		if (e.type == DioExceptionType.connectionError) {
+			return BuddyErrorType.connectionError;
+		}
+
+		return BuddyErrorType.generic;
 	}
 
 	String _parseError(DioException e) {

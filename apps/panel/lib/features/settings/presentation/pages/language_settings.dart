@@ -267,7 +267,7 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
 
 					Toast.showError(
 						context,
-						message: 'Save settings failed.',
+						message: AppLocalizations.of(context)!.settings_save_failed,
 					);
 				}
 			},
@@ -305,7 +305,7 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
 
 					Toast.showError(
 						context,
-						message: 'Save settings failed.',
+						message: AppLocalizations.of(context)!.settings_save_failed,
 					);
 				}
 			},
@@ -347,7 +347,7 @@ class _LanguageSettingsPageState extends State<LanguageSettingsPage> {
 
 					Toast.showError(
 						context,
-						message: 'Save settings failed.',
+						message: AppLocalizations.of(context)!.settings_save_failed,
 					);
 				}
 			},

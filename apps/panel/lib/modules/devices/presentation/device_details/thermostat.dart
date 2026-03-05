@@ -144,8 +144,8 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
       debugPrint('[ThermostatDeviceDetail] Controller error for $propertyId: $error');
     }
 
-    final localizations = AppLocalizations.of(context);
-    if (mounted && localizations != null) {
+    final localizations = AppLocalizations.of(context)!;
+    if (mounted) {
       Toast.showError(context, message: localizations.action_failed);
     }
 
@@ -503,10 +503,8 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
         commands,
         onError: () {
           if (mounted) {
-            final localizations = AppLocalizations.of(context);
-            if (localizations != null) {
-              Toast.showError(context, message: localizations.action_failed);
-            }
+            final localizations = AppLocalizations.of(context)!;
+            Toast.showError(context, message: localizations.action_failed);
             setState(() {});
           }
         },

@@ -628,7 +628,7 @@ class _SensorsDomainViewPageState extends State<SensorsDomainViewPage> {
   /// Loads sensor list from [SpaceStateRepository] for [_roomId]; transforms
   /// readings into [SensorData] and updates [_sensors] and [_isLoading].
   void _loadSensorData() {
-    final roomName = _spacesService?.getSpace(_roomId)?.name ?? 'Room';
+    final roomName = _spacesService?.getSpace(_roomId)?.name ?? AppLocalizations.of(context)!.room_name_fallback;
     final sensorState = _spaceStateRepository?.getSensorState(_roomId);
 
     if (kDebugMode) {

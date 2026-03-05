@@ -136,8 +136,8 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
     if (kDebugMode) {
       debugPrint('[AirDehumidifierDeviceDetail] Controller error for $propertyId: $error');
     }
-    final localizations = AppLocalizations.of(context);
-    if (mounted && localizations != null) {
+    final localizations = AppLocalizations.of(context)!;
+    if (mounted) {
       Toast.showError(context, message: localizations.action_failed);
     }
     if (mounted) {
@@ -333,10 +333,8 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
       commands,
       onError: () {
         if (mounted) {
-          final localizations = AppLocalizations.of(context);
-          if (localizations != null) {
-            Toast.showError(context, message: localizations.action_failed);
-          }
+          final localizations = AppLocalizations.of(context)!;
+          Toast.showError(context, message: localizations.action_failed);
           setState(() {});
         }
       },

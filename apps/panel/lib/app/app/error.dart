@@ -39,112 +39,118 @@ class AppError extends StatelessWidget {
         (item) => Locale(item.value.split('_')[0], item.value.split('_')[1]),
       ),
       locale: const Locale('en', 'US'),
-      home: Scaffold(
-        backgroundColor: isDark ? AppBgColorDark.base : AppBgColorLight.base,
-        body: SafeArea(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final isLandscape = constraints.maxWidth > constraints.maxHeight;
+      home: Builder(
+        builder: (innerContext) {
+          final localizations = AppLocalizations.of(innerContext)!;
 
-              return Center(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: isLandscape
-                        ? AppSpacings.scale(80)
-                        : AppSpacings.scale(40),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // Error icon
-                      if (locator.isRegistered<ScreenService>())
-                        IconContainer(
-                          screenService: locator<ScreenService>(),
-                          icon: MdiIcons.alertCircle,
-                          color: isDark ? AppColorsDark.error : AppColorsLight.error,
-                          isLandscape: isLandscape,
-                        )
-                      else
-                        Icon(
-                          MdiIcons.alertCircle,
-                          color: isDark ? AppColorsDark.error : AppColorsLight.error,
-                          size: AppSpacings.scale(48),
-                        ),
-                      AppSpacings.spacingXlVertical,
-                      // Title
-                      Text(
-                        isLandscape
-                            ? 'Failed to Start Application'
-                            : 'Failed to Start',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
-                          fontSize: AppFontSize.extraLarge,
-                          fontWeight: FontWeight.w500,
-                        ),
+          return Scaffold(
+            backgroundColor: isDark ? AppBgColorDark.base : AppBgColorLight.base,
+            body: SafeArea(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final isLandscape = constraints.maxWidth > constraints.maxHeight;
+
+                  return Center(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: isLandscape
+                            ? AppSpacings.scale(80)
+                            : AppSpacings.scale(40),
                       ),
-                      AppSpacings.spacingMdVertical,
-                      // Subtitle/error message
-                      // For long errors, show generic message here; details go in error code box
-                      Text(
-                        _errorMessage == null
-                            ? 'An unexpected error occurred while starting the application.'
-                            : (_errorMessage.length > 100 && !hasPermitJoinError)
-                                ? 'An error occurred. See details below.'
-                                : _errorMessage,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
-                          fontSize: AppSpacings.scale(14),
-                          height: 1.5,
-                        ),
-                      ),
-                      // Permit join info card
-                      if (hasPermitJoinError) ...[
-                        AppSpacings.spacingXlVertical,
-                        _buildPermitJoinHint(context, isDark),
-                      ],
-                      // Error details box for long error messages
-                      if (_errorMessage != null &&
-                          !hasPermitJoinError &&
-                          _errorMessage.length > 100) ...[
-                        AppSpacings.spacingLgVertical,
-                        _buildErrorCodeBox(context, isDark),
-                      ],
-                      AppSpacings.spacingXlVertical,
-                      // Restart button
-                      Theme(
-                        data: Theme.of(context).copyWith(
-                          filledButtonTheme: isDark
-                              ? AppFilledButtonsDarkThemes.primary
-                              : AppFilledButtonsLightThemes.primary,
-                        ),
-                        child: FilledButton.icon(
-                          onPressed: _onRestart,
-                          icon: Icon(
-                            MdiIcons.refresh,
-                            size: AppFontSize.base,
-                            color: isDark
-                                ? AppFilledButtonsDarkThemes
-                                    .primaryForegroundColor
-                                : AppFilledButtonsLightThemes
-                                    .primaryForegroundColor,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          // Error icon
+                          if (locator.isRegistered<ScreenService>())
+                            IconContainer(
+                              screenService: locator<ScreenService>(),
+                              icon: MdiIcons.alertCircle,
+                              color: isDark ? AppColorsDark.error : AppColorsLight.error,
+                              isLandscape: isLandscape,
+                            )
+                          else
+                            Icon(
+                              MdiIcons.alertCircle,
+                              color: isDark ? AppColorsDark.error : AppColorsLight.error,
+                              size: AppSpacings.scale(48),
+                            ),
+                          AppSpacings.spacingXlVertical,
+                          // Title
+                          Text(
+                            isLandscape
+                                ? localizations.app_error_failed_to_start
+                                : localizations.app_error_failed_to_start_short,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: isDark ? AppTextColorDark.primary : AppTextColorLight.primary,
+                              fontSize: AppFontSize.extraLarge,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
-                          label: Text('Restart Application'),
-                        ),
+                          AppSpacings.spacingMdVertical,
+                          // Subtitle/error message
+                          // For long errors, show generic message here; details go in error code box
+                          Text(
+                            _errorMessage == null
+                                ? localizations.app_error_unexpected
+                                : (_errorMessage.length > 100 && !hasPermitJoinError)
+                                    ? localizations.app_error_see_details
+                                    : _errorMessage,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: isDark ? AppTextColorDark.placeholder : AppTextColorLight.placeholder,
+                              fontSize: AppSpacings.scale(14),
+                              height: 1.5,
+                            ),
+                          ),
+                          // Permit join info card
+                          if (hasPermitJoinError) ...[
+                            AppSpacings.spacingXlVertical,
+                            _buildPermitJoinHint(innerContext, isDark, localizations),
+                          ],
+                          // Error details box for long error messages
+                          if (_errorMessage != null &&
+                              !hasPermitJoinError &&
+                              _errorMessage.length > 100) ...[
+                            AppSpacings.spacingLgVertical,
+                            _buildErrorCodeBox(context, isDark),
+                          ],
+                          AppSpacings.spacingXlVertical,
+                          // Restart button
+                          Theme(
+                            data: Theme.of(context).copyWith(
+                              filledButtonTheme: isDark
+                                  ? AppFilledButtonsDarkThemes.primary
+                                  : AppFilledButtonsLightThemes.primary,
+                            ),
+                            child: FilledButton.icon(
+                              onPressed: _onRestart,
+                              icon: Icon(
+                                MdiIcons.refresh,
+                                size: AppFontSize.base,
+                                color: isDark
+                                    ? AppFilledButtonsDarkThemes
+                                        .primaryForegroundColor
+                                    : AppFilledButtonsLightThemes
+                                        .primaryForegroundColor,
+                              ),
+                              label: Text(localizations.app_error_restart_button),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          );
+        },
       ),
     );
   }
 
-  Widget _buildPermitJoinHint(BuildContext context, bool isDark) {
+  Widget _buildPermitJoinHint(BuildContext context, bool isDark, AppLocalizations localizations) {
     return Container(
       padding: EdgeInsets.all(AppSpacings.scale(16)),
       decoration: BoxDecoration(
@@ -179,7 +185,7 @@ class AppError extends StatelessWidget {
           AppSpacings.spacingLgHorizontal,
           Expanded(
             child: Text(
-              'Please ask the administrator to activate "Permit Join" in the admin panel, then restart the application.',
+              localizations.app_error_permit_join_hint,
               style: TextStyle(
                 color: isDark ? AppColorsDark.info : AppColorsLight.info,
                 fontSize: AppSpacings.scale(14),

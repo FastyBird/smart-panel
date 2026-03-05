@@ -133,8 +133,8 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
     if (kDebugMode) {
       debugPrint('[AirPurifierDeviceDetail] Controller error for $propertyId: $error');
     }
-    final localizations = AppLocalizations.of(context);
-    if (mounted && localizations != null) {
+    final localizations = AppLocalizations.of(context)!;
+    if (mounted) {
       Toast.showError(context, message: localizations.action_failed);
     }
     if (mounted) {

@@ -74,13 +74,7 @@ class IntentResultHandler {
       );
     }
 
-    final localizations = AppLocalizations.of(context);
-    if (localizations == null) {
-      if (kDebugMode) {
-        debugPrint('[IntentResultHandler] localizations is null');
-      }
-      return false;
-    }
+    final localizations = AppLocalizations.of(context)!;
 
     // If no devices were skipped, no alert needed
     if (skippedOfflineDevices == null || skippedOfflineDevices == 0) {

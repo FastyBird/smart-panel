@@ -325,7 +325,7 @@ RoomOverviewModel buildRoomOverviewModel(RoomOverviewBuildInput input) {
 
   return RoomOverviewModel(
     icon: resolveSpaceIcon(room?.icon, room?.category),
-    title: room?.name ?? 'Room',
+    title: room?.name ?? input.localizations.room_name_fallback,
     domainCards: domainCards,
     quickScenes: quickScenes,
     suggestedActions: suggestedActions,

@@ -3606,4 +3606,193 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sensor_label_light => 'Light';
+
+  @override
+  String get settings_save_failed => 'Save settings failed.';
+
+  @override
+  String get settings_about_version_loading => 'Loading...';
+
+  @override
+  String get app_error_failed_to_start => 'Failed to Start Application';
+
+  @override
+  String get app_error_failed_to_start_short => 'Failed to Start';
+
+  @override
+  String get app_error_unexpected => 'An unexpected error occurred while starting the application.';
+
+  @override
+  String get app_error_see_details => 'An error occurred. See details below.';
+
+  @override
+  String get app_error_restart_button => 'Restart Application';
+
+  @override
+  String get app_error_permit_join_hint => 'Please ask the administrator to activate \"Permit Join\" in the admin panel, then restart the application.';
+
+  @override
+  String get app_error_connection_failed_stored => 'Could not connect to the stored backend server.';
+
+  @override
+  String app_error_connection_failed_backend(String name, String address) {
+    return 'Could not connect to $name at $address';
+  }
+
+  @override
+  String get app_error_initialization_failed => 'Failed to initialize connection to backend.';
+
+  @override
+  String app_error_connection_failed_url(String url) {
+    return 'Could not connect to $url';
+  }
+
+  @override
+  String get deck_empty_title => 'No pages configured';
+
+  @override
+  String get deck_empty_description => 'Please configure your dashboard in Admin.';
+
+  @override
+  String get alert_banner_view_button => 'View';
+
+  @override
+  String get sensor_chart_label_now => 'Now';
+
+  @override
+  String get room_name_fallback => 'Room';
+
+  @override
+  String get weather_tile_not_configured => 'Not configured';
+
+  @override
+  String get entry_error_load_security_data => 'Failed to load security data';
+
+  @override
+  String get entry_locks_all_locked => 'All locked';
+
+  @override
+  String entry_locks_status_partial(int locked, int total) {
+    return '$locked/$total locked';
+  }
+
+  @override
+  String get entry_alarm_armed => 'Armed';
+
+  @override
+  String get entry_alarm_disarmed => 'Disarmed';
+
+  @override
+  String entry_cameras_status_active(int count) {
+    return '$count active';
+  }
+
+  @override
+  String get master_error_load_house_data => 'Failed to load house data';
+
+  @override
+  String master_room_device_count(int online, int total) {
+    return '$online/$total devices';
+  }
+
+  @override
+  String get buddy_dismiss => 'Dismiss';
+
+  @override
+  String get buddy_apply => 'Apply';
+
+  @override
+  String get buddy_got_it => 'Got it';
+
+  @override
+  String get buddy_empty_state_message => 'Ask me anything about your home!';
+
+  @override
+  String get buddy_init_failed_message => 'Could not start a conversation';
+
+  @override
+  String get buddy_provider_not_configured_title => 'AI provider not configured';
+
+  @override
+  String get buddy_provider_not_configured_description => 'Configure an AI provider in admin settings to enable chat.';
+
+  @override
+  String get buddy_thinking => 'Thinking...';
+
+  @override
+  String get buddy_hint_init_failed => 'Failed to start conversation';
+
+  @override
+  String get buddy_hint_starting_conversation => 'Starting conversation...';
+
+  @override
+  String get buddy_hint_default => 'Ask about your home...';
+
+  @override
+  String get buddy_error_load_conversations => 'Failed to load conversations';
+
+  @override
+  String get buddy_error_create_conversation => 'Failed to create conversation';
+
+  @override
+  String get buddy_error_load_messages => 'Failed to load messages';
+
+  @override
+  String get buddy_error_send_message => 'Failed to send message';
+
+  @override
+  String get buddy_error_provider_not_configured => 'AI provider not configured';
+
+  @override
+  String get buddy_error_request_timeout => 'Request timed out. Please try again.';
+
+  @override
+  String get buddy_error_connection_error => 'Connection error. Please check your network.';
+
+  @override
+  String get buddy_error_generic => 'Something went wrong. Please try again.';
+
+  @override
+  String get security_events_error_unexpected_response => 'Unexpected response';
+
+  @override
+  String media_activation_step_fallback(int index) {
+    return 'Step $index';
+  }
+
+  @override
+  String get intent_error_deck_not_initialized => 'Deck not initialized';
+
+  @override
+  String get intent_error_deck_item_not_found => 'Deck item not found';
+
+  @override
+  String get intent_error_no_home_item => 'No home item available';
+
+  @override
+  String get intent_error_scenes_not_available => 'Scenes service not available';
+
+  @override
+  String get intent_error_scene_activation_failed => 'Failed to activate scene';
+
+  @override
+  String get intent_error_scene_activation_error => 'Error activating scene';
+
+  @override
+  String get intent_error_device_repo_not_available => 'Device properties repository not available';
+
+  @override
+  String get intent_error_set_property_failed => 'Failed to set property value';
+
+  @override
+  String get intent_error_set_property_error => 'Error setting property value';
+
+  @override
+  String get intent_error_toggle_device_failed => 'Failed to toggle device';
+
+  @override
+  String get intent_error_toggle_device_error => 'Error toggling device';
+
+  @override
+  String get settings_display_screen_lock_never => 'Never';
 }

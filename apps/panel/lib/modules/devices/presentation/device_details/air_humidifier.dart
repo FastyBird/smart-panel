@@ -140,8 +140,8 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
     if (kDebugMode) {
       debugPrint('[AirHumidifierDeviceDetail] Controller error for $propertyId: $error');
     }
-    final localizations = AppLocalizations.of(context);
-    if (mounted && localizations != null) {
+    final localizations = AppLocalizations.of(context)!;
+    if (mounted) {
       Toast.showError(context, message: localizations.action_failed);
     }
     if (mounted) {

@@ -3688,7 +3688,7 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
       IntentResult? result;
 
       if (_intentsService != null) {
-        result = await _intentsService!.activateScene(scene.id);
+        result = await _intentsService!.activateScene(scene.id, localizations: AppLocalizations.of(context)!);
       } else if (_scenesService != null) {
         final triggerResult = await _scenesService!.triggerScene(scene.id);
         result = triggerResult.success
@@ -3707,24 +3707,23 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
 
       if (result == null) return;
 
-      final localizations = AppLocalizations.of(context);
+      final localizations = AppLocalizations.of(context)!;
 
       if (result.isSuccess) {
         Toast.showSuccess(
           context,
-          message: localizations?.space_scene_triggered ?? 'Scene activated',
+          message: localizations.space_scene_triggered,
         );
       } else if (result.isPartialSuccess) {
         Toast.showInfo(
           context,
           message: result.message ??
-              localizations?.space_scene_partial_success ??
-              'Scene partially activated',
+              localizations.space_scene_partial_success,
         );
       } else {
         Toast.showError(
           context,
-          message: result.message ?? localizations?.action_failed ?? 'Failed',
+          message: result.message ?? localizations.action_failed,
         );
       }
     } catch (e) {
@@ -3735,10 +3734,10 @@ class _LightsDomainViewPageState extends State<LightsDomainViewPage> {
         _triggeringSceneId = null;
       });
 
-      final localizations = AppLocalizations.of(context);
+      final localizations = AppLocalizations.of(context)!;
       Toast.showError(
         context,
-        message: localizations?.action_failed ?? 'Failed to activate scene',
+        message: localizations.action_failed,
       );
     }
   }

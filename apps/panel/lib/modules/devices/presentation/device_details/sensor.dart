@@ -290,37 +290,40 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
   // --------------------------------------------------------------------------
 
   List<SensorData> _getEnvironmentalSensors() {
+    final l = AppLocalizations.of(context)!;
     final sensors = <SensorData>[];
 
     if (widget._device.hasTemperature) {
       sensors.add(SensorUtils.buildSensorData(
-          widget._device.temperatureChannel!));
+          widget._device.temperatureChannel!, localizations: l));
     }
 
     if (widget._device.hasHumidity) {
       sensors.add(SensorUtils.buildSensorData(
-          widget._device.humidityChannel!));
+          widget._device.humidityChannel!, localizations: l));
     }
 
     if (widget._device.hasPressure) {
       sensors.add(SensorUtils.buildSensorData(
-          widget._device.pressureChannel!));
+          widget._device.pressureChannel!, localizations: l));
     }
 
     if (widget._device.hasIlluminance) {
       sensors.add(SensorUtils.buildSensorData(
-          widget._device.illuminanceChannel!));
+          widget._device.illuminanceChannel!, localizations: l));
     }
 
     return sensors;
   }
 
   List<SensorData> _getAirQualitySensors() {
+    final l = AppLocalizations.of(context)!;
     final sensors = <SensorData>[];
 
     if (widget._device.hasCarbonDioxide) {
       final channel = widget._device.carbonDioxideChannel!;
       sensors.add(SensorUtils.buildSensorData(channel,
+        localizations: l,
         isAlert: channel.detected,
         alertLabel: channel.detected ? 'High Level' : null,
       ));
@@ -329,6 +332,7 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
     if (widget._device.hasCarbonMonoxide) {
       final channel = widget._device.carbonMonoxideChannel!;
       sensors.add(SensorUtils.buildSensorData(channel,
+        localizations: l,
         isAlert: channel.detected,
         alertLabel: channel.detected ? 'Detected' : null,
       ));
@@ -337,6 +341,7 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
     if (widget._device.hasOzone) {
       final channel = widget._device.ozoneChannel!;
       sensors.add(SensorUtils.buildSensorData(channel,
+        localizations: l,
         isAlert: channel.detected,
         alertLabel: channel.detected ? 'High Level' : null,
       ));
@@ -345,6 +350,7 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
     if (widget._device.hasNitrogenDioxide) {
       final channel = widget._device.nitrogenDioxideChannel!;
       sensors.add(SensorUtils.buildSensorData(channel,
+        localizations: l,
         isAlert: channel.detected,
         alertLabel: channel.detected ? 'High Level' : null,
       ));
@@ -353,6 +359,7 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
     if (widget._device.hasSulphurDioxide) {
       final channel = widget._device.sulphurDioxideChannel!;
       sensors.add(SensorUtils.buildSensorData(channel,
+        localizations: l,
         isAlert: channel.detected,
         alertLabel: channel.detected ? 'High Level' : null,
       ));
@@ -361,6 +368,7 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
     if (widget._device.hasVolatileOrganicCompounds) {
       final channel = widget._device.volatileOrganicCompoundsChannel!;
       sensors.add(SensorUtils.buildSensorData(channel,
+        localizations: l,
         isAlert: channel.detected,
         alertLabel: channel.detected ? 'High Level' : null,
       ));
@@ -368,28 +376,30 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
 
     if (widget._device.hasAirParticulate) {
       sensors.add(SensorUtils.buildSensorData(
-          widget._device.airParticulateChannel!));
+          widget._device.airParticulateChannel!, localizations: l));
     }
 
     return sensors;
   }
 
   List<SensorData> _getDetectionSensors() {
+    final l = AppLocalizations.of(context)!;
     final sensors = <SensorData>[];
 
     if (widget._device.hasMotion) {
       sensors.add(SensorUtils.buildSensorData(
-          widget._device.motionChannel!));
+          widget._device.motionChannel!, localizations: l));
     }
 
     if (widget._device.hasOccupancy) {
       sensors.add(SensorUtils.buildSensorData(
-          widget._device.occupancyChannel!));
+          widget._device.occupancyChannel!, localizations: l));
     }
 
     if (widget._device.hasContact) {
       final channel = widget._device.contactChannel!;
       sensors.add(SensorUtils.buildSensorData(channel,
+        localizations: l,
         icon: channel.detected ? MdiIcons.doorOpen : MdiIcons.doorClosed,
       ));
     }
@@ -397,6 +407,7 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
     if (widget._device.hasLeak) {
       final channel = widget._device.leakChannel!;
       sensors.add(SensorUtils.buildSensorData(channel,
+        localizations: l,
         isAlert: channel.detected,
       ));
     }
@@ -404,6 +415,7 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
     if (widget._device.hasSmoke) {
       final channel = widget._device.smokeChannel!;
       sensors.add(SensorUtils.buildSensorData(channel,
+        localizations: l,
         isAlert: channel.detected,
       ));
     }
@@ -412,11 +424,13 @@ class _SensorDeviceDetailState extends State<SensorDeviceDetail> {
   }
 
   List<SensorData> _getDeviceInfoSensors() {
+    final l = AppLocalizations.of(context)!;
     final sensors = <SensorData>[];
 
     if (widget._device.hasBattery) {
       final channel = widget._device.batteryChannel!;
       sensors.add(SensorUtils.buildSensorData(channel,
+        localizations: l,
         icon: _getBatteryIcon(channel),
         isAlert: channel.isLow,
         alertLabel: channel.isCharging
