@@ -136,14 +136,21 @@ class WakeWordService extends ChangeNotifier {
 	/// Update the wake word configuration.
 	///
 	/// Automatically starts/stops the engine based on the enabled flag.
-	void updateConfig(WakeWordConfig newConfig) {
+	/// If [start] fails (e.g., microphone permission denied), [enabled]
+	/// is reverted to `false` so the UI reflects the actual engine state.
+	Future<void> updateConfig(WakeWordConfig newConfig) async {
 		final wasEnabled = _config.enabled;
 		_config = newConfig;
 
 		if (wasEnabled && !newConfig.enabled) {
-			stop();
+			await stop();
 		} else if (!wasEnabled && newConfig.enabled) {
-			start();
+			final started = await start();
+
+			if (!started) {
+				// Revert so subsequent calls can retry the !wasEnabled branch
+				_config = _config.copyWith(enabled: false);
+			}
 		}
 
 		notifyListeners();

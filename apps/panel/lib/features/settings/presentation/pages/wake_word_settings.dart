@@ -56,12 +56,16 @@ class _WakeWordSettingsPageState extends State<WakeWordSettingsPage> {
 		});
 	}
 
-	void _handleEnabledChanged(bool value) {
+	Future<void> _handleEnabledChanged(bool value) async {
 		HapticFeedback.lightImpact();
 
-		_wakeWordService.updateConfig(
+		await _wakeWordService.updateConfig(
 			_wakeWordService.config.copyWith(enabled: value),
 		);
+
+		// updateConfig reverts enabled to false if start() fails,
+		// so re-sync local state to reflect the actual config.
+		_syncState();
 	}
 
 	void _handleSensitivityChanged(double value) {
