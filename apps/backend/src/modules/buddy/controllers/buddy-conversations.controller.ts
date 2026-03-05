@@ -333,7 +333,7 @@ export class BuddyConversationsController {
 	async getMessageAudio(
 		@Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
 		@Param('messageId') messageId: string,
-		@Res({ passthrough: true }) res: Response,
+		@Res() res: Response,
 	): Promise<void> {
 		this.logger.debug(`Fetching audio for message id=${messageId} in conversation id=${id}`);
 

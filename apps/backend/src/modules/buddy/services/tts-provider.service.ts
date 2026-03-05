@@ -120,8 +120,8 @@ export class TtsProviderService {
 			throw new BuddyTtsNotConfiguredException();
 		}
 
-		const voice = config.ttsVoice || TTS_DEFAULT_VOICE_OPENAI;
-		const speed = config.ttsSpeed || TTS_DEFAULT_SPEED;
+		const voice = config.ttsVoice ?? TTS_DEFAULT_VOICE_OPENAI;
+		const speed = config.ttsSpeed ?? TTS_DEFAULT_SPEED;
 
 		try {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -165,7 +165,7 @@ export class TtsProviderService {
 			throw new BuddyTtsNotConfiguredException();
 		}
 
-		const voiceId = config.ttsVoice || TTS_DEFAULT_VOICE_ELEVENLABS;
+		const voiceId = config.ttsVoice ?? TTS_DEFAULT_VOICE_ELEVENLABS;
 
 		try {
 			const url = `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}`;
@@ -234,7 +234,7 @@ export class TtsProviderService {
 
 				await this.spawnWithStdin('piper', piperArgs, text);
 			} else {
-				const speed = config.ttsSpeed || TTS_DEFAULT_SPEED;
+				const speed = config.ttsSpeed ?? TTS_DEFAULT_SPEED;
 				// espeak speed is in words per minute, default ~175
 				const espeakSpeed = Math.round(175 * speed);
 				const args = ['-w', outputFile, '-s', String(espeakSpeed)];
