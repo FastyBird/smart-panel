@@ -30,3 +30,14 @@ export const RouteNames = {
 
 export const DEFAULT_PAGE = 1;
 export const DEFAULT_PAGE_SIZE = 10;
+
+export const SCREEN_LOCK_DURATION_OPTIONS: { value: number; labelKey: string; shortLabel: string }[] = [
+	{ value: 15, labelKey: '15s', shortLabel: '15s' },
+	{ value: 30, labelKey: '30s', shortLabel: '30s' },
+	{ value: 60, labelKey: '1min', shortLabel: '1min' },
+	{ value: 120, labelKey: '2min', shortLabel: '2min' },
+	{ value: 300, labelKey: '5min', shortLabel: '5min' },
+	{ value: 600, labelKey: '10min', shortLabel: '10min' },
+	{ value: 1800, labelKey: '30min', shortLabel: '30min' },
+	{ value: 0, labelKey: 'never', shortLabel: 'Never' },
+];

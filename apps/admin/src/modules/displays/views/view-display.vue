@@ -379,7 +379,7 @@ import { usePages } from '../../dashboard/composables/composables';
 import { useDevices } from '../../devices/composables/useDevices';
 import { useSpaces } from '../../spaces/composables';
 import { useDisplay } from '../composables/composables';
-import { RouteNames } from '../displays.constants';
+import { RouteNames, SCREEN_LOCK_DURATION_OPTIONS } from '../displays.constants';
 import type { IDisplay } from '../store/displays.store.types';
 
 import type { IViewDisplayProps } from './view-display.types';
@@ -490,19 +490,9 @@ const formatIpAddress = (ipAddress: string | null | undefined): string => {
 	return ipAddress;
 };
 
-const screenLockDurationLabels: Record<number, string> = {
-	15: '15s',
-	30: '30s',
-	60: '1min',
-	120: '2min',
-	300: '5min',
-	600: '10min',
-	1800: '30min',
-	0: 'Never',
-};
-
 const formatScreenLockDuration = (seconds: number): string => {
-	return screenLockDurationLabels[seconds] ?? `${seconds}s`;
+	const match = SCREEN_LOCK_DURATION_OPTIONS.find((o) => o.value === seconds);
+	return match?.shortLabel ?? `${seconds}s`;
 };
 
 const { meta } = useMeta({});

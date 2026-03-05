@@ -645,7 +645,7 @@ import { usePages } from '../../dashboard/composables/composables';
 import { useSpaces } from '../../spaces/composables';
 import { useLocations as useWeatherLocations } from '../../weather/composables/composables';
 import { useDisplayEditForm } from '../composables/useDisplayEditForm';
-import { FormResult, type FormResultType } from '../displays.constants';
+import { FormResult, type FormResultType, SCREEN_LOCK_DURATION_OPTIONS } from '../displays.constants';
 import type { IDisplayEditForm } from '../composables/types';
 
 import type { IDisplayEditFormProps } from './display-edit-form.types';
@@ -673,16 +673,10 @@ const { pages, fetchPages } = usePages();
 const { roomSpaces, fetchSpaces, firstLoadFinished } = useSpaces();
 const { locations: weatherLocations, fetchLocations: fetchWeatherLocations } = useWeatherLocations();
 
-const screenLockDurationOptions = [
-	{ value: 15, label: t('displaysModule.fields.displays.screenLockDuration.options.15s') },
-	{ value: 30, label: t('displaysModule.fields.displays.screenLockDuration.options.30s') },
-	{ value: 60, label: t('displaysModule.fields.displays.screenLockDuration.options.1min') },
-	{ value: 120, label: t('displaysModule.fields.displays.screenLockDuration.options.2min') },
-	{ value: 300, label: t('displaysModule.fields.displays.screenLockDuration.options.5min') },
-	{ value: 600, label: t('displaysModule.fields.displays.screenLockDuration.options.10min') },
-	{ value: 1800, label: t('displaysModule.fields.displays.screenLockDuration.options.30min') },
-	{ value: 0, label: t('displaysModule.fields.displays.screenLockDuration.options.never') },
-];
+const screenLockDurationOptions = SCREEN_LOCK_DURATION_OPTIONS.map((opt) => ({
+	value: opt.value,
+	label: t(`displaysModule.fields.displays.screenLockDuration.options.${opt.labelKey}`),
+}));
 
 // Filter pages to only show those visible to the current display
 // Pages with null/undefined/empty displays array are visible to all displays
@@ -748,7 +742,7 @@ const rules = computed<FormRules<IDisplayEditForm>>(() => ({
 	rows: [{ type: 'number', min: 1, message: t('displaysModule.fields.displays.rows.validation.min'), trigger: 'blur' }],
 	cols: [{ type: 'number', min: 1, message: t('displaysModule.fields.displays.cols.validation.min'), trigger: 'blur' }],
 	brightness: [{ type: 'number', min: 0, max: 100, message: t('displaysModule.fields.displays.brightness.validation.range'), trigger: 'blur' }],
-	screenLockDuration: [{ type: 'enum', enum: [0, 15, 30, 60, 120, 300, 600, 1800], message: t('displaysModule.fields.displays.screenLockDuration.title'), trigger: 'change' }],
+	screenLockDuration: [{ type: 'enum', enum: SCREEN_LOCK_DURATION_OPTIONS.map((o) => o.value), message: t('displaysModule.fields.displays.screenLockDuration.title'), trigger: 'change' }],
 	homePageId: [
 		{
 			required: model.homeMode === 'explicit',
