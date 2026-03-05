@@ -367,7 +367,7 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen>
               Positioned(
                 right: AppSpacings.pLg,
                 // Position above the bottom nav bar in portrait mode
-                bottom: MediaQuery.of(context).orientation == Orientation.portrait
+                bottom: locator<ScreenService>().isPortrait
                     ? AppSpacings.scale(52) + AppSpacings.pMd
                     : AppSpacings.pLg,
                 child: _BuddyFab(

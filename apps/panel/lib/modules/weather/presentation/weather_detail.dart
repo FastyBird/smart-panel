@@ -35,8 +35,8 @@ class WeatherDetailPage extends StatelessWidget {
 		) {
 			final currentDay = weatherService.getCurrentDayByLocation(locationId);
 			final forecast = weatherService.getForecastByLocation(locationId);
-			final screenSize = MediaQuery.sizeOf(context);
-			final isLandscape = screenSize.width > screenSize.height;
+			final screenService = locator<ScreenService>();
+			final isLandscape = screenService.isLandscape;
 
 			final SkyVisualConfig config;
 			if (currentDay != null) {
@@ -61,7 +61,7 @@ class WeatherDetailPage extends StatelessWidget {
 						children: [
 							// Sky left panel (44%)
 							SizedBox(
-								width: screenSize.width * 0.44,
+								width: screenService.logicalWidth * 0.44,
 								child: _buildSkyPanel(context, currentDay, config, isPortrait: false),
 							),
 							// Content right panel (56%)
@@ -125,7 +125,7 @@ class WeatherDetailPage extends StatelessWidget {
 					SkyWeatherOverlays(config: config),
 					// Glass back button
 					Positioned(
-						top: MediaQuery.of(context).padding.top + AppSpacings.pMd,
+						top: MediaQuery.paddingOf(context).top + AppSpacings.pMd,
 						left: AppSpacings.pMd,
 						child: GestureDetector(
 							onTap: () => Navigator.of(context).pop(),
