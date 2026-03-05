@@ -125,8 +125,10 @@ export class ToolExecutionService implements IToolProvider {
 	 * Returns null if this provider doesn't handle the tool.
 	 */
 	async executeTool(toolCall: LlmToolCall): Promise<ToolExecutionResult | null> {
-		// Check if we handle this tool
-		if (!['control_device', 'run_scene', 'set_space_lighting'].includes(toolCall.name)) {
+		// Check if we handle this tool by consulting our own definitions
+		const knownTools = this.getToolDefinitions().map((t) => t.name);
+
+		if (!knownTools.includes(toolCall.name)) {
 			return null;
 		}
 
