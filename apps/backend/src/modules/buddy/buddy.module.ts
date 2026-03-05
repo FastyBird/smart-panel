@@ -7,6 +7,7 @@ import { DevicesModule } from '../devices/devices.module';
 import { EnergyModule } from '../energy/energy.module';
 import { ExtensionsModule } from '../extensions/extensions.module';
 import { ExtensionsService } from '../extensions/services/extensions.service';
+import { IntentsModule } from '../intents/intents.module';
 import { ScenesModule } from '../scenes/scenes.module';
 import { SpacesModule } from '../spaces/spaces.module';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
@@ -42,6 +43,7 @@ import { PatternDetectorService } from './services/pattern-detector.service';
 import { SceneSuggestionEvaluator } from './services/scene-suggestion-evaluator.service';
 import { SttProviderService } from './services/stt-provider.service';
 import { SuggestionEngineService } from './services/suggestion-engine.service';
+import { ToolExecutionService } from './services/tool-execution.service';
 import { TtsProviderService } from './services/tts-provider.service';
 import { EvaluatorRulesLoaderService } from './spec/evaluator-rules-loader.service';
 
@@ -59,6 +61,7 @@ import { EvaluatorRulesLoaderService } from './spec/evaluator-rules-loader.servi
 		forwardRef(() => SpacesModule),
 		forwardRef(() => DevicesModule),
 		forwardRef(() => ScenesModule),
+		IntentsModule,
 		WeatherModule,
 		EnergyModule,
 	],
@@ -81,6 +84,7 @@ import { EvaluatorRulesLoaderService } from './spec/evaluator-rules-loader.servi
 		EnergyEvaluator,
 		ConflictDetectorEvaluator,
 		SceneSuggestionEvaluator,
+		ToolExecutionService,
 		SttProviderService,
 		TtsProviderService,
 		OAuthCallbackService,

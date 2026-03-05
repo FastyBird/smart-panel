@@ -5,7 +5,7 @@ Type: feature
 Scope: backend
 Size: small
 Parent: EPIC-BUDDY-MODULE
-Status: planned
+Status: done
 
 ## 1. Business goal
 
@@ -38,12 +38,12 @@ I want the buddy to understand device control commands and execute them through 
 
 ## 4. Acceptance criteria
 
-- [ ] LLM system prompt includes available tools/functions with descriptions
-- [ ] When the LLM decides to call a tool, the backend executes it via the intent system
-- [ ] Tool execution results are fed back to the LLM for natural language response
-- [ ] Supported tools: `control_device`, `run_scene`, `set_space_lighting`
-- [ ] Failed tool execution results in a helpful error message from the buddy
-- [ ] Unit tests for tool execution mapping
+- [x] LLM system prompt includes available tools/functions with descriptions
+- [x] When the LLM decides to call a tool, the backend executes it via the intent system
+- [x] Tool execution results are fed back to the LLM for natural language response
+- [x] Supported tools: `control_device`, `run_scene`, `set_space_lighting`
+- [x] Failed tool execution results in a helpful error message from the buddy
+- [x] Unit tests for tool execution mapping
 
 ## 5. Example scenarios
 
