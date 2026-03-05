@@ -1,4 +1,4 @@
-import { BUDDY_MODULE_NAME, TtsProvider } from '../buddy.constants';
+import { BUDDY_MODULE_NAME, TTS_AUDIO_CACHE_TTL_MS, TtsProvider } from '../buddy.constants';
 import { BuddyTtsNotConfiguredException } from '../buddy.exceptions';
 import { BuddyConfigModel } from '../models/config.model';
 
@@ -150,12 +150,88 @@ describe('TtsProviderService', () => {
 	});
 
 	describe('caching', () => {
-		it('should return cached audio for the same message ID', () => {
-			// We can't test full synthesis without real providers, but we can
-			// verify the cache by setting it up via the cache mechanism.
-			// Since OpenAI isn't available in test env, this will be tested
-			// via integration tests with a running backend.
-			expect(true).toBe(true);
+		const fakeAudio = { buffer: Buffer.from('fake-audio-data'), contentType: 'audio/mpeg' };
+
+		beforeEach(() => {
+			configService.getModuleConfig.mockReturnValue(makeConfig({ ttsProvider: TtsProvider.OPENAI_TTS }));
+		});
+
+		function mockSynthesizeOpenAi(svc: TtsProviderService, impl?: () => Promise<typeof fakeAudio>): jest.Mock {
+			const mock = jest.fn().mockImplementation(impl ?? (() => Promise.resolve({ ...fakeAudio })));
+
+			(svc as any).synthesizeOpenAi = mock;
+
+			return mock;
+		}
+
+		it('should return cached audio for the same message ID', async () => {
+			const mock = mockSynthesizeOpenAi(service);
+
+			const first = await service.synthesize('Hello', 'msg-1');
+			const second = await service.synthesize('Hello', 'msg-1');
+
+			expect(mock).toHaveBeenCalledTimes(1);
+			expect(first.buffer).toEqual(fakeAudio.buffer);
+			expect(second.buffer).toEqual(fakeAudio.buffer);
+		});
+
+		it('should treat different message IDs as separate cache entries', async () => {
+			const mock = mockSynthesizeOpenAi(service);
+
+			await service.synthesize('Hello', 'msg-1');
+			await service.synthesize('Hello', 'msg-2');
+
+			expect(mock).toHaveBeenCalledTimes(2);
+		});
+
+		it('should re-synthesize after TTL expires', async () => {
+			const mock = mockSynthesizeOpenAi(service);
+
+			await service.synthesize('Hello', 'msg-1');
+
+			// Advance time past TTL
+			jest.useFakeTimers();
+			jest.setSystemTime(Date.now() + TTS_AUDIO_CACHE_TTL_MS + 1);
+
+			await service.synthesize('Hello', 'msg-1');
+
+			jest.useRealTimers();
+
+			expect(mock).toHaveBeenCalledTimes(2);
+		});
+
+		it('should use different cache keys when voice config changes', async () => {
+			const mock = mockSynthesizeOpenAi(service);
+
+			await service.synthesize('Hello', 'msg-1');
+
+			configService.getModuleConfig.mockReturnValue(
+				makeConfig({ ttsProvider: TtsProvider.OPENAI_TTS, ttsVoice: 'nova' }),
+			);
+
+			await service.synthesize('Hello', 'msg-1');
+
+			expect(mock).toHaveBeenCalledTimes(2);
+		});
+
+		it('should deduplicate concurrent requests for the same message', async () => {
+			let resolveCall!: (value: typeof fakeAudio) => void;
+
+			const mock = mockSynthesizeOpenAi(
+				service,
+				() => new Promise((resolve) => (resolveCall = resolve)),
+			);
+
+			const promise1 = service.synthesize('Hello', 'msg-1');
+			const promise2 = service.synthesize('Hello', 'msg-1');
+
+			resolveCall({ ...fakeAudio });
+
+			const [result1, result2] = await Promise.all([promise1, promise2]);
+
+			expect(mock).toHaveBeenCalledTimes(1);
+			expect(result1.buffer).toEqual(fakeAudio.buffer);
+			expect(result2.buffer).toEqual(fakeAudio.buffer);
 		});
 	});
 });

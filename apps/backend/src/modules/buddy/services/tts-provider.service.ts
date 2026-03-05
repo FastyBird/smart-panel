@@ -42,6 +42,7 @@ export class TtsProviderService implements OnModuleInit, OnModuleDestroy {
 	private readonly logger = new Logger(TtsProviderService.name);
 
 	private readonly audioCache = new Map<string, CachedAudio>();
+	private readonly inflightRequests = new Map<string, Promise<{ buffer: Buffer; contentType: string }>>();
 	private cacheBytes = 0;
 	private cleanupTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -81,7 +82,36 @@ export class TtsProviderService implements OnModuleInit, OnModuleDestroy {
 			return { buffer: cached.buffer, contentType: cached.contentType };
 		}
 
+		// Deduplicate concurrent requests for the same cache key
+		const inflight = this.inflightRequests.get(cacheKey);
+
+		if (inflight) {
+			this.logger.debug(`TTS dedup hit for message id=${messageId}`);
+
+			return inflight;
+		}
+
+		const promise = this.synthesizeAndCache(text, config, cacheKey);
+
+		this.inflightRequests.set(cacheKey, promise);
+
+		try {
+			return await promise;
+		} finally {
+			this.inflightRequests.delete(cacheKey);
+		}
+	}
+
+	private async synthesizeAndCache(
+		text: string,
+		config: BuddyConfigModel,
+		cacheKey: string,
+	): Promise<{ buffer: Buffer; contentType: string }> {
+		const provider = config.ttsProvider;
+
 		// Remove stale entry before re-synthesizing to keep cacheBytes accurate
+		const cached = this.audioCache.get(cacheKey);
+
 		if (cached) {
 			this.audioCache.delete(cacheKey);
 			this.cacheBytes -= cached.size;
