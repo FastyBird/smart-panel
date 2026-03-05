@@ -20,6 +20,23 @@ export enum SttProvider {
 	WHISPER_LOCAL = 'whisper_local',
 }
 
+export enum TtsProvider {
+	NONE = 'none',
+	OPENAI_TTS = 'openai_tts',
+	ELEVENLABS = 'elevenlabs',
+	SYSTEM = 'system',
+}
+
+export const TTS_AUDIO_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
+export const TTS_DEFAULT_VOICE_OPENAI = 'alloy';
+
+export const TTS_DEFAULT_VOICE_ELEVENLABS = '21m00Tcm4TlvDq8ikWAM'; // Rachel
+
+export const TTS_DEFAULT_SPEED = 1.0;
+
+export const TTS_DEFAULT_TIMEOUT = 30_000;
+
 export const STT_ALLOWED_MIME_TYPES = [
 	'audio/wav',
 	'audio/wave',

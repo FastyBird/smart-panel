@@ -103,6 +103,30 @@ export const ApiAcceptedSuccessResponse = <TModel extends Type<any> | (abstract 
 };
 
 /**
+ * Creates a Swagger decorator for binary/stream success responses (e.g., audio, images)
+ * @param contentTypes Record of content type to schema (e.g., { 'audio/mpeg': { type: 'string', format: 'binary' } })
+ * @param description Optional description for the response
+ */
+export const ApiBinarySuccessResponse = (
+	contentTypes: Record<string, { type: string; format: string }>,
+	description?: string,
+) => {
+	const content: Record<string, { schema: { type: string; format: string } }> = {};
+
+	for (const [mimeType, schema] of Object.entries(contentTypes)) {
+		content[mimeType] = { schema };
+	}
+
+	return applyDecorators(
+		ApiResponse({
+			status: 200,
+			description: description || 'Binary data response',
+			content,
+		}),
+	);
+};
+
+/**
  * Decorator for 400 Bad Request error response
  */
 export const ApiBadRequestResponse = (description?: string) => {

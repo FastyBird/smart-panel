@@ -42,6 +42,7 @@ import { PatternDetectorService } from './services/pattern-detector.service';
 import { SceneSuggestionEvaluator } from './services/scene-suggestion-evaluator.service';
 import { SttProviderService } from './services/stt-provider.service';
 import { SuggestionEngineService } from './services/suggestion-engine.service';
+import { TtsProviderService } from './services/tts-provider.service';
 import { EvaluatorRulesLoaderService } from './spec/evaluator-rules-loader.service';
 
 @ApiTag({
@@ -81,6 +82,7 @@ import { EvaluatorRulesLoaderService } from './spec/evaluator-rules-loader.servi
 		ConflictDetectorEvaluator,
 		SceneSuggestionEvaluator,
 		SttProviderService,
+		TtsProviderService,
 		OAuthCallbackService,
 		OAuthFlowService,
 	],

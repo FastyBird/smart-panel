@@ -38,6 +38,18 @@ export class BuddyProviderErrorException extends InternalServerErrorException {
 	}
 }
 
+export class BuddyTtsNotConfiguredException extends ServiceUnavailableException {
+	constructor() {
+		super('No TTS provider is configured. Configure a TTS provider in admin settings to enable voice output.');
+	}
+}
+
+export class BuddyMessageNotFoundException extends NotFoundException {
+	constructor(id: string) {
+		super(`Message with ID "${id}" was not found.`);
+	}
+}
+
 export class BuddySttNotConfiguredException extends ServiceUnavailableException {
 	constructor() {
 		super('No STT provider is configured. Configure an STT provider in admin settings to enable voice input.');

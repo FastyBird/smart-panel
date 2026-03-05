@@ -156,6 +156,77 @@
 				clearable
 			/>
 		</el-form-item>
+
+		<el-divider />
+
+		<el-form-item
+			:label="t('buddyModule.fields.config.ttsProvider.title')"
+			prop="ttsProvider"
+		>
+			<el-select
+				v-model="model.ttsProvider"
+				:placeholder="t('buddyModule.fields.config.ttsProvider.placeholder')"
+				name="ttsProvider"
+			>
+				<el-option
+					v-for="option in ttsProviderOptions"
+					:key="option.value"
+					:label="option.label"
+					:value="option.value"
+				/>
+			</el-select>
+		</el-form-item>
+
+		<el-form-item
+			v-if="model.ttsProvider === TtsProvider.OPENAI_TTS || model.ttsProvider === TtsProvider.ELEVENLABS"
+			:label="t('buddyModule.fields.config.ttsApiKey.title')"
+			prop="ttsApiKey"
+		>
+			<el-input
+				v-model="model.ttsApiKey"
+				:placeholder="t('buddyModule.fields.config.ttsApiKey.placeholder')"
+				:type="showTtsApiKey ? 'text' : 'password'"
+				name="ttsApiKey"
+				clearable
+			>
+				<template #suffix>
+					<el-icon
+						class="cursor-pointer"
+						@click="showTtsApiKey = !showTtsApiKey"
+					>
+						<icon :icon="showTtsApiKey ? 'mdi:eye-off' : 'mdi:eye'" />
+					</el-icon>
+				</template>
+			</el-input>
+		</el-form-item>
+
+		<el-form-item
+			v-if="model.ttsProvider !== TtsProvider.NONE"
+			:label="t('buddyModule.fields.config.ttsVoice.title')"
+			prop="ttsVoice"
+		>
+			<el-input
+				v-model="model.ttsVoice"
+				:placeholder="ttsVoicePlaceholder"
+				name="ttsVoice"
+				clearable
+			/>
+		</el-form-item>
+
+		<el-form-item
+			v-if="model.ttsProvider !== TtsProvider.NONE && model.ttsProvider !== TtsProvider.ELEVENLABS"
+			:label="t('buddyModule.fields.config.ttsSpeed.title')"
+			prop="ttsSpeed"
+		>
+			<el-input-number
+				v-model="model.ttsSpeed"
+				:min="0.25"
+				:max="4.0"
+				:step="0.25"
+				:precision="2"
+				name="ttsSpeed"
+			/>
+		</el-form-item>
 	</el-form>
 </template>
 
@@ -163,12 +234,12 @@
 import { computed, onBeforeMount, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElDivider, ElForm, ElFormItem, ElIcon, ElInput, ElOption, ElSelect, ElSwitch, ElTag, ElText, type FormRules } from 'element-plus';
+import { ElAlert, ElDivider, ElForm, ElFormItem, ElIcon, ElInput, ElInputNumber, ElOption, ElSelect, ElSwitch, ElTag, ElText, type FormRules } from 'element-plus';
 
 import { Icon } from '@iconify/vue';
 
 import { FormResult, type FormResultType, Layout, useConfigModuleEditForm } from '../../config';
-import { LEGACY_PROVIDER_MAP, LLM_PROVIDER_NONE, SttProvider } from '../buddy.constants';
+import { LEGACY_PROVIDER_MAP, LLM_PROVIDER_NONE, SttProvider, TtsProvider } from '../buddy.constants';
 import { useBuddyProviders } from '../composables/useBuddyProviders';
 import type { IBuddyConfigEditForm } from '../schemas/config.types';
 
@@ -218,6 +289,7 @@ const { formEl, model, formChanged, submit, formResult } = useConfigModuleEditFo
 });
 
 const showSttApiKey = ref<boolean>(false);
+const showTtsApiKey = ref<boolean>(false);
 
 type TagType = 'primary' | 'success' | 'warning' | 'info' | 'danger';
 
@@ -271,6 +343,26 @@ const sttProviderOptions = computed(() => [
 	{ value: SttProvider.WHISPER_API, label: t('buddyModule.fields.config.sttProvider.options.whisperApi') },
 	{ value: SttProvider.WHISPER_LOCAL, label: t('buddyModule.fields.config.sttProvider.options.whisperLocal') },
 ]);
+
+const ttsProviderOptions = computed(() => [
+	{ value: TtsProvider.NONE, label: t('buddyModule.fields.config.ttsProvider.options.none') },
+	{ value: TtsProvider.OPENAI_TTS, label: t('buddyModule.fields.config.ttsProvider.options.openaiTts') },
+	{ value: TtsProvider.ELEVENLABS, label: t('buddyModule.fields.config.ttsProvider.options.elevenlabs') },
+	{ value: TtsProvider.SYSTEM, label: t('buddyModule.fields.config.ttsProvider.options.system') },
+]);
+
+const ttsVoicePlaceholder = computed<string>((): string => {
+	switch (model.ttsProvider) {
+		case TtsProvider.OPENAI_TTS:
+			return 'alloy';
+		case TtsProvider.ELEVENLABS:
+			return '21m00Tcm4TlvDq8ikWAM';
+		case TtsProvider.SYSTEM:
+			return 'en';
+		default:
+			return '';
+	}
+});
 
 const sttModelPlaceholder = computed<string>((): string => {
 	switch (model.sttProvider) {

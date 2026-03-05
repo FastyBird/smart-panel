@@ -11,6 +11,7 @@ export 'package:fastybird_smart_panel/modules/buddy/repositories/buddy.dart';
 
 // Services
 export 'package:fastybird_smart_panel/modules/buddy/service.dart';
+export 'package:fastybird_smart_panel/modules/buddy/services/audio_playback_service.dart';
 export 'package:fastybird_smart_panel/modules/buddy/services/audio_recording_service.dart';
 export 'package:fastybird_smart_panel/modules/buddy/services/suggestion_notification_service.dart';
 

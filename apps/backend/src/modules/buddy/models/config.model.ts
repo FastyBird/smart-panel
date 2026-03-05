@@ -1,5 +1,5 @@
 import { Expose, Transform } from 'class-transformer';
-import { IsInt, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { IsInt, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -18,6 +18,8 @@ import {
 	HEARTBEAT_DEFAULT_INTERVAL_MS,
 	LLM_PROVIDER_NONE,
 	SttProvider,
+	TTS_DEFAULT_SPEED,
+	TtsProvider,
 } from '../buddy.constants';
 
 @ApiSchema({ name: 'ConfigModuleDataBuddy' })
@@ -90,6 +92,11 @@ export class BuddyConfigModel extends ModuleConfigModel {
 		type: 'string',
 	})
 	@Expose({ name: 'stt_api_key' })
+	@Transform(
+		({ value }): string | undefined =>
+			typeof value === 'string' && value.length > 0 ? '***' : (value as string | undefined),
+		{ toPlainOnly: true, groups: ['api'] },
+	)
 	@IsOptional()
 	@IsString()
 	sttApiKey?: string;
@@ -115,6 +122,57 @@ export class BuddyConfigModel extends ModuleConfigModel {
 	@IsOptional()
 	@IsString()
 	sttLanguage?: string;
+
+	@ApiPropertyOptional({
+		name: 'tts_provider',
+		description: 'Text-to-speech provider (none, openai_tts, elevenlabs, system)',
+		type: 'string',
+		enum: Object.values(TtsProvider),
+		example: TtsProvider.NONE,
+	})
+	@Expose({ name: 'tts_provider' })
+	@IsOptional()
+	@IsString()
+	ttsProvider: string = TtsProvider.NONE;
+
+	@ApiPropertyOptional({
+		name: 'tts_api_key',
+		description: 'API key for the TTS provider (required for openai_tts and elevenlabs)',
+		type: 'string',
+	})
+	@Expose({ name: 'tts_api_key' })
+	@Transform(
+		({ value }): string | undefined =>
+			typeof value === 'string' && value.length > 0 ? '***' : (value as string | undefined),
+		{ toPlainOnly: true, groups: ['api'] },
+	)
+	@IsOptional()
+	@IsString()
+	ttsApiKey?: string;
+
+	@ApiPropertyOptional({
+		name: 'tts_voice',
+		description: 'Voice identifier for TTS (e.g. alloy, echo, fable for OpenAI; voice ID for ElevenLabs)',
+		type: 'string',
+		example: 'alloy',
+	})
+	@Expose({ name: 'tts_voice' })
+	@IsOptional()
+	@IsString()
+	ttsVoice?: string;
+
+	@ApiPropertyOptional({
+		name: 'tts_speed',
+		description: 'Speech speed multiplier (0.25 to 4.0)',
+		type: 'number',
+		example: 1.0,
+	})
+	@Expose({ name: 'tts_speed' })
+	@IsOptional()
+	@IsNumber()
+	@Min(0.25)
+	@Max(4.0)
+	ttsSpeed: number = TTS_DEFAULT_SPEED;
 
 	@ApiPropertyOptional({
 		name: 'heartbeat_interval_ms',
