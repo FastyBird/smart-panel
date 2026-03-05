@@ -92,7 +92,7 @@ export class BuddyConfigModel extends ModuleConfigModel {
 			// but the config predates the voice_enabled field.
 			const raw = obj as Record<string, unknown>;
 			const stt = raw['stt_provider'] ?? raw['sttProvider'];
-			const tts = raw['tts_plugin'] ?? raw['ttsPlugin'];
+			const tts = raw['tts_plugin'] ?? raw['ttsPlugin'] ?? raw['tts_provider'] ?? raw['ttsProvider'];
 			const hasStt = typeof stt === 'string' && stt !== '' && stt !== (SttProvider.NONE as string);
 			const hasTts = typeof tts === 'string' && tts !== '' && tts !== TTS_PLUGIN_NONE;
 
