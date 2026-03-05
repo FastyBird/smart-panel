@@ -1,5 +1,7 @@
 import 'package:fastybird_smart_panel/modules/config/models/model.dart';
 
+const Object _sentinel = Object();
+
 class BuddyConfigModel extends Model {
   final String _name;
   final bool _enabled;
@@ -21,9 +23,11 @@ class BuddyConfigModel extends Model {
   String get ttsProvider => _ttsProvider;
   bool get isTtsConfigured {
     if (_ttsProvider == 'none' || _ttsProvider.isEmpty) return false;
-    // OpenAI TTS and ElevenLabs require an API key
+    // OpenAI TTS and ElevenLabs require an API key.
+    // The backend masks the actual key (e.g. to '***') before sending it,
+    // so we only check for null — any non-null value means a key is configured.
     if (_ttsProvider == 'openai_tts' || _ttsProvider == 'elevenlabs') {
-      return _ttsApiKey != null && _ttsApiKey.isNotEmpty;
+      return _ttsApiKey != null;
     }
     return true;
   }
@@ -41,13 +45,13 @@ class BuddyConfigModel extends Model {
     String? name,
     bool? enabled,
     String? ttsProvider,
-    String? ttsApiKey,
+    Object? ttsApiKey = _sentinel,
   }) {
     return BuddyConfigModel(
       name: name ?? _name,
       enabled: enabled ?? _enabled,
       ttsProvider: ttsProvider ?? _ttsProvider,
-      ttsApiKey: ttsApiKey ?? _ttsApiKey,
+      ttsApiKey: ttsApiKey == _sentinel ? _ttsApiKey : ttsApiKey as String?,
     );
   }
 

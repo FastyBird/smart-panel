@@ -186,19 +186,22 @@ describe('TtsProviderService', () => {
 		});
 
 		it('should re-synthesize after TTL expires', async () => {
-			const mock = mockSynthesizeOpenAi(service);
-
-			await service.synthesize('Hello', 'msg-1');
-
-			// Advance time past TTL
 			jest.useFakeTimers();
-			jest.setSystemTime(Date.now() + TTS_AUDIO_CACHE_TTL_MS + 1);
 
-			await service.synthesize('Hello', 'msg-1');
+			try {
+				const mock = mockSynthesizeOpenAi(service);
 
-			jest.useRealTimers();
+				await service.synthesize('Hello', 'msg-1');
 
-			expect(mock).toHaveBeenCalledTimes(2);
+				// Advance time past TTL
+				jest.setSystemTime(Date.now() + TTS_AUDIO_CACHE_TTL_MS + 1);
+
+				await service.synthesize('Hello', 'msg-1');
+
+				expect(mock).toHaveBeenCalledTimes(2);
+			} finally {
+				jest.useRealTimers();
+			}
 		});
 
 		it('should use different cache keys when voice config changes', async () => {
