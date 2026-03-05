@@ -170,7 +170,7 @@
 							{{ display.brightness }}%
 						</el-descriptions-item>
 						<el-descriptions-item :label="t('displaysModule.detail.settings.screenLockDuration')">
-							{{ display.screenLockDuration }}s
+							{{ formatScreenLockDuration(display.screenLockDuration) }}
 						</el-descriptions-item>
 						<el-descriptions-item :label="t('displaysModule.detail.settings.screenSaver')">
 							<el-tag :type="display.screenSaver ? 'success' : 'info'">
@@ -488,6 +488,21 @@ const formatIpAddress = (ipAddress: string | null | undefined): string => {
 		return t('displaysModule.table.columns.local');
 	}
 	return ipAddress;
+};
+
+const screenLockDurationLabels: Record<number, string> = {
+	15: '15s',
+	30: '30s',
+	60: '1min',
+	120: '2min',
+	300: '5min',
+	600: '10min',
+	1800: '30min',
+	0: 'Never',
+};
+
+const formatScreenLockDuration = (seconds: number): string => {
+	return screenLockDurationLabels[seconds] ?? `${seconds}s`;
 };
 
 const { meta } = useMeta({});
