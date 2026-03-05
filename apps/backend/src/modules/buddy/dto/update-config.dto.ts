@@ -106,7 +106,7 @@ export class UpdateBuddyConfigDto extends UpdateModuleConfigDto {
 
 	@ApiPropertyOptional({
 		name: 'tts_voice',
-		description: 'Voice identifier for TTS (e.g. alloy for OpenAI, Rachel for ElevenLabs)',
+		description: 'Voice identifier for TTS (e.g. alloy for OpenAI, 21m00Tcm4TlvDq8ikWAM for ElevenLabs)',
 		type: 'string',
 		example: 'alloy',
 	})

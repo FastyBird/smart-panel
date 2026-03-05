@@ -72,7 +72,8 @@ class AudioPlaybackService extends ChangeNotifier {
 		_isLoading = true;
 		_isPlaying = false;
 		_error = null;
-		notifyListeners();
+
+		if (!_disposed) notifyListeners();
 
 		try {
 			final Map<String, String> headers = {};
@@ -88,7 +89,8 @@ class AudioPlaybackService extends ChangeNotifier {
 			_error = 'Failed to play audio';
 			_isLoading = false;
 			_isPlaying = false;
-			notifyListeners();
+
+			if (!_disposed) notifyListeners();
 
 			if (kDebugMode) {
 				debugPrint('[BUDDY MODULE] Audio playback error: $e');
@@ -108,7 +110,8 @@ class AudioPlaybackService extends ChangeNotifier {
 
 		_isPlaying = false;
 		_isLoading = false;
-		notifyListeners();
+
+		if (!_disposed) notifyListeners();
 	}
 
 	// ============================================

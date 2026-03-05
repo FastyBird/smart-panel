@@ -31,7 +31,7 @@ export const TTS_AUDIO_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 export const TTS_DEFAULT_VOICE_OPENAI = 'alloy';
 
-export const TTS_DEFAULT_VOICE_ELEVENLABS = 'Rachel';
+export const TTS_DEFAULT_VOICE_ELEVENLABS = '21m00Tcm4TlvDq8ikWAM'; // Rachel
 
 export const TTS_DEFAULT_SPEED = 1.0;
 

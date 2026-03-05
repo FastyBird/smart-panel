@@ -142,7 +142,7 @@ export class BuddyConfigModel extends ModuleConfigModel {
 
 	@ApiPropertyOptional({
 		name: 'tts_voice',
-		description: 'Voice identifier for TTS (e.g. alloy, echo, fable for OpenAI; Rachel for ElevenLabs)',
+		description: 'Voice identifier for TTS (e.g. alloy, echo, fable for OpenAI; voice ID for ElevenLabs)',
 		type: 'string',
 		example: 'alloy',
 	})

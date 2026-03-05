@@ -356,7 +356,7 @@ const ttsVoicePlaceholder = computed<string>((): string => {
 		case TtsProvider.OPENAI_TTS:
 			return 'alloy';
 		case TtsProvider.ELEVENLABS:
-			return 'Rachel';
+			return '21m00Tcm4TlvDq8ikWAM';
 		case TtsProvider.SYSTEM:
 			return 'en';
 		default:
