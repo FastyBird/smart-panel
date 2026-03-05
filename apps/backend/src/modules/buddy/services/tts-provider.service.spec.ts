@@ -97,6 +97,12 @@ describe('TtsProviderService', () => {
 			expect(mockProvider.synthesize).toHaveBeenCalledWith('Hello world', expect.objectContaining({}));
 		});
 
+		it('should throw BuddyTtsNotConfiguredException when voiceEnabled is false', async () => {
+			configService.getModuleConfig.mockReturnValue(makeConfig({ voiceEnabled: false }));
+
+			await expect(service.synthesize('Hello', 'msg-1')).rejects.toThrow(BuddyTtsNotConfiguredException);
+		});
+
 		it('should throw BuddyTtsNotConfiguredException when ttsPlugin is none', async () => {
 			configService.getModuleConfig.mockReturnValue(makeConfig({ ttsPlugin: LLM_PROVIDER_NONE }));
 

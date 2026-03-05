@@ -1,12 +1,7 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 
 import { ConfigService } from '../../config/services/config.service';
-import {
-	BUDDY_MODULE_NAME,
-	LLM_PROVIDER_NONE,
-	TTS_AUDIO_CACHE_TTL_MS,
-	TTS_DEFAULT_SPEED,
-} from '../buddy.constants';
+import { BUDDY_MODULE_NAME, LLM_PROVIDER_NONE, TTS_AUDIO_CACHE_TTL_MS, TTS_DEFAULT_SPEED } from '../buddy.constants';
 import { BuddyTtsNotConfiguredException } from '../buddy.exceptions';
 import { BuddyConfigModel } from '../models/config.model';
 
@@ -54,6 +49,11 @@ export class TtsProviderService implements OnModuleInit, OnModuleDestroy {
 
 	async synthesize(text: string, messageId: string): Promise<{ buffer: Buffer; contentType: string }> {
 		const config = this.getConfig();
+
+		if (!config.voiceEnabled) {
+			throw new BuddyTtsNotConfiguredException();
+		}
+
 		const pluginType = config.ttsPlugin;
 
 		if (pluginType === LLM_PROVIDER_NONE || !pluginType) {
