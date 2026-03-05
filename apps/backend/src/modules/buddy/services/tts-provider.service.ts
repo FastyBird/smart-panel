@@ -26,13 +26,15 @@ const execFileAsync = promisify(execFile);
 // Module path as variable to prevent TypeScript from statically resolving optional peer dependency
 const OPENAI_SDK_MODULE = 'openai';
 
-const CACHE_MAX_ENTRIES = 50;
+const CACHE_MAX_ENTRIES = 20;
+const CACHE_MAX_BYTES = 10 * 1024 * 1024; // 10 MB total cache size
 const CACHE_CLEANUP_INTERVAL_MS = 60_000; // 1 minute
 
 interface CachedAudio {
 	buffer: Buffer;
 	contentType: string;
 	cachedAt: number;
+	size: number;
 }
 
 @Injectable()
@@ -40,6 +42,7 @@ export class TtsProviderService implements OnModuleInit, OnModuleDestroy {
 	private readonly logger = new Logger(TtsProviderService.name);
 
 	private readonly audioCache = new Map<string, CachedAudio>();
+	private cacheBytes = 0;
 	private cleanupTimer: ReturnType<typeof setInterval> | null = null;
 
 	constructor(private readonly configService: ConfigService) {}
@@ -55,6 +58,7 @@ export class TtsProviderService implements OnModuleInit, OnModuleDestroy {
 		}
 
 		this.audioCache.clear();
+		this.cacheBytes = 0;
 	}
 
 	async synthesize(text: string, messageId: string): Promise<{ buffer: Buffer; contentType: string }> {
@@ -92,12 +96,23 @@ export class TtsProviderService implements OnModuleInit, OnModuleDestroy {
 				throw new BuddyTtsNotConfiguredException();
 		}
 
-		// Evict oldest entries when cache is full
-		if (this.audioCache.size >= CACHE_MAX_ENTRIES) {
+		const entrySize = result.buffer.length;
+
+		// Evict oldest entries until within limits
+		while (
+			this.audioCache.size > 0 &&
+			(this.audioCache.size >= CACHE_MAX_ENTRIES || this.cacheBytes + entrySize > CACHE_MAX_BYTES)
+		) {
 			const oldest = this.audioCache.keys().next().value as string | undefined;
 
-			if (oldest !== undefined) {
-				this.audioCache.delete(oldest);
+			if (oldest === undefined) break;
+
+			const evicted = this.audioCache.get(oldest);
+
+			this.audioCache.delete(oldest);
+
+			if (evicted) {
+				this.cacheBytes -= evicted.size;
 			}
 		}
 
@@ -106,7 +121,10 @@ export class TtsProviderService implements OnModuleInit, OnModuleDestroy {
 			buffer: result.buffer,
 			contentType: result.contentType,
 			cachedAt: Date.now(),
+			size: entrySize,
 		});
+
+		this.cacheBytes += entrySize;
 
 		return result;
 	}
@@ -345,6 +363,7 @@ export class TtsProviderService implements OnModuleInit, OnModuleDestroy {
 		for (const [key, entry] of this.audioCache) {
 			if (now - entry.cachedAt >= TTS_AUDIO_CACHE_TTL_MS) {
 				this.audioCache.delete(key);
+				this.cacheBytes -= entry.size;
 			}
 		}
 	}
