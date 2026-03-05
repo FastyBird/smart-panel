@@ -729,32 +729,33 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
     final localizations = AppLocalizations.of(context)!;
     final isLandscape = _screenService.isLandscape;
 
-    final content = _buildSettingsContent(context);
+    Widget content = StatefulBuilder(
+      builder: (sheetContext, sheetSetState) {
+        return Padding(
+          padding: AppSpacings.paddingMd,
+          child: _buildSettingsContent(sheetContext, sheetSetState),
+        );
+      },
+    );
 
     if (isLandscape) {
       showRightDrawer(
         context,
         title: localizations.device_settings,
         titleIcon: MdiIcons.cog,
-        content: Padding(
-          padding: AppSpacings.paddingMd,
-          child: content,
-        ),
+        content: content,
       );
     } else {
       showBottomSheetDialog(
         context,
         title: localizations.device_settings,
         titleIcon: MdiIcons.cog,
-        content: Padding(
-          padding: AppSpacings.paddingMd,
-          child: content,
-        ),
+        content: content,
       );
     }
   }
 
-  Widget _buildSettingsContent(BuildContext context) {
+  Widget _buildSettingsContent(BuildContext context, StateSetter sheetSetState) {
     final localizations = AppLocalizations.of(context)!;
     final fanChannel = _device.fanChannel;
     final statusColor = _getStatusColor();
@@ -783,6 +784,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
                 ? FanDirectionValue.clockwise
                 : FanDirectionValue.counterClockwise;
             _setFanDirection(newDirection);
+            sheetSetState(() {});
           },
           showGlow: false,
           showDoubleBorder: false,
@@ -804,7 +806,10 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
               : localizations.thermostat_lock_unlocked,
           isActive: _childLock,
           activeColor: statusColor,
-          onTileTap: () => _setFanLocked(!_childLock),
+          onTileTap: () {
+            _setFanLocked(!_childLock);
+            sheetSetState(() {});
+          },
           showGlow: false,
           showDoubleBorder: false,
         ),
