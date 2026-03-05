@@ -123,7 +123,8 @@ class MediaRemoteCard<T extends Enum> extends StatelessWidget {
 
 	@override
 	Widget build(BuildContext context) {
-		final isDark = Theme.of(context).brightness == Brightness.dark;
+		final theme = Theme.of(context);
+		final isDark = theme.brightness == Brightness.dark;
 		final localizations = AppLocalizations.of(context)!;
 
 		final hasUp = _hasKey('arrowUp');
@@ -145,9 +146,9 @@ class MediaRemoteCard<T extends Enum> extends StatelessWidget {
 			.where((k) => navKeys.contains(k.name))
 			.toList();
 
-		final themeData = Theme.of(context).brightness == Brightness.light
-			? ThemeData(filledButtonTheme: AppFilledButtonsLightThemes.neutral)
-			: ThemeData(filledButtonTheme: AppFilledButtonsDarkThemes.neutral);
+		final themeData = isDark
+			? ThemeData(filledButtonTheme: AppFilledButtonsDarkThemes.neutral)
+			: ThemeData(filledButtonTheme: AppFilledButtonsLightThemes.neutral);
 
 		return BaseCard(
 			borderWidth: showBorder ? null : 0,
@@ -253,16 +254,16 @@ class MediaRemoteCard<T extends Enum> extends StatelessWidget {
 	}) {
 		final size = AppSpacings.scale(isMain ? 44 : 32);
 		final iconSize = AppSpacings.scale(isMain ? 22 : 16);
-		final brightness = Theme.of(context).brightness;
-		final (accentTheme, accentFg) = _filledButtonFor(brightness, themeColor);
-		final (neutralTheme, neutralFg) = _filledButtonFor(brightness, ThemeColors.neutral);
+		final theme = Theme.of(context);
+		final (accentTheme, accentFg) = _filledButtonFor(theme.brightness, themeColor);
+		final (neutralTheme, neutralFg) = _filledButtonFor(theme.brightness, ThemeColors.neutral);
 		final (filledTheme, foregroundColor) = isMain ? (accentTheme, accentFg) : (neutralTheme, neutralFg);
 
 		return SizedBox(
 			width: size,
 			height: size,
 			child: Theme(
-				data: Theme.of(context).copyWith(filledButtonTheme: filledTheme),
+				data: theme.copyWith(filledButtonTheme: filledTheme),
 				child: FilledButton(
 					onPressed: onTap == null
 						? null
@@ -296,16 +297,16 @@ class MediaRemoteCard<T extends Enum> extends StatelessWidget {
 		VoidCallback? onTap,
 	}) {
 		final size = AppSpacings.scale(40);
-		final brightness = Theme.of(context).brightness;
-		final (accentTheme, accentFg) = _filledButtonFor(brightness, themeColor);
-		final (neutralTheme, neutralFg) = _filledButtonFor(brightness, ThemeColors.neutral);
+		final theme = Theme.of(context);
+		final (accentTheme, accentFg) = _filledButtonFor(theme.brightness, themeColor);
+		final (neutralTheme, neutralFg) = _filledButtonFor(theme.brightness, ThemeColors.neutral);
 		final (filledTheme, foregroundColor) = isPrimary ? (accentTheme, accentFg) : (neutralTheme, neutralFg);
 
 		return SizedBox(
 			width: size,
 			height: size,
 			child: Theme(
-				data: Theme.of(context).copyWith(filledButtonTheme: filledTheme),
+				data: theme.copyWith(filledButtonTheme: filledTheme),
 				child: FilledButton(
 					onPressed: onTap == null
 						? null

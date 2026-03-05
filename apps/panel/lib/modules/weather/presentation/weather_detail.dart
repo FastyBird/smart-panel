@@ -35,7 +35,8 @@ class WeatherDetailPage extends StatelessWidget {
 		) {
 			final currentDay = weatherService.getCurrentDayByLocation(locationId);
 			final forecast = weatherService.getForecastByLocation(locationId);
-			final isLandscape = MediaQuery.of(context).size.width > MediaQuery.of(context).size.height;
+			final screenSize = MediaQuery.sizeOf(context);
+			final isLandscape = screenSize.width > screenSize.height;
 
 			final SkyVisualConfig config;
 			if (currentDay != null) {
@@ -60,7 +61,7 @@ class WeatherDetailPage extends StatelessWidget {
 						children: [
 							// Sky left panel (44%)
 							SizedBox(
-								width: MediaQuery.of(context).size.width * 0.44,
+								width: screenSize.width * 0.44,
 								child: _buildSkyPanel(context, currentDay, config, isPortrait: false),
 							),
 							// Content right panel (56%)

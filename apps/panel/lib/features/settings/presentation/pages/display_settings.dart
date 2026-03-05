@@ -58,9 +58,9 @@ class _DisplaySettingsPageState extends State<DisplaySettingsPage> {
 
 	@override
 	void dispose() {
-		super.dispose();
-
+		_debounce?.cancel();
 		_repository.removeListener(_syncStateWithRepository);
+		super.dispose();
 	}
 
 	void _syncStateWithRepository() {

@@ -301,12 +301,11 @@ class MediaPlaybackCard extends StatelessWidget {
 		final iconSize = AppSpacings.scale(isMain
 			? (compact ? (compactExpanded ? _iconMainCompactExpanded : _iconMainCompact) : (expanded ? _iconMainExpanded : _iconMainDefault))
 			: (compact ? (compactExpanded ? _iconRegularCompactExpanded : _iconRegularCompact) : (expanded ? _iconRegularExpanded : _iconRegularDefault)));
-		final isDark = Theme.of(context).brightness == Brightness.dark;
-		final brightness = isDark ? Brightness.dark : Brightness.light;
-		final (accentTheme, accentFg) = _filledButtonFor(brightness, themeColor);
-		final (neutralTheme, neutralFg) = _filledButtonFor(brightness, ThemeColors.neutral);
+		final theme = Theme.of(context);
+		final (accentTheme, accentFg) = _filledButtonFor(theme.brightness, themeColor);
+		final (neutralTheme, neutralFg) = _filledButtonFor(theme.brightness, ThemeColors.neutral);
 		final (filledTheme, foregroundColor) = isActive ? (accentTheme, accentFg) : (neutralTheme, neutralFg);
-		final themeData = Theme.of(context).copyWith(filledButtonTheme: filledTheme);
+		final themeData = theme.copyWith(filledButtonTheme: filledTheme);
 
 		return SizedBox(
 			width: size,

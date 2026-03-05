@@ -511,12 +511,12 @@ class DeviceControlStateService extends ChangeNotifier {
     final currentState = _states[key];
     final config = _configs[key];
 
-    if (currentState == null || config?.convergenceChecker == null) return;
+    if (currentState == null || config == null || config.convergenceChecker == null) return;
 
     // Only check convergence during settling or mixed states
     if (!currentState.isSettling && !currentState.isMixed) return;
 
-    if (config!.convergenceChecker!(deviceId, currentState.properties)) {
+    if (config.convergenceChecker!(deviceId, currentState.properties)) {
       _transitionToIdle(key);
     }
   }
@@ -527,11 +527,11 @@ class DeviceControlStateService extends ChangeNotifier {
     final currentState = _states[key];
     final config = _configs[key];
 
-    if (currentState == null || config?.intentLockChecker == null) return;
+    if (currentState == null || config == null || config.intentLockChecker == null) return;
     if (currentState.state != DeviceControlUIState.pending) return;
 
     final isNowLocked =
-        config!.intentLockChecker!(deviceId, currentState.properties);
+        config.intentLockChecker!(deviceId, currentState.properties);
     final wasLocked = _wasLocked[key] ?? false;
 
     _wasLocked[key] = isNowLocked;
