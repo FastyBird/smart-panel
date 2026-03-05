@@ -40,6 +40,7 @@ describe('Buddy module (e2e)', () => {
 						finishReason: null,
 					},
 				}),
+				supportsTools: jest.fn().mockReturnValue(false),
 			})
 			.compile();
 

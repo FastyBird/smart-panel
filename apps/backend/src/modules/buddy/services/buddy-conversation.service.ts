@@ -234,11 +234,28 @@ export class BuddyConversationService {
 			response = await this.llmProvider.sendMessage(systemPrompt, messages, { tools });
 		}
 
+		// If loop exhausted and final response has no text content, provide a fallback
+		if (!response.content && response.toolCalls && response.toolCalls.length > 0) {
+			return {
+				...response,
+				content:
+					'I attempted to perform the requested actions but reached the maximum number of steps. ' +
+					'Please try again or simplify your request.',
+				toolCalls: undefined,
+			};
+		}
+
 		return response;
 	}
 
 	private buildSystemPrompt(context: BuddyContext): string {
-		const hasTools = this.llmProvider.supportsTools();
+		let hasTools = false;
+
+		try {
+			hasTools = this.llmProvider.supportsTools();
+		} catch {
+			// Provider may not implement supportsTools
+		}
 
 		const lines: string[] = [
 			'You are a smart home assistant for the FastyBird Smart Panel.',
@@ -281,6 +298,19 @@ export class BuddyConversationService {
 						: 'no state data';
 
 				lines.push(`- ${device.name} [id=${device.id}] (${device.category}): ${stateStr}`);
+
+				// When tools are available, include channel/property UUIDs so the LLM can use control_device
+				if (hasTools && device.channels.length > 0) {
+					for (const channel of device.channels) {
+						for (const prop of channel.properties) {
+							const val = prop.value != null ? JSON.stringify(prop.value) : 'null';
+
+							lines.push(
+								`  - channel=${channel.name} [channel_id=${channel.id}] property=${prop.category} [property_id=${prop.id}] value=${val}`,
+							);
+						}
+					}
+				}
 			}
 
 			if (context.devices.length > 30) {
