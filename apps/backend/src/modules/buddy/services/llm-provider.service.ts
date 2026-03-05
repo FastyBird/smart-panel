@@ -53,6 +53,27 @@ export class LlmProviderService {
 		}
 	}
 
+	/**
+	 * Check if the currently configured provider supports tool use.
+	 * Returns false if no provider is configured or the provider doesn't support tools.
+	 */
+	supportsTools(): boolean {
+		try {
+			const config = this.getConfig();
+			const providerName = LEGACY_PROVIDER_MAP.get(config.provider) ?? config.provider;
+
+			if (!providerName || providerName === 'none') {
+				return false;
+			}
+
+			const provider = this.providerRegistry.get(providerName);
+
+			return provider?.supportsTools?.() ?? false;
+		} catch {
+			return false;
+		}
+	}
+
 	private getConfig(): BuddyConfigModel {
 		try {
 			return this.configService.getModuleConfig<BuddyConfigModel>(BUDDY_MODULE_NAME);

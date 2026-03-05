@@ -156,6 +156,7 @@ describe('AnomalyDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.SENSOR,
 						state: { 'temperature.temperature': 28 },
+						channels: [],
 					},
 					{
 						id: 'thermo-1',
@@ -163,6 +164,7 @@ describe('AnomalyDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.THERMOSTAT,
 						state: { 'thermostat.temperature': 22 },
+						channels: [],
 					},
 				],
 			});
@@ -188,6 +190,7 @@ describe('AnomalyDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.SENSOR,
 						state: { 'temperature.temperature': 15 },
+						channels: [],
 					},
 					{
 						id: 'thermo-1',
@@ -195,6 +198,7 @@ describe('AnomalyDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.THERMOSTAT,
 						state: { 'thermostat.temperature': 22 },
+						channels: [],
 					},
 				],
 			});
@@ -215,6 +219,7 @@ describe('AnomalyDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.SENSOR,
 						state: { 'temperature.temperature': 23 },
+						channels: [],
 					},
 					{
 						id: 'thermo-1',
@@ -222,6 +227,7 @@ describe('AnomalyDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.THERMOSTAT,
 						state: { 'thermostat.temperature': 22 },
+						channels: [],
 					},
 				],
 			});
@@ -241,6 +247,7 @@ describe('AnomalyDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.SENSOR,
 						state: { 'temperature.temperature': 27 },
+						channels: [],
 					},
 					{
 						id: 'thermo-1',
@@ -248,6 +255,7 @@ describe('AnomalyDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.THERMOSTAT,
 						state: { 'thermostat.temperature': 22 },
+						channels: [],
 					},
 				],
 			});
@@ -268,6 +276,7 @@ describe('AnomalyDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.SENSOR,
 						state: { 'temperature.temperature': 30 },
+						channels: [],
 					},
 					{
 						id: 'sensor-2',
@@ -275,6 +284,7 @@ describe('AnomalyDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.SENSOR,
 						state: { 'temperature.temperature': 29 },
+						channels: [],
 					},
 					{
 						id: 'thermo-1',
@@ -282,6 +292,7 @@ describe('AnomalyDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.THERMOSTAT,
 						state: { 'thermostat.temperature': 22 },
+						channels: [],
 					},
 				],
 			});
@@ -303,6 +314,7 @@ describe('AnomalyDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.SENSOR,
 						state: { 'temperature.temperature': 30 },
+						channels: [],
 					},
 				],
 			});
@@ -322,6 +334,7 @@ describe('AnomalyDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.THERMOSTAT,
 						state: { 'thermostat.temperature': 22 },
+						channels: [],
 					},
 				],
 			});
@@ -344,6 +357,7 @@ describe('AnomalyDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.SENSOR,
 						state: { 'temperature.temperature': 30 },
+						channels: [],
 					},
 					{
 						id: 'thermo-1',
@@ -351,6 +365,7 @@ describe('AnomalyDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.THERMOSTAT,
 						state: { 'thermostat.temperature': 22 },
+						channels: [],
 					},
 					{
 						id: 'sensor-2',
@@ -358,6 +373,7 @@ describe('AnomalyDetectorEvaluator', () => {
 						space: 'space-2',
 						category: DeviceCategory.SENSOR,
 						state: { 'temperature.temperature': 35 },
+						channels: [],
 					},
 					{
 						id: 'thermo-2',
@@ -365,6 +381,7 @@ describe('AnomalyDetectorEvaluator', () => {
 						space: 'space-2',
 						category: DeviceCategory.THERMOSTAT,
 						state: { 'thermostat.temperature': 22 },
+						channels: [],
 					},
 				],
 			});
@@ -387,6 +404,7 @@ describe('AnomalyDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.SENSOR,
 						state: { 'temperature.temperature': 'error' },
+						channels: [],
 					},
 					{
 						id: 'thermo-1',
@@ -394,6 +412,7 @@ describe('AnomalyDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.THERMOSTAT,
 						state: { 'thermostat.temperature': 22 },
+						channels: [],
 					},
 				],
 			});
@@ -421,6 +440,7 @@ describe('AnomalyDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.SENSOR,
 						state: { 'temperature.temperature': 28 },
+						channels: [],
 					},
 					{
 						id: 'thermo-1',
@@ -428,6 +448,7 @@ describe('AnomalyDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.THERMOSTAT,
 						state: { 'thermostat.temperature': 22 },
+						channels: [],
 					},
 				],
 			});
@@ -456,6 +477,7 @@ describe('AnomalyDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.SENSOR,
 						state: { 'temperature.temperature': 30 },
+						channels: [],
 					},
 					{
 						id: 'thermo-1',
@@ -463,6 +485,7 @@ describe('AnomalyDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.THERMOSTAT,
 						state: { 'thermostat.temperature': 22 },
+						channels: [],
 					},
 				],
 			});
@@ -488,6 +511,7 @@ describe('AnomalyDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.SENSOR,
 						state: { 'temperature.temperature': 21.5 },
+						channels: [],
 					},
 				],
 			});
@@ -506,6 +530,7 @@ describe('AnomalyDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.SENSOR,
 						state: { 'temperature.temperature': 21.5 },
+						channels: [],
 					},
 				],
 			});
@@ -520,6 +545,7 @@ describe('AnomalyDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.SENSOR,
 						state: { 'temperature.temperature': 22.0 },
+						channels: [],
 					},
 				],
 			});
@@ -538,6 +564,7 @@ describe('AnomalyDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.SENSOR,
 						state: { 'temperature.temperature': 21.5 },
+						channels: [],
 					},
 				],
 			});
@@ -574,6 +601,7 @@ describe('AnomalyDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.SENSOR,
 						state: { 'temperature.temperature': 21.5 },
+						channels: [],
 					},
 				],
 			});
@@ -606,6 +634,7 @@ describe('AnomalyDetectorEvaluator', () => {
 							'temperature.temperature': null,
 							'generic.status': 'online',
 						},
+						channels: [],
 					},
 				],
 			});
@@ -627,6 +656,7 @@ describe('AnomalyDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.SENSOR,
 						state: { 'temperature.temperature': 21.5 },
+						channels: [],
 					},
 				],
 			});
@@ -648,6 +678,7 @@ describe('AnomalyDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.SENSOR,
 						state: { 'temperature.temperature': 22.0 },
+						channels: [],
 					},
 				],
 			});
@@ -671,6 +702,7 @@ describe('AnomalyDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.SENSOR,
 						state: { 'temperature.temperature': 21.5, 'humidity.humidity': 45 },
+						channels: [],
 					},
 				],
 			});
@@ -690,6 +722,7 @@ describe('AnomalyDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.SENSOR,
 						state: { 'temperature.temperature': 21.5 },
+						channels: [],
 					},
 				],
 			});
@@ -712,6 +745,7 @@ describe('AnomalyDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.SENSOR,
 						state: { 'temperature.temperature': 21.5 },
+						channels: [],
 					},
 				],
 			});
@@ -738,6 +772,7 @@ describe('AnomalyDetectorEvaluator', () => {
 						space: 'space-2',
 						category: DeviceCategory.SENSOR,
 						state: { 'temperature.temperature': 19.0 },
+						channels: [],
 					},
 				],
 			});
@@ -769,6 +804,7 @@ describe('AnomalyDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.THERMOSTAT,
 						state: { 'thermostat.temperature': 22 },
+						channels: [],
 					},
 					{
 						id: 'light-1',
@@ -776,6 +812,7 @@ describe('AnomalyDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.LIGHTING,
 						state: { 'light.brightness': 80 },
+						channels: [],
 					},
 					{
 						id: 'lock-1',
@@ -783,6 +820,7 @@ describe('AnomalyDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.LOCK,
 						state: { 'lock.locked': 1 },
+						channels: [],
 					},
 				],
 			});
@@ -812,6 +850,7 @@ describe('AnomalyDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.SENSOR,
 						state: { 'temperature.temperature': 21.5 },
+						channels: [],
 					},
 				],
 			});
@@ -842,6 +881,7 @@ describe('AnomalyDetectorEvaluator', () => {
 							'battery.battery_level': 95,
 							'signal.link_quality': 100,
 						},
+						channels: [],
 					},
 				],
 			});
@@ -874,6 +914,7 @@ describe('AnomalyDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.SENSOR,
 						state: { 'temperature.temperature': 21.5 },
+						channels: [],
 					},
 				],
 			});
@@ -917,6 +958,7 @@ describe('AnomalyDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.LIGHTING,
 						state: { 'light.on': true },
+						channels: [],
 					},
 				],
 			});
@@ -952,6 +994,7 @@ describe('AnomalyDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.LIGHTING,
 						state: { 'light.on': true },
+						channels: [],
 					},
 				],
 			});
@@ -982,6 +1025,7 @@ describe('AnomalyDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.LIGHTING,
 						state: { 'light.on': true },
+						channels: [],
 					},
 				],
 			});
@@ -1013,6 +1057,7 @@ describe('AnomalyDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.LIGHTING,
 						state: { 'light.on': true },
+						channels: [],
 					},
 				],
 			});
@@ -1049,6 +1094,7 @@ describe('AnomalyDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.LIGHTING,
 						state: {},
+						channels: [],
 					},
 					{
 						id: 'dev-2',
@@ -1056,6 +1102,7 @@ describe('AnomalyDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.LIGHTING,
 						state: {},
+						channels: [],
 					},
 				],
 			});
@@ -1085,6 +1132,7 @@ describe('AnomalyDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.LIGHTING,
 						state: {},
+						channels: [],
 					},
 				],
 			});
@@ -1123,6 +1171,7 @@ describe('AnomalyDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.LIGHTING,
 						state: {},
+						channels: [],
 					},
 				],
 			});
@@ -1181,6 +1230,7 @@ describe('AnomalyDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.LIGHTING,
 						state: {},
+						channels: [],
 					},
 				],
 			});
@@ -1208,6 +1258,7 @@ describe('AnomalyDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.SENSOR,
 						state: { 'temperature.temperature': 30 },
+						channels: [],
 					},
 					{
 						id: 'thermo-1',
@@ -1215,6 +1266,7 @@ describe('AnomalyDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.THERMOSTAT,
 						state: { 'thermostat.temperature': 22 },
+						channels: [],
 					},
 					{
 						id: 'humidity-1',
@@ -1222,6 +1274,7 @@ describe('AnomalyDetectorEvaluator', () => {
 						space: 'space-1',
 						category: DeviceCategory.SENSOR,
 						state: { 'humidity.humidity': 45 },
+						channels: [],
 					},
 				],
 			});

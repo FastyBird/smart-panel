@@ -57,7 +57,18 @@ export interface BuddyContext {
 	timestamp: string;
 	timezone: string;
 	spaces: { id: string; name: string; category: string | null; deviceCount: number }[];
-	devices: { id: string; name: string; space: string | null; category: string; state: Record<string, unknown> }[];
+	devices: {
+		id: string;
+		name: string;
+		space: string | null;
+		category: string;
+		state: Record<string, unknown>;
+		channels: {
+			id: string;
+			name: string;
+			properties: { id: string; category: string; value: unknown }[];
+		}[];
+	}[];
 	scenes: { id: string; name: string; space: string | null; enabled: boolean }[];
 	weather: BuddyWeather | null;
 	energy: {
@@ -239,9 +250,7 @@ export class BuddyContextService {
 		}
 	}
 
-	private async getDevices(
-		spaceId?: string,
-	): Promise<{ id: string; name: string; space: string | null; category: string; state: Record<string, unknown> }[]> {
+	private async getDevices(spaceId?: string): Promise<BuddyContext['devices']> {
 		try {
 			let devices: DeviceEntity[];
 
@@ -253,16 +262,31 @@ export class BuddyContextService {
 
 			return devices.map((device) => {
 				const state: Record<string, unknown> = {};
+				const channels: BuddyContext['devices'][number]['channels'] = [];
 
 				if (device.channels) {
 					for (const channel of device.channels) {
 						if (channel.properties) {
 							const channelKey = channel.identifier ?? channel.name ?? channel.id;
+							const properties: BuddyContext['devices'][number]['channels'][number]['properties'] = [];
 
 							for (const property of channel.properties) {
 								const key = `${channelKey}.${property.category}`;
-								state[key] = property.value?.value ?? null;
+								const val = property.value?.value ?? null;
+
+								state[key] = val;
+								properties.push({
+									id: property.id,
+									category: property.category,
+									value: val,
+								});
 							}
+
+							channels.push({
+								id: channel.id,
+								name: channelKey,
+								properties,
+							});
 						}
 					}
 				}
@@ -273,6 +297,7 @@ export class BuddyContextService {
 					space: spaceId ?? device.roomId ?? null,
 					category: device.category,
 					state,
+					channels,
 				};
 			});
 		} catch (error) {
