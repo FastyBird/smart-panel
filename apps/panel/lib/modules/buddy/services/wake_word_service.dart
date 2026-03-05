@@ -427,8 +427,12 @@ class WakeWordService extends ChangeNotifier {
 			}
 
 			// Cooldown before resuming to avoid re-detecting the same utterance
-			_cooldownTimer = Timer(const Duration(seconds: 2), () async {
-				await _resumeListening();
+			_cooldownTimer = Timer(const Duration(seconds: 2), () {
+				_resumeListening().catchError((e) {
+					if (kDebugMode) {
+						debugPrint('[WAKE WORD] Resume after cooldown failed: $e');
+					}
+				});
 			});
 		} catch (e) {
 			if (kDebugMode) {

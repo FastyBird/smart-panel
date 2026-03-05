@@ -62,10 +62,6 @@ class _WakeWordSettingsPageState extends State<WakeWordSettingsPage> {
 		await _wakeWordService.updateConfig(
 			_wakeWordService.config.copyWith(enabled: value),
 		);
-
-		// updateConfig reverts enabled to false if start() fails,
-		// so re-sync local state to reflect the actual config.
-		_syncState();
 	}
 
 	void _handleSensitivityChanged(double value) {
