@@ -84,18 +84,31 @@ Then ...
 - Respect global AI rules from `/.ai-rules/GUIDELINES.md`.
 ```
 
+## Directory Structure
+
+```
+tasks/
+├── features/    # Active feature tasks (in-progress, planned, review)
+├── epics/       # Active epic-level planning documents
+├── technical/   # Active technical/refactoring tasks
+├── chores/      # Active maintenance tasks
+├── bugs/        # Active bug reports
+├── plans/       # Architecture and implementation plans
+├── archive/     # Completed (done) tasks — kept for reference
+├── _template.md # Task template
+└── README.md    # This file
+```
+
 ## Naming & Organization
 
-- Use one file per task, e.g.:
-  - `FEATURE-backend-openapi-source.md`
-  - `TECHNICAL-devices-module-refactor.md`
-  - `BUG-auth-token-refresh.md`
-  - `CHORE-cleanup-old-config.md`
-- Optionally group by area:
-
-  - `backend/FEATURE-...`
-  - `admin/FEATURE-...`
-  - `panel/FEATURE-...`
+- Use one file per task with UPPER-CASE-HYPHENATED names:
+  - `FEATURE-BACKEND-OPENAPI-SOURCE.md`
+  - `TECH-DEVICES-MODULE-REFACTOR.md`
+  - `BUG-AUTH-TOKEN-REFRESH.md`
+  - `CHORE-CLEANUP-OLD-CONFIG.md`
+  - `EPIC-BUDDY-MODULE.md`
+- Place files in the directory matching their type
+- When a task is marked `done`, move it to `archive/`
 
 ## Workflow
 
