@@ -6,7 +6,7 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import { promisify } from 'util';
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 
 import { ConfigService } from '../../config/services/config.service';
 import {
@@ -26,6 +26,9 @@ const execFileAsync = promisify(execFile);
 // Module path as variable to prevent TypeScript from statically resolving optional peer dependency
 const OPENAI_SDK_MODULE = 'openai';
 
+const CACHE_MAX_ENTRIES = 50;
+const CACHE_CLEANUP_INTERVAL_MS = 60_000; // 1 minute
+
 interface CachedAudio {
 	buffer: Buffer;
 	contentType: string;
@@ -33,28 +36,44 @@ interface CachedAudio {
 }
 
 @Injectable()
-export class TtsProviderService {
+export class TtsProviderService implements OnModuleInit, OnModuleDestroy {
 	private readonly logger = new Logger(TtsProviderService.name);
 
 	private readonly audioCache = new Map<string, CachedAudio>();
+	private cleanupTimer: ReturnType<typeof setInterval> | null = null;
 
 	constructor(private readonly configService: ConfigService) {}
 
-	async synthesize(text: string, messageId: string): Promise<{ buffer: Buffer; contentType: string }> {
-		// Check cache first
-		const cached = this.audioCache.get(messageId);
+	onModuleInit(): void {
+		this.cleanupTimer = setInterval(() => this.cleanExpiredCache(), CACHE_CLEANUP_INTERVAL_MS);
+	}
 
-		if (cached && Date.now() - cached.cachedAt < TTS_AUDIO_CACHE_TTL_MS) {
-			this.logger.debug(`TTS cache hit for message id=${messageId}`);
-
-			return { buffer: cached.buffer, contentType: cached.contentType };
+	onModuleDestroy(): void {
+		if (this.cleanupTimer) {
+			clearInterval(this.cleanupTimer);
+			this.cleanupTimer = null;
 		}
 
+		this.audioCache.clear();
+	}
+
+	async synthesize(text: string, messageId: string): Promise<{ buffer: Buffer; contentType: string }> {
 		const config = this.getConfig();
 		const provider = config.ttsProvider;
 
 		if (provider === (TtsProvider.NONE as string) || !provider) {
 			throw new BuddyTtsNotConfiguredException();
+		}
+
+		const cacheKey = this.buildCacheKey(messageId, config);
+
+		// Check cache first
+		const cached = this.audioCache.get(cacheKey);
+
+		if (cached && Date.now() - cached.cachedAt < TTS_AUDIO_CACHE_TTL_MS) {
+			this.logger.debug(`TTS cache hit for message id=${messageId}`);
+
+			return { buffer: cached.buffer, contentType: cached.contentType };
 		}
 
 		let result: { buffer: Buffer; contentType: string };
@@ -73,15 +92,21 @@ export class TtsProviderService {
 				throw new BuddyTtsNotConfiguredException();
 		}
 
+		// Evict oldest entries when cache is full
+		if (this.audioCache.size >= CACHE_MAX_ENTRIES) {
+			const oldest = this.audioCache.keys().next().value;
+
+			if (oldest !== undefined) {
+				this.audioCache.delete(oldest);
+			}
+		}
+
 		// Cache the result
-		this.audioCache.set(messageId, {
+		this.audioCache.set(cacheKey, {
 			buffer: result.buffer,
 			contentType: result.contentType,
 			cachedAt: Date.now(),
 		});
-
-		// Clean expired cache entries
-		this.cleanExpiredCache();
 
 		return result;
 	}
@@ -304,6 +329,14 @@ export class TtsProviderService {
 			child.stdin.write(stdinData);
 			child.stdin.end();
 		});
+	}
+
+	private buildCacheKey(messageId: string, config: BuddyConfigModel): string {
+		const provider = config.ttsProvider ?? '';
+		const voice = config.ttsVoice ?? '';
+		const speed = config.ttsSpeed ?? TTS_DEFAULT_SPEED;
+
+		return `${messageId}:${provider}:${voice}:${speed}`;
 	}
 
 	private cleanExpiredCache(): void {
