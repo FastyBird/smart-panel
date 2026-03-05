@@ -1,71 +1,79 @@
-import { BUDDY_MODULE_NAME, TTS_AUDIO_CACHE_TTL_MS, TtsProvider } from '../buddy.constants';
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
+import { BUDDY_MODULE_NAME, TTS_AUDIO_CACHE_TTL_MS, TTS_PLUGIN_NONE } from '../buddy.constants';
 import { BuddyTtsNotConfiguredException } from '../buddy.exceptions';
 import { BuddyConfigModel } from '../models/config.model';
 
+import { TtsProviderRegistryService } from './tts-provider-registry.service';
 import { TtsProviderService } from './tts-provider.service';
 
 describe('TtsProviderService', () => {
 	let service: TtsProviderService;
-	let configService: { getModuleConfig: jest.Mock };
+	let configService: { getModuleConfig: jest.Mock; getPluginConfig: jest.Mock };
+	let ttsProviderRegistry: { get: jest.Mock; register: jest.Mock; list: jest.Mock };
+	let mockProvider: { synthesize: jest.Mock; isConfigured: jest.Mock; getType: jest.Mock };
 
-	function makeConfig(overrides: Partial<BuddyConfigModel> = {}): BuddyConfigModel {
+	const fakeAudio = { buffer: Buffer.from('fake-audio-data'), contentType: 'audio/wav' };
+
+	function makeConfig(overrides: Record<string, unknown> = {}): BuddyConfigModel {
 		const config = new BuddyConfigModel();
 
-		config.ttsProvider = 'ttsProvider' in overrides ? overrides.ttsProvider : TtsProvider.OPENAI_TTS;
-		config.ttsApiKey = 'ttsApiKey' in overrides ? overrides.ttsApiKey : 'test-tts-key';
-		config.ttsVoice = 'ttsVoice' in overrides ? overrides.ttsVoice : undefined;
-		config.ttsSpeed = 'ttsSpeed' in overrides ? overrides.ttsSpeed : 1.0;
+		config.ttsPlugin = (overrides['ttsPlugin'] as string) ?? 'buddy-openai-plugin';
+		config.voiceEnabled = (overrides['voiceEnabled'] as boolean) ?? true;
+		config.ttsVoice = (overrides['ttsVoice'] as string) ?? undefined;
+		config.ttsSpeed = (overrides['ttsSpeed'] as number) ?? 1.0;
 
 		return config;
 	}
 
 	beforeEach(() => {
-		configService = {
-			getModuleConfig: jest.fn().mockReturnValue(makeConfig()),
+		mockProvider = {
+			synthesize: jest.fn().mockResolvedValue({ ...fakeAudio }),
+			isConfigured: jest.fn().mockReturnValue(true),
+			getType: jest.fn().mockReturnValue('buddy-openai-plugin'),
 		};
 
-		service = new TtsProviderService(configService as any);
+		configService = {
+			getModuleConfig: jest.fn().mockReturnValue(makeConfig()),
+			getPluginConfig: jest.fn().mockReturnValue({ enabled: true }),
+		};
+
+		ttsProviderRegistry = {
+			get: jest.fn().mockReturnValue(mockProvider),
+			register: jest.fn(),
+			list: jest.fn().mockReturnValue([mockProvider]),
+		};
+
+		service = new TtsProviderService(
+			configService as any,
+			ttsProviderRegistry as unknown as TtsProviderRegistryService,
+		);
 	});
 
 	describe('isConfigured', () => {
-		it('should return true when OpenAI TTS provider has an API key', () => {
-			configService.getModuleConfig.mockReturnValue(makeConfig({ ttsProvider: TtsProvider.OPENAI_TTS }));
-
+		it('should return true when voice is enabled and provider is registered and configured', () => {
 			expect(service.isConfigured()).toBe(true);
 		});
 
-		it('should return false when OpenAI TTS provider has no API key', () => {
-			configService.getModuleConfig.mockReturnValue(
-				makeConfig({ ttsProvider: TtsProvider.OPENAI_TTS, ttsApiKey: undefined }),
-			);
+		it('should return false when voiceEnabled is false', () => {
+			configService.getModuleConfig.mockReturnValue(makeConfig({ voiceEnabled: false }));
 
 			expect(service.isConfigured()).toBe(false);
 		});
 
-		it('should return true when ElevenLabs provider has an API key', () => {
-			configService.getModuleConfig.mockReturnValue(
-				makeConfig({ ttsProvider: TtsProvider.ELEVENLABS, ttsApiKey: 'eleven-key' }),
-			);
-
-			expect(service.isConfigured()).toBe(true);
-		});
-
-		it('should return false when ElevenLabs provider has no API key', () => {
-			configService.getModuleConfig.mockReturnValue(
-				makeConfig({ ttsProvider: TtsProvider.ELEVENLABS, ttsApiKey: undefined }),
-			);
+		it('should return false when ttsPlugin is none', () => {
+			configService.getModuleConfig.mockReturnValue(makeConfig({ ttsPlugin: TTS_PLUGIN_NONE }));
 
 			expect(service.isConfigured()).toBe(false);
 		});
 
-		it('should return true when system provider is configured', () => {
-			configService.getModuleConfig.mockReturnValue(makeConfig({ ttsProvider: TtsProvider.SYSTEM }));
+		it('should return false when provider is not registered', () => {
+			ttsProviderRegistry.get.mockReturnValue(null);
 
-			expect(service.isConfigured()).toBe(true);
+			expect(service.isConfigured()).toBe(false);
 		});
 
-		it('should return false when TTS provider is NONE', () => {
-			configService.getModuleConfig.mockReturnValue(makeConfig({ ttsProvider: TtsProvider.NONE }));
+		it('should return false when provider is not configured', () => {
+			mockProvider.isConfigured.mockReturnValue(false);
 
 			expect(service.isConfigured()).toBe(false);
 		});
@@ -79,11 +87,32 @@ describe('TtsProviderService', () => {
 		});
 	});
 
-	describe('provider not configured', () => {
-		it('should throw BuddyTtsNotConfiguredException when provider is NONE', async () => {
-			configService.getModuleConfig.mockReturnValue(makeConfig({ ttsProvider: TtsProvider.NONE }));
+	describe('synthesize', () => {
+		it('should delegate to the registered provider', async () => {
+			const result = await service.synthesize('Hello world', 'msg-1');
 
-			await expect(service.synthesize('Hello world', 'msg-1')).rejects.toThrow(BuddyTtsNotConfiguredException);
+			expect(result.buffer).toEqual(fakeAudio.buffer);
+			expect(result.contentType).toBe('audio/wav');
+			expect(ttsProviderRegistry.get).toHaveBeenCalledWith('buddy-openai-plugin');
+			expect(mockProvider.synthesize).toHaveBeenCalledWith('Hello world', expect.objectContaining({}));
+		});
+
+		it('should throw BuddyTtsNotConfiguredException when voiceEnabled is false', async () => {
+			configService.getModuleConfig.mockReturnValue(makeConfig({ voiceEnabled: false }));
+
+			await expect(service.synthesize('Hello', 'msg-1')).rejects.toThrow(BuddyTtsNotConfiguredException);
+		});
+
+		it('should throw BuddyTtsNotConfiguredException when ttsPlugin is none', async () => {
+			configService.getModuleConfig.mockReturnValue(makeConfig({ ttsPlugin: TTS_PLUGIN_NONE }));
+
+			await expect(service.synthesize('Hello', 'msg-1')).rejects.toThrow(BuddyTtsNotConfiguredException);
+		});
+
+		it('should throw BuddyTtsNotConfiguredException when provider not registered', async () => {
+			ttsProviderRegistry.get.mockReturnValue(null);
+
+			await expect(service.synthesize('Hello', 'msg-1')).rejects.toThrow(BuddyTtsNotConfiguredException);
 		});
 
 		it('should throw BuddyTtsNotConfiguredException when config service throws', async () => {
@@ -91,106 +120,37 @@ describe('TtsProviderService', () => {
 				throw new Error('No config');
 			});
 
-			await expect(service.synthesize('Hello world', 'msg-1')).rejects.toThrow(BuddyTtsNotConfiguredException);
+			await expect(service.synthesize('Hello', 'msg-1')).rejects.toThrow(BuddyTtsNotConfiguredException);
 		});
-	});
 
-	describe('config reading', () => {
-		it('should call config service with correct module name', () => {
-			configService.getModuleConfig.mockReturnValue(makeConfig({ ttsProvider: TtsProvider.NONE }));
-
-			service.synthesize('Hello', 'msg-1').catch(() => {
-				// Expected to throw
-			});
+		it('should call config service with correct module name', async () => {
+			await service.synthesize('Hello', 'msg-1');
 
 			expect(configService.getModuleConfig).toHaveBeenCalledWith(BUDDY_MODULE_NAME);
 		});
 	});
 
-	describe('OpenAI TTS provider', () => {
-		it('should throw when TTS API key is not set', async () => {
-			configService.getModuleConfig.mockReturnValue(
-				makeConfig({
-					ttsProvider: TtsProvider.OPENAI_TTS,
-					ttsApiKey: undefined,
-				}),
-			);
-
-			await expect(service.synthesize('Hello', 'msg-1')).rejects.toThrow(BuddyTtsNotConfiguredException);
-		});
-
-		it('should throw on import failure when OpenAI SDK not available', async () => {
-			configService.getModuleConfig.mockReturnValue(makeConfig({ ttsProvider: TtsProvider.OPENAI_TTS }));
-
-			// The dynamic import of openai will fail in test environment
-			await expect(service.synthesize('Hello world', 'msg-1')).rejects.toThrow();
-		});
-	});
-
-	describe('ElevenLabs provider', () => {
-		it('should throw when TTS API key is not set', async () => {
-			configService.getModuleConfig.mockReturnValue(
-				makeConfig({
-					ttsProvider: TtsProvider.ELEVENLABS,
-					ttsApiKey: undefined,
-				}),
-			);
-
-			await expect(service.synthesize('Hello', 'msg-1')).rejects.toThrow(BuddyTtsNotConfiguredException);
-		});
-	});
-
-	describe('system provider', () => {
-		it('should throw when espeak/piper CLI is not available', async () => {
-			configService.getModuleConfig.mockReturnValue(makeConfig({ ttsProvider: TtsProvider.SYSTEM }));
-
-			// The espeak CLI will not be available in test environment
-			await expect(service.synthesize('Hello world', 'msg-1')).rejects.toThrow();
-		});
-	});
-
 	describe('caching', () => {
-		const fakeAudio = { buffer: Buffer.from('fake-audio-data'), contentType: 'audio/mpeg' };
-
-		beforeEach(() => {
-			configService.getModuleConfig.mockReturnValue(makeConfig({ ttsProvider: TtsProvider.OPENAI_TTS }));
-		});
-
-		function mockSynthesizeOpenAi(svc: TtsProviderService, impl?: () => Promise<typeof fakeAudio>): jest.Mock {
-			const mock = jest.fn().mockImplementation(impl ?? (() => Promise.resolve({ ...fakeAudio })));
-
-			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-			(svc as any).synthesizeOpenAi = mock;
-
-			return mock;
-		}
-
 		it('should return cached audio for the same message ID', async () => {
-			const mock = mockSynthesizeOpenAi(service);
-
 			const first = await service.synthesize('Hello', 'msg-1');
 			const second = await service.synthesize('Hello', 'msg-1');
 
-			expect(mock).toHaveBeenCalledTimes(1);
+			expect(mockProvider.synthesize).toHaveBeenCalledTimes(1);
 			expect(first.buffer).toEqual(fakeAudio.buffer);
 			expect(second.buffer).toEqual(fakeAudio.buffer);
 		});
 
 		it('should treat different message IDs as separate cache entries', async () => {
-			const mock = mockSynthesizeOpenAi(service);
-
 			await service.synthesize('Hello', 'msg-1');
 			await service.synthesize('Hello', 'msg-2');
 
-			expect(mock).toHaveBeenCalledTimes(2);
+			expect(mockProvider.synthesize).toHaveBeenCalledTimes(2);
 		});
 
 		it('should re-synthesize after TTL expires', async () => {
 			jest.useFakeTimers();
 
 			try {
-				const mock = mockSynthesizeOpenAi(service);
-
 				await service.synthesize('Hello', 'msg-1');
 
 				// Advance time past TTL
@@ -198,30 +158,26 @@ describe('TtsProviderService', () => {
 
 				await service.synthesize('Hello', 'msg-1');
 
-				expect(mock).toHaveBeenCalledTimes(2);
+				expect(mockProvider.synthesize).toHaveBeenCalledTimes(2);
 			} finally {
 				jest.useRealTimers();
 			}
 		});
 
 		it('should use different cache keys when voice config changes', async () => {
-			const mock = mockSynthesizeOpenAi(service);
+			await service.synthesize('Hello', 'msg-1');
+
+			configService.getModuleConfig.mockReturnValue(makeConfig({ ttsVoice: 'nova' }));
 
 			await service.synthesize('Hello', 'msg-1');
 
-			configService.getModuleConfig.mockReturnValue(
-				makeConfig({ ttsProvider: TtsProvider.OPENAI_TTS, ttsVoice: 'nova' }),
-			);
-
-			await service.synthesize('Hello', 'msg-1');
-
-			expect(mock).toHaveBeenCalledTimes(2);
+			expect(mockProvider.synthesize).toHaveBeenCalledTimes(2);
 		});
 
 		it('should deduplicate concurrent requests for the same message', async () => {
 			let resolveCall!: (value: typeof fakeAudio) => void;
 
-			const mock = mockSynthesizeOpenAi(service, () => new Promise((resolve) => (resolveCall = resolve)));
+			mockProvider.synthesize.mockImplementation(() => new Promise((resolve) => (resolveCall = resolve)));
 
 			const promise1 = service.synthesize('Hello', 'msg-1');
 			const promise2 = service.synthesize('Hello', 'msg-1');
@@ -230,7 +186,7 @@ describe('TtsProviderService', () => {
 
 			const [result1, result2] = await Promise.all([promise1, promise2]);
 
-			expect(mock).toHaveBeenCalledTimes(1);
+			expect(mockProvider.synthesize).toHaveBeenCalledTimes(1);
 			expect(result1.buffer).toEqual(fakeAudio.buffer);
 			expect(result2.buffer).toEqual(fakeAudio.buffer);
 		});

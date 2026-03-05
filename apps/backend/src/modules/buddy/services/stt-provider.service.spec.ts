@@ -14,6 +14,7 @@ describe('SttProviderService', () => {
 	function makeConfig(overrides: Partial<BuddyConfigModel> = {}): BuddyConfigModel {
 		const config = new BuddyConfigModel();
 
+		config.voiceEnabled = 'voiceEnabled' in overrides ? overrides.voiceEnabled : true;
 		config.sttProvider = 'sttProvider' in overrides ? overrides.sttProvider : SttProvider.WHISPER_API;
 		config.sttApiKey = 'sttApiKey' in overrides ? overrides.sttApiKey : 'test-stt-key';
 		config.sttModel = 'sttModel' in overrides ? overrides.sttModel : null;
@@ -31,6 +32,14 @@ describe('SttProviderService', () => {
 	});
 
 	describe('isConfigured', () => {
+		it('should return false when voiceEnabled is false', () => {
+			configService.getModuleConfig.mockReturnValue(
+				makeConfig({ voiceEnabled: false, sttProvider: SttProvider.WHISPER_API }),
+			);
+
+			expect(service.isConfigured()).toBe(false);
+		});
+
 		it('should return true when Whisper API provider has an STT API key', () => {
 			configService.getModuleConfig.mockReturnValue(makeConfig({ sttProvider: SttProvider.WHISPER_API }));
 
@@ -67,6 +76,14 @@ describe('SttProviderService', () => {
 	});
 
 	describe('provider not configured', () => {
+		it('should throw BuddySttNotConfiguredException when voiceEnabled is false', async () => {
+			configService.getModuleConfig.mockReturnValue(
+				makeConfig({ voiceEnabled: false, sttProvider: SttProvider.WHISPER_API }),
+			);
+
+			await expect(service.transcribe(audioBuffer, mimeType)).rejects.toThrow(BuddySttNotConfiguredException);
+		});
+
 		it('should throw BuddySttNotConfiguredException when provider is NONE', async () => {
 			configService.getModuleConfig.mockReturnValue(makeConfig({ sttProvider: SttProvider.NONE }));
 

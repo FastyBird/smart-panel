@@ -15,6 +15,10 @@ export enum RouteNames {
 
 export const LLM_PROVIDER_NONE = 'none';
 
+export const TTS_PLUGIN_NONE = 'none';
+
+export const TTS_PLUGIN_ELEVENLABS = 'buddy-elevenlabs-plugin';
+
 /**
  * Maps legacy enum-based provider values (from pre-plugin configs)
  * to the new plugin-based provider names.
@@ -31,11 +35,4 @@ export enum SttProvider {
 	NONE = 'none',
 	WHISPER_API = 'whisper_api',
 	WHISPER_LOCAL = 'whisper_local',
-}
-
-export enum TtsProvider {
-	NONE = 'none',
-	OPENAI_TTS = 'openai_tts',
-	ELEVENLABS = 'elevenlabs',
-	SYSTEM = 'system',
 }

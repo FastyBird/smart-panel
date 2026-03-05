@@ -1,29 +1,29 @@
 import 'package:flutter/material.dart';
 
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
-import 'package:fastybird_smart_panel/modules/buddy/services/wake_word_service.dart';
+import 'package:fastybird_smart_panel/modules/buddy/services/voice_activation_service.dart';
 
-/// Visual indicator for wake word detection state.
+/// Visual indicator for voice activation detection state.
 ///
 /// Shows as a small animated overlay at the top of the deck screen:
 /// - Pulsing microphone icon when listening
 /// - Red recording indicator when capturing speech
 /// - Spinning indicator when processing through STT
 ///
-/// Only visible when the wake word engine is running.
-class WakeWordIndicator extends StatefulWidget {
-	final WakeWordService wakeWordService;
+/// Only visible when the voice activation engine is running.
+class VoiceActivationIndicator extends StatefulWidget {
+	final VoiceActivationService voiceActivationService;
 
-	const WakeWordIndicator({
+	const VoiceActivationIndicator({
 		super.key,
-		required this.wakeWordService,
+		required this.voiceActivationService,
 	});
 
 	@override
-	State<WakeWordIndicator> createState() => _WakeWordIndicatorState();
+	State<VoiceActivationIndicator> createState() => _VoiceActivationIndicatorState();
 }
 
-class _WakeWordIndicatorState extends State<WakeWordIndicator>
+class _VoiceActivationIndicatorState extends State<VoiceActivationIndicator>
 		with SingleTickerProviderStateMixin {
 	late final AnimationController _pulseController;
 	late final Animation<double> _pulseAnimation;
@@ -44,17 +44,17 @@ class _WakeWordIndicatorState extends State<WakeWordIndicator>
 			),
 		);
 
-		widget.wakeWordService.addListener(_onStateChanged);
+		widget.voiceActivationService.addListener(_onStateChanged);
 		_updateAnimation();
 	}
 
 	@override
-	void didUpdateWidget(WakeWordIndicator oldWidget) {
+	void didUpdateWidget(VoiceActivationIndicator oldWidget) {
 		super.didUpdateWidget(oldWidget);
 
-		if (oldWidget.wakeWordService != widget.wakeWordService) {
-			oldWidget.wakeWordService.removeListener(_onStateChanged);
-			widget.wakeWordService.addListener(_onStateChanged);
+		if (oldWidget.voiceActivationService != widget.voiceActivationService) {
+			oldWidget.voiceActivationService.removeListener(_onStateChanged);
+			widget.voiceActivationService.addListener(_onStateChanged);
 			_updateAnimation();
 		}
 	}
@@ -67,13 +67,13 @@ class _WakeWordIndicatorState extends State<WakeWordIndicator>
 	}
 
 	void _updateAnimation() {
-		final state = widget.wakeWordService.state;
+		final state = widget.voiceActivationService.state;
 
-		if (state == WakeWordState.listening) {
+		if (state == VoiceActivationState.listening) {
 			// Slow pulse when listening
 			_pulseController.duration = const Duration(milliseconds: 1200);
 			_pulseController.repeat(reverse: true);
-		} else if (state == WakeWordState.recording) {
+		} else if (state == VoiceActivationState.recording) {
 			// Fast pulse when recording
 			_pulseController.duration = const Duration(milliseconds: 600);
 			_pulseController.repeat(reverse: true);
@@ -86,16 +86,16 @@ class _WakeWordIndicatorState extends State<WakeWordIndicator>
 
 	@override
 	void dispose() {
-		widget.wakeWordService.removeListener(_onStateChanged);
+		widget.voiceActivationService.removeListener(_onStateChanged);
 		_pulseController.dispose();
 		super.dispose();
 	}
 
 	@override
 	Widget build(BuildContext context) {
-		final state = widget.wakeWordService.state;
+		final state = widget.voiceActivationService.state;
 
-		if (state == WakeWordState.stopped) {
+		if (state == VoiceActivationState.stopped) {
 			return const SizedBox.shrink();
 		}
 
@@ -105,7 +105,7 @@ class _WakeWordIndicatorState extends State<WakeWordIndicator>
 			animation: _pulseAnimation,
 			builder: (context, child) {
 				return Opacity(
-					opacity: state == WakeWordState.listening
+					opacity: state == VoiceActivationState.listening
 						? _pulseAnimation.value
 						: 1.0,
 					child: _buildIndicator(context, isDark, state),
@@ -114,34 +114,34 @@ class _WakeWordIndicatorState extends State<WakeWordIndicator>
 		);
 	}
 
-	Widget _buildIndicator(BuildContext context, bool isDark, WakeWordState state) {
+	Widget _buildIndicator(BuildContext context, bool isDark, VoiceActivationState state) {
 		final Color iconColor;
 		final Color bgColor;
 		final IconData icon;
 		final String label;
 
 		switch (state) {
-			case WakeWordState.listening:
+			case VoiceActivationState.listening:
 				iconColor = isDark ? AppColorsDark.info : AppColorsLight.info;
 				bgColor = (isDark ? AppColorsDark.infoLight5 : AppColorsLight.infoLight9)
 					.withValues(alpha: 0.9);
 				icon = Icons.mic_none;
 				label = 'Listening...';
-			case WakeWordState.recording:
+			case VoiceActivationState.recording:
 				iconColor = isDark ? AppColorsDark.danger : AppColorsLight.danger;
 				bgColor = (isDark ? AppColorsDark.dangerLight5 : AppColorsLight.dangerLight9)
 					.withValues(alpha: 0.9);
 				icon = Icons.mic;
-				final seconds = widget.wakeWordService.recordingDuration.inSeconds;
-				final maxSeconds = widget.wakeWordService.config.maxRecordingDurationSec;
+				final seconds = widget.voiceActivationService.recordingDuration.inSeconds;
+				final maxSeconds = widget.voiceActivationService.config.maxRecordingDurationSec;
 				label = 'Recording ${seconds}s / ${maxSeconds}s';
-			case WakeWordState.processing:
+			case VoiceActivationState.processing:
 				iconColor = isDark ? AppColorsDark.warning : AppColorsLight.warning;
 				bgColor = (isDark ? AppColorsDark.warningLight5 : AppColorsLight.warningLight9)
 					.withValues(alpha: 0.9);
 				icon = Icons.hearing;
 				label = 'Processing...';
-			case WakeWordState.stopped:
+			case VoiceActivationState.stopped:
 				return const SizedBox.shrink();
 		}
 
@@ -157,7 +157,7 @@ class _WakeWordIndicatorState extends State<WakeWordIndicator>
 			child: Row(
 				mainAxisSize: MainAxisSize.min,
 				children: [
-					if (state == WakeWordState.processing)
+					if (state == VoiceActivationState.processing)
 						SizedBox(
 							width: AppSpacings.scale(14),
 							height: AppSpacings.scale(14),

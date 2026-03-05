@@ -13,7 +13,7 @@ import { LlmResponse, LlmResponseMeta, ToolDefinition } from '../platforms/llm-p
 
 import { BuddyContext, BuddyContextService } from './buddy-context.service';
 import { ChatMessage, LlmProviderService } from './llm-provider.service';
-import { ToolExecutionService } from './tool-execution.service';
+import { ToolProviderRegistryService } from './tool-provider-registry.service';
 
 const MAX_HISTORY_MESSAGES = 20;
 const MAX_TOOL_ITERATIONS = 5;
@@ -30,7 +30,7 @@ export class BuddyConversationService {
 		private readonly dataSource: OrmDataSource,
 		private readonly llmProvider: LlmProviderService,
 		private readonly contextService: BuddyContextService,
-		private readonly toolExecution: ToolExecutionService,
+		private readonly toolProviderRegistry: ToolProviderRegistryService,
 		private readonly eventEmitter: EventEmitter2,
 	) {}
 
@@ -108,7 +108,7 @@ export class BuddyConversationService {
 		chatMessages.push({ role: MessageRole.USER, content });
 
 		// 3. Call LLM provider with tool support if available
-		const tools = this.llmProvider.supportsTools() ? this.toolExecution.getToolDefinitions() : undefined;
+		const tools = this.llmProvider.supportsTools() ? this.toolProviderRegistry.getAllToolDefinitions() : undefined;
 		const llmResponse = await this.sendWithToolExecution(systemPrompt, chatMessages, tools);
 
 		// 4. Persist both user message and assistant response in a single transaction
@@ -211,7 +211,7 @@ export class BuddyConversationService {
 			const toolResults: { success: boolean; summary: string }[] = [];
 
 			for (const toolCall of response.toolCalls) {
-				const result = await this.toolExecution.executeTool(toolCall);
+				const result = await this.toolProviderRegistry.executeTool(toolCall);
 
 				toolResults.push({
 					success: result.success,

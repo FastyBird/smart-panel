@@ -1214,14 +1214,86 @@ abstract class AppLocalizations {
   /// Button label for navigating to Wake Word settings section.
   ///
   /// In en, this message translates to:
-  /// **'Wake Word'**
-  String get settings_general_settings_button_wake_word;
+  /// **'Voice Activation'**
+  String get settings_general_settings_button_voice_activation;
 
-  /// Subtitle for the Wake Word settings tile.
+  /// Subtitle for the Voice Activation settings tile.
   ///
   /// In en, this message translates to:
   /// **'Voice activation settings'**
-  String get settings_wake_word_settings_title;
+  String get settings_voice_activation_settings_title;
+
+  /// Section title for voice activation detection toggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice Activation Detection'**
+  String get settings_voice_activation_section_detection;
+
+  /// Label for the voice activation enable toggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable Voice Activation'**
+  String get settings_voice_activation_enable_label;
+
+  /// Description for the voice activation enable toggle.
+  ///
+  /// In en, this message translates to:
+  /// **'Say "{wakeWord}" to activate voice commands without touching the panel.'**
+  String settings_voice_activation_enable_description(String wakeWord);
+
+  /// Section title for voice activation sensitivity settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Sensitivity'**
+  String get settings_voice_activation_section_sensitivity;
+
+  /// Label for the detection sensitivity slider.
+  ///
+  /// In en, this message translates to:
+  /// **'Detection Sensitivity'**
+  String get settings_voice_activation_sensitivity_label;
+
+  /// Description for the detection sensitivity slider.
+  ///
+  /// In en, this message translates to:
+  /// **'Higher sensitivity detects quieter speech but may trigger on background noise.'**
+  String get settings_voice_activation_sensitivity_description;
+
+  /// Section title for voice activation engine status.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get settings_voice_activation_section_status;
+
+  /// Label for the engine status indicator.
+  ///
+  /// In en, this message translates to:
+  /// **'Engine Status'**
+  String get settings_voice_activation_status_label;
+
+  /// Status text when voice activation is stopped.
+  ///
+  /// In en, this message translates to:
+  /// **'Stopped'**
+  String get settings_voice_activation_status_stopped;
+
+  /// Status text when listening for voice activation wake word.
+  ///
+  /// In en, this message translates to:
+  /// **'Listening for voice activation...'**
+  String get settings_voice_activation_status_listening;
+
+  /// Status text when recording speech after wake word detected.
+  ///
+  /// In en, this message translates to:
+  /// **'Recording speech...'**
+  String get settings_voice_activation_status_recording;
+
+  /// Status text when processing recorded audio.
+  ///
+  /// In en, this message translates to:
+  /// **'Processing audio...'**
+  String get settings_voice_activation_status_processing;
 
   /// Title for the Weather Settings section.
   ///

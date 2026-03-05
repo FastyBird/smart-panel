@@ -72,6 +72,10 @@
 					"none": "None"
 				}
 			},
+			"voiceEnabled": {
+				"title": "Voice Interface",
+				"description": "Enable speech-to-text and text-to-speech capabilities"
+			},
 			"sttProvider": {
 				"title": "Speech-to-Text Provider",
 				"placeholder": "Select an STT provider",
@@ -93,19 +97,10 @@
 				"title": "Language Hint",
 				"placeholder": "e.g. en, de, cs (optional)"
 			},
-			"ttsProvider": {
-				"title": "Text-to-Speech Provider",
-				"placeholder": "Select a TTS provider",
-				"options": {
-					"none": "None (voice output disabled)",
-					"openaiTts": "OpenAI TTS",
-					"elevenlabs": "ElevenLabs",
-					"system": "System (espeak/piper)"
-				}
-			},
-			"ttsApiKey": {
-				"title": "TTS API Key",
-				"placeholder": "Enter your API key for the TTS provider"
+			"ttsPlugin": {
+				"title": "TTS Plugin",
+				"placeholder": "Enter TTS plugin type or none",
+				"description": "Enter the TTS plugin type (e.g., buddy-openai-plugin, buddy-elevenlabs-plugin, buddy-system-tts-plugin) or 'none' to disable"
 			},
 			"ttsVoice": {
 				"title": "Voice",
