@@ -122,9 +122,6 @@ class WakeWordService extends ChangeNotifier {
 	/// Callback fired when speech is first detected (for screen wake).
 	VoidCallback? onSpeechDetected;
 
-	/// Callback fired when processing completes and listening resumes.
-	VoidCallback? onListeningResumed;
-
 	WakeWordConfig get config => _config;
 	WakeWordState get state => _state;
 	bool get isListening => _state == WakeWordState.listening;
@@ -459,7 +456,6 @@ class WakeWordService extends ChangeNotifier {
 		_monitorRecorder = AudioRecorder();
 
 		await _startListening();
-		onListeningResumed?.call();
 	}
 
 	/// Cancel an ongoing capture without processing.
