@@ -250,12 +250,16 @@
 						:label="t('displaysModule.fields.displays.screenLockDuration.title')"
 						:prop="['screenLockDuration']"
 					>
-						<el-input-number
+						<el-select
 							v-model="model.screenLockDuration"
-							:min="0"
-							:max="3600"
-						/>
-						<span class="ml-2 text-gray-500">{{ t('displaysModule.fields.displays.screenLockDuration.unit') }}</span>
+						>
+							<el-option
+								v-for="opt in screenLockDurationOptions"
+								:key="opt.value"
+								:label="opt.label"
+								:value="opt.value"
+							/>
+						</el-select>
 					</el-form-item>
 				</div>
 			</el-collapse-item>
@@ -641,7 +645,7 @@ import { usePages } from '../../dashboard/composables/composables';
 import { useSpaces } from '../../spaces/composables';
 import { useLocations as useWeatherLocations } from '../../weather/composables/composables';
 import { useDisplayEditForm } from '../composables/useDisplayEditForm';
-import { FormResult, type FormResultType } from '../displays.constants';
+import { FormResult, type FormResultType, SCREEN_LOCK_DURATION_OPTIONS } from '../displays.constants';
 import type { IDisplayEditForm } from '../composables/types';
 
 import type { IDisplayEditFormProps } from './display-edit-form.types';
@@ -668,6 +672,13 @@ const { t } = useI18n();
 const { pages, fetchPages } = usePages();
 const { roomSpaces, fetchSpaces, firstLoadFinished } = useSpaces();
 const { locations: weatherLocations, fetchLocations: fetchWeatherLocations } = useWeatherLocations();
+
+const screenLockDurationOptions = computed(() =>
+	SCREEN_LOCK_DURATION_OPTIONS.map((opt) => ({
+		value: opt.value,
+		label: t(`displaysModule.fields.displays.screenLockDuration.options.${opt.labelKey}`),
+	}))
+);
 
 // Filter pages to only show those visible to the current display
 // Pages with null/undefined/empty displays array are visible to all displays
@@ -733,7 +744,7 @@ const rules = computed<FormRules<IDisplayEditForm>>(() => ({
 	rows: [{ type: 'number', min: 1, message: t('displaysModule.fields.displays.rows.validation.min'), trigger: 'blur' }],
 	cols: [{ type: 'number', min: 1, message: t('displaysModule.fields.displays.cols.validation.min'), trigger: 'blur' }],
 	brightness: [{ type: 'number', min: 0, max: 100, message: t('displaysModule.fields.displays.brightness.validation.range'), trigger: 'blur' }],
-	screenLockDuration: [{ type: 'number', min: 0, message: t('displaysModule.fields.displays.screenLockDuration.validation.min'), trigger: 'blur' }],
+	screenLockDuration: [{ type: 'enum', enum: SCREEN_LOCK_DURATION_OPTIONS.map((o) => o.value), message: t('displaysModule.fields.displays.screenLockDuration.title'), trigger: 'change' }],
 	homePageId: [
 		{
 			required: model.homeMode === 'explicit',

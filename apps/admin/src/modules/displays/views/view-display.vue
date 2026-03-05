@@ -170,7 +170,7 @@
 							{{ display.brightness }}%
 						</el-descriptions-item>
 						<el-descriptions-item :label="t('displaysModule.detail.settings.screenLockDuration')">
-							{{ display.screenLockDuration }}s
+							{{ formatScreenLockDuration(display.screenLockDuration) }}
 						</el-descriptions-item>
 						<el-descriptions-item :label="t('displaysModule.detail.settings.screenSaver')">
 							<el-tag :type="display.screenSaver ? 'success' : 'info'">
@@ -379,7 +379,7 @@ import { usePages } from '../../dashboard/composables/composables';
 import { useDevices } from '../../devices/composables/useDevices';
 import { useSpaces } from '../../spaces/composables';
 import { useDisplay } from '../composables/composables';
-import { RouteNames } from '../displays.constants';
+import { RouteNames, SCREEN_LOCK_DURATION_OPTIONS } from '../displays.constants';
 import type { IDisplay } from '../store/displays.store.types';
 
 import type { IViewDisplayProps } from './view-display.types';
@@ -488,6 +488,11 @@ const formatIpAddress = (ipAddress: string | null | undefined): string => {
 		return t('displaysModule.table.columns.local');
 	}
 	return ipAddress;
+};
+
+const formatScreenLockDuration = (seconds: number): string => {
+	const match = SCREEN_LOCK_DURATION_OPTIONS.find((o) => o.value === seconds);
+	return match ? t(`displaysModule.fields.displays.screenLockDuration.options.${match.labelKey}`) : `${seconds}s`;
 };
 
 const { meta } = useMeta({});

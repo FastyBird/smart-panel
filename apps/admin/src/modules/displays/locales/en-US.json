@@ -131,9 +131,15 @@
 			},
 			"screenLockDuration": {
 				"title": "Screen lock duration",
-				"unit": "seconds",
-				"validation": {
-					"min": "Screen lock duration must be positive"
+				"options": {
+					"15s": "15 seconds",
+					"30s": "30 seconds",
+					"1min": "1 minute",
+					"2min": "2 minutes",
+					"5min": "5 minutes",
+					"10min": "10 minutes",
+					"30min": "30 minutes",
+					"never": "Never"
 				}
 			},
 			"darkMode": {
