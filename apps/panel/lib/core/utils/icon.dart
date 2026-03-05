@@ -1,20 +1,34 @@
 import 'package:flutter/widgets.dart';
 import 'package:material_design_icons_flutter/material_design_icons_flutter.dart';
 
-/// Normalizes an icon name by stripping the "mdi:" prefix used by
-/// the Iconify library in the admin app.
+/// Normalizes an icon name from the Iconify kebab-case format used by the
+/// admin app (e.g. `"mdi:view-dashboard"`) to the camelCase format expected
+/// by the `material_design_icons_flutter` package (e.g. `"viewDashboard"`).
 String _normalizeMdiName(String name) {
-  if (name.startsWith('mdi:')) {
-    return name.substring(4);
+  var normalized = name;
+
+  // Strip the "mdi:" prefix used by the Iconify library in the admin app.
+  if (normalized.startsWith('mdi:')) {
+    normalized = normalized.substring(4);
   }
-  return name;
+
+  // Convert kebab-case to camelCase for MdiIcons.fromString() lookup.
+  if (normalized.contains('-')) {
+    normalized = normalized.replaceAllMapped(
+      RegExp(r'-([a-z0-9])'),
+      (match) => match.group(1)!.toUpperCase(),
+    );
+  }
+
+  return normalized;
 }
 
 /// Resolves an icon string (as stored in the backend) to Flutter [IconData].
 ///
 /// Handles the following formats:
-/// - `"mdi:icon-name"` (Iconify MDI format from admin app)
-/// - `"icon-name"` (plain MDI icon name)
+/// - `"mdi:view-dashboard"` (Iconify MDI format from admin app, kebab-case)
+/// - `"view-dashboard"` (plain kebab-case MDI icon name)
+/// - `"viewDashboard"` (camelCase, as used by material_design_icons_flutter)
 ///
 /// Returns [fallback] when the icon string is null, empty, or not found
 /// in the MDI icon set.
