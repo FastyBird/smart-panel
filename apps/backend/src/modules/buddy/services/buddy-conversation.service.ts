@@ -267,7 +267,7 @@ export class BuddyConversationService {
 			};
 		}
 
-		return { ...response, meta: accumulatedMeta };
+		return { ...response, meta: accumulatedMeta, toolCalls: undefined };
 	}
 
 	/**
