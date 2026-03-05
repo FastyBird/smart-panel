@@ -859,19 +859,19 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
         crossAxisAlignment: CrossAxisAlignment.start,
         spacing: AppSpacings.pMd,
         children: [
-          if (hasDeviceControls) ...[
-            SectionTitle(
-              title: localizations.device_controls,
-              icon: MdiIcons.tuneVertical,
-            ),
-            controlsSection,
-          ],
           if (sensors.isNotEmpty) ...[
             SectionTitle(
               title: localizations.device_sensors,
               icon: MdiIcons.eyeSettings,
             ),
             _buildSensorsSection(isDark, sensors),
+          ],
+          if (hasDeviceControls) ...[
+            SectionTitle(
+              title: localizations.device_controls,
+              icon: MdiIcons.tuneVertical,
+            ),
+            controlsSection,
           ],
         ],
       ),
@@ -914,19 +914,19 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
               false,
               AppSpacings.scale(AppTileHeight.horizontal),
             ),
-          if (_hasDeviceControlOptions) ...[
-            SectionTitle(
-              title: localizations.device_controls,
-              icon: MdiIcons.tuneVertical,
-            ),
-            _buildFanOptionsSection(context, localizations, isDark, activeColor, false),
-          ],
           if (sensors.isNotEmpty) ...[
             SectionTitle(
               title: localizations.device_sensors,
               icon: MdiIcons.eyeSettings,
             ),
             _buildSensorsSection(isDark, sensors),
+          ],
+          if (_hasDeviceControlOptions) ...[
+            SectionTitle(
+              title: localizations.device_controls,
+              icon: MdiIcons.tuneVertical,
+            ),
+            _buildFanOptionsSection(context, localizations, isDark, activeColor, false),
           ],
         ],
       ),
