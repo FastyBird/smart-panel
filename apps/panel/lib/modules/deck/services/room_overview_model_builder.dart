@@ -1,6 +1,7 @@
 import 'package:fastybird_smart_panel/api/models/devices_module_channel_category.dart';
 import 'package:fastybird_smart_panel/api/models/devices_module_device_category.dart';
 import 'package:fastybird_smart_panel/api/models/scenes_module_data_scene_category.dart';
+import 'package:fastybird_smart_panel/api/models/spaces_module_data_space_category.dart';
 import 'package:fastybird_smart_panel/core/utils/icon.dart';
 import 'package:fastybird_smart_panel/core/utils/number_format.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
@@ -324,7 +325,7 @@ RoomOverviewModel buildRoomOverviewModel(RoomOverviewBuildInput input) {
   final sensorReadings = _buildSensorReadings(input);
 
   return RoomOverviewModel(
-    icon: _mapSpaceIcon(room?.icon),
+    icon: _mapSpaceIcon(room?.icon, room?.category),
     title: room?.name ?? 'Room',
     domainCards: domainCards,
     quickScenes: quickScenes,
@@ -853,7 +854,55 @@ List<SensorReading> _buildSensorReadings(RoomOverviewBuildInput input) {
 /// Maps a space icon string identifier to IconData.
 ///
 /// Supports MDI icon names (with or without "mdi:" prefix) as stored
-/// by the admin app via the Iconify icon picker.
-IconData _mapSpaceIcon(String? iconId) {
-  return resolveIcon(iconId, fallback: MdiIcons.homeOutline);
+/// by the admin app via the Iconify icon picker. Falls back to
+/// category-based defaults when no valid icon name is set.
+IconData _mapSpaceIcon(String? iconId, SpacesModuleDataSpaceCategory? category) {
+  final customIcon = resolveIconNullable(iconId);
+  if (customIcon != null) {
+    return customIcon;
+  }
+
+  switch (category) {
+    case SpacesModuleDataSpaceCategory.livingRoom:
+      return MdiIcons.sofa;
+    case SpacesModuleDataSpaceCategory.bedroom:
+      return MdiIcons.bedKingOutline;
+    case SpacesModuleDataSpaceCategory.bathroom:
+      return MdiIcons.showerHead;
+    case SpacesModuleDataSpaceCategory.kitchen:
+      return MdiIcons.stove;
+    case SpacesModuleDataSpaceCategory.office:
+      return MdiIcons.deskLamp;
+    case SpacesModuleDataSpaceCategory.garage:
+      return MdiIcons.garage;
+    case SpacesModuleDataSpaceCategory.outdoorGarden:
+      return MdiIcons.flower;
+    case SpacesModuleDataSpaceCategory.hallway:
+    case SpacesModuleDataSpaceCategory.entryway:
+      return MdiIcons.doorOpen;
+    case SpacesModuleDataSpaceCategory.laundry:
+      return MdiIcons.washingMachine;
+    case SpacesModuleDataSpaceCategory.floorBasement:
+      return MdiIcons.stairs;
+    case SpacesModuleDataSpaceCategory.floorAttic:
+      return MdiIcons.homeRoof;
+    case SpacesModuleDataSpaceCategory.nursery:
+      return MdiIcons.toyBrickOutline;
+    case SpacesModuleDataSpaceCategory.diningRoom:
+      return MdiIcons.tableFurniture;
+    case SpacesModuleDataSpaceCategory.outdoorBalcony:
+      return MdiIcons.balcony;
+    case SpacesModuleDataSpaceCategory.outdoorTerrace:
+      return MdiIcons.tableChair;
+    case SpacesModuleDataSpaceCategory.guestRoom:
+      return MdiIcons.bedOutline;
+    case SpacesModuleDataSpaceCategory.gym:
+      return MdiIcons.dumbbell;
+    case SpacesModuleDataSpaceCategory.mediaRoom:
+      return MdiIcons.television;
+    case SpacesModuleDataSpaceCategory.workshop:
+      return MdiIcons.hammerWrench;
+    default:
+      return MdiIcons.homeOutline;
+  }
 }
