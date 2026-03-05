@@ -1,7 +1,7 @@
 import { Module, OnModuleInit } from '@nestjs/common';
 
-import { BuddyModule } from '../../modules/buddy/buddy.module';
 import { BuddyCapability } from '../../modules/buddy/buddy.constants';
+import { BuddyModule } from '../../modules/buddy/buddy.module';
 import { LlmProviderRegistryService } from '../../modules/buddy/services/llm-provider-registry.service';
 import { TtsProviderRegistryService } from '../../modules/buddy/services/tts-provider-registry.service';
 import { ConfigModule } from '../../modules/config/config.module';
@@ -20,8 +20,8 @@ import {
 import { BUDDY_OPENAI_PLUGIN_SWAGGER_EXTRA_MODELS } from './buddy-openai.openapi';
 import { UpdateBuddyOpenaiConfigDto } from './dto/update-config.dto';
 import { BuddyOpenaiConfigModel } from './models/config.model';
-import { OpenAiProvider } from './platforms/openai.provider';
 import { OpenAiTtsProvider } from './platforms/openai-tts.provider';
+import { OpenAiProvider } from './platforms/openai.provider';
 
 @ApiTag({
 	tagName: BUDDY_OPENAI_PLUGIN_NAME,

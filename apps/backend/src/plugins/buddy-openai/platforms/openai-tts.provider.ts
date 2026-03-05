@@ -1,7 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 
+import {
+	ITtsProvider,
+	TtsSynthesisOptions,
+	TtsSynthesisResult,
+} from '../../../modules/buddy/platforms/tts-provider.platform';
 import { ConfigService } from '../../../modules/config/services/config.service';
-import { ITtsProvider, TtsSynthesisOptions, TtsSynthesisResult } from '../../../modules/buddy/platforms/tts-provider.platform';
 import { BUDDY_OPENAI_PLUGIN_NAME } from '../buddy-openai.constants';
 import { BuddyOpenaiConfigModel } from '../models/config.model';
 

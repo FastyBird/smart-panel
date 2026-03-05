@@ -8,7 +8,11 @@ import { promisify } from 'util';
 
 import { Injectable, Logger } from '@nestjs/common';
 
-import { ITtsProvider, TtsSynthesisOptions, TtsSynthesisResult } from '../../../modules/buddy/platforms/tts-provider.platform';
+import {
+	ITtsProvider,
+	TtsSynthesisOptions,
+	TtsSynthesisResult,
+} from '../../../modules/buddy/platforms/tts-provider.platform';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { BUDDY_SYSTEM_TTS_PLUGIN_NAME } from '../buddy-system-tts.constants';
 import { BuddySystemTtsConfigModel } from '../models/config.model';
@@ -52,7 +56,8 @@ export class SystemTtsProvider implements ITtsProvider {
 		const outputFile = join(tempDir, `${baseName}.wav`);
 
 		try {
-			const preferPiper = config?.engine === 'piper' || (config?.engine !== 'espeak' && (await this.isPiperAvailable()));
+			const preferPiper =
+				config?.engine === 'piper' || (config?.engine !== 'espeak' && (await this.isPiperAvailable()));
 
 			if (preferPiper) {
 				const piperArgs = ['--output_file', outputFile];

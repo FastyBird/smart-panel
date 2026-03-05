@@ -1,6 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 
-import { ITtsProvider, TtsSynthesisOptions, TtsSynthesisResult } from '../../../modules/buddy/platforms/tts-provider.platform';
+import {
+	ITtsProvider,
+	TtsSynthesisOptions,
+	TtsSynthesisResult,
+} from '../../../modules/buddy/platforms/tts-provider.platform';
 import { ConfigService } from '../../../modules/config/services/config.service';
 import { BUDDY_ELEVENLABS_DEFAULT_VOICE, BUDDY_ELEVENLABS_PLUGIN_NAME } from '../buddy-elevenlabs.constants';
 import { BuddyElevenlabsConfigModel } from '../models/config.model';

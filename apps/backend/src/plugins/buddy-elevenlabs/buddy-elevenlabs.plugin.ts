@@ -1,7 +1,7 @@
 import { Module, OnModuleInit } from '@nestjs/common';
 
-import { BuddyModule } from '../../modules/buddy/buddy.module';
 import { BuddyCapability } from '../../modules/buddy/buddy.constants';
+import { BuddyModule } from '../../modules/buddy/buddy.module';
 import { TtsProviderRegistryService } from '../../modules/buddy/services/tts-provider-registry.service';
 import { ConfigModule } from '../../modules/config/config.module';
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
