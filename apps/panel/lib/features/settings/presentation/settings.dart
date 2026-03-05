@@ -4,6 +4,7 @@ import 'package:fastybird_smart_panel/features/settings/presentation/pages/displ
 import 'package:fastybird_smart_panel/features/settings/presentation/pages/general_settings.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/pages/language_settings.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/pages/maintenance.dart';
+import 'package:fastybird_smart_panel/features/settings/presentation/pages/wake_word_settings.dart';
 import 'package:fastybird_smart_panel/features/settings/presentation/pages/weather_settings.dart';
 import 'package:flutter/material.dart';
 
@@ -33,6 +34,9 @@ class SettingsScreen extends StatelessWidget {
 							break;
 						case 'weather-settings':
 							builder = (BuildContext _) => const WeatherSettingsPage();
+							break;
+						case 'wake-word-settings':
+							builder = (BuildContext _) => const WakeWordSettingsPage();
 							break;
 						case 'about':
 							builder = (BuildContext _) => const AboutPage();

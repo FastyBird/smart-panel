@@ -11,8 +11,10 @@ import 'package:fastybird_smart_panel/modules/deck/export.dart';
 import 'package:fastybird_smart_panel/modules/buddy/presentation/buddy_chat_page.dart';
 import 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/suggestion_badge.dart';
 import 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/suggestion_toast.dart';
+import 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/wake_word_indicator.dart';
 import 'package:fastybird_smart_panel/modules/buddy/service.dart';
 import 'package:fastybird_smart_panel/modules/buddy/services/suggestion_notification_service.dart';
+import 'package:fastybird_smart_panel/modules/buddy/services/wake_word_service.dart';
 import 'package:fastybird_smart_panel/modules/security/services/security_overlay_controller.dart';
 import 'package:fastybird_smart_panel/modules/deck/types/swipe_event.dart';
 import 'package:flutter/foundation.dart';
@@ -362,6 +364,28 @@ class _DeckDashboardScreenState extends State<DeckDashboardScreen>
 
                   return const BuddySuggestionToast();
                 },
+              ),
+
+              // Wake word indicator
+              Positioned(
+                left: 0,
+                right: 0,
+                top: AppSpacings.pSm,
+                child: Center(
+                  child: Builder(
+                    builder: (context) {
+                      try {
+                        final wakeWordService = locator<WakeWordService>();
+
+                        return WakeWordIndicator(
+                          wakeWordService: wakeWordService,
+                        );
+                      } catch (_) {
+                        return const SizedBox.shrink();
+                      }
+                    },
+                  ),
+                ),
               ),
 
               // Buddy FAB button

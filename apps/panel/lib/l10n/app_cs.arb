@@ -185,6 +185,8 @@
   "settings_general_settings_button_weather_settings": "Nastavení počasí",
   "settings_general_settings_button_about": "O aplikaci",
   "settings_general_settings_button_maintenance": "Údržba",
+  "settings_general_settings_button_wake_word": "Aktivační slovo",
+  "settings_wake_word_settings_title": "Nastavení hlasové aktivace",
   "settings_weather_settings_title": "Nastavení počasí",
   "settings_weather_settings_temperature_unit_title": "Jednotka teploty",
   "settings_weather_settings_temperature_unit_description": "Nastavte preferovanou jednotku teploty pro zobrazení počasí.",
