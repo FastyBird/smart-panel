@@ -14,8 +14,6 @@ import { SpacesService } from '../../spaces/services/spaces.service';
 import { LightingIntentType, LightingMode } from '../../spaces/spaces.constants';
 import { LlmToolCall, ToolDefinition } from '../platforms/llm-provider.platform';
 
-export { ToolDefinition } from '../platforms/llm-provider.platform';
-
 const TOOL_EXECUTION_TIMEOUT_MS = 5_000;
 
 /**
@@ -25,11 +23,6 @@ export interface ToolExecutionResult {
 	success: boolean;
 	message: string;
 }
-
-/**
- * A tool call request from the LLM.
- */
-export type ToolCall = LlmToolCall;
 
 /**
  * Service responsible for executing LLM tool calls by mapping them
@@ -132,7 +125,7 @@ export class ToolExecutionService {
 	 * Execute a tool call and return the result.
 	 * Maps the LLM tool call to the appropriate home automation action.
 	 */
-	async executeTool(toolCall: ToolCall): Promise<ToolExecutionResult> {
+	async executeTool(toolCall: LlmToolCall): Promise<ToolExecutionResult> {
 		this.logger.debug(`Executing tool: ${toolCall.name} (id=${toolCall.id})`);
 
 		try {
@@ -153,7 +146,7 @@ export class ToolExecutionService {
 		}
 	}
 
-	private async executeWithTimeout(toolCall: ToolCall): Promise<ToolExecutionResult> {
+	private async executeWithTimeout(toolCall: LlmToolCall): Promise<ToolExecutionResult> {
 		let timer: ReturnType<typeof setTimeout> | undefined;
 
 		const timeoutPromise = new Promise<never>((_, reject) => {
@@ -167,7 +160,7 @@ export class ToolExecutionService {
 		}
 	}
 
-	private async routeToolCall(toolCall: ToolCall): Promise<ToolExecutionResult> {
+	private async routeToolCall(toolCall: LlmToolCall): Promise<ToolExecutionResult> {
 		switch (toolCall.name) {
 			case 'control_device':
 				return this.executeControlDevice(toolCall.arguments);

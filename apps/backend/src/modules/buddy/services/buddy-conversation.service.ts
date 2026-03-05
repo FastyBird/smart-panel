@@ -208,32 +208,42 @@ export class BuddyConversationService {
 			this.logger.debug(`Tool iteration ${iteration + 1}: executing ${response.toolCalls.length} tool call(s)`);
 
 			// Execute all tool calls
-			const toolResults: string[] = [];
+			const toolResults: { success: boolean; summary: string }[] = [];
 
 			for (const toolCall of response.toolCalls) {
 				const result = await this.toolExecution.executeTool(toolCall);
 
-				toolResults.push(
-					`Tool "${toolCall.name}" (id=${toolCall.id}): ${result.success ? 'SUCCESS' : 'FAILED'} — ${result.message}`,
-				);
+				toolResults.push({
+					success: result.success,
+					summary: `Tool "${toolCall.name}" (id=${toolCall.id}): ${result.success ? 'SUCCESS' : 'FAILED'} — ${result.message}`,
+				});
 			}
 
-			// If the LLM already provided a final answer alongside the tool calls,
-			// return it directly — no need to re-query the LLM for a summary.
-			if (hasContentWithTools) {
+			const allSucceeded = toolResults.every((r) => r.success);
+
+			// If the LLM already provided a final answer alongside the tool calls
+			// and all tools succeeded, return the LLM's content as-is.
+			// If any tool failed, fall through to re-query the LLM so it can
+			// provide an accurate response reflecting the failures.
+			if (hasContentWithTools && allSucceeded) {
 				return { ...response, meta: accumulatedMeta, toolCalls: undefined };
 			}
 
 			// Append the assistant's tool call response and tool results as a follow-up user message
 			// This is a simplified approach that works across providers without requiring
 			// provider-specific tool result message formats
-			const toolResultsSummary = toolResults.join('\n');
-			const toolNames = response.toolCalls.map((tc) => tc.name).join(', ');
+			const toolResultsSummary = toolResults.map((r) => r.summary).join('\n');
 
-			workingMessages.push({
-				role: MessageRole.ASSISTANT,
-				content: `[Executing tools: ${toolNames}]`,
-			});
+			if (response.content) {
+				workingMessages.push({ role: MessageRole.ASSISTANT, content: response.content });
+			} else {
+				const toolNames = response.toolCalls.map((tc) => tc.name).join(', ');
+
+				workingMessages.push({
+					role: MessageRole.ASSISTANT,
+					content: `[Executing tools: ${toolNames}]`,
+				});
+			}
 
 			workingMessages.push({
 				role: MessageRole.USER,
