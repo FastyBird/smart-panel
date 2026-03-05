@@ -51,7 +51,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
   ScenesModuleDataSceneCategory? _activeHouseMode;
 
   // Error state
-  String? _errorMessage;
+  bool _hasError = false;
 
   @override
   void initState() {
@@ -72,7 +72,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
   Future<void> _loadSecurityData() async {
     setState(() {
       _isLoading = true;
-      _errorMessage = null;
+      _hasError = false;
     });
 
     try {
@@ -117,7 +117,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
 
       setState(() {
         _isLoading = false;
-        _errorMessage = 'entry_error_load_security_data';
+        _hasError = true;
       });
     }
   }
@@ -278,7 +278,7 @@ class _EntryOverviewPageState extends State<EntryOverviewPage> {
           padding: AppSpacings.paddingMd,
           child: _isLoading
               ? _buildLoadingState()
-              : _errorMessage != null
+              : _hasError
                   ? _buildErrorState()
                   : _buildContent(context, localizations),
         ),

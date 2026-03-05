@@ -128,8 +128,8 @@ class DeckService extends ChangeNotifier {
     // Build initial deck (may not have device categories yet for ROOM role)
     if (_localizations != null) {
       _buildDeck(_localizations!);
+      _isInitialized = true;
     }
-    _isInitialized = true;
     notifyListeners();
 
     // Listen for dashboard changes
@@ -161,7 +161,9 @@ class DeckService extends ChangeNotifier {
           '[DECK SERVICE] Will fetch devices for roomId: ${display.roomId}',
         );
       }
-      _fetchDeviceCategoriesAsync(display.roomId!, _localizations!);
+      if (_localizations != null) {
+        _fetchDeviceCategoriesAsync(display.roomId!, _localizations!);
+      }
       _prefetchDomainData(display.roomId!);
     } else if (kDebugMode) {
       debugPrint(

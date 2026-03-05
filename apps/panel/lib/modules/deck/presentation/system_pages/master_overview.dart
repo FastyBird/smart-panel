@@ -74,7 +74,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
   List<SceneView> _globalScenes = [];
 
   // Error state
-  String? _errorMessage;
+  bool _hasError = false;
 
   @override
   void initState() {
@@ -104,7 +104,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
   Future<void> _loadHouseData() async {
     setState(() {
       _isLoading = true;
-      _errorMessage = null;
+      _hasError = false;
     });
 
     try {
@@ -159,7 +159,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
 
       setState(() {
         _isLoading = false;
-        _errorMessage = 'master_error_load_house_data';
+        _hasError = true;
       });
     }
   }
@@ -311,7 +311,7 @@ class _MasterOverviewPageState extends State<MasterOverviewPage> {
           padding: AppSpacings.paddingMd,
           child: _isLoading
               ? _buildLoadingState()
-              : _errorMessage != null
+              : _hasError
                   ? _buildErrorState()
                   : _buildContent(context, localizations),
         ),
