@@ -188,6 +188,10 @@ class WakeWordService extends ChangeNotifier {
 		_cancelAllTimers();
 		await _stopMonitoring();
 		await _cancelCapture();
+
+		_monitorRecorder?.dispose();
+		_monitorRecorder = null;
+
 		_recordingDuration = Duration.zero;
 		_setState(WakeWordState.stopped);
 	}

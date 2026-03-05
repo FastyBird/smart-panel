@@ -71,6 +71,7 @@ class _WakeWordIndicatorState extends State<WakeWordIndicator>
 
 		if (state == WakeWordState.listening) {
 			// Slow pulse when listening
+			_pulseController.duration = const Duration(milliseconds: 1200);
 			_pulseController.repeat(reverse: true);
 		} else if (state == WakeWordState.recording) {
 			// Fast pulse when recording
