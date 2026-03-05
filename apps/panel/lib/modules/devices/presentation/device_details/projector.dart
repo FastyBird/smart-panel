@@ -6,7 +6,9 @@ import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_landscape_layout.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_portrait_layout.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_offline_overlay.dart';
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/widgets/bottom_sheet_dialog.dart';
+import 'package:fastybird_smart_panel/core/widgets/right_drawer.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/media_playback_sheet.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
@@ -499,10 +501,12 @@ class _ProjectorDeviceDetailState extends State<ProjectorDeviceDetail> {
 		final localizations = AppLocalizations.of(context)!;
 		final secondaryColor = isDark ? AppTextColorDark.secondary : AppTextColorLight.secondary;
 		final isOn = _device.isProjectorOn;
+		final isLandscape = locator<ScreenService>().isLandscape;
 		final hasBrightness = _device.projectorChannel.brightnessProp != null;
 		final hasRemote = _device.hasProjectorRemoteKey;
-		final hasSettings = hasBrightness || hasRemote;
-		final settingsIcon = hasBrightness ? MdiIcons.cogOutline : MdiIcons.remote;
+		final showBrightness = hasBrightness && !isLandscape;
+		final hasSettings = showBrightness || hasRemote;
+		final settingsIcon = showBrightness ? MdiIcons.cogOutline : MdiIcons.remote;
 		final accentColor = isOn
 			? ThemeColorFamily.get(isDark ? Brightness.dark : Brightness.light, _getThemeColor()).base
 			: secondaryColor;
@@ -556,44 +560,52 @@ class _ProjectorDeviceDetailState extends State<ProjectorDeviceDetail> {
 	}
 
 	void _showSettingsSheet() {
+		final isLandscape = locator<ScreenService>().isLandscape;
 		final hasBrightness = _device.projectorChannel.brightnessProp != null;
 		final hasRemote = _device.hasProjectorRemoteKey;
-		if (!hasBrightness && !hasRemote) return;
+
+		// In landscape, brightness is already in the right column
+		final showBrightness = hasBrightness && !isLandscape;
+
+		if (!showBrightness && !hasRemote) return;
 
 		final localizations = AppLocalizations.of(context)!;
-		final settingsIcon = hasBrightness ? MdiIcons.cogOutline : MdiIcons.remote;
-		final settingsTitle = hasBrightness ? localizations.settings_general_settings_title : localizations.media_remote_control;
+		final settingsIcon = showBrightness ? MdiIcons.cogOutline : MdiIcons.remote;
+		final settingsTitle = showBrightness ? localizations.settings_general_settings_title : localizations.media_remote_control;
 
-		showBottomSheetDialog(
-			context,
-			title: settingsTitle,
-			titleIcon: settingsIcon,
-			content: Padding(
-				padding: AppSpacings.paddingMd,
-				child: Column(
-					mainAxisSize: MainAxisSize.min,
-					crossAxisAlignment: CrossAxisAlignment.stretch,
-					spacing: AppSpacings.pMd,
-					children: [
-						if (hasBrightness)
-							MediaBrightnessCard(
-								brightness: _effectiveBrightness,
-								isEnabled: _device.isProjectorOn,
-								themeColor: _getThemeColor(),
-								onBrightnessChanged: _setBrightness,
-							),
-						if (hasRemote)
-							MediaRemoteCard<ProjectorRemoteKeyValue>(
-								availableKeys: _device.projectorAvailableRemoteKeys,
-								isEnabled: _device.isProjectorOn,
-								onKeyPress: _sendRemoteKey,
-								themeColor: _getThemeColor(),
-								showLabel: hasBrightness,
-							),
-					],
-				),
+		final content = Padding(
+			padding: AppSpacings.paddingMd,
+			child: Column(
+				mainAxisSize: MainAxisSize.min,
+				crossAxisAlignment: CrossAxisAlignment.stretch,
+				spacing: AppSpacings.pMd,
+				children: [
+					if (showBrightness)
+						MediaBrightnessCard(
+							brightness: _effectiveBrightness,
+							isEnabled: _device.isProjectorOn,
+							themeColor: _getThemeColor(),
+							onBrightnessChanged: _setBrightness,
+							showBorder: false,
+						),
+					if (hasRemote)
+						MediaRemoteCard<ProjectorRemoteKeyValue>(
+							availableKeys: _device.projectorAvailableRemoteKeys,
+							isEnabled: _device.isProjectorOn,
+							onKeyPress: _sendRemoteKey,
+							themeColor: _getThemeColor(),
+							showLabel: showBrightness,
+							showBorder: false,
+						),
+				],
 			),
 		);
+
+		if (isLandscape) {
+			showRightDrawer(context, title: settingsTitle, titleIcon: settingsIcon, content: content);
+		} else {
+			showBottomSheetDialog(context, title: settingsTitle, titleIcon: settingsIcon, content: content);
+		}
 	}
 
 	// --------------------------------------------------------------------------

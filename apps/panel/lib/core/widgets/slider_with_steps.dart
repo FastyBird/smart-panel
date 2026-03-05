@@ -58,6 +58,11 @@ class SliderWithSteps extends StatelessWidget {
   /// border (useful for color sliders where the border should match the thumb).
   final Color? thumbBorderColor;
 
+  /// Custom active track / accent color. When set, overrides the color derived
+  /// from [themeColor]. Useful when the caller already has a resolved [Color]
+  /// instead of a [ThemeColors] enum value.
+  final Color? activeColor;
+
   const SliderWithSteps({
     super.key,
     required this.value,
@@ -71,6 +76,7 @@ class SliderWithSteps extends StatelessWidget {
     this.trackGradientColors,
     this.thumbFillColor,
     this.thumbBorderColor,
+    this.activeColor,
   });
 
   @override
@@ -84,8 +90,8 @@ class SliderWithSteps extends StatelessWidget {
     final brightness = Theme.of(context).brightness;
     final isDark = brightness == Brightness.dark;
     final colorFamily = ThemeColorFamily.get(brightness, themeColor);
-    final effectiveActiveColor = colorFamily.base;
-    final effectiveOverlayColor = colorFamily.light7;
+    final effectiveActiveColor = activeColor ?? colorFamily.base;
+    final effectiveOverlayColor = activeColor?.withValues(alpha: 0.12) ?? colorFamily.light7;
 
     final mutedColor =
         isDark ? AppTextColorDark.disabled : AppTextColorLight.disabled;

@@ -50,6 +50,7 @@ void showMediaPlaybackSheet(
         onPlaybackSeek: onPlaybackSeek,
         themeColor: themeColor,
         isEnabled: isEnabled,
+        showBorder: false,
       ),
     ),
   );

@@ -12,9 +12,11 @@ import 'package:fastybird_smart_panel/core/widgets/circular_control_dial.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_landscape_layout.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_portrait_layout.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_offline_overlay.dart';
+import 'package:fastybird_smart_panel/core/widgets/bottom_sheet_dialog.dart';
 import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
+import 'package:fastybird_smart_panel/core/widgets/right_drawer.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
 import 'package:fastybird_smart_panel/core/widgets/card_slider.dart';
 import 'package:fastybird_smart_panel/core/widgets/tile_wrappers.dart';
@@ -494,6 +496,31 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
       subtitle = localizations.on_state_off;
     }
 
+    Widget deviceTrailing;
+    if (_hasSettingsOptions) {
+      deviceTrailing = Row(
+        mainAxisSize: MainAxisSize.min,
+        spacing: AppSpacings.pMd,
+        children: [
+          HeaderIconButton(
+            icon: MdiIcons.cog,
+            onTap: () => _showSettings(context),
+          ),
+          HeaderIconButton(
+            icon: MdiIcons.power,
+            onTap: () => _togglePower(!_device.isOn),
+            color: _getStatusColor(),
+          ),
+        ],
+      );
+    } else {
+      deviceTrailing = HeaderIconButton(
+        icon: MdiIcons.power,
+        onTap: () => _togglePower(!_device.isOn),
+        color: _getStatusColor(),
+      );
+    }
+
     return PageHeader(
       title: widget.config?.titleOverride ?? _device.name,
       subtitle: subtitle,
@@ -513,12 +540,137 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
           : HeaderMainIcon(icon: iconData, color: _getStatusColor()),
       trailing: buildCombinedTrailing(
         config: widget.config,
-        deviceTrailing: HeaderIconButton(
-          icon: MdiIcons.power,
-          onTap: () => _togglePower(!_device.isOn),
-          color: _getStatusColor(),
-        ),
+        deviceTrailing: deviceTrailing,
       ),
+    );
+  }
+
+  // --------------------------------------------------------------------------
+  // SETTINGS
+  // --------------------------------------------------------------------------
+
+  bool get _hasSettingsOptions {
+    final fanChannel = _device.fanChannel;
+    final channel = _dehumidifierChannel;
+    return (fanChannel != null && fanChannel.hasDirection) ||
+        (channel != null && channel.hasLocked);
+  }
+
+  void _showSettings(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
+    final isLandscape = _screenService.isLandscape;
+    final fanChannel = _device.fanChannel;
+    final channel = _dehumidifierChannel;
+
+    // Local optimistic state — initialized from device, updated on tap
+    var direction = fanChannel?.direction;
+    var locked = (channel != null && channel.hasLocked) ? channel.locked : false;
+
+    Widget content = StatefulBuilder(
+      builder: (sheetContext, sheetSetState) {
+        return Padding(
+          padding: AppSpacings.paddingMd,
+          child: _buildSettingsContent(
+            sheetContext,
+            direction: direction,
+            locked: locked,
+            onDirectionChanged: (newDirection) {
+              _setFanDirection(newDirection);
+              sheetSetState(() => direction = newDirection);
+            },
+            onLockedChanged: (newLocked) {
+              _setDehumidifierLocked(newLocked);
+              sheetSetState(() => locked = newLocked);
+            },
+          ),
+        );
+      },
+    );
+
+    if (isLandscape) {
+      showRightDrawer(
+        context,
+        title: localizations.device_settings,
+        titleIcon: MdiIcons.cog,
+        content: content,
+      );
+    } else {
+      showBottomSheetDialog(
+        context,
+        title: localizations.device_settings,
+        titleIcon: MdiIcons.cog,
+        content: content,
+      );
+    }
+  }
+
+  Widget _buildSettingsContent(
+    BuildContext context, {
+    required FanDirectionValue? direction,
+    required bool locked,
+    required ValueChanged<FanDirectionValue> onDirectionChanged,
+    required ValueChanged<bool> onLockedChanged,
+  }) {
+    final localizations = AppLocalizations.of(context)!;
+    final fanChannel = _device.fanChannel;
+    final channel = _dehumidifierChannel;
+    final statusColor = _getStatusColor();
+    final tileHeight = AppSpacings.scale(AppTileHeight.horizontal);
+
+    final options = <Widget>[];
+
+    // Direction (reverse)
+    if (fanChannel != null && fanChannel.hasDirection) {
+      final isReversed = direction == FanDirectionValue.counterClockwise;
+      options.add(SizedBox(
+        height: tileHeight,
+        width: double.infinity,
+        child: UniversalTile(
+          layout: TileLayout.horizontal,
+          icon: MdiIcons.swapVertical,
+          name: localizations.device_direction,
+          status: direction != null
+              ? FanUtils.getDirectionLabel(localizations, direction)
+              : '-',
+          isActive: isReversed,
+          activeColor: statusColor,
+          onTileTap: () {
+            final newDirection = isReversed
+                ? FanDirectionValue.clockwise
+                : FanDirectionValue.counterClockwise;
+            onDirectionChanged(newDirection);
+          },
+          showGlow: false,
+          showDoubleBorder: false,
+        ),
+      ));
+    }
+
+    // Child Lock
+    if (channel != null && channel.hasLocked) {
+      options.add(SizedBox(
+        height: tileHeight,
+        width: double.infinity,
+        child: UniversalTile(
+          layout: TileLayout.horizontal,
+          icon: MdiIcons.lock,
+          name: localizations.device_child_lock,
+          status: locked
+              ? localizations.thermostat_lock_locked
+              : localizations.thermostat_lock_unlocked,
+          isActive: locked,
+          activeColor: statusColor,
+          onTileTap: () => onLockedChanged(!locked),
+          showGlow: false,
+          showDoubleBorder: false,
+        ),
+      ));
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: AppSpacings.pMd,
+      children: options,
     );
   }
 
@@ -578,9 +730,15 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
         _buildLandscapeControlsSection(context, localizations, isDark);
 
     return DeviceLandscapeLayout(
-      mainContent: isLargeScreen
-          ? _buildPrimaryControlCard(context, isDark, dialSize: AppSpacings.scale(DeviceDetailDialSizes.landscape))
-          : _buildCompactControlCard(context, isDark),
+      mainContent: Column(
+        children: [
+          Expanded(
+            child: isLargeScreen
+                ? _buildPrimaryControlCard(context, isDark, dialSize: AppSpacings.scale(DeviceDetailDialSizes.landscape))
+                : _buildCompactControlCard(context, isDark),
+          ),
+        ],
+      ),
       secondaryContent: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         spacing: AppSpacings.pMd,
@@ -629,7 +787,8 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
       width: double.infinity,
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisAlignment: MainAxisAlignment.center,
+        spacing: AppSpacings.pMd,
         children: [
           _buildHumidityDial(dialSize),
           _buildModeSelector(isDark),
@@ -1155,31 +1314,6 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
       )));
     }
 
-    // Direction tile - only show if fan has direction property
-    if (fanChannel != null && fanChannel.hasDirection) {
-      children.add(wrapControl(UniversalTile(
-        layout: TileLayout.horizontal,
-        icon: MdiIcons.swapVertical,
-        name: localizations.device_direction,
-        status: fanChannel.direction != null
-            ? FanUtils.getDirectionLabel(localizations, fanChannel.direction!)
-            : '-',
-        isActive: fanChannel.direction == FanDirectionValue.counterClockwise,
-        activeColor: _getStatusColor(),
-        onTileTap: () {
-          // Toggle between clockwise and counter_clockwise
-          final newDirection =
-              fanChannel.direction == FanDirectionValue.clockwise
-                  ? FanDirectionValue.counterClockwise
-                  : FanDirectionValue.clockwise;
-          _setFanDirection(newDirection);
-        },
-        showGlow: false,
-        showDoubleBorder: false,
-        showInactiveBorder: _screenService.isLandscape,
-      )));
-    }
-
     // Natural breeze tile - only show if fan has natural_breeze property
     if (fanChannel != null && fanChannel.hasNaturalBreeze) {
       children.add(wrapControl(UniversalTile(
@@ -1192,24 +1326,6 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
         isActive: fanChannel.naturalBreeze,
         activeColor: _getStatusColor(),
         onTileTap: () => _setFanNaturalBreeze(!fanChannel.naturalBreeze),
-        showGlow: false,
-        showDoubleBorder: false,
-        showInactiveBorder: _screenService.isLandscape,
-      )));
-    }
-
-    // Child Lock
-    if (channel != null && channel.hasLocked) {
-      children.add(wrapControl(UniversalTile(
-        layout: TileLayout.horizontal,
-        icon: MdiIcons.lock,
-        name: localizations.device_child_lock,
-        status: channel.locked
-            ? localizations.thermostat_lock_locked
-            : localizations.thermostat_lock_unlocked,
-        isActive: channel.locked,
-        activeColor: _getStatusColor(),
-        onTileTap: () => _setDehumidifierLocked(!channel.locked),
         showGlow: false,
         showDoubleBorder: false,
         showInactiveBorder: _screenService.isLandscape,
@@ -1258,6 +1374,7 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: AppSpacings.pMd,
       children: children,
     );
   }
@@ -1303,6 +1420,7 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
         icon: MdiIcons.speedometer,
         sheetTitle: localizations.device_fan_speed,
         activeColor: activeColor,
+        buttonThemeColor: _getStatusColor(),
         options: options,
         displayFormatter: (level) => level != null
             ? FanUtils.getSpeedLevelLabel(localizations, level)
@@ -1339,6 +1457,7 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
         icon: MdiIcons.speedometer,
         sheetTitle: localizations.device_fan_speed,
         activeColor: activeColor,
+        buttonThemeColor: _getStatusColor(),
         options: _getFanSpeedOptions(localizations),
         displayFormatter: (v) => _formatFanSpeed(localizations, v),
         columns: 4,
@@ -1387,6 +1506,7 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
         icon: MdiIcons.tune,
         sheetTitle: localizations.device_fan_mode,
         activeColor: activeColor,
+        buttonThemeColor: _getStatusColor(),
         options: options,
         displayFormatter: (mode) => mode != null
             ? FanUtils.getModeLabel(localizations, mode)
@@ -1551,6 +1671,7 @@ class _AirDehumidifierDeviceDetailState extends State<AirDehumidifierDeviceDetai
         icon: MdiIcons.timerOutline,
         sheetTitle: localizations.device_timer,
 activeColor: activeColor,
+        buttonThemeColor: _getStatusColor(),
             options: options,
         displayFormatter: (p) => p != null
             ? DehumidifierUtils.getTimerPresetLabel(localizations, p)
@@ -1578,6 +1699,7 @@ activeColor: activeColor,
         icon: MdiIcons.timerOutline,
         sheetTitle: localizations.device_timer,
 activeColor: activeColor,
+        buttonThemeColor: _getStatusColor(),
             options: options,
         displayFormatter: (s) =>
             DehumidifierUtils.formatSeconds(localizations, s ?? 0),

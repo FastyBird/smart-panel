@@ -1118,6 +1118,24 @@ class AppFilledButtonsLightThemes {
     ),
   );
 
+  /// Look up the filled button theme for a given [ThemeColors] value.
+  static FilledButtonThemeData forThemeColor(ThemeColors color) {
+    return switch (color) {
+      ThemeColors.primary => primary,
+      ThemeColors.success => success,
+      ThemeColors.warning => warning,
+      ThemeColors.danger => danger,
+      ThemeColors.error => error,
+      ThemeColors.info => info,
+      ThemeColors.neutral => neutral,
+      ThemeColors.flutter => flutter,
+      ThemeColors.teal => teal,
+      ThemeColors.cyan => cyan,
+      ThemeColors.pink => pink,
+      ThemeColors.indigo => indigo,
+    };
+  }
+
   /// Foreground (text/icon) color per variant. Pass to Icon/Text inside FilledButtons
   /// so they match the button theme (FilledButton can override Theme.iconTheme).
   static Color get baseForegroundColor => AppTextColorLight.regular;
@@ -1356,6 +1374,24 @@ class AppFilledButtonsDarkThemes {
       disabledBorderColor: AppColorsDark.indigoLight5,
     ),
   );
+
+  /// Look up the filled button theme for a given [ThemeColors] value.
+  static FilledButtonThemeData forThemeColor(ThemeColors color) {
+    return switch (color) {
+      ThemeColors.primary => primary,
+      ThemeColors.success => success,
+      ThemeColors.warning => warning,
+      ThemeColors.danger => danger,
+      ThemeColors.error => error,
+      ThemeColors.info => info,
+      ThemeColors.neutral => neutral,
+      ThemeColors.flutter => flutter,
+      ThemeColors.teal => teal,
+      ThemeColors.cyan => cyan,
+      ThemeColors.pink => pink,
+      ThemeColors.indigo => indigo,
+    };
+  }
 
   /// Foreground (text/icon) color per variant. Pass to Icon/Text inside FilledButtons
   /// so they match the button theme (FilledButton can override Theme.iconTheme).

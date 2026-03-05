@@ -2776,6 +2776,10 @@
   "@device_controls": {
     "description": "Controls section label"
   },
+  "device_settings": "Settings",
+  "@device_settings": {
+    "description": "Settings section label for device configuration options"
+  },
 
   "duration_format_hours_minutes": "{hours}h {minutes}m",
   "@duration_format_hours_minutes": {

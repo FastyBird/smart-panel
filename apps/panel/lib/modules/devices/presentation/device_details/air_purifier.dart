@@ -10,8 +10,10 @@ import 'package:fastybird_smart_panel/core/widgets/toast.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_landscape_layout.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_portrait_layout.dart';
 import 'package:fastybird_smart_panel/modules/devices/presentation/widgets/device_offline_overlay.dart';
+import 'package:fastybird_smart_panel/core/widgets/bottom_sheet_dialog.dart';
 import 'package:fastybird_smart_panel/core/widgets/horizontal_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/core/widgets/mode_selector.dart';
+import 'package:fastybird_smart_panel/core/widgets/right_drawer.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/card_slider.dart';
@@ -357,11 +359,6 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
     return 1.0;
   }
 
-  bool get _childLock {
-    final fanChannel = _device.fanChannel;
-    return fanChannel.hasLocked ? fanChannel.locked : false;
-  }
-
   // --------------------------------------------------------------------------
   // CONTROL HANDLERS
   // --------------------------------------------------------------------------
@@ -510,6 +507,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
             icon: MdiIcons.speedometer,
             sheetTitle: localizations.device_fan_speed,
             activeColor: airColor,
+            buttonThemeColor: _getStatusColor(),
             options: options,
             displayFormatter: (level) => level != null
                 ? FanUtils.getSpeedLevelLabel(localizations, level)
@@ -568,6 +566,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
             icon: MdiIcons.speedometer,
             sheetTitle: localizations.device_fan_speed,
             activeColor: airColor,
+            buttonThemeColor: _getStatusColor(),
             options: _getSpeedOptions(localizations),
             displayFormatter: (v) => _formatSpeed(localizations, v),
             columns: 4,
@@ -679,6 +678,25 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
       subtitle = localizations.on_state_off;
     }
 
+    final configTrailing = widget.config?.trailing;
+    final showSettings = _hasSettingsOptions;
+
+    Widget? trailing;
+    if (showSettings || configTrailing != null) {
+      trailing = Row(
+        mainAxisSize: MainAxisSize.min,
+        spacing: AppSpacings.pMd,
+        children: [
+          if (showSettings)
+            HeaderIconButton(
+              icon: MdiIcons.cog,
+              onTap: () => _showSettings(context),
+            ),
+          if (configTrailing != null) configTrailing,
+        ],
+      );
+    }
+
     return PageHeader(
       title: widget.config?.titleOverride ?? _device.name,
       subtitle: subtitle,
@@ -696,7 +714,127 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
               ],
             )
           : HeaderMainIcon(icon: iconData, color: _getStatusColor()),
-      trailing: widget.config?.trailing,
+      trailing: trailing,
+    );
+  }
+
+  // --------------------------------------------------------------------------
+  // SETTINGS
+  // --------------------------------------------------------------------------
+
+  void _showSettings(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
+    final isLandscape = _screenService.isLandscape;
+    final fanChannel = _device.fanChannel;
+
+    // Local optimistic state — initialized from device, updated on tap
+    var direction = fanChannel.direction;
+    var locked = fanChannel.hasLocked ? fanChannel.locked : false;
+
+    Widget content = StatefulBuilder(
+      builder: (sheetContext, sheetSetState) {
+        return Padding(
+          padding: AppSpacings.paddingMd,
+          child: _buildSettingsContent(
+            sheetContext,
+            direction: direction,
+            locked: locked,
+            onDirectionChanged: (newDirection) {
+              _setFanDirection(newDirection);
+              sheetSetState(() => direction = newDirection);
+            },
+            onLockedChanged: (newLocked) {
+              _setFanLocked(newLocked);
+              sheetSetState(() => locked = newLocked);
+            },
+          ),
+        );
+      },
+    );
+
+    if (isLandscape) {
+      showRightDrawer(
+        context,
+        title: localizations.device_settings,
+        titleIcon: MdiIcons.cog,
+        content: content,
+      );
+    } else {
+      showBottomSheetDialog(
+        context,
+        title: localizations.device_settings,
+        titleIcon: MdiIcons.cog,
+        content: content,
+      );
+    }
+  }
+
+  Widget _buildSettingsContent(
+    BuildContext context, {
+    required FanDirectionValue? direction,
+    required bool locked,
+    required ValueChanged<FanDirectionValue> onDirectionChanged,
+    required ValueChanged<bool> onLockedChanged,
+  }) {
+    final localizations = AppLocalizations.of(context)!;
+    final fanChannel = _device.fanChannel;
+    final statusColor = _getStatusColor();
+    final tileHeight = AppSpacings.scale(AppTileHeight.horizontal);
+
+    final options = <Widget>[];
+
+    // Direction (reverse)
+    if (fanChannel.hasDirection) {
+      final isReversed = direction == FanDirectionValue.counterClockwise;
+      options.add(SizedBox(
+        height: tileHeight,
+        width: double.infinity,
+        child: UniversalTile(
+          layout: TileLayout.horizontal,
+          icon: MdiIcons.swapVertical,
+          name: localizations.device_direction,
+          status: direction != null
+              ? FanUtils.getDirectionLabel(localizations, direction)
+              : localizations.fan_direction_clockwise,
+          isActive: isReversed,
+          activeColor: statusColor,
+          onTileTap: () {
+            final newDirection = isReversed
+                ? FanDirectionValue.clockwise
+                : FanDirectionValue.counterClockwise;
+            onDirectionChanged(newDirection);
+          },
+          showGlow: false,
+          showDoubleBorder: false,
+        ),
+      ));
+    }
+
+    // Child Lock
+    if (fanChannel.hasLocked) {
+      options.add(SizedBox(
+        height: tileHeight,
+        width: double.infinity,
+        child: UniversalTile(
+          layout: TileLayout.horizontal,
+          icon: MdiIcons.lock,
+          name: localizations.device_child_lock,
+          status: locked
+              ? localizations.thermostat_lock_locked
+              : localizations.thermostat_lock_unlocked,
+          isActive: locked,
+          activeColor: statusColor,
+          onTileTap: () => onLockedChanged(!locked),
+          showGlow: false,
+          showDoubleBorder: false,
+        ),
+      ));
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: AppSpacings.pMd,
+      children: options,
     );
   }
 
@@ -716,26 +854,32 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
         context, localizations, isDark, activeColor);
 
     return DeviceLandscapeLayout(
-      mainContent: isLargeScreen
-          ? _buildControlCard(context, isDark, activeColor)
-          : _buildCompactControlCard(context, isDark, activeColor),
+      mainContent: Column(
+        children: [
+          Expanded(
+            child: isLargeScreen
+                ? _buildControlCard(context, isDark, activeColor)
+                : _buildCompactControlCard(context, isDark, activeColor),
+          ),
+        ],
+      ),
       secondaryContent: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         spacing: AppSpacings.pMd,
         children: [
-          if (hasDeviceControls) ...[
-            SectionTitle(
-              title: localizations.device_controls,
-              icon: MdiIcons.tuneVertical,
-            ),
-            controlsSection,
-          ],
           if (sensors.isNotEmpty) ...[
             SectionTitle(
               title: localizations.device_sensors,
               icon: MdiIcons.eyeSettings,
             ),
             _buildSensorsSection(isDark, sensors),
+          ],
+          if (hasDeviceControls) ...[
+            SectionTitle(
+              title: localizations.device_controls,
+              icon: MdiIcons.tuneVertical,
+            ),
+            controlsSection,
           ],
         ],
       ),
@@ -749,10 +893,13 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
   bool get _hasDeviceControlOptions {
     final fanChannel = _device.fanChannel;
     return fanChannel.hasSwing ||
-        fanChannel.hasDirection ||
         fanChannel.hasNaturalBreeze ||
-        fanChannel.hasLocked ||
         fanChannel.hasTimer;
+  }
+
+  bool get _hasSettingsOptions {
+    final fanChannel = _device.fanChannel;
+    return fanChannel.hasDirection || fanChannel.hasLocked;
   }
 
   Widget _buildPortrait(BuildContext context, bool isDark) {
@@ -775,19 +922,19 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
               false,
               AppSpacings.scale(AppTileHeight.horizontal),
             ),
-          if (_hasDeviceControlOptions) ...[
-            SectionTitle(
-              title: localizations.device_controls,
-              icon: MdiIcons.tuneVertical,
-            ),
-            _buildFanOptionsSection(context, localizations, isDark, activeColor, false),
-          ],
           if (sensors.isNotEmpty) ...[
             SectionTitle(
               title: localizations.device_sensors,
               icon: MdiIcons.eyeSettings,
             ),
             _buildSensorsSection(isDark, sensors),
+          ],
+          if (_hasDeviceControlOptions) ...[
+            SectionTitle(
+              title: localizations.device_controls,
+              icon: MdiIcons.tuneVertical,
+            ),
+            _buildFanOptionsSection(context, localizations, isDark, activeColor, false),
           ],
         ],
       ),
@@ -804,7 +951,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
     return BaseCard(
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisAlignment: MainAxisAlignment.center,
         spacing: AppSpacings.pMd,
         children: [
           DevicePowerButton(
@@ -955,6 +1102,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           icon: MdiIcons.timerOutline,
           sheetTitle: localizations.device_auto_off_timer,
           activeColor: airColor,
+          buttonThemeColor: _getStatusColor(),
           options: options,
           displayFormatter: (p) => _formatTimerPreset(localizations, p),
           columns: options.length > 4 ? 4 : options.length,
@@ -982,6 +1130,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
           icon: MdiIcons.timerOutline,
           sheetTitle: localizations.device_auto_off_timer,
           activeColor: airColor,
+          buttonThemeColor: _getStatusColor(),
           options: options,
           displayFormatter: (m) => _formatNumericTimer(localizations, m),
           columns: options.length > 4 ? 4 : options.length,
@@ -1661,31 +1810,6 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
       )));
     }
 
-    // Direction (reverse)
-    if (fanChannel.hasDirection) {
-      final isReversed =
-          fanChannel.direction == FanDirectionValue.counterClockwise;
-      addOption(wrapControl(UniversalTile(
-        layout: TileLayout.horizontal,
-        icon: MdiIcons.swapVertical,
-        name: localizations.device_direction,
-        status: fanChannel.direction != null
-            ? FanUtils.getDirectionLabel(localizations, fanChannel.direction!)
-            : localizations.fan_direction_clockwise,
-        isActive: isReversed,
-        activeColor: statusColor,
-        onTileTap: () {
-          final newDirection = isReversed
-              ? FanDirectionValue.clockwise
-              : FanDirectionValue.counterClockwise;
-          _setFanDirection(newDirection);
-        },
-        showGlow: false,
-        showDoubleBorder: false,
-        showInactiveBorder: _screenService.isLandscape,
-      )));
-    }
-
     // Natural Breeze
     if (fanChannel.hasNaturalBreeze) {
       addOption(wrapControl(UniversalTile(
@@ -1698,24 +1822,6 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
         isActive: fanChannel.naturalBreeze,
         activeColor: statusColor,
         onTileTap: () => _setFanNaturalBreeze(!fanChannel.naturalBreeze),
-        showGlow: false,
-        showDoubleBorder: false,
-        showInactiveBorder: _screenService.isLandscape,
-      )));
-    }
-
-    // Child Lock
-    if (fanChannel.hasLocked) {
-      addOption(wrapControl(UniversalTile(
-        layout: TileLayout.horizontal,
-        icon: MdiIcons.lock,
-        name: localizations.device_child_lock,
-        status: _childLock
-            ? localizations.thermostat_lock_locked
-            : localizations.thermostat_lock_unlocked,
-        isActive: _childLock,
-        activeColor: statusColor,
-        onTileTap: () => _setFanLocked(!_childLock),
         showGlow: false,
         showDoubleBorder: false,
         showInactiveBorder: _screenService.isLandscape,

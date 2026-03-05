@@ -3995,6 +3995,12 @@ abstract class AppLocalizations {
   /// **'Controls'**
   String get device_controls;
 
+  /// Settings section label for device configuration options
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get device_settings;
+
   /// Duration format with hours and minutes
   ///
   /// In en, this message translates to:

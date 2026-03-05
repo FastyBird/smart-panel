@@ -72,6 +72,9 @@ class CardSlider extends StatefulWidget {
   /// (AppBorderColorLight.darker / AppBorderColorDark.light).
   final Color? borderColor;
 
+  /// When false, removes the card border (useful when embedded in a sheet/drawer).
+  final bool showBorder;
+
   const CardSlider({
     super.key,
     required this.label,
@@ -90,6 +93,7 @@ class CardSlider extends StatefulWidget {
     this.showHeaderValue = true,
     this.cardColor,
     this.borderColor,
+    this.showBorder = true,
   });
 
   @override
@@ -167,6 +171,7 @@ class _CardSliderState extends State<CardSlider> {
       child: BaseCard(
         color: widget.cardColor,
         borderColor: widget.borderColor,
+        borderWidth: widget.showBorder ? null : 0,
         headerIcon: widget.icon,
         headerTitle: displayLabel.toUpperCase(),
         headerTitleColor: secondaryColor,

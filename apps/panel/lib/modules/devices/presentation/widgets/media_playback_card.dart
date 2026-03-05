@@ -47,6 +47,9 @@ class MediaPlaybackCard extends StatelessWidget {
 	final ThemeColors themeColor;
 	final bool isEnabled;
 
+	/// When false, removes the card border (useful when embedded in a sheet/drawer).
+	final bool showBorder;
+
 	const MediaPlaybackCard({
 		super.key,
 		this.playbackTrack,
@@ -63,6 +66,7 @@ class MediaPlaybackCard extends StatelessWidget {
 		this.onPlaybackSeek,
 		this.themeColor = ThemeColors.primary,
 		required this.isEnabled,
+		this.showBorder = true,
 	});
 
 	bool get _hasPlaybackContent =>
@@ -96,6 +100,7 @@ class MediaPlaybackCard extends StatelessWidget {
 			duration: const Duration(milliseconds: 200),
 			child: BaseCard(
 				width: double.infinity,
+				borderWidth: showBorder ? null : 0,
 				child: Column(
 				spacing: AppSpacings.pMd,
 				children: [

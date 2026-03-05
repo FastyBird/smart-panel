@@ -2093,6 +2093,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get device_controls => 'Controls';
 
   @override
+  String get device_settings => 'Settings';
+
+  @override
   String duration_format_hours_minutes(int hours, int minutes) {
     return '${hours}h ${minutes}m';
   }
