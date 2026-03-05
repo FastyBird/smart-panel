@@ -455,7 +455,13 @@ class WakeWordService extends ChangeNotifier {
 		_monitorRecorder?.dispose();
 		_monitorRecorder = AudioRecorder();
 
-		await _startListening();
+		final started = await _startListening();
+
+		if (!started) {
+			// _startListening failed — fall back to stopped so the UI
+			// doesn't show a stale processing/recording state forever.
+			_setState(WakeWordState.stopped);
+		}
 	}
 
 	/// Cancel an ongoing capture without processing.
