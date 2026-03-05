@@ -94,7 +94,7 @@ export class TtsProviderService implements OnModuleInit, OnModuleDestroy {
 
 		// Evict oldest entries when cache is full
 		if (this.audioCache.size >= CACHE_MAX_ENTRIES) {
-			const oldest = this.audioCache.keys().next().value;
+			const oldest = this.audioCache.keys().next().value as string | undefined;
 
 			if (oldest !== undefined) {
 				this.audioCache.delete(oldest);
