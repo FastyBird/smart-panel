@@ -182,7 +182,10 @@ export class BuddyConversationService {
 		messages: ChatMessage[],
 		tools?: ToolDefinition[],
 	): Promise<LlmResponse> {
-		let response = await this.llmProvider.sendMessage(systemPrompt, messages, { tools });
+		// Work on a shallow copy so we never mutate the caller's array
+		const workingMessages = [...messages];
+
+		let response = await this.llmProvider.sendMessage(systemPrompt, workingMessages, { tools });
 
 		// If no tool calls, return directly
 		if (!response.toolCalls || response.toolCalls.length === 0) {
@@ -214,24 +217,24 @@ export class BuddyConversationService {
 			const toolResultsSummary = toolResults.join('\n');
 
 			if (response.content) {
-				messages.push({ role: MessageRole.ASSISTANT, content: response.content });
+				workingMessages.push({ role: MessageRole.ASSISTANT, content: response.content });
 			} else {
 				// Indicate the assistant made tool calls (for context in the conversation)
 				const toolNames = response.toolCalls.map((tc) => tc.name).join(', ');
 
-				messages.push({
+				workingMessages.push({
 					role: MessageRole.ASSISTANT,
 					content: `[Executing tools: ${toolNames}]`,
 				});
 			}
 
-			messages.push({
+			workingMessages.push({
 				role: MessageRole.USER,
 				content: `[Tool execution results]\n${toolResultsSummary}\n\nPlease provide a natural language response based on these results.`,
 			});
 
 			// Call LLM again with tools so multi-step tool use works
-			response = await this.llmProvider.sendMessage(systemPrompt, messages, { tools });
+			response = await this.llmProvider.sendMessage(systemPrompt, workingMessages, { tools });
 		}
 
 		// If loop exhausted and final response has no text content, provide a fallback

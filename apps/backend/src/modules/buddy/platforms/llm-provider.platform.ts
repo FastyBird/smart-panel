@@ -12,15 +12,6 @@ export interface LlmToolCall {
 }
 
 /**
- * A tool result message to feed back to the LLM after executing a tool.
- */
-export interface LlmToolResult {
-	toolCallId: string;
-	content: string;
-	isError?: boolean;
-}
-
-/**
  * Tool definition for LLM providers (provider-agnostic format).
  */
 export interface ToolDefinition {

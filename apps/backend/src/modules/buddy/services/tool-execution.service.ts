@@ -12,7 +12,7 @@ import { LightingIntentDto } from '../../spaces/dto/lighting-intent.dto';
 import { SpaceIntentService } from '../../spaces/services/space-intent.service';
 import { SpacesService } from '../../spaces/services/spaces.service';
 import { LightingIntentType, LightingMode } from '../../spaces/spaces.constants';
-import { ToolDefinition } from '../platforms/llm-provider.platform';
+import { LlmToolCall, ToolDefinition } from '../platforms/llm-provider.platform';
 
 export { ToolDefinition } from '../platforms/llm-provider.platform';
 
@@ -27,13 +27,9 @@ export interface ToolExecutionResult {
 }
 
 /**
- * A tool call request from the LLM, containing the tool name and arguments.
+ * A tool call request from the LLM.
  */
-export interface ToolCall {
-	id: string;
-	name: string;
-	arguments: Record<string, unknown>;
-}
+export type ToolCall = LlmToolCall;
 
 /**
  * Service responsible for executing LLM tool calls by mapping them
