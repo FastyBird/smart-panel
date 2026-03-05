@@ -35,7 +35,7 @@ export class SystemTtsProvider implements ITtsProvider {
 		return 'Local text-to-speech using piper or espeak';
 	}
 
-	isConfigured(): boolean {
+	isConfigured(_pluginConfig: Record<string, unknown>): boolean {
 		// System TTS doesn't require API keys — it just needs piper or espeak installed
 		return true;
 	}

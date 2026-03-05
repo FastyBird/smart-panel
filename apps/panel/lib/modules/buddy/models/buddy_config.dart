@@ -20,7 +20,7 @@ class BuddyConfigModel extends Model {
   bool get enabled => _enabled;
   String get ttsPlugin => _ttsPlugin;
   bool get voiceEnabled => _voiceEnabled;
-  bool get isTtsConfigured => _ttsPlugin != 'none' && _ttsPlugin.isNotEmpty;
+  bool get isTtsConfigured => _voiceEnabled && _ttsPlugin != 'none' && _ttsPlugin.isNotEmpty;
 
   factory BuddyConfigModel.fromJson(Map<String, dynamic> json) {
     return BuddyConfigModel(
