@@ -126,7 +126,9 @@ class DeckService extends ChangeNotifier {
     }
 
     // Build initial deck (may not have device categories yet for ROOM role)
-    _buildDeck(_localizations!);
+    if (_localizations != null) {
+      _buildDeck(_localizations!);
+    }
     _isInitialized = true;
     notifyListeners();
 
@@ -450,10 +452,12 @@ class DeckService extends ChangeNotifier {
         _climateTargetsCount = null;
         _coversTargetsCount = null;
         _mediaBindingsCount = null;
-        _buildDeck(_localizations!);
-        _fetchDeviceCategoriesAsync(display.roomId!, _localizations!);
+        if (_localizations != null) {
+          _buildDeck(_localizations!);
+          _fetchDeviceCategoriesAsync(display.roomId!, _localizations!);
+        }
         _prefetchDomainData(display.roomId!);
-      } else {
+      } else if (_localizations != null) {
         _buildDeck(_localizations!);
       }
     }

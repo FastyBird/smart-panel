@@ -140,12 +140,9 @@ class _HeatingUnitDeviceDetailState extends State<HeatingUnitDeviceDetail> {
           '[HeatingUnitDeviceDetail] Controller error for $propertyId: $error');
     }
 
-    final localizations = AppLocalizations.of(context)!;
     if (mounted) {
+      final localizations = AppLocalizations.of(context)!;
       Toast.showError(context, message: localizations.action_failed);
-    }
-
-    if (mounted) {
       setState(() {});
     }
   }
