@@ -1,14 +1,13 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
 
-import { IToolProvider, LlmToolCall, ToolDefinition, ToolExecutionResult } from '../../tools/platforms/tool-provider.platform';
+import { LlmToolCall, ToolDefinition, ToolExecutionResult } from '../../tools/platforms/tool-provider.platform';
+import { BaseToolProviderService } from '../../tools/services/base-tool-provider.service';
 
 import { LightingIntentDto } from '../dto/lighting-intent.dto';
 import { LightingIntentType, LightingMode } from '../spaces.constants';
 
 import { SpacesService } from './spaces.service';
-
-const TOOL_EXECUTION_TIMEOUT_MS = 5_000;
 
 const SPACE_LIGHTING_TOOLS_PROVIDER = 'space-lighting-tools';
 
@@ -20,15 +19,17 @@ const SPACE_LIGHTING_TOOLS_PROVIDER = 'space-lighting-tools';
  * circular import chain (space-intent → lighting-intent → space-context-snapshot → space-intent).
  */
 @Injectable()
-export class SpaceLightingToolService implements IToolProvider, OnModuleInit {
-	private readonly logger = new Logger(SpaceLightingToolService.name);
+export class SpaceLightingToolService extends BaseToolProviderService implements OnModuleInit {
+	protected readonly logger = new Logger(SpaceLightingToolService.name);
 
 	private spaceIntentService!: import('./space-intent.service').SpaceIntentService;
 
 	constructor(
 		private readonly spacesService: SpacesService,
 		private readonly moduleRef: ModuleRef,
-	) {}
+	) {
+		super();
+	}
 
 	async onModuleInit(): Promise<void> {
 		const { SpaceIntentService } = await import('./space-intent.service');
@@ -69,43 +70,8 @@ export class SpaceLightingToolService implements IToolProvider, OnModuleInit {
 		];
 	}
 
-	async executeTool(toolCall: LlmToolCall): Promise<ToolExecutionResult | null> {
-		if (toolCall.name !== 'set_space_lighting') {
-			return null;
-		}
-
-		this.logger.debug(`Executing tool: ${toolCall.name} (id=${toolCall.id})`);
-
-		try {
-			const result = await this.executeWithTimeout(toolCall.arguments);
-
-			this.logger.debug(`Tool ${toolCall.name} completed: ${result.success ? 'success' : 'failure'}`);
-
-			return result;
-		} catch (error) {
-			const err = error as Error;
-
-			this.logger.error(`Tool ${toolCall.name} failed: ${err.message}`);
-
-			return {
-				success: false,
-				message: `Failed to execute ${toolCall.name}: ${err.message}`,
-			};
-		}
-	}
-
-	private async executeWithTimeout(args: Record<string, unknown>): Promise<ToolExecutionResult> {
-		let timer: ReturnType<typeof setTimeout> | undefined;
-
-		const timeoutPromise = new Promise<never>((_, reject) => {
-			timer = setTimeout(() => reject(new Error('Tool execution timed out')), TOOL_EXECUTION_TIMEOUT_MS);
-		});
-
-		try {
-			return await Promise.race([this.executeSetSpaceLighting(args), timeoutPromise]);
-		} finally {
-			clearTimeout(timer);
-		}
+	protected async handleToolCall(toolCall: LlmToolCall): Promise<ToolExecutionResult> {
+		return this.executeSetSpaceLighting(toolCall.arguments);
 	}
 
 	private async executeSetSpaceLighting(args: Record<string, unknown>): Promise<ToolExecutionResult> {

@@ -2,13 +2,12 @@ import { Injectable, Logger } from '@nestjs/common';
 
 import { IntentTargetStatus, IntentType } from '../../intents/intents.constants';
 import { IntentsService } from '../../intents/services/intents.service';
-import { IToolProvider, LlmToolCall, ToolDefinition, ToolExecutionResult } from '../../tools/platforms/tool-provider.platform';
+import { LlmToolCall, ToolDefinition, ToolExecutionResult } from '../../tools/platforms/tool-provider.platform';
+import { BaseToolProviderService } from '../../tools/services/base-tool-provider.service';
 
 import { ChannelsPropertiesService } from './channels.properties.service';
 import { DevicesService } from './devices.service';
 import { PlatformRegistryService } from './platform.registry.service';
-
-const TOOL_EXECUTION_TIMEOUT_MS = 5_000;
 
 const DEVICE_CONTROL_TOOLS_PROVIDER = 'device-control-tools';
 
@@ -17,15 +16,17 @@ const DEVICE_CONTROL_TOOLS_PROVIDER = 'device-control-tools';
  * Allows the AI assistant to control individual device properties.
  */
 @Injectable()
-export class DeviceControlToolService implements IToolProvider {
-	private readonly logger = new Logger(DeviceControlToolService.name);
+export class DeviceControlToolService extends BaseToolProviderService {
+	protected readonly logger = new Logger(DeviceControlToolService.name);
 
 	constructor(
 		private readonly intentsService: IntentsService,
 		private readonly devicesService: DevicesService,
 		private readonly channelsPropertiesService: ChannelsPropertiesService,
 		private readonly platformRegistry: PlatformRegistryService,
-	) {}
+	) {
+		super();
+	}
 
 	getType(): string {
 		return DEVICE_CONTROL_TOOLS_PROVIDER;
@@ -64,43 +65,8 @@ export class DeviceControlToolService implements IToolProvider {
 		];
 	}
 
-	async executeTool(toolCall: LlmToolCall): Promise<ToolExecutionResult | null> {
-		if (toolCall.name !== 'control_device') {
-			return null;
-		}
-
-		this.logger.debug(`Executing tool: ${toolCall.name} (id=${toolCall.id})`);
-
-		try {
-			const result = await this.executeWithTimeout(toolCall.arguments);
-
-			this.logger.debug(`Tool ${toolCall.name} completed: ${result.success ? 'success' : 'failure'}`);
-
-			return result;
-		} catch (error) {
-			const err = error as Error;
-
-			this.logger.error(`Tool ${toolCall.name} failed: ${err.message}`);
-
-			return {
-				success: false,
-				message: `Failed to execute ${toolCall.name}: ${err.message}`,
-			};
-		}
-	}
-
-	private async executeWithTimeout(args: Record<string, unknown>): Promise<ToolExecutionResult> {
-		let timer: ReturnType<typeof setTimeout> | undefined;
-
-		const timeoutPromise = new Promise<never>((_, reject) => {
-			timer = setTimeout(() => reject(new Error('Tool execution timed out')), TOOL_EXECUTION_TIMEOUT_MS);
-		});
-
-		try {
-			return await Promise.race([this.executeControlDevice(args), timeoutPromise]);
-		} finally {
-			clearTimeout(timer);
-		}
+	protected async handleToolCall(toolCall: LlmToolCall): Promise<ToolExecutionResult> {
+		return this.executeControlDevice(toolCall.arguments);
 	}
 
 	private async executeControlDevice(args: Record<string, unknown>): Promise<ToolExecutionResult> {

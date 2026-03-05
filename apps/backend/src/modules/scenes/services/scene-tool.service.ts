@@ -1,13 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 
-import { IToolProvider, LlmToolCall, ToolDefinition, ToolExecutionResult } from '../../tools/platforms/tool-provider.platform';
+import { LlmToolCall, ToolDefinition, ToolExecutionResult } from '../../tools/platforms/tool-provider.platform';
+import { BaseToolProviderService } from '../../tools/services/base-tool-provider.service';
 
 import { SceneExecutionStatus } from '../scenes.constants';
 
 import { SceneExecutorService } from './scene-executor.service';
 import { ScenesService } from './scenes.service';
-
-const TOOL_EXECUTION_TIMEOUT_MS = 5_000;
 
 const SCENE_TOOLS_PROVIDER = 'scene-tools';
 
@@ -16,13 +15,15 @@ const SCENE_TOOLS_PROVIDER = 'scene-tools';
  * Allows the AI assistant to trigger pre-configured automation scenes.
  */
 @Injectable()
-export class SceneToolService implements IToolProvider {
-	private readonly logger = new Logger(SceneToolService.name);
+export class SceneToolService extends BaseToolProviderService {
+	protected readonly logger = new Logger(SceneToolService.name);
 
 	constructor(
 		private readonly scenesService: ScenesService,
 		private readonly sceneExecutor: SceneExecutorService,
-	) {}
+	) {
+		super();
+	}
 
 	getType(): string {
 		return SCENE_TOOLS_PROVIDER;
@@ -49,43 +50,8 @@ export class SceneToolService implements IToolProvider {
 		];
 	}
 
-	async executeTool(toolCall: LlmToolCall): Promise<ToolExecutionResult | null> {
-		if (toolCall.name !== 'run_scene') {
-			return null;
-		}
-
-		this.logger.debug(`Executing tool: ${toolCall.name} (id=${toolCall.id})`);
-
-		try {
-			const result = await this.executeWithTimeout(toolCall.arguments);
-
-			this.logger.debug(`Tool ${toolCall.name} completed: ${result.success ? 'success' : 'failure'}`);
-
-			return result;
-		} catch (error) {
-			const err = error as Error;
-
-			this.logger.error(`Tool ${toolCall.name} failed: ${err.message}`);
-
-			return {
-				success: false,
-				message: `Failed to execute ${toolCall.name}: ${err.message}`,
-			};
-		}
-	}
-
-	private async executeWithTimeout(args: Record<string, unknown>): Promise<ToolExecutionResult> {
-		let timer: ReturnType<typeof setTimeout> | undefined;
-
-		const timeoutPromise = new Promise<never>((_, reject) => {
-			timer = setTimeout(() => reject(new Error('Tool execution timed out')), TOOL_EXECUTION_TIMEOUT_MS);
-		});
-
-		try {
-			return await Promise.race([this.executeRunScene(args), timeoutPromise]);
-		} finally {
-			clearTimeout(timer);
-		}
+	protected async handleToolCall(toolCall: LlmToolCall): Promise<ToolExecutionResult> {
+		return this.executeRunScene(toolCall.arguments);
 	}
 
 	private async executeRunScene(args: Record<string, unknown>): Promise<ToolExecutionResult> {
