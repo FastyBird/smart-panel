@@ -79,9 +79,7 @@ export class ToolExecutionService {
 							description: 'UUID of the property to set',
 						},
 						value: {
-							type: 'string',
-							description:
-								'The value to set. Pass strings, numbers, or booleans as their string representation.',
+							description: 'The value to set (string, number, or boolean depending on the property)',
 						},
 					},
 					required: ['device_id', 'channel_id', 'property_id', 'value'],
@@ -226,14 +224,10 @@ export class ToolExecutionService {
 			return { success: false, message: `No platform registered for device "${device.name}"` };
 		}
 
-		// Coerce value to a type the platform accepts
-		let coercedValue: string | number | boolean;
-
-		if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-			coercedValue = value;
-		} else {
-			coercedValue = JSON.stringify(value) ?? 'null';
-		}
+		// Coerce value to a type the platform accepts.
+		// LLM providers may send values as strings, so parse string representations
+		// of booleans and numbers back to their native types.
+		const coercedValue = this.coerceValue(value);
 
 		// Create an intent for tracking
 		const intent = this.intentsService.createIntent({
@@ -365,5 +359,33 @@ export class ToolExecutionService {
 			success: false,
 			message: `Failed to set lighting in ${spaceName}`,
 		};
+	}
+
+	private coerceValue(value: unknown): string | number | boolean {
+		if (typeof value === 'boolean') {
+			return value;
+		}
+
+		if (typeof value === 'number') {
+			return value;
+		}
+
+		if (typeof value === 'string') {
+			// Parse string representations of booleans
+			if (value.toLowerCase() === 'true') return true;
+			if (value.toLowerCase() === 'false') return false;
+
+			// Parse string representations of numbers
+			const num = Number(value);
+
+			if (value.trim() !== '' && !Number.isNaN(num)) {
+				return num;
+			}
+
+			return value;
+		}
+
+		// Fallback for objects or other types
+		return JSON.stringify(value);
 	}
 }
