@@ -697,8 +697,12 @@ class MetricsService {
 
     if (summary.averageDuration != null) {
       buffer.writeln('  ⏱️  Avg Duration: ${summary.averageDuration!.inMilliseconds}ms');
-      buffer.writeln('  ⏱️  Min Duration: ${summary.minDuration!.inMilliseconds}ms');
-      buffer.writeln('  ⏱️  Max Duration: ${summary.maxDuration!.inMilliseconds}ms');
+      if (summary.minDuration != null) {
+        buffer.writeln('  ⏱️  Min Duration: ${summary.minDuration!.inMilliseconds}ms');
+      }
+      if (summary.maxDuration != null) {
+        buffer.writeln('  ⏱️  Max Duration: ${summary.maxDuration!.inMilliseconds}ms');
+      }
     }
   }
 
