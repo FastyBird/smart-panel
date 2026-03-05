@@ -10,10 +10,14 @@ import { BuddyConversationNotFoundException } from '../buddy.exceptions';
 import { BuddyConversationEntity } from '../entities/buddy-conversation.entity';
 import { BuddyMessageEntity } from '../entities/buddy-message.entity';
 
+import { LlmResponse, ToolDefinition } from '../platforms/llm-provider.platform';
+
 import { BuddyContext, BuddyContextService } from './buddy-context.service';
 import { ChatMessage, LlmProviderService } from './llm-provider.service';
+import { ToolExecutionService } from './tool-execution.service';
 
 const MAX_HISTORY_MESSAGES = 20;
+const MAX_TOOL_ITERATIONS = 5;
 
 @Injectable()
 export class BuddyConversationService {
@@ -27,6 +31,7 @@ export class BuddyConversationService {
 		private readonly dataSource: OrmDataSource,
 		private readonly llmProvider: LlmProviderService,
 		private readonly contextService: BuddyContextService,
+		private readonly toolExecution: ToolExecutionService,
 		private readonly eventEmitter: EventEmitter2,
 	) {}
 
@@ -103,8 +108,9 @@ export class BuddyConversationService {
 
 		chatMessages.push({ role: MessageRole.USER, content });
 
-		// 3. Call LLM provider (before persisting, so no orphaned messages on failure)
-		const llmResponse = await this.llmProvider.sendMessage(systemPrompt, chatMessages);
+		// 3. Call LLM provider with tool support if available
+		const tools = this.llmProvider.supportsTools() ? this.toolExecution.getToolDefinitions() : undefined;
+		const llmResponse = await this.sendWithToolExecution(systemPrompt, chatMessages, tools);
 
 		// 4. Persist both user message and assistant response in a single transaction
 		const { savedUser, savedAssistant } = await this.dataSource.transaction(async (manager) => {
@@ -167,20 +173,97 @@ export class BuddyConversationService {
 		this.logger.debug(`Deleted conversation id=${id}`);
 	}
 
+	/**
+	 * Send a message to the LLM with tool execution loop.
+	 * If the LLM returns tool calls, execute them and feed results back.
+	 * Repeats until the LLM produces a text response or max iterations reached.
+	 */
+	private async sendWithToolExecution(
+		systemPrompt: string,
+		messages: ChatMessage[],
+		tools?: ToolDefinition[],
+	): Promise<LlmResponse> {
+		let response = await this.llmProvider.sendMessage(systemPrompt, messages, { tools });
+
+		// If no tool calls, return directly
+		if (!response.toolCalls || response.toolCalls.length === 0) {
+			return response;
+		}
+
+		// Tool execution loop
+		for (let iteration = 0; iteration < MAX_TOOL_ITERATIONS; iteration++) {
+			if (!response.toolCalls || response.toolCalls.length === 0) {
+				break;
+			}
+
+			this.logger.debug(
+				`Tool iteration ${iteration + 1}: executing ${response.toolCalls.length} tool call(s)`,
+			);
+
+			// Execute all tool calls
+			const toolResults: string[] = [];
+
+			for (const toolCall of response.toolCalls) {
+				const result = await this.toolExecution.executeTool(toolCall);
+
+				toolResults.push(
+					`Tool "${toolCall.name}" (id=${toolCall.id}): ${result.success ? 'SUCCESS' : 'FAILED'} — ${result.message}`,
+				);
+			}
+
+			// Append the assistant's tool call response and tool results as a follow-up user message
+			// This is a simplified approach that works across providers without requiring
+			// provider-specific tool result message formats
+			const toolResultsSummary = toolResults.join('\n');
+
+			if (response.content) {
+				messages.push({ role: MessageRole.ASSISTANT, content: response.content });
+			} else {
+				// Indicate the assistant made tool calls (for context in the conversation)
+				const toolNames = response.toolCalls.map((tc) => tc.name).join(', ');
+
+				messages.push({
+					role: MessageRole.ASSISTANT,
+					content: `[Executing tools: ${toolNames}]`,
+				});
+			}
+
+			messages.push({
+				role: MessageRole.USER,
+				content: `[Tool execution results]\n${toolResultsSummary}\n\nPlease provide a natural language response based on these results.`,
+			});
+
+			// Call LLM again with the updated conversation (without tools to get a final text response)
+			response = await this.llmProvider.sendMessage(systemPrompt, messages);
+		}
+
+		return response;
+	}
+
 	private buildSystemPrompt(context: BuddyContext): string {
+		const hasTools = this.llmProvider.supportsTools();
+
 		const lines: string[] = [
 			'You are a smart home assistant for the FastyBird Smart Panel.',
 			'Answer questions about the home, suggest improvements, and help the user manage their smart home.',
 			'Be concise, helpful, and friendly. Use the context below to inform your responses.',
-			'',
-			`Current time: ${context.timestamp}`,
 		];
+
+		if (hasTools) {
+			lines.push(
+				'',
+				'You can control the home using the provided tools. When the user asks to control a device, run a scene, or change lighting, use the appropriate tool.',
+				'Always confirm what you did after executing a tool.',
+			);
+		}
+
+		lines.push('', `Current time: ${context.timestamp}`);
 
 		if (context.spaces.length > 0) {
 			lines.push('', '## Spaces');
 
 			for (const space of context.spaces) {
-				lines.push(`- ${space.name} (${space.category ?? 'unknown'}): ${space.deviceCount} devices`);
+				lines.push(`- ${space.name} [id=${space.id}] (${space.category ?? 'unknown'}): ${space.deviceCount} devices`);
 			}
 		}
 
@@ -200,7 +283,7 @@ export class BuddyConversationService {
 								.join(', ')
 						: 'no state data';
 
-				lines.push(`- ${device.name} (${device.category}): ${stateStr}`);
+				lines.push(`- ${device.name} [id=${device.id}] (${device.category}): ${stateStr}`);
 			}
 
 			if (context.devices.length > 30) {
@@ -212,7 +295,7 @@ export class BuddyConversationService {
 			lines.push('', '## Scenes');
 
 			for (const scene of context.scenes) {
-				lines.push(`- ${scene.name}: ${scene.enabled ? 'enabled' : 'disabled'}`);
+				lines.push(`- ${scene.name} [id=${scene.id}]: ${scene.enabled ? 'enabled' : 'disabled'}`);
 			}
 		}
 

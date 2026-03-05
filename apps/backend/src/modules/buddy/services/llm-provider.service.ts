@@ -8,11 +8,11 @@ import {
 	BuddyProviderTimeoutException,
 } from '../buddy.exceptions';
 import { BuddyConfigModel } from '../models/config.model';
-import { ChatMessage, LlmOptions, LlmResponse } from '../platforms/llm-provider.platform';
+import { ChatMessage, LlmOptions, LlmResponse, LlmToolCall, LlmToolResult } from '../platforms/llm-provider.platform';
 
 import { LlmProviderRegistryService } from './llm-provider-registry.service';
 
-export { ChatMessage, LlmOptions, LlmResponse } from '../platforms/llm-provider.platform';
+export { ChatMessage, LlmOptions, LlmResponse, LlmToolCall, LlmToolResult } from '../platforms/llm-provider.platform';
 
 const DEFAULT_TIMEOUT = 30_000;
 
@@ -50,6 +50,27 @@ export class LlmProviderService {
 			return await provider.sendMessage(systemPrompt, messages, model, { ...options, timeout });
 		} catch (error) {
 			return this.handleProviderError(provider.getName(), error, timeout);
+		}
+	}
+
+	/**
+	 * Check if the currently configured provider supports tool use.
+	 * Returns false if no provider is configured or the provider doesn't support tools.
+	 */
+	supportsTools(): boolean {
+		try {
+			const config = this.getConfig();
+			const providerName = LEGACY_PROVIDER_MAP.get(config.provider) ?? config.provider;
+
+			if (!providerName || providerName === 'none') {
+				return false;
+			}
+
+			const provider = this.providerRegistry.get(providerName);
+
+			return provider?.supportsTools?.() ?? false;
+		} catch {
+			return false;
 		}
 	}
 
