@@ -853,9 +853,15 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
     final statusSection = _buildStatusSection(localizations, isDark, modeColorFamily.base);
 
     return DeviceLandscapeLayout(
-      mainContent: isLargeScreen
-          ? _buildPrimaryControlCard(context, isDark, dialSize: AppSpacings.scale(DeviceDetailDialSizes.landscape))
-          : _buildCompactDialWithModes(context, isDark),
+      mainContent: Column(
+        children: [
+          Expanded(
+            child: isLargeScreen
+                ? _buildPrimaryControlCard(context, isDark, dialSize: AppSpacings.scale(DeviceDetailDialSizes.landscape))
+                : _buildCompactDialWithModes(context, isDark),
+          ),
+        ],
+      ),
       secondaryContent: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         spacing: AppSpacings.pMd,
@@ -1076,7 +1082,8 @@ class _ThermostatDeviceDetailState extends State<ThermostatDeviceDetail> {
       width: double.infinity,
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisAlignment: MainAxisAlignment.center,
+        spacing: AppSpacings.pMd,
         children: [
           CircularControlDial(
             value: dial.value,

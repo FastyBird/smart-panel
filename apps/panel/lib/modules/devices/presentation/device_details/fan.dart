@@ -630,9 +630,15 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
     final hasDeviceControls = _device.fanChannel.hasSpeed || _hasDeviceControlOptions;
 
     return DeviceLandscapeLayout(
-      mainContent: isLargeScreen
-          ? _buildControlCard(context, isDark)
-          : _buildCompactControlCard(context, isDark),
+      mainContent: Column(
+        children: [
+          Expanded(
+            child: isLargeScreen
+                ? _buildControlCard(context, isDark)
+                : _buildCompactControlCard(context, isDark),
+          ),
+        ],
+      ),
       secondaryContent: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         spacing: AppSpacings.pMd,
@@ -659,7 +665,7 @@ class _FanDeviceDetailState extends State<FanDeviceDetail> {
     return BaseCard(
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisAlignment: MainAxisAlignment.center,
         spacing: AppSpacings.pMd,
         children: [
           DevicePowerButton(

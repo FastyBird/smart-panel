@@ -768,9 +768,15 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
         _buildLandscapeControlsSection(context, localizations, isDark);
 
     return DeviceLandscapeLayout(
-      mainContent: isLargeScreen
-          ? _buildPrimaryControlCard(context, isDark, dialSize: AppSpacings.scale(DeviceDetailDialSizes.landscape))
-          : _buildCompactControlCard(context, isDark),
+      mainContent: Column(
+        children: [
+          Expanded(
+            child: isLargeScreen
+                ? _buildPrimaryControlCard(context, isDark, dialSize: AppSpacings.scale(DeviceDetailDialSizes.landscape))
+                : _buildCompactControlCard(context, isDark),
+          ),
+        ],
+      ),
       secondaryContent: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         spacing: AppSpacings.pMd,
@@ -819,7 +825,8 @@ class _AirHumidifierDeviceDetailState extends State<AirHumidifierDeviceDetail> {
       width: double.infinity,
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisAlignment: MainAxisAlignment.center,
+        spacing: AppSpacings.pMd,
         children: [
           _buildHumidityDial(dialSize),
           _buildModeSelector(isDark),

@@ -852,9 +852,15 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
         context, localizations, isDark, activeColor);
 
     return DeviceLandscapeLayout(
-      mainContent: isLargeScreen
-          ? _buildControlCard(context, isDark, activeColor)
-          : _buildCompactControlCard(context, isDark, activeColor),
+      mainContent: Column(
+        children: [
+          Expanded(
+            child: isLargeScreen
+                ? _buildControlCard(context, isDark, activeColor)
+                : _buildCompactControlCard(context, isDark, activeColor),
+          ),
+        ],
+      ),
       secondaryContent: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         spacing: AppSpacings.pMd,
@@ -943,7 +949,7 @@ class _AirPurifierDeviceDetailState extends State<AirPurifierDeviceDetail> {
     return BaseCard(
       child: Column(
         mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisAlignment: MainAxisAlignment.center,
         spacing: AppSpacings.pMd,
         children: [
           DevicePowerButton(

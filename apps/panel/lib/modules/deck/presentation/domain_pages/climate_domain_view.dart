@@ -2179,7 +2179,7 @@ class _ClimateDomainViewPageState extends State<ClimateDomainViewPage> {
         left: AppSpacings.pMd,
         bottom: AppSpacings.pMd,
       ),
-      mainContent: Expanded(child: _buildLandscapeMainContent(context)),
+      mainContent: _buildLandscapeMainContent(context),
       additionalContentScrollable: false,
       additionalContentPadding: EdgeInsets.only(
         left: AppSpacings.pMd,
