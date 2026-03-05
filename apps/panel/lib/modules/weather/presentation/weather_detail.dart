@@ -74,7 +74,6 @@ class WeatherDetailPage extends StatelessWidget {
 			}
 
 			// Portrait layout
-			final screenService = locator<ScreenService>();
 			final skyHeight = (screenService.logicalHeight * 0.4).clamp(0.0, AppSpacings.scale(500));
 
 			return Scaffold(
