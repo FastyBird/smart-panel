@@ -1,5 +1,5 @@
-import { SYSTEM_MODULE_NAME } from '../../system/system.constants';
 import { SystemConfigModel } from '../../system/models/config.model';
+import { SYSTEM_MODULE_NAME } from '../../system/system.constants';
 import { BUDDY_MODULE_NAME, STT_PLUGIN_NONE } from '../buddy.constants';
 import { BuddySttNotConfiguredException } from '../buddy.exceptions';
 import { BuddyConfigModel } from '../models/config.model';
@@ -124,7 +124,11 @@ describe('SttProviderService', () => {
 
 			expect(result).toBe('Hello world');
 			// eslint-disable-next-line @typescript-eslint/unbound-method
-			expect(mockSttProvider.transcribe).toHaveBeenCalledWith(audioBuffer, mimeType, expect.objectContaining({ language: 'en' }));
+			expect(mockSttProvider.transcribe).toHaveBeenCalledWith(
+				audioBuffer,
+				mimeType,
+				expect.objectContaining({ language: 'en' }),
+			);
 		});
 
 		it('should throw when provider is not configured', async () => {

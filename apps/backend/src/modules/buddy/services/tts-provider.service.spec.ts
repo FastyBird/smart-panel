@@ -1,5 +1,5 @@
-import { SYSTEM_MODULE_NAME } from '../../system/system.constants';
 import { SystemConfigModel } from '../../system/models/config.model';
+import { SYSTEM_MODULE_NAME } from '../../system/system.constants';
 import { BUDDY_MODULE_NAME, TTS_AUDIO_CACHE_TTL_MS, TTS_PLUGIN_NONE } from '../buddy.constants';
 import { BuddyTtsNotConfiguredException } from '../buddy.exceptions';
 import { BuddyConfigModel } from '../models/config.model';
@@ -45,6 +45,7 @@ describe('TtsProviderService', () => {
 			list: jest.fn().mockReturnValue([mockProvider]),
 		};
 
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 		service = new TtsProviderService(
 			configService as any,
 			ttsProviderRegistry as unknown as TtsProviderRegistryService,

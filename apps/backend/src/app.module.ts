@@ -368,7 +368,7 @@ export class AppModule {
 				BuddyOllamaPlugin,
 				BuddyVoiceaiPlugin,
 				BuddySystemTtsPlugin,
-		BuddySttWhisperLocalPlugin,
+				BuddySttWhisperLocalPlugin,
 				ScenesLocalPlugin,
 				ServeStaticModule.forRootAsync({
 					imports: [NestConfigModule], // Ensure ConfigModule is available

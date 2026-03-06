@@ -66,7 +66,6 @@ async function bootstrap() {
 
 	// Register multipart support for file uploads — this adds the content-type
 	// parser that sets req[kMultipart] = true, which req.file() relies on.
-	// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 	await app.register(fastifyMultipart, {
 		limits: { fileSize: MULTIPART_MAX_FILE_SIZE_BYTES },
 	});
