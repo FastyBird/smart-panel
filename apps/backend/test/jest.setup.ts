@@ -1,3 +1,5 @@
+import { Logger } from '@nestjs/common';
+
 /**
  * Jest setup file for e2e tests.
  *
@@ -5,8 +7,6 @@
  * - Silences NestJS Logger to keep test output clean
  */
 process.env.FB_DB_SYNC = 'true';
-
-import { Logger } from '@nestjs/common';
 
 // Silence the NestJS Logger during tests
 // Tests that intentionally trigger errors (e.g., testing error handling)
