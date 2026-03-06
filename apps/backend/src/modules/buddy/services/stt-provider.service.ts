@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 
 import { ConfigService } from '../../config/services/config.service';
+import { SystemConfigModel } from '../../system/models/config.model';
+import { SYSTEM_MODULE_NAME } from '../../system/system.constants';
 import { BUDDY_MODULE_NAME, STT_PLUGIN_NONE } from '../buddy.constants';
 import {
 	BuddySttNotConfiguredException,
@@ -55,7 +57,9 @@ export class SttProviderService {
 		}
 
 		try {
-			const text = await provider.transcribe(audioBuffer, mimeType);
+			const text = await provider.transcribe(audioBuffer, mimeType, {
+				language: this.getSystemLanguage(),
+			});
 
 			this.logger.debug(`STT transcription: ${text.substring(0, 100)}...`);
 
@@ -116,6 +120,16 @@ export class SttProviderService {
 		this.logger.error(`${providerName} STT provider error: ${message}`);
 
 		throw new BuddySttProviderErrorException(message);
+	}
+
+	private getSystemLanguage(): string {
+		try {
+			const systemConfig = this.configService.getModuleConfig<SystemConfigModel>(SYSTEM_MODULE_NAME);
+			// Map locale code (e.g. 'en_US') to language code (e.g. 'en')
+			return systemConfig.language.split('_')[0];
+		} catch {
+			return 'en';
+		}
 	}
 
 	private getConfig(): BuddyConfigModel {

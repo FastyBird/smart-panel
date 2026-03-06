@@ -1,3 +1,5 @@
+import { SYSTEM_MODULE_NAME } from '../../system/system.constants';
+import { SystemConfigModel } from '../../system/models/config.model';
 import { BUDDY_MODULE_NAME, STT_PLUGIN_NONE } from '../buddy.constants';
 import { BuddySttNotConfiguredException } from '../buddy.exceptions';
 import { BuddyConfigModel } from '../models/config.model';
@@ -31,9 +33,17 @@ describe('SttProviderService', () => {
 		return config;
 	}
 
+	function makeSystemConfig(): SystemConfigModel {
+		const config = new SystemConfigModel();
+		return config;
+	}
+
 	beforeEach(() => {
 		configService = {
-			getModuleConfig: jest.fn().mockReturnValue(makeConfig()),
+			getModuleConfig: jest.fn().mockImplementation((moduleName: string) => {
+				if (moduleName === SYSTEM_MODULE_NAME) return makeSystemConfig();
+				return makeConfig();
+			}),
 			getPluginConfig: jest.fn().mockReturnValue({ apiKey: 'test-key' }),
 		};
 
@@ -114,7 +124,7 @@ describe('SttProviderService', () => {
 
 			expect(result).toBe('Hello world');
 			// eslint-disable-next-line @typescript-eslint/unbound-method
-			expect(mockSttProvider.transcribe).toHaveBeenCalledWith(audioBuffer, mimeType);
+			expect(mockSttProvider.transcribe).toHaveBeenCalledWith(audioBuffer, mimeType, expect.objectContaining({ language: 'en' }));
 		});
 
 		it('should throw when provider is not configured', async () => {

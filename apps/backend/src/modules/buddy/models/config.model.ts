@@ -1,5 +1,5 @@
 import { Expose, Transform } from 'class-transformer';
-import { IsBoolean, IsInt, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsBoolean, IsInt, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -18,7 +18,6 @@ import {
 	HEARTBEAT_DEFAULT_INTERVAL_MS,
 	LLM_PROVIDER_NONE,
 	STT_PLUGIN_NONE,
-	TTS_DEFAULT_SPEED,
 	TTS_PLUGIN_NONE,
 } from '../buddy.constants';
 
@@ -106,8 +105,7 @@ export class BuddyConfigModel extends ModuleConfigModel {
 
 	@ApiPropertyOptional({
 		name: 'stt_plugin',
-		description:
-			'STT provider plugin type (e.g. buddy-openai-plugin, buddy-stt-whisper-local-plugin, or none)',
+		description: 'STT provider plugin type (e.g. buddy-openai-plugin, buddy-stt-whisper-local-plugin, or none)',
 		type: 'string',
 		example: STT_PLUGIN_NONE,
 	})
@@ -192,29 +190,19 @@ export class BuddyConfigModel extends ModuleConfigModel {
 	@IsString()
 	ttsProvider?: string;
 
-	@ApiPropertyOptional({
-		name: 'tts_voice',
-		description: 'Voice identifier for TTS (provider-specific, e.g. alloy for OpenAI; voice ID for ElevenLabs)',
-		type: 'string',
-		example: 'alloy',
-	})
+	// Legacy field – voice is now configured per plugin
 	@Expose({ name: 'tts_voice' })
+	@Transform(() => undefined, { toClassOnly: true })
 	@IsOptional()
 	@IsString()
 	ttsVoice?: string;
 
-	@ApiPropertyOptional({
-		name: 'tts_speed',
-		description: 'Speech speed multiplier (0.25 to 4.0)',
-		type: 'number',
-		example: 1.0,
-	})
+	// Legacy field – speed is now configured per plugin
 	@Expose({ name: 'tts_speed' })
+	@Transform(() => undefined, { toClassOnly: true })
 	@IsOptional()
 	@IsNumber()
-	@Min(0.25)
-	@Max(4.0)
-	ttsSpeed: number = TTS_DEFAULT_SPEED;
+	ttsSpeed?: number;
 
 	@ApiPropertyOptional({
 		name: 'heartbeat_interval_ms',

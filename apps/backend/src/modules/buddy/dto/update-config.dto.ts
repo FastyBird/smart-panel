@@ -1,5 +1,5 @@
 import { Expose, Transform } from 'class-transformer';
-import { IsBoolean, IsInt, IsNumber, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsBoolean, IsInt, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 
 import { ApiProperty, ApiPropertyOptional, ApiSchema } from '@nestjs/swagger';
 
@@ -42,8 +42,7 @@ export class UpdateBuddyConfigDto extends UpdateModuleConfigDto {
 
 	@ApiPropertyOptional({
 		name: 'stt_plugin',
-		description:
-			'STT provider plugin type (e.g. buddy-openai-plugin, buddy-stt-whisper-local-plugin, or none)',
+		description: 'STT provider plugin type (e.g. buddy-openai-plugin, buddy-stt-whisper-local-plugin, or none)',
 		type: 'string',
 		example: 'none',
 	})
@@ -76,32 +75,16 @@ export class UpdateBuddyConfigDto extends UpdateModuleConfigDto {
 	@IsString({ message: '[{"field":"tts_plugin","reason":"TTS plugin must be a valid string."}]' })
 	tts_plugin?: string;
 
-	@ApiPropertyOptional({
-		name: 'tts_voice',
-		description: 'Voice identifier for TTS (e.g. alloy for OpenAI, 21m00Tcm4TlvDq8ikWAM for ElevenLabs)',
-		type: 'string',
-		example: 'alloy',
-	})
+	// Legacy field – voice is now configured per plugin
 	@Expose({ name: 'tts_voice' })
 	@IsOptional()
 	@IsString({ message: '[{"field":"tts_voice","reason":"TTS voice must be a valid string."}]' })
 	tts_voice?: string;
 
-	@ApiPropertyOptional({
-		name: 'tts_speed',
-		description: 'Speech speed multiplier (0.25 to 4.0)',
-		type: 'number',
-		example: 1.0,
-	})
+	// Legacy field – speed is now configured per plugin
 	@Expose({ name: 'tts_speed' })
 	@IsOptional()
 	@IsNumber({}, { message: '[{"field":"tts_speed","reason":"TTS speed must be a number."}]' })
-	@Min(0.25, {
-		message: '[{"field":"tts_speed","reason":"TTS speed must be at least 0.25."}]',
-	})
-	@Max(4.0, {
-		message: '[{"field":"tts_speed","reason":"TTS speed must be at most 4.0."}]',
-	})
 	tts_speed?: number;
 
 	@ApiPropertyOptional({

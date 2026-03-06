@@ -98,14 +98,6 @@
 				"tags": {
 					"disabled": "disabled"
 				}
-			},
-			"ttsVoice": {
-				"title": "Voice",
-				"placeholder": "Voice identifier"
-			},
-			"ttsSpeed": {
-				"title": "Speech Speed",
-				"placeholder": "1.0"
 			}
 		},
 		"message": {

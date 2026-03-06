@@ -17,8 +17,6 @@ export const BuddyConfigSchema = ConfigModuleSchema.extend({
 	sttPlugin: z.string().optional().default('none'),
 	ttsPlugin: z.string().optional().default('none'),
 	voiceEnabled: z.boolean().optional().default(false),
-	ttsVoice: z.string().nullable().optional().default(null),
-	ttsSpeed: z.number().optional().default(1.0),
 });
 
 // BACKEND API
@@ -32,8 +30,6 @@ export const BuddyConfigUpdateReqSchema: ZodType<ApiConfigUpdateModule> = Config
 		stt_plugin: z.string().optional(),
 		tts_plugin: z.string().optional(),
 		voice_enabled: z.boolean().optional(),
-		tts_voice: z.string().nullable().optional(),
-		tts_speed: z.number().optional(),
 	})
 );
 
@@ -45,7 +41,5 @@ export const BuddyConfigResSchema: ZodType<ApiConfigModule> = ConfigModuleResSch
 		stt_plugin: z.string().optional(),
 		tts_plugin: z.string().optional(),
 		voice_enabled: z.boolean().optional(),
-		tts_voice: z.string().nullable().optional(),
-		tts_speed: z.number().optional(),
 	})
 );

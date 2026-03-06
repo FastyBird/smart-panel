@@ -212,33 +212,6 @@
 			{{ t('buddyModule.texts.pluginConfigHint') }}
 		</el-alert>
 
-		<el-form-item
-			v-if="model.ttsPlugin && model.ttsPlugin !== TTS_PLUGIN_NONE"
-			:label="t('buddyModule.fields.config.ttsVoice.title')"
-			prop="ttsVoice"
-		>
-			<el-input
-				v-model="model.ttsVoice"
-				:placeholder="t('buddyModule.fields.config.ttsVoice.placeholder')"
-				name="ttsVoice"
-				clearable
-			/>
-		</el-form-item>
-
-		<el-form-item
-			v-if="model.ttsPlugin && model.ttsPlugin !== TTS_PLUGIN_NONE"
-			:label="t('buddyModule.fields.config.ttsSpeed.title')"
-			prop="ttsSpeed"
-		>
-			<el-input-number
-				v-model="model.ttsSpeed"
-				:min="0.25"
-				:max="4.0"
-				:step="0.25"
-				:precision="2"
-				name="ttsSpeed"
-			/>
-		</el-form-item>
 	</el-form>
 </template>
 
@@ -246,7 +219,7 @@
 import { computed, onBeforeMount, reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElInputNumber, ElOption, ElSelect, ElSwitch, ElTag, type FormRules } from 'element-plus';
+import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, ElSwitch, ElTag, type FormRules } from 'element-plus';
 
 import { FormResult, type FormResultType, Layout, useConfigModuleEditForm } from '../../config';
 import { LEGACY_PROVIDER_MAP, LLM_PROVIDER_NONE, STT_PLUGIN_NONE, TTS_PLUGIN_NONE } from '../buddy.constants';

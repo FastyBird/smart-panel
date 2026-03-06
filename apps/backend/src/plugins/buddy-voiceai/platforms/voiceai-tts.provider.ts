@@ -51,7 +51,7 @@ export class VoiceaiTtsProvider implements ITtsProvider {
 			const body: Record<string, unknown> = {
 				text,
 				model: 'voiceai-tts-v1-latest',
-				language: 'en',
+				language: options?.language ?? 'en',
 			};
 
 			if (voiceId) {

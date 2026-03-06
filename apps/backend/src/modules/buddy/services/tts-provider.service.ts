@@ -1,7 +1,9 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 
 import { ConfigService } from '../../config/services/config.service';
-import { BUDDY_MODULE_NAME, TTS_AUDIO_CACHE_TTL_MS, TTS_DEFAULT_SPEED, TTS_PLUGIN_NONE } from '../buddy.constants';
+import { SystemConfigModel } from '../../system/models/config.model';
+import { SYSTEM_MODULE_NAME } from '../../system/system.constants';
+import { BUDDY_MODULE_NAME, TTS_AUDIO_CACHE_TTL_MS, TTS_PLUGIN_NONE } from '../buddy.constants';
 import {
 	BuddyTtsNotConfiguredException,
 	BuddyTtsProviderErrorException,
@@ -136,8 +138,7 @@ export class TtsProviderService implements OnModuleInit, OnModuleDestroy {
 
 		try {
 			result = await provider.synthesize(text, {
-				voice: config.ttsVoice,
-				speed: config.ttsSpeed,
+				language: this.getSystemLanguage(),
 			});
 		} catch (error) {
 			this.handleProviderError(provider.getName(), error);
@@ -242,12 +243,21 @@ export class TtsProviderService implements OnModuleInit, OnModuleDestroy {
 		}
 	}
 
+	private getSystemLanguage(): string {
+		try {
+			const systemConfig = this.configService.getModuleConfig<SystemConfigModel>(SYSTEM_MODULE_NAME);
+			// Map locale code (e.g. 'en_US') to language code (e.g. 'en')
+			return systemConfig.language.split('_')[0];
+		} catch {
+			return 'en';
+		}
+	}
+
 	private buildCacheKey(messageId: string, config: BuddyConfigModel): string {
 		const plugin = config.ttsPlugin ?? '';
-		const voice = config.ttsVoice ?? '';
-		const speed = config.ttsSpeed ?? TTS_DEFAULT_SPEED;
+		const language = this.getSystemLanguage();
 
-		return `${messageId}:${plugin}:${voice}:${speed}`;
+		return `${messageId}:${plugin}:${language}`;
 	}
 
 	private cleanExpiredCache(): void {
