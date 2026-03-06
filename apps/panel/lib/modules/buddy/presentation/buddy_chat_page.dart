@@ -157,11 +157,10 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 	}
 
 	Future<void> _startRecording() async {
+		final localizations = AppLocalizations.of(context)!;
 		final started = await _audioRecordingService.startRecording();
 
 		if (!started && mounted) {
-			final localizations = AppLocalizations.of(context)!;
-
 			ScaffoldMessenger.of(context).showSnackBar(
 				SnackBar(
 					content: Text(localizations.buddy_recording_permission_error),
@@ -173,7 +172,6 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 
 	Future<void> _stopRecordingAndSend() async {
 		final localizations = AppLocalizations.of(context)!;
-
 		// Capture the service reference before any async gap — the widget
 		// may be disposed during stopRecording, making context.read unsafe.
 		final buddyService = context.read<BuddyService>();
@@ -718,7 +716,7 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 					GestureDetector(
 						onTap: () => _audioRecordingService.cancelRecording(),
 						child: Text(
-							localizations.buddy_recording_cancel,
+							localizations.button_cancel,
 							style: TextStyle(
 								fontSize: AppFontSize.small,
 								color: isDark
