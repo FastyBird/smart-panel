@@ -31,6 +31,7 @@ import { ActionObserverService } from './services/action-observer.service';
 import { AnomalyDetectorEvaluator } from './services/anomaly-detector.service';
 import { BuddyContextService } from './services/buddy-context.service';
 import { BuddyConversationService } from './services/buddy-conversation.service';
+import { BuddyPersonalityService } from './services/buddy-personality.service';
 import { BuddyProviderStatusService } from './services/buddy-provider-status.service';
 import { ConflictDetectorEvaluator } from './services/conflict-detector-evaluator.service';
 import { EnergyEvaluator } from './services/energy-evaluator.service';
@@ -39,7 +40,6 @@ import { LlmProviderRegistryService } from './services/llm-provider-registry.ser
 import { LlmProviderService } from './services/llm-provider.service';
 import { OAuthCallbackService } from './services/oauth-callback.service';
 import { OAuthFlowService } from './services/oauth-flow.service';
-import { BuddyPersonalityService } from './services/buddy-personality.service';
 import { PatternDetectorService } from './services/pattern-detector.service';
 import { SceneSuggestionEvaluator } from './services/scene-suggestion-evaluator.service';
 import { SttProviderService } from './services/stt-provider.service';
@@ -65,7 +65,12 @@ import { EvaluatorRulesLoaderService } from './spec/evaluator-rules-loader.servi
 		WeatherModule,
 		EnergyModule,
 	],
-	controllers: [BuddyConversationsController, BuddyPersonalityController, BuddyProvidersController, BuddySuggestionsController],
+	controllers: [
+		BuddyConversationsController,
+		BuddyPersonalityController,
+		BuddyProvidersController,
+		BuddySuggestionsController,
+	],
 	providers: [
 		EvaluatorRulesLoaderService,
 		ActionObserverService,

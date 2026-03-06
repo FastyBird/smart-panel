@@ -39,7 +39,8 @@ export class BuddyPersonalityService {
 			const content = await fs.readFile(filePath, 'utf-8');
 			const trimmed = content.trim();
 
-			this.cachedPersonality = trimmed.length > 0 ? trimmed.slice(0, BUDDY_PERSONALITY_MAX_LENGTH) : BUDDY_DEFAULT_PERSONALITY;
+			this.cachedPersonality =
+				trimmed.length > 0 ? trimmed.slice(0, BUDDY_PERSONALITY_MAX_LENGTH) : BUDDY_DEFAULT_PERSONALITY;
 			this.cachedAt = now;
 		} catch {
 			this.logger.debug(`Personality file not found at ${filePath}, using default`);
@@ -71,24 +72,20 @@ export class BuddyPersonalityService {
 		return this.cachedPersonality;
 	}
 
-	/**
-	 * Invalidate the cached personality so the next call re-reads from disk.
-	 */
-	invalidateCache(): void {
-		this.cachedPersonality = null;
-		this.cachedAt = 0;
-	}
-
 	private resolvePersonalityPath(): string {
 		const config = this.configService.getModuleConfig<BuddyConfigModel>(BUDDY_MODULE_NAME) ?? new BuddyConfigModel();
 		const configuredPath = config.personalityPath;
 
-		if (configuredPath && path.isAbsolute(configuredPath)) {
-			return configuredPath;
+		const baseDir = path.resolve(__dirname, '../../../../../../');
+		const relativePath = configuredPath || BUDDY_DEFAULT_PERSONALITY_PATH;
+		const resolved = path.resolve(baseDir, relativePath);
+
+		if (!resolved.startsWith(baseDir + path.sep) && resolved !== baseDir) {
+			this.logger.warn(`Personality path "${configuredPath}" resolves outside project root, using default`);
+
+			return path.resolve(baseDir, BUDDY_DEFAULT_PERSONALITY_PATH);
 		}
 
-		const relativePath = configuredPath || BUDDY_DEFAULT_PERSONALITY_PATH;
-
-		return path.resolve(__dirname, '../../../../../../', relativePath);
+		return resolved;
 	}
 }

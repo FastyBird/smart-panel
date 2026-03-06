@@ -90,9 +90,11 @@ describe('BuddyConversationService', () => {
 		};
 
 		personalityService = {
-			getPersonality: jest.fn().mockResolvedValue(
-				'You are a helpful smart home assistant. Be concise, friendly, and practical.\nFocus on actionable suggestions. Use simple language.',
-			),
+			getPersonality: jest
+				.fn()
+				.mockResolvedValue(
+					'You are a helpful smart home assistant. Be concise, friendly, and practical.\nFocus on actionable suggestions. Use simple language.',
+				),
 		};
 
 		toolProviderRegistry = {
