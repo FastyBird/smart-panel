@@ -72,6 +72,8 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 	void initState() {
 		super.initState();
 		_buddyService = context.read<BuddyService>();
+		// Sync message count before adding listener to avoid false "new messages" trigger
+		_lastMessageCount = _buddyService.messages.length;
 		_buddyService.addListener(_onBuddyServiceChanged);
 
 		_buddyConfigRepo = locator<ConfigModuleService>()
@@ -118,23 +120,17 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 				_initFailed = false;
 				_initialized = true;
 			});
-			_scrollToBottom();
 		}
 	}
 
 	void _scrollToBottom() {
 		if (!mounted) return;
 
-		// Wait two frames: the first lets the ListView lay out its children,
-		// the second ensures maxScrollExtent is up-to-date.
+		// With reverse: true, scroll position 0 is the bottom of the chat.
 		WidgetsBinding.instance.addPostFrameCallback((_) {
-			WidgetsBinding.instance.addPostFrameCallback((_) {
-				if (mounted && _scrollController.hasClients) {
-					_scrollController.jumpTo(
-						_scrollController.position.maxScrollExtent,
-					);
-				}
-			});
+			if (mounted && _scrollController.hasClients) {
+				_scrollController.jumpTo(0);
+			}
 		});
 	}
 
@@ -385,26 +381,27 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 		final spaceId = locator<DisplayRepository>().display?.roomId;
 
 		await buddyService.createNewConversation(spaceId: spaceId);
-
-		if (mounted) {
-			_scrollToBottom();
-		}
 	}
 
 	Widget _buildBody(BuildContext context, bool isDark, BuddyService buddyService) {
 		final messages = buddyService.messages;
 		final hasMessages = messages.isNotEmpty;
 
+		if (!hasMessages && !buddyService.isLoadingMessages) {
+			return _buildEmptyState(context, isDark);
+		}
+
 		return ListView(
 			controller: _scrollController,
+			reverse: true,
 			padding: EdgeInsets.symmetric(vertical: AppSpacings.pMd),
 			children: [
-				// Empty state
-				if (!hasMessages && !buddyService.isLoadingMessages)
-					_buildEmptyState(context, isDark),
+				// Loading indicator while waiting for AI response
+				if (buddyService.isSendingMessage)
+					_buildTypingIndicator(context, isDark),
 
-				// Messages
-				...messages.map(
+				// Messages in reverse order (newest first for reverse ListView)
+				...messages.reversed.map(
 					(message) => MessageBubble(
 						key: ValueKey(message.id),
 						message: message,
@@ -415,10 +412,6 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 							: null,
 					),
 				),
-
-				// Loading indicator while waiting for AI response
-				if (buddyService.isSendingMessage)
-					_buildTypingIndicator(context, isDark),
 			],
 		);
 	}
