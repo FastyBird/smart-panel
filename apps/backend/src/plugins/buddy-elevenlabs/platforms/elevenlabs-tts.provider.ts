@@ -57,7 +57,7 @@ export class ElevenLabsTtsProvider implements ITtsProvider {
 				},
 				body: JSON.stringify({
 					text,
-					model_id: 'eleven_monolingual_v1',
+					model_id: 'eleven_multilingual_v2',
 					voice_settings: {
 						stability: 0.5,
 						similarity_boost: 0.5,
@@ -67,7 +67,11 @@ export class ElevenLabsTtsProvider implements ITtsProvider {
 			});
 
 			if (!response.ok) {
-				throw new Error(`ElevenLabs API returned ${response.status}: ${response.statusText}`);
+				const body = await response.text().catch(() => '');
+
+				throw new Error(
+					`ElevenLabs TTS API returned ${response.status}: ${response.statusText} (voice=${voiceId})${body ? ` - ${body}` : ''}`,
+				);
 			}
 
 			const arrayBuffer = await response.arrayBuffer();
