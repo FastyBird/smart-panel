@@ -205,11 +205,11 @@ describe('WhatsAppBotProvider', () => {
 		});
 
 		it('should process text messages and create conversations', async () => {
-			const payload = makeWebhookPayload('+1234567890', 'Hello buddy');
+			const payload = makeWebhookPayload('1234567890', 'Hello buddy');
 
 			await provider.handleWebhookPayload(payload);
 
-			expect(conversationService.create).toHaveBeenCalledWith('WhatsApp (+1234567890)');
+			expect(conversationService.create).toHaveBeenCalledWith('WhatsApp (1234567890)');
 			expect(conversationService.sendMessage).toHaveBeenCalledWith('conv-1', 'Hello buddy');
 			expect(global.fetch).toHaveBeenCalled();
 		});
@@ -224,7 +224,7 @@ describe('WhatsAppBotProvider', () => {
 				}),
 			);
 
-			const payload = makeWebhookPayload('+1234567890', 'Hello');
+			const payload = makeWebhookPayload('1234567890', 'Hello');
 
 			await provider.handleWebhookPayload(payload);
 
@@ -241,7 +241,7 @@ describe('WhatsAppBotProvider', () => {
 				}),
 			);
 
-			const payload = makeWebhookPayload('+1234567890', 'Hello');
+			const payload = makeWebhookPayload('1234567890', 'Hello');
 
 			await provider.handleWebhookPayload(payload);
 
@@ -249,7 +249,7 @@ describe('WhatsAppBotProvider', () => {
 		});
 
 		it('should handle button reply for suggestion feedback', async () => {
-			const payload = makeButtonReplyPayload('+1234567890', 'suggestion:accept:sug-1');
+			const payload = makeButtonReplyPayload('1234567890', 'suggestion:accept:sug-1');
 
 			await provider.handleWebhookPayload(payload);
 
@@ -257,7 +257,7 @@ describe('WhatsAppBotProvider', () => {
 		});
 
 		it('should handle dismiss button reply for suggestion feedback', async () => {
-			const payload = makeButtonReplyPayload('+1234567890', 'suggestion:dismiss:sug-1');
+			const payload = makeButtonReplyPayload('1234567890', 'suggestion:dismiss:sug-1');
 
 			await provider.handleWebhookPayload(payload);
 
@@ -267,7 +267,7 @@ describe('WhatsAppBotProvider', () => {
 		it('should not process when plugin is disabled', async () => {
 			configService.getPluginConfig.mockReturnValue(makeConfig({ enabled: false }));
 
-			const payload = makeWebhookPayload('+1234567890', 'Hello');
+			const payload = makeWebhookPayload('1234567890', 'Hello');
 
 			await provider.handleWebhookPayload(payload);
 
