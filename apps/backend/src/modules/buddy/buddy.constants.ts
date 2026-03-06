@@ -27,25 +27,9 @@ export enum BuddyCapability {
 	TOOLS = 'tools',
 }
 
-export enum SttProvider {
-	NONE = 'none',
-	WHISPER_API = 'whisper_api',
-	WHISPER_LOCAL = 'whisper_local',
-}
-
-export enum TtsProvider {
-	NONE = 'none',
-	OPENAI_TTS = 'openai_tts',
-	ELEVENLABS = 'elevenlabs',
-	VOICEAI = 'voiceai',
-	SYSTEM = 'system',
-}
+export const STT_PLUGIN_NONE = 'none';
 
 export const TTS_AUDIO_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
-
-export const TTS_DEFAULT_VOICE_OPENAI = 'alloy';
-
-export const TTS_DEFAULT_VOICE_ELEVENLABS = '21m00Tcm4TlvDq8ikWAM'; // Rachel
 
 export const TTS_DEFAULT_SPEED = 1.0;
 

@@ -1,0 +1,31 @@
+{
+	"headings": {
+		"aboutSettings": "Local Whisper settings"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Enabled"
+			},
+			"model": {
+				"title": "Model",
+				"placeholder": "base",
+				"description": "Whisper model size: tiny, base, small, medium, or large"
+			},
+			"language": {
+				"title": "Language hint",
+				"placeholder": "e.g. en, de, cs (optional)",
+				"description": "ISO 639-1 language code to improve transcription accuracy"
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Local Whisper settings have been updated",
+			"notEdited": "Failed to update local Whisper settings"
+		}
+	},
+	"texts": {
+		"aboutSettings": "Configure local Whisper speech-to-text. No API key required. The whisper command must be installed and available in the system PATH."
+	}
+}

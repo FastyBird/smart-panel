@@ -1,0 +1,31 @@
+{
+	"headings": {
+		"aboutApiSettings": "Voice.ai API settings"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Enabled"
+			},
+			"apiKey": {
+				"title": "API key",
+				"placeholder": "Enter your Voice.ai API key",
+				"description": "Get your API key from your Voice.ai dashboard"
+			},
+			"voiceId": {
+				"title": "Voice ID",
+				"placeholder": "Enter a Voice.ai voice ID",
+				"description": "The Voice.ai voice ID to use for speech synthesis. Use the Voice.ai API to list available voices"
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Voice.ai settings have been updated",
+			"notEdited": "Failed to update Voice.ai settings"
+		}
+	},
+	"texts": {
+		"aboutApiSettings": "Configure your Voice.ai API settings. You need a valid API key and voice ID to use Voice.ai as the buddy TTS provider."
+	}
+}

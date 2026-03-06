@@ -111,71 +111,35 @@
 		</el-form-item>
 
 		<el-form-item
-			:label="t('buddyModule.fields.config.sttProvider.title')"
-			prop="sttProvider"
+			:label="t('buddyModule.fields.config.sttPlugin.title')"
+			prop="sttPlugin"
 		>
-			<el-select
-				v-model="model.sttProvider"
-				:placeholder="t('buddyModule.fields.config.sttProvider.placeholder')"
-				name="sttProvider"
-			>
-				<el-option
-					v-for="option in sttProviderOptions"
-					:key="option.value"
-					:label="option.label"
-					:value="option.value"
-				/>
-			</el-select>
-		</el-form-item>
-
-		<el-form-item
-			v-if="model.sttProvider === SttProvider.WHISPER_API"
-			:label="t('buddyModule.fields.config.sttApiKey.title')"
-			prop="sttApiKey"
-		>
+			<template #label>
+				{{ t('buddyModule.fields.config.sttPlugin.title') }}
+				<el-text
+					size="small"
+					type="info"
+				>
+					{{ t('buddyModule.fields.config.sttPlugin.description') }}
+				</el-text>
+			</template>
 			<el-input
-				v-model="model.sttApiKey"
-				:placeholder="t('buddyModule.fields.config.sttApiKey.placeholder')"
-				:type="showSttApiKey ? 'text' : 'password'"
-				name="sttApiKey"
-				clearable
-			>
-				<template #suffix>
-					<el-icon
-						class="cursor-pointer"
-						@click="showSttApiKey = !showSttApiKey"
-					>
-						<icon :icon="showSttApiKey ? 'mdi:eye-off' : 'mdi:eye'" />
-					</el-icon>
-				</template>
-			</el-input>
-		</el-form-item>
-
-		<el-form-item
-			v-if="model.sttProvider !== SttProvider.NONE"
-			:label="t('buddyModule.fields.config.sttModel.title')"
-			prop="sttModel"
-		>
-			<el-input
-				v-model="model.sttModel"
-				:placeholder="sttModelPlaceholder"
-				name="sttModel"
+				v-model="model.sttPlugin"
+				:placeholder="t('buddyModule.fields.config.sttPlugin.placeholder')"
+				name="sttPlugin"
 				clearable
 			/>
 		</el-form-item>
 
-		<el-form-item
-			v-if="model.sttProvider !== SttProvider.NONE"
-			:label="t('buddyModule.fields.config.sttLanguage.title')"
-			prop="sttLanguage"
+		<el-alert
+			v-if="model.sttPlugin && model.sttPlugin !== STT_PLUGIN_NONE"
+			type="info"
+			show-icon
+			:closable="false"
+			style="margin-bottom: 18px"
 		>
-			<el-input
-				v-model="model.sttLanguage"
-				:placeholder="t('buddyModule.fields.config.sttLanguage.placeholder')"
-				name="sttLanguage"
-				clearable
-			/>
-		</el-form-item>
+			{{ t('buddyModule.texts.pluginConfigHint') }}
+		</el-alert>
 
 		<el-divider />
 
@@ -224,7 +188,7 @@
 		</el-form-item>
 
 		<el-form-item
-			v-if="model.ttsPlugin && model.ttsPlugin !== TTS_PLUGIN_NONE && model.ttsPlugin !== TTS_PLUGIN_ELEVENLABS && model.ttsPlugin !== TTS_PLUGIN_VOICEAI"
+			v-if="model.ttsPlugin && model.ttsPlugin !== TTS_PLUGIN_NONE"
 			:label="t('buddyModule.fields.config.ttsSpeed.title')"
 			prop="ttsSpeed"
 		>
@@ -241,15 +205,13 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeMount, reactive, ref, watch } from 'vue';
+import { computed, onBeforeMount, reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElDivider, ElForm, ElFormItem, ElIcon, ElInput, ElInputNumber, ElOption, ElSelect, ElSwitch, ElTag, ElText, type FormRules } from 'element-plus';
-
-import { Icon } from '@iconify/vue';
+import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElInputNumber, ElOption, ElSelect, ElSwitch, ElTag, ElText, type FormRules } from 'element-plus';
 
 import { FormResult, type FormResultType, Layout, useConfigModuleEditForm } from '../../config';
-import { LEGACY_PROVIDER_MAP, LLM_PROVIDER_NONE, SttProvider, TTS_PLUGIN_ELEVENLABS, TTS_PLUGIN_NONE, TTS_PLUGIN_VOICEAI } from '../buddy.constants';
+import { LEGACY_PROVIDER_MAP, LLM_PROVIDER_NONE, STT_PLUGIN_NONE, TTS_PLUGIN_NONE } from '../buddy.constants';
 import { useBuddyProviders } from '../composables/useBuddyProviders';
 import type { IBuddyConfigEditForm } from '../schemas/config.types';
 
@@ -298,8 +260,6 @@ const { formEl, model, formChanged, submit, formResult } = useConfigModuleEditFo
 	},
 });
 
-const showSttApiKey = ref<boolean>(false);
-
 type TagType = 'primary' | 'success' | 'warning' | 'info' | 'danger';
 
 const providerOptions = computed(() => {
@@ -345,23 +305,6 @@ const providerOptions = computed(() => {
 	}
 
 	return options;
-});
-
-const sttProviderOptions = computed(() => [
-	{ value: SttProvider.NONE, label: t('buddyModule.fields.config.sttProvider.options.none') },
-	{ value: SttProvider.WHISPER_API, label: t('buddyModule.fields.config.sttProvider.options.whisperApi') },
-	{ value: SttProvider.WHISPER_LOCAL, label: t('buddyModule.fields.config.sttProvider.options.whisperLocal') },
-]);
-
-const sttModelPlaceholder = computed<string>((): string => {
-	switch (model.sttProvider) {
-		case SttProvider.WHISPER_API:
-			return 'whisper-1';
-		case SttProvider.WHISPER_LOCAL:
-			return 'base';
-		default:
-			return '';
-	}
 });
 
 const rules = reactive<FormRules<IBuddyConfigEditForm>>({});

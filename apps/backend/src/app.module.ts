@@ -63,6 +63,10 @@ import { BUDDY_OPENAI_CODEX_PLUGIN_PREFIX } from './plugins/buddy-openai-codex/b
 import { BuddyOpenaiCodexPlugin } from './plugins/buddy-openai-codex/buddy-openai-codex.plugin';
 import { BUDDY_OPENAI_PLUGIN_PREFIX } from './plugins/buddy-openai/buddy-openai.constants';
 import { BuddyOpenaiPlugin } from './plugins/buddy-openai/buddy-openai.plugin';
+import { BUDDY_STT_WHISPER_API_PLUGIN_PREFIX } from './plugins/buddy-stt-whisper-api/buddy-stt-whisper-api.constants';
+import { BuddySttWhisperApiPlugin } from './plugins/buddy-stt-whisper-api/buddy-stt-whisper-api.plugin';
+import { BUDDY_STT_WHISPER_LOCAL_PLUGIN_PREFIX } from './plugins/buddy-stt-whisper-local/buddy-stt-whisper-local.constants';
+import { BuddySttWhisperLocalPlugin } from './plugins/buddy-stt-whisper-local/buddy-stt-whisper-local.plugin';
 import { BUDDY_SYSTEM_TTS_PLUGIN_PREFIX } from './plugins/buddy-system-tts/buddy-system-tts.constants';
 import { BuddySystemTtsPlugin } from './plugins/buddy-system-tts/buddy-system-tts.plugin';
 import { BUDDY_VOICEAI_PLUGIN_PREFIX } from './plugins/buddy-voiceai/buddy-voiceai.constants';
@@ -306,6 +310,14 @@ export class AppModule {
 								path: BUDDY_SYSTEM_TTS_PLUGIN_PREFIX,
 								module: BuddySystemTtsPlugin,
 							},
+							{
+								path: BUDDY_STT_WHISPER_API_PLUGIN_PREFIX,
+								module: BuddySttWhisperApiPlugin,
+							},
+							{
+								path: BUDDY_STT_WHISPER_LOCAL_PLUGIN_PREFIX,
+								module: BuddySttWhisperLocalPlugin,
+							},
 							...pluginRoutes,
 						],
 					},
@@ -362,6 +374,8 @@ export class AppModule {
 				BuddyOllamaPlugin,
 				BuddyVoiceaiPlugin,
 				BuddySystemTtsPlugin,
+				BuddySttWhisperApiPlugin,
+				BuddySttWhisperLocalPlugin,
 				ScenesLocalPlugin,
 				ServeStaticModule.forRootAsync({
 					imports: [NestConfigModule], // Ensure ConfigModule is available

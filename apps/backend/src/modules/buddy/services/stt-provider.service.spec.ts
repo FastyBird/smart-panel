@@ -1,24 +1,32 @@
-import { BUDDY_MODULE_NAME, SttProvider } from '../buddy.constants';
+import { BUDDY_MODULE_NAME, STT_PLUGIN_NONE } from '../buddy.constants';
 import { BuddySttNotConfiguredException } from '../buddy.exceptions';
 import { BuddyConfigModel } from '../models/config.model';
+import type { ISttProvider } from '../platforms/stt-provider.platform';
 
+import { SttProviderRegistryService } from './stt-provider-registry.service';
 import { SttProviderService } from './stt-provider.service';
 
 describe('SttProviderService', () => {
 	let service: SttProviderService;
-	let configService: { getModuleConfig: jest.Mock };
+	let configService: { getModuleConfig: jest.Mock; getPluginConfig: jest.Mock };
+	let sttProviderRegistry: SttProviderRegistryService;
 
 	const audioBuffer = Buffer.from('fake audio data');
 	const mimeType = 'audio/wav';
+
+	const mockSttProvider: ISttProvider = {
+		getType: () => 'buddy-stt-whisper-api-plugin',
+		getName: () => 'Whisper API',
+		getDescription: () => 'Test STT provider',
+		isConfigured: (config: Record<string, unknown>) => !!config['apiKey'],
+		transcribe: jest.fn().mockResolvedValue('Hello world'),
+	};
 
 	function makeConfig(overrides: Partial<BuddyConfigModel> = {}): BuddyConfigModel {
 		const config = new BuddyConfigModel();
 
 		config.voiceEnabled = 'voiceEnabled' in overrides ? overrides.voiceEnabled : true;
-		config.sttProvider = 'sttProvider' in overrides ? overrides.sttProvider : SttProvider.WHISPER_API;
-		config.sttApiKey = 'sttApiKey' in overrides ? overrides.sttApiKey : 'test-stt-key';
-		config.sttModel = 'sttModel' in overrides ? overrides.sttModel : null;
-		config.sttLanguage = 'sttLanguage' in overrides ? overrides.sttLanguage : null;
+		config.sttPlugin = 'sttPlugin' in overrides ? overrides.sttPlugin : 'buddy-stt-whisper-api-plugin';
 
 		return config;
 	}
@@ -26,42 +34,43 @@ describe('SttProviderService', () => {
 	beforeEach(() => {
 		configService = {
 			getModuleConfig: jest.fn().mockReturnValue(makeConfig()),
+			getPluginConfig: jest.fn().mockReturnValue({ apiKey: 'test-key' }),
 		};
 
-		service = new SttProviderService(configService as any);
+		sttProviderRegistry = new SttProviderRegistryService();
+		sttProviderRegistry.register(mockSttProvider);
+
+		service = new SttProviderService(
+			configService as any,
+			sttProviderRegistry,
+		);
 	});
 
 	describe('isConfigured', () => {
 		it('should return false when voiceEnabled is false', () => {
-			configService.getModuleConfig.mockReturnValue(
-				makeConfig({ voiceEnabled: false, sttProvider: SttProvider.WHISPER_API }),
-			);
+			configService.getModuleConfig.mockReturnValue(makeConfig({ voiceEnabled: false }));
 
 			expect(service.isConfigured()).toBe(false);
 		});
 
-		it('should return true when Whisper API provider has an STT API key', () => {
-			configService.getModuleConfig.mockReturnValue(makeConfig({ sttProvider: SttProvider.WHISPER_API }));
-
+		it('should return true when STT plugin is registered and configured', () => {
 			expect(service.isConfigured()).toBe(true);
 		});
 
-		it('should return false when Whisper API provider has no STT API key', () => {
-			configService.getModuleConfig.mockReturnValue(
-				makeConfig({ sttProvider: SttProvider.WHISPER_API, sttApiKey: null }),
-			);
+		it('should return false when STT plugin has no credentials', () => {
+			configService.getPluginConfig.mockReturnValue({ apiKey: null });
 
 			expect(service.isConfigured()).toBe(false);
 		});
 
-		it('should return true when Whisper local provider is configured', () => {
-			configService.getModuleConfig.mockReturnValue(makeConfig({ sttProvider: SttProvider.WHISPER_LOCAL }));
+		it('should return false when STT plugin is NONE', () => {
+			configService.getModuleConfig.mockReturnValue(makeConfig({ sttPlugin: STT_PLUGIN_NONE }));
 
-			expect(service.isConfigured()).toBe(true);
+			expect(service.isConfigured()).toBe(false);
 		});
 
-		it('should return false when STT provider is NONE', () => {
-			configService.getModuleConfig.mockReturnValue(makeConfig({ sttProvider: SttProvider.NONE }));
+		it('should return false when STT plugin is not registered', () => {
+			configService.getModuleConfig.mockReturnValue(makeConfig({ sttPlugin: 'unknown-plugin' }));
 
 			expect(service.isConfigured()).toBe(false);
 		});
@@ -75,17 +84,21 @@ describe('SttProviderService', () => {
 		});
 	});
 
-	describe('provider not configured', () => {
+	describe('transcribe', () => {
 		it('should throw BuddySttNotConfiguredException when voiceEnabled is false', async () => {
-			configService.getModuleConfig.mockReturnValue(
-				makeConfig({ voiceEnabled: false, sttProvider: SttProvider.WHISPER_API }),
-			);
+			configService.getModuleConfig.mockReturnValue(makeConfig({ voiceEnabled: false }));
 
 			await expect(service.transcribe(audioBuffer, mimeType)).rejects.toThrow(BuddySttNotConfiguredException);
 		});
 
-		it('should throw BuddySttNotConfiguredException when provider is NONE', async () => {
-			configService.getModuleConfig.mockReturnValue(makeConfig({ sttProvider: SttProvider.NONE }));
+		it('should throw BuddySttNotConfiguredException when plugin is NONE', async () => {
+			configService.getModuleConfig.mockReturnValue(makeConfig({ sttPlugin: STT_PLUGIN_NONE }));
+
+			await expect(service.transcribe(audioBuffer, mimeType)).rejects.toThrow(BuddySttNotConfiguredException);
+		});
+
+		it('should throw BuddySttNotConfiguredException when plugin is not registered', async () => {
+			configService.getModuleConfig.mockReturnValue(makeConfig({ sttPlugin: 'unknown-plugin' }));
 
 			await expect(service.transcribe(audioBuffer, mimeType)).rejects.toThrow(BuddySttNotConfiguredException);
 		});
@@ -97,60 +110,30 @@ describe('SttProviderService', () => {
 
 			await expect(service.transcribe(audioBuffer, mimeType)).rejects.toThrow(BuddySttNotConfiguredException);
 		});
+
+		it('should delegate to the registered provider', async () => {
+			const result = await service.transcribe(audioBuffer, mimeType);
+
+			expect(result).toBe('Hello world');
+			expect(mockSttProvider.transcribe).toHaveBeenCalledWith(audioBuffer, mimeType);
+		});
+
+		it('should throw when provider is not configured', async () => {
+			configService.getPluginConfig.mockReturnValue({ apiKey: null });
+
+			await expect(service.transcribe(audioBuffer, mimeType)).rejects.toThrow(BuddySttNotConfiguredException);
+		});
 	});
 
 	describe('config reading', () => {
 		it('should call config service with correct module name', () => {
-			configService.getModuleConfig.mockReturnValue(makeConfig({ sttProvider: SttProvider.NONE }));
+			configService.getModuleConfig.mockReturnValue(makeConfig({ sttPlugin: STT_PLUGIN_NONE }));
 
 			service.transcribe(audioBuffer, mimeType).catch(() => {
 				// Expected to throw
 			});
 
 			expect(configService.getModuleConfig).toHaveBeenCalledWith(BUDDY_MODULE_NAME);
-		});
-	});
-
-	describe('Whisper API provider', () => {
-		it('should throw when STT API key is not set', async () => {
-			configService.getModuleConfig.mockReturnValue(
-				makeConfig({
-					sttProvider: SttProvider.WHISPER_API,
-					sttApiKey: null,
-				}),
-			);
-
-			await expect(service.transcribe(audioBuffer, mimeType)).rejects.toThrow(BuddySttNotConfiguredException);
-		});
-
-		it('should throw on import failure when OpenAI SDK not available', async () => {
-			configService.getModuleConfig.mockReturnValue(makeConfig({ sttProvider: SttProvider.WHISPER_API }));
-
-			// The dynamic import of openai will fail in test environment
-			await expect(service.transcribe(audioBuffer, mimeType)).rejects.toThrow();
-		});
-	});
-
-	describe('Whisper local provider', () => {
-		it('should throw when whisper CLI is not available', async () => {
-			configService.getModuleConfig.mockReturnValue(makeConfig({ sttProvider: SttProvider.WHISPER_LOCAL }));
-
-			// The whisper CLI will not be available in test environment
-			await expect(service.transcribe(audioBuffer, mimeType)).rejects.toThrow();
-		});
-	});
-
-	describe('MIME type handling', () => {
-		it.each([
-			['audio/wav', 'wav'],
-			['audio/wave', 'wav'],
-			['audio/x-wav', 'wav'],
-			['audio/webm', 'webm'],
-			['audio/ogg', 'ogg'],
-			['audio/mpeg', 'mp3'],
-			['audio/unknown', 'wav'],
-		])('should map %s to extension %s', (mime, expectedExt) => {
-			expect(SttProviderService.getExtensionFromMime(mime)).toBe(expectedExt);
 		});
 	});
 });

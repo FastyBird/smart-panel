@@ -1,0 +1,36 @@
+{
+	"headings": {
+		"aboutApiSettings": "Whisper API settings"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Enabled"
+			},
+			"apiKey": {
+				"title": "API key",
+				"placeholder": "Enter your OpenAI API key",
+				"description": "Your OpenAI API key for Whisper speech-to-text"
+			},
+			"model": {
+				"title": "Model",
+				"placeholder": "whisper-1",
+				"description": "The Whisper model to use for transcription"
+			},
+			"language": {
+				"title": "Language hint",
+				"placeholder": "e.g. en, de, cs (optional)",
+				"description": "ISO 639-1 language code to improve transcription accuracy"
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "Whisper API settings have been updated",
+			"notEdited": "Failed to update Whisper API settings"
+		}
+	},
+	"texts": {
+		"aboutApiSettings": "Configure OpenAI Whisper API for speech-to-text. You need a valid OpenAI API key to use this provider."
+	}
+}
