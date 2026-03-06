@@ -1,0 +1,41 @@
+{
+	"headings": {
+		"aboutWhatsappSettings": "WhatsApp bot settings"
+	},
+	"fields": {
+		"config": {
+			"enabled": {
+				"title": "Enabled"
+			},
+			"phoneNumberId": {
+				"title": "Phone Number ID",
+				"placeholder": "Enter your WhatsApp Business Phone Number ID",
+				"description": "Get your Phone Number ID from the Meta Developer Portal under your WhatsApp Business app."
+			},
+			"accessToken": {
+				"title": "Access token",
+				"placeholder": "Enter your Meta Cloud API access token",
+				"description": "Permanent access token from the Meta Developer Portal for the WhatsApp Business API."
+			},
+			"webhookVerifyToken": {
+				"title": "Webhook verify token",
+				"placeholder": "Enter a custom verify token",
+				"description": "A custom token used to verify the webhook URL during WhatsApp webhook registration."
+			},
+			"allowedPhoneNumbers": {
+				"title": "Allowed phone numbers",
+				"placeholder": "e.g., +1234567890,+9876543210",
+				"description": "Comma-separated phone numbers in E.164 format allowed to interact with the bot. Leave empty to allow all numbers."
+			}
+		}
+	},
+	"messages": {
+		"config": {
+			"edited": "WhatsApp bot settings have been updated",
+			"notEdited": "Failed to update WhatsApp bot settings"
+		}
+	},
+	"texts": {
+		"aboutWhatsappSettings": "Configure your WhatsApp Business API integration. You need a Meta Business account with a verified phone number. Set the webhook URL to your server's /api/v1/plugins/buddy-whatsapp/webhook endpoint."
+	}
+}

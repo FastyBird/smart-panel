@@ -5,7 +5,7 @@ Type: feature
 Scope: backend, admin
 Size: medium
 Parent: EPIC-BUDDY-MODULE
-Status: todo
+Status: done
 
 ## 1. Business goal
 
@@ -66,23 +66,23 @@ I want to chat with the buddy via WhatsApp — asking about home status, receivi
 
 ## 4. Acceptance criteria
 
-- [ ] `BuddyWhatsappPlugin` registered in `app.module.ts` router under `PLUGINS_PREFIX` with path `buddy-whatsapp`
-- [ ] Plugin registers with `ExtensionsService.registerPluginMetadata()` and `PluginsTypeMapperService.registerMapping()`
-- [ ] Swagger models registered via `buddy-whatsapp.openapi.ts`
-- [ ] `WhatsAppBotProvider` exposes a webhook controller:
+- [x] `BuddyWhatsappPlugin` registered in `app.module.ts` router under `PLUGINS_PREFIX` with path `buddy-whatsapp`
+- [x] Plugin registers with `ExtensionsService.registerPluginMetadata()` and `PluginsTypeMapperService.registerMapping()`
+- [x] Swagger models registered via `buddy-whatsapp.openapi.ts`
+- [x] `WhatsAppBotProvider` exposes a webhook controller:
   - `GET /v1/plugins/buddy-whatsapp/webhook` — webhook verification (hub.mode, hub.verify_token, hub.challenge)
   - `POST /v1/plugins/buddy-whatsapp/webhook` — incoming message handler
-- [ ] Incoming WhatsApp text messages create/continue buddy conversations
-- [ ] Buddy responses are sent back to the WhatsApp user via Cloud API
-- [ ] Suggestion notifications are forwarded to registered WhatsApp numbers with interactive buttons
-- [ ] Interactive button replies map to suggestion feedback (accept/dismiss)
-- [ ] Phone number whitelist: only configured numbers can interact
-- [ ] Access token and webhook verify token configurable in admin plugin settings
-- [ ] Token fields are masked in API responses (display `***`)
-- [ ] Handles WhatsApp API errors gracefully (retry with exponential backoff)
-- [ ] Re-reads config on `ConfigModule.CONFIG_UPDATED` events (no restart needed)
-- [ ] Works independently — plugin can be enabled/disabled without affecting other buddy features
-- [ ] Unit tests with mocked WhatsApp API
+- [x] Incoming WhatsApp text messages create/continue buddy conversations
+- [x] Buddy responses are sent back to the WhatsApp user via Cloud API
+- [x] Suggestion notifications are forwarded to registered WhatsApp numbers with interactive buttons
+- [x] Interactive button replies map to suggestion feedback (accept/dismiss)
+- [x] Phone number whitelist: only configured numbers can interact
+- [x] Access token and webhook verify token configurable in admin plugin settings
+- [x] Token fields are masked in API responses (display `***`)
+- [x] Handles WhatsApp API errors gracefully (retry with exponential backoff)
+- [x] Re-reads config on `ConfigModule.CONFIG_UPDATED` events (no restart needed)
+- [x] Works independently — plugin can be enabled/disabled without affecting other buddy features
+- [x] Unit tests with mocked WhatsApp API
 
 ## 5. Example scenarios
 

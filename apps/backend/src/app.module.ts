@@ -67,6 +67,8 @@ import { BUDDY_SYSTEM_TTS_PLUGIN_PREFIX } from './plugins/buddy-system-tts/buddy
 import { BuddySystemTtsPlugin } from './plugins/buddy-system-tts/buddy-system-tts.plugin';
 import { BUDDY_TELEGRAM_PLUGIN_PREFIX } from './plugins/buddy-telegram/buddy-telegram.constants';
 import { BuddyTelegramPlugin } from './plugins/buddy-telegram/buddy-telegram.plugin';
+import { BUDDY_WHATSAPP_PLUGIN_PREFIX } from './plugins/buddy-whatsapp/buddy-whatsapp.constants';
+import { BuddyWhatsappPlugin } from './plugins/buddy-whatsapp/buddy-whatsapp.plugin';
 import { DataSourcesDeviceChannelPlugin } from './plugins/data-sources-device-channel/data-sources-device-channel.plugin';
 import { DataSourcesWeatherPlugin } from './plugins/data-sources-weather/data-sources-weather.plugin';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX } from './plugins/devices-home-assistant/devices-home-assistant.constants';
@@ -306,6 +308,10 @@ export class AppModule {
 								path: BUDDY_TELEGRAM_PLUGIN_PREFIX,
 								module: BuddyTelegramPlugin,
 							},
+							{
+								path: BUDDY_WHATSAPP_PLUGIN_PREFIX,
+								module: BuddyWhatsappPlugin,
+							},
 							...pluginRoutes,
 						],
 					},
@@ -362,6 +368,7 @@ export class AppModule {
 				BuddyOllamaPlugin,
 				BuddySystemTtsPlugin,
 				BuddyTelegramPlugin,
+				BuddyWhatsappPlugin,
 				ScenesLocalPlugin,
 				ServeStaticModule.forRootAsync({
 					imports: [NestConfigModule], // Ensure ConfigModule is available
