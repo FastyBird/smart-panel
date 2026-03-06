@@ -204,7 +204,6 @@ let pollTimer: ReturnType<typeof setInterval> | null = null;
 const {
 	conversations,
 	activeConversationId,
-	activeConversation,
 	messages,
 	hasActiveConversation,
 	isLoadingConversations,
@@ -216,6 +215,7 @@ const {
 	fetchProviderStatuses,
 	createConversation,
 	selectConversation,
+	refreshMessages,
 	sendMessage,
 	deleteConversation,
 } = useBuddyChat();
@@ -257,8 +257,9 @@ const startPolling = (): void => {
 			return;
 		}
 
-		// Re-fetch messages for the active conversation
-		await selectConversation(activeConversationId.value);
+		// Use refreshMessages instead of selectConversation to avoid clearing
+		// any error currently displayed to the user
+		await refreshMessages(activeConversationId.value);
 	}, POLL_INTERVAL_MS);
 };
 

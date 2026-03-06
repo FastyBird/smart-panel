@@ -24,6 +24,7 @@ interface IUseBuddyChat {
 	fetchProviderStatuses: () => Promise<void>;
 	createConversation: (title?: string) => Promise<IConversation | undefined>;
 	selectConversation: (id: string) => Promise<void>;
+	refreshMessages: (conversationId: string) => Promise<void>;
 	sendMessage: (content: string) => Promise<void>;
 	deleteConversation: (id: string) => Promise<void>;
 }
@@ -318,6 +319,7 @@ export const useBuddyChat = (): IUseBuddyChat => {
 		fetchProviderStatuses,
 		createConversation,
 		selectConversation,
+		refreshMessages: fetchMessages,
 		sendMessage,
 		deleteConversation,
 	};
