@@ -1,23 +1,11 @@
+import { LlmToolCall, ToolDefinition } from '../../tools/platforms/tool-provider.platform';
 import { MessageRole } from '../buddy.constants';
+
+export type { LlmToolCall, ToolDefinition } from '../../tools/platforms/tool-provider.platform';
 
 export interface ChatMessage {
 	role: MessageRole.USER | MessageRole.ASSISTANT;
 	content: string;
-}
-
-export interface LlmToolCall {
-	id: string;
-	name: string;
-	arguments: Record<string, unknown>;
-}
-
-/**
- * Tool definition for LLM providers (provider-agnostic format).
- */
-export interface ToolDefinition {
-	name: string;
-	description: string;
-	parameters: Record<string, unknown>;
 }
 
 export interface LlmOptions {

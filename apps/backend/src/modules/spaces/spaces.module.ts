@@ -13,6 +13,8 @@ import { SeedModule } from '../seed/seeding.module';
 import { SeedRegistryService } from '../seed/services/seed-registry.service';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
+import { ToolProviderRegistryService } from '../tools/services/tool-provider-registry.service';
+import { ToolsModule } from '../tools/tools.module';
 import { WebsocketModule } from '../websocket/websocket.module';
 
 import { SpacesController } from './controllers/spaces.controller';
@@ -44,6 +46,7 @@ import { SpaceIntentBaseService } from './services/space-intent-base.service';
 import { SpaceIntentService } from './services/space-intent.service';
 import { SpaceLightingRoleService } from './services/space-lighting-role.service';
 import { SpaceLightingStateService } from './services/space-lighting-state.service';
+import { SpaceLightingToolService } from './services/space-lighting-tool.service';
 import { SpaceMediaActivityBindingService } from './services/space-media-activity-binding.service';
 import { SpaceMediaActivityService } from './services/space-media-activity.service';
 import { SpaceSensorRoleService } from './services/space-sensor-role.service';
@@ -81,6 +84,7 @@ import { IntentSpecLoaderService } from './spec';
 		forwardRef(() => ConfigModule),
 		forwardRef(() => WebsocketModule),
 		SeedModule,
+		ToolsModule,
 	],
 	controllers: [SpacesController],
 	providers: [
@@ -112,6 +116,7 @@ import { IntentSpecLoaderService } from './spec';
 		WebsocketExchangeListener,
 		IntentSpecLoaderService,
 		SpacesSeederService,
+		SpaceLightingToolService,
 	],
 	exports: [
 		SpacesService,
@@ -135,9 +140,14 @@ export class SpacesModule implements OnModuleInit {
 		private readonly modulesMapperService: ModulesTypeMapperService,
 		private readonly moduleSeeder: SpacesSeederService,
 		private readonly seedRegistry: SeedRegistryService,
+		private readonly toolProviderRegistry: ToolProviderRegistryService,
+		private readonly spaceLightingTool: SpaceLightingToolService,
 	) {}
 
 	onModuleInit() {
+		// Register space lighting tool provider
+		this.toolProviderRegistry.register(this.spaceLightingTool);
+
 		// Register seeder (priority 120 - after devices, before dashboard)
 		this.seedRegistry.register(
 			SPACES_MODULE_NAME,

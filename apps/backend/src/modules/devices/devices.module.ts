@@ -20,6 +20,8 @@ import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models
 import { SwaggerModule } from '../swagger/swagger.module';
 import { FactoryResetRegistryService } from '../system/services/factory-reset-registry.service';
 import { SystemModule } from '../system/system.module';
+import { ToolProviderRegistryService } from '../tools/services/tool-provider-registry.service';
+import { ToolsModule } from '../tools/tools.module';
 import { WebsocketModule } from '../websocket/websocket.module';
 
 import { ChannelsController } from './controllers/channels.controller';
@@ -57,6 +59,7 @@ import { ChannelsPropertiesService } from './services/channels.properties.servic
 import { ChannelsService } from './services/channels.service';
 import { DeviceConnectionStateService } from './services/device-connection-state.service';
 import { DeviceConnectivityService } from './services/device-connectivity.service';
+import { DeviceControlToolService } from './services/device-control-tool.service';
 import { DeviceValidationService } from './services/device-validation.service';
 import { DeviceZonesService } from './services/device-zones.service';
 import { DevicesSeederService } from './services/devices-seeder.service';
@@ -103,9 +106,11 @@ import { DeviceExistsConstraintValidator } from './validators/device-exists-cons
 		forwardRef(() => SystemModule),
 		StatsModule,
 		SwaggerModule,
+		ToolsModule,
 		WebsocketModule,
 	],
 	providers: [
+		DeviceControlToolService,
 		DevicesTypeMapperService,
 		ChannelsTypeMapperService,
 		ChannelsPropertiesTypeMapperService,
@@ -179,9 +184,14 @@ export class DevicesModule implements OnModuleInit {
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly modulesMapperService: ModulesTypeMapperService,
 		private readonly extensionsService: ExtensionsService,
+		private readonly toolProviderRegistry: ToolProviderRegistryService,
+		private readonly deviceControlTool: DeviceControlToolService,
 	) {}
 
 	onModuleInit() {
+		// Register device control tool provider
+		this.toolProviderRegistry.register(this.deviceControlTool);
+
 		this.influxDbService.registerSchema(PropertyInfluxDbSchema);
 		this.influxDbService.registerSchema(DeviceStatusInfluxDbSchema);
 
