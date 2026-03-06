@@ -28,7 +28,7 @@ export default {
 		pluginsManager.addPlugin(buddySystemTtsPluginKey, {
 			type: BUDDY_SYSTEM_TTS_PLUGIN_NAME,
 			source: 'com.fastybird.smart-panel.plugin.buddy-system-tts',
-			name: 'Buddy System TTS',
+			name: 'System TTS',
 			description: 'Local TTS provider plugin for Buddy module using piper or espeak',
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',

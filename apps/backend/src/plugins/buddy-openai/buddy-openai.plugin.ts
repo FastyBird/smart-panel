@@ -60,7 +60,7 @@ export class BuddyOpenaiPlugin implements OnModuleInit {
 
 		this.extensionsService.registerPluginMetadata({
 			type: BUDDY_OPENAI_PLUGIN_NAME,
-			name: 'Buddy OpenAI',
+			name: 'OpenAI',
 			description: 'LLM and TTS provider for Buddy module using OpenAI API',
 			author: 'FastyBird',
 			capabilities: [BuddyCapability.LLM, BuddyCapability.TTS],

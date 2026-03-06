@@ -54,7 +54,7 @@ export class BuddyClaudeOauthPlugin implements OnModuleInit {
 
 		this.extensionsService.registerPluginMetadata({
 			type: BUDDY_CLAUDE_OAUTH_PLUGIN_NAME,
-			name: 'Buddy Claude Setup Token',
+			name: 'Claude Setup Token',
 			description: 'LLM provider for Buddy module using Anthropic Claude with setup-token authentication',
 			author: 'FastyBird',
 			readme: `# Buddy Claude Setup Token Provider

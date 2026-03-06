@@ -54,7 +54,7 @@ export class BuddyClaudePlugin implements OnModuleInit {
 
 		this.extensionsService.registerPluginMetadata({
 			type: BUDDY_CLAUDE_PLUGIN_NAME,
-			name: 'Buddy Claude',
+			name: 'Claude',
 			description: 'LLM provider for Buddy module using Anthropic Claude API',
 			author: 'FastyBird',
 			readme: `# Buddy Claude Provider

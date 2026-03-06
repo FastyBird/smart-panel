@@ -28,7 +28,7 @@ export default {
 		pluginsManager.addPlugin(buddyOpenaiCodexPluginKey, {
 			type: BUDDY_OPENAI_CODEX_PLUGIN_NAME,
 			source: 'com.fastybird.smart-panel.plugin.buddy-openai-codex',
-			name: 'Buddy OpenAI Codex',
+			name: 'OpenAI Codex',
 			description: 'LLM provider plugin for Buddy module using OpenAI Codex with OAuth authentication',
 			links: {
 				documentation: 'https://platform.openai.com/docs',

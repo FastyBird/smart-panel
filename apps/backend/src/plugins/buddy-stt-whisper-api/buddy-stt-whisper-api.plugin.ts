@@ -55,7 +55,7 @@ export class BuddySttWhisperApiPlugin implements OnModuleInit {
 
 		this.extensionsService.registerPluginMetadata({
 			type: BUDDY_STT_WHISPER_API_PLUGIN_NAME,
-			name: 'Buddy Whisper API',
+			name: 'Whisper API',
 			description: 'STT provider for Buddy module using OpenAI Whisper API',
 			author: 'FastyBird',
 			capabilities: [BuddyCapability.STT],

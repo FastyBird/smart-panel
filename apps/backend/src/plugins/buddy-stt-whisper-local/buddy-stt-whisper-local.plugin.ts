@@ -55,7 +55,7 @@ export class BuddySttWhisperLocalPlugin implements OnModuleInit {
 
 		this.extensionsService.registerPluginMetadata({
 			type: BUDDY_STT_WHISPER_LOCAL_PLUGIN_NAME,
-			name: 'Buddy Whisper Local',
+			name: 'Whisper Local',
 			description: 'STT provider for Buddy module using locally installed Whisper',
 			author: 'FastyBird',
 			capabilities: [BuddyCapability.STT],

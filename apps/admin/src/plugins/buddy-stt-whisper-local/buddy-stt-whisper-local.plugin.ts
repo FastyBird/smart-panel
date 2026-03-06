@@ -28,7 +28,7 @@ export default {
 		pluginsManager.addPlugin(buddySttWhisperLocalPluginKey, {
 			type: BUDDY_STT_WHISPER_LOCAL_PLUGIN_NAME,
 			source: 'com.fastybird.smart-panel.plugin.buddy-stt-whisper-local',
-			name: 'Buddy Whisper Local',
+			name: 'Whisper Local',
 			description: 'STT provider plugin for Buddy module using locally installed Whisper',
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',

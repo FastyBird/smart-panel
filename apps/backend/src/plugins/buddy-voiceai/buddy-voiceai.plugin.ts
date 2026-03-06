@@ -55,7 +55,7 @@ export class BuddyVoiceaiPlugin implements OnModuleInit {
 
 		this.extensionsService.registerPluginMetadata({
 			type: BUDDY_VOICEAI_PLUGIN_NAME,
-			name: 'Buddy Voice.ai',
+			name: 'Voice.ai',
 			description: 'TTS provider for Buddy module using Voice.ai API',
 			author: 'FastyBird',
 			capabilities: [BuddyCapability.TTS],

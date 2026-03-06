@@ -55,7 +55,7 @@ export class BuddyElevenlabsPlugin implements OnModuleInit {
 
 		this.extensionsService.registerPluginMetadata({
 			type: BUDDY_ELEVENLABS_PLUGIN_NAME,
-			name: 'Buddy ElevenLabs',
+			name: 'ElevenLabs',
 			description: 'TTS provider for Buddy module using ElevenLabs API',
 			author: 'FastyBird',
 			capabilities: [BuddyCapability.TTS],

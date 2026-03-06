@@ -55,7 +55,7 @@ export class BuddySystemTtsPlugin implements OnModuleInit {
 
 		this.extensionsService.registerPluginMetadata({
 			type: BUDDY_SYSTEM_TTS_PLUGIN_NAME,
-			name: 'Buddy System TTS',
+			name: 'System TTS',
 			description: 'Local TTS provider using piper or espeak',
 			author: 'FastyBird',
 			capabilities: [BuddyCapability.TTS],

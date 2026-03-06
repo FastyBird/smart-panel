@@ -28,7 +28,7 @@ export default {
 		pluginsManager.addPlugin(buddySttWhisperApiPluginKey, {
 			type: BUDDY_STT_WHISPER_API_PLUGIN_NAME,
 			source: 'com.fastybird.smart-panel.plugin.buddy-stt-whisper-api',
-			name: 'Buddy Whisper API',
+			name: 'Whisper API',
 			description: 'STT provider plugin for Buddy module using OpenAI Whisper API',
 			links: {
 				documentation: 'https://platform.openai.com/docs',

@@ -28,7 +28,7 @@ export default {
 		pluginsManager.addPlugin(buddyElevenlabsPluginKey, {
 			type: BUDDY_ELEVENLABS_PLUGIN_NAME,
 			source: 'com.fastybird.smart-panel.plugin.buddy-elevenlabs',
-			name: 'Buddy ElevenLabs',
+			name: 'ElevenLabs',
 			description: 'TTS provider plugin for Buddy module using ElevenLabs API',
 			links: {
 				documentation: 'https://elevenlabs.io/docs',

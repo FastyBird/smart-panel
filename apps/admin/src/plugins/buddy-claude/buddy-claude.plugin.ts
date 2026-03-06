@@ -28,7 +28,7 @@ export default {
 		pluginsManager.addPlugin(buddyClaudePluginKey, {
 			type: BUDDY_CLAUDE_PLUGIN_NAME,
 			source: 'com.fastybird.smart-panel.plugin.buddy-claude',
-			name: 'Buddy Claude',
+			name: 'Claude',
 			description: 'LLM provider plugin for Buddy module using Anthropic Claude API',
 			links: {
 				documentation: 'https://docs.anthropic.com',

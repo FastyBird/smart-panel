@@ -28,7 +28,7 @@ export default {
 		pluginsManager.addPlugin(buddyVoiceaiPluginKey, {
 			type: BUDDY_VOICEAI_PLUGIN_NAME,
 			source: 'com.fastybird.smart-panel.plugin.buddy-voiceai',
-			name: 'Buddy Voice.ai',
+			name: 'Voice.ai',
 			description: 'TTS provider plugin for Buddy module using Voice.ai API',
 			links: {
 				documentation: 'https://voice.ai/docs',
