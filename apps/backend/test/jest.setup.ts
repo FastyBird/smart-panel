@@ -1,9 +1,11 @@
 /**
- * Jest setup file to silence NestJS Logger during tests.
+ * Jest setup file for e2e tests.
  *
- * This prevents expected error logs from cluttering the test output
- * while still allowing tests to pass when testing error scenarios.
+ * - Enables DB synchronize so in-memory SQLite creates tables from entities
+ * - Silences NestJS Logger to keep test output clean
  */
+process.env.FB_DB_SYNC = 'true';
+
 import { Logger } from '@nestjs/common';
 
 // Silence the NestJS Logger during tests

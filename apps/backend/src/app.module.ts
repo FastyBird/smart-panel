@@ -156,7 +156,7 @@ export class AppModule {
 							entities: [__dirname + '/**/*.entity{.ts,.js}'],
 							subscribers: [__dirname + '/**/*.subscriber{.ts,.js}'],
 							migrations: [__dirname + '/migrations/*{.ts,.js}'],
-							synchronize: isTest || getEnvValue<boolean>(configService, 'FB_DB_SYNC', false),
+							synchronize: getEnvValue<boolean>(configService, 'FB_DB_SYNC', false),
 							logging: getEnvValue<boolean>(configService, 'FB_DB_LOGGING', false),
 						};
 					},
