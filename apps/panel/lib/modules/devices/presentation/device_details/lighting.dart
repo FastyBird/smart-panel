@@ -193,15 +193,8 @@ class _LightingDeviceDetailState extends State<LightingDeviceDetail> {
     return caps;
   }
 
-  List<LightCapability> get _enabledCapabilities {
-    return [
-      LightCapability.brightness,
-      LightCapability.colorTemp,
-      LightCapability.hue,
-      LightCapability.saturation,
-      LightCapability.white,
-    ].where((cap) => _capabilities.contains(cap)).toList();
-  }
+  List<LightCapability> get _enabledCapabilities =>
+      LightCapability.orderedFrom(_capabilities);
 
   bool get _isSimple =>
       _capabilities.length == 1 && _capabilities.contains(LightCapability.power);
@@ -903,15 +896,8 @@ class _LightingHeroCard extends StatelessWidget {
   bool get _isSimple =>
       capabilities.length == 1 && capabilities.contains(LightCapability.power);
 
-  List<LightCapability> get _enabledCapabilities {
-    return [
-      LightCapability.brightness,
-      LightCapability.colorTemp,
-      LightCapability.hue,
-      LightCapability.saturation,
-      LightCapability.white,
-    ].where((cap) => capabilities.contains(cap)).toList();
-  }
+  List<LightCapability> get _enabledCapabilities =>
+      LightCapability.orderedFrom(capabilities);
 
   @override
   Widget build(BuildContext context) {

@@ -10,7 +10,18 @@ enum LightCapability {
 	colorTemp,
 	hue,
 	saturation,
-	white,
+	white;
+
+	/// Return the controllable capabilities from [caps] in display order.
+	static List<LightCapability> orderedFrom(Set<LightCapability> caps) {
+		return const [
+			LightCapability.brightness,
+			LightCapability.colorTemp,
+			LightCapability.hue,
+			LightCapability.saturation,
+			LightCapability.white,
+		].where(caps.contains).toList();
+	}
 }
 
 /// Mode selector widget for switching between lighting capabilities
@@ -33,15 +44,8 @@ class LightingModeSelector extends StatelessWidget {
 		this.showLabels,
 	});
 
-	List<LightCapability> get _enabledCapabilities {
-		return [
-			LightCapability.brightness,
-			LightCapability.colorTemp,
-			LightCapability.hue,
-			LightCapability.saturation,
-			LightCapability.white,
-		].where((cap) => capabilities.contains(cap)).toList();
-	}
+	List<LightCapability> get _enabledCapabilities =>
+		LightCapability.orderedFrom(capabilities);
 
 	IconData _getCapabilityIcon(LightCapability cap) {
 		switch (cap) {
