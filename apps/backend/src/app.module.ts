@@ -53,6 +53,8 @@ import { WeatherModule } from './modules/weather/weather.module';
 import { WebsocketModule } from './modules/websocket/websocket.module';
 import { BUDDY_CLAUDE_OAUTH_PLUGIN_PREFIX } from './plugins/buddy-claude-oauth/buddy-claude-oauth.constants';
 import { BuddyClaudeOauthPlugin } from './plugins/buddy-claude-oauth/buddy-claude-oauth.plugin';
+import { BUDDY_DISCORD_PLUGIN_PREFIX } from './plugins/buddy-discord/buddy-discord.constants';
+import { BuddyDiscordPlugin } from './plugins/buddy-discord/buddy-discord.plugin';
 import { BUDDY_CLAUDE_PLUGIN_PREFIX } from './plugins/buddy-claude/buddy-claude.constants';
 import { BuddyClaudePlugin } from './plugins/buddy-claude/buddy-claude.plugin';
 import { BUDDY_ELEVENLABS_PLUGIN_PREFIX } from './plugins/buddy-elevenlabs/buddy-elevenlabs.constants';
@@ -312,6 +314,10 @@ export class AppModule {
 								path: BUDDY_WHATSAPP_PLUGIN_PREFIX,
 								module: BuddyWhatsappPlugin,
 							},
+							{
+								path: BUDDY_DISCORD_PLUGIN_PREFIX,
+								module: BuddyDiscordPlugin,
+							},
 							...pluginRoutes,
 						],
 					},
@@ -369,6 +375,7 @@ export class AppModule {
 				BuddySystemTtsPlugin,
 				BuddyTelegramPlugin,
 				BuddyWhatsappPlugin,
+				BuddyDiscordPlugin,
 				ScenesLocalPlugin,
 				ServeStaticModule.forRootAsync({
 					imports: [NestConfigModule], // Ensure ConfigModule is available

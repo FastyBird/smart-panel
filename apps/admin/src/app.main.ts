@@ -60,6 +60,7 @@ import { BuddyOpenaiPlugin } from './plugins/buddy-openai';
 import { BuddyOpenaiCodexPlugin } from './plugins/buddy-openai-codex';
 import { BuddyTelegramPlugin } from './plugins/buddy-telegram';
 import { BuddyWhatsappPlugin } from './plugins/buddy-whatsapp';
+import { BuddyDiscordPlugin } from './plugins/buddy-discord';
 import { DeviceChannelDataSourcesPlugin } from './plugins/data-sources-device-channel';
 import { DataSourcesWeatherPlugin } from './plugins/data-sources-weather';
 import { DevicesHomeAssistantPlugin } from './plugins/devices-home-assistant';
@@ -194,6 +195,7 @@ app.use(BuddyClaudeOauthPlugin, pluginOptions);
 app.use(BuddyOpenaiCodexPlugin, pluginOptions);
 app.use(BuddyTelegramPlugin, pluginOptions);
 app.use(BuddyWhatsappPlugin, pluginOptions);
+app.use(BuddyDiscordPlugin, pluginOptions);
 
 const installedNames = new Set<string>();
 

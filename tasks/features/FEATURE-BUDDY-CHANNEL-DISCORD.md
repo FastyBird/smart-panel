@@ -5,7 +5,7 @@ Type: feature
 Scope: backend, admin
 Size: medium
 Parent: EPIC-BUDDY-MODULE
-Status: todo
+Status: done
 
 ## 1. Business goal
 
@@ -73,24 +73,24 @@ I want to chat with the buddy via Discord — with smart home spaces mapped to D
 
 ## 4. Acceptance criteria
 
-- [ ] `BuddyDiscordPlugin` registered in `app.module.ts` router under `PLUGINS_PREFIX` with path `buddy-discord`
-- [ ] Plugin registers with `ExtensionsService.registerPluginMetadata()` and `PluginsTypeMapperService.registerMapping()`
-- [ ] Swagger models registered via `buddy-discord.openapi.ts`
-- [ ] `DiscordBotProvider` connects to Discord gateway using configured bot token
-- [ ] Incoming Discord messages in configured channels create/continue buddy conversations
-- [ ] Messages in space-mapped channels automatically include that space as context
-- [ ] Messages in the general channel handle cross-space queries
-- [ ] Buddy responses are sent back to the originating Discord channel
-- [ ] Suggestion notifications are routed to the correct space channel (or general channel as fallback)
-- [ ] Discord button components allow suggestion accept/dismiss
-- [ ] Role-based access: only users with the configured role can interact (if role is set)
-- [ ] Bot ignores its own messages and messages from other bots
-- [ ] Space-channel mapping is configurable in admin settings
-- [ ] Bot token configurable in admin plugin settings (masked in API responses)
-- [ ] Re-reads config on `ConfigModule.CONFIG_UPDATED` events (reconnects if token changes)
-- [ ] Handles Discord API errors and disconnections gracefully (auto-reconnect is built into Discord.js)
-- [ ] Works independently — plugin can be enabled/disabled without affecting other buddy features
-- [ ] Unit tests with mocked Discord.js client
+- [x] `BuddyDiscordPlugin` registered in `app.module.ts` router under `PLUGINS_PREFIX` with path `buddy-discord`
+- [x] Plugin registers with `ExtensionsService.registerPluginMetadata()` and `PluginsTypeMapperService.registerMapping()`
+- [x] Swagger models registered via `buddy-discord.openapi.ts`
+- [x] `DiscordBotProvider` connects to Discord gateway using configured bot token
+- [x] Incoming Discord messages in configured channels create/continue buddy conversations
+- [x] Messages in space-mapped channels automatically include that space as context
+- [x] Messages in the general channel handle cross-space queries
+- [x] Buddy responses are sent back to the originating Discord channel
+- [x] Suggestion notifications are routed to the correct space channel (or general channel as fallback)
+- [x] Discord button components allow suggestion accept/dismiss
+- [x] Role-based access: only users with the configured role can interact (if role is set)
+- [x] Bot ignores its own messages and messages from other bots
+- [x] Space-channel mapping is configurable in admin settings
+- [x] Bot token configurable in admin plugin settings (masked in API responses)
+- [x] Re-reads config on `ConfigModule.CONFIG_UPDATED` events (reconnects if token changes)
+- [x] Handles Discord API errors and disconnections gracefully (auto-reconnect is built into Discord.js)
+- [x] Works independently — plugin can be enabled/disabled without affecting other buddy features
+- [x] Unit tests with mocked Discord.js client
 
 ## 5. Example scenarios
 
