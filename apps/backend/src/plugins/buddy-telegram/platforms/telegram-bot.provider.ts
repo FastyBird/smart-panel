@@ -49,8 +49,8 @@ export class TelegramBotProvider implements OnModuleInit, OnModuleDestroy {
 		}
 	}
 
-	async onModuleDestroy(): Promise<void> {
-		await this.stopBot();
+	onModuleDestroy(): void {
+		this.stopBot();
 	}
 
 	/**
@@ -58,7 +58,7 @@ export class TelegramBotProvider implements OnModuleInit, OnModuleDestroy {
 	 */
 	@OnEvent(ConfigModuleEventType.CONFIG_UPDATED)
 	async onConfigUpdated(): Promise<void> {
-		await this.stopBot();
+		this.stopBot();
 
 		const config = this.getPluginConfig();
 
@@ -101,9 +101,9 @@ export class TelegramBotProvider implements OnModuleInit, OnModuleDestroy {
 		return this.running;
 	}
 
-	private async startBot(config: BuddyTelegramConfigModel): Promise<void> {
+	private async startBot(config: BuddyTelegramConfigModel & { botToken: string }): Promise<void> {
 		try {
-			this.bot = new Telegraf(config.botToken!);
+			this.bot = new Telegraf(config.botToken);
 
 			const allowedUserIds = this.parseAllowedUserIds(config.allowedUserIds);
 
@@ -134,6 +134,15 @@ export class TelegramBotProvider implements OnModuleInit, OnModuleDestroy {
 
 			// Inline keyboard callback handler (suggestion feedback)
 			this.bot.on('callback_query', async (ctx) => {
+				const userId = ctx.from.id;
+
+				if (allowedUserIds.size > 0 && !allowedUserIds.has(userId)) {
+					this.logger.debug(`Rejected callback from unauthorized Telegram user ${userId}`);
+					await ctx.answerCbQuery('⛔ Not authorized');
+
+					return;
+				}
+
 				const data = 'data' in ctx.callbackQuery ? ctx.callbackQuery.data : undefined;
 
 				if (!data) {
@@ -181,9 +190,9 @@ export class TelegramBotProvider implements OnModuleInit, OnModuleDestroy {
 				this.registeredChatIds.add(ctx.chat.id);
 
 				await ctx.reply(
-					'👋 Hello! I\'m your Smart Panel buddy.\n\n' +
+					"👋 Hello! I'm your Smart Panel buddy.\n\n" +
 						'Send me a message to ask about your home, devices, or to control your smart home.\n\n' +
-						'I\'ll also send you alerts and suggestions here.',
+						"I'll also send you alerts and suggestions here.",
 				);
 			});
 
@@ -198,7 +207,7 @@ export class TelegramBotProvider implements OnModuleInit, OnModuleDestroy {
 		}
 	}
 
-	private async stopBot(): Promise<void> {
+	private stopBot(): void {
 		if (this.bot) {
 			this.bot.stop('reconfigure');
 			this.bot = null;
@@ -270,9 +279,7 @@ export class TelegramBotProvider implements OnModuleInit, OnModuleDestroy {
 				if (attempt < TELEGRAM_RETRY_DELAYS_MS.length) {
 					const delay = TELEGRAM_RETRY_DELAYS_MS[attempt];
 
-					this.logger.warn(
-						`Telegram send failed (attempt ${attempt + 1}), retrying in ${delay}ms: ${String(error)}`,
-					);
+					this.logger.warn(`Telegram send failed (attempt ${attempt + 1}), retrying in ${delay}ms: ${String(error)}`);
 					await this.sleep(delay);
 				} else {
 					throw error;

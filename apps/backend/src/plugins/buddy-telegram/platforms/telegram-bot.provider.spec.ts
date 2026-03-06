@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/unbound-method, @typescript-eslint/no-unsafe-assignment */
 import { SuggestionType } from '../../../modules/buddy/buddy.constants';
 import { BuddySuggestion } from '../../../modules/buddy/services/suggestion-engine.service';
 import { BUDDY_TELEGRAM_PLUGIN_NAME } from '../buddy-telegram.constants';
@@ -58,8 +57,8 @@ describe('TelegramBotProvider', () => {
 		provider = new TelegramBotProvider(configService as any, conversationService as any, suggestionEngine as any);
 	});
 
-	afterEach(async () => {
-		await provider.onModuleDestroy();
+	afterEach(() => {
+		provider.onModuleDestroy();
 	});
 
 	describe('onModuleInit', () => {
