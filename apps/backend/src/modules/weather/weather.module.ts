@@ -1,9 +1,7 @@
-import { Module, OnModuleInit, forwardRef } from '@nestjs/common';
+import { Module, OnModuleInit } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { ConfigModule } from '../config/config.module';
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
-import { ExtensionsModule } from '../extensions/extensions.module';
 import { ExtensionsService } from '../extensions/services/extensions.service';
 import { InfluxDbModule } from '../influxdb/influxdb.module';
 import { SeedModule } from '../seed/seeding.module';
@@ -37,14 +35,7 @@ import { WEATHER_SWAGGER_EXTRA_MODELS } from './weather.openapi';
 	description: WEATHER_MODULE_API_TAG_DESCRIPTION,
 })
 @Module({
-	imports: [
-		TypeOrmModule.forFeature([WeatherLocationEntity]),
-		ConfigModule,
-		SwaggerModule,
-		forwardRef(() => InfluxDbModule),
-		ExtensionsModule,
-		SeedModule,
-	],
+	imports: [TypeOrmModule.forFeature([WeatherLocationEntity]), SwaggerModule, InfluxDbModule, SeedModule],
 	controllers: [WeatherController, LocationsController, HistoryController],
 	providers: [
 		WeatherService,

@@ -1,4 +1,4 @@
-import { Module, forwardRef } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { ConfigModule as NestConfigModule, ConfigService as NestConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 
@@ -32,9 +32,9 @@ import { WEBSOCKET_SWAGGER_EXTRA_MODELS } from './websocket.openapi';
 				};
 			},
 		}),
-		forwardRef(() => AuthModule),
-		forwardRef(() => UsersModule),
-		forwardRef(() => InfluxDbModule),
+		AuthModule,
+		UsersModule,
+		InfluxDbModule,
 		StatsModule,
 	],
 	providers: [WebsocketGateway, CommandEventRegistryService, WsAuthService, WsMetricsService, WsStatsProvider],

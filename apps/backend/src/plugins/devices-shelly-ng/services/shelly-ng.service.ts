@@ -1,6 +1,6 @@
 import { Device, DeviceId, DeviceOptions, MdnsDeviceDiscoverer, Shellies } from 'shellies-ds9';
 
-import { Inject, Injectable, forwardRef } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
 import { ExtensionLoggerService, createExtensionLogger } from '../../../common/logger';
 import { ConfigService } from '../../../modules/config/services/config.service';
@@ -53,7 +53,6 @@ export class ShellyNgService implements IManagedPluginService {
 		private readonly deviceManagerService: DeviceManagerService,
 		private readonly devicesService: DevicesService,
 		private readonly deviceConnectivityService: DeviceConnectivityService,
-		@Inject(forwardRef(() => PluginServiceManagerService))
 		private readonly pluginServiceManager: PluginServiceManagerService,
 	) {}
 

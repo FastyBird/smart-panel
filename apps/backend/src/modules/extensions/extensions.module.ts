@@ -1,14 +1,12 @@
-import { Global, Module, OnModuleInit, forwardRef } from '@nestjs/common';
+import { Global, Module, OnModuleInit } from '@nestjs/common';
 import { ConfigModule as NestConfigModule } from '@nestjs/config/dist/config.module';
 
-import { ConfigModule } from '../config/config.module';
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
 import { StatsRegistryService } from '../stats/services/stats-registry.service';
 import { StatsModule } from '../stats/stats.module';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 import { FactoryResetRegistryService } from '../system/services/factory-reset-registry.service';
-import { SystemModule } from '../system/system.module';
 
 import {
 	ListServicesCommand,
@@ -28,7 +26,6 @@ import {
 import { EXTENSIONS_SWAGGER_EXTRA_MODELS } from './extensions.openapi';
 import { ExtensionsConfigModel } from './models/config.model';
 import { ExtensionsStatsProvider } from './providers/extensions-stats.provider';
-import { ExtensionsBundledService } from './services/extensions-bundled.service';
 import { ExtensionsService } from './services/extensions.service';
 import { ModuleResetService } from './services/module-reset.service';
 import { PluginServiceManagerService } from './services/plugin-service-manager.service';
@@ -40,11 +37,9 @@ import { PluginServiceManagerService } from './services/plugin-service-manager.s
 })
 @Global()
 @Module({
-	imports: [NestConfigModule, forwardRef(() => ConfigModule), forwardRef(() => SystemModule), StatsModule],
+	imports: [NestConfigModule, StatsModule],
 	controllers: [ExtensionsController, DiscoveredExtensionsController, ServicesController],
 	providers: [
-		ExtensionsBundledService,
-		ExtensionsService,
 		ModuleResetService,
 		PluginServiceManagerService,
 		ExtensionsStatsProvider,
@@ -54,7 +49,7 @@ import { PluginServiceManagerService } from './services/plugin-service-manager.s
 		StopServiceCommand,
 		RestartServiceCommand,
 	],
-	exports: [ExtensionsBundledService, ExtensionsService, PluginServiceManagerService],
+	exports: [PluginServiceManagerService],
 })
 export class ExtensionsModule implements OnModuleInit {
 	constructor(

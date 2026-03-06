@@ -1,8 +1,6 @@
 import { Module } from '@nestjs/common';
 
-import { ConfigModule } from '../../modules/config/config.module';
 import { PluginsTypeMapperService } from '../../modules/config/services/plugins-type-mapper.service';
-import { ExtensionsModule } from '../../modules/extensions/extensions.module';
 import { ExtensionsService } from '../../modules/extensions/services/extensions.service';
 import { PluginServiceManagerService } from '../../modules/extensions/services/plugin-service-manager.service';
 import { SwaggerModelsRegistryService } from '../../modules/swagger/services/swagger-models-registry.service';
@@ -16,7 +14,7 @@ import { RotatingFileConfigModel } from './models/config.model';
 import { FileLoggerService } from './services/file-logger.service';
 
 @Module({
-	imports: [SystemModule, ConfigModule, ExtensionsModule],
+	imports: [SystemModule],
 	providers: [FileLoggerService],
 })
 export class LoggerRotatingFilePlugin {

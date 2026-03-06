@@ -1,5 +1,6 @@
 import { v4 as uuid } from 'uuid';
 
+import { ModuleRef } from '@nestjs/core';
 import { Test, TestingModule } from '@nestjs/testing';
 
 import { ChannelCategory, DeviceCategory, PropertyCategory } from '../../devices/devices.constants';
@@ -9,9 +10,10 @@ import { SpaceLightingRoleEntity } from '../entities/space-lighting-role.entity'
 import { SpaceEntity } from '../entities/space.entity';
 import { ClimateMode, LightingRole, SpaceType } from '../spaces.constants';
 
+import { ClimateState } from './space-climate-state.service';
 import { SpaceContextSnapshotService } from './space-context-snapshot.service';
 import { SpaceCoversRoleService } from './space-covers-role.service';
-import { ClimateState, SpaceIntentService } from './space-intent.service';
+import { SpaceIntentService } from './space-intent.service';
 import { SpaceLightingRoleService } from './space-lighting-role.service';
 import { SpacesService } from './spaces.service';
 
@@ -148,6 +150,11 @@ describe('SpaceContextSnapshotService', () => {
 	});
 
 	beforeEach(async () => {
+		spaceIntentService = {
+			getClimateState: jest.fn(),
+			getPrimaryThermostatId: jest.fn(),
+		} as unknown as jest.Mocked<SpaceIntentService>;
+
 		const module: TestingModule = await Test.createTestingModule({
 			providers: [
 				SpaceContextSnapshotService,
@@ -159,10 +166,9 @@ describe('SpaceContextSnapshotService', () => {
 					},
 				},
 				{
-					provide: SpaceIntentService,
+					provide: ModuleRef,
 					useValue: {
-						getClimateState: jest.fn(),
-						getPrimaryThermostatId: jest.fn(),
+						get: jest.fn().mockReturnValue(spaceIntentService),
 					},
 				},
 				{
@@ -182,9 +188,11 @@ describe('SpaceContextSnapshotService', () => {
 
 		service = module.get<SpaceContextSnapshotService>(SpaceContextSnapshotService);
 		spacesService = module.get(SpacesService);
-		spaceIntentService = module.get(SpaceIntentService);
 		lightingRoleService = module.get(SpaceLightingRoleService);
 		coversRoleService = module.get(SpaceCoversRoleService);
+
+		// Simulate onModuleInit which resolves SpaceIntentService lazily
+		await service.onModuleInit();
 	});
 
 	describe('captureSnapshot', () => {

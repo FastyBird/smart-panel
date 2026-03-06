@@ -1,4 +1,4 @@
-import { Inject, Injectable, forwardRef } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 import { createExtensionLogger } from '../../../common/logger/extension-logger.service';
@@ -147,16 +147,11 @@ export class LightingIntentService extends SpaceIntentBaseService {
 		private readonly platformRegistryService: PlatformRegistryService,
 		private readonly lightingRoleService: SpaceLightingRoleService,
 		private readonly eventEmitter: EventEmitter2,
-		@Inject(forwardRef(() => SpaceContextSnapshotService))
 		private readonly contextSnapshotService: SpaceContextSnapshotService,
-		@Inject(forwardRef(() => SpaceUndoHistoryService))
 		private readonly undoHistoryService: SpaceUndoHistoryService,
-		@Inject(forwardRef(() => IntentTimeseriesService))
 		private readonly intentTimeseriesService: IntentTimeseriesService,
-		@Inject(forwardRef(() => SpaceLightingStateService))
 		private readonly lightingStateService: SpaceLightingStateService,
 		private readonly intentSpecLoaderService: IntentSpecLoaderService,
-		@Inject(forwardRef(() => IntentsService))
 		private readonly intentsService: IntentsService,
 	) {
 		super();

@@ -1,11 +1,9 @@
-import { Module, OnModuleInit, forwardRef } from '@nestjs/common';
+import { Module, OnModuleInit } from '@nestjs/common';
 import { ConfigModule as NestConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { ConfigModule } from '../config/config.module';
 import { ModulesTypeMapperService } from '../config/services/modules-type-mapper.service';
 import { DisplaysModule } from '../displays/displays.module';
-import { ExtensionsModule } from '../extensions/extensions.module';
 import { ExtensionsService } from '../extensions/services/extensions.service';
 import { SeedModule } from '../seed/seeding.module';
 import { SeedRegistryService } from '../seed/services/seed-registry.service';
@@ -15,7 +13,6 @@ import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../swagger/swagger.module';
 import { FactoryResetRegistryService } from '../system/services/factory-reset-registry.service';
-import { SystemModule } from '../system/system.module';
 
 import { DataSourceController } from './controllers/data-source.controller';
 import { PagesController } from './controllers/pages.controller';
@@ -56,10 +53,7 @@ import { TileTypeConstraintValidator } from './validators/tile-type-constraint.v
 	imports: [
 		NestConfigModule,
 		TypeOrmModule.forFeature([PageEntity, TileEntity, DataSourceEntity]),
-		forwardRef(() => ConfigModule),
-		forwardRef(() => ExtensionsModule),
 		SeedModule,
-		forwardRef(() => SystemModule),
 		StatsModule,
 		SwaggerModule,
 		DisplaysModule,
