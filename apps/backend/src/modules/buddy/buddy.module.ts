@@ -17,6 +17,7 @@ import { WeatherModule } from '../weather/weather.module';
 import { BUDDY_MODULE_API_TAG_DESCRIPTION, BUDDY_MODULE_API_TAG_NAME, BUDDY_MODULE_NAME } from './buddy.constants';
 import { BUDDY_SWAGGER_EXTRA_MODELS } from './buddy.openapi';
 import { BuddyConversationsController } from './controllers/buddy-conversations.controller';
+import { BuddyPersonalityController } from './controllers/buddy-personality.controller';
 import { BuddyProvidersController } from './controllers/buddy-providers.controller';
 import { BuddySuggestionsController } from './controllers/buddy-suggestions.controller';
 import { UpdateBuddyConfigDto } from './dto/update-config.dto';
@@ -30,6 +31,7 @@ import { ActionObserverService } from './services/action-observer.service';
 import { AnomalyDetectorEvaluator } from './services/anomaly-detector.service';
 import { BuddyContextService } from './services/buddy-context.service';
 import { BuddyConversationService } from './services/buddy-conversation.service';
+import { BuddyPersonalityService } from './services/buddy-personality.service';
 import { BuddyProviderStatusService } from './services/buddy-provider-status.service';
 import { ConflictDetectorEvaluator } from './services/conflict-detector-evaluator.service';
 import { EnergyEvaluator } from './services/energy-evaluator.service';
@@ -66,12 +68,18 @@ import { EvaluatorRulesLoaderService } from './spec/evaluator-rules-loader.servi
 		WeatherModule,
 		EnergyModule,
 	],
-	controllers: [BuddyConversationsController, BuddyProvidersController, BuddySuggestionsController],
+	controllers: [
+		BuddyConversationsController,
+		BuddyPersonalityController,
+		BuddyProvidersController,
+		BuddySuggestionsController,
+	],
 	providers: [
 		EvaluatorRulesLoaderService,
 		ActionObserverService,
 		BuddyContextService,
 		BuddyProviderStatusService,
+		BuddyPersonalityService,
 		BuddyContextCacheListener,
 		IntentEventListener,
 		MediaActivityEventListener,
@@ -97,6 +105,7 @@ import { EvaluatorRulesLoaderService } from './spec/evaluator-rules-loader.servi
 	exports: [
 		ActionObserverService,
 		BuddyContextService,
+		BuddyPersonalityService,
 		LlmProviderRegistryService,
 		LlmProviderService,
 		BuddyConversationService,

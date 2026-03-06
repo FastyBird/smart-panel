@@ -10,6 +10,7 @@ import {
 	ANOMALY_UNUSUAL_ACTIVITY_THRESHOLD,
 	ANOMALY_UNUSUAL_ACTIVITY_WINDOW_MINUTES,
 	BUDDY_DEFAULT_NAME,
+	BUDDY_DEFAULT_PERSONALITY_PATH,
 	BUDDY_MODULE_NAME,
 	CONFLICT_LIGHTS_UNOCCUPIED_MINUTES,
 	ENERGY_BATTERY_LOW_THRESHOLD_PERCENT,
@@ -41,6 +42,17 @@ export class BuddyConfigModel extends ModuleConfigModel {
 	@IsOptional()
 	@IsString()
 	name: string = BUDDY_DEFAULT_NAME;
+
+	@ApiPropertyOptional({
+		name: 'personality_path',
+		description: 'File path to the personality.md file that defines the buddy tone and style',
+		type: 'string',
+		example: BUDDY_DEFAULT_PERSONALITY_PATH,
+	})
+	@Expose({ name: 'personality_path' })
+	@IsOptional()
+	@IsString()
+	personalityPath: string = BUDDY_DEFAULT_PERSONALITY_PATH;
 
 	@ApiPropertyOptional({
 		description:
