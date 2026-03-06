@@ -680,7 +680,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String settings_voice_activation_enable_description(String wakeWord) {
-    return 'Say "$wakeWord" to activate voice commands without touching the panel.';
+    return 'Say \"$wakeWord\" to activate voice commands without touching the panel.';
   }
 
   @override

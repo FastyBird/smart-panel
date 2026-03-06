@@ -691,7 +691,7 @@ class AppLocalizationsCs extends AppLocalizations {
 
   @override
   String settings_voice_activation_enable_description(String wakeWord) {
-    return 'Řekněte "$wakeWord" pro aktivaci hlasových příkazů bez dotyku panelu.';
+    return 'Řekněte \"$wakeWord\" pro aktivaci hlasových příkazů bez dotyku panelu.';
   }
 
   @override

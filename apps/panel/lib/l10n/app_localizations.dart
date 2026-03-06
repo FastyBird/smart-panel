@@ -1211,7 +1211,7 @@ abstract class AppLocalizations {
   /// **'Maintenance'**
   String get settings_general_settings_button_maintenance;
 
-  /// Button label for navigating to Wake Word settings section.
+  /// Button label for navigating to Voice Activation settings section.
   ///
   /// In en, this message translates to:
   /// **'Voice Activation'**
@@ -1238,7 +1238,7 @@ abstract class AppLocalizations {
   /// Description for the voice activation enable toggle.
   ///
   /// In en, this message translates to:
-  /// **'Say "{wakeWord}" to activate voice commands without touching the panel.'**
+  /// **'Say \"{wakeWord}\" to activate voice commands without touching the panel.'**
   String settings_voice_activation_enable_description(String wakeWord);
 
   /// Section title for voice activation sensitivity settings.
