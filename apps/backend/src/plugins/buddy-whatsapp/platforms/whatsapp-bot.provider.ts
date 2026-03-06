@@ -242,11 +242,16 @@ export class WhatsAppBotProvider implements OnModuleInit, OnModuleDestroy {
 			await this.sendTextMessage(config, from, response.content);
 		} catch (error) {
 			this.logger.error(`Error processing WhatsApp message from ${from}: ${String(error)}`);
-			await this.sendTextMessage(
-				config,
-				from,
-				'Sorry, I encountered an error processing your message. Please try again.',
-			);
+
+			try {
+				await this.sendTextMessage(
+					config,
+					from,
+					'Sorry, I encountered an error processing your message. Please try again.',
+				);
+			} catch (sendError) {
+				this.logger.warn(`Failed to send error notification to WhatsApp ${from}: ${String(sendError)}`);
+			}
 		}
 	}
 

@@ -52,13 +52,13 @@ export class UpdateBuddyWhatsappConfigDto extends UpdatePluginConfigDto {
 	})
 	@Expose({ name: 'access_token' })
 	@Transform(
-		({ obj }: { obj: { access_token?: string | null; accessToken?: string | null } }) =>
-			obj.access_token ?? obj.accessToken,
+		({ obj }: { obj: { access_token?: string | null; accessToken?: string | null } }) => {
+			const resolved = obj.access_token ?? obj.accessToken;
+
+			return resolved === '***' ? undefined : resolved;
+		},
 		{ toClassOnly: true },
 	)
-	@Transform(({ value }): string | undefined => (value === '***' ? undefined : (value as string | undefined)), {
-		toClassOnly: true,
-	})
 	@IsOptional()
 	@IsString({ message: '[{"field":"access_token","reason":"Access token must be a string."}]' })
 	accessToken?: string | null;
@@ -71,13 +71,13 @@ export class UpdateBuddyWhatsappConfigDto extends UpdatePluginConfigDto {
 	})
 	@Expose({ name: 'webhook_verify_token' })
 	@Transform(
-		({ obj }: { obj: { webhook_verify_token?: string | null; webhookVerifyToken?: string | null } }) =>
-			obj.webhook_verify_token ?? obj.webhookVerifyToken,
+		({ obj }: { obj: { webhook_verify_token?: string | null; webhookVerifyToken?: string | null } }) => {
+			const resolved = obj.webhook_verify_token ?? obj.webhookVerifyToken;
+
+			return resolved === '***' ? undefined : resolved;
+		},
 		{ toClassOnly: true },
 	)
-	@Transform(({ value }): string | undefined => (value === '***' ? undefined : (value as string | undefined)), {
-		toClassOnly: true,
-	})
 	@IsOptional()
 	@IsString({ message: '[{"field":"webhook_verify_token","reason":"Webhook verify token must be a string."}]' })
 	webhookVerifyToken?: string | null;
