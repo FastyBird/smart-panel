@@ -1,4 +1,8 @@
+import { FastifyInstance, FastifyRequest } from 'fastify';
+import { Readable } from 'stream';
+
 import { Module, OnModuleInit } from '@nestjs/common';
+import { HttpAdapterHost } from '@nestjs/core';
 
 import { BuddyModule } from '../../modules/buddy/buddy.module';
 import { ConfigModule } from '../../modules/config/config.module';
@@ -36,6 +40,7 @@ export class BuddyWhatsappPlugin implements OnModuleInit {
 		private readonly configMapper: PluginsTypeMapperService,
 		private readonly swaggerRegistry: SwaggerModelsRegistryService,
 		private readonly extensionsService: ExtensionsService,
+		private readonly httpAdapterHost: HttpAdapterHost,
 	) {}
 
 	onModuleInit() {
@@ -48,6 +53,42 @@ export class BuddyWhatsappPlugin implements OnModuleInit {
 		for (const model of BUDDY_WHATSAPP_PLUGIN_SWAGGER_EXTRA_MODELS) {
 			this.swaggerRegistry.register(model);
 		}
+
+		// Register a preParsing hook to capture the raw body only for the WhatsApp webhook POST route.
+		// This avoids enabling rawBody globally which would double per-request memory for all routes.
+		const fastifyInstance = this.httpAdapterHost.httpAdapter.getInstance<FastifyInstance>();
+
+		fastifyInstance.addHook(
+			'preParsing',
+			(request: FastifyRequest, _reply: unknown, payload: Readable, done: (err: null, payload: Readable) => void) => {
+				if (request.method !== 'POST' || !request.url.includes('/buddy-whatsapp/webhook')) {
+					done(null, payload);
+
+					return;
+				}
+
+				const chunks: Buffer[] = [];
+
+				payload.on('data', (chunk: Buffer) => {
+					chunks.push(chunk);
+				});
+
+				payload.on('end', () => {
+					const rawBody = Buffer.concat(chunks);
+
+					(request as FastifyRequest & { whatsappRawBody?: Buffer }).whatsappRawBody = rawBody;
+
+					// Create a new readable stream with the same data so Fastify can still parse the JSON body
+					const replacement = Readable.from(rawBody);
+
+					done(null, replacement);
+				});
+
+				payload.on('error', () => {
+					done(null, payload);
+				});
+			},
+		);
 
 		this.extensionsService.registerPluginMetadata({
 			type: BUDDY_WHATSAPP_PLUGIN_NAME,

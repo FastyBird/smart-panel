@@ -3,13 +3,13 @@ import { FastifyRequest, FastifyReply as Response } from 'fastify';
 import {
 	Body,
 	Controller,
+	ForbiddenException,
 	Get,
 	Headers,
 	HttpCode,
 	Logger,
 	Post,
 	Query,
-	RawBodyRequest,
 	Req,
 	Res,
 } from '@nestjs/common';
@@ -66,13 +66,15 @@ export class WhatsAppWebhookController {
 	@HttpCode(200)
 	handleIncoming(
 		@Body() body: unknown,
-		@Req() req: RawBodyRequest<FastifyRequest>,
+		@Req() req: FastifyRequest & { whatsappRawBody?: Buffer },
 		@Headers('x-hub-signature-256') signature: string | undefined,
 	): string {
-		if (!this.whatsAppProvider.verifyWebhookSignature(req.rawBody ?? Buffer.alloc(0), signature)) {
+		const rawBody = req.whatsappRawBody ?? Buffer.alloc(0);
+
+		if (!this.whatsAppProvider.verifyWebhookSignature(rawBody, signature)) {
 			this.logger.warn('WhatsApp webhook signature verification failed');
 
-			return 'OK';
+			throw new ForbiddenException('Invalid webhook signature');
 		}
 
 		// Fire-and-forget: process asynchronously so the 200 returns immediately.
