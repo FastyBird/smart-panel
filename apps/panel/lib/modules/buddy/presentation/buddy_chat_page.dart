@@ -5,12 +5,16 @@ import 'package:provider/provider.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
+import 'package:fastybird_smart_panel/core/widgets/toast.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/buddy/models/buddy_config.dart';
+import 'package:fastybird_smart_panel/modules/buddy/models/message.dart';
 import 'package:fastybird_smart_panel/modules/buddy/repositories/buddy.dart';
 import 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/message_bubble.dart';
 import 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/suggestion_card.dart';
+import 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/voice_input_overlay.dart';
 import 'package:fastybird_smart_panel/modules/buddy/service.dart';
+import 'package:fastybird_smart_panel/modules/buddy/services/audio_playback_service.dart';
 import 'package:fastybird_smart_panel/modules/config/module.dart';
 import 'package:fastybird_smart_panel/modules/config/repositories/module_config_repository.dart';
 import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart';
@@ -22,6 +26,7 @@ import 'package:fastybird_smart_panel/modules/displays/repositories/display.dart
 /// - Scrollable message list (newest at bottom)
 /// - Suggestion cards section
 /// - Text input with send button
+/// - Microphone button that opens full-screen voice input overlay
 /// - Loading indicator while waiting for AI response
 /// - Empty state when no messages
 /// - Disabled state when AI provider is not configured
@@ -39,6 +44,7 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 
 	late final BuddyService _buddyService;
 	late final ModuleConfigRepository<BuddyConfigModel> _buddyConfigRepo;
+	late final AudioPlaybackService _audioPlaybackService;
 
 	String _buddyName = 'Buddy';
 
@@ -49,16 +55,30 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 	/// Track message count so _scrollToBottom fires only on new messages.
 	int _lastMessageCount = 0;
 
+	/// Whether voice mode is active (last input was via microphone).
+	/// When true, TTS auto-play is enabled for new assistant messages.
+	bool _voiceModeActive = false;
+
+	/// The last assistant message ID we auto-played, to avoid replaying.
+	String? _lastAutoPlayedMessageId;
+
 	@override
 	void initState() {
 		super.initState();
 		_buddyService = context.read<BuddyService>();
+		// Sync message count before adding listener to avoid false "new messages" trigger
+		_lastMessageCount = _buddyService.messages.length;
 		_buddyService.addListener(_onBuddyServiceChanged);
 
 		_buddyConfigRepo = locator<ConfigModuleService>()
 				.getModuleRepository<BuddyConfigModel>('buddy-module');
 		_buddyName = _buddyConfigRepo.data?.name ?? 'Buddy';
 		_buddyConfigRepo.addListener(_onBuddyConfigChanged);
+
+		_audioPlaybackService = AudioPlaybackService(
+			getToken: () => _buddyService.getCurrentToken(),
+		);
+		_audioPlaybackService.addListener(_onPlaybackChanged);
 
 		WidgetsBinding.instance.addPostFrameCallback((_) {
 			_initializeConversation();
@@ -90,23 +110,17 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 				_initFailed = false;
 				_initialized = true;
 			});
-			_scrollToBottom();
 		}
 	}
 
 	void _scrollToBottom() {
 		if (!mounted) return;
 
-		// Wait two frames: the first lets the ListView lay out its children,
-		// the second ensures maxScrollExtent is up-to-date.
+		// With reverse: true, scroll position 0 is the bottom of the chat.
 		WidgetsBinding.instance.addPostFrameCallback((_) {
-			WidgetsBinding.instance.addPostFrameCallback((_) {
-				if (mounted && _scrollController.hasClients) {
-					_scrollController.jumpTo(
-						_scrollController.position.maxScrollExtent,
-					);
-				}
-			});
+			if (mounted && _scrollController.hasClients) {
+				_scrollController.jumpTo(0);
+			}
 		});
 	}
 
@@ -120,10 +134,20 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 		if (!buddyService.hasActiveConversation) return;
 
 		_inputController.clear();
+		_voiceModeActive = false;
 
 		await buddyService.sendMessage(text);
 
 		if (mounted) {
+			_scrollToBottom();
+		}
+	}
+
+	Future<void> _openVoiceOverlay() async {
+		final sent = await VoiceInputOverlay.show(context);
+
+		if (sent && mounted) {
+			_voiceModeActive = true;
 			_scrollToBottom();
 		}
 	}
@@ -142,10 +166,38 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 	}
 
 	void _onBuddyServiceChanged() {
-		final messageCount = _buddyService.messages.length;
+		if (!mounted) return;
+
+		// Show toast when a new error occurs
+		if (_buddyService.hasError) {
+			final localizations = AppLocalizations.of(context)!;
+			final errorMessage = _localizedBuddyError(localizations, _buddyService.errorType);
+
+			Toast.showError(context, message: errorMessage);
+			_buddyService.clearError();
+		}
+
+		final messages = _buddyService.messages;
+		final messageCount = messages.length;
 
 		if (messageCount > _lastMessageCount) {
 			_scrollToBottom();
+
+			// Auto-play TTS for new assistant messages when voice mode is active
+			if (_voiceModeActive && _buddyService.isTtsConfigured && messageCount > 0) {
+				final lastMessage = messages.last;
+
+				if (lastMessage.role == BuddyMessageRole.assistant &&
+						lastMessage.id != _lastAutoPlayedMessageId) {
+					_lastAutoPlayedMessageId = lastMessage.id;
+
+					final audioUrl = _buddyService.getMessageAudioUrl(lastMessage.id);
+
+					if (audioUrl != null) {
+						_audioPlaybackService.playMessageAudio(lastMessage.id, audioUrl).catchError((_) {});
+					}
+				}
+			}
 		}
 
 		_lastMessageCount = messageCount;
@@ -159,10 +211,18 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 		});
 	}
 
+	void _onPlaybackChanged() {
+		if (!mounted) return;
+
+		setState(() {});
+	}
+
 	@override
 	void dispose() {
 		_buddyService.removeListener(_onBuddyServiceChanged);
 		_buddyConfigRepo.removeListener(_onBuddyConfigChanged);
+		_audioPlaybackService.removeListener(_onPlaybackChanged);
+		_audioPlaybackService.dispose();
 		_inputController.dispose();
 		_scrollController.dispose();
 		_inputFocusNode.dispose();
@@ -250,39 +310,37 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 		final spaceId = locator<DisplayRepository>().display?.roomId;
 
 		await buddyService.createNewConversation(spaceId: spaceId);
-
-		if (mounted) {
-			_scrollToBottom();
-		}
 	}
 
 	Widget _buildBody(BuildContext context, bool isDark, BuddyService buddyService) {
 		final messages = buddyService.messages;
 		final hasMessages = messages.isNotEmpty;
 
+		if (!hasMessages && !buddyService.isLoadingMessages) {
+			return _buildEmptyState(context, isDark);
+		}
+
 		return ListView(
 			controller: _scrollController,
+			reverse: true,
 			padding: EdgeInsets.symmetric(vertical: AppSpacings.pMd),
 			children: [
-				// Empty state
-				if (!hasMessages && !buddyService.isLoadingMessages)
-					_buildEmptyState(context, isDark),
-
-				// Messages
-				...messages.map(
-					(message) => MessageBubble(
-						key: ValueKey(message.id),
-						message: message,
-					),
-				),
-
 				// Loading indicator while waiting for AI response
 				if (buddyService.isSendingMessage)
 					_buildTypingIndicator(context, isDark),
 
-				// Error state
-				if (buddyService.hasError)
-					_buildErrorMessage(context, isDark, buddyService.errorType),
+				// Messages in reverse order (newest first for reverse ListView)
+				...messages.reversed.map(
+					(message) => MessageBubble(
+						key: ValueKey(message.id),
+						message: message,
+						showSpeakerIcon: buddyService.isTtsConfigured,
+						audioPlaybackService: _audioPlaybackService,
+						audioUrl: message.role == BuddyMessageRole.assistant
+							? buddyService.getMessageAudioUrl(message.id)
+							: null,
+					),
+				),
 			],
 		);
 	}
@@ -501,44 +559,6 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 		}
 	}
 
-	Widget _buildErrorMessage(BuildContext context, bool isDark, BuddyErrorType? errorType) {
-		final localizations = AppLocalizations.of(context)!;
-		final warningColor = isDark ? AppColorsDark.warning : AppColorsLight.warning;
-
-		return Padding(
-			padding: EdgeInsets.symmetric(
-				horizontal: AppSpacings.pLg,
-				vertical: AppSpacings.pSm,
-			),
-			child: Container(
-				padding: AppSpacings.paddingMd,
-				decoration: BoxDecoration(
-					color: warningColor.withValues(alpha: 0.1),
-					borderRadius: BorderRadius.circular(AppBorderRadius.base),
-				),
-				child: Row(
-					children: [
-						Icon(
-							Icons.warning_amber_rounded,
-							size: AppSpacings.scale(16),
-							color: warningColor,
-						),
-						SizedBox(width: AppSpacings.pMd),
-						Expanded(
-							child: Text(
-								_localizedBuddyError(localizations, errorType),
-								style: TextStyle(
-									fontSize: AppFontSize.small,
-									color: warningColor,
-								),
-							),
-						),
-					],
-				),
-			),
-		);
-	}
-
 	Widget _buildInput(BuildContext context, bool isDark) {
 		final localizations = AppLocalizations.of(context)!;
 		final borderColor = isDark ? AppBorderColorDark.light : AppBorderColorLight.light;
@@ -551,6 +571,7 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 		return Consumer<BuddyService>(
 			builder: (context, buddyService, _) {
 				final isDisabled = !_initialized || buddyService.isProviderNotConfigured || _initFailed;
+				final isMicDisabled = isDisabled || buddyService.isSttNotConfigured;
 				final isSending = buddyService.isSendingMessage;
 
 				return Container(
@@ -582,14 +603,14 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 										),
 										decoration: InputDecoration(
 											hintText: _initProviderMissing
-												? (localizations.buddy_provider_not_configured_title)
-												: _initFailed
-													? (localizations.buddy_hint_init_failed)
-													: !_initialized
-														? (localizations.buddy_hint_starting_conversation)
-														: buddyService.isProviderNotConfigured
-															? (localizations.buddy_provider_not_configured_title)
-															: (localizations.buddy_hint_default),
+													? localizations.buddy_provider_not_configured_title
+													: _initFailed
+														? localizations.buddy_hint_init_failed
+														: !_initialized
+															? localizations.buddy_hint_starting_conversation
+															: buddyService.isProviderNotConfigured
+																? localizations.buddy_provider_not_configured_title
+																: localizations.buddy_hint_default,
 											hintStyle: TextStyle(
 												fontSize: AppFontSize.base,
 												color: hintColor,
@@ -605,12 +626,40 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 									),
 								),
 							),
-							SizedBox(width: AppSpacings.pMd),
+							SizedBox(width: AppSpacings.pSm),
+							_buildMicButton(context, isDark, isSending || isMicDisabled),
+							SizedBox(width: AppSpacings.pSm),
 							_buildSendButton(context, isDark, isSending || isDisabled),
 						],
 					),
 				);
 			},
+		);
+	}
+
+	Widget _buildMicButton(BuildContext context, bool isDark, bool disabled) {
+		final accentColor = ThemeColorFamily.get(
+			isDark ? Brightness.dark : Brightness.light,
+			ThemeColors.primary,
+		).base;
+
+		return GestureDetector(
+			onTap: disabled ? null : _openVoiceOverlay,
+			child: Container(
+				width: AppSpacings.scale(36),
+				height: AppSpacings.scale(36),
+				decoration: BoxDecoration(
+					color: disabled
+						? accentColor.withValues(alpha: 0.3)
+						: accentColor,
+					shape: BoxShape.circle,
+				),
+				child: Icon(
+					Icons.mic,
+					size: AppSpacings.scale(18),
+					color: Colors.white,
+				),
+			),
 		);
 	}
 

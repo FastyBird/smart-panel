@@ -1211,7 +1211,7 @@ abstract class AppLocalizations {
   /// **'Maintenance'**
   String get settings_general_settings_button_maintenance;
 
-  /// Button label for navigating to Wake Word settings section.
+  /// Button label for navigating to Voice Activation settings section.
   ///
   /// In en, this message translates to:
   /// **'Voice Activation'**
@@ -1238,7 +1238,7 @@ abstract class AppLocalizations {
   /// Description for the voice activation enable toggle.
   ///
   /// In en, this message translates to:
-  /// **'Say "{wakeWord}" to activate voice commands without touching the panel.'**
+  /// **'Say \"{wakeWord}\" to activate voice commands without touching the panel.'**
   String settings_voice_activation_enable_description(String wakeWord);
 
   /// Section title for voice activation sensitivity settings.
@@ -7132,6 +7132,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Something went wrong. Please try again.'**
   String get buddy_error_generic;
+
+  /// Input hint shown while recording audio
+  ///
+  /// In en, this message translates to:
+  /// **'Recording audio...'**
+  String get buddy_hint_recording;
+
+  /// Recording progress indicator
+  ///
+  /// In en, this message translates to:
+  /// **'Recording... {seconds}s / {maxSeconds}s'**
+  String buddy_recording_progress(int seconds, int maxSeconds);
+
+  /// Cancel recording button
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get buddy_recording_cancel;
+
+  /// Snackbar when recording is too short
+  ///
+  /// In en, this message translates to:
+  /// **'Recording too short. Hold longer to record.'**
+  String get buddy_recording_too_short;
+
+  /// Snackbar when microphone permission denied
+  ///
+  /// In en, this message translates to:
+  /// **'Could not start recording. Check microphone permissions.'**
+  String get buddy_recording_permission_error;
+
+  /// Label shown in voice input overlay while recording
+  ///
+  /// In en, this message translates to:
+  /// **'Listening...'**
+  String get buddy_voice_listening;
 
   /// Error when security events API returns unexpected data
   ///

@@ -12,7 +12,6 @@ import {
 	BUDDY_OLLAMA_DEFAULT_MODEL,
 	BUDDY_OLLAMA_DEFAULT_URL,
 	BUDDY_OLLAMA_PLUGIN_API_TAG_DESCRIPTION,
-	BUDDY_OLLAMA_PLUGIN_API_TAG_NAME,
 	BUDDY_OLLAMA_PLUGIN_NAME,
 } from '../buddy-ollama.constants';
 import { BuddyOllamaConfigModel } from '../models/config.model';
@@ -34,7 +33,7 @@ export class OllamaProvider implements ILlmProvider {
 	}
 
 	getName(): string {
-		return BUDDY_OLLAMA_PLUGIN_API_TAG_NAME;
+		return 'Ollama';
 	}
 
 	getDescription(): string {

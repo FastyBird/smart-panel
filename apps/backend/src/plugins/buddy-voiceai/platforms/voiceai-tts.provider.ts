@@ -22,7 +22,7 @@ export class VoiceaiTtsProvider implements ITtsProvider {
 	}
 
 	getName(): string {
-		return 'Voice.ai TTS';
+		return 'Voice.ai';
 	}
 
 	getDescription(): string {
@@ -31,9 +31,8 @@ export class VoiceaiTtsProvider implements ITtsProvider {
 
 	isConfigured(pluginConfig: Record<string, unknown>): boolean {
 		const apiKey = (pluginConfig['apiKey'] ?? pluginConfig['api_key']) as string | undefined;
-		const voiceId = (pluginConfig['voiceId'] ?? pluginConfig['voice_id']) as string | undefined;
 
-		return !!apiKey && apiKey !== '***' && !!voiceId;
+		return !!apiKey;
 	}
 
 	async synthesize(text: string, options?: TtsSynthesisOptions): Promise<TtsSynthesisResult> {
@@ -46,12 +45,18 @@ export class VoiceaiTtsProvider implements ITtsProvider {
 
 		const voiceId = options?.voice ?? config?.voiceId;
 
-		if (!voiceId) {
-			throw new Error('Voice.ai voice ID is not configured. Set a voice ID in the plugin configuration.');
-		}
-
 		try {
-			const url = `${BUDDY_VOICEAI_API_BASE_URL}/tts/v2/audio/speech`;
+			const url = `${BUDDY_VOICEAI_API_BASE_URL}/tts/speech`;
+
+			const body: Record<string, unknown> = {
+				text,
+				model: 'voiceai-tts-v1-latest',
+				language: options?.language ?? 'en',
+			};
+
+			if (voiceId) {
+				body.voice_id = voiceId;
+			}
 
 			const response = await fetch(url, {
 				method: 'POST',
@@ -59,12 +64,7 @@ export class VoiceaiTtsProvider implements ITtsProvider {
 					'Content-Type': 'application/json',
 					Authorization: `Bearer ${apiKey}`,
 				},
-				body: JSON.stringify({
-					text,
-					voice: voiceId,
-					audio_format: 'mp3',
-					streaming: false,
-				}),
+				body: JSON.stringify(body),
 				signal: AbortSignal.timeout(TTS_DEFAULT_TIMEOUT),
 			});
 

@@ -1271,6 +1271,13 @@
   "buddy_error_request_timeout": "Požadavek vypršel. Zkuste to prosím znovu.",
   "buddy_error_connection_error": "Chyba připojení. Zkontrolujte prosím síť.",
   "buddy_error_generic": "Něco se pokazilo. Zkuste to prosím znovu.",
+  "buddy_hint_recording": "Nahrávání zvuku...",
+  "buddy_recording_progress": "Nahrávání... {seconds}s / {maxSeconds}s",
+  "buddy_recording_cancel": "Zrušit",
+  "buddy_recording_too_short": "Nahrávka je příliš krátká. Podržte déle.",
+  "buddy_recording_permission_error": "Nelze spustit nahrávání. Zkontrolujte oprávnění mikrofonu.",
+
+  "buddy_voice_listening": "Naslouchám...",
 
   "security_events_error_unexpected_response": "Neočekávaná odpověď",
 

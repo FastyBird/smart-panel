@@ -22,21 +22,21 @@
 			:label="t('buddyModule.fields.config.name.title')"
 			prop="name"
 		>
-			<template #label>
-				{{ t('buddyModule.fields.config.name.title') }}
-				<el-text
-					size="small"
-					type="info"
-				>
-					{{ t('buddyModule.fields.config.name.description') }}
-				</el-text>
-			</template>
 			<el-input
 				v-model="model.name"
 				:placeholder="t('buddyModule.fields.config.name.placeholder')"
 				name="name"
 			/>
 		</el-form-item>
+
+		<el-alert
+			type="info"
+			show-icon
+			:closable="false"
+			style="margin-bottom: 18px"
+		>
+			{{ t('buddyModule.fields.config.name.description') }}
+		</el-alert>
 
 		<el-alert
 			v-if="providerFetchFailed"
@@ -95,40 +95,59 @@
 			prop="voiceEnabled"
 			label-position="left"
 		>
-			<template #label>
-				{{ t('buddyModule.fields.config.voiceEnabled.title') }}
-				<el-text
-					size="small"
-					type="info"
-				>
-					{{ t('buddyModule.fields.config.voiceEnabled.description') }}
-				</el-text>
-			</template>
 			<el-switch
 				v-model="model.voiceEnabled"
 				name="voiceEnabled"
 			/>
 		</el-form-item>
 
+		<el-alert
+			type="info"
+			show-icon
+			:closable="false"
+			style="margin-bottom: 18px"
+		>
+			{{ t('buddyModule.fields.config.voiceEnabled.description') }}
+		</el-alert>
+
+		<el-alert
+			v-if="sttProviderFetchFailed"
+			type="warning"
+			show-icon
+			:closable="false"
+			style="margin-bottom: 18px"
+		>
+			{{ t('buddyModule.texts.sttProvidersFetchFailed') }}
+		</el-alert>
+
 		<el-form-item
 			:label="t('buddyModule.fields.config.sttPlugin.title')"
 			prop="sttPlugin"
 		>
-			<template #label>
-				{{ t('buddyModule.fields.config.sttPlugin.title') }}
-				<el-text
-					size="small"
-					type="info"
-				>
-					{{ t('buddyModule.fields.config.sttPlugin.description') }}
-				</el-text>
-			</template>
-			<el-input
+			<el-select
 				v-model="model.sttPlugin"
 				:placeholder="t('buddyModule.fields.config.sttPlugin.placeholder')"
 				name="sttPlugin"
-				clearable
-			/>
+			>
+				<el-option
+					v-for="option in sttOptions"
+					:key="option.value"
+					:label="option.label"
+					:value="option.value"
+					:disabled="option.disabled"
+				>
+					<span>{{ option.label }}</span>
+					<el-tag
+						v-if="option.tag"
+						size="small"
+						:type="option.tagType"
+						effect="light"
+						style="margin-left: 8px"
+					>
+						{{ option.tag }}
+					</el-tag>
+				</el-option>
+			</el-select>
 		</el-form-item>
 
 		<el-alert
@@ -143,25 +162,44 @@
 
 		<el-divider />
 
+		<el-alert
+			v-if="ttsProviderFetchFailed"
+			type="warning"
+			show-icon
+			:closable="false"
+			style="margin-bottom: 18px"
+		>
+			{{ t('buddyModule.texts.ttsProvidersFetchFailed') }}
+		</el-alert>
+
 		<el-form-item
 			:label="t('buddyModule.fields.config.ttsPlugin.title')"
 			prop="ttsPlugin"
 		>
-			<template #label>
-				{{ t('buddyModule.fields.config.ttsPlugin.title') }}
-				<el-text
-					size="small"
-					type="info"
-				>
-					{{ t('buddyModule.fields.config.ttsPlugin.description') }}
-				</el-text>
-			</template>
-			<el-input
+			<el-select
 				v-model="model.ttsPlugin"
 				:placeholder="t('buddyModule.fields.config.ttsPlugin.placeholder')"
 				name="ttsPlugin"
-				clearable
-			/>
+			>
+				<el-option
+					v-for="option in ttsOptions"
+					:key="option.value"
+					:label="option.label"
+					:value="option.value"
+					:disabled="option.disabled"
+				>
+					<span>{{ option.label }}</span>
+					<el-tag
+						v-if="option.tag"
+						size="small"
+						:type="option.tagType"
+						effect="light"
+						style="margin-left: 8px"
+					>
+						{{ option.tag }}
+					</el-tag>
+				</el-option>
+			</el-select>
 		</el-form-item>
 
 		<el-alert
@@ -174,33 +212,6 @@
 			{{ t('buddyModule.texts.pluginConfigHint') }}
 		</el-alert>
 
-		<el-form-item
-			v-if="model.ttsPlugin && model.ttsPlugin !== TTS_PLUGIN_NONE"
-			:label="t('buddyModule.fields.config.ttsVoice.title')"
-			prop="ttsVoice"
-		>
-			<el-input
-				v-model="model.ttsVoice"
-				:placeholder="t('buddyModule.fields.config.ttsVoice.placeholder')"
-				name="ttsVoice"
-				clearable
-			/>
-		</el-form-item>
-
-		<el-form-item
-			v-if="model.ttsPlugin && model.ttsPlugin !== TTS_PLUGIN_NONE"
-			:label="t('buddyModule.fields.config.ttsSpeed.title')"
-			prop="ttsSpeed"
-		>
-			<el-input-number
-				v-model="model.ttsSpeed"
-				:min="0.25"
-				:max="4.0"
-				:step="0.25"
-				:precision="2"
-				name="ttsSpeed"
-			/>
-		</el-form-item>
 	</el-form>
 </template>
 
@@ -208,11 +219,13 @@
 import { computed, onBeforeMount, reactive, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElInputNumber, ElOption, ElSelect, ElSwitch, ElTag, ElText, type FormRules } from 'element-plus';
+import { ElAlert, ElDivider, ElForm, ElFormItem, ElInput, ElOption, ElSelect, ElSwitch, ElTag, type FormRules } from 'element-plus';
 
 import { FormResult, type FormResultType, Layout, useConfigModuleEditForm } from '../../config';
 import { LEGACY_PROVIDER_MAP, LLM_PROVIDER_NONE, STT_PLUGIN_NONE, TTS_PLUGIN_NONE } from '../buddy.constants';
 import { useBuddyProviders } from '../composables/useBuddyProviders';
+import { useBuddySttProviders } from '../composables/useBuddySttProviders';
+import { useBuddyTtsProviders } from '../composables/useBuddyTtsProviders';
 import type { IBuddyConfigEditForm } from '../schemas/config.types';
 
 import type { IBuddyConfigFormProps } from './buddy-config-form.types';
@@ -247,9 +260,11 @@ if (rawProvider && LEGACY_PROVIDER_MAP.has(rawProvider)) {
 }
 
 const { providerStatuses, providerFetchFailed, fetchProviderStatuses } = useBuddyProviders();
+const { sttProviderStatuses, sttProviderFetchFailed, fetchSttProviderStatuses } = useBuddySttProviders();
+const { ttsProviderStatuses, ttsProviderFetchFailed, fetchTtsProviderStatuses } = useBuddyTtsProviders();
 
 onBeforeMount(async (): Promise<void> => {
-	await fetchProviderStatuses();
+	await Promise.all([fetchProviderStatuses(), fetchSttProviderStatuses(), fetchTtsProviderStatuses()]);
 });
 
 const { formEl, model, formChanged, submit, formResult } = useConfigModuleEditForm<IBuddyConfigEditForm>({
@@ -299,6 +314,96 @@ const providerOptions = computed(() => {
 			options.push({
 				value: model.provider,
 				label: model.provider,
+				disabled: false,
+			});
+		}
+	}
+
+	return options;
+});
+
+const sttOptions = computed(() => {
+	const options: { value: string; label: string; disabled: boolean; tag?: string; tagType?: TagType }[] = [
+		{
+			value: STT_PLUGIN_NONE,
+			label: t('buddyModule.fields.config.sttPlugin.options.none'),
+			disabled: false,
+			tag: t('buddyModule.fields.config.sttPlugin.tags.disabled'),
+			tagType: 'info',
+		},
+	];
+
+	for (const provider of sttProviderStatuses.value) {
+		let tag: string | undefined;
+		let tagType: TagType | undefined;
+
+		if (provider.enabled && !provider.configured) {
+			tag = t('buddyModule.fields.config.sttPlugin.notConfigured');
+			tagType = 'warning';
+		}
+
+		options.push({
+			value: provider.type,
+			label: provider.name,
+			disabled: !provider.enabled,
+			tag,
+			tagType,
+		});
+	}
+
+	// If the fetch failed and the current plugin isn't in the list, add a fallback entry
+	if (sttProviderFetchFailed.value && model.sttPlugin && model.sttPlugin !== STT_PLUGIN_NONE) {
+		const exists = options.some((o) => o.value === model.sttPlugin);
+
+		if (!exists) {
+			options.push({
+				value: model.sttPlugin,
+				label: model.sttPlugin,
+				disabled: false,
+			});
+		}
+	}
+
+	return options;
+});
+
+const ttsOptions = computed(() => {
+	const options: { value: string; label: string; disabled: boolean; tag?: string; tagType?: TagType }[] = [
+		{
+			value: TTS_PLUGIN_NONE,
+			label: t('buddyModule.fields.config.ttsPlugin.options.none'),
+			disabled: false,
+			tag: t('buddyModule.fields.config.ttsPlugin.tags.disabled'),
+			tagType: 'info',
+		},
+	];
+
+	for (const provider of ttsProviderStatuses.value) {
+		let tag: string | undefined;
+		let tagType: TagType | undefined;
+
+		if (provider.enabled && !provider.configured) {
+			tag = t('buddyModule.fields.config.ttsPlugin.notConfigured');
+			tagType = 'warning';
+		}
+
+		options.push({
+			value: provider.type,
+			label: provider.name,
+			disabled: !provider.enabled,
+			tag,
+			tagType,
+		});
+	}
+
+	// If the fetch failed and the current plugin isn't in the list, add a fallback entry
+	if (ttsProviderFetchFailed.value && model.ttsPlugin && model.ttsPlugin !== TTS_PLUGIN_NONE) {
+		const exists = options.some((o) => o.value === model.ttsPlugin);
+
+		if (!exists) {
+			options.push({
+				value: model.ttsPlugin,
+				label: model.ttsPlugin,
 				disabled: false,
 			});
 		}

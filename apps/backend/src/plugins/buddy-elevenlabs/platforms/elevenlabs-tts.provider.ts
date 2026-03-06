@@ -6,14 +6,21 @@ import {
 	TtsSynthesisResult,
 } from '../../../modules/buddy/platforms/tts-provider.platform';
 import { ConfigService } from '../../../modules/config/services/config.service';
-import { BUDDY_ELEVENLABS_DEFAULT_VOICE, BUDDY_ELEVENLABS_PLUGIN_NAME } from '../buddy-elevenlabs.constants';
+import { BUDDY_ELEVENLABS_PLUGIN_NAME } from '../buddy-elevenlabs.constants';
 import { BuddyElevenlabsConfigModel } from '../models/config.model';
 
 const TTS_DEFAULT_TIMEOUT = 30_000;
+const ELEVENLABS_API_BASE = 'https://api.elevenlabs.io';
+
+interface ElevenLabsVoice {
+	voice_id: string;
+	name: string;
+}
 
 @Injectable()
 export class ElevenLabsTtsProvider implements ITtsProvider {
 	private readonly logger = new Logger(ElevenLabsTtsProvider.name);
+	private cachedDefaultVoiceId = new Map<string, string>();
 
 	constructor(private readonly configService: ConfigService) {}
 
@@ -22,7 +29,7 @@ export class ElevenLabsTtsProvider implements ITtsProvider {
 	}
 
 	getName(): string {
-		return 'ElevenLabs TTS';
+		return 'ElevenLabs';
 	}
 
 	getDescription(): string {
@@ -43,10 +50,10 @@ export class ElevenLabsTtsProvider implements ITtsProvider {
 			throw new Error('ElevenLabs API key is not configured');
 		}
 
-		const voiceId = options?.voice ?? config?.voiceId ?? BUDDY_ELEVENLABS_DEFAULT_VOICE;
+		const voiceId = options?.voice ?? config?.voiceId ?? (await this.getDefaultVoiceId(apiKey));
 
 		try {
-			const url = `https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(voiceId)}`;
+			const url = `${ELEVENLABS_API_BASE}/v1/text-to-speech/${encodeURIComponent(voiceId)}`;
 
 			const response = await fetch(url, {
 				method: 'POST',
@@ -57,7 +64,7 @@ export class ElevenLabsTtsProvider implements ITtsProvider {
 				},
 				body: JSON.stringify({
 					text,
-					model_id: 'eleven_monolingual_v1',
+					model_id: 'eleven_multilingual_v2',
 					voice_settings: {
 						stability: 0.5,
 						similarity_boost: 0.5,
@@ -67,7 +74,11 @@ export class ElevenLabsTtsProvider implements ITtsProvider {
 			});
 
 			if (!response.ok) {
-				throw new Error(`ElevenLabs API returned ${response.status}: ${response.statusText}`);
+				const body = await response.text().catch(() => '');
+
+				throw new Error(
+					`ElevenLabs TTS API returned ${response.status}: ${response.statusText} (voice=${voiceId})${body ? ` - ${body}` : ''}`,
+				);
 			}
 
 			const arrayBuffer = await response.arrayBuffer();
@@ -82,6 +93,43 @@ export class ElevenLabsTtsProvider implements ITtsProvider {
 			this.logger.error(`ElevenLabs TTS error: ${err.message}`);
 
 			throw err;
+		}
+	}
+
+	private async getDefaultVoiceId(apiKey: string): Promise<string> {
+		const cached = this.cachedDefaultVoiceId.get(apiKey);
+
+		if (cached) {
+			return cached;
+		}
+
+		try {
+			const response = await fetch(`${ELEVENLABS_API_BASE}/v1/voices`, {
+				headers: { 'xi-api-key': apiKey },
+				signal: AbortSignal.timeout(TTS_DEFAULT_TIMEOUT),
+			});
+
+			if (!response.ok) {
+				throw new Error(`Failed to fetch voices: ${response.status}`);
+			}
+
+			const data = (await response.json()) as { voices?: ElevenLabsVoice[] };
+			const firstVoice = data.voices?.[0];
+
+			if (!firstVoice) {
+				throw new Error('No voices available in ElevenLabs account');
+			}
+
+			this.logger.log(`Using ElevenLabs voice: ${firstVoice.name} (${firstVoice.voice_id})`);
+			this.cachedDefaultVoiceId.set(apiKey, firstVoice.voice_id);
+
+			return firstVoice.voice_id;
+		} catch (error) {
+			const err = error as Error;
+
+			this.logger.error(`Failed to discover ElevenLabs voices: ${err.message}`);
+
+			throw new Error('ElevenLabs voice_id is not configured and auto-discovery failed');
 		}
 	}
 

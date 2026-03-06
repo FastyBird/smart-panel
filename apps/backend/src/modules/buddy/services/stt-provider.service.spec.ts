@@ -1,3 +1,5 @@
+import { SystemConfigModel } from '../../system/models/config.model';
+import { SYSTEM_MODULE_NAME } from '../../system/system.constants';
 import { BUDDY_MODULE_NAME, STT_PLUGIN_NONE } from '../buddy.constants';
 import { BuddySttNotConfiguredException } from '../buddy.exceptions';
 import { BuddyConfigModel } from '../models/config.model';
@@ -15,7 +17,7 @@ describe('SttProviderService', () => {
 	const mimeType = 'audio/wav';
 
 	const mockSttProvider: ISttProvider = {
-		getType: () => 'buddy-stt-whisper-api-plugin',
+		getType: () => 'buddy-openai-plugin',
 		getName: () => 'Whisper API',
 		getDescription: () => 'Test STT provider',
 		isConfigured: (config: Record<string, unknown>) => !!config['apiKey'],
@@ -26,14 +28,22 @@ describe('SttProviderService', () => {
 		const config = new BuddyConfigModel();
 
 		config.voiceEnabled = 'voiceEnabled' in overrides ? overrides.voiceEnabled : true;
-		config.sttPlugin = 'sttPlugin' in overrides ? overrides.sttPlugin : 'buddy-stt-whisper-api-plugin';
+		config.sttPlugin = 'sttPlugin' in overrides ? overrides.sttPlugin : 'buddy-openai-plugin';
 
+		return config;
+	}
+
+	function makeSystemConfig(): SystemConfigModel {
+		const config = new SystemConfigModel();
 		return config;
 	}
 
 	beforeEach(() => {
 		configService = {
-			getModuleConfig: jest.fn().mockReturnValue(makeConfig()),
+			getModuleConfig: jest.fn().mockImplementation((moduleName: string) => {
+				if (moduleName === SYSTEM_MODULE_NAME) return makeSystemConfig();
+				return makeConfig();
+			}),
 			getPluginConfig: jest.fn().mockReturnValue({ apiKey: 'test-key' }),
 		};
 
@@ -114,7 +124,11 @@ describe('SttProviderService', () => {
 
 			expect(result).toBe('Hello world');
 			// eslint-disable-next-line @typescript-eslint/unbound-method
-			expect(mockSttProvider.transcribe).toHaveBeenCalledWith(audioBuffer, mimeType);
+			expect(mockSttProvider.transcribe).toHaveBeenCalledWith(
+				audioBuffer,
+				mimeType,
+				expect.objectContaining({ language: 'en' }),
+			);
 		});
 
 		it('should throw when provider is not configured', async () => {

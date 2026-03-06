@@ -1,3 +1,5 @@
+import { SystemConfigModel } from '../../system/models/config.model';
+import { SYSTEM_MODULE_NAME } from '../../system/system.constants';
 import { BUDDY_MODULE_NAME, TTS_AUDIO_CACHE_TTL_MS, TTS_PLUGIN_NONE } from '../buddy.constants';
 import { BuddyTtsNotConfiguredException } from '../buddy.exceptions';
 import { BuddyConfigModel } from '../models/config.model';
@@ -18,8 +20,6 @@ describe('TtsProviderService', () => {
 
 		config.ttsPlugin = (overrides['ttsPlugin'] as string) ?? 'buddy-openai-plugin';
 		config.voiceEnabled = (overrides['voiceEnabled'] as boolean) ?? true;
-		config.ttsVoice = (overrides['ttsVoice'] as string) ?? undefined;
-		config.ttsSpeed = (overrides['ttsSpeed'] as number) ?? 1.0;
 
 		return config;
 	}
@@ -32,7 +32,10 @@ describe('TtsProviderService', () => {
 		};
 
 		configService = {
-			getModuleConfig: jest.fn().mockReturnValue(makeConfig()),
+			getModuleConfig: jest.fn().mockImplementation((moduleName: string) => {
+				if (moduleName === SYSTEM_MODULE_NAME) return new SystemConfigModel();
+				return makeConfig();
+			}),
 			getPluginConfig: jest.fn().mockReturnValue({ enabled: true }),
 		};
 
@@ -42,6 +45,7 @@ describe('TtsProviderService', () => {
 			list: jest.fn().mockReturnValue([mockProvider]),
 		};
 
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 		service = new TtsProviderService(
 			configService as any,
 			ttsProviderRegistry as unknown as TtsProviderRegistryService,
@@ -161,16 +165,6 @@ describe('TtsProviderService', () => {
 			} finally {
 				jest.useRealTimers();
 			}
-		});
-
-		it('should use different cache keys when voice config changes', async () => {
-			await service.synthesize('Hello', 'msg-1');
-
-			configService.getModuleConfig.mockReturnValue(makeConfig({ ttsVoice: 'nova' }));
-
-			await service.synthesize('Hello', 'msg-1');
-
-			expect(mockProvider.synthesize).toHaveBeenCalledTimes(2);
 		});
 
 		it('should deduplicate concurrent requests for the same message', async () => {

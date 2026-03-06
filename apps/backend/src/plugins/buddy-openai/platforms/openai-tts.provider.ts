@@ -26,7 +26,7 @@ export class OpenAiTtsProvider implements ITtsProvider {
 	}
 
 	getName(): string {
-		return 'OpenAI TTS';
+		return 'OpenAI';
 	}
 
 	getDescription(): string {
