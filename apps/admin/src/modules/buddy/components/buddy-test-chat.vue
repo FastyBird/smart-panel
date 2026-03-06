@@ -295,6 +295,11 @@ watch(
 		if (val.includes('testChat') && conversations.value.length === 0) {
 			await Promise.all([fetchProviderStatuses(), fetchConversations()]);
 
+			// Re-check the section is still expanded after the async gap
+			if (!activeSection.value.includes('testChat')) {
+				return;
+			}
+
 			const first = conversations.value[0];
 
 			if (first) {
