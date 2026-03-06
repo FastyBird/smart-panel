@@ -13,6 +13,7 @@ import { SpacesModule } from '../spaces/spaces.module';
 import { ApiTag } from '../swagger/decorators/api-tag.decorator';
 import { SwaggerModelsRegistryService } from '../swagger/services/swagger-models-registry.service';
 import { SwaggerModule } from '../swagger/swagger.module';
+import { ToolsModule } from '../tools/tools.module';
 import { WeatherModule } from '../weather/weather.module';
 
 import { BUDDY_MODULE_API_TAG_DESCRIPTION, BUDDY_MODULE_API_TAG_NAME, BUDDY_MODULE_NAME } from './buddy.constants';
@@ -43,8 +44,6 @@ import { PatternDetectorService } from './services/pattern-detector.service';
 import { SceneSuggestionEvaluator } from './services/scene-suggestion-evaluator.service';
 import { SttProviderService } from './services/stt-provider.service';
 import { SuggestionEngineService } from './services/suggestion-engine.service';
-import { ToolExecutionService } from './services/tool-execution.service';
-import { ToolProviderRegistryService } from './services/tool-provider-registry.service';
 import { TtsProviderRegistryService } from './services/tts-provider-registry.service';
 import { TtsProviderService } from './services/tts-provider.service';
 import { EvaluatorRulesLoaderService } from './spec/evaluator-rules-loader.service';
@@ -64,6 +63,7 @@ import { EvaluatorRulesLoaderService } from './spec/evaluator-rules-loader.servi
 		forwardRef(() => DevicesModule),
 		forwardRef(() => ScenesModule),
 		IntentsModule,
+		ToolsModule,
 		WeatherModule,
 		EnergyModule,
 	],
@@ -86,8 +86,6 @@ import { EvaluatorRulesLoaderService } from './spec/evaluator-rules-loader.servi
 		EnergyEvaluator,
 		ConflictDetectorEvaluator,
 		SceneSuggestionEvaluator,
-		ToolExecutionService,
-		ToolProviderRegistryService,
 		SttProviderService,
 		TtsProviderRegistryService,
 		TtsProviderService,
@@ -107,7 +105,6 @@ import { EvaluatorRulesLoaderService } from './spec/evaluator-rules-loader.servi
 		EnergyEvaluator,
 		ConflictDetectorEvaluator,
 		SceneSuggestionEvaluator,
-		ToolProviderRegistryService,
 		TtsProviderRegistryService,
 		OAuthCallbackService,
 		OAuthFlowService,
@@ -124,8 +121,6 @@ export class BuddyModule implements OnModuleInit {
 		private readonly energyEvaluator: EnergyEvaluator,
 		private readonly conflictDetector: ConflictDetectorEvaluator,
 		private readonly sceneSuggestion: SceneSuggestionEvaluator,
-		private readonly toolProviderRegistry: ToolProviderRegistryService,
-		private readonly toolExecution: ToolExecutionService,
 	) {}
 
 	onModuleInit() {
@@ -139,9 +134,6 @@ export class BuddyModule implements OnModuleInit {
 			class: BuddyConfigModel,
 			configDto: UpdateBuddyConfigDto,
 		});
-
-		// Register the core tool provider with the tool registry
-		this.toolProviderRegistry.register(this.toolExecution);
 
 		for (const model of BUDDY_SWAGGER_EXTRA_MODELS) {
 			this.swaggerRegistry.register(model);

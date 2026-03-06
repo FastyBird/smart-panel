@@ -5,6 +5,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { InjectRepository } from '@nestjs/typeorm';
 
+import { ToolProviderRegistryService } from '../../tools/services/tool-provider-registry.service';
 import { EventType, MessageRole } from '../buddy.constants';
 import { BuddyConversationNotFoundException } from '../buddy.exceptions';
 import { BuddyConversationEntity } from '../entities/buddy-conversation.entity';
@@ -13,7 +14,6 @@ import { LlmResponse, LlmResponseMeta, ToolDefinition } from '../platforms/llm-p
 
 import { BuddyContext, BuddyContextService } from './buddy-context.service';
 import { ChatMessage, LlmProviderService } from './llm-provider.service';
-import { ToolProviderRegistryService } from './tool-provider-registry.service';
 
 const MAX_HISTORY_MESSAGES = 20;
 const MAX_TOOL_ITERATIONS = 5;
