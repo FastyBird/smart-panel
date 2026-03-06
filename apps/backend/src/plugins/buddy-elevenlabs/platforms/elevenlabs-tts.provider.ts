@@ -20,7 +20,7 @@ interface ElevenLabsVoice {
 @Injectable()
 export class ElevenLabsTtsProvider implements ITtsProvider {
 	private readonly logger = new Logger(ElevenLabsTtsProvider.name);
-	private cachedDefaultVoiceId: string | null = null;
+	private cachedDefaultVoiceId = new Map<string, string>();
 
 	constructor(private readonly configService: ConfigService) {}
 
@@ -97,8 +97,10 @@ export class ElevenLabsTtsProvider implements ITtsProvider {
 	}
 
 	private async getDefaultVoiceId(apiKey: string): Promise<string> {
-		if (this.cachedDefaultVoiceId) {
-			return this.cachedDefaultVoiceId;
+		const cached = this.cachedDefaultVoiceId.get(apiKey);
+
+		if (cached) {
+			return cached;
 		}
 
 		try {
@@ -119,7 +121,7 @@ export class ElevenLabsTtsProvider implements ITtsProvider {
 			}
 
 			this.logger.log(`Using ElevenLabs voice: ${firstVoice.name} (${firstVoice.voice_id})`);
-			this.cachedDefaultVoiceId = firstVoice.voice_id;
+			this.cachedDefaultVoiceId.set(apiKey, firstVoice.voice_id);
 
 			return firstVoice.voice_id;
 		} catch (error) {
