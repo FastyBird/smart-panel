@@ -372,7 +372,7 @@ class BuddyRepository extends ChangeNotifier {
 		String mimeType,
 	) async {
 		_activeSendCount++;
-		_sendError = null;
+		_sendErrorType = null;
 		_isProviderNotConfiguredSend = false;
 		_isSttNotConfigured = false;
 
@@ -432,7 +432,7 @@ class BuddyRepository extends ChangeNotifier {
 
 			await _reconcileMessages(conversationId);
 		} on DioException catch (e) {
-			_sendError = _parseAudioError(e);
+			_sendErrorType = _parseAudioError(e);
 
 			_messages.removeWhere((m) => m.id == userMessage.id);
 
@@ -442,7 +442,7 @@ class BuddyRepository extends ChangeNotifier {
 				);
 			}
 		} catch (e) {
-			_sendError = 'Failed to send audio message';
+			_sendErrorType = BuddyErrorType.sendMessage;
 
 			_messages.removeWhere((m) => m.id == userMessage.id);
 
@@ -767,7 +767,7 @@ class BuddyRepository extends ChangeNotifier {
 		return _parseGenericError(e);
 	}
 
-	String _parseAudioError(DioException e) {
+	BuddyErrorType _parseAudioError(DioException e) {
 		if (e.response?.statusCode == 503) {
 			// The audio endpoint can return 503 from either the STT provider
 			// (transcription step) or the LLM provider (chat step). Inspect
@@ -779,35 +779,18 @@ class BuddyRepository extends ChangeNotifier {
 			if (isLlmError) {
 				_isProviderNotConfiguredSend = true;
 
-				return 'AI provider not configured';
+				return BuddyErrorType.providerNotConfigured;
 			}
 
 			_isSttNotConfigured = true;
 
-			return 'Voice input not configured';
-		}
-
-		if (e.response?.statusCode == 413) {
-			return 'Audio file is too large (max 25 MB)';
-		}
-
-		if (e.response?.statusCode == 415) {
-			return 'Unsupported audio format';
-		}
-
-		if (e.response?.statusCode == 400) {
-			final data = e.response?.data;
-			final message = data is Map<String, dynamic> ? data['message'] as String? : null;
-
-			if (message != null && message.isNotEmpty) {
-				return message;
-			}
+			return BuddyErrorType.providerNotConfigured;
 		}
 
 		return _parseGenericError(e);
 	}
 
-	String _parseGenericError(DioException e) {
+	BuddyErrorType _parseGenericError(DioException e) {
 		if (e.type == DioExceptionType.connectionTimeout ||
 			e.type == DioExceptionType.receiveTimeout) {
 			return BuddyErrorType.requestTimeout;

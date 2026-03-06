@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/modules/buddy/models/message.dart';
 import 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/message_bubble.dart';
 import 'package:fastybird_smart_panel/modules/buddy/presentation/widgets/suggestion_card.dart';
+import 'package:fastybird_smart_panel/modules/buddy/repositories/buddy.dart';
 import 'package:fastybird_smart_panel/modules/buddy/service.dart';
 import 'package:fastybird_smart_panel/modules/buddy/services/audio_playback_service.dart';
 import 'package:fastybird_smart_panel/modules/buddy/services/audio_recording_service.dart';
@@ -431,7 +433,7 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 
 						// Error state
 						if (buddyService.hasError)
-							_buildErrorMessage(context, isDark, buddyService.error!),
+							_buildErrorMessage(context, isDark, buddyService.errorType),
 					],
 				);
 			},
@@ -624,7 +626,32 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 		);
 	}
 
-	Widget _buildErrorMessage(BuildContext context, bool isDark, String error) {
+	String _localizedBuddyError(AppLocalizations localizations, BuddyErrorType? errorType) {
+		if (errorType == null) {
+			return localizations.buddy_error_generic;
+		}
+		switch (errorType) {
+			case BuddyErrorType.loadConversations:
+				return localizations.buddy_error_load_conversations;
+			case BuddyErrorType.createConversation:
+				return localizations.buddy_error_create_conversation;
+			case BuddyErrorType.loadMessages:
+				return localizations.buddy_error_load_messages;
+			case BuddyErrorType.sendMessage:
+				return localizations.buddy_error_send_message;
+			case BuddyErrorType.providerNotConfigured:
+				return localizations.buddy_error_provider_not_configured;
+			case BuddyErrorType.requestTimeout:
+				return localizations.buddy_error_request_timeout;
+			case BuddyErrorType.connectionError:
+				return localizations.buddy_error_connection_error;
+			case BuddyErrorType.generic:
+				return localizations.buddy_error_generic;
+		}
+	}
+
+	Widget _buildErrorMessage(BuildContext context, bool isDark, BuddyErrorType? errorType) {
+		final localizations = AppLocalizations.of(context)!;
 		final warningColor = isDark ? AppColorsDark.warning : AppColorsLight.warning;
 
 		return Padding(
@@ -648,7 +675,7 @@ class _BuddyChatDrawerState extends State<BuddyChatDrawer> {
 						SizedBox(width: AppSpacings.pMd),
 						Expanded(
 							child: Text(
-								error,
+								_localizedBuddyError(localizations, errorType),
 								style: TextStyle(
 									fontSize: AppFontSize.small,
 									color: warningColor,
