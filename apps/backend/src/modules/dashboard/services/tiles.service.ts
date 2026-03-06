@@ -222,6 +222,7 @@ export class TilesService {
 	async update<TTile extends TileEntity, TUpdateDTO extends UpdateTileDto>(
 		id: string,
 		updateDto: UpdateTileDto,
+		relation?: Relation,
 	): Promise<TTile> {
 		this.logger.debug(`Updating tile with id=${id}`);
 
@@ -235,6 +236,10 @@ export class TilesService {
 
 		// Get the fields to update from DTO (excluding undefined values)
 		const updateFields = omitBy(toInstance(mapping.class, dtoInstance), isUndefined);
+
+		// Check if parent is being changed
+		const parentChanged =
+			relation !== undefined && (tile.parentType !== relation.parentType || tile.parentId !== relation.parentId);
 
 		// Check if any entity fields are actually being changed by comparing with existing values
 		const entityFieldsChanged = Object.keys(updateFields).some((key) => {
@@ -270,13 +275,19 @@ export class TilesService {
 
 		Object.assign(tile, updateFields);
 
+		// Apply parent change if provided
+		if (relation) {
+			tile.parentType = relation.parentType;
+			tile.parentId = relation.parentId;
+		}
+
 		await repository.save(tile);
 
 		const updatedTile = await this.getOneOrThrow<TTile>(tile.id);
 
 		this.logger.debug(`Successfully updated tile with id=${updatedTile.id}`);
 
-		if (entityFieldsChanged) {
+		if (entityFieldsChanged || parentChanged) {
 			this.eventEmitter.emit(EventType.TILE_UPDATED, updatedTile);
 		}
 

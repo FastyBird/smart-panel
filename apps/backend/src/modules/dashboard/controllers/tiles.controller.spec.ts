@@ -15,7 +15,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { toInstance } from '../../../common/utils/transform.utils';
 import { DASHBOARD_MODULE_PREFIX } from '../dashboard.constants';
 import { CreateSingleTileDto } from '../dto/create-tile.dto';
-import { UpdateTileDto } from '../dto/update-tile.dto';
+import { UpdateSingleTileDto } from '../dto/update-tile.dto';
 import { PageEntity, TileEntity } from '../entities/dashboard.entity';
 import { TilesTypeMapperService } from '../services/tiles-type-mapper.service';
 import { TilesService } from '../services/tiles.service';
@@ -29,7 +29,7 @@ class CreateMockTileDto extends CreateSingleTileDto {
 	mockValue: string;
 }
 
-class UpdateMockTileDto extends UpdateTileDto {
+class UpdateMockTileDto extends UpdateSingleTileDto {
 	@Expose({ name: 'mock_value' })
 	@IsOptional()
 	@IsNotEmpty({ message: '[{"field":"title","reason":"Mock value must be a non-empty string."}]' })
@@ -197,10 +197,14 @@ describe('TilesController', () => {
 		});
 
 		it('should update a tile', async () => {
-			const updateDto: UpdateMockTileDto = {
+			const updateDto = {
 				type: 'mock',
 				row: 1,
 				col: 1,
+				parent: {
+					type: 'page',
+					id: mockPage.id,
+				},
 			};
 
 			jest.spyOn(tileMapper, 'getMapping').mockReturnValue({
@@ -213,7 +217,10 @@ describe('TilesController', () => {
 			const result = await controller.update(mockTile.id, { data: updateDto });
 
 			expect(result.data).toEqual(toInstance(MockTileEntity, mockTile));
-			expect(tilesService.update).toHaveBeenCalledWith(mockTile.id, updateDto);
+			expect(tilesService.update).toHaveBeenCalledWith(mockTile.id, expect.anything(), {
+				parentType: 'page',
+				parentId: mockPage.id,
+			});
 		});
 
 		it('should delete a tile', async () => {

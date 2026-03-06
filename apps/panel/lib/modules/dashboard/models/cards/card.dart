@@ -10,6 +10,9 @@ class CardModel extends Model {
 
   final String _page;
 
+  final int? _rows;
+  final int? _cols;
+
   final List<String> _tiles;
   final List<String> _dataSource;
 
@@ -19,6 +22,8 @@ class CardModel extends Model {
     IconData? icon,
     required int order,
     required String page,
+    int? rows,
+    int? cols,
     List<String> tiles = const [],
     List<String> dataSource = const [],
     super.createdAt,
@@ -27,7 +32,9 @@ class CardModel extends Model {
         _icon = icon,
         _order = order,
         _page = UuidUtils.validateUuid(page),
-        _tiles = UuidUtils.validateUuidList(dataSource),
+        _rows = rows,
+        _cols = cols,
+        _tiles = UuidUtils.validateUuidList(tiles),
         _dataSource = UuidUtils.validateUuidList(dataSource);
 
   String get title => _title;
@@ -37,6 +44,10 @@ class CardModel extends Model {
   int get order => _order;
 
   String get page => _page;
+
+  int? get rows => _rows;
+
+  int? get cols => _cols;
 
   List<String> get tiles => _tiles;
 
@@ -74,8 +85,10 @@ class CardModel extends Model {
       icon: resolveIconNullable(json['icon'] is String ? json['icon'] : null),
       order: json['order'],
       page: UuidUtils.validateUuid(json['page']),
-      tiles: UuidUtils.validateUuidList(tiles),
-      dataSource: UuidUtils.validateUuidList(dataSources),
+      rows: json['rows'] is int && json['rows'] > 0 ? json['rows'] : null,
+      cols: json['cols'] is int && json['cols'] > 0 ? json['cols'] : null,
+      tiles: tiles,
+      dataSource: dataSources,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'])
           : null,

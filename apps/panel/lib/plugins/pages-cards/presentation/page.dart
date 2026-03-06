@@ -1,9 +1,15 @@
+import 'package:fastybird_smart_panel/core/services/screen.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
+import 'package:fastybird_smart_panel/core/widgets/fixed_grid_size_grid.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
+import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
+import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/mappers/data_source.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/mappers/tile.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/service.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/cards/view.dart';
+import 'package:fastybird_smart_panel/modules/dashboard/views/tiles/view.dart';
 import 'package:fastybird_smart_panel/plugins/pages-cards/views/view.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/views/pages/view.dart';
 import 'package:flutter/material.dart';
@@ -116,15 +122,12 @@ class CardsPage extends StatelessWidget {
                       : null,
                 ),
               Expanded(
-                child: Padding(
+                child: VerticalScrollWithGradient(
                   padding: AppSpacings.paddingSm,
-                  child: Column(
-                    children: freshPage.cards
-                        .map(
-                          (tile) => _buildCard(context, tile),
-                        )
-                        .toList(),
-                  ),
+                  itemCount: freshPage.cards.length,
+                  itemBuilder: (context, index) {
+                    return _buildCard(context, freshPage.cards[index]);
+                  },
                 ),
               ),
             ],
@@ -138,6 +141,49 @@ class CardsPage extends StatelessWidget {
     BuildContext context,
     CardView card,
   ) {
-    return Text('CARD CONTENT HERE: ${card.title}');
+    final screenService = context.read<ScreenService>();
+
+    final rows = card.rows ?? screenService.rows;
+    final cols = card.cols ?? screenService.columns;
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: AppSpacings.pSm),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (card.title.isNotEmpty)
+            SectionTitle(
+              title: card.title,
+              icon: card.icon ?? MdiIcons.cardText,
+            ),
+          AspectRatio(
+            aspectRatio: cols / rows,
+            child: FixedGridSizeGrid(
+              mainAxisSize: rows,
+              crossAxisSize: cols,
+              children: card.tiles
+                  .map(
+                    (tile) => _buildGridTile(context, tile),
+                  )
+                  .toList(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  FixedGridSizeGridItem _buildGridTile(
+    BuildContext context,
+    TileView tile,
+  ) {
+    return FixedGridSizeGridItem(
+      mainAxisIndex: tile.row,
+      crossAxisIndex: tile.col,
+      mainAxisCellCount: tile.rowSpan,
+      crossAxisCellCount: tile.colSpan,
+      child: buildTileWidget(tile),
+    );
   }
 }

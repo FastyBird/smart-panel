@@ -391,6 +391,7 @@ export const useTiles = defineStore<'dashboard_module-tiles', TilesStoreSetup>('
 		const parsedEditedItem = (element?.schemas?.tileSchema || TileSchema).safeParse({
 			...data.value[payload.id],
 			...omitBy(payload.data, isUndefined),
+			parent: payload.parent,
 		});
 
 		if (!parsedEditedItem.success) {
