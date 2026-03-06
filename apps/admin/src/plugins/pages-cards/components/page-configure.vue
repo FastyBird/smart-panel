@@ -744,6 +744,12 @@ const addTilesToCardGrids = (): void => {
 		for (const tile of tiles) {
 			if (removedTiles.has(tile.id) || tileSet.has(tile.id)) continue;
 
+			// Suppress change marking for non-draft tiles (loaded from API).
+			// Draft tiles are user-created and should activate the save button.
+			if (!tile.draft) {
+				suppressMarkChanged.value = true;
+			}
+
 			grid.addWidget({
 				id: tile.id,
 				x: tile.col - 1,
@@ -751,6 +757,10 @@ const addTilesToCardGrids = (): void => {
 				w: tile.colSpan,
 				h: tile.rowSpan,
 			});
+
+			if (!tile.draft) {
+				suppressMarkChanged.value = false;
+			}
 		}
 	}
 };
@@ -813,12 +823,18 @@ onBeforeUnmount((): void => {
 	destroyGrids();
 });
 
-// Track card grid config (rows/cols) to detect dimension changes
-const cardGridSignature = computed((): string => {
-	return sortedCards.value
-		.map((c) => `${c.id}:${c.rows ?? ''}:${c.cols ?? ''}`)
-		.join('|');
+// Track card grid dimensions keyed by ID to detect rows/cols changes
+const cardGridDimensions = computed((): Map<string, string> => {
+	const map = new Map<string, string>();
+
+	for (const c of sortedCards.value) {
+		map.set(c.id, `${c.rows ?? ''}:${c.cols ?? ''}`);
+	}
+
+	return map;
 });
+
+let prevCardGridDimensions = new Map<string, string>();
 
 // Watch for card list changes
 watch(
@@ -853,13 +869,29 @@ watch(
 	{ flush: 'post' }
 );
 
-// Watch for card grid config changes (rows/cols edits)
+// Watch for card grid config changes (rows/cols edits only, not card list changes)
 watch(
-	cardGridSignature,
-	(): void => {
-		nextTick(() => {
-			initializeGrids();
-		});
+	cardGridDimensions,
+	(newDims): void => {
+		let dimensionsChanged = false;
+
+		for (const [id, dims] of newDims) {
+			const prev = prevCardGridDimensions.get(id);
+
+			if (prev !== undefined && prev !== dims) {
+				dimensionsChanged = true;
+
+				break;
+			}
+		}
+
+		prevCardGridDimensions = new Map(newDims);
+
+		if (dimensionsChanged) {
+			nextTick(() => {
+				initializeGrids();
+			});
+		}
 	},
 	{ flush: 'post' }
 );
