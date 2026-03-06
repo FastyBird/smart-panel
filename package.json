@@ -102,5 +102,8 @@
       "sqlite3",
       "vue-demi"
     ]
+  },
+  "dependencies": {
+    "telegraf": "^4.16.3"
   }
 }

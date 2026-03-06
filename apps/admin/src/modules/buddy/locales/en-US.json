@@ -100,6 +100,19 @@
 			"ttsSpeed": {
 				"title": "Speech Speed",
 				"placeholder": "1.0"
+			},
+			"telegramEnabled": {
+				"title": "Telegram Bot",
+				"description": "Enable Telegram bot adapter for remote conversations and alerts"
+			},
+			"telegramBotToken": {
+				"title": "Telegram Bot Token",
+				"placeholder": "Enter your Telegram bot token from @BotFather"
+			},
+			"telegramAllowedUserIds": {
+				"title": "Allowed Telegram User IDs",
+				"placeholder": "e.g. 123456789, 987654321 (leave empty to allow all)",
+				"description": "Comma-separated list of Telegram user IDs allowed to interact with the bot. Leave empty to allow anyone."
 			}
 		},
 		"message": {

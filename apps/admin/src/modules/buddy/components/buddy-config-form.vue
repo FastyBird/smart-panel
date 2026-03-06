@@ -237,6 +237,73 @@
 				name="ttsSpeed"
 			/>
 		</el-form-item>
+
+		<el-divider />
+
+		<el-form-item
+			:label="t('buddyModule.fields.config.telegramEnabled.title')"
+			prop="telegramEnabled"
+			label-position="left"
+		>
+			<template #label>
+				{{ t('buddyModule.fields.config.telegramEnabled.title') }}
+				<el-text
+					size="small"
+					type="info"
+				>
+					{{ t('buddyModule.fields.config.telegramEnabled.description') }}
+				</el-text>
+			</template>
+			<el-switch
+				v-model="model.telegramEnabled"
+				name="telegramEnabled"
+			/>
+		</el-form-item>
+
+		<el-form-item
+			v-if="model.telegramEnabled"
+			:label="t('buddyModule.fields.config.telegramBotToken.title')"
+			prop="telegramBotToken"
+		>
+			<el-input
+				v-model="model.telegramBotToken"
+				:placeholder="t('buddyModule.fields.config.telegramBotToken.placeholder')"
+				:type="showTelegramBotToken ? 'text' : 'password'"
+				name="telegramBotToken"
+				clearable
+			>
+				<template #suffix>
+					<el-icon
+						class="cursor-pointer"
+						@click="showTelegramBotToken = !showTelegramBotToken"
+					>
+						<icon :icon="showTelegramBotToken ? 'mdi:eye-off' : 'mdi:eye'" />
+					</el-icon>
+				</template>
+			</el-input>
+		</el-form-item>
+
+		<el-form-item
+			v-if="model.telegramEnabled"
+			:label="t('buddyModule.fields.config.telegramAllowedUserIds.title')"
+			prop="telegramAllowedUserIds"
+		>
+			<template #label>
+				{{ t('buddyModule.fields.config.telegramAllowedUserIds.title') }}
+				<el-text
+					size="small"
+					type="info"
+				>
+					{{ t('buddyModule.fields.config.telegramAllowedUserIds.description') }}
+				</el-text>
+			</template>
+			<el-input
+				v-model="model.telegramAllowedUserIds"
+				:placeholder="t('buddyModule.fields.config.telegramAllowedUserIds.placeholder')"
+				name="telegramAllowedUserIds"
+				clearable
+			/>
+		</el-form-item>
 	</el-form>
 </template>
 
@@ -299,6 +366,7 @@ const { formEl, model, formChanged, submit, formResult } = useConfigModuleEditFo
 });
 
 const showSttApiKey = ref<boolean>(false);
+const showTelegramBotToken = ref<boolean>(false);
 
 type TagType = 'primary' | 'success' | 'warning' | 'info' | 'danger';
 

@@ -22,6 +22,9 @@ export const BuddyConfigSchema = ConfigModuleSchema.extend({
 	voiceEnabled: z.boolean().optional().default(false),
 	ttsVoice: z.string().nullable().optional().default(null),
 	ttsSpeed: z.number().optional().default(1.0),
+	telegramEnabled: z.boolean().optional().default(false),
+	telegramBotToken: z.string().nullable().optional().default(null),
+	telegramAllowedUserIds: z.string().nullable().optional().default(null),
 });
 
 // BACKEND API
@@ -40,6 +43,9 @@ export const BuddyConfigUpdateReqSchema: ZodType<ApiConfigUpdateModule> = Config
 		voice_enabled: z.boolean().optional(),
 		tts_voice: z.string().nullable().optional(),
 		tts_speed: z.number().optional(),
+		telegram_enabled: z.boolean().optional(),
+		telegram_bot_token: z.string().nullable().optional(),
+		telegram_allowed_user_ids: z.string().nullable().optional(),
 	})
 );
 
@@ -56,5 +62,8 @@ export const BuddyConfigResSchema: ZodType<ApiConfigModule> = ConfigModuleResSch
 		voice_enabled: z.boolean().optional(),
 		tts_voice: z.string().nullable().optional(),
 		tts_speed: z.number().optional(),
+		telegram_enabled: z.boolean().optional(),
+		telegram_bot_token: z.string().nullable().optional(),
+		telegram_allowed_user_ids: z.string().nullable().optional(),
 	})
 );

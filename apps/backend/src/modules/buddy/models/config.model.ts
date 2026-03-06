@@ -205,6 +205,43 @@ export class BuddyConfigModel extends ModuleConfigModel {
 	ttsSpeed: number = TTS_DEFAULT_SPEED;
 
 	@ApiPropertyOptional({
+		name: 'telegram_enabled',
+		description: 'Enable Telegram bot adapter for remote buddy conversations',
+		type: 'boolean',
+		example: false,
+	})
+	@Expose({ name: 'telegram_enabled' })
+	@IsOptional()
+	@IsBoolean()
+	telegramEnabled: boolean = false;
+
+	@ApiPropertyOptional({
+		name: 'telegram_bot_token',
+		description: 'Telegram Bot API token (from @BotFather)',
+		type: 'string',
+	})
+	@Expose({ name: 'telegram_bot_token' })
+	@Transform(
+		({ value }): string | undefined =>
+			typeof value === 'string' && value.length > 0 ? '***' : (value as string | undefined),
+		{ toPlainOnly: true, groups: ['api'] },
+	)
+	@IsOptional()
+	@IsString()
+	telegramBotToken?: string;
+
+	@ApiPropertyOptional({
+		name: 'telegram_allowed_user_ids',
+		description: 'Comma-separated list of Telegram user IDs allowed to interact with the bot',
+		type: 'string',
+		example: '',
+	})
+	@Expose({ name: 'telegram_allowed_user_ids' })
+	@IsOptional()
+	@IsString()
+	telegramAllowedUserIds?: string;
+
+	@ApiPropertyOptional({
 		name: 'heartbeat_interval_ms',
 		description: 'Heartbeat evaluation interval in milliseconds (minimum 60000)',
 		type: 'integer',
