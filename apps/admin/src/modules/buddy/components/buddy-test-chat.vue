@@ -249,10 +249,13 @@ const onDeleteConversation = async (id: string): Promise<void> => {
 
 // --- Polling ---
 
-let pollingActive = false;
+// Monotonic generation counter to detect stale poll cycles.
+// Each startPolling() increments it; schedulePoll captures the current
+// value and bails out after an await if a newer cycle has started.
+let pollGeneration = 0;
 
-const schedulePoll = async (): Promise<void> => {
-	if (!pollingActive || !activeConversationId.value) {
+const schedulePoll = async (generation: number): Promise<void> => {
+	if (generation !== pollGeneration || !activeConversationId.value) {
 		return;
 	}
 
@@ -262,25 +265,26 @@ const schedulePoll = async (): Promise<void> => {
 		await refreshMessages(activeConversationId.value);
 	}
 
-	// Schedule the next poll only if polling wasn't stopped during the await
-	if (pollingActive) {
+	// Schedule the next poll only if this generation is still current
+	if (generation === pollGeneration) {
 		pollTimer = setTimeout(() => {
-			void schedulePoll();
+			void schedulePoll(generation);
 		}, POLL_INTERVAL_MS);
 	}
 };
 
 const startPolling = (): void => {
 	stopPolling();
-	pollingActive = true;
+
+	const generation = ++pollGeneration;
 
 	pollTimer = setTimeout(() => {
-		void schedulePoll();
+		void schedulePoll(generation);
 	}, POLL_INTERVAL_MS);
 };
 
 const stopPolling = (): void => {
-	pollingActive = false;
+	++pollGeneration;
 
 	if (pollTimer !== null) {
 		clearTimeout(pollTimer);
