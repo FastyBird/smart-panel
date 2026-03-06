@@ -993,10 +993,10 @@ class _LightingHeroCard extends StatelessWidget {
         swatchColor =
             _sampleGradient(_LightingGradients.colorTemp, t.clamp(0.0, 1.0));
       case LightCapability.hue:
-        value = fmt.formatInteger(brightness);
-        unitIcon = Icons.palette_outlined;
         final currentColor = color ?? Colors.red;
         final hsv = HSVColor.fromColor(currentColor);
+        value = fmt.formatInteger(hsv.hue.round());
+        unitText = '\u00B0';
         swatchColor = HSVColor.fromAHSV(1, hsv.hue, 1, 1).toColor();
       case LightCapability.saturation:
         value = fmt.formatInteger((saturation * 100).round());
