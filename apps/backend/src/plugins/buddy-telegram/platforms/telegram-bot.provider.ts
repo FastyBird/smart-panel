@@ -29,6 +29,9 @@ export class TelegramBotProvider implements OnModuleInit, OnModuleDestroy {
 	private bot: Telegraf | null = null;
 	private running = false;
 
+	/** Snapshot of the last applied config to detect actual changes */
+	private activeConfig: { enabled: boolean; botToken: string | null; allowedUserIds: string | null } | null = null;
+
 	/** Telegram user ID → active buddy conversation ID */
 	private readonly userConversations = new Map<number, string>();
 
@@ -54,16 +57,35 @@ export class TelegramBotProvider implements OnModuleInit, OnModuleDestroy {
 	}
 
 	/**
-	 * Restart bot when configuration changes.
+	 * Restart bot only when Telegram plugin configuration actually changes.
 	 */
 	@OnEvent(ConfigModuleEventType.CONFIG_UPDATED)
 	async onConfigUpdated(): Promise<void> {
-		this.stopBot();
-
 		const config = this.getPluginConfig();
+
+		const newSnapshot = {
+			enabled: config?.enabled ?? false,
+			botToken: config?.botToken ?? null,
+			allowedUserIds: config?.allowedUserIds ?? null,
+		};
+
+		if (
+			this.activeConfig &&
+			this.activeConfig.enabled === newSnapshot.enabled &&
+			this.activeConfig.botToken === newSnapshot.botToken &&
+			this.activeConfig.allowedUserIds === newSnapshot.allowedUserIds
+		) {
+			return;
+		}
+
+		this.stopBot();
 
 		if (config?.enabled && config.botToken) {
 			await this.startBot(config);
+		} else {
+			// Track the config even when the bot is not started so that
+			// subsequent unrelated CONFIG_UPDATED events are correctly ignored.
+			this.activeConfig = newSnapshot;
 		}
 	}
 
@@ -106,6 +128,27 @@ export class TelegramBotProvider implements OnModuleInit, OnModuleDestroy {
 			this.bot = new Telegraf(config.botToken);
 
 			const allowedUserIds = this.parseAllowedUserIds(config.allowedUserIds);
+
+			// /start command — must be registered before the generic text handler
+			// so that Telegraf matches `/start` as a command rather than plain text.
+			this.bot.command('start', async (ctx) => {
+				const userId = ctx.from.id;
+				const allowed = allowedUserIds.size === 0 || allowedUserIds.has(userId);
+
+				if (!allowed) {
+					await ctx.reply('⛔ You are not authorized to use this bot.');
+
+					return;
+				}
+
+				this.registeredChatIds.add(ctx.chat.id);
+
+				await ctx.reply(
+					"👋 Hello! I'm your Smart Panel buddy.\n\n" +
+						'Send me a message to ask about your home, devices, or to control your smart home.\n\n' +
+						"I'll also send you alerts and suggestions here.",
+				);
+			});
 
 			// Text message handler
 			this.bot.on(message('text'), async (ctx) => {
@@ -176,28 +219,14 @@ export class TelegramBotProvider implements OnModuleInit, OnModuleDestroy {
 				}
 			});
 
-			// /start command
-			this.bot.command('start', async (ctx) => {
-				const userId = ctx.from.id;
-				const allowed = allowedUserIds.size === 0 || allowedUserIds.has(userId);
-
-				if (!allowed) {
-					await ctx.reply('⛔ You are not authorized to use this bot.');
-
-					return;
-				}
-
-				this.registeredChatIds.add(ctx.chat.id);
-
-				await ctx.reply(
-					"👋 Hello! I'm your Smart Panel buddy.\n\n" +
-						'Send me a message to ask about your home, devices, or to control your smart home.\n\n' +
-						"I'll also send you alerts and suggestions here.",
-				);
-			});
-
 			await this.bot.launch({ dropPendingUpdates: true });
 			this.running = true;
+
+			this.activeConfig = {
+				enabled: config.enabled,
+				botToken: config.botToken,
+				allowedUserIds: config.allowedUserIds ?? null,
+			};
 
 			this.logger.log('Telegram bot started (long polling)');
 		} catch (error) {
@@ -212,6 +241,7 @@ export class TelegramBotProvider implements OnModuleInit, OnModuleDestroy {
 			this.bot.stop('reconfigure');
 			this.bot = null;
 			this.running = false;
+			this.activeConfig = null;
 			this.registeredChatIds.clear();
 			this.userConversations.clear();
 			this.logger.log('Telegram bot stopped');

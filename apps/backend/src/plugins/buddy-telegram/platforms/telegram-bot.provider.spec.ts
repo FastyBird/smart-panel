@@ -87,6 +87,22 @@ describe('TelegramBotProvider', () => {
 
 			expect(provider.isRunning()).toBe(false);
 		});
+
+		it('should not restart bot when unrelated config changes', async () => {
+			// First init with disabled config (sets activeConfig snapshot)
+			configService.getPluginConfig.mockReturnValue(makeConfig({ enabled: false }));
+			await provider.onConfigUpdated();
+
+			// Simulate unrelated config change — same telegram config returned
+			const stopSpy = jest.spyOn(provider as any, 'stopBot');
+
+			await provider.onConfigUpdated();
+
+			// stopBot should not be called because config hasn't changed
+			expect(stopSpy).not.toHaveBeenCalled();
+
+			stopSpy.mockRestore();
+		});
 	});
 
 	describe('onSuggestionCreated', () => {
