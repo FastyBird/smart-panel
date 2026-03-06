@@ -85,8 +85,8 @@ class CardModel extends Model {
       icon: resolveIconNullable(json['icon'] is String ? json['icon'] : null),
       order: json['order'],
       page: UuidUtils.validateUuid(json['page']),
-      rows: json['rows'] is int ? json['rows'] : null,
-      cols: json['cols'] is int ? json['cols'] : null,
+      rows: json['rows'] is int && json['rows'] > 0 ? json['rows'] : null,
+      cols: json['cols'] is int && json['cols'] > 0 ? json['cols'] : null,
       tiles: tiles,
       dataSource: dataSources,
       createdAt: json['created_at'] != null
