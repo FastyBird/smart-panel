@@ -1,7 +1,7 @@
 import { type ComputedRef, type Ref, computed, nextTick, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 
-import { useBackend } from '../../../common';
+import { useBackend, useFlashMessage } from '../../../common';
 import { MODULES_PREFIX } from '../../../app.constants';
 import { BUDDY_MODULE_PREFIX } from '../buddy.constants';
 import type { IConversation, IMessage } from '../buddy.types';
@@ -17,7 +17,6 @@ interface IUseBuddyChat {
 	isLoadingConversations: Ref<boolean>;
 	isLoadingMessages: Ref<boolean>;
 	isSending: Ref<boolean>;
-	error: Ref<string | null>;
 	isProviderNotConfigured: ComputedRef<boolean>;
 	providerStatuses: Ref<IProviderStatus[]>;
 	selectedProviderStatus: ComputedRef<IProviderStatus | undefined>;
@@ -32,6 +31,7 @@ interface IUseBuddyChat {
 export const useBuddyChat = (): IUseBuddyChat => {
 	const { t } = useI18n();
 	const backend = useBackend();
+	const flashMessage = useFlashMessage();
 	const { providerStatuses, providerStatusesFetched, fetchProviderStatuses } = useBuddyProviders();
 
 	const conversations = ref<IConversation[]>([]);
@@ -41,7 +41,6 @@ export const useBuddyChat = (): IUseBuddyChat => {
 	const isLoadingConversations = ref<boolean>(false);
 	const isLoadingMessages = ref<boolean>(false);
 	const isSending = ref<boolean>(false);
-	const error = ref<string | null>(null);
 
 	const selectedProviderStatus = computed<IProviderStatus | undefined>(() => {
 		return providerStatuses.value.find((p) => p.selected);
@@ -91,7 +90,6 @@ export const useBuddyChat = (): IUseBuddyChat => {
 
 	const fetchConversations = async (): Promise<void> => {
 		isLoadingConversations.value = true;
-		error.value = null;
 
 		try {
 			const response = await backend.client.GET(`/${MODULES_PREFIX}/${BUDDY_MODULE_PREFIX}/conversations` as never);
@@ -100,7 +98,7 @@ export const useBuddyChat = (): IUseBuddyChat => {
 
 			if (apiError) {
 				if (apiError.status !== 503) {
-					error.value = apiError.message;
+					flashMessage.error(apiError.message);
 				}
 
 				return;
@@ -112,15 +110,13 @@ export const useBuddyChat = (): IUseBuddyChat => {
 				conversations.value = responseData.data;
 			}
 		} catch (err: unknown) {
-			error.value = err instanceof Error ? err.message : t('buddyModule.messages.errors.loadConversations');
+			flashMessage.error(err instanceof Error ? err.message : t('buddyModule.messages.errors.loadConversations'));
 		} finally {
 			isLoadingConversations.value = false;
 		}
 	};
 
 	const createConversation = async (title?: string): Promise<IConversation | undefined> => {
-		error.value = null;
-
 		try {
 			const response = await backend.client.POST(`/${MODULES_PREFIX}/${BUDDY_MODULE_PREFIX}/conversations` as never, {
 				body: { data: { title: title ?? null } },
@@ -130,7 +126,7 @@ export const useBuddyChat = (): IUseBuddyChat => {
 
 			if (apiError) {
 				if (apiError.status !== 503) {
-					error.value = apiError.message;
+					flashMessage.error(apiError.message);
 				}
 
 				return undefined;
@@ -146,7 +142,7 @@ export const useBuddyChat = (): IUseBuddyChat => {
 				return responseData.data;
 			}
 		} catch (err: unknown) {
-			error.value = err instanceof Error ? err.message : t('buddyModule.messages.errors.createConversation');
+			flashMessage.error(err instanceof Error ? err.message : t('buddyModule.messages.errors.createConversation'));
 		}
 
 		return undefined;
@@ -169,7 +165,7 @@ export const useBuddyChat = (): IUseBuddyChat => {
 
 			if (apiError) {
 				if (apiError.status !== 503) {
-					error.value = apiError.message;
+					flashMessage.error(apiError.message);
 				}
 
 				return;
@@ -181,7 +177,7 @@ export const useBuddyChat = (): IUseBuddyChat => {
 				messages.value = responseData.data;
 			}
 		} catch (err: unknown) {
-			error.value = err instanceof Error ? err.message : t('buddyModule.messages.errors.loadMessages');
+			flashMessage.error(err instanceof Error ? err.message : t('buddyModule.messages.errors.loadMessages'));
 		} finally {
 			isLoadingMessages.value = false;
 		}
@@ -189,7 +185,6 @@ export const useBuddyChat = (): IUseBuddyChat => {
 
 	const selectConversation = async (id: string): Promise<void> => {
 		activeConversationId.value = id;
-		error.value = null;
 
 		await fetchMessages(id);
 	};
@@ -213,7 +208,6 @@ export const useBuddyChat = (): IUseBuddyChat => {
 
 		messages.value.push(userMessage);
 		isSending.value = true;
-		error.value = null;
 
 		await nextTick();
 
@@ -234,7 +228,9 @@ export const useBuddyChat = (): IUseBuddyChat => {
 				// Remove optimistic message on error
 				messages.value = messages.value.filter((m) => m.id !== pendingId);
 
-				error.value = apiError.status === 503 ? t('buddyModule.messages.errors.providerUnavailable') : apiError.message;
+				flashMessage.error(
+					apiError.status === 503 ? t('buddyModule.messages.errors.providerUnavailable') : apiError.message
+				);
 
 				return;
 			}
@@ -256,15 +252,13 @@ export const useBuddyChat = (): IUseBuddyChat => {
 			// Remove optimistic message on error
 			messages.value = messages.value.filter((m) => m.id !== pendingId);
 
-			error.value = err instanceof Error ? err.message : t('buddyModule.messages.errors.sendMessage');
+			flashMessage.error(err instanceof Error ? err.message : t('buddyModule.messages.errors.sendMessage'));
 		} finally {
 			isSending.value = false;
 		}
 	};
 
 	const deleteConversation = async (id: string): Promise<void> => {
-		error.value = null;
-
 		try {
 			const response = await backend.client.DELETE(`/${MODULES_PREFIX}/${BUDDY_MODULE_PREFIX}/conversations/{id}` as never, {
 				params: {
@@ -275,7 +269,7 @@ export const useBuddyChat = (): IUseBuddyChat => {
 			const apiError = extractApiError(response);
 
 			if (apiError) {
-				error.value = apiError.message;
+				flashMessage.error(apiError.message);
 
 				return;
 			}
@@ -299,7 +293,7 @@ export const useBuddyChat = (): IUseBuddyChat => {
 				}
 			}
 		} catch (err: unknown) {
-			error.value = err instanceof Error ? err.message : t('buddyModule.messages.errors.deleteConversation');
+			flashMessage.error(err instanceof Error ? err.message : t('buddyModule.messages.errors.deleteConversation'));
 		}
 	};
 
@@ -312,7 +306,6 @@ export const useBuddyChat = (): IUseBuddyChat => {
 		isLoadingConversations,
 		isLoadingMessages,
 		isSending,
-		error,
 		isProviderNotConfigured,
 		providerStatuses,
 		selectedProviderStatus,

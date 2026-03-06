@@ -100,11 +100,9 @@
 					:is-loading-messages="isLoadingMessages"
 					:has-active-conversation="hasActiveConversation"
 					:is-provider-not-configured="isProviderNotConfigured"
-					:error="error"
 					:selected-provider="selectedProviderStatus"
 					:provider-statuses="providerStatuses"
 					@send="sendMessage"
-					@dismiss-error="error = null"
 				/>
 			</el-card>
 		</div>
@@ -201,7 +199,6 @@ const {
 	isLoadingConversations,
 	isLoadingMessages,
 	isSending,
-	error,
 	isProviderNotConfigured,
 	providerStatuses,
 	selectedProviderStatus,

@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:fastybird_smart_panel/app/locator.dart';
 import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
+import 'package:fastybird_smart_panel/core/widgets/toast.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
 import 'package:fastybird_smart_panel/modules/buddy/models/buddy_config.dart';
 import 'package:fastybird_smart_panel/modules/buddy/models/message.dart';
@@ -161,12 +162,7 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 		final started = await _audioRecordingService.startRecording();
 
 		if (!started && mounted) {
-			ScaffoldMessenger.of(context).showSnackBar(
-				SnackBar(
-					content: Text(localizations.buddy_recording_permission_error),
-					duration: const Duration(seconds: 2),
-				),
-			);
+			Toast.showWarning(context, message: localizations.buddy_recording_permission_error);
 		}
 	}
 
@@ -183,12 +179,7 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 			await _audioRecordingService.cancelRecording();
 
 			if (mounted) {
-				ScaffoldMessenger.of(context).showSnackBar(
-					SnackBar(
-						content: Text(localizations.buddy_recording_too_short),
-						duration: const Duration(seconds: 2),
-					),
-				);
+				Toast.showWarning(context, message: localizations.buddy_recording_too_short);
 			}
 
 			return;
@@ -224,6 +215,15 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 
 	void _onBuddyServiceChanged() {
 		if (!mounted) return;
+
+		// Show toast when a new error occurs
+		if (_buddyService.hasError) {
+			final localizations = AppLocalizations.of(context)!;
+			final errorMessage = _localizedBuddyError(localizations, _buddyService.errorType);
+
+			Toast.showError(context, message: errorMessage);
+			_buddyService.clearError();
+		}
 
 		final messages = _buddyService.messages;
 		final messageCount = messages.length;
@@ -419,10 +419,6 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 				// Loading indicator while waiting for AI response
 				if (buddyService.isSendingMessage)
 					_buildTypingIndicator(context, isDark),
-
-				// Error state
-				if (buddyService.hasError)
-					_buildErrorMessage(context, isDark, buddyService.errorType),
 			],
 		);
 	}
@@ -639,44 +635,6 @@ class _BuddyChatPageState extends State<BuddyChatPage> {
 			case BuddyErrorType.generic:
 				return localizations.buddy_error_generic;
 		}
-	}
-
-	Widget _buildErrorMessage(BuildContext context, bool isDark, BuddyErrorType? errorType) {
-		final localizations = AppLocalizations.of(context)!;
-		final warningColor = isDark ? AppColorsDark.warning : AppColorsLight.warning;
-
-		return Padding(
-			padding: EdgeInsets.symmetric(
-				horizontal: AppSpacings.pLg,
-				vertical: AppSpacings.pSm,
-			),
-			child: Container(
-				padding: AppSpacings.paddingMd,
-				decoration: BoxDecoration(
-					color: warningColor.withValues(alpha: 0.1),
-					borderRadius: BorderRadius.circular(AppBorderRadius.base),
-				),
-				child: Row(
-					children: [
-						Icon(
-							Icons.warning_amber_rounded,
-							size: AppSpacings.scale(16),
-							color: warningColor,
-						),
-						SizedBox(width: AppSpacings.pMd),
-						Expanded(
-							child: Text(
-								_localizedBuddyError(localizations, errorType),
-								style: TextStyle(
-									fontSize: AppFontSize.small,
-									color: warningColor,
-								),
-							),
-						),
-					],
-				),
-			),
-		);
 	}
 
 	Widget _buildRecordingIndicator(BuildContext context, bool isDark) {
