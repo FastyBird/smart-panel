@@ -3,6 +3,7 @@ import 'package:fastybird_smart_panel/core/utils/theme.dart';
 import 'package:fastybird_smart_panel/core/widgets/fixed_grid_size_grid.dart';
 import 'package:fastybird_smart_panel/core/widgets/page_header.dart';
 import 'package:fastybird_smart_panel/core/widgets/section_heading.dart';
+import 'package:fastybird_smart_panel/core/widgets/vertical_scroll_with_gradient.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/mappers/data_source.dart';
 import 'package:fastybird_smart_panel/modules/dashboard/mappers/tile.dart';
 import 'package:fastybird_smart_panel/l10n/app_localizations.dart';
@@ -121,7 +122,7 @@ class CardsPage extends StatelessWidget {
                       : null,
                 ),
               Expanded(
-                child: ListView.builder(
+                child: VerticalScrollWithGradient(
                   padding: AppSpacings.paddingSm,
                   itemCount: freshPage.cards.length,
                   itemBuilder: (context, index) {
