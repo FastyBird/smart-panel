@@ -17,7 +17,7 @@ import {
 	ENERGY_HIGH_CONSUMPTION_THRESHOLD_KW,
 	HEARTBEAT_DEFAULT_INTERVAL_MS,
 	LLM_PROVIDER_NONE,
-	SttProvider,
+	STT_PLUGIN_NONE,
 	TTS_DEFAULT_SPEED,
 	TTS_PLUGIN_NONE,
 } from '../buddy.constants';
@@ -91,9 +91,9 @@ export class BuddyConfigModel extends ModuleConfigModel {
 			// Backward compatibility: infer true when STT or TTS was already configured
 			// but the config predates the voice_enabled field.
 			const raw = obj as Record<string, unknown>;
-			const stt = raw['stt_provider'] ?? raw['sttProvider'];
+			const stt = raw['stt_plugin'] ?? raw['sttPlugin'] ?? raw['stt_provider'] ?? raw['sttProvider'];
 			const tts = raw['tts_plugin'] ?? raw['ttsPlugin'] ?? raw['tts_provider'] ?? raw['ttsProvider'];
-			const hasStt = typeof stt === 'string' && stt !== '' && stt !== (SttProvider.NONE as string);
+			const hasStt = typeof stt === 'string' && stt !== '' && stt !== STT_PLUGIN_NONE;
 			const hasTts = typeof tts === 'string' && tts !== '' && tts !== TTS_PLUGIN_NONE;
 
 			return hasStt || hasTts;
@@ -105,50 +105,62 @@ export class BuddyConfigModel extends ModuleConfigModel {
 	voiceEnabled: boolean = false;
 
 	@ApiPropertyOptional({
-		name: 'stt_provider',
-		description: 'Speech-to-text provider (none, whisper_api, whisper_local)',
+		name: 'stt_plugin',
+		description:
+			'STT provider plugin type (e.g. buddy-stt-whisper-api-plugin, buddy-stt-whisper-local-plugin, or none)',
 		type: 'string',
-		enum: Object.values(SttProvider),
-		example: SttProvider.NONE,
+		example: STT_PLUGIN_NONE,
 	})
-	@Expose({ name: 'stt_provider' })
+	@Expose({ name: 'stt_plugin' })
+	@Transform(
+		({ value, obj }): string => {
+			// If stt_plugin is already set, use it
+			if (typeof value === 'string' && value !== '') {
+				return value;
+			}
+
+			// Backward compatibility: map legacy stt_provider enum values to plugin names
+			const raw = obj as Record<string, unknown>;
+			const legacy = (raw['stt_provider'] ?? raw['sttProvider']) as string | undefined;
+
+			if (legacy === 'whisper_api') {
+				return 'buddy-stt-whisper-api-plugin';
+			}
+
+			if (legacy === 'whisper_local') {
+				return 'buddy-stt-whisper-local-plugin';
+			}
+
+			return STT_PLUGIN_NONE;
+		},
+		{ toClassOnly: true },
+	)
 	@IsOptional()
 	@IsString()
-	sttProvider: string = SttProvider.NONE;
+	sttPlugin: string = STT_PLUGIN_NONE;
 
-	@ApiPropertyOptional({
-		name: 'stt_api_key',
-		description: 'API key for the STT provider (required for whisper_api)',
-		type: 'string',
-	})
+	// Legacy fields – kept so existing YAML configs pass forbidNonWhitelisted validation.
+	// Values are discarded on read; STT settings now live in each plugin's config.
+	@Expose({ name: 'stt_provider' })
+	@Transform(() => undefined, { toClassOnly: true })
+	@IsOptional()
+	@IsString()
+	sttProvider?: string;
+
 	@Expose({ name: 'stt_api_key' })
-	@Transform(
-		({ value }): string | undefined =>
-			typeof value === 'string' && value.length > 0 ? '***' : (value as string | undefined),
-		{ toPlainOnly: true, groups: ['api'] },
-	)
+	@Transform(() => undefined, { toClassOnly: true })
 	@IsOptional()
 	@IsString()
 	sttApiKey?: string;
 
-	@ApiPropertyOptional({
-		name: 'stt_model',
-		description: 'Model identifier for the STT provider',
-		type: 'string',
-		example: 'whisper-1',
-	})
 	@Expose({ name: 'stt_model' })
+	@Transform(() => undefined, { toClassOnly: true })
 	@IsOptional()
 	@IsString()
 	sttModel?: string;
 
-	@ApiPropertyOptional({
-		name: 'stt_language',
-		description: 'ISO 639-1 language code for transcription (e.g. en, cs)',
-		type: 'string',
-		example: 'en',
-	})
 	@Expose({ name: 'stt_language' })
+	@Transform(() => undefined, { toClassOnly: true })
 	@IsOptional()
 	@IsString()
 	sttLanguage?: string;

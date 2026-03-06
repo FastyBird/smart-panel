@@ -58,6 +58,11 @@ import { BuddyClaudeOauthPlugin } from './plugins/buddy-claude-oauth';
 import { BuddyOllamaPlugin } from './plugins/buddy-ollama';
 import { BuddyOpenaiPlugin } from './plugins/buddy-openai';
 import { BuddyOpenaiCodexPlugin } from './plugins/buddy-openai-codex';
+import { BuddyElevenlabsPlugin } from './plugins/buddy-elevenlabs';
+import { BuddySystemTtsPlugin } from './plugins/buddy-system-tts';
+import { BuddyVoiceaiPlugin } from './plugins/buddy-voiceai';
+import { BuddySttWhisperApiPlugin } from './plugins/buddy-stt-whisper-api';
+import { BuddySttWhisperLocalPlugin } from './plugins/buddy-stt-whisper-local';
 import { DeviceChannelDataSourcesPlugin } from './plugins/data-sources-device-channel';
 import { DataSourcesWeatherPlugin } from './plugins/data-sources-weather';
 import { DevicesHomeAssistantPlugin } from './plugins/devices-home-assistant';
@@ -190,6 +195,11 @@ app.use(BuddyClaudePlugin, pluginOptions);
 app.use(BuddyOllamaPlugin, pluginOptions);
 app.use(BuddyClaudeOauthPlugin, pluginOptions);
 app.use(BuddyOpenaiCodexPlugin, pluginOptions);
+app.use(BuddyElevenlabsPlugin, pluginOptions);
+app.use(BuddySystemTtsPlugin, pluginOptions);
+app.use(BuddyVoiceaiPlugin, pluginOptions);
+app.use(BuddySttWhisperApiPlugin, pluginOptions);
+app.use(BuddySttWhisperLocalPlugin, pluginOptions);
 
 const installedNames = new Set<string>();
 

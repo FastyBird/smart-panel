@@ -41,48 +41,16 @@ export class UpdateBuddyConfigDto extends UpdateModuleConfigDto {
 	provider?: string;
 
 	@ApiPropertyOptional({
-		name: 'stt_provider',
-		description: 'Speech-to-text provider (none, whisper_api, whisper_local)',
+		name: 'stt_plugin',
+		description:
+			'STT provider plugin type (e.g. buddy-stt-whisper-api-plugin, buddy-stt-whisper-local-plugin, or none)',
 		type: 'string',
 		example: 'none',
 	})
-	@Expose({ name: 'stt_provider' })
+	@Expose({ name: 'stt_plugin' })
 	@IsOptional()
-	@IsString({ message: '[{"field":"stt_provider","reason":"STT provider must be a valid string."}]' })
-	stt_provider?: string;
-
-	@ApiPropertyOptional({
-		name: 'stt_api_key',
-		description: 'API key for the STT provider (required for whisper_api)',
-		type: 'string',
-	})
-	@Expose({ name: 'stt_api_key' })
-	@Transform(({ value }): string | undefined => (value === '***' ? undefined : (value as string | undefined)))
-	@IsOptional()
-	@IsString({ message: '[{"field":"stt_api_key","reason":"STT API key must be a valid string."}]' })
-	stt_api_key?: string;
-
-	@ApiPropertyOptional({
-		name: 'stt_model',
-		description: 'Model identifier for the STT provider',
-		type: 'string',
-		example: 'whisper-1',
-	})
-	@Expose({ name: 'stt_model' })
-	@IsOptional()
-	@IsString({ message: '[{"field":"stt_model","reason":"STT model must be a valid string."}]' })
-	stt_model?: string;
-
-	@ApiPropertyOptional({
-		name: 'stt_language',
-		description: 'ISO 639-1 language code for transcription (e.g. en, cs)',
-		type: 'string',
-		example: 'en',
-	})
-	@Expose({ name: 'stt_language' })
-	@IsOptional()
-	@IsString({ message: '[{"field":"stt_language","reason":"STT language must be a valid string."}]' })
-	stt_language?: string;
+	@IsString({ message: '[{"field":"stt_plugin","reason":"STT plugin must be a valid string."}]' })
+	stt_plugin?: string;
 
 	@ApiPropertyOptional({
 		name: 'voice_enabled',

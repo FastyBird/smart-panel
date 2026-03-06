@@ -63,8 +63,14 @@ import { BUDDY_OPENAI_CODEX_PLUGIN_PREFIX } from './plugins/buddy-openai-codex/b
 import { BuddyOpenaiCodexPlugin } from './plugins/buddy-openai-codex/buddy-openai-codex.plugin';
 import { BUDDY_OPENAI_PLUGIN_PREFIX } from './plugins/buddy-openai/buddy-openai.constants';
 import { BuddyOpenaiPlugin } from './plugins/buddy-openai/buddy-openai.plugin';
+import { BUDDY_STT_WHISPER_API_PLUGIN_PREFIX } from './plugins/buddy-stt-whisper-api/buddy-stt-whisper-api.constants';
+import { BuddySttWhisperApiPlugin } from './plugins/buddy-stt-whisper-api/buddy-stt-whisper-api.plugin';
+import { BUDDY_STT_WHISPER_LOCAL_PLUGIN_PREFIX } from './plugins/buddy-stt-whisper-local/buddy-stt-whisper-local.constants';
+import { BuddySttWhisperLocalPlugin } from './plugins/buddy-stt-whisper-local/buddy-stt-whisper-local.plugin';
 import { BUDDY_SYSTEM_TTS_PLUGIN_PREFIX } from './plugins/buddy-system-tts/buddy-system-tts.constants';
 import { BuddySystemTtsPlugin } from './plugins/buddy-system-tts/buddy-system-tts.plugin';
+import { BUDDY_VOICEAI_PLUGIN_PREFIX } from './plugins/buddy-voiceai/buddy-voiceai.constants';
+import { BuddyVoiceaiPlugin } from './plugins/buddy-voiceai/buddy-voiceai.plugin';
 import { DataSourcesDeviceChannelPlugin } from './plugins/data-sources-device-channel/data-sources-device-channel.plugin';
 import { DataSourcesWeatherPlugin } from './plugins/data-sources-weather/data-sources-weather.plugin';
 import { DEVICES_HOME_ASSISTANT_PLUGIN_PREFIX } from './plugins/devices-home-assistant/devices-home-assistant.constants';
@@ -297,8 +303,20 @@ export class AppModule {
 								module: BuddyElevenlabsPlugin,
 							},
 							{
+								path: BUDDY_VOICEAI_PLUGIN_PREFIX,
+								module: BuddyVoiceaiPlugin,
+							},
+							{
 								path: BUDDY_SYSTEM_TTS_PLUGIN_PREFIX,
 								module: BuddySystemTtsPlugin,
+							},
+							{
+								path: BUDDY_STT_WHISPER_API_PLUGIN_PREFIX,
+								module: BuddySttWhisperApiPlugin,
+							},
+							{
+								path: BUDDY_STT_WHISPER_LOCAL_PLUGIN_PREFIX,
+								module: BuddySttWhisperLocalPlugin,
 							},
 							...pluginRoutes,
 						],
@@ -354,7 +372,10 @@ export class AppModule {
 				BuddyClaudeOauthPlugin,
 				BuddyElevenlabsPlugin,
 				BuddyOllamaPlugin,
+				BuddyVoiceaiPlugin,
 				BuddySystemTtsPlugin,
+				BuddySttWhisperApiPlugin,
+				BuddySttWhisperLocalPlugin,
 				ScenesLocalPlugin,
 				ServeStaticModule.forRootAsync({
 					imports: [NestConfigModule], // Ensure ConfigModule is available

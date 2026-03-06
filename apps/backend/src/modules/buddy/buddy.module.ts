@@ -40,6 +40,7 @@ import { OAuthCallbackService } from './services/oauth-callback.service';
 import { OAuthFlowService } from './services/oauth-flow.service';
 import { PatternDetectorService } from './services/pattern-detector.service';
 import { SceneSuggestionEvaluator } from './services/scene-suggestion-evaluator.service';
+import { SttProviderRegistryService } from './services/stt-provider-registry.service';
 import { SttProviderService } from './services/stt-provider.service';
 import { SuggestionEngineService } from './services/suggestion-engine.service';
 import { TtsProviderRegistryService } from './services/tts-provider-registry.service';
@@ -82,6 +83,7 @@ import { EvaluatorRulesLoaderService } from './spec/evaluator-rules-loader.servi
 		EnergyEvaluator,
 		ConflictDetectorEvaluator,
 		SceneSuggestionEvaluator,
+		SttProviderRegistryService,
 		SttProviderService,
 		TtsProviderRegistryService,
 		TtsProviderService,
@@ -101,6 +103,7 @@ import { EvaluatorRulesLoaderService } from './spec/evaluator-rules-loader.servi
 		EnergyEvaluator,
 		ConflictDetectorEvaluator,
 		SceneSuggestionEvaluator,
+		SttProviderRegistryService,
 		TtsProviderRegistryService,
 		OAuthCallbackService,
 		OAuthFlowService,
@@ -154,23 +157,11 @@ The Buddy module provides an AI assistant for the Smart Panel that observes user
 - **Suggestions** - Context-aware suggestions based on detected patterns and rules
 - **Offline-First** - Rule-based suggestions work without any AI provider configured
 
-## LLM Provider Plugins
+## Plugins
 
-Chat functionality is powered by separate provider plugins:
+All LLM, TTS, and STT functionality is provided by separate plugins that register themselves with the buddy module. Install and enable the desired plugins, then set the buddy module \`provider\`, \`tts_plugin\`, and \`stt_plugin\` configs to the corresponding plugin type.
 
-- **buddy-openai-plugin** - OpenAI API (GPT models + TTS)
-- **buddy-claude-plugin** - Anthropic Claude API
-- **buddy-ollama-plugin** - Local LLM inference via Ollama
-
-## TTS Provider Plugins
-
-Voice output is powered by separate TTS plugins:
-
-- **buddy-openai-plugin** - OpenAI TTS API
-- **buddy-elevenlabs-plugin** - ElevenLabs API
-- **buddy-system-tts-plugin** - Local piper/espeak
-
-Install and enable the desired plugins, then set the buddy module \`provider\` and \`tts_plugin\` configs.`,
+Each plugin declares its capabilities (LLM, TTS, STT) when registering, and the buddy module discovers them dynamically.`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',

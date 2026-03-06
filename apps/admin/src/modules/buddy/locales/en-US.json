@@ -76,26 +76,10 @@
 				"title": "Voice Interface",
 				"description": "Enable speech-to-text and text-to-speech capabilities"
 			},
-			"sttProvider": {
-				"title": "Speech-to-Text Provider",
-				"placeholder": "Select an STT provider",
-				"options": {
-					"none": "None (voice input disabled)",
-					"whisperApi": "Whisper API (OpenAI)",
-					"whisperLocal": "Whisper (local)"
-				}
-			},
-			"sttApiKey": {
-				"title": "STT API Key",
-				"placeholder": "Enter your OpenAI API key for Whisper"
-			},
-			"sttModel": {
-				"title": "STT Model",
-				"placeholder": "Model name"
-			},
-			"sttLanguage": {
-				"title": "Language Hint",
-				"placeholder": "e.g. en, de, cs (optional)"
+			"sttPlugin": {
+				"title": "STT Plugin",
+				"placeholder": "Enter STT plugin type or none",
+				"description": "Enter the STT plugin type (e.g., buddy-stt-whisper-api-plugin, buddy-stt-whisper-local-plugin) or 'none' to disable"
 			},
 			"ttsPlugin": {
 				"title": "TTS Plugin",

@@ -17,7 +17,7 @@ export const LLM_PROVIDER_NONE = 'none';
 
 export const TTS_PLUGIN_NONE = 'none';
 
-export const TTS_PLUGIN_ELEVENLABS = 'buddy-elevenlabs-plugin';
+export const STT_PLUGIN_NONE = 'none';
 
 /**
  * Maps legacy enum-based provider values (from pre-plugin configs)
@@ -30,9 +30,3 @@ export const LEGACY_PROVIDER_MAP = new Map<string, string>([
 	['openai', 'buddy-openai-plugin'],
 	['ollama', 'buddy-ollama-plugin'],
 ]);
-
-export enum SttProvider {
-	NONE = 'none',
-	WHISPER_API = 'whisper_api',
-	WHISPER_LOCAL = 'whisper_local',
-}
