@@ -840,6 +840,13 @@ onBeforeUnmount((): void => {
 	destroyGrids();
 });
 
+// Track card grid config (rows/cols) to detect dimension changes
+const cardGridSignature = computed((): string => {
+	return sortedCards.value
+		.map((c) => `${c.id}:${c.rows ?? ''}:${c.cols ?? ''}`)
+		.join('|');
+});
+
 // Watch for card list changes
 watch(
 	(): ICard[] => sortedCards.value,
@@ -869,6 +876,17 @@ watch(
 		}
 
 		addTilesToCardGrids();
+	},
+	{ flush: 'post' }
+);
+
+// Watch for card grid config changes (rows/cols edits)
+watch(
+	cardGridSignature,
+	(): void => {
+		nextTick(() => {
+			initializeGrids();
+		});
 	},
 	{ flush: 'post' }
 );
