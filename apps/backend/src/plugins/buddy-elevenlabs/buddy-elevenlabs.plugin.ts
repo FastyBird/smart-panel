@@ -84,7 +84,7 @@ STT and TTS provider plugin for the Buddy module using the ElevenLabs API.
 ## Configuration
 
 - **API Key** - Your ElevenLabs API key (required)
-- **Voice ID** - ElevenLabs voice ID for TTS (default: Rachel)`,
+- **Voice ID** - ElevenLabs voice ID for TTS (auto-detected if not set)`,
 			links: {
 				documentation: 'https://smart-panel.fastybird.com/docs',
 				repository: 'https://github.com/FastyBird/smart-panel',
