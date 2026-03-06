@@ -305,8 +305,13 @@ export class TilesController {
 			throw ValidationExceptionFactory.createException(errors);
 		}
 
+		const { parent } = baseDtoInstance;
+
 		try {
-			const updatedTile = await this.tilesService.update(tile.id, dtoInstance);
+			const updatedTile = await this.tilesService.update(tile.id, dtoInstance, {
+				parentType: parent.type,
+				parentId: parent.id,
+			});
 
 			this.logger.debug(`Successfully updated tile id=${updatedTile.id}`);
 

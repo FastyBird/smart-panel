@@ -203,18 +203,6 @@
 
 						<div class="p-2">
 							<div
-								v-if="getCardTiles(card.id).length === 0"
-								class="text-center py-3"
-							>
-								<el-text
-									type="info"
-									size="small"
-								>
-									{{ t('pagesCardsPlugin.texts.cards.noTiles') }}
-								</el-text>
-							</div>
-							<div
-								v-else
 								:ref="(el) => setGridRef(card.id, el as HTMLElement | null)"
 								class="card-grid-container"
 							/>
@@ -502,6 +490,8 @@ const setGridRef = (cardId: string, el: HTMLElement | null): void => {
 };
 
 const onTileRemove = (tileId: ITile['id'], cardId: string): void => {
+	removedTiles.add(tileId);
+
 	const grid = cardGrids.get(cardId);
 
 	if (!grid) return;
@@ -594,7 +584,7 @@ const initializeCardGrid = (card: ICard): void => {
 			cellHeight: 'auto',
 			margin: 4,
 			float: true,
-			acceptWidgets: false,
+			acceptWidgets: true,
 		},
 		container
 	);
@@ -650,8 +640,15 @@ const initializeCardGrid = (card: ICard): void => {
 			if (!itemElContent) continue;
 
 			const itemId = item.id;
-			const tiles = getCardTiles(card.id);
-			const tile = tiles.find((t) => t.id === itemId);
+
+			// Search across all cards for this tile (handles cross-card moves)
+			let tile: ITile | undefined;
+
+			for (const [, store] of tilesByCard) {
+				tile = store.tiles.value.find((t) => t.id === itemId);
+
+				if (tile) break;
+			}
 
 			if (!tile) continue;
 
@@ -666,17 +663,12 @@ const initializeCardGrid = (card: ICard): void => {
 			const itemEl = item.el;
 			const itemElContent = itemEl?.querySelector('.grid-stack-item-content');
 
-			if (!itemElContent) continue;
-
-			render(null, itemElContent as HTMLElement);
+			if (itemElContent) {
+				render(null, itemElContent as HTMLElement);
+			}
 
 			if (item.id) {
 				tileSet.delete(item.id);
-
-				if (!suppressMarkChanged.value) {
-					removedTiles.add(item.id);
-				}
-
 				markChanged();
 			}
 		}
@@ -718,15 +710,7 @@ const initializeGrids = (): void => {
 	suppressMarkChanged.value = true;
 	destroyGrids();
 
-	const cardsToInit = sortedCards.value.filter((card) => getCardTiles(card.id).length > 0);
-
-	if (cardsToInit.length === 0) {
-		suppressMarkChanged.value = false;
-
-		return;
-	}
-
-	for (const card of cardsToInit) {
+	for (const card of sortedCards.value) {
 		initializeCardGrid(card);
 	}
 
@@ -737,34 +721,25 @@ const addTilesToCardGrids = (): void => {
 	for (const card of sortedCards.value) {
 		const tiles = getCardTiles(card.id);
 
-		if (tiles.length === 0) {
-			// Clean up grid if card has no tiles
-			if (cardGrids.has(card.id)) {
-				suppressMarkChanged.value = true;
-				destroyCardGrid(card.id);
-				suppressMarkChanged.value = false;
-			}
-
-			continue;
-		}
-
-		const grid = cardGrids.get(card.id);
+		let grid = cardGrids.get(card.id);
 
 		if (!grid) {
-			// Card just got tiles but has no grid yet — initialize it
+			// Ensure grid exists for every card (even empty ones, for drop targets)
 			suppressMarkChanged.value = true;
 			initializeCardGrid(card);
 			suppressMarkChanged.value = false;
 
-			continue;
+			grid = cardGrids.get(card.id);
+
+			if (!grid) continue;
 		}
+
+		if (tiles.length === 0) continue;
 
 		// Add new tiles to existing grid incrementally
 		const tileSet = cardTileSets.get(card.id);
 
 		if (!tileSet) continue;
-
-		suppressMarkChanged.value = true;
 
 		for (const tile of tiles) {
 			if (removedTiles.has(tile.id) || tileSet.has(tile.id)) continue;
@@ -777,8 +752,6 @@ const addTilesToCardGrids = (): void => {
 				h: tile.rowSpan,
 			});
 		}
-
-		suppressMarkChanged.value = false;
 	}
 };
 
@@ -937,15 +910,11 @@ watch(
 			try {
 				// Collect all grid positions synchronously first
 				const tileUpdates: {
-					actions: ITileActionsAccessor;
+					cardId: string;
 					gridItems: { id: string; x: number; y: number; w: number; h: number }[];
 				}[] = [];
 
 				for (const [cardId, grid] of cardGrids) {
-					const actions = tileActionsByCard.get(cardId);
-
-					if (!actions || !grid) continue;
-
 					const gridItems: { id: string; x: number; y: number; w: number; h: number }[] = [];
 
 					for (const el of grid.getGridItems()) {
@@ -962,18 +931,29 @@ watch(
 						});
 					}
 
-					tileUpdates.push({ actions, gridItems });
+					tileUpdates.push({ cardId, gridItems });
 				}
 
 				// Now await all API calls
-				for (const { actions, gridItems } of tileUpdates) {
+				for (const { cardId, gridItems } of tileUpdates) {
+					const actions = tileActionsByCard.get(cardId);
+
+					if (!actions) continue;
+
 					for (const gridItem of gridItems) {
-						let tile = actions.findById('card', gridItem.id);
+						// Search across all cards for this tile (handles cross-card moves)
+						let tile: ITile | null = null;
+
+						for (const [, a] of tileActionsByCard) {
+							tile = a.findById('card', gridItem.id);
+
+							if (tile) break;
+						}
 
 						if (tile) {
 							tile = await actions.edit({
 								id: tile.id,
-								parent: tile.parent,
+								parent: { type: 'card', id: cardId },
 								data: {
 									type: tile.type,
 									row: gridItem.y + 1,
@@ -987,7 +967,7 @@ watch(
 							if (tile.draft) {
 								await actions.save({
 									id: tile.id,
-									parent: tile.parent,
+									parent: { type: 'card', id: cardId },
 								});
 							}
 						}
