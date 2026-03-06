@@ -55,7 +55,9 @@ export class WhatsAppWebhookController {
 		// Fire-and-forget: process asynchronously so the 200 returns immediately.
 		// WhatsApp Cloud API expects a fast response and will re-deliver on timeout.
 		this.whatsAppProvider.handleWebhookPayload(body).catch((error: unknown) => {
-			this.logger.error(`Error processing WhatsApp webhook: ${String(error)}`);
+			const message = error instanceof Error ? error.message : 'Unknown error';
+
+			this.logger.error(`Error processing WhatsApp webhook: ${message}`);
 		});
 
 		return 'OK';
