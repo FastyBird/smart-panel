@@ -142,7 +142,7 @@ Inspired by the [OpenClaw](https://github.com/openclaw/openclaw) project's proac
 ### Phase 4 (Multi-Channel)
 
 - [x] Telegram bot adapter for buddy conversations
-- [ ] WhatsApp adapter for buddy conversations (single-channel, webhook-based)
+- [x] WhatsApp adapter for buddy conversations (single-channel, webhook-based)
 - [ ] Discord bot adapter with space-channel mapping (multi-channel)
 - [x] Admin web chat interface embedded in admin settings
 - [x] `personality.md` configuration file for buddy tone/style customisation
