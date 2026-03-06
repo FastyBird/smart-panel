@@ -372,22 +372,29 @@ export class WhatsAppBotProvider implements OnModuleInit, OnModuleDestroy {
 
 				if (!response.ok) {
 					const errorText = await response.text();
+					const error = new Error(`WhatsApp API error ${response.status}: ${errorText}`);
 
-					throw new Error(`WhatsApp API error ${response.status}: ${errorText}`);
+					// Client errors (4xx) are permanent failures — do not retry
+					if (response.status >= 400 && response.status < 500) {
+						throw Object.assign(error, { permanent: true });
+					}
+
+					throw error;
 				}
 
 				return;
 			} catch (error) {
-				if (attempt < WHATSAPP_RETRY_DELAYS_MS.length) {
-					const delay = WHATSAPP_RETRY_DELAYS_MS[attempt];
-
-					this.logger.warn(
-						`WhatsApp API call failed (attempt ${attempt + 1}), retrying in ${delay}ms: ${String(error)}`,
-					);
-					await this.sleep(delay);
-				} else {
+				// Do not retry permanent (4xx) client errors
+				if ((error as { permanent?: boolean }).permanent || attempt >= WHATSAPP_RETRY_DELAYS_MS.length) {
 					throw error;
 				}
+
+				const delay = WHATSAPP_RETRY_DELAYS_MS[attempt];
+
+				this.logger.warn(
+					`WhatsApp API call failed (attempt ${attempt + 1}), retrying in ${delay}ms: ${String(error)}`,
+				);
+				await this.sleep(delay);
 			}
 		}
 	}
